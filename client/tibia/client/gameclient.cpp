@@ -372,7 +372,7 @@ TGameClient::TGameClient(QObject* parent)
     });
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE,
-                            [self = QPointer<TGameClient>(this)](const input::TGameAction&) {
+                            [self = QPointer<TGameClient>(this)](const input::IGameAction&) {
                                 if (self)
                                     Q_EMIT self->characterSelectionClosed();
                                 return true;

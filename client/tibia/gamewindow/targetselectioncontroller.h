@@ -24,7 +24,7 @@ public:
 
 public Q_SLOTS:
     /// CIP moc — START_TARGET_SELECTION (0x50).
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
     /// CIP moc — cancel selection when a modal dialog opens.
     void onDialogVisibleChanged(bool Visible) override;
     /// CIP moc — TARGET_SELECTION_FINISHED fan-out.
@@ -32,7 +32,7 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc — emits TARGET_SELECTION_FINISHED after selection ends.
-    void publishGameAction(const input::TGameActionPtr& action);
+    void publishGameAction(const input::IGameActionPtr& action);
 
 private:
     void setSelecting(bool selecting);

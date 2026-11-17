@@ -164,14 +164,14 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     setActionHandler(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     setActionHandler(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     setActionHandler(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::TGameAction&) {
+    setActionHandler(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
         if (tibia::game::isOnline() && !tibia::game::localPlayerHasReachedMain())
             Q_EMIT showCapacityWarning();
         return true;
     });
     // CIP handleGameAction case 0x94: walking turns chasing off
     // unless auto chase is enabled.
-    setActionHandler(A::APPLY_AUTOCHASE_SETTING, [this](const input::TGameAction&) {
+    setActionHandler(A::APPLY_AUTOCHASE_SETTING, [this](const input::IGameAction&) {
         if (!m_autoChaseEnabled && m_chaseEnabled)
             onChaseModeChangeRequested(false);
         return true;
@@ -550,7 +550,7 @@ void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObj
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = input::unportedGameAction(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
+    if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -559,7 +559,7 @@ void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
@@ -569,7 +569,7 @@ void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
 
 void TPlayerInventoryAndStatusController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = input::unportedGameAction(firstOfType(slotActions(slotId), A::TARGET_SELECTED)))
+    if (const input::IGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
         input::publish(target);
 }
 

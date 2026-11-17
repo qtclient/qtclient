@@ -41,15 +41,15 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
     , m_storage(new TSkillWheelStorage(this))
     , m_dialog(new TSkillWheelDialogController(m_storage, this))
 {
-    input::setActionHandler(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::TGameAction&) {
+    input::setActionHandler(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::IGameAction&) {
         m_dialog->showDialog();
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::TGameAction&) {
+    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"), qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel), false);
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::TGameAction&) {
+    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"),
                               qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel)
                                   + qtTrId("skill_wheel_warning_no_skill_wheel_show_preview_part").arg(qtTrId("ok")),
@@ -63,7 +63,7 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
             tibia::game::openWheel(action.creatureId());
         return true;
     });
-    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {
+    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::IGameAction&) {
         clearSkipNextOwnOpen();
         requestOwnWheel();
         return true;

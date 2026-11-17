@@ -13,7 +13,6 @@
 
 namespace tibia {
 namespace input {
-struct TGameAction;
 class IGameAction;
 namespace gameactions {
 class TGameActionOpenWeaponProficiencyShapeDialog;

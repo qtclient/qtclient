@@ -186,7 +186,7 @@ void TCyclopediaDialogController::hookActions()
         }
         return true;
     });
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, [this](const input::TGameAction&) {
+    input::setActionHandler(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
         clearBacklog();
         closeDialog();
         return true;

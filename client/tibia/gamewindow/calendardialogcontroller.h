@@ -57,7 +57,7 @@ public:
     void closeButtonClicked() override;
     QString getTooltipForDay(const QString& DateString) override;
     QString getSeasonalTooltipForDay(const QString& DateString) override;
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 private:
     struct EntryDetails

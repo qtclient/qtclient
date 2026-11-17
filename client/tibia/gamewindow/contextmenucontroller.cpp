@@ -54,8 +54,7 @@ QString nameOf(const input::IGameAction& action)
         return report->characterName();
     if (const auto* hireling = input::gameActionAs<input::TGameActionReportHireling>(&action))
         return hireling->hirelingName();
-    const auto* fields = dynamic_cast<const input::TGameAction*>(&action);
-    return fields ? fields->text : QString();
+    return {};
 }
 
 const char* simpleLabel(const A type)
@@ -266,16 +265,9 @@ QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, Q
     default:
         break;
     }
-    const auto* fields = dynamic_cast<const input::TGameAction*>(&pGameAction);
-    if (!fields)
-        return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
-    const input::TGameAction& action = *fields;
-    switch (action.type) {
-    case A::QUICK_LOOT:
-        return qtTrId(action.position.x != UINT16_MAX ? "context_loot_all" : "context_loot");
-    default:
-        return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(action.type));
-    }
+    if (const auto* loot = input::gameActionAs<input::TGameActionQuickLoot>(&pGameAction))
+        return qtTrId(loot->position().x != UINT16_MAX ? "context_loot_all" : "context_loot");
+    return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
 }
 
 void TContextMenuController::showGameActions(const input::TGameActionList& actions, const int context, const input::TGameActionMapper& mapper)

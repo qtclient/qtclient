@@ -79,13 +79,6 @@ QList<TMessageDialogButton*> okCancelButtons()
              new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) };
 }
 
-void publish(const A type, const int parameter = 0, const int instance = 0)
-{
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->parameter = parameter;
-    action->instance = instance;
-    input::publish(action);
-}
 
 }
 

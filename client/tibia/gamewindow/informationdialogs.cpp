@@ -276,7 +276,7 @@ void TInformationDialogs::hookQuestLog()
 
 void TInformationDialogs::hookHighscores()
 {
-    input::setActionHandler(A::OPEN_HIGHSCORES_DIALOG, [this](const input::TGameAction&) {
+    input::setActionHandler(A::OPEN_HIGHSCORES_DIALOG, [this](const input::IGameAction&) {
         m_highscores->openDialog();
         return true;
     });

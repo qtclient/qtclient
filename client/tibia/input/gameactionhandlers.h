@@ -62,13 +62,6 @@ std::function<bool(const IGameAction&)> typedGameActionHandler(F&& handler)
         return [handler = Handler(std::forward<F>(handler))](const IGameAction& action) mutable -> bool {
             if (const auto* typed = dynamic_cast<const Action*>(&action))
                 return handler(*typed);
-            if constexpr (std::is_same_v<Action, TGameAction>) {
-                // qtclient: a handler still taking the field carrier sees a
-                // ported class's action as an empty carrier of its type.
-                TGameAction carrier;
-                carrier.type = action.gameActionType();
-                return handler(carrier);
-            }
             return false;
         };
     }
@@ -104,10 +97,10 @@ void removeActionListener(int id);
 /// the next world map click picks a target and `handler` gets that click's
 /// TARGET_SELECTED action, or null when it had none or the selection was
 /// cancelled. A new selection cancels the pending one.
-using TargetHandler = std::function<void(const TGameActionPtr& target)>;
+using TargetHandler = std::function<void(const TTargetSelectedPtr& target)>;
 void startTargetSelection(TargetHandler handler);
 bool isSelectingTarget();
-void finishTargetSelection(const TGameActionPtr& target);
+void finishTargetSelection(const TTargetSelectedPtr& target);
 /// Told true when a selection starts and false when it ends, before the
 /// handler runs (CIP: TTargetSelectionController's START_TARGET_SELECTION /
 /// TARGET_SELECTION_FINISHED). Null removes it.

@@ -52,9 +52,12 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
             tibia::game::localPlayerClearMovementGoal();
         break;
     case A::USE_WITH:
-        if (const TGameActionPtr action = unportedGameAction(pGameAction);
-            action && action->target && (onMap(*action) || onMap(*action->target)))
-            tibia::game::localPlayerClearMovementGoal();
+        if (const auto* use = gameActionAs<TGameActionUseWith>(pGameAction); use && use->hasTarget()) {
+            const TObjectGameActionContext& target = *use->target();
+            const bool targetOnMap = target.creatureId == 0 && target.position.isValid() && target.position.x != 0xffff;
+            if (onMap(*use) || targetOnMap)
+                tibia::game::localPlayerClearMovementGoal();
+        }
         break;
     default:
         break;

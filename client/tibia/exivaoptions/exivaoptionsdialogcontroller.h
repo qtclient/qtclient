@@ -41,7 +41,7 @@ public Q_SLOTS:
     void onAllowedGroupsChanged() override;
 
 private:
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
 
     QPointer<TExivaOptionsStorage> m_storage;
     std::function<int()> m_worldType;

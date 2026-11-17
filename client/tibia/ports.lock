@@ -2564,6 +2564,7 @@ input::TGameActionCreature::v4	a81553cb360a77e2	ported	input/gameaction.h:TGameA
 input::TGameActionCreatureWithName::v1	42162af33a3706d7	skip	generated: compiler-generated destructor pair
 input::TGameActionCreatureWithName::v2	adf52eaa853b6dc1	skip	generated: compiler-generated destructor pair
 input::TGameActionCreatureWithName::v5	3e9694309573b59c	ported	input/gameaction.h:TGameActionCreatureWithName::creatureName
+input::TGameActionCrossHairSpell::v0	f2c32545ebe682ff	ported	input/gameaction.h:TGameActionCrossHairSpell::gameActionType
 input::TGameActionCrossHairSpell::v1	0a6c452db18db8d3	skip	generated: compiler-generated destructor pair
 input::TGameActionCrossHairSpell::v2	7ab8d1b94b010944	skip	generated: compiler-generated destructor pair
 input::TGameActionCyclopediaMapSelectionItem::v1	fa91502560469a8c	skip	generated: compiler-generated destructor pair
@@ -2623,6 +2624,7 @@ input::TGameActionManagedContainer::v1	872d4faac408f6d5	skip	generated: compiler
 input::TGameActionManagedContainer::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionMountPlayer::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionMountPlayer::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionMoveObject::v0	6b45105eb5ca3dc1	ported	input/gameaction.h:TGameActionMoveObject::gameActionType
 input::TGameActionMoveObject::v1	21dfdb86ae68bec8	skip	generated: compiler-generated destructor pair
 input::TGameActionMoveObject::v2	07b6ddc1b0bf1afb	skip	generated: compiler-generated destructor pair
 input::TGameActionMoveUp::v0	57955c63b0504e11	ported	input/gameaction.h:TGameActionMoveUp::gameActionType
@@ -2684,10 +2686,12 @@ input::TGameActionOpenUrl::v2	395f2bd87f34c2f5	skip	generated: compiler-generate
 input::TGameActionPlayerMovementIntent::v0	2b87e6bbfbc44233	ported	input/gameaction.h:TGameActionPlayerMovementIntent::gameActionType
 input::TGameActionPlayerMovementIntent::v1	5f3d3948d1681070	skip	generated: compiler-generated destructor pair
 input::TGameActionPlayerMovementIntent::v2	2c2985996b181825	skip	generated: compiler-generated destructor pair
+input::TGameActionPlayerTradeItem::v0	f4b788ab3351280b	ported	input/gameaction.h:TGameActionPlayerTradeItem::gameActionType
 input::TGameActionPlayerTradeItem::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionPlayerTradeItem::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
 input::TGameActionPreySystem::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionPreySystem::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionQuickLoot::v0	0f6aec16da06f03a	ported	input/gameaction.h:TGameActionQuickLoot::gameActionType
 input::TGameActionQuickLoot::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionQuickLoot::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
 input::TGameActionQuitGame::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -2835,6 +2839,7 @@ input::TGameActionSmartClick::v1	5f3d3948d1681070	skip	generated: compiler-gener
 input::TGameActionSmartClick::v2	2c2985996b181825	skip	generated: compiler-generated destructor pair
 input::TGameActionSortFilterVipList::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionSortFilterVipList::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionSpellAtMouseCursor::v0	794ca37e74e540bd	ported	input/gameaction.h:TGameActionSpellAtMouseCursor::gameActionType
 input::TGameActionSpellAtMouseCursor::v1	0a6c452db18db8d3	skip	generated: compiler-generated destructor pair
 input::TGameActionSpellAtMouseCursor::v2	7ab8d1b94b010944	skip	generated: compiler-generated destructor pair
 input::TGameActionSpriteResolved::v1	a97ec1dee0709cb0	skip	generated: compiler-generated destructor pair
@@ -2865,6 +2870,7 @@ input::TGameActionTakeAutomaticScreenshot::v2	e9caf669ab302182	skip	generated: c
 input::TGameActionTakeManualScreenshot::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionTakeManualScreenshot::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionTakeManualScreenshot::v3	9583ec69b8585ef5	ported	input/gameaction.h:TGameActionTakeManualScreenshot::isAllowedWhileShortcutsAreRestricted
+input::TGameActionTargetSelected::v0	f26c95394a36e31a	ported	input/gameaction.h:TGameActionTargetSelected::gameActionType
 input::TGameActionTargetSelected::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionTargetSelected::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
 input::TGameActionTeleportToCoordinate::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -2907,14 +2913,19 @@ input::TGameActionUpdateMinimapMarker::v2	673838c5a2ac71b7	skip	generated: compi
 input::TGameActionUse::v0	18ccf7a6719f1d5b	ported	input/gameaction.h:TGameActionUse::gameActionType
 input::TGameActionUse::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionUse::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGameActionUseAtMouseCursor::v0	36f40e99004a7b0f	ported	input/gameaction.h:TGameActionUseAtMouseCursor::gameActionType
 input::TGameActionUseAtMouseCursor::v1	dedde2de53672c23	skip	generated: compiler-generated destructor pair
 input::TGameActionUseAtMouseCursor::v2	0edaf9e10fb76a80	skip	generated: compiler-generated destructor pair
+input::TGameActionUseOnCreature::v0	bc0d3c643ad8f0d1	ported	input/gameaction.h:TGameActionUseOnCreature::gameActionType
 input::TGameActionUseOnCreature::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionUseOnCreature::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGameActionUseOnTarget::v0	7656015e1ee2b9b1	ported	input/gameaction.h:TGameActionUseOnTarget::gameActionType
 input::TGameActionUseOnTarget::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionUseOnTarget::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGameActionUseOnYourself::v0	aadf00082e9b6011	ported	input/gameaction.h:TGameActionUseOnYourself::gameActionType
 input::TGameActionUseOnYourself::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionUseOnYourself::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGameActionUseWith::v0	8a358be23f0582f4	ported	input/gameaction.h:TGameActionUseWith::gameActionType
 input::TGameActionUseWith::v1	dedde2de53672c23	skip	generated: compiler-generated destructor pair
 input::TGameActionUseWith::v2	0edaf9e10fb76a80	skip	generated: compiler-generated destructor pair
 input::TGameActionVip::v1	b06312a8903197f8	skip	generated: compiler-generated destructor pair
@@ -3080,6 +3091,7 @@ input::TWindowFocusEventFilter::~TWindowFocusEventFilter	f31bceb5f7c544a5	skip	g
 input::TWindowFocusEventFilter::~TWindowFocusEventFilter_deleting	471e674d1ed2a48a	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionGameEvent::v1	1e49309f9c7b6a05	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionGameEvent::v2	1bbd6ead4d34a897	skip	generated: compiler-generated destructor pair
+input::gameactions::TGameActionGatherAll::v0	19de5c6fccff6bf5	ported	input/gameaction.h:TGameActionGatherAll::gameActionType
 input::gameactions::TGameActionGatherAll::v1	fc4c59941f33faff	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionGatherAll::v2	f15b440411e45cba	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionOpenTaskboardDialog::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -5451,6 +5463,8 @@ sub_25494cc73140	25494cc73140c5fd	ported	gamewindow/actionbarcontroller.cpp:TAct
 sub_2565e484ac64	2565e484ac64cfc9	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_2567864601c6#2	2567864601c6f081	skip	generated: compiler-generated chat entry copy constructor / destructor
 sub_25687ebe88e9	25687ebe88e95708	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setHotkeys
+sub_256d6419be6d	256d6419be6d1801	ported	input/gameaction.h:TGameActionUseOnCreature::TGameActionUseOnCreature
+sub_256d6419be6d#2	256d6419be6d1801	ported	input/gameaction.h:TGameActionUseOnCreature::TGameActionUseOnCreature
 sub_25721d4789a1	25721d4789a13bcb	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::getPreviousFeaturedOffer
 sub_257997e21155	257997e21155a796	ported	gamewindow/naggingmessagedialogcontroller.cpp:TNaggingMessageDialogController::~TNaggingMessageDialogController
 sub_258e50f81967	258e50f819678590	ported	config/optionspages.cpp:TGraphicsOptionsPage::setRendererIndex
@@ -9630,6 +9644,8 @@ sub_b35b842bea1d	b35b842bea1d8651	tested	shared/src/jsonhelper.cpp:jsonDouble	te
 sub_b3608a9521f1	b3608a9521f128cf	skip	library: std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_b3652a03d54b	b3652a03d54bef6f	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_b373390eeb83	b373390eeb839866	inlined	worldmap/worldmapfield.cpp:isBank
+sub_b373390eeb83#7	b373390eeb839866	ported	input/gameaction.h:TGameActionTargetedSpell::spellId
+sub_b373390eeb83#8	b373390eeb839866	ported	input/gameaction.h:TGameActionTargetedSpell::spellId
 sub_b373390eeb83#9	b373390eeb839866	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
 sub_b37d32567db6	b37d32567db6e32e	skip	library: std::sort introsort pieces (unsigned button types)
 sub_b38375548e26	b38375548e26c0b4	ported	gamewindow/edittextcontroller.cpp:TEditTextController::abortEditing

@@ -309,11 +309,12 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     });
 
     // CIP : browse the object's type, with its tier when it has one.
-    input::setActionHandler(input::EGameAction::MARKET_BROWSE, [this](const input::TGameAction& action) {
+    input::setActionHandler(input::EGameAction::MARKET_BROWSE, [this](const input::gameactions::TGameActionMarketBrowse& browse) {
         if (!m_messages)
             return false;
-        uint16_t typeId = static_cast<uint16_t>(action.parameter);
-        uint8_t tier = static_cast<uint8_t>(action.instance);
+        const input::TObjectGameActionContext& action = browse.context();
+        uint16_t typeId = 0;
+        uint8_t tier = browse.tier();
         if (action.objectClientId) {
             typeId = action.objectClientId;
             uint8_t slotTier = 0;

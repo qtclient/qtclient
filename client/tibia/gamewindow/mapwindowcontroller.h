@@ -106,11 +106,11 @@ protected:
 
 private:
     /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// The use goes to the TARGET_SELECTED under the mouse.
-    void handleGameActionAtMouseCursor(const input::TGameAction& action);
+    void handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action);
     /// The spell's talk aimed at the field under the mouse.
-    void handleGameActionCastSpellAtMouseCursor(const input::TGameAction& action);
+    void handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action);
     /// A use at the mouse waits a frame for a handler.
     void trackUseAtMouseCursorGameAction();
     /// Per frame: an untaken use at the mouse reports "no target".
@@ -121,7 +121,7 @@ private:
 
     QPoint toMapPixel(const QPointF& mapWindowPoint) const;
     /// The TARGET_SELECTED candidate at a mapWindow point, creatures first.
-    input::TGameActionPtr targetAt(const QPointF& mapWindowPoint) const;
+    input::TTargetSelectedPtr targetAt(const QPointF& mapWindowPoint) const;
     /// Refresh m_hovering / m_hoverPosition from the live cursor inside mapWindow.
     /// IdleOT HUD chrome (action bar, etc.) sits above the FOV and steals the
     /// map MouseArea's hover; the blue baseplate must still track map tiles under it.

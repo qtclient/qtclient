@@ -441,6 +441,8 @@ struct TObjectGameActionContext
     Position position;
     int stackPosition = -1;
     uint16_t objectClientId = 0;
+    /// A creature (CIP: TObjectCreatureGameActionContext); 0 for an object.
+    uint32_t creatureId = 0;
 };
 
 /// The object actions CIP builds from a location and an object context.
@@ -2759,192 +2761,359 @@ private:
     bool m_enterUnwalkableGoal;
 };
 
-struct TGameAction;
-class IGameAction;
-using TGameActionPtr = std::shared_ptr<const TGameAction>;
-using TGameActionList = std::vector<IGameActionPtr>;
 
-/// qtclient's field carrier for the actions whose CIP classes are not ported
-/// yet: every type uses the subset of fields its CIP class carries. Ported
-/// classes derive from IGameAction directly and carry only their own fields.
-struct TGameAction : public IGameAction
+// ---------------------------------------------------------------------------
+// Object actions: use with, targets, crosshair spells, moves, stash, equip
+
+/// CIP input::TGameActionTargetSelected (TARGET_SELECTED): the object or creature
+/// picked for a pending use or spell.
+class TGameActionTargetSelected final : public TObjectGameAction
 {
-    EGameAction gameActionType() const override { return type; }
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::TARGET_SELECTED; }
+    uint32_t creatureId() const { return context().creatureId; }
+};
+using TTargetSelectedPtr = std::shared_ptr<const TGameActionTargetSelected>;
 
-    EGameAction type = EGameAction::UNKNOWN;
-    /// Object actions: world-map / inventory field and stack position
-    /// (CIP: TGameActionContext 0xb) plus the item client id for wire.
-    Position position;
-    int stackPosition = -1;
-    /// Item client id at `position` / `stackPosition` (CIP stackpos + position wire).
-    uint16_t objectClientId = 0;
-    /// Creature actions.
-    uint32_t creatureId = 0;
-    /// SMART_CLICK: the action a click runs.
-    IGameActionPtr inner;
-    /// ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE.
-    QString text;
-    QColor color;
-    /// SAVE_TEXT_TO_FILE / SAVE_JSON_TO_FILE: where `text` is written (CIP:
-    /// TGameActionSaveTextToFile / TGameActionSaveJsonToFile,).
-    QString filePath;
-    /// REPORT_TEXT (CIP: TGameActionReportStatement,): `text` is
-    /// the author, `parameter` the text's edit id and this the reported text.
-    QString statement;
-    /// MOVE_OBJECT: where the object is dropped (inventory slots are
-    /// Position(0xFFFF, slot, 0), slot 0 for any) and whether Shift asked
-    /// for everything.
-    Position destination;
-    bool moveAll = false;
-    /// MOVE_OBJECT: how many of a stack move (CIP , set by the
-    /// split-stack dialog); 0 moves the whole stack. STASH_STOW_STACK /
-    /// STASH_RETRIEVE: the count, the stack's / stored one until the amount
-    /// dialog sets the chosen one (CIP).
-    int amount = 0;
-    /// SET_SHARED_EXPERIENCE: whether it turns shared experience on.
-    bool enable = false;
-    /// SET_TACTICS.
-    bool chase = false;
-    bool secure = false;
-    int pvpMode = 0;
-    /// ACTION_BUTTON_TRIGGERED (CIP: TGameActionActionButtonTriggered,
-    /// ); TOGGLE_ACTION_BAR: the bar.
-    int actionBarId = 0;
-    int actionButtonId = 0;
-    int multiActionIndex = 0;
-    /// The one value of a parameterised action: TOGGLE_ACTION_BARS position, SWITCH_CHAT_MODE mode, OPEN_CYCLOPEDIA /
-    /// OPEN_SOCIAL_DIALOG tab, OPEN_OPTIONS_MENU_DIALOG page (CIP).
-    int parameter = 0;
-    /// TOGGLE_WIDGET / OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR /
-    /// OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR / MAKE_BATTLE_LIST_PRIMARY:
-    /// the container or battle list id, and the sidebar (0xff: any).
-    int instance = 0;
-    uint sidebarId = 0xff;
-    /// Repeated by a held key (CIP:).
-    bool autoRepeat = false;
-    /// SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT from a hotkey (CIP , action +0x21 / +0x24),
-    /// CROSSHAIR_SPELL, SPELL_AT_MOUSE_CURSOR: whether `text` casts a spell, its
-    /// ESpellCastOptionalTargetType, and the say's tibia::client::MessageMode.
-    bool isSpell = false;
-    int spellCastType = 0;
-    int talkMode = 0;
-    /// USE_WITH / CROSSHAIR_SPELL: the TARGET_SELECTED action picked for it (CIP);
-    /// null starts a target selection.
-    TGameActionPtr target;
-    /// OPEN_CHAT_CHANNEL / OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT: the channel's
-    /// chat::TChatChannelIdentifier type and server channel id; `text` the name.
-    int chatChannelType = 0;
-    int chatChannelId = 0;
-    /// OPEN_CYCLOPEDIA: the tab's sub-page, -1 for none (CIP: the optional
-    /// int at +0x38 of TGameActionOpenCyclopedia,). The
-    /// character tab (parameter 2) takes
-    /// TCharacterInfoDialogController::EDialogCategory (1: BattleMainMenu).
-    /// OPEN_STORE: `parameter` is the TStoreOpenParameters open action and
-    /// `instance` its detail (CIP ; open action 1 is the premium /
-    /// boost page, detail 1 its XP boost).
-    int category = -1;
-    /// EXALTATION_FORGE_FUSION / _CONVERGENCE_FUSION / _TRANSFER (CIP: the
-    /// TGameActionExaltationForge* read by): the object and its
-    /// tier, the resource (fusion) or target (transfer) type, a fusion's
-    /// success chance and tier loss improvements, a transfer's convergence.
-    uint16_t exaltationTypeId = 0;
-    uint8_t exaltationTier = 0;
-    uint16_t exaltationSecondTypeId = 0;
-    bool exaltationSuccessIncreased = false;
-    bool exaltationTierLossImproved = false;
-    bool exaltationConvergence = false;
-    /// SET_PLAYER_OUTFIT / SET_HIRELING_OUTFIT / SET_SHOW_OFF_SOCKET_CONFIGURATION
-    /// (CIP outfit-window OK): the chosen look, ride flag, random mount, and
-    /// for a show-off socket the look direction and whether the podium shows.
-    Outfit outfit;
-    bool mountCharacter = false;
-    bool randomMount = false;
-    bool showSocket = false;
-    int lookDirection = 0;
-    /// REQUST_VIP_DATA_UPDATE (CIP: TGameActionRequestVipDataUpdate):
-    /// `instance` is the VIP id, `text` the description, `parameter` the icon,
-    /// `enable` notify-on-login, and these the selected group ids.
-    std::vector<uint8_t> vipGroups;
-    /// SET_PLAYER_MOVEMENT_INTENT: Minimap / Cyclopedia / Travel qtclient policy.
-    int autoWalkPathMode = 0;
-    /// SET_PLAYER_MOVEMENT_INTENT: the path may end on an unwalkable goal
-    /// (clicks on the world map or an object; not the minimap or cyclopedia map).
-    bool enterUnwalkableGoal = true;
+/// CIP input::TGameActionUseWith (USE_WITH): an object used with a target
+/// (none yet: the target is selected first).
+class TGameActionUseWith final : public TObjectGameAction
+{
+public:
+    explicit TGameActionUseWith(const TObjectGameActionContext& object, std::optional<TObjectGameActionContext> target = {})
+        : TObjectGameAction(object)
+        , m_target(std::move(target))
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::USE_WITH; }
+    /// CIP: the target location and object are set.
+    bool hasTarget() const { return m_target.has_value(); }
+    const std::optional<TObjectGameActionContext>& target() const { return m_target; }
+
+private:
+    std::optional<TObjectGameActionContext> m_target;
 };
 
-/// qtclient adapter while TGameAction exists: the action as the field carrier,
-/// null for an action whose class is ported. Every reader still using it is
-/// converted together with the classes it reads.
-inline TGameActionPtr unportedGameAction(const IGameActionPtr& action)
+/// CIP input::TGameActionUseOnCreature (USE_ON_CREATURE): an object used on a creature (+0x28).
+class TGameActionUseOnCreature final : public TObjectGameAction
 {
-    return std::dynamic_pointer_cast<const TGameAction>(action);
+public:
+    TGameActionUseOnCreature(const TObjectGameActionContext& object, uint32_t targetCreatureId)
+        : TObjectGameAction(object)
+        , m_targetCreatureId(targetCreatureId)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::USE_ON_CREATURE; }
+    uint32_t targetCreatureId() const { return m_targetCreatureId; }
+
+private:
+    uint32_t m_targetCreatureId;
+};
+
+/// CIP input::TGameActionUseOnTarget (USE_ON_TARGET): on the attack target.
+class TGameActionUseOnTarget final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::USE_ON_TARGET; }
+};
+
+/// CIP input::TGameActionUseOnYourself (USE_ON_YOURSELF).
+class TGameActionUseOnYourself final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::USE_ON_YOURSELF; }
+};
+
+/// CIP input::TGameActionUseAtMouseCursor (USE_AT_MOUSECURSOR): an object used on
+/// what is under the mouse (the target once a window found it).
+class TGameActionUseAtMouseCursor final : public TObjectGameAction
+{
+public:
+    explicit TGameActionUseAtMouseCursor(const TObjectGameActionContext& object, std::optional<TObjectGameActionContext> target = {})
+        : TObjectGameAction(object)
+        , m_target(std::move(target))
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::USE_AT_MOUSECURSOR; }
+    const std::optional<TObjectGameActionContext>& target() const { return m_target; }
+
+private:
+    std::optional<TObjectGameActionContext> m_target;
+};
+
+/// CIP input::TGameActionPlayerTradeItem (TRADE_ITEM).
+class TGameActionPlayerTradeItem final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::TRADE_ITEM; }
+};
+
+/// CIP input::TGameActionCrossHairSpell / TGameActionSpellAtMouseCursor: a spell (+0x38)
+/// cast at a selected target or the mouse cursor. qtclient carries the words, the
+/// talk mode (tibia::client::MessageMode) and the ESpellCastOptionalTargetType.
+class TGameActionTargetedSpell : public IGameAction
+{
+public:
+    TGameActionTargetedSpell(EGameAction type, uint16_t spellId, QString words, int talkMode, int spellCastType,
+                             std::optional<TObjectGameActionContext> target = {})
+        : m_type(type)
+        , m_spellId(spellId)
+        , m_words(std::move(words))
+        , m_talkMode(talkMode)
+        , m_spellCastType(spellCastType)
+        , m_target(std::move(target))
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    uint16_t spellId() const { return m_spellId; }
+    const QString& words() const { return m_words; }
+    int talkMode() const { return m_talkMode; }
+    int spellCastType() const { return m_spellCastType; }
+    const std::optional<TObjectGameActionContext>& target() const { return m_target; }
+
+private:
+    EGameAction m_type;
+    uint16_t m_spellId;
+    QString m_words;
+    int m_talkMode;
+    int m_spellCastType;
+    std::optional<TObjectGameActionContext> m_target;
+};
+
+/// CIP input::TGameActionCrossHairSpell (CROSSHAIR_SPELL).
+class TGameActionCrossHairSpell final : public TGameActionTargetedSpell
+{
+public:
+    TGameActionCrossHairSpell(uint16_t spellId, QString words, int talkMode, int spellCastType,
+                              std::optional<TObjectGameActionContext> target = {})
+        : TGameActionTargetedSpell(EGameAction::CROSSHAIR_SPELL, spellId, std::move(words), talkMode, spellCastType, std::move(target))
+    {
+    }
+};
+
+/// CIP input::TGameActionSpellAtMouseCursor (SPELL_AT_MOUSE_CURSOR).
+class TGameActionSpellAtMouseCursor final : public TGameActionTargetedSpell
+{
+public:
+    TGameActionSpellAtMouseCursor(uint16_t spellId, QString words, int talkMode, int spellCastType)
+        : TGameActionTargetedSpell(EGameAction::SPELL_AT_MOUSE_CURSOR, spellId, std::move(words), talkMode, spellCastType)
+    {
+    }
+};
+
+/// CIP input::TGameActionMoveObject (MOVE_OBJECT): an object, where it goes (+0x30),
+/// whether everything moves (+0x28) and how many (qtclient: the split dialog's
+/// amount, 0 for the whole stack).
+class TGameActionMoveObject final : public TObjectGameAction
+{
+public:
+    explicit TGameActionMoveObject(const TObjectGameActionContext& object, std::optional<Position> destination = {},
+                                   bool moveAll = false, int amount = 0)
+        : TObjectGameAction(object)
+        , m_destination(std::move(destination))
+        , m_moveAll(moveAll)
+        , m_amount(amount)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::MOVE_OBJECT; }
+    const std::optional<Position>& destination() const { return m_destination; }
+    bool moveAll() const { return m_moveAll; }
+    int amount() const { return m_amount; }
+
+private:
+    std::optional<Position> m_destination;
+    bool m_moveAll;
+    int m_amount;
+};
+using TMoveObjectPtr = std::shared_ptr<const TGameActionMoveObject>;
+
+/// CIP input::TGameActionShowSplitStackDialog (SHOW_SPLIT_STACK_DIALOG): the move
+/// whose amount the dialog asks for.
+class TGameActionShowSplitStackDialog final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionShowSplitStackDialog(TMoveObjectPtr moveObject)
+        : TGameActionSimple(EGameAction::SHOW_SPLIT_STACK_DIALOG)
+        , m_moveObject(std::move(moveObject))
+    {
+    }
+    const TMoveObjectPtr& moveObject() const { return m_moveObject; }
+
+private:
+    TMoveObjectPtr m_moveObject;
+};
+
+/// CIP input::TGameActionShowConfirmMoveObjectToStashDialog (SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG).
+class TGameActionShowConfirmMoveObjectToStashDialog final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionShowConfirmMoveObjectToStashDialog(TMoveObjectPtr moveObject)
+        : TGameActionSimple(EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG)
+        , m_moveObject(std::move(moveObject))
+    {
+    }
+    const TMoveObjectPtr& moveObject() const { return m_moveObject; }
+
+private:
+    TMoveObjectPtr m_moveObject;
+};
+
+/// CIP input::TGameActionStashStowType (STASH_STOW_TYPE).
+class TGameActionStashStowType final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::STASH_STOW_TYPE; }
+};
+
+/// CIP input::TGameActionStashStowContainerContent (STASH_STOW_CONTAINER_CONTENT).
+class TGameActionStashStowContainerContent final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::STASH_STOW_CONTAINER_CONTENT; }
+};
+
+/// CIP input::TGameActionStashStowStack (STASH_STOW_STACK): a stack and how many
+/// of it are stowed.
+class TGameActionStashStowStack final : public TObjectGameAction
+{
+public:
+    TGameActionStashStowStack(const TObjectGameActionContext& object, int amount)
+        : TObjectGameAction(object)
+        , m_amount(amount)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::STASH_STOW_STACK; }
+    int amount() const { return m_amount; }
+
+private:
+    int m_amount;
+};
+
+/// CIP input::TGameActionStashRetrieve (STASH_RETRIEVE): type (+0xc), amount (+0x10)
+/// and +0x14 (qtclient: 0).
+class TGameActionStashRetrieve final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionStashRetrieve(uint16_t typeId, int amount, int value14 = 0)
+        : TGameActionSimple(EGameAction::STASH_RETRIEVE)
+        , m_typeId(typeId)
+        , m_amount(amount)
+        , m_value14(value14)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    int amount() const { return m_amount; }
+
+private:
+    uint16_t m_typeId;
+    int m_amount;
+    int m_value14;
+};
+
+/// CIP input::TGameActionStashOpenStowStackDialog (STASH_OPEN_STOW_STACK_DIALOG).
+class TGameActionStashOpenStowStackDialog final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionStashOpenStowStackDialog(std::shared_ptr<const TGameActionStashStowStack> stowStack)
+        : TGameActionSimple(EGameAction::STASH_OPEN_STOW_STACK_DIALOG)
+        , m_stowStack(std::move(stowStack))
+    {
+    }
+    const std::shared_ptr<const TGameActionStashStowStack>& stowStack() const { return m_stowStack; }
+
+private:
+    std::shared_ptr<const TGameActionStashStowStack> m_stowStack;
+};
+
+/// CIP input::TGameActionStashOpenRetrieveDialog (STASH_OPEN_RETRIEVE_DIALOG).
+class TGameActionStashOpenRetrieveDialog final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionStashOpenRetrieveDialog(std::shared_ptr<const TGameActionStashRetrieve> retrieve)
+        : TGameActionSimple(EGameAction::STASH_OPEN_RETRIEVE_DIALOG)
+        , m_retrieve(std::move(retrieve))
+    {
+    }
+    const std::shared_ptr<const TGameActionStashRetrieve>& retrieve() const { return m_retrieve; }
+
+private:
+    std::shared_ptr<const TGameActionStashRetrieve> m_retrieve;
+};
+
+/// CIP input::TGameActionTryToEquip (TRY_TO_EQUIP).
+class TGameActionTryToEquip final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::TRY_TO_EQUIP; }
+};
+
+/// CIP input::TGameActionInspectObject (INSPECT_OBJECT).
+class TGameActionInspectObject final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::INSPECT_OBJECT; }
+};
+
+/// CIP input::TGameActionOpenParentContainer (OPEN_PARENT_CONTAINER).
+class TGameActionOpenParentContainer final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::OPEN_PARENT_CONTAINER; }
+};
+
+/// CIP input::TGameActionQuickLoot (QUICK_LOOT).
+class TGameActionQuickLoot final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::QUICK_LOOT; }
+};
+
+namespace gameactions {
+/// CIP input::gameactions::TGameActionGatherAll (GATHER_ALL).
+class TGameActionGatherAll final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::GATHER_ALL; }
+};
+
+/// CIP input::gameactions::TGameActionMarketBrowse (MARKET_BROWSE): the object's type
+/// (and tier) in the market.
+class TGameActionMarketBrowse final : public TObjectGameAction
+{
+public:
+    explicit TGameActionMarketBrowse(const TObjectGameActionContext& object, uint8_t tier = 0)
+        : TObjectGameAction(object)
+        , m_tier(tier)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::MARKET_BROWSE; }
+    uint8_t tier() const { return m_tier; }
+
+private:
+    uint8_t m_tier;
+};
 }
 
-
-
-/// CIP input::TGameActionUseWith (ctor); also USE_ON_*.
-class TGameActionUseWith final : public TGameAction
-{
-public:
-    TGameActionUseWith() { type = EGameAction::USE_WITH; }
-    TGameActionUseWith(Position position, int stackPosition, uint16_t objectClientId = 0);
-    explicit TGameActionUseWith(const TGameAction& other);
-};
-
-
-/// CIP input::TGameActionMoveObject (ctor).
-class TGameActionMoveObject final : public TGameAction
-{
-public:
-    TGameActionMoveObject() { type = EGameAction::MOVE_OBJECT; }
-    TGameActionMoveObject(Position position, int stackPosition, uint16_t objectClientId = 0);
-    explicit TGameActionMoveObject(const TGameAction& other);
-};
+using TGameActionList = std::vector<IGameActionPtr>;
 
 
 
 
 
 
-/// CIP input::TGameActionQuickLoot (v0).
-class TGameActionQuickLoot final : public TGameAction
-{
-public:
-    TGameActionQuickLoot() { type = EGameAction::QUICK_LOOT; }
-    TGameActionQuickLoot(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionPlayerTradeItem (v0 → TRADE_ITEM).
-class TGameActionPlayerTradeItem final : public TGameAction
-{
-public:
-    TGameActionPlayerTradeItem() { type = EGameAction::TRADE_ITEM; }
-    TGameActionPlayerTradeItem(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionCrossHairSpell (v0).
-class TGameActionCrossHairSpell final : public TGameAction
-{
-public:
-    TGameActionCrossHairSpell() { type = EGameAction::CROSSHAIR_SPELL; }
-};
-
-/// CIP input::TGameActionSpellAtMouseCursor (v0).
-class TGameActionSpellAtMouseCursor final : public TGameAction
-{
-public:
-    TGameActionSpellAtMouseCursor() { type = EGameAction::SPELL_AT_MOUSE_CURSOR; }
-};
-
-/// CIP input::TGameActionUseAtMouseCursor (v0); also built from
-/// TGameActionUseWith fields when a crosshair use is aimed at the cursor.
-class TGameActionUseAtMouseCursor final : public TGameAction
-{
-public:
-    TGameActionUseAtMouseCursor() { type = EGameAction::USE_AT_MOUSECURSOR; }
-    TGameActionUseAtMouseCursor(Position position, int stackPosition, uint16_t objectClientId = 0);
-    explicit TGameActionUseAtMouseCursor(const TGameAction& other);
-};
 
 
 
@@ -2977,13 +3146,6 @@ private:
 };
 
 
-/// CIP input::TGameActionInspectObject .
-class TGameActionInspectObject final : public TGameAction
-{
-public:
-    TGameActionInspectObject() { type = EGameAction::INSPECT_OBJECT; }
-    TGameActionInspectObject(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 
 
@@ -2992,145 +3154,26 @@ public:
 
 
 
-/// CIP input::TGameActionOpenParentContainer .
-class TGameActionOpenParentContainer final : public TGameAction
-{
-public:
-    TGameActionOpenParentContainer() { type = EGameAction::OPEN_PARENT_CONTAINER; }
-    TGameActionOpenParentContainer(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 
 
-
-
-/// CIP input::TGameActionShowConfirmMoveObjectToStashDialog .
-class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
-{
-public:
-    TGameActionShowConfirmMoveObjectToStashDialog() { type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG; }
-    TGameActionShowConfirmMoveObjectToStashDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionShowSplitStackDialog .
-class TGameActionShowSplitStackDialog final : public TGameAction
-{
-public:
-    TGameActionShowSplitStackDialog() { type = EGameAction::SHOW_SPLIT_STACK_DIALOG; }
-    TGameActionShowSplitStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionStashOpenRetrieveDialog .
-class TGameActionStashOpenRetrieveDialog final : public TGameAction
-{
-public:
-    TGameActionStashOpenRetrieveDialog() { type = EGameAction::STASH_OPEN_RETRIEVE_DIALOG; }
-};
-/// CIP input::TGameActionStashOpenStowStackDialog .
-class TGameActionStashOpenStowStackDialog final : public TGameAction
-{
-public:
-    TGameActionStashOpenStowStackDialog() { type = EGameAction::STASH_OPEN_STOW_STACK_DIALOG; }
-    TGameActionStashOpenStowStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionStashRetrieve .
-class TGameActionStashRetrieve final : public TGameAction
-{
-public:
-    TGameActionStashRetrieve() { type = EGameAction::STASH_RETRIEVE; }
-};
-/// CIP input::TGameActionStashStowContainerContent .
-class TGameActionStashStowContainerContent final : public TGameAction
-{
-public:
-    TGameActionStashStowContainerContent() { type = EGameAction::STASH_STOW_CONTAINER_CONTENT; }
-    TGameActionStashStowContainerContent(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionStashStowStack .
-class TGameActionStashStowStack final : public TGameAction
-{
-public:
-    TGameActionStashStowStack() { type = EGameAction::STASH_STOW_STACK; }
-    TGameActionStashStowStack(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionStashStowType .
-class TGameActionStashStowType final : public TGameAction
-{
-public:
-    TGameActionStashStowType() { type = EGameAction::STASH_STOW_TYPE; }
-};
-/// CIP input::TGameActionTargetSelected .
-class TGameActionTargetSelected final : public TGameAction
-{
-public:
-    TGameActionTargetSelected() { type = EGameAction::TARGET_SELECTED; }
-    explicit TGameActionTargetSelected(uint32_t creatureId);
-};
-/// CIP input::TGameActionTryToEquip .
-class TGameActionTryToEquip final : public TGameAction
-{
-public:
-    TGameActionTryToEquip() { type = EGameAction::TRY_TO_EQUIP; }
-    TGameActionTryToEquip(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionUseOnCreature .
-class TGameActionUseOnCreature final : public TGameAction
-{
-public:
-    TGameActionUseOnCreature() { type = EGameAction::USE_ON_CREATURE; }
-    TGameActionUseOnCreature(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionUseOnTarget .
-class TGameActionUseOnTarget final : public TGameAction
-{
-public:
-    TGameActionUseOnTarget() { type = EGameAction::USE_ON_TARGET; }
-    TGameActionUseOnTarget(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionUseOnYourself .
-class TGameActionUseOnYourself final : public TGameAction
-{
-public:
-    TGameActionUseOnYourself() { type = EGameAction::USE_ON_YOURSELF; }
-    TGameActionUseOnYourself(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 namespace gameactions {
 
-/// CIP input::gameactions::TGameActionGatherAll (v0 → GATHER_ALL).
-class TGameActionGatherAll final : public TGameAction
-{
-public:
-    TGameActionGatherAll() { type = EGameAction::GATHER_ALL; }
-    TGameActionGatherAll(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-
-/// CIP input::gameactions::TGameActionMarketBrowse .
-class TGameActionMarketBrowse final : public TGameAction
-{
-public:
-    TGameActionMarketBrowse() { type = EGameAction::MARKET_BROWSE; }
-};
 }
 
-/// The field carrier of `type` (qtclient, while TGameAction exists).
-TGameActionPtr makeAction(EGameAction type);
 /// An action of `type` without fields: CIP's class of the type when it carries
-/// none (TGameActionSimple or its named subclass), else the field carrier.
+/// none (TGameActionSimple or its named subclass).
 IGameActionPtr makeGameAction(EGameAction type);
-TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
-/// An object action of `type`: the CIP class when ported, else the field carrier.
+/// The object action of `type` on the object (CIP: its location and object contexts).
 IGameActionPtr makeObjectGameAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
 /// The object an action is on (CIP: its location and object contexts); empty for none.
 std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& action);
-/// A mutable field carrier copy of an unported action (a ported class's action gives
-/// an empty carrier of its type).
-std::shared_ptr<TGameAction> mutableClone(const IGameAction& action);
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 /// The creature an action is on (CIP: the creature classes' v4); 0 for none.
 uint32_t creatureIdOf(const IGameAction& action);
 std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
 std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner);
 
-/// Typed mutable copy: factory dynamic type + field assign (CIP handler reshapes).
-std::shared_ptr<TGameAction> mutableClone(const TGameAction& action);
 
 /// For each type in order, the first candidate of that type (CIP:).
 TGameActionList filterActions(const TGameActionList& candidates, std::span<const EGameAction> types);
@@ -3148,7 +3191,7 @@ TGameActionList contextMenuActions(const TGameActionList& candidates, std::span<
 /// A dragged object's drop (CIP:). Shift moves everything; a
 /// stack asks for the amount when Ctrl's state matches option
 /// dragAndDropDefaultActionIsMoveAll.
-TGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
+IGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
 
 }
 }

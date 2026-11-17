@@ -465,29 +465,26 @@ void TBattleListController::handleGameActionCastSpellAtMouseCursor()
     // The storage forwards SPELL_AT_MOUSE_CURSOR to onAtMouseCursor.
 }
 
-bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
+bool TBattleListController::onAtMouseCursor(const input::IGameAction& action)
 {
     if (!m_hoveredCreature)
         return false;
-    const input::TGameActionPtr target = input::unportedGameAction(findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED));
-    if (!target || !target->creatureId)
+    const auto* target = input::gameActionAs<input::TGameActionTargetSelected>(
+        findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED));
+    if (!target || !target->creatureId())
         return false;
-    if (action.type == A::USE_AT_MOUSECURSOR) {
-        auto use = input::mutableClone(*input::makeAction(A::USE_ON_CREATURE));
-        use->objectClientId = action.objectClientId;
-        use->position = action.position;
-        use->stackPosition = action.stackPosition;
-        use->creatureId = target->creatureId;
-        input::publish(use);
+    if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action)) {
+        input::publish(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
         return true;
     }
+    const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action);
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId) : nullptr;
-    if (!creature || action.text.isEmpty())
+    const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId()) : nullptr;
+    if (!spell || !creature || spell->words().isEmpty())
         return false;
     tibia::game::setNextTalkAim(creature->position());
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(spell->talkMode()), 0, spell->words().toStdString());
     return true;
 }
 
@@ -794,15 +791,15 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         return true;
     });
     m_gameActionHandler = new TBattleListGameActionHandler(this, this);
-    input::setActionHandler(A::ATTACK_FIRST_TARGET, [this](const input::TGameAction&) {
+    input::setActionHandler(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackFirstTarget();
         return true;
     });
-    input::setActionHandler(A::ATTACK_NEXT_TARGET, [this](const input::TGameAction&) {
+    input::setActionHandler(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(false);
         return true;
     });
-    input::setActionHandler(A::ATTACK_PREVIOUS_TARGET, [this](const input::TGameAction&) {
+    input::setActionHandler(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(true);
         return true;
     });
@@ -987,13 +984,10 @@ bool TBattleListControllerStorage::handleGameAction(const input::IGameAction& ac
     switch (action.gameActionType()) {
         case A::USE_AT_MOUSECURSOR:
         case A::SPELL_AT_MOUSE_CURSOR: {
-            const auto* fields = input::gameActionAs<input::TGameAction>(&action);
-            if (!fields)
-                return false;
             // Every list sees it; the list with a hovered creature takes it.
             bool handled = false;
             for (const auto& [id, controller] : m_controllers)
-                handled |= controller->onAtMouseCursor(*fields);
+                handled |= controller->onAtMouseCursor(action);
             return handled;
         }
         case A::TOGGLE_WIDGET:

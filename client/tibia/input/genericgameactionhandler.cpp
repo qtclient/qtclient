@@ -74,8 +74,6 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
     if (!pGameAction)
         return;
     const IGameAction& action = *pGameAction;
-    // The classes not ported yet still carry their fields in TGameAction.
-    const TGameActionPtr fields = unportedGameAction(pGameAction);
     switch (action.gameActionType()) {
     case A::USE:
     case A::OPEN:
@@ -130,12 +128,10 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
         handleResetHuntingSessionAction();
         break;
     case A::SAVE_TEXT_TO_FILE:
-        if (fields)
-            handleSaveTextToFile(static_cast<const TGameActionSaveTextToFile&>(action));
+        handleSaveTextToFile(static_cast<const TGameActionSaveTextToFile&>(action));
         break;
     case A::SAVE_JSON_TO_FILE:
-        if (fields)
-            handleSaveJsonDocumentToFile(static_cast<const TGameActionSaveJsonDocumentToFile&>(action));
+        handleSaveJsonDocumentToFile(static_cast<const TGameActionSaveJsonDocumentToFile&>(action));
         break;
     case A::TOGGLE_SOUND:
         handleToggleSoundGameAction();
@@ -177,9 +173,8 @@ void TGenericGameActionHandler::handleMoveUpAction(const TGameActionMoveUp& acti
 {
     if (!isContainerPosition(action.position()))
         return;
-    auto move = std::make_shared<TGameActionMoveObject>(action.position(), action.stackPosition(), action.objectClientId());
-    move->destination = Position(UINT16_MAX, static_cast<uint16_t>(0x40 | containerIdOf(action.position())), 0xFE);
-    Q_EMIT publishGameAction(move);
+    Q_EMIT publishGameAction(std::make_shared<TGameActionMoveObject>(
+        action.context(), Position(UINT16_MAX, static_cast<uint16_t>(0x40 | containerIdOf(action.position())), 0xFE)));
 }
 
 void TGenericGameActionHandler::handleWrapAndUnwrapAction(const TObjectGameAction& action)

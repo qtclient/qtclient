@@ -109,7 +109,7 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         connect(pane, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
     }
     for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TMapWindowController::~TMapWindowController()
@@ -686,7 +686,7 @@ void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mous
         return;
     for (const input::IGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
         if (action->gameActionType() == input::EGameAction::MOVE_OBJECT) {
-            dnd->startDrag(input::unportedGameAction(action), source);
+            dnd->startDrag(std::dynamic_pointer_cast<const input::TGameActionMoveObject>(action), source);
             return;
         }
     }
@@ -697,7 +697,7 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd || !m_provider || !m_mapWindow || !m_worldMap)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move || !tibia::game::isOnline())
         return;
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(QPointF(mouseX, mouseY)));
@@ -708,15 +708,15 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
         input::finalizeDrop(move, pick.position, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
-input::TGameActionPtr TMapWindowController::targetAt(const QPointF& mapWindowPoint) const
+input::TTargetSelectedPtr TMapWindowController::targetAt(const QPointF& mapWindowPoint) const
 {
     if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap)
         return nullptr;
-    input::TGameActionPtr target;
+    input::TTargetSelectedPtr target;
     for (const input::IGameActionPtr& candidate : m_actions->actionsAt(toMapPixel(mapWindowPoint))) {
-        const input::TGameActionPtr selected = input::unportedGameAction(candidate);
-        if (selected && selected->type == input::EGameAction::TARGET_SELECTED && (!target || selected->creatureId))
-            target = selected;
+        auto selected = std::dynamic_pointer_cast<const input::TGameActionTargetSelected>(candidate);
+        if (selected && (!target || selected->creatureId()))
+            target = std::move(selected);
     }
     return target;
 }
@@ -725,16 +725,16 @@ void TMapWindowController::onMapWindowTargetSelected(const int mouseX, const int
 {
     if (!tibia::game::isOnline())
         return;
-    if (const input::TGameActionPtr target = targetAt(QPointF(mouseX, mouseY)))
+    if (const input::TTargetSelectedPtr target = targetAt(QPointF(mouseX, mouseY)))
         m_actionHandler->handleGameAction(target);
 }
 
-bool TMapWindowController::handleGameAction(const input::TGameAction& action)
+bool TMapWindowController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::USE_AT_MOUSECURSOR)
-        handleGameActionAtMouseCursor(action);
-    else if (action.type == input::EGameAction::SPELL_AT_MOUSE_CURSOR)
-        handleGameActionCastSpellAtMouseCursor(action);
+    if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action))
+        handleGameActionAtMouseCursor(*use);
+    else if (const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action))
+        handleGameActionCastSpellAtMouseCursor(*spell);
     return true;
 }
 
@@ -750,7 +750,7 @@ QPointF TMapWindowController::mouseCursorPosition(bool& onMap) const
     return point;
 }
 
-void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameAction& action)
+void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action)
 {
     // The use waits a frame for a handler; off the map the battle lists may take it.
     trackUseAtMouseCursorGameAction();
@@ -762,16 +762,18 @@ void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActio
     const QPointF point = mouseCursorPosition(onMap);
     if (!onMap)
         return;
-    // The use goes to the TARGET_SELECTED under the mouse.
-    const input::TGameActionPtr target = targetAt(point);
+    // The use goes to the TARGET_SELECTED under the mouse: on a creature, or
+    // with the object there.
+    const input::TTargetSelectedPtr target = targetAt(point);
     if (!target)
         return;
-    auto use = std::make_shared<input::TGameActionUseAtMouseCursor>(action);
-    use->target = target;
-    m_actionHandler->handleGameAction(use);
+    if (target->creatureId())
+        m_actionHandler->handleGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+    else
+        m_actionHandler->handleGameAction(std::make_shared<input::TGameActionUseWith>(action.context(), target->context()));
 }
 
-void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameAction& action)
+void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)
 {
     Cursor* cursor = Cursor::instance();
     if (!cursor || cursor->topRegion() != Cursor::MapWindow)
@@ -782,11 +784,11 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
         return;
     // The spell's talk aimed (2) at the field under the mouse.
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(point));
-    if (!pick.isValid() || action.text.isEmpty())
+    if (!pick.isValid() || action.words().isEmpty())
         return;
     tibia::game::setNextTalkAim(pick.position);
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
 }
 
 }

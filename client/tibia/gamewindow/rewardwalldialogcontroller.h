@@ -68,7 +68,7 @@ public:
     uint cosmeticTokenCount() const override;
     uint bountyTaskRerollTokenCount() const override;
 
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void showDialog() override;

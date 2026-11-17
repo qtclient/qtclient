@@ -63,7 +63,7 @@ public:
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
 
     /// The minimap hotkeys (CIP , actions 93-101).
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     int currentLayer() const override;
     void setCurrentLayer(int layer) override;

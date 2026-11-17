@@ -54,8 +54,7 @@ TMinimapController::TMinimapController(QObject* parent)
         return std::any{};
     });
     input::setMinimapActionHandler([this](const input::IGameAction& action) {
-        if (const auto* fields = dynamic_cast<const input::TGameAction*>(&action))
-            handleGameAction(*fields);
+        handleGameAction(action);
     });
 }
 
@@ -310,9 +309,9 @@ void TMinimapController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
-void TMinimapController::handleGameAction(const input::TGameAction& action)
+void TMinimapController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::MINIMAP_ONE_FLOOR_UP:
         m_area.moveZ(-1);
         break;

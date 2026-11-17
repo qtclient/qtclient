@@ -86,14 +86,11 @@ TQuickLootGameActionHandler::~TQuickLootGameActionHandler()
 
 bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGameAction)
 {
-    // The managed container and quick loot actions are still the field carrier.
-    static const input::TGameAction NoFields;
-    const auto* fields = input::gameActionAs<input::TGameAction>(&pGameAction);
-    const input::TGameAction& action = fields ? *fields : NoFields;
     const auto* listStatus = input::gameActionAs<input::TGameActionToggleBlackWhitelistStatus>(&pGameAction);
     switch (pGameAction.gameActionType()) {
     case A::QUICK_LOOT:
-        P::quickLoot(action.position, action.objectClientId, action.stackPosition, quickLootAllCorpsesInArea());
+        if (const auto* loot = input::gameActionAs<input::TGameActionQuickLoot>(&pGameAction))
+            P::quickLoot(loot->position(), loot->objectClientId(), loot->stackPosition(), quickLootAllCorpsesInArea());
         return true;
     case A::QUICK_LOOT_AREA_AT_PLAYER:
         P::quickLootAreaAtPlayer();

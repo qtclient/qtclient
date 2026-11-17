@@ -154,7 +154,7 @@ TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewa
 
     for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
                           A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TRewardWallDialogController::~TRewardWallDialogController()
@@ -295,9 +295,9 @@ uint TRewardWallDialogController::maxDailyRewardJokerAmount() const { return 3; 
 
 /// 239 opens (or refreshes) the wall, 240 closes it, 241 and 242 say why
 /// there is no reward.
-bool TRewardWallDialogController::handleGameAction(const input::TGameAction& action)
+bool TRewardWallDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG: {
         const bool open = dialog()->item() != nullptr;
         updateDailyRewards();
@@ -317,7 +317,8 @@ bool TRewardWallDialogController::handleGameAction(const input::TGameAction& act
         showNoDailyRewardMessage(qtTrId("rewardwall_need_to_reach_main_text"));
         return true;
     case A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE:
-        showNoDailyRewardMessage(action.text);
+        if (const auto* message = input::gameActionAs<input::TGameActionShowMessageDialog>(&action))
+            showNoDailyRewardMessage(message->text());
         return true;
     default:
         return false;

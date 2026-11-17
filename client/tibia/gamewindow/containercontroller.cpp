@@ -443,9 +443,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
     const Position position = slotPosition(pageSlot);
     input::TGameActionList actions;
     if (row->hasParent) {
-        auto openParent = input::mutableClone(*input::makeObjectAction(A::OPEN_PARENT_CONTAINER, position, pageSlot));
-        openParent->objectClientId = slot.typeId;
-        actions.push_back(std::move(openParent));
+        actions.push_back(input::makeObjectGameAction(A::OPEN_PARENT_CONTAINER, position, pageSlot, slot.typeId));
         ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
         if (!type || !type->isNotMoveable()) {
             // The generic handler moves the whole stack to the parent slot.
@@ -516,7 +514,7 @@ void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = input::unportedGameAction(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
+    if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -526,7 +524,7 @@ void TContainerController::onSlotDragDropped(const int slotId)
     const container::TStoredContainer* row = stored();
     if (!dnd || !row)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
@@ -537,7 +535,7 @@ void TContainerController::onSlotDragDropped(const int slotId)
 
 void TContainerController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = input::unportedGameAction(firstOfType(slotActions(slotId), A::TARGET_SELECTED)))
+    if (const input::IGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
         input::publish(target);
 }
 

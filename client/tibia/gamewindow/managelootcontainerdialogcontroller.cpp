@@ -419,7 +419,7 @@ void TManageLootContainerDialogController::startContainerPick(const int category
         cursor->setTargetSelection(true);
     dialog()->hide();
     QPointer<TManageLootContainerDialogController> self(this);
-    input::startTargetSelection([self](const input::TGameActionPtr& target) {
+    input::startTargetSelection([self](const input::TTargetSelectedPtr& target) {
         if (TMouseCursorController* cursor = TMouseCursorController::instance())
             cursor->setTargetSelection(false);
         if (self)
@@ -427,7 +427,7 @@ void TManageLootContainerDialogController::startContainerPick(const int category
     });
 }
 
-void TManageLootContainerDialogController::finishPick(const input::TGameActionPtr& target)
+void TManageLootContainerDialogController::finishPick(const input::TTargetSelectedPtr& target)
 {
     const PickMode mode = m_pick;
     const int category = m_pickCategory;
@@ -435,13 +435,13 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
     m_pickCategory = 0;
     if (mode == PickMode::None)
         return;
-    if (target && target->objectClientId) {
-        const uint16_t typeId = target->objectClientId;
+    if (target && target->objectClientId()) {
+        const uint16_t typeId = target->objectClientId();
         ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (type && type->isContainer()) {
             input::publish(std::make_shared<input::TGameActionSelectManagedContainer>(
                 mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
-                input::TObjectGameActionContext{ target->position, target->stackPosition, target->objectClientId }));
+                target->context()));
         } else {
             m_confirm->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                              QKeySequence(QStringLiteral("Return"))) });

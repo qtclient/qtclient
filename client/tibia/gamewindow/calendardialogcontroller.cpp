@@ -53,7 +53,7 @@ TCalendarDialogController::TCalendarDialogController(QObject* parent)
     : TDialogController(QStringLiteral("CalendarDialog.qml"), parent)
     , m_serverClock([] { return QDateTime::currentDateTimeUtc(); })
 {
-    input::setActionHandler(A::OPEN_CALENDAR_DIALOG, [this](const input::TGameAction& action) {
+    input::setActionHandler(A::OPEN_CALENDAR_DIALOG, [this](const input::IGameAction& action) {
         handleGameAction(action);
         return true;
     });
@@ -210,9 +210,9 @@ QString TCalendarDialogController::getSeasonalTooltipForDay(const QString& DateS
     return tooltipFor(m_seasonalEventsMap, DateString);
 }
 
-void TCalendarDialogController::handleGameAction(const input::TGameAction& action)
+void TCalendarDialogController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type != A::OPEN_CALENDAR_DIALOG)
+    if (action.gameActionType() != A::OPEN_CALENDAR_DIALOG)
         return;
     showDialog();
 }

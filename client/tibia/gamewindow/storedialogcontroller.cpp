@@ -331,7 +331,7 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     // Host: the session ending closes the store (CIP: the new session's setup).
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TStoreDialogController::closeDialog);
 
-    input::setActionHandler(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
         m_messageDialog->dialog()->close();
         return true;
     });

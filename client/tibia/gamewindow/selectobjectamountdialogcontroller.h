@@ -38,8 +38,8 @@ public Q_SLOTS:
     void setCurrentAmount(uint amount) override;
 
 private:
-    bool handleSplitStack(const input::TGameAction& action);
-    bool handleStash(const input::TGameAction& action);
+    bool handleSplitStack(const input::IGameAction& action);
+    bool handleStash(const input::IGameAction& action);
     /// CIP : the slot, the maximum and the texts, then shows.
     void open(int typeId, uint count);
     /// CIP (its close): closes and drops the pending action.
@@ -47,7 +47,7 @@ private:
 
     /// The action OK publishes with the chosen amount (MOVE_OBJECT,
     /// STASH_STOW_STACK or STASH_RETRIEVE).
-    input::TGameActionPtr m_inner;
+    input::IGameActionPtr m_inner;
     container::TQMLItemSlotData* m_slot = nullptr;
 };
 

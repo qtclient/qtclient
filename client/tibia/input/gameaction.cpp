@@ -88,22 +88,6 @@ namespace {
 
 Q_LOGGING_CATEGORY(lcGameAction, "tibia.input.gameaction")
 
-/// The field carrier for a type with no class of its own yet.
-TGameActionPtr unportedSimpleAction(const EGameAction type)
-{
-    auto action = std::make_shared<TGameAction>();
-    action->type = type;
-    return action;
-}
-
-void fillObject(TGameAction& action, const Position& position, const int stackPosition,
-                const uint16_t objectClientId = 0)
-{
-    action.position = position;
-    action.stackPosition = stackPosition;
-    action.objectClientId = objectClientId;
-}
-
 /// The types CIP builds as TGameActionCreature.
 bool isTGameActionCreatureType(const EGameAction type)
 {
@@ -212,136 +196,10 @@ TGameActionSetCurrentChatChannelInputText& TGameActionSetCurrentChatChannelInput
     return *this;
 }
 
-TGameActionUseWith::TGameActionUseWith(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE_WITH;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseWith::TGameActionUseWith(const TGameAction& other)
-    : TGameAction(other)
-{
-    type = EGameAction::USE_WITH;
-}
 
 
-TGameActionMoveObject::TGameActionMoveObject(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::MOVE_OBJECT;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionMoveObject::TGameActionMoveObject(const TGameAction& other)
-    : TGameAction(other)
-{
-    type = EGameAction::MOVE_OBJECT;
-}
-
-TGameActionQuickLoot::TGameActionQuickLoot(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::QUICK_LOOT;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionPlayerTradeItem::TGameActionPlayerTradeItem(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::TRADE_ITEM;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseAtMouseCursor::TGameActionUseAtMouseCursor(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE_AT_MOUSECURSOR;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseAtMouseCursor::TGameActionUseAtMouseCursor(const TGameAction& other)
-    : TGameAction(other)
-{
-    type = EGameAction::USE_AT_MOUSECURSOR;
-}
-
-
-TGameActionInspectObject::TGameActionInspectObject(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::INSPECT_OBJECT;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionOpenParentContainer::TGameActionOpenParentContainer(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::OPEN_PARENT_CONTAINER;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionShowConfirmMoveObjectToStashDialog::TGameActionShowConfirmMoveObjectToStashDialog(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionShowSplitStackDialog::TGameActionShowSplitStackDialog(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::SHOW_SPLIT_STACK_DIALOG;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-
-TGameActionStashOpenStowStackDialog::TGameActionStashOpenStowStackDialog(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::STASH_OPEN_STOW_STACK_DIALOG;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionStashStowContainerContent::TGameActionStashStowContainerContent(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::STASH_STOW_CONTAINER_CONTENT;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionStashStowStack::TGameActionStashStowStack(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::STASH_STOW_STACK;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionTargetSelected::TGameActionTargetSelected(const uint32_t id)
-{
-    type = EGameAction::TARGET_SELECTED;
-    creatureId = id;
-}
-
-TGameActionTryToEquip::TGameActionTryToEquip(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::TRY_TO_EQUIP;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseOnCreature::TGameActionUseOnCreature(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE_ON_CREATURE;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseOnTarget::TGameActionUseOnTarget(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE_ON_TARGET;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUseOnYourself::TGameActionUseOnYourself(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE_ON_YOURSELF;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
 
 namespace gameactions {
-
-TGameActionGatherAll::TGameActionGatherAll(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::GATHER_ALL;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
 
 std::optional<bool> TGameActionSoundTrigger::pauseLoopingSounds() const
 {
@@ -399,109 +257,6 @@ namespace gameactions {
 
 }
 
-TGameActionPtr makeAction(const EGameAction type)
-{
-    switch (type) {
-    case EGameAction::CROSSHAIR_SPELL:
-        return std::make_shared<TGameActionCrossHairSpell>();
-    case EGameAction::SPELL_AT_MOUSE_CURSOR:
-        return std::make_shared<TGameActionSpellAtMouseCursor>();
-    case EGameAction::INSPECT_OBJECT:
-        return std::make_shared<TGameActionInspectObject>();
-    case EGameAction::OPEN_PARENT_CONTAINER:
-        return std::make_shared<TGameActionOpenParentContainer>();
-    case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
-        return std::make_shared<TGameActionShowConfirmMoveObjectToStashDialog>();
-    case EGameAction::SHOW_SPLIT_STACK_DIALOG:
-        return std::make_shared<TGameActionShowSplitStackDialog>();
-    case EGameAction::STASH_OPEN_RETRIEVE_DIALOG:
-        return std::make_shared<TGameActionStashOpenRetrieveDialog>();
-    case EGameAction::STASH_OPEN_STOW_STACK_DIALOG:
-        return std::make_shared<TGameActionStashOpenStowStackDialog>();
-    case EGameAction::STASH_REQUEST_REOPEN:
-        return unportedSimpleAction(EGameAction::STASH_REQUEST_REOPEN);
-    case EGameAction::STASH_RETRIEVE:
-        return std::make_shared<TGameActionStashRetrieve>();
-    case EGameAction::STASH_STOW_CONTAINER_CONTENT:
-        return std::make_shared<TGameActionStashStowContainerContent>();
-    case EGameAction::STASH_STOW_STACK:
-        return std::make_shared<TGameActionStashStowStack>();
-    case EGameAction::STASH_STOW_TYPE:
-        return std::make_shared<TGameActionStashStowType>();
-    case EGameAction::TARGET_SELECTED:
-        return std::make_shared<TGameActionTargetSelected>();
-    case EGameAction::TRY_TO_EQUIP:
-        return std::make_shared<TGameActionTryToEquip>();
-    case EGameAction::USE_ON_CREATURE:
-        return std::make_shared<TGameActionUseOnCreature>();
-    case EGameAction::USE_ON_TARGET:
-        return std::make_shared<TGameActionUseOnTarget>();
-    case EGameAction::USE_ON_YOURSELF:
-        return std::make_shared<TGameActionUseOnYourself>();
-    case EGameAction::MARKET_BROWSE:
-        return std::make_shared<gameactions::TGameActionMarketBrowse>();
-    case EGameAction::OPEN_CYCLOPEDIA:
-    case EGameAction::LENSHELP_SHOW:
-    case EGameAction::SOUND_TRIGGER:
-    case EGameAction::START_TALKING_TO_NPC:
-        // Ported classes are constructed with their fields, not by type.
-        qCCritical(lcGameAction) << "makeAction: construct" << static_cast<int>(type) << "with its class";
-        return unportedSimpleAction(type);
-    default:
-        if (isTGameActionCreatureType(type))
-            qCCritical(lcGameAction) << "makeAction: construct" << static_cast<int>(type) << "with TGameActionCreature";
-        return unportedSimpleAction(type);
-    }
-}
-
-TGameActionPtr makeObjectAction(const EGameAction type, const Position& position, const int stackPosition, const uint16_t objectClientId)
-{
-    switch (type) {
-    case EGameAction::USE_WITH: {
-        auto action = std::make_shared<TGameActionUseWith>(position, stackPosition, objectClientId);
-        return action;
-    }
-    case EGameAction::USE_ON_CREATURE:
-        return std::make_shared<TGameActionUseOnCreature>(position, stackPosition, objectClientId);
-    case EGameAction::USE_ON_TARGET:
-        return std::make_shared<TGameActionUseOnTarget>(position, stackPosition, objectClientId);
-    case EGameAction::USE_ON_YOURSELF:
-        return std::make_shared<TGameActionUseOnYourself>(position, stackPosition, objectClientId);
-    case EGameAction::USE_AT_MOUSECURSOR:
-        return std::make_shared<TGameActionUseAtMouseCursor>(position, stackPosition, objectClientId);
-    case EGameAction::MOVE_OBJECT:
-        return std::make_shared<TGameActionMoveObject>(position, stackPosition, objectClientId);
-    case EGameAction::QUICK_LOOT:
-        return std::make_shared<TGameActionQuickLoot>(position, stackPosition, objectClientId);
-    case EGameAction::TRADE_ITEM:
-        return std::make_shared<TGameActionPlayerTradeItem>(position, stackPosition, objectClientId);
-    case EGameAction::GATHER_ALL:
-        return std::make_shared<gameactions::TGameActionGatherAll>(position, stackPosition, objectClientId);
-    case EGameAction::INSPECT_OBJECT:
-        return std::make_shared<TGameActionInspectObject>(position, stackPosition, objectClientId);
-    case EGameAction::OPEN_PARENT_CONTAINER:
-        return std::make_shared<TGameActionOpenParentContainer>(position, stackPosition, objectClientId);
-    case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
-        return std::make_shared<TGameActionShowConfirmMoveObjectToStashDialog>(position, stackPosition, objectClientId);
-    case EGameAction::SHOW_SPLIT_STACK_DIALOG:
-        return std::make_shared<TGameActionShowSplitStackDialog>(position, stackPosition, objectClientId);
-    case EGameAction::STASH_OPEN_STOW_STACK_DIALOG:
-        return std::make_shared<TGameActionStashOpenStowStackDialog>(position, stackPosition, objectClientId);
-    case EGameAction::STASH_STOW_CONTAINER_CONTENT:
-        return std::make_shared<TGameActionStashStowContainerContent>(position, stackPosition, objectClientId);
-    case EGameAction::STASH_STOW_STACK:
-        return std::make_shared<TGameActionStashStowStack>(position, stackPosition, objectClientId);
-    case EGameAction::TRY_TO_EQUIP:
-        return std::make_shared<TGameActionTryToEquip>(position, stackPosition, objectClientId);
-    default: {
-        // Unknown object-shaped enums still keep the typed makeAction carrier.
-        auto action = std::const_pointer_cast<TGameAction>(makeAction(type));
-        fillObject(*action, position, stackPosition, objectClientId);
-        return action;
-    }
-    }
-}
-
 IGameActionPtr makeObjectGameAction(const EGameAction type, const Position& position, const int stackPosition,
                                     const uint16_t objectClientId)
 {
@@ -527,8 +282,39 @@ IGameActionPtr makeObjectGameAction(const EGameAction type, const Position& posi
         return std::make_shared<TGameActionMoveUp>(context);
     case EGameAction::CONFIGURE_SHOW_OFF_SOCKET:
         return std::make_shared<TGameActionConfigureShowOffSocket>(context);
+    case EGameAction::USE_WITH:
+        return std::make_shared<TGameActionUseWith>(context);
+    case EGameAction::USE_ON_TARGET:
+        return std::make_shared<TGameActionUseOnTarget>(context);
+    case EGameAction::USE_ON_YOURSELF:
+        return std::make_shared<TGameActionUseOnYourself>(context);
+    case EGameAction::USE_AT_MOUSECURSOR:
+        return std::make_shared<TGameActionUseAtMouseCursor>(context);
+    case EGameAction::TARGET_SELECTED:
+        return std::make_shared<TGameActionTargetSelected>(context);
+    case EGameAction::MOVE_OBJECT:
+        return std::make_shared<TGameActionMoveObject>(context);
+    case EGameAction::QUICK_LOOT:
+        return std::make_shared<TGameActionQuickLoot>(context);
+    case EGameAction::TRADE_ITEM:
+        return std::make_shared<TGameActionPlayerTradeItem>(context);
+    case EGameAction::GATHER_ALL:
+        return std::make_shared<gameactions::TGameActionGatherAll>(context);
+    case EGameAction::INSPECT_OBJECT:
+        return std::make_shared<TGameActionInspectObject>(context);
+    case EGameAction::OPEN_PARENT_CONTAINER:
+        return std::make_shared<TGameActionOpenParentContainer>(context);
+    case EGameAction::STASH_STOW_TYPE:
+        return std::make_shared<TGameActionStashStowType>(context);
+    case EGameAction::STASH_STOW_CONTAINER_CONTENT:
+        return std::make_shared<TGameActionStashStowContainerContent>(context);
+    case EGameAction::TRY_TO_EQUIP:
+        return std::make_shared<TGameActionTryToEquip>(context);
+    case EGameAction::MARKET_BROWSE:
+        return std::make_shared<gameactions::TGameActionMarketBrowse>(context);
     default:
-        return makeObjectAction(type, position, stackPosition, objectClientId);
+        qCCritical(lcGameAction) << "makeObjectGameAction:" << static_cast<int>(type) << "is no object action";
+        return makeGameAction(type);
     }
 }
 
@@ -536,19 +322,7 @@ std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& actio
 {
     if (const auto* object = dynamic_cast<const TObjectGameAction*>(&action))
         return object->context();
-    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
-        return TObjectGameActionContext{ fields->position, fields->stackPosition, fields->objectClientId };
     return std::nullopt;
-}
-
-std::shared_ptr<TGameAction> mutableClone(const IGameAction& action)
-{
-    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
-        return mutableClone(*fields);
-    qCCritical(lcGameAction) << "mutableClone: action" << static_cast<int>(action.gameActionType()) << "has its class";
-    auto carrier = std::make_shared<TGameAction>();
-    carrier->type = action.gameActionType();
-    return carrier;
 }
 
 uint32_t creatureIdOf(const IGameAction& action)
@@ -557,8 +331,10 @@ uint32_t creatureIdOf(const IGameAction& action)
         return creature->creatureId();
     if (const auto* npc = dynamic_cast<const TGameActionStartTalkingToNPC*>(&action))
         return npc->creatureId();
-    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
-        return fields->creatureId;
+    if (const auto* use = dynamic_cast<const TGameActionUseOnCreature*>(&action))
+        return use->targetCreatureId();
+    if (const auto* object = dynamic_cast<const TObjectGameAction*>(&action))
+        return object->context().creatureId;
     return 0;
 }
 
@@ -682,7 +458,9 @@ IGameActionPtr makeGameAction(const EGameAction type)
     case EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER:
         return std::make_shared<gameactions::TGameActionSimple>(type);
     default:
-        return makeAction(type);
+        if (isTGameActionCreatureType(type))
+            qCCritical(lcGameAction) << "makeGameAction: construct" << static_cast<int>(type) << "with TGameActionCreature";
+        return std::make_shared<gameactions::TGameActionSimple>(type);
     }
 }
 
@@ -691,14 +469,10 @@ IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
     if (type == EGameAction::START_TALKING_TO_NPC)
         return std::make_shared<TGameActionStartTalkingToNPC>(creatureId);
     if (type == EGameAction::TARGET_SELECTED)
-        return std::make_shared<TGameActionTargetSelected>(creatureId);
+        return std::make_shared<TGameActionTargetSelected>(TObjectGameActionContext{ {}, -1, 0, creatureId });
     if (isTGameActionCreatureType(type))
         return std::make_shared<TGameActionCreature>(type, creatureId);
-    if (type == EGameAction::MOUNT_PLAYER || type == EGameAction::UNMOUNT_PLAYER || type == EGameAction::OPEN_PREY_DIALOG)
-        return makeGameAction(type);
-    auto action = mutableClone(*makeAction(type));
-    action->creatureId = creatureId;
-    return action;
+    return makeGameAction(type);
 }
 
 std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, const int pathMode,
@@ -710,27 +484,6 @@ std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const 
 std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner)
 {
     return std::make_shared<TGameActionSmartClick>(inner);
-}
-
-std::shared_ptr<TGameAction> mutableClone(const TGameAction& action)
-{
-    // Prefer objectClientId / creature factories when those fields are set so LOOK/USE /
-    // ATTACK_* keep their CIP typed carriers through handler reshapes.
-    // Do not key off Position::isValid — default Position(0,0,0) is "valid".
-    TGameActionPtr typed;
-    if (action.objectClientId || action.stackPosition >= 0)
-        typed = makeObjectAction(action.type, action.position, action.stackPosition, action.objectClientId);
-    else if (action.creatureId)
-        typed = unportedGameAction(makeCreatureAction(action.type, action.creatureId));
-    if (!typed)
-        typed = unportedSimpleAction(action.type);
-    else
-        typed = makeAction(action.type);
-    auto out = std::const_pointer_cast<TGameAction>(typed);
-    const EGameAction type = out->type;
-    *out = action;
-    out->type = type;
-    return out;
 }
 
 TGameActionList filterActions(const TGameActionList& candidates, const std::span<const EGameAction> types)
@@ -764,32 +517,22 @@ TGameActionList contextMenuActions(const TGameActionList& candidates, const std:
     return result;
 }
 
-TGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, const int modifiers, const bool defaultIsMoveAll)
+IGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, const int modifiers, const bool defaultIsMoveAll)
 {
-    const auto* moved = gameActionAs<TGameAction>(move);
+    const auto* moved = gameActionAs<TGameActionMoveObject>(move);
     if (!moved)
         return nullptr;
-    auto action = std::make_shared<TGameActionMoveObject>(*moved);
-    action->destination = destination;
-    if (action->moveAll || action->position == destination)
-        return action;
+    const TObjectGameActionContext& object = moved->context();
+    if (moved->moveAll() || object.position == destination)
+        return std::make_shared<TGameActionMoveObject>(object, destination, moved->moveAll(), moved->amount());
     // Creatures are not stacks — never open the amount dialog for Proto::Creature.
-    if (action->creatureId || action->objectClientId == Proto::Creature)
-        return action;
-    if (modifiers & Qt::ShiftModifier) {
-        action->moveAll = true;
-        return action;
-    }
-    if (((modifiers & Qt::ControlModifier) != 0) == defaultIsMoveAll) {
-        auto split = std::const_pointer_cast<TGameAction>(
-            makeObjectAction(EGameAction::SHOW_SPLIT_STACK_DIALOG, action->position,
-                             action->stackPosition, action->objectClientId));
-        split->destination = action->destination;
-        split->amount = action->amount;
-        split->moveAll = action->moveAll;
-        split->inner = action;
-        return split;
-    }
+    if (object.creatureId || object.objectClientId == Proto::Creature)
+        return std::make_shared<TGameActionMoveObject>(object, destination, false, moved->amount());
+    if (modifiers & Qt::ShiftModifier)
+        return std::make_shared<TGameActionMoveObject>(object, destination, true, moved->amount());
+    auto action = std::make_shared<TGameActionMoveObject>(object, destination, false, moved->amount());
+    if (((modifiers & Qt::ControlModifier) != 0) == defaultIsMoveAll)
+        return std::make_shared<TGameActionShowSplitStackDialog>(action);
     return action;
 }
 

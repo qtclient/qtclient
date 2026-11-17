@@ -110,7 +110,7 @@ private:
     void syncPremium();
     void syncFallback();
     void startContainerPick(int category, bool lootColumn);
-    void finishPick(const input::TGameActionPtr& target);
+    void finishPick(const input::TTargetSelectedPtr& target);
     void cancelPick();
     void onClearConfirmed();
 

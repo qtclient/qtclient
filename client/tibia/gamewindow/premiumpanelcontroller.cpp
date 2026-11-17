@@ -102,7 +102,7 @@ TPremiumPanelController::TPremiumPanelController()
         applySessionVisibility();
     });
 
-    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         togglePanel();
         return true;
     });

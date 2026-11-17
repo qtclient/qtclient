@@ -53,9 +53,9 @@ void TTargetSelectionController::setSelecting(const bool selecting)
         m_filter->setSelecting(selecting);
 }
 
-void TTargetSelectionController::handleGameAction(const input::TGameAction& action)
+void TTargetSelectionController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::START_TARGET_SELECTION)
+    if (action.gameActionType() == input::EGameAction::START_TARGET_SELECTION)
         setSelecting(true);
 }
 
@@ -72,9 +72,7 @@ void TTargetSelectionController::onTargetSelectionFinished()
     m_selecting = false;
     if (m_filter)
         m_filter->setSelecting(false);
-    auto finished = std::make_shared<input::TGameAction>();
-    finished->type = input::EGameAction::TARGET_SELECTION_FINISHED;
-    Q_EMIT publishGameAction(finished);
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::TARGET_SELECTION_FINISHED));
 }
 
 }

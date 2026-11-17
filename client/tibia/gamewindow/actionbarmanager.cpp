@@ -34,10 +34,10 @@ using P = EActionBarPosition;
 
 constexpr int CooldownTickMs = 100;
 
-constexpr std::array<A, 9> HandledActions{ A::TOGGLE_ACTION_BAR, A::TOGGLE_ACTION_BARS, A::TRY_TO_SWITCH_HOTKEYSET,
+constexpr std::array<A, 8> HandledActions{ A::TOGGLE_ACTION_BAR, A::TOGGLE_ACTION_BARS, A::TRY_TO_SWITCH_HOTKEYSET,
                                            A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET,
                                            A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON,
-                                           A::ASSIGN_SPELL_TO_ACTION_BUTTON, A::ASSIGN_HOTKEY_TO_GAME_ACTION };
+                                           A::ASSIGN_SPELL_TO_ACTION_BUTTON };
 
 /// Options 0x3-0xe, by bar id.
 bool isActionBarsOption(const QString& name)
@@ -165,18 +165,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         setting.text = spell->words;
         setting.sendAutomatically = true;
         target->assign(action.actionButtonId(), action.multiActionIndex(), setting);
-        return true;
-    });
-    input::setActionHandler(A::ASSIGN_HOTKEY_TO_GAME_ACTION, [](const input::TGameAction& action) {
-        // CIP options-page / context: bind `text` (static action name) to the
-        // key sequence in `statement` for both chat modes.
-        if (action.text.isEmpty() || action.statement.isEmpty())
-            return true;
-        config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-        const QList<QKeySequence> keys{ QKeySequence(action.statement) };
-        hotkeys->setActionKeys(action.text, true, keys);
-        hotkeys->setActionKeys(action.text, false, keys);
-        hotkeys->save();
         return true;
     });
 }
@@ -439,9 +427,7 @@ void TActionBarManager::useObject(const Setting& setting)
         case config::EUseType::SelectUseTarget: type = A::USE_WITH; break;
         default: break;
         }
-        auto use = input::mutableClone(*input::makeObjectAction(type, {}, -1));
-        use->objectClientId = static_cast<uint16_t>(id);
-        input::publish(use);
+        input::publish(input::makeObjectGameAction(type, {}, -1, static_cast<uint16_t>(id)));
         break;
     }
     case config::EUseType::Equip:

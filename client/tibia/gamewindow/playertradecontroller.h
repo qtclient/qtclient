@@ -125,7 +125,7 @@ public:
 private:
     void open();
     void close();
-    bool tradeItem(const input::TGameAction& action);
+    bool tradeItem(const input::TGameActionPlayerTradeItem& action);
 
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;

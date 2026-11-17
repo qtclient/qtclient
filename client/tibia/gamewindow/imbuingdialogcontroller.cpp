@@ -458,12 +458,12 @@ void TImbuingDialogController::handlePickItemToImbue()
     dialog()->hide();
     // The picked object goes to the server; when the selection ends the
     // dialog comes back if it is still there.
-    input::startTargetSelection([this](const input::TGameActionPtr& target) {
+    input::startTargetSelection([this](const input::TTargetSelectedPtr& target) {
         if (!m_picking)
             return;
-        if (target && target->objectClientId) {
-            const uint8_t stackpos = target->stackPosition >= 0 ? static_cast<uint8_t>(target->stackPosition) : 0;
-            tibia::game::selectImbuementItem(target->objectClientId, target->position, stackpos);
+        if (target && target->objectClientId()) {
+            const uint8_t stackpos = target->stackPosition() >= 0 ? static_cast<uint8_t>(target->stackPosition()) : 0;
+            tibia::game::selectImbuementItem(target->objectClientId(), target->position(), stackpos);
         }
         m_picking = false;
         if (dialog()->item() && !dialog()->isShown())

@@ -214,11 +214,9 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (tibia::game::localPlayerIsSupplyStashAvailable()) {
         if (has(&ThingType::isMarketable) && (has(&ThingType::isStackable) || fieldTier == 0)) {
             push(A::STASH_STOW_TYPE);
-            auto stow = mutableClone(*make(A::STASH_STOW_STACK));
-            stow->amount = static_cast<int>(fieldCount);
-            auto dialog = mutableClone(*make(A::STASH_OPEN_STOW_STACK_DIALOG));
-            dialog->inner = stow;
-            actions.push_back(dialog);
+            auto stow = std::make_shared<TGameActionStashStowStack>(TObjectGameActionContext{ position, stackPosition, clientId },
+                                                                    static_cast<int>(fieldCount));
+            actions.push_back(std::make_shared<TGameActionStashOpenStowStackDialog>(stow));
         }
         if (isContainer && id != tibia::game::supplyStashId())
             push(A::STASH_STOW_CONTAINER_CONTENT);
@@ -245,9 +243,8 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         // resolve count at drop via storageSlotCount. Without amount here,
         // finalizeDrop / Shift-move-all / Ctrl-split treat every map stack as 1.
         if (fieldCount > 1 && has(&ThingType::isStackable)) {
-            auto move = mutableClone(*make(A::MOVE_OBJECT));
-            move->amount = static_cast<int>(fieldCount);
-            actions.push_back(move);
+            actions.push_back(std::make_shared<TGameActionMoveObject>(TObjectGameActionContext{ position, stackPosition, clientId },
+                                                                      std::nullopt, false, static_cast<int>(fieldCount)));
         } else {
             push(A::MOVE_OBJECT);
         }
@@ -294,10 +291,8 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::
     // offered MOVE_OBJECT (no crosshair / no startDrag) for creatures.
     if (object.creatureId) {
         TGameActionList actions;
-        auto move = std::make_shared<TGameActionMoveObject>(
-            position, object.stackPosition, static_cast<uint16_t>(Proto::Creature));
-        move->creatureId = object.creatureId;
-        actions.push_back(move);
+        actions.push_back(std::make_shared<TGameActionMoveObject>(
+            TObjectGameActionContext{ position, object.stackPosition, static_cast<uint16_t>(Proto::Creature), object.creatureId }));
         return actions;
     }
     uint16_t clientId = 0;

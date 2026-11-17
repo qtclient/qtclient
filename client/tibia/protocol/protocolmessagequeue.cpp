@@ -111,7 +111,7 @@ void TProtocolMessageQueue::prepareAndEnqueueGameclientMessage(std::shared_ptr<G
     enqueueGameclientMessage(pGameclientMessage);
 }
 
-void TProtocolMessageQueue::handleGameAction(std::shared_ptr<::tibia::input::TGameAction>)
+void TProtocolMessageQueue::handleGameAction(std::shared_ptr<const ::tibia::input::IGameAction>)
 {
 }
 

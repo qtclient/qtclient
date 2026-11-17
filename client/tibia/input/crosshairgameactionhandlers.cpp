@@ -5,6 +5,7 @@
 
 #include <creatures/creaturestorage.h>
 #include <array>
+#include <functional>
 #include <tibia/game/gamesession.h>
 
 namespace tibia::input {
@@ -17,55 +18,28 @@ using CastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 constexpr std::array<A, 5> UseWithActions{ A::USE_WITH, A::USE_ON_CREATURE, A::USE_ON_TARGET, A::USE_ON_YOURSELF, A::TARGET_SELECTED };
 constexpr std::array<A, 1> CrossHairSpellActions{ A::CROSSHAIR_SPELL };
 
-uint32_t targetCreatureId(const TGameAction& target)
+bool isMapLocated(const TObjectGameActionContext& object)
 {
-    return target.creatureId;
-}
-
-bool targetMapObject(const TGameAction& target, Position& position, uint16_t& typeId, int& stackPos)
-{
-    if (target.creatureId || !target.objectClientId || !target.position.isValid() || target.stackPosition < 0)
-        return false;
-    position = target.position;
-    typeId = target.objectClientId;
-    stackPos = target.stackPosition;
-    return true;
-}
-
-void publishUseOn(const TGameAction& action, const A type, const uint32_t creatureId)
-{
-    auto use = std::make_shared<TGameActionUseWith>();
-    use->type = type;
-    use->objectClientId = action.objectClientId;
-    use->position = action.position;
-    use->stackPosition = action.stackPosition;
-    use->creatureId = creatureId;
-    publish(use);
-}
-
-bool isMapLocated(const TGameAction& action)
-{
-    return action.objectClientId && action.position.isValid() && action.stackPosition >= 0
-        && action.position.x != UINT16_MAX;
+    return object.objectClientId && object.position.isValid() && object.stackPosition >= 0 && object.position.x != UINT16_MAX;
 }
 
 /// CIP : GameclientMessageUseOnCreature (object, its location, creature).
-void useOnCreature(const TGameAction& action)
+void useOnCreature(const TObjectGameActionContext& object, const uint32_t creatureId)
 {
-    if (!action.creatureId)
+    if (!creatureId)
         return;
-    if (isMapLocated(action)) {
-        tibia::game::useMapObjectOnCreature(action.position, action.objectClientId, action.stackPosition, action.creatureId);
+    if (isMapLocated(object)) {
+        tibia::game::useMapObjectOnCreature(object.position, object.objectClientId, object.stackPosition, creatureId);
         return;
     }
     // Action-bar / inventory / type-only: inventory use by client id.
-    if (action.objectClientId)
-        tibia::game::useInventoryItemOnCreature(action.objectClientId, action.creatureId);
+    if (object.objectClientId)
+        tibia::game::useInventoryItemOnCreature(object.objectClientId, creatureId);
 }
 
 /// The field a crosshair spell aims at (CIP): a creature's, else
 /// a world map field's; container and inventory targets have none.
-Position targetPosition(const TGameAction& target)
+Position targetPosition(const TObjectGameActionContext& target)
 {
     if (target.creatureId) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
@@ -79,49 +53,37 @@ Position targetPosition(const TGameAction& target)
     return {};
 }
 
-/// Selects a target, then publishes the action again with it.
-void selectTargetFor(const TGameAction& action)
+/// Selects a target, then publishes the action `withTarget` builds for it.
+void selectTargetFor(std::function<IGameActionPtr(const TObjectGameActionContext& target)> withTarget)
 {
-    auto pending = mutableClone(action);
-    startTargetSelection([pending](const TGameActionPtr& target) {
-        if (!target)
-            return;
-        pending->target = target;
-        publish(pending);
+    startTargetSelection([withTarget = std::move(withTarget)](const TTargetSelectedPtr& target) {
+        if (target)
+            publish(withTarget(target->context()));
     });
 }
 
-void useWith(const TGameAction& action)
+/// CIP : GameclientMessageUseTwoObjects (object and target, each with its location).
+void useWith(const TObjectGameActionContext& object, const TObjectGameActionContext& target)
 {
-    if (!action.target || !action.objectClientId)
+    if (!object.objectClientId || target.creatureId || !target.objectClientId || !target.position.isValid()
+        || target.stackPosition < 0)
         return;
-    if (const uint32_t creatureId = targetCreatureId(*action.target)) {
-        if (isMapLocated(action))
-            tibia::game::useMapObjectOnCreature(action.position, action.objectClientId, action.stackPosition, creatureId);
-        else
-            tibia::game::useInventoryItemOnCreature(action.objectClientId, creatureId);
-        return;
-    }
-    Position toPos;
-    uint16_t toId = 0;
-    int toStack = -1;
-    if (!targetMapObject(*action.target, toPos, toId, toStack))
-        return;
-    if (isMapLocated(action)) {
-        tibia::game::useWithMapObject(action.position, action.objectClientId, action.stackPosition, toPos, toId, toStack);
+    if (isMapLocated(object)) {
+        tibia::game::useWithMapObject(object.position, object.objectClientId, object.stackPosition, target.position,
+                                      target.objectClientId, target.stackPosition);
         return;
     }
-    tibia::game::useInventoryItemWithMapObject(action.objectClientId, toPos, toId, toStack);
+    tibia::game::useInventoryItemWithMapObject(object.objectClientId, target.position, target.objectClientId, target.stackPosition);
 }
 
-void castAtTarget(const TGameAction& action)
+void castAtTarget(const TGameActionTargetedSpell& spell, const TObjectGameActionContext& target)
 {
-    const Position position = targetPosition(*action.target);
-    if (!position.isValid() || action.text.isEmpty())
+    const Position position = targetPosition(target);
+    if (!position.isValid() || spell.words().isEmpty())
         return;
     tibia::game::setNextTalkAim(position);
     tibia::game::setNextTalkAimMode(1);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(spell.talkMode()), 0, spell.words().toStdString());
 }
 
 }
@@ -133,17 +95,12 @@ void say(const tibia::client::MessageMode mode, const QString& text, const int s
         switch (static_cast<CastType>(spellCastType)) {
         case CastType::AtMousePosition:
         case CastType::None:
-        case CastType::Crosshair: {
-            std::shared_ptr<TGameAction> action = static_cast<CastType>(spellCastType) == CastType::AtMousePosition
-                ? std::shared_ptr<TGameAction>(std::make_shared<TGameActionSpellAtMouseCursor>())
-                : std::shared_ptr<TGameAction>(std::make_shared<TGameActionCrossHairSpell>());
-            action->text = text;
-            action->isSpell = true;
-            action->spellCastType = spellCastType;
-            action->talkMode = mode;
-            publish(action);
+        case CastType::Crosshair:
+            if (static_cast<CastType>(spellCastType) == CastType::AtMousePosition)
+                publish(std::make_shared<TGameActionSpellAtMouseCursor>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
+            else
+                publish(std::make_shared<TGameActionCrossHairSpell>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
             return;
-        }
         case CastType::AtTargetOrSelf:
             tibia::game::setNextTalkAimMode(3);
             break;
@@ -151,15 +108,9 @@ void say(const tibia::client::MessageMode mode, const QString& text, const int s
     } else if (spell && spell->aimAtTarget) {
         // Wave/beam towards mouse or attack target (server needDirection + aim tile).
         switch (static_cast<CastType>(spellCastType)) {
-        case CastType::AtMousePosition: {
-            auto action = std::make_shared<TGameActionSpellAtMouseCursor>();
-            action->text = text;
-            action->isSpell = true;
-            action->spellCastType = spellCastType;
-            action->talkMode = mode;
-            publish(action);
+        case CastType::AtMousePosition:
+            publish(std::make_shared<TGameActionSpellAtMouseCursor>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
             return;
-        }
         case CastType::AtTargetOrSelf: {
             const uint32_t targetId = tibia::game::attackingCreatureId();
             if (targetId) {
@@ -184,37 +135,43 @@ void say(const tibia::client::MessageMode mode, const QString& text, const int s
 TUseWithGameActionHandler::TUseWithGameActionHandler(QObject* parent)
     : cip::tibia::input::TUseWithGameActionHandler(parent)
 {
-    // CIP : a creature target becomes USE_ON_CREATURE, anything else USE_TWO_OBJECTS.
-    setActionHandler(A::USE_WITH, [](const TGameAction& action) {
-        if (!action.target)
-            selectTargetFor(action);
-        else if (const uint32_t creatureId = targetCreatureId(*action.target))
-            publishUseOn(action, A::USE_ON_CREATURE, creatureId);
-        else
-            useWith(action);
+    // CIP : without a target the target is selected first; a creature target
+    // becomes USE_ON_CREATURE, anything else GameclientMessageUseTwoObjects.
+    setActionHandler(A::USE_WITH, [](const TGameActionUseWith& action) {
+        if (!action.hasTarget()) {
+            selectTargetFor([object = action.context()](const TObjectGameActionContext& target) {
+                return std::make_shared<TGameActionUseWith>(object, target);
+            });
+        } else if (const uint32_t creatureId = action.target()->creatureId) {
+            publish(std::make_shared<TGameActionUseOnCreature>(action.context(), creatureId));
+        } else {
+            useWith(action.context(), *action.target());
+        }
         return true;
     });
-    setActionHandler(A::USE_ON_CREATURE, [](const TGameAction& action) {
-        useOnCreature(action);
+    setActionHandler(A::USE_ON_CREATURE, [](const TGameActionUseOnCreature& action) {
+        useOnCreature(action.context(), action.targetCreatureId());
         return true;
     });
     // CIP (TCreaturesGameActionHandler): on the attack target, else a USE_WITH selection.
-    setActionHandler(A::USE_ON_TARGET, [](const TGameAction& action) {
-        const uint32_t targetId = tibia::game::attackingCreatureId();
-        publishUseOn(action, targetId ? A::USE_ON_CREATURE : A::USE_WITH, targetId);
+    setActionHandler(A::USE_ON_TARGET, [](const TGameActionUseOnTarget& action) {
+        if (const uint32_t targetId = tibia::game::attackingCreatureId())
+            publish(std::make_shared<TGameActionUseOnCreature>(action.context(), targetId));
+        else
+            publish(std::make_shared<TGameActionUseWith>(action.context()));
         return true;
     });
     // CIP : on the own character, if any.
-    setActionHandler(A::USE_ON_YOURSELF, [](const TGameAction& action) {
+    setActionHandler(A::USE_ON_YOURSELF, [](const TGameActionUseOnYourself& action) {
         if (const uint32_t id = tibia::game::localPlayerId(); id)
-            publishUseOn(action, A::USE_ON_CREATURE, id);
+            publish(std::make_shared<TGameActionUseOnCreature>(action.context(), id));
         return true;
     });
     // Containers, the inventory, the battle list and the map publish the
     // TARGET_SELECTED under a selection's click; the pending action takes it.
-    setActionHandler(A::TARGET_SELECTED, [](const TGameAction& action) {
+    setActionHandler(A::TARGET_SELECTED, [](const TGameActionTargetSelected& action) {
         if (isSelectingTarget())
-            finishTargetSelection(mutableClone(action));
+            finishTargetSelection(std::make_shared<TGameActionTargetSelected>(action.context()));
         return true;
     });
 }
@@ -228,11 +185,15 @@ TUseWithGameActionHandler::~TUseWithGameActionHandler()
 TCrossHairSpellGameActionHandler::TCrossHairSpellGameActionHandler(QObject* parent)
     : cip::tibia::input::TCrossHairSpellGameActionHandler(parent)
 {
-    setActionHandler(A::CROSSHAIR_SPELL, [](const TGameAction& action) {
-        if (action.target)
-            castAtTarget(action);
-        else
-            selectTargetFor(action);
+    setActionHandler(A::CROSSHAIR_SPELL, [](const TGameActionCrossHairSpell& action) {
+        if (action.target()) {
+            castAtTarget(action, *action.target());
+            return true;
+        }
+        selectTargetFor([spellId = action.spellId(), words = action.words(), talkMode = action.talkMode(),
+                         castType = action.spellCastType()](const TObjectGameActionContext& target) {
+            return std::make_shared<TGameActionCrossHairSpell>(spellId, words, talkMode, castType, target);
+        });
         return true;
     });
 }

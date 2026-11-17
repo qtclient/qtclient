@@ -190,7 +190,7 @@ public:
     explicit TDailyRewardGameActionHandler(TDailyRewardStorage* storage, QObject* parent = nullptr);
     ~TDailyRewardGameActionHandler() override;
 
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void handleRequestOpenRewardWallGameAction() override;

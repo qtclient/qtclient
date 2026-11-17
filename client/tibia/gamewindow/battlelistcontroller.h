@@ -166,7 +166,7 @@ public:
     /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR, forwarded by the storage:
     /// the hovered entry's TARGET_SELECTED creature takes the object
     /// (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
-    bool onAtMouseCursor(const input::TGameAction& action);
+    bool onAtMouseCursor(const input::IGameAction& action);
 
     /// The QML properties, read from the list's options.
     bool filterButtonsVisible() const override;

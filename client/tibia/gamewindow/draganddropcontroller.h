@@ -54,9 +54,9 @@ public:
     static TDragAndDropController* instance();
 
     /// CIP . `source` is the item the drag started from.
-    void startDrag(const input::TGameActionPtr& action, QObject* source);
+    void startDrag(const input::TMoveObjectPtr& action, QObject* source);
     /// CIP : the dragged action, which the drag no longer holds.
-    input::TGameActionPtr takeAction();
+    input::TMoveObjectPtr takeAction();
     /// CIP : the modifiers at the drop.
     Qt::KeyboardModifiers modifiers() const { return m_modifiers; }
     bool isDragging() const { return m_filterInstalled; }
@@ -74,7 +74,7 @@ private:
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_icon;
     TDragAndDropControllerEventFilter* m_filter;
-    input::TGameActionPtr m_action;
+    input::TMoveObjectPtr m_action;
     QPointer<QQuickItem> m_source;
     Qt::KeyboardModifiers m_modifiers;
     bool m_filterInstalled = false;

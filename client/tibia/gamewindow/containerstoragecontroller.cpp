@@ -39,13 +39,13 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
         clear();
     });
 
-    input::setActionHandler(input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS, [this](const input::IGameAction&) {
         // CIP: drop places waiting for containers the server has not opened.
         m_pendingPlaces.clear();
         m_unplaced.clear();
         return true;
     });
-    input::setActionHandler(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [](const input::IGameAction&) {
         if (container::TContainerStorage* storage = container::TContainerStorage::instance())
             storage->setManualSortMode(!container::TContainerStorage::manualSortMode());
         return true;

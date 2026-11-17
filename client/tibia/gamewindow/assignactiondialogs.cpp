@@ -760,24 +760,24 @@ void TAssignObjectActionDialogController::startTargetSelection()
         cursor->setTargetSelection(true);
     dialog()->hide();
     QPointer<TAssignObjectActionDialogController> self(this);
-    input::startTargetSelection([self](const input::TGameActionPtr& target) {
+    input::startTargetSelection([self](const input::TTargetSelectedPtr& target) {
         if (TMouseCursorController* cursor = TMouseCursorController::instance())
             cursor->setTargetSelection(false);
         if (!self)
             return;
-        if (target && target->objectClientId) {
+        if (target && target->objectClientId()) {
             uint8_t tier = 0;
-            if (target->position.x == UINT16_MAX) {
-                if (target->position.y & 0x40) {
+            if (target->position().x == UINT16_MAX) {
+                if (target->position().y & 0x40) {
                     if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                        if (const container::TStoredContainer* row = storage->containerAt(target->position.y & 0x3F))
-                            tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + target->stackPosition).tier;
+                        if (const container::TStoredContainer* row = storage->containerAt(target->position().y & 0x3F))
+                            tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + target->stackPosition()).tier;
                     }
                 } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-                    tier = inventory->slotAt(target->position.y).tier;
+                    tier = inventory->slotAt(target->position().y).tier;
                 }
             }
-            self->setObject(target->objectClientId, tier);
+            self->setObject(target->objectClientId(), tier);
         }
         self->dialog()->show();
     });

@@ -509,7 +509,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // The daily reward: the session's storage and its game actions (238, 243, 244).
     g.dailyRewardStorage = std::make_unique<dailyreward::TDailyRewardStorage>();
     g.dailyRewardActions = std::make_unique<dailyreward::TDailyRewardGameActionHandler>(g.dailyRewardStorage.get());
-    input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::IGameAction&) {
         if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
             cursor->setLenshelp(true);
         return true;
@@ -531,12 +531,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         input::publish(std::make_shared<input::TGameActionOpenCyclopedia>(6)); // the Bosstiary tab
         return true;
     });
-    input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::TGameAction& action) {
-        // A parameter selects a skill immediately; otherwise MultiOfflineTrainingDialog opens.
-        if (action.parameter > 0) {
-            game::sendStartOfflineTraining(static_cast<uint8_t>(action.parameter));
-            return true;
-        }
+    input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::IGameAction&) {
         if (auto* offline = gamewindow::TMultiOfflineTrainingDialogController::instance())
             offline->showSkillsDialog();
         return true;

@@ -120,7 +120,7 @@ private:
     void setTraders(const std::set<QString>& traders);
     /// The market or loot container dialog closed after the stash made way for it.
     void reopenStash();
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     std::map<uint16_t, uint32_t> m_content;
     std::vector<int> m_categories;
@@ -131,7 +131,7 @@ private:
     TMessageDialogController* m_info;
     TConfirmMoveObjectToStashDialogController* m_confirmStow;
     input::TGameActionMapper m_mapper;
-    std::shared_ptr<input::TGameAction> m_pendingStow;
+    input::TMoveObjectPtr m_pendingStow;
     std::vector<client::gamecore::Hook> m_hooks;
     std::vector<int> m_actionListeners;
     bool m_reopenAfterMarket = false;

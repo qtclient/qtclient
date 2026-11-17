@@ -175,16 +175,17 @@ TDragAndDropController* TDragAndDropController::instance()
     return s_instance;
 }
 
-void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObject* source)
+void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObject* source)
 {
     if (!action)
         return;
     m_action = action;
     m_source = qobject_cast<QQuickItem*>(source);
-    updateIcon(action->objectClientId, action->position, action->stackPosition, action->creatureId);
+    const input::TObjectGameActionContext& object = action->context();
+    updateIcon(object.objectClientId, object.position, object.stackPosition, object.creatureId);
     // CipSoft dragApperanceInstanceIcon is a SingleObject item renderer — creatures
     // have no item art under the cursor (looktype-as-typeid would show a random item).
-    const bool creatureDrag = action->creatureId != 0 || action->objectClientId == Proto::Creature;
+    const bool creatureDrag = object.creatureId != 0 || object.objectClientId == Proto::Creature;
     if (m_icon)
         m_icon->setVisible(!creatureDrag);
     moveIcon();
@@ -195,9 +196,9 @@ void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObj
         cursor->setTargetSelection(true);
 }
 
-input::TGameActionPtr TDragAndDropController::takeAction()
+input::TMoveObjectPtr TDragAndDropController::takeAction()
 {
-    input::TGameActionPtr action = std::move(m_action);
+    input::TMoveObjectPtr action = std::move(m_action);
     m_action.reset();
     if (m_source) {
         m_source->ungrabMouse();

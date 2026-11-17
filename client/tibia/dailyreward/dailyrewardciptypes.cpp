@@ -244,7 +244,7 @@ TDailyRewardGameActionHandler::TDailyRewardGameActionHandler(TDailyRewardStorage
     , m_storage(storage)
 {
     for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TDailyRewardGameActionHandler::~TDailyRewardGameActionHandler()
@@ -253,9 +253,9 @@ TDailyRewardGameActionHandler::~TDailyRewardGameActionHandler()
         input::setActionHandler(type, nullptr);
 }
 
-bool TDailyRewardGameActionHandler::handleGameAction(const input::TGameAction& action)
+bool TDailyRewardGameActionHandler::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::COLLECT_FIXED_ITEMS_DAILY_REWARD: handleCollectFixedItemsDailyRewardGameAction(); return true;
     case A::REQUEST_DAILY_REWARD_HISTORY: handleRequestDailyRewardHistoryGameAction(); return true;
     case A::REQUEST_OPEN_REWARD_WALL: handleRequestOpenRewardWallGameAction(); return true;
@@ -431,9 +431,8 @@ void TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage(const Ga
 {
     if (message.dialog_type() != 40)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE));
-    action->text = QString::fromStdString(message.message());
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionShowMessageDialog>(A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE,
+                                                                        QString::fromStdString(message.message())));
 }
 
 }

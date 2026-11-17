@@ -19,7 +19,6 @@ namespace {
 using input::EGameAction;
 using input::TGameActionList;
 using input::IGameActionPtr;
-using input::TGameActionPtr;
 using A = EGameAction;
 using Provider = input::TGenericObjectGameActionProvider;
 using Cursor = gamewindow::TMouseCursorController;
@@ -231,23 +230,9 @@ uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGame
         const TFieldObject look = field->lookObject();
         return defaultActionOf(look, field) == PLAYER_ACTION_AUTOWALK_HIGHLIGHT ? look.creatureId : 0;
     }
-    const TGameActionPtr action = input::unportedGameAction(pGameAction);
-    if (!action)
-        return 0;
-    switch (action->type) {
-    case A::USE_ON_CREATURE:
-    case A::LOOK_AT_CREATURE:
-    case A::ATTACK_CREATURE:
-    case A::STOP_ATTACKING_CREATURE:
-    case A::FOLLOW_CREATURE:
-    case A::STOP_FOLLOWING_CREATURE:
-    case A::TEMPORARY_SELECT_CREATURE:
-    case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
-    case A::START_TALKING_TO_NPC:
-        return action->creatureId;
-    default:
-        return 0;
-    }
+    if (const auto* use = input::gameActionAs<input::TGameActionUseOnCreature>(pGameAction))
+        return use->targetCreatureId();
+    return 0;
 }
 
 int TWorldMapGameActionProvider::cursorShapeOf(const input::IGameActionPtr& pGameAction)

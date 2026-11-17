@@ -582,9 +582,8 @@ input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t 
         actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
     if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
-        auto market = input::mutableClone(*input::makeObjectAction(A::MARKET_BROWSE, {}, -1));
-        market->objectClientId = typeId;
-        actions.push_back(market);
+        actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
+            input::TObjectGameActionContext{ {}, -1, static_cast<uint16_t>(typeId) }));
     }
     return actions;
 }
@@ -620,12 +619,9 @@ void TDepotSearchWidgetController::requestRetrieveFromStash(const int TypeID)
         return;
     const ThingType* type = typeOf(static_cast<uint16_t>(TypeID));
     const uint32_t maximum = type && type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
-    auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));
-    retrieve->parameter = TypeID;
-    retrieve->amount = static_cast<int>(std::min(it->second, maximum));
-    auto dialog = input::mutableClone(*input::makeAction(A::STASH_OPEN_RETRIEVE_DIALOG));
-    dialog->inner = retrieve;
-    input::publish(dialog);
+    auto retrieve = std::make_shared<input::TGameActionStashRetrieve>(static_cast<uint16_t>(TypeID),
+                                                                      static_cast<int>(std::min(it->second, maximum)));
+    input::publish(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
 }
 
 void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int StorageLocation)
