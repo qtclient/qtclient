@@ -64,9 +64,9 @@ void localPlayerSetSoul(const uint8_t soul)
     playerDataAuthorityWrite([&](TPlayerData& data) { data.updateSoul(soul); });
 }
 
-void localPlayerSetFreeCapacity(const uint32_t freeCapacity)
+void localPlayerSetFreeCapacity(const uint32_t hundredths)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateFreeCapacity(freeCapacity); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateFreeCapacity(hundredths); });
 }
 
 void localPlayerSetBlessings(const uint16_t blessings, const uint8_t blessVisualState)

@@ -89,6 +89,8 @@ uint64_t localPlayerResourceBalance(tibia::client::ResourceTypes_t type);
 bool localPlayerHasResourceBalance(tibia::client::ResourceTypes_t type);
 uint64_t localPlayerTotalMoney();
 uint32_t localPlayerFreeCapacity();
+/// The free capacity in hundredths of an oz, as the server sent it.
+uint32_t localPlayerFreeCapacityHundredths();
 uint16_t localPlayerInventoryTypeId(tibia::client::InventorySlot slot);
 uint32_t localPlayerInventoryCount(uint16_t itemId, uint8_t tier = 0);
 /// Pack-facing inventory slot peel (exercise waiting-weapon / backpack scan).
@@ -363,7 +365,8 @@ void localPlayerSetLevel(uint16_t level, uint16_t levelPercent);
 void localPlayerSetExperience(uint64_t experience);
 void localPlayerSetStamina(uint16_t stamina);
 void localPlayerSetSoul(uint8_t soul);
-void localPlayerSetFreeCapacity(uint32_t freeCapacity);
+/// `hundredths`: the server's free capacity in hundredths of an oz.
+void localPlayerSetFreeCapacity(uint32_t hundredths);
 void localPlayerSetBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
 void localPlayerSetResourceBalance(tibia::client::ResourceTypes_t type, uint64_t value);
 void localPlayerSetHarmony(uint8_t harmony);

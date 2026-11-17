@@ -331,7 +331,8 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
 {
     const bool online = tibia::game::isOnline();
     const int capacity = online ? static_cast<int>(tibia::game::localPlayerFreeCapacity()) : 0;
-    const bool zero = online && capacity == 0;
+    // CIP: no capacity at all (the server's hundredths), not below one oz.
+    const bool zero = online && tibia::game::localPlayerFreeCapacityHundredths() == 0;
     const uint32_t baseCap = tibia::game::localPlayerBaseCapacity();
     const uint32_t totalCap = tibia::game::localPlayerTotalCapacity();
     const bool boost = online && baseCap < totalCap;
