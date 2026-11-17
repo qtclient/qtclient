@@ -72,6 +72,28 @@ if(Qt6_FOUND AND TARGET tibia)
     add_dependencies(client_gameactionmapper_tests cip_codegen_tibia)
     include(GoogleTest)
     gtest_discover_tests(client_gameactionmapper_tests)
+
+    find_package(Qt6 REQUIRED COMPONENTS Qml Quick Test)
+    # CIP input::TKeyboardStatusStorage; its generated base classes come from cip_gen_05 (moc'd here).
+    set(_cipgen05 ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_05.cpp)
+    set_source_files_properties(${_cipgen05} PROPERTIES GENERATED TRUE)
+    add_executable(client_keyboardstatusstorage_tests
+        keyboardstatusstorage_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/input/keyboardstatusstorage.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/input/eventfilters.cpp
+        ${_cipgen05}
+    )
+    set_target_properties(client_keyboardstatusstorage_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_keyboardstatusstorage_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(client_keyboardstatusstorage_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    target_link_libraries(client_keyboardstatusstorage_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
+    add_dependencies(client_keyboardstatusstorage_tests cip_codegen_tibia)
+    gtest_discover_tests(client_keyboardstatusstorage_tests)
 endif()
 
 # CIP TClientOptions' clientOptionsVersion chain; THotkeyOptions' default

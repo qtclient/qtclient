@@ -2984,13 +2984,13 @@ input::TKeyboardShortcutHandler::v15	11347c4d11890b70	ported	input/keyboardshort
 input::TKeyboardShortcutHandler::~TKeyboardShortcutHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
 input::TKeyboardShortcutHandlerEventFilter::~TKeyboardShortcutHandlerEventFilter	1772077b26d54e88	skip	generated: compiler-generated destructor (members only)
 input::TKeyboardShortcutHandlerEventFilter::~TKeyboardShortcutHandlerEventFilter_deleting	80b7856b65f10e97	skip	generated: compiler-generated destructor (members only)
-input::TKeyboardStatusStorage::onApplicationStateChanged	a34cb872119a335a	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::onApplicationStateChanged
-input::TKeyboardStatusStorage::v12	37c8257daa7c4aaf	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::isPressed
-input::TKeyboardStatusStorage::v13	7d0a4f17f2e88718	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::keyPressed
-input::TKeyboardStatusStorage::v14	c0196e4a642f9b71	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::keyReleased
-input::TKeyboardStatusStorage::v15	0fed0f7be218cf70	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::mostRecentlyPressed
-input::TKeyboardStatusStorage::v16	01e226bda1a5ac50	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::releaseKeys
-input::TKeyboardStatusStorage::v17	ac9a2ae13ad3f58d	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::setTrackedKeys
+input::TKeyboardStatusStorage::onApplicationStateChanged	a34cb872119a335a	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::onApplicationStateChanged	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v12	37c8257daa7c4aaf	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::isPressed	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v13	7d0a4f17f2e88718	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::keyPressed	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v14	c0196e4a642f9b71	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::keyReleased	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v15	0fed0f7be218cf70	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::mostRecentlyPressed	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v16	01e226bda1a5ac50	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::releaseKeys	test=tests/client/keyboardstatusstorage_test.cpp
+input::TKeyboardStatusStorage::v17	ac9a2ae13ad3f58d	tested	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::setTrackedKeys	test=tests/client/keyboardstatusstorage_test.cpp
 input::TKeyboardStatusStorage::v18	957f802cd9c24704	ported	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::releaseTrackedKeys
 input::TKeyboardStatusStorage::~TKeyboardStatusStorage	04e3c667fec59fcc	skip	generated: compiler-generated destructor (members only)
 input::TKeyboardStatusStorage::~TKeyboardStatusStorage_deleting	da0b97a57e57b6be	skip	generated: compiler-generated destructor (members only)
