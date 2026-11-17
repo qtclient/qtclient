@@ -287,14 +287,21 @@ struct TWheelCode
     std::array<TCodeGem, VesselCount> gems{};
 };
 
-/// CIP : `<K|P|S|D|M>0` and the url base64 (no padding) of the raw
-/// deflated 36 slice points and 4 vessel gems.
+/// `<K|P|S|D|M>1` and the url base64 (no padding) of the raw deflated
+/// 36 slice points and 8 vessel gems.
 QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, int vocationIndex);
-/// CIP : that format, or the legacy `EK|RP|MS|ED|EM` + 48 base64
+/// That format (version 0 without gems, 1 with), or the legacy `EK|RP|MS|ED|EM` + 48 base64
 /// characters of the slice points; empty on any decoding error.
 std::optional<TWheelCode> decodeWheelCode(const QString& code);
-/// CIP : the slices respect their maximum and paths.
+/// The slices respect their maximum and paths.
 bool isValidWheelCode(const TWheelCode& code);
+
+/// The wheel's vocation index (0 knight .. 4 monk) of creature vocation 1..5;
+/// throws std::invalid_argument for no vocation (0) and 6.
+int transformCreatureToSkillWheelVocation(int vocation);
+
+/// The first vessel holding gem `gemId`, if any.
+std::optional<int> vesselOfGem(const TWheel& wheel, int gemId);
 
 }
 }

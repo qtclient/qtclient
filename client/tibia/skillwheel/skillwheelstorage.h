@@ -44,7 +44,7 @@ public:
     int changeState() const { return m_changeState; }
     /// EVocation: 1 knight .. 5 monk.
     int vocation() const { return m_vocation; }
-    int vocationIndex() const { return m_vocation - 1; }
+    int vocationIndex() const { return transformCreatureToSkillWheelVocation(m_vocation); }
     int regularPoints() const { return m_points; }
     int extraPoints() const { return m_extraPoints; }
     int huntingTaskPoints() const { return m_huntingTaskPoints; }

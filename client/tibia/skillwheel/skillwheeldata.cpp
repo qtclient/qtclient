@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
 
 namespace tibia::skillwheel {
 
@@ -1314,15 +1315,16 @@ bool supremeModForVocation(const int mod, const int vocationIndex)
         return true;
     if (mod == 4)
         return vocationIndex == 2 || vocationIndex == 3;
-    if (mod >= 0x06 && mod <= 0x17)
+    // Each vocation's block, then its four later mods from 0x5e on.
+    if ((mod >= 0x06 && mod <= 0x17) || (mod >= 0x5e && mod <= 0x61))
         return vocationIndex == 0;
-    if (mod >= 0x18 && mod <= 0x29)
+    if ((mod >= 0x18 && mod <= 0x29) || (mod >= 0x62 && mod <= 0x65))
         return vocationIndex == 1;
-    if (mod >= 0x2a && mod <= 0x3a)
+    if ((mod >= 0x2a && mod <= 0x3a) || (mod >= 0x66 && mod <= 0x69))
         return vocationIndex == 2;
-    if (mod >= 0x3b && mod <= 0x4b)
+    if ((mod >= 0x3b && mod <= 0x4b) || (mod >= 0x6a && mod <= 0x6d))
         return vocationIndex == 3;
-    if (mod >= 0x4c && mod <= 0x5d)
+    if ((mod >= 0x4c && mod <= 0x5d) || (mod >= 0x6e && mod <= 0x71))
         return vocationIndex == 4;
     return false;
 }
@@ -1385,14 +1387,14 @@ namespace {
 
 constexpr int CodeSize = SlotCount + VesselCount * 3;
 constexpr uint8_t CodeNone = 0xff;
-/// CIP : basic mods below 49, supreme mods below 94.
+/// Basic mods below 49, supreme mods below 114.
 constexpr int CodeBasicLimit = 0x31;
-constexpr int CodeSupremeLimit = 0x5e;
-/// CIP (export) and (import), by vocation index.
+constexpr int CodeSupremeLimit = 0x72;
+/// Export code letters and legacy prefixes, by vocation index.
 constexpr char CodeLetters[VocationCount] = { 'K', 'P', 'S', 'D', 'M' };
 constexpr const char* LegacyCodePrefixes[VocationCount] = { "EK", "RP", "MS", "ED", "EM" };
 
-/// CIP / : either base64 alphabet, `=` or `.` padding.
+/// Either base64 alphabet, `=` or `.` padding.
 std::optional<QByteArray> fromCodeBase64(QByteArray text)
 {
     text.replace('+', '-').replace('/', '_').replace('.', '=');
@@ -1439,7 +1441,8 @@ QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, cons
     deflateEnd(&stream);
     if (result != Z_STREAM_END)
         return {};
-    return QString(QChar(CodeLetters[vocationIndex])) + QLatin1Char('0')
+    // Version 1: the slice points and the vessel gems.
+    return QString(QChar(CodeLetters[vocationIndex])) + QLatin1Char('1')
         + QString::fromLatin1(packed.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
 }
 
@@ -1461,8 +1464,10 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
         return result;
     }
 
-    if (text.size() < 2 || text.at(1) != '0')
+    // Version 0 carries the slice points only, version 1 also the vessel gems.
+    if (text.size() < 2 || (text.at(1) != '0' && text.at(1) != '1'))
         return std::nullopt;
+    const bool withGems = text.at(1) == '1';
     const char* letter = std::ranges::find(CodeLetters, text.front());
     if (letter == std::end(CodeLetters))
         return std::nullopt;
@@ -1480,13 +1485,13 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
     const int inflated = inflate(&stream, Z_FINISH);
     const uInt unread = stream.avail_in;
     inflateEnd(&stream);
-    if (inflated != Z_STREAM_END || unread != 0)
+    if ((inflated != Z_STREAM_END && inflated != Z_DATA_ERROR) || unread != 0)
         return std::nullopt;
 
     result.vocationIndex = static_cast<int>(letter - std::begin(CodeLetters));
     for (int s = 0; s < SlotCount; ++s)
         result.points[s] = raw[s];
-    for (int v = 0; v < VesselCount; ++v) {
+    for (int v = 0; withGems && v < VesselCount; ++v) {
         const uint8_t* bytes = raw.data() + SlotCount + v * 3;
         if (bytes[0] >= CodeBasicLimit || (bytes[1] != CodeNone && bytes[1] >= CodeBasicLimit)
             || (bytes[2] != CodeNone && (bytes[2] >= CodeSupremeLimit || bytes[1] == CodeNone)))
@@ -1497,5 +1502,29 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
 }
 
 bool isValidWheelCode(const TWheelCode& code) { return isValid(code.points); }
+
+std::optional<int> vesselOfGem(const TWheel& wheel, const int gemId)
+{
+    for (int v = 0; v < VesselCount; ++v) {
+        if (wheel.gems[v] != NoGem && wheel.gems[v] == gemId)
+            return v;
+    }
+    return std::nullopt;
+}
+
+int transformCreatureToSkillWheelVocation(const int vocation)
+{
+    switch (vocation) {
+        case 0:
+        case 6:
+            throw std::invalid_argument(
+                QStringLiteral("TransformCreatureToSkillWheelVocation: invalid vocation %1").arg(vocation & 0xff).toStdString());
+        case 2: return 1;
+        case 3: return 2;
+        case 4: return 3;
+        case 5: return 4;
+        default: return 0;
+    }
+}
 
 }
