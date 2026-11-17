@@ -191,14 +191,24 @@ void TCyclopediaDialogController::hookActions()
                 if (action.position.x != 0 || action.position.y != 0 || action.position.z != 0)
                     m_map->centerAt(action.position, std::numeric_limits<float>::quiet_NaN());
                 break;
-            case 5: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses); break;
+            case 5:
+                // The houses page selects the action's house.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses);
+                if (action.category > 0)
+                    m_houses->selectHouse(static_cast<uint>(action.category));
+                break;
             case 6:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Bosstiary);
                 if (action.category > 0)
                     m_bosstiary->showRace(action.category);
                 break;
             case 7: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::BossSlots); break;
-            case 8: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive); break;
+            case 8:
+                // The magical archive selects the action's spell.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive);
+                if (action.category > 0)
+                    m_magicalArchive->setSelectedSpellID(action.category);
+                break;
             default: break;
         }
         return true;
