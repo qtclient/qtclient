@@ -323,6 +323,12 @@ TClientPackageLayoutItem* TLauncherMainWindow::itemOf(const TPackage& package) c
     return m_items.at(package.type());
 }
 
+void TLauncherMainWindow::setHintBaseUrl(const QUrl& url)
+{
+    if (m_hintBrowser)
+        m_hintBrowser->document()->setBaseUrl(url);
+}
+
 void TLauncherMainWindow::setHint(THint hint)
 {
     if (!m_hintBrowser)

@@ -334,6 +334,8 @@ void TLauncherApplication::showMainWindow()
             availablePackages(*m_installationManager), m_installationManager.get(),
             m_configurationHandler->showPackageNames(), m_networkAccessManager, m_filesystemHelper->eulaAccepted(),
             m_downloadPool, m_cdnTrace, m_filesystemHelper);
+        if (m_configurationHandler->configuration())
+            m_mainWindow->setHintBaseUrl(m_configurationHandler->configuration()->hintsUrl());
         m_configurationHandler->downloadHints();
         m_mainWindow->setHint(m_configurationHandler->hint());
         connect(m_configurationHandler.get(), &TLauncherConfigurationHandler::hintAreaDataReceived,
