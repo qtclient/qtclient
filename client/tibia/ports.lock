@@ -4706,6 +4706,7 @@ sub_17b27948a6d8	17b27948a6d899f2	skip	library: miniaudio library
 sub_17e5f5a5ca9d	17e5f5a5ca9d84cd	tested	shared/src/coordinate.h:TCoordinate::operator!=	test=tests/client/coordinate_test.cpp
 sub_1809053aa368	1809053aa36861d2	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::addToSkill
 sub_180d0abde4a5	180d0abde4a56951	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
+sub_185db6dc5e3f	185db6dc5e3ffc02	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_185e6b820919#2	185e6b820919c9a0	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage
 sub_1866125581d8	1866125581d828b5	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onWasteAnalyserWidgetClosed
 sub_1870ae32a39c	1870ae32a39c84e3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBossDifficultySelectionChangedMessage
@@ -5688,6 +5689,7 @@ sub_38e1df230c1f	38e1df230c1f2383	skip	data: translation-unit static initializer
 sub_38f787b6715f	38f787b6715f8909	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEnterWorld
 sub_392309b78e6c	392309b78e6c1c70	skip	generated: protobuf message code (constructors, MergeFrom/CopyFrom, InternalSwap, oneof clear, arena string set)
 sub_3925545a5ff2	3925545a5ff20594	skip	library: libc++ std::vector growth / destroy (library)
+sub_392d3e86c2f1	392d3e86c2f1f368	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_392e79029412#12	392e79029412ec82	skip	generated: moc property getter (generated in cip_gen)
 sub_392e79029412#3	392e79029412ec82	ported	gamewindow/preydialogcontroller.h:TPreyRenderInfo::listRerollData
 sub_395ce4b68714	395ce4b68714e37b	skip	library: std::sort instantiation (entry, sort3/4/5) over the white/blacklist entries
@@ -5911,6 +5913,7 @@ sub_41b997a56a6a#2	41b997a56a6ae563	inlined	protocol::TProtobufServerMessageTran
 sub_41bd21b091b9	41bd21b091b9b84f	skip	library: std::vector reserve / std::sort instantiation
 sub_41d06c389967	41d06c3899671c36	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_41dc69a172da	41dc69a172daa016	ported	gamewindow/sidebarmanager.cpp:createQuickItem
+sub_41e7b09a1992	41e7b09a1992f97b	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_42061ed48ff0#3	42061ed48ff0e8c6	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::setSlotID
 sub_42129e9d4083	42129e9d4083fa76	skip	generated: moc property getter (generated in cip_gen)
 sub_42188ede457f#130	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v160
@@ -6264,6 +6267,7 @@ sub_4f0b4eeb18b7	4f0b4eeb18b7fce4	skip	data: static initializer of unrelated glo
 sub_4f0cbd3fa387#4	4f0cbd3fa387a479	inlined	protocol::TProtobufServerMessageTranslator::v210
 sub_4f226d00036e	4f226d00036e3236	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
 sub_4f32ccb431df	4f32ccb431df6bd7	ported	config/optionspages.cpp:fractionOf
+sub_4f4436dcc785	4f4436dcc7855c68	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_4f5f659b8958	4f5f659b895829ce	skip	library: std::sort instantiation
 sub_4f60a79efffa	4f60a79efffa2f9f	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleOfferDescriptionMessage
 sub_4f8d50620468	4f8d50620468f295	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::clearEvents
@@ -6825,6 +6829,7 @@ sub_5d9d998e6ae3	5d9d998e6ae30628	ported	gamewindow/actionbuttoncontroller.cpp:T
 sub_5dc89d282591	5dc89d28259137ee	ported	skillwheel/skillwheeldata.cpp:revelationPoints
 sub_5dd80a9a9e7a	5dd80a9a9e7aeb94	inlined	protocol::TProtobufServerMessageTranslator::v26
 sub_5de431fe2d65	5de431fe2d65565b	ported	gamewindow/chatcontroller.cpp:TChatChannelController::Row::selectAnchorTo
+sub_5de54ee4ecc1	5de54ee4ecc1a277	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_5de54ee4ecc1#2	5de54ee4ecc1a277	skip	generated: compiler-generated destructors of the friends data types and their vectors
 sub_5de54ee4ecc1#3	5de54ee4ecc1a277	skip	library: std vector internals (erase move / destructor)
 sub_5de56f9c1ba7	5de56f9c1ba7a495	ported	analysers/impactwidgets.cpp:TImpactWidgetController::updateGraphs
@@ -6928,6 +6933,7 @@ sub_620e9483380b	620e9483380b6715	ported	gamewindow/highscoresdialogcontroller.c
 sub_621ec33909b4	621ec33909b495e3	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_622c8dd02b74	622c8dd02b742c6b	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::TGainWasteStorage
 sub_6232c48722d2	6232c48722d20915	skip	library: std container template instance
+sub_6233be8db103	6233be8db103b9b1	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_62384853984a#3	62384853984a86d2	skip	library: std container template code
 sub_623ffc7c8473	623ffc7c84733162	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_625691520a79	625691520a79aad9	skip	generated: compiler-generated destructor
@@ -9120,6 +9126,7 @@ sub_ac6bd6f8ea33	ac6bd6f8ea33f7a9	ported	analysers/analyserwidgets.cpp:THuntingS
 sub_ac6dc3ae806b	ac6dc3ae806ba169	skip	library: std::sort instantiation (library)
 sub_ac70233d40a6	ac70233d40a62cf5	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::saveScreenshots
 sub_ac718ef1fd8a	ac718ef1fd8a241f	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::Entry::ageRecord
+sub_ac74acdc34df	ac74acdc34df6be5	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_ac83ad7e72ad	ac83ad7e72ad7c09	ported	gamewindow/remainingdialogs.cpp:TLoginConfirmationCodeEnterTextDialogController::setChosenMethod
 sub_ac9d966d71de	ac9d966d71defadb	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_aca360269663	aca3602696637701	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::inventoryGoldBalanceString
@@ -10450,6 +10457,7 @@ sub_d61644c39360	d61644c3936013b2	skip	generated: moc property setter, provided 
 sub_d61c8844b807	d61c8844b807881a	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
 sub_d62aebb8c176	d62aebb8c1765486	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
 sub_d6527bbb888e	d6527bbb888e106f	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::requestItemBlackWhitelisting
+sub_d66472e6dce1	d66472e6dce181f5	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_d66c6dec21d7	d66c6dec21d7a0ae	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::hasNextPage	test=tests/client/sharednet_test.cpp
 sub_d67279a9258d	d67279a9258df65a	ported	store/qmlstoreobjects.cpp:TQmlTransactionHistoryEntry::dateString
 sub_d69d716d9c63	d69d716d9c630d4a	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::picksEqual
@@ -10982,6 +10990,7 @@ sub_e2a4168d58cc#2	e2a4168d58cc34b1	inlined	friends/friendlistmodels.cpp:TVisibi
 sub_e2c4ffa2484d	e2c4ffa2484d9339	ported	analysers/impactwidgets.cpp:TImpactWidgetController::isDpsGraphVisible
 sub_e2c8b5aa312c	e2c8b5aa312ce6b0	tested	shared/src/crashreportdata.cpp:TCrashReportData::TCrashReportData	test=tests/client/sharednet_test.cpp
 sub_e2cf612a5e8c	e2cf612a5e8c6041	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
+sub_e2dfc75cf2b1	e2dfc75cf2b17ae3	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
 sub_e2eb048a66b8#6	e2eb048a66b8e2d0	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_e2ecfece737a	e2ecfece737a692e	inlined	input/gameactionhandlers.cpp:startTalking
 sub_e300e7d370b3	e300e7d370b3226e	skip	generated: compiler-generated destructor
