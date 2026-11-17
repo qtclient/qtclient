@@ -417,6 +417,11 @@ if(TIBIA_WITH_GAMECORE)
     input/inputciptypes.cpp input/inputciptypes.h
     input/clickareaeventfilter.cpp input/clickareaeventfilter.h
     input/eventfilters.cpp input/eventfilters.h
+    input/eventfiltermanager.cpp input/eventfiltermanager.h
+    input/keyboardshortcuthandlereventfilter.cpp input/keyboardshortcuthandlereventfilter.h
+    input/keyboardstatusstorage.cpp input/keyboardstatusstorage.h
+    input/keyeventhandler.cpp input/keyeventhandler.h
+    input/recordkeyboardshortcuthandler.cpp input/recordkeyboardshortcuthandler.h
     input/domainhandlers.cpp input/domainhandlers.h
     input/genericgameactionhandler.cpp input/genericgameactionhandler.h
     input/crosshairgameactionhandlers.cpp input/crosshairgameactionhandlers.h

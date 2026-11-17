@@ -326,10 +326,6 @@ public Q_SLOTS:
     void onCancelButtonClicked() override;
     void requestClose() override;
 
-protected:
-    /// Stands in for CIP's key recorder: key presses while the dialog shows.
-    bool eventFilter(QObject* watched, QEvent* event) override;
-
 private:
     void initKeyLists();
     std::set<QKeySequence> occupiedKeys(const QString& ownAction, bool chatModeOn) const;
@@ -347,6 +343,7 @@ private:
     QString m_description;
     std::set<QKeySequence> m_occupiedKeys;
     bool m_recording = false;
+    QMetaObject::Connection m_recordConnection;
 };
 
 }

@@ -2,18 +2,15 @@
 
 #include "chat/chatchannel.h"
 #include "config/hotkeyoptions.h"
-#include "gamewindow/dialogmanager.h"
-#include "input/inputciptypes.h"
 #include "input/gameactionhandlers.h"
-
-
-#include <QKeyEvent>
-#include <QQuickItem>
-#include <QQuickWindow>
+#include "input/inputciptypes.h"
+#include "input/keyboardshortcuthandlereventfilter.h"
+#include "iclockservice.h"
+#include "spells/spellinfostorage.h"
 
 #include <map>
+#include <set>
 #include <vector>
-#include <tibia/game/gamesession.h>
 
 namespace tibia::input {
 
@@ -197,50 +194,112 @@ std::vector<TProductAction>& productActionList()
     return actions;
 }
 
-bool isModifierKey(const int key)
-{
-    switch (key) {
-    case Qt::Key_Shift:
-    case Qt::Key_Control:
-    case Qt::Key_Meta:
-    case Qt::Key_Alt:
-    case Qt::Key_AltGr:
-    case Qt::Key_CapsLock:
-    case Qt::Key_NumLock:
-    case Qt::Key_unknown:
-        return true;
-    default:
-        return false;
-    }
 }
 
-/// A text field of a ChatInput.qml (the console's or NpcDialog.qml's): its keys stay hotkeys.
-bool inChatInput(const QQuickItem* item)
-{
-    for (; item; item = item->parentItem()) {
-        if (QLatin1String(item->metaObject()->className()).startsWith(QLatin1String("ChatInput_QMLTYPE")))
-            return true;
-    }
-    return false;
-}
-
-}
-
-TKeyboardShortcutHandler::TKeyboardShortcutHandler(QQuickWindow* window, QQuickItem* chatItem, std::function<int()> chatMode, QObject* parent)
+TKeyboardShortcutHandler::TKeyboardShortcutHandler(std::function<int()> chatMode, std::shared_ptr<shared::IClockService> pClockService,
+                                                   QObject* parent)
     : cip::tibia::input::TKeyboardShortcutHandler(parent)
-    , m_window(window)
-    , m_chatItem(chatItem)
+    , m_pEventFilter(new TKeyboardShortcutHandlerEventFilter(this, this))
     , m_chatMode(std::move(chatMode))
+    , m_pClockService(std::move(pClockService))
 {
     ownProductSurface(this);
-    if (window)
-        window->installEventFilter(this);
+    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    connect(hotkeys, &config::THotkeyOptions::mappingsChanged, this, &TKeyboardShortcutHandler::onHotkeyOptionsChanged);
+    connect(hotkeys, &config::THotkeyOptions::keysChanged, this, &TKeyboardShortcutHandler::onHotkeyOptionsChanged);
+    connect(hotkeys, &config::THotkeyOptions::currentSetChanged, this, &TKeyboardShortcutHandler::onHotkeyOptionsChanged);
+    onHotkeyOptionsChanged();
 }
 
-TKeyboardShortcutHandler::~TKeyboardShortcutHandler()
+TKeyboardShortcutHandler::~TKeyboardShortcutHandler() = default;
+
+void TKeyboardShortcutHandler::onHotkeyOptionsChanged()
 {
-    if (m_window)
-        m_window->removeEventFilter(this);
+    m_actionSettings.clear();
+    const config::THotkeySet& set = config::THotkeyOptions::instance()->currentSet();
+    const bool chatOn = m_chatMode && m_chatMode() != 0;
+    for (const config::THotkeyBinding& binding : chatOn ? set.chatOn : set.chatOff)
+        m_actionSettings.emplace(binding.keys, binding.setting);
+    std::set<QKeySequence> keySequences;
+    for (const auto& [keys, setting] : m_actionSettings) {
+        Q_UNUSED(setting);
+        keySequences.insert(keys);
+    }
+    // Pack hotkeys run on their default keys while unbound.
+    for (const TProductAction& product : productActionList()) {
+        if (!product.defaultKeys.isEmpty())
+            keySequences.insert(product.defaultKeys);
+    }
+    m_pEventFilter->setKeySequences(std::move(keySequences));
+}
+
+IGameActionPtr TKeyboardShortcutHandler::createGameAction(const config::TActionSetting& setting) const
+{
+    switch (setting.kind) {
+    case config::TActionSetting::TEXT: {
+        auto text = std::make_shared<TGameActionSetCurrentChatChannelInputText>(setting.text, setting.sendAutomatically);
+        if (spells::TSpellInfoStorage* spells = spells::TSpellInfoStorage::instance(); spells && spells->spellOfText(setting.text))
+            text->setSpell(true, setting.spellCastType);
+        return text;
+    }
+    case config::TActionSetting::ACTION:
+        return staticAction(setting.action);
+    default:
+        return nullptr;
+    }
+}
+
+bool TKeyboardShortcutHandler::keyPressed(const QKeySequence& keys, const bool isAutoRepeat)
+{
+    const auto binding = m_actionSettings.find(keys);
+    // Pack hotkeys: bound by name, or on their default keys while unbound.
+    for (const TProductAction& product : productActionList()) {
+        if (binding != m_actionSettings.end()
+                ? binding->second.kind == config::TActionSetting::ACTION && binding->second.action == product.name
+                : product.defaultKeys == keys) {
+            if (!isAutoRepeat && !m_areShortcutsRestricted)
+                product.run();
+            return true;
+        }
+    }
+    if (binding == m_actionSettings.end())
+        return false;
+    IGameActionPtr action = createGameAction(binding->second);
+    if (!action)
+        return false;
+    qint64 interval = 0;
+    bool repeats = true;
+    switch (action->gameActionType()) {
+    case A::USE:
+    case A::TRY_TO_EQUIP: interval = 100; break;
+    case A::USE_WITH:
+    case A::USE_ON_CREATURE:
+    case A::USE_ON_TARGET:
+    case A::USE_ON_YOURSELF:
+    case A::USE_AT_MOUSECURSOR:
+    case A::ACTION_BUTTON_TRIGGERED: interval = 500; break;
+    case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: interval = 1000; break;
+    case A::MINIMAP_SCROLL_NORTH:
+    case A::MINIMAP_SCROLL_EAST:
+    case A::MINIMAP_SCROLL_SOUTH:
+    case A::MINIMAP_SCROLL_WEST: interval = 1; break;
+    default: repeats = false; break;
+    }
+    // An action button carries whether the key repeats.
+    if (const auto* trigger = gameActionAs<TGameActionActionButtonTriggered>(action); trigger && trigger->autoRepeat() != isAutoRepeat)
+        action = std::make_shared<TGameActionActionButtonTriggered>(trigger->actionBarId(), trigger->actionButtonId(), isAutoRepeat);
+    if (isAutoRepeat) {
+        if (!repeats)
+            return false;
+        const qint64 now = m_pClockService->nowMillis();
+        if (const auto last = m_lastTriggered.find(keys); last != m_lastTriggered.end() && now < interval + last->second)
+            return false;
+        m_lastTriggered[keys] = now;
+    }
+    if (m_areShortcutsRestricted && !action->isAllowedWhileShortcutsAreRestricted())
+        return false;
+    Q_EMIT publishGameAction(action);
+    return true;
 }
 
 IGameActionPtr TKeyboardShortcutHandler::staticAction(const QString& name)
@@ -283,84 +342,6 @@ QStringList TKeyboardShortcutHandler::staticActionNames()
     }
     names.sort(Qt::CaseInsensitive);
     return names;
-}
-
-bool TKeyboardShortcutHandler::eventFilter(QObject* watched, QEvent* event)
-{
-    if (event->type() == QEvent::KeyPress && watched == m_window && handleKey(static_cast<QKeyEvent*>(event)))
-        return true;
-    return QObject::eventFilter(watched, event);
-}
-
-bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
-{
-    if (isModifierKey(key->key()) || !tibia::game::isOnline())
-        return false;
-    // CIP drops the key filter while the dialog stack blocks hotkeys (TEventFilterManager).
-    if (gamewindow::TDialogStackController* dialogs = gamewindow::TDialogStackController::instance(); dialogs && dialogs->hotkeysBlocked())
-        return false;
-    if (QQuickItem* focus = m_window ? m_window->activeFocusItem() : nullptr;
-        focus && (focus->inherits("QQuickTextInput") || focus->inherits("QQuickTextEdit")) && !(m_chatItem && m_chatItem->isAncestorOf(focus))
-        && !inChatInput(focus))
-        return false;
-
-    const bool chatOn = m_chatMode && m_chatMode() != 0;
-    const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    // CIP TKeyboardShortcutHandlerEventFilter :
-    // QKeySequence(QKeyEvent::modifiers | key).
-    const QKeySequence keys(key->modifiers() | Qt::Key(key->key()));
-    const config::TActionSetting* binding = hotkeys->binding(keys, chatOn);
-    if (!binding && key->modifiers().testFlag(Qt::KeypadModifier))
-        binding = hotkeys->binding(QKeySequence((key->modifiers() & ~Qt::KeypadModifier) | Qt::Key(key->key())), chatOn);
-    for (const TProductAction& product : productActionList()) {
-        if (binding ? binding->kind == config::TActionSetting::ACTION && binding->action == product.name : product.defaultKeys == keys) {
-            if (!key->isAutoRepeat())
-                product.run();
-            return true;
-        }
-    }
-    if (!binding || binding->kind != config::TActionSetting::ACTION)
-        return false;
-
-    // : a setting without an action (Go*) is not consumed; the
-    // key reaches TPlayerMovementInputInterpreter.
-    const IGameActionPtr bound = staticAction(binding->action);
-    if (!bound)
-        return false;
-    if (key->isAutoRepeat() && throttled(bound->gameActionType(), keys))
-        return true;
-    // An action button carries whether the key repeats (CIP +0x14).
-    if (const auto* trigger = gameActionAs<TGameActionActionButtonTriggered>(bound); trigger && key->isAutoRepeat())
-        Q_EMIT publishGameAction(std::make_shared<TGameActionActionButtonTriggered>(trigger->actionBarId(), trigger->actionButtonId(), true));
-    else
-        Q_EMIT publishGameAction(bound);
-    return true;
-}
-
-bool TKeyboardShortcutHandler::throttled(const EGameAction type, const QKeySequence& keys)
-{
-    qint64 interval = -1;
-    switch (type) {
-        case A::USE:
-        case A::TRY_TO_EQUIP: interval = 100; break;
-        case A::USE_WITH:
-        case A::USE_ON_CREATURE:
-        case A::USE_ON_TARGET:
-        case A::USE_ON_YOURSELF:
-        case A::USE_AT_MOUSECURSOR:
-        case A::ACTION_BUTTON_TRIGGERED: interval = 500; break;
-        case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: interval = 1000; break;
-        case A::MINIMAP_SCROLL_NORTH:
-        case A::MINIMAP_SCROLL_EAST:
-        case A::MINIMAP_SCROLL_SOUTH:
-        case A::MINIMAP_SCROLL_WEST: interval = 1; break;
-        default: return true;
-    }
-    QElapsedTimer& last = m_lastRepeat[keys];
-    if (last.isValid() && last.elapsed() < interval)
-        return true;
-    last.start();
-    return false;
 }
 
 namespace {

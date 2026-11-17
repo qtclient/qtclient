@@ -4,6 +4,7 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
+#include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
 
 #include <QQmlComponent>
@@ -117,44 +118,21 @@ bool TDialogStackController::contains(const TDialog* dialog) const
 void TDialogStackController::dialogTookFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        Q_EMIT chatInputFocusChanged(false);
+        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+            eventFilters->requestFocus();
 }
 
 void TDialogStackController::dialogReleasedFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        Q_EMIT chatInputFocusChanged(true);
+        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+            eventFilters->releaseFocus();
 }
 
 void TDialogStackController::setCharacterListOpen(const bool open)
 {
     m_characterListOpen = open;
-    if (open)
-        blockKeyboard();
-    else if (m_dialogs.empty() || m_dialogs.back()->hooks()->hasPersonalMouseShield())
-        unblockKeyboard();
-    else
-        m_hotkeysBlocked = true;
-}
-
-void TDialogStackController::blockKeyboard()
-{
-    m_hotkeysBlocked = true;
-    if (m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = true;
-    m_eventFilters.block();
-    Q_EMIT chatInputFocusChanged(false);
-}
-
-void TDialogStackController::unblockKeyboard()
-{
-    m_hotkeysBlocked = m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield());
-    if (!m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = false;
-    m_eventFilters.unblock();
-    Q_EMIT chatInputFocusChanged(true);
+    update();
 }
 
 void TDialogStackController::hideAll()
@@ -165,10 +143,14 @@ void TDialogStackController::hideAll()
 
 void TDialogStackController::update()
 {
-    m_hotkeysBlocked = m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield());
-    // CIP's stack unblocks the TEventFilterManager when it doesn't block: a focused UI part lets go.
-    if (m_keyboardBlocked && !m_hotkeysBlocked)
-        unblockKeyboard();
+    // A top dialog without a personal mouse shield blocks the keyboard; an
+    // empty stack or a shielded top dialog unblocks it.
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance()) {
+        if (m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield()))
+            eventFilters->block();
+        else
+            eventFilters->unblock();
+    }
     for (TDialog* dialog : m_dialogs)
         dialog->setVisibleByStack(dialog == m_dialogs.back());
     Q_EMIT dialogVisible(!m_dialogs.empty());

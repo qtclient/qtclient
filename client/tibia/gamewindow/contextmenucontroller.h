@@ -95,15 +95,11 @@ private:
     /// CIP : the entry closes the menu when triggered.
     TContextMenuEntryItem* addEntry(const QString& text, const QString& shortcut = {});
     void requestShow();
-    void setKeyboardBlocked(bool blocked);
 
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_shield;
     QPointer<QQuickItem> m_menu;
     QTimer m_showTimer;
-    /// CIP TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter .
-    input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter m_discardKeys;
-    bool m_keyboardBlocked = false;
     bool m_enabled = true;
     std::vector<std::pair<QPointer<QObject>, GameActionsExtension>> m_extensions;
 };

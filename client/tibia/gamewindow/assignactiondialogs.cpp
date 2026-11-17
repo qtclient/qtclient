@@ -7,6 +7,7 @@
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "config/hotkeyoptions.h"
+#include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
 #include "game/playerdata.h"
 #include "game/tgamenotify.h"
@@ -1021,10 +1022,13 @@ void TRecordKeyboardShortcutDialogController::showDialog(const bool ChatModeOn, 
 
 void TRecordKeyboardShortcutDialogController::startRecording()
 {
-    if (m_recording)
+    input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+    if (m_recording || !eventFilters)
         return;
     m_recording = true;
-    QCoreApplication::instance()->installEventFilter(this);
+    m_recordConnection = connect(eventFilters, &input::TEventFilterManager::keyboardShortcutRecorded, this,
+                                 &TRecordKeyboardShortcutDialogController::onKeySequenceEntered);
+    eventFilters->startRecordingKeyboardShortcut();
 }
 
 void TRecordKeyboardShortcutDialogController::stopRecording()
@@ -1032,30 +1036,9 @@ void TRecordKeyboardShortcutDialogController::stopRecording()
     if (!m_recording)
         return;
     m_recording = false;
-    if (QCoreApplication* app = QCoreApplication::instance())
-        app->removeEventFilter(this);
-}
-
-bool TRecordKeyboardShortcutDialogController::eventFilter(QObject* watched, QEvent* event)
-{
-    if (event->type() != QEvent::KeyPress || !dialog()->isShown())
-        return QObject::eventFilter(watched, event);
-    const auto* key = static_cast<QKeyEvent*>(event);
-    switch (key->key()) {
-    case Qt::Key_Shift:
-    case Qt::Key_Control:
-    case Qt::Key_Meta:
-    case Qt::Key_Alt:
-    case Qt::Key_AltGr:
-    case Qt::Key_CapsLock:
-    case Qt::Key_unknown:
-        return true;
-    default:
-        break;
-    }
-    if (!key->isAutoRepeat())
-        onKeySequenceEntered(QKeySequence(key->modifiers() | Qt::Key(key->key())));
-    return true;
+    disconnect(m_recordConnection);
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->stopRecordingKeyboardShortcut();
 }
 
 /// A single-key dialog keeps the last key of a chord (keypad modifier kept,

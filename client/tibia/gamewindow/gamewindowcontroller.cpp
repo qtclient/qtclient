@@ -1,6 +1,7 @@
 #include "gamewindowcontroller.h"
 
 #include "app/clientoptions.h"
+#include "input/eventfiltermanager.h"
 #include "randomhints.h"
 #include "app/launcherenv.h"
 #include "game/boostedcreaturerequestuploader.h"
@@ -448,11 +449,21 @@ void TGameWindowController::setAuthenticated(const bool authenticated)
 void TGameWindowController::showGameScreen()
 {
     setAuthenticated(true);
+    // Entering the game screen turns the keyboard shortcuts and walking keys on.
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+        eventFilters && m_gameWindowState != QLatin1String("INGAME")) {
+        eventFilters->enableKeyboardShortcuts();
+        eventFilters->enableMovementKeys();
+    }
     setScreen(QStringLiteral("INGAME"), false, Qt::black);
 }
 
 void TGameWindowController::showStartScreen()
 {
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance(); eventFilters && !m_gameWindowState.isEmpty()) {
+        eventFilters->disableKeyboardShortcuts();
+        eventFilters->disableMovementKeys();
+    }
     setScreen(QString(), true, QColor(QStringLiteral("#041020")));
     requestStartScreenServices();
     Q_EMIT startScreenNowDisplayed();

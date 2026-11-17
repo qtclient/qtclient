@@ -23,19 +23,4 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
-bool TKeyEventHandler::eventFilter(QObject* watched, QEvent* event)
-{
-    return cip::tibia::input::TKeyEventHandler::eventFilter(watched, event);
-}
-
-bool TKeyboardShortcutHandlerEventFilter::eventFilter(QObject* watched, QEvent* event)
-{
-    return cip::tibia::input::TKeyboardShortcutHandlerEventFilter::eventFilter(watched, event);
-}
-
-bool TRecordKeyboardShortcutHandler::eventFilter(QObject* watched, QEvent* event)
-{
-    return cip::tibia::input::TRecordKeyboardShortcutHandler::eventFilter(watched, event);
-}
-
 } // namespace tibia::input

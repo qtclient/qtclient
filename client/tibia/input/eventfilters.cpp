@@ -9,12 +9,6 @@
 
 namespace tibia::input {
 
-namespace {
-
-TEventFilterManager* g_eventFilterManager = nullptr;
-
-}
-
 TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::
     TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter(QObject* parent)
     : cip::tibia::input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter(parent)
@@ -83,33 +77,6 @@ TWindowFocusEventFilter::TWindowFocusEventFilter(QObject* parent)
 bool TWindowFocusEventFilter::nativeEventFilter(const QByteArray&, void*, qintptr*)
 {
     return false;
-}
-
-TEventFilterManager::TEventFilterManager(QObject* parent)
-    : cip::tibia::input::TEventFilterManager(parent)
-{
-    g_eventFilterManager = this;
-}
-
-TEventFilterManager* TEventFilterManager::instance()
-{
-    return g_eventFilterManager;
-}
-
-void TEventFilterManager::block()
-{
-    if (m_blocked)
-        return;
-    m_blocked = true;
-    Q_EMIT releaseElementFocus();
-}
-
-void TEventFilterManager::unblock()
-{
-    if (!m_blocked)
-        return;
-    m_blocked = false;
-    Q_EMIT requestElementFocus();
 }
 
 }

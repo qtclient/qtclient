@@ -3,6 +3,7 @@
 #include "chat/chatchannel.h"
 
 #include "gamewindow/sidebarmanager.h"
+#include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
 #include "input/gameactionmapper.h"
 
@@ -219,8 +220,6 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
 
     m_showTimer.setSingleShot(true);
     connect(&m_showTimer, &QTimer::timeout, this, &TContextMenuController::onAsyncShow);
-    connect(&m_discardKeys, &input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::escapePressed, this,
-            &TContextMenuController::onRequestClose);
 
     input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameActionChangeContextMenuEnabled& action) {
         setEnabled(action.enabled());
@@ -230,7 +229,6 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
 
 TContextMenuController::~TContextMenuController()
 {
-    setKeyboardBlocked(false);
     input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, nullptr);
     if (g_instance == this)
         g_instance = nullptr;
@@ -398,14 +396,16 @@ void TContextMenuController::onRequestClose()
 {
     if (m_shield)
         m_shield->setVisible(false);
-    setKeyboardBlocked(false);
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->hideContextMenu();
     Q_EMIT contextMenuClosed();
 }
 
 void TContextMenuController::onAsyncShow()
 {
     onCalculatePosition();
-    setKeyboardBlocked(true);
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->showContextMenu();
     if (m_shield)
         m_shield->setVisible(true);
 }
@@ -427,17 +427,6 @@ void TContextMenuController::onCalculatePosition()
     const QPointF position(std::max(x, area.left()), std::max(y, area.top()));
     if (m_menu->position() != position)
         m_menu->setPosition(position);
-}
-
-void TContextMenuController::setKeyboardBlocked(const bool blocked)
-{
-    if (blocked == m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = blocked;
-    if (blocked)
-        qApp->installEventFilter(&m_discardKeys);
-    else
-        qApp->removeEventFilter(&m_discardKeys);
 }
 
 }

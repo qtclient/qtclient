@@ -1,6 +1,6 @@
 #include "uifocusmanager.h"
 
-#include "gamewindow/dialogmanager.h"
+#include "input/eventfiltermanager.h"
 
 #include <QGuiApplication>
 
@@ -18,10 +18,11 @@ TUiFocusManager::TUiFocusManager(QObject* parent)
 TUiFocusManager::~TUiFocusManager()
 {
     disconnect(m_keyboardConnection);
+    disconnect(m_otherFocusConnection);
     if (m_hasFocus) {
         qApp->removeEventFilter(&m_clickArea);
-        if (TDialogStackController* stack = TDialogStackController::instance())
-            stack->unblockKeyboard();
+        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+            eventFilters->unblock();
     }
 }
 
@@ -42,25 +43,26 @@ void TUiFocusManager::setActive(const bool active)
 
 void TUiFocusManager::takeFocus()
 {
-    TDialogStackController* stack = TDialogStackController::instance();
-    if (m_hasFocus || !m_isActive || !stack)
+    input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+    if (m_hasFocus || !m_isActive || !eventFilters)
         return;
     m_hasFocus = true;
     Q_EMIT focusChanged();
-    stack->blockKeyboard();
+    eventFilters->block();
     qApp->installEventFilter(&m_clickArea);
-    m_keyboardConnection = connect(stack, &TDialogStackController::chatInputFocusChanged, this, [this](const bool bound) {
-        if (bound)
-            onFocusTakenByEventFilterManager();
-    });
+    // Another element asking for the focus takes it; the chat input getting it
+    // back drops it.
+    m_otherFocusConnection = connect(eventFilters, &input::TEventFilterManager::requestElementFocus, this, &TUiFocusManager::releaseFocus);
+    m_keyboardConnection = connect(eventFilters, &input::TEventFilterManager::releaseElementFocus, this,
+                                   &TUiFocusManager::onFocusTakenByEventFilterManager);
 }
 
 void TUiFocusManager::releaseFocus()
 {
     if (!m_hasFocus)
         return;
-    if (TDialogStackController* stack = TDialogStackController::instance())
-        stack->unblockKeyboard();
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->unblock();
     onFocusTakenByEventFilterManager();
 }
 
@@ -69,6 +71,7 @@ void TUiFocusManager::onFocusTakenByEventFilterManager()
     if (!m_hasFocus)
         return;
     disconnect(m_keyboardConnection);
+    disconnect(m_otherFocusConnection);
     qApp->removeEventFilter(&m_clickArea);
     m_hasFocus = false;
     Q_EMIT focusChanged();

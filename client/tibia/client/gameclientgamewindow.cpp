@@ -81,12 +81,16 @@
 #include "gamewindow/vipwidgetcontroller.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/domainhandlers.h"
+#include "input/eventfiltermanager.h"
 #include "input/eventfilters.h"
 #include "input/gameactionhandlers.h"
 #include "input/genericgameactionhandler.h"
 #include "input/keyboardshortcuthandler.h"
+#include "input/keyboardstatusstorage.h"
+#include "input/keyeventhandler.h"
 #include "input/playermovementgameactionhandler.h"
 #include "input/playermovementinputinterpreter.h"
+#include "input/recordkeyboardshortcuthandler.h"
 #include "minimap/minimapmanager.h"
 #include "mods/pack_host_abi.h"
 #include "mods/registry.h"
@@ -99,6 +103,9 @@
 #include "skillwheel/skillwheelmanager.h"
 #include "store/dynamicallyloadedimage.h"
 
+#include "clockservice.h"
+
+#include <QGuiApplication>
 #include <qtclient/pack_host.h>
 #include <tibia/game/gamesession.h>
 
@@ -156,6 +163,14 @@ private:
 struct TGameClient::TGameWindow
 {
     app::LauncherEnv env;
+    /// The keyboard input and the application event filters (CipSoft creates
+    /// them with the client, before the game window).
+    std::shared_ptr<input::TKeyboardStatusStorage> keyboardStatus;
+    std::shared_ptr<input::TKeyEventHandler> keyEventHandler;
+    std::shared_ptr<input::TKeyboardShortcutHandler> keyboardShortcuts;
+    std::shared_ptr<input::TRecordKeyboardShortcutHandler> recordKeyboardShortcut;
+    std::unique_ptr<input::TEventFilterManager> eventFilterManager;
+    std::unique_ptr<input::TPlayerMovementInputInterpreter> playerMovement;
     std::unique_ptr<gamewindow::TMessageDialogController> clientOutOfDateDialog;
     std::unique_ptr<gamewindow::TGameWindowController> gameWindowController;
     std::unique_ptr<gamewindow::TStatusBarController> statusBarController;
@@ -237,8 +252,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TChatController> chat;
     std::unique_ptr<gamewindow::TActionBarManager> actionBars;
     std::unique_ptr<gamewindow::TCooldownBarController> cooldownBar;
-    std::unique_ptr<input::TKeyboardShortcutHandler> keyboardShortcuts;
-    std::unique_ptr<input::TPlayerMovementInputInterpreter> playerMovement;
     std::unique_ptr<input::TPlayerMovementGameActionHandler> playerMovementActions;
     std::unique_ptr<input::TClipboardGameActionHandler> clipboardActions;
     std::unique_ptr<input::TUseWithGameActionHandler> useWithActions;
@@ -246,7 +259,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<input::TGenericGameActionHandler> genericActions;
     std::unique_ptr<input::TGatherAllGameActionHandler> gatherAllActions;
     std::unique_ptr<input::TGatherAllProtocolMessageHandler> gatherAllProtocol;
-    std::unique_ptr<input::TDiscardUnhandledMouseButtonsEventFilter> discardMouseButtons;
     std::unique_ptr<trade::TNPCTradeStorage> npcTrade;
     std::unique_ptr<trade::TNPCTradeProtocolMessageHandler> npcTradeMessages;
     std::unique_ptr<gamewindow::TNpcDialogController> npcDialog;
@@ -277,6 +289,17 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     QQuickWindow* window = setup.window;
     const bool preview = setup.preview;
     QCoreApplication* application = QCoreApplication::instance();
+
+    g.keyboardStatus = std::make_shared<input::TKeyboardStatusStorage>();
+    if (auto* guiApplication = qobject_cast<QGuiApplication*>(application))
+        connect(guiApplication, &QGuiApplication::applicationStateChanged, g.keyboardStatus.get(),
+                &input::TKeyboardStatusStorage::onApplicationStateChanged);
+    g.keyEventHandler = std::make_shared<input::TKeyEventHandler>(g.keyboardStatus);
+    const auto chatMode = [&g] { return g.chat ? g.chat->chatMode() : 0; };
+    g.keyboardShortcuts = std::make_shared<input::TKeyboardShortcutHandler>(chatMode, std::make_shared<shared::TClockService>());
+    g.recordKeyboardShortcut = std::make_shared<input::TRecordKeyboardShortcutHandler>();
+    g.eventFilterManager = std::make_unique<input::TEventFilterManager>(g.keyboardShortcuts, g.keyEventHandler, g.recordKeyboardShortcut);
+    g.playerMovement = std::make_unique<input::TPlayerMovementInputInterpreter>(g.keyboardStatus, chatMode);
 
     // ShowClientOutOfDate: caption "info", body client_too_old, single Restart
     // (YES/Return). Restart writes QTCLIENT_RESTART_FILE so the launcher updates.
@@ -465,13 +488,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                 else
                     Q_EMIT gameWindowController->bindFocusToChatInput();
             });
-    connect(dialogStack, &gamewindow::TDialogStackController::chatInputFocusChanged, gameWindowController,
-            [gameWindowController](bool bound) {
-                if (bound)
-                    Q_EMIT gameWindowController->bindFocusToChatInput();
-                else
-                    Q_EMIT gameWindowController->releaseFocusFromChatInput();
-            });
+    // An element asking for the keyboard takes it from the chat input; letting go gives it back.
+    connect(g.eventFilterManager.get(), &input::TEventFilterManager::requestElementFocus, gameWindowController,
+            &gamewindow::TGameWindowController::releaseFocusFromChatInput);
+    connect(g.eventFilterManager.get(), &input::TEventFilterManager::releaseElementFocus, gameWindowController,
+            &gamewindow::TGameWindowController::bindFocusToChatInput);
     g.splitStackDialog = std::make_unique<gamewindow::TSelectObjectAmountDialogController>();
     g.informationDialogs = std::make_unique<gamewindow::TInformationDialogs>();
     gamewindow::TInformationDialogs* informationDialogs = g.informationDialogs.get();
@@ -714,9 +735,13 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     }
     // After the action bars, so TCooldownStorage::instance exists.
     g.cooldownBar = std::make_unique<gamewindow::TCooldownBarController>(gameWindowItem);
-    QQuickItem* chatItem = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat"));
-    g.keyboardShortcuts = std::make_unique<input::TKeyboardShortcutHandler>(window, chatItem, [chat] { return chat->chatMode(); });
-    g.playerMovement = std::make_unique<input::TPlayerMovementInputInterpreter>(window, chatItem, [chat] { return chat->chatMode(); });
+    // The bindings and walk keys follow the chat mode.
+    connect(chat, &gamewindow::TChatController::chatModeChanged, g.keyboardShortcuts.get(),
+            &input::TKeyboardShortcutHandler::onHotkeyOptionsChanged);
+    connect(chat, &gamewindow::TChatController::chatModeChanged, g.playerMovement.get(),
+            &input::TPlayerMovementInputInterpreter::onHotkeyOptionsChanged);
+    g.keyboardShortcuts->onHotkeyOptionsChanged();
+    g.playerMovement->onHotkeyOptionsChanged();
     g.playerMovementActions = std::make_unique<input::TPlayerMovementGameActionHandler>();
     connect(g.keyboardShortcuts.get(), &input::TKeyboardShortcutHandler::publishGameAction, gameActionRouter()->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
@@ -758,11 +783,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.gatherAllActions.get(),
             &input::TGatherAllGameActionHandler::handleGameAction);
     g.gatherAllProtocol = std::make_unique<input::TGatherAllProtocolMessageHandler>();
-    // Do not install TDiscardMouseWheelEventFilter on the window: that eats every
-    // Wheel event (containers, chat, options lists). Dialogs that need it install
-    // the filter on themselves.
-    g.discardMouseButtons = std::make_unique<input::TDiscardUnhandledMouseButtonsEventFilter>();
-    window->installEventFilter(g.discardMouseButtons.get());
+    g.eventFilterManager->enableDiscardingUnhandledMouseButtons();
 
     g.npcTrade = std::make_unique<trade::TNPCTradeStorage>();
     g.npcTradeMessages = std::make_unique<trade::TNPCTradeProtocolMessageHandler>(g.npcTrade.get());
@@ -811,8 +832,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         if (!item)
             return;
         g.chat->setChatItem(item);
-        g.keyboardShortcuts->setChatItem(item);
-        g.playerMovement->setChatItem(item);
     };
     packHost.installCreateCharacterController = [&g](QObject* controller) {
         if (!g.sessionBootstrap || !controller)

@@ -15,45 +15,11 @@ namespace input {
 /// Own CIP-named types under `parent` (keyboard shortcut handler).
 void ownProductSurface(QObject* parent);
 
-class TKeyEventHandler final : public cip::tibia::input::TKeyEventHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyEventHandler::TKeyEventHandler;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
 class TKeyboardInputToGameActionConverter final : public cip::tibia::input::TKeyboardInputToGameActionConverter
 {
     Q_OBJECT
 public:
     using cip::tibia::input::TKeyboardInputToGameActionConverter::TKeyboardInputToGameActionConverter;
-};
-
-class TKeyboardShortcutHandlerEventFilter final : public cip::tibia::input::TKeyboardShortcutHandlerEventFilter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyboardShortcutHandlerEventFilter::TKeyboardShortcutHandlerEventFilter;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
-class TKeyboardStatusStorage final : public cip::tibia::input::TKeyboardStatusStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyboardStatusStorage::TKeyboardStatusStorage;
-};
-
-class TRecordKeyboardShortcutHandler final : public cip::tibia::input::TRecordKeyboardShortcutHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TRecordKeyboardShortcutHandler::TRecordKeyboardShortcutHandler;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
 };
 
 /// CIP location / appearance action contexts — carry where an action targets.

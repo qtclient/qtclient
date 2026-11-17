@@ -7,6 +7,7 @@
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/npcdialogcontroller.h"
 #include "mods/registry.h"
+#include "input/eventfiltermanager.h"
 #include "input/inputciptypes.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/gameactionhandlers.h"
@@ -1695,7 +1696,8 @@ bool TChatController::handleAction(const input::IGameAction& action)
                 m_npcDialog->takeFocus();
             else
                 m_npcDialog->pressEnter();
-        } else if (noDialog || !TDialogStackController::instance()->hotkeysBlocked()) {
+        } else if (const input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+                   noDialog || !eventFilters || !eventFilters->isBlocked()) {
             pressEnter();
         }
         return true;
