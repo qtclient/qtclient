@@ -178,7 +178,7 @@ void TDynamicallyLoadedImageQuickItem::setDynamicallyLoadedImageManager(QObject*
                 &TDynamicallyLoadedImageQuickItem::onImageLoadFailed);
     }
     Q_EMIT propertyChanged();
-    m_requestedKey.clear();
+    m_request = {};
     requestImage();
 }
 
@@ -221,12 +221,12 @@ void TDynamicallyLoadedImageQuickItem::requestImage()
     const int imageSize = size();
     if (imageSize != 13 && imageSize != 32 && imageSize != 64)
         return;
-    if (m_requestedKey == m_imageKey && m_requestedSize == imageSize)
+    const store::TImageRequest request{ m_imageKey, QSize(imageSize, imageSize) };
+    if (m_request.isValid() && m_request == request)
         return;
-    m_requestedKey = m_imageKey;
-    m_requestedSize = imageSize;
+    m_request = request;
     showPlaceholder(false);
-    m_manager->requestImage({ m_imageKey, QSize(imageSize, imageSize) });
+    m_manager->requestImage(m_request);
 }
 
 void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
@@ -243,9 +243,15 @@ void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
     update();
 }
 
+/// CIP: only an answer to the shown request.
+bool TDynamicallyLoadedImageQuickItem::isCurrentRequest(const store::TImageRequest& request) const
+{
+    return m_request.isValid() && m_request == request;
+}
+
 void TDynamicallyLoadedImageQuickItem::onImageLoaded(const store::TImageRequest& request, const QImage& image)
 {
-    if (request.key != m_requestedKey || request.size.width() != m_requestedSize)
+    if (!isCurrentRequest(request))
         return;
     m_image = image;
     update();
@@ -253,7 +259,7 @@ void TDynamicallyLoadedImageQuickItem::onImageLoaded(const store::TImageRequest&
 
 void TDynamicallyLoadedImageQuickItem::onImageLoadFailed(const store::TImageRequest& request)
 {
-    if (request.key != m_requestedKey || request.size.width() != m_requestedSize)
+    if (!isCurrentRequest(request))
         return;
     showPlaceholder(true);
 }

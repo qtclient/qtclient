@@ -27,6 +27,8 @@ struct TImageRequest
     QString key;
     QSize size{ -1, -1 };
 
+    /// CIP: a key and a positive size.
+    bool isValid() const { return !key.isEmpty() && size.width() > 0 && size.height() > 0; }
     bool operator==(const TImageRequest&) const = default;
 };
 
@@ -103,12 +105,13 @@ private:
     void requestImage();
     /// CIP .
     void showPlaceholder(bool failed);
+    bool isCurrentRequest(const store::TImageRequest& request) const;
     void onImageLoaded(const store::TImageRequest& request, const QImage& image);
     void onImageLoadFailed(const store::TImageRequest& request);
 
     QPointer<store::TDynamicallyLoadedImageManager> m_manager;
-    QString m_requestedKey;
-    int m_requestedSize = -1;
+    /// CIP: the request the item shows.
+    store::TImageRequest m_request;
     QImage m_image;
 };
 

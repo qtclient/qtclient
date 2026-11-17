@@ -7358,6 +7358,7 @@ sub_378b076aef30	378b076aef300cc0	skip	data: translation-unit static initializer
 sub_378c88ab1c36#2	378c88ab1c36ed6f	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_3794a9ef84e3	3794a9ef84e3f987	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onCharacterHousesInfoChanged
 sub_37970596eb4c	37970596eb4c98f8	tested	appearances/appearancetype.cpp:TAppearanceType::fromProtobuf	test=tests/client/appearancetype_test.cpp
+sub_379ad1f9e3e5	379ad1f9e3e50d66	ported	store/dynamicallyloadedimage.h:TImageRequest::isValid
 sub_379e6ac39319	379e6ac39319847a	ported	store/qmlstoreobjects.cpp:TQmlStoreTransactionHistoryPage::TQmlStoreTransactionHistoryPage
 sub_37a42720f03f	37a42720f03fc9f6	skip	library: std::sort instantiation for the category list
 sub_37c82d2c445c	37c82d2c445c3f2a	tested	news/newsstorage.cpp:newsTypeName	test=tests/client/newsstorage_test.cpp
