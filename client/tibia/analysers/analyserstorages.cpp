@@ -238,7 +238,7 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         else if (type == AnalyzerDamageDealt)
             m_impact.addDamage(amount, argInt(args, 4), element, nowMs());
         else if (type == AnalyzerDamageReceived)
-            m_damageInput.addDamage(amount, element, argString(args, 3), nowMs());
+            m_damageInput.addHit({ static_cast<int>(amount), element, argString(args, 3), nowMs() });
         return std::any{};
     });
     // CIP KillTracking handler .
@@ -278,7 +278,7 @@ void TAnalyserStorages::tick()
     m_progress.tick(now);
     m_gainWaste.tick(now);
     m_impact.tick(now);
-    m_damageInput.tick(now);
+    m_damageInput.update(now);
 }
 
 void TAnalyserStorages::resetAll()

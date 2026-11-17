@@ -368,12 +368,26 @@ public:
     static constexpr int ElementCount = TImpactStorage::ElementCount;
     static constexpr qint64 WindowMs = 300000;
     static constexpr int ListedSources = 5;
+    static constexpr int GraphPoints = TImpactStorage::GraphPoints;
 
+    /// One hit taken.
+    struct Hit
+    {
+        int amount = 0;
+        int element = 0;
+        QString source;
+        qint64 timestamp = 0;
+    };
+
+    /// The damage of one source, per element (sorted by element).
     struct Source
     {
         QString name;
-        qint64 total = 0;
-        std::array<qint64, ElementCount> byElement{};
+        int total = 0;
+        std::vector<std::pair<int, int>> elements;
+
+        explicit Source(const Hit& hit);
+        void add(int element, int amount);
     };
 
     explicit TDamageInputStorage(QObject* parent = nullptr);
@@ -382,21 +396,19 @@ public:
     QJsonObject toJson() const override;
     void fromJson(const QJsonObject& json) override;
 
-    /// CIP .
-    void addDamage(qint64 amount, int element, const QString& source, qint64 nowMs);
-    /// CIP vt15 .
-    void tick(qint64 nowMs);
-    /// CIP .
+    /// A hit of the damage-received impact tracking.
+    void addHit(const Hit& hit);
+    /// Refreshes the recent values (at most every 401 ms) and the graph
+    /// (every 4 s, or 30 s with session values).
+    void update(qint64 nowMs);
     void reset();
 
     qint64 total() const { return m_showSessionValues ? m_sessionTotal : m_windowTotal; }
-    qint64 sessionTotal() const { return m_sessionTotal; }
     qint64 maxPerSecond() const { return m_maxPerSecond; }
-    /// The listed sources (top 5, then the rest under an empty name) and the per-element sums,
-    /// over the session or the last 5 minutes.
-    const std::vector<Source>& sources() const { return m_listedSources; }
-    const std::array<qint64, ElementCount>& elements() const { return m_showSessionValues ? m_sessionElements : m_windowElements; }
-    const Source* source(const QString& name) const;
+    /// The listed sources (the five biggest) and the per-element sums, over
+    /// the session or the last 5 minutes.
+    const std::vector<Source>& sources() const { return m_showSessionValues ? m_listedSessionSources : m_windowSources; }
+    const std::vector<std::pair<int, int>>& elements() const { return m_showSessionValues ? m_sessionElements : m_windowElements; }
     /// Damage taken per second, one point per 4 s (60 s with session values).
     std::vector<double> graph(double& maxY) const;
 
@@ -418,38 +430,30 @@ Q_SIGNALS:
     void optionsChanged();
 
 private:
-    struct Hit
-    {
-        qint64 timestamp = 0;
-        qint64 amount = 0;
-        int element = 0;
-        QString source;
-    };
-
-    void rebuildLists();
     void emitValuesChanged();
     void emitGraphChanged();
     void emitOptionsChanged();
 
-    std::vector<qint64> m_bins;
-    qint64 m_second = 0;
-    qint64 m_sessionTotal = 0;
-    qint64 m_windowTotal = 0;
-    qint64 m_maxPerSecond = 0;
-    std::deque<Hit> m_hits;
-    std::array<qint64, ElementCount> m_sessionElements{};
-    std::array<qint64, ElementCount> m_windowElements{};
-    std::map<QString, Source> m_sessionSources;
-    std::vector<Source> m_listedSources;
-    std::vector<double> m_weights15;
-    std::vector<double> m_weights900;
-    qint64 m_lastUpdate = 0;
-    qint64 m_lastGraph = 0;
-    bool m_dirty = false;
     bool m_showSessionValues = false;
     bool m_showGraph = true;
     bool m_showTypes = true;
     bool m_showSources = true;
+    qint64 m_lastDataUpdate = 0;
+    qint64 m_lastGraphUpdate = 0;
+    int m_sessionTotal = 0;
+    int m_windowTotal = 0;
+    quint32 m_maxPerSecond = 0;
+    /// Damage per second, the newest second last.
+    std::vector<quint32> m_seconds;
+    std::vector<Hit> m_hits;
+    /// Sorted by element.
+    std::vector<std::pair<int, int>> m_sessionElements;
+    /// Sorted by name.
+    std::vector<Source> m_sessionSources;
+    std::vector<Source> m_listedSessionSources;
+    std::vector<Source> m_windowSources;
+    std::vector<std::pair<int, int>> m_windowElements;
+    std::array<int, GraphPoints> m_graph{};
 };
 
 /// Hunting session analyser storage (CIP: tibia::cyclopedia::THuntingSessionStorage, config

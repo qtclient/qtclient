@@ -332,11 +332,49 @@ void TImpactStorage::setDamageTypesVisible(const bool visible)
     emitOptionsChanged();
 }
 
+TDamageInputStorage::Source::Source(const Hit& hit)
+    : name(hit.source)
+    , total(hit.amount)
+{
+    add(hit.element, hit.amount);
+}
+
+void TDamageInputStorage::Source::add(const int element, const int amount)
+{
+    auto it = std::lower_bound(elements.begin(), elements.end(), element,
+                               [](const std::pair<int, int>& entry, const int key) { return entry.first < key; });
+    if (it == elements.end() || element < it->first)
+        it = elements.insert(it, { element, 0 });
+    it->second += amount;
+}
+
+namespace {
+
+/// The biggest source first; equal totals by name.
+bool biggerSource(const TDamageInputStorage::Source& a, const TDamageInputStorage::Source& b)
+{
+    if (a.total == b.total)
+        return QString::compare(a.name, b.name, Qt::CaseSensitive) < 0;
+    return b.total < a.total;
+}
+
+const std::vector<double>& sessionGraphWeights()
+{
+    static const std::vector<double> weights = linearWeights(900);
+    return weights;
+}
+
+const std::vector<double>& recentGraphWeights()
+{
+    static const std::vector<double> weights = linearWeights(15);
+    return weights;
+}
+
+}
+
 TDamageInputStorage::TDamageInputStorage(QObject* parent)
     : cip::tibia::cyclopedia::TDamageInputStorage(parent)
-    , m_bins(BinCount, 0)
-    , m_weights15(linearWeights(15))
-    , m_weights900(linearWeights(900))
+    , m_seconds(BinCount, 0)
 {}
 
 void TDamageInputStorage::emitValuesChanged()
@@ -371,117 +409,127 @@ void TDamageInputStorage::fromJson(const QJsonObject& json)
     m_showGraph = json.value(QLatin1String(KeyShowDamageGraph)).toBool(true);
     m_showTypes = json.value(QLatin1String(KeyShowDamageTypes)).toBool(true);
     m_showSources = json.value(QLatin1String(KeyShowDamageSources)).toBool(true);
-    rebuildLists();
     emitOptionsChanged();
 }
 
-void TDamageInputStorage::addDamage(const qint64 amount, const int element, const QString& source, const qint64 nowMs)
+void TDamageInputStorage::addHit(const Hit& hit)
 {
-    const qint64 second = nowMs / 1000;
-    if (second > m_second) {
-        const qint64 shift = second - m_second;
-        if (shift >= BinCount) {
-            std::fill(m_bins.begin(), m_bins.end(), 0);
+    m_sessionTotal += hit.amount;
+    m_seconds.back() += static_cast<quint32>(hit.amount);
+    m_maxPerSecond = std::max(m_maxPerSecond, m_seconds.back());
+    m_hits.push_back(hit);
+
+    auto element = std::lower_bound(m_sessionElements.begin(), m_sessionElements.end(), hit.element,
+                                    [](const std::pair<int, int>& entry, const int key) { return entry.first < key; });
+    if (element == m_sessionElements.end() || element->first != hit.element)
+        m_sessionElements.insert(element, { hit.element, hit.amount });
+    else
+        element->second += hit.amount;
+
+    const Source added(hit);
+    auto source = std::lower_bound(m_sessionSources.begin(), m_sessionSources.end(), added.name, [](const Source& entry, const QString& key) {
+        return QString::compare(entry.name, key, Qt::CaseSensitive) < 0;
+    });
+    if (source != m_sessionSources.end() && source->name == added.name) {
+        source->total += added.total;
+        for (const auto& [id, amount] : added.elements)
+            source->add(id, amount);
+    } else {
+        m_sessionSources.insert(source, added);
+    }
+}
+
+void TDamageInputStorage::update(const qint64 nowMs)
+{
+    if (nowMs > m_lastDataUpdate + DataRefreshMs) {
+        m_hits.erase(std::remove_if(m_hits.begin(), m_hits.end(), [nowMs](const Hit& hit) { return hit.timestamp < nowMs - WindowMs; }),
+                     m_hits.end());
+        m_windowTotal = 0;
+        for (const Hit& hit : m_hits)
+            m_windowTotal += hit.amount;
+
+        m_windowSources.clear();
+        m_listedSessionSources.clear();
+        m_windowElements.clear();
+        if (m_sessionSources.size() <= ListedSources) {
+            m_listedSessionSources = m_sessionSources;
         } else {
-            std::move(m_bins.begin() + shift, m_bins.end(), m_bins.begin());
-            std::fill(m_bins.end() - shift, m_bins.end(), 0);
+            m_listedSessionSources.assign(ListedSources, Source(Hit{}));
+            std::partial_sort_copy(m_sessionSources.begin(), m_sessionSources.end(), m_listedSessionSources.begin(),
+                                   m_listedSessionSources.end(), biggerSource);
         }
-        m_second = second;
-    }
-    const int e = clampElement(element);
-    m_sessionTotal += amount;
-    m_bins.back() += amount;
-    m_maxPerSecond = std::max(m_maxPerSecond, m_bins.back());
-    m_sessionElements[static_cast<size_t>(e)] += amount;
-    Source& sessionSource = m_sessionSources[source];
-    sessionSource.name = source;
-    sessionSource.total += amount;
-    sessionSource.byElement[static_cast<size_t>(e)] += amount;
-    m_hits.push_back({ nowMs, amount, e, source });
-    m_dirty = true;
-}
 
-void TDamageInputStorage::tick(const qint64 nowMs)
-{
-    if (nowMs <= m_lastUpdate + DataRefreshMs)
-        return;
-    m_lastUpdate = nowMs;
-    bool expired = false;
-    while (!m_hits.empty() && m_hits.front().timestamp < nowMs - WindowMs) {
-        m_hits.pop_front();
-        expired = true;
-    }
-    if (m_dirty || expired) {
-        m_dirty = false;
-        rebuildLists();
+        for (const Hit& hit : m_hits) {
+            const auto source =
+                std::find_if(m_windowSources.begin(), m_windowSources.end(), [&hit](const Source& entry) { return entry.name == hit.source; });
+            if (source == m_windowSources.end()) {
+                m_windowSources.emplace_back(hit);
+            } else {
+                source->total += hit.amount;
+                source->add(hit.element, hit.amount);
+            }
+            const auto element = std::find_if(m_windowElements.begin(), m_windowElements.end(),
+                                              [&hit](const std::pair<int, int>& entry) { return entry.first == hit.element; });
+            if (element == m_windowElements.end())
+                m_windowElements.push_back({ hit.element, hit.amount });
+            else
+                element->second += hit.amount;
+        }
+        if (m_windowSources.size() > ListedSources) {
+            std::nth_element(m_windowSources.begin(), m_windowSources.begin() + (ListedSources - 1), m_windowSources.end(), biggerSource);
+            m_windowSources.erase(m_windowSources.begin() + ListedSources, m_windowSources.end());
+        }
+
+        // Age the per-second damage by the seconds since the last refresh.
+        const int shift = static_cast<int>(nowMs / 1000 - m_lastDataUpdate / 1000);
+        const int count = static_cast<int>(m_seconds.size());
+        if (shift < count) {
+            if (shift > 0) {
+                std::move(m_seconds.begin() + shift, m_seconds.end(), m_seconds.begin());
+                std::fill(m_seconds.end() - shift, m_seconds.end(), 0);
+            }
+        } else {
+            std::fill(m_seconds.begin(), m_seconds.end(), 0);
+        }
         emitValuesChanged();
+        m_lastDataUpdate = nowMs;
     }
-    const qint64 graphInterval = m_showSessionValues ? SessionGraphRefreshMs : GraphRefreshMs;
-    if (m_sessionTotal > 0 && (m_lastGraph == 0 || nowMs > m_lastGraph + graphInterval)) {
-        m_lastGraph = nowMs;
-        emitGraphChanged();
-    }
-}
 
-void TDamageInputStorage::rebuildLists()
-{
-    m_windowTotal = 0;
-    m_windowElements = {};
-    std::map<QString, Source> windowSources;
-    for (const Hit& hit : m_hits) {
-        m_windowTotal += hit.amount;
-        m_windowElements[static_cast<size_t>(hit.element)] += hit.amount;
-        Source& source = windowSources[hit.source];
-        source.name = hit.source;
-        source.total += hit.amount;
-        source.byElement[static_cast<size_t>(hit.element)] += hit.amount;
+    const std::vector<double>* weights = nullptr;
+    int step = 0;
+    if (m_showSessionValues && nowMs > m_lastGraphUpdate + SessionGraphRefreshMs) {
+        weights = &sessionGraphWeights();
+        step = SessionGraphStepSeconds;
+    } else if (!m_showSessionValues && nowMs > m_lastGraphUpdate + GraphRefreshMs) {
+        weights = &recentGraphWeights();
+        step = GraphStepSeconds;
+    } else if (m_lastGraphUpdate == 0) {
+        weights = m_showSessionValues ? &sessionGraphWeights() : &recentGraphWeights();
+        step = m_showSessionValues ? SessionGraphStepSeconds : GraphStepSeconds;
+    } else {
+        return;
     }
-    const std::map<QString, Source>& from = m_showSessionValues ? m_sessionSources : windowSources;
-    std::vector<Source> sorted;
-    sorted.reserve(from.size());
-    for (const auto& [name, source] : from)
-        sorted.push_back(source);
-    std::stable_sort(sorted.begin(), sorted.end(), [](const Source& a, const Source& b) { return a.total > b.total; });
-    if (sorted.size() > ListedSources) {
-        Source others;
-        for (size_t i = ListedSources; i < sorted.size(); ++i) {
-            others.total += sorted[i].total;
-            for (int e = 0; e < ElementCount; ++e)
-                others.byElement[static_cast<size_t>(e)] += sorted[i].byElement[static_cast<size_t>(e)];
+    // Each point is the weighted mean of the seconds before it.
+    const qint64 count = static_cast<qint64>(m_seconds.size());
+    const qint64 length = static_cast<qint64>(weights->size());
+    for (int i = 0; i < GraphPoints; ++i) {
+        const qint64 end = count + static_cast<qint64>(i - (GraphPoints - 1)) * step;
+        const qint64 first = end - length;
+        double value = 0.0;
+        if (first != end && first >= 0) {
+            for (qint64 k = 0; k < length; ++k)
+                value += static_cast<double>(m_seconds[static_cast<size_t>(first + k)]) * (*weights)[static_cast<size_t>(k)];
         }
-        sorted.resize(ListedSources);
-        sorted.push_back(std::move(others));
+        m_graph[static_cast<size_t>(i)] = static_cast<int>(static_cast<qint64>(value));
     }
-    m_listedSources = std::move(sorted);
-}
-
-const TDamageInputStorage::Source* TDamageInputStorage::source(const QString& name) const
-{
-    for (const Source& source : m_listedSources) {
-        if (source.name == name)
-            return &source;
-    }
-    return nullptr;
+    emitGraphChanged();
+    m_lastGraphUpdate = nowMs;
 }
 
 std::vector<double> TDamageInputStorage::graph(double& maxY) const
 {
-    const std::vector<double>& weights = m_showSessionValues ? m_weights900 : m_weights15;
-    const int step = m_showSessionValues ? SessionGraphStepSeconds : GraphStepSeconds;
-    constexpr int Points = TImpactStorage::GraphPoints;
-    std::vector<double> points(Points, 0.0);
-    double maxValue = 0.0;
-    for (int i = 0; i < Points; ++i) {
-        const qint64 end = static_cast<qint64>(m_bins.size()) - static_cast<qint64>(Points - 1 - i) * step;
-        const qint64 first = end - static_cast<qint64>(weights.size());
-        double value = 0.0;
-        if (first >= 0) {
-            for (size_t k = 0; k < weights.size(); ++k)
-                value += weights[k] * static_cast<double>(m_bins[static_cast<size_t>(first) + k]);
-        }
-        points[static_cast<size_t>(i)] = value;
-        maxValue = std::max(maxValue, value);
-    }
+    std::vector<double> points(m_graph.begin(), m_graph.end());
+    const double maxValue = points.empty() ? 0.0 : *std::max_element(points.begin(), points.end());
     maxY = adjustGraphMaxY(maxY, maxValue);
     return points;
 }
@@ -491,13 +539,14 @@ void TDamageInputStorage::reset()
     m_sessionTotal = 0;
     m_windowTotal = 0;
     m_maxPerSecond = 0;
-    std::fill(m_bins.begin(), m_bins.end(), 0);
-    m_hits.clear();
-    m_sessionElements = {};
-    m_windowElements = {};
+    std::fill(m_seconds.begin(), m_seconds.end(), 0);
+    m_graph = {};
+    m_sessionElements.clear();
     m_sessionSources.clear();
-    m_listedSources.clear();
-    m_lastGraph = 0;
+    m_hits.clear();
+    m_listedSessionSources.clear();
+    m_windowSources.clear();
+    m_windowElements.clear();
     emitValuesChanged();
     emitGraphChanged();
 }
@@ -507,7 +556,8 @@ void TDamageInputStorage::setShowSessionValues(const bool show)
     if (m_showSessionValues == show)
         return;
     m_showSessionValues = show;
-    rebuildLists();
+    m_lastGraphUpdate = 0;
+    m_graph = {};
     emitOptionsChanged();
     emitValuesChanged();
     emitGraphChanged();
