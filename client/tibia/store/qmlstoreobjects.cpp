@@ -351,7 +351,7 @@ TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManage
         }
     }
     if (descriptionManager)
-        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::onOfferDescriptionLoaded);
+        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::descriptionChanged);
 }
 
 QString TQmlStoreOffer::name() const
@@ -425,11 +425,6 @@ bool TQmlStoreOffer::hasQuantity(const int offerId) const
     return m_offer.hasQuantity(static_cast<TOfferID>(offerId));
 }
 
-void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
-{
-    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
-        Q_EMIT descriptionChanged();
-}
 
 TQmlTransactionHistoryEntry::TQmlTransactionHistoryEntry(const TStoreTransactionHistoryEntry& entry, QObject* parent)
     : cip::tibia::store::TQmlTransactionHistoryEntry(parent)

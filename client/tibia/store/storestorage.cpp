@@ -35,6 +35,49 @@ int categoryState(const uint32_t state)
     throw std::invalid_argument("Invalid enum value");
 }
 
+/// A protocol enum the client maps one to one: values from 0 up to `count`
+/// (from 1 for the genders) convert, any other value is an error.
+int protocolEnum(const uint32_t value, const uint32_t first, const uint32_t count)
+{
+    if (value >= first && value < count)
+        return static_cast<int>(value);
+    throw std::runtime_error("unhandled enum value");
+}
+
+/// The open actions, premium details, useful things, sort orders, service
+/// types and try-on types of the store protocol.
+int openActionEnum(const int value) { return protocolEnum(static_cast<uint32_t>(value), 0, 6); }
+int premiumDetailEnum(const int value) { return protocolEnum(static_cast<uint32_t>(value), 0, 8); }
+int usefulThingEnum(const int value) { return protocolEnum(static_cast<uint32_t>(value), 0, 14); }
+int sortOrderEnum(const uint32_t value) { return protocolEnum(value, 0, 4); }
+int serviceTypeEnum(const uint32_t value) { return protocolEnum(value, 0, 4); }
+int tryOnTypeEnum(const uint32_t value) { return protocolEnum(value, 0, 3); }
+int sexEnum(const uint32_t value) { return protocolEnum(value, 1, 3); }
+
+/// A price's currency (0 to 3).
+int storeCurrency(const uint32_t currency)
+{
+    if (currency < 4)
+        return static_cast<int>(currency);
+    throw std::runtime_error(QStringLiteral("Protobuf EStoreCurrency %1 couldn't be converted").arg(static_cast<int>(currency)).toStdString());
+}
+
+/// A transaction's mode (0 to 2).
+int transactionMode(const uint32_t mode)
+{
+    if (mode < 3)
+        return static_cast<int>(mode);
+    throw std::invalid_argument("Invalid enum value");
+}
+
+/// A world's PvP type (0 to 4).
+int worldType(const uint32_t type)
+{
+    if (type < 5)
+        return static_cast<int>(type);
+    throw std::invalid_argument("invalid protocol world type enum value");
+}
+
 /// The offer order: popularity (descending) or newest first, ties and
 /// every other order by name, numbers compared as numbers.
 struct TOfferSortPredicate
@@ -408,24 +451,29 @@ qint64 TStoreProtocolMessageHandler::creditPacketSize() const
     return m_storage ? m_storage->creditPacketSize() : 1;
 }
 
+void TStoreProtocolMessageHandler::requestStoreCategories()
+{
+    if (m_storage)
+        m_storage->clearCategories();
+    sendMessage(tibia::protocol::newGameclientMessage(250));
+}
+
 void TStoreProtocolMessageHandler::openStore(const TStoreOpenParameters& parameters)
 {
-    if (m_storage && !m_storage->categoriesLoaded()) {
-        m_storage->clearCategories();
-        sendMessage(tibia::protocol::newGameclientMessage(250));
-    }
+    if (m_storage && !m_storage->categoriesLoaded())
+        requestStoreCategories();
     auto message = tibia::protocol::newGameclientMessage(251);
     auto* request = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
-    request->set_request_type(static_cast<uint32_t>(parameters.openAction));
-    request->set_sort_order(static_cast<uint32_t>(parameters.sortOrder));
-    request->set_service_type(static_cast<uint32_t>(parameters.serviceType));
+    request->set_request_type(static_cast<uint32_t>(openActionEnum(parameters.openAction)));
+    request->set_sort_order(static_cast<uint32_t>(sortOrderEnum(static_cast<uint32_t>(parameters.sortOrder))));
+    request->set_service_type(static_cast<uint32_t>(serviceTypeEnum(static_cast<uint32_t>(parameters.serviceType))));
     switch (parameters.openAction) {
-        case OPEN_PREMIUM_OR_BOOSTS: request->set_value(static_cast<uint32_t>(parameters.premiumDetail)); break;
+        case OPEN_PREMIUM_OR_BOOSTS: request->set_value(static_cast<uint32_t>(premiumDetailEnum(parameters.premiumDetail))); break;
         case OPEN_CATEGORY:
             request->set_category(parameters.category.toStdString());
             request->set_subcategory(parameters.subcategory.toStdString());
             break;
-        case OPEN_USEFUL_THING: request->set_value(static_cast<uint32_t>(parameters.usefulThing)); break;
+        case OPEN_USEFUL_THING: request->set_value(static_cast<uint32_t>(usefulThingEnum(parameters.usefulThing))); break;
         case OPEN_OFFER: request->set_value(parameters.offerId); break;
         case OPEN_SEARCH: request->set_search_text(parameters.category.toStdString()); break;
         default: break;
@@ -485,7 +533,7 @@ void TStoreProtocolMessageHandler::buyOfferWithoutConfirmation(const TOfferID of
 
 void TStoreProtocolMessageHandler::buyHireling(const TOfferID offerId, const QString& name, const int sex, const bool buyWithCosmeticTokens)
 {
-    sendBuyStoreOffer(offerId, 3, &name, static_cast<uint32_t>(sex), buyWithCosmeticTokens);
+    sendBuyStoreOffer(offerId, 3, &name, static_cast<uint32_t>(sexEnum(static_cast<uint32_t>(sex))), buyWithCosmeticTokens);
 }
 
 void TStoreProtocolMessageHandler::openTransactionHistory(const uint32_t entriesPerPage)
@@ -552,7 +600,7 @@ void TStoreProtocolMessageHandler::sendStoreEventFilterTag(const QString& filter
 void TStoreProtocolMessageHandler::sendStoreEventSortOrder(const int sortOrder)
 {
     std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 2)->set_value(static_cast<uint32_t>(sortOrder));
+    storeEvent(message, 2)->set_value(static_cast<uint32_t>(sortOrderEnum(static_cast<uint32_t>(sortOrder))));
     sendMessage(std::move(message));
 }
 
@@ -701,7 +749,7 @@ void TStoreProtocolMessageHandler::handleStoreOffersMessage(const GameserverMess
             quantity.offerId = sub.offer_id();
             quantity.quantity = sub.count();
             quantity.price = sub.price();
-            quantity.currency = static_cast<int>(sub.coin_type());
+            quantity.currency = storeCurrency(sub.coin_type());
             quantity.canBeBought = !sub.disabled();
             if (!quantity.canBeBought) {
                 std::vector<QString> reasons;
@@ -711,7 +759,7 @@ void TStoreProtocolMessageHandler::handleStoreOffersMessage(const GameserverMess
                 }
                 quantity.disabledReasons = std::move(reasons);
             }
-            quantity.highlightState = static_cast<int>(sub.state());
+            quantity.highlightState = categoryState(sub.state());
             quantity.basePrice = sub.base_price();
             quantity.validUntil = sub.valid_until();
             quantity.buyableWithCosmeticTokens = sub.flag();
@@ -721,7 +769,7 @@ void TStoreProtocolMessageHandler::handleStoreOffersMessage(const GameserverMess
         offer.products = std::move(products);
         offer.name = toQString(source.name());
         offer.visualisation = visualisation(source.visual());
-        offer.tryOnType = static_cast<int>(source.try_on_type());
+        offer.tryOnType = tryOnTypeEnum(source.try_on_type());
         offer.collection = toQString(source.collection());
         offer.popularity = source.popularity();
         offer.newUntil = source.new_until();
@@ -734,12 +782,12 @@ void TStoreProtocolMessageHandler::handleStoreOffersMessage(const GameserverMess
         std::vector<TStoreBanner> banners;
         for (const ProtocolStoreBanner& banner : message.banners())
             banners.push_back({ toQString(banner.image()), openParameters(banner.parameters()) });
-        m_storage->setHomePage(std::move(banners), message.banner_delay(), std::move(offers), static_cast<int>(message.sort_order()));
+        m_storage->setHomePage(std::move(banners), message.banner_delay(), std::move(offers), sortOrderEnum(message.sort_order()));
     } else if (categoryName == QLatin1String("Search")) {
-        m_storage->setSearchResults(std::move(offers), message.redirect_id(), static_cast<int>(message.sort_order()),
+        m_storage->setSearchResults(std::move(offers), message.redirect_id(), sortOrderEnum(message.sort_order()),
                                     message.too_many_results());
     } else {
-        m_storage->setCategoryOffers(categoryName, std::move(offers), message.redirect_id(), static_cast<int>(message.sort_order()));
+        m_storage->setCategoryOffers(categoryName, std::move(offers), message.redirect_id(), sortOrderEnum(message.sort_order()));
     }
     Q_EMIT requestOpenStoreDialog();
     const QString collection = toQString(message.collection_name());
@@ -752,7 +800,26 @@ void TStoreProtocolMessageHandler::handleRequestPurchaseDataMessage(const Gamese
     const auto offerId = static_cast<int>(message.offer_id());
     switch (message.purchase_type()) {
         case 1: Q_EMIT requestCharacterNameChangeInputDialog(offerId, message.cosmetic_tokens()); break;
+        case 2: {
+            const ProtocolWorldTransferInformation& source = message.world_transfer();
+            TWorldTransferInformation information;
+            information.flag = source.flag();
+            for (int i = 0; i < 5 && i < source.flags_size(); ++i)
+                information.flags[i] = source.flags(i);
+            for (const ProtocolTransferWorld& world : source.worlds())
+                information.worlds.push_back({ toQString(world.name()), world.first_flag(), world.second_flag(), worldType(world.pvp_type()) });
+            Q_EMIT requestCharacterWorldChangeInputDialog(offerId, information, message.cosmetic_tokens());
+            break;
+        }
         case 3: Q_EMIT requestHirelingInputDialog(offerId, message.cosmetic_tokens()); break;
+        case 4: {
+            std::vector<TPossibleMainCharacterInformation> characters;
+            for (const ProtocolMainCharacterOption& character : message.main_characters())
+                characters.push_back({ toQString(character.name()), toQString(character.world()), toQString(character.vocation()),
+                                       static_cast<int>(character.level()) });
+            Q_EMIT requestMainCharacterChangeInputDialog(offerId, characters, message.cosmetic_tokens());
+            break;
+        }
         case 6: Q_EMIT requestConfirmationDialog(offerId, toQString(message.message()), message.cosmetic_tokens()); break;
         default: break;
     }
@@ -762,7 +829,8 @@ void TStoreProtocolMessageHandler::handleCreditBalanceMessage(const GameserverMe
 {
     std::optional<TStoreBalance> balance;
     if (message.update())
-        balance = TStoreBalance{ message.total(), message.transferable(), message.reserved_auction() };
+        balance = TStoreBalance{ static_cast<int32_t>(message.total()), static_cast<int32_t>(message.transferable()),
+                                 static_cast<int32_t>(message.reserved_auction()) };
     if (m_storage)
         m_storage->setBalance(balance);
     // The market trades the transferable coins.
@@ -789,10 +857,10 @@ void TStoreProtocolMessageHandler::handleTransactionHistoryMessage(const Gameser
         TStoreTransactionHistoryEntry entry;
         entry.transactionId = source.transaction_id();
         entry.time = source.timestamp();
-        entry.amount = source.amount();
+        entry.amount = static_cast<int32_t>(source.amount());
         entry.description = toQString(source.description());
-        entry.mode = static_cast<int>(source.mode());
-        entry.currency = static_cast<int>(source.coin_type());
+        entry.mode = transactionMode(source.mode());
+        entry.currency = storeCurrency(source.coin_type());
         entry.detailsAvailable = source.has_details();
         history.entries.push_back(std::move(entry));
     }
@@ -851,6 +919,19 @@ void TStoreProtocolMessageHandler::handleStoreErrorMessage(const GameserverMessa
     }
 }
 
+void TStoreProtocolMessageHandler::handleSetStoreButtonDeeplinkMessage(const GameserverMessageSetStoreButtonDeeplink& message)
+{
+    const ProtocolStoreOpenParameters& p = message.parameters();
+    Q_EMIT storeButtonDeeplinkChanged(openParameters(p));
+    // Host: the store button controller takes the deep link through the game
+    // notify hook.
+    const auto action = static_cast<uint8_t>(p.open_action());
+    const uint32_t detail = action == OPEN_OFFER ? p.offer_id() : p.detail();
+    const std::string category = action == OPEN_SEARCH ? p.search_text() : p.category();
+    tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(), static_cast<uint8_t>(p.sort_order()),
+                        static_cast<uint8_t>(p.service_type()));
+}
+
 void TStoreProtocolMessageHandler::handleStoreButtonIndicatorsMessage(const GameserverMessageStoreButtonIndicators& message)
 {
     Q_EMIT storeButtonIndicatorsChanged(message.sale(), message.new_offers());
@@ -879,17 +960,9 @@ void TStoreProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
             handler->handleStoreOffersMessage(shadow->GetExtension(GameserverMessageStoreOffers::gameserver_message_store_offers));
         break;
     case 168:
-        if (shadow->HasExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)) {
-            // Host: the store button controller takes the deep link through
-            // the game notify hook.
-            const auto& p = shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)
-                                .parameters();
-            const auto action = static_cast<uint8_t>(p.open_action());
-            const uint32_t detail = action == OPEN_OFFER ? p.offer_id() : p.detail();
-            const std::string category = action == OPEN_SEARCH ? p.search_text() : p.category();
-            tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(),
-                                static_cast<uint8_t>(p.sort_order()), static_cast<uint8_t>(p.service_type()));
-        }
+        if (shadow->HasExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink))
+            handler->handleSetStoreButtonDeeplinkMessage(
+                shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink));
         break;
     case 203:
         if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details)) {

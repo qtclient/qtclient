@@ -22,6 +22,7 @@ class GameserverMessageTransactionHistory;
 class GameserverMessageStoreSuccess;
 class GameserverMessageStoreError;
 class GameserverMessageStoreButtonIndicators;
+class GameserverMessageSetStoreButtonDeeplink;
 class GameserverMessageOfferDescription;
 class ProtocolStoreVisual;
 class ProtocolStoreOpenParameters;
@@ -181,6 +182,33 @@ struct TStoreBanner
     TStoreOpenParameters parameters;
 };
 
+/// A world a character can transfer to.
+struct TTransferWorld
+{
+    QString name;
+    bool firstFlag = false;
+    bool secondFlag = false;
+    /// The world's PvP type (0 to 4).
+    int pvpType = 0;
+};
+
+/// What the world transfer dialog offers.
+struct TWorldTransferInformation
+{
+    bool flag = false;
+    bool flags[5] = {};
+    std::vector<TTransferWorld> worlds;
+};
+
+/// A character that can become the account's main character.
+struct TPossibleMainCharacterInformation
+{
+    QString name;
+    QString world;
+    QString vocation;
+    int level = 0;
+};
+
 /// One line of the transaction history.
 struct TStoreTransactionHistoryEntry
 {
@@ -323,6 +351,8 @@ public:
     /// The login message's coin packet size: coins transfer in multiples of it.
     qint64 creditPacketSize() const;
 
+    /// Drops the categories and asks the server for them again.
+    void requestStoreCategories();
     /// Asks for the categories when not loaded yet, then for the page.
     void openStore(const TStoreOpenParameters& parameters);
     void buyOffer(TOfferID offerId, bool buyWithCosmeticTokens);
@@ -354,6 +384,7 @@ public:
     void handleTransactionHistoryMessage(const tibia::protobuf::protocol::GameserverMessageTransactionHistory& message);
     void handleStoreSuccessMessage(const tibia::protobuf::protocol::GameserverMessageStoreSuccess& message);
     void handleStoreErrorMessage(const tibia::protobuf::protocol::GameserverMessageStoreError& message);
+    void handleSetStoreButtonDeeplinkMessage(const tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink& message);
     void handleStoreButtonIndicatorsMessage(const tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators& message);
     void handleOfferDescriptionMessage(const tibia::protobuf::protocol::GameserverMessageOfferDescription& message);
 
@@ -363,6 +394,12 @@ public:
 
 Q_SIGNALS:
     void requestCharacterNameChangeInputDialog(int OfferIDForCharacterNameChange, bool BuyWithCosmeticTokens);
+    void requestCharacterWorldChangeInputDialog(int OfferIDForWorldChange, const tibia::store::TWorldTransferInformation& WorldTransferInformation,
+                                                bool BuyWithCosmeticTokens);
+    void requestMainCharacterChangeInputDialog(int OfferIDForMainCharChange,
+                                               const std::vector<tibia::store::TPossibleMainCharacterInformation>& PossibleMainCharInfo,
+                                               bool BuyWithCosmeticTokens);
+    void storeButtonDeeplinkChanged(const tibia::store::TStoreOpenParameters& StoreDeeplink);
     void requestHirelingInputDialog(int OfferIDForHireling, bool BuyWithCosmeticTokens);
     void requestConfirmationDialog(int Offer, const QString& Message, bool BuyWithCosmeticTokens);
     void storeOfferDescriptionReceived(int OfferID, const QString& Description);

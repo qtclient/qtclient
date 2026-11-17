@@ -218,7 +218,6 @@ Q_SIGNALS:
 
 private:
     void updateSockets();
-    void gemAction(int type, int param, int pos = 0);
 
     TSkillWheelStorage* m_storage;
     TInventoryGemListModel* m_list;

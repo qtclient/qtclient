@@ -55,6 +55,15 @@ public:
 
     /// Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
     void onServerMessageEnqueued(int opcode);
+
+    /// The Gem Atelier requests: dismantle (0), reveal a gem of a quality 0..2
+    /// (1), reshape one mod (2), lock or unlock (3) and enhance a fragment mod
+    /// grade (4).
+    static void dismantleGem(int gemId);
+    static void revealGem(int quality);
+    static void reshapeGem(int gemId, int modIndex);
+    static void toggleGemLock(int gemId);
+    static void enhanceModGrade(int modType, int modId);
 };
 
 }
