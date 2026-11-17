@@ -11,6 +11,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <utility>
 
 namespace tibia::store {
 
@@ -170,6 +171,11 @@ TQmlStoreCategory::TQmlStoreCategory(const QString& name, const std::vector<QStr
     for (const QString& identifier : imageIdentifiers)
         m_imageIdentifiers.append(identifier);
     m_subcategoryList = subcategories;
+}
+
+TQmlStoreCategory::~TQmlStoreCategory()
+{
+    qDeleteAll(std::exchange(m_subcategoryList, {}));
 }
 
 TQmlStoreVisualisation::TQmlStoreVisualisation(const TStoreVisualisation& visualisation, QObject* parent)
@@ -352,7 +358,20 @@ TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManage
         }
     }
     if (descriptionManager)
-        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::descriptionChanged);
+        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::onOfferDescriptionLoaded);
+}
+
+TQmlStoreOffer::~TQmlStoreOffer()
+{
+    qDeleteAll(m_products);
+    qDeleteAll(m_quantities);
+    qDeleteAll(m_cosmeticTokenQuantities);
+}
+
+void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
+{
+    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
+        Q_EMIT descriptionChanged();
 }
 
 QString TQmlStoreOffer::name() const
@@ -488,6 +507,11 @@ TQmlStoreTransactionHistoryPage::TQmlStoreTransactionHistoryPage(const TStoreTra
 {
     for (const TStoreTransactionHistoryEntry& entry : m_history.entries)
         m_transactionEntries.append(new TQmlTransactionHistoryEntry(entry, this));
+}
+
+TQmlStoreTransactionHistoryPage::~TQmlStoreTransactionHistoryPage()
+{
+    qDeleteAll(m_transactionEntries);
 }
 
 bool TQmlStoreTransactionHistoryPage::canLoadNextPage() const
