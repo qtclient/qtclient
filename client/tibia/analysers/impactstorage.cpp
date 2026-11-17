@@ -310,10 +310,9 @@ void TImpactStorage::setGaugeVisible(const Kind kind, const bool visible)
 
 void TImpactStorage::setGaugeTarget(const Kind kind, const double target)
 {
-    const double clamped = std::clamp(target, MinGaugeTarget, MaxGaugeTarget);
-    if (m_gaugeTarget[kind] == clamped)
+    if (m_gaugeTarget[kind] == target)
         return;
-    m_gaugeTarget[kind] = clamped;
+    m_gaugeTarget[kind] = target;
     emitOptionsChanged();
 }
 

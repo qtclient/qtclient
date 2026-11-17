@@ -198,6 +198,80 @@ TPreyData* TPreyStorage::slot(const int preyId) const
 
 void TPreyStorage::markReceived(const int preyId) { m_pendingSlots.erase(preyId); }
 
+void TPreyStorage::setSlotNextFreeListReroll(const int preyId, const qint64 seconds)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setNextFreeListReroll(seconds);
+}
+
+void TPreyStorage::setSlotTimeLeft(const int preyId, const int seconds)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setTimeLeft(seconds);
+}
+
+void TPreyStorage::setSlotAutomaticExtendType(const int preyId, const int type)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setAutomaticExtendType(type);
+}
+
+void TPreyStorage::setSlotLocked(const int preyId, const int unlockOption)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setLocked(unlockOption);
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotInactive(const int preyId)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setInactive();
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotActive(const int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, const int timeLeft)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setActive(bonus, monster, timeLeft);
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotSelection(const int preyId, QList<TPreyMonster> list)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setSelection(std::move(list));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotSelectionChangeMonster(const int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setSelectionChangeMonster(bonus, std::move(list));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotListSelection(const int preyId, QList<uint16_t> races)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setListSelection(std::move(races));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotWildcardSelection(const int preyId, const TPreyBonus& bonus, QList<uint16_t> races)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setWildcardSelection(bonus, std::move(races));
+        markReceived(preyId);
+    }
+}
+
 void TPreyStorage::reset()
 {
     m_pendingSlots.clear();

@@ -292,6 +292,8 @@ public:
     double maxPerSecond(Kind kind) const { return m_data[kind].maxPerSecond; }
     /// Session total over the session's length, per second.
     double sessionPerSecond(Kind kind) const { return m_data[kind].sessionPerSecond; }
+    /// The highest session per second value.
+    double maxSessionPerSecond(Kind kind) const { return m_data[kind].maxSessionPerSecond; }
     /// At least 1 s.
     qint64 sessionLengthMs() const;
     /// At most 15 s.
