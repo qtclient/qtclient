@@ -553,8 +553,8 @@ chat::TWhiteBlacklist::~TWhiteBlacklist	097457dc45e86dd8	skip	generated: compile
 chat::TWhiteBlacklist::~TWhiteBlacklist_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 client::IGamesessionManager::~IGamesessionManager	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 client::IGamesessionManager::~IGamesessionManager_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
-client::TAntiCheatController::~TAntiCheatController	e490adc3bd06052a	skip	generated: compiler-generated destructor pair (member teardown)
-client::TAntiCheatController::~TAntiCheatController_deleting	718a9daa112f4bf3	skip	generated: compiler-generated destructor pair (member teardown)
+client::TAntiCheatController::~TAntiCheatController	e490adc3bd06052a	skip	policy: battleye BattlEye client controller teardown (shuts down and unloads the BattlEye library; BattlEye is out of scope)
+client::TAntiCheatController::~TAntiCheatController_deleting	718a9daa112f4bf3	skip	policy: battleye BattlEye client controller teardown (shuts down and unloads the BattlEye library; BattlEye is out of scope)
 client::TGameApplication::~TGameApplication	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 client::TGameApplication::~TGameApplication_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 client::TGameApplicationBase::~TGameApplicationBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
@@ -16298,7 +16298,6 @@ sub_991c96350cfd#9	991c96350cfda1d0	ported	appearances/appearancetype.h:patternD
 sub_991ed39efe15	991ed39efe150bc9	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
 sub_9926dc843f06	9926dc843f06cb03	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node inter
 sub_9926dc843f06#2	9926dc843f06cb03	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node inter
-sub_992d5a852bcb	992d5a852bcbb59f	skip	generated: compiler-generated destructor bodies (member teardown)
 sub_99307b3194db	99307b3194dbbe67	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::setPersonalizedAdsAccepted
 sub_9939da14ccb1	9939da14ccb189c3	ported	sound/soundcontrollermusic.cpp:TSoundControllerMusic::TSoundControllerMusic
 sub_9947193ca6fe	9947193ca6fe70ce	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeTarget
