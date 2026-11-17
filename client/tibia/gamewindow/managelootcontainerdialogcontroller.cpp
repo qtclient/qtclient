@@ -233,7 +233,7 @@ void TManageLootContainerDialogController::setUseMainBackpackAsFallback(const bo
     // The checkbox only asks the server; the stored flag follows its answer.
     if (m_containers ? m_containers->useMainBackpackAsFallback() == v : !v)
         return;
-    input::publish(std::make_shared<input::TGameActionSetLootContainerFallback>(v));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetLootContainerFallback>(v));
 }
 
 void TManageLootContainerDialogController::setFilterString(const QString& v)
@@ -280,7 +280,7 @@ void TManageLootContainerDialogController::getPremiumClicked()
 {
     // The store, opened on its premium page.
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
@@ -326,7 +326,7 @@ void TManageLootContainerDialogController::requestAddItemBlackWhitelist()
 {
     // Items are put on the list from the cyclopedia's item page.
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TManageLootContainerDialogController::removeItemFromList(const int AppearanceTypeIDRaw)
@@ -339,7 +339,7 @@ void TManageLootContainerDialogController::showItemDetails(const int AppearanceT
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     action->setTypeId(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TManageLootContainerDialogController::onPremiumTimeChanged() { syncPremium(); }
@@ -435,7 +435,7 @@ void TManageLootContainerDialogController::finishPick(const input::TTargetSelect
         const uint16_t typeId = target->objectClientId();
         TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (type && type->isContainer()) {
-            input::publish(std::make_shared<input::TGameActionSelectManagedContainer>(
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectManagedContainer>(
                 mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
                 target->context()));
         } else {

@@ -189,7 +189,7 @@ void TBlessingsDialogController::onPremiumStatusChanged()
 void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     requestClose();
 }
 
@@ -199,7 +199,7 @@ void TBlessingsDialogController::requestOpenStoreWithBlessingOffer(const int Ble
     if (!offer)
         return;
     auto action = std::make_shared<input::TGameActionOpenStore>(3, offer);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     requestClose();
 }
 

@@ -306,7 +306,7 @@ void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
     if (!tibia::game::isOnline())
         return;
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog>(profession());
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogController(TProficiencyStorage* storage,

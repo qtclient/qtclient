@@ -218,7 +218,7 @@ void TActionBarManager::onWorldEntered()
     if (tibia::game::hasLocalPlayer()) {
         config::THotkeyOptions::instance()->onCharacterLoggedIn();        // CIP : TRY_TO_SWITCH_HOTKEYSET(character name, no status line).
         auto action = std::make_shared<input::TGameActionTryToSwitchHotkeySet>(QString::fromStdString(tibia::game::characterName()), false);
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
     }
     applyMappings();
 }
@@ -329,7 +329,7 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameActionActionBu
         setting = slot ? target->settingAt(action.actionButtonId(), slot->multiActionIndex()) : Setting{};
     }
     execute(setting);
-    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     return true;
 }
 
@@ -337,7 +337,7 @@ void TActionBarManager::execute(const Setting& setting)
 {
     if (input::IGameActionPtr action = input::TKeyboardShortcutHandler::createGameAction(setting);
         action && setting.kind != Setting::ACTION)
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
 }
 
 bool TActionBarManager::toggleActionBar(const input::IGameAction& action)

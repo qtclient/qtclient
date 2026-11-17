@@ -743,7 +743,7 @@ void TMarketController::onCloseButtonPressed()
 
 void TMarketController::onGetCoinsButtonClicked()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
 void TMarketController::onStoreDeeplinkClicked()
@@ -758,7 +758,7 @@ void TMarketController::onStoreDeeplinkClicked()
         return;
     close();
     auto action = std::make_shared<input::TGameActionOpenStore>(store::OPEN_PREMIUM_OR_BOOSTS, detail);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 QString TMarketController::getPriceOrProfitMultistring(const int Amount, const qlonglong PiecePrice)

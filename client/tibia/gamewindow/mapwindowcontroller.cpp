@@ -183,7 +183,7 @@ void TMapWindowController::updateTrackedUseAtMouseCursor()
         return;
     clearTrackedUseAtMouseCursorGameAction();
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("actionbar_action_no_target"));
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TMapWindowController::trackUseAtMouseCursorGameAction()

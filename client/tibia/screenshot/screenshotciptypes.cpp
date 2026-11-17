@@ -98,8 +98,6 @@ TScreenshotManager::TScreenshotManager(QObject* parent)
                 if (name.startsWith(QLatin1String("scre")))
                     onScreenshotMangerOptionsChanged();
             });
-    connect(this, &TScreenshotManager::publishGameAction, this,
-            [](const input::IGameActionPtr& action) { input::publish(action); });
 }
 
 TScreenshotManager::~TScreenshotManager()

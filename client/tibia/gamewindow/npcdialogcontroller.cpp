@@ -183,7 +183,7 @@ void TNpcDialogController::resetConversation()
 void TNpcDialogController::onFocusChanged()
 {
     if (!hasFocus()) {
-        input::publish(std::make_shared<input::TGameActionSwitchChatMode>(m_savedChatMode));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSwitchChatMode>(m_savedChatMode));
     } else if (m_chatControl) {
         m_savedChatMode = m_chatControl->chatMode();
     }
@@ -250,11 +250,11 @@ void TNpcDialogController::copySelectedText()
     const QString selected = item->property("currentChatInputSelectedText").toString();
     if (selected.isEmpty()) {
         if (m_chat && m_chat->hasSelection()) {
-            input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(m_chat->selectedText()));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(m_chat->selectedText()));
         }
         return;
     }
-    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(selected));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(selected));
 }
 
 QString TNpcDialogController::sendChatMessage(const QString& Message, const bool EnforceWritesToLocalChat)

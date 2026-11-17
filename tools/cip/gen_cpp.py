@@ -292,6 +292,11 @@ class Gen:
         return None
 
     @staticmethod
+    def game_action_signal(m):
+        """A signal whose one argument is CIP's std::shared_ptr<IGameAction>."""
+        return len(m["args"]) == 1 and re.fullmatch(r"std::shared_ptr<(tibia::input::)?IGameAction>", m["args"][0]["type"].strip())
+
+    @staticmethod
     def by_value(t):
         return t in VALUE_TYPES or t.endswith("*") or t == "int" or "::E" in t or t in QT_ENUMS
 
@@ -415,6 +420,9 @@ class Gen:
                 mname = m["name"]
                 ret = "void" if kind == "signals" else self.cpp_type(m["return"], name, emitted)
                 args = self.arglist(m, name, emitted)
+                if kind == "signals" and args is None and self.game_action_signal(m):
+                    # publishGameAction: the action as qtclient's IGameActionPtr.
+                    args = [("const ::tibia::input::IGameActionPtr&", m["args"][0].get("name") or "a0")]
                 sig = f"{m['return']} {mname}({', '.join(a['type'] for a in m['args'])})"
                 if ret is None or args is None:
                     skip(f"{kind[:-1]} {sig}: type")
@@ -559,7 +567,10 @@ class Gen:
                 "    template <> struct cip::Impl<BASE> { using type = IMPL; }", ""]
         files["cip_fwd.h"] = "\n".join(fwd)
 
-        includes = ["#include <QtCore/QAbstractListModel>", "#include <QtCore/QSortFilterProxyModel>",
+        includes = ["#include <memory>", "",
+                    "namespace tibia::input {", "class IGameAction;",
+                    "using IGameActionPtr = std::shared_ptr<const IGameAction>;", "}", "",
+                    "#include <QtCore/QAbstractListModel>", "#include <QtCore/QSortFilterProxyModel>",
                     "#include <QtCore/QIdentityProxyModel>", "#include <QtCore/QJsonArray>",
                     "#include <QtCore/QJsonDocument>", "#include <QtCore/QJsonObject>", "#include <QtCore/QJsonValue>",
                     "#include <QtCore/QDateTime>", "#include <QtCore/QUrl>", "#include <QtCore/QVariant>",

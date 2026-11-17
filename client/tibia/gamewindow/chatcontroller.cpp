@@ -1228,12 +1228,12 @@ bool TChatController::exivaOptionsAvailable() const
 
 void TChatController::openWhiteBlacklistDialog()
 {
-    input::publish(input::makeGameAction(A::OPEN_WHITEBLACKLIST_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_WHITEBLACKLIST_DIALOG));
 }
 
 void TChatController::openExivaOptionsDialog()
 {
-    input::publish(input::makeGameAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
 }
 
 void TChatController::addLogMessage(const QString& text)
@@ -1318,7 +1318,7 @@ void TChatController::onChannelListReceived(const std::vector<TChatChannelIdenti
 
 void TChatController::requestChannelList()
 {
-    input::publish(input::makeGameAction(A::GET_CHAT_CHANNEL_LIST));
+    Q_EMIT publishGameAction(input::makeGameAction(A::GET_CHAT_CHANNEL_LIST));
 }
 
 void TChatController::requestChannelListFromServer()
@@ -1506,7 +1506,7 @@ void TChatController::sendPrivate(const QString& recipient, const QString& text,
 void TChatController::sendKeyword(const QString& keyword)
 {
     // The keyword is sent right away, through the game action.
-    input::publish(std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(keyword, true));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(keyword, true));
 }
 
 void TChatController::setInputText(const QString& text, const bool sendDirectly)
@@ -1870,7 +1870,7 @@ void TChatController::copySelectedText()
         return;
     const QString inputSelection = m_chatItem->property("currentChatInputSelectedText").toString();
     if (!inputSelection.isEmpty()) {
-        input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(inputSelection));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(inputSelection));
         return;
     }
     if (m_primary.hasSelection())
@@ -1989,7 +1989,7 @@ void TChatController::runMenuAction(const input::IGameActionPtr& action, TChatCh
         return;
     default:
         // ADD_NEW_VIP goes to the VIP list's game action handler (AddBuddy).
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
 }

@@ -89,7 +89,7 @@ void TDeathDialogController::onLogoutRequested()
     closeBox();
     // Host: the scene stays frozen while the death message shows.
     tibia::game::setSceneFrozen(false);
-    input::publish(std::make_shared<input::TGameActionQuitGame>(true));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(true));
     m_finishing = false;
 }
 
@@ -109,7 +109,7 @@ void TDeathDialogController::onWorldEntered()
         return;
     m_openStoreOnWorldEntered = false;
     // The store opened at useful thing 11 (the death hint points there).
-    input::publish(std::make_shared<input::TGameActionOpenStore>(3, 11));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(3, 11));
 }
 
 void TDeathDialogController::onDialogButtonClicked(const QVariant& Identifier, const bool CheckBoxIsChecked)

@@ -477,7 +477,7 @@ void TOptionsMenuDialogController::openHelpChannel()
     // (Ctrl+T default) uses the same make-current join path.
     applyButtonClicked();
     dialog()->close();
-    input::publish(std::make_shared<input::TGameActionChatChannel>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChatChannel>(
         EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT,
         std::make_shared<const chat::TChatChannelIdentifier>(chat::TChatChannelIdentifier::help())));
 }
@@ -495,7 +495,7 @@ void TOptionsMenuDialogController::showAboutDialog()
 
 void TOptionsMenuDialogController::showCompendium()
 {
-    input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
 }
 
 void TOptionsMenuDialogController::exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries)

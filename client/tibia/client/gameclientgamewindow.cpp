@@ -792,6 +792,35 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &input::TCrossHairSpellGameActionHandler::handleGameAction);
     connect(g.crossHairSpellActions.get(), &input::TCrossHairSpellGameActionHandler::publishGameAction, router,
             &game::TInternalGameActionRouter::handleGameActionInternal);
+    // The controllers' publishGameAction reach the router.
+    const auto publishToRouter = [router](auto* publisher) {
+        if (publisher)
+            connect(publisher, &std::remove_pointer_t<decltype(publisher)>::publishGameAction, router,
+                    &game::TInternalGameActionRouter::handleGameActionInternal);
+    };
+    publishToRouter(gameWindowController);
+    publishToRouter(g.statusBarController.get());
+    publishToRouter(g.sidebarManager.get());
+    publishToRouter(g.mapWindowController);
+    publishToRouter(g.contextMenu.get());
+    publishToRouter(g.splitStackDialog.get());
+    publishToRouter(g.storeDialog.get());
+    publishToRouter(g.storeButton.get());
+    publishToRouter(g.marketController.get());
+    publishToRouter(g.stashDialog.get());
+    publishToRouter(g.manageLootDialog.get());
+    publishToRouter(g.exaltationForgeDialog.get());
+    publishToRouter(g.screenshotManager.get());
+    publishToRouter(g.minimapController);
+    publishToRouter(g.deathDialog.get());
+    publishToRouter(g.reportViolation.get());
+    publishToRouter(g.weaponProficiencyDialog.get());
+    publishToRouter(g.weaponProficiencyShapeDialog.get());
+    publishToRouter(g.blessingsDialog.get());
+    publishToRouter(g.rewardWallDialog.get());
+    publishToRouter(g.optionsDialog.get());
+    publishToRouter(g.chat.get());
+    publishToRouter(g.actionBars.get());
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
@@ -808,6 +837,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.npcTradeMessages = std::make_unique<trade::TNPCTradeProtocolMessageHandler>(g.npcTrade.get());
     g.npcDialog = std::make_unique<gamewindow::TNpcDialogController>(g.npcTrade.get());
     g.npcDialog->setChatController(chat);
+    publishToRouter(g.npcDialog.get());
     g.playerTrade = std::make_unique<gamewindow::TPlayerTradeWidgetManager>(sidebarManager, gameWindowItem, engine);
 
     // Must outlive bootstrapAll: SuiteRuntime keeps PackHostWire* for deferred

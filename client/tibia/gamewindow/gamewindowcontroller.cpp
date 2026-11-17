@@ -118,7 +118,7 @@ QString TGameWindowController::boostedBossName() const
 
 void TGameWindowController::linkClicked(const QString& Url)
 {
-    input::publish(std::make_shared<input::TGameActionOpenUrl>(Url));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenUrl>(Url));
 }
 
 void TGameWindowController::linkHoverChanged(const bool IsOverLink)
@@ -552,7 +552,7 @@ void TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout()
 
 void TGameWindowController::requestOpenCalendar()
 {
-    input::publish(input::makeGameAction(A::OPEN_CALENDAR_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_CALENDAR_DIALOG));
 }
 
 void TGameWindowController::setAuthenticated(const bool authenticated)
@@ -573,7 +573,7 @@ void TGameWindowController::showGameScreen()
     // CIP: the start screen's key filter goes; the game screen is announced.
     QCoreApplication::instance()->removeEventFilter(this);
     // CIP: the looping sounds play again.
-    input::publish(std::make_shared<input::gameactions::TGameActionSoundTrigger>(false));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSoundTrigger>(false));
     Q_EMIT gameScreenNowDisplayed();
 }
 
@@ -663,7 +663,7 @@ void TGameWindowController::loginPressed(const QString& EMailAddress, const QStr
 
 void TGameWindowController::forgotEMailAddressOrPasswordPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_LOST_ACCOUNT));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_LOST_ACCOUNT));
 }
 
 void TGameWindowController::handleCreateNewAccount()
@@ -673,7 +673,7 @@ void TGameWindowController::handleCreateNewAccount()
 
 void TGameWindowController::createNewAccountPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_CREATE_ACCOUNT));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_CREATE_ACCOUNT));
 }
 
 void TGameWindowController::goToLogin()
@@ -690,27 +690,27 @@ void TGameWindowController::goToCreateNewAccount()
 
 void TGameWindowController::tibiaLogoPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
 }
 
 void TGameWindowController::cipSoftLogoPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_CIPSOFT));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_CIPSOFT));
 }
 
 void TGameWindowController::twitchLogoPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_TWITCH_TIBIA));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_TWITCH_TIBIA));
 }
 
 void TGameWindowController::youTubeLogoPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_YOUTUBE_TIBIA));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_YOUTUBE_TIBIA));
 }
 
 void TGameWindowController::closeOpenMultiActionButtons()
 {
-    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
 }
 
 void TGameWindowController::setShowCreateAccountOption(const bool show)
@@ -754,7 +754,7 @@ void TGameWindowController::muteAnthemPressed()
 
 void TGameWindowController::manageAccountPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
 }
 
 void TGameWindowController::manageClientsPressed()
@@ -800,7 +800,7 @@ void TGameWindowController::handleGameExitRequest()
 void TGameWindowController::optionsPressed()
 {
     auto action = std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 }

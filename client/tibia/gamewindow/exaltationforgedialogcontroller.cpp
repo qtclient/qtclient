@@ -901,7 +901,7 @@ void TExaltationForgeDialogController::showDialog(const bool ReadOnly)
     if (ReadOnly) {
         for (const int resource : { 0, 1, 0x46, 0x47, 0x48 }) {
             auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-            input::publish(action);
+            Q_EMIT publishGameAction(action);
         }
     }
     if (!dialog()->item()) {

@@ -434,7 +434,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
     }
     for (const int resource : DialogResources) {
         auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
     }
     if (!dialog()->item()) {
         dialog()->create();
@@ -730,7 +730,7 @@ void TWeaponProficiencyDialogController::onModifyShapeClicked()
     }
     // OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG {typeId, level, perk, from the perk tree}.
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog>(static_cast<uint16_t>(typeId), static_cast<uint8_t>(level), static_cast<uint8_t>(perk), true);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TWeaponProficiencyDialogController::closeDialog()

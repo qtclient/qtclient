@@ -288,7 +288,7 @@ void TContextMenuController::showGameActions(const input::TGameActionList& actio
         if (action->gameActionType() == alt)
             shortcut = qtTrId("context_keymodifier_alt");
         TContextMenuEntryItem* entry = addEntry(label, shortcut);
-        connect(entry, &TContextMenuEntryItem::triggered, this, [action] { input::publish(action); });
+        connect(entry, &TContextMenuEntryItem::triggered, this, [this, action] { Q_EMIT publishGameAction(action); });
     }
     std::erase_if(m_extensions, [](const auto& extension) { return extension.first.isNull(); });
     for (const auto& extension : std::vector(m_extensions))
@@ -320,10 +320,10 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
         QMetaObject::invokeMethod(field, "remove", Q_ARG(int, start), Q_ARG(int, end));
         QMetaObject::invokeMethod(field, "deselect");
     };
-    const auto copySelection = [field] {
+    const auto copySelection = [this, field] {
         if (!field)
             return;
-        input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(
             field->property("selectedText").toString()));
     };
 
@@ -331,7 +331,7 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
         connect(addEntry(qtTrId("cut_text")), &TContextMenuEntryItem::triggered, this, [=] {
             const QString text = field ? field->property("selectedText").toString() : QString();
             removeSelection();
-            input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
         });
     }
     bool copyShown = false;

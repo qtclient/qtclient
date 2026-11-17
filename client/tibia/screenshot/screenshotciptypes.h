@@ -88,9 +88,6 @@ public:
     void configure(QQuickWindow* window, QQuickItem* mapWindow);
     void setGameSessionActive(bool active);
 
-Q_SIGNALS:
-    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
-
 public Q_SLOTS:
     /// TAKE_MANUAL_SCREENSHOT / TAKE_AUTOMATIC_SCREENSHOT.
     bool handleGameAction(const tibia::input::IGameAction& action);

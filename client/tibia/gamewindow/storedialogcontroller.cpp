@@ -885,7 +885,7 @@ void TStoreDialogController::requestSearch(const QString& SearchString)
 
 void TStoreDialogController::openGetCoinsUrl()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
 void TStoreDialogController::openTransactionHistory()
@@ -969,7 +969,7 @@ void TStoreDialogController::tryOutfitForCurrentOffer()
         mode = 3;
     else
         return;
-    input::publish(std::make_shared<input::TGameActionRequestOutfitsFromServer>(mode, static_cast<uint16_t>(typeId)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestOutfitsFromServer>(mode, static_cast<uint16_t>(typeId)));
 }
 
 void TStoreDialogController::requestTransferCredits()
@@ -990,12 +990,12 @@ void TStoreDialogController::requestTransactionDetailsAndShowPage(const int Tran
     m_transactionDetailsDialog->showDialog();
     m_transactionDetailsId = TransactionID;
     auto action = std::make_shared<input::TGameActionRequestTransactionDetailsFromServer>(TransactionID);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TStoreDialogController::requestTradeCharacter()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
 }
 
 void TStoreDialogController::rebuildAvailableOffers()
@@ -1119,7 +1119,7 @@ void TStoreButtonController::onOpenStoreButtonClicked()
         default: break;
     }
     auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplink.openAction, detail, m_deeplink.category);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     onRequestOpenStoreDialog();
 }
 

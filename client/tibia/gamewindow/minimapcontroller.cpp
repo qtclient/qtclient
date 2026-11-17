@@ -188,7 +188,7 @@ void TMinimapController::onCyclopediaMapButtonClicked()
         m_playerPosition = tibia::game::localPlayerPosition();
         action->setCoordinate(m_playerPosition);
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 // The rose's centre recentres on the player, its arms scroll, from the last
@@ -254,7 +254,7 @@ void TMinimapController::dispatchClick(const input::TGameActionList& actions, co
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     const input::TGameActionList entries = input::contextMenuActions(actions, contextMenuOrder);

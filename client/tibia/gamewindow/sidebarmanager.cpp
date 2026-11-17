@@ -192,7 +192,7 @@ void TSidebarManager::addWidget(TSidebarWidget* widget)
         return;
     const int height = widget->currentHeight();
     auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET });
-    input::publish(sound);
+    Q_EMIT publishGameAction(sound);
     if (m_sidebars.empty())
         return;
     uint target = m_leftCount == 0 ? static_cast<uint>(m_rightCount - 1) : LeftSidebarIdBase - 1 + static_cast<uint>(m_leftCount);
@@ -301,7 +301,7 @@ void TSidebarManager::enqueuePanelConfigurationChangedToBeEmitted()
 
 void TSidebarManager::enqueueWidgetConfigurationChangedToBeEmitted()
 {
-    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     m_widgetConfigurationTimer.start();
 }
 

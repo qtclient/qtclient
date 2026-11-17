@@ -525,7 +525,7 @@ void TStashDialogController::slotClicked(const int TypeID, const int MouseButton
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -541,7 +541,7 @@ void TStashDialogController::requestOpenManageLootContainerDialog()
         m_reopenAfterManageLoot = true;
         closeDialog();
     }
-    input::publish(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
 }
 
 void TStashDialogController::handleGameAction(const input::IGameAction& action)
@@ -570,7 +570,7 @@ void TStashDialogController::reopenStash()
         return;
     m_reopenAfterMarket = false;
     m_reopenAfterManageLoot = false;
-    input::publish(input::makeGameAction(A::STASH_REQUEST_REOPEN));
+    Q_EMIT publishGameAction(input::makeGameAction(A::STASH_REQUEST_REOPEN));
 }
 
 void TStashDialogController::onMarketDialogDialogClosed()
