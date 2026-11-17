@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 /// One screen: its largest native (unscaled) mode where macOS scales it.
 struct TMonitorInformation {
@@ -63,4 +63,4 @@ struct TSystemSurvey {
     TOpenGLInformation openGL;
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

@@ -265,18 +265,15 @@ uint8_t inspectPlayerAction(const EGameAction type)
     case A::ALLOW_ALL_TO_INSPECT_PLAYER:
     case A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER:
         return 0;
-    case A::INVITE_TO_INSPECT_PLAYER:
-        return 1;
-    case A::ALLOW_INSPECT_PLAYER:
-        return 2;
-    case A::ASK_TO_INSPECT_PLAYER:
-        return 3;
-    case A::REVOKE_INSPECT_PLAYER:
-        return 4;
-    case A::INSPECT_PLAYER:
     default:
-        return 5;
+        break;
     }
+    // CIP creatures::TCreaturesGameActionHandler: INVITE_TO_INSPECT_PLAYER (15) ..
+    // REVOKE_INSPECT_PLAYER (19) send their offset from 14, anything else 4.
+    const int value = int(type);
+    if (unsigned(value - int(A::INVITE_TO_INSPECT_PLAYER)) < 5u)
+        return uint8_t(value - (int(A::INVITE_TO_INSPECT_PLAYER) - 1));
+    return 4;
 }
 
 void clearSpriteCaches()
@@ -331,8 +328,9 @@ void publish(const TGameActionPtr& action)
         return;
     switch (action->type) {
     case A::LOOK_AT_CREATURE:
+        // CIP creatures::TCreaturesGameActionHandler sends LookAtCreature for the creature id.
         if (action->creatureId)
-            tibia::game::lookCreature(action->creatureId);
+            tibia::game::lookCreature(action->creatureId, true);
         break;
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {

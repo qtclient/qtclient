@@ -6,10 +6,18 @@ syntax = "proto2";
 package tibia.protobuf.protocol;
 option optimize_for = LITE_RUNTIME;
 
+// What the network layer adds to a received message (CIP GameserverMessageMetaData).
+message GameserverMessageMetaData {
+  optional int64 timestamp = 1;
+  optional uint32 packet_number = 2;
+  optional int32 value3 = 3;
+}
+
 // Wrapper: classic opcode in `type`; payload is extension N==opcode.
 message GameserverMessage {
   optional int32 type = 1;
-  extensions 2 to max;
+  extensions 2 to 999;
+  optional GameserverMessageMetaData meta_data = 1000;
 }
 
 message GameclientMessage {

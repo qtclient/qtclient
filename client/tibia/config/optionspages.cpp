@@ -11,7 +11,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
 
-#include "sound/soundstorage.h"
+#include "sound/soundengine.h"
 
 #include <QColor>
 #include <QHash>
@@ -800,10 +800,10 @@ void TSoundOptionsPage::refreshSoundDevices()
 {
     const QString autoLabel = qtTrId("optionsmenu_sound_used_sound_device_auto");
     QStringList model{ autoLabel };
-    if (auto* storage = sound::TSoundStorage::instance()) {
-        m_soundEngineInitialized = storage->isEngineReady();
-        model += storage->playbackDeviceNames();
-    }
+    sound::TSoundEngine& engine = sound::TSoundEngine::instance();
+    engine.updateAvailableDevices();
+    m_soundEngineInitialized = engine.isInitialized();
+    model += engine.availableSoundDevices();
     if (m_soundDeviceListModel != model)
         m_soundDeviceListModel = std::move(model);
     if (!m_soundDevice.isEmpty() && !m_soundDeviceListModel.contains(m_soundDevice))

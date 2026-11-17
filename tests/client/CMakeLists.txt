@@ -180,6 +180,63 @@ if(Qt6_FOUND AND TARGET tibia)
     gtest_discover_tests(client_sessiondumphints_tests)
 endif()
 
+# CIP systemsurvey FPS history (counter, history, controller, JSON, uploader).
+if(Qt6_FOUND AND TARGET tibia)
+    find_package(Qt6 REQUIRED COMPONENTS Network)
+    set(_fps ${CMAKE_SOURCE_DIR}/client/tibia/systemsurvey)
+    add_executable(client_fpshistory_tests
+        fpshistory_test.cpp
+        ${_fps}/fpscounter.cpp ${_fps}/fpscounter.h
+        ${_fps}/fpshistory.cpp ${_fps}/fpshistory.h
+        ${_fps}/fpshistorycontroller.cpp ${_fps}/fpshistorycontroller.h
+        ${_fps}/fpshistorytojsonconverter.cpp ${_fps}/fpshistorytojsonconverter.h
+        ${_fps}/fpshistoryuploader.cpp ${_fps}/fpshistoryuploader.h)
+    set_target_properties(client_fpshistory_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_fpshistory_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>)
+    target_link_libraries(client_fpshistory_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui Qt6::Network qtclient_shared)
+    target_compile_definitions(client_fpshistory_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_fpshistory_tests cip_codegen_tibia)
+    gtest_discover_tests(client_fpshistory_tests)
+endif()
+
+# CIP sessiondump::TClientSessiondumpRecorder / TSessiondumpAsyncLoader / TSessiondumpPlayer.
+if(Qt6_FOUND AND TARGET tibia AND TARGET qtclient_shared)
+    find_package(Qt6 REQUIRED COMPONENTS Network)
+    set(_sd ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump)
+    add_executable(client_sessiondumpplayer_tests
+        sessiondumpplayer_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicereader.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
+        ${_sd}/clientsessiondumprecorder.cpp ${_sd}/clientsessiondumprecorder.h
+        ${_sd}/sessiondumpasyncloader.cpp ${_sd}/sessiondumpasyncloader.h
+        ${_sd}/sessiondumpplayer.cpp ${_sd}/sessiondumpplayer.h
+        ${_sd}/sessiondumpprogressclockservice.cpp
+        ${_sd}/lightweightsessiondumpmessageprocessor.cpp
+        ${_sd}/sessiondumpfactory.cpp
+        ${_sd}/sessiondumpmessageprocessor.cpp
+        ${_sd}/sessiondumpmessagereader.cpp
+        ${_sd}/sessiondumpmetadatareader.cpp
+        ${_sd}/sessiondumppacketprocessor.cpp
+        ${_sd}/sessiondumppacketreader.cpp
+        ${_sd}/sessiondumpprocessor.cpp
+        ${_sd}/sessiondumpreader.cpp
+        ${_sd}/sessiondumpreadersfactory.cpp)
+    set_target_properties(client_sessiondumpplayer_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_sessiondumpplayer_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>)
+    target_link_libraries(client_sessiondumpplayer_tests PRIVATE GTest::gtest Qt6::Core Qt6::Gui Qt6::Network qtclient_shared protobuf)
+    target_compile_definitions(client_sessiondumpplayer_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_sessiondumpplayer_tests cip_codegen_tibia)
+    gtest_discover_tests(client_sessiondumpplayer_tests)
+endif()
+
 # CIP shared:: classes (apps/qtclient/shared) of the launcher's net slice.
 if(TARGET qtclient_shared)
     add_executable(client_sharednet_tests sharednet_test.cpp)
@@ -281,4 +338,30 @@ if(Qt6_FOUND AND TARGET tibia AND TARGET ZLIB::ZLIB)
     target_link_libraries(client_skillwheeldata_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core ZLIB::ZLIB)
     add_dependencies(client_skillwheeldata_tests cip_codegen_tibia)
     gtest_discover_tests(client_skillwheeldata_tests)
+endif()
+
+# CIP sound players (TSoundPlayer, TSoundPlayerManager, TActiveSoundPlayer,
+# TPlayableSound) over a silent audio source.
+if(Qt6_FOUND AND TARGET tibia)
+    set(_snd ${CMAKE_SOURCE_DIR}/client/tibia/sound)
+    add_executable(client_soundplayer_tests
+        soundplayer_test.cpp
+        ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_07.h
+        ${_snd}/audiobackend.h
+        ${_snd}/soundmetadatamanager.h
+        ${_snd}/sounddecompressorthreadpool.h
+        ${_snd}/soundmanager.cpp ${_snd}/soundmanager.h
+        ${_snd}/soundplayer.cpp ${_snd}/soundplayer.h
+        ${_snd}/soundplayermanager.cpp ${_snd}/soundplayermanager.h
+        ${_snd}/activesoundplayer.cpp ${_snd}/activesoundplayer.h)
+    set_target_properties(client_soundplayer_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_soundplayer_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>)
+    target_link_libraries(client_soundplayer_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui)
+    target_compile_definitions(client_soundplayer_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_soundplayer_tests cip_codegen_tibia)
+    gtest_discover_tests(client_soundplayer_tests)
 endif()

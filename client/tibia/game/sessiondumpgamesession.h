@@ -15,6 +15,11 @@
 #include <vector>
 
 namespace tibia {
+namespace sessiondump {
+class TSessiondumpAsyncLoader;
+class TSessiondumpPlayer;
+class TSessiondumpProgressClockService;
+}
 namespace tutorial {
 class TSessiondumpHintsProcessor;
 }
@@ -28,8 +33,9 @@ namespace game {
 /// Supports:
 /// - qtclient text hex dumps (`--replay`: `< millis hex>` / `> millis hex`), converted
 /// into the same decoded messages the live socket parses
-/// - CIP `dmpd` containers (magic `dmpd`): mappable opcodes become classic packets
-/// on that same parser; unknown protobuf types are skipped with a log
+/// - CIP `dmp` dumps, played by a sessiondump::TSessiondumpPlayer over a
+/// TSessiondumpAsyncLoader; each published GameserverMessage becomes classic
+/// packets on that same parser (unknown types are skipped with a log)
 /// - Sibling `.hints` JSON via `TSessiondumpHintsProcessor` (tutorial cues)
 ///
 /// Live `--record` writes the decoded stream from the primary game connection.
@@ -73,6 +79,7 @@ private:
     };
 
     void replayDmpd(const QString& file);
+    void stopDmpd();
     void replayHexDump(const QString& file);
     void startReplay(std::vector<ReplayBody> packets);
     void pumpReplay();
@@ -85,6 +92,11 @@ private:
     std::vector<ReplayBody> m_replayPackets;
     int m_replayIndex = 0;
     bool m_replaying = false;
+
+    std::shared_ptr<sessiondump::TSessiondumpAsyncLoader> m_sessiondumpLoader;
+    std::shared_ptr<sessiondump::TSessiondumpProgressClockService> m_sessiondumpProgressClock;
+    std::shared_ptr<sessiondump::TSessiondumpPlayer> m_sessiondumpPlayer;
+    QTimer m_sessiondumpTimer;
 
     std::vector<tibia::game::SoftHook> m_hooks;
     std::unique_ptr<tutorial::TSessiondumpHintsProcessor> m_hints;

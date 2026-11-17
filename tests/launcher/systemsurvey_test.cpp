@@ -1,13 +1,13 @@
 #include "systemsurveycreator.h"
 #include "systemsurveytojsonconverter.h"
-#include "systemsurveyvalueretriever.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
 
 #include <gtest/gtest.h>
 
-using namespace systemsurvey;
+using namespace tibia::systemsurvey;
 
 TEST(SystemSurvey, KeepsOnlyMonitorsWithASize)
 {

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "systemsurvey.h"
+#include "systemsurvey/systemsurvey.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 /// The survey as the JSON document the survey service takes.
 class TSystemSurveyToJsonConverter
@@ -28,4 +28,4 @@ public:
     static QJsonObject openGLToJson(const TOpenGLInformation& openGL);
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

@@ -3,6 +3,8 @@
 #include "tibia/client/gamecore.h"
 
 #include <QCoreApplication>
+
+#include <algorithm>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -381,6 +383,22 @@ const TSpellInfo* TSpellInfoStorage::runeSpellOfObject(const int objectId) const
 QString TSpellInfoStorage::iconUrl(const TSpellInfo& spell)
 {
     return QStringLiteral("image://spell-icons-32x32/%1").arg(spell.iconIndex);
+}
+
+void TSpellInfoStorage::setUnlockedSpells(const std::vector<uint16_t>& spellIds)
+{
+    if (&m_unlockedSpells != &spellIds)
+        m_unlockedSpells.assign(spellIds.begin(), spellIds.end());
+}
+
+void TSpellInfoStorage::clearUnlockedSpells()
+{
+    m_unlockedSpells.clear();
+}
+
+bool TSpellInfoStorage::isSpellUnlocked(const uint16_t spellId) const
+{
+    return std::find(m_unlockedSpells.begin(), m_unlockedSpells.end(), spellId) != m_unlockedSpells.end();
 }
 
 }

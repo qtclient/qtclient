@@ -1,0 +1,145 @@
+#include "sound/soundcontrollerbase.h"
+
+#include <QJSEngine>
+#include <QLoggingCategory>
+#include <QRandomGenerator>
+
+#include <algorithm>
+
+Q_LOGGING_CATEGORY(lcSound, "sound", QtWarningMsg)
+
+namespace tibia::sound {
+
+double randomBetween(const double min, const double max)
+{
+    if (max <= min)
+        return min;
+    return min + (max - min) * QRandomGenerator::global()->generateDouble();
+}
+
+int64_t randomBetween(const int64_t min, const int64_t max)
+{
+    if (max <= min)
+        return min;
+    return QRandomGenerator::global()->bounded(min, max + 1);
+}
+
+TSoundControllerBase::TSoundControllerBase(std::shared_ptr<TSoundMetadataManager> metadata,
+                                           std::shared_ptr<TSoundManager> soundManager,
+                                           std::weak_ptr<TSoundPlayerManager> playerManager,
+                                           std::shared_ptr<TSoundConfiguration> configuration)
+    : m_metadata(std::move(metadata))
+    , m_soundManager(std::move(soundManager))
+    , m_playerManager(std::move(playerManager))
+    , m_configuration(std::move(configuration))
+{
+    if (m_configuration)
+        connect(m_configuration.get(), &TSoundConfiguration::soundConfigurationChanged, this,
+                &TSoundControllerBase::onSoundConfigurationChanged);
+    onSoundConfigurationChanged();
+}
+
+TSoundControllerBase::~TSoundControllerBase()
+{
+    m_singleShots.clear();
+    for (TActiveSoundPlayer* player : m_activePlayers)
+        delete player;
+}
+
+void TSoundControllerBase::update(const int64_t nowMs)
+{
+    m_nowMs = nowMs;
+    for (TActiveSoundPlayer* player : m_activePlayers)
+        player->update(nowMs);
+    for (auto it = m_activePlayers.begin(); it != m_activePlayers.end();) {
+        if ((*it)->isPlaying()) {
+            ++it;
+            continue;
+        }
+        delete *it;
+        it = m_activePlayers.erase(it);
+    }
+    releaseFinishedPlayers(m_singleShots);
+}
+
+TSoundEffectParameters TSoundControllerBase::effectParameters(const TSoundEffectRequest& request) const
+{
+    TSoundEffectParameters parameters;
+    const std::optional<TNumericSoundEffectMetadata> effect =
+        m_metadata ? m_metadata->numericSoundEffect(request.effectId) : std::nullopt;
+    if (!effect)
+        return parameters;
+    if (const auto* single = std::get_if<TSingleSoundEffectMetadata>(&effect->sound)) {
+        parameters.soundId = single->soundId;
+    } else if (const auto* random = std::get_if<TRandomSoundMetadata>(&effect->sound); random && !random->soundIds.empty()) {
+        const auto index = static_cast<size_t>(randomBetween(int64_t{ 0 }, static_cast<int64_t>(random->soundIds.size()) - 1));
+        parameters.soundId = random->soundIds[index];
+    }
+    parameters.pitch = static_cast<float>(randomBetween(static_cast<double>(effect->pitchMin), static_cast<double>(effect->pitchMax)));
+    const auto randomVolume = static_cast<float>(randomBetween(static_cast<double>(effect->volumeMin), static_cast<double>(effect->volumeMax)));
+    parameters.volumeModifiers.random = static_cast<uint8_t>(static_cast<int>(randomVolume * 100.0f));
+    const TSoundConfiguration::TEffectSettings settings =
+        m_configuration ? m_configuration->effectSettings(effect->numericSoundType, request.chat, request.source)
+                        : TSoundConfiguration::TEffectSettings{};
+    parameters.volumeModifiers.volume = settings.enabled ? std::max(settings.volume, 0.0f) : 0.0f;
+    return parameters;
+}
+
+std::optional<TSoundPlayerToken> TSoundControllerBase::playSingleShot(const TSoundEffectParameters& parameters)
+{
+    if (parameters.soundId == 0)
+        return std::nullopt;
+    return playSingleShot(parameters.pitch, parameters.soundId, parameters.volumeModifiers);
+}
+
+std::optional<TSoundPlayerToken> TSoundControllerBase::playSingleShot(const float pitch, const TSoundEffectID soundId,
+                                                                      const TVolumeModifiers& modifiers)
+{
+    if (modifiers.volume == 0.0f)
+        return std::nullopt;
+    std::optional<TPlayableSound> playable = m_soundManager ? m_soundManager->playableSound(soundId) : std::nullopt;
+    const std::shared_ptr<TSoundPlayerManager> manager = m_playerManager.lock();
+    // CipSoft preloads effect data, so its sounds are ready here; qtclient
+    // converts on first use and the player waits for the data.
+    if (!manager || !playable || (!playable->isReady() && !playable->isLoading())) {
+        qCDebug(lcSound) << "Could not find Sound Effect ID" << soundId;
+        return std::nullopt;
+    }
+    std::optional<TSoundPlayerToken> token = manager->acquirePlayer();
+    if (!token) {
+        qCDebug(lcSound) << "Could not get free player for single shot sound effect" << playable->metadata().fileName;
+        return std::nullopt;
+    }
+    TSoundPlayer* player = token->player();
+    player->setSound(*playable);
+    player->setVolumeModifiers(modifiers);
+    player->setLooping(false);
+    player->setPitch(pitch);
+    player->play();
+    return token;
+}
+
+void TSoundControllerBase::keepSingleShot(TSoundPlayerToken token)
+{
+    m_singleShots.push_back(std::move(token));
+}
+
+size_t TSoundControllerBase::freePlayerCount() const
+{
+    const std::shared_ptr<TSoundPlayerManager> manager = m_playerManager.lock();
+    return manager ? manager->freePlayerCount() : 0;
+}
+
+TActiveSoundPlayer* TSoundControllerBase::createActivePlayer()
+{
+    auto* player = new TActiveSoundPlayer(m_playerManager);
+    QJSEngine::setObjectOwnership(player, QJSEngine::CppOwnership);
+    return player;
+}
+
+void TSoundControllerBase::addActivePlayer(TActiveSoundPlayer* player)
+{
+    m_activePlayers.push_back(player);
+}
+
+}

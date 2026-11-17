@@ -86,6 +86,16 @@ QSGRendererInterface::GraphicsApi graphicsApiForRenderer(const int rendererIndex
     return QSGRendererInterface::Unknown;
 }
 
+int rendererIndexForGraphicsApi(const QSGRendererInterface::GraphicsApi api)
+{
+    // CipSoft maps the window's graphics API back through the same table; APIs it has
+    // no renderer for (OpenVG, Null) report 0.
+    for (const auto& r : Renderers)
+        if (r.api == api)
+            return r.index;
+    return 0;
+}
+
 int parseRendererIndex(const QString& value, const int fallback)
 {
     bool ok = false;

@@ -11,7 +11,7 @@
 #include <tibia/renderer/texturedeletionqueue.h>
 #include "mods/registry.h"
 #include "network/gameserverconnection.h"
-#include "sound/soundstorage.h"
+#include "sound/soundcontroller.h"
 #include "assets/assetcatalog.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 
@@ -319,7 +319,7 @@ bool loadAssets(const int version, QString* error)
         qWarning().noquote() << "gamecore: no proficiencies-<hash>.json in" << QString::fromStdString(dir);
 
     const std::string soundsDir = soundsRoot(version);
-    if (auto* storage = sound::TSoundStorage::instance(); storage && storage->loadBank(soundsDir))
+    if (auto* sounds = sound::TSoundController::instance(); sounds && sounds->metadata()->loadBank(soundsDir))
         qInfo().noquote() << "gamecore: loaded sound bank from" << QString::fromStdString(soundsDir);
     // Missing bank is optional (make extract); stay quiet on CipSoft.
     if (error)

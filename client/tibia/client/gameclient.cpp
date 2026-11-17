@@ -3,7 +3,6 @@
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
-#include "systemsurvey/systemsurveyciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "skillwheel/skillwheelciptypes.h"
 #include "screenshot/screenshotciptypes.h"
@@ -42,6 +41,7 @@
 #include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
+#include "app/bootstrap.h"
 #include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
@@ -50,7 +50,17 @@
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
+#include "config/clientsettings.h"
 #include "config/sidebaroptions.h"
+#include "clockservice.h"
+#include "downloadpool.h"
+#include "jsondocumenthttppostsender.h"
+#include "qnetworkaccessmanagerwrapper.h"
+#include "systemsurvey/fpscounter.h"
+#include "systemsurvey/fpshistory.h"
+#include "systemsurvey/fpshistorycontroller.h"
+#include "systemsurvey/fpshistorytojsonconverter.h"
+#include "systemsurvey/fpshistoryuploader.h"
 #include "controllers/characterselectioncontroller.h"
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
@@ -62,6 +72,15 @@
 #include "network/extendedopcoderouter.h"
 #include "network/gameserverdualconnection.h"
 #include "sound/soundprotocolmessagehandler.h"
+#include "config/clientoptions.h"
+#include "sound/gamesessionsoundprovider.h"
+#include "sound/objectsoundcontroller.h"
+#include "sound/soundconfiguration.h"
+#include "sound/soundcontroller.h"
+#include "sound/soundengine.h"
+#include "sound/soundmanager.h"
+#include "sound/soundmetadatamanager.h"
+#include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
 #include "renderer/nextframeupdater.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -219,16 +238,15 @@ TGameClient::TGameClient(QObject* parent)
     , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
-    , m_sessiondumpRecorder(this)
-    , m_sessiondumpAsyncLoader(this)
-    , m_sessiondumpCatalogLoader(this)
-    , m_sessiondumpPlayer(this)
+    , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
+          1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
 {
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
     // Each game session brings its own storages, view and handlers.
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
+    initializeSound();
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
@@ -264,7 +282,6 @@ TGameClient::TGameClient(QObject* parent)
     screenshot::ownProductSurface(this);
     skillwheel::ownProductSurface(this);
     spells::ownProductSurface(this);
-    systemsurvey::ownProductSurface(this);
     taskboard::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
     trade::ownProductSurface(this);
@@ -547,6 +564,15 @@ void TGameClient::bindActiveSession()
     m_messageHandler.reset();
     game::TGameSessionBase* session = activeSession();
     m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (m_soundController) {
+        disconnect(m_objectSoundConnection);
+        m_soundController->setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
+        if (session && session->objectSoundController())
+            m_objectSoundConnection = connect(session->objectSoundController().get(),
+                                              &sound::TObjectSoundController::ambienceObjectStreamCountChanged,
+                                              m_soundController.get(),
+                                              &sound::TSoundController::onAmbienceObjectStreamCountChanged);
+    }
     if (m_chatProtocol) {
         m_chatProtocol->setTextStorage(session ? session->textStorage().get() : nullptr);
         m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
@@ -661,6 +687,7 @@ void TGameClient::refreshAccount(const QJsonObject& reply)
 void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
 {
     m_account = result;
+    onFpsTrackingActiveChanged(result.session.fpsTracking);
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
@@ -973,6 +1000,8 @@ void TGameClient::onWorldLeft()
     m_statusbarStorage->save();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
+    if (m_soundController)
+        m_soundController->handleSoundTrigger(true);
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
@@ -1001,6 +1030,11 @@ void TGameClient::setWindow(QQuickWindow* window)
     // CIP: .
     connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
     connect(window, &QQuickWindow::frameSwapped, this, [ring = m_frameDurations.get()] { ring->finish(); }, Qt::DirectConnection);
+    // CIP onRenderThreadFrameSwapped: every swapped frame starts a frame of the FPS counter.
+    connect(window, &QQuickWindow::frameSwapped, this, [this] {
+        if (m_fpsHistory)
+            m_fpsHistory->fpsCounter()->startNewFrame();
+    }, Qt::DirectConnection);
 
     // Render-thread cost per frame, sync and render, against the plan's budgets.
     if (!lcFrameCost().isDebugEnabled())
@@ -1049,6 +1083,31 @@ void TGameClient::setWindow(QQuickWindow* window)
     }, Qt::DirectConnection);
 }
 
+void TGameClient::initializeSound()
+{
+    const sound::TSoundSettings settings;
+    m_soundConfiguration = std::make_shared<sound::TSoundConfiguration>(settings, config::TClientOptions::instance());
+    if (!settings.noSound)
+        sound::TSoundEngine::instance().initialize(m_soundConfiguration);
+    if (!sound::TSoundEngine::instance().isInitialized())
+        return;
+    m_soundMetadataManager = std::make_shared<sound::TSoundMetadataManager>(nullptr, settings.ambienceDelayFactor);
+    m_soundManager = std::make_shared<sound::TSoundManager>(m_soundMetadataManager, "sounds/", settings.soundCacheSeconds);
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_soundManager.get(),
+            &sound::TSoundManager::onSoundMetadataChanged);
+    m_soundPlayerManager = std::make_shared<sound::TSoundPlayerManager>(settings.soundPlayerCount);
+    m_soundController = std::make_shared<sound::TSoundController>(m_soundMetadataManager, m_soundManager,
+                                                                  m_soundPlayerManager, m_soundConfiguration);
+    sound::TSoundController::setInstance(m_soundController.get());
+    connect(m_soundManager.get(), &sound::TSoundManager::playableSoundsChanged, m_soundPlayerManager.get(),
+            &sound::TSoundPlayerManager::onSoundManagerPlayableSoundsChanged);
+    // Out of the game the title music plays once the sound bank is known.
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
+        if (!tibia::game::isOnline())
+            m_soundController->handleSoundTrigger(true);
+    });
+}
+
 void TGameClient::tick()
 {
     // notifyCameraMove / QML during tween advance must not re-enter NFU: a nested
@@ -1059,8 +1118,18 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
-        session->soundStorage()->poll();
+    if (m_soundController) {
+        // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
+        const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
+        if (game::TGameSessionBase* session = game::TGameSessionBase::active()) {
+            session->soundStorage()->update(now);
+            if (session->objectSoundController())
+                session->objectSoundController()->updateObjectCounts(
+                    tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
+        }
+        m_soundController->update(now);
+        m_soundManager->updateWithTimestamp(now);
+    }
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;
@@ -1129,6 +1198,51 @@ void TGameClient::checkForCrashDump()
         fileSystem.getFilePath(shared::TTibiaFileSystemHelper::DIRECTORY_CRASHDUMP, sessiondumpFileName);
     m_crashReportSender = std::make_shared<shared::TCrashReportSender>(crashDumpFilePath, sessiondumpFilePath, crashReportData);
     m_crashReportDialog->showDialog(crashReportData);
+}
+
+void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
+{
+    if (!FpsTrackingActive) {
+        m_fpsHistory.reset();
+        m_fpsHistoryController.reset();
+        m_fpsSampleTimer.stop();
+        m_fpsUploadTimer.stop();
+        return;
+    }
+    auto clockService = shared::TClockService::process();
+    m_fpsHistory = std::make_shared<systemsurvey::TFPSHistory>(
+        std::make_shared<systemsurvey::TFPSCounter>(clockService), clockService);
+    // Host: CipSoft posts to [URLS] fpsHistoryRecipient; qtclient posts to the
+    // qtc-aac hardware receiver.
+    auto uploader = std::make_shared<systemsurvey::TFPSHistoryUploader>(
+        app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl(),
+        std::make_shared<systemsurvey::TFPSHistoryToJsonConverter>(),
+        std::make_shared<shared::TJsonDocumentHttpPostSender>());
+    const int renderer = app::rendererIndexForGraphicsApi(QQuickWindow::graphicsApi());
+    m_fpsHistoryController = std::make_shared<systemsurvey::TFPSHistoryController>(uploader, m_fpsHistory, renderer);
+    const QString group = QStringLiteral("FPSHISTORY");
+    startFpsHistoryTimers(config::clientSettingAtLeast(group, QStringLiteral("sampleRateMsec"), 1000, 100),
+                          config::clientSettingAtLeast(group, QStringLiteral("uploadRateSec"), 60, 1));
+}
+
+void TGameClient::startFpsHistoryTimers(const qint64 sampleRateMsec, const qint64 uploadRateSec)
+{
+    if (m_fpsHistory) {
+        m_fpsSampleTimer.setInterval(int(sampleRateMsec));
+        connect(&m_fpsSampleTimer, &QTimer::timeout, m_fpsHistory.get(),
+                &systemsurvey::TFPSHistory::sampleCurrentFPSInformationAndClearFPSCounter);
+        m_fpsSampleTimer.start();
+    }
+    if (m_fpsHistoryController) {
+        auto* controller = m_fpsHistoryController.get();
+        m_fpsUploadTimer.setInterval(int(uploadRateSec * 1000));
+        connect(&m_fpsUploadTimer, &QTimer::timeout, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::worldLeft, controller, &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::clientReadyToClose, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        m_fpsUploadTimer.start();
+    }
 }
 
 void TGameClient::sendCrashReport(const bool SendFullReport)

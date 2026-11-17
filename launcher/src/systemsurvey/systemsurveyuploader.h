@@ -6,7 +6,7 @@
 
 #include <memory>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 class TSystemSurveyAsJsonDocumentCreator;
 
@@ -27,4 +27,4 @@ private:
     std::shared_ptr<TSystemSurveyAsJsonDocumentCreator> m_documentCreator;
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

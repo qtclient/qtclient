@@ -5,12 +5,11 @@
 namespace tibia {
 namespace shared {
 
-/// image://optimized1pixelborderimage/<image path>: a resource image with a
-/// 1 pixel border, pre-stretched to the requested size so Optimized1PixelBorderImage
-/// draws one textured quad instead of a nine-patch.
-///
-/// CipSoft: shared::TOptimized1PixelBorderImageProvider (ctor ,
-/// requestImage).
+/// CIP `shared::TOptimized1PixelBorderImageProvider`
+/// (image://optimized1pixelborderimage/<image path>): a resource image with a
+/// 1 pixel border, grown to the requested size (at least 3x3) by keeping the
+/// corners and tiling the edges and the centre, so Optimized1PixelBorderImage
+/// draws one textured quad instead of a nine-patch. A missing image is red.
 class TOptimized1PixelBorderImageProvider final : public QQuickImageProvider
 {
 public:
@@ -20,7 +19,7 @@ public:
     QImage requestImage(const QString& id, QSize* size, const QSize& requestedSize) override;
 };
 
-/// CipSoft loads via QString::arg(":%1", id); id is typically "/images/…".
+/// The resource ":<id>" (ids keep their leading '/').
 QImage loadOptimized1PixelBorderResourceImage(const QString& id);
 
 } // namespace shared

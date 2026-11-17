@@ -181,6 +181,11 @@ public:
     void clearSpellModifications();
     const std::vector<TSpellModification>* spellModifications(uint16_t spellId) const;
 
+    /// The server's unlocked spells (UnlockedSpells): replaced, cleared, queried.
+    void setUnlockedSpells(const std::vector<uint16_t>& spellIds);
+    void clearUnlockedSpells();
+    bool isSpellUnlocked(uint16_t spellId) const;
+
     /// image://spell-icons-32x32/<icon>.
     static QString iconUrl(const TSpellInfo& spell);
 
@@ -189,6 +194,7 @@ private:
 
     std::map<int, TSpellInfo> m_spells;
     std::unordered_map<uint16_t, std::vector<TSpellModification>> m_modifications;
+    std::vector<uint16_t> m_unlockedSpells;
     /// Rune object -> spell.
     std::map<int, int> m_byRune;
 };

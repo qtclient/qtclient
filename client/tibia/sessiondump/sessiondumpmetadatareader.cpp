@@ -52,7 +52,7 @@ void TSessiondumpMetadataReader::readFields()
         m_metadata.sessionKey = m_reader->readString8();
     m_metadata.creationTime = QDateTime::fromSecsSinceEpoch(m_reader->readUInt32());
     m_metadata.characterName = m_reader->readString8();
-    m_metadata.worldId = m_reader->readUInt32();
+    m_metadata.playerId = m_reader->readUInt32();
     m_metadata.worldName = m_reader->readString8();
     if (m_metadata.version > 4) {
         m_metadata.extraFlag = m_reader->readUInt8();

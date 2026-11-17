@@ -300,8 +300,12 @@ if(TIBIA_WITH_GAMECORE)
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
-    sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
+    sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
+    sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
+    sessiondump/clientsessiondumprecorder.cpp sessiondump/clientsessiondumprecorder.h
+    sessiondump/sessiondumpcatalog.cpp sessiondump/sessiondumpcatalog.h
+    sessiondump/sessiondumpcatalogloader.cpp sessiondump/sessiondumpcatalogloader.h
     sessiondump/lightweightsessiondumpmessageprocessor.cpp sessiondump/lightweightsessiondumpmessageprocessor.h
     sessiondump/sessiondumpfactory.cpp sessiondump/sessiondumpfactory.h
     sessiondump/sessiondumpmessageprocessor.cpp sessiondump/sessiondumpmessageprocessor.h
@@ -346,7 +350,11 @@ if(TIBIA_WITH_GAMECORE)
     questlog/questlogciptypes.cpp questlog/questlogciptypes.h
     quickloot/quicklootciptypes.cpp quickloot/quicklootciptypes.h
     skillwheel/skillwheelciptypes.cpp skillwheel/skillwheelciptypes.h
-    systemsurvey/systemsurveyciptypes.cpp systemsurvey/systemsurveyciptypes.h
+    systemsurvey/fpscounter.cpp systemsurvey/fpscounter.h
+    systemsurvey/fpshistory.cpp systemsurvey/fpshistory.h
+    systemsurvey/fpshistorycontroller.cpp systemsurvey/fpshistorycontroller.h
+    systemsurvey/fpshistorytojsonconverter.cpp systemsurvey/fpshistorytojsonconverter.h
+    systemsurvey/fpshistoryuploader.cpp systemsurvey/fpshistoryuploader.h
     teamfinder/teamfinderciptypes.cpp teamfinder/teamfinderciptypes.h
     teamfinder/teamsortproxymodels.cpp teamfinder/teamsortproxymodels.h
     bossbestiary/bossbestiaryciptypes.cpp bossbestiary/bossbestiaryciptypes.h
@@ -462,9 +470,28 @@ if(TIBIA_WITH_GAMECORE)
     tutorial/sessiondumphintpublishgameaction.cpp tutorial/sessiondumphintpublishgameaction.h
     tutorial/sessiondumphints.cpp tutorial/sessiondumphints.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
+    tutorial/tutorialprogressuploader.cpp tutorial/tutorialprogressuploader.h
+    tutorial/tutorialsessiondumpgameactionhandler.cpp tutorial/tutorialsessiondumpgameactionhandler.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h
     sound/soundmetadatamanager.cpp sound/soundmetadatamanager.h
     sound/soundstorage.cpp sound/soundstorage.h
+    sound/audiobackend.cpp sound/audiobackend.h
+    sound/soundengine.cpp sound/soundengine.h
+    sound/soundconfiguration.cpp sound/soundconfiguration.h
+    sound/soundmanager.cpp sound/soundmanager.h
+    sound/sounddecompressorthreadpool.cpp sound/sounddecompressorthreadpool.h
+    sound/soundplayer.cpp sound/soundplayer.h
+    sound/soundplayermanager.cpp sound/soundplayermanager.h
+    sound/activesoundplayer.cpp sound/activesoundplayer.h
+    sound/soundcontrollerbase.cpp sound/soundcontrollerbase.h
+    sound/soundcontrollermusic.cpp sound/soundcontrollermusic.h
+    sound/soundcontrollerambiencestream.cpp sound/soundcontrollerambiencestream.h
+    sound/soundcontrollerambienceobjectsound.cpp sound/soundcontrollerambienceobjectsound.h
+    sound/soundcontrollercombatsound.cpp sound/soundcontrollercombatsound.h
+    sound/soundcontroller.cpp sound/soundcontroller.h
+    sound/gamesessionsoundprovider.cpp sound/gamesessionsoundprovider.h
+    sound/objectsoundcontroller.cpp sound/objectsoundcontroller.h
+    sound/weatheraudio.cpp sound/weatheraudio.h
     sound/miniaudio_impl.cpp
     game/playerstates.cpp game/playerstates.h
     game/playerstatestracker.cpp game/playerstatestracker.h
@@ -689,11 +716,9 @@ if(TIBIA_WITH_GAMECORE)
     cip_ports/sessiondump_ports.h
     cip_ports/shared_ports.h
     cip_ports/skillwheel_ports.h
-    cip_ports/sound_ports.h
     cip_ports/spells_ports.h
     cip_ports/sprites_ports.h
     cip_ports/store_ports.h
-    cip_ports/systemsurvey_ports.h
     cip_ports/taskboard_ports.h
     cip_ports/teamfinder_ports.h
     cip_ports/trade_ports.h

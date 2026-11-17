@@ -102,6 +102,9 @@ add_library(qtclient_shared STATIC
   src/lzma/LzmaDec.c
   src/timelapseclockservice.cpp
   src/timelapseclockservice.h
+  src/systemsurvey/systemsurvey.h
+  src/systemsurvey/systemsurveyvalueretriever.cpp
+  src/systemsurvey/systemsurveyvalueretriever.h
 )
 set_target_properties(qtclient_shared PROPERTIES AUTOMOC ON CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 target_compile_definitions(qtclient_shared PRIVATE QT_NO_KEYWORDS)
@@ -110,6 +113,10 @@ target_include_directories(qtclient_shared PUBLIC
 target_include_directories(qtclient_shared PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/src/lzma")
 target_link_libraries(qtclient_shared PUBLIC Qt6::Widgets Qt6::Network ZLIB::ZLIB)
+if(APPLE AND NOT IOS AND NOT EMSCRIPTEN)
+  # systemsurvey::TSystemSurveyValueRetriever: screen modes (CoreGraphics).
+  target_link_libraries(qtclient_shared PUBLIC "-framework ApplicationServices")
+endif()
 
 # CipSoft links Google Breakpad for TCrashHandler's minidumps (vcpkg `breakpad`,
 # desktop only). WASM and mobile builds have no handler.
