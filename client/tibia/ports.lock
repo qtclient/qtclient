@@ -22,6 +22,7 @@
 (anonymous namespace)::TFriendListModel::v44	f0334aaf3bf0d7db	ported	friends/friendlistmodels.cpp:TFriendListModel::roleNames
 (anonymous namespace)::TFriendListModel::v53	79e772f811f2a1ec	ported	friends/friendlistmodels.cpp:TFriendListModel::itemData
 (anonymous namespace)::TGainWasteModel::v44	37a6c3368afa4d2d	ported	analysers/analyserwidgets.cpp:TGainWasteModel::roleNames
+(anonymous namespace)::TImbuedObjectsModel::v44	2f3d2a0baedd9bf7	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuedObjectsModel::roleNames
 (anonymous namespace)::TInviteListModel::v44	243742c00af7dea3	ported	friends/friendlistmodels.cpp:TInviteListModel::roleNames
 (anonymous namespace)::TInviteListModel::v53	3a841869c5303801	ported	friends/friendlistmodels.cpp:TInviteListModel::itemData
 (anonymous namespace)::TItemHighlightsAbstractListModel::v44	4276ddfc163b16b3	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::roleNames
@@ -10479,6 +10480,7 @@ sub_8c0184aea69a#3	8c0184aea69a6bf8	ported	skillwheel/skillwheeldata.cpp:smallPe
 sub_8c08386771e4	8c08386771e4d390	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusGradeText
 sub_8c0d27cc04eb	8c0d27cc04ebffc1	skip	library: libc++ vector/deque internals (library)
 sub_8c398a2bdca4	8c398a2bdca471b2	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handlePickFilterIntricate
+sub_8c44b019891c	8c44b019891c54ed	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuedObjectsSortFilterProxyModel::TImbuedObjectsSortFilterProxyModel
 sub_8c51c7aa353a	8c51c7aa353a852e	skip	generated: Qt slot-object impl (template-generated)
 sub_8c5c5874bc44	8c5c5874bc445ee2	inlined	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSetTacticsMessage
 sub_8c77d8abeeaf	8c77d8abeeaf3174	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::setInventoryMinimized

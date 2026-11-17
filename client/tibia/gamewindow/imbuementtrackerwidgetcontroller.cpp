@@ -16,26 +16,60 @@ using Args = std::vector<std::any>;
 using Viz = cip::tibia::qmlcomponents::enums::EVisualizationType;
 constexpr auto OptionsKey = "imbuementTrackerWidgetOptions";
 
-QString formatDuration(const uint32_t seconds)
+/// CIP: minutes and seconds up to an hour (inclusive), else hours and minutes, days from a day on.
+QString durationString(const qint64 seconds)
 {
-    const uint32_t h = seconds / 3600;
-    const uint32_t m = (seconds % 3600) / 60;
-    const uint32_t s = seconds % 60;
-    return QStringLiteral("%1:%2:%3")
-        .arg(h, 2, 10, QLatin1Char('0'))
-        .arg(m, 2, 10, QLatin1Char('0'))
-        .arg(s, 2, 10, QLatin1Char('0'));
+    if (seconds < 3601) {
+        if (seconds < 60)
+            return qtTrId("time_second_short").arg(seconds);
+        if (seconds % 60 == 0)
+            return qtTrId("time_minutes_short").arg(seconds / 60);
+        return qtTrId("time_minutes_and_seconds_short").arg(seconds / 60).arg(seconds % 60);
+    }
+    const qint64 minutes = seconds / 60;
+    if (minutes < 1441) {
+        if (minutes < 60)
+            return qtTrId("time_minutes_short").arg(minutes % 60);
+        return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
+    }
+    return qtTrId("time_days_hours_and_minutes_short").arg(minutes / 1440).arg((minutes % 1440) / 60).arg(minutes % 60);
 }
 
-int visualizationFor(const uint32_t duration, const bool running)
+/// CIP: "10d" / "1d05" / "12h" / "1h05" / "12m" / "1m05" / "5s".
+QString ultraShortDurationString(const qint64 seconds)
 {
-    if (!running)
-        return static_cast<int>(Viz::Used);
-    if (duration < 3600)
-        return static_cast<int>(Viz::AlmostGone);
-    if (duration < 12 * 3600)
-        return static_cast<int>(Viz::Used);
-    return static_cast<int>(Viz::AlmostNew);
+    const QChar zero(u'0');
+    if (seconds >= 864000)
+        return QStringLiteral("%1d").arg(seconds / 86400);
+    if (seconds >= 86400)
+        return QStringLiteral("%1d%2").arg(seconds / 86400).arg((seconds % 86400) / 3600, 2, 10, zero);
+    if (seconds >= 36000)
+        return QStringLiteral("%1h").arg(seconds / 3600);
+    if (seconds >= 3600)
+        return QStringLiteral("%1h%2").arg(seconds / 3600).arg((seconds % 3600) / 60, 2, 10, zero);
+    if (seconds >= 600)
+        return QStringLiteral("%1m").arg(seconds / 60);
+    if (seconds >= 60)
+        return QStringLiteral("%1m%2").arg(seconds / 60).arg(seconds % 60, 2, 10, zero);
+    return QStringLiteral("%1s").arg(seconds);
+}
+
+/// CIP: the remaining time, with the ultra short form as the elided variant when it differs.
+QString remainingTimeString(const qint64 milliseconds)
+{
+    const QString full = durationString(milliseconds / 1000);
+    const QString shortForm = ultraShortDurationString(milliseconds / 1000);
+    if (full == shortForm)
+        return full;
+    return QStringList{ full, shortForm }.join(QChar(0x9c));
+}
+
+/// CIP: three hours or more almost new, one hour or more used, less almost gone.
+Viz visualization(const qint64 milliseconds)
+{
+    if (milliseconds < 3600000)
+        return Viz::AlmostGone;
+    return milliseconds < 10800000 ? Viz::Used : Viz::AlmostNew;
 }
 
 bool showFlagEnabled(const int visualization, const bool showAlmostGone, const bool showUsed,
@@ -68,49 +102,43 @@ QVariant TImbuedObjectsModel::data(const QModelIndex& index, const int role) con
     if (!index.isValid() || index.row() >= int(m_rows.size()))
         return {};
     const Row& row = m_rows[size_t(index.row())];
+    if (role >= Imbuement1NameRole && role <= Imbuement3VisualizationRole) {
+        const int slot = (role - Imbuement1NameRole) / 5;
+        switch ((role - Imbuement1NameRole) % 5) {
+        case 0:
+            return row.name[slot];
+        case 1:
+            return row.iconId[slot];
+        case 2:
+            return remainingTimeString(row.remainingMs[slot]);
+        case 3:
+            return row.remainingMs[slot];
+        default:
+            return QVariant::fromValue(visualization(row.remainingMs[slot]));
+        }
+    }
     switch (role) {
     case InventoryPositionRole:
         return row.inventoryPosition;
-    case ManagedContainerTooltipRole:
-        return QString{};
+    case SlotCountRole:
+        return row.slotCount;
     case TypeIdRole:
         return row.typeId;
-    case UpgradeTierRole:
-        return row.upgradeTier;
     case CumulativeCountRole:
         return row.cumulativeCount;
     case LiquidTypeRole:
         return row.liquidType;
     case HookDirectionRole:
         return row.hookDirection;
+    case UpgradeTierRole:
+        return row.upgradeTier;
+    case TypeCountRole:
+    case CountStringRole:
     case AlternativeSlotStringRole:
+    case LootValueImageSourceUnderItemRole:
+    case LootValueImageSourceOverItemRole:
+    case ManagedContainerTooltipRole:
         return QString{};
-    case SlotCountRole:
-        return row.slotCount;
-    case Imbuement1IconIdRole:
-        return row.iconId[0];
-    case Imbuement1NameRole:
-        return row.name[0];
-    case Imbuement1RemainingTimeStringRole:
-        return row.remaining[0];
-    case Imbuement1VisualizationRole:
-        return row.visualization[0];
-    case Imbuement2IconIdRole:
-        return row.iconId[1];
-    case Imbuement2NameRole:
-        return row.name[1];
-    case Imbuement2RemainingTimeStringRole:
-        return row.remaining[1];
-    case Imbuement2VisualizationRole:
-        return row.visualization[1];
-    case Imbuement3IconIdRole:
-        return row.iconId[2];
-    case Imbuement3NameRole:
-        return row.name[2];
-    case Imbuement3RemainingTimeStringRole:
-        return row.remaining[2];
-    case Imbuement3VisualizationRole:
-        return row.visualization[2];
     default:
         return {};
     }
@@ -119,26 +147,33 @@ QVariant TImbuedObjectsModel::data(const QModelIndex& index, const int role) con
 QHash<int, QByteArray> TImbuedObjectsModel::roleNames() const
 {
     return {
-        { InventoryPositionRole, "inventoryPosition" },
-        { ManagedContainerTooltipRole, "managedContainerTooltip" },
         { TypeIdRole, "typeID" },
-        { UpgradeTierRole, "upgradeTier" },
         { CumulativeCountRole, "cumulativeCount" },
+        { TypeCountRole, "typeCount" },
+        { CountStringRole, "countString" },
+        { AlternativeSlotStringRole, "alternativeSlotString" },
         { LiquidTypeRole, "liquideType" },
         { HookDirectionRole, "hookDirection" },
-        { AlternativeSlotStringRole, "alternativeSlotString" },
+        { LootValueImageSourceUnderItemRole, "lootvalueImageSourceUnderItem" },
+        { LootValueImageSourceOverItemRole, "lootvalueImageSourceOverItem" },
+        { ManagedContainerTooltipRole, "managedContainerTooltip" },
+        { UpgradeTierRole, "upgradeTier" },
+        { InventoryPositionRole, "inventoryPosition" },
         { SlotCountRole, "slotCount" },
-        { Imbuement1IconIdRole, "imbuement1IconID" },
         { Imbuement1NameRole, "imbuement1Name" },
+        { Imbuement1IconIdRole, "imbuement1IconID" },
         { Imbuement1RemainingTimeStringRole, "imbuement1RemainingTimeString" },
+        { Imbuement1RemainingTimeMsRole, "imbuement1RemainingTimeMs" },
         { Imbuement1VisualizationRole, "imbuement1Visualization" },
-        { Imbuement2IconIdRole, "imbuement2IconID" },
         { Imbuement2NameRole, "imbuement2Name" },
+        { Imbuement2IconIdRole, "imbuement2IconID" },
         { Imbuement2RemainingTimeStringRole, "imbuement2RemainingTimeString" },
+        { Imbuement2RemainingTimeMsRole, "imbuement2RemainingTimeMs" },
         { Imbuement2VisualizationRole, "imbuement2Visualization" },
-        { Imbuement3IconIdRole, "imbuement3IconID" },
         { Imbuement3NameRole, "imbuement3Name" },
+        { Imbuement3IconIdRole, "imbuement3IconID" },
         { Imbuement3RemainingTimeStringRole, "imbuement3RemainingTimeString" },
+        { Imbuement3RemainingTimeMsRole, "imbuement3RemainingTimeMs" },
         { Imbuement3VisualizationRole, "imbuement3Visualization" },
     };
 }
@@ -161,8 +196,7 @@ void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
                 continue;
             row.iconId[slotIndex] = slot.iconId;
             row.name[slotIndex] = QString::fromStdString(slot.name);
-            row.remaining[slotIndex] = formatDuration(slot.duration);
-            row.visualization[slotIndex] = visualizationFor(slot.duration, slot.state);
+            row.remainingMs[slotIndex] = qint64(slot.duration) * 1000;
             ++row.filledSlots;
         }
         m_rows.push_back(std::move(row));
@@ -170,12 +204,12 @@ void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
     endResetModel();
 }
 
-TImbuedObjectsSortFilterProxyModel::TImbuedObjectsSortFilterProxyModel(TImbuedObjectsModel* source, QObject* parent)
+TImbuedObjectsSortFilterProxyModel::TImbuedObjectsSortFilterProxyModel(QObject* parent)
     : cip::TImbuedObjectsSortFilterProxyModel(parent)
-    , m_source(source)
 {
-    setSourceModel(m_source);
     setDynamicSortFilter(true);
+    sort(0);
+    setSourceModel(&m_source);
 }
 
 void TImbuedObjectsSortFilterProxyModel::setShowFlags(const bool showAlmostGone, const bool showUsed,
@@ -196,15 +230,15 @@ void TImbuedObjectsSortFilterProxyModel::onOptionsChanged()
 
 bool TImbuedObjectsSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    if (!m_source || sourceRow < 0 || sourceRow >= m_source->rowCount())
+    if (sourceRow < 0 || sourceRow >= m_source.rowCount())
         return false;
-    const TImbuedObjectsModel::Row& row = m_source->m_rows[size_t(sourceRow)];
+    const TImbuedObjectsModel::Row& row = m_source.m_rows[size_t(sourceRow)];
     if (row.filledSlots == 0)
         return m_showEmptySlots;
     for (int i = 0; i < 3; ++i) {
         if (row.name[i].isEmpty() && row.iconId[i] == 0)
             continue;
-        if (showFlagEnabled(row.visualization[i], m_showAlmostGone, m_showUsed, m_showAlmostNew))
+        if (showFlagEnabled(static_cast<int>(visualization(row.remainingMs[i])), m_showAlmostGone, m_showUsed, m_showAlmostNew))
             return true;
     }
     return false;
@@ -213,8 +247,8 @@ bool TImbuedObjectsSortFilterProxyModel::filterAcceptsRow(const int sourceRow, c
 TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                                      QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_model(new TImbuedObjectsModel(this))
-    , m_proxy(new TImbuedObjectsSortFilterProxyModel(m_model, this))
+    , m_proxy(new TImbuedObjectsSortFilterProxyModel(this))
+    , m_model(m_proxy->source())
 {
     m_imbuedObjectsModel = m_proxy;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateImbuementTracker", [this](GameObject*, const Args& args) {
