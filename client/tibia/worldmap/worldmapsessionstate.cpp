@@ -115,7 +115,7 @@ void TWorldMapSessionState::invalidateCoverCachesFrom(const Position& pos)
 
 void TWorldMapSessionState::invalidateAllCoverCaches()
 {
-    for (tibia::worldmap::TWorldMapField* tile : tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(-1)) {
+    for (tibia::worldmap::TWorldMapField* tile : tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldList(-1)) {
         if (tile)
             tile->invalidateCoverCache();
     }
@@ -230,10 +230,7 @@ void TWorldMapSessionState::clean()
 {
     cleanDynamicThings();
 
-    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance())
-        storage->clearAllFields();
-    else
-        tibia::worldmap::TWorldMapStorage::ensureStorage()->clearSpatialIndex();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->clearAllFields();
 }
 
 void TWorldMapSessionState::cleanDynamicThings()
@@ -376,20 +373,11 @@ tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateTile(const Po
     return tibia::worldmap::TWorldMapStorage::ensureStorage()->getOrCreateField(pos);
 }
 
-tibia::worldmap::TWorldMapField* TWorldMapSessionState::fieldInBlock(const Position& pos)
-{
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldInSpatialIndex(pos);
-}
-
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::getTile(const Position& pos)
 {
     if (!pos.isMapPosition())
         return nullptr;
-    tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage();
-    if (tibia::worldmap::TWorldMapField* field = storage->fieldAt(pos))
-        return field;
-    // Orphan spatial slot (pre-rebind) — pathfind iterates storage spatial blocks.
-    return fieldInBlock(pos);
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldAt(pos);
 }
 
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::fieldAt(const Position& pos)
@@ -404,14 +392,9 @@ tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateField(const P
     return getOrCreateTile(pos);
 }
 
-void TWorldMapSessionState::setFieldInBlock(const Position& pos, tibia::worldmap::TWorldMapField* field)
-{
-    tibia::worldmap::TWorldMapStorage::ensureStorage()->bindFieldToSpatialIndex(pos, field);
-}
-
 WorldMapFieldList TWorldMapSessionState::getTiles(const int8_t floor/* = -1*/)
 {
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(floor);
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldList(floor);
 }
 
 void TWorldMapSessionState::cleanTile(const Position& pos)
@@ -422,37 +405,14 @@ void TWorldMapSessionState::cleanTile(const Position& pos)
     if (!pos.isMapPosition())
         return;
 
-    // CIP has one field identity per coordinate. Unaware removal nulls the block
-    // slot but may leave the TWorldMapStorage entry — clearField must scrub that
-    // too or the next map description inserts onto the stale stack (duplicate
-    // tables/mailboxes after leave/reenter).
-    tibia::worldmap::TWorldMapField* storageField = nullptr;
-    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance())
-        storageField = storage->fieldAt(pos);
-
-    tibia::worldmap::TWorldMapField* blockField = fieldInBlock(pos);
-
-    tibia::worldmap::TWorldMapField* tile = blockField ? blockField : storageField;
-    if (tile) {
+    tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage();
+    if (tibia::worldmap::TWorldMapField* tile = storage->fieldAt(pos)) {
         tile->clean();
-        if (tile->canErase()) {
-            if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-                storage->removeFieldFromSpatialIndex(pos);
-                storage->removeField(pos);
-            } else {
-                tibia::worldmap::TWorldMapStorage::ensureStorage()->removeFieldFromSpatialIndex(pos);
-            }
-        } else if (!blockField && storageField) {
-            // Keep drawable field addressable via Map blocks after unaware scrub.
-            setFieldInBlock(pos, storageField);
-        }
-
+        if (tile->canErase())
+            storage->removeField(pos);
         notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN);
-    } else if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-        storage->notifyCoordinateChanged(pos);
     } else {
-        for (MapObserver* observer : m_observers)
-            observer->onTileChanged(pos);
+        storage->notifyCoordinateChanged(pos);
     }
 
     tibia::schedule::post([=, this] {
@@ -619,12 +579,9 @@ void TWorldMapSessionState::removeUnawareThings()
     m_removingUnawareThings = true;
     // Prefer instance — ensureStorage during storage construction re-enters ctor.
     if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-        storage->pruneUnawareSpatialFields(
+        storage->removeFieldsOutsideStoredVolume(
             [&](const Position& pos) { return isAwareOfPosition(pos); },
-            [&](const Position& pos) {
-                notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN);
-                storage->notifyCoordinateChanged(pos);
-            });
+            [&](const Position& pos) { notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN); });
     }
     m_removingUnawareThings = false;
 }

@@ -17,42 +17,24 @@ namespace {
 TWorldMapStorage* g_worldMapStorage = nullptr;
 std::unique_ptr<TWorldMapStorage> g_fallbackWorldMapStorage;
 
-quint64 pack(const Position& pos)
-{
-    return (static_cast<quint64>(static_cast<uint32_t>(pos.x)) << 32)
-        | (static_cast<quint64>(static_cast<uint16_t>(pos.y)) << 16)
-        | static_cast<quint64>(pos.z);
-}
-
 }
 
 TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
     : cip::tibia::worldmap::TWorldMapStorage(parent)
     , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
 {
-    ensureSpatialFloorsSized();
     // Size missile floors only — full sessionState().init() calls resetAwareRange →
     // removeUnawareThings → ensureStorage(), which re-enters while g_worldMapStorage
     // is still null (stack overflow). Callers init after setInstance / ensureStorage.
     m_sessionState.ensureMissileFloorsSized();
 }
 
-void TWorldMapStorage::ensureSpatialFloorsSized()
-{
-    const auto maxZ = static_cast<size_t>(tibia::config::mapMaxZ()) + 1;
-    if (m_spatialFloors.size() < maxZ)
-        m_spatialFloors.resize(maxZ);
-}
-
-uint16_t TWorldMapStorage::blockIndex(const Position& pos)
-{
-    return static_cast<uint16_t>(((pos.y / BLOCK_SIZE) * (65536 / BLOCK_SIZE)) + (pos.x / BLOCK_SIZE));
-}
-
 TWorldMapStorage::~TWorldMapStorage()
 {
     if (g_worldMapStorage == this)
         g_worldMapStorage = nullptr;
+    for (const auto& [coordinate, field] : m_fields)
+        field->disconnect(this);
 }
 
 TWorldMapStorage* TWorldMapStorage::instance()
@@ -82,117 +64,59 @@ TWorldMapStorage* TWorldMapStorage::ensureStorage()
 
 void TWorldMapStorage::removeField(const Position& position)
 {
-    m_fields.remove(key(position));
+    const auto it = m_fields.find(TWorldMapCoordinate(position));
+    if (it == m_fields.end())
+        return;
+    it->second->disconnect(this);
+    m_fields.erase(it);
 }
 
 void TWorldMapStorage::clearAllFields()
 {
+    for (const auto& [coordinate, field] : m_fields)
+        field->disconnect(this);
     m_fields.clear();
-    clearSpatialIndex();
 }
 
-void TWorldMapStorage::clearSpatialIndex()
+WorldMapFieldList TWorldMapStorage::fieldList(const int8_t floor) const
 {
-    ensureSpatialFloorsSized();
-    for (auto& blocks : m_spatialFloors)
-        blocks.clear();
-}
-
-WorldMapFieldList TWorldMapStorage::spatialFieldList(const int8_t floor)
-{
-    WorldMapFieldList tiles;
-    ensureSpatialFloorsSized();
-    if (floor > tibia::config::mapMaxZ())
-        return tiles;
-
-    const auto collect = [&](const uint8_t z) {
-        for (const auto& [_, block] : m_spatialFloors[z]) {
-            for (const auto& tile : block.getTiles()) {
-                if (tile != nullptr)
-                    tiles.emplace_back(tile);
-            }
-        }
-    };
-
-    if (floor < 0) {
-        for (auto z = -1; ++z <= tibia::config::mapMaxZ();)
-            collect(static_cast<uint8_t>(z));
-    } else {
-        collect(static_cast<uint8_t>(floor));
+    WorldMapFieldList result;
+    result.reserve(m_fields.size());
+    for (const auto& [coordinate, field] : m_fields) {
+        if (floor < 0 || coordinate.z == floor)
+            result.push_back(field.get());
     }
-    return tiles;
+    return result;
 }
 
-TWorldMapField* TWorldMapStorage::fieldInSpatialIndex(const Position& position)
+std::shared_ptr<TWorldMapField> TWorldMapStorage::field(const TWorldMapCoordinate& coordinate) const
 {
-    if (!position.isMapPosition())
-        return nullptr;
-    ensureSpatialFloorsSized();
-    auto& blocks = m_spatialFloors[position.z];
-    const auto it = blocks.find(blockIndex(position));
-    if (it != blocks.end())
-        return it->second.get(position);
-    return nullptr;
+    const auto it = m_fields.find(coordinate);
+    return it != m_fields.end() ? it->second : nullptr;
 }
 
-void TWorldMapStorage::bindFieldToSpatialIndex(const Position& position, TWorldMapField* field)
+void TWorldMapStorage::removeFieldsOutsideStoredVolume(const std::function<bool(const Position&)>& isStored,
+                                                       const std::function<void(const Position&)>& onRemoved)
 {
-    if (!position.isMapPosition())
-        return;
-    ensureSpatialFloorsSized();
-    m_spatialFloors[position.z][blockIndex(position)].assign(position, field);
-}
-
-void TWorldMapStorage::removeFieldFromSpatialIndex(const Position& position)
-{
-    if (!position.isMapPosition())
-        return;
-    ensureSpatialFloorsSized();
-    auto& blocks = m_spatialFloors[position.z];
-    const auto it = blocks.find(blockIndex(position));
-    if (it != blocks.end())
-        it->second.remove(position);
-}
-
-void TWorldMapStorage::pruneUnawareSpatialFields(
-    const std::function<bool(const Position&)>& isAware,
-    const std::function<void(const Position&)>& onRemoved)
-{
-    ensureSpatialFloorsSized();
-    for (auto z = -1; ++z <= tibia::config::mapMaxZ();) {
-        auto& tileBlocks = m_spatialFloors[static_cast<size_t>(z)];
-        for (auto it = tileBlocks.begin(); it != tileBlocks.end();) {
-            auto& block = it->second;
-            bool blockEmpty = true;
-            for (const auto& tile : block.getTiles()) {
-                if (!tile)
-                    continue;
-
-                const Position& pos = tile->getPosition();
-                if (isAware(pos)) {
-                    blockEmpty = false;
-                    continue;
-                }
-
-                if (!tile->isEmpty() || tile->hasEffect())
-                    tile->clean();
-
-                block.remove(pos);
-                removeField(pos);
-                onRemoved(pos);
-            }
-
-            if (blockEmpty)
-                it = tileBlocks.erase(it);
-            else
-                ++it;
+    for (auto it = m_fields.begin(); it != m_fields.end();) {
+        const Position position = it->first.toPosition();
+        if (isStored(position)) {
+            ++it;
+            continue;
         }
+        const std::shared_ptr<TWorldMapField> field = it->second;
+        field->disconnect(this);
+        it = m_fields.erase(it);
+        if (!field->isEmpty() || field->hasEffect())
+            field->clean();
+        onRemoved(position);
+        Q_EMIT informationAtWorldMapCoordinateHasChanged(TWorldMapCoordinate(position));
     }
 }
 
-quint64 TWorldMapStorage::key(const Position& pos)
+void TWorldMapStorage::fieldAppearanceInstancesChanged(const TWorldMapField* field)
 {
-    return pack(pos);
+    Q_EMIT informationAtWorldMapCoordinateHasChanged(field->coordinate());
 }
 
 TWorldMapField* TWorldMapStorage::fieldAt(const TWorldMapCoordinate& coordinate)
@@ -202,32 +126,26 @@ TWorldMapField* TWorldMapStorage::fieldAt(const TWorldMapCoordinate& coordinate)
 
 TWorldMapField* TWorldMapStorage::fieldAt(const Position& position)
 {
-    return m_fields.value(key(position));
+    const auto it = m_fields.find(TWorldMapCoordinate(position));
+    return it != m_fields.end() ? it->second.get() : nullptr;
 }
 
 TWorldMapField* TWorldMapStorage::getOrCreateField(const Position& position)
 {
-    const quint64 id = key(position);
-    if (TWorldMapField* existing = m_fields.value(id)) {
-        // Unaware scrub may have nulled the Map block slot while storage kept
-        // the field — re-bind so pathfind iterators and clearField agree.
-        if (!fieldInSpatialIndex(position))
-            bindFieldToSpatialIndex(position, existing);
-        return existing;
-    }
-
-    if (TWorldMapField* orphan = fieldInSpatialIndex(position)) {
-        if (orphan->parent() == nullptr)
-            orphan->setParent(this);
-        m_fields.insert(id, orphan);
-        return orphan;
-    }
-
-    auto* field = new TWorldMapField(this);
-    field->setCoordinate(TWorldMapCoordinate(position));
-    bindFieldToSpatialIndex(position, field);
-    m_fields.insert(id, field);
-    return field;
+    const TWorldMapCoordinate coordinate(position);
+    if (const auto it = m_fields.find(coordinate); it != m_fields.end())
+        return it->second.get();
+    if (!m_sessionState.isAwareOfPosition(position))
+        return nullptr;
+    // Deleted from the event loop: callers may still hold the raw field in the
+    // update that drops it.
+    std::shared_ptr<TWorldMapField> field(new TWorldMapField(), [](TWorldMapField* dropped) { dropped->deleteLater(); });
+    field->setCoordinate(coordinate);
+    m_fields.emplace(coordinate, field);
+    connect(field.get(), &TWorldMapField::appearanceInstancesChanged, this,
+            &TWorldMapStorage::fieldAppearanceInstancesChanged);
+    Q_EMIT informationAtWorldMapCoordinateHasChanged(coordinate);
+    return field.get();
 }
 
 void TWorldMapStorage::clearField(const Position& position)
@@ -261,9 +179,11 @@ bool TWorldMapStorage::applyCreatureMove(const uint32_t creatureId, const Positi
 
 void TWorldMapStorage::notifyCoordinateChanged(const Position& position)
 {
+    // A stored field announces its coordinate itself.
     if (TWorldMapField* field = fieldAt(position))
         field->notifyAppearanceInstancesChanged();
-    Q_EMIT informationAtWorldMapCoordinateHasChanged(TWorldMapCoordinate(position));
+    else
+        Q_EMIT informationAtWorldMapCoordinateHasChanged(TWorldMapCoordinate(position));
 }
 
 TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
@@ -318,7 +238,7 @@ bool TWorldMapStorage::removeAnimatedText(const AnimatedTextPtr& text)
 
 WorldMapFieldList fieldsOnFloor(const int8_t floor)
 {
-    return TWorldMapStorage::ensureStorage()->spatialFieldList(floor);
+    return TWorldMapStorage::ensureStorage()->fieldList(floor);
 }
 
 const std::vector<tibia::appearances::TAppearanceInstancePtr>& floorMissiles(const uint8_t z)

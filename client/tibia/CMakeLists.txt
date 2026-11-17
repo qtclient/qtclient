@@ -701,7 +701,6 @@ if(TIBIA_WITH_GAMECORE)
     worldmap/worldmapgameactionprovider.cpp worldmap/worldmapgameactionprovider.h
     worldmap/worldmappicker.cpp worldmap/worldmappicker.h
     worldmap/worldmapprotocolmessagehandler.cpp worldmap/worldmapprotocolmessagehandler.h
-    worldmap/tileblock.cpp worldmap/tileblock.h
     worldmap/worldmapstorage.cpp worldmap/worldmapstorage.h
     worldmap/worldmaptutorialmarkeroverlaycontroller.cpp worldmap/worldmaptutorialmarkeroverlaycontroller.h
     worldmap/worldmapviewport.cpp worldmap/worldmapviewport.h)

@@ -44,7 +44,6 @@ class LightSink;
 class AnimatedText;
 class StaticText;
 class ItemType;
-class TileBlock;
 class AttachedEffect;
 
 

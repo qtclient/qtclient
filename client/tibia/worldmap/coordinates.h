@@ -43,6 +43,15 @@ public:
     {
         return x == other.x && y == other.y && z == other.z;
     }
+    /// Ordered by x, then y, then z.
+    bool operator<(const TWorldMapCoordinate& other) const
+    {
+        if (x != other.x)
+            return x < other.x;
+        if (y != other.y)
+            return y < other.y;
+        return z < other.z;
+    }
 };
 
 /// Inclusive volume size in fields (CIP: TWorldMapExtent v0/v1 at).
