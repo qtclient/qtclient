@@ -6,11 +6,10 @@
 #include "appearances/spriteinfo.h"
 #include "appearances/worldmaphighlightbaseplate.h"
 #include "mods/registry.h"
-#include "sprites/sprite.h"
+#include "sprites/spritesystem.h"
 
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
-#include <tibia/assets/spritesheet.h>
 #include "assets/cipbmpimage.h"
 #include "sprites/hdscale.h"
 
@@ -35,7 +34,7 @@ namespace {
 
 QImage spriteImage(const uint32_t id, bool& loading)
 {
-    return tibia::assets::sprites().spriteImage(static_cast<int>(id), loading);
+    return tibia::sprites::TSpriteSystem::instance().spriteImage(id, loading);
 }
 
 /// Outfit masks mark the head yellow, the body red, the legs green and the feet
@@ -69,59 +68,6 @@ void colorize(QImage& image, const QImage& mask, const uint32_t colors)
     }
 }
 
-/// TSpritesheetDecompressorThreadpool: protobuf sprite sheets are decompressed
-/// off the render thread. False while the sprite's sheet is not ready; its
-/// decompression is then queued.
-bool sheetReady(const uint32_t spriteId)
-{
-    if (!tibia::game::isUsingProtobuf())
-        return true;
-    // CIP sprites::TSpritesheetCache / TSpritesheetDecompressorThreadpool.
-    const sprites::TSpriteInSpritesheet resolved =
-        sprites::TSpritesheetCache::instance().resolve(spriteId, false);
-    bool loading = false;
-    const SpriteSheetPtr sheet = resolved.sheet()
-        ? tibia::assets::sprites().sheetBySpriteId(static_cast<int>(spriteId), loading, false)
-        : SpriteSheetPtr{};
-    if (!sheet || (sheet->m_loadingState.load(std::memory_order_acquire) == SpriteLoadState::LOADED && sheet->data))
-        return true;
-
-    static QMutex mutex;
-    static QSet<const SpriteSheet*> queued;
-    // Sheets that failed to load are left to the synchronous path, which gives up on the sprite.
-    static QSet<const SpriteSheet*> failed;
-#if !defined(__EMSCRIPTEN__)
-    static QThreadPool* pool = [] {
-        auto* threads = new QThreadPool;
-        threads->setMaxThreadCount(std::max(1, QThread::idealThreadCount() / 2));
-        return threads;
-    }();
-#endif
-    const QMutexLocker lock(&mutex);
-    if (failed.contains(sheet.get()))
-        return true;
-    if (queued.contains(sheet.get()))
-        return false;
-#if defined(__EMSCRIPTEN__)
-    // The browser build's extra QThreadPool worker aborts the runtime (the
-    // start screen dies as soon as the boosted creature asks for a sheet).
-    // Decompress on this thread; the sheet is one LZMA blob.
-    const bool loaded = tibia::assets::sprites().loadSheet(sheet);
-    if (!loaded && sheet->m_loadingState.load(std::memory_order_acquire) == SpriteLoadState::NONE)
-        failed.insert(sheet.get());
-    return true;
-#else
-    queued.insert(sheet.get());
-    pool->start([sheet] {
-        const bool loaded = tibia::assets::sprites().loadSheet(sheet);
-        const QMutexLocker lock(&mutex);
-        queued.remove(sheet.get());
-        if (!loaded && sheet->m_loadingState.load(std::memory_order_acquire) == SpriteLoadState::NONE)
-            failed.insert(sheet.get());
-    });
-    return false;
-#endif
-}
 
 }
 
@@ -238,10 +184,6 @@ QImage TSpriteTextureCache::raster(const SpriteKey& key, bool& loading) const
     } else {
         // Not stored: a sheet still decompressing must be asked for again. Caching
         // the miss paints a hole until something clears the texture cache.
-        if (!sheetReady(key.spriteId) || (key.maskId && !sheetReady(key.maskId))) {
-            loading = true;
-            return {};
-        }
         image = spriteImage(key.spriteId, loading);
         if (loading)
             return {};

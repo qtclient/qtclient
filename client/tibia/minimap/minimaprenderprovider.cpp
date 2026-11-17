@@ -3,7 +3,6 @@
 #include "minimap/minimapciptypes.h"
 #include "minimap/minimaptilestorage.h"
 #include "minimap/minimapvisiblearea.h"
-#include "sprites/sprite.h"
 
 namespace tibia::minimap {
 

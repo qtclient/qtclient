@@ -322,6 +322,9 @@ if(TIBIA_WITH_GAMECORE)
     assets/asset.cpp assets/asset.h
     assets/assetcatalog.cpp assets/assetcatalog.h
     assets/contentcatalog.cpp assets/contentcatalog.h
+    assets/assetfilesystemhelper.cpp assets/assetfilesystemhelper.h
+    assets/assetasyncloader.cpp assets/assetasyncloader.h
+    assets/assetasyncloaderworker.cpp assets/assetasyncloaderworker.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
@@ -607,7 +610,17 @@ if(TIBIA_WITH_GAMECORE)
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
     effects/effectgameactionhandler.cpp effects/effectgameactionhandler.h
-    sprites/sprite.cpp sprites/sprite.h
+    sprites/sprite.h sprites/singlesprite.h
+    sprites/spriteinspritesheet.cpp sprites/spriteinspritesheet.h
+    sprites/spritefromspritesheetinfo.cpp sprites/spritefromspritesheetinfo.h
+    sprites/spritesheetsmetadatamanager.cpp sprites/spritesheetsmetadatamanager.h
+    sprites/spritesheetcache.cpp sprites/spritesheetcache.h
+    sprites/spritesheetdecompressor.cpp sprites/spritesheetdecompressor.h
+    sprites/spritesheetdecompressorsynchronous.cpp sprites/spritesheetdecompressorsynchronous.h
+    sprites/spritesheetdecompressorthreadpool.cpp sprites/spritesheetdecompressorthreadpool.h
+    sprites/spritesheetmanager.cpp sprites/spritesheetmanager.h
+    sprites/spriteresolver.cpp sprites/spriteresolver.h
+    sprites/spritesystem.cpp sprites/spritesystem.h
     shared/cip_typed.h
     cip_ports/all_ports.cpp
     cip_ports/native_port.h

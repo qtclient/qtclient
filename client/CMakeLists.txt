@@ -157,7 +157,6 @@ set(SOURCE_FILES
         tibia/protocol/clientmessages.cpp
         tibia/protocol/dispatch.gen.cpp
         tibia/client/statictext.cpp
-        tibia/assets/spritesheet.cpp
         tibia/assets/cipbmpimage.cpp
         tibia/shared/tibiafilesystemhelper.cpp
         tibia/appearances/appearancetype.cpp
@@ -180,7 +179,6 @@ set(_dispatch_gen_abs "${CMAKE_CURRENT_SOURCE_DIR}/tibia/protocol/dispatch.gen.c
 foreach(_rel IN ITEMS
     tibia/assets/things.cpp
     tibia/appearances/appearancetype.cpp
-    tibia/assets/spritesheet.cpp
     tibia/protocol/servermessages.cpp
     tibia/protocol/clientmessages.cpp
     tibia/protocol/dispatch.gen.cpp

@@ -12,7 +12,7 @@
 #include "client/const.h"
 #include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
-#include "tibia/assets/spritesheet.h"
+#include "sprites/spritesystem.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/mapsession.h>
 #include <tibia/worldmap/worldmapstorage.h>
@@ -1193,11 +1193,9 @@ bool TWorldMapField::isFullyOpaque() const {
 bool TWorldMapField::isLoading() const {
     // A sprite of an object on the field is still being decoded.
     const auto typeIsLoading = [](const TAppearanceType& type) {
-        bool loading = false;
         for (const auto& [group, info] : type.frameGroups()) {
             for (const uint32_t id : info.spriteIds()) {
-                tibia::assets::sprites().sheetBySpriteId(static_cast<int>(id), loading, false);
-                if (loading)
+                if (!tibia::sprites::TSpriteSystem::instance().isSpriteReady(id))
                     return true;
             }
         }

@@ -1,101 +1,41 @@
 #pragma once
 
-#include "shared/cip_typed.h"
-
-#include <cip_gen.h>
-
-#include <cstdint>
-#include <memory>
-#include <string>
-
-class SpriteSheet;
+#include <QImage>
+#include <QSize>
 
 namespace tibia {
 namespace sprites {
 
-/// CIP `sprites::IResourceSpriteIdentifier`.
-class IResourceSpriteIdentifier : public ::tibia::CipTyped
+/// One drawable sprite image of known size (CIP sprites::TSprite).
+class TSprite
 {
 public:
-    virtual ~IResourceSpriteIdentifier() = default;
-    virtual uint32_t spriteId() const = 0;
-};
+    TSprite(const QSize& size, double scale)
+        : m_size(size)
+        , m_scale(scale)
+    {
+    }
+    virtual ~TSprite() = default;
 
-/// CIP sprites::TSprite — one sprite id (possibly in a sheet).
-class TSprite : public IResourceSpriteIdentifier
-{
-public:
-    explicit TSprite(uint32_t spriteId = 0);
+    virtual QImage getImage() const = 0;
+    virtual const QSize& getSize() const { return m_size; }
+    virtual double getScale() const { return m_scale; }
 
-    uint32_t spriteId() const override { return m_spriteId; }
-    bool isValid() const { return m_spriteId != 0; }
+    /// The resolver clears this for whole asset spritesheets.
+    void setCacheable(bool cacheable) { m_cacheable = cacheable; }
+    bool isCacheable() const { return m_cacheable; }
+    /// The resolver sets this for sprites of appearances and image resources.
+    void setFromResource(bool fromResource) { m_fromResource = fromResource; }
+    bool isFromResource() const { return m_fromResource; }
+    void setHighlighted(bool highlighted) { m_highlighted = highlighted; }
+    bool isHighlighted() const { return m_highlighted; }
 
 private:
-    uint32_t m_spriteId = 0;
-};
-
-class TSingleSprite final : public TSprite
-{
-public:
-    using TSprite::TSprite;
-};
-
-class TSpriteInSpritesheet final : public TSprite
-{
-public:
-    TSpriteInSpritesheet(uint32_t spriteId, SpriteSheet* sheet);
-
-    SpriteSheet* sheet() const { return m_sheet; }
-
-private:
-    SpriteSheet* m_sheet = nullptr;
-};
-
-/// CIP sprites::TSpritesheetCache — decode cache over assets::SpriteStore.
-class TSpritesheetCache final : public ::tibia::CipTyped
-{
-public:
-    static TSpritesheetCache& instance();
-
-    SpriteSheet* sheetForSprite(uint32_t spriteId, bool load = true);
-    TSpriteInSpritesheet resolve(uint32_t spriteId, bool load = true);
-};
-
-class TSpritesheetDecompressorSynchronous final : public ::tibia::CipTyped
-{
-public:
-    bool decompress(SpriteSheet* sheet) const;
-};
-
-/// Promoted cip:: moc managers.
-class TResourceSpritesManager final : public cip::tibia::sprites::TResourceSpritesManager
-{
-public:
-    using cip::tibia::sprites::TResourceSpritesManager::TResourceSpritesManager;
-};
-
-class TSpriteResolver final : public cip::tibia::sprites::TSpriteResolver
-{
-public:
-    using cip::tibia::sprites::TSpriteResolver::TSpriteResolver;
-};
-
-class TSpritesheetDecompressor final : public cip::tibia::sprites::TSpritesheetDecompressor
-{
-public:
-    using cip::tibia::sprites::TSpritesheetDecompressor::TSpritesheetDecompressor;
-};
-
-class TSpritesheetDecompressorThreadpool final : public cip::tibia::sprites::TSpritesheetDecompressorThreadpool
-{
-public:
-    using cip::tibia::sprites::TSpritesheetDecompressorThreadpool::TSpritesheetDecompressorThreadpool;
-};
-
-class TSpritesheetManager final : public cip::tibia::sprites::TSpritesheetManager
-{
-public:
-    using cip::tibia::sprites::TSpritesheetManager::TSpritesheetManager;
+    bool m_cacheable = true;
+    bool m_fromResource = false;
+    bool m_highlighted = false;
+    QSize m_size;
+    double m_scale = 0.0;
 };
 
 }

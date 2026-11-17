@@ -193,6 +193,7 @@ if(TARGET cip_messages)
     qtclient_add_port_test(client_appearancetype_tests
         appearancetype_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
     )
     target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
 endif()
@@ -205,3 +206,20 @@ if(TARGET cip_messages)
     )
     target_link_libraries(client_minimapmarker_tests PRIVATE cip_messages)
 endif()
+
+# CIP sprite pipeline: spritesheet metadata, cache, manager and sprites cut from spritesheets.
+qtclient_add_port_test(client_spritesheetmanager_tests
+    spritesheetmanager_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetcache.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteinspritesheet.cpp
+)
+target_link_libraries(client_spritesheetmanager_tests PRIVATE qtclient_shared Qt6::Gui)
+set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)

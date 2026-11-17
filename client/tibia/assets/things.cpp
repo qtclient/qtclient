@@ -4,10 +4,9 @@
 #include "things.h"
 
 #include "loader.h"
-#include "spritesheet.h"
 
 #include "appearances/appearanceinstance.h"
-#include "sprites/sprite.h"
+#include "sprites/spritesystem.h"
 
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>
@@ -172,7 +171,7 @@ void TAppearancesManager::terminate()
     m_proficienciesFile.clear();
     m_effectVariants.clear();
     m_datLoaded = false;
-    tibia::assets::sprites().clear();
+    tibia::sprites::TSpriteSystem::instance().clear();
 }
 
 void TAppearancesManager::initialize(const std::string& bytes)
@@ -195,10 +194,7 @@ void TAppearancesManager::initialize(const std::string& bytes)
     // earlier one) and added to the types of its category without replacing any.
     // The sprites' pixel sizes come from their spritesheets.
     const TSpriteSizeLookup spriteSize = [](const uint32_t spriteId) {
-        bool loading = false;
-        if (const auto sheet = tibia::assets::sprites().sheetBySpriteId(static_cast<int>(spriteId), loading, false))
-            return sheet->getSpriteSize();
-        return QSize();
+        return tibia::sprites::TSpriteSystem::instance().spriteSize(spriteId);
     };
     const auto convert = [this, &spriteSize](const EAppearanceCategory category,
                                              const google::protobuf::RepeatedPtrField<tibia::protobuf::appearances::Appearance>& bank) {
@@ -281,12 +277,11 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
             qDebug("%s", std::format("assets.json.sha256 missing; using fallback appearancesHash").c_str());
         }
 
-        tibia::assets::sprites().clear();
         tibia::assets::TContentCatalog catalog;
         catalog.load(catalogDocument(directory));
         const std::string appearancesFile = catalogFile(catalog, tibia::assets::TAsset::Appearances);
-        tibia::assets::sprites().setSpritesCount(catalog.lastSpriteId() + 1);
-        tibia::assets::sprites().setPath(directory);
+        tibia::sprites::TSpriteSystem::instance().start(
+            catalog, QString::fromStdString(tibia::files::data().getRealPath(directory)));
         if (appearancesFile.empty())
             throw std::runtime_error("catalog has no appearances file");
 

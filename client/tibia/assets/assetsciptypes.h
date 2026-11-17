@@ -15,22 +15,6 @@ namespace assets {
 void ownProductSurface(QObject* parent);
 
 
-class TAssetAsyncLoader final : public cip::tibia::assets::TAssetAsyncLoader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::assets::TAssetAsyncLoader::TAssetAsyncLoader;
-};
-
-class TAssetAsyncLoaderWorker final : public cip::tibia::assets::TAssetAsyncLoaderWorker
-{
-    Q_OBJECT
-public:
-    using cip::tibia::assets::TAssetAsyncLoaderWorker::TAssetAsyncLoaderWorker;
-};
-
-class TAssetFileSystemHelper final : public ::tibia::CipTyped {};
-
 class TAssetHandler final : public cip::tibia::assets::TAssetHandler
 {
     Q_OBJECT

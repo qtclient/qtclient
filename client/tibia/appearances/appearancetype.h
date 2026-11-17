@@ -56,8 +56,6 @@ void setSpecialMeaningAppearanceIds(const TSpecialMeaningAppearanceIds& ids);
 /// The fixed frame group a protobuf FIXED_FRAME_GROUP value stands for.
 EFixedFrameGroup fixedFrameGroupFromProtobuf(uint32_t value);
 
-/// The pixel size of a spritesheet layout (0: 32x32, 1: 32x64, 2: 64x32, 3: 64x64; others empty).
-QSize spriteLayoutSize(uint32_t layout);
 
 /// How the frames of one frame group are laid out and animated.
 /// The pixel size of a sprite, as the spritesheets know it (empty when unknown).

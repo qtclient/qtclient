@@ -1,6 +1,5 @@
 #include "appearances/worldmaphighlightbaseplate.h"
 
-#include "sprites/sprite.h"
 
 #include <QFile>
 #include <QImage>

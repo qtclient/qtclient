@@ -34,6 +34,9 @@ public:
     EType type() const { return m_type; }
     const QString& file() const { return m_file; }
     bool isValid() const { return m_valid; }
+    /// A failed load of this asset is reported (assetLoadError); on by default.
+    bool isLoadErrorReported() const { return m_loadErrorReported; }
+    void setLoadErrorReported(bool reported) { m_loadErrorReported = reported; }
 
     static EType typeFromString(const QString& type);
 
@@ -43,6 +46,7 @@ private:
     EType m_type = Unknown;
     QString m_file;
     bool m_valid = false;
+    bool m_loadErrorReported = true;
 };
 
 }

@@ -1,5 +1,7 @@
 #include "appearancetype.h"
 
+#include "sprites/spritesheetsmetadatamanager.h"
+
 #include <appearances.pb.h>
 
 #include <QtGlobal>
@@ -13,7 +15,6 @@ namespace tibia::appearances {
 
 namespace {
 
-constexpr std::array<QSize, 4> kSpriteLayoutSizes{ QSize(32, 32), QSize(32, 64), QSize(64, 32), QSize(64, 64) };
 
 /// The market categories of objects that have no market data of their own.
 constexpr int kCyclopediaOnlyMarketCategory = 28;
@@ -92,11 +93,6 @@ EFixedFrameGroup fixedFrameGroupFromProtobuf(const uint32_t value)
     return value < groups.size() ? groups[value] : EFixedFrameGroup::Invalid;
 }
 
-QSize spriteLayoutSize(const uint32_t layout)
-{
-    return layout < kSpriteLayoutSizes.size() ? kSpriteLayoutSizes[layout] : QSize(0, 0);
-}
-
 // TAppearanceTypeSpriteInfo
 
 TAppearanceTypeSpriteInfo TAppearanceTypeSpriteInfo::fromProtobuf(const tibia::protobuf::appearances::SpriteInfo& message,
@@ -113,9 +109,9 @@ TAppearanceTypeSpriteInfo TAppearanceTypeSpriteInfo::fromProtobuf(const tibia::p
     // The box a direction without one of its own gets: the whole 32x32 sprite,
     // or the bottom-right square of the bounding square in the sprite.
     QPoint defaultOrigin(0, 0);
-    QSize defaultSize = spriteLayoutSize(0);
+    QSize defaultSize = sprites::spriteSizeOfLayout(0);
     if (message.has_bounding_square()) {
-        defaultSize = spriteLayoutSize(3);
+        defaultSize = sprites::spriteSizeOfLayout(3);
         if (!info.m_spriteIds.empty())
             defaultSize = info.m_spriteSize;
         const int square = static_cast<int>(message.bounding_square());

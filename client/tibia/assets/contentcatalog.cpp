@@ -1,12 +1,13 @@
 #include "assets/contentcatalog.h"
 
-#include "assets/spritesheet.h"
-#include "sprites/sprite.h"
-#include "sprites/spritesession.h"
-
-#include <algorithm>
+#include "sprites/spritesheetsmetadatamanager.h"
 
 namespace tibia::assets {
+
+TContentCatalog::TContentCatalog()
+    : m_spritesheetsMetadataManager(std::make_shared<sprites::TSpritesheetsMetadataManager>())
+{
+}
 
 void TContentCatalog::assetRead(const TAsset& asset, const QJsonObject& json)
 {
@@ -21,15 +22,9 @@ void TContentCatalog::addSpritesheet(const QString& file, const QJsonObject& jso
     const QJsonValue last = json.value(QLatin1String("lastspriteid"));
     if (!type.isDouble() || !first.isDouble() || !last.isDouble())
         return;
-    int lastSpriteId = last.toInt();
-    auto sheet = std::make_shared<SpriteSheet>(first.toInt(), lastSpriteId, static_cast<SpriteLayout>(type.toInt()), file.toStdString());
-    const int maxSpriteId = sheet->firstId + sheet->getSpritesPerSheet() - 1;
-    if (lastSpriteId > maxSpriteId) {
-        lastSpriteId = maxSpriteId;
-        sheet->lastId = maxSpriteId;
-    }
-    tibia::assets::sprites().addSheet(sheet);
-    m_lastSpriteId = std::max(m_lastSpriteId, lastSpriteId);
+    m_spritesheetsMetadataManager->addSpritesheet(file, static_cast<uint32_t>(first.toInt()),
+                                                  static_cast<uint32_t>(last.toInt()),
+                                                  static_cast<uint32_t>(type.toInt()));
 }
 
 }

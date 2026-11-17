@@ -7,7 +7,6 @@
 #include "appearances/spriteinfo.h"
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "qmlcomponents/outfittypes.h"
-#include "sprites/sprite.h"
 
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>

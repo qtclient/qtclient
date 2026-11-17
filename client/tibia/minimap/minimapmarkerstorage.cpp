@@ -2,7 +2,6 @@
 
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/minimaprendererquickitem.h"
-#include "sprites/sprite.h"
 
 #include <algorithm>
 #include <any>

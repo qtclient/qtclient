@@ -10,7 +10,6 @@
 #include "mods/registry.h"
 #include "mods/weather_driver.h"
 #include "mods/worldview.h"
-#include "sprites/sprite.h"
 #include "renderer/lightmodel.h"
 #include "renderer/rendervolumeprovider.h"
 #include "renderer/worldgeometry.h"
