@@ -154,7 +154,6 @@ private:
 
     QPointer<trade::TNPCTradeStorage> m_storage;
     std::vector<uint32_t> m_talkPartners;
-    std::vector<client::gamecore::Hook> m_hooks;
     TNPCTradeController m_trade;
     TUiFocusManager m_tradeFocus;
     TNpcDialogOutfit m_outfit;

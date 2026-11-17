@@ -397,18 +397,6 @@ enum KeywordButtonIcon : uint16_t
     KEYWORDBUTTONICON_LAST
 };
 
-struct NpcButton
-{
-    uint16_t id;
-    std::string text;
-};
-
-struct NpcChatWindowData
-{
-    std::vector<uint32_t> npcIds;
-    std::vector<NpcButton> buttons;
-};
-
 struct MarketOffer
 {
     uint32_t timestamp = 0;

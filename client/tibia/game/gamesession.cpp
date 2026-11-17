@@ -575,27 +575,6 @@ void processCloseDepotSearch()
 {
     tibia::game::notify("onCloseDepotSearch");
 }
-void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList)
-{
-    tibia::game::notify("onChannelList", channelList);
-}
-void processOpenChannel(const uint16_t channelId, const std::string_view name)
-{
-    tibia::game::notify("onOpenChannel", channelId, name);
-}
-void processOpenPrivateChannel(const std::string_view name)
-{
-    tibia::game::notify("onOpenPrivateChannel", name);
-}
-void processOpenOwnPrivateChannel(const uint16_t channelId, const std::string_view name)
-{
-    tibia::game::notify("onOpenOwnPrivateChannel", channelId, name);
-}
-void processCloseChannel(const uint16_t channelId)
-{
-    tibia::game::notify("onCloseChannel", channelId);
-}
-
 void processTutorialHint(const uint8_t id)
 {
     tibia::game::notify("onTutorialHint", id);

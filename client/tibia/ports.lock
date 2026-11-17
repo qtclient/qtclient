@@ -251,14 +251,20 @@ chat::TChatModeManager::v19	cddc17df18cc5baf	ported	chat/chatmodemanager.cpp:TCh
 chat::TChatModeManager::~TChatModeManager	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 chat::TChatModeManager::~TChatModeManager_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
 chat::TChatProtocolMessageHandler::handleChannelEventMessage	a8dce62c96101e49	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleChannelEventMessage
+chat::TChatProtocolMessageHandler::handleChannelsMessage	8564853c4506fc2f	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleChannelsMessage
 chat::TChatProtocolMessageHandler::handleCloseChannelMessage	f09d1d5b6e4c21ba	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleCloseChannelMessage
 chat::TChatProtocolMessageHandler::handleMessageMessage	1b7d7abde96750ab	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleMessageMessage
+chat::TChatProtocolMessageHandler::handleNpcTalkPartersMessage	be3ddd1fe4df1bb7	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleNpcTalkPartersMessage
 chat::TChatProtocolMessageHandler::handleOpenChannelMessage	71490826142b235a	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleOpenChannelMessage
 chat::TChatProtocolMessageHandler::handleOpenOwnChannelMessage	66ed78a7383d4923	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleOpenOwnChannelMessage
 chat::TChatProtocolMessageHandler::handlePrivateChannelMessage	f4f4ce643a2ca28f	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handlePrivateChannelMessage
 chat::TChatProtocolMessageHandler::handleTalkMessage	3469bb365195f4af	ported	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleTalkMessage
 chat::TChatProtocolMessageHandler::~TChatProtocolMessageHandler	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TChatProtocolMessageHandler::~TChatProtocolMessageHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+chat::TChatStorage::v12	f732adf2b2f166d5	ported	chat/chatgameactionhandler.cpp:TChatStorage::setNpcTalkPartners
+chat::TChatStorage::v13	391a7b8ef45bdd05	ported	chat/chatgameactionhandler.h:TChatStorage::npcTalkPartners
+chat::TChatStorage::v14	178180adf33fd556	ported	chat/chatgameactionhandler.cpp:TChatStorage::setKeywordButtons
+chat::TChatStorage::v15	997a57b17b622bc2	ported	chat/chatgameactionhandler.h:TChatStorage::keywordButtons
 chat::TChatStorage::~TChatStorage	876063fdb48ffb28	skip	generated: compiler-generated destructor (member destruction only, read)
 chat::TChatStorage::~TChatStorage_deleting	090e16a63726bf4f	skip	generated: compiler-generated destructor (member destruction only, read)
 chat::TClientChatEntryFactory::v0	5f3d3948d1681070	skip	generated: compiler-generated destructor pair
@@ -5570,6 +5576,7 @@ sub_33b6f2dc6ab9	33b6f2dc6ab92ca0	ported	cyclopedia/combatstatsqmldata.cpp:TMisc
 sub_33bcf64dac6c	33bcf64dac6c6a57	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_33c007a5b41e	33c007a5b41e7f56	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_33c1ea7d3bd8	33c1ea7d3bd85d5f	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::unlockPermanentlyClicked
+sub_33cffda10865#2	33cffda10865e6b3	inlined	chat::TChatProtocolMessageHandler::handleChannelsMessage
 sub_33d70dd1ab5e	33d70dd1ab5e6425	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_33dc685e5eba	33dc685e5eba2a09	skip	library: SFML/miniaudio library helper, only called from library code
 sub_33e88fe5a2f7	33e88fe5a2f73368	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -8923,6 +8930,7 @@ sub_a3d1ff165859	a3d1ff16585996a0	skip	data: static initializer misattributed to
 sub_a3d1ff165859#12	a3d1ff16585996a0	skip	data: static initializer of unrelated globals (inbox filter names, vocation names; misattributed)
 sub_a3d1ff165859#13	a3d1ff16585996a0	skip	data: static initializer of unrelated globals (inbox filter names, vocation names; misattributed)
 sub_a3d1ff165859#14	a3d1ff16585996a0	skip	data: translation-unit static initializer (store inbox filter name strings)
+sub_a3d1ff165859#15	a3d1ff16585996a0	skip	data: translation-unit static initializer (constant strings, vocation names, tables; read)
 sub_a3d1ff165859#17	a3d1ff16585996a0	skip	data: static initializer of unrelated globals, misattributed
 sub_a3d1ff165859#3	a3d1ff16585996a0	skip	data: static initializer misattributed to the class
 sub_a3d6df26e6de#2	a3d6df26e6de0b5e	skip	generated: moc-generated signal emitter

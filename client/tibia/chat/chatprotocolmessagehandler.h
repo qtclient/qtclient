@@ -1,5 +1,6 @@
 #pragma once
 
+#include "chat/chatchannel.h"
 #include "client/gamecore.h"
 #include <client/position.h>
 
@@ -43,6 +44,7 @@ class TNumericalEffectStorage;
 namespace chat {
 
 class TChatChannelStorage;
+class TChatStorage;
 class TTextStorage;
 
 /// The ignore and white lists (CIP: chat::TWhiteBlacklist, vtable slots
@@ -151,7 +153,8 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
 {
     Q_OBJECT
 public:
-    TChatProtocolMessageHandler(TChatChannelStorage& storage, TWhiteBlacklist& blacklist, QObject* parent = nullptr);
+    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, TWhiteBlacklist& blacklist,
+                                QObject* parent = nullptr);
     ~TChatProtocolMessageHandler() override;
 
     /// : the console options by CIP name.
@@ -183,12 +186,10 @@ public Q_SLOTS:
     void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<::tibia::creatures::TCreature> pPlayer);
 
 Q_SIGNALS:
-    /// Tip open-channel dialog list (classic notify path).
-    void channelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
     /// A private tab opened for an incoming message.
     void privateChannelOpened(const QString& name);
-    /// CIP moc signal (TChatChannelIdentifierList → qtclient channel pairs).
-    void currentlyAvailableChannels(const std::vector<std::pair<uint16_t, QString>>& ChannelList);
+    /// The channels the open-channel dialog offers.
+    void currentlyAvailableChannels(const std::vector<TChatChannelIdentifier>& ChannelList);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
 
@@ -210,6 +211,8 @@ private:
     bool isOwnName(const QString& name) const;
 
     TChatChannelStorage& m_storage;
+    /// CIP +0x40: the NPC conversation's partners and keyword buttons.
+    TChatStorage& m_chatStorage;
     TTextStorage* m_textStorage = nullptr;
     worldmap::TNumericalEffectStorage* m_numericalEffects = nullptr;
     TWhiteBlacklist& m_blacklist;

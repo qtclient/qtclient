@@ -293,11 +293,6 @@ void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEnt
 void processDepotSearchResults();
 void processDepotSearchDetail();
 void processCloseDepotSearch();
-void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList);
-void processOpenChannel(uint16_t channelId, std::string_view name);
-void processOpenPrivateChannel(std::string_view name);
-void processOpenOwnPrivateChannel(uint16_t channelId, std::string_view name);
-void processCloseChannel(uint16_t channelId);
 void processTutorialHint(uint8_t id);
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
