@@ -4695,6 +4695,20 @@ sub_1613ea986dd2	1613ea986dd2c983	skip	library: r-lyeh bundle: unpack/is_packed/
 sub_16172f3f63cb	16172f3f63cb3e00	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestClassificationPageSwitch
 sub_1627a7f9c60f#2	1627a7f9c60fe6a9	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::onResartMessageControllerClicked
 sub_1631c5a17946#2	1631c5a179463db9	skip	generated: moc-generated signal emitter
+sub_16875217e6d3	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#10	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#11	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#12	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#13	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#14	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#2	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#3	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#4	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#5	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#6	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#7	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#8	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
+sub_16875217e6d3#9	16875217e6d3c6f1	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
 sub_16a79254c8b0	16a79254c8b0c571	ported	config/optionspages.cpp:fractionOf
 sub_16a84eea1f91	16a84eea1f91c0d6	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_16a84eea1f91#2	16a84eea1f91c0d6	inlined	config/sidebaroptions.cpp:parseImbuementTracker
@@ -5120,6 +5134,8 @@ sub_1cb903550355	1cb903550355f801	ported	gamewindow/remainingdialogs.cpp:TCrashR
 sub_1cd3d74639b3	1cd3d74639b3edf1	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::TAchievementInfoController
 sub_1cd3d74639b3#2	1cd3d74639b3edf1	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::TAchievementInfoController
 sub_1cd5cfe41ed9	1cd5cfe41ed96cf0	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::loadSystemCursors
+sub_1cdc54e9e9b1	1cdc54e9e9b17d70	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onLoginStateMachineStarted	test=tests/client/authenticationprocesscontroller_test.cpp
+sub_1cdc54e9e9b1#2	1cdc54e9e9b17d70	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onLoginStateMachineStartedShortcutToCharacterSelection	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_1ce2c1788075#3	1ce2c1788075e137	inlined	gamewindow/playerguidewidgetcontroller.cpp:levelSpecialPopup
 sub_1ce488ed06e1	1ce488ed06e105cd	ported	shared/src/jsondocumenthttppostsender.cpp:TJsonDocumentHttpPostSender::TJsonDocumentHttpPostSender
 sub_1ce4d1bc733a	1ce4d1bc733a288e	ported	gamewindow/chatcontroller.cpp:TChatChannelController::selectedText
@@ -5803,6 +5819,7 @@ sub_2a21e8bb50e7	2a21e8bb50e77396	ported	gamewindow/edittextcontroller.cpp:TEdit
 sub_2a259b136992	2a259b1369923345	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::lookTradeSide
 sub_2a27f61de7dc	2a27f61de7dcb252	ported	input/gameactionmapper.cpp:TGameActionMapper::map
 sub_2a3597492d39	2a3597492d39c6af	ported	gamewindow/remainingdialogs.h:TShowImageDialogController::imageCount
+sub_2a3ed741f6d2	2a3ed741f6d297d9	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onShowCharacterSelectionStateLeft	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_2a49d3048918	2a49d3048918717c	inlined	store/storestorage.cpp:TStoreStorage::sortOffers
 sub_2a4ac8b3a746	2a4ac8b3a746e55d	skip	library: miniaudio library
 sub_2a575558d38a	2a575558d38af914	skip	data: translation-unit static initializer (misattributed)
@@ -5868,6 +5885,8 @@ sub_2cbc9e42b727	2cbc9e42b7275614	inlined	shared/src/qnetworkreplywrapper.cpp:QN
 sub_2cbc9e42b727#2	2cbc9e42b7275614	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
 sub_2cbc9e42b727#8	2cbc9e42b7275614	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::THuntingSessionWidgetController
 sub_2ce5fc5bf4a3	2ce5fc5bf4a3bbbe	ported	config/sidebaroptions.cpp:serializeDepotSearch
+sub_2ce75db0c902	2ce75db0c9021ee1	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onShowLoginWaitingDialogStateLeft	test=tests/client/authenticationprocesscontroller_test.cpp
+sub_2ce75db0c902#3	2ce75db0c9021ee1	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onWaitForAssetsCompletionLeft	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_2d0a30c09a20	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
 sub_2d0a30c09a20#2	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
 sub_2d0b410c79da	2d0b410c79da851c	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
@@ -6055,6 +6074,7 @@ sub_347de424a451#2	347de424a4517971	inlined	gamewindow/characterinfomodels.cpp:T
 sub_347fafb20e09#10	347fafb20e09cef9	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::requestItemChosen
 sub_347fafb20e09#11	347fafb20e09cef9	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onPlayerDataChanged
 sub_347fafb20e09#12	347fafb20e09cef9	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onExaltedCurrencyBalanceChanged
+sub_347fafb20e09#2	347fafb20e09cef9	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onBeginPatchClientStateEntered	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_347fafb20e09#5	347fafb20e09cef9	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handleSelectImbuement
 sub_348677211a36#2	348677211a36a54a	skip	generated: compiler-generated destructor pair
 sub_349057ad6180	349057ad6180834a	ported	gamewindow/sidebarmanager.h:TSidebarManager::hasSidebar
@@ -6180,6 +6200,7 @@ sub_38654a42070a	38654a42070acee2	ported	analysers/analyserwidgets.cpp:THuntingS
 sub_38864c6d30f8#730	38864c6d30f84522	skip	generated: moc / QMetaType generated
 sub_38864c6d30f8#732	38864c6d30f84522	skip	generated: moc / QMetaType generated
 sub_38864c6d30f8#912	38864c6d30f84522	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
+sub_389299e4dfb7	389299e4dfb778ef	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onShowCharacterTradeDuePaymentEntered	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_389864131ce2	389864131ce26b3c	inlined	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::requestExportMinimap
 sub_389c7a5ba099	389c7a5ba099a5a3	skip	generated: compiler-generated destructor
 sub_38a4e656e0d8	38a4e656e0d8ce2f	ported	config/clientoptions.cpp:npcDialogOptionsToJson
@@ -9655,6 +9676,7 @@ sub_aa0f3605feaa	aa0f3605feaa04d1	skip	library: SFML audio library (miniaudio ba
 sub_aa15509bde55	aa15509bde553d59	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBugReport
 sub_aa2fe8566cdd	aa2fe8566cdd0afe	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_aa46cbb940af#2	aa46cbb940af0423	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_aa8519e659f9	aa8519e659f9fdbb	inlined	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine
 sub_aa882ee6585c	aa882ee6585c93eb	ported	game/skillswidgetentrydata.cpp:specialMagicLevelInformation
 sub_aa986f2d2cee	aa986f2d2cee0f37	ported	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage
 sub_aa9cc9f22ef0	aa9cc9f22ef0a453	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedFilterTagIndex
@@ -9913,6 +9935,7 @@ sub_b5284d72a12b	b5284d72a12b57ec	ported	config/sidebaroptions.cpp:parseImbuemen
 sub_b52953e56747	b52953e5674716a7	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditBossSlot
 sub_b530e3e840a1	b530e3e840a1fdf2	skip	generated: compiler-generated struct ctor/dtor and std vector internals
 sub_b53db42d4d39	b53db42d4d392d4f	skip	data: translation-unit static initializer (misattributed)
+sub_b55352577a1a	b55352577a1a1015	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onShowReturnerRewardStateEntered	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_b56f78f61775	b56f78f61775269d	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::isTracked
 sub_b59314347e98#2	b59314347e9826c6	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
 sub_b59314347e98#22	b59314347e9826c6	inlined	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::info
@@ -10468,6 +10491,7 @@ sub_c19941fd087d	c19941fd087d6494	skip	generated: QtPrivate slot object impl (me
 sub_c1a1070f592b	c1a1070f592b1c99	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_c1aa469051bc	c1aa469051bc6ed0	ported	gamewindow/chatcontroller.cpp:TChatController::setSecondary
 sub_c1b5c1ba82b1	c1b5c1ba82b11c34	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::setRecommendedWorld
+sub_c1d086075408	c1d08607540853bf	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onShowEmergencyDialogEntered	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_c1d08955a91a	c1d08955a91a0eac	skip	library: Qt/std container template code
 sub_c1f45a1ceb5a	c1f45a1ceb5a0d4b	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setNameFilter
 sub_c1f49a968f36	c1f49a968f361d5f	inlined	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::saveWidgetOptions
@@ -10614,6 +10638,7 @@ sub_c7cae578b9e6	c7cae578b9e6ee99	skip	generated: compiler-generated destructor 
 sub_c7cff0a8c0f0#2	c7cff0a8c0f0f020	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_c7cff0a8c0f0#3	c7cff0a8c0f0f020	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_c7cff0a8c0f0#4	c7cff0a8c0f0f020	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
+sub_c7dcd9578d8e	c7dcd9578d8e8bb8	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onLoginAbortedStateEntered	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_c7dcf6995df5#3	c7dcf6995df5b09b	skip	library: std::unordered_set insert (library)
 sub_c7f2edbfa6e1#10	c7f2edbfa6e1a1cc	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_c7f2edbfa6e1#11	c7f2edbfa6e1a1cc	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -12147,6 +12172,7 @@ sub_f764966ac696#8	f764966ac6964e43	ported	gamewindow/vipwidgetcontroller.h:TVip
 sub_f76aa4968beb	f76aa4968beb8af7	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::onImbueSlotConfirmed
 sub_f79cb19428f3	f79cb19428f3135f	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_f7a0f0bacbb5#2	f7a0f0bacbb522e9	skip	data: translation-unit static initializer (misattributed)
+sub_f7abf8c64600	f7abf8c646003dd1	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::buildStateMachine	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_f7d3c749fa51	f7d3c749fa515734	skip	library: std::vector<action setting> template instantiation (emplace/insert/relocate/destroy)
 sub_f7d489716feb	f7d489716feb843e	skip	library: std container internals (map/vector/set)
 sub_f7e7763c3800	f7e7763c38008d65	skip	library: QMap/QVariant template instantiation
@@ -12305,6 +12331,7 @@ sub_ff352d90224f	ff352d90224fba4d	inlined	gamewindow/vipwidgetcontroller.cpp:TVi
 sub_ff3585da374a	ff3585da374af83b	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::discardPresetChangesThanSwapPreset
 sub_ff4b367bf61d	ff4b367bf61d63b7	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_ff4d0743befc	ff4d0743befcfa08	ported	gamewindow/chatcontroller.cpp:TChatController::saveChannel
+sub_ff4fc6f480fa	ff4fc6f480fae287	tested	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::onCloudflareSolverSuccess	test=tests/client/authenticationprocesscontroller_test.cpp
 sub_ff71f16a14d7	ff71f16a14d734fa	skip	generated: moc property getter, provided by the generated cip base
 sub_ff810966fd5f	ff810966fd5f0b40	ported	gamewindow/chatcontroller.cpp:TChatChannelController::resetChannel
 sub_ff8b2e3926e5	ff8b2e3926e56406	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed

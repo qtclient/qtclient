@@ -298,6 +298,8 @@ TGameClient::TGameClient(QObject* parent)
     m_idleTick.setSingleShot(true);
     connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
 
+    m_authentication = std::make_unique<authentication::TAuthenticationProcessController>();
+    m_authentication->bindLoginUploader(m_login.get());
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
@@ -317,10 +319,12 @@ TGameClient::TGameClient(QObject* parent)
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
                     [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
                         m_login->applyClearance(info);
+                        m_authentication->onCloudflareSolverSuccess(info);
                         login();
                     });
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
                     [this](authentication::TCloudflareChallengeError error) {
+                        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CloudflareSolveFailed);
                         switch (error) {
                         case authentication::TCloudflareChallengeError::Timeout:
                             fail(qtTrId("cloudflare_challenge_error_timeout"));
@@ -343,6 +347,7 @@ TGameClient::TGameClient(QObject* parent)
 
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::characterChosen, this, &TGameClient::onCharacterChosen);
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::cancelled, this, [this] {
+        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::DialogAborted);
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
@@ -623,6 +628,9 @@ void TGameClient::login()
     request.email = m_options.account;
     request.password = m_options.password;
     request.stayLoggedIn = true;
+    using EState = authentication::TAuthenticationProcessController::EState;
+    if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowLoginWaitingDialog)
+        m_authentication->start();
     m_login->login(env.loginUrl(), request, env.revision);
 }
 
@@ -807,6 +815,10 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
 
 void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
 {
+    // A character switch from a running session starts at the character selection.
+    if (!m_authentication->isRunning())
+        m_authentication->start(true);
+    m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CharacterLoginRequested);
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
         if (m_sameSocketCharacterSwitch) {

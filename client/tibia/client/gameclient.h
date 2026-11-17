@@ -3,6 +3,7 @@
 #include "sessiondump/sessiondumpciptypes.h"
 
 #include "app/launcherenv.h"
+#include "authentication/authenticationprocesscontroller.h"
 #include "authentication/loginrequestuploader.h"
 #include "game/gameservergamesession.h"
 #include "runtime/gamehost.h"
@@ -283,6 +284,9 @@ private:
     qint64 m_frameInterval = 0;
     std::unique_ptr<authentication::TLoginRequestUploader> m_login;
     std::unique_ptr<authentication::TCloudflareChallengeController> m_cloudflareChallenge;
+    /// The account login's state machine; the game client still performs the
+    /// login steps it enters.
+    std::unique_ptr<authentication::TAuthenticationProcessController> m_authentication;
     bool m_suppressConnectError = false;
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
