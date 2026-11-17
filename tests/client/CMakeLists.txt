@@ -182,3 +182,8 @@ qtclient_add_port_test(client_lightmap_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/lightmap.cpp
 )
 target_link_libraries(client_lightmap_tests PRIVATE Qt6::Gui)
+
+qtclient_add_port_test(client_specialappearances_tests
+    specialappearances_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/specialappearances.cpp
+)

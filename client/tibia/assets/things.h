@@ -2,6 +2,7 @@
 
 
 #include "thingtype.h"
+#include "specialappearances.h"
 
 #include <functional>
 #include <memory>
@@ -92,6 +93,8 @@ public:
     ThingTypeList getCyclopediaObjectTypes() const;
     ThingTypeList getProficiencyObjectTypes() const;
     ThingTypeList getSkillWheelGemObjectTypes() const { return m_skillWheelGemObjectTypes; }
+    /// The object kinds the protocol reads extra data for; empty before the appearances load.
+    const TSpecialAppearancesForProtocolParsing& specialAppearancesForProtocolParsing() const;
     std::string getCyclopediaItemName(uint16_t id);
     std::string getProficienciesFile();
 
@@ -129,6 +132,7 @@ private:
     std::vector<THouseMapArea> m_houseMapAreas;
     ThingTypeList m_marketObjectTypes;
     ThingTypeList m_skillWheelGemObjectTypes;
+    std::shared_ptr<TSpecialAppearancesForProtocolParsing> m_specialAppearances;
     bool m_datLoaded = false;
     uint32_t m_supplyStashId = 0;
     uint32_t m_standardRewardChestId = 0;

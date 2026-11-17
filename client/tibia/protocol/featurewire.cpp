@@ -29,8 +29,7 @@ bool readBool(ClassicReader& r, bool& out)
 /// Objects with an upgrade tier carry one more byte after their id.
 bool tieredObject(const uint16_t id)
 {
-    const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
-    return type && type->getClassification() > 0;
+    return tibia::appearances::TAppearancesManager::instance().specialAppearancesForProtocolParsing().isUpgradeable(id);
 }
 
 /// Object id, then its tier when the object is tiered.

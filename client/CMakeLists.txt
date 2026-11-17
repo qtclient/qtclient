@@ -161,6 +161,7 @@ set(SOURCE_FILES
         tibia/shared/tibiafilesystemhelper.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
+        tibia/assets/specialappearances.cpp
         tibia/game/gamesessionstate.cpp
         tibia/game/gamesession_forward.cpp
         tibia/worldmap/worldmapsessionstate.cpp

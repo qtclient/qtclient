@@ -826,14 +826,49 @@ void TAppearancesManager::collectObjectLists()
 {
     m_marketObjectTypes.clear();
     m_skillWheelGemObjectTypes.clear();
+    TSpecialAppearancesForProtocolParsing::IdSet cumulative, liquid, container, showOffSocket, upgradeable, wearOut,
+        expire, expireStop, decoKit;
     for (const ThingTypePtr& type : objectTypes()) {
         if (!type || type->isNull())
             continue;
-        if (type->isMarketable() && type->getMarketData().tradeAs == type->getId())
+        const auto id = static_cast<uint16_t>(type->getId());
+        if (type->isMarketable())
             m_marketObjectTypes.push_back(type);
+        if (type->isStackable())
+            cumulative.insert(id);
+        // ThingType splits CIP's liquid flag into containers and pools; both carry a liquid.
+        if (type->isFluidContainer() || type->isSplash())
+            liquid.insert(id);
+        if (type->isContainer())
+            container.insert(id);
+        if (type->isPodium())
+            showOffSocket.insert(id);
+        if (type->getClassification() > 0)
+            upgradeable.insert(id);
+        if (type->hasWearOut())
+            wearOut.insert(id);
+        if (type->hasExpire() || type->hasClockExpire())
+            expire.insert(id);
+        if (type->hasExpireStop())
+            expireStop.insert(id);
+        if (type->isDecoKit())
+            decoKit.insert(id);
         if (type->hasSkillWheelGem())
             m_skillWheelGemObjectTypes.push_back(type);
     }
+    m_specialAppearances = std::make_shared<TSpecialAppearancesForProtocolParsing>(
+        std::move(cumulative), std::move(liquid), std::move(container), std::move(showOffSocket),
+        std::move(upgradeable), std::move(wearOut), std::move(expire), std::move(expireStop), std::move(decoKit));
+    m_marketObjectTypes.shrink_to_fit();
+    m_skillWheelGemObjectTypes.shrink_to_fit();
+}
+
+const TSpecialAppearancesForProtocolParsing& TAppearancesManager::specialAppearancesForProtocolParsing() const
+{
+    if (m_specialAppearances)
+        return *m_specialAppearances;
+    static const TSpecialAppearancesForProtocolParsing empty;
+    return empty;
 }
 
 ThingTypeList TAppearancesManager::getNpcSaleObjectTypes() const

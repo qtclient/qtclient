@@ -358,6 +358,9 @@ void TMarketController::rebuildEntries()
     const auto& classTiers = m_storage ? m_storage->classificationTiers() : std::map<int, std::vector<int>>{};
     for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getMarketObjectTypes()) {
         const MarketData& market = type->getMarketData();
+        // An object traded as another object is listed under that one.
+        if (market.tradeAs != type->getId())
+            continue;
         TAppearanceTypeEntry entry;
         entry.typeId = type->getId();
         entry.name = QString::fromStdString(market.name.empty() ? type->getName() : market.name);
