@@ -138,10 +138,20 @@ authentication::TAuthenticationJsonDocumentHelper::v6	1fa8d30e10741fdd	tested	au
 authentication::TAuthenticationJsonDocumentHelper::v7	c1ec40f17827eaeb	ported	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseSurveyData
 authentication::TAuthenticationJsonDocumentHelper::v8	c0739d6f04dcb1b2	tested	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseReturnerNotification	test=tests/client/authenticationjsondocumenthelper_test.cpp
 authentication::TAuthenticationJsonDocumentHelper::v9	0034f68c51827842	tested	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseShowResendButton	test=tests/client/authenticationjsondocumenthelper_test.cpp
+authentication::TAuthenticationProcessController::~TAuthenticationProcessController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TAuthenticationProcessController::~TAuthenticationProcessController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TEmailCodeRequestUploader::~TEmailCodeRequestUploader	fb0e6eb302353dfe	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TEmailCodeRequestUploader::~TEmailCodeRequestUploader_deleting	5f2d8fa3d5fef32f	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TGameserverLoginProcessController::~TGameserverLoginProcessController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TGameserverLoginProcessController::~TGameserverLoginProcessController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TLoginConfirmationCodeRequestUploader::~TLoginConfirmationCodeRequestUploader	fb0e6eb302353dfe	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TLoginConfirmationCodeRequestUploader::~TLoginConfirmationCodeRequestUploader_deleting	5f2d8fa3d5fef32f	skip	generated: compiler-generated destructor pair (member teardown)
 authentication::TLoginProtocolMessageHandler::~TLoginProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (same code as creatures::TVipGameActionHandler::~TVipGameActionHandler)
 authentication::TLoginProtocolMessageHandler::~TLoginProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (same code as creatures::TVipGameActionHandler::~TVipGameActionHandler_deleting)
 authentication::TLoginRequestUploader::onCloudflareMitigated	980522376ff9b0ae	ported	authentication/loginrequestuploader.cpp:TLoginRequestUploader::onCloudflareMitigated
 authentication::TLoginRequestUploader::onFinished	4789e201dd75eb60	ported	authentication/loginrequestuploader.cpp:TLoginRequestUploader::onFinished
+authentication::TLoginRequestUploader::~TLoginRequestUploader	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+authentication::TLoginRequestUploader::~TLoginRequestUploader_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 bossbestiary::TBossBestiaryProtocolMessageHandler::~TBossBestiaryProtocolMessageHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair
 bossbestiary::TBossBestiaryProtocolMessageHandler::~TBossBestiaryProtocolMessageHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair
 bossbestiary::TBossTrackerStorage::~TBossTrackerStorage	9fe24da445a47d04	skip	generated: compiler-generated destructor pair
@@ -319,6 +329,19 @@ chat::TWhiteBlacklist::v35	c4b9cb7606f42c46	ported	chat/chatprotocolmessagehandl
 chat::TWhiteBlacklist::v36	25b376f4a419dc71	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setAllowVips
 chat::TWhiteBlacklist::~TWhiteBlacklist	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TWhiteBlacklist::~TWhiteBlacklist_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+client::IGamesessionManager::~IGamesessionManager	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+client::IGamesessionManager::~IGamesessionManager_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+client::TAntiCheatController::~TAntiCheatController	e490adc3bd06052a	skip	generated: compiler-generated destructor pair (member teardown)
+client::TAntiCheatController::~TAntiCheatController_deleting	718a9daa112f4bf3	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameApplication::~TGameApplication	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameApplication::~TGameApplication_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameApplicationBase::~TGameApplicationBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameApplicationBase::~TGameApplicationBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameClient::~TGameClient	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameClient::~TGameClient_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameClientBase::~TGameClientBase	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+client::TGameClientBase::~TGameClientBase_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+client::TPreventCloseEventFilter::~TPreventCloseEventFilter	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 client::TPreventCloseEventFilter::~TPreventCloseEventFilter_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 config::TActionBarsQMLOptionsPage::v12	1724f65c9b23046a	ported	config/optionspages.cpp:actionBarsBindings
 config::TActionBarsQMLOptionsPage::v13	5f670e5dfb6d75d1	ported	config/optionspages.cpp:actionBarsBindings
@@ -1101,7 +1124,12 @@ friends::TFriendsStorage::~TFriendsStorage_deleting	79674512666b34e2	skip	genera
 game::FPSDropsLogger::onDialogVisibleChanged	3e767d05d9f100dc	ported	game/gameciptypes.cpp:FPSDropsLogger::onDialogVisibleChanged
 game::FPSDropsLogger::~FPSDropsLogger	097457dc45e86dd8	skip	generated: compiler-generated destructor
 game::FPSDropsLogger::~FPSDropsLogger_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
+game::IGameSession::~IGameSession	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::IGameSession::~IGameSession_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TBlessingsProtocolMessageHandler::~TBlessingsProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 game::TBlessingsProtocolMessageHandler::~TBlessingsProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
+game::TBoostedCreatureRequestUploader::~TBoostedCreatureRequestUploader	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TBoostedCreatureRequestUploader::~TBoostedCreatureRequestUploader_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage	b7b3a9369c554bec	ported	game/gameciptypes.cpp:TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage
 game::TBossDifficultySelectionProtocolMessageHandler::~TBossDifficultySelectionProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 game::TBossDifficultySelectionProtocolMessageHandler::~TBossDifficultySelectionProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
@@ -1121,9 +1149,16 @@ game::TCooldownStorage::v24	6acd0db3548af832	ported	game/cooldownstorage.cpp:TCo
 game::TCooldownStorage::v25	7a8013fd85e4bcfe	ported	game/cooldownstorage.cpp:TCooldownStorage::objectCooldown
 game::TCooldownStorage::~TCooldownStorage	e6f0a4ec21953056	skip	generated: compiler-generated destructor pair
 game::TCooldownStorage::~TCooldownStorage_deleting	a9556962533a8460	skip	generated: compiler-generated destructor pair
+game::TEditTextProtocolMessageHandler::~TEditTextProtocolMessageHandler	234d7c603a625d96	skip	generated: compiler-generated destructor pair (member teardown)
+game::TEditTextProtocolMessageHandler::~TEditTextProtocolMessageHandler_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (member teardown)
 game::TExperienceCalculator::v0	c911d3895fc8193d	skip	generated: destructor variants (complete, deleting, duplicate copy)
 game::TExperienceCalculator::v1	2f79addd892c3e37	skip	generated: destructor variants (complete, deleting, duplicate copy)
+game::TGameActionRouter::~TGameActionRouter	241a10621a08932a	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameActionRouter::~TGameActionRouter_deleting	0bd7d3a6be1f0864	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameEventProtocolMessageHandler::~TGameEventProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameEventProtocolMessageHandler::~TGameEventProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
+game::TGameProtocolMessageHandler::~TGameProtocolMessageHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameProtocolMessageHandler::~TGameProtocolMessageHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::v25	ea9461ede806184d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapViewport
 game::TGameSessionBase::v28	e9d87c96dd8d9443	ported	game/gamesessionbase.h:TGameSessionBase::worldMapStorage
 game::TGameSessionBase::v29	e306596705eadfac	ported	game/gamesessionbase.h:TGameSessionBase::ambientLightStorage
@@ -1131,7 +1166,19 @@ game::TGameSessionBase::v40	df3836b85f1025ce	ported	game/gamesessionbase.h:TGame
 game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGameSessionBase::creatureMovementSpeedCalculator
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
+game::TGameSessionBase::v46	1596e60ccbfcf871	ported	game/gamesessionbase.h:TGameSessionBase::depotSearchDetailListStorage
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
+game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TInternalGameActionRouter::~TInternalGameActionRouter	8ce292a1ecc0653d	skip	generated: compiler-generated destructor pair (member teardown)
+game::TInternalGameActionRouter::~TInternalGameActionRouter_deleting	1531bc616668060c	skip	generated: compiler-generated destructor pair (member teardown)
+game::TLiveInformationRequestUploader::~TLiveInformationRequestUploader	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TLiveInformationRequestUploader::~TLiveInformationRequestUploader_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TOutfitDialogStorage::~TOutfitDialogStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TOutfitDialogStorage::~TOutfitDialogStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPassiveAbilityInfoStorage::~TPassiveAbilityInfoStorage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 game::TPassiveAbilityInfoStorage::~TPassiveAbilityInfoStorage_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TPlayerData::v0@10	0978ed1c9e66b4ba	skip	generated: compiler-generated destructor pair
 game::TPlayerData::v100	b01a1349361fa47c	ported	game/playerdata.h:TPlayerData::harmony
@@ -1237,6 +1284,8 @@ game::TPlayerData::v99	7a568a874257594e	ported	game/playerdata.h:TPlayerData::ha
 game::TPlayerData::v9@10	11cbc82f1ebca5f6	ported	game/playerdata.h:TPlayerData::level
 game::TPlayerData::~TPlayerData	b5573f94cb37f234	skip	generated: compiler-generated destructor pair
 game::TPlayerData::~TPlayerData_deleting	5a75742329b5afb9	skip	generated: compiler-generated destructor pair
+game::TPlayerGameActionHandler::~TPlayerGameActionHandler	234d7c603a625d96	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPlayerGameActionHandler::~TPlayerGameActionHandler_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (member teardown)
 game::TPlayerProtocolMessageHandler::v12	d126d9239d28bac3	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage
 game::TPlayerProtocolMessageHandler::v13	6f8f3ec586f4379a	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage
 game::TPlayerProtocolMessageHandler::v14	c8b62de17d931e9c	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerStateMessage
@@ -1246,7 +1295,17 @@ game::TPlayerProtocolMessageHandler::v25	dab3deb9b7bba291	ported	game/gameciptyp
 game::TPlayerProtocolMessageHandler::v26	a4f462564cf41d81	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleMultiUseDelayMessage
 game::TPlayerProtocolMessageHandler::v30	b914086422e821d1	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleResourceBalanceMessage
 game::TPlayerProtocolMessageHandler::v32	fc410cd6e3c3f66f	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage
+game::TPlayerProtocolMessageHandler::~TPlayerProtocolMessageHandler	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPlayerProtocolMessageHandler::~TPlayerProtocolMessageHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPlayerSkillStats::~TPlayerSkillStats	161745eca9077113	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPlayerSkillStats::~TPlayerSkillStats_deleting	5251e25146c15ad2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPremiumMessage::~TPremiumMessage	5c0e97be805a25c1	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPremiumMessage::~TPremiumMessage_deleting	8a5cc4fd81948deb	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPremiumMessageRenewPremium::~TPremiumMessageRenewPremium	5c0e97be805a25c1	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPremiumMessageRenewPremium::~TPremiumMessageRenewPremium_deleting	8a5cc4fd81948deb	skip	generated: compiler-generated destructor pair (member teardown)
 game::TPremiumProtocolMessageHandler::v14	dede7fd03ae7a246	ported	game/gameciptypes.cpp:TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage
+game::TPremiumProtocolMessageHandler::~TPremiumProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (member teardown)
+game::TPremiumProtocolMessageHandler::~TPremiumProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (member teardown)
 game::TPremiumTimeStorage::v0@10	4cc114a5238006e3	skip	generated: compiler-generated destructor pair
 game::TPremiumTimeStorage::v12	253ee8c1a6ebe7fa	ported	game/gameciptypes.h:TPremiumTimeStorage::isPremium
 game::TPremiumTimeStorage::v13	304013293ac73eb0	ported	game/gameciptypes.h:TPremiumTimeStorage::hasUnlimitedPremium
@@ -1260,8 +1319,18 @@ game::TPremiumTimeStorage::v1@10	bb0b22e4c3a09d3d	skip	generated: compiler-gener
 game::TPremiumTimeStorage::v2@10	764fbf3ff55bb667	ported	game/gameciptypes.h:TPremiumTimeStorage::isPremium
 game::TPremiumTimeStorage::~TPremiumTimeStorage	26240549e81b8e53	skip	generated: compiler-generated destructor pair
 game::TPremiumTimeStorage::~TPremiumTimeStorage_deleting	2c4344eb18338214	skip	generated: compiler-generated destructor pair
+game::TQmlBlessingDialogData::~TQmlBlessingDialogData	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TQmlBlessingDialogData::~TQmlBlessingDialogData_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TQmlBlessingHistoryEntry::~TQmlBlessingHistoryEntry	96ad80a74675f243	skip	generated: compiler-generated destructor pair (member teardown)
+game::TQmlBlessingHistoryEntry::~TQmlBlessingHistoryEntry_deleting	01ec7be7f977607f	skip	generated: compiler-generated destructor pair (member teardown)
+game::TQmlBlessingWithCharges::~TQmlBlessingWithCharges	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 game::TQmlBlessingWithCharges::~TQmlBlessingWithCharges_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
+game::TServerModalDialogProtocolMessageHandler::~TServerModalDialogProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (member teardown)
 game::TServerModalDialogProtocolMessageHandler::~TServerModalDialogProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
+game::TSessiondumpGameSession::~TSessiondumpGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TSessiondumpGameSession::~TSessiondumpGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+game::TSkillsWidgetEntryData::~TSkillsWidgetEntryData	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TSkillsWidgetEntryData::~TSkillsWidgetEntryData_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage	bf561cd53f762c74	ported	game/gameciptypes.cpp:TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage
 game::TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 game::TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
@@ -1270,6 +1339,8 @@ game::TStatusbarStorage::v13	3574f6398067cbb8	ported	game/statusbarstorage.cpp:T
 game::TStatusbarStorage::v14	f4b71b8a78f0d076	ported	game/statusbarstorage.cpp:TStatusbarStorage::fromJson
 game::TStatusbarStorage::~TStatusbarStorage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 game::TStatusbarStorage::~TStatusbarStorage_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
+game::TTutorialSessiondumpGameSession::~TTutorialSessiondumpGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+game::TTutorialSessiondumpGameSession::~TTutorialSessiondumpGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 gamewindow::TAboutDialogController::requestClose	1dac087c02348019	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::tibiaVersion
 gamewindow::TAboutDialogController::requestOpenWebsite	adbb013336045e66	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::copyrightPeriod
 gamewindow::TAboutDialogController::requestShowLicensesDialog	ef5408aa5f178611	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::requestShowLicensesDialog
@@ -2795,6 +2866,20 @@ minimap::TMinimapVisibleArea::v32	805d89076ba64dfe	ported	minimap/minimapvisible
 minimap::TMinimapVisibleArea::v33	c1f2d105a0b984b2	ported	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::restoreZoomLevelFromOptions
 minimap::TMinimapVisibleArea::~TMinimapVisibleArea	1503fae2715caa41	skip	generated: compiler-generated destructor pair
 minimap::TMinimapVisibleArea::~TMinimapVisibleArea_deleting	ec74d667f8ec7b63	skip	generated: compiler-generated destructor pair
+network::TGameserverDualConnection::~TGameserverDualConnection	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverDualConnection::~TGameserverDualConnection_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketConnection::~TGameserverNetworkPacketConnection	234d7c603a625d96	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketConnection::~TGameserverNetworkPacketConnection_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketProcessor::~TGameserverNetworkPacketProcessor	234d7c603a625d96	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketProcessor::~TGameserverNetworkPacketProcessor_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketSequenceFlowProcessor::~TGameserverNetworkPacketSequenceFlowProcessor	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverNetworkPacketSequenceFlowProcessor::~TGameserverNetworkPacketSequenceFlowProcessor_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverTCPConnection::~TGameserverTCPConnection	e8a9b530257d0378	skip	generated: compiler-generated destructor pair (member teardown)
+network::TGameserverTCPConnection::~TGameserverTCPConnection_deleting	299a4cd4f66f48de	skip	generated: compiler-generated destructor pair (member teardown)
+network::TNetworkQualityProtocolMessageHandler::~TNetworkQualityProtocolMessageHandler	808dd5f7b1300b2a	skip	generated: compiler-generated destructor pair (member teardown)
+network::TNetworkQualityProtocolMessageHandler::~TNetworkQualityProtocolMessageHandler_deleting	044c790c9eef38a1	skip	generated: compiler-generated destructor pair (member teardown)
+network::TUnencryptedRawMessageStream::~TUnencryptedRawMessageStream	9b8ea222e72454c1	skip	generated: compiler-generated destructor pair (member teardown)
+network::TUnencryptedRawMessageStream::~TUnencryptedRawMessageStream_deleting	1bab2e53df6b4504	skip	generated: compiler-generated destructor pair (member teardown)
 prey::TPreyData::~TPreyData	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 prey::TPreyData::~TPreyData_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 prey::TPreyProtocolMessageHandler::handlePreyDataMessage	643ac8326815c5db	ported	prey/preyciptypes.cpp:TPreyProtocolMessageHandler::handlePreyDataMessage
