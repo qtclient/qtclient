@@ -21,6 +21,8 @@
 namespace tibia::protobuf::protocol {
 class GameserverMessageCharacterTradeConfiguration;
 class GameserverMessageCloseNPCTrade;
+class GameserverMessageCloseTrade;
+class GameserverMessageDead;
 class GameserverMessageNPCOffer;
 class GameserverMessagePlayerGoods;
 class GameserverMessageOwnOffer;
@@ -156,11 +158,9 @@ public:
     void handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& message);
     /// CIP: the quest flag currency's balance.
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
-    void handleCloseNPCTradeMessage();
-    void handleDeadMessage();
+    void handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& message);
+    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
 
 private:
     TNPCTradeStorage* m_storage = nullptr;
@@ -190,10 +190,11 @@ public:
 
     void handleOwnOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageOwnOffer& OwnOfferMessage);
     void handleCounterOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage);
-    void handleCloseTradeMessage();
+    void handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade& message);
 
-    /// Tip Q→H wire: OwnOffer, CounterOffer and CloseTrade from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The live handler (the player trade widget manager owns it).
+    static TPlayerTradeProtocolMessageHandler* instance();
+
 
 private:
     static TPlayerTradeProtocolMessageHandler* s_instance;

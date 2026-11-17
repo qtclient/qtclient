@@ -93,9 +93,6 @@ public:
     void handleGemAtelierGemRevealedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
 
-    /// Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
-
     /// The Gem Atelier requests: dismantle (0), reveal a gem of a quality 0..2
     /// (1), reshape one mod (2), lock or unlock (3) and enhance a fragment mod
     /// grade (4).

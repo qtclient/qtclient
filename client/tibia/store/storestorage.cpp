@@ -973,76 +973,9 @@ void TStoreProtocolMessageHandler::handleOfferDescriptionMessage(const Gameserve
     Q_EMIT storeOfferDescriptionReceived(static_cast<int>(message.offer_id()), toQString(message.description()));
 }
 
-void TStoreProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+TStoreProtocolMessageHandler* TStoreProtocolMessageHandler::instance()
 {
-    TStoreProtocolMessageHandler* handler = s_live;
-    if (!handler)
-        return;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 23:
-        if (shadow->HasExtension(GameserverMessageLoginSuccess::gameserver_message_login_success))
-            handler->handleLoginSuccessMessage(shadow->GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success));
-        break;
-    case 252:
-        if (shadow->HasExtension(GameserverMessageStoreOffers::gameserver_message_store_offers))
-            handler->handleStoreOffersMessage(shadow->GetExtension(GameserverMessageStoreOffers::gameserver_message_store_offers));
-        break;
-    case 168:
-        if (shadow->HasExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink))
-            handler->handleSetStoreButtonDeeplinkMessage(
-                shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink));
-        break;
-    case 203:
-        if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details))
-            handler->handleTransactionDetailsMessage(
-                shadow->GetExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details));
-        break;
-    case 225:
-        if (shadow->HasExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data))
-            handler->handleRequestPurchaseDataMessage(
-                shadow->GetExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data));
-        break;
-    case 251:
-        if (shadow->HasExtension(GameserverMessageStoreCategories::gameserver_message_store_categories))
-            handler->handleStoreCategoriesMessage(shadow->GetExtension(GameserverMessageStoreCategories::gameserver_message_store_categories));
-        break;
-    case 253:
-        if (shadow->HasExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history))
-            handler->handleTransactionHistoryMessage(
-                shadow->GetExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history));
-        break;
-    case 223:
-        if (shadow->HasExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance))
-            handler->handleCreditBalanceMessage(shadow->GetExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance));
-        break;
-    case 25:
-        if (shadow->HasExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators))
-            handler->handleStoreButtonIndicatorsMessage(
-                shadow->GetExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators));
-        break;
-    case 242:
-        if (shadow->HasExtension(GameserverMessageUpdatingShopBalance::gameserver_message_updating_shop_balance))
-            handler->handleUpdatingShopBalanceMessage(
-                shadow->GetExtension(GameserverMessageUpdatingShopBalance::gameserver_message_updating_shop_balance));
-        break;
-    case 224:
-        if (shadow->HasExtension(GameserverMessageStoreError::gameserver_message_store_error))
-            handler->handleStoreErrorMessage(shadow->GetExtension(GameserverMessageStoreError::gameserver_message_store_error));
-        break;
-    case 234:
-        if (shadow->HasExtension(GameserverMessageOfferDescription::gameserver_message_offer_description))
-            handler->handleOfferDescriptionMessage(shadow->GetExtension(GameserverMessageOfferDescription::gameserver_message_offer_description));
-        break;
-    case 254:
-        if (shadow->HasExtension(GameserverMessageStoreSuccess::gameserver_message_store_success))
-            handler->handleStoreSuccessMessage(shadow->GetExtension(GameserverMessageStoreSuccess::gameserver_message_store_success));
-        break;
-    default:
-        break;
-    }
+    return s_live;
 }
 
 }

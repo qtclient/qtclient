@@ -295,6 +295,8 @@ TGameClient::TGameClient(QObject* parent)
     m_idleTick.setSingleShot(true);
     connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
 
+    m_authentication = std::make_unique<authentication::TAuthenticationProcessController>();
+    m_authentication->bindLoginUploader(m_login.get());
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
@@ -314,10 +316,12 @@ TGameClient::TGameClient(QObject* parent)
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
                     [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
                         m_login->applyClearance(info);
+                        m_authentication->onCloudflareSolverSuccess(info);
                         login();
                     });
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
                     [this](authentication::TCloudflareChallengeError error) {
+                        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CloudflareSolveFailed);
                         switch (error) {
                         case authentication::TCloudflareChallengeError::Timeout:
                             fail(qtTrId("cloudflare_challenge_error_timeout"));
@@ -341,6 +345,7 @@ TGameClient::TGameClient(QObject* parent)
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
             [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
+        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::DialogAborted);
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
@@ -390,47 +395,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
     m_dualConnection = std::make_unique<network::TGameserverDualConnection>();
-    // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
-    // The active game session connects its own map and effect handlers.
-    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        if (auto* gameHandler = game::TGameProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
-                    &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
-        }
-        if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
-                    &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* containerHandler = container::TContainerProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, containerHandler,
-                    &container::TContainerProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* creatureHandler = creatures::TCreatureProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, creatureHandler,
-                    &creatures::TCreatureProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        // Static ingresses take the client as context: drop the previous
-        // session's connections before connecting the queue again.
-        using StaticIngress = void (*)(int);
-        static constexpr StaticIngress kStaticIngresses[] = {
-            &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
-            &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
-            &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &market::TMarketProtocolMessageHandler::onServerMessageEnqueued,
-        };
-        for (const QMetaObject::Connection& connection : m_staticIngressConnections)
-            disconnect(connection);
-        m_staticIngressConnections.clear();
-        for (const StaticIngress ingress : kStaticIngresses)
-            m_staticIngressConnections.push_back(
-                connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, this, ingress));
-    }
     const QJsonObject clientOptions = app::ClientOptions::load().options();
     m_frameRateLimitEnabled = clientOptions.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
     m_frameRateLimit = std::clamp(clientOptions.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);
@@ -676,6 +640,9 @@ void TGameClient::login()
     request.email = m_options.account;
     request.password = m_options.password;
     request.stayLoggedIn = true;
+    using EState = authentication::TAuthenticationProcessController::EState;
+    if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowLoginWaitingDialog)
+        m_authentication->start();
     m_login->login(env.loginUrl(), request, env.revision);
 }
 
@@ -819,6 +786,10 @@ void TGameClient::showAccount(const authentication::TCharacterList& characters)
 void TGameClient::onCharacterChosen(const QString& characterName)
 {
     m_characterSelection->setLastSelectedCharacterName(characterName);
+    // A character switch from a running session starts at the character selection.
+    if (!m_authentication->isRunning())
+        m_authentication->start(true);
+    m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CharacterLoginRequested);
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
         if (m_sameSocketCharacterSwitch) {

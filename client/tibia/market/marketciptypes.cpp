@@ -143,7 +143,7 @@ void TMarketProtocolMessageHandler::handleMarketDetailMessage(const GameserverMe
         m_storage->setItemDetails(details);
 }
 
-void TMarketProtocolMessageHandler::handleMarketLeaveMessage()
+void TMarketProtocolMessageHandler::handleMarketLeaveMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketLeave&)
 {
     Q_EMIT requestCloseMarketDialog();
 }
@@ -192,40 +192,6 @@ void TMarketProtocolMessageHandler::handleMessageMessage(const GameserverMessage
 {
     if (Proto::translateMessageModeFromServer(static_cast<uint8_t>(message.mode())) == tibia::client::MessageMarket)
         Q_EMIT requestMarketMessageDialog(toQString(message.text()));
-}
-
-void TMarketProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    TMarketProtocolMessageHandler* handler = s_live;
-    if (!handler)
-        return;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 246:
-        if (shadow->HasExtension(GameserverMessageMarketEnter::gameserver_message_market_enter))
-            handler->handleMarketEnterMessage(shadow->GetExtension(GameserverMessageMarketEnter::gameserver_message_market_enter));
-        break;
-    case 247:
-        if (shadow->HasExtension(GameserverMessageMarketLeave::gameserver_message_market_leave))
-            handler->handleMarketLeaveMessage();
-        break;
-    case 248:
-        if (shadow->HasExtension(GameserverMessageMarketDetail::gameserver_message_market_detail))
-            handler->handleMarketDetailMessage(shadow->GetExtension(GameserverMessageMarketDetail::gameserver_message_market_detail));
-        break;
-    case 249:
-        if (shadow->HasExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse))
-            handler->handleMarketBrowseMessage(shadow->GetExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse));
-        break;
-    case 180:
-        if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
-            handler->handleMessageMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
-        break;
-    default:
-        break;
-    }
 }
 
 } // namespace tibia::market

@@ -434,6 +434,7 @@ if(TIBIA_WITH_GAMECORE)
     game/creaturesession.cpp game/creaturesession.h
     game/mapsession.cpp game/mapsession.h
     game/cooldownstorage.cpp game/cooldownstorage.h
+    game/experiencecalculator.cpp game/experiencecalculator.h
     gamewindow/actionbarcontroller.cpp gamewindow/actionbarcontroller.h
     gamewindow/actionbarmanager.cpp gamewindow/actionbarmanager.h
     gamewindow/cooldownbarcontroller.cpp gamewindow/cooldownbarcontroller.h

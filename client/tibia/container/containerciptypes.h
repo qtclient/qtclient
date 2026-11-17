@@ -44,6 +44,12 @@ class GameserverMessageDeleteInContainer;
 class GameserverMessageDeleteInventory;
 class GameserverMessageSetInventory;
 class GameserverMessageSpecialContainersAvailable;
+class GameserverMessagePlayerInventory;
+class GameserverMessageObjectInfo;
+class GameserverMessageStash;
+class GameserverMessageDepotSearchResult;
+class GameserverMessageDepotSearchDetailList;
+class GameserverMessageCloseDepotSearch;
 class ProtocolInventoryItem;
 } // namespace protocol
 } // namespace protobuf
@@ -219,8 +225,12 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable&
             SpecialContainersAvailableMessage);
 
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    void handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message);
+    void handleObjectInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageObjectInfo& message);
+    void handleStashMessage(const ::tibia::protobuf::protocol::GameserverMessageStash& message);
+    void handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& message);
+    void handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message);
+    void handleCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch& message);
 };
 
 /// What a container widget shows (CIP: the render provider's container properties).

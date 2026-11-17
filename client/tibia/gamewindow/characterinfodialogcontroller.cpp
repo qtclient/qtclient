@@ -631,16 +631,15 @@ void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const 
     QList<Entry> mounts;
     QList<Entry> summons;
     if (const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins()) {
-        using Appearances = cyclopedia::TOutfitsMountsSummonSkins;
-        for (const Appearances::TOutfit& outfit : appearances->outfits) {
+        for (const auto& outfit : appearances->outfits) {
             if (IsOutfit && outfit.lookType == OutfitID)
                 current.setAddons(static_cast<uint8_t>(outfit.addons));
             outfits.append({ .id = outfit.lookType, .name = outfit.name, .firstAddOn = (outfit.addons & 1) != 0,
                              .secondAddOn = (outfit.addons & 2) != 0, .type = static_cast<int>(outfit.source) });
         }
-        for (const Appearances::TAppearance& mount : appearances->mounts)
+        for (const auto& mount : appearances->mounts)
             mounts.append({ .id = mount.lookType, .name = mount.name, .type = static_cast<int>(mount.source) });
-        for (const Appearances::TAppearance& summon : appearances->summonSkins)
+        for (const auto& summon : appearances->summonSkins)
             summons.append({ .id = summon.lookType, .name = summon.name, .type = static_cast<int>(summon.source) });
     }
     if (!IsOutfit && !outfits.isEmpty()) {

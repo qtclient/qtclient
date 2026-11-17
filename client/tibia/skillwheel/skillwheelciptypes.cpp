@@ -260,32 +260,6 @@ void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
                                                  : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
 }
 
-void TSkillWheelProtocolMessageHandler::onServerMessageEnqueued(int opcode)
-{
-
-    switch (opcode) {
-    case 95: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageSkillWheel::gameserver_message_skill_wheel))
-            return;
-        handleSkillWheelMessage(shadow->GetExtension(GameserverMessageSkillWheel::gameserver_message_skill_wheel));
-        break;
-    }
-    case 197: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(
-                GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed))
-            return;
-        handleGemAtelierGemRevealedMessage(shadow->GetExtension(
-            GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed));
-        break;
-    }
-    default:
-        break;
-    }
-}
-
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;
