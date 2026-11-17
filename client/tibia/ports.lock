@@ -2344,6 +2344,11 @@ gamewindow::TProgressWidgetController::onExperienceInProgressStorageChanged	2d70
 gamewindow::TProgressWidgetController::onShowContextMenu	c2913ea93f04bbbf	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::onShowContextMenu
 gamewindow::TProgressWidgetController::onShowXPGaugeContextMenu	3969d62d9f215e02	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::onShowXPGaugeContextMenu
 gamewindow::TProgressWidgetController::onShowXPGraphContextMenu	3969d62d9f215e02	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::onShowXPGraphContextMenu
+gamewindow::TProgressWidgetController::onWidgetOptionsChanged	ee4c10960418ede5	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::xpPerHourString
+gamewindow::TProgressWidgetController::onXPGaugeTargetValueSelected	789abe1987fc4bb4	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::onXPGaugeTargetValueSelected
+gamewindow::TProgressWidgetController::optionsChanged	765a249736f1f5ff	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::xpGaugeTargetValueString
+gamewindow::TProgressWidgetController::saveWidgetOptions	fc74c759f9ec5cfb	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::accumulatedXpString
+gamewindow::TProgressWidgetController::v12	31ab6de5526cfbfe	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::TProgressWidgetController
 gamewindow::TProgressWidgetController::v37	7f710f8c4b3946a9	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::saveWidgetOptions
 gamewindow::TProgressWidgetController::v38	ecf4a95e76547e21	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::onWidgetOptionsChanged
 gamewindow::TProgressWidgetController::~TProgressWidgetController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -4186,6 +4191,7 @@ sub_04e2bab2ac6a	04e2bab2ac6ad45e	ported	input/gameaction.h:TGameActionSessiondu
 sub_04e2bab2ac6a#2	04e2bab2ac6ad45e	ported	input/gameaction.h:TGameActionSessiondumpResume::TGameActionSessiondumpResume
 sub_04e47cf703c2	04e47cf703c24c0f	skip	library: std::sort instantiation (library) with the lower-case name comparator
 sub_04e6d888ee2d	04e6d888ee2d9998	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::setDialogCategory
+sub_050759c79ab5	050759c79ab5aea7	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::showBaseXp
 sub_0515635bab67	0515635bab674310	tested	shared/src/jsonhelper.cpp:jsonString	test=tests/client/sharednet_test.cpp
 sub_0520c57a5dc2	0520c57a5dc22bd1	ported	chat/textstorage.cpp:TTextStorage::TTextStorage
 sub_052141d3ea47	052141d3ea476226	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::TPreyPreyPageController
@@ -4350,6 +4356,7 @@ sub_097457dc45e8#359	097457dc45e86dd8	skip	generated: compiler-generated thunk
 sub_097457dc45e8#360	097457dc45e86dd8	skip	generated: compiler-generated thunk
 sub_097457dc45e8#364	097457dc45e86dd8	skip	generated: compiler-generated thunk
 sub_097457dc45e8#365	097457dc45e86dd8	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::TProgressWidgetController
+sub_097457dc45e8#366	097457dc45e86dd8	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::TProgressWidgetController
 sub_097457dc45e8#367	097457dc45e86dd8	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::TCyclopediaButtonController
 sub_097457dc45e8#369	097457dc45e86dd8	inlined	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::hookEvents
 sub_097457dc45e8#370	097457dc45e86dd8	inlined	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onClassificationSummaryChanged
@@ -4705,6 +4712,7 @@ sub_1195667229bd	1195667229bdffc6	ported	shared/src/jsondocumentuploaderbase.cpp
 sub_119752aeae78	119752aeae780b30	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::TTeamJoinPageController
 sub_11a1aceaa979	11a1aceaa97932db	skip	library: miniaudio library
 sub_11a43ccdf3aa#2	11a43ccdf3aa69fe	skip	generated: compiler-generated destructor
+sub_11ad9361fa8a	11ad9361fa8a2482	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::xpPerHourString
 sub_11c66903cdb1	11c66903cdb10c7f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMarketStatistics
 sub_11cded2ebf20	11cded2ebf20d671	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::retries
 sub_11cded2ebf20#3	11cded2ebf20d671	inlined	gamewindow/containercontroller.cpp:TContainerController::update
@@ -5399,6 +5407,7 @@ sub_27826b207c43	27826b207c43eaa9	inlined	animation/phaseanimator.cpp:TAnimator:
 sub_27827f980c62	27827f980c6242f4	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::optionsPressed
 sub_2787dff660d0	2787dff660d09064	skip	generated: moc signal emitter
 sub_278b7d888bb2#3	278b7d888bb22348	skip	generated: compiler-generated destructor (member shared_ptr release)
+sub_279bba8b4adf	279bba8b4adfe45b	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::experiencePointsNeededForNextLevel
 sub_27a0e3d67c7c	27a0e3d67c7c7c1b	inlined	gamewindow/dialogmanager.cpp:TDialog::show
 sub_27af30ca2cb9	27af30ca2cb91213	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::setShowTrade
 sub_27c1756a0ea2	27c1756a0ea272f9	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
@@ -6074,6 +6083,7 @@ sub_4124ab819b6e	4124ab819b6e7b54	skip	generated: compiler-generated destructor 
 sub_4136eae006e1	4136eae006e1e48b	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::TWorldMapViewport
 sub_4137ab833001	4137ab8330012cc4	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
 sub_41391af49fbd	41391af49fbdfc5d	ported	config/sidebaroptions.cpp:parseBossTracker
+sub_41564b54b415	41564b54b4159e38	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::experiencePointsNeededForNextLevel
 sub_4160a4af3917#10	4160a4af3917f73f	skip	generated: moc-generated signal
 sub_4160a4af3917#11	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#18	4160a4af3917f73f	skip	generated: moc-generated signal emitter
@@ -6897,6 +6907,7 @@ sub_59b8c0d2990a	59b8c0d2990a252c	inlined	market/marketciptypes.cpp:TMarketProto
 sub_59c48ba40202	59c48ba40202be0e	skip	generated: moc property getter (generated in cip_gen)
 sub_59cca3720f2a	59cca3720f2ad04b	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::pageOfRow	test=tests/client/sharednet_test.cpp
 sub_59cca3720f2a#2	59cca3720f2ad04b	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
+sub_59e71cb1cc98	59e71cb1cc98f8e1	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::baseAccumulatedXpString
 sub_59e8ae135dc1	59e8ae135dc18624	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferMaximumAmountRequest
 sub_59e941f7c4bd	59e941f7c4bdc8d6	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::transferTimeout
 sub_59ec81f07c7d	59ec81f07c7d943d	skip	library: miniaudio library
@@ -7000,6 +7011,7 @@ sub_5e6c020885da	5e6c020885daea4b	inlined	exivaoptions/exivaoptionsdialogcontrol
 sub_5e6d45da9b08	5e6d45da9b08da89	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::setKeyboardBlocked
 sub_5e7303c9dd6f	5e7303c9dd6fd07f	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_5e77ef298dcf	5e77ef298dcfa830	ported	gamewindow/genericentertextdialogcontroller.h:TGenericEnterTextDialogController::setAllowEmptyText
+sub_5e858b92d238	5e858b92d2383f32	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::onXPGaugeTargetValueSelected
 sub_5e932ba461fb#2	5e932ba461fbebc8	skip	generated: protobuf message constructor (generated)
 sub_5e9636ad4c12	5e9636ad4c123d4c	skip	generated: compiler-generated destructor pair
 sub_5e9650e2edc2	5e9650e2edc27401	ported	shared/src/rpcserviceserver.cpp:TRPCServiceServer::onConnectionDisconnected
@@ -8029,6 +8041,7 @@ sub_85f2a7214ee8#2	85f2a7214ee8c8f8	inlined	chat/chatchannel.cpp:TChatChannelIde
 sub_85f7033f85fd	85f7033f85fdedf9	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStoreEvent
 sub_86066f29adb0	86066f29adb0919a	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onDailyRewardHistoryChanged
 sub_861897096e2c	861897096e2c3834	inlined	gamewindow/mapwindowcontroller.cpp:TMapWindowController::updateMouseTarget
+sub_86195f413f71	86195f413f71b0f6	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::xpPerHourString
 sub_862abfcaaf30	862abfcaaf308835	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onConfirmDialogAccepted
 sub_866433735cee	866433735cee5f10	ported	authentication/authenticationjsondocumenthelper.cpp:jsonKeys
 sub_86833d86ea14	86833d86ea141873	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::automaticPreyExtendType
@@ -8192,6 +8205,7 @@ sub_88c5a608098f	88c5a608098f0d84	ported	gamewindow/imbuingdialogcontroller.cpp:
 sub_88cf87176d6c	88cf87176d6c90bc	ported	gamewindow/characterinfodialogcontroller.cpp:TKillQmlData::TKillQmlData
 sub_88d1c813bc05	88d1c813bc052950	skip	generated: compiler-generated std::function holder destructor
 sub_88d1c813bc05#2	88d1c813bc052950	skip	generated: compiler-generated std::function holder destructor
+sub_88e101ace9fa	88e101ace9fad31e	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::experiencePointsNeededForNextLevel
 sub_8900c59190dd	8900c59190ddf393	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
 sub_8927e5ddc075	8927e5ddc075a842	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_892d76b85f48	892d76b85f489456	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
@@ -9085,6 +9099,7 @@ sub_a5255b73483e	a5255b73483ea101	skip	generated: compiler-generated destructor
 sub_a540602af04c	a540602af04c02b0	ported	renderer/worldmaprenderprovider.cpp:hasCreatureIcon
 sub_a5502213f47e	a5502213f47e491f	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::hasPickedPerks
 sub_a55343076c32	a55343076c324d25	skip	generated: moc property getter, provided by the generated cip base
+sub_a56a8bf1d106	a56a8bf1d1068a10	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::xpGaugeTargetValueString
 sub_a57838a1af09	a57838a1af0908dd	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowClicked
 sub_a581058933d4	a581058933d47a78	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCyclopediaMapAction
 sub_a58e4f10fb6a	a58e4f10fb6ad9a4	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildBonusEffects
@@ -9341,7 +9356,7 @@ sub_af210a3e5078#36	af210a3e5078721c	inlined	protocol::TProtobufServerMessageTra
 sub_af22a1c737f0	af22a1c737f03e51	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::TCalendarDialogController
 sub_af512d5039f9	af512d5039f99850	skip	data: static initializer (inbox filter names, typeinfo, classification row table; misattributed)
 sub_af56beb0dce6	af56beb0dce6733d	ported	gamewindow/edittextcontroller.cpp:itemTextDescription
-sub_af61447911e7	af61447911e7a48b	skip	generated: moc property getter, provided by the generated cip base
+sub_af61447911e7	af61447911e7a48b	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::xpGraphMaxY
 sub_af79bb4903b6	af79bb4903b64249	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResulMessage
 sub_af97f2ef08db	af97f2ef08db481b	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::compareGroups
 sub_af9f9e7e885c	af9f9e7e885c11d5	skip	generated: compiler-generated destructor pair
@@ -9975,6 +9990,7 @@ sub_bdd1e96da73c	bdd1e96da73c6f49	ported	gamewindow/sidebarmanager.cpp:TSidebarM
 sub_bddbf53ee342	bddbf53ee3424b7d	skip	library: std container template code
 sub_be0237a6c667	be0237a6c66745e3	skip	library: std::sort / std::stable_sort instantiation (library)
 sub_be04f99d6c95	be04f99d6c953171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditList
+sub_be0f651917b0	be0f651917b032a7	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::baseXpPerHourString
 sub_be14815ad083	be14815ad0831c79	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_be15361f627e	be15361f627e50e4	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
 sub_be2a4c87b343	be2a4c87b3439313	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::removeUnawareThings
