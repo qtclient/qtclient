@@ -117,6 +117,8 @@ public:
     /// Takes the creature instance at `stackPos` off the field; null when
     /// none is there.
     appearances::TAppearanceInstancePtr takeCreatureInstance(int stackPos);
+    /// Advances every instance's animation to `nowMs` (CIP v45).
+    void updateAnimations(qint64 nowMs);
     /// Refresh outfit/direction appearance entries when the live creature changes look.
     void syncCreatureStackAppearance(uint32_t creatureId);
     /// The graphical effects on this field, from the effect storage.

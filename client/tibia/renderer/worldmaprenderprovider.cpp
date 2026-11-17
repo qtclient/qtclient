@@ -239,6 +239,9 @@ void TWorldMapRenderProvider::advance()
 
     QElapsedTimer cost;
     cost.start();
+    // The stored fields' animations advance to this frame before it is built.
+    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage())
+        storage->updateAnimations(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     m_frame.valid = build();
     m_buildNs = cost.nsecsElapsed();
     // The view follows the drawn frame's field, so the picker's floor and
@@ -1265,8 +1268,6 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
     // The object's sprite sequence holds its pattern's sprites per phase; its
     // animator picks the phase.
     const appearances::TAppearanceInstanceSpriteSequence* sequence = object ? object->spriteSequence().get() : nullptr;
-    if (sequence)
-        object->spriteSequence()->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
         : object                                       ? object->calculateAnimationPhase()
                                                        : 0;

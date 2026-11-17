@@ -75,6 +75,9 @@ public:
     const std::shared_ptr<TAppearanceInstanceSpriteSequence>& spriteSequence() const { return m_spriteSequence; }
     /// Draws `pattern` from now on (CIP v11).
     void setSpritePattern(const TAppearancePattern& pattern);
+    /// Advances the sprite sequence's animation to `nowMs`; true when the drawn
+    /// phase changed (CIP v5).
+    virtual bool updateAnimation(qint64 nowMs) { return m_spriteSequence && m_spriteSequence->update(nowMs); }
 
 protected:
     TAppearanceType* m_type = nullptr;

@@ -393,6 +393,12 @@ appearances::TAppearanceInstancePtr TWorldMapField::takeCreatureInstance(const i
     return instance;
 }
 
+void TWorldMapField::updateAnimations(const qint64 nowMs)
+{
+    for (const appearances::TAppearanceInstancePtr& instance : m_stack)
+        instance->updateAnimation(nowMs);
+}
+
 bool TWorldMapField::removeCreatureById(const uint32_t creatureId)
 {
     if (creatureId == 0)

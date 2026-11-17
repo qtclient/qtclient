@@ -83,7 +83,10 @@ public:
     /// Speed of the field's ground; 255 where there is no ground.
     int groundSpeedAt(const Position& position);
     /// Accumulated elevation of the field's items; 0 where there is no field.
+    /// The pixels the objects of a field lift a creature by; 0 without the field (CIP v26).
     int elevationAt(const Position& position);
+    /// Advances the animations of every stored field to `nowMs` (CIP v36).
+    void updateAnimations(qint64 nowMs);
     /// Animate `creature` stepping from `from` to `to`. Anything other than a
     /// single step drops its motion instead.
     /// The appearance instance at `stackPos` of the field at `coordinate`; null

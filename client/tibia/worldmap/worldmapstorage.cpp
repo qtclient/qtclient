@@ -261,7 +261,13 @@ int TWorldMapStorage::groundSpeedAt(const Position& position)
 int TWorldMapStorage::elevationAt(const Position& position)
 {
     TWorldMapField* field = fieldAt(position);
-    return field ? field->getDrawElevation() : 0;
+    return field ? field->objectElevation() : 0;
+}
+
+void TWorldMapStorage::updateAnimations(const qint64 nowMs)
+{
+    for (const auto& [coordinate, field] : m_fields)
+        field->updateAnimations(nowMs);
 }
 
 appearances::TAppearanceInstancePtr TWorldMapStorage::appearanceInstanceAt(const TWorldMapCoordinate& coordinate,
@@ -324,7 +330,7 @@ bool TWorldMapStorage::moveCreatureInstance(const TWorldMapCoordinate& from, con
     TWorldMapField* source = fieldAt(from);
     if (!source)
         return false;
-    const int elevationFrom = source->getDrawElevation();
+    const int elevationFrom = source->objectElevation();
     const appearances::TAppearanceInstancePtr instance = source->takeCreatureInstance(stackPos);
     if (!instance)
         return false;

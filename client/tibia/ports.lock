@@ -55,6 +55,7 @@ appearances::TAppearanceInstance::v1	c706b9be1f95cd79	skip	generated: compiler-g
 appearances::TAppearanceInstance::v10	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 appearances::TAppearanceInstance::v11	0815b08ac43f51fa	ported	appearances/appearanceinstance.cpp:TAppearanceInstance::setSpritePattern
 appearances::TAppearanceInstance::v2	5468181e0d5064ae	ported	appearances/appearanceinstance.h:TAppearanceInstance::thingType
+appearances::TAppearanceInstance::v5	2f394c907c2a391d	ported	appearances/appearanceinstance.h:TAppearanceInstance::updateAnimation
 appearances::TAppearanceInstance::v6	b373390eeb839866	ported	appearances/appearanceinstance.h:TAppearanceInstance::elevation
 appearances::TAppearanceInstance::v7	cc376964c96b4161	ported	appearances/appearanceinstance.h:TAppearanceInstance::setElevation
 appearances::TAppearanceInstanceFactory::v0	f6314da58750ec3c	skip	generated: compiler-generated destructor pair
@@ -11982,6 +11983,7 @@ worldmap::TWorldMapField::v41	d31f05e908db8cdf	ported	worldmap/worldmapfield.h:T
 worldmap::TWorldMapField::v42	670f0c686e13b34f	ported	worldmap/worldmapfield.h:TWorldMapField::objectElevation
 worldmap::TWorldMapField::v43	438325aa40dfe1ba	ported	worldmap/worldmapfield.cpp:TWorldMapField::movementGroundSpeed
 worldmap::TWorldMapField::v44	fb29829b14dc42a0	ported	worldmap/worldmapfield.cpp:TWorldMapField::walkState
+worldmap::TWorldMapField::v45	9a2138b95299c929	ported	worldmap/worldmapfield.cpp:TWorldMapField::updateAnimations
 worldmap::TWorldMapField::v46	ac12bf7106f3e38b	ported	worldmap/worldmapfield.cpp:TWorldMapField::light
 worldmap::TWorldMapField::v47	21a408c886fcd4f4	ported	worldmap/worldmapfield.cpp:TWorldMapField::updateElevation
 worldmap::TWorldMapField::v48	812aca1d59a0ce09	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::drawIndex
@@ -12012,6 +12014,7 @@ worldmap::TWorldMapRenderProvider::v19	dbd1e8dae8e0a7c4	ported	renderer/worldmap
 worldmap::TWorldMapRenderProvider::v21	bc445331c5137bca	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::updateHighlightBaseplate
 worldmap::TWorldMapRenderProvider::v7	60e6873db90c1f89	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::buildLightMap
 worldmap::TWorldMapStorage::v12	9fb670436b9c666e	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
+worldmap::TWorldMapStorage::v13	21a6eba164b5a4d7	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::storedVolume
 worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
 worldmap::TWorldMapStorage::v15	842019cc137285f3	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasField
 worldmap::TWorldMapStorage::v16	56866489b3351ab0	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::field
@@ -12028,6 +12031,7 @@ worldmap::TWorldMapStorage::v31	65f61fa40ea7f860	ported	worldmap/worldmapstorage
 worldmap::TWorldMapStorage::v32	d8bf1a9bb63bf5cd	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasTranslucentAt
 worldmap::TWorldMapStorage::v33	a33af13897777f48	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::isUnderOpenSkyAt
 worldmap::TWorldMapStorage::v35	35ba17b78d90caef	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::moveCreature
+worldmap::TWorldMapStorage::v36	4f1190b86fabb691	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::updateAnimations
 worldmap::TWorldMapStorage::v42	a39243cca9dbf3bb	ported	game/gamesessionstate.cpp:snapshotWaypointCost
 worldmap::TWorldMapStorage::~TWorldMapStorage_deleting	839f61ca80669756	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 worldmap::TWorldMapSubfieldCoordinate::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
