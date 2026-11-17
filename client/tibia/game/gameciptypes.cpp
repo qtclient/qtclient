@@ -15,6 +15,8 @@
 #include "input/gameactionhandlers.h"
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
+#include "input/playermovementintenthandler.h"
+#include "game/gamesessionstate.h"
 #include "clockservice.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/dialogmanager.h"
@@ -766,18 +768,45 @@ void TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage(const G
 
 void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMessageSwitchPreset& m)
 {
-    tibia::game::notify("onPreset", m.preset_id());
+    // The vocation's hotkey set, when the player switches hotkey presets with
+    // the vocation.
+    static constexpr const char* kVocationHotkeySets[] = { "Knight", "Paladin", "Sorcerer", "Druid", "Monk" };
+    const uint32_t preset = m.preset_id();
+    if (preset >= 1 && preset <= std::size(kVocationHotkeySets)) {
+        auto action = std::make_shared<tibia::input::TGameActionTryToSwitchHotkeySet>(
+            QString::fromLatin1(kVocationHotkeySets[preset - 1]));
+        action->enable = true;
+        tibia::input::publish(action);
+    }
+    // Host: the skill wheel follows the preset on the notify bus.
+    tibia::game::notify("onPreset", preset);
 }
 
 void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessageSnapBack& m)
 {
-    // The server refused the step: the player snaps back, facing `direction`.
-    tibia::game::processWalkCancel(static_cast<tibia::client::Direction>(m.direction()));
+    // The server refused the step: the walk plan cancels, or without one the
+    // player stops where it is and faces `direction`.
+    const auto direction = static_cast<uint8_t>(m.direction());
+    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+        intent->onCancelWalk(static_cast<creatures::ECreatureLookDirection>(direction));
+        return;
+    }
+    if (const auto player = localPlayerCreature()) {
+        player->resetMovement();
+        player->setDirection(direction);
+    }
 }
 
 void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageStop&)
 {
-    tibia::game::notify("onServerStop");
+    // The server stopped the player: the walk plan clears, or without one the
+    // player's step stops.
+    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+        intent->clearGoal();
+        return;
+    }
+    if (const auto player = localPlayerCreature())
+        player->resetMovement();
 }
 
 void TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage(const GameserverMessageHirelingNameChange& m)
