@@ -62,6 +62,13 @@ public:
     bool hasBankAt(const TWorldMapCoordinate& coordinate);
     /// The field at `coordinate` holds a translucent object; false without a field.
     bool hasTranslucentAt(const TWorldMapCoordinate& coordinate);
+    /// Nothing opaque covers the field from above: it lies on or above the highest
+    /// floor of its column that holds an opaque field. A sight-blocking field looks
+    /// at the column one field down-right. Underground fields never are.
+    bool isUnderOpenSkyAt(const TWorldMapCoordinate& coordinate);
+    /// The highest floor (1..6) of the column at (x, y) holding an opaque field, 7 when
+    /// none does, and 0 when floor 0 is opaque itself.
+    int highestOpaqueFloorAt(int x, int y);
     /// Sole field create path — owns `m_fields` and spatial `tileBlocks`.
     TWorldMapField* getOrCreateField(const Position& position);
     /// Spatial block slot only; does not read `m_fields`.

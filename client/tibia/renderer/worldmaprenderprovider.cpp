@@ -14,7 +14,10 @@
 #include "renderer/rendervolumeprovider.h"
 #include "renderer/worldgeometry.h"
 #include "worldmap/lightmap.h"
+#include "worldmap/ambientlightstorage.h"
+#include "worldmap/cacheforworldmapstoragelookupmembers.h"
 
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QJsonObject>
 #include <QLoggingCategory>
@@ -38,6 +41,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iterator>
+#include <map>
 #include <vector>
 #include <tibia/game/gamesession.h>
 #include "worldmap/worldmapstorage.h"
@@ -682,29 +686,135 @@ void TWorldMapRenderProvider::applyWeatherAmbientTint()
     }
 }
 
-/// TWorldMapRenderProvider::v7 filling TLightMap .
+std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(const bool withLights)
+{
+    using worldmap::TCacheForWorldmapStorageLookupMembers;
+    using worldmap::TWorldMapCoordinate;
+    worldmap::TWorldMapStorage* storage = worldmap::TWorldMapStorage::ensureStorage();
+    if (storage != m_lightCacheStorage) {
+        m_bankCache.reset();
+        m_translucentCache.reset();
+        m_openSkyCache.reset();
+        m_lightCacheStorage = storage;
+    }
+
+    const int sea = tibia::config::mapSeaFloor();
+    const tibia::worldmap::TAmbientLightStorage* ambient = tibia::worldmap::TAmbientLightStorage::instance();
+    const Light world{ tibia::game::worldLightIntensity(), tibia::game::worldLightColor() };
+    const QColor ambientColor = ambient ? ambient->color() : QColor(light::lightColor(world.color, world.intensity / 255.f));
+    // The grid's origin: the visible area's top-left, slid along the floors' shear to the camera's floor.
+    const TWorldMapCoordinate origin(m_camera.x - centerX(), m_camera.y - centerY(), m_camera.z);
+    auto map = std::make_shared<worldmap::TLightMap>(
+        m_lightOptions.ambientLevel, m_lightOptions.separator, m_lightOptions.attenuation, m_lightOptions.attenuation,
+        origin, drawWidth(), drawHeight(), ambientColor, m_camera.z <= sea, QDateTime::currentMSecsSinceEpoch());
+
+    std::map<int, std::vector<const light::PointLight*>> lightsByFloor;
+    if (withLights) {
+        for (const light::PointLight& source : m_lights)
+            lightsByFloor[source.z].push_back(&source);
+    }
+
+    if (!m_bankCache) {
+        m_bankCache = std::make_shared<TCacheForWorldmapStorageLookupMembers>(
+            storage, [storage](const TWorldMapCoordinate& c) { return storage->hasBankAt(c); });
+    }
+    if (!m_translucentCache) {
+        m_translucentCache = std::make_shared<TCacheForWorldmapStorageLookupMembers>(
+            storage, [storage](const TWorldMapCoordinate& c) { return storage->hasTranslucentAt(c); });
+    }
+    if (map->darkensIndoors()) {
+        if (!m_openSkyCache) {
+            // A field's sky depends on the fields above it and on its down-right neighbour's column.
+            std::vector<worldmap::TWorldMapExtent> column;
+            for (int z = 1; z <= 7; ++z)
+                column.emplace_back(0, 0, z);
+            for (int z = 0; z <= 7; ++z)
+                column.emplace_back(-1, -1, z);
+            m_openSkyCache = std::make_shared<TCacheForWorldmapStorageLookupMembers>(
+                storage, [storage](const TWorldMapCoordinate& c) { return storage->isUnderOpenSkyAt(c); }, column);
+        }
+    } else {
+        m_openSkyCache.reset();
+    }
+
+    const auto fieldOf = [this](const int x, const int y, const int z) {
+        return TWorldMapCoordinate(light::lightField(m_camera, centerX(), centerY(), x, y, z));
+    };
+    const int width = drawWidth();
+    const int height = drawHeight();
+    for (int z = m_lastFloor; z >= m_firstFloor; --z) {
+        if (z == m_camera.z)
+            map->applyFloorSeparator();
+        if (z >= 0) {
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    const TWorldMapCoordinate field = fieldOf(x, y, z);
+                    if (!m_bankCache->lookup(field))
+                        continue;
+                    const bool openSky = m_openSkyCache && m_openSkyCache->lookup(field);
+                    map->applyLevelColor(field, openSky);
+                    if (!m_translucentCache->lookup(field))
+                        continue;
+                    // A translucent field lets the floors below shine through.
+                    const QColor color = map->colorAt(field);
+                    map->setColorAt(field,
+                                    QColor::fromRgbF(std::max(color.redF(), color.redF() * m_lightOptions.separator),
+                                                     std::max(color.greenF(), color.greenF() * m_lightOptions.separator),
+                                                     std::max(color.blueF(), color.blueF() * m_lightOptions.separator), 1.f));
+                }
+            }
+        }
+        if (z == sea + 1) {
+            // The first floor underground takes the daylight under a translucent field above it.
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    const TWorldMapCoordinate field = fieldOf(x, y, z);
+                    const TWorldMapCoordinate above(field.x, field.y, sea);
+                    if (!m_translucentCache->lookup(above))
+                        continue;
+                    const bool openSky = m_openSkyCache && m_openSkyCache->lookup(above);
+                    map->applyLevelColor(field, 1, openSky);
+                }
+            }
+        }
+        const auto floorLights = lightsByFloor.find(z);
+        if (floorLights == lightsByFloor.end())
+            continue;
+        const auto hasBank = [this](const TWorldMapCoordinate& c) { return m_bankCache->lookup(c); };
+        for (const light::PointLight* source : floorLights->second) {
+            // The light's position in the world: its map pixel without the floor's shear.
+            const int dz = source->z - origin.z;
+            const worldmap::TWorldMapSubfieldCoordinate position(origin.x * FieldSize + source->center.x() - FieldSize * dz,
+                                                                 origin.y * FieldSize + source->center.y() - FieldSize * dz,
+                                                                 source->z);
+            const QRgb rgb = light::lightColor(source->color, 1.f);
+            map->addLightSource(position, { position, source->intensity, QColor(rgb) }, hasBank);
+        }
+    }
+
+    // The visible area starts a field off the stored one: its edge repeats its neighbour.
+    const worldmap::TWorldMapCoordinate stored = storage->storedVolume().topLeft;
+    const int storedX = stored.x - (m_camera.z - stored.z);
+    const int storedY = stored.y - (m_camera.z - stored.z);
+    if (origin.x != storedX)
+        map->copySecondColumnToFirst();
+    if (origin.y != storedY)
+        map->copySecondRowToFirst();
+    return map;
+}
+
 /// CIP allocates a fresh TLightMap every frame — no idle light-image cache.
 void TWorldMapRenderProvider::buildLight()
 {
     updateWorldGeometry();
 
-    const light::BuildInput in{
-        .camera = m_camera,
-        .drawWidth = drawWidth(),
-        .drawHeight = drawHeight(),
-        .centerX = centerX(),
-        .centerY = centerY(),
-        .firstFloor = m_firstFloor,
-        .lastFloor = m_lastFloor,
-        .options = m_lightOptions,
-    };
-    // One CIP floor-walk: raycast ambient + classic TLightMap (shared fieldFlags / roofs).
-    const light::ClassicLightBuild built = light::buildClassicLightPair(in, m_lights, (m_lighting && m_lighting->enabled()));
-    m_lightUntinted = light::toLightImage(built.classic, in.drawWidth, in.drawHeight);
+    m_lightMap = buildLightMap(true);
+    m_lightUntinted = m_lightMap->toImage();
     m_frame.light = m_lightUntinted;
     applyWeatherAmbientTint();
     if (m_lighting && m_lighting->enabled()) {
-        m_lighting->setFieldAmbient(light::toLightImage(built.ambient, in.drawWidth, in.drawHeight));
+        // Raycast samples the floors' light without the point lights.
+        m_lighting->setFieldAmbient(m_lights.empty() ? m_lightUntinted : buildLightMap(false)->toImage());
         // Same grid the LightMap multiplies (post weather tint) — raycast open-floor SoT.
         m_lighting->setFieldClassic(m_frame.light);
     }
@@ -712,22 +822,22 @@ void TWorldMapRenderProvider::buildLight()
 
 float TWorldMapRenderProvider::lightnessAt(const QPoint& mapPixel) const
 {
-    // CIP dims creature name/HUD from the light map (TLightMap::v7). With Light
-    // Effects off the LightMap is not drawn — keep HUD at full brightness.
-    if (!m_lightOptions.effectsEnabled)
+    // With Light Effects off the LightMap is not drawn — keep HUD at full brightness.
+    if (!m_lightOptions.effectsEnabled || !m_lightMap)
         return 1.f;
-    return worldmap::TLightMap::lightnessAt(m_frame.light, mapPixel);
+    // The map pixel's subfield on the camera's floor, where the grid is unsheared.
+    const worldmap::TWorldMapCoordinate origin = m_lightMap->origin();
+    const worldmap::TWorldMapSubfieldCoordinate subfield(origin.x * FieldSize + mapPixel.x(),
+                                                         origin.y * FieldSize + mapPixel.y(), origin.z);
+    return m_lightMap->lightnessAt(subfield) / 255.f;
 }
 
 int TWorldMapRenderProvider::fieldLightness(const Position& field) const
 {
-    // CIP v14: no light map → 0xff; else TLightMap sample.
-    if (!m_lightOptions.effectsEnabled || m_frame.light.isNull())
+    // CIP v14: no light map → 0xff; else the field's lightness.
+    if (!m_lightOptions.effectsEnabled || !m_lightMap)
         return 255;
-    const QPoint pixel = toScreen(field);
-    if (pixel.x() < 0 || pixel.y() < 0)
-        return 0;
-    return worldmap::TLightMap::fieldLightness(m_frame.light, pixel.x() / FieldSize, pixel.y() / FieldSize);
+    return m_lightMap->lightnessAt(worldmap::TWorldMapCoordinate(field));
 }
 
 void TWorldMapRenderProvider::addLight(const QPoint& center, const uint8_t intensity, const uint8_t color)

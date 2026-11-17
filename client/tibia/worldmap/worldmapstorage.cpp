@@ -365,6 +365,31 @@ bool TWorldMapStorage::hasUnpassableObjectAt(const TWorldMapCoordinate& coordina
     return field && field->hasUnpassableObject();
 }
 
+bool TWorldMapStorage::isUnderOpenSkyAt(const TWorldMapCoordinate& coordinate)
+{
+    if (coordinate.z > 7)
+        return false;
+    int x = coordinate.x;
+    int y = coordinate.y;
+    if (const TWorldMapField* field = fieldAt(coordinate); field && field->blocksSight()) {
+        ++x;
+        ++y;
+    }
+    return coordinate.z <= highestOpaqueFloorAt(x, y);
+}
+
+int TWorldMapStorage::highestOpaqueFloorAt(const int x, const int y)
+{
+    const TWorldMapField* top = fieldAt(TWorldMapCoordinate(x, y, 0));
+    const bool topIsOpen = !top || !top->isOpaque();
+    for (int z = 1; z < 7; ++z) {
+        const TWorldMapField* field = fieldAt(TWorldMapCoordinate(x, y, z));
+        if (field && field->isOpaque())
+            return topIsOpen ? z : 0;
+    }
+    return 7;
+}
+
 bool TWorldMapStorage::hasBankAt(const TWorldMapCoordinate& coordinate)
 {
     const TWorldMapField* field = fieldAt(coordinate);

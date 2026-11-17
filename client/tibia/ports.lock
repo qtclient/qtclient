@@ -4044,6 +4044,8 @@ sub_097457dc45e8#550	097457dc45e86dd8	inlined	spells/spellinfostorage.cpp:TSpell
 sub_097457dc45e8#558	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_097457dc45e8#562	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onTransactionHistoryChanged
 sub_097457dc45e8#563	097457dc45e86dd8	inlined	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage
+sub_097457dc45e8#586	097457dc45e86dd8	skip	generated: tail-call thunks to constructors
+sub_097457dc45e8#587	097457dc45e86dd8	skip	generated: tail-call thunks to constructors
 sub_097457dc45e8#6	097457dc45e86dd8	skip	generated: thunk to the moc signal body QNetworkReplyWrapper::finished
 sub_097457dc45e8#7	097457dc45e86dd8	inlined	shared/src/qnetworkaccessmanagerwrapper.cpp:QNetworkAccessManagerWrapper::QNetworkAccessManagerWrapper
 sub_097457dc45e8#784	097457dc45e86dd8	inlined	protocol::TProtobufClientMessageTranslator::v3
@@ -4718,6 +4720,7 @@ sub_204013620a4f#544	204013620a4fb213	skip	generated: shared_ptr / Qt slot-objec
 sub_204013620a4f#548	204013620a4fb213	skip	generated: Qt-generated slot object impl
 sub_204013620a4f#558	204013620a4fb213	skip	generated: compiler-generated Qt slot-object thunk
 sub_204013620a4f#559	204013620a4fb213	skip	generated: compiler-generated Qt slot-object thunk
+sub_204013620a4f#575	204013620a4fb213	skip	generated: Qt slot object impl (member-function call/compare/destroy)
 sub_204c2b471496	204c2b4714965737	inlined	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::TRewardWallDialogController
 sub_20558d253176	20558d253176c161	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::setShowFilter
 sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamesessionstate.cpp:TGameSessionState::createMovementIntent
@@ -4845,6 +4848,8 @@ sub_23c91f1a75a5#323	23c91f1a75a58fdc	skip	library: std container template code
 sub_23c91f1a75a5#341	23c91f1a75a58fdc	skip	library: std::vector length_error thrower (library)
 sub_23c91f1a75a5#342	23c91f1a75a58fdc	skip	library: std::vector length_error thrower (library)
 sub_23c91f1a75a5#347	23c91f1a75a58fdc	skip	library: Qt/std container template code
+sub_23c91f1a75a5#364	23c91f1a75a58fdc	skip	library: libc++ vector out_of_range throw
+sub_23c91f1a75a5#365	23c91f1a75a58fdc	skip	library: libc++ vector out_of_range throw
 sub_23c91f1a75a5#366	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#367	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
@@ -5449,6 +5454,7 @@ sub_3d3e920749bd	3d3e920749bd67af	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_3d42dda878f5	3d42dda878f5ca93	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_3d4716bd352c	3d4716bd352cb342	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTrackBestiaryRace
 sub_3d486c8ddae6#2	3d486c8ddae69dec	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::captureContext
+sub_3d538bf152ef	3d538bf152ef4f7f	tested	worldmap/lightmap.h:TLightMap::darkensIndoors	test=tests/client/lightmap_test.cpp
 sub_3d621018ef4f	3d621018ef4f8586	inlined	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::post
 sub_3d7191b22b6f	3d7191b22b6f3f51	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_3d73c365658e	3d73c365658eca38	ported	shared/src/downloadpool.cpp:TDownloadPool::startWaitingDownloads
@@ -6531,6 +6537,7 @@ sub_6303bdfa89d3#7	6303bdfa89d3eaee	skip	generated: Qt-generated slot object imp
 sub_6303bdfa89d3#8	6303bdfa89d3eaee	skip	generated: Qt-generated slot object impl
 sub_6303bdfa89d3#9	6303bdfa89d3eaee	inlined	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::onRegisteredWidgetClosed
 sub_630423abb44c	630423abb44c674b	inlined	gamewindow/containercontroller.cpp:TContainerController::update
+sub_630dd70d2a65	630dd70d2a652cc6	tested	worldmap/lightmap.cpp:TLightMap::TLightMap	test=tests/client/lightmap_test.cpp
 sub_6350f26b7ccb	6350f26b7ccbbcc4	ported	config/sidebaroptions.cpp:parseSpellList
 sub_63526520a835	63526520a8350171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTeleport
 sub_6353cd59e08b	6353cd59e08ba030	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::selectedCategoryId
@@ -6573,6 +6580,7 @@ sub_63e222f42025#3	63e222f42025abee	inlined	friends/friendsciptypes.cpp:TFriends
 sub_63e222f42025#4	63e222f42025abee	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::gameActions
 sub_64129f8994b6	64129f8994b6172d	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetTactics
 sub_6424b88073b8	6424b88073b8b065	skip	library: miniaudio library
+sub_6437b0302bd1	6437b0302bd1f20d	skip	data: static init of the cloud wave table and cycle (TLightMap CloudWaves/CloudCycle constants)
 sub_643b7400e1be	643b7400e1be702b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_647825f15a2e#21	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 sub_647825f15a2e#26	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleGameAction
@@ -7920,6 +7928,7 @@ sub_93c91c1f5768#201	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy
 sub_93c91c1f5768#203	93c91c1f57686cf1	skip	generated: compiler-generated destructor pair
 sub_93c91c1f5768#204	93c91c1f57686cf1	skip	generated: compiler-generated destructor pair
 sub_93c91c1f5768#205	93c91c1f57686cf1	skip	library: std container template code
+sub_93c91c1f5768#217	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy
 sub_93c91c1f5768#22	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#23	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#24	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
@@ -9720,6 +9729,7 @@ sub_d62aebb8c176	d62aebb8c1765486	ported	gamewindow/monsterbonuseffectsdialogcon
 sub_d6527bbb888e	d6527bbb888e106f	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::requestItemBlackWhitelisting
 sub_d66c6dec21d7	d66c6dec21d7a0ae	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::hasNextPage	test=tests/client/sharednet_test.cpp
 sub_d69d716d9c63	d69d716d9c630d4a	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::picksEqual
+sub_d6a3ed9fab33	d6a3ed9fab33cec2	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::highestOpaqueFloorAt
 sub_d6a483aed08a	d6a483aed08a5243	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusTypeText
 sub_d6bc6f56e66c	d6bc6f56e66c3937	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::mouseCursorPosition
 sub_d6f258d54984	d6f258d54984523f	ported	config/clientoptions.cpp:TClientOptions::TClientOptions
@@ -10407,6 +10417,7 @@ sub_eaa9d237e113	eaa9d237e113e5f9	ported	config/clientoptions.cpp:addDeviceCooki
 sub_eac688f8067d	eac688f8067ddea1	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::maximumBonusGrade
 sub_eac688f8067d#2	eac688f8067ddea1	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::maximumBonusGrade
 sub_eac7d5453ec6	eac7d5453ec67acb	ported	gamewindow/chatcontroller.cpp:TChatChannelController::Row::selectFromSide
+sub_eae1a495fbc5	eae1a495fbc51a1d	inlined	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::buildLightMap
 sub_eaee370cb76c	eaee370cb76cca3a	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::onClassificationFilterWasSelected
 sub_eb33ff28a6e1	eb33ff28a6e13c9e	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_eb34c6bc4614#3	eb34c6bc46149ccd	skip	data: translation-unit static initializer of shared header constants
@@ -10511,6 +10522,7 @@ sub_f1018a12f27a	f1018a12f27a721b	skip	library: std vector internals (push_back/
 sub_f1057a76185b	f1057a76185b66f3	inlined	protocol::TProtobufServerMessageTranslator::v22
 sub_f1057a76185b#2	f1057a76185b66f3	inlined	protocol::TProtobufServerMessageTranslator::v36
 sub_f10954593f20	f10954593f205b39	ported	store/storeciptypes.cpp:TStoreDescriptionManager::description
+sub_f111350646f5	f111350646f51d5c	inlined	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::buildLightMap
 sub_f11773391b61	f11773391b610876	skip	generated: compiler-generated destructor pair
 sub_f127363e0a29	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeStorage::TPremiumTimeStorage
 sub_f127363e0a29#2	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeStorage::TPremiumTimeStorage
@@ -10695,6 +10707,7 @@ sub_f81385a1c2d4	f81385a1c2d44257	inlined	animation/phaseanimator.cpp:TAnimator:
 sub_f81691435739	f81691435739cf60	ported	config/clientoptionsmigration.cpp:migrateFromVersion1
 sub_f827c33dea91	f827c33dea918aa2	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::applySelectedWorld
 sub_f83a7adceddc	f83a7adceddc406b	skip	generated: moc-generated signal emitter
+sub_f841d64a2886	f841d64a288655ea	inlined	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::buildLightMap
 sub_f8495e2c7fea	f8495e2c7fea0c51	skip	library: std::vector copy / growth of store records (library)
 sub_f84c03b3289f	f84c03b3289faae3	skip	generated: moc property getter, provided by the generated cip base
 sub_f84f003e6488	f84f003e6488cb5b	skip	data: translation-unit static initializer (misattributed)
@@ -10808,6 +10821,7 @@ sub_fdecfee0bd3b#2	fdecfee0bd3b491b	skip	generated: compiler-generated destructo
 sub_fe041a11c72c	fe041a11c72c846f	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowOnlyCurrentVocation
 sub_fe1956975e8d	fe1956975e8da70d	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::onInspectObjectDataReceived
 sub_fe3af5a92be7	fe3af5a92be737e8	skip	library: miniaudio library
+sub_fe5765eeb2ad	fe5765eeb2ad3323	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::highestOpaqueFloorAt
 sub_fe58805b2402	fe58805b24020716	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetExivaOptions
 sub_fe91409ab303	fe91409ab303f38c	ported	analysers/impactstorage.cpp:TDamageInputStorage::reset
 sub_fea3509d4127#2	fea3509d41272f1a	inlined	sub_52ca29368333
@@ -10932,7 +10946,25 @@ worldmap::TAmbientLightStorage::~TAmbientLightStorage	dadedd3fe20189db	skip	gene
 worldmap::TAmbientLightStorage::~TAmbientLightStorage_deleting	32c6a75c162ebaae	skip	generated: compiler-generated destructor pair
 worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
-worldmap::TLightMap::v10	606d006b0a90a2eb	ported	renderer/lightmodel.cpp:buildClassicLightPair
+worldmap::TLightMap::v0	469bf28929302c8b	skip	generated: destructor pair
+worldmap::TLightMap::v1	42cfe83969590fc4	skip	generated: destructor pair
+worldmap::TLightMap::v10	606d006b0a90a2eb	tested	worldmap/lightmap.cpp:TLightMap::addLightSource	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v11	001eb11db4574cb7	tested	worldmap/lightmap.cpp:TLightMap::applyFloorSeparator	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v12	14344e736f8dd37f	tested	worldmap/lightmap.cpp:TLightMap::levelColor	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v13	5bcf65b02c095320	ported	worldmap/lightmap.cpp:TLightMap::applyLevelColor
+worldmap::TLightMap::v14	4d71097986aa93c1	tested	worldmap/lightmap.cpp:TLightMap::applyLevelColor	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v15	9700236b93454361	tested	worldmap/lightmap.cpp:TLightMap::levelColorScale	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v16	61646ee02e142c8b	tested	worldmap/lightmap.cpp:TLightMap::toImage	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v17	28f29063a4dcf349	tested	worldmap/lightmap.cpp:TLightMap::copySecondColumnToFirst	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v18	75c6b102658cedb1	tested	worldmap/lightmap.cpp:TLightMap::copySecondRowToFirst	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v2	bb9cd7be09b72f7d	ported	worldmap/lightmap.h:TLightMap::origin
+worldmap::TLightMap::v3	7ae588f614509de3	inlined	worldmap/lightmap.cpp:TLightMap::cellAt
+worldmap::TLightMap::v4	2dfb2ddff432b142	tested	worldmap/lightmap.cpp:TLightMap::cellAt	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v5	87f28161700396f8	tested	worldmap/lightmap.cpp:TLightMap::cloudFactorAt	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v6	933d86c380b01241	tested	worldmap/lightmap.cpp:TLightMap::lightnessAt	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v7	d9e0d26da781bf6b	tested	worldmap/lightmap.cpp:TLightMap::lightnessAt	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v8	cb11dfd12f91d5c3	tested	worldmap/lightmap.cpp:TLightMap::colorAt	test=tests/client/lightmap_test.cpp
+worldmap::TLightMap::v9	1a727e4d08863ab4	tested	worldmap/lightmap.cpp:TLightMap::setColorAt	test=tests/client/lightmap_test.cpp
 worldmap::TWorldMapField::v12	05c9b46a10fa2b28	ported	worldmap/worldmapfield.h:TWorldMapField::isEmpty
 worldmap::TWorldMapField::v13	8f028080de4e824e	ported	worldmap/worldmapfield.h:TWorldMapField::coordinate
 worldmap::TWorldMapField::v14	da364dbf273981b3	ported	worldmap/worldmapfield.h:TWorldMapField::appearances
@@ -10982,9 +11014,11 @@ worldmap::TWorldMapPicker::v7	2e25cfc4f85eb0b5	ported	worldmap/worldmappicker.cp
 worldmap::TWorldMapRenderProvider::v12	af0f084c0e5aea75	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
 worldmap::TWorldMapRenderProvider::v13	8500c42dd63a1a7a	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
 worldmap::TWorldMapRenderProvider::v14	50b30993c446250b	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::fieldLightness
+worldmap::TWorldMapRenderProvider::v15	08526ef81da08bb1	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::lightnessAt
 worldmap::TWorldMapRenderProvider::v18	5ab7f61d91ae9fd4	ported	renderer/worldmaprenderprovider.h:TWorldMapRenderProvider::mouseHighlightField
 worldmap::TWorldMapRenderProvider::v19	dbd1e8dae8e0a7c4	ported	renderer/worldmaprenderprovider.h:TWorldMapRenderProvider::setMouseHighlightField
 worldmap::TWorldMapRenderProvider::v21	bc445331c5137bca	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::updateHighlightBaseplate
+worldmap::TWorldMapRenderProvider::v7	60e6873db90c1f89	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::buildLightMap
 worldmap::TWorldMapStorage::v12	9fb670436b9c666e	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
 worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
 worldmap::TWorldMapStorage::v15	842019cc137285f3	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasField
@@ -10995,6 +11029,7 @@ worldmap::TWorldMapStorage::v28	684adea6b3debf9b	inlined	input/playermovementint
 worldmap::TWorldMapStorage::v30	1f24906986312220	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasUnpassableObjectAt
 worldmap::TWorldMapStorage::v31	65f61fa40ea7f860	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasBankAt
 worldmap::TWorldMapStorage::v32	d8bf1a9bb63bf5cd	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasTranslucentAt
+worldmap::TWorldMapStorage::v33	a33af13897777f48	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::isUnderOpenSkyAt
 worldmap::TWorldMapStorage::v35	35ba17b78d90caef	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::moveCreature
 worldmap::TWorldMapStorage::v42	a39243cca9dbf3bb	ported	game/gamesessionstate.cpp:snapshotWaypointCost
 worldmap::TWorldMapViewport::v12	b0a24b6d79152186	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setCenter

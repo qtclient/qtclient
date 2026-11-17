@@ -33,6 +33,9 @@ class TCreature;
 }
 namespace worldmap {
 class TWorldMapViewport;
+class TLightMap;
+class TCacheForWorldmapStorageLookupMembers;
+class TWorldMapStorage;
 }
 }
 
@@ -302,6 +305,8 @@ private:
                             bool onTop);
     SpriteRecord::Highlight highlightOf(uint32_t creatureId) const;
     void addLight(const QPoint& center, uint8_t intensity, uint8_t color);
+    /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
+    std::shared_ptr<worldmap::TLightMap> buildLightMap(bool withLights);
     /// CIP TWorldMapRenderProvider::v21: animated field square under the mouse.
     void updateHighlightBaseplate();
 
@@ -350,6 +355,14 @@ private:
     bool m_floorsCached = false;
     /// Classic light before weather tint (D); tint reapplies each frame from this.
     QImage m_lightUntinted;
+    /// The light of the last frame (CIP: the provider's TLightMap).
+    std::shared_ptr<worldmap::TLightMap> m_lightMap;
+    /// Memos of the storage questions the light map asks: banks, translucent
+    /// fields, and (while indoor fields are darkened) open sky.
+    worldmap::TWorldMapStorage* m_lightCacheStorage = nullptr;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_bankCache;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_translucentCache;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_openSkyCache;
     /// Cache key for shared world geometry.
     Position m_geometryCamera;
     uint32_t m_geometryRevision = 0;

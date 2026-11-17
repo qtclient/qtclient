@@ -175,3 +175,10 @@ if(TARGET qtclient_shared)
     include(GoogleTest)
     gtest_discover_tests(client_sharednet_tests)
 endif()
+
+# CIP worldmap::TLightMap: the frame's light grid.
+qtclient_add_port_test(client_lightmap_tests
+    lightmap_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/lightmap.cpp
+)
+target_link_libraries(client_lightmap_tests PRIVATE Qt6::Gui)
