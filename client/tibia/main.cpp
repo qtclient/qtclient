@@ -605,6 +605,11 @@ int main(int argc, char** argv)
     gamewindow::TStatusBarController statusBarController;
     gameWindowController.setStatusBarController(&statusBarController);
 #endif
+    // CIP: the start screen's Quit asks the client to exit; Manage Clients opens the launcher.
+    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::gameExitRequested, &gameWindowController,
+                     &gamewindow::TGameWindowController::handleGameExitRequest);
+    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::openLauncherRequested, &gameWindowController,
+                     [] { app::LauncherEnv::showLauncher(); });
     auto* quitCloseFilter = new QuitCloseFilter(&gameWindowController, window);
     window->installEventFilter(quitCloseFilter);
     QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameExitRequested, window,
@@ -725,7 +730,7 @@ int main(int argc, char** argv)
                                  gameClient.ensureLoginSurface();
                              });
                          });
-        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::accountLoginRequested, &gameClient,
+        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::loginRequested, &gameClient,
                          &client::TGameClient::submitCredentials);
 
         clientOptions.env = env;

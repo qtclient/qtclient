@@ -279,6 +279,9 @@ void TOptionsMenuDialogController::setInGame(const bool inGame)
 {
     if (m_isInGame == inGame)
         return;
+    // CIP: a new game session closes the dialog first.
+    if (dialog()->item())
+        dialog()->close();
     m_isInGame = inGame;
     Q_EMIT gameSessionChanged();
 }

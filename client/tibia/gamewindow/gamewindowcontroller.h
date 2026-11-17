@@ -152,16 +152,16 @@ public:
     void setAllowWindowClose(bool allow) { m_allowWindowClose = allow; }
     /// Graphics-engine restart and other intentional process exits. The window
     /// close that follows must not ask Exit / Logout / Cancel.
+    /// The gameExitRequested receiver: Exit / Logout / Cancel while a character
+    /// is in the world, otherwise the client exits (quitGameExitRequested).
+    void handleGameExitRequest();
+
     static void allowProcessExit();
     static bool processExitAllowed();
 
 Q_SIGNALS:
     /// The options dialog should open on `category` (OPEN_OPTIONS_MENU_DIALOG's).
     void optionsMenuRequested(int category);
-    /// Start-screen Login button (email + password).
-    void accountLoginRequested(const QString& email, const QString& password);
-    /// Create Account on the CIP login mask (CreateAccountDialog.qml).
-    void createAccountDialogRequested();
     /// Quit-game dialog: Exit (close client).
     void quitGameExitRequested();
     /// Quit-game dialog: Logout (leave character / return to login).
@@ -182,7 +182,6 @@ private:
     void clearEventModels();
     /// CIP: today's events and the next starting ones, with their tooltips.
     void updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events);
-    void showQuitGameDialog();
     void syncAnthemButton();
 
     QPointer<QQuickItem> m_container;

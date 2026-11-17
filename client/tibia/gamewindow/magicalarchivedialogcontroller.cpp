@@ -77,7 +77,7 @@ void TMagicalArchiveDialogController::showDialogTab()
     Q_EMIT selectedSpellIDChanged();
 }
 
-void TMagicalArchiveDialogController::hideDialogTab() {}
+void TMagicalArchiveDialogController::hideDialogTab() { m_proxy->resetFilter(); }
 
 void TMagicalArchiveDialogController::requestAssignSpellToActionButton()
 {

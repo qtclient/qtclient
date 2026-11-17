@@ -176,14 +176,16 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             Q_EMIT statusBarVisibilityChanged();
             return;
         }
-        if (name == QLatin1String("sessionRemainLoggedIn")) {
-            // Misc "Stay logged in by default" mirrors onto the login checkbox.
-            setRememberEmail(app::ClientOptions::load().options().value(name).toBool(true));
-            return;
-        }
         if (name == QLatin1String("soundAnthemEnabled") || name == QLatin1String("soundMusicVolume")
             || name == QLatin1String("soundMasterVolume"))
             syncAnthemButton();
+    });
+
+    connect(this, &TGameWindowController::newLeftAndRightStatusActionBarWidth, this, [this](const int width) {
+        if (m_container) {
+            if (QQuickWindow* window = m_container->window())
+                window->setProperty("leftAndRightStatusActionBarWidth", width);
+        }
     });
 
     connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
@@ -575,10 +577,7 @@ void TGameWindowController::setScreen(const QString& state, const bool backgroun
 
 void TGameWindowController::leftAndRightStatusActionBarWidthChanged(const int newWidth)
 {
-    if (!m_container)
-        return;
-    if (QQuickWindow* window = m_container->window())
-        window->setProperty("leftAndRightStatusActionBarWidth", newWidth);
+    Q_EMIT newLeftAndRightStatusActionBarWidth(newWidth);
 }
 
 void TGameWindowController::setUpperPaneHeight(const uint height)
@@ -636,11 +635,7 @@ void TGameWindowController::rememberLoginEmailIfEnabled(const QString& email)
 
 void TGameWindowController::loginPressed(const QString& EMailAddress, const QString& Password)
 {
-    const QString email = EMailAddress.trimmed();
-    if (email.isEmpty() || Password.isEmpty())
-        return;
-    rememberLoginEmailIfEnabled(email);
-    Q_EMIT accountLoginRequested(email, Password);
+    Q_EMIT loginRequested(EMailAddress, Password);
 }
 
 void TGameWindowController::forgotEMailAddressOrPasswordPressed()
@@ -650,8 +645,7 @@ void TGameWindowController::forgotEMailAddressOrPasswordPressed()
 
 void TGameWindowController::handleCreateNewAccount()
 {
-    setShowCreateAccountOption(false);
-    Q_EMIT createAccountDialogRequested();
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::createNewAccountPressed()
@@ -666,7 +660,9 @@ void TGameWindowController::goToLogin()
 
 void TGameWindowController::goToCreateNewAccount()
 {
-    handleCreateNewAccount();
+    // CIP: the create-account option goes without its change signal.
+    m_showCreateAccountOption = false;
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::tibiaLogoPressed()
@@ -740,22 +736,22 @@ void TGameWindowController::manageAccountPressed()
 
 void TGameWindowController::manageClientsPressed()
 {
-    app::LauncherEnv::showLauncher();
+    Q_EMIT openLauncherRequested();
 }
 
 void TGameWindowController::quitPressed()
 {
-    // CIP shows Exit / Logout / Cancel only while a character is in the world.
+    Q_EMIT gameExitRequested();
+}
+
+void TGameWindowController::handleGameExitRequest()
+{
+    // Exit / Logout / Cancel only while a character is in the world.
     // The login mask and the character list close with the window.
     if (!tibia::game::isOnline()) {
         Q_EMIT quitGameExitRequested();
         return;
     }
-    showQuitGameDialog();
-}
-
-void TGameWindowController::showQuitGameDialog()
-{
     using Button = TMessageDialogController::Button;
     if (!m_quitDialog) {
         m_quitDialog = new TMessageDialogController(this);

@@ -334,7 +334,7 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
     const bool zero = online && capacity == 0;
     const uint32_t baseCap = tibia::game::localPlayerBaseCapacity();
     const uint32_t totalCap = tibia::game::localPlayerTotalCapacity();
-    const bool boost = online && baseCap > 0 && baseCap < totalCap;
+    const bool boost = online && baseCap < totalCap;
     if (capacity == m_capacity && zero == m_hasZeroCapacity && boost == m_hasCapacityBoost)
         return;
     m_capacity = capacity;

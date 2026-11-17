@@ -1239,8 +1239,6 @@ void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int
 
 void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, const int ModID)
 {
-    if (!canBeChanged())
-        return;
     m_pendingBasic = isBasicMod;
     m_pendingMod = ModID;
     tibia::game::gemAction(4, isBasicMod ? 0 : 1, static_cast<uint8_t>(ModID));
