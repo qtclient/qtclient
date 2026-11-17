@@ -126,8 +126,6 @@ public:
     const TStoreOffer& offer() const { return m_offer; }
     /// The quantity configuration `offerId` is one of.
     bool hasQuantity(int offerId) const;
-    /// The description of `offerId` arrived.
-    void onOfferDescriptionLoaded(int offerId);
 
 private:
     TStoreOffer m_offer;

@@ -34,7 +34,7 @@ class TTextualHighlightsAbstractListModel final : public cip::TTextualHighlights
 {
     Q_OBJECT
 public:
-    enum Role { CategoryIconRole = Qt::UserRole + 1, HighlightRole, HighlightIdRole, CategoryRole };
+    enum Role { CategoryRole = Qt::UserRole + 1, HighlightIdRole, HighlightRole, CategoryIconRole };
 
     explicit TTextualHighlightsAbstractListModel(QObject* parent = nullptr);
 
@@ -74,7 +74,7 @@ class TItemHighlightsAbstractListModel final : public cip::TItemHighlightsAbstra
 {
     Q_OBJECT
 public:
-    enum Role { IdRole = Qt::UserRole + 1, NameRole, AmountRole, DescriptionRole, UpgradeTierRole };
+    enum Role { IdRole = Qt::UserRole + 1, NameRole, DescriptionRole, AmountRole, UpgradeTierRole };
 
     explicit TItemHighlightsAbstractListModel(QObject* parent = nullptr);
 
