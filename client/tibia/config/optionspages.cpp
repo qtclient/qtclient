@@ -1025,7 +1025,9 @@ QString hotkeyActionSettingDescription(const TActionSetting& setting)
     if (!setting.text.isEmpty())
         return setting.text;
     if (setting.action.isEmpty() && setting.objectId == 0) {
-        if (setting.kind == TActionSetting::PASSIVE_ABILITY || !setting.multiActions.empty())
+        // CipSoft also gives an empty text when the setting's +0x47 flag is set
+        // (not identified yet).
+        if (!setting.multiActions.empty())
             return {};
         return qtTrId("hotkey_empty");
     }
