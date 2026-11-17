@@ -329,7 +329,11 @@ if(TIBIA_WITH_GAMECORE)
     questlog/questlogciptypes.cpp questlog/questlogciptypes.h
     quickloot/quicklootciptypes.cpp quickloot/quicklootciptypes.h
     skillwheel/skillwheelciptypes.cpp skillwheel/skillwheelciptypes.h
-    systemsurvey/systemsurveyciptypes.cpp systemsurvey/systemsurveyciptypes.h
+    systemsurvey/fpscounter.cpp systemsurvey/fpscounter.h
+    systemsurvey/fpshistory.cpp systemsurvey/fpshistory.h
+    systemsurvey/fpshistorycontroller.cpp systemsurvey/fpshistorycontroller.h
+    systemsurvey/fpshistorytojsonconverter.cpp systemsurvey/fpshistorytojsonconverter.h
+    systemsurvey/fpshistoryuploader.cpp systemsurvey/fpshistoryuploader.h
     teamfinder/teamfinderciptypes.cpp teamfinder/teamfinderciptypes.h
     teamfinder/teamsortproxymodels.cpp teamfinder/teamsortproxymodels.h
     bossbestiary/bossbestiaryciptypes.cpp bossbestiary/bossbestiaryciptypes.h
@@ -650,7 +654,6 @@ if(TIBIA_WITH_GAMECORE)
     cip_ports/spells_ports.h
     cip_ports/sprites_ports.h
     cip_ports/store_ports.h
-    cip_ports/systemsurvey_ports.h
     cip_ports/taskboard_ports.h
     cip_ports/teamfinder_ports.h
     cip_ports/trade_ports.h

@@ -1,12 +1,16 @@
-#include "systemsurveyvalueretriever.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
 
 #include <QDebug>
 #include <QGuiApplication>
+#include <QOperatingSystemVersion>
+#if QT_CONFIG(opengl)
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
-#include <QOperatingSystemVersion>
+#endif
+#if QT_CONFIG(process)
 #include <QProcess>
+#endif
 #include <QScreen>
 #include <QSurfaceFormat>
 #include <QSysInfo>
@@ -24,7 +28,7 @@
 #include <sys/types.h>
 #endif
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 namespace {
 
@@ -220,7 +224,12 @@ std::vector<TMonitorInformation> TSystemSurveyValueRetriever::queryMonitors()
 
 std::vector<TMonitorInformation> TSystemSurveyValueRetriever::getMonitorInformation() const
 {
+#ifdef __EMSCRIPTEN__
+    // Host: no second thread to ask the screens from.
+    return queryMonitors();
+#else
     return std::async(std::launch::async, &TSystemSurveyValueRetriever::queryMonitors).get();
+#endif
 }
 
 TCpuInformation TSystemSurveyValueRetriever::getCpuInformation() const
@@ -239,6 +248,7 @@ TCpuInformation TSystemSurveyValueRetriever::getCpuInformation() const
 TOpenGLInformation TSystemSurveyValueRetriever::getOpenGLInformation() const
 {
     TOpenGLInformation information;
+#if QT_CONFIG(opengl)
     QOpenGLContext context;
     context.setFormat(QSurfaceFormat::defaultFormat());
     context.create();
@@ -253,6 +263,7 @@ TOpenGLInformation TSystemSurveyValueRetriever::getOpenGLInformation() const
     information.version = QString::fromUtf8(reinterpret_cast<const char*>(functions->glGetString(GL_VERSION)));
     functions->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &information.maxTextureSize);
     context.doneCurrent();
+#endif
     return information;
 }
 
@@ -262,11 +273,12 @@ TOperatingSystemInformation TSystemSurveyValueRetriever::getOperatingSystemInfor
     system.baseSystem = QStringLiteral("mac");
     system.name = QSysInfo::prettyProductName();
     const QOperatingSystemVersion version = QOperatingSystemVersion::current();
-    if (version.majorVersion() >= 0) {
+    const int segments = version.segmentCount();
+    if (segments > 0) {
         system.release = QStringLiteral("%1").arg(version.majorVersion());
-        if (version.minorVersion() >= 0) {
+        if (segments > 1) {
             system.release.append(QStringLiteral(".%1").arg(version.minorVersion()));
-            if (version.microVersion() >= 0)
+            if (segments > 2)
                 system.release.append(QStringLiteral(".%1").arg(version.microVersion()));
         }
     }
@@ -353,12 +365,14 @@ std::vector<TGpuInformation> TSystemSurveyValueRetriever::parseDisplaysDataType(
 std::vector<TGpuInformation> TSystemSurveyValueRetriever::getGpuInformation() const
 {
     QByteArray output;
+#if QT_CONFIG(process)
     QProcess process;
     process.start(QStringLiteral("system_profiler"),
                   {QStringLiteral("SPDisplaysDataType"), QStringLiteral("-xml")}, QIODevice::ReadWrite);
     if (process.waitForStarted() && process.waitForFinished())
         output = process.readAllStandardOutput();
+#endif
     return parseDisplaysDataType(output);
 }
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

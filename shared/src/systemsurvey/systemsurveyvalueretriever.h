@@ -1,10 +1,10 @@
 #pragma once
 
-#include "systemsurvey.h"
+#include "systemsurvey/systemsurvey.h"
 
 #include <array>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 /// Reads the machine's values for the survey (CipSoft's macOS retriever:
 /// screens via Qt + CoreGraphics, CPU via cpuid / sysctl, GPU via
@@ -41,4 +41,4 @@ public:
     static std::vector<TGpuInformation> parseDisplaysDataType(const QByteArray& xml);
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

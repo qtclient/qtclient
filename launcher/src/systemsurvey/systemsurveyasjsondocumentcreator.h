@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 class TSystemSurveyCreator;
 class TSystemSurveyToJsonConverter;
@@ -27,4 +27,4 @@ private:
     std::shared_ptr<TSystemSurveyToJsonConverter> m_converter;
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

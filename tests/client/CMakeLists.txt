@@ -167,6 +167,29 @@ if(Qt6_FOUND AND TARGET tibia)
     gtest_discover_tests(client_sessiondumphints_tests)
 endif()
 
+# CIP systemsurvey FPS history (counter, history, controller, JSON, uploader).
+if(Qt6_FOUND AND TARGET tibia)
+    find_package(Qt6 REQUIRED COMPONENTS Network)
+    set(_fps ${CMAKE_SOURCE_DIR}/client/tibia/systemsurvey)
+    add_executable(client_fpshistory_tests
+        fpshistory_test.cpp
+        ${_fps}/fpscounter.cpp ${_fps}/fpscounter.h
+        ${_fps}/fpshistory.cpp ${_fps}/fpshistory.h
+        ${_fps}/fpshistorycontroller.cpp ${_fps}/fpshistorycontroller.h
+        ${_fps}/fpshistorytojsonconverter.cpp ${_fps}/fpshistorytojsonconverter.h
+        ${_fps}/fpshistoryuploader.cpp ${_fps}/fpshistoryuploader.h)
+    set_target_properties(client_fpshistory_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_fpshistory_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>)
+    target_link_libraries(client_fpshistory_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui Qt6::Network qtclient_shared)
+    target_compile_definitions(client_fpshistory_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_fpshistory_tests cip_codegen_tibia)
+    gtest_discover_tests(client_fpshistory_tests)
+endif()
+
 # CIP shared:: classes (apps/qtclient/shared) of the launcher's net slice.
 if(TARGET qtclient_shared)
     add_executable(client_sharednet_tests sharednet_test.cpp)

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "systemsurvey.h"
+#include "systemsurvey/systemsurvey.h"
 
 #include <memory>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 class TSystemSurveyValueRetriever;
 
@@ -24,4 +24,4 @@ private:
     std::shared_ptr<TSystemSurveyValueRetriever> m_valueRetriever;
 };
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

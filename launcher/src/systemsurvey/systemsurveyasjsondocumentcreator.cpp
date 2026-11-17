@@ -2,9 +2,9 @@
 
 #include "systemsurveycreator.h"
 #include "systemsurveytojsonconverter.h"
-#include "systemsurveyvalueretriever.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 TSystemSurveyAsJsonDocumentCreator::TSystemSurveyAsJsonDocumentCreator(
     std::shared_ptr<TSystemSurveyCreator> creator, std::shared_ptr<TSystemSurveyToJsonConverter> converter)
@@ -26,4 +26,4 @@ QJsonDocument TSystemSurveyAsJsonDocumentCreator::createDefaultJsonDocument()
     return documentCreator.createJsonDocument();
 }
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

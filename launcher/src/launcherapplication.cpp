@@ -195,11 +195,11 @@ void TLauncherApplication::startSystemSurvey()
     const QUrl url = m_filesystemHelper->systemSurveyUrl();
     if (!url.isValid())
         return;
-    auto creator = std::make_shared<systemsurvey::TSystemSurveyCreator>(
-        std::make_shared<systemsurvey::TSystemSurveyValueRetriever>());
-    auto documentCreator = std::make_shared<systemsurvey::TSystemSurveyAsJsonDocumentCreator>(
-        creator, std::make_shared<systemsurvey::TSystemSurveyToJsonConverter>());
-    m_systemSurveyUploader = std::make_unique<systemsurvey::TSystemSurveyUploader>(
+    auto creator = std::make_shared<tibia::systemsurvey::TSystemSurveyCreator>(
+        std::make_shared<tibia::systemsurvey::TSystemSurveyValueRetriever>());
+    auto documentCreator = std::make_shared<tibia::systemsurvey::TSystemSurveyAsJsonDocumentCreator>(
+        creator, std::make_shared<tibia::systemsurvey::TSystemSurveyToJsonConverter>());
+    m_systemSurveyUploader = std::make_unique<tibia::systemsurvey::TSystemSurveyUploader>(
         url, documentCreator, std::make_shared<tibia::shared::TJsonDocumentHttpPostSender>());
     m_systemSurveyUploader->uploadSystemSurvey();
 }

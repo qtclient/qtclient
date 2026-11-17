@@ -42,7 +42,6 @@
 #include "cip_ports/spells_ports.h"
 #include "cip_ports/sprites_ports.h"
 #include "cip_ports/store_ports.h"
-#include "cip_ports/systemsurvey_ports.h"
 #include "cip_ports/taskboard_ports.h"
 #include "cip_ports/teamfinder_ports.h"
 #include "cip_ports/trade_ports.h"

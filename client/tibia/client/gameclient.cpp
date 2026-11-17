@@ -3,7 +3,6 @@
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
-#include "systemsurvey/systemsurveyciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "skillwheel/skillwheelciptypes.h"
 #include "screenshot/screenshotciptypes.h"
@@ -284,7 +283,6 @@ TGameClient::TGameClient(QObject* parent)
     screenshot::ownProductSurface(this);
     skillwheel::ownProductSurface(this);
     spells::ownProductSurface(this);
-    systemsurvey::ownProductSurface(this);
     taskboard::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
     trade::ownProductSurface(this);
