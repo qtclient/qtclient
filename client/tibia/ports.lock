@@ -9,11 +9,14 @@
 (anonymous namespace)::TBlacklistModel::v53	5d208b256d2fb7ec	ported	friends/friendlistmodels.cpp:TBlacklistModel::itemData
 (anonymous namespace)::TBossesModel::v44	d101bb14a8142956	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryBossModel::roleNames
 (anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v44	5100dea98ae710be	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::roleNames
+(anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v53	b4fd5d30ef641587	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::data
 (anonymous namespace)::TCreatureOtherIconModel::v44	9b246f673fbd73f5	ported	worldmap/creaturehud.cpp:TCreatureOtherIconModel::roleNames
+(anonymous namespace)::TCreatureOtherIconModel::v53	917420c4e48fd53c	ported	worldmap/creaturehud.cpp:TCreatureOtherIconModel::data
 (anonymous namespace)::TCreatureTrackerModel::v44	5a9f32778e2f319e	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerModel::roleNames
 (anonymous namespace)::TCreatureTrackerModel::v53	04a6aa663cba2b24	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerModel::data
 (anonymous namespace)::TCustomiseCharacterModel::v44	86a95d067f6e0b93	ported	gamewindow/outfitdialogcontroller.cpp:TCustomiseCharacterModel::roleNames
 (anonymous namespace)::TDamageSourceModel::v44	284142ce22538432	ported	analysers/impactwidgets.cpp:TDamageSourceModel::roleNames
+(anonymous namespace)::TDamageSourceModel::v53	717163932068e05f	ported	analysers/impactwidgets.cpp:TDamageSourceModel::data
 (anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v44	e60a5d6f9e610761	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::roleNames
 (anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v53	f4b416bd143078d9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 (anonymous namespace)::TFriendListModel::v44	f0334aaf3bf0d7db	ported	friends/friendlistmodels.cpp:TFriendListModel::roleNames
@@ -22,7 +25,9 @@
 (anonymous namespace)::TInviteListModel::v44	243742c00af7dea3	ported	friends/friendlistmodels.cpp:TInviteListModel::roleNames
 (anonymous namespace)::TInviteListModel::v53	3a841869c5303801	ported	friends/friendlistmodels.cpp:TInviteListModel::itemData
 (anonymous namespace)::TItemHighlightsAbstractListModel::v44	4276ddfc163b16b3	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::roleNames
+(anonymous namespace)::TItemHighlightsAbstractListModel::v53	083d3cd74a86cd34	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::data
 (anonymous namespace)::TPresetInfoModel::v44	7a8573f600acfb70	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::roleNames
+(anonymous namespace)::TPresetInfoModel::v53	34b4d0f8781ee57d	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::data
 (anonymous namespace)::TQuestLinePartsModel::v44	71f3118032628362	ported	gamewindow/questlogcontroller.cpp:TQuestLinePartsModel::roleNames
 (anonymous namespace)::TQuestLinesModel::v44	26c9535a774fd7db	ported	gamewindow/questlogcontroller.cpp:TQuestLinesModel::roleNames
 (anonymous namespace)::TShapedPerkOptionsModel::v44	9b55ffed79907c60	ported	proficiency/weaponproficiencyshapedialogs.cpp:TShapedPerkOptionsModel::roleNames
@@ -33,6 +38,7 @@
 (anonymous namespace)::TTeamsListModel::v44	1000dc4475a2416a	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListModel::roleNames
 (anonymous namespace)::TTeamsListModel::v53	53da4d8ba2dc5242	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListModel::itemData
 (anonymous namespace)::TTextualHighlightsAbstractListModel::v44	f40acb4066e0d03e	ported	trade/charactertrademodels.cpp:TTextualHighlightsAbstractListModel::roleNames
+(anonymous namespace)::TTextualHighlightsAbstractListModel::v53	4dcf17f3e8b5780e	ported	trade/charactertrademodels.cpp:TTextualHighlightsAbstractListModel::data
 (anonymous namespace)::TTraderInventoryModel::v44	3cfcebf9239062e2	ported	gamewindow/npctradecontroller.cpp:TTraderInventoryModel::roleNames
 (anonymous namespace)::TUnlockedPlayerGuideEntryListModel::v44	49d50e1781b3b859	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideEntryListModel::roleNames
 (anonymous namespace)::TUnlockedPlayerGuideEntryListModel::v53	5133920a4f4347e0	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideEntryListModel::data
