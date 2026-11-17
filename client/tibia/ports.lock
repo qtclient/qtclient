@@ -6379,6 +6379,7 @@ sub_4764c2689368	4764c26893681aef	ported	gamewindow/sidebarpanelsmanager.cpp:TSi
 sub_4791f0e610c5	4791f0e610c5899b	skip	library: miniaudio library
 sub_4794526450ac	4794526450ac824c	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_4799721155a1	4799721155a15db4	skip	data: translation-unit static initializer (misattributed)
+sub_4799721155a1#2	4799721155a15db4	skip	data: translation-unit static initializer: vocation names, filter strings, context property name (misattributed)
 sub_47a2477682d4	47a2477682d4733b	skip	library: std::unordered_map construction/rehash/destruction (library)
 sub_47a2d6406de4	47a2d6406de4efca	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setReshapeOffers
 sub_47adfb400916	47adfb4009162b74	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::smoothTextureFiltering
