@@ -36,9 +36,9 @@
     // Every SyncAccessHandle is an OS file handle in the browser's storage
     // process. Safari fails createSyncAccessHandle with "Invalid platform file
     // handle" past ~250 open handles (measured), so the Worker caps them like a
-    // process fd limit: idle ones are closed first, and a new open waits for a
-    // release when all are in use.
-    var MAX_OPEN_HANDLES = 32;
+    // process fd limit: idle ones are closed first, and an open fails with
+    // EMFILE when all are in use.
+    var MAX_OPEN_HANDLES = 128;
     // Of those, handles kept open after their last close (cheap reopen for wasm).
     var IDLE_HANDLES_MAX = 16;
     // A just-closed /play document's Worker releases its access handles
@@ -174,28 +174,22 @@
 
     /** Access handles open or being opened; see MAX_OPEN_HANDLES. */
     var handlesInUse = 0;
-    var handleWaiters = [];
     function releaseHandle() {
       handlesInUse--;
-      var w = handleWaiters.shift();
-      if (w) w();
     }
     /**
-     * Take one access-handle slot. The check and the increment run in the same
-     * tick: concurrent callers must not all pass the check before any counts.
+     * Take one access-handle slot, closing idle handles first. All in use:
+     * EMFILE, like a process at its fd limit (waiting could deadlock a caller
+     * that holds the handles itself).
      */
-    async function reserveHandle() {
-      for (;;) {
-        while (handlesInUse >= MAX_OPEN_HANDLES && idle.length) {
-          var rec = accessByPath.get(idle[0]);
-          if (rec) closeRec(rec); else idle.shift();
-        }
-        if (handlesInUse < MAX_OPEN_HANDLES) {
-          handlesInUse++;
-          return;
-        }
-        await new Promise(function (r) { handleWaiters.push(r); });
+    function reserveHandle() {
+      while (handlesInUse >= MAX_OPEN_HANDLES && idle.length) {
+        var rec = accessByPath.get(idle[0]);
+        if (rec) closeRec(rec); else idle.shift();
       }
+      if (handlesInUse >= MAX_OPEN_HANDLES)
+        throw fsError('MFILE', MAX_OPEN_HANDLES + ' access handles open');
+      handlesInUse++;
     }
     function evictIdle(max) {
       while (idle.length > max) {
@@ -220,6 +214,27 @@
       });
     }
 
+    function parentOf(path) { var i = path.lastIndexOf('/'); return i < 0 ? '' : path.slice(0, i); }
+    function baseName(path) { return path.slice(path.lastIndexOf('/') + 1); }
+    /** Directory handle for an OPFS-relative path ('' = root). */
+    async function dirAt(path) {
+      var dir = root;
+      var parts = path ? path.split('/') : [];
+      for (var i = 0; i < parts.length; i++) dir = await dir.getDirectoryHandle(parts[i]);
+      return dir;
+    }
+    async function moveDirectory(srcParent, srcName, dstParent, dstName) {
+      var src = await srcParent.getDirectoryHandle(srcName);
+      var dst = await dstParent.getDirectoryHandle(dstName, { create: true });
+      var entries = [];
+      for await (var entry of src.entries()) entries.push(entry);
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i][1].kind === 'file') await entries[i][1].move(dst, entries[i][0]);
+        else await moveDirectory(src, entries[i][0], dst, entries[i][0]);
+      }
+      await srcParent.removeEntry(srcName);
+    }
+
     async function openAccess(path, fileHandle) {
       var rec = accessByPath.get(path);
       if (rec) {
@@ -229,7 +244,7 @@
       }
       var pending = opening.get(path);
       if (!pending) {
-        await reserveHandle();
+        reserveHandle();
         // Another caller may have opened or started opening it meanwhile.
         rec = accessByPath.get(path) || null;
         pending = opening.get(path);
@@ -342,8 +357,14 @@
         var fh = await fdir.handle.getFileHandle(fname, { create: true });
         var fid = addNode('file', fh, fpath);
         // WasmFS opens a file right after creating it: hand back an open access
-        // handle with the create so that open needs no second round trip.
-        return [fid, (await openAccess(fpath, fh)).id];
+        // handle with the create so that open needs no second round trip. At
+        // the handle cap the open itself reports EMFILE.
+        try {
+          return [fid, (await openAccess(fpath, fh)).id];
+        } catch (e) {
+          if (ownCode(e) !== 'MFILE') throw e;
+          return [fid, 0];
+        }
       }
       case OP.INSERT_DIR: {
         var ddir = node(arg(s, 0)), dname = readName(s, 1, 2);
@@ -392,8 +413,23 @@
             if (e.name !== 'NotFoundError') throw e;
           }
         }
-        await moved.handle.move(target.handle, mname);
+        if (moved.kind === 'file') {
+          await moved.handle.move(target.handle, mname);
+          renamePaths(from, to);
+          return [0];
+        }
+        // Directory handles have no move(): move the tree file by file.
+        await moveDirectory(await dirAt(parentOf(from)), baseName(from), target.handle, mname);
         renamePaths(from, to);
+        // Handles still name the old location: re-resolve the moved tree.
+        var stale = [];
+        nodes.forEach(function (n) { if (under(n.path, to)) stale.push(n); });
+        for (var i = 0; i < stale.length; i++) {
+          var p = stale[i].path, parent = await dirAt(parentOf(p));
+          stale[i].handle = stale[i].kind === 'dir'
+            ? await parent.getDirectoryHandle(baseName(p))
+            : await parent.getFileHandle(baseName(p));
+        }
         return [0];
       }
       case OP.OPEN: {

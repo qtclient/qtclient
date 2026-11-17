@@ -461,6 +461,7 @@ int32_t g_startInfo[] = {
     offsetof(Slot, state), offsetof(Slot, op), offsetof(Slot, args), offsetof(Slot, r0), offsetof(Slot, r1),
     // errno (Emscripten / WASI numbering)
     ENOENT, EIO, EBADF, EACCES, EBUSY, EEXIST, ENOTDIR, EISDIR, EINVAL, ENOSPC, ERANGE, ENOTEMPTY, ENOSYS,
+    EMFILE,
 };
 
 // Start the engine's qtclient-fs Worker (browser/qtclient-fs.js) on this
@@ -471,7 +472,7 @@ EM_ASYNC_JS(int, qtclientFsStart, (const int32_t* info, int32_t* channel), {
         slots: v(0), stride: v(1), count: v(2),
         state: v(3), op: v(4), args: v(5), r0: v(6), r1: v(7),
     };
-    var names = ['NOENT', 'IO', 'BADF', 'ACCES', 'BUSY', 'EXIST', 'NOTDIR', 'ISDIR', 'INVAL', 'NOSPC', 'RANGE', 'NOTEMPTY', 'NOSYS'];
+    var names = ['NOENT', 'IO', 'BADF', 'ACCES', 'BUSY', 'EXIST', 'NOTDIR', 'ISDIR', 'INVAL', 'NOSPC', 'RANGE', 'NOTEMPTY', 'NOSYS', 'MFILE'];
     var errno = {};
     names.forEach(function (n, k) { errno[n] = v(8 + k); });
     // Per-mount ring channel name, readable by pthreads from the request block.
