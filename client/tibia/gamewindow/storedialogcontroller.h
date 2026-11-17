@@ -199,6 +199,10 @@ private:
     void onTransactionHistoryChanged();
     void onNewCharacterNameRequested(int offerId, bool buyWithCosmeticTokens);
     void onNewCharacterNameEntered(const QString& name);
+    /// The world transfer dialog chose a world: confirm the offer for it.
+    void onCharacterWorldTransferWorldEntered(int offerId, const QString& worldName);
+    /// The main character dialog chose a character: confirm the offer for it.
+    void onMainCharChangeConfigurationFinished(int offerId, const QString& characterName);
     void onConfirmationDialogRequested(int offerId, const QString& message, bool buyWithCosmeticTokens);
     void onHirelingConfigurationRequested(int offerId, bool buyWithCosmeticTokens);
     void onHirelingConfigurationFinished(int offerId, const QString& name, int sex);
@@ -292,15 +296,15 @@ public Q_SLOTS:
     void onRequestOpenStoreDialog() override;
 
 private:
-    void onStoreDeeplinkChanged(int openAction, int detail);
+    /// The server's deep link: kept for the next click; any link but the home
+    /// page highlights the button.
+    void onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink);
     void clearDeeplink();
 
     QPointer<TStoreDialogController> m_dialog;
-    std::vector<client::gamecore::Hook> m_hooks;
     /// The highlight (600000 ms, single shot).
     QTimer m_highlightTimer;
-    int m_deeplinkAction = 0;
-    int m_deeplinkDetail = -1;
+    store::TStoreOpenParameters m_deeplink;
 };
 
 }

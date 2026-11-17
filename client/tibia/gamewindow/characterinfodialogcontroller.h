@@ -45,7 +45,20 @@ public:
         Titles = 13,
     };
 
+    /// The page and the deaths / kills page a Cyclopedia backlog entry keeps.
+    struct Context
+    {
+        int dataType = GeneralStats;
+        qint64 page = 1;
+        bool operator==(const Context&) const = default;
+    };
+
     explicit TCharacterInfoDialogController(QObject* parent = nullptr);
+    bool clientSettingSmoothFiltering() const override;
+
+    Context captureContext() const;
+    /// Shows the context's page and asks for its deaths / kills page.
+    void restoreContext(const Context& context);
     ~TCharacterInfoDialogController() override;
 
     int dataType() const { return m_dataType; }
@@ -55,6 +68,11 @@ public:
     EDialogCategory dialogCategory() const override;
     /// CIP .
     bool dataIsLoading() const override;
+    /// The shown page of the recent deaths or kills, 1 elsewhere.
+    int currentPage() const override;
+    int numberOfPages() const override;
+    bool hasDualWielding() const override;
+    int dualWieldingObjectID() const override;
 
     /// The page the next showDialogTab opens (CIP: the open action's sub-page,
     /// or the backlog context restored by); general stats after it.
@@ -90,38 +108,31 @@ public:
     Q_INVOKABLE void setOrToggleCharacterTitle(uint characterTitleId);
 
 private:
-    using Args = std::vector<std::any>;
-
     void hookEvents();
-    /// The item summary, appearances, titles and achievements pages
-    /// (characterinfomodels.cpp).
-    void hookModelEvents();
     /// CIP : shows `dataType`, asking the server unless it is
     /// already there.
     void request(int dataType, bool force);
     void sendRequest(int dataType, int page);
-    /// Keeps a received record and shows it when it is the current page.
-    void store(int dataType, const Args& args);
     /// Rebuilds the page of `dataType` from its record when it is the
     /// current page (its old models are released either way).
     void onCharacterInfoUpdated(int dataType);
     void clearModels(const std::set<int>& dataTypes);
     void clearAllModels();
     void updateAccountInfos();
-    void updateInspection(const Args& args);
-    void updateAchievements(const Args& args);
-    /// The pages filled from the server's records (CIP: one per data type).
-    void updateBaseInfo(const Args& args);
-    void updateOffenceStats(const Args& args);
-    void updateDefenceStats(const Args& args);
-    void updateMiscStats(const Args& args);
-    void updateDeaths(const Args& args);
-    void updateKills(const Args& args);
-    void updateStorePurchases(const Args& args);
-    void updateItemSummary(const Args& args);
-    void updateOutfitsMounts(const Args& args);
-    void updateTitles(const Args& args);
-    void onErrorReceived(int errorCode);
+    void updateInspection();
+    void updateAchievements();
+    /// The pages filled from the character info storage (CIP: one per data type).
+    void updateBaseInfo();
+    void updateOffenceStats();
+    void updateDefenceStats();
+    void updateMiscStats();
+    void updateDeaths();
+    void updateKills();
+    void updateStorePurchases();
+    void updateItemSummary();
+    void updateOutfitsMounts();
+    void updateTitles();
+    void onErrorReceived(int dataType, int errorCode);
     void rebuildStatsBlocks();
 
     template <class T>
@@ -135,11 +146,6 @@ private:
     int m_dataType = NoData;
     int m_nextDataType = GeneralStats;
     uint32_t m_characterId = 0;
-    /// The records received since the page opened, per data type.
-    std::map<int, Args> m_data;
-    /// Pagination of the recent deaths / kills (CIP: storage vfunc 0xd8 / 0xe0).
-    int m_page[2] = { 1, 1 };
-    int m_pages[2] = { 1, 1 };
     int m_inspectionState = 0;
 
 Q_SIGNALS:

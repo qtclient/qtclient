@@ -7,11 +7,14 @@
 #include <client/position.h>
 
 #include <QColor>
+#include <QRectF>
 #include <QString>
 
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -51,8 +54,9 @@ struct TGameAction
     /// REPORT_TEXT (CIP: TGameActionReportStatement,): `text` is
     /// the author, `parameter` the text's edit id and this the reported text.
     QString statement;
-    /// LENSHELP_SHOW.
+    /// LENSHELP_SHOW: the world object's lenshelp id and its scene rectangle.
     int lensHelpId = 0;
+    QRectF lensHelpRect;
     /// MOVE_OBJECT: where the object is dropped (inventory slots are
     /// Position(0xFFFF, slot, 0), slot 0 for any) and whether Shift asked
     /// for everything.
@@ -105,6 +109,13 @@ struct TGameAction
     /// `instance` its detail (CIP ; open action 1 is the premium /
     /// boost page, detail 1 its XP boost).
     int category = -1;
+    /// OPEN_CYCLOPEDIA's map tab: the zoom at `position` (CIP:
+    /// TGameActionOpenCyclopedia +0x30, NaN when not given).
+    float cyclopediaMapZoom = std::numeric_limits<float>::quiet_NaN();
+    /// SOUND_TRIGGER (CIP: TGameActionSoundTrigger's variant): set, the action
+    /// pauses (true) or resumes (false) the looping sounds instead of playing
+    /// the sound effect in `parameter`.
+    std::optional<bool> pauseLoopingSounds;
     /// EXALTATION_FORGE_FUSION / _CONVERGENCE_FUSION / _TRANSFER (CIP: the
     /// TGameActionExaltationForge* read by): the object and its
     /// tier, the resource (fusion) or target (transfer) type, a fusion's

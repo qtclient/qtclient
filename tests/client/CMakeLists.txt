@@ -187,4 +187,98 @@ if(TARGET qtclient_shared)
     target_link_libraries(client_sharednet_tests PRIVATE GTest::gtest qtclient_shared)
     include(GoogleTest)
     gtest_discover_tests(client_sharednet_tests)
+
+    add_executable(client_newsstorage_tests newsstorage_test.cpp ${CMAKE_SOURCE_DIR}/client/tibia/news/newsstorage.cpp)
+    set_target_properties(client_newsstorage_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_newsstorage_tests PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/shared/src)
+    target_link_libraries(client_newsstorage_tests PRIVATE GTest::gtest GTest::gtest_main qtclient_shared)
+    gtest_discover_tests(client_newsstorage_tests)
+
+    add_executable(client_generalplayerstatisticsprovider_tests generalplayerstatisticsprovider_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/generalplayerstatisticsprovider.cpp)
+    set_target_properties(client_generalplayerstatisticsprovider_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(client_generalplayerstatisticsprovider_tests PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia)
+    target_link_libraries(client_generalplayerstatisticsprovider_tests PRIVATE GTest::gtest GTest::gtest_main protobuf)
+    gtest_discover_tests(client_generalplayerstatisticsprovider_tests)
+endif()
+
+# CIP worldmap::TLightMap: the frame's light grid.
+qtclient_add_port_test(client_lightmap_tests
+    lightmap_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/lightmap.cpp
+)
+target_link_libraries(client_lightmap_tests PRIVATE Qt6::Gui)
+
+qtclient_add_port_test(client_specialappearances_tests
+    specialappearances_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/specialappearances.cpp
+)
+
+# CIP appearances::TAppearanceType: appearances.dat objects converted from their protobuf messages.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_appearancetype_tests
+        appearancetype_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    )
+    target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
+endif()
+
+# CIP minimap marker file (minimapmarkers.bin) conversions.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_minimapmarker_tests
+        minimapmarker_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/minimap/minimapmarker.cpp
+    )
+    target_link_libraries(client_minimapmarker_tests PRIVATE cip_messages)
+endif()
+
+# CIP sprite pipeline: spritesheet metadata, cache, manager and sprites cut from spritesheets.
+qtclient_add_port_test(client_spritesheetmanager_tests
+    spritesheetmanager_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetcache.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteinspritesheet.cpp
+)
+target_link_libraries(client_spritesheetmanager_tests PRIVATE qtclient_shared Qt6::Gui)
+set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)
+
+# CIP worldmap coordinate helpers and cuboids.
+qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp)
+
+# CIP cyclopedia::TCyclopediaMapStaticDataStorage: map.dat areas, files and masks.
+qtclient_add_port_test(client_cyclopediamapstaticdatastorage_tests
+    cyclopediamapstaticdatastorage_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
+)
+target_link_libraries(client_cyclopediamapstaticdatastorage_tests PRIVATE protobuf Qt6::Gui)
+set_target_properties(client_cyclopediamapstaticdatastorage_tests PROPERTIES AUTOMOC ON)
+
+# CIP skill wheel grid path solver (TSkillWheelPageController): which grids are valid.
+find_package(ZLIB QUIET)
+if(Qt6_FOUND AND TARGET tibia AND TARGET ZLIB::ZLIB)
+    add_executable(client_skillwheeldata_tests
+        skillwheeldata_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/skillwheel/skillwheeldata.cpp
+    )
+    set_target_properties(client_skillwheeldata_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(client_skillwheeldata_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(client_skillwheeldata_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    target_link_libraries(client_skillwheeldata_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core ZLIB::ZLIB)
+    add_dependencies(client_skillwheeldata_tests cip_codegen_tibia)
+    gtest_discover_tests(client_skillwheeldata_tests)
 endif()

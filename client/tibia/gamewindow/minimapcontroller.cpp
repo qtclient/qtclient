@@ -91,7 +91,8 @@ void TMinimapController::setAmbientLightStorage(worldmap::TAmbientLightStorage* 
         connect(ambientLight, &worldmap::TAmbientLightStorage::normalizedTibiaTimeOfDayWasChanged, this, &TMinimapController::updateTimeDisplay);
         connect(ambientLight, &worldmap::TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged, this, &TMinimapController::updateTimeDisplay);
     }
-    updateTimeDisplay();
+    // CIP (session setup): the time display follows the storage's signals only. The player's position
+    // arrives through the onPositionChange hook (CIP: the player's positionChanged, queued).
 }
 
 void TMinimapController::setSidebarOptions(config::TSidebarOptions* options)

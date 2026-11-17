@@ -17,7 +17,6 @@ constexpr int DomainCount = 4;
 /// CipSoft External: 8 quality-typed vessels (2 lesser, 2 regular, 4 greater).
 constexpr int VesselCount = 8;
 constexpr int VocationCount = 5;
-constexpr int NoGem = -1;
 /// Medium perk ids (External jump table): Gem Vessel + Revelation Mastery.
 constexpr int VesselNodePerk = 37;
 constexpr int MasteryIncreasePerk = 46;
@@ -34,12 +33,17 @@ constexpr int MaxPresets = 10;
 /// CIP (action 307/308): the level the wheel needs.
 constexpr int RequiredLevel = 51;
 
+/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
+/// values when `plus`.
+QString percentNumberTrimmed(double value, int minDecimals, int maxDecimals, bool plus);
+
 /// Small (dedication) perk types: life, mana, life and mana, capacity, mitigation.
 enum class ESmallPerk { Life = 0, Mana = 1, LifeAndMana = 2, Capacity = 3, Mitigation = 4 };
 /// Gem quality: the number of mods (lesser 1, regular 2, greater 3).
 enum class EGemQuality { Lesser = 0, Regular = 1, Greater = 2 };
 
-/// A revealed gem (Crystal addGems: the id is the gem's index in the revealed list).
+/// A revealed gem: its id, domain and mods (the second basic mod from regular quality, the supreme
+/// mod from greater quality). The same record sits in a vessel of a configuration.
 struct TGem
 {
     int id = 0;
@@ -51,16 +55,33 @@ struct TGem
     int supreme = 0;
 };
 
-/// The points of the 36 slices and the gem id socketed in each vessel (0..7).
+/// The gem has a second basic mod (regular and greater gems).
+inline bool hasBasic2(const TGem& gem) { return gem.quality >= 1; }
+/// The gem has a supreme mod (greater gems).
+inline bool hasSupreme(const TGem& gem) { return gem.quality >= 2; }
+/// The gems have the same mods.
+bool sameMods(const TGem& a, const TGem& b);
+/// The vessels hold the same gem: its id and domain.
+bool sameGem(const TGem& a, const TGem& b);
+
+/// A skill wheel configuration: the vocation (1 knight .. 5 monk), the points of the 36 slices
+/// and the gem record socketed in each vessel (0..7).
 struct TWheel
 {
+    int vocation = 0;
     std::array<int, SlotCount> points{};
-    std::array<int, VesselCount> gems{
-        NoGem, NoGem, NoGem, NoGem, NoGem, NoGem, NoGem, NoGem,
-    };
+    std::array<std::optional<TGem>, VesselCount> vessels{};
 
-    bool operator==(const TWheel&) const = default;
+    bool operator==(const TWheel& other) const;
 };
+
+/// The gem goes into the vessel when its quality is the vessel's; it leaves the other vessel that
+/// holds a gem with its id. False (nothing changes) for another quality.
+bool socketGem(TWheel& wheel, const TGem& gem, int vessel);
+/// The vessel is emptied.
+void unsocketGem(TWheel& wheel, int vessel);
+/// The vessel that holds a gem with the id.
+std::optional<int> vesselOfGem(const TWheel& wheel, int gemId);
 
 /// Mod grades (0..3) by mod id, as the server sends them.
 using TGrades = std::map<int, int>;
@@ -84,6 +105,8 @@ int domainOfSlot(int slot);
 /// The revelation perk of a domain for a vocation index.
 int largePerk(int domain, int vocationIndex);
 
+/// The four centre slices every path starts from.
+const std::array<int, 4>& centreSlots();
 /// CIP grid rules: every slice with points is a centre slice or reaches one
 /// through full slices, and no slice exceeds its maximum.
 bool isValid(const std::array<int, SlotCount>& points);
@@ -95,7 +118,7 @@ bool canDecrease(const std::array<int, SlotCount>& points, int slot);
 /// Legacy vessel-resonance count (always 0 after CipSoft Winter 2026).
 int resonance(const std::array<int, SlotCount>& points, int domain);
 /// Revelation points: domain slices + MasteryIncrease (+125) + supreme revelation mastery gems.
-int revelationPoints(const TWheel& wheel, const std::vector<TGem>& gems, const TGrades& supremeGrades, int domain, int vocationIndex);
+int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, int domain, int vocationIndex);
 /// Fragment workshop totals from all mod grades.
 int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, int vocationIndex);
 int bonusPromotionPoints(const TGrades& basicGrades, const TGrades& supremeGrades, int vocationIndex);
@@ -199,8 +222,9 @@ struct TActiveMods
     double basicStat(int stat) const;
     double supremeStat(int mod) const;
 };
-TActiveMods activeMods(const TWheel& wheel, const std::vector<TGem>& gems, const TGrades& basicGrades, const TGrades& supremeGrades,
-                       int vocationIndex);
+/// Only gems in unlocked vessels of their quality count (the basic stats listed are those of every
+/// socketed gem); the configuration's vocation picks the values.
+TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TGrades& supremeGrades);
 /// CIP : `withPerk` adds the revelation perk, `multiString` the long form.
 QString supremeModName(int mod, bool withPerk, bool multiString);
 /// CIP .
@@ -252,6 +276,8 @@ int supremeModCount();
 bool hasBasicMod(int mod);
 /// CIP : the supreme mod is a spell augmentation.
 bool isAugmentationMod(int mod);
+/// The supreme mod's kind (4 augmentation, 5 revelation mastery, …); -1 for an unknown mod.
+int supremeModCategory(int mod);
 /// CIP mod list (0x101122xxx): supreme mods 0..3 and 5 suit every vocation, the rest one vocation index.
 bool supremeModForVocation(int mod, int vocationIndex);
 /// CIP : the grade points a vocation can earn (23 supreme + the basic mods).
@@ -271,30 +297,15 @@ QString gemInformation();
 /// The unrevealed gem object of a vocation index and quality (Crystal vocations.xml).
 int unrevealedGemTypeId(int vocationIndex, int quality);
 
-/// The mods of a socketed gem in an export code (CIP); -1 none.
-struct TCodeGem
-{
-    int basic1 = -1;
-    int basic2 = -1;
-    int supreme = -1;
-};
 
-/// A decoded wheel export code.
-struct TWheelCode
-{
-    int vocationIndex = 0;
-    std::array<int, SlotCount> points{};
-    std::array<TCodeGem, VesselCount> gems{};
-};
-
-/// CIP : `<K|P|S|D|M>0` and the url base64 (no padding) of the raw
-/// deflated 36 slice points and 4 vessel gems.
-QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, int vocationIndex);
-/// CIP : that format, or the legacy `EK|RP|MS|ED|EM` + 48 base64
-/// characters of the slice points; empty on any decoding error.
-std::optional<TWheelCode> decodeWheelCode(const QString& code);
-/// CIP : the slices respect their maximum and paths.
-bool isValidWheelCode(const TWheelCode& code);
+/// CIP: `<K|P|S|D|M>1` and the url base64 (no padding) of the raw deflated 36 slice points
+/// and the mods of the 8 vessels' gems.
+QString encodeWheelCode(const TWheel& wheel);
+/// CIP: that format (`<letter>0` carries no gems; a decoded gem's id is its vessel index), or the
+/// legacy `EK|RP|MS|ED|EM` + 48 base64 characters of the slice points; empty on any decoding error.
+std::optional<TWheel> decodeWheelCode(const QString& code);
+/// CIP: the slices respect their maximum and paths.
+bool isValidWheelCode(const TWheel& wheel);
 
 }
 }

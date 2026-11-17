@@ -172,7 +172,6 @@ public:
     // channel related
 
     // party related
-    void sendPartyAnalyzerPriceValue(); // For action 3, will get items from cyclopedia
     void sendPartyAnalyzerAction(uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items = {});
 
     // Team Finder (C 0x2C / 0x2D) — Crystal parseLeaderFinderWindow / parseMemberFinderWindow

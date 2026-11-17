@@ -1,5 +1,6 @@
 #pragma once
 
+#include "chat/chatgameactionhandler.h"
 #include "shared/simplevectorabstractlistmodel.h"
 
 #include <QAbstractListModel>
@@ -10,12 +11,7 @@
 namespace tibia {
 namespace gamewindow {
 
-/// chat::TKeywordButton: the KEYWORDBUTTONICON_* value and the keyword the button says.
-struct TKeywordButton
-{
-    int icon = 0;
-    QString keyword;
-};
+using TKeywordButton = chat::TKeywordButton;
 
 /// NpcDialog.qml's keyword buttons (CIP: the anonymous-namespace TKeywordButtonModel, a
 /// shared::TSimpleVectorAbstractListModel<chat::TKeywordButton>).

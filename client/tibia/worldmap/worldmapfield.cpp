@@ -10,12 +10,13 @@
 #include "appearances/appearanceinstance.h"
 #include "creatures/creaturestorage.h"
 #include "client/const.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
+#include "sprites/spritesystem.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/mapsession.h>
 #include <tibia/worldmap/worldmapstorage.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "clockservice.h"
 #include <tibia/schedule/schedule.h>
 #include <tibia/schedule/schedule.h>
@@ -27,7 +28,7 @@ int TWorldMapField::stackOrder(const TFieldStackEntry& entry)
 {
     // Bank, clip, bottom and top objects lead the stack in that order, then
     // the creatures, then every other object.
-    const ThingType* type = entry.appearance ? entry.appearance->thingType() : nullptr;
+    const TAppearanceType* type = entry.appearance ? entry.appearance->thingType() : nullptr;
     if (type && type->isGround())
         return 0;
     if (type && type->isGroundBorder())
@@ -83,7 +84,7 @@ void TWorldMapField::recalculateThingFlag()
             if (walkingId == 0)
                 continue;
             if (const auto row = storage->creatureAt(walkingId)) {
-                ThingType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
+                TAppearanceType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
                 applyCreatureStackFlags(*row, outfitType);
             }
         }
@@ -169,7 +170,7 @@ TWorldMapField::~TWorldMapField()
 
 namespace
 {
-    ThingType* entryThingType(const appearances::TAppearanceInstancePtr& appearance)
+    TAppearanceType* entryThingType(const appearances::TAppearanceInstancePtr& appearance)
     {
         return appearance ? appearance->thingType() : nullptr;
     }
@@ -179,7 +180,7 @@ namespace
         return dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get());
     }
 
-    bool typeIsCommon(const ThingType* type)
+    bool typeIsCommon(const TAppearanceType* type)
     {
         return type && !type->isGround() && !type->isGroundBorder() && !type->isOnTop() && !type->isOnBottom();
     }
@@ -242,7 +243,7 @@ void TWorldMapField::addWalkingCreature(const uint32_t creatureId)
     m_walkingCreatureIds.push_back(creatureId);
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
         if (const auto row = storage->creatureAt(creatureId)) {
-            ThingType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
+            TAppearanceType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
             applyCreatureStackFlags(*row, outfitType);
         }
     }
@@ -461,24 +462,14 @@ int TWorldMapField::creatureStackPos(const uint32_t creatureId) const
 
 bool TWorldMapField::hasGround() const
 {
-    const ThingType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
-    return (type && type->isSingleGround()) || (m_thingTypeFlag & HAS_GROUND_BORDER);
+    const TAppearanceType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
+    return (type && type->isGround() && type->isSingleDimension()) || (m_thingTypeFlag & HAS_GROUND_BORDER);
 }
 
 bool TWorldMapField::hasTopGround(const bool ignoreBorder) const
 {
-    const ThingType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
-    return (type && type->isTopGround()) || (!ignoreBorder && (m_thingTypeFlag & HAS_TOP_GROUND_BORDER));
-}
-bool TWorldMapField::hasFloorChange() const
-{
-    for (const auto& entry : m_stack) {
-        if (entry.creatureId != 0)
-            continue;
-        if (const ThingType* type = entryThingType(entry.appearance); type && type->hasFloorChange())
-            return true;
-    }
-    return false;
+    const TAppearanceType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
+    return (type && type->isGround() && type->getWidth() + type->getHeight() == 4) || (!ignoreBorder && (m_thingTypeFlag & HAS_TOP_GROUND_BORDER));
 }
 TWorldMapField::TFieldItemHit TWorldMapField::topUseHit() const
 {
@@ -496,7 +487,7 @@ TWorldMapField::TFieldItemHit TWorldMapField::topUseHit() const
     for (int i = 0; i < static_cast<int>(m_stack.size()); ++i) {
         if (m_stack[i].creatureId != 0)
             continue;
-        const ThingType* type = entryThingType(m_stack[i].appearance);
+        const TAppearanceType* type = entryThingType(m_stack[i].appearance);
         if (!type)
             continue;
         if (type->isForceUse()
@@ -507,7 +498,7 @@ TWorldMapField::TFieldItemHit TWorldMapField::topUseHit() const
     for (int i = static_cast<int>(m_stack.size()) - 1; i > 0; --i) {
         if (m_stack[i].creatureId != 0)
             continue;
-        const ThingType* type = entryThingType(m_stack[i].appearance);
+        const TAppearanceType* type = entryThingType(m_stack[i].appearance);
         if (type && !type->isSplash())
             return hitAt(i);
     }
@@ -531,7 +522,7 @@ std::vector<TWorldMapField::TFieldItemHit> TWorldMapField::itemHits() const
 
 int TWorldMapField::getGroundSpeed()
 {
-    const ThingType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
+    const TAppearanceType* type = m_stack.empty() ? nullptr : entryThingType(m_stack[0].appearance);
     if (type && type->isGround())
         return type->getGroundSpeed();
     return 100;
@@ -540,7 +531,7 @@ int TWorldMapField::getGroundSpeed()
 int TWorldMapField::movementGroundSpeed() const
 {
     for (const auto& entry : m_stack) {
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (type && type->isGround())
             return type->getGroundSpeed();
     }
@@ -555,7 +546,7 @@ uint8_t TWorldMapField::getMinimapColorByte()
     for (const auto& entry : std::ranges::reverse_view(m_stack)) {
         if (entry.creatureId != 0 || typeIsCommon(entryThingType(entry.appearance)))
             continue;
-        if (const ThingType* type = entryThingType(entry.appearance)) {
+        if (const TAppearanceType* type = entryThingType(entry.appearance)) {
             const uint8_t c = static_cast<uint8_t>(type->getMinimapColor());
             if (c != 0)
                 return c;
@@ -568,7 +559,7 @@ uint8_t TWorldMapField::getMinimapColorByte()
 bool TWorldMapField::hasBank() const
 {
     for (const auto& entry : m_stack) {
-        if (const ThingType* type = entryThingType(entry.appearance); type && type->isGround())
+        if (const TAppearanceType* type = entryThingType(entry.appearance); type && type->isGround())
             return true;
     }
     return false;
@@ -576,7 +567,7 @@ bool TWorldMapField::hasBank() const
 
 namespace {
 
-bool anyObject(const std::vector<TWorldMapField::TStackView>& stack, bool (*test)(const ThingType&))
+bool anyObject(const std::vector<TWorldMapField::TStackView>& stack, bool (*test)(const TAppearanceType&))
 {
     for (const auto& view : stack) {
         if (view.type && test(*view.type))
@@ -611,22 +602,22 @@ std::vector<std::shared_ptr<tibia::creatures::TCreature>> TWorldMapField::creatu
 
 bool TWorldMapField::hasBottom() const
 {
-    return anyObject(stackView(), [](const ThingType& type) { return type.isOnBottom(); });
+    return anyObject(stackView(), [](const TAppearanceType& type) { return type.isOnBottom(); });
 }
 
 bool TWorldMapField::hasUnsight() const
 {
-    return anyObject(stackView(), [](const ThingType& type) { return type.blockProjectile(); });
+    return anyObject(stackView(), [](const TAppearanceType& type) { return type.blockProjectile(); });
 }
 
 bool TWorldMapField::hasDontHide() const
 {
-    return anyObject(stackView(), [](const ThingType& type) { return type.isDontHide(); });
+    return anyObject(stackView(), [](const TAppearanceType& type) { return type.isDontHide(); });
 }
 
 bool TWorldMapField::hasTranslucent() const
 {
-    return anyObject(stackView(), [](const ThingType& type) { return type.isTranslucent(); });
+    return anyObject(stackView(), [](const TAppearanceType& type) { return type.isTranslucent(); });
 }
 
 bool TWorldMapField::blocksMovement() const
@@ -635,7 +626,7 @@ bool TWorldMapField::blocksMovement() const
     // than the local player.
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     for (const auto& entry : m_stack) {
-        if (const ThingType* type = entryThingType(entry.appearance); type && type->isNotWalkable())
+        if (const TAppearanceType* type = entryThingType(entry.appearance); type && type->isNotWalkable())
             return true;
         if (entry.creatureId == 0 || !storage)
             continue;
@@ -659,7 +650,7 @@ Light TWorldMapField::light() const
 {
     // The light of the highest object that shines.
     for (auto it = m_stack.rbegin(); it != m_stack.rend(); ++it) {
-        if (const ThingType* type = entryThingType(it->appearance); type && type->getLight().intensity != 0)
+        if (const TAppearanceType* type = entryThingType(it->appearance); type && type->getLight().intensity != 0)
             return type->getLight();
     }
     return {};
@@ -674,7 +665,7 @@ void TWorldMapField::updateElevation()
     uint8_t elevation = 0;
     for (const int index : order) {
         const appearances::TAppearanceInstancePtr& appearance = m_stack[index].appearance;
-        const ThingType* type = entryThingType(appearance);
+        const TAppearanceType* type = entryThingType(appearance);
         if (!type)
             continue;
         if (!type->isOnTop())
@@ -686,7 +677,7 @@ void TWorldMapField::updateElevation()
     uint8_t hook = 0;
     for (const int index : order) {
         const appearances::TAppearanceInstancePtr& appearance = m_stack[index].appearance;
-        if (const ThingType* type = entryThingType(appearance)) {
+        if (const TAppearanceType* type = entryThingType(appearance)) {
             if (type->isHookSouth())
                 hook = 1;
             else if (type->isHookEast())
@@ -701,12 +692,12 @@ void TWorldMapField::updateViewFlags()
 {
     // Sight is blocked by an unsight object, or by a bottom object that can
     // neither be moved nor passed.
-    m_blocksSight = anyObject(stackView(), [](const ThingType& type) {
+    m_blocksSight = anyObject(stackView(), [](const TAppearanceType& type) {
         return type.blockProjectile() || (type.isOnBottom() && type.isNotMoveable() && type.isNotWalkable());
     });
     // A bank or an unsight bottom object hides the floor below unless
     // something on the field is translucent.
-    const bool covers = anyObject(stackView(), [](const ThingType& type) {
+    const bool covers = anyObject(stackView(), [](const TAppearanceType& type) {
         return type.isGround() || (type.isOnBottom() && type.blockProjectile());
     });
     m_opaque = covers && !hasTranslucent();
@@ -714,47 +705,47 @@ void TWorldMapField::updateViewFlags()
 
 namespace {
 
-bool isBank(const ThingType* type)
+bool isBank(const TAppearanceType* type)
 {
     return type && type->isGround();
 }
-bool isClip(const ThingType* type)
+bool isClip(const TAppearanceType* type)
 {
     return type && type->isGroundBorder();
 }
-bool isBottom(const ThingType* type)
+bool isBottom(const TAppearanceType* type)
 {
     return type && type->isOnBottom();
 }
-bool isTop(const ThingType* type)
+bool isTop(const TAppearanceType* type)
 {
     return type && type->isOnTop();
 }
-bool isBankClipOrBottom(const ThingType* type)
+bool isBankClipOrBottom(const TAppearanceType* type)
 {
     return isBank(type) || isClip(type) || isBottom(type);
 }
-bool isForceUse(const ThingType* type)
+bool isForceUse(const TAppearanceType* type)
 {
     return type && type->isForceUse();
 }
-bool isLiquidPool(const ThingType* type)
+bool isLiquidPool(const TAppearanceType* type)
 {
     return type && type->isSplash();
 }
-bool isUnmove(const ThingType* type)
+bool isUnmove(const TAppearanceType* type)
 {
     return type && type->isNotMoveable();
 }
-bool isIgnoreLook(const ThingType* type)
+bool isIgnoreLook(const TAppearanceType* type)
 {
     return type && type->isIgnoreLook();
 }
-bool isCorpse(const ThingType* type)
+bool isCorpse(const TAppearanceType* type)
 {
     return type && type->isCorpse();
 }
-bool isContainer(const ThingType* type)
+bool isContainer(const TAppearanceType* type)
 {
     return type && type->isContainer();
 }
@@ -816,7 +807,7 @@ TFieldObject TWorldMapField::moveObject() const
     int creature = -1;
     for (auto it = list.rbegin(); it != list.rend(); ++it) {
         const TFieldStackEntry& entry = m_stack[*it];
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (isTop(type))
             continue;
         if (isBankClipOrBottom(type))
@@ -847,7 +838,7 @@ TFieldObject TWorldMapField::useObject() const
     if (count != 1) {
         for (;;) {
             const TFieldStackEntry& entry = m_stack[index];
-            const ThingType* type = entryThingType(entry.appearance);
+            const TAppearanceType* type = entryThingType(entry.appearance);
             if (isForceUse(type))
                 return fieldObject(index);
             if (!isBankClipOrBottom(type) && !isTop(type) && entry.creatureId == 0)
@@ -869,7 +860,7 @@ TFieldObject TWorldMapField::quickLootObject() const
 {
     const std::vector<int> list = drawList();
     for (auto it = list.rbegin(); it != list.rend(); ++it) {
-        const ThingType* type = entryThingType(m_stack[*it].appearance);
+        const TAppearanceType* type = entryThingType(m_stack[*it].appearance);
         if (isCorpse(type) && isContainer(type))
             return fieldObject(*it);
     }
@@ -883,7 +874,7 @@ TFieldObject TWorldMapField::lookObject() const
         return {};
     int candidate = 0;
     for (int i = 0; i < count; ++i) {
-        const ThingType* type = entryThingType(m_stack[i].appearance);
+        const TAppearanceType* type = entryThingType(m_stack[i].appearance);
         if (isIgnoreLook(type))
             continue;
         candidate = i;
@@ -903,7 +894,7 @@ TFieldObject TWorldMapField::multiUseObject() const
         return {};
     int index = 0;
     while (index != count - 1) {
-        const ThingType* type = entryThingType(m_stack[index].appearance);
+        const TAppearanceType* type = entryThingType(m_stack[index].appearance);
         if (isForceUse(type) || !(isBankClipOrBottom(type) || isTop(type)))
             break;
         ++index;
@@ -959,7 +950,7 @@ int TWorldMapField::walkState() const
                 return row->creatureType() != 0 ? 1 : 2;
             return ground ? 0 : 2;
         }
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (!type)
             continue;
         if (type->isGround())
@@ -1032,7 +1023,7 @@ bool TWorldMapField::isCovered(const int8_t firstFloor)
 bool TWorldMapField::isPickable() const
 {
     for (const auto& entry : m_stack) {
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (type && (type->isGround() || type->isOnBottom()) && !type->isIgnoreLook())
             return true;
     }
@@ -1044,7 +1035,7 @@ bool TWorldMapField::hasBlockingBottomItem() const
     for (const auto& entry : m_stack) {
         if (entry.creatureId != 0)
             continue;
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (type && !type->isGround() && type->isOnBottom() && type->isNotWalkable())
             return true;
     }
@@ -1057,7 +1048,7 @@ bool TWorldMapField::limitsFloorsView(const bool isFreeView)
     for (const auto& entry : m_stack) {
         if (entry.creatureId != 0)
             break;
-        const ThingType* type = entryThingType(entry.appearance);
+        const TAppearanceType* type = entryThingType(entry.appearance);
         if (!type)
             continue;
         // iterate until common item is encountered
@@ -1073,7 +1064,7 @@ bool TWorldMapField::limitsFloorsView(const bool isFreeView)
     return false;
 }
 
-void TWorldMapField::applyStackFlagsFromThingType(ThingType* type)
+void TWorldMapField::applyStackFlagsFromThingType(TAppearanceType* type)
 {
     if (!type)
         return;
@@ -1087,9 +1078,9 @@ void TWorldMapField::applyStackFlagsFromThingType(ThingType* type)
         m_thingTypeFlag |= HAS_COMMON_ITEM;
     if (type->isOnTop())
         m_thingTypeFlag |= HAS_TOP_ITEM;
-    if (type->isSingleGroundBorder())
+    if (type->isGroundBorder() && type->isSingleDimension())
         m_thingTypeFlag |= HAS_GROUND_BORDER;
-    if (type->isTopGroundBorder())
+    if (type->isGroundBorder() && type->getWidth() + type->getHeight() == 4)
         m_thingTypeFlag |= HAS_TOP_GROUND_BORDER;
     if (type->isLyingCorpse())
         m_thingTypeFlag |= CORRECT_CORPSE;
@@ -1135,7 +1126,7 @@ void TWorldMapField::applyStackFlagsFromThingType(ThingType* type)
         ++m_elevation;
 }
 
-void TWorldMapField::applyCreatureStackFlags(const tibia::creatures::TCreature& stored, ThingType* outfitType)
+void TWorldMapField::applyCreatureStackFlags(const tibia::creatures::TCreature& stored, TAppearanceType* outfitType)
 {
     if (stored.light().intensity > 0 || (outfitType && outfitType->hasLight()))
         m_thingTypeFlag |= HAS_LIGHT;
@@ -1170,7 +1161,7 @@ void TWorldMapField::setStackEntryFlag(const TFieldStackEntry& entry)
     if (entry.creatureId != 0) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
             if (const auto row = storage->creatureAt(entry.creatureId)) {
-                ThingType* outfitType = entry.appearance ? entry.appearance->thingType() : row->outfitAppearance()
+                TAppearanceType* outfitType = entry.appearance ? entry.appearance->thingType() : row->outfitAppearance()
                                                                                                    ? row->outfitAppearance()->thingType()
                                                                                                    : nullptr;
                 applyCreatureStackFlags(*row, outfitType);
@@ -1192,7 +1183,7 @@ bool TWorldMapField::isFullyOpaque() const {
     for (const auto& entry : m_stack) {
         if (entry.creatureId != 0)
             continue;
-        if (const ThingType* type = entryThingType(entry.appearance); type && type->isOpaque())
+        if (const TAppearanceType* type = entryThingType(entry.appearance); type && type->isOpaque())
             return true;
     }
 
@@ -1200,10 +1191,20 @@ bool TWorldMapField::isFullyOpaque() const {
 }
 
 bool TWorldMapField::isLoading() const {
+    // A sprite of an object on the field is still being decoded.
+    const auto typeIsLoading = [](const TAppearanceType& type) {
+        for (const auto& [group, info] : type.frameGroups()) {
+            for (const uint32_t id : info.spriteIds()) {
+                if (!tibia::sprites::TSpriteSystem::instance().isSpriteReady(id))
+                    return true;
+            }
+        }
+        return false;
+    };
     for (const auto& entry : m_stack) {
         if (entry.creatureId != 0)
             continue;
-        if (const ThingType* type = entryThingType(entry.appearance); type && type->isLoading())
+        if (const TAppearanceType* type = entryThingType(entry.appearance); type && typeIsLoading(*type))
             return true;
     }
 

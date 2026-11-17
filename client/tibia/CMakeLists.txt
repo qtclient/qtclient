@@ -86,6 +86,7 @@ qt_add_executable(tibia
   app/crashlog.cpp app/crashlog.h
   app/launcherenv.cpp app/launcherenv.h
   app/sessionbootstrap.cpp app/sessionbootstrap.h
+  app/loginwaitdialogcontroller.cpp app/loginwaitdialogcontroller.h
   app/overrideinterceptor.cpp app/overrideinterceptor.h
   app/packqmlinterceptor.cpp app/packqmlinterceptor.h
   app/qmldisk.cpp app/qmldisk.h
@@ -102,8 +103,10 @@ qt_add_executable(tibia
   news/eventsuploader.cpp news/eventsuploader.h
   news/newsrequestuploader.cpp news/newsrequestuploader.h
   news/newsstorage.cpp news/newsstorage.h
+  news/newsdiskio.cpp news/newsdiskio.h
   news/newsentrymodels.cpp news/newsentrymodels.h
   controllers/characterselectioncontroller.cpp controllers/characterselectioncontroller.h
+  gamewindow/characterinformationmodeldata.cpp gamewindow/characterinformationmodeldata.h
   gamewindow/gamewindowcontroller.cpp gamewindow/gamewindowcontroller.h
   gamewindow/newsdialogcontroller.cpp gamewindow/newsdialogcontroller.h
   gamewindow/calendardialogcontroller.cpp gamewindow/calendardialogcontroller.h
@@ -185,6 +188,10 @@ if(TIBIA_QML_DISK)
     TIBIA_QML_CIP_DIR="${CIPSOFT_QML_DIR}"
     TIBIA_QML_MOD_DIR="${_qml_mod_dirs}"
     TIBIA_QML_OVERRIDES_DIR="${_qml_override_dirs}")
+endif()
+if(APPLE AND NOT EMSCRIPTEN)
+  # Carbon: the Caps Lock state (GetCurrentKeyModifiers).
+  target_link_libraries(tibia PRIVATE "-framework Carbon")
 endif()
 if(WIN32)
   # NOMINMAX: windows.h otherwise macros min/max. Full SDK include order and
@@ -319,9 +326,19 @@ if(TIBIA_WITH_GAMECORE)
     protocol/protocolmessagequeue.cpp
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
+    assets/asset.cpp assets/asset.h
+    assets/assetcatalog.cpp assets/assetcatalog.h
+    assets/contentcatalog.cpp assets/contentcatalog.h
+    assets/assetfilesystemhelper.cpp assets/assetfilesystemhelper.h
+    assets/assetasyncloader.cpp assets/assetasyncloader.h
+    assets/assetasyncloaderworker.cpp assets/assetasyncloaderworker.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
+    taskboard/taskboardbountytasksstorage.cpp taskboard/taskboardbountytasksstorage.h
+    taskboard/taskboardcurrenciesstorage.cpp taskboard/taskboardcurrenciesstorage.h
+    taskboard/taskboardshopstorage.cpp taskboard/taskboardshopstorage.h
+    taskboard/taskboardweeklytasksstorage.cpp taskboard/taskboardweeklytasksstorage.h
     news/newsciptypes.cpp news/newsciptypes.h
     client/clientciptypes.cpp client/clientciptypes.h
     common/commonciptypes.cpp common/commonciptypes.h
@@ -353,6 +370,9 @@ if(TIBIA_WITH_GAMECORE)
     chat/textstorage.cpp chat/textstorage.h
     shared/tibiaurltools.cpp shared/tibiaurltools.h
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
+    gamewindow/chatchanneltabrenderinfo.cpp gamewindow/chatchanneltabrenderinfo.h
+    gamewindow/chatchannelfiltercontroller.cpp gamewindow/chatchannelfiltercontroller.h
+    gamewindow/capslockstate.cpp gamewindow/capslockstate.h
     creatures/attachedeffect.cpp creatures/attachedeffect.h
     creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
     creatures/movementtweens.cpp creatures/movementtweens.h
@@ -376,6 +396,9 @@ if(TIBIA_WITH_GAMECORE)
     client/gamecore.cpp client/gamecore.h
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     qmlcomponents/qmlcomponentsciptypes.cpp qmlcomponents/qmlcomponentsciptypes.h
+    qmlcomponents/lenshelpmanager.cpp qmlcomponents/lenshelpmanager.h
+    qmlcomponents/lenshelpquickitem.cpp qmlcomponents/lenshelpquickitem.h
+    gamewindow/lenshelpcontroller.cpp gamewindow/lenshelpcontroller.h
     qmlcomponents/soundhelper.cpp qmlcomponents/soundhelper.h
     config/sidebaroptions.cpp config/sidebaroptions.h
     container/containerciptypes.cpp container/containerciptypes.h
@@ -448,6 +471,7 @@ if(TIBIA_WITH_GAMECORE)
     game/skillswidgetentrydata.cpp game/skillswidgetentrydata.h
     game/offlineskilltrainingdata.cpp game/offlineskilltrainingdata.h
     cyclopedia/cyclopediaciptypes.cpp cyclopedia/cyclopediaciptypes.h
+    cyclopedia/staticcontentinformation.cpp cyclopedia/staticcontentinformation.h
     cyclopedia/cyclopediainterfaces.cpp cyclopedia/cyclopediainterfaces.h
     cyclopedia/creaturetrackerstorage.cpp cyclopedia/creaturetrackerstorage.h
     cyclopedia/combatstatsqmldata.cpp cyclopedia/combatstatsqmldata.h
@@ -458,6 +482,7 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/playermiscstatsprovider.cpp cyclopedia/playermiscstatsprovider.h
     game/miscstatsprovider.h
     game/statusbarstorage.cpp game/statusbarstorage.h
+    gamewindow/appearanceinstanceroledata.cpp gamewindow/appearanceinstanceroledata.h
     gamewindow/appearanceinstancelistmodel.cpp gamewindow/appearanceinstancelistmodel.h
     gamewindow/battlelistcontroller.cpp gamewindow/battlelistcontroller.h
     gamewindow/buttonbarcontroller.cpp gamewindow/buttonbarcontroller.h
@@ -537,10 +562,15 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/bosstiarystorage.cpp cyclopedia/bosstiarystorage.h
     gamewindow/bosstiarydialogcontroller.cpp gamewindow/bosstiarydialogcontroller.h
     gamewindow/assignablebossmodels.cpp gamewindow/assignablebossmodels.h
-    cyclopedia/iteminfostorage.cpp cyclopedia/iteminfostorage.h
+    cyclopedia/characterinfostorage.cpp cyclopedia/characterinfostorage.h
+    cyclopedia/generalplayerstatisticsprovider.cpp cyclopedia/generalplayerstatisticsprovider.h game/generalstatsprovider.h
+    cyclopedia/itemtrackingstorage.cpp cyclopedia/itemtrackingstorage.h
     cyclopedia/housesstorage.cpp cyclopedia/housesstorage.h
     gamewindow/housesinfodialogcontroller.cpp gamewindow/housesinfodialogcontroller.h
     cyclopedia/cyclopediamapdata.cpp cyclopedia/cyclopediamapdata.h
+    cyclopedia/cyclopediamapstaticdatastorage.cpp cyclopedia/cyclopediamapstaticdatastorage.h
+    cyclopedia/cyclopediamapstaticdatastoragehost.cpp
+    cyclopedia/cyclopediamapcharacterconfigurationstorage.cpp cyclopedia/cyclopediamapcharacterconfigurationstorage.h
     gamewindow/cyclopediamapdialogcontroller.cpp gamewindow/cyclopediamapdialogcontroller.h
     gamewindow/magicalarchivedialogcontroller.cpp gamewindow/magicalarchivedialogcontroller.h
     qmlcomponents/worldmapcameraviewport.cpp qmlcomponents/worldmapcameraviewport.h
@@ -567,6 +597,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/stashdialogcontroller.cpp gamewindow/stashdialogcontroller.h
     gamewindow/managelootcontainerdialogcontroller.cpp gamewindow/managelootcontainerdialogcontroller.h
     quickloot/managedcontainerstorage.cpp quickloot/managedcontainerstorage.h
+    quickloot/quicklootblackwhiteliststorage.cpp quickloot/quicklootblackwhiteliststorage.h
     gamewindow/statusbarcontroller.cpp gamewindow/statusbarcontroller.h
     gamewindow/storeandresourcebalancehelpercontroller.cpp gamewindow/storeandresourcebalancehelpercontroller.h
     gamewindow/storedialogcontroller.cpp gamewindow/storedialogcontroller.h
@@ -580,7 +611,7 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
     minimap/minimapmanager.cpp minimap/minimapmanager.h
     minimap/minimapmarkerstorage.cpp minimap/minimapmarkerstorage.h
-    minimap/minimapmarkertypes.h
+    minimap/minimapmarker.cpp minimap/minimapmarker.h
     minimap/minimaprenderprovider.cpp minimap/minimaprenderprovider.h
     minimap/minimaptile.cpp minimap/minimaptile.h
     minimap/minimaptilestorage.cpp minimap/minimaptilestorage.h
@@ -604,7 +635,18 @@ if(TIBIA_WITH_GAMECORE)
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
-    sprites/sprite.cpp sprites/sprite.h
+    effects/effectgameactionhandler.cpp effects/effectgameactionhandler.h
+    sprites/sprite.h sprites/singlesprite.h
+    sprites/spriteinspritesheet.cpp sprites/spriteinspritesheet.h
+    sprites/spritefromspritesheetinfo.cpp sprites/spritefromspritesheetinfo.h
+    sprites/spritesheetsmetadatamanager.cpp sprites/spritesheetsmetadatamanager.h
+    sprites/spritesheetcache.cpp sprites/spritesheetcache.h
+    sprites/spritesheetdecompressor.cpp sprites/spritesheetdecompressor.h
+    sprites/spritesheetdecompressorsynchronous.cpp sprites/spritesheetdecompressorsynchronous.h
+    sprites/spritesheetdecompressorthreadpool.cpp sprites/spritesheetdecompressorthreadpool.h
+    sprites/spritesheetmanager.cpp sprites/spritesheetmanager.h
+    sprites/spriteresolver.cpp sprites/spriteresolver.h
+    sprites/spritesystem.cpp sprites/spritesystem.h
     shared/cip_typed.h
     cip_ports/all_ports.cpp
     cip_ports/native_port.h
@@ -687,19 +729,17 @@ if(TIBIA_WITH_GAMECORE)
     trade/playertradestorage.cpp trade/playertradestorage.h
     worldmap/ambientlightstorage.cpp worldmap/ambientlightstorage.h
     worldmap/cacheforworldmapstoragelookupmembers.cpp worldmap/cacheforworldmapstoragelookupmembers.h
-    worldmap/coordinates.h
+    worldmap/coordinates.cpp worldmap/coordinates.h
     worldmap/creaturehud.cpp worldmap/creaturehud.h
     worldmap/creaturehudcontroller.cpp worldmap/creaturehudcontroller.h
     worldmap/creaturehudrenderprovider.cpp worldmap/creaturehudrenderprovider.h
     worldmap/lightmap.cpp worldmap/lightmap.h
     worldmap/nextframetimestamppredictor.cpp worldmap/nextframetimestamppredictor.h
-    worldmap/numericaleffectstorage.cpp worldmap/numericaleffectstorage.h
     worldmap/worldmapfield.h
     worldmap/worldmapgameactionhandler.cpp worldmap/worldmapgameactionhandler.h
     worldmap/worldmapgameactionprovider.cpp worldmap/worldmapgameactionprovider.h
     worldmap/worldmappicker.cpp worldmap/worldmappicker.h
     worldmap/worldmapprotocolmessagehandler.cpp worldmap/worldmapprotocolmessagehandler.h
-    worldmap/tileblock.cpp worldmap/tileblock.h
     worldmap/worldmapstorage.cpp worldmap/worldmapstorage.h
     worldmap/worldmaptutorialmarkeroverlaycontroller.cpp worldmap/worldmaptutorialmarkeroverlaycontroller.h
     worldmap/worldmapviewport.cpp worldmap/worldmapviewport.h)

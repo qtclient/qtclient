@@ -71,7 +71,7 @@ void TWorldMapViewport::setSize(const int pixelWidth, const int pixelHeight)
 TShearedWorldMapCuboid TWorldMapViewport::visibleArea() const
 {
     const TWorldMapCoordinate field = centerField();
-    return { { field.x - VisibleWidth / 2, field.y - VisibleHeight / 2, field.z }, { VisibleWidth, VisibleHeight, 1 } };
+    return { { field.x - VisibleWidth / 2, field.y - VisibleHeight / 2, field.z }, { VisibleWidth, VisibleHeight, 1 }, field.z };
 }
 
 TWorldMapCoordinate TWorldMapViewport::centerField() const

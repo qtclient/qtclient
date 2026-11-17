@@ -173,6 +173,9 @@ void applyOptionVolumes()
 void installSoundActionHandler()
 {
     input::setActionHandler(input::EGameAction::SOUND_TRIGGER, [](const input::TGameAction& action) {
+        // The looping-sound pause variant has no qtclient counterpart yet (sound).
+        if (action.pauseLoopingSounds)
+            return true;
         playTriggeredSound(action.parameter);
         return true;
     });

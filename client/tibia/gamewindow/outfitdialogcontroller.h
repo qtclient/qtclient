@@ -30,9 +30,9 @@ public:
         OutfitIDRole = Qt::UserRole + 1,
         OutfitNameRole,
         OutfitSourceRole,
+        OutfitTypeRole,
         FirstAddOnRole,
         SecondAddOnRole,
-        OutfitTypeRole,
         CanBeColorizedRole,
         OfferIDRole,
         OutfitGenderRole,
@@ -69,6 +69,9 @@ public:
 private:
     QList<Entry> m_entries;
 };
+
+/// An outfit or mount appearance with colour layers.
+bool outfitCanBeColorized(int lookType);
 
 /// CIP: TCustomizeCharacterSortProxyModel (filterAcceptsRow).
 class TCustomizeCharacterSortProxyModel final : public cip::TCustomizeCharacterSortProxyModel
@@ -146,7 +149,10 @@ public:
     void open(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits, QList<TCustomiseCharacterModel::Entry> mounts,
               QList<TCustomiseCharacterModel::Entry> summons);
     /// Character-info outfit/mount/summon tile (CIP EDialogMode::CharacterInfoShowSelection).
-    void openCharacterInfoSelection(int outfitId, bool isOutfit, bool isMount, bool isSummonSkin);
+    /// The shown character's lists, `current` selecting the clicked appearance.
+    void openCharacterInfoSelection(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits,
+                                    QList<TCustomiseCharacterModel::Entry> mounts, QList<TCustomiseCharacterModel::Entry> summons,
+                                    bool isOutfit, bool isMount, bool isSummonSkin);
 
     void onCancelClicked() override;
     void onClickedOpenStoreOffer(int offerID) override;
@@ -160,8 +166,17 @@ public:
     void outfitPresetsRenameIndex(int Index) override;
     void copyToClipboard(QObject* pData) override;
     QObject* createFromClipboard() override;
+    void onPresetNameEntered(const QString& PlayerName);
+    bool showOutfit() const override;
+    bool showSocket() const override;
+    cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::ECreatureLookDirection direction() const override;
+    bool isMounted() const override;
+    QVariantMap initialDialogProperties() const override;
 
 private:
+    /// The presets the dialog mode edits, null when it edits none.
+    QJsonArray* presetList();
+    const QJsonArray* presetList() const;
     QString presetsFilePath() const;
     void loadPresets();
     void savePresets();
@@ -178,6 +193,7 @@ private:
     int m_renameIndex = -1;
     quint32 m_characterId = 0;
     QJsonArray m_presetArray;
+    QJsonArray m_showOffPresetArray;
     WindowOptions m_windowOptions;
 };
 

@@ -89,6 +89,8 @@ uint64_t localPlayerResourceBalance(tibia::client::ResourceTypes_t type);
 bool localPlayerHasResourceBalance(tibia::client::ResourceTypes_t type);
 uint64_t localPlayerTotalMoney();
 uint32_t localPlayerFreeCapacity();
+/// The free capacity in hundredths of an oz, as the server sent it.
+uint32_t localPlayerFreeCapacityHundredths();
 uint16_t localPlayerInventoryTypeId(tibia::client::InventorySlot slot);
 uint32_t localPlayerInventoryCount(uint16_t itemId, uint8_t tier = 0);
 /// Pack-facing inventory slot peel (exercise waiting-weapon / backpack scan).
@@ -271,10 +273,6 @@ void processUpdateTarget(uint32_t seq, uint32_t targetId);
 void processPlayerTactics(tibia::client::ChaseModes chaseMode, bool safeMode, tibia::client::PVPModes pvpMode);
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                         tibia::client::PVPModes pvpMode);
-void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value, uint8_t color);
-void processTextMessage(tibia::client::MessageMode mode, std::string_view text);
-void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text,
-                 uint16_t channelId, const Position& pos, uint32_t statement = 0);
 void processTeamFinderLeader(const TeamFinderLeaderData& data);
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                           std::string_view name, uint8_t capacity, bool hasParent,
@@ -296,11 +294,6 @@ void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEnt
 void processDepotSearchResults();
 void processDepotSearchDetail();
 void processCloseDepotSearch();
-void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList);
-void processOpenChannel(uint16_t channelId, std::string_view name);
-void processOpenPrivateChannel(std::string_view name);
-void processOpenOwnPrivateChannel(uint16_t channelId, std::string_view name);
-void processCloseChannel(uint16_t channelId);
 void processTutorialHint(uint8_t id);
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
@@ -318,26 +311,6 @@ void processModalDialog(uint32_t id, std::string_view title, std::string_view me
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority);
 void processItemDetail(const ItemInspectionData& data);
 void processInspectionState(uint32_t creatureId, uint8_t state);
-void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats,
-                                            const std::vector<std::vector<uint16_t>>& skills,
-                                            const std::vector<std::tuple<uint8_t, uint16_t>>& combats);
-void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, double mitigation,
-                                           const std::vector<std::vector<uint16_t>>& additionalSkillsArray,
-                                           const std::vector<std::vector<uint16_t>>& forgeSkillsArray,
-                                           const std::vector<uint16_t>& perfectShotDamageRangesArray,
-                                           const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray,
-                                           const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray);
-void processCyclopediaCharacterGeneralStatsBadge(uint8_t showAccountInformation, uint8_t playerOnline,
-                                                 uint8_t playerPremium, std::string_view loyaltyTitle,
-                                                 const std::vector<std::tuple<uint32_t, std::string>>& badgesVector);
-void processCyclopediaCharacterInspection(const CyclopediaCharacterInspection& data);
-void processCyclopediaCharacterItemSummary(const CyclopediaCharacterItemSummary& data);
-void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit,
-                                           const std::vector<CharacterInfoOutfits>& outfits,
-                                           const std::vector<CharacterInfoMounts>& mounts,
-                                           const std::vector<CharacterInfoFamiliar>& familiars);
-void processCyclopediaCharacterRecentDeaths(const CyclopediaCharacterRecentDeaths& data);
-void processCyclopediaCharacterRecentPvpKills(const CyclopediaCharacterRecentPvPKills& data);
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData);
 void processParseBestiaryOverview(std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data,
                                   uint16_t animusMasteryPoints);
@@ -345,9 +318,6 @@ void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data);
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData);
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
 void processBosstiarySlots(const BosstiarySlotsData& data);
-void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data);
-void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data);
-void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data);
 
 
 void localPlayerSetMarketAvailable(bool available);
@@ -361,7 +331,8 @@ void localPlayerSetLevel(uint16_t level, uint16_t levelPercent);
 void localPlayerSetExperience(uint64_t experience);
 void localPlayerSetStamina(uint16_t stamina);
 void localPlayerSetSoul(uint8_t soul);
-void localPlayerSetFreeCapacity(uint32_t freeCapacity);
+/// `hundredths`: the server's free capacity in hundredths of an oz.
+void localPlayerSetFreeCapacity(uint32_t hundredths);
 void localPlayerSetBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
 void localPlayerSetResourceBalance(tibia::client::ResourceTypes_t type, uint64_t value);
 void localPlayerSetHarmony(uint8_t harmony);

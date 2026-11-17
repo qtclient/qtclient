@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 // CIP-named quickloot surfaces (promoted from cipwire).
 
 #include "shared/cip_typed.h"
@@ -53,17 +55,13 @@ public:
     static void quickLoot(const Position& position, uint16_t objectId, int stackPosition, bool allCorpsesInArea);
     /// Loots every corpse around the player.
     static void quickLootAreaAtPlayer();
+    /// Sends the quick loot list of `listType` (0 black-, 1 whitelist), the
+    /// object type ids in ascending order.
+    static void sendQuickLootBlackWhitelist(int listType, const std::set<uint16_t>& objectTypeIds);
     /// One ManagedContainer action for an object category; select actions
     /// carry the chosen container.
     static void sendManagedContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
                                      int stackPosition = 0);
-};
-
-class TQuickLootBlackWhitelistStorage final : public cip::tibia::quickloot::TQuickLootBlackWhitelistStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::quickloot::TQuickLootBlackWhitelistStorage::TQuickLootBlackWhitelistStorage;
 };
 
 /// The quick-loot game actions: loot, the managed loot / obtain containers,

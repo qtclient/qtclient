@@ -153,6 +153,13 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     connect(m_resetPageMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetCurrentPageToDefault);
     connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
     connect(m_restartMessage, &TMessageDialogController::buttonClicked, this, &TOptionsMenuDialogController::onResartMessageControllerClicked);
+    connect(this, &cip::tibia::gamewindow::TOptionsMenuDialogController::dialogClosed, this, &TOptionsMenuDialogController::closeSubDialogs);
+    m_actionListeners.push_back(input::addActionListener(EGameAction::START_TARGET_SELECTION,
+                                                         [this](const input::TGameAction& action) { return onHotkeyPageGameAction(action); }));
+    m_actionListeners.push_back(input::addActionListener(EGameAction::TARGET_SELECTION_FINISHED, [this](const input::TGameAction& action) {
+        handleGameAction(action);
+        return false;
+    }));
 
     m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
 
@@ -167,24 +174,72 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     });
 
     m_frameRateTimer.setInterval(1000);
-    connect(&m_frameRateTimer, &QTimer::timeout, this, [this] {
-        // CipSoft / : ring-derived double, QString::number(d, 'f', 2).
-        (void)m_frames.exchange(0);
-        double fps = 0.0;
-        if (m_frameDurations) {
-            const qint64 averageNs = m_frameDurations->averageNs();
-            if (averageNs > 0)
-                fps = 1'000'000'000.0 / static_cast<double>(averageNs);
-        }
-        m_currentFrameRate = QString::number(fps, 'f', 2);
-        Q_EMIT frameRateChanged();
-    });
+    connect(&m_frameRateTimer, &QTimer::timeout, this, &TOptionsMenuDialogController::onBeforeRenderFrame);
 }
+
+void TOptionsMenuDialogController::onBeforeRenderFrame()
+{
+    // CIP: the frame rate of the next-frame predictor (TGameClient::onBeforeRenderFrameMainThread);
+    // qtclient samples the frame-duration ring once a second while the dialog is shown.
+    (void)m_frames.exchange(0);
+    double fps = 0.0;
+    if (m_frameDurations) {
+        const qint64 averageNs = m_frameDurations->averageNs();
+        if (averageNs > 0)
+            fps = 1'000'000'000.0 / static_cast<double>(averageNs);
+    }
+    setFrameRate(fps);
+}
+
+void TOptionsMenuDialogController::setFrameRate(const double frameRate)
+{
+    if (m_frameRate == frameRate)
+        return;
+    m_frameRate = frameRate;
+    Q_EMIT frameRateChanged();
+}
+
+QString TOptionsMenuDialogController::currentFrameRate() const { return QString::number(m_frameRate, 'f', 2); }
 
 TOptionsMenuDialogController::~TOptionsMenuDialogController()
 {
     input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, nullptr);
+    for (const int listener : m_actionListeners)
+        input::removeActionListener(listener);
     disconnect(m_frameConnection);
+}
+
+bool TOptionsMenuDialogController::handleGameAction(const input::TGameAction& action)
+{
+    if (action.type == EGameAction::TARGET_SELECTION_FINISHED) {
+        if (m_hiddenForTargetSelection && dialog()->item() && !dialog()->item()->isVisible()) {
+            dialog()->show();
+            m_hiddenForTargetSelection = false;
+        }
+    } else if (action.type == EGameAction::OPEN_OPTIONS_MENU_DIALOG) {
+        open(action.parameter);
+        return true;
+    }
+    return false;
+}
+
+bool TOptionsMenuDialogController::onHotkeyPageGameAction(const input::TGameAction& action)
+{
+    // Only the options dialog's own pages start a target selection while it is shown.
+    if (action.type == EGameAction::START_TARGET_SELECTION && dialog()->item() && dialog()->item()->isVisible()) {
+        dialog()->hide();
+        m_hiddenForTargetSelection = true;
+    }
+    return false;
+}
+
+void TOptionsMenuDialogController::closeSubDialogs()
+{
+    for (TMessageDialogController* message : { m_resetPageMessage, m_resetAllMessage, m_restartMessage, m_infoMessage, m_importMessage })
+        if (message->dialog()->item())
+            message->dialog()->close();
+    if (m_about->dialog()->item())
+        m_about->dialog()->close();
 }
 
 TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()
@@ -224,6 +279,9 @@ void TOptionsMenuDialogController::setInGame(const bool inGame)
 {
     if (m_isInGame == inGame)
         return;
+    // CIP: a new game session closes the dialog first.
+    if (dialog()->item())
+        dialog()->close();
     m_isInGame = inGame;
     Q_EMIT gameSessionChanged();
 }
@@ -352,13 +410,8 @@ void TOptionsMenuDialogController::applyButtonClicked()
     app::ClientOptions::storeAll(changes);
 
     if (restartNeeded) {
-        // Restart (Return) quits into the new engine; Cancel (Esc) keeps the new
-        // settings for the next manual restart — CIP builds Restart;
-        // Cancel matches the two-button UX (dismiss without quitting now).
-        m_restartMessage->setButtons({
-            new TMessageDialogButton(qtTrId("restart"), Button::USER_DEFINED, QKeySequence(QStringLiteral("Return"))),
-            new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))),
-        });
+        // CIP: one "Restart" button (USER_DEFINED, no keys).
+        m_restartMessage->setButtons({ new TMessageDialogButton(Button::USER_DEFINED, qtTrId("restart"), 0u) });
         m_restartMessage->showMessage(qtTrId("graphics_setting_requires_restart_caption"),
                                       qtTrId("graphics_setting_requires_restart_text"));
     }

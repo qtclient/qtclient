@@ -1,14 +1,14 @@
 #include "proficiency/weaponproficiencydialogcontroller.h"
 
 #include "app/clientoptions.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "proficiency/proficiencyperks.h"
 
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -85,10 +85,9 @@ void TWeaponObjectsModel::onLootValueImagesChanged()
 // over it for style 2 .
 QString TWeaponObjectsModel::lootValueImageSource(const uint16_t typeId, const int style) const
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (!prices || m_colorizeLootStyle != style)
+    if (m_colorizeLootStyle != style)
         return {};
-    const int level = prices->lootValueLevel(typeId);
+    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -161,7 +160,7 @@ QHash<int, QByteArray> TWeaponObjectsModel::roleNames() const
 void TWeaponObjectsModel::rebuild()
 {
     std::vector<TWeaponEntry> entries;
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
         TWeaponEntry entry;
         entry.typeId = type->getId();
         entry.name = QString::fromStdString(type->getName());
@@ -176,8 +175,12 @@ void TWeaponObjectsModel::rebuild()
     m_entries = std::move(entries);
     endResetModel();
     // CIP hands the character's item price storage to the model.
-    if (cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance(); prices && !m_pricesConnection)
-        m_pricesConnection = connect(prices, &cyclopedia::TItemInfoStorage::pricesChanged, this, &TWeaponObjectsModel::onLootValueImagesChanged);
+    if (!m_pricesConnection) {
+        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+        m_pricesConnection = connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                                     &TWeaponObjectsModel::onLootValueImagesChanged);
+        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TWeaponObjectsModel::onLootValueImagesChanged);
+    }
 }
 
 void TWeaponObjectsModel::onObjectProficiencyXPChanged()
@@ -291,8 +294,9 @@ TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObje
     , m_types(std::move(types))
 {
     m_text = text;
-    m_anyWeaponIdentifier = m_types.empty() ? 0 : *m_types.begin();
 }
+
+int TQmlWeaponTypes::anyWeaponIdentifier() const { return m_types.empty() ? 0 : *m_types.begin(); }
 
 TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), parent)
@@ -302,7 +306,6 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     , m_confirm(new gamewindow::TMessageDialogController(this))
 {
     m_weaponObjectsModel = &m_proxy;
-    m_maxProficiencyLevels = MaxProficiencyLevels;
     m_selectedLevelIndex = -1;
     m_selectedPerkIndex = -1;
     // CIP 's combo box entries, in its order.
@@ -388,6 +391,8 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     });
 }
 
+int TWeaponProficiencyDialogController::maxProficiencyLevels() const { return MaxProficiencyLevels; }
+
 TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 {
     input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_DIALOG, nullptr);
@@ -408,7 +413,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 
     // The asked weapon when it is a proficiency weapon not already shown,
     // otherwise the list's first entry with every weapon type.
-    const ThingTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
+    const TAppearanceTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
         ? tibia::game::thingType(typeId, ThingCategoryItem)
         : nullptr;
     const bool selected = typeId != 0 && tibia::game::isOnline() && m_model.contains(typeId) && typeId != m_currentTypeId;
@@ -751,7 +756,7 @@ QString TWeaponProficiencyDialogController::currentTypeName() const
 {
     QString name = qtTrId("weapon_proficiency_nothing_selected");
     if (m_currentTypeId != 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem)) {
-        const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+        const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
         if (type)
             name = QString::fromStdString(type->getName());
     }
@@ -763,7 +768,7 @@ bool TWeaponProficiencyDialogController::currentIsUseRestricted() const
     // CIP: restricted while nothing is selected or there is no session.
     if (m_currentTypeId == 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
         return true;
-    const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
     if (!type || !tibia::game::hasLocalPlayer())
         return true;
     return tibia::game::localPlayerLevel() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());

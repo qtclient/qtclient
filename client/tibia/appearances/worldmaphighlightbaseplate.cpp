@@ -1,6 +1,5 @@
 #include "appearances/worldmaphighlightbaseplate.h"
 
-#include "sprites/sprite.h"
 
 #include <QFile>
 #include <QImage>
@@ -33,9 +32,7 @@ uint8_t TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(const qint64 millis
 QImage TWorldmapHighlightBaseplateSpriteInfo::imageForFrame(const uint8_t frame)
 {
     static const QImage strip = [] {
-        const sprites::TImageResourceSpriteIdentifier id(
-            std::string(":/cursors/highlight-baseplate.png"));
-        QFile file(QString::fromStdString(id.resourcePath()));
+        QFile file(QStringLiteral(":/cursors/highlight-baseplate.png"));
         if (!file.open(QIODevice::ReadOnly))
             return QImage();
         QImage image;

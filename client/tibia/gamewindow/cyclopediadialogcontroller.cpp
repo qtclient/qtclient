@@ -9,7 +9,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -46,7 +46,7 @@ uint16_t cyclopediaTypeOf(const input::TGameAction& action)
     const uint16_t typeId = action.objectClientId;
     if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || !type->hasCyclopediaItem())
         return 0;
     return static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId());
@@ -157,6 +157,10 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
+    input::setActionHandler(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::TGameAction& action) {
+        m_bosstiary->handleGameAction(action);
+        return true;
+    });
     input::setActionHandler(A::OPEN_CYCLOPEDIA, [this](const input::TGameAction& action) {
         // The action's tab and the page it opens there.
         switch (action.parameter) {
@@ -185,16 +189,26 @@ void TCyclopediaDialogController::hookActions()
             case 4:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Map);
                 if (action.position.x != 0 || action.position.y != 0 || action.position.z != 0)
-                    m_map->centerAt(action.position, std::numeric_limits<float>::quiet_NaN());
+                    m_map->centerAt(action.position, action.cyclopediaMapZoom);
                 break;
-            case 5: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses); break;
+            case 5:
+                // The houses page selects the action's house.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses);
+                if (action.category > 0)
+                    m_houses->selectHouse(static_cast<uint>(action.category));
+                break;
             case 6:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Bosstiary);
                 if (action.category > 0)
                     m_bosstiary->showRace(action.category);
                 break;
             case 7: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::BossSlots); break;
-            case 8: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive); break;
+            case 8:
+                // The magical archive selects the action's spell.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive);
+                if (action.category > 0)
+                    m_magicalArchive->setSelectedSpellID(action.category);
+                break;
             default: break;
         }
         return true;
@@ -267,8 +281,8 @@ void TCyclopediaDialogController::requestBack()
     m_backlog.pop_back();
     // The page gets its context back. Pages that rebuild on showDialogTab
     // take it as pending before the switch; the item page takes it after.
-    if (context.tab == CharacterInfo && context.characterInfoDataType > 0)
-        m_characterInfo->setNextDataType(context.characterInfoDataType);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->setNextDataType(context.characterInfo.dataType);
     if (context.tab == Monsters)
         m_monsters->restoreContext(context.monsters);
     if (context.tab == BonusEffects)
@@ -277,9 +291,13 @@ void TCyclopediaDialogController::requestBack()
         m_bosstiary->restoreContext(context.bosstiary);
     if (context.tab == Houses)
         m_houses->restoreContext(context.houses);
+    if (context.tab == MagicalArchive)
+        m_magicalArchive->restoreContext(context.magicalArchiveSpellId);
     switchTab(context.tab);
     if (context.tab == ItemInfo)
         m_itemInfo->restoreContext(context.itemInfo);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->restoreContext(context.characterInfo);
     Q_EMIT navigationBacklogChanged();
 }
 
@@ -322,7 +340,7 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
     if (m_dialogTab == ItemInfo)
         context.itemInfo = m_itemInfo->captureContext();
     if (m_dialogTab == CharacterInfo)
-        context.characterInfoDataType = m_characterInfo->dataType();
+        context.characterInfo = m_characterInfo->captureContext();
     if (m_dialogTab == Monsters)
         context.monsters = m_monsters->captureContext();
     if (m_dialogTab == BonusEffects)
@@ -331,6 +349,8 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
         context.bosstiary = m_bosstiary->captureContext();
     if (m_dialogTab == Houses)
         context.houses = m_houses->captureContext();
+    if (m_dialogTab == MagicalArchive)
+        context.magicalArchiveSpellId = m_magicalArchive->captureContext();
     return context;
 }
 

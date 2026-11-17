@@ -24,6 +24,8 @@ public:
 
     TActionBarController* bar() const { return m_bar; }
     bool isMultiActionChild() const { return m_multiActionIndex >= 0; }
+    /// The slot's index in its button, -1 for a bar button.
+    int multiActionIndex() const override { return m_multiActionIndex < 0 ? -1 : m_multiActionIndex; }
     /// Whether this button holds multi-action slots.
     bool isMultiAction() const { return !m_children.empty(); }
     /// A multi-action button's slot, or null.
@@ -49,9 +51,15 @@ public:
     /// The keys of TriggerActionButton_<bar>.<button>; the first one is shown
     /// on the button.
     void setHotkeys(const QList<QKeySequence>& hotkeys);
-    bool sendAutomatically() const { return m_sendAutomatically; }
-    config::EUseType useType() const { return m_useType; }
-    int spellId() const { return m_spellId; }
+    // The action of the shown slot (a bar button's own action without slots).
+    int spellId() const { return shown()->m_spellId; }
+    /// The spell's parameters or the text, as entered.
+    QString actionText() const { return shown()->m_type == SPELL ? shown()->m_spellParameters : shown()->m_text; }
+    int castType() const { return shown()->m_castType; }
+    bool sendAutomatically() const { return shown()->m_sendAutomatically; }
+    config::EUseType useType() const { return shown()->m_useType; }
+    bool useEquipSmartMode() const { return shown()->m_useEquipSmartMode; }
+    int passiveAbility() const { return shown()->m_passiveAbility; }
     /// The object's amount in the inventory and whether it is worn (CIP:
     /// onInventoryChanged).
     void refreshObject();
@@ -68,6 +76,9 @@ public:
     /// CIP : "S.t" below 11 s, "S" below a minute, "M:SS" below
     /// 11 minutes, then "%1m", "%1h%2", "%1h".
     static QString cooldownText(qint64 remainingMs);
+    /// The key as the button shows it: each modifier by its first letter
+    /// (upper case), then the key, e.g. "CSF1" for Ctrl+Shift+F1.
+    static QString shortHotkeyText(const QKeySequence& key);
 
     // A multi-action button shows its current slot (CIP: every getter walks
     // , e.g. type, object).

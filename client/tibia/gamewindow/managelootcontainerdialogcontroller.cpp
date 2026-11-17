@@ -1,6 +1,7 @@
 #include "managelootcontainerdialogcontroller.h"
 
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -9,7 +10,7 @@
 #include "quickloot/quicklootciptypes.h"
 
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QDebug>
@@ -59,20 +60,20 @@ QList<TMessageDialogButton*> yesNoButtons()
              new TMessageDialogButton(qtTrId("no"), TMessageDialogController::Button::NO, QKeySequence(QStringLiteral("Escape"))) };
 }
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
 QString typeName(const uint16_t typeId)
 {
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     if (!type)
         return QStringLiteral("Unknown");
-    const MarketData& market = type->getMarketData();
-    const std::string& name = type->isMarketable() && !market.name.empty() ? market.name : type->getName();
-    return name.empty() ? QStringLiteral("Unknown") : QString::fromStdString(name);
+    const auto* market = type->marketProperties();
+    const QString name = market && !market->name.isEmpty() ? market->name : type->name();
+    return name.isEmpty() ? QStringLiteral("Unknown") : name;
 }
 
 }
@@ -86,32 +87,26 @@ TLootContainerQMLInfo::TLootContainerQMLInfo(const int category, QObject* parent
     m_isLockedByPremium = category != TManageLootContainerDialogController::UnassignedCategory;
 }
 
+/// CIP: the id is kept as sent; it counts as set unless 0 or the empty
+/// appearance. A change announces the id, then whether one is set.
 void TLootContainerQMLInfo::setLootContainer(const uint16_t typeId)
 {
-    const uint16_t id = isSet(typeId) ? typeId : 0;
-    const bool set = isSet(id);
-    if (m_lootContainerAppearanceTypeID != id) {
-        m_lootContainerAppearanceTypeID = id;
-        Q_EMIT lootContainerAppearanceTypeIDChanged();
-    }
-    if (m_isLootContainerSet != set) {
-        m_isLootContainerSet = set;
-        Q_EMIT isLootContainerSetChanged();
-    }
+    if (m_lootContainerAppearanceTypeID == typeId)
+        return;
+    m_lootContainerAppearanceTypeID = typeId;
+    m_isLootContainerSet = isSet(typeId);
+    Q_EMIT lootContainerAppearanceTypeIDChanged();
+    Q_EMIT isLootContainerSetChanged();
 }
 
 void TLootContainerQMLInfo::setObtainContainer(const uint16_t typeId)
 {
-    const uint16_t id = isSet(typeId) ? typeId : 0;
-    const bool set = isSet(id);
-    if (m_obtainContainerAppearanceTypeID != id) {
-        m_obtainContainerAppearanceTypeID = id;
-        Q_EMIT obtainContainerAppearanceTypeIDChanged();
-    }
-    if (m_isObtainContainerSet != set) {
-        m_isObtainContainerSet = set;
-        Q_EMIT isObtainContainerSetChanged();
-    }
+    if (m_obtainContainerAppearanceTypeID == typeId)
+        return;
+    m_obtainContainerAppearanceTypeID = typeId;
+    m_isObtainContainerSet = isSet(typeId);
+    Q_EMIT obtainContainerAppearanceTypeIDChanged();
+    Q_EMIT isObtainContainerSetChanged();
 }
 
 void TLootContainerQMLInfo::onSelectLootContainerClicked()
@@ -134,7 +129,7 @@ void TLootContainerQMLInfo::onOpenObtainContainerClicked() { Q_EMIT requestOpenO
 
 TManageLootContainerDialogController::TManageLootContainerDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), parent)
-    , m_itemInfo(cyclopedia::TItemInfoStorage::instance())
+    , m_lootBlackWhitelist(analysers::TAnalyserStorages::instance() ? analysers::TAnalyserStorages::instance()->lootBlackWhitelist() : nullptr)
     , m_containers(quickloot::TManagedContainerStorage::instance())
     , m_listModel([](uint16_t, uint8_t) { return 1; }, this)
     , m_listProxy(&m_listModel, this)
@@ -160,22 +155,23 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
                 [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_OPEN, c); });
     }
 
-    if (m_itemInfo) {
-        m_blackWhiteListType = m_itemInfo->lootListType();
-        connect(m_itemInfo, &cyclopedia::TItemInfoStorage::lootListChanged, this, [this] {
-            if (!m_itemInfo)
+    if (m_lootBlackWhitelist) {
+        m_blackWhiteListType = m_lootBlackWhitelist->listType();
+        connect(m_lootBlackWhitelist, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this, [this] {
+            if (!m_lootBlackWhitelist)
                 return;
-            if (m_blackWhiteListType != m_itemInfo->lootListType()) {
-                m_blackWhiteListType = m_itemInfo->lootListType();
+            if (m_blackWhiteListType != m_lootBlackWhitelist->listType()) {
+                m_blackWhiteListType = m_lootBlackWhitelist->listType();
                 Q_EMIT lootBlackWhitelistChanged();
             }
             rebuildListItems();
         });
-        connect(m_itemInfo, &cyclopedia::TItemInfoStorage::premiumChanged, this, &TManageLootContainerDialogController::onPremiumTimeChanged);
-        connect(m_itemInfo, &cyclopedia::TItemInfoStorage::characterChanged, this, [this] {
-            if (!m_itemInfo)
+        analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+        connect(storages, &analysers::TAnalyserStorages::premiumTimeChanged, this, &TManageLootContainerDialogController::onPremiumTimeChanged);
+        connect(storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
+            if (!m_lootBlackWhitelist)
                 return;
-            m_blackWhiteListType = m_itemInfo->lootListType();
+            m_blackWhiteListType = m_lootBlackWhitelist->listType();
             Q_EMIT lootBlackWhitelistChanged();
             rebuildListItems();
             syncPremium();
@@ -262,8 +258,8 @@ void TManageLootContainerDialogController::showDialog()
 {
     syncPremium();
     syncFallback();
-    if (m_itemInfo) {
-        const int listType = m_itemInfo->lootListType();
+    if (m_lootBlackWhitelist) {
+        const int listType = m_lootBlackWhitelist->listType();
         if (m_blackWhiteListType != listType) {
             m_blackWhiteListType = listType;
             Q_EMIT lootBlackWhitelistChanged();
@@ -299,9 +295,9 @@ void TManageLootContainerDialogController::getPremiumClicked()
 
 void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
 {
-    if (!m_itemInfo)
+    if (!m_lootBlackWhitelist)
         return;
-    const bool white = m_itemInfo->lootListType() == cyclopedia::TItemInfoStorage::Whitelist;
+    const bool white = m_lootBlackWhitelist->listType() == quickloot::TQuickLootBlackWhitelistStorage::Whitelist;
     m_confirm->setButtons(yesNoButtons());
     m_confirm->showMessage(qtTrId(white ? "managecontainer_confirm_clear_whitelist_caption" : "managecontainer_confirm_clear_blacklist_caption"),
                            qtTrId(white ? "managecontainer_confirm_clear_whitelist_text" : "managecontainer_confirm_clear_blacklist_text"));
@@ -309,29 +305,29 @@ void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
 
 void TManageLootContainerDialogController::onClearConfirmed()
 {
-    if (!m_itemInfo)
+    if (!m_lootBlackWhitelist)
         return;
-    std::set<uint16_t> black = m_itemInfo->lootList(cyclopedia::TItemInfoStorage::Blacklist);
-    std::set<uint16_t> white = m_itemInfo->lootList(cyclopedia::TItemInfoStorage::Whitelist);
-    if (m_itemInfo->lootListType() == cyclopedia::TItemInfoStorage::Whitelist)
+    std::set<uint16_t> black = m_lootBlackWhitelist->list(quickloot::TQuickLootBlackWhitelistStorage::Blacklist);
+    std::set<uint16_t> white = m_lootBlackWhitelist->list(quickloot::TQuickLootBlackWhitelistStorage::Whitelist);
+    if (m_lootBlackWhitelist->listType() == quickloot::TQuickLootBlackWhitelistStorage::Whitelist)
         white.clear();
     else
         black.clear();
-    m_itemInfo->replaceLootLists(m_itemInfo->lootListType(), std::move(black), std::move(white));
+    m_lootBlackWhitelist->replaceLists(m_lootBlackWhitelist->listType(), std::move(black), std::move(white));
 }
 
 void TManageLootContainerDialogController::requestLootBlackWhitelistSwitch(const int NewListMode)
 {
-    if (!m_itemInfo)
+    if (!m_lootBlackWhitelist)
         return;
     // CIP radio BindingGroup re-enters when syncing `checked` from controllerChecked;
     // skip no-op switches so Qt 6 does not report a controllerChecked binding loop.
-    const int next = NewListMode == cyclopedia::TItemInfoStorage::Whitelist ? cyclopedia::TItemInfoStorage::Whitelist
-                                                                            : cyclopedia::TItemInfoStorage::Blacklist;
-    if (m_itemInfo->lootListType() == next && m_blackWhiteListType == next)
+    const int next = NewListMode == quickloot::TQuickLootBlackWhitelistStorage::Whitelist ? quickloot::TQuickLootBlackWhitelistStorage::Whitelist
+                                                                            : quickloot::TQuickLootBlackWhitelistStorage::Blacklist;
+    if (m_lootBlackWhitelist->listType() == next && m_blackWhiteListType == next)
         return;
-    m_itemInfo->setLootListType(next);
-    m_blackWhiteListType = m_itemInfo->lootListType();
+    m_lootBlackWhitelist->setListType(next);
+    m_blackWhiteListType = m_lootBlackWhitelist->listType();
     Q_EMIT lootBlackWhitelistChanged();
     rebuildListItems();
 }
@@ -346,8 +342,8 @@ void TManageLootContainerDialogController::requestAddItemBlackWhitelist()
 
 void TManageLootContainerDialogController::removeItemFromList(const int AppearanceTypeIDRaw)
 {
-    if (m_itemInfo)
-        m_itemInfo->setLootListed(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)), false);
+    if (m_lootBlackWhitelist)
+        m_lootBlackWhitelist->setListed(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)), false);
 }
 
 void TManageLootContainerDialogController::showItemDetails(const int AppearanceTypeIDRaw)
@@ -377,15 +373,15 @@ void TManageLootContainerDialogController::onLootContainersUpdated()
 
 void TManageLootContainerDialogController::rebuildListItems()
 {
-    if (!m_itemInfo)
+    if (!m_lootBlackWhitelist)
         return;
     std::vector<TAppearanceTypeEntry> entries;
-    for (const uint16_t typeId : m_itemInfo->lootList(m_itemInfo->lootListType())) {
+    for (const uint16_t typeId : m_lootBlackWhitelist->list(m_lootBlackWhitelist->listType())) {
         TAppearanceTypeEntry entry;
         entry.typeId = typeId;
         entry.name = typeName(typeId);
-        if (ThingType* type = typeOf(typeId))
-            entry.marketCategory = static_cast<int>(type->getMarketData().category);
+        if (TAppearanceType* type = typeOf(typeId))
+            entry.marketCategory = type->marketCategory();
         entries.push_back(std::move(entry));
     }
     std::ranges::sort(entries, [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) { return a.name < b.name; });
@@ -450,7 +446,7 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
         return;
     if (target && target->objectClientId) {
         const uint16_t typeId = target->objectClientId;
-        ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (type && type->isContainer()) {
             publishContainerAction(mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
                                    target.get());

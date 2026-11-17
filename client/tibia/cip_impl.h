@@ -29,6 +29,8 @@ CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TTutorialMarkerQuickItem, ::tibia::qm
 
 #ifdef TIBIA_WITH_GAMECORE
 #include "qmlcomponents/qmlcomponentsciptypes.h"
+#include "qmlcomponents/lenshelpquickitem.h"
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TLenshelpQuickItem, ::tibia::qmlcomponents::TLenshelpQuickItem);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TColorHelperQmlService, ::tibia::qmlcomponents::TColorHelperQmlService);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TAppearanceTypeHelperQmlService, ::tibia::qmlcomponents::TAppearanceTypeHelperQmlService);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TQmlDynamicAbstractListModel, ::tibia::qmlcomponents::TQmlDynamicAbstractListModel);

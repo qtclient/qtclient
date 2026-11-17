@@ -1,40 +1,39 @@
 #include "news/newsciptypes.h"
-#include "protocol/protocolciptypes.h"
-#include <tibia/game/gamenotify.h>
-#include <protocol.pb.h>
+
 #include "gamewindow/newsdialogcontroller.h"
+#include "news/newsstorage.h"
+
+#include <protocol.pb.h>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::news {
 
 namespace {
-struct CipTypedKeep {
-    TNewsDiskIOAsync tNewsDiskIOAsync;
-};
-CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
-} // namespace
 
-void ownProductSurface(QObject* parent)
+/// The handler's showGameNewsMessage: the news button (or the pack hook when
+/// no game window exists) opens or highlights the news.
+void showGameNewsMessage(const int newsType, const bool notificationOnly)
 {
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)typedKeep();
-    (void)parent;
+    if (auto* button = tibia::gamewindow::TNewsButtonController::instance())
+        button->onShowGameNews(newsType, notificationOnly);
+    else
+        tibia::game::notify("onGameNews", newsType, notificationOnly);
 }
 
-} // namespace tibia::news
-
-namespace tibia::news {
+}
 
 void TNewsProtocolMessageHandler::handleShowGameNewsMessage(const ::tibia::protobuf::protocol::GameserverMessageShowGameNews& ShowGameNewsMessage)
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto& m = ShowGameNewsMessage;
-    if (auto* news = tibia::gamewindow::TNewsButtonController::instance())
-        news->onShowGameNews(static_cast<int>(m.news_type()), m.notification_only());
-    else
-        tibia::game::notify("onGameNews", static_cast<int>(m.news_type()), m.notification_only());
+    const int newsType = static_cast<int>(ShowGameNewsMessage.news_type());
+    const bool notificationOnly = ShowGameNewsMessage.notification_only();
+    if (newsType != 0) {
+        const TNewsStorage* storage = TNewsStorage::current();
+        if (storage && storage->firstEntryOfType(newsType)) {
+            showGameNewsMessage(newsType, notificationOnly);
+            return;
+        }
+    }
+    showGameNewsMessage(0, notificationOnly);
 }
 
 }

@@ -17,7 +17,7 @@ namespace mods {
 /// Cached once at mod bootstrap — hot path is a null check then virtual calls only when set.
 /// Packs (e.g. product raycast) implement this; stock never links product lighting code.
 ///
-/// POD-only surface (like HD scaler): no ThingType / Thing / TCreature / TWorldMapField /
+/// POD-only surface (like HD scaler): no TAppearanceType / Thing / TCreature / TWorldMapField /
 /// Position / Point / WorldGeometry in the driver API. Tip peels those into Lighting* PODs
 /// (or opaque void*) before calling. Keep qtclient nested types out of this header so
 /// packs stay on the POD / façade surface (`include/qtclient/…`).

@@ -56,6 +56,12 @@ void TAssignableBossModel::refreshAll()
         Q_EMIT dataChanged(index(0), index(rowCount() - 1));
 }
 
+void TAssignableBossModel::refreshRarityTooltips()
+{
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), { BossRarityTooltip });
+}
+
 TAssignableBossSortProxyModel::TAssignableBossSortProxyModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent)
     : cip::TAssignableBossSortProxyModel(parent)
     , m_source(new TAssignableBossModel(storage, this))

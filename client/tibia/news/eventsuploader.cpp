@@ -1,10 +1,13 @@
 #include "eventsuploader.h"
 
-#include "shared/clientservicesuploader.h"
+#include "iclockservice.h"
+#include "news/newsstorage.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QDateTime>
 #include <QJsonDocument>
-#include <QNetworkAccessManager>
+#include <QJsonArray>
+#include <QJsonObject>
 
 #include <algorithm>
 #include <limits>
@@ -25,21 +28,6 @@ QDate serverDate(const int secondsSinceEpoch)
     return QDateTime::fromSecsSinceEpoch(secondsSinceEpoch, QTimeZone::UTC).toTimeZone(serverTimeZone()).date();
 }
 
-}
-
-QTimeZone serverTimeZone()
-{
-    static const QTimeZone zone = [] {
-#if QT_CONFIG(timezone)
-        QTimeZone berlin(QByteArrayLiteral("Europe/Berlin"));
-        // qtclient: a build may lack the zone database.
-        if (berlin.isValid())
-            return berlin;
-#endif
-        // qtclient: wasm Qt has no named zones; Berlin's standard time.
-        return QTimeZone::fromSecondsAheadOfUtc(3600);
-    }();
-    return zone;
 }
 
 std::vector<TEventInformation> parseEventSchedule(const QJsonDocument& reply)
@@ -75,28 +63,53 @@ std::vector<TEventInformation> parseEventSchedule(const QJsonDocument& reply)
     return events;
 }
 
-TEventsUploader::TEventsUploader(QObject* parent)
-    : cip::tibia::news::TEventsUploader(parent)
-    , m_network(new QNetworkAccessManager(this))
+TEventsUploader::TEventsUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                                 std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                 std::shared_ptr<shared::IClockService> clock, QObject* parent)
+    : shared::TJsonDocumentUploaderBase(std::move(sender), parent)
+    , m_url(url)
+    , m_fileSystemHelper(std::move(fileSystemHelper))
+    , m_clock(std::move(clock))
 {
-    connect(this, &TEventsUploader::finished, this, &TEventsUploader::onFinished);
+    connect(this, &shared::TJsonDocumentUploaderBase::finished, this, &TEventsUploader::onFinished);
 }
+
+TEventsUploader::~TEventsUploader() = default;
 
 void TEventsUploader::requestUpdate()
 {
-    shared::postClientService(m_network, this, m_url, QStringLiteral("eventschedule"), {}, m_revision,
-                              [this](bool ok, QJsonDocument doc) { Q_EMIT finished(ok, doc); });
+    const QJsonDocument cached = m_fileSystemHelper->readEventSchedule();
+    if (isCachedDocumentOutdated(cached, m_clock->currentDateTime())) {
+        requestEventSchedule();
+        return;
+    }
+    m_events = parseEventSchedule(cached);
+    Q_EMIT updated(m_events);
+}
+
+void TEventsUploader::requestEventSchedule()
+{
+    QJsonObject query;
+    query.insert(QStringLiteral("type"), QStringLiteral("eventschedule"));
+    upload(m_url, QJsonDocument(query));
 }
 
 void TEventsUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
-    if (!UploadSuccessful || !ReplyFromServerJD.isObject())
-        return;
-    const QJsonObject reply = ReplyFromServerJD.object();
-    m_lastUpdateTimestamp = reply.value(QStringLiteral("lastupdatetimestamp")).toInteger();
-    m_eventList = reply.value(QStringLiteral("eventlist")).toArray();
-    m_events = parseEventSchedule(ReplyFromServerJD);
-    Q_EMIT scheduleUpdated();
+    if (UploadSuccessful) {
+        m_events = parseEventSchedule(ReplyFromServerJD);
+        // The cache remembers when it was fetched.
+        QJsonObject stamped = ReplyFromServerJD.object();
+        stamped.insert(QStringLiteral("lastupdatetimestamp"), m_clock->currentDateTime().toSecsSinceEpoch());
+        m_fileSystemHelper->writeEventSchedule(QJsonDocument(stamped));
+    }
+    Q_EMIT updated(m_events);
+}
+
+void TEventsStorage::onEventsUpdated(const std::vector<TEventInformation>& StortedEventList)
+{
+    if (&m_events != &StortedEventList)
+        m_events = StortedEventList;
 }
 
 }
