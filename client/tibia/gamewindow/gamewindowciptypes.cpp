@@ -879,6 +879,23 @@ void clearInspectList(Controller& controller, QList<QObject*>& list)
 
 TInspectObjectDialogController* TInspectObjectDialogController::s_instance = nullptr;
 
+TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const int torso, const int legs, const int detail,
+                                             const int addons, QObject* parent)
+    : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
+{
+    const auto color = [](const int index) {
+        const QColor c = Outfit::getColor(index);
+        return QColor(c.red(), c.green(), c.blue());
+    };
+    m_id = id;
+    m_headColor = color(head);
+    m_torsoColor = color(torso);
+    m_legsColor = color(legs);
+    m_detailColor = color(detail);
+    m_firstAddOn = (addons & 1) != 0;
+    m_secondAddOn = (addons & 2) != 0;
+}
+
 bool smoothFilteringEnabled() { return config::TClientOptions::instance()->antialiasingMode() == 1; }
 
 bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }

@@ -523,7 +523,14 @@ class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAcco
 class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSlotQMLInformation() = default; };
 class TCharacterInformationModelData final : public ::tibia::CipTyped { public: TCharacterInformationModelData() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
-class TOutfitQMLInformation final : public ::tibia::CipTyped { public: TOutfitQMLInformation() = default; };
+/// An outfit as QML shows it (CIP: TOutfitQMLInformation): the look type, the four colour indices as
+/// colours and the addons.
+class TOutfitQMLInformation final : public cip::tibia::gamewindow::TOutfitQMLInformation
+{
+    Q_OBJECT
+public:
+    TOutfitQMLInformation(int id, int head, int torso, int legs, int detail, int addons, QObject* parent = nullptr);
+};
 class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };
 class TQmlLoot final : public ::tibia::CipTyped { public: TQmlLoot() = default; };
 class TQmlLootOfRarity final : public ::tibia::CipTyped { public: TQmlLootOfRarity() = default; };

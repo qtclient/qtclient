@@ -38,11 +38,6 @@ using Args = std::vector<std::any>;
 using client::gamecore::argString;
 constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
-QColor outfitColor(const int index)
-{
-    const QColor c = Outfit::getColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
 
 QString vocationName(const uint8_t clientId)
 {
@@ -70,15 +65,8 @@ QString worldTypeName(const uint8_t worldType)
 
 QObject* tradeOutfitConfiguration(const Outfit& outfit, QObject* parent)
 {
-    auto* config = new QObject(parent);
-    config->setProperty("id", static_cast<int>(outfit.getId()));
-    config->setProperty("headColor", outfitColor(outfit.getHead()));
-    config->setProperty("torsoColor", outfitColor(outfit.getBody()));
-    config->setProperty("legsColor", outfitColor(outfit.getLegs()));
-    config->setProperty("detailColor", outfitColor(outfit.getFeet()));
-    config->setProperty("firstAddOn", (outfit.getAddons() & 1) != 0);
-    config->setProperty("secondAddOn", (outfit.getAddons() & 2) != 0);
-    return config;
+    return new TOutfitQMLInformation(static_cast<int>(outfit.getId()), outfit.getHead(), outfit.getBody(), outfit.getLegs(),
+                                     outfit.getFeet(), outfit.getAddons(), parent);
 }
 
 } // namespace
