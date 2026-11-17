@@ -249,3 +249,23 @@ qtclient_add_port_test(client_cyclopediamapstaticdatastorage_tests
 )
 target_link_libraries(client_cyclopediamapstaticdatastorage_tests PRIVATE protobuf Qt6::Gui)
 set_target_properties(client_cyclopediamapstaticdatastorage_tests PROPERTIES AUTOMOC ON)
+
+# CIP skill wheel grid path solver (TSkillWheelPageController): which grids are valid.
+find_package(ZLIB QUIET)
+if(Qt6_FOUND AND TARGET tibia AND TARGET ZLIB::ZLIB)
+    add_executable(client_skillwheeldata_tests
+        skillwheeldata_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/skillwheel/skillwheeldata.cpp
+    )
+    set_target_properties(client_skillwheeldata_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(client_skillwheeldata_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
+    )
+    target_compile_definitions(client_skillwheeldata_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    target_link_libraries(client_skillwheeldata_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core ZLIB::ZLIB)
+    add_dependencies(client_skillwheeldata_tests cip_codegen_tibia)
+    gtest_discover_tests(client_skillwheeldata_tests)
+endif()

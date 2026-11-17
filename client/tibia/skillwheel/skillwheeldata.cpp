@@ -10,6 +10,8 @@
 #include <zlib.h>
 
 #include <algorithm>
+#include <string>
+#include <stdexcept>
 #include <cmath>
 #include <optional>
 
@@ -351,13 +353,137 @@ QString stagePercents(const int stage1, const int stage2, const int stage3, cons
 /// CIP QString::number(v, <invalid format>, 0): decimal without decimals.
 QString wholeNumber(const double value) { return QString::number(value, 'f', 0); }
 
-bool connected(const int a, const int b)
+/// CIP: the tiles next to each tile: up, right, down and left on the 6x6 grid, then the links across
+/// the domain borders.
+const std::array<std::vector<int>, SlotCount>& neighbours()
 {
-    const int ra = a / 6, ca = a % 6, rb = b / 6, cb = b % 6;
-    if ((ra == rb && std::abs(ca - cb) == 1) || (ca == cb && std::abs(ra - rb) == 1))
-        return true;
-    return std::find(std::begin(ExtraLinks), std::end(ExtraLinks), std::pair{ a, b }) != std::end(ExtraLinks);
+    static const std::array<std::vector<int>, SlotCount> table = [] {
+        std::array<std::vector<int>, SlotCount> t;
+        for (int tile = 0; tile < SlotCount; ++tile) {
+            if (tile > 5)
+                t[tile].push_back(tile - 6);
+            if (tile % 6 < 5)
+                t[tile].push_back(tile + 1);
+            if (tile < 30)
+                t[tile].push_back(tile + 6);
+            if (tile % 6 > 0)
+                t[tile].push_back(tile - 1);
+        }
+        for (const auto& [from, to] : ExtraLinks)
+            t[from].push_back(to);
+        return t;
+    }();
+    return table;
 }
+
+/// CIP's grid path solver: a tile with points is connected when a path of full tiles leads from it
+/// to a centre tile (or to a tile already known to be connected).
+class TGridPathSolver
+{
+public:
+    explicit TGridPathSolver(const std::array<int, SlotCount>& points) : m_points(points) {}
+
+    /// Every tile is a start; the tiles of a connected path are marked connected.
+    void solve()
+    {
+        clearFlags(Visited | Connected | HasPoints);
+        clearFlags(NotFull);
+        for (int tile = 0; tile < SlotCount; ++tile)
+            if (!isFull(tile))
+                m_flags[tile] |= NotFull;
+        for (int tile = 0; tile < SlotCount; ++tile) {
+            m_visited.fill(0);
+            TPath path;
+            path.tiles.push_back(tile);
+            follow(path);
+            if (path.connected)
+                for (const int t : path.tiles)
+                    m_flags[t] |= Connected;
+        }
+    }
+
+    /// A tile with points that no path connects.
+    bool hasUnconnectedTile() const
+    {
+        for (int tile = 0; tile < SlotCount; ++tile)
+            if ((m_flags[tile] & HasPoints) && !(m_flags[tile] & Connected))
+                return true;
+        return false;
+    }
+
+private:
+    enum : unsigned { Visited = 1, NotFull = 2, Connected = 4, HasPoints = 8 };
+
+    struct TPath
+    {
+        bool finished = false;
+        bool connected = false;
+        std::vector<int> tiles;
+    };
+
+    static int checkedTile(const int tile)
+    {
+        if (tile < 0 || tile >= SlotCount)
+            throw std::runtime_error("Tile index " + std::to_string(tile) + " is out of bounds!");
+        return tile;
+    }
+    bool hasPoints(const int tile) const { return m_points[checkedTile(tile)] > 0; }
+    bool isFull(const int tile) const { return m_points[checkedTile(tile)] == maxPoints(checkedTile(tile)); }
+
+    void clearFlags(const unsigned mask)
+    {
+        for (unsigned& flags : m_flags)
+            flags &= ~mask;
+    }
+
+    void follow(TPath& path)
+    {
+        if (path.tiles.empty())
+            throw std::runtime_error("Invalid grid path solver call with empty pathData");
+        const int tile = path.tiles.back();
+        if (m_visited[tile] & Visited)
+            throw std::runtime_error("Invalid recursive grid path solver call for an already visited tile: " + std::to_string(tile));
+        if (path.finished)
+            throw std::runtime_error("Invalid recursive grid path solver call for an already finished path.");
+        if (hasPoints(tile))
+            m_flags[tile] |= HasPoints;
+        m_visited[tile] |= Visited;
+        if (m_flags[tile] & HasPoints) {
+            if (std::ranges::find(centreSlots(), tile) != centreSlots().end() || (m_flags[tile] & Connected)) {
+                path.finished = path.connected = true;
+                return;
+            }
+            for (const int next : neighbours()[tile]) {
+                if (m_flags[next] & NotFull)
+                    continue;
+                if (m_flags[next] & Connected) {
+                    path.finished = path.connected = true;
+                    return;
+                }
+                if (m_visited[next] & Visited)
+                    continue;
+                path.tiles.push_back(next);
+                follow(path);
+                if (path.finished)
+                    return;
+            }
+            if (path.finished)
+                return;
+            if (path.tiles.size() > 1) {
+                path.tiles.pop_back();
+                return;
+            }
+        } else if (path.tiles.size() != 1) {
+            return;
+        }
+        path.finished = true;
+        path.connected = false;
+    }
+
+    const std::array<int, SlotCount>& m_points;
+    std::array<unsigned, SlotCount> m_flags{};
+    std::array<unsigned, SlotCount> m_visited{};
+};
 
 }
 
@@ -419,30 +545,15 @@ int largePerk(const int domain, const int vocationIndex)
 
 const std::array<int, 4>& centreSlots() { return CentreSlots; }
 
+/// CIP: no tile above its maximum, and every tile with points connected to the centre.
 bool isValid(const std::array<int, SlotCount>& points)
 {
-    std::array<bool, SlotCount> reached{};
-    std::vector<int> open;
-    for (const int c : centreSlots())
-        if (points[c] > 0) {
-            reached[c] = true;
-            open.push_back(c);
-        }
-    while (!open.empty()) {
-        const int slot = open.back();
-        open.pop_back();
-        if (points[slot] < MaxPoints[slot])
-            continue;
-        for (int next = 0; next < SlotCount; ++next)
-            if (!reached[next] && points[next] > 0 && connected(slot, next)) {
-                reached[next] = true;
-                open.push_back(next);
-            }
-    }
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (points[slot] > MaxPoints[slot] || (points[slot] > 0 && !reached[slot]))
+        if (points[slot] > MaxPoints[slot])
             return false;
-    return true;
+    TGridPathSolver solver(points);
+    solver.solve();
+    return !solver.hasUnconnectedTile();
 }
 
 bool isUnlocked(const std::array<int, SlotCount>& points, const int slot)
