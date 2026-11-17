@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the /play file system contract test (no Qt): the WasmFS OPFS backend,
-# the engine's Worker (browser/qtclient-fs.js) and the JSPI runtime, as the
-# tibia / launcher engines link them. Needs emcc (the Qt kit's emsdk pin).
+# and the engine's Worker (browser/qtclient-fs.js), as the tibia / launcher
+# engines link them. Needs emcc (the Qt kit's emsdk pin).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
@@ -14,7 +14,6 @@ mkdir -p "$OUT"
   "$HERE/contract.cpp" "$ROOT/client/tibia/browser/qtclient_opfs_backend.cpp" \
   -sWASMFS -sJSPI -sPTHREAD_POOL_SIZE=2 -sINITIAL_MEMORY=64MB \
   -sENVIRONMENT=web,worker -sEXIT_RUNTIME=0 \
-  --post-js "$ROOT/browser/jspi-runtime.js" \
   --post-js "$ROOT/browser/qtclient-fs.js" \
   -o "$OUT/contract.js"
 cp "$HERE/index.html" "$OUT/index.html"

@@ -214,8 +214,7 @@ fetch-assets:
 
 qt:
 	@bash "$(HERE)/tools/qt/install-qt.sh" \
-		$(if $(filter 1 true yes on,$(WASM)),--wasm,) \
-		$(if $(filter 1 true yes on,$(BUILD) $(QT_BUILD)),--build,)
+		$(if $(filter 1 true yes on,$(WASM)),--wasm,)
 
 tibia-dump-smoke:
 	@bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh"

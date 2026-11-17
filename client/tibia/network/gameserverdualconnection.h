@@ -14,7 +14,7 @@
 #include <string>
 
 #if defined(Q_OS_WASM)
-#include <emscripten/websocket.h>
+#include <QWebSocket>
 #else
 #include <QTcpSocket>
 #endif
@@ -69,10 +69,7 @@ private:
     bool transportConnected() const;
 
 #if defined(Q_OS_WASM)
-    void openWebSocket();
-    QString webSocketUrl() const;
-    EMSCRIPTEN_WEBSOCKET_T m_websocket = 0;
-    bool m_wsConnected = false;
+    std::unique_ptr<QWebSocket> m_socket;
 #else
     std::unique_ptr<QTcpSocket> m_socket;
 #endif

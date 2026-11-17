@@ -3,7 +3,7 @@
 #
 #   tools/qt/ci-setup.sh [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]
 #
-# Always pull-only for CIP Qt (never --build). Compiling Qt belongs in Qt: build.
+# Always pull-only: Qt kits are built by qtclient/Qt5 ("qtclient kits").
 # Env: QT_ROOT, QT_CIP_SHA, QT_PULL_*, GITHUB_TOKEN / GITHUB_ACTOR
 # Writes GITHUB_ENV when set: QT_ROOT QT_CIP_SHA QT_CIP_SHORT QT_PREFIX [VCPKG_*]
 set -euo pipefail
@@ -29,7 +29,7 @@ for arg in "$@"; do
     --with-deps) WITH_DEPS=1 ;;
     -h|--help)
       echo "usage: $0 [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]"
-      echo "  Always pulls CIP Qt (no source build). Use qtclient Qt: build to compile."
+      echo "  Always pulls the Qt kits (built by qtclient/Qt5 for the pinned third_party/qt5-cip)."
       exit 0
       ;;
     *) echo "unknown: $arg" >&2; exit 2 ;;

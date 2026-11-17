@@ -31,7 +31,7 @@ Product-higher: sibling `client/` and `launcher/` trees (plus `shared/` for
 ## Toolchain
 
 - CMake + Ninja + vcpkg (`VCPKG_ROOT`).
-- Qt: `third_party/qt5-cip` (`update = none`) — `make qt` / `make qt WASM=1`. Warm prefixes: `ghcr.io/qtclient/qt`.
+- Qt: `third_party/qt5-cip` (`update = none`) — `make qt` / `make qt WASM=1`. Warm prefixes: `ghcr.io/qtclient/qt5`.
 - LegacyControls QML: `client/upstream/qml/QtQuick/LegacyControls/` (`make sync`).
 - LegacyControls C++: `third_party/Qt5LegacyControls` branch `main` (LGPL; not hash-pinned).
 

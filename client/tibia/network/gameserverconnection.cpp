@@ -19,9 +19,10 @@
 #include <iomanip>
 #include <random>
 #include <unordered_map>
+#include <utility>
 
 #if defined(Q_OS_WASM)
-#include <emscripten.h>
+#include <emscripten/val.h>
 #endif
 
 Q_LOGGING_CATEGORY(lcGameConn, "tibia.gameconnection")
@@ -220,13 +221,7 @@ void TGameserverNetworkPacketConnection::shutdown()
     m_connecting = false;
     m_record.reset();
 #if defined(Q_OS_WASM)
-    m_wsConnected = false;
-    const EMSCRIPTEN_WEBSOCKET_T sock = m_websocket;
-    m_websocket = 0;
-    if (sock > 0) {
-        emscripten_websocket_close(sock, 1000, "close");
-        emscripten_websocket_delete(sock);
-    }
+    closeWebSocket();
 #else
     if (m_worker && m_thread) {
         if (m_thread->isRunning()) {
@@ -284,8 +279,8 @@ void TGameserverNetworkPacketConnection::writePayload(const uint8_t* data, const
     if (framed.isEmpty())
         return;
 #if defined(Q_OS_WASM)
-    if (m_websocket > 0 && m_wsConnected)
-        emscripten_websocket_send_binary(m_websocket, const_cast<char*>(framed.constData()), framed.size());
+    if (m_websocket && m_wsConnected)
+        m_websocket->sendBinaryMessage(framed);
 #else
     if (m_connected)
         Q_EMIT outbound(framed);
@@ -547,78 +542,56 @@ void TGameserverNetworkPacketConnection::fail(const QString& message, const bool
 }
 
 #if defined(Q_OS_WASM)
-QString TGameserverNetworkPacketConnection::webSocketUrl() const
+QUrl gameWebSocketUrl(const QString& host, uint16_t port)
 {
-    QString prefix = QStringLiteral("ws://");
-    if (!isLoopbackOrLan(m_host)) {
-        const bool forceWss = m_port == 443
-            || m_host.contains(QLatin1String("trycloudflare.com"))
-            || m_host.contains(QLatin1String("cfargotunnel.com"));
-        const int pageIsHttps = EM_ASM_INT({
-            try {
-                return (typeof location !== 'undefined' && location.protocol === 'https:') ? 1 : 0;
-            } catch (e) {
-                return 0;
-            }
-        });
+    QString scheme = QStringLiteral("ws");
+    if (!isLoopbackOrLan(host)) {
+        const bool forceWss = port == 443
+            || host.contains(QLatin1String("trycloudflare.com"))
+            || host.contains(QLatin1String("cfargotunnel.com"));
+        const bool pageIsHttps =
+            emscripten::val::global("location")["protocol"].as<std::string>() == "https:";
         if (forceWss || pageIsHttps)
-            prefix = QStringLiteral("wss://");
+            scheme = QStringLiteral("wss");
     }
-    return prefix + m_host + QLatin1Char(':') + QString::number(m_port);
+    QUrl url;
+    url.setScheme(scheme);
+    url.setHost(host);
+    url.setPort(port);
+    return url;
 }
 
 void TGameserverNetworkPacketConnection::openWebSocket()
 {
-    const QByteArray urlUtf8 = webSocketUrl().toUtf8();
-    EmscriptenWebSocketCreateAttributes attributes = {
-        urlUtf8.constData(),
-        nullptr,
-        EM_FALSE,
-    };
-    m_websocket = emscripten_websocket_new(&attributes);
+    m_websocket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
     m_wsConnected = false;
-    if (m_websocket < 1) {
-        m_websocket = 0;
-        fail(QStringLiteral("WebSocket create failed"), false);
+    connect(m_websocket, &QWebSocket::connected, this, [this] {
+        // writePayload sends only after this flag. Setting it in the same
+        // turn as notifyConnected is what actually transmits the login packet.
+        m_wsConnected = true;
+        onTransportConnected();
+    });
+    connect(m_websocket, &QWebSocket::binaryMessageReceived, this,
+            [this](const QByteArray& chunk) { ingestWire(chunk); });
+    connect(m_websocket, &QWebSocket::errorOccurred, this,
+            [this](QAbstractSocket::SocketError) { fail(QStringLiteral("WebSocket error"), false); });
+    connect(m_websocket, &QWebSocket::disconnected, this, [this] {
+        closeWebSocket();
+        fail({}, true);
+    });
+    m_websocket->open(gameWebSocketUrl(m_host, m_port));
+}
+
+void TGameserverNetworkPacketConnection::closeWebSocket()
+{
+    m_wsConnected = false;
+    QWebSocket* socket = std::exchange(m_websocket, nullptr);
+    if (!socket)
         return;
-    }
-    emscripten_websocket_set_onopen_callback(m_websocket, this, [](int, const EmscriptenWebSocketOpenEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverNetworkPacketConnection*>(userData);
-        QMetaObject::invokeMethod(self, [self] {
-            // writePayload sends only after this flag. Setting it in the same
-            // turn as notifyConnected is what actually transmits the login packet.
-            self->m_wsConnected = true;
-            self->onTransportConnected();
-        }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-    emscripten_websocket_set_onmessage_callback(m_websocket, this, [](int, const EmscriptenWebSocketMessageEvent* event, void* userData) -> EM_BOOL {
-        if (!event || event->numBytes <= 0 || event->isText)
-            return EM_TRUE;
-        auto* self = static_cast<TGameserverNetworkPacketConnection*>(userData);
-        const QByteArray chunk(reinterpret_cast<const char*>(event->data), int(event->numBytes));
-        QMetaObject::invokeMethod(self, [self, chunk] { self->ingestWire(chunk); }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-    emscripten_websocket_set_onerror_callback(m_websocket, this, [](int, const EmscriptenWebSocketErrorEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverNetworkPacketConnection*>(userData);
-        QMetaObject::invokeMethod(self, [self] { self->fail(QStringLiteral("WebSocket error"), false); }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-    emscripten_websocket_set_onclose_callback(m_websocket, this, [](int, const EmscriptenWebSocketCloseEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverNetworkPacketConnection*>(userData);
-        QMetaObject::invokeMethod(self, [self] {
-            self->m_wsConnected = false;
-            const EMSCRIPTEN_WEBSOCKET_T sock = self->m_websocket;
-            self->m_websocket = 0;
-            if (sock > 0) {
-                emscripten_websocket_close(sock, 1000, "peer close");
-                emscripten_websocket_delete(sock);
-            }
-            self->fail({}, true);
-        }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
+    // Signals off first: close() reports disconnected() synchronously.
+    socket->disconnect(this);
+    socket->close();
+    socket->deleteLater();
 }
 #endif
 
