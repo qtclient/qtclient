@@ -13382,7 +13382,7 @@ sub_63b1f8f7f039#96	63b1f8f7f039124f	skip	generated: protobuf message code (cons
 sub_63b1f8f7f039#98	63b1f8f7f039124f	skip	generated: protobuf message constructor / moc signal emitter
 sub_63b382749725	63b382749725dc08	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_63b44b7a7cdf	63b44b7a7cdf163a	skip	library: libc++ vector/deque internals (library)
-sub_63c2a8e59a1d	63c2a8e59a1d176d	inlined	analysers/itempricestorage.cpp:TItemPriceStorage::fromJson
+sub_63c2a8e59a1d	63c2a8e59a1d176d	inlined	analysers/itempricestorage.cpp:TItemPriceStorage::configurationFromJson
 sub_63cef4c60677	63cef4c60677ae1d	skip	library: std::unordered_map instantiation
 sub_63d37fb57c72	63d37fb57c720748	inlined	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onBoostedCreatureReceived
 sub_63e222f42025	63e222f42025abee	inlined	config/sidebaroptions.cpp:parseNpcTrade
