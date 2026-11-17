@@ -24,6 +24,18 @@ class TQmlDroppedLoot final : public cip::tibia::gamewindow::TQmlDroppedLoot
     Q_OBJECT
 public:
     TQmlDroppedLoot(const cyclopedia::TItemInfoStorage::DroppedLoot& drop, QObject* parent);
+
+    /// The monster's outfit.
+    uint creatureOutfitId() const override;
+    QColor creatureHeadColor() const override;
+    QColor creatureTorsoColor() const override;
+    QColor creatureLegsColor() const override;
+    QColor creatureDetailColor() const override;
+    bool creatureFirstAddOn() const override;
+    bool creatureSecondAddOn() const override;
+
+private:
+    Outfit m_outfit;
 };
 
 /// One tracked item (CIP: TQmlTrackedItem, built in).
@@ -31,12 +43,18 @@ class TQmlTrackedItem final : public cip::tibia::gamewindow::TQmlTrackedItem
 {
     Q_OBJECT
 public:
-    TQmlTrackedItem(const cyclopedia::TItemInfoStorage::TrackedItem& item, qint64 value, QObject* parent);
+    TQmlTrackedItem(const cyclopedia::TItemInfoStorage::TrackedItem& item, QObject* parent);
 
+    QString itemValueString() const override;
+    QString dropCountString() const override;
+    void setItemValue(qint64 value);
     /// CIP : the new drop count.
     void setDropCount(quint32 count);
     /// CIP : the item's recent drops.
     void setLootDrops(const std::vector<cyclopedia::TItemInfoStorage::DroppedLoot>& drops);
+
+private:
+    qint64 m_itemValue = 0;
 };
 
 /// The Drop Tracker sidebar widget, LootTrackingWidget.qml (CIP:
