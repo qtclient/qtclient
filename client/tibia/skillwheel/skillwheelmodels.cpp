@@ -11,7 +11,7 @@ namespace tibia::skillwheel {
 
 namespace {
 
-bool socketedIn(const TWheel& wheel, const int gemId) { return std::ranges::find(wheel.gems, gemId) != wheel.gems.end(); }
+bool socketedIn(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel, gemId).has_value(); }
 
 QString itemName(const int typeId)
 {

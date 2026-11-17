@@ -45,8 +45,8 @@ void TSkillWheelProtocolMessageHandler::saveSkillWheel(const TWheel& wheel)
     auto* m = message->MutableExtension(protobuf::protocol::GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
     for (const int points : wheel.points)
         m->add_slot_points(static_cast<uint32_t>(points));
-    for (const int gem : wheel.gems)
-        m->add_vessel_gems(gem == NoGem ? UINT32_MAX : static_cast<uint32_t>(gem & 0xffff));
+    for (const std::optional<TGem>& gem : wheel.vessels)
+        m->add_vessel_gems(gem ? static_cast<uint32_t>(gem->id & 0xffff) : UINT32_MAX);
     protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -102,18 +102,6 @@ int wheelVocation(const uint32_t vocation)
     if (vocation < 1 || vocation > static_cast<uint32_t>(VocationCount))
         throw std::runtime_error("unhandled enum value");
     return static_cast<int>(vocation);
-}
-
-/// A gem goes into the vessel when its quality is the vessel's; it leaves any other vessel.
-bool socketGem(TWheel& wheel, const TGem& gem, const int vessel)
-{
-    if (gem.quality != vesselQualityAt(vessel))
-        return false;
-    for (int& socketed : wheel.gems)
-        if (socketed == gem.id)
-            socketed = NoGem;
-    wheel.gems[vessel] = gem.id;
-    return true;
 }
 
 }

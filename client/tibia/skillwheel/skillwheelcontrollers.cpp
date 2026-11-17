@@ -34,7 +34,7 @@ std::pair<QUrl, QUrl> vesselImages(const TSkillWheelStorage* storage, const int 
 {
     const TWheel& wheel = storage->currentWheel();
     const int quality = vesselQualityAt(vesselIndex);
-    const std::optional<TGem> gem = wheel.gems[vesselIndex] == NoGem ? std::nullopt : storage->gem(wheel.gems[vesselIndex]);
+    const std::optional<TGem>& gem = wheel.vessels[vesselIndex];
     // Bezel domain index is visual only (cycles 0..3); resonance gate removed.
     return { gem ? gemImage(*gem, storage->vocationIndex()) : QUrl(),
              socketBezel(vesselIndex % DomainCount, quality + 1, quality, gem.has_value()) };
@@ -76,12 +76,6 @@ int statRank(const QString& label)
 }
 
 int spentPoints(const std::array<int, SlotCount>& points) { return std::accumulate(points.begin(), points.end(), 0); }
-
-/// A gem's mods as an export code keeps them.
-TCodeGem codeGemOf(const TGem& gem)
-{
-    return { gem.basic1, gem.quality >= 1 ? gem.basic2 : -1, gem.quality >= 2 ? gem.supreme : -1 };
-}
 
 QList<TMessageDialogButton*> okButton()
 {
@@ -311,25 +305,12 @@ void TSkillWheelPageController::validatePresets()
         }
         TWheel resolved = preset;
         for (int vessel = 0; vessel < VesselCount; ++vessel) {
-            TGem pattern;
-            pattern.id = resolved.gems[vessel];
-            if (const std::optional<TGem> socketed = m_storage->gem(resolved.gems[vessel])) {
-                pattern = *socketed;
+            if (!resolved.vessels[vessel])
+                continue;
+            if (const std::optional<TGem> found = m_storage->findGem(*resolved.vessels[vessel])) {
+                socketGem(resolved, *found, vessel);
             } else {
-                const TCodeGem& mods = resolved.gemMods[vessel];
-                if (mods.basic1 < 0)
-                    continue;
-                pattern.basic1 = mods.basic1;
-                pattern.basic2 = mods.basic2;
-                pattern.supreme = mods.supreme;
-                pattern.quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
-            }
-            if (const std::optional<TGem> found = m_storage->findGem(pattern)) {
-                resolved.gems[vessel] = found->id;
-                resolved.gemMods[vessel] = codeGemOf(*found);
-            } else {
-                resolved.gems[vessel] = NoGem;
-                resolved.gemMods[vessel] = TCodeGem{};
+                unsocketGem(resolved, vessel);
                 changed = true;
             }
         }
@@ -394,7 +375,10 @@ void TSkillWheelPageController::selectMatchingPreset()
             const int points = spentPoints(current.points) - spentPoints(preset.points);
             int vessels = 0;
             for (int vessel = 0; vessel < VesselCount; ++vessel)
-                vessels += current.gems[vessel] != preset.gems[vessel] ? 1 : 0;
+                vessels += current.vessels[vessel].has_value() != preset.vessels[vessel].has_value()
+                        || (current.vessels[vessel] && !sameGem(*current.vessels[vessel], *preset.vessels[vessel]))
+                    ? 1
+                    : 0;
             if (points < bestPoints || (points == bestPoints && vessels < bestVessels)) {
                 name = presetName;
                 bestPoints = points;
@@ -470,7 +454,7 @@ void TSkillWheelPageController::updateParameters()
                                                                 mediumPerkImage(medium, large), this));
         }
         for (int d = 0; d < DomainCount; ++d) {
-            const int points = revelationPoints(wheel, m_storage->gemInventory(), m_storage->supremeGrades(), d, voc);
+            const int points = revelationPoints(wheel, m_storage->supremeGrades(), d, voc);
             const int stage = revelationStage(points);
             const int next = stage < -1 ? 0 : std::min(stage + 1, 3);
             const double from = stage >= 1 && stage <= 3 ? revelationThreshold(stage) : 0.0;
@@ -491,7 +475,7 @@ void TSkillWheelPageController::updateSummaries()
     const bool hasData = m_storage->hasData();
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
-    const TActiveMods mods = activeMods(wheel, m_storage->gemInventory(), m_storage->basicGrades(), m_storage->supremeGrades(), voc);
+    const TActiveMods mods = activeMods(wheel, m_storage->basicGrades(), m_storage->supremeGrades());
     const auto byLabel = [](QList<TPerkInfo>& list) {
         std::ranges::stable_sort(list, [](const TPerkInfo& a, const TPerkInfo& b) { return a.label < b.label; });
     };
@@ -512,7 +496,7 @@ void TSkillWheelPageController::updateSummaries()
     int bonus = 0;
     QList<TPerkInfo> perks;
     for (int d = 0; d < DomainCount; ++d) {
-        const int stage = revelationStage(revelationPoints(wheel, m_storage->gemInventory(), m_storage->supremeGrades(), d, voc));
+        const int stage = revelationStage(revelationPoints(wheel, m_storage->supremeGrades(), d, voc));
         bonus += largePerkExtraDamageHealing(stage);
         perks.append({ largePerkName(largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(largePerk(d, voc), stage), QUrl(), false });
     }
@@ -812,7 +796,7 @@ void TSkillWheelPageController::fillLargePerk(cip::tibia::gamewindow::TLargePerk
         return;
     }
     const int voc = m_storage->vocationIndex();
-    const int points = revelationPoints(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->supremeGrades(), domain, voc);
+    const int points = revelationPoints(m_storage->currentWheel(), m_storage->supremeGrades(), domain, voc);
     const int stage = revelationStage(points);
     info->setCurrentSkillPoints(points);
     info->setNextSkillPointThreshold(revelationThreshold(std::min(stage + 1, 3)));
@@ -947,7 +931,7 @@ void TSkillWheelPageController::requestCopyExportCodeToClipboard()
     if (!m_storage->hasData())
         return;
     auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = encodeWheelCode(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->vocationIndex());
+    action->text = encodeWheelCode(m_storage->currentWheel());
     input::publish(action);
 }
 
@@ -1041,7 +1025,7 @@ void TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked(
     if (ButtonIdentifier != Button::USER_DEFINED || !m_storage->hasData())
         return;
     auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = m_plannerUrl + encodeWheelCode(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->vocationIndex());
+    action->text = m_plannerUrl + encodeWheelCode(m_storage->currentWheel());
     input::publish(action);
 }
 
@@ -1154,12 +1138,10 @@ int TSkillWheelPageController::gemAtelierDomain() const
 int TSkillWheelPageController::gemAtelierGemId() const
 {
     // Prefer a gem already socketed in any vessel; atelier opens without domain affinity.
-    for (int v = 0; v < VesselCount; ++v) {
-        const int gemId = m_storage->currentWheel().gems[v];
-        if (gemId != NoGem)
-            return gemId;
-    }
-    return NoGem;
+    for (const std::optional<TGem>& gem : m_storage->currentWheel().vessels)
+        if (gem)
+            return gem->id;
+    return -1;
 }
 
 /// CIP: a valid current wheel goes into the current preset and to the server (SAVE_SKILL_WHEEL);
@@ -1244,15 +1226,15 @@ void TGemAtelierPageController::updateSockets()
     bool unused = false;
     for (int v = 0; v < VesselCount; ++v) {
         const TWheel& wheel = m_storage->currentWheel();
-        const int gemId = wheel.gems[v];
-        const std::optional<TGem> gem = gemId == NoGem ? std::nullopt : m_storage->gem(gemId);
+        const std::optional<TGem>& gem = wheel.vessels[v];
+        const int gemId = gem ? gem->id : -1;
         const int quality = vesselQualityAt(v);
         const auto [_, bezel] = vesselImages(m_storage, v);
         QObject* old = m_sockets[v];
         m_sockets[v] = new TQmlSocketedGem(gemId, gem ? modCount(*gem) : 0, quality, bezel, this);
         if (old)
             old->deleteLater();
-        if (v < unlocked && gemId == NoGem)
+        if (v < unlocked && !gem)
             unused = true;
     }
     m_activeVesselCount = unlocked;
@@ -1285,17 +1267,10 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
         return;
     const std::optional<TGem> gem = m_storage->gem(GemId);
     TWheel wheel = m_storage->currentWheel();
-    if (wheel.gems[VesselIndex] == GemId) {
-        wheel.gems[VesselIndex] = NoGem;
-    } else if (gem && gem->quality == vesselQualityAt(VesselIndex)) {
-        // Unsocket from any previous vessel first.
-        for (int v = 0; v < VesselCount; ++v)
-            if (wheel.gems[v] == GemId)
-                wheel.gems[v] = NoGem;
-        wheel.gems[VesselIndex] = GemId;
-    } else {
+    if (wheel.vessels[VesselIndex] && wheel.vessels[VesselIndex]->id == GemId)
+        unsocketGem(wheel, VesselIndex);
+    else if (!gem || !socketGem(wheel, *gem, VesselIndex))
         return;
-    }
     m_storage->setCurrentSkillWheel(wheel);
 }
 
@@ -1384,14 +1359,9 @@ void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDown
 void TGemAtelierPageController::showDomain(const int /*domain*/, const int gemId)
 {
     // Domain affinity removed — open atelier on the gem / first unlocked vessel.
-    if (gemId != NoGem) {
-        const TWheel& wheel = m_storage->currentWheel();
-        for (int v = 0; v < VesselCount; ++v) {
-            if (wheel.gems[v] == gemId) {
-                selectVessel(v);
-                break;
-            }
-        }
+    if (gemId >= 0) {
+        if (const std::optional<int> vessel = vesselOfGem(m_storage->currentWheel(), gemId))
+            selectVessel(*vessel);
         selectGem(gemId, true);
         return;
     }
@@ -1536,29 +1506,13 @@ void TSkillWheelPresetManagmentDialogController::setImportString(const QString& 
 /// CIP : an invalid code or grid, or another vocation's code.
 QString TSkillWheelPresetManagmentDialogController::importError(TWheel* wheel) const
 {
-    const std::optional<TWheelCode> code = decodeWheelCode(m_importString);
+    const std::optional<TWheel> code = decodeWheelCode(m_importString);
     if (!code || !isValidWheelCode(*code))
         return qtTrId("skill_wheel_manage_presets_invalid_import_string");
-    if (code->vocationIndex != m_storage->vocationIndex())
+    if (code->vocation - 1 != m_storage->vocationIndex())
         return qtTrId("skill_wheel_manage_presets_vocation_mismatch");
-    if (wheel) {
-        wheel->vocation = code->vocationIndex + 1;
-        wheel->points = code->points;
-        for (int v = 0; v < VesselCount; ++v) {
-            const TCodeGem& mods = code->gems[v];
-            if (mods.basic1 < 0)
-                continue;
-            const int quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
-            if (quality != vesselQualityAt(v))
-                continue;
-            const auto it = std::ranges::find_if(m_storage->gemInventory(), [&](const TGem& g) {
-                return g.quality == quality && g.basic1 == mods.basic1 && (quality < 1 || g.basic2 == mods.basic2)
-                    && (quality < 2 || g.supreme == mods.supreme);
-            });
-            if (it != m_storage->gemInventory().end())
-                wheel->gems[v] = it->id;
-        }
-    }
+    if (wheel)
+        *wheel = *code;
     return {};
 }
 

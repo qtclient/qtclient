@@ -13,24 +13,7 @@ namespace {
 
 TSkillWheelStorage* s_liveInstance = nullptr;
 
-bool hasBasic2(const TGem& gem) { return gem.quality >= static_cast<int>(EGemQuality::Regular); }
-bool hasSupreme(const TGem& gem) { return gem.quality >= static_cast<int>(EGemQuality::Greater); }
-
-/// The gems have the same mods.
-bool sameMods(const TGem& a, const TGem& b)
-{
-    if (a.basic1 != b.basic1 || hasBasic2(a) != hasBasic2(b) || hasSupreme(a) != hasSupreme(b))
-        return false;
-    return (!hasBasic2(a) || a.basic2 == b.basic2) && (!hasSupreme(a) || a.supreme == b.supreme);
-}
-
-/// The vessel holds `gemId` in the current wheel.
-bool isSocketed(const TWheel& wheel, const int gemId) { return std::ranges::find(wheel.gems, gemId) != wheel.gems.end(); }
-
-TCodeGem codeGem(const TGem& gem)
-{
-    return { gem.basic1, hasBasic2(gem) ? gem.basic2 : -1, hasSupreme(gem) ? gem.supreme : -1 };
-}
+bool isSocketed(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel, gemId).has_value(); }
 
 }
 
@@ -55,26 +38,10 @@ QJsonObject TSkillWheelStorage::toJson() const
 {
     QJsonObject json;
     QJsonArray presets;
-    for (const auto& [name, stored] : m_presets) {
-        // A vessel whose gem is not in the inventory keeps the mods the preset was read with.
-        TWheel wheel = stored;
-        std::vector<TGem> gems = m_gemInventory;
-        for (int vessel = 0; vessel < VesselCount; ++vessel) {
-            const TCodeGem mods = wheel.gemMods[vessel];
-            if ((wheel.gems[vessel] != NoGem && gem(wheel.gems[vessel])) || mods.basic1 < 0)
-                continue;
-            TGem kept;
-            kept.id = -2 - vessel;
-            kept.basic1 = mods.basic1;
-            kept.basic2 = mods.basic2;
-            kept.supreme = mods.supreme;
-            kept.quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
-            gems.push_back(kept);
-            wheel.gems[vessel] = kept.id;
-        }
+    for (const auto& [name, wheel] : m_presets) {
         QJsonObject preset;
         preset.insert(QLatin1String("name"), name);
-        preset.insert(QLatin1String("exportString"), encodeWheelCode(wheel, gems, wheel.vocation - 1));
+        preset.insert(QLatin1String("exportString"), encodeWheelCode(wheel));
         presets.append(preset);
     }
     json.insert(QLatin1String("presets"), presets);
@@ -94,16 +61,12 @@ void TSkillWheelStorage::fromJson(const QJsonObject& json)
             qDebug() << "Skipped Preset with insufficient data";
             continue;
         }
-        const std::optional<TWheelCode> decoded = decodeWheelCode(code);
+        const std::optional<TWheel> decoded = decodeWheelCode(code);
         if (!decoded || !isValidWheelCode(*decoded)) {
             qDebug() << "Skipped invalid Preset " << name;
             continue;
         }
-        TWheel wheel;
-        wheel.vocation = decoded->vocationIndex + 1;
-        wheel.points = decoded->points;
-        wheel.gemMods = decoded->gems;
-        m_presets.insert_or_assign(name, wheel);
+        m_presets.insert_or_assign(name, *decoded);
     }
 }
 
@@ -215,18 +178,21 @@ void TSkillWheelStorage::clearServerData()
     Q_EMIT serverSkillWheelChanged();
 }
 
+/// A gem of the current wheel whose id is in the new inventory with other mods leaves its vessel; a
+/// gem that is not in the inventory stays.
 void TSkillWheelStorage::setGemInventory(std::vector<TGem> gems)
 {
-    const std::vector<TGem> previous = std::exchange(m_gemInventory, std::move(gems));
+    m_gemInventory = std::move(gems);
     if (m_currentSkillWheel) {
         for (int vessel = 0; vessel < VesselCount; ++vessel) {
-            int& socketed = m_currentSkillWheel->gems[vessel];
-            if (socketed == NoGem)
+            const std::optional<TGem>& socketed = m_currentSkillWheel->vessels[vessel];
+            if (!socketed)
                 continue;
-            const auto now = std::ranges::find_if(m_gemInventory, [socketed](const TGem& g) { return g.id == socketed; });
-            const auto before = std::ranges::find_if(previous, [socketed](const TGem& g) { return g.id == socketed; });
-            if (now == m_gemInventory.end() || (before != previous.end() && !sameMods(*before, *now)))
-                socketed = NoGem;
+            const auto now = std::ranges::find_if(m_gemInventory, [&](const TGem& g) {
+                return static_cast<uint16_t>(g.id) == static_cast<uint16_t>(socketed->id);
+            });
+            if (now != m_gemInventory.end() && !sameMods(*now, *socketed))
+                unsocketGem(*m_currentSkillWheel, vessel);
         }
     }
     Q_EMIT gemInventoryChanged();

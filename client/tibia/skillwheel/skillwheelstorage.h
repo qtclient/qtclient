@@ -87,7 +87,7 @@ public:
     void clearServerData();
 
     const std::vector<TGem>& gemInventory() const { return m_gemInventory; }
-    /// Gems of the current wheel that left the inventory or changed are taken out of their vessel.
+    /// A gem of the current wheel whose id comes back with other mods leaves its vessel.
     void setGemInventory(std::vector<TGem> gems);
     std::optional<TGem> gem(int id) const;
     /// The inventory gem with the id and mods of `gem`, else the first with its mods.
