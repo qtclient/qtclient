@@ -1009,10 +1009,8 @@ int main(int argc, char** argv)
     optionsDialog.setPortalBase(env.loginBase);
     qInfo("tibia.boot: after OptionsMenuDialog");
     input::TOpenWebsiteGameActionHandler openWebsiteActions(env);
-    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [&optionsDialog](const input::TGameAction& action) {
-        optionsDialog.open(action.parameter);
-        return true;
-    });
+    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG,
+                            [&optionsDialog](const input::TGameAction& action) { return optionsDialog.handleGameAction(action); });
     gamewindow::TFPSLatencyIndicatorController fpsLatency;
     fpsLatency.setWindow(window);
     fpsLatency.setFrameDurations(gameClient.frameDurations());
