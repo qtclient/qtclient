@@ -160,8 +160,17 @@ public:
     void outfitPresetsRenameIndex(int Index) override;
     void copyToClipboard(QObject* pData) override;
     QObject* createFromClipboard() override;
+    void onPresetNameEntered(const QString& PlayerName);
+    bool showOutfit() const override;
+    bool showSocket() const override;
+    cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::ECreatureLookDirection direction() const override;
+    bool isMounted() const override;
+    QVariantMap initialDialogProperties() const override;
 
 private:
+    /// The presets the dialog mode edits, null when it edits none.
+    QJsonArray* presetList();
+    const QJsonArray* presetList() const;
     QString presetsFilePath() const;
     void loadPresets();
     void savePresets();
@@ -178,6 +187,7 @@ private:
     int m_renameIndex = -1;
     quint32 m_characterId = 0;
     QJsonArray m_presetArray;
+    QJsonArray m_showOffPresetArray;
     WindowOptions m_windowOptions;
 };
 

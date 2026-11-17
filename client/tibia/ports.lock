@@ -2167,8 +2167,14 @@ gamewindow::TSelectObjectAmountDialogController::setCurrentAmount	69784c2e784090
 gamewindow::TSelectObjectAmountDialogController::v14	ea00d18cfdc6a90c	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::finish
 gamewindow::TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController	c3acb35dca5ad564	skip	generated: compiler-generated destructor pair
 gamewindow::TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController_deleting	11f3a82c0fca53d0	skip	generated: compiler-generated destructor pair
+gamewindow::TSelectOutfitDialogController::dialogModeChanged	bd44ab798511a17a	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::showOutfit
 gamewindow::TSelectOutfitDialogController::onCancelClicked	21e4e90e3f186cdf	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onCancelClicked
+gamewindow::TSelectOutfitDialogController::onCharacterPresetsChanged	ab71208f2a29dc17	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onCharacterPresetsChanged
 gamewindow::TSelectOutfitDialogController::onClickedOpenStoreOffer	4ebb51438964f09b	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onClickedOpenStoreOffer
+gamewindow::TSelectOutfitDialogController::onControllerFinished	ce2e250a405de73c	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::showSocket
+gamewindow::TSelectOutfitDialogController::onPresetNameEntered	92e6fb0276bde361	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onPresetNameEntered
+gamewindow::TSelectOutfitDialogController::outfitPresetsSaveIndex	a9f51ebc74a17ee5	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsSaveIndex
+gamewindow::TSelectOutfitDialogController::v21	ea8ba2dac1437926	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::initialDialogProperties
 gamewindow::TSelectOutfitDialogController::~TSelectOutfitDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TSelectOutfitDialogController::~TSelectOutfitDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TServerModalDialogController::~TServerModalDialogController	9f5e03b35ae7fb00	skip	generated: compiler-generated destructor pair
@@ -4334,6 +4340,7 @@ sub_0ba4adbde157#2	0ba4adbde1574163	ported	gamewindow/housesinfodialogcontroller
 sub_0ba4adbde157#3	0ba4adbde1574163	ported	gamewindow/housesinfodialogcontroller.cpp:THousSortOption::THousSortOption
 sub_0ba4adbde157#4	0ba4adbde1574163	ported	gamewindow/housesinfodialogcontroller.cpp:THousSortOption::THousSortOption
 sub_0bafa42ab9c9	0bafa42ab9c9bfa7	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::onClickedShowMyPlaceButton
+sub_0bb9409d9b8e	0bb9409d9b8ec2c5	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsDeleteIndex
 sub_0bbf4e03b4d3	0bbf4e03b4d38f5f	skip	library: std::sort template over the event entries
 sub_0bbf4e03b4d3#2	0bbf4e03b4d38f5f	skip	library: std::sort internals
 sub_0bbf4e03b4d3#3	0bbf4e03b4d38f5f	skip	library: std::sort instantiation (introsort/insertion helpers)
@@ -4378,6 +4385,7 @@ sub_0dbe628bd7ce	0dbe628bd7cee5da	skip	data: translation-unit static initializer
 sub_0dc43822dcd0	0dc43822dcd00636	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onBossTrackerWidgetClosed
 sub_0ddea2b23f19	0ddea2b23f19a5cd	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::addHighlight
 sub_0deb613ee42b	0deb613ee42b4e36	ported	gamewindow/remainingdialogs.cpp:TShowImageDialogController::setData
+sub_0dfa45fa9101	0dfa45fa91017b2e	skip	library: libc++ std::vector destroy (library)
 sub_0e01ce10f87a	0e01ce10f87a6a35	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::isRunning	test=tests/client/sharednet_test.cpp
 sub_0e132af83ef5	0e132af83ef5e4b1	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
 sub_0e45754cb40a	0e45754cb40a7554	skip	library: nlohmann::json from_json number/string conversion (third-party template)
@@ -4734,11 +4742,13 @@ sub_19ac14c92f55	19ac14c92f559a08	inlined	gamewindow/depotsearchwidgetcontroller
 sub_19ad2a1e062b	19ad2a1e062b96c9	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::collectableReward
 sub_19ad976eb551	19ad976eb5519fb3	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::~TZlibInflateWrapper
 sub_19bf31286b6d	19bf31286b6dbc81	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::updateExtent
+sub_19d19487efd0	19d19487efd0d2ad	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onCharacterPresetsChanged
 sub_19d2423bb5a0	19d2423bb5a0e8cc	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_19f430833703#2	19f430833703fc99	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_19f430833703#4	19f430833703fc99	ported	gamewindow/actionbarcontroller.h:actionBarCount
 sub_1a0bb25777c8	1a0bb25777c8766d	ported	gamewindow/containercontroller.cpp:TContainerController::refreshViewOptions
 sub_1a0dc03cf9ff	1a0dc03cf9ff3ed1	ported	gamewindow/cyclopediadialogcontroller.h:TCyclopediaDialogController::backPossible
+sub_1a10d877acd7	1a10d877acd70bbe	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onCharacterPresetsChanged
 sub_1a11a1bb7375	1a11a1bb7375fd7e	skip	library: std::sort instantiation (library)
 sub_1a259fbec307	1a259fbec3073768	inlined	gamewindow/deathdialogcontroller.cpp:TDeathDialogController::showDeadMessage
 sub_1a33e8ae8ad8	1a33e8ae8ad81ef0	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onMessageDialogDiscardClicked
@@ -5819,6 +5829,7 @@ sub_3fb3be6c48e6	3fb3be6c48e698ee	skip	library: std::vector growth / copy / leng
 sub_3fbbda5b1746	3fbbda5b17467083	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handlePickFilterBasic
 sub_3ffb16904a27	3ffb16904a27fe6d	tested	animation/animationinfo.h:TAnimationInfo::finish	test=tests/client/phaseanimator_test.cpp
 sub_4002baf20d36	4002baf20d36ded0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::cosmeticTokenCount
+sub_40075913b158	40075913b158346b	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsSaveIndex
 sub_401b5224a7a3	401b5224a7a38907	skip	generated: compiler-generated destructor pair
 sub_402a20562f3a	402a20562f3ade78	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::tooltipRows
 sub_40333a4e2c31	40333a4e2c315f2b	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onInventoryOptionsChanged
@@ -5895,6 +5906,7 @@ sub_42188ede457f#156	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTr
 sub_42188ede457f#158	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_42188ede457f#160	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_42188ede457f#82	42188ede457ffefa	skip	generated: protobuf-generated message constructor
+sub_421e0156b657	421e0156b6573012	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onPresetNameEntered
 sub_421f1d98e578	421f1d98e578704c	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onFeaturedOfferClicked
 sub_42239925d4d1	42239925d4d13834	inlined	proficiency/proficiencystorage.cpp:TProficiencyStorage::setProficiencyData
 sub_422c82d728d1	422c82d728d136f5	ported	gamewindow/containercontroller.cpp:TContainerController::moveContentToManagedContainers
@@ -6761,6 +6773,7 @@ sub_5f23d8b0d37d	5f23d8b0d37d97b1	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_5f2ebaa414cf	5f2ebaa414cf606d	ported	config/sidebaroptions.cpp:parseNpcTrade
 sub_5f386a732801	5f386a732801a7c9	skip	library: libc++ std::vector instantiation
 sub_5f517397b5cc	5f517397b5cc45bb	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::cancel
+sub_5f5591acad10	5f5591acad10e465	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::isMounted
 sub_5f570e7b3d02	5f570e7b3d02703c	ported	gamewindow/createcharacterdialogcontroller.cpp:WorldSelectionModel::WorldSelectionModel
 sub_5f5a14fb6d1b	5f5a14fb6d1ba65c	skip	generated: compiler-generated destructor
 sub_5f642b92a3a6	5f642b92a3a6daa4	ported	skillwheel/skillwheeldata.cpp:stageValues
@@ -7319,6 +7332,7 @@ sub_77844d44d3f1	77844d44d3f184c5	inlined	friends/friendsciptypes.cpp:TFriendsPr
 sub_77844d44d3f1#2	77844d44d3f184c5	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_778795d2f340	778795d2f34038ad	ported	gamewindow/remainingdialogs.cpp:TCrashReportDialogController::TCrashReportDialogController
 sub_7794ab98bfd6	7794ab98bfd6d1fd	skip	generated: compiler-generated destructor pair
+sub_77a07bc9faa8	77a07bc9faa8c040	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsRenameIndex
 sub_77a42b987e30#4	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
 sub_77a42b987e30#7	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
 sub_77a42b987e30#8	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
@@ -8076,6 +8090,7 @@ sub_8d4596895379	8d45968953791afc	ported	gamewindow/createaccountdialogcontrolle
 sub_8d5489db382e	8d5489db382ea1ed	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_8d5e136b4322	8d5e136b43224ea5	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::reset	test=tests/client/sharednet_test.cpp
 sub_8d64c2976730	8d64c2976730ad8b	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onInspectObjectDataReceived
+sub_8d7a8e36e8e0	8d7a8e36e8e0c274	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onPresetNameEntered
 sub_8d80c76f3a94	8d80c76f3a948e25	skip	library: miniaudio library
 sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 sub_8db954679786	8db954679786c36a	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
@@ -8170,6 +8185,7 @@ sub_91b7d0822caf#2	91b7d0822caf3a72	ported	app/bootstrap.cpp:configureProcess
 sub_91bc601f7574	91bc601f75743351	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_91d2393fc5a3	91d2393fc5a3a272	skip	library: std::sort instantiation over achievements (library)
 sub_91daccf4b821	91daccf4b821bf09	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::updateHoverCursor
+sub_91db50ffdb30	91db50ffdb30576e	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsDeleteIndex
 sub_91ded1ba0ffa	91ded1ba0ffafe87	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::handleGameAction
 sub_91ee406a731d	91ee406a731dbcc0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::centerToPlayer
 sub_920373fe92c1	920373fe92c16b15	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::refresh
@@ -9148,6 +9164,7 @@ sub_b5e1d5998879	b5e1d5998879605b	ported	exivaoptions/exivaoptionsstorage.cpp:TE
 sub_b5f1ecb9c2fe	b5f1ecb9c2fed891	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setLeaderId
 sub_b60ba77a3158	b60ba77a31589617	skip	library: std::vector copy / growth of store records (library)
 sub_b60db259bb83	b60db259bb8394c4	skip	library: SFML/miniaudio library helper, only called from library code
+sub_b61dc6cc22b7	b61dc6cc22b717d0	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::copyToClipboard
 sub_b654a4929b4e	b654a4929b4e56d1	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::bonusPointsOnUnlockString
 sub_b667e64b4e80	b667e64b4e80715f	skip	library: QMap<QUrl, QVariant> template code
 sub_b66df66a794b	b66df66a794b8d4f	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
@@ -9759,6 +9776,7 @@ sub_c58f9b402e0a#8	c58f9b402e0a8814	inlined	gamewindow/housesinfodialogcontrolle
 sub_c58f9b402e0a#9	c58f9b402e0a8814	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c59b3a99bb13	c59b3a99bb13773b	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::setEntriesPerPage	test=tests/client/sharednet_test.cpp
 sub_c59cc959b013	c59cc959b0133a82	ported	gamewindow/containercontroller.cpp:TContainerController::moveContentToManagedContainers
+sub_c5ad3a655a40	c5ad3a655a405acc	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::createFromClipboard
 sub_c5e16530679f	c5e16530679f1877	ported	gamewindow/marketcontroller.cpp:TMarketController::onActiveOfferCountChanged
 sub_c5e6e8c043d6	c5e6e8c043d64426	inlined	quickloot/quicklootciptypes.cpp:isObjectCategory
 sub_c5e6e8c043d6#2	c5e6e8c043d64426	inlined	quickloot/quicklootciptypes.cpp:isObjectCategory
@@ -10042,6 +10060,7 @@ sub_cf86c8b7b474	cf86c8b7b474d6ed	skip	library: std library template (vector pus
 sub_cf9ccbb0da04	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cf9ccbb0da04#2	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cfac87bf58fa	cfac87bf58fa9e1f	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationResultDialogController::TExaltationResultDialogController
+sub_cfb7c5d1773e	cfb7c5d1773e09fe	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsDeleteIndex
 sub_cfd33341d625	cfd33341d625a304	ported	gamewindow/monsterdialogcontroller.cpp:TQmlLootOfRarity::lootRows
 sub_cfe79a673c77#2	cfe79a673c77cc68	skip	generated: moc signal emitter
 sub_d0304d7bc415	d0304d7bc415b438	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
@@ -11008,6 +11027,7 @@ sub_f1aee9e48f3b	f1aee9e48f3b0799	ported	teamfinder/teamfinderciptypes.cpp:numbe
 sub_f1c9bfcb99e9	f1c9bfcb99e9bac9	ported	proficiency/weaponproficiencydialogcontroller.cpp:TQmlWeaponTypes::anyWeaponIdentifier
 sub_f1fa4c4b67a0	f1fa4c4b67a0aa6c	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:toStringList
 sub_f1fa4c4b67a0#2	f1fa4c4b67a0aa6c	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:toStringList
+sub_f221c4908bae	f221c4908baee9b8	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsSaveIndex
 sub_f221f6c4a758	f221f6c4a7580589	ported	shared/src/launcherutils.cpp:TLauncherUtils::hasLocalIPv4
 sub_f23ba582127e	f23ba582127e5cef	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setCategories
 sub_f23eb3024ce5	f23eb3024ce596b3	skip	generated: moc signal bodies paginationDataChanged / sourceModelChanged
@@ -11132,6 +11152,7 @@ sub_f4f7b9c8a92a	f4f7b9c8a92a14ca	skip	generated: moc property getter, provided 
 sub_f51466cc8731	f51466cc8731436d	skip	generated: compiler-generated destructor pair
 sub_f51ca78d9816	f51ca78d981662b9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::placeWidget
 sub_f520d90d5790	f520d90d5790d09a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
+sub_f583ecb67b67	f583ecb67b67fe4a	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::direction
 sub_f58ad2d66834	f58ad2d668348c01	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbilityIconUrl
 sub_f5b999c169aa	f5b999c169aa3cc8	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_f5bf0982e5bb	f5bf0982e5bb7baf	skip	library: libc++ std::sort/stable_sort helpers instantiated with a title name comparator
