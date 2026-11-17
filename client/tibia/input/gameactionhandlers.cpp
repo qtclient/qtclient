@@ -561,12 +561,9 @@ void publish(const TGameActionPtr& action)
         setLenshelp(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
-        // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.
-        if (QObject* field = focusedTextField()) {
-            if (QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection))
-                break;
-        }
-        publish(makeAction(A::CHAT_CHANNEL_SELECT_ALL));
+        // The chat controller handles its own input and output (it listens too).
+        if (QObject* field = focusedTextField())
+            QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection);
         break;
     case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
     case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:

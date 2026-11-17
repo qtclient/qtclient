@@ -632,6 +632,11 @@ void TChatChannelController::selectAll()
     updateSelection(0, m_rows.front().plainLength);
 }
 
+void TChatChannelController::copySelectionToClipboard()
+{
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
+}
+
 void TChatChannelController::selectTextPassage(const int entryIndex, const int passageStart, const int passageEnd)
 {
     if (entryIndex < 0 || entryIndex >= rowCount())
@@ -1096,19 +1101,18 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
         input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
     }
 
-    // CipSoft: Ctrl/Cmd+C copies chat-output selection when present (TextEdits
-    // are not focusable — clipboard handler alone would only see chat input).
-    m_copySelectionListenerId = input::addActionListener(
-        A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::TGameAction&) {
-            QString text = m_primary.selectedText();
-            if (text.isEmpty())
-                text = m_secondary.selectedText();
-            if (text.isEmpty())
-                return false;
-            if (QClipboard* clip = QGuiApplication::clipboard())
-                clip->setText(text);
-            return true;
-        });
+    // Every handler sees these actions; the chat acts unless the NPC dialog
+    // holds the keyboard.
+    m_copySelectionListenerId = input::addActionListener(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::TGameAction&) {
+        if (!m_npcDialog || !m_npcDialog->hasFocus())
+            copySelectedText();
+        return false;
+    });
+    m_selectAllListenerId = input::addActionListener(A::REQUEST_SELECT_ALL_TEXT, [this](const input::TGameAction&) {
+        if (!m_npcDialog || !m_npcDialog->hasFocus())
+            selectAllText();
+        return false;
+    });
 
     m_primary.setChannel(m_tabs.currentChannel());
     bindItem();
@@ -1118,6 +1122,8 @@ TChatController::~TChatController()
 {
     if (m_copySelectionListenerId)
         input::removeActionListener(m_copySelectionListenerId);
+    if (m_selectAllListenerId)
+        input::removeActionListener(m_selectAllListenerId);
     for (const A type : HandledActions) {
         input::setActionHandler(type, nullptr);
     }
@@ -1868,6 +1874,33 @@ bool TChatController::handleAction(const input::TGameAction& action)
     default:
         return false;
     }
+}
+
+void TChatController::selectAllText()
+{
+    if (!m_chatItem || !m_chatItem->property("keepChatInputFocus").toBool())
+        return;
+    if (m_chatItem->property("currentChatInput").toString().isEmpty()) {
+        m_primary.selectAll();
+        return;
+    }
+    m_primary.startNewSelection(0, 0);
+    QMetaObject::invokeMethod(m_chatItem, "selectAllChatInput");
+}
+
+void TChatController::copySelectedText()
+{
+    if (!m_chatItem)
+        return;
+    const QString inputSelection = m_chatItem->property("currentChatInputSelectedText").toString();
+    if (!inputSelection.isEmpty()) {
+        input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(inputSelection));
+        return;
+    }
+    if (m_primary.hasSelection())
+        m_primary.copySelectionToClipboard();
+    else if (m_secondary.hasSelection())
+        m_secondary.copySelectionToClipboard();
 }
 
 void TChatController::showEntryMenu(TChatChannelController* model, const int row, const int button, const int modifiers)

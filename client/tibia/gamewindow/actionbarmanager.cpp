@@ -152,7 +152,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         TActionBarController* target = bar(action.actionBarId > 0 ? action.actionBarId : 1);
         if (!target)
             return true;
-        openSpellDialogFor(target, action.actionButtonId, action.multiActionIndex, action.parameter);
+        target->openSpellDialog(action.actionButtonId, action.multiActionIndex, action.parameter);
         return true;
     });
     input::setActionHandler(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
@@ -311,34 +311,6 @@ void TActionBarManager::showMessage(const QString& text)
     publishMessage(text);
 }
 
-void TActionBarManager::openAssignDialog(TActionBarController* bar, const TActionBarController::EAssignKind kind, const int buttonId,
-                                         const int multiActionIndex)
-{
-    TDialog* dialog = nullptr;
-    switch (kind) {
-    case TActionBarController::ASSIGN_SPELL:
-        dialog = (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, 0, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_OBJECT:
-        dialog = (new TAssignObjectActionDialogController(bar, buttonId, multiActionIndex, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_TEXT:
-        dialog = (new TAssignTextActionDialogController(bar, buttonId, multiActionIndex, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_PASSIVE_ABILITY:
-        dialog = (new TAssignPassiveAbilityActionDialogController(bar, buttonId, this))->dialog();
-        break;
-    }
-    if (dialog)
-        dialog->show();
-}
-
-void TActionBarManager::editHotkey(TActionBarController* bar, const int buttonId)
-{
-    auto* controller = new TRecordKeyboardShortcutDialogController(bar->actionBarId(), buttonId, chatOn(), this);
-    controller->dialog()->show();
-}
-
 config::EUseType TActionBarManager::defaultUseType(const int objectId)
 {
     const ThingTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
@@ -347,31 +319,6 @@ config::EUseType TActionBarManager::defaultUseType(const int objectId)
     if ((type->isCloth() || type->getClothSlot() > 0) && !type->isMultiUse())
         return config::EUseType::Equip;
     return type->isMultiUse() ? config::EUseType::SelectUseTarget : config::EUseType::Use;
-}
-
-void TActionBarManager::assignDroppedObject(TActionBarController* bar, const int buttonId, const int multiActionIndex,
-                                            const uint16_t typeId, const uint8_t tier, const bool alt)
-{
-    if (typeId == 0)
-        return;
-    if (alt) {
-        auto* controller = new TAssignObjectActionDialogController(bar, buttonId, multiActionIndex, this);
-        controller->setObject(typeId, tier);
-        controller->dialog()->show();
-        return;
-    }
-    Setting setting;
-    setting.kind = Setting::OBJECT;
-    setting.objectId = typeId;
-    setting.useType = defaultUseType(typeId);
-    if (tier)
-        setting.upgradeTier = tier;
-    bar->assign(buttonId, multiActionIndex, setting);
-}
-
-void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int buttonId, const int multiActionIndex, const int spellId)
-{
-    (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, spellId, this))->dialog()->show();
 }
 
 bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action)

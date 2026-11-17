@@ -186,6 +186,10 @@ if(TIBIA_QML_DISK)
     TIBIA_QML_MOD_DIR="${_qml_mod_dirs}"
     TIBIA_QML_OVERRIDES_DIR="${_qml_override_dirs}")
 endif()
+if(APPLE AND NOT EMSCRIPTEN)
+  # Carbon: the Caps Lock state (GetCurrentKeyModifiers).
+  target_link_libraries(tibia PRIVATE "-framework Carbon")
+endif()
 if(WIN32)
   # NOMINMAX: windows.h otherwise macros min/max. Full SDK include order and
   # rpcndr cleanup live in framework/win32_platform.h (via pch / compiler.h).
@@ -355,6 +359,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
     gamewindow/chatchanneltabrenderinfo.cpp gamewindow/chatchanneltabrenderinfo.h
     gamewindow/chatchannelfiltercontroller.cpp gamewindow/chatchannelfiltercontroller.h
+    gamewindow/capslockstate.cpp gamewindow/capslockstate.h
     creatures/attachedeffect.cpp creatures/attachedeffect.h
     creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
     creatures/movementtweens.cpp creatures/movementtweens.h

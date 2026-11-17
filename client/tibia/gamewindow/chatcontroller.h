@@ -70,6 +70,8 @@ public:
     /// The selected text, oldest line first.
     QString selectedText() const;
     bool hasSelection() const;
+    /// Publishes the selected text for the clipboard.
+    void copySelectionToClipboard();
 
     int rowCount(const QModelIndex& parent = {}) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
@@ -344,6 +346,12 @@ private:
     void sendPrivate(const QString& recipient, const QString& text, bool gamemaster);
 
     void showEntryMenu(TChatChannelController* model, int row, int button, int modifiers);
+    /// REQUEST_SELECT_ALL_TEXT: with the chat input holding the keyboard, an
+    /// empty input selects the primary channel, otherwise the input's text.
+    void selectAllText();
+    /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection first,
+    /// then the primary channel's, then the secondary one's.
+    void copySelectedText();
     void showTabMenu(chat::TChatChannel* channel, int button, int modifiers);
     void showMenu(const input::TGameActionList& candidates, std::span<const input::EGameAction> order, int context, int button,
                   int modifiers, TChatChannelController* model, chat::TChatChannel* channel);
@@ -390,6 +398,7 @@ private:
     QPointer<TNpcDialogController> m_npcDialog;
     /// Cmd/Ctrl+C while chat output has a selection (CipSoft).
     int m_copySelectionListenerId = 0;
+    int m_selectAllListenerId = 0;
 };
 
 }
