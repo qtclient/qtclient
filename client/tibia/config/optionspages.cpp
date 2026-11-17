@@ -1215,7 +1215,7 @@ void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
 
 namespace {
 
-/// CIP's hotkeys page sort (sub_86af86e21bc5): custom settings first, by first
+/// CIP's hotkeys page sort: custom settings first, by first
 /// then second key (rows without keys last), then the action buttons, then the
 /// other static actions, both by description.
 bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
@@ -1251,7 +1251,7 @@ bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
 
 }
 
-/// CIP sub_b4d112292d2a / sub_4ca9c7597cbe: a row per static action (its first
+/// CIP's row builder: a row per static action (its first
 /// two keys of the current set and chat mode), then a row per other setting
 /// (a second binding of the same setting gives it its second key), sorted.
 void THotkeysOptionsPage::rebuildModel()

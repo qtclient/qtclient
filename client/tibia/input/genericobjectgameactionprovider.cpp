@@ -150,7 +150,7 @@ IGameActionPtr TGenericObjectGameActionProvider::openCyclopediaAction(const uint
 
 namespace {
 
-/// CIP's loot corpse (sub_85bb787de76f): a container corpse that is not a
+/// CIP's loot corpse: a container corpse that is not a
 /// player's, of the object bank.
 bool isLootCorpse(const ThingType* type)
 {
