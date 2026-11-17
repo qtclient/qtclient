@@ -466,24 +466,14 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionActionButtonTriggered>();
     case EGameAction::SMART_CLICK:
         return std::make_shared<TGameActionSmartClick>();
-    case EGameAction::ADD_GUI_TUTORIAL_MARKER:
-        return std::make_shared<TGameActionAddGUITutorialMarker>();
-    case EGameAction::ADD_HINT_AT_TUTORIAL_MARKER:
-        return std::make_shared<TGameActionAddHintAtTutorialMarker>();
-    case EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER:
-        return std::make_shared<TGameActionAddMouseTrailHintAtTutorialMarker>();
     case EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON:
         return std::make_shared<TGameActionAssignSpellToActionButton>();
     case EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE:
         return std::make_shared<TGameActionChangeAutoPreyExtendType>();
-    case EGameAction::CHANGE_CONTEXT_MENU_ENABLED:
-        return std::make_shared<TGameActionChangeContextMenuEnabled>();
     case EGameAction::CHANGE_QUESTTRACKER_OPTIONS:
         return std::make_shared<TGameActionChangeQuesttrackerOptions>();
     case EGameAction::CHANGE_TRACKED_QUESTFLAGS:
         return std::make_shared<TGameActionChangeTrackedQuestFlags>();
-    case EGameAction::CHANGE_TUTORIAL_MODE_ENABLED:
-        return std::make_shared<TGameActionChangeTutorialModeEnabled>();
     case EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM:
         return std::make_shared<TGameActionCyclopediaMapSelectionItem>();
     case EGameAction::DEPOT_SERACH_RETRIEVE:
@@ -522,10 +512,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSelectPreyMonsterFromBestiary>();
     case EGameAction::PREY_SELECT_MONSTER_FROM_LIST:
         return std::make_shared<TGameActionSelectPreyMonsterFromList>();
-    case EGameAction::SESSIONDUMP_SKIP_TO:
-        return std::make_shared<TGameActionSessiondumpSkipTo>();
-    case EGameAction::SESSIONDUMP_START:
-        return std::make_shared<TGameActionSessiondumpStart>();
     case EGameAction::SET_CREATURE_PODIUM_CONFIGURATION:
         return std::make_shared<TGameActionSetCreaturePodiumConfiguration>();
     case EGameAction::SET_HIRELING_NAME:
@@ -542,8 +528,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionShowExaltationResultDialog>();
     case EGameAction::SHOW_SPLIT_STACK_DIALOG:
         return std::make_shared<TGameActionShowSplitStackDialog>();
-    case EGameAction::SHOW_TUTORIAL_HINT:
-        return std::make_shared<TGameActionShowTutorialHint>();
     case EGameAction::SPRITE_RESOLVED:
         return std::make_shared<TGameActionSpriteResolved>();
     case EGameAction::STASH_OPEN_RETRIEVE_DIALOG:
@@ -566,10 +550,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionTeleportToCoordinate>();
     case EGameAction::TRY_TO_EQUIP:
         return std::make_shared<TGameActionTryToEquip>();
-    case EGameAction::CONFIRM_TUTORIAL_HINT:
-        return std::make_shared<TGameActionTutorialHintConfirmed>();
-    case EGameAction::TUTORIAL_PROGRESS:
-        return std::make_shared<TGameActionTutorialProgress>();
     case EGameAction::USE_ON_CREATURE:
         return std::make_shared<TGameActionUseOnCreature>();
     case EGameAction::USE_ON_TARGET:
@@ -596,8 +576,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<gameactions::TSelectAtelierGemGameAction>();
     case EGameAction::FRAGMENT_WORKSHOP_SELECT_MOD:
         return std::make_shared<gameactions::TSelectFragmentWorkshopModGameAction>();
-    case EGameAction::FINISHED_TUTORIAL_FOR_CHARACTER:
-        return std::make_shared<TGameActionFinishedTutorialForCharacter>();
     case EGameAction::OPEN_CYCLOPEDIA:
     case EGameAction::LENSHELP_SHOW:
     case EGameAction::SOUND_TRIGGER:

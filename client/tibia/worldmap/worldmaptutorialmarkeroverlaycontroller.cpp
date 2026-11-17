@@ -104,28 +104,16 @@ void TWorldMapTutorialMarkerOverlayController::update()
     }
 }
 
-void TWorldMapTutorialMarkerOverlayController::handleGameAction(const input::TGameActionPtr& action)
+void TWorldMapTutorialMarkerOverlayController::addGuiMarker(const input::TGameActionAddGUITutorialMarker& action)
 {
-    if (!action)
-        return;
-    if (action->type == input::EGameAction::REMOVE_ALL_TUTORIAL_MARKERS) {
-        removeAllMarkers();
-        return;
-    }
-    if (action->type == input::EGameAction::ADD_GUI_TUTORIAL_MARKER)
-        addGuiMarker(*action);
-}
-
-void TWorldMapTutorialMarkerOverlayController::addGuiMarker(const input::TGameAction& action)
-{
-    int markerId = action.parameter;
+    int markerId = action.markerId();
     if (markerId <= 0) {
         if (qmlcomponents::TTutorialHelperQmlService* helper = qmlcomponents::TTutorialHelperQmlService::instance())
             markerId = helper->nextUniqueTutorialMarkerID();
         else
             markerId = 1;
     }
-    ensureMarker(markerId, action.position, action.creatureId);
+    ensureMarker(markerId, action.position(), action.creatureId());
     update();
 }
 

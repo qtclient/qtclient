@@ -223,8 +223,8 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
     connect(&m_discardKeys, &input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::escapePressed, this,
             &TContextMenuController::onRequestClose);
 
-    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameAction& action) {
-        setEnabled(action.enable);
+    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameActionChangeContextMenuEnabled& action) {
+        setEnabled(action.enabled());
         return true;
     });
 }

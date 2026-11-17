@@ -37,6 +37,8 @@ public:
     Q_INVOKABLE QQuickItem* mapWindowPane() override;
 
 private:
+    /// The hint shown (CONFIRM_TUTORIAL_HINT carries it).
+    int m_tutorialHintId = 0;
     void emitDisplay();
 };
 

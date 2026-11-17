@@ -10,6 +10,7 @@
 #include <QJsonDocument>
 #include <QRectF>
 #include <QString>
+#include <QUrl>
 
 #include <cstdint>
 #include <initializer_list>
@@ -1887,6 +1888,172 @@ public:
     bool useMainContainerAsFallback() const { return m_value; }
 };
 
+
+// ---------------------------------------------------------------------------
+// Tutorial, session dumps
+
+/// CIP input::TGameActionShowTutorialHint (SHOW_TUTORIAL_HINT).
+class TGameActionShowTutorialHint final : public TGameActionWithValue<EGameAction::SHOW_TUTORIAL_HINT, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int tutorialHintId() const { return m_value; }
+};
+
+/// CIP input::TGameActionTutorialHintConfirmed (CONFIRM_TUTORIAL_HINT).
+class TGameActionTutorialHintConfirmed final : public TGameActionWithValue<EGameAction::CONFIRM_TUTORIAL_HINT, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int tutorialHintId() const { return m_value; }
+};
+
+/// CIP input::TGameActionTutorialProgress (TUTORIAL_PROGRESS).
+class TGameActionTutorialProgress final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionTutorialProgress(QString tutorialProgress)
+        : TGameActionSimple(EGameAction::TUTORIAL_PROGRESS)
+        , m_tutorialProgress(std::move(tutorialProgress))
+    {
+    }
+    const QString& tutorialProgress() const { return m_tutorialProgress; }
+
+private:
+    QString m_tutorialProgress;
+};
+
+/// CIP input::TGameActionFinishedTutorialForCharacter (FINISHED_TUTORIAL_FOR_CHARACTER).
+class TGameActionFinishedTutorialForCharacter final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionFinishedTutorialForCharacter(QString characterName)
+        : TGameActionSimple(EGameAction::FINISHED_TUTORIAL_FOR_CHARACTER)
+        , m_characterName(std::move(characterName))
+    {
+    }
+    const QString& characterName() const { return m_characterName; }
+
+private:
+    QString m_characterName;
+};
+
+/// CIP input::TGameActionChangeTutorialModeEnabled (CHANGE_TUTORIAL_MODE_ENABLED).
+class TGameActionChangeTutorialModeEnabled final : public TGameActionWithValue<EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    bool enabled() const { return m_value; }
+};
+
+/// CIP input::TGameActionChangeContextMenuEnabled (CHANGE_CONTEXT_MENU_ENABLED).
+class TGameActionChangeContextMenuEnabled final : public TGameActionWithValue<EGameAction::CHANGE_CONTEXT_MENU_ENABLED, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    bool enabled() const { return m_value; }
+};
+
+/// CIP input::TGameActionSessiondumpSkipTo (SESSIONDUMP_SKIP_TO): the timestamp (+0x10).
+class TGameActionSessiondumpSkipTo final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionSessiondumpSkipTo(int64_t timestamp)
+        : TGameActionSimple(EGameAction::SESSIONDUMP_SKIP_TO)
+        , m_timestamp(timestamp)
+    {
+    }
+    int64_t timestamp() const { return m_timestamp; }
+
+private:
+    int64_t m_timestamp;
+};
+
+/// CIP input::TGameActionSessiondumpStart (SESSIONDUMP_START): the session dump to play.
+class TGameActionSessiondumpStart final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionSessiondumpStart(QUrl url)
+        : TGameActionSimple(EGameAction::SESSIONDUMP_START)
+        , m_url(std::move(url))
+    {
+    }
+    const QUrl& url() const { return m_url; }
+
+private:
+    QUrl m_url;
+};
+
+/// CIP input::TGameActionAddGUITutorialMarker (ADD_GUI_TUTORIAL_MARKER). qtclient
+/// carries the marker id, the field and the creature its world map overlay marks
+/// (CIP: an item reference and a rectangle; not read yet).
+class TGameActionAddGUITutorialMarker final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAddGUITutorialMarker(int markerId, const Position& position, uint32_t creatureId)
+        : TGameActionSimple(EGameAction::ADD_GUI_TUTORIAL_MARKER)
+        , m_markerId(markerId)
+        , m_position(position)
+        , m_creatureId(creatureId)
+    {
+    }
+    int markerId() const { return m_markerId; }
+    const Position& position() const { return m_position; }
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    int m_markerId;
+    Position m_position;
+    uint32_t m_creatureId;
+};
+
+/// CIP input::TGameActionAddHintAtTutorialMarker (ADD_HINT_AT_TUTORIAL_MARKER). qtclient
+/// carries the hint dialog's text, image and caption at a marker (CIP's hint struct is
+/// not read yet).
+class TGameActionAddHintAtTutorialMarker final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAddHintAtTutorialMarker(QString text, QString image, QString caption, int markerId)
+        : TGameActionSimple(EGameAction::ADD_HINT_AT_TUTORIAL_MARKER)
+        , m_text(std::move(text))
+        , m_image(std::move(image))
+        , m_caption(std::move(caption))
+        , m_markerId(markerId)
+    {
+    }
+    const QString& text() const { return m_text; }
+    const QString& image() const { return m_image; }
+    const QString& caption() const { return m_caption; }
+    int markerId() const { return m_markerId; }
+
+private:
+    QString m_text;
+    QString m_image;
+    QString m_caption;
+    int m_markerId;
+};
+
+/// CIP input::TGameActionAddMouseTrailHintAtTutorialMarker
+/// (ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER): three values at +0xc, +0x10, +0x14
+/// (CIP ctor order: +0x14, +0xc, +0x10; meaning not read yet).
+class TGameActionAddMouseTrailHintAtTutorialMarker final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAddMouseTrailHintAtTutorialMarker(int value14, int valueC, int value10)
+        : TGameActionSimple(EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER)
+        , m_valueC(valueC)
+        , m_value10(value10)
+        , m_value14(value14)
+    {
+    }
+    int markerId() const { return m_valueC; }
+
+private:
+    int m_valueC;
+    int m_value10;
+    int m_value14;
+};
+
 struct TGameAction;
 class IGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
@@ -2116,27 +2283,6 @@ public:
 };
 
 
-/// CIP input::TGameActionAddGUITutorialMarker .
-class TGameActionAddGUITutorialMarker final : public TGameAction
-{
-public:
-    TGameActionAddGUITutorialMarker() { type = EGameAction::ADD_GUI_TUTORIAL_MARKER; }
-};
-
-/// CIP input::TGameActionAddHintAtTutorialMarker .
-class TGameActionAddHintAtTutorialMarker final : public TGameAction
-{
-public:
-    TGameActionAddHintAtTutorialMarker() { type = EGameAction::ADD_HINT_AT_TUTORIAL_MARKER; }
-};
-
-/// CIP input::TGameActionAddMouseTrailHintAtTutorialMarker .
-class TGameActionAddMouseTrailHintAtTutorialMarker final : public TGameAction
-{
-public:
-    TGameActionAddMouseTrailHintAtTutorialMarker() { type = EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER; }
-};
-
 /// CIP input::TGameActionAssignSpellToActionButton .
 class TGameActionAssignSpellToActionButton final : public TGameAction
 {
@@ -2164,13 +2310,6 @@ public:
 };
 
 
-/// CIP input::TGameActionChangeContextMenuEnabled .
-class TGameActionChangeContextMenuEnabled final : public TGameAction
-{
-public:
-    TGameActionChangeContextMenuEnabled() { type = EGameAction::CHANGE_CONTEXT_MENU_ENABLED; }
-};
-
 /// CIP input::TGameActionChangeQuesttrackerOptions .
 class TGameActionChangeQuesttrackerOptions final : public TGameAction
 {
@@ -2183,13 +2322,6 @@ class TGameActionChangeTrackedQuestFlags final : public TGameAction
 {
 public:
     TGameActionChangeTrackedQuestFlags() { type = EGameAction::CHANGE_TRACKED_QUESTFLAGS; }
-};
-
-/// CIP input::TGameActionChangeTutorialModeEnabled .
-class TGameActionChangeTutorialModeEnabled final : public TGameAction
-{
-public:
-    TGameActionChangeTutorialModeEnabled() { type = EGameAction::CHANGE_TUTORIAL_MODE_ENABLED; }
 };
 
 
@@ -2232,13 +2364,6 @@ class TGameActionExaltationForgeTransfer final : public TGameAction
 {
 public:
     TGameActionExaltationForgeTransfer() { type = EGameAction::EXALTATION_FORGE_TRANSFER; }
-};
-
-/// CIP input::TGameActionFinishedTutorialForCharacter .
-class TGameActionFinishedTutorialForCharacter final : public TGameAction
-{
-public:
-    TGameActionFinishedTutorialForCharacter() { type = EGameAction::FINISHED_TUTORIAL_FOR_CHARACTER; }
 };
 
 
@@ -2354,18 +2479,6 @@ class TGameActionSelectPreyMonsterFromList final : public TGameAction
 public:
     TGameActionSelectPreyMonsterFromList() { type = EGameAction::PREY_SELECT_MONSTER_FROM_LIST; }
 };
-/// CIP input::TGameActionSessiondumpSkipTo .
-class TGameActionSessiondumpSkipTo final : public TGameAction
-{
-public:
-    TGameActionSessiondumpSkipTo() { type = EGameAction::SESSIONDUMP_SKIP_TO; }
-};
-/// CIP input::TGameActionSessiondumpStart .
-class TGameActionSessiondumpStart final : public TGameAction
-{
-public:
-    TGameActionSessiondumpStart() { type = EGameAction::SESSIONDUMP_START; }
-};
 /// CIP input::TGameActionSetCreaturePodiumConfiguration .
 class TGameActionSetCreaturePodiumConfiguration final : public TGameAction
 {
@@ -2416,12 +2529,6 @@ class TGameActionShowSplitStackDialog final : public TGameAction
 public:
     TGameActionShowSplitStackDialog() { type = EGameAction::SHOW_SPLIT_STACK_DIALOG; }
     TGameActionShowSplitStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionShowTutorialHint .
-class TGameActionShowTutorialHint final : public TGameAction
-{
-public:
-    TGameActionShowTutorialHint() { type = EGameAction::SHOW_TUTORIAL_HINT; }
 };
 /// CIP input::TGameActionSpriteResolved .
 class TGameActionSpriteResolved final : public TGameAction
@@ -2487,18 +2594,6 @@ class TGameActionTryToEquip final : public TGameAction
 public:
     TGameActionTryToEquip() { type = EGameAction::TRY_TO_EQUIP; }
     TGameActionTryToEquip(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionTutorialHintConfirmed .
-class TGameActionTutorialHintConfirmed final : public TGameAction
-{
-public:
-    TGameActionTutorialHintConfirmed() { type = EGameAction::CONFIRM_TUTORIAL_HINT; }
-};
-/// CIP input::TGameActionTutorialProgress .
-class TGameActionTutorialProgress final : public TGameAction
-{
-public:
-    TGameActionTutorialProgress() { type = EGameAction::TUTORIAL_PROGRESS; }
 };
 /// CIP input::TGameActionUseOnCreature .
 class TGameActionUseOnCreature final : public TGameAction

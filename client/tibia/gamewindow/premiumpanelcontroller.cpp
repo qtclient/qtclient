@@ -106,12 +106,12 @@ TPremiumPanelController::TPremiumPanelController()
         togglePanel();
         return true;
     });
-    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         setPanelVisible(false);
         return true;
     });
-    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameAction& action) {
-        onTutorialModeChanged(action.enable);
+    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameActionChangeTutorialModeEnabled& action) {
+        onTutorialModeChanged(action.enabled());
         return false;
     });
 }

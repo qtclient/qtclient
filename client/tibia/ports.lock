@@ -4555,6 +4555,8 @@ sub_0be888783735	0be888783735acfc	ported	input/gameaction.h:TGameActionOpenTrade
 sub_0be888783735#2	0be888783735acfc	ported	input/gameaction.h:TGameActionOpenTradeCharacterDialog::TGameActionOpenTradeCharacterDialog
 sub_0beb168bf030	0beb168bf030664c	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_0bf5a2a472ff	0bf5a2a472ffdbf0	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenBossSlots
+sub_0bfd0492f6b1	0bfd0492f6b1c803	ported	input/gameaction.h:TGameActionFinishedTutorialForCharacter::TGameActionFinishedTutorialForCharacter
+sub_0bfd0492f6b1#2	0bfd0492f6b1c803	ported	input/gameaction.h:TGameActionFinishedTutorialForCharacter::TGameActionFinishedTutorialForCharacter
 sub_0bfe7f006ec2	0bfe7f006ec21622	inlined	creatures/creaturestorage.cpp:TCreature::hideTargetFrame
 sub_0c0fd56edd4e	0c0fd56edd4ec13f	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_0c1b02410fbe	0c1b02410fbe1f26	skip	library: QObject::connect template instantiation (QtPrivate slot-object connectImpl)
@@ -7656,6 +7658,8 @@ sub_73a505708dd7	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibIn
 sub_73a505708dd7#2	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibInflateWrapper::TZlibInflateWrapper
 sub_73ad8fbd6f02#10	73ad8fbd6f02ba96	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_73ad8fbd6f02#8	73ad8fbd6f02ba96	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_73d997a4dba8	73d997a4dba82a9f	ported	input/gameaction.h:TGameActionAddMouseTrailHintAtTutorialMarker::TGameActionAddMouseTrailHintAtTutorialMarker
+sub_73d997a4dba8#2	73d997a4dba82a9f	ported	input/gameaction.h:TGameActionAddMouseTrailHintAtTutorialMarker::TGameActionAddMouseTrailHintAtTutorialMarker
 sub_73f7c3af3097	73f7c3af30978743	ported	input/gameaction.h:TGameActionRemoveVipGroup::TGameActionRemoveVipGroup
 sub_73f7c3af3097#2	73f7c3af30978743	ported	input/gameaction.h:TGameActionRemoveVipGroup::TGameActionRemoveVipGroup
 sub_7404da267375	7404da267375a6c2	inlined	gamewindow/chatcontroller.cpp:TOpenChatChannelDialogController::open
@@ -8390,6 +8394,8 @@ sub_8bf1155b59ab#28	8bf1155b59abd4ec	skip	library: std::deque<std::shared_ptr> i
 sub_8bf1155b59ab#29	8bf1155b59abd4ec	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8bf1155b59ab#4	8bf1155b59abd4ec	skip	library: std::deque internals (library)
 sub_8bf1155b59ab#6	8bf1155b59abd4ec	skip	library: libc++ vector/deque internals (library)
+sub_8bf32dc6eccf	8bf32dc6eccfd697	ported	input/gameaction.h:TGameActionChangeTutorialModeEnabled::TGameActionWithValue
+sub_8bf32dc6eccf#2	8bf32dc6eccfd697	ported	input/gameaction.h:TGameActionChangeTutorialModeEnabled::TGameActionWithValue
 sub_8bf4da250be0	8bf4da250be0b795	skip	library: libc++ std::vector growth / destroy (library)
 sub_8bffb225746c	8bffb225746cda41	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions
 sub_8c0184aea69a	8c0184aea69a6bf8	ported	skillwheel/skillwheeldata.cpp:smallPerkValue
@@ -10343,6 +10349,8 @@ sub_c6aeb3ea1b3d	c6aeb3ea1b3db865	skip	library: QList template instantiation (re
 sub_c6babfb24fde	c6babfb24fdef388	tested	creatures/movementdirection.h:stepOffset	test=tests/client/creaturemovement_test.cpp
 sub_c6c04ebb7497	c6c04ebb7497e0fb	ported	trade/npctradestorage.cpp:buyPrice
 sub_c6cd92430022	c6cd92430022a6f7	ported	config/clientoptions.cpp:pinnedCharactersToJson
+sub_c6ffdfb54e51	c6ffdfb54e51412b	ported	input/gameaction.h:TGameActionChangeContextMenuEnabled::TGameActionWithValue
+sub_c6ffdfb54e51#2	c6ffdfb54e51412b	ported	input/gameaction.h:TGameActionChangeContextMenuEnabled::TGameActionWithValue
 sub_c70ea67fc4f3	c70ea67fc4f36de8	skip	generated: compiler-generated destructor pair
 sub_c7126da1b1e6#2	c7126da1b1e6a741	skip	generated: moc signal emitter
 sub_c7126da1b1e6#6	c7126da1b1e6a741	skip	generated: moc-generated signal emitter
@@ -10387,6 +10395,8 @@ sub_c86c94ddaeb0#2	c86c94ddaeb06f7c	skip	library: std::deque / std::variant libr
 sub_c87d8149227e	c87d8149227e205e	skip	data: translation-unit static initializer of shared header constants
 sub_c87ee2a8fc42	c87ee2a8fc42c8a0	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::addWidget
 sub_c8a9810acc6b	c8a9810acc6beaaf	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_c8aa70244f52	c8aa70244f52aaef	ported	input/gameaction.h:TGameActionShowTutorialHint::TGameActionWithValue
+sub_c8aa70244f52#2	c8aa70244f52aaef	ported	input/gameaction.h:TGameActionShowTutorialHint::TGameActionWithValue
 sub_c8b1e2585096	c8b1e25850967bd4	inlined	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::lessThan
 sub_c8bcdc2bd39f	c8bcdc2bd39f30aa	ported	exivaoptions/exivaoptionsstorage.cpp:TExivaOptionsStorage::update
 sub_c8be46245372#3	c8be46245372bfd1	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -10458,6 +10468,8 @@ sub_cb6be0e38805	cb6be0e388053d73	skip	library: libc++ unordered_map/map interna
 sub_cb8460cdbe76	cb8460cdbe76c9e0	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::TQMLItemSlotData
 sub_cb8460cdbe76#2	cb8460cdbe76c9e0	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::TQMLItemSlotData
 sub_cb86b2ad0439	cb86b2ad04397fc0	skip	library: SFML/miniaudio library helper, only called from library code
+sub_cb8f18206faf	cb8f18206faff755	ported	input/gameaction.h:TGameActionSessiondumpSkipTo::TGameActionSessiondumpSkipTo
+sub_cb8f18206faf#2	cb8f18206faff755	ported	input/gameaction.h:TGameActionSessiondumpSkipTo::TGameActionSessiondumpSkipTo
 sub_cb931b7f72bd	cb931b7f72bd5769	skip	generated: compiler-generated destructor pair
 sub_cba004b7e662	cba004b7e6624739	ported	gamewindow/bountytaskscontroller.cpp:TBountyTasksController::clearNameFilter
 sub_cbcb2fe17738#5	cbcb2fe177388cf6	ported	input/gameaction.h:TGameActionSetPvPMode::TGameActionSetPvPMode
@@ -10714,6 +10726,8 @@ sub_d3d123c98a2d	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecont
 sub_d3d123c98a2d#2	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSetOnBlacklist
 sub_d3e246e97fb7	d3e246e97fb70f5a	ported	gamewindow/chatcontroller.cpp:TChatChannelTabController::setCurrentRow
 sub_d3e2e18a90e8	d3e2e18a90e88b58	ported	gamewindow/housesinfodialogcontroller.cpp:shortRent
+sub_d3e4abae3ac5	d3e4abae3ac58f13	ported	input/gameaction.h:TGameActionTutorialHintConfirmed::TGameActionWithValue
+sub_d3e4abae3ac5#2	d3e4abae3ac58f13	ported	input/gameaction.h:TGameActionTutorialHintConfirmed::TGameActionWithValue
 sub_d3eba2a74314#4	d3eba2a7431489de	ported	gamewindow/housesinfodialogcontroller.h:THousesSortProxyModel::houseTypeFilter
 sub_d3f8843375ce	d3f8843375cec425	ported	game/skillswidgetentrydata.cpp:clockMinutes
 sub_d3fc1b29187c	d3fc1b29187cb863	ported	gamewindow/createcharacterdialogcontroller.cpp:worldBattleEyeStatusText
@@ -11619,6 +11633,8 @@ sub_ee9f967e2ceb#7	ee9f967e2ceb562f	skip	library: SFML/miniaudio library interna
 sub_eea1984d670a	eea1984d670a7535	skip	library: SFML/miniaudio library helper, only called from library code
 sub_eea49304b77b	eea49304b77b439d	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::clearHistory
 sub_eea8522628e4#2	eea8522628e4cfac	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_eed735201263	eed7352012637f78	ported	input/gameaction.h:TGameActionTutorialProgress::TGameActionTutorialProgress
+sub_eed735201263#2	eed7352012637f78	ported	input/gameaction.h:TGameActionTutorialProgress::TGameActionTutorialProgress
 sub_eede39bdd9c3	eede39bdd9c3eef8	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::rebuild
 sub_ef0419433471	ef0419433471b952	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::TMapWindowController
 sub_ef0f2a212fe8	ef0f2a212fe88693	skip	library: Qt/std container template code

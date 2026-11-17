@@ -21,18 +21,14 @@ input::TGameActionList TSessiondumpHintPublishGameAction::execute()
 
 namespace {
 
-input::TGameActionPtr skipToAction(const int64_t timestamp)
+input::IGameActionPtr skipToAction(const int64_t timestamp)
 {
-    auto action = std::make_shared<input::TGameActionSessiondumpSkipTo>();
-    action->parameter = int(timestamp);
-    return action;
+    return std::make_shared<input::TGameActionSessiondumpSkipTo>(timestamp);
 }
 
-input::TGameActionPtr tutorialProgressAction(const QString& progress)
+input::IGameActionPtr tutorialProgressAction(const QString& progress)
 {
-    auto action = std::make_shared<input::TGameActionTutorialProgress>();
-    action->text = progress;
-    return action;
+    return std::make_shared<input::TGameActionTutorialProgress>(progress);
 }
 
 }

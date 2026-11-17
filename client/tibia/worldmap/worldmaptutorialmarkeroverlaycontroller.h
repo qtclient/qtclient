@@ -38,10 +38,9 @@ public:
 
 public Q_SLOTS:
     void update() override;
-    void handleGameAction(const input::TGameActionPtr& action);
 
     /// qtclient entry from TTutorialShell ADD_GUI / REMOVE_ALL.
-    void addGuiMarker(const input::TGameAction& action);
+    void addGuiMarker(const input::TGameActionAddGUITutorialMarker& action);
     void removeAllMarkers();
 
 private:
