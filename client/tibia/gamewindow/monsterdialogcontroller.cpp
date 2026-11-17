@@ -11,12 +11,15 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "skillwheel/skillwheeldata.h"
 
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 
 #include <QLocale>
+#include <QQuickWindow>
+#include <QSGRendererInterface>
 
 #include <algorithm>
 #include <cmath>
@@ -89,112 +92,179 @@ public:
         m_name = qstr(race.bestClass);
         m_totalMonsters = race.count;
         m_knownMonsters = race.unlockedCount;
-        // CIP .
-        m_imageSource = QStringLiteral("image://%1/%2").arg(QStringLiteral("monster-classifications")).arg(classificationImageId(m_name));
+    }
+
+    /// The classification's cell of the "monster-classifications" strip.
+    QString imageSource() const override
+    {
+        return QStringLiteral("image://%1/%2").arg(QStringLiteral("monster-classifications")).arg(classificationImageId(m_name));
     }
 };
 
-/// CIP: TQmlMonsterSensitivity (getters).
+/// The label of a sensitivity value: weak above 100, neutral at 100, strong
+/// below, immune at 0 and healing below 0.
+QString sensitivityLabel(const short value)
+{
+    if (value > 100)
+        return qtTrId("monsters_sensitivity_weak");
+    if (value == 100)
+        return qtTrId("monsters_sensitivity_neutral");
+    if (value > 0)
+        return qtTrId("monsters_sensitivity_strong");
+    if (value == 0)
+        return qtTrId("monsters_sensitivity_immune");
+    return qtTrId("monsters_sensitivity_healing");
+}
+
+/// CIP TQmlMonsterSensitivity: an element's damage percentage, unknown until
+/// the race's third stage.
 class TQmlMonsterSensitivity final : public cip::tibia::gamewindow::TQmlMonsterSensitivity
 {
 public:
-    TQmlMonsterSensitivity(const int element, const std::optional<int> value, QObject* parent)
-        : cip::tibia::gamewindow::TQmlMonsterSensitivity(parent)
+    /// An unknown sensitivity.
+    explicit TQmlMonsterSensitivity(const int element)
+        : m_element(element)
     {
         m_elementName = damageTypeName(element);
-        if (!value) {
-            m_readableSensitivity = qtTrId("monsters_unknown_data");
-            return;
-        }
-        const int v = std::clamp(*value, -200, 200);
-        if (v == 100)
-            m_fillPercentage = 0.66666;
-        else if (v == 0)
-            m_fillPercentage = 0.33333;
-        else if (v > 0 && v < 100)
-            m_fillPercentage = v / 100.0 * 0.33333 + 0.33333;
-        else if (v > 100)
-            m_fillPercentage = (v - 100) / 100.0 * 0.33334 + 0.66666;
-        else
-            m_fillPercentage = std::abs(v) / 200.0 * 0.33333;
-        const char* label = *value > 100   ? "monsters_sensitivity_weak"
-                            : *value == 100 ? "monsters_sensitivity_neutral"
-                            : *value > 0    ? "monsters_sensitivity_strong"
-                            : *value == 0   ? "monsters_sensitivity_immune"
-                                            : "monsters_sensitivity_healing";
-        m_readableSensitivity = qtTrId("monsters_sensitivity").arg(m_elementName.toLower()).arg(*value).arg(qtTrId(label));
     }
+    TQmlMonsterSensitivity(const int element, const short value)
+        : m_element(element)
+        , m_value(value)
+        , m_known(true)
+    {
+        m_elementName = damageTypeName(element);
+    }
+
+    /// The bar's fill: 0..1/3 for healing, 1/3..2/3 up to neutral, 2/3..1
+    /// for weaknesses up to 200%.
+    double fillPercentage() const override
+    {
+        if (!m_known)
+            return 0.0;
+        const short v = std::clamp<short>(m_value, -200, 200);
+        if (v == 100)
+            return 0.66666;
+        if (v == 0)
+            return 0.33333;
+        if (m_value >= 0) {
+            if (m_value < 100)
+                return std::abs(static_cast<double>(v)) / 100.0 * 0.33333 + 0.33333;
+            return std::abs(static_cast<double>(static_cast<short>(v - 100))) / 100.0 * 0.33334 + 0.66666;
+        }
+        return std::abs(static_cast<double>(v)) / 200.0 * 0.33333;
+    }
+
+    QString readableSensitivity() const override
+    {
+        if (!m_known)
+            return qtTrId("monsters_unknown_data");
+        return qtTrId("monsters_sensitivity").arg(damageTypeName(m_element).toLower()).arg(m_value).arg(sensitivityLabel(m_value));
+    }
+
+private:
+    int m_element = 0;
+    short m_value = 0;
+    bool m_known = false;
 };
 
-/// CIP: TQmlLoot (built in , getters ..).
+/// CIP TQmlLoot: one loot tile; the empty tiles pad a rarity to full rows.
 class TQmlLoot final : public cip::tibia::gamewindow::TQmlLoot
 {
 public:
-    explicit TQmlLoot(QObject* parent)
-        : cip::tibia::gamewindow::TQmlLoot(parent)
+    /// An empty tile.
+    TQmlLoot()
     {
         m_isEmpty = true;
     }
-    TQmlLoot(const LootItem& item, QObject* parent)
-        : cip::tibia::gamewindow::TQmlLoot(parent)
+    TQmlLoot(const LootItem& item)
+        : m_dropCount(item.amount)
     {
         m_appearanceTypeID = item.itemId;
-        m_isSecretOrUnknown = item.itemId == 0;
         m_isSpecialEventOnly = item.specialEvent != 0;
         m_name = qstr(item.name);
-        m_dropCountString = item.amount == 1   ? qtTrId("monsters_dropcount_one")
-                            : item.amount == 2 ? qtTrId("monsters_dropcount_several")
-                                               : qtTrId("monsters_unknown_data");
     }
+
+    bool isSecretOrUnknown() const override { return m_appearanceTypeID == 0; }
+
+    /// 1: drops one, 2: drops several, otherwise unknown.
+    QString dropCountString() const override
+    {
+        if (m_dropCount == 1)
+            return qtTrId("monsters_dropcount_one");
+        if (m_dropCount == 2)
+            return qtTrId("monsters_dropcount_several");
+        return qtTrId("monsters_unknown_data");
+    }
+
+private:
+    int m_dropCount = 0;
 };
 
-/// CIP: TQmlLootOfRarity (ctor): one rarity's loot, padded to
-/// full rows of 15.
+/// CIP TQmlLootOfRarity: one rarity's loot, padded to full rows of 15.
 class TQmlLootOfRarity final : public cip::tibia::gamewindow::TQmlLootOfRarity
 {
 public:
-    TQmlLootOfRarity(const int rarity, const std::vector<LootItem>& loot, QObject* parent)
-        : cip::tibia::gamewindow::TQmlLootOfRarity(parent)
+    TQmlLootOfRarity(const int rarity, const std::vector<LootItem>& loot)
+        : m_rarity(rarity)
+    {
+        for (const LootItem& item : loot) {
+            if (item.diffculty == rarity)
+                m_lootItems.append(new TQmlLoot(item));
+        }
+        while (m_lootItems.size() % PageSize != 0)
+            m_lootItems.append(new TQmlLoot());
+        m_lootColumns = PageSize;
+    }
+    ~TQmlLootOfRarity() override { qDeleteAll(m_lootItems); }
+
+    QString rarityString() const override
     {
         static const char* const Names[] = { "monsters_object_rarity_common", "monsters_object_rarity_uncommon",
                                              "monsters_object_rarity_semirare", "monsters_object_rarity_rare",
                                              "monsters_object_rarity_veryrare" };
+        return m_rarity >= 0 && m_rarity < 5 ? qtTrId(Names[m_rarity]) : qtTrId("monsters_unknown_data");
+    }
+    QString rarityTooltip() const override
+    {
         static const char* const Tooltips[] = { "monsters_object_rarity_common_tooltip", "monsters_object_rarity_uncommon_tooltip",
                                                 "monsters_object_rarity_semirare_tooltip", "monsters_object_rarity_rare_tooltip",
                                                 "monsters_object_rarity_veryrare_tooltip" };
-        m_rarityString = qtTrId(Names[rarity]);
-        m_rarityTooltip = qtTrId(Tooltips[rarity]);
-        for (const LootItem& item : loot) {
-            if (item.diffculty == rarity)
-                m_lootItems.append(new TQmlLoot(item, this));
-        }
-        while (m_lootItems.size() % PageSize != 0)
-            m_lootItems.append(new TQmlLoot(this));
-        m_lootRows = static_cast<int>(m_lootItems.size() / PageSize);
-        m_lootColumns = PageSize;
+        return m_rarity >= 0 && m_rarity < 5 ? qtTrId(Tooltips[m_rarity]) : qtTrId("monsters_unknown_data");
     }
+    int lootRows() const override { return static_cast<int>(m_lootItems.size() / PageSize); }
+
+private:
+    int m_rarity = 0;
 };
 
+/// CIP TQmlPreviewCharm: an assigned charm.
 class TQmlPreviewCharm final : public cip::tibia::gamewindow::TQmlPreviewCharm
 {
 public:
-    TQmlPreviewCharm(const TCharm& charm, QObject* parent)
-        : cip::tibia::gamewindow::TQmlPreviewCharm(parent)
+    explicit TQmlPreviewCharm(const TCharm& charm)
+        : m_charm(charm)
     {
         m_name = charm.name();
         m_description = charm.description();
-        m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade);
-        m_icon = cyclopedia::charmImageSource(charm.id);
-        m_charmID = charm.id;
         m_unassignCostInGold = static_cast<int>(charm.removeCost);
     }
+
+    /// The grade, 0 outside 1..3.
+    cip::tibia::qmlcomponents::enums::ECharmUnlockGrade unlockGrade() const override
+    {
+        return static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(m_charm.grade >= 1 && m_charm.grade <= 3 ? m_charm.grade : 0);
+    }
+    QString icon() const override { return cyclopedia::charmImageSource(m_charm.id); }
+    int charmID() const override { return m_charm.id; }
+
+private:
+    TCharm m_charm;
 };
 
 class TQmlAvailableCharmFilter final : public cip::tibia::gamewindow::TQmlAvailableCharmFilter
 {
 public:
-    TQmlAvailableCharmFilter(const QString& name, const int id, QObject* parent)
-        : cip::tibia::gamewindow::TQmlAvailableCharmFilter(parent)
+    TQmlAvailableCharmFilter(const QString& name, const int id)
     {
         m_name = name;
         m_id = id;
@@ -211,124 +281,252 @@ void deleteAll(QList<QObject*>& objects)
 }
 
 TQmlMonsterRace::TQmlMonsterRace(const int raceId, const int progress, const double animusMasteryBonus, const int animusMasteryPoints,
-                                 const BestiaryMonsterData* details, const TBestiaryStorage& storage, QObject* parent)
+                                 const BestiaryMonsterData* details, QList<TCharm> charms, QObject* parent)
     : cip::tibia::gamewindow::TQmlMonsterRace(parent)
-    , m_storage(storage)
     , m_progress(progress)
+    , m_animusMasteryBonus(animusMasteryBonus)
+    , m_animusMasteryPoints(animusMasteryPoints)
+    , m_charms(std::move(charms))
 {
-    const RaceType& race = tibia::game::raceData(raceId);
+    if (details)
+        m_details = *details;
     m_raceID = raceId;
-    m_name = qstr(race.name);
-    m_hasAppearanceInstance = race.outfit.getId() != 0;
-    m_graphicEffectsSupported = true;
-    m_creatureOutfitId = race.outfit.getId();
-    m_creatureHeadColor = outfitColor(race.outfit.getHead());
-    m_creatureTorsoColor = outfitColor(race.outfit.getBody());
-    m_creatureLegsColor = outfitColor(race.outfit.getLegs());
-    m_creatureDetailColor = outfitColor(race.outfit.getFeet());
-    m_creatureFirstAddOn = (race.outfit.getAddons() & 1) != 0;
-    m_creatureSecondAddOn = (race.outfit.getAddons() & 2) != 0;
+    m_selectedCharmID = -1;
+    m_indexOfSelectedCharmInCombobox = -1;
+    m_selectedCharmSlot = -1;
 
-    // CIP .. .
-    m_unlockState = progress == 0 ? qtTrId("monsters_unknown_data")
-                                  : qtTrId("monsters_unlock_state").arg(progress - 1).arg(3).arg(QString());
-    m_isUnknown = progress == 0;
-    m_hasDetails1 = progress > 1;
-    m_isFullyUnlocked = progress == 4;
-    m_isAnimusMasteryUnlocked = animusMasteryBonus > 0.0;
-    if (m_isAnimusMasteryUnlocked) {
-        const QLocale english(QLocale::English);
-        m_animusMasteryTooltip = qtTrId("monsters_animus_mastery_unlocked_tooltip")
-                                     .arg(english.toString(animusMasteryBonus * 100.0, 'f', 2))
-                                     .arg(english.toString(animusMasteryPoints));
-    }
-
-    const bool hasDifficulty = details && progress != 0;
-    const bool hasStats = details && progress > 1;
-    const bool hasSensitivities = details && progress > 2;
-
-    // CIP / / : the difficulty's charm
-    // points for an Echo Warden, the difficulty and the occurrence.
-    if (details) {
-        m_totalKills = details->killCounter;
-        m_details1Kills = details->thirdDifficulty;
-        m_details2Kills = details->secondUnlock;
-        m_details3Kills = details->lastProgressKillCount;
-        m_isLeaderKilled = details->leaderKilled;
-    }
-    m_monsterDifficulty = hasDifficulty ? details->difficulty : 1;
-    m_monsterRarity = hasDifficulty ? details->ocorrence : 0;
-    static const char* const Difficulties[] = { "monsters_difficulty_harmless", "monsters_difficulty_trivial", "monsters_difficulty_easy",
-                                                "monsters_difficulty_medium",   "monsters_difficulty_hard",    "monsters_difficulty_challenging" };
-    static const char* const Rarities[] = { "monsters_rarity_common", "monsters_rarity_uncommon", "monsters_rarity_rare",
-                                            "monsters_rarity_veryrare" };
-    m_monsterDifficultyString = m_monsterDifficulty >= 0 && m_monsterDifficulty <= 5
-                                    ? qtTrId("monsters_difficulty_tooltip").arg(qtTrId(Difficulties[m_monsterDifficulty]))
-                                    : qtTrId("dummy_unknown");
-    m_monsterRarityString = m_monsterRarity >= 0 && m_monsterRarity <= 3 ? qtTrId("monsters_rarity_tooltip").arg(qtTrId(Rarities[m_monsterRarity]))
-                                                                        : qtTrId("dummy_unknown");
-    m_isVeryRare = hasDifficulty && m_monsterRarity == 3;
-    if (m_isLeaderKilled) {
-        static const int LeaderPoints[] = { 1, 2, 5, 10, 15, 30 };
-        const int points = m_monsterDifficulty >= 0 && m_monsterDifficulty <= 5 ? LeaderPoints[m_monsterDifficulty] : 0;
-        m_leaderKilledTooltip = points == 1 ? qtTrId("monsters_leader_killed_singular_tooltip").arg(points)
-                                            : qtTrId("monsters_leader_killed_tooltip").arg(points);
-    }
-
-    if (details) {
+    // One loot group a rarity with loot.
+    if (const BestiaryMonsterData* difficulty = difficultyData()) {
         for (int rarity = 0; rarity < 5; ++rarity) {
-            const bool any = std::any_of(details->loot.begin(), details->loot.end(),
+            const bool any = std::any_of(difficulty->loot.begin(), difficulty->loot.end(),
                                          [rarity](const LootItem& item) { return item.diffculty == rarity; });
             if (any)
-                m_monsterLoot.append(new TQmlLootOfRarity(rarity, details->loot, this));
+                m_monsterLoot.append(new TQmlLootOfRarity(rarity, difficulty->loot));
         }
     }
 
-    // CIP ..: the wire attack mode (1 melee, 2 ranged,
-    // 0 none) and whether it casts spells.
-    if (hasStats) {
-        m_isMeleeAttacker = details->attackMode == 1;
-        m_isRangedAttacker = details->attackMode == 2;
-        m_isSpellcaster = details->castsSpells;
-        m_doesNotAttack = details->attackMode == 0;
-    }
-    const QLocale english(QLocale::English);
-    const QString unknown = qtTrId("monsters_unknown_data");
-    m_hitpointsString = hasStats ? english.toString(details->maxHealth) : unknown;
-    m_experienceString = hasStats ? english.toString(details->experience) : unknown;
-    m_speedString = hasStats ? english.toString(details->speed) : unknown;
-    m_armorString = hasStats ? english.toString(details->armor) : unknown;
-    m_mitigationString = hasStats ? QStringLiteral("%1%").arg(details->mitigation, 0, 'f', 2) : unknown;
-    m_bonusPointsOnUnlockString = hasStats ? english.toString(details->charmValue) : unknown;
-
-    // CIP: the elements in the order of table .
+    // The elements in the order of the sensitivity table, unknown until the
+    // third stage.
+    const BestiaryMonsterData* sensitivities = sensitivityData();
     for (const int element : { 0, 2, 1, 6, 3, 5, 4, 7 }) {
-        std::optional<int> value;
-        if (hasSensitivities) {
-            const auto it = details->combat.find(static_cast<uint8_t>(element));
-            if (it != details->combat.end())
-                value = static_cast<int16_t>(it->second);
+        if (!sensitivities) {
+            m_monsterSensitivities.append(new TQmlMonsterSensitivity(element));
+            continue;
         }
-        m_monsterSensitivities.append(new TQmlMonsterSensitivity(element, value, this));
-    }
-    // CIP .
-    if (hasSensitivities && !details->location.empty()) {
-        QStringList locations = qstr(details->location).split(u',', Qt::SkipEmptyParts);
-        for (QString& location : locations)
-            location = location.trimmed();
-        m_monsterLocations = locations.join(QStringLiteral(", "));
-    } else {
-        m_monsterLocations = unknown;
+        const auto it = sensitivities->combat.find(static_cast<uint8_t>(element));
+        if (it == sensitivities->combat.end())
+            m_monsterSensitivities.append(new TQmlMonsterSensitivity(element));
+        else
+            m_monsterSensitivities.append(new TQmlMonsterSensitivity(element, static_cast<short>(it->second)));
     }
 
-    if (const TCharm* major = storage.assignedCharm(raceId, false))
-        m_majorCharm = new TQmlPreviewCharm(*major, this);
-    if (const TCharm* minor = storage.assignedCharm(raceId, true))
-        m_minorCharm = new TQmlPreviewCharm(*minor, this);
-    m_selectedCharmID = -1;
-    m_selectedCharmSlot = -1;
-    m_indexOfSelectedCharmInCombobox = -1;
-    updateUnassignCost();
+    // The race's charms: the major and the minor one.
+    for (const TCharm& charm : m_charms) {
+        if (charm.raceId != raceId)
+            continue;
+        QObject*& slot = charm.isMinor() ? m_minorCharm : m_majorCharm;
+        delete slot;
+        slot = new TQmlPreviewCharm(charm);
+    }
+}
+
+TQmlMonsterRace::~TQmlMonsterRace()
+{
+    qDeleteAll(m_monsterLoot);
+    qDeleteAll(m_monsterSensitivities);
+    qDeleteAll(m_charmsInCombobox);
+    delete m_minorCharm;
+    delete m_majorCharm;
+}
+
+const BestiaryMonsterData* TQmlMonsterRace::difficultyData() const { return m_details && m_progress != 0 ? &*m_details : nullptr; }
+const BestiaryMonsterData* TQmlMonsterRace::statsData() const { return m_details && m_progress > 1 ? &*m_details : nullptr; }
+const BestiaryMonsterData* TQmlMonsterRace::sensitivityData() const { return m_details && m_progress > 2 ? &*m_details : nullptr; }
+
+QString TQmlMonsterRace::name() const { return qstr(tibia::game::raceData(static_cast<int>(m_raceID)).name); }
+
+bool TQmlMonsterRace::hasAppearanceInstance() const { return tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getId() != 0; }
+
+bool TQmlMonsterRace::graphicEffectsSupported() const { return QQuickWindow::graphicsApi() != QSGRendererInterface::Software; }
+
+QString TQmlMonsterRace::unlockState() const
+{
+    if (m_progress == 0)
+        return qtTrId("monsters_unknown_data");
+    return qtTrId("monsters_unlock_state").arg(QString::number(m_progress - 1)).arg(QString::number(3)).arg(QString());
+}
+
+bool TQmlMonsterRace::isUnknown() const { return m_progress == 0; }
+bool TQmlMonsterRace::hasDetails1() const { return m_progress > 1; }
+bool TQmlMonsterRace::isFullyUnlocked() const { return m_progress == 4; }
+bool TQmlMonsterRace::isAnimusMasteryUnlocked() const { return m_animusMasteryBonus > 0.0; }
+
+QString TQmlMonsterRace::animusMasteryTooltip() const
+{
+    if (!(m_animusMasteryBonus > 0.0))
+        return {};
+    return qtTrId("monsters_animus_mastery_unlocked_tooltip")
+        .arg(skillwheel::percentNumberTrimmed(m_animusMasteryBonus, 2, 3, false))
+        .arg(QLocale(QLocale::English).toString(m_animusMasteryPoints));
+}
+
+QString TQmlMonsterRace::leaderKilledTooltip() const
+{
+    const BestiaryMonsterData* difficulty = isLeaderKilled() ? difficultyData() : nullptr;
+    if (!difficulty)
+        return {};
+    // The charm points an Echo Warden of the difficulty gives.
+    int points = 0;
+    switch (difficulty->difficulty) {
+        case 0: return qtTrId("monsters_leader_killed_singular_tooltip").arg(1);
+        case 1: points = 2; break;
+        case 2: points = 5; break;
+        case 3: points = 10; break;
+        case 4: points = 15; break;
+        case 5: points = 30; break;
+        default: points = 0; break;
+    }
+    return qtTrId("monsters_leader_killed_tooltip").arg(points);
+}
+
+uint TQmlMonsterRace::totalKills() const { return m_details ? m_details->killCounter : 0; }
+uint TQmlMonsterRace::details1Kills() const { return m_details ? m_details->thirdDifficulty : 0; }
+uint TQmlMonsterRace::details2Kills() const { return m_details ? m_details->secondUnlock : 0; }
+uint TQmlMonsterRace::details3Kills() const { return m_details ? m_details->lastProgressKillCount : 0; }
+bool TQmlMonsterRace::isLeaderKilled() const { return m_details && m_details->leaderKilled; }
+
+int TQmlMonsterRace::monsterDifficulty() const
+{
+    const BestiaryMonsterData* difficulty = difficultyData();
+    return difficulty ? difficulty->difficulty : 1;
+}
+
+QString TQmlMonsterRace::monsterDifficultyString() const
+{
+    static const char* const Difficulties[] = { "monsters_difficulty_harmless", "monsters_difficulty_trivial", "monsters_difficulty_easy",
+                                                "monsters_difficulty_medium",   "monsters_difficulty_hard",    "monsters_difficulty_challenging" };
+    const int difficulty = monsterDifficulty();
+    if (difficulty < 0 || difficulty > 5)
+        return qtTrId("dummy_unknown");
+    return qtTrId("monsters_difficulty_tooltip").arg(qtTrId(Difficulties[difficulty]));
+}
+
+int TQmlMonsterRace::monsterRarity() const
+{
+    const BestiaryMonsterData* difficulty = difficultyData();
+    return difficulty ? difficulty->ocorrence : 0;
+}
+
+QString TQmlMonsterRace::monsterRarityString() const
+{
+    static const char* const Rarities[] = { "monsters_rarity_common", "monsters_rarity_uncommon", "monsters_rarity_rare", "monsters_rarity_veryrare" };
+    const int rarity = monsterRarity();
+    if (rarity < 0 || rarity > 3)
+        return qtTrId("dummy_unknown");
+    return qtTrId("monsters_rarity_tooltip").arg(qtTrId(Rarities[rarity]));
+}
+
+bool TQmlMonsterRace::isVeryRare() const
+{
+    const BestiaryMonsterData* difficulty = difficultyData();
+    return difficulty && difficulty->ocorrence == 3;
+}
+
+/// The wire attack mode: 1 melee, 2 ranged, 0 none.
+bool TQmlMonsterRace::isMeleeAttacker() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats && stats->attackMode == 1;
+}
+
+bool TQmlMonsterRace::isRangedAttacker() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats && stats->attackMode == 2;
+}
+
+bool TQmlMonsterRace::isSpellcaster() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats && stats->castsSpells;
+}
+
+bool TQmlMonsterRace::doesNotAttack() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats && stats->attackMode == 0;
+}
+
+QString TQmlMonsterRace::hitpointsString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats ? QLocale(QLocale::English).toString(stats->maxHealth) : qtTrId("monsters_unknown_data");
+}
+
+QString TQmlMonsterRace::experienceString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats ? QLocale(QLocale::English).toString(stats->experience) : qtTrId("monsters_unknown_data");
+}
+
+QString TQmlMonsterRace::speedString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats ? QLocale(QLocale::English).toString(stats->speed) : qtTrId("monsters_unknown_data");
+}
+
+QString TQmlMonsterRace::armorString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats ? QLocale(QLocale::English).toString(stats->armor) : qtTrId("monsters_unknown_data");
+}
+
+QString TQmlMonsterRace::mitigationString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    if (!stats)
+        return qtTrId("monsters_unknown_data");
+    return QStringLiteral("%1%").arg(QLocale(QLocale::English).toString(stats->mitigation, 'f', 2));
+}
+
+QString TQmlMonsterRace::bonusPointsOnUnlockString() const
+{
+    const BestiaryMonsterData* stats = statsData();
+    return stats ? QLocale(QLocale::English).toString(stats->charmValue) : qtTrId("monsters_unknown_data");
+}
+
+/// The locations joined with ", ", unknown before the third stage.
+QString TQmlMonsterRace::monsterLocations() const
+{
+    const BestiaryMonsterData* sensitivities = sensitivityData();
+    if (!sensitivities)
+        return qtTrId("monsters_unknown_data");
+    QStringList locations = qstr(sensitivities->location).split(u',', Qt::SkipEmptyParts);
+    for (QString& location : locations)
+        location = location.trimmed();
+    if (locations.isEmpty())
+        locations.append(qtTrId("monsters_unknown_data"));
+    return locations.join(QStringLiteral(", "));
+}
+
+uint TQmlMonsterRace::creatureOutfitId() const { return tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getId(); }
+QColor TQmlMonsterRace::creatureHeadColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getHead()); }
+QColor TQmlMonsterRace::creatureTorsoColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getBody()); }
+QColor TQmlMonsterRace::creatureLegsColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getLegs()); }
+QColor TQmlMonsterRace::creatureDetailColor() const { return outfitColor(tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getFeet()); }
+bool TQmlMonsterRace::creatureFirstAddOn() const { return (tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getAddons() & 1) != 0; }
+bool TQmlMonsterRace::creatureSecondAddOn() const { return (tibia::game::raceData(static_cast<int>(m_raceID)).outfit.getAddons() & 2) != 0; }
+
+/// The selected charm's removal cost, unknown without a selection.
+QString TQmlMonsterRace::unassignCostString() const
+{
+    if (m_selectedCharmID != -1) {
+        for (const TCharm& charm : m_charms) {
+            if (charm.id == m_selectedCharmID)
+                return QLocale(QLocale::English).toString(static_cast<qulonglong>(charm.removeCost));
+        }
+    }
+    return qtTrId("monsters_unknown_data");
 }
 
 void TQmlMonsterRace::setSelectedCharmID(const int v)
@@ -336,9 +534,7 @@ void TQmlMonsterRace::setSelectedCharmID(const int v)
     if (m_selectedCharmID == v)
         return;
     m_selectedCharmID = v;
-    updateUnassignCost();
     Q_EMIT selectedCharmChanged();
-    updateCanAfford();
 }
 
 void TQmlMonsterRace::setIndexOfSelectedCharmInCombobox(const int v)
@@ -358,16 +554,13 @@ void TQmlMonsterRace::setSelectedCharmSlot(const int v)
     Q_EMIT selectedCharmSlotChanged();
 }
 
-void TQmlMonsterRace::updateUnassignCost()
-{
-    // CIP .
-    const TCharm* charm = m_selectedCharmID >= 0 ? m_storage.charm(m_selectedCharmID) : nullptr;
-    m_unassignCostString = charm ? englishNumber(charm->removeCost) : qtTrId("monsters_unknown_data");
-}
-
 void TQmlMonsterRace::updateCanAfford()
 {
-    const TCharm* charm = m_selectedCharmID >= 0 ? m_storage.charm(m_selectedCharmID) : nullptr;
+    const TCharm* charm = nullptr;
+    for (const TCharm& candidate : m_charms) {
+        if (m_selectedCharmID >= 0 && candidate.id == m_selectedCharmID)
+            charm = &candidate;
+    }
     if (!charm)
         return;
     const bool canAfford = charm->removeCost <= TBestiaryStorage::goldBalance();
@@ -377,39 +570,45 @@ void TQmlMonsterRace::updateCanAfford()
     Q_EMIT canAffordCurrentlySelectedEffectUnassignmentChanged();
 }
 
+/// The combo box of a slot (1 major, 2 minor) from the third stage on: the
+/// assigned charm, else the free charms fitting the slot (major charms only
+/// when fully unlocked), else a hint why there is none.
 void TQmlMonsterRace::rebuildCombobox()
 {
-    // CIP .
-    deleteAll(m_charmsInCombobox);
+    const QList<QObject*> previous = m_charmsInCombobox;
+    m_charmsInCombobox.clear();
+    bool filled = false;
     const int slot = m_selectedCharmSlot;
-    if (slot != -1 && (m_progress == 3 || m_progress == 4)) {
-        const auto* assigned = slot == 1 ? qobject_cast<cip::tibia::gamewindow::TQmlPreviewCharm*>(m_majorCharm)
-                               : slot == 2 ? qobject_cast<cip::tibia::gamewindow::TQmlPreviewCharm*>(m_minorCharm)
+    const int progress = m_progress;
+    if (slot != -1 && (progress == 3 || progress == 4)) {
+        const auto* assigned = slot == 1   ? static_cast<TQmlPreviewCharm*>(m_majorCharm)
+                               : slot == 2 ? static_cast<TQmlPreviewCharm*>(m_minorCharm)
                                            : nullptr;
         if (assigned) {
-            m_charmsInCombobox.append(new TQmlAvailableCharmFilter(assigned->name(), assigned->charmID(), this));
+            m_charmsInCombobox.append(new TQmlAvailableCharmFilter(assigned->name(), assigned->charmID()));
+            filled = true;
         } else {
-            for (const TCharm& charm : m_storage.charms()) {
-                if (charm.grade == 0 || charm.raceId != 0)
-                    continue;
-                const bool fits = slot == 1 ? !charm.isMinor() && m_progress == 4 : slot == 2 && charm.isMinor();
-                if (fits)
-                    m_charmsInCombobox.append(new TQmlAvailableCharmFilter(charm.name(), charm.id, this));
+            const bool majorCharms = slot != 2;
+            for (const TCharm& charm : m_charms) {
+                const bool minor = charm.isMinor();
+                if ((progress == 4 || minor) && charm.raceId == 0 && !(slot == 1 && minor) && (minor || majorCharms))
+                    m_charmsInCombobox.append(new TQmlAvailableCharmFilter(charm.name(), charm.id));
             }
-            if (m_charmsInCombobox.isEmpty()) {
-                const char* text = m_progress == 3 && slot == 1 ? "monsters_not_fully_unlocked"
-                                   : slot == 1                  ? "monsters_no_unlocked_major_charms"
-                                                                : "monsters_no_unlocked_minor_charms";
-                m_charmsInCombobox.append(new TQmlAvailableCharmFilter(qtTrId(text), -1, this));
+            filled = !m_charmsInCombobox.isEmpty();
+            if (!filled) {
+                const char* text = progress != 4 && slot == 1 ? "monsters_not_fully_unlocked"
+                                   : slot == 1                ? "monsters_no_unlocked_major_charms"
+                                                              : "monsters_no_unlocked_minor_charms";
+                m_charmsInCombobox.append(new TQmlAvailableCharmFilter(qtTrId(text), -1));
             }
         }
     }
-    Q_EMIT charmsChanged();
-    if (m_indexOfSelectedCharmInCombobox != 0) {
-        m_indexOfSelectedCharmInCombobox = 0;
+    Q_EMIT selectedCharmSlotChanged();
+    qDeleteAll(previous);
+    if (filled && m_indexOfSelectedCharmInCombobox != 0)
         Q_EMIT indexOfSelectedCharmInComboboxChanged();
-    }
 }
+
 
 TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QObject* parent)
     : cip::tibia::gamewindow::TMonsterDialogController(parent)
@@ -560,7 +759,7 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i) {
             const BestiaryOverviewMonsters& race = m_races[i];
             m_monsterRaceSummary.append(new TQmlMonsterRace(race.id, race.currentLevel, race.creatureAnimusMasteryBonus / 1000.0,
-                                                            m_animusMasteryPoints, nullptr, m_storage, this));
+                                                            m_animusMasteryPoints, nullptr, {}, this));
         }
     }
     Q_EMIT qmlMonsterRacesPageChanged();
@@ -698,8 +897,16 @@ void TMonsterDialogController::rebuildSingleMonster()
     if (!m_details || m_tearingDown)
         return;
     QObject* previous = m_singleMonster;
-    m_singleMonster = new TQmlMonsterRace(m_details->id, m_details->currentLevel, m_details->AnimusMasteryBonus / 1000.0,
-                                          m_details->AnimusMasteryPoints, &*m_details, m_storage, this);
+    // The unlocked charms.
+    QList<TCharm> charms;
+    for (const TCharm& charm : m_storage.charms()) {
+        if (charm.grade != 0)
+            charms.append(charm);
+    }
+    auto* race = new TQmlMonsterRace(m_details->id, m_details->currentLevel, m_details->AnimusMasteryBonus / 1000.0,
+                                     m_details->AnimusMasteryPoints, &*m_details, std::move(charms), this);
+    connect(race, &TQmlMonsterRace::selectedCharmChanged, race, &TQmlMonsterRace::updateCanAfford);
+    m_singleMonster = race;
     Q_EMIT qmlSingleMonsterChanged();
     Q_EMIT qmlIsMonsterTrackedChanged();
     if (previous)

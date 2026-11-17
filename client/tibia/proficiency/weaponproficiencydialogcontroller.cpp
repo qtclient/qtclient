@@ -294,8 +294,9 @@ TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObje
     , m_types(std::move(types))
 {
     m_text = text;
-    m_anyWeaponIdentifier = m_types.empty() ? 0 : *m_types.begin();
 }
+
+int TQmlWeaponTypes::anyWeaponIdentifier() const { return m_types.empty() ? 0 : *m_types.begin(); }
 
 TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), parent)
@@ -305,7 +306,6 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     , m_confirm(new gamewindow::TMessageDialogController(this))
 {
     m_weaponObjectsModel = &m_proxy;
-    m_maxProficiencyLevels = MaxProficiencyLevels;
     m_selectedLevelIndex = -1;
     m_selectedPerkIndex = -1;
     // CIP 's combo box entries, in its order.
@@ -390,6 +390,8 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
         return true;
     });
 }
+
+int TWeaponProficiencyDialogController::maxProficiencyLevels() const { return MaxProficiencyLevels; }
 
 TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 {

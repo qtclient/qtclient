@@ -9,7 +9,7 @@
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
-#include "gamewindow/waitdialogcontroller.h"
+#include "app/loginwaitdialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
 
@@ -52,7 +52,7 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
     , m_gameWindow(gameWindow)
     , m_createCharacter(new gamewindow::TCreateCharacterDialogController())
     , m_createAccount(new gamewindow::TCreateAccountDialogController(this))
-    , m_loginWait(new gamewindow::TWaitDialogController(this))
+    , m_loginWait(new TLoginWaitDialogController(this))
     , m_error(makeBox(this, qtTrId("ok"), {}))
     , m_keepRenderer(makeBox(this, {}, {}))
 {
@@ -86,9 +86,9 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
                 }
                 m_client->submitCredentials(email, password);
             });
-    connect(m_loginWait, &gamewindow::TWaitDialogController::aborted, this, [this] {
+    connect(m_loginWait, &TLoginWaitDialogController::aborted, this, [this] {
         m_client->abortPendingEnter();
-        if (m_loginWait->abortedPhase() == gamewindow::TWaitDialogController::Phase::GameWorld) {
+        if (m_loginWait->abortedPhase() == TLoginWaitDialogController::Phase::GameWorld) {
             // CIP: Abort while entering the world returns to the character list.
             m_client->ensureLoginSurface();
             return;

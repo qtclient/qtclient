@@ -8,6 +8,7 @@
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/outfit.h>
@@ -15,7 +16,8 @@
 #include <tibia/assets/things.h>
 #include <QColor>
 #include <QGuiApplication>
-#include <QClipboard>
+#include <QQmlContext>
+#include <QQmlEngine>
 #include <QKeyEvent>
 #include <QMetaObject>
 #include <QMouseEvent>
@@ -180,36 +182,35 @@ TWhiteBlacklistQmlEntry::TWhiteBlacklistQmlEntry(QString name, const bool perman
     setPermanently(permanently);
 }
 
-TTextCopyController::TTextCopyController(QObject* parent)
-    : cip::tibia::gamewindow::TTextCopyController(parent)
-{}
+/// Registers itself in the engine's root context.
+TTextCopyController::TTextCopyController(QQmlEngine* engine)
+    : cip::tibia::gamewindow::TTextCopyController(engine)
+{
+    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), this);
+}
 
+/// Cuts the selection of a QML text input with normal echo that is not read
+/// only: removes it, deselects and copies it through the clipboard action.
 void TTextCopyController::cutFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, true);
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0
+        || pTextInput->property("readOnly").toBool())
+        return;
+    const QString text = pTextInput->property("selectedText").toString();
+    const int selectionStart = pTextInput->property("selectionStart").toInt();
+    const int selectionEnd = pTextInput->property("selectionEnd").toInt();
+    QMetaObject::invokeMethod(pTextInput, "remove", Q_ARG(int, selectionStart), Q_ARG(int, selectionEnd));
+    QMetaObject::invokeMethod(pTextInput, "deselect");
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
 }
 
+/// Copies the selection of a QML text input with normal echo through the
+/// clipboard action.
 void TTextCopyController::copyFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, false);
-}
-
-void TTextCopyController::copyOrCut(QObject* textInput, const bool cut)
-{
-    if (!textInput)
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0)
         return;
-    QString selected;
-    QMetaObject::invokeMethod(textInput, "selectedText", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    if (selected.isEmpty()) {
-        QMetaObject::invokeMethod(textInput, "text", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    }
-    if (selected.isEmpty())
-        return;
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        clip->setText(selected);
-    if (cut)
-        QMetaObject::invokeMethod(textInput, "remove", Qt::DirectConnection);
-    input::publish(input::makeAction(cut ? A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD : A::COPY_TEXT_TO_CLIPBOARD));
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(pTextInput->property("selectedText").toString()));
 }
 
 TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)
@@ -288,14 +289,37 @@ TQmlPossibleMainChar::TQmlPossibleMainChar(QString name, QString world, QString 
     m_level = level;
 }
 
-TQmlTargetWorld::TQmlTargetWorld(QString worldName, QString detailedWorldName, const bool premiumOnly, const bool lockedForTransfer,
-                                 QObject* parent)
+TQmlTargetWorld::TQmlTargetWorld(QString worldName, const bool premiumOnly, const bool lockedForTransfer, const int pvpType, QObject* parent)
     : cip::tibia::gamewindow::TQmlTargetWorld(parent)
+    , m_pvpType(pvpType)
 {
     m_worldName = std::move(worldName);
-    m_detailedWorldName = std::move(detailedWorldName);
     m_premiumOnly = premiumOnly;
     m_lockedForTransfer = lockedForTransfer;
+}
+
+namespace {
+
+/// The PvP type's name, unknown outside 0..4.
+QString pvpTypeName(const int pvpType)
+{
+    static const char* const Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
+                                         "world_pvp_retro_hardcore" };
+    return pvpType >= 0 && pvpType < 5 ? qtTrId(Names[pvpType]) : qtTrId("dummy_unknown");
+}
+
+}
+
+QString TQmlTargetWorld::detailedWorldName() const
+{
+    if (!m_premiumOnly && !m_lockedForTransfer)
+        return qtTrId("characterworldtransfer_world_name").arg(m_worldName).arg(pvpTypeName(m_pvpType));
+    const QString detail = qtTrId("characterworldtransfer_world_name_detail").arg(m_worldName).arg(pvpTypeName(m_pvpType));
+    if (!m_premiumOnly)
+        return detail.arg(qtTrId("characterworldtransfer_world_locked"));
+    if (!m_lockedForTransfer)
+        return detail.arg(qtTrId("characterworldtransfer_world_premium"));
+    return detail.arg(qtTrId("characterworldtransfer_world_premium_and_locked"));
 }
 
 TQmlWorldTransferCondition::TQmlWorldTransferCondition(const bool meets, QString text, QObject* parent)
@@ -463,9 +487,13 @@ QVariant TSimpleNameAndCountModel::data(const QModelIndex& index, const int role
     return {};
 }
 
+/// The default roles with "name" and "count".
 QHash<int, QByteArray> TSimpleNameAndCountModel::roleNames() const
 {
-    return { { NameRole, "name" }, { CountRole, "count" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[NameRole] = "name";
+    roles[CountRole] = "count";
+    return roles;
 }
 
 void TSimpleNameAndCountModel::setEntries(std::vector<Entry> entries)

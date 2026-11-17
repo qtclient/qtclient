@@ -75,25 +75,37 @@ TQmlDroppedLoot::TQmlDroppedLoot(const cyclopedia::TDroppedLoot& drop, QObject* 
     m_monsterName = drop.monsterName;
     m_dropTimestamp = formatDateTime(drop.timestamp);
     m_dropCountString = english(drop.count);
-    m_creatureOutfitId = static_cast<uint>(drop.outfit.getId());
-    m_creatureHeadColor = outfitColor(drop.outfit.getHead());
-    m_creatureTorsoColor = outfitColor(drop.outfit.getBody());
-    m_creatureLegsColor = outfitColor(drop.outfit.getLegs());
-    m_creatureDetailColor = outfitColor(drop.outfit.getFeet());
-    m_creatureFirstAddOn = (drop.outfit.getAddons() & 1) != 0;
-    m_creatureSecondAddOn = (drop.outfit.getAddons() & 2) != 0;
+    m_outfit = drop.outfit;
 }
 
-TQmlTrackedItem::TQmlTrackedItem(const cyclopedia::TTrackedItem& item, const qint64 value, QObject* parent)
+uint TQmlDroppedLoot::creatureOutfitId() const { return static_cast<uint>(m_outfit.getId()); }
+QColor TQmlDroppedLoot::creatureHeadColor() const { return outfitColor(m_outfit.getHead()); }
+QColor TQmlDroppedLoot::creatureTorsoColor() const { return outfitColor(m_outfit.getBody()); }
+QColor TQmlDroppedLoot::creatureLegsColor() const { return outfitColor(m_outfit.getLegs()); }
+QColor TQmlDroppedLoot::creatureDetailColor() const { return outfitColor(m_outfit.getFeet()); }
+bool TQmlDroppedLoot::creatureFirstAddOn() const { return (m_outfit.getAddons() & 1) != 0; }
+bool TQmlDroppedLoot::creatureSecondAddOn() const { return (m_outfit.getAddons() & 2) != 0; }
+
+TQmlTrackedItem::TQmlTrackedItem(const cyclopedia::TTrackedItem& item, QObject* parent)
     : cip::tibia::gamewindow::TQmlTrackedItem(parent)
 {
     m_appearanceTypeID = item.objectType;
     m_objectID = item.objectType;
     m_itemName = trackedItemName(item.objectType);
-    m_trackingStartTime = formatDateTime(item.recordStartTimestamp);
-    m_itemValueString = english(value);
     m_dropCount = static_cast<int>(item.dropCount);
-    m_dropCountString = numberVariants(item.dropCount);
+    m_trackingStartTime = formatDateTime(item.recordStartTimestamp);
+}
+
+QString TQmlTrackedItem::itemValueString() const { return english(m_itemValue); }
+
+QString TQmlTrackedItem::dropCountString() const { return numberVariants(m_dropCount); }
+
+void TQmlTrackedItem::setItemValue(const qint64 value)
+{
+    if (m_itemValue == value)
+        return;
+    m_itemValue = value;
+    Q_EMIT itemValueChanged();
 }
 
 void TQmlTrackedItem::setDropCount(const quint32 count)
@@ -101,7 +113,6 @@ void TQmlTrackedItem::setDropCount(const quint32 count)
     if (m_dropCount == static_cast<int>(count))
         return;
     m_dropCount = static_cast<int>(count);
-    m_dropCountString = numberVariants(count);
     Q_EMIT dropCountChanged();
 }
 
@@ -207,7 +218,8 @@ void TLootTrackingWidgetController::rebuildTrackedItems()
     const QList<QObject*> old = std::exchange(m_trackedItems, {});
     analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
     for (const cyclopedia::TTrackedItem& item : m_storage->activeTrackedItems()) {
-        auto* qmlItem = new TQmlTrackedItem(item, static_cast<qint64>(prices->lootPrice(item.objectType)), this);
+        auto* qmlItem = new TQmlTrackedItem(item, this);
+        qmlItem->setItemValue(static_cast<qint64>(prices->lootPrice(item.objectType)));
         qmlItem->setLootDrops(m_storage->lootDropsForTrackedItem(item.objectType));
         m_trackedItems.append(qmlItem);
     }

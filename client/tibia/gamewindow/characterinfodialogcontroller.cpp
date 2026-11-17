@@ -342,7 +342,7 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TAccountCharactersModel(this);
     new TQmlChildTransaction({}, {}, TQmlChildTransaction::TibiaCoins, 0, this);
     new TQmlPossibleMainChar({}, {}, {}, 0, this);
-    new TQmlTargetWorld({}, {}, false, false, this);
+    new TQmlTargetWorld({}, false, false, 0, this);
     new TQmlWorldTransferCondition(false, {}, this);
     new TSpritesheetDataObject({}, this);
     new TSimpleNameAndCountModel(this);

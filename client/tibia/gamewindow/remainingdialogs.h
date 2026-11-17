@@ -473,7 +473,7 @@ class TReturnerRewardDialogController final : public TDialogController<cip::tibi
 public:
     explicit TReturnerRewardDialogController(QObject* parent = nullptr);
 
-    void showReward(const QString& text);
+    QString dialogText() const override;
 
 public Q_SLOTS:
     void onContinueClicked() override;

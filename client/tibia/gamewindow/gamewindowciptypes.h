@@ -105,13 +105,10 @@ class TTextCopyController final : public cip::tibia::gamewindow::TTextCopyContro
 {
     Q_OBJECT
 public:
-    explicit TTextCopyController(QObject* parent = nullptr);
+    explicit TTextCopyController(QQmlEngine* engine);
 
     void cutFromTextInputQmlItemIfPossible(QObject* pTextInput) override;
     void copyFromTextInputQmlItemIfPossible(QObject* pTextInput) override;
-
-private:
-    void copyOrCut(QObject* textInput, bool cut);
 };
 
 class TSpritesheetDataObject final : public cip::tibia::gamewindow::TSpritesheetDataObject
@@ -172,7 +169,14 @@ class TQmlTargetWorld final : public cip::tibia::gamewindow::TQmlTargetWorld
 {
     Q_OBJECT
 public:
-    TQmlTargetWorld(QString worldName, QString detailedWorldName, bool premiumOnly, bool lockedForTransfer, QObject* parent = nullptr);
+    TQmlTargetWorld(QString worldName, bool premiumOnly, bool lockedForTransfer, int pvpType, QObject* parent = nullptr);
+
+    /// The name with the PvP type, and whether the world is premium only
+    /// and/or locked for transfers.
+    QString detailedWorldName() const override;
+
+private:
+    int m_pvpType = 0;
 };
 
 class TQmlWorldTransferCondition final : public cip::tibia::gamewindow::TQmlWorldTransferCondition
@@ -531,14 +535,6 @@ class TOutfitQMLInformation final : public cip::tibia::gamewindow::TOutfitQMLInf
 public:
     TOutfitQMLInformation(int id, int head, int torso, int legs, int detail, int addons, QObject* parent = nullptr);
 };
-class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };
-class TQmlLoot final : public ::tibia::CipTyped { public: TQmlLoot() = default; };
-class TQmlLootOfRarity final : public ::tibia::CipTyped { public: TQmlLootOfRarity() = default; };
-class TQmlMonsterBonusEffect final : public ::tibia::CipTyped { public: TQmlMonsterBonusEffect() = default; };
-class TQmlMonsterClassificationSummary final : public ::tibia::CipTyped { public: TQmlMonsterClassificationSummary() = default; };
-class TQmlMonsterInfo final : public ::tibia::CipTyped { public: TQmlMonsterInfo() = default; };
-class TQmlMonsterSensitivity final : public ::tibia::CipTyped { public: TQmlMonsterSensitivity() = default; };
-class TQmlPreviewCharm final : public ::tibia::CipTyped { public: TQmlPreviewCharm() = default; };
 
 }
 }
