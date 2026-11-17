@@ -53,6 +53,7 @@ appearances::IAppearanceInstanceSpriteInfo::v1	7382774637cec697	skip	generated: 
 appearances::TAppearanceInstance::v0	93d4d227dfdd8e50	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstance::v1	c706b9be1f95cd79	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstance::v10	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+appearances::TAppearanceInstance::v11	0815b08ac43f51fa	ported	appearances/appearanceinstance.cpp:TAppearanceInstance::setSpritePattern
 appearances::TAppearanceInstance::v2	5468181e0d5064ae	ported	appearances/appearanceinstance.h:TAppearanceInstance::thingType
 appearances::TAppearanceInstance::v6	b373390eeb839866	ported	appearances/appearanceinstance.h:TAppearanceInstance::elevation
 appearances::TAppearanceInstance::v7	cc376964c96b4161	ported	appearances/appearanceinstance.h:TAppearanceInstance::setElevation
@@ -77,6 +78,12 @@ appearances::TAppearanceInstanceGenericStoragesManager::~TAppearanceInstanceGene
 appearances::TAppearanceInstanceSpriteSequence::v0	40b101578bc086f9	ported	creatures/creaturestorage.cpp:TCreature::refreshWalkAnimators
 appearances::TAppearanceInstanceSpriteSequence::v1	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceSpriteSequence::v2	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
+appearances::TAppearanceInstanceSpriteSequence::v3	bc9de26ba47c4535	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::setPattern
+appearances::TAppearanceInstanceSpriteSequence::v4	65b7314e65eb7b1e	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::spriteInfos
+appearances::TAppearanceInstanceSpriteSequence::v5	c0c49ef12c5d8c29	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::currentSpriteInfo
+appearances::TAppearanceInstanceSpriteSequence::v6	c315b056b6f1bbb9	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::firstSpriteInfo
+appearances::TAppearanceInstanceSpriteSequence::v7	f362761efd58a6d9	ported	appearances/appearanceinstancespritesequence.h:TAppearanceInstanceSpriteSequence::animator
+appearances::TAppearanceInstanceSpriteSequence::v8	b9c66d8103914bc9	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::update
 appearances::TAppearanceInstanceTracker::v12	cb1a9c6576127e95	tested	appearances/appearanceinstancetracker.cpp:TAppearanceInstanceTracker::instanceCreated	test=tests/client/appearanceinstancetracker_test.cpp
 appearances::TAppearanceInstanceTracker::v13	c4e783bb0ac46097	tested	appearances/appearanceinstancetracker.cpp:TAppearanceInstanceTracker::loadSpritesheetsOf	test=tests/client/appearanceinstancetracker_test.cpp
 appearances::TAppearanceInstanceTracker::v14	82ad02f9b5e7e413	tested	appearances/appearanceinstancetracker.cpp:TAppearanceInstanceTracker::instanceDestroyed	test=tests/client/appearanceinstancetracker_test.cpp
@@ -161,7 +168,13 @@ appearances::TShowOffSocketAppearanceInstance::v0	b4f6d72a5e70bed6	skip	generate
 appearances::TShowOffSocketAppearanceInstance::v1	e7549e5617302212	skip	generated: compiler-generated destructor pair
 appearances::TSpritesheetAppearanceInstanceSpriteInfo::v0	5f3d3948d1681070	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::TSpritesheetAppearanceInstanceSpriteInfo::v1	2c2985996b181825	skip	generated: same code as the skipped family: compiler-generated destructor pair
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v3	3f5e7a3a145afc3b	ported	appearances/spriteinfo.cpp:TSpritesheetAppearanceInstanceSpriteInfo::clone
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v4	424bd84b4b041639	ported	appearances/spriteinfo.cpp:TSpritesheetAppearanceInstanceSpriteInfo::hasSameSprite
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v5	d20782133281c96e	ported	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::spriteId
 appearances::TSpritesheetAppearanceInstanceSpriteInfo::v6	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v7	f38c3d606f1b912e	ported	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::boundingBox
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v8	83a774501425e62b	ported	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::spriteSize
+appearances::TSpritesheetAppearanceInstanceSpriteInfo::v9	83a774501425e62b	ported	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::spriteId
 appearances::TTutorialFieldEffectInstance::v0	262f45e74a197d9c	skip	generated: compiler-generated destructor pair
 appearances::TTutorialFieldEffectInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair
 appearances::TTutorialFieldEffectInstance::v14	75d5f0287d63488f	ported	appearances/appearanceinstance.h:TTutorialFieldEffectInstance::isFinished
@@ -7749,6 +7762,7 @@ sub_7cf7e420b759#2	7cf7e420b75991b6	skip	generated: moc property getter (generat
 sub_7cf7e420b759#3	7cf7e420b75991b6	skip	generated: moc property getter, provided by the generated cip base
 sub_7cf7e420b759#4	7cf7e420b75991b6	skip	generated: moc property getter (generated in cip_gen)
 sub_7cf7e420b759#8	7cf7e420b75991b6	inlined	gamewindow/marketcontroller.cpp:appendStatistics
+sub_7cf7e420b759#9	7cf7e420b75991b6	inlined	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::spriteSize
 sub_7cf987489504	7cf9874895040c7d	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::showLevelSpecialPopup
 sub_7cfd3752a300	7cfd3752a300836c	ported	proficiency/proficiencystorage.cpp:TProficiencyData::pick
 sub_7d0940e654d1	7d0940e654d168dd	ported	cyclopedia/combatstatsqmldata.cpp:TDefenceStatsQmlData::TDefenceStatsQmlData
@@ -8948,6 +8962,7 @@ sub_9faac4e0be24#3	9faac4e0be245e40	skip	generated: moc property getter, provide
 sub_9faac4e0be24#5	9faac4e0be245e40	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::friendList
 sub_9faac4e0be24#6	9faac4e0be245e40	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::accountCharacterList
 sub_9fac47bb7323	9fac47bb7323688b	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::TScreenshotManager
+sub_9fae0dae752c#2	9fae0dae752c60e1	inlined	appearances/spriteinfo.cpp:TSpritesheetAppearanceInstanceSpriteInfo::hasSameSprite
 sub_9fbb43d5b65d	9fbb43d5b65d8d99	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_9fcc2b021bfe	9fcc2b021bfe29e9	ported	gamewindow/chatcontroller.cpp:TChatChannelController::onTutorialMarkerChanged
 sub_9fcce92fe779	9fcce92fe779ea49	ported	config/optionspages.cpp:percentOf
@@ -9775,6 +9790,7 @@ sub_b8501c20280b#2	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTran
 sub_b8501c20280b#3	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_b8501c20280b#4	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v139
 sub_b8501c20280b#5	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_b87167cad10d	b87167cad10d879b	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::boundingBox
 sub_b8b7cfb4c651	b8b7cfb4c651d39b	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_b8c6c5516062	b8c6c5516062ccab	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::deleteCurrentPreset
 sub_b8c869f03af1	b8c869f03af130df	ported	gamewindow/actionbarmanager.cpp:TActionBarManager::onActionButtonTriggered
@@ -10130,6 +10146,7 @@ sub_c58b251f286e	c58b251f286ebabe	skip	library: SFML audio library (miniaudio ba
 sub_c58f9b402e0a	c58f9b402e0a8814	ported	appearances/appearancetype.h:patternWidth
 sub_c58f9b402e0a#18	c58f9b402e0a8814	inlined	protocol::TProtobufServerMessageTranslator::v2
 sub_c58f9b402e0a#20	c58f9b402e0a8814	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::notAllowedReason
+sub_c58f9b402e0a#21	c58f9b402e0a8814	inlined	appearances/spriteinfo.h:TSpritesheetAppearanceInstanceSpriteInfo::spriteId
 sub_c58f9b402e0a#24	c58f9b402e0a8814	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::sendOfferViewedEvents
 sub_c58f9b402e0a#26	c58f9b402e0a8814	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::nextTransactionPage
 sub_c58f9b402e0a#27	c58f9b402e0a8814	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
@@ -10758,6 +10775,7 @@ sub_d81f1e093f91#97	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocol
 sub_d81f1e093f91#98	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchType
 sub_d81f1e093f91#99	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenParentContainer
 sub_d82acfd0735a	d82acfd0735aa306	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::onDataReady
+sub_d843f1cad16d	d843f1cad16dd079	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::phaseSprites
 sub_d8488092ac9c	d8488092ac9c8d37	ported	game/statusbarstorage.cpp:positionToString
 sub_d86bbada087a	d86bbada087a10aa	tested	shared/src/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
 sub_d88c852e11fc#3	d88c852e11fc98e3	ported	input/genericgameactionhandler.cpp:TGenericGameActionHandler::TGenericGameActionHandler
@@ -10834,6 +10852,8 @@ sub_db2d04910626#2	db2d04910626a635	tested	shared/src/paginationproxymodel.cpp:T
 sub_db35c5a2e19c	db35c5a2e19c5c18	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::availableTiers
 sub_db38635ce42d	db38635ce42d57de	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateSelectedWorld
 sub_db4099ad41ef	db4099ad41efc814	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::sendInspect
+sub_db4114618c5f	db4114618c5f8eea	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence
+sub_db4114618c5f#2	db4114618c5f8eea	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence
 sub_db4a4d551683	db4a4d55168359a5	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
 sub_db5a27c68bdf	db5a27c68bdfaa50	inlined	analysers/impactwidgets.cpp:isPremiumPlayer
 sub_db7bb9a20f2a	db7bb9a20f2a0105	skip	library: std::vector<TEventInformation> reserve/growth template
@@ -11685,6 +11705,8 @@ sub_f98eb3aa1b73	f98eb3aa1b73e53d	tested	sessiondump/sessiondumpprocessor.cpp:TS
 sub_f9a0a702deba#5	f9a0a702deba7f63	inlined	quickloot/managedcontainerstorage.h:TManagedContainerStorage::managedContainers
 sub_f9a50c2bdd79	f9a50c2bdd796f99	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedSortOrderIndex
 sub_f9a9d3151556	f9a9d3151556602b	ported	appearances/appearancetype.cpp:TAppearanceType::npcTradeData
+sub_f9ad48fac770	f9ad48fac7701d19	ported	appearances/spriteinfo.cpp:TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo
+sub_f9ad48fac770#2	f9ad48fac7701d19	ported	appearances/spriteinfo.cpp:TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo
 sub_f9cb681b5d0d#2	f9cb681b5d0dc995	skip	library: SFML/miniaudio library helper, only called from library code
 sub_f9cf6c7d2f2f	f9cf6c7d2f2f4e94	ported	proficiency/proficiencystorage.cpp:parseProficiencyLevel
 sub_f9d4d52b5316	f9d4d52b53169402	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestChoosePrey

@@ -1261,23 +1261,24 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         yPattern = object->patternY();
         zPattern = object->patternZ();
     }
-    if (const auto* hang = dynamic_cast<const appearances::THangableObjectAppearanceInstance*>(appearance.get())) {
-        const int patterns = type->getNumPatternX();
-        const uint8_t side = hang->hangSide();
-        if (side == 1 && patterns >= 2)
-            xPattern = 1;
-        else if (side >= 2 && patterns >= 3)
-            xPattern = 2;
-    }
 
-    const int phase = object ? object->calculateAnimationPhase() : 0;
+    // The object's sprite sequence holds its pattern's sprites per phase; its
+    // animator picks the phase.
+    const appearances::TAppearanceInstanceSpriteSequence* sequence = object ? object->spriteSequence().get() : nullptr;
+    if (sequence)
+        object->spriteSequence()->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+    const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
+        : object                                       ? object->calculateAnimationPhase()
+                                                       : 0;
+    const appearances::TSpritesheetAppearanceInstanceSpriteInfo* spriteInfo =
+        sequence ? sequence->currentSpriteInfo().get() : nullptr;
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile)))
         : std::nullopt;
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
         if (showOff->drawsSocket()) {
-            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight, 1.f, 0, spriteInfo);
             if (type->hasLight())
                 addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
         }
@@ -1292,7 +1293,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         return;
     }
 
-    addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+    addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight, 1.f, 0, spriteInfo);
     if (type->hasLight())
         addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
@@ -1502,7 +1503,8 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
 
 void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& dest, const int xPattern, const int yPattern,
                                          const int zPattern, const int animationPhase, const bool colorize, const uint32_t colors,
-                                         const SpriteRecord::Highlight highlight, const float opacity, const uint8_t tint)
+                                         const SpriteRecord::Highlight highlight, const float opacity, const uint8_t tint,
+                                         const appearances::TSpritesheetAppearanceInstanceSpriteInfo* spriteInfo)
 {
     if (!type || type->isNull() || type->getAnimationPhases() == 0)
         return;
@@ -1512,7 +1514,11 @@ void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& de
     const uint64_t drawKey = m_key.packed();
     const bool raycast = (m_lighting && m_lighting->frameActive());
 
-    const std::optional<uint32_t> sprite = type->spriteIdAt(0, xPattern, yPattern, zPattern, animationPhase);
+    // An instance's sprite info names the sprite; else the type's pattern and phase do.
+    const std::optional<uint32_t> sprite = spriteInfo
+        ? (spriteInfo->sprite() && !spriteInfo->sprite()->spritesheetId.isEmpty() ? std::optional<uint32_t>(spriteInfo->spriteId())
+                                                                                  : std::nullopt)
+        : type->spriteIdAt(0, xPattern, yPattern, zPattern, animationPhase);
     if (sprite) {
         SpriteKey key{ .spriteId = *sprite, .tint = tint };
         if (colorize) {

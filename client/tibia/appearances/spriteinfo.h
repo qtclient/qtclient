@@ -3,6 +3,9 @@
 #include "shared/cip_typed.h"
 
 #include "renderer/spritetexturecache.h"
+#include "sprites/spritefromspritesheetinfo.h"
+
+#include <QRect>
 
 #include <QImage>
 
@@ -47,18 +50,29 @@ private:
     std::array<uint32_t, 3> m_colors{};
 };
 
-/// CIP TSpritesheetAppearanceInstanceSpriteInfo — one spritesheet entry.
+/// One sprite of a spritesheet drawn for an instance, with the bounding box of
+/// the instance's direction (CIP appearances::TSpritesheetAppearanceInstanceSpriteInfo).
 class TSpritesheetAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpriteInfo
 {
 public:
+    TSpritesheetAppearanceInstanceSpriteInfo(std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite,
+                                             const QRect& boundingBox);
     explicit TSpritesheetAppearanceInstanceSpriteInfo(uint32_t spriteId);
-
     SpriteKey key() const override;
     QImage raster() const override;
-    uint32_t spriteId() const { return m_spriteId; }
+
+    std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo> clone() const;
+    /// Draws the same sprite as `other`.
+    bool hasSameSprite(const TSpritesheetAppearanceInstanceSpriteInfo& other) const;
+    /// The sprite id (CIP asks it twice, v5 and v9).
+    uint32_t spriteId() const { return m_sprite ? m_sprite->spriteId : 0; }
+    QRect boundingBox() const { return m_boundingBox; }
+    QSize spriteSize() const { return m_sprite ? m_sprite->size : QSize(); }
+    const std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>& sprite() const { return m_sprite; }
 
 private:
-    uint32_t m_spriteId = 0;
+    std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> m_sprite;
+    QRect m_boundingBox;
 };
 
 /// CIP TMaskedAppearanceInstanceSpriteInfo — sprite + mask + outfit colours.

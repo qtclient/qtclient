@@ -1,4 +1,5 @@
 #include "appearances/spriteinfo.h"
+#include "sprites/spritesystem.h"
 
 #include <QPainter>
 
@@ -45,14 +46,32 @@ QImage TCreatureMarkAppearanceInstanceSpriteInfo::imageForColors(const std::arra
     return image;
 }
 
-TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(const uint32_t spriteId)
-    : m_spriteId(spriteId)
+TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(
+    std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite, const QRect& boundingBox)
+    : m_sprite(std::move(sprite))
+    , m_boundingBox(boundingBox)
 {
+}
+
+TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(const uint32_t spriteId)
+    : m_sprite(std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(sprites::TSpriteSystem::instance().spriteInfo(spriteId)))
+    , m_boundingBox(0, 0, 32, 32)
+{
+}
+
+std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo> TSpritesheetAppearanceInstanceSpriteInfo::clone() const
+{
+    return std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(m_sprite, m_boundingBox);
+}
+
+bool TSpritesheetAppearanceInstanceSpriteInfo::hasSameSprite(const TSpritesheetAppearanceInstanceSpriteInfo& other) const
+{
+    return spriteId() == other.spriteId();
 }
 
 SpriteKey TSpritesheetAppearanceInstanceSpriteInfo::key() const
 {
-    return SpriteKey{ .spriteId = m_spriteId };
+    return SpriteKey{ .spriteId = spriteId() };
 }
 
 QImage TSpritesheetAppearanceInstanceSpriteInfo::raster() const

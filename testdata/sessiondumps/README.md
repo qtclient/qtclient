@@ -127,7 +127,7 @@ Optional extra IHDR check: `TIBIA_SCREENSHOT_BASELINE=/path.png`.
 `make_fields_cam.py` writes `fields.cam`: login → world entry → a lit FullMap of
 real appearances (grounds 4526 / 351 with coordinate patterns, 50 gold coins, a
 backpack under a white flower, the player in outfit 128 with colours) and effect
-63 timed into the screenshot. `tools/render-check.sh` replays it with
+209 timed into the screenshot. `tools/render-check.sh` replays it with
 `QTCLIENT_TEST_PATHS=1` (settings and data under `~/.qttest`, never the real
 Application Support or Preferences), crops the world map pane and compares it with
 `fields.golden.png` (the creature name strip is masked: its brightness follows the

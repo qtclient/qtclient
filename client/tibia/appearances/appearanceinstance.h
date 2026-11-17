@@ -1,6 +1,7 @@
 #pragma once
 
 #include "animation/animator.h"
+#include "appearances/appearanceinstancespritesequence.h"
 #include "appearances/genericstorage.h"
 #include "shared/cip_typed.h"
 #include "tibia/client/outfit.h"
@@ -70,11 +71,18 @@ public:
     /// The creature this instance draws on a field (0 for objects and effects).
     tibia::creatures::TCreatureID creatureId() const { return m_creatureId; }
     void linkCreature(tibia::creatures::TCreatureID creatureId) { m_creatureId = creatureId; }
+    /// The sprites this instance draws (null for a type without frame groups).
+    const std::shared_ptr<TAppearanceInstanceSpriteSequence>& spriteSequence() const { return m_spriteSequence; }
+    /// Draws `pattern` from now on (CIP v11).
+    void setSpritePattern(const TAppearancePattern& pattern);
 
 protected:
     TAppearanceType* m_type = nullptr;
+    std::shared_ptr<TAppearanceInstanceSpriteSequence> m_spriteSequence;
     uint8_t m_elevation = 0;
     tibia::creatures::TCreatureID m_creatureId = 0;
+    /// When the instance's animation starts (objects: time 0).
+    qint64 m_animationStartMs = 0;
 };
 
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
@@ -103,6 +111,7 @@ public:
         m_patternX = x;
         m_patternY = y;
         m_patternZ = z;
+        setSpritePattern({ x, y, z });
     }
     /// The phase to draw now, from this instance's own animator.
     int calculateAnimationPhase() const;
@@ -445,25 +454,6 @@ public:
 
 private:
     bool m_stopped = false;
-};
-
-/// CIP appearances::TAppearanceInstanceSpriteSequence — sprite id list for one phase.
-class TAppearanceInstanceSpriteSequence : public ::tibia::CipTyped
-{
-public:
-    explicit TAppearanceInstanceSpriteSequence(std::vector<uint32_t> spriteIds);
-
-    const std::vector<uint32_t>& spriteIds() const { return m_spriteIds; }
-    size_t size() const { return m_spriteIds.size(); }
-
-private:
-    std::vector<uint32_t> m_spriteIds;
-};
-
-class TCustomizableOutfitAppearanceInstanceSpriteSequence final : public TAppearanceInstanceSpriteSequence
-{
-public:
-    using TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence;
 };
 
 /// CIP appearances::TAppearanceInstanceFactory — pick concrete instance from TAppearanceType / outfit.

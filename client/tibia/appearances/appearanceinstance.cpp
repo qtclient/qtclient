@@ -100,6 +100,24 @@ void objectPatternsFor(TAppearanceType* type, const int countOrSubType, int& pat
 TAppearanceInstance::TAppearanceInstance(TAppearanceType* type)
     : m_type(type)
 {
+    // The instance draws its type's initial frame group, an outfit's idle one
+    // when it has none (CIP: the type's sprites info of frame group 0).
+    if (!type)
+        return;
+    const EFixedFrameGroup group =
+        type->hasFrameGroup(EFixedFrameGroup::ObjectInitial) ? EFixedFrameGroup::ObjectInitial : EFixedFrameGroup::OutfitIdle;
+    if (!type->hasFrameGroup(group))
+        return;
+    // The types live as long as the appearances: the sequence refers to the group.
+    const std::shared_ptr<const TAppearanceTypeSpriteInfo> spritesInfo(std::shared_ptr<void>(), &type->frameGroup(group));
+    m_spriteSequence = std::make_shared<TAppearanceInstanceSpriteSequence>(spritesInfo, false);
+    m_spriteSequence->setPattern({}, m_animationStartMs);
+}
+
+void TAppearanceInstance::setSpritePattern(const TAppearancePattern& pattern)
+{
+    if (m_spriteSequence)
+        m_spriteSequence->setPattern(pattern, m_animationStartMs);
 }
 
 uint16_t TAppearanceInstance::id() const
@@ -376,11 +394,6 @@ void TDirectionalFieldEffectInstance::start(const Position& field, const qint64 
 {
     TEffectInstance::start(field, nowMs);
     directionPattern(direction, m_patternX, m_patternY);
-}
-
-TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::vector<uint32_t> spriteIds)
-    : m_spriteIds(std::move(spriteIds))
-{
 }
 
 template <class T, class... Args>

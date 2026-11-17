@@ -23,6 +23,7 @@
 namespace tibia {
 namespace appearances {
 class TAppearanceInstance;
+class TSpritesheetAppearanceInstanceSpriteInfo;
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 }
 }
@@ -297,7 +298,8 @@ private:
     static constexpr float MinEffectOpacity = 0.01f;
     void addSprites(TAppearanceType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
-                    SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0);
+                    SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0,
+                    const appearances::TSpritesheetAppearanceInstanceSpriteInfo* spriteInfo = nullptr);
     /// The creature's attached effects on one side of its outfit (product
     /// Creature::internalDraw): at its walked field, or where it is drawn
     /// (`jumped`) for those following it.

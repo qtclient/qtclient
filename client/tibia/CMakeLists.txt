@@ -600,6 +600,7 @@ if(TIBIA_WITH_GAMECORE)
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
     appearances/genericstorage.h
     appearances/appearanceinstancetracker.cpp appearances/appearanceinstancetracker.h
+    appearances/appearanceinstancespritesequence.cpp appearances/appearanceinstancespritesequence.h
     appearances/spriteinfo.cpp appearances/spriteinfo.h
     appearances/worldmaphighlightbaseplate.cpp appearances/worldmaphighlightbaseplate.h
     animation/animator.cpp animation/animator.h

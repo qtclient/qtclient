@@ -4,10 +4,11 @@
 The player stands at (100, 100, 7) on a lit field set of real appearances:
 grounds 4526 and 351 (351 draws a 4x4 pattern from the field coordinate),
 50 gold coins (3031, pile pattern), a backpack (2854) under a white flower (102),
-the player in outfit 128 with colours, and effect 63 on the field west of it.
-The objects and outfit are single-phase; effect 63's first phase lasts 400 ms and
-starts at 1300 ms, so a screenshot 1500 ms after world entry (replay
---screenshot-delay=1500) is the same frame on every run.
+the player in outfit 128 with colours, and effect 209 on the field west of it.
+The objects and outfit are single-phase. The screenshot is taken 1500 ms after
+world entry (--screenshot-delay=1500) while the effect is sent 1450 ms after the
+replay starts; world entry takes a few hundred ms, and effect 209's first phase
+lasts 999 ms, so the shot shows its first phase on every run.
 Usage: make_fields_cam.py > fields.cam
 """
 import struct
@@ -66,8 +67,8 @@ def login_success():
 
 
 def effect():
-    # Graphical effects from the field west of the player: effect 63, default source.
-    return u8(0x83) + position(X - 1, Y, Z) + u8(3) + u16(63) + u8(0) + u8(0)
+    # Graphical effects from the field west of the player: effect 209, default source.
+    return u8(0x83) + position(X - 1, Y, Z) + u8(3) + u16(209) + u8(0) + u8(0)
 
 
 lines = [
@@ -75,7 +76,7 @@ lines = [
     (1, u8(0x0f)),
     (2, u8(0x82) + u8(255) + u8(215)),
     (3, full_map()),
-    (1300, effect()),
+    (1450, effect()),
     (8000, u8(0x05) + u8(0x05) + u8(0x00) + b'smoke'),
 ]
 for millis, body in lines:
