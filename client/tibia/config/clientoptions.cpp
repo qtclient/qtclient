@@ -382,6 +382,127 @@ void TClientOptions::setStringOption(const EClientOption id, const QString& valu
     Q_EMIT optionChanged(id);
 }
 
+QDateTime TClientOptions::dateOption(const EClientOption id) const
+{
+    return m_dates.at(id);
+}
+
+void TClientOptions::setDateOption(const EClientOption id, const QDateTime& value)
+{
+    if (m_dates.at(id) == value)
+        return;
+    m_dates[id] = value;
+    Q_EMIT optionChanged(id);
+}
+
+QStringList controlSchemeListModel()
+{
+    return { qtTrId("optionsmenu_controlscheme_classic"), qtTrId("optionsmenu_controlscheme_legacy"),
+             qtTrId("optionsmenu_controlscheme_leftsmartclick") };
+}
+
+QStringList lootSchemeListModel()
+{
+    return { qtTrId("optionsmenu_lootscheme_right"), qtTrId("optionsmenu_lootscheme_shift_right"),
+             qtTrId("optionsmenu_lootscheme_left") };
+}
+
+int controlSchemeForListModelIndex(const int index)
+{
+    const QStringList names = controlSchemeListModel();
+    if (index >= 0 && index < names.size()) {
+        const QString& name = names.at(index);
+        if (name == qtTrId("optionsmenu_controlscheme_classic"))
+            return 1;
+        if (name == qtTrId("optionsmenu_controlscheme_legacy"))
+            return 2;
+        if (name == qtTrId("optionsmenu_controlscheme_leftsmartclick"))
+            return 3;
+    }
+    throw std::logic_error("bug: FindControlSchemeForListModelIndex: end of loop");
+}
+
+int controlSchemeListModelIndex(const int scheme)
+{
+    static constexpr const char* Names[] = { "optionsmenu_controlscheme_classic", "optionsmenu_controlscheme_legacy",
+                                             "optionsmenu_controlscheme_leftsmartclick" };
+    const QString name = qtTrId(scheme >= 1 && scheme <= 3 ? Names[scheme - 1] : "dummy_unknown");
+    const qsizetype index = controlSchemeListModel().indexOf(name);
+    if (index < 0)
+        throw std::logic_error("bug: FindControlSchemeListModelIndex: end of loop");
+    return int(index);
+}
+
+int lootSchemeForListModelIndex(const int index)
+{
+    const QStringList names = lootSchemeListModel();
+    if (index >= 0 && index < names.size()) {
+        const QString& name = names.at(index);
+        if (name == qtTrId("optionsmenu_lootscheme_right"))
+            return 0;
+        if (name == qtTrId("optionsmenu_lootscheme_shift_right"))
+            return 1;
+        if (name == qtTrId("optionsmenu_lootscheme_left"))
+            return 2;
+    }
+    throw std::logic_error("bug: FindLootSchemeForListModelIndex: end of loop");
+}
+
+int lootSchemeListModelIndex(const int scheme)
+{
+    static constexpr const char* Names[] = { "optionsmenu_lootscheme_right", "optionsmenu_lootscheme_shift_right",
+                                             "optionsmenu_lootscheme_left" };
+    const QString name = qtTrId(scheme >= 0 && scheme <= 2 ? Names[scheme] : "dummy_unknown");
+    const qsizetype index = lootSchemeListModel().indexOf(name);
+    if (index < 0)
+        throw std::logic_error("bug: FindLootSchemeListModelIndex: end of loop");
+    return int(index);
+}
+
+int TClientOptions::controlScheme() const
+{
+    return controlSchemeForListModelIndex(intOption(EClientOption::controlSchemeIndex));
+}
+
+void TClientOptions::setControlScheme(const int scheme)
+{
+    setIntOption(EClientOption::controlSchemeIndex, controlSchemeListModelIndex(scheme));
+}
+
+void TClientOptions::setLeftSmartClickControlScheme()
+{
+    setControlScheme(3);
+}
+
+int TClientOptions::lootScheme() const
+{
+    return lootSchemeForListModelIndex(intOption(EClientOption::lootSchemeIndex));
+}
+
+void TClientOptions::setLootScheme(const int scheme)
+{
+    setIntOption(EClientOption::lootSchemeIndex, lootSchemeListModelIndex(scheme));
+}
+
+THotkeySet TClientOptions::currentHotkeySet() const
+{
+    const THotkeyOptionsData hotkeys = THotkeyOptionsData::fromJson(m_hotkeyOptions);
+    const auto it = hotkeys.hotkeySets.find(hotkeys.currentHotkeySetName);
+    return it != hotkeys.hotkeySets.end() ? it->second : THotkeySet{};
+}
+
+void TClientOptions::setCurrentHotkeySet(const THotkeySet& set)
+{
+    THotkeyOptionsData hotkeys = THotkeyOptionsData::fromJson(m_hotkeyOptions);
+    const QString current = hotkeys.currentHotkeySetName;
+    const auto it = hotkeys.hotkeySets.find(current);
+    if ((it != hotkeys.hotkeySets.end() ? it->second : THotkeySet{}) == set)
+        return;
+    hotkeys.hotkeySets[current] = set;
+    m_hotkeyOptions = hotkeys.toJson();
+    Q_EMIT hotkeyOptionsChanged();
+}
+
 void TClientOptions::setClientWindowOptions(const TClientWindowOptions& options)
 {
     if (m_clientWindow == options)

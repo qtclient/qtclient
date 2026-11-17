@@ -73,6 +73,8 @@ struct THotkeyBinding
 {
     QKeySequence keys;
     TActionSetting setting;
+
+    bool operator==(const THotkeyBinding&) const = default;
 };
 
 /// One hotkey preset: the action bar mappings and both chat modes' keys.
@@ -83,6 +85,8 @@ struct THotkeySet
     std::vector<THotkeyBinding> chatOn;
     /// actionBarOptions' other keys (firstVisibleButtons), kept as read.
     QJsonObject actionBarExtra;
+
+    bool operator==(const THotkeySet&) const = default;
 };
 
 /// The hotkeyOptions section as a value: the copy the hotkeys options page

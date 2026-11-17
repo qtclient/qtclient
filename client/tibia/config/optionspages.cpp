@@ -2,6 +2,7 @@
 
 #include "app/bootstrap.h"
 #include "config/clientoptiondefaults.h"
+#include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionobject.h"
 #include "gamewindow/actionbarcontroller.h"
@@ -690,9 +691,8 @@ void TEffectsOptionsPage::setLightEffects(const bool enabled)
 TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
     : TBoundOptionsPage(ControlsBindings, parent)
 {
-    m_controlSchemeListModel = { qtTrId("optionsmenu_controlscheme_classic"), qtTrId("optionsmenu_controlscheme_legacy"),
-                                 qtTrId("optionsmenu_controlscheme_leftsmartclick") };
-    m_lootSchemeListModel = { qtTrId("optionsmenu_lootscheme_right"), qtTrId("optionsmenu_lootscheme_shift_right"), qtTrId("optionsmenu_lootscheme_left") };
+    m_controlSchemeListModel = controlSchemeListModel();
+    m_lootSchemeListModel = lootSchemeListModel();
     // CIP returns DAT_1022bdb0c.
     m_defaultKeyboardDelayMillis = 250;
 }

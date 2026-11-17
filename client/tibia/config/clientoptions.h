@@ -25,6 +25,25 @@ namespace config {
 
 using EClientOption = cip::EClientOption;
 
+struct THotkeySet;
+
+/// The control schemes' localized names in list-model order (classic,
+/// legacy, left smart click).
+QStringList controlSchemeListModel();
+/// The loot schemes' localized names in list-model order (right, shift
+/// right, left).
+QStringList lootSchemeListModel();
+/// controlSchemeIndex → control scheme (1 classic, 2 legacy, 3 left smart
+/// click), matched by the localized name; throws std::logic_error for an
+/// index without a scheme.
+int controlSchemeForListModelIndex(int index);
+/// The list-model index of a control scheme; throws std::logic_error for an
+/// unknown scheme.
+int controlSchemeListModelIndex(int scheme);
+/// lootSchemeIndex → loot scheme (0 right, 1 shift right, 2 left).
+int lootSchemeForListModelIndex(int index);
+int lootSchemeListModelIndex(int scheme);
+
 /// clientWindowOptions: the client window's screen and geometry.
 struct TClientWindowOptions
 {
@@ -85,6 +104,8 @@ public:
     void setFloatOption(EClientOption id, float value);
     QString stringOption(EClientOption id) const;
     void setStringOption(EClientOption id, const QString& value);
+    QDateTime dateOption(EClientOption id) const;
+    void setDateOption(EClientOption id, const QDateTime& value);
 
     const TClientWindowOptions& clientWindowOptions() const { return m_clientWindow; }
     void setClientWindowOptions(const TClientWindowOptions& options);
@@ -107,6 +128,11 @@ public:
     static QString deviceCookieHash(const QString& key);
     const QJsonObject& hotkeyOptions() const { return m_hotkeyOptions; }
     void setHotkeyOptions(const QJsonObject& section);
+    /// A copy of the current hotkey set; an empty set when the current name
+    /// names none.
+    THotkeySet currentHotkeySet() const;
+    /// Replaces the current hotkey set when `set` differs from it.
+    void setCurrentHotkeySet(const THotkeySet& set);
     const TChatOptions& chatOptions() const { return m_chat; }
     void setChatOptions(const TChatOptions& options);
     const TWhiteBlacklistOptions& whiteBlacklistOptions() const { return m_whiteBlacklist; }
@@ -124,6 +150,13 @@ public:
     void setRendererChangeConfirmationRequired(bool required);
 
     void setRendererIndex(int index);
+    /// controlSchemeIndex as a scheme (see controlSchemeForListModelIndex).
+    int controlScheme() const;
+    void setControlScheme(int scheme);
+    void setLeftSmartClickControlScheme();
+    /// lootSchemeIndex as a scheme (see lootSchemeForListModelIndex).
+    int lootScheme() const;
+    void setLootScheme(int scheme);
     int antialiasingMode() const;
     void setAntialiasingMode(int mode);
     int colorizeLootStyle() const;
@@ -198,6 +231,7 @@ private:
     std::unordered_map<EClientOption, int> m_ints;
     std::unordered_map<EClientOption, float> m_floats;
     std::unordered_map<EClientOption, QString> m_strings;
+    std::unordered_map<EClientOption, QDateTime> m_dates;
     bool m_rendererChangeConfirmationRequired = false;
     TClientWindowOptions m_clientWindow;
     QRect m_npcDialog;
