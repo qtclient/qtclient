@@ -182,8 +182,7 @@ void TMapWindowController::updateTrackedUseAtMouseCursor()
     if (m_unhandledAtMouseFrames < 0 || ++m_unhandledAtMouseFrames < 2)
         return;
     clearTrackedUseAtMouseCursorGameAction();
-    auto status = input::mutableClone(*input::makeAction(input::EGameAction::SET_STATUS_LINE));
-    status->text = qtTrId("actionbar_action_no_target");
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("actionbar_action_no_target"));
     input::publish(status);
 }
 

@@ -848,13 +848,13 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
 
     for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
                           A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 /// The result travels in the storage instead of the action.
-bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction& action)
+bool TExaltationForgeDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG:
         showDialog(true);
         break;
@@ -878,7 +878,8 @@ bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction
         break;
     case A::SHOW_EXALTATION_ERROR_DIALOG:
         m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
-        m_errorDialog->showMessage(qtTrId("exaltation_forge_info_dialog_caption"), action.text);
+        if (const auto* message = input::gameActionAs<input::TGameActionShowMessageDialog>(&action))
+            m_errorDialog->showMessage(qtTrId("exaltation_forge_info_dialog_caption"), message->text());
         break;
     default:
         return false;

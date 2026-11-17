@@ -163,9 +163,7 @@ void TExivaOptionsStorage::toggleAllowEveryone() const
     Options options = m_options;
     options.allowAll = !options.allowAll;
     send(options, {}, {}, {}, {});
-    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-    status->text = qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false");
-    status->color = chat::systemWhite();
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false"), chat::systemWhite());
     input::publish(status);
 }
 

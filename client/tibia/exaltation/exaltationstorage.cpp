@@ -201,9 +201,7 @@ void TExaltationStorage::handleShowMessageDialogMessage(const int type, const QS
 {
     if (type != ExaltationErrorDialogType)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::SHOW_EXALTATION_ERROR_DIALOG));
-    action->text = message;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionShowMessageDialog>(A::SHOW_EXALTATION_ERROR_DIALOG, message));
 }
 
 bool TExaltationStorage::handleGameAction(const input::TGameAction& action)

@@ -96,10 +96,10 @@ public Q_SLOTS:
 public:
 
     /// OPEN_URL_GET_PREMIUM: getPremiumUrl followed by the action's number (`parameter`).
-    void handleOpenGetPremiumUrlGameAction(const TGameAction& action);
+    void handleOpenGetPremiumUrlGameAction(const TGameActionOpenGetPremiumUrl& action);
     /// OPEN_URL_SURVEY: limesurveyUrl, the survey id (`parameter`), then
     /// "/lang-en?token=" and the invitation token (`text`).
-    void handleOpenSurveyUrlGameAction(const TGameAction& action);
+    void handleOpenSurveyUrlGameAction(const TGameActionOpenSurveyUrl& action);
 
 private:
     /// The [URLS] page for `action`, or `defaultUrl` when none is configured.

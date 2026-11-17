@@ -32,6 +32,8 @@ IGameActionPtr tableAction(const A type, const int value)
         return std::make_shared<TGameActionSwitchChatMode>(value);
     if (type == A::GET_CHAT_CHANNEL_LIST)
         return std::make_shared<TGameActionGetChatChannelList>();
+    if (type == A::QUIT_GAME)
+        return std::make_shared<TGameActionQuitGame>(value != 0);
     auto action = mutableClone(*makeAction(type));
     switch (type) {
     case A::TOGGLE_WIDGET:
@@ -381,13 +383,10 @@ void announceHotkeySet(const QString& name, const bool statusLine)
 {
     const QString text = qtTrId("hotkey_preset_switched").arg(name);
     if (statusLine) {
-        auto status = mutableClone(*makeAction(A::SET_STATUS_LINE));
-        status->text = text;
+        auto status = std::make_shared<TGameActionSetStatusLine>(text);
         publish(status);
     }
-    auto system = std::make_shared<TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE);
-    system->text = text;
-    system->color = chat::consoleColor(30);
+    auto system = std::make_shared<TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(30));
     publish(system);
 }
 

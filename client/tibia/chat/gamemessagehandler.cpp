@@ -110,18 +110,18 @@ TGameMessageHandler::TGameMessageHandler(TTextStorage& texts, worldmap::TNumeric
         return std::any();
     });
     // CIP (case 0x66 of): the status line, gated by gameWindowShowMessages.
-    input::setActionHandler(input::EGameAction::SET_STATUS_LINE, [this](const input::TGameAction& action) {
+    input::setActionHandler(input::EGameAction::SET_STATUS_LINE, [this](const input::TGameActionSetStatusLine& action) {
         if (m_showMessages)
-            m_texts.setStatusMessage(action.text, action.color.isValid() ? action.color : systemWhite());
+            m_texts.setStatusMessage(action.text(), action.color().isValid() ? action.color() : systemWhite());
         return true;
     });
     // CIP (case 0xa0): a centre message (text storage slot 0xd0), same gate.
-    input::setActionHandler(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, [this](const input::TGameAction& action) {
+    input::setActionHandler(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, [this](const input::TGameActionAddTextMessage& action) {
         if (m_showMessages)
-            m_texts.addCenterMessage(action.text, action.color.isValid() ? action.color : systemWhite());
+            m_texts.addCenterMessage(action.text(), action.color().isValid() ? action.color() : systemWhite());
         return true;
     });
-    input::setActionHandler(input::EGameAction::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW, [this](const input::IGameAction&) {
         m_texts.clearOldestMessage();
         return true;
     });

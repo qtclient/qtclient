@@ -883,8 +883,7 @@ void TPreyDialogController::showDialog()
         return;
     }
     if (!m_storage->allDataReceived()) {
-        auto action = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-        action->text = qtTrId("prey_information_not_available");
+        auto action = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("prey_information_not_available"));
         input::publish(action);
         return;
     }

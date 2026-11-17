@@ -233,8 +233,7 @@ void startTalking(const uint32_t creatureId)
     const Position& from = tibia::game::localPlayerPosition();
     const Position& to = npc->position();
     if (from.z != to.z || std::abs(from.x - to.x) >= 4 || std::abs(from.y - to.y) >= 4) {
-        auto status = mutableClone(*makeAction(A::SET_STATUS_LINE));
-        status->text = qtTrId("you_are_too_far_away");
+        auto status = std::make_shared<TGameActionSetStatusLine>(qtTrId("you_are_too_far_away"));
         publish(status);
         return;
     }
@@ -549,9 +548,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     }
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
-        auto message = std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE);
-        message->text = action->text.isEmpty() ? qtTrId("you_see_nothing") : action->text;
-        message->color = action->color.isValid() ? action->color : QColor(Qt::green);
+        auto message = std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, action->text.isEmpty() ? qtTrId("you_see_nothing") : action->text, action->color.isValid() ? action->color : QColor(Qt::green));
         publish(message);
         break;
     }

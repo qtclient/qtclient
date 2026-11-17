@@ -135,14 +135,11 @@ void TOpenWebsiteGameActionHandler::handleGameAction(const tibia::input::IGameAc
     if (!pGameAction
         || std::find(OpenWebsiteActions.begin(), OpenWebsiteActions.end(), pGameAction->gameActionType()) == OpenWebsiteActions.end())
         return;
-    // The parameterised pages (premium, survey, URL) still carry their fields in TGameAction.
-    TGameAction carrier;
-    carrier.type = pGameAction->gameActionType();
-    const TGameActionPtr fields = unportedGameAction(pGameAction);
-    const TGameAction& action = fields ? *fields : carrier;
-    switch (action.type) {
+    const EGameAction type = pGameAction->gameActionType();
+    switch (type) {
     case A::OPEN_URL_GET_PREMIUM:
-        handleOpenGetPremiumUrlGameAction(action);
+        if (const auto* premium = gameActionAs<TGameActionOpenGetPremiumUrl>(pGameAction))
+            handleOpenGetPremiumUrlGameAction(*premium);
         break;
     case A::OPEN_URL_GET_COINS:
     case A::OPEN_URL_TIBIA_PAGE:
@@ -154,36 +151,38 @@ void TOpenWebsiteGameActionHandler::handleGameAction(const tibia::input::IGameAc
     case A::OPEN_URL_PREMIUM_FEATURES:
     case A::OPEN_URL_TWITCH_TIBIA:
     case A::OPEN_URL_YOUTUBE_TIBIA:
-        openUrlLater(configuredUrl(action.type, tibiaComUrl()));
+        openUrlLater(configuredUrl(type, tibiaComUrl()));
         break;
     case A::OPEN_URL_CIPSOFT:
         // cipSoftUrl is the one page without a tibia.com fallback.
-        openUrlLater(configuredUrl(action.type, QUrl()));
+        openUrlLater(configuredUrl(type, QUrl()));
         break;
     case A::OPEN_URL_SURVEY:
-        handleOpenSurveyUrlGameAction(action);
+        if (const auto* survey = gameActionAs<TGameActionOpenSurveyUrl>(pGameAction))
+            handleOpenSurveyUrlGameAction(*survey);
         break;
     case A::OPEN_URL:
-        openUrlLater(QUrl(action.text, QUrl::TolerantMode));
+        if (const auto* url = gameActionAs<TGameActionOpenUrl>(pGameAction))
+            openUrlLater(QUrl(url->url(), QUrl::TolerantMode));
         break;
     default:
         break;
     }
 }
 
-void TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction(const TGameActionOpenGetPremiumUrl& action)
 {
     QString url = configuredUrl(A::OPEN_URL_GET_PREMIUM, tibiaComUrl()).toString();
-    url.append(QString::number(action.parameter));
+    url.append(QString::number(action.source()));
     openUrlLater(QUrl(url, QUrl::TolerantMode));
 }
 
-void TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction(const TGameActionOpenSurveyUrl& action)
 {
     QString url = configuredUrl(A::OPEN_URL_SURVEY, tibiaComUrl()).toString();
-    url.append(QString::number(action.parameter));
+    url.append(QString::number(action.surveyId()));
     url.append(QStringLiteral("/lang-en?token="));
-    url.append(action.text);
+    url.append(action.token());
     openUrlLater(QUrl(url, QUrl::TolerantMode));
 }
 

@@ -95,9 +95,7 @@ store::TStoreOpenParameters openParameters(const int openAction, const int servi
 
 void publishTextMessage(const input::EGameAction type, const QString& text)
 {
-    auto message = std::make_shared<input::TGameActionAddTextMessage>(type);
-    message->text = text;
-    message->color = QColor(0x18, 0x72, 0xc3);
+    auto message = std::make_shared<input::TGameActionAddTextMessage>(type, text, QColor(0x18, 0x72, 0xc3));
     input::publish(message);
 }
 

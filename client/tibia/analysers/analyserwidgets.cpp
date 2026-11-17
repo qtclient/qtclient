@@ -104,9 +104,7 @@ void publishAction(const A type, const QString& text = {}, const int parameter =
 /// CIP : ADD_SYSTEM_CHAT_MESSAGE in console colour 30.
 void publishSystemMessage(const QString& text)
 {
-    auto action = input::mutableClone(*input::makeAction(A::ADD_SYSTEM_CHAT_MESSAGE));
-    action->text = text;
-    action->color = chat::consoleColor(30);
+    auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(30));
     input::publish(action);
 }
 
@@ -471,18 +469,12 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
             [this] { input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(exportText())); });
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_save_data_to_file")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         const QString path = exportFileName("txt");
-        auto action = input::mutableClone(*input::makeAction(A::SAVE_TEXT_TO_FILE));
-        action->text = exportText();
-        action->filePath = path;
-        input::publish(action);
+        input::publish(std::make_shared<input::TGameActionSaveTextToFile>(exportText(), path));
         publishSystemMessage(qtTrId("huntinganalyser_session_saved").arg(path));
     });
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_save_data_to_json")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         const QString path = exportFileName("json");
-        auto action = input::mutableClone(*input::makeAction(A::SAVE_JSON_TO_FILE));
-        action->text = QString::fromUtf8(QJsonDocument(exportJson()).toJson());
-        action->filePath = path;
-        input::publish(action);
+        input::publish(std::make_shared<input::TGameActionSaveJsonDocumentToFile>(QJsonDocument(exportJson()), path));
         publishSystemMessage(qtTrId("huntinganalyser_session_saved").arg(path));
     });
     menu->showCustomMenu();
@@ -1136,7 +1128,7 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     });
     add<THuntingSessionWidgetController>(W::HuntingSessionAnalyser, [this]() -> THuntingSessionWidgetController* {
         if (!isPremiumPlayer()) {
-            publishAction(A::SET_STATUS_LINE, qtTrId("battlelist_need_premium"));
+            input::publish(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("battlelist_need_premium")));
             return nullptr;
         }
         auto* controller = new THuntingSessionWidgetController(m_storages, m_gameWindowItem, m_engine);

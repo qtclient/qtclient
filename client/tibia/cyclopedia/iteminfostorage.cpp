@@ -353,9 +353,7 @@ void TItemInfoStorage::announce(const QStringList& names, const QString& monster
         }
     }
     // CIP + TTextStorage slot 0x80; our status line is plain text.
-    auto status = input::mutableClone(*input::makeAction(input::EGameAction::SET_STATUS_LINE));
-    status->text = stripColourCodings(text);
-    status->color = color;
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(stripColourCodings(text), color);
     input::publish(status);
 }
 
@@ -368,9 +366,7 @@ void TItemInfoStorage::onUpdateTimer()
     if (std::exchange(m_pendingRecentDropsChanged, false))
         Q_EMIT recentLootDropsChanged();
     if (std::exchange(m_pendingScreenshot, false)) {
-        auto screenshot = input::mutableClone(*input::makeAction(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
-        screenshot->parameter = ValuableLootScreenshot;
-        input::publish(screenshot);
+        input::publish(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ValuableLootScreenshot));
     }
 }
 

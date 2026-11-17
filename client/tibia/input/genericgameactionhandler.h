@@ -43,8 +43,8 @@ public:
     void handleChangeCharacterAction();
     void handleRequestResourceBalanceAction(const TGameAction& action);
     void handleTeleportToCoordinateAction(const TGameAction& action);
-    void handleSaveTextToFile(const TGameAction& action);
-    void handleSaveJsonDocumentToFile(const TGameAction& action);
+    void handleSaveTextToFile(const TGameActionSaveTextToFile& action);
+    void handleSaveJsonDocumentToFile(const TGameActionSaveJsonDocumentToFile& action);
 
 public Q_SLOTS:
     /// CIP v12: hands an action of a type it handles to its handler; other

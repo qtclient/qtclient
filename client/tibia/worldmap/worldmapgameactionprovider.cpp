@@ -73,9 +73,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     result.push_back(input::makeMovementIntent(pick.playerFloorPosition));
 
     if (pick.lightness == 0) {
-        auto message = input::mutableClone(*input::makeAction(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE));
-        message->text = qtTrId("you_see_nothing");
-        message->color = QColor(Qt::green);
+        auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, qtTrId("you_see_nothing"), QColor(Qt::green));
         result.push_back(message);
         result.push_back(input::makeSmartClick(message));
         append(result, Provider::creatureActions(0));

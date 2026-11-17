@@ -272,9 +272,7 @@ void TNewsDialogController::linkHoverChanged(const bool IsOverLink)
 void TNewsDialogController::onNewsQueryFailed(const QString& ErrorMessage)
 {
     qWarning() << "News query failed:" << ErrorMessage;
-    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-    status->text = qtTrId("news_error_text");
-    status->color = chat::systemWhite();
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("news_error_text"), chat::systemWhite());
     input::publish(status);
 }
 

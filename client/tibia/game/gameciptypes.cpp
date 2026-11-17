@@ -339,10 +339,8 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
                 if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
                     if (tibia::game::hasLocalPlayer()) {
-                        auto action = tibia::input::mutableClone(
-                            *tibia::input::makeAction(tibia::input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
-                        action->parameter = static_cast<int>(small);
-                        tibia::input::publish(action);
+                        tibia::input::publish(
+                            std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(static_cast<int>(small)));
                     }
                 } else {
                     tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));

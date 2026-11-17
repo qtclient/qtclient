@@ -263,11 +263,6 @@ TGameActionActionButtonTriggered::TGameActionActionButtonTriggered(const int bar
 }
 
 
-TGameActionAddTextMessage::TGameActionAddTextMessage(const EGameAction actionType)
-{
-    type = actionType;
-}
-
 TGameActionBuyHirelingNameOrSexChange::TGameActionBuyHirelingNameOrSexChange(const uint32_t id)
 {
     type = EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE;
@@ -313,12 +308,6 @@ TGameActionOpenShowImageDialog::TGameActionOpenShowImageDialog(QString value)
     text = std::move(value);
 }
 
-TGameActionOpenUrl::TGameActionOpenUrl(QString value)
-{
-    type = EGameAction::OPEN_URL;
-    text = std::move(value);
-}
-
 TGameActionPreySystem::TGameActionPreySystem(const EGameAction actionType)
 {
     type = actionType;
@@ -330,27 +319,9 @@ TGameActionRequestOutfitsFromServer::TGameActionRequestOutfitsFromServer(const u
     creatureId = id;
 }
 
-TGameActionSaveJsonDocumentToFile::TGameActionSaveJsonDocumentToFile(QString path)
-{
-    type = EGameAction::SAVE_JSON_TO_FILE;
-    filePath = std::move(path);
-}
-
-TGameActionSaveTextToFile::TGameActionSaveTextToFile(QString path)
-{
-    type = EGameAction::SAVE_TEXT_TO_FILE;
-    filePath = std::move(path);
-}
-
 TGameActionSetHirelingName::TGameActionSetHirelingName(QString value)
 {
     type = EGameAction::SET_HIRELING_NAME;
-    text = std::move(value);
-}
-
-TGameActionSetStatusLine::TGameActionSetStatusLine(QString value)
-{
-    type = EGameAction::SET_STATUS_LINE;
     text = std::move(value);
 }
 
@@ -358,11 +329,6 @@ TGameActionShowConfirmMoveObjectToStashDialog::TGameActionShowConfirmMoveObjectT
 {
     type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG;
     fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionShowMessageDialog::TGameActionShowMessageDialog(const EGameAction actionType)
-{
-    type = actionType;
 }
 
 TGameActionShowSplitStackDialog::TGameActionShowSplitStackDialog(Position position, int stackPosition, const uint16_t objectClientId)
@@ -513,9 +479,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionAddHintAtTutorialMarker>();
     case EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER:
         return std::make_shared<TGameActionAddMouseTrailHintAtTutorialMarker>();
-    case EGameAction::ADD_SYSTEM_CHAT_MESSAGE:
-    case EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE:
-        return std::make_shared<TGameActionAddTextMessage>(type);
     case EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON:
         return std::make_shared<TGameActionAssignSpellToActionButton>();
     case EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE:
@@ -572,8 +535,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionMakeBattleListPrimary>();
     case EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR:
         return std::make_shared<TGameActionOpenContainerInSpecificSidebar>();
-    case EGameAction::OPEN_URL_GET_PREMIUM:
-        return std::make_shared<TGameActionOpenGetPremiumUrl>();
     case EGameAction::LOOT_CONTAINER_OPEN:
         return std::make_shared<TGameActionOpenLootContainer>();
     case EGameAction::OPEN_NEWS_DIALOG:
@@ -596,12 +557,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionOpenSocialDialog>();
     case EGameAction::OPEN_STORE:
         return std::make_shared<TGameActionOpenStore>();
-    case EGameAction::OPEN_URL_SURVEY:
-        return std::make_shared<TGameActionOpenSurveyUrl>();
-    case EGameAction::OPEN_URL:
-        return std::make_shared<TGameActionOpenUrl>();
-    case EGameAction::QUIT_GAME:
-        return std::make_shared<TGameActionQuitGame>();
     case EGameAction::REFRESH_COMPENDIUM_NEWS:
         return std::make_shared<TGameActionRefreshCompendiumNews>();
     case EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
@@ -616,10 +571,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionRequestTransactionDetailsFromServer>();
     case EGameAction::RESOLVE_SPRITE:
         return std::make_shared<TGameActionResolveSprite>();
-    case EGameAction::SAVE_JSON_TO_FILE:
-        return std::make_shared<TGameActionSaveJsonDocumentToFile>();
-    case EGameAction::SAVE_TEXT_TO_FILE:
-        return std::make_shared<TGameActionSaveTextToFile>();
     case EGameAction::PREY_SELECT_MONSTER_FROM_BESTIARY:
         return std::make_shared<TGameActionSelectPreyMonsterFromBestiary>();
     case EGameAction::PREY_SELECT_MONSTER_FROM_LIST:
@@ -648,20 +599,12 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSetSharedExperience>();
     case EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION:
         return std::make_shared<TGameActionSetShowOffSocketConfiguration>();
-    case EGameAction::SET_STATUS_LINE:
-        return std::make_shared<TGameActionSetStatusLine>();
     case EGameAction::SET_TACTICS:
         return std::make_shared<TGameActionSetTactics>();
     case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
         return std::make_shared<TGameActionShowConfirmMoveObjectToStashDialog>();
     case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
         return std::make_shared<TGameActionShowExaltationResultDialog>();
-    case EGameAction::SHOW_MESSAGE_YOU_SEE_NOTHING:
-    case EGameAction::SHOW_INVENTORY_CAPACITY_WARNING:
-    case EGameAction::SHOW_OFFLINE_TRAINING_SKILLS:
-        return std::make_shared<TGameActionShowMessageDialog>(type);
-    case EGameAction::SHOW_NAGGING_DIALOG:
-        return std::make_shared<TGameActionShowNaggingDialog>();
     case EGameAction::SHOW_SPLIT_STACK_DIALOG:
         return std::make_shared<TGameActionShowSplitStackDialog>();
     case EGameAction::SHOW_TUTORIAL_HINT:
@@ -684,8 +627,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionStashStowType>();
     case EGameAction::SWITCH_CLIENTOPTIONS_MODE:
         return std::make_shared<TGameActionSwitchClientOptions>();
-    case EGameAction::TAKE_AUTOMATIC_SCREENSHOT:
-        return std::make_shared<TGameActionTakeAutomaticScreenshot>();
     case EGameAction::TARGET_SELECTED:
         return std::make_shared<TGameActionTargetSelected>();
     case EGameAction::GOD_TELEPORT:

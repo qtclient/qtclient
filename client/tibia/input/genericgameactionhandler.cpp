@@ -133,11 +133,11 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
         break;
     case A::SAVE_TEXT_TO_FILE:
         if (fields)
-            handleSaveTextToFile(*fields);
+            handleSaveTextToFile(static_cast<const TGameActionSaveTextToFile&>(action));
         break;
     case A::SAVE_JSON_TO_FILE:
         if (fields)
-            handleSaveJsonDocumentToFile(*fields);
+            handleSaveJsonDocumentToFile(static_cast<const TGameActionSaveJsonDocumentToFile&>(action));
         break;
     case A::TOGGLE_SOUND:
         handleToggleSoundGameAction();
@@ -267,15 +267,14 @@ void TGenericGameActionHandler::handleToggleCreatureHudsVisibleGameAction()
     options->setBoolOption(O::creatureHudEnabled, !creatureHud);
 }
 
-void TGenericGameActionHandler::handleSaveTextToFile(const TGameAction& action)
+void TGenericGameActionHandler::handleSaveTextToFile(const TGameActionSaveTextToFile& action)
 {
-    saveTextToFile(action.filePath, action.text);
+    saveTextToFile(action.filePath(), action.text());
 }
 
-void TGenericGameActionHandler::handleSaveJsonDocumentToFile(const TGameAction& action)
+void TGenericGameActionHandler::handleSaveJsonDocumentToFile(const TGameActionSaveJsonDocumentToFile& action)
 {
-    // Host concern: qtclient's action carries the document as JSON text.
-    saveTextToFile(action.filePath, action.text);
+    saveTextToFile(action.filePath(), QString::fromUtf8(action.document().toJson()));
 }
 
 void TGenericGameActionHandler::handleToggleSoundGameAction()

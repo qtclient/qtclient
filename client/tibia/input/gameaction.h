@@ -7,6 +7,7 @@
 #include <client/position.h>
 
 #include <QColor>
+#include <QJsonDocument>
 #include <QRectF>
 #include <QString>
 
@@ -1229,6 +1230,204 @@ private:
 };
 
 
+
+// ---------------------------------------------------------------------------
+// Messages, URLs, files, dialogs
+
+/// CIP input::TGameActionAddTextMessage: a text in the chat's current channel
+/// (ADD_SYSTEM_CHAT_MESSAGE) or beneath the world map's centre
+/// (ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE), in a colour (invalid: the default).
+class TGameActionAddTextMessage final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAddTextMessage(EGameAction type, QString text, QColor color = {})
+        : TGameActionSimple(type)
+        , m_text(std::move(text))
+        , m_color(color)
+    {
+    }
+    const QString& text() const { return m_text; }
+    const QColor& color() const { return m_color; }
+
+private:
+    QString m_text;
+    QColor m_color;
+};
+
+/// CIP input::TGameActionSetStatusLine (SET_STATUS_LINE): the status line
+/// beneath the world map (colour invalid: the default).
+class TGameActionSetStatusLine final : public IGameAction
+{
+public:
+    explicit TGameActionSetStatusLine(QString text, QColor color = {})
+        : m_text(std::move(text))
+        , m_color(color)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_STATUS_LINE; }
+    const QString& text() const { return m_text; }
+    const QColor& color() const { return m_color; }
+
+private:
+    QString m_text;
+    QColor m_color;
+};
+
+/// CIP input::TGameActionOpenUrl (OPEN_URL).
+class TGameActionOpenUrl final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionOpenUrl(QString url)
+        : TGameActionSimple(EGameAction::OPEN_URL)
+        , m_url(std::move(url))
+    {
+    }
+    const QString& url() const { return m_url; }
+
+private:
+    QString m_url;
+};
+
+/// CIP input::TGameActionOpenGetPremiumUrl (OPEN_URL_GET_PREMIUM): the page's
+/// source id, appended to the URL.
+class TGameActionOpenGetPremiumUrl final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionOpenGetPremiumUrl(int source = 0)
+        : TGameActionSimple(EGameAction::OPEN_URL_GET_PREMIUM)
+        , m_source(source)
+    {
+    }
+    int source() const { return m_source; }
+
+private:
+    int m_source;
+};
+
+/// CIP input::TGameActionOpenSurveyUrl (OPEN_URL_SURVEY): the survey and the token.
+class TGameActionOpenSurveyUrl final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenSurveyUrl(int surveyId, QString token)
+        : TGameActionSimple(EGameAction::OPEN_URL_SURVEY)
+        , m_surveyId(surveyId)
+        , m_token(std::move(token))
+    {
+    }
+    int surveyId() const { return m_surveyId; }
+    const QString& token() const { return m_token; }
+
+private:
+    int m_surveyId;
+    QString m_token;
+};
+
+/// CIP input::TGameActionSaveTextToFile (SAVE_TEXT_TO_FILE).
+class TGameActionSaveTextToFile final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSaveTextToFile(QString text, QString filePath)
+        : TGameActionSimple(EGameAction::SAVE_TEXT_TO_FILE)
+        , m_text(std::move(text))
+        , m_filePath(std::move(filePath))
+    {
+    }
+    const QString& text() const { return m_text; }
+    const QString& filePath() const { return m_filePath; }
+
+private:
+    QString m_text;
+    QString m_filePath;
+};
+
+/// CIP input::TGameActionSaveJsonDocumentToFile (SAVE_JSON_TO_FILE).
+class TGameActionSaveJsonDocumentToFile final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSaveJsonDocumentToFile(QJsonDocument document, QString filePath)
+        : TGameActionSimple(EGameAction::SAVE_JSON_TO_FILE)
+        , m_document(std::move(document))
+        , m_filePath(std::move(filePath))
+    {
+    }
+    const QJsonDocument& document() const { return m_document; }
+    const QString& filePath() const { return m_filePath; }
+
+private:
+    QJsonDocument m_document;
+    QString m_filePath;
+};
+
+/// CIP input::TGameActionShowMessageDialog: a message dialog's text
+/// (SHOW_EXALTATION_ERROR_DIALOG).
+class TGameActionShowMessageDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionShowMessageDialog(EGameAction type, QString text)
+        : TGameActionSimple(type)
+        , m_text(std::move(text))
+    {
+    }
+    const QString& text() const { return m_text; }
+
+private:
+    QString m_text;
+};
+
+/// CIP input::TGameActionShowNaggingDialog (SHOW_NAGGING_DIALOG): caption,
+/// text and how long (seconds) the dialog cannot be closed.
+class TGameActionShowNaggingDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionShowNaggingDialog(QString caption, QString text, qint64 durationSeconds)
+        : TGameActionSimple(EGameAction::SHOW_NAGGING_DIALOG)
+        , m_caption(std::move(caption))
+        , m_text(std::move(text))
+        , m_durationSeconds(durationSeconds)
+    {
+    }
+    const QString& caption() const { return m_caption; }
+    const QString& text() const { return m_text; }
+    qint64 durationSeconds() const { return m_durationSeconds; }
+
+private:
+    QString m_caption;
+    QString m_text;
+    qint64 m_durationSeconds;
+};
+
+/// CIP input::TGameActionTakeAutomaticScreenshot (TAKE_AUTOMATIC_SCREENSHOT):
+/// the screenshot::TScreenshotManager event.
+class TGameActionTakeAutomaticScreenshot final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionTakeAutomaticScreenshot(int screenshotType)
+        : TGameActionSimple(EGameAction::TAKE_AUTOMATIC_SCREENSHOT)
+        , m_screenshotType(screenshotType)
+    {
+    }
+    int screenshotType() const { return m_screenshotType; }
+
+private:
+    int m_screenshotType;
+};
+
+/// CIP input::TGameActionQuitGame (QUIT_GAME).
+class TGameActionQuitGame final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionQuitGame(bool flag)
+        : TGameActionSimple(EGameAction::QUIT_GAME)
+        , m_flag(flag)
+    {
+    }
+    /// CIP +0xc (the logout hotkey passes true).
+    bool flag() const { return m_flag; }
+
+private:
+    bool m_flag;
+};
+
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<IGameActionPtr>;
@@ -1502,15 +1701,6 @@ public:
     TGameActionAddMouseTrailHintAtTutorialMarker() { type = EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER; }
 };
 
-/// CIP input::TGameActionAddTextMessage : ADD_SYSTEM_CHAT_MESSAGE /
-/// ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE.
-class TGameActionAddTextMessage final : public TGameAction
-{
-public:
-    TGameActionAddTextMessage() = default;
-    explicit TGameActionAddTextMessage(EGameAction type);
-};
-
 /// CIP input::TGameActionAssignSpellToActionButton .
 class TGameActionAssignSpellToActionButton final : public TGameAction
 {
@@ -1688,13 +1878,6 @@ public:
 };
 
 
-/// CIP input::TGameActionOpenGetPremiumUrl .
-class TGameActionOpenGetPremiumUrl final : public TGameAction
-{
-public:
-    TGameActionOpenGetPremiumUrl() { type = EGameAction::OPEN_URL_GET_PREMIUM; }
-};
-
 
 /// CIP input::TGameActionOpenLootContainer .
 class TGameActionOpenLootContainer final : public TGameActionManagedContainer
@@ -1776,21 +1959,6 @@ public:
     TGameActionOpenStore() { type = EGameAction::OPEN_STORE; }
 };
 
-/// CIP input::TGameActionOpenSurveyUrl .
-class TGameActionOpenSurveyUrl final : public TGameAction
-{
-public:
-    TGameActionOpenSurveyUrl() { type = EGameAction::OPEN_URL_SURVEY; }
-};
-
-
-/// CIP input::TGameActionOpenUrl .
-class TGameActionOpenUrl final : public TGameAction
-{
-public:
-    TGameActionOpenUrl() { type = EGameAction::OPEN_URL; }
-    explicit TGameActionOpenUrl(QString text);
-};
 
 /// CIP input::TGameActionPreySystem .
 class TGameActionPreySystem final : public TGameAction
@@ -1798,13 +1966,6 @@ class TGameActionPreySystem final : public TGameAction
 public:
     TGameActionPreySystem() = default;
     explicit TGameActionPreySystem(EGameAction type);
-};
-
-/// CIP input::TGameActionQuitGame .
-class TGameActionQuitGame final : public TGameAction
-{
-public:
-    TGameActionQuitGame() { type = EGameAction::QUIT_GAME; }
 };
 
 /// CIP input::TGameActionRefreshCompendiumNews .
@@ -1853,20 +2014,6 @@ class TGameActionResolveSprite final : public TGameAction
 {
 public:
     TGameActionResolveSprite() { type = EGameAction::RESOLVE_SPRITE; }
-};
-/// CIP input::TGameActionSaveJsonDocumentToFile .
-class TGameActionSaveJsonDocumentToFile final : public TGameAction
-{
-public:
-    TGameActionSaveJsonDocumentToFile() { type = EGameAction::SAVE_JSON_TO_FILE; }
-    explicit TGameActionSaveJsonDocumentToFile(QString filePath);
-};
-/// CIP input::TGameActionSaveTextToFile .
-class TGameActionSaveTextToFile final : public TGameAction
-{
-public:
-    TGameActionSaveTextToFile() { type = EGameAction::SAVE_TEXT_TO_FILE; }
-    explicit TGameActionSaveTextToFile(QString filePath);
 };
 /// CIP input::TGameActionSelectLootContainer .
 class TGameActionSelectLootContainer final : public TGameActionManagedContainer
@@ -1965,13 +2112,6 @@ class TGameActionSetShowOffSocketConfiguration final : public TGameAction
 public:
     TGameActionSetShowOffSocketConfiguration() { type = EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION; }
 };
-/// CIP input::TGameActionSetStatusLine .
-class TGameActionSetStatusLine final : public TGameAction
-{
-public:
-    TGameActionSetStatusLine() { type = EGameAction::SET_STATUS_LINE; }
-    explicit TGameActionSetStatusLine(QString text);
-};
 /// CIP input::TGameActionSetTactics .
 class TGameActionSetTactics final : public TGameAction
 {
@@ -2002,19 +2142,6 @@ class TGameActionShowExaltationResultDialog final : public TGameAction
 {
 public:
     TGameActionShowExaltationResultDialog() { type = EGameAction::SHOW_EXALTATION_RESULT_DIALOG; }
-};
-/// CIP input::TGameActionShowMessageDialog .
-class TGameActionShowMessageDialog final : public TGameAction
-{
-public:
-    TGameActionShowMessageDialog() = default;
-    explicit TGameActionShowMessageDialog(EGameAction type);
-};
-/// CIP input::TGameActionShowNaggingDialog .
-class TGameActionShowNaggingDialog final : public TGameAction
-{
-public:
-    TGameActionShowNaggingDialog() { type = EGameAction::SHOW_NAGGING_DIALOG; }
 };
 /// CIP input::TGameActionShowSplitStackDialog .
 class TGameActionShowSplitStackDialog final : public TGameAction
@@ -2085,12 +2212,6 @@ public:
         type = EGameAction::SWITCH_CLIENTOPTIONS_MODE;
         parameter = mode;
     }
-};
-/// CIP input::TGameActionTakeAutomaticScreenshot .
-class TGameActionTakeAutomaticScreenshot final : public TGameAction
-{
-public:
-    TGameActionTakeAutomaticScreenshot() { type = EGameAction::TAKE_AUTOMATIC_SCREENSHOT; }
 };
 /// CIP input::TGameActionTargetSelected .
 class TGameActionTargetSelected final : public TGameAction

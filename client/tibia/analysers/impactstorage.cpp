@@ -177,9 +177,7 @@ void TImpactStorage::checkAllTimeMax(const Kind kind, const qint64 hit)
         return;
     m_allTimeMax[kind] = hit;
     emitAllTimeValuesChanged();
-    auto screenshot = input::mutableClone(*input::makeAction(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
-    screenshot->parameter = ScreenshotParameter[kind];
-    input::publish(screenshot);
+    input::publish(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ScreenshotParameter[kind]));
 }
 
 bool TImpactStorage::computeData(const Kind kind)

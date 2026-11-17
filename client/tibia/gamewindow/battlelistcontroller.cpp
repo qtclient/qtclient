@@ -919,9 +919,7 @@ bool TBattleListControllerStorage::acquireBattleListId(const uint8_t requestedId
 
 void TBattleListControllerStorage::publishStatusLine(const QString& text, const QColor& color)
 {
-    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-    status->text = text;
-    status->color = color;
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(text, color);
     input::publish(status);
 }
 

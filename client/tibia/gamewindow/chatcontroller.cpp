@@ -1724,9 +1724,9 @@ bool TChatController::handleAction(const input::IGameAction& action)
         m_tabs.onMakePreviousChannelCurrent();
         return true;
     case A::ADD_SYSTEM_CHAT_MESSAGE:
-        if (const auto* message = input::gameActionAs<input::TGameAction>(&action))
-            m_storage.addSystemEntry(m_tabs.currentChannel(), message->color.isValid() ? message->color : chat::systemWhite(),
-                                     message->text);
+        if (const auto* message = input::gameActionAs<input::TGameActionAddTextMessage>(&action))
+            m_storage.addSystemEntry(m_tabs.currentChannel(), message->color().isValid() ? message->color() : chat::systemWhite(),
+                                     message->text());
         return true;
     case A::IGNORE_NAME:
         if (const auto* ignore = input::gameActionAs<input::TGameActionIgnoreName>(&action)) {

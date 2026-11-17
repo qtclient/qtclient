@@ -32,7 +32,7 @@ TVipStorage::TVipStorage(QObject* parent)
     : cip::tibia::creatures::TVipStorage(parent)
 {
     // CIP's session connects the storage's game actions to the input handlers.
-    connect(this, &TVipStorage::publishGameAction, this, [](const input::TGameActionPtr& action) { input::publish(action); });
+    connect(this, &TVipStorage::publishGameAction, this, [](const input::IGameActionPtr& action) { input::publish(action); });
     // CIP makes a new storage per game session; the shared one is emptied instead.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TVipStorage::clear);
 }
@@ -107,9 +107,7 @@ void TVipStorage::updateVipState(const uint32_t id, const int state)
     if (vip.notifyLogin && isLoggedOut(vip.state) && isLoggedIn(state)) {
         const QString text = qtTrId("speech_volume_vip_has_logged_in").arg(vip.name);
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(text));
-        auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE);
-        message->text = text;
-        message->color = chat::consoleColor(LoginNoticeMessageMode);
+        auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(LoginNoticeMessageMode));
         Q_EMIT publishGameAction(message);
     }
     vip.state = state;

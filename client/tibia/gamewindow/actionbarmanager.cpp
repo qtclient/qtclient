@@ -47,9 +47,7 @@ bool isActionBarsOption(const QString& name)
 
 void publishMessage(const QString& text)
 {
-    auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE);
-    action->text = text;
-    action->color = Qt::white;
+    auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, text, Qt::white);
     input::publish(action);
 }
 

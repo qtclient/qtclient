@@ -521,12 +521,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.screenshotManager = std::make_unique<screenshot::TScreenshotManager>();
     g.screenshotManager->configure(window, mapWindowPane);
     screenshot::TScreenshotManager* screenshotManager = g.screenshotManager.get();
-    const auto takeScreenshot = [screenshotManager](const input::TGameAction& action) {
+    const auto takeScreenshot = [screenshotManager](const input::IGameAction& action) {
         return screenshotManager->handleGameAction(action);
     };
     input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [](const input::IGameAction&) {
         input::publish(std::make_shared<input::TGameActionOpenCyclopedia>(6)); // the Bosstiary tab
         return true;
     });

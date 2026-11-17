@@ -141,9 +141,7 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
         storage->setLootListed(objectId, true);
         return;
     }
-    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-    status->text = qtTrId("iteminfo_maximum_number_of_blacklisted_items");
-    status->color = chat::systemWhite();
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("iteminfo_maximum_number_of_blacklisted_items"), chat::systemWhite());
     input::publish(status);
 }
 

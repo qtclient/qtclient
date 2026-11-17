@@ -93,7 +93,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     /// TAKE_MANUAL_SCREENSHOT / TAKE_AUTOMATIC_SCREENSHOT.
-    bool handleGameAction(const tibia::input::TGameAction& action);
+    bool handleGameAction(const tibia::input::IGameAction& action);
     void onScreenshotMangerOptionsChanged() override;
     bool takeScreenshotIfEventIsWainting() override;
     void processReadyScreenshot(uint screenshotId);
