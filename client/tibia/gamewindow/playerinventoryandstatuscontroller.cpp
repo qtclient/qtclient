@@ -128,15 +128,10 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
         updateMouseCursorForCurrentSlot();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulChange", onPlayer(&TPlayerInventoryAndStatusController::refreshSoul));
-    for (const char* event : { "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::refreshCapacity));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBlessingsChange", onPlayer(&TPlayerInventoryAndStatusController::refreshBlessings));
-    for (const char* event : { "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const Args&) {
-            refreshTactics();
-            return std::any{};
-        });
+    // CIP: the player's data-changed signal refreshes everything the panel shows.
+    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange",
+                               "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::onPlayerDataChanged));
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
     });
@@ -314,6 +309,15 @@ void TPlayerInventoryAndStatusController::readExpireOptions()
     m_showExpireWhenUnused = options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false);
 }
 
+void TPlayerInventoryAndStatusController::onPlayerDataChanged()
+{
+    refreshSoul();
+    refreshCapacity();
+    refreshBlessings();
+    refreshTactics();
+    refreshExpertMode();
+}
+
 void TPlayerInventoryAndStatusController::refreshSoul()
 {
     const int soul = tibia::game::isOnline() ? tibia::game::localPlayerSoul() : 0;
@@ -330,7 +334,7 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
     const bool zero = online && capacity == 0;
     const uint32_t baseCap = tibia::game::localPlayerBaseCapacity();
     const uint32_t totalCap = tibia::game::localPlayerTotalCapacity();
-    const bool boost = online && baseCap > 0 && baseCap < totalCap;
+    const bool boost = online && baseCap < totalCap;
     if (capacity == m_capacity && zero == m_hasZeroCapacity && boost == m_hasCapacityBoost)
         return;
     m_capacity = capacity;

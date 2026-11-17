@@ -8,6 +8,7 @@
 #include "game/skillswidgetentrydata.h"
 #include "gamewindow/characterinfomodels.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/smoothfiltering.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
@@ -338,6 +339,8 @@ private:
 
 
 }
+
+bool TCharacterInfoDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCharacterInfoDialogController(parent)

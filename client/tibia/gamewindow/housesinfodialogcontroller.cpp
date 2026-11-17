@@ -12,6 +12,8 @@
 
 #include "shared/tibiafilesystemhelper.h"
 
+#include <utility>
+
 #include <QColor>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -580,7 +582,20 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     onHouseInformationChanged();
 }
 
-THousesInfoDialogController::~THousesInfoDialogController() = default;
+THousesInfoDialogController::~THousesInfoDialogController()
+{
+    disconnect(m_storage, nullptr, this, nullptr);
+    clearFilterModels();
+}
+
+void THousesInfoDialogController::clearFilterModels()
+{
+    const QList<QObject*> states = std::exchange(m_statesFitlerModel, {});
+    const QList<QObject*> sortOrders = std::exchange(m_sortOrderModel, {});
+    Q_EMIT staticDataChanged();
+    qDeleteAll(states);
+    qDeleteAll(sortOrders);
+}
 
 void THousesInfoDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
 {

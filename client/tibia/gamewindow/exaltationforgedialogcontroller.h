@@ -283,6 +283,7 @@ public:
 
     uchar dustCost() const override;
     qulonglong goldCost() const override;
+    bool smoothTextureFiltering() const override;
 
     void showDialog(const exaltation::TExaltationResult& result);
 
@@ -307,6 +308,7 @@ public Q_SLOTS:
     void requestTabSwitch(::cip::tibia::gamewindow::TExaltationForgeDialogController::EDialogTab NewTab) override;
     void showDialog(bool ReadOnly) override;
     void closeDialog() override;
+    bool smoothTextureFiltering() const override;
 
 private:
     bool handleGameAction(const input::TGameAction& action);

@@ -95,6 +95,7 @@ class TImbuingDialogController final : public TDialogController<cip::tibia::game
     Q_OBJECT
 public:
     explicit TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent = nullptr);
+    bool clientSettingSmoothFiltering() const override;
 
     bool itemSelectionValid() const override;
     bool scrollIsAvailable() const override;

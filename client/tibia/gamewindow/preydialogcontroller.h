@@ -286,6 +286,8 @@ class TPreyPreyPageController final : public cip::tibia::gamewindow::TPreyPreyPa
     Q_OBJECT
 public:
     TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent = nullptr);
+    /// CIP: the slot render infos go with the page.
+    ~TPreyPreyPageController() override;
 
     QList<QObject*> preyList() const override { return m_renderInfos; }
     QString preyWildcards() const override;
@@ -295,7 +297,7 @@ public:
     bool bonusRerollTooExpensive() const override;
     QString choosePreyPrice() const override;
     bool choosePreyTooExpensive() const override;
-    bool clientSettingSmoothFiltering() const override { return true; }
+    bool clientSettingSmoothFiltering() const override;
 
     /// CIP .
     void showDialogTab() override;

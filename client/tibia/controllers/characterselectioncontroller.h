@@ -39,6 +39,7 @@ class TCharacterSelectionController final : public cip::tibia::gamewindow::TChar
     Q_OBJECT
 public:
     explicit TCharacterSelectionController(QObject* parent = nullptr);
+    bool clientSettingSmoothFiltering() const override;
 
     /// `preferredEntryIndex` is an index into `characters` (not the sorted view).
     /// Selection resolves as: last confirmed name if still present, else that entry,

@@ -946,7 +946,10 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     , m_list(new TInventoryGemListModel(storage, this))
     , m_filter(new TInventoryGemSortFilterProxyModel(storage, this))
     , m_pages(new TPaginationProxyModel(15, this))
+    , m_dismantleConfirm(new gamewindow::TMessageDialogController(this))
 {
+    m_dismantleConfirm->setCloseOnButtonClicked(true);
+    connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { TSkillWheelProtocolMessageHandler::dismantleGem(m_dismantleGemId); });
     m_filter->setSourceModel(m_list);
     m_pages->setSourceModel(m_filter);
     m_gemInventory = m_pages;
@@ -1046,17 +1049,31 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
     m_storage->setCurrentWheel(wheel);
 }
 
-void TGemAtelierPageController::dismantleGem(const int GemId) { TSkillWheelProtocolMessageHandler::dismantleGem(GemId); }
+void TGemAtelierPageController::closeMessageDialog()
+{
+    if (m_dismantleConfirm->dialog()->item())
+        m_dismantleConfirm->dialog()->close();
+}
+
+void TGemAtelierPageController::dismantleGem(const int GemId)
+{
+    // CIP: asks first (Yes with Return, No with Escape).
+    using Button = gamewindow::TMessageDialogController::Button;
+    m_dismantleGemId = GemId;
+    m_dismantleConfirm->setButtons({ new gamewindow::TMessageDialogButton(Button::YES, qtTrId("yes"), 1u),
+                                     new gamewindow::TMessageDialogButton(Button::NO, qtTrId("no"), 2u) });
+    m_dismantleConfirm->showMessage(qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_title"),
+                                    qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_text"));
+}
 void TGemAtelierPageController::revealGem(const int GemQuality) { TSkillWheelProtocolMessageHandler::revealGem(GemQuality); }
 void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { TSkillWheelProtocolMessageHandler::reshapeGem(GemId, ModIdx); }
 void TGemAtelierPageController::toggleGemLock(const int GemId) { TSkillWheelProtocolMessageHandler::toggleGemLock(GemId); }
+/// CIP: an index beyond the active vessels selects none (-1).
 void TGemAtelierPageController::selectVessel(const int Index)
 {
-    if (Index >= VesselCount || Index == m_selectedVesselIndex)
+    if (Index == m_selectedVesselIndex)
         return;
-    if (Index >= 0 && Index >= activeVesselCount())
-        return;
-    m_selectedVesselIndex = Index;
+    m_selectedVesselIndex = Index < activeVesselCount() ? Index : -1;
     Q_EMIT selectedVesselIndexChanged();
 }
 
@@ -1218,8 +1235,6 @@ void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int
 
 void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, const int ModID)
 {
-    if (!canBeChanged())
-        return;
     m_pendingBasic = isBasicMod;
     m_pendingMod = ModID;
     TSkillWheelProtocolMessageHandler::enhanceModGrade(isBasicMod ? 0 : 1, ModID);
@@ -1382,6 +1397,7 @@ void TSkillWheelDialogController::closeDialog()
         m_workshop->hideDialogTab();
     m_dialogTab = NoTabInitialState;
     Q_EMIT dialogTabChanged();
+    m_atelier->closeMessageDialog();
     m_page->clearData();
     if (m_presetDialog)
         m_presetDialog->dialog()->close();

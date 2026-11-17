@@ -969,6 +969,7 @@ QVariantMap TOpenChatChannelDialogController::initialDialogProperties() const
 void TOpenChatChannelDialogController::onCancelClicked()
 {
     dialog()->close();
+    Q_EMIT abort();
 }
 
 void TOpenChatChannelDialogController::onControllerFinished()

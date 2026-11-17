@@ -279,19 +279,6 @@ uint8_t inspectPlayerAction(const EGameAction type)
     }
 }
 
-void setLenshelp(const bool enabled)
-{
-    if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-        cursor->setLenshelp(enabled);
-    if (gamewindow::TLenshelpController* lenshelp = gamewindow::TLenshelpController::instance()) {
-        if (enabled)
-            lenshelp->showHelp(QCoreApplication::translate("cip", "Lenshelp"),
-                               QCoreApplication::translate("cip", "Click an object for more information."));
-        else
-            lenshelp->hideHelp();
-    }
-}
-
 void clearSpriteCaches()
 {
     // CIP REMOVE_SPRITEIDENTIFIER_FROM_CACHE evicts one id; the atlas cache only
@@ -553,12 +540,6 @@ void publish(const TGameActionPtr& action)
     case A::TARGET_SELECTION_FINISHED:
         if (const auto& listener = targetSelectionListener())
             listener(false);
-        break;
-    case A::LENSHELP_SHOW:
-        setLenshelp(true);
-        break;
-    case A::LENSHELP_HIDE:
-        setLenshelp(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
         // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.

@@ -46,6 +46,7 @@ public:
     };
 
     explicit TCharacterInfoDialogController(QObject* parent = nullptr);
+    bool clientSettingSmoothFiltering() const override;
     ~TCharacterInfoDialogController() override;
 
     int dataType() const { return m_dataType; }

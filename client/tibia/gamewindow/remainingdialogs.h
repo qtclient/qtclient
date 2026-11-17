@@ -11,6 +11,7 @@
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
+#include <QJsonDocument>
 #include <QJsonValue>
 #include <QPair>
 #include <QPointer>
@@ -23,6 +24,9 @@
 #include <vector>
 
 namespace tibia {
+namespace input {
+struct TGameAction;
+}
 namespace gamewindow {
 
 class TQMLCharacterData;
@@ -216,17 +220,23 @@ private:
     std::shared_ptr<tibia::shared::TCrashReportData> m_crashReportData;
 };
 
-/// CIP TEmergencyDialogController — ImportantBalancingMessageDialog.qml (v3).
+/// ImportantBalancingMessageDialog.qml (CIP: TEmergencyDialogController): the
+/// important balancing message of the client's data file. OK with "show
+/// again" cleared stores the message id as the last one seen.
 class TEmergencyDialogController final : public TDialogController<cip::tibia::gamewindow::TEmergencyDialogController>
 {
     Q_OBJECT
 public:
     explicit TEmergencyDialogController(QObject* parent = nullptr);
 
-    void showEmergency(const QVariant& data);
+    QVariant dialogData() const override;
 
 public Q_SLOTS:
     void onOKClicked() override;
+
+private:
+    QJsonDocument m_data;
+    int m_id = 0;
 };
 
 /// CIP TGameSessionDisconnectReactionController (v3).
@@ -240,24 +250,23 @@ public:
     void requestQuitAndPatch();
 };
 
-/// CIP TGenericConfirmWithDontShowAgainDialogController (v3).
+/// GenericConfirmWithDontShowAgainDialog.qml (CIP:
+/// TGenericConfirmWithDontShowAgainDialogController): a yes/no question with a
+/// "do not show again" check box. Yes emits yesClicked with the check box
+/// state, No emits noClicked; both close the dialog.
 class TGenericConfirmWithDontShowAgainDialogController final
     : public TDialogController<cip::tibia::gamewindow::TGenericConfirmWithDontShowAgainDialogController>
 {
     Q_OBJECT
 public:
     explicit TGenericConfirmWithDontShowAgainDialogController(QObject* parent = nullptr);
-
-    void configure(const QString& caption, const QString& content, const QString& dontShowAgain, bool showAgain = true);
-    void setConfirmHandler(std::function<void(bool showAgain)> onYes);
+    TGenericConfirmWithDontShowAgainDialogController(const QString& caption, const QString& content, const QString& dontShowAgain,
+                                                     bool showAgain, QObject* parent = nullptr);
 
 public Q_SLOTS:
     void showDialog() override;
     void onYesClicked(bool ShowDialogAgain) override;
     void onNoClicked() override;
-
-private:
-    std::function<void(bool)> m_onYes;
 };
 
 /// CIP THirelingNameChangeController (v3) — empty moc; store rename owner.
@@ -285,21 +294,6 @@ public:
 
 private:
     QPointer<QQuickItem> m_mapWindowPane;
-};
-
-/// CIP TLenshelpController — LenshelpTemplate.qml (v3).
-class TLenshelpController final : public cip::tibia::gamewindow::TLenshelpController
-{
-    Q_OBJECT
-public:
-    explicit TLenshelpController(QObject* parent = nullptr);
-    static TLenshelpController* instance();
-
-    void showHelp(const QString& caption, const QString& content);
-    void hideHelp();
-
-private:
-    static TLenshelpController* s_instance;
 };
 
 /// CIP TLinkCopyWarningDialogController (names.txt TLinkCopyWarningDialogController).
@@ -338,6 +332,8 @@ public:
     };
 
     explicit TLoginConfirmationCodeEnterTextDialogController(QObject* parent = nullptr);
+    /// CIP v12: shows the dialog with no code entered.
+    void showDialog();
 
     QVariantMap availableMethods() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getAvailableMethods(); }
     QString chosenMethod() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getChosenMethod(); }
@@ -363,21 +359,43 @@ private:
     EMethod m_method = EmailPrimary;
 };
 
-/// CIP TMainCharacterChangeDialogController — MainCharacterChangeDialog.qml.
+/// One character the store offers as the new main character (CIP:
+/// store::TPossibleMainCharacterInformation).
+struct TPossibleMainCharacterInformation {
+    QString characterName;
+    QString worldName;
+    QString vocation;
+    int level = 0;
+};
+
+/// MainCharacterChangeDialog.qml (CIP: TMainCharacterChangeDialogController):
+/// the store's characters that can become the main character of the account.
 class TMainCharacterChangeDialogController final
     : public TDialogController<cip::tibia::gamewindow::TMainCharacterChangeDialogController>
 {
     Q_OBJECT
 public:
     explicit TMainCharacterChangeDialogController(QObject* parent = nullptr);
+    ~TMainCharacterChangeDialogController() override;
 
 public Q_SLOTS:
+    /// CIP: closes the dialog, keeps the offer and the characters and shows them.
+    void showDialog(uint32_t OfferIDForMainCharChange, std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo);
+    /// CIP: closes the dialog and deletes the character entries.
     void closeDialog() override;
     void requestClose() override;
+    /// CIP: a chosen character confirms the change of the offer and closes.
     void requestMainCharChange(const QString& ChosenCharacter) override;
 
 Q_SIGNALS:
-    void mainCharacterChangeRequested(const QString& chosenCharacter);
+    void mainCharChangeConfirmed(uint32_t OfferIDForMainCharChange, const QString& ChosenMainChar);
+
+private:
+    /// CIP: one TQmlPossibleMainChar per character of the offer.
+    void createMainCharInfos();
+
+    uint32_t m_offerId = 0;
+    std::vector<TPossibleMainCharacterInformation> m_possibleMainChars;
 };
 
 /// CIP TMarketCoinTransactionDetailsDialogController — MarketCoinTransactionDetails.qml.
@@ -394,24 +412,33 @@ public Q_SLOTS:
     Q_INVOKABLE void requestClose() override;
 };
 
-/// CIP TMultiOfflineTrainingDialogController — MultiOfflineTrainingDialog.qml.
+/// MultiOfflineTrainingDialog.qml (CIP: TMultiOfflineTrainingDialogController):
+/// the skills an offline training can train; a choice starts the training.
 class TMultiOfflineTrainingDialogController final
     : public TDialogController<cip::tibia::gamewindow::TMultiOfflineTrainingDialogController>
 {
     Q_OBJECT
 public:
     explicit TMultiOfflineTrainingDialogController(QObject* parent = nullptr);
+    ~TMultiOfflineTrainingDialogController() override;
     static TMultiOfflineTrainingDialogController* instance();
 
+    /// CIP: SHOW_OFFLINE_TRAINING_SKILLS shows the dialog.
+    void handleGameAction(const input::TGameAction& action);
+    /// CIP: closes the dialog, rebuilds the skills and shows it again.
     void showSkillsDialog();
+    /// CIP: closes the dialog and deletes the skill entries.
+    void closeDialog();
 
     QList<QObject*> skillsModel() const override;
 
     Q_INVOKABLE void requestClose() override;
+    /// CIP: sends the start of the training (with a session) and closes.
     Q_INVOKABLE void startOfflineTraining(cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType Skill) override;
 
 private:
     void rebuildSkillsModel();
+    void clearSkillsModel();
 
     static TMultiOfflineTrainingDialogController* s_instance;
     std::vector<client::gamecore::Hook> m_hooks;

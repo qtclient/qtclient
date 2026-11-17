@@ -87,32 +87,26 @@ TLootContainerQMLInfo::TLootContainerQMLInfo(const int category, QObject* parent
     m_isLockedByPremium = category != TManageLootContainerDialogController::UnassignedCategory;
 }
 
+/// CIP: the id is kept as sent; it counts as set unless 0 or the empty
+/// appearance. A change announces the id, then whether one is set.
 void TLootContainerQMLInfo::setLootContainer(const uint16_t typeId)
 {
-    const uint16_t id = isSet(typeId) ? typeId : 0;
-    const bool set = isSet(id);
-    if (m_lootContainerAppearanceTypeID != id) {
-        m_lootContainerAppearanceTypeID = id;
-        Q_EMIT lootContainerAppearanceTypeIDChanged();
-    }
-    if (m_isLootContainerSet != set) {
-        m_isLootContainerSet = set;
-        Q_EMIT isLootContainerSetChanged();
-    }
+    if (m_lootContainerAppearanceTypeID == typeId)
+        return;
+    m_lootContainerAppearanceTypeID = typeId;
+    m_isLootContainerSet = isSet(typeId);
+    Q_EMIT lootContainerAppearanceTypeIDChanged();
+    Q_EMIT isLootContainerSetChanged();
 }
 
 void TLootContainerQMLInfo::setObtainContainer(const uint16_t typeId)
 {
-    const uint16_t id = isSet(typeId) ? typeId : 0;
-    const bool set = isSet(id);
-    if (m_obtainContainerAppearanceTypeID != id) {
-        m_obtainContainerAppearanceTypeID = id;
-        Q_EMIT obtainContainerAppearanceTypeIDChanged();
-    }
-    if (m_isObtainContainerSet != set) {
-        m_isObtainContainerSet = set;
-        Q_EMIT isObtainContainerSetChanged();
-    }
+    if (m_obtainContainerAppearanceTypeID == typeId)
+        return;
+    m_obtainContainerAppearanceTypeID = typeId;
+    m_isObtainContainerSet = isSet(typeId);
+    Q_EMIT obtainContainerAppearanceTypeIDChanged();
+    Q_EMIT isObtainContainerSetChanged();
 }
 
 void TLootContainerQMLInfo::onSelectLootContainerClicked()

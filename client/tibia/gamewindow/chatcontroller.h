@@ -220,6 +220,8 @@ class TOpenChatChannelDialogController final : public TDialogController<cip::tib
     Q_OBJECT
 public:
     explicit TOpenChatChannelDialogController(QObject* parent = nullptr);
+    /// CIP v27: the dialog's item goes.
+    void destroyDialog() { dialog()->destroy(); }
 
     void open(const std::vector<chat::TChatChannelIdentifier>& channels);
 

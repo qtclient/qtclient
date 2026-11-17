@@ -209,7 +209,12 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     resetInspect();
 }
 
-TItemInfoDialogController::~TItemInfoDialogController() = default;
+TItemInfoDialogController::~TItemInfoDialogController()
+{
+    m_typeId = 0;
+    Q_EMIT itemSelectedChanged();
+    resetInspect();
+}
 
 void TItemInfoDialogController::buildCategories()
 {

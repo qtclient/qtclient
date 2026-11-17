@@ -201,6 +201,8 @@ private:
     void onHouseActionResult(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);
     void onHouseActionConfirmed();
     void resetHouseActionData();
+    /// The state and sort-order filter entries are emptied and deleted.
+    void clearFilterModels();
     void confirmAction(int action, const QString& message);
     void updateTimeDisplay();
     void setDisableQmlSelect(bool disable);

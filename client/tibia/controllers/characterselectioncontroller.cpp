@@ -1,4 +1,5 @@
 #include "characterselectioncontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -65,12 +66,13 @@ bool lessThan(const CharacterEntry& a, const CharacterEntry& b, const uint colum
 
 }
 
+bool TCharacterSelectionController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
 TCharacterSelectionController::TCharacterSelectionController(QObject* parent) : cip::tibia::gamewindow::TCharacterSelectionController(parent)
 {
     m_sortColumn = 1;
     m_sortOrder = Qt::AscendingOrder;
     m_showOutfits = true;
-    m_clientSettingSmoothFiltering = true;
     m_recoverySetupComplete = true;
 }
 

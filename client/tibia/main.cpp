@@ -36,6 +36,7 @@
 #include "gamewindow/cyclopediadialogcontroller.h"
 #include "cyclopedia/itemtrackingstorage.h"
 #include "gamewindow/informationdialogs.h"
+#include "qmlcomponents/lenshelpmanager.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/newsdialogcontroller.h"
 #include "gamewindow/killtrackerwidgetcontroller.h"
@@ -605,6 +606,11 @@ int main(int argc, char** argv)
     gamewindow::TStatusBarController statusBarController;
     gameWindowController.setStatusBarController(&statusBarController);
 #endif
+    // CIP: the start screen's Quit asks the client to exit; Manage Clients opens the launcher.
+    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::gameExitRequested, &gameWindowController,
+                     &gamewindow::TGameWindowController::handleGameExitRequest);
+    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::openLauncherRequested, &gameWindowController,
+                     [] { app::LauncherEnv::showLauncher(); });
     auto* quitCloseFilter = new QuitCloseFilter(&gameWindowController, window);
     window->installEventFilter(quitCloseFilter);
     QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameExitRequested, window,
@@ -636,24 +642,20 @@ int main(int argc, char** argv)
     QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameLogoutRequested, &application,
                      &QCoreApplication::quit);
 #endif
-    QQmlComponent gameWindowComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/gamewindow.qml")));
-    std::unique_ptr<QObject> gameWindow(gameWindowComponent.create());
+    std::unique_ptr<QObject> gameWindow = gameWindowController.createGameWindow(engine.get());
     auto* gameWindowItem = qobject_cast<QQuickItem*>(gameWindow.get());
-    if (!gameWindowItem) {
-        qCritical().noquote() << gameWindowComponent.errorString();
+    if (!gameWindowItem)
         return 1;
-    }
-    gameWindowItem->setParentItem(placeholder);
-    gameWindowItem->setProperty("controller", QVariant::fromValue<QObject*>(&gameWindowController));
-    gameWindowController.setGameWindowItem(gameWindowItem);
+    // CIP: lenshelp mode and its popup over the game window.
+    qmlcomponents::TLenshelpManager lenshelpManager(engine.get(), gameWindowItem);
     gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
     gameWindowController.showStartScreen();
-    auto* dialogPlaceholder = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dialogPlaceholder"));
-    auto* mapWindowPane = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("mapWindowPane"));
-    gamewindow::TSidebarManager sidebarManager(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarManager")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarManager")));
+    auto* dialogPlaceholder = gameWindowController.gameWindowChild(QStringLiteral("dialogPlaceholder"));
+    auto* mapWindowPane = gameWindowController.gameWindowChild(QStringLiteral("mapWindowPane"));
+    gamewindow::TSidebarManager sidebarManager(gameWindowController.gameWindowChild(QStringLiteral("rightSidebarPlaceholder")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("rightSidebarManager")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("leftSidebarPlaceholder")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("leftSidebarManager")));
     // CIP clientwindow.qml: minimum width grows with each sidebar so the 15×11
     // map is not crushed. The manager already emitted before this connection.
     const auto applySidebarCount = [window, &sidebarManager] {
@@ -731,7 +733,7 @@ int main(int argc, char** argv)
                                  gameClient.ensureLoginSurface();
                              });
                          });
-        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::accountLoginRequested, &gameClient,
+        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::loginRequested, &gameClient,
                          &client::TGameClient::submitCredentials);
 
         clientOptions.env = env;
@@ -785,12 +787,7 @@ int main(int argc, char** argv)
         if (!gameClient.start(QCoreApplication::applicationFilePath(), QDir::currentPath(), clientOptions))
             return 1;
     }
-    // CIP wires these controller signals to gamewindow.qml; TEventFilterManager
-    // emits them while a dialog is up, so dialog inputs get the focus.
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::bindFocusToChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "bindFocusToChatInput"); });
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::releaseFocusFromChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "releaseFocusFromChatInput"); });
+    // TEventFilterManager emits the chat-input focus signals while a dialog is up, so dialog inputs get the focus.
     QObject::connect(&dialogStack, &gamewindow::TDialogStackController::dialogVisible, &gameWindowController, [&gameWindowController](bool visible) {
         if (visible)
             Q_EMIT gameWindowController.releaseFocusFromChatInput();
@@ -808,7 +805,7 @@ int main(int argc, char** argv)
     analysers::TAnalyserStorages analyserStorages;
     gamewindow::TInformationDialogs informationDialogs;
     gamewindow::TDragAndDropController dragAndDrop(window->contentItem(),
-                                                   gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dragApperanceInstanceIcon")));
+                                                   gameWindowController.gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), &dragAndDrop);
     store::TStoreStorage storeStorage;
     store::TStoreProtocolMessageHandler storeMessages;
@@ -842,11 +839,6 @@ int main(int argc, char** argv)
     // The daily reward: the session's storage and its game actions (238, 243, 244).
     dailyreward::TDailyRewardStorage dailyRewardStorage;
     dailyreward::TDailyRewardGameActionHandler dailyRewardActions(&dailyRewardStorage);
-    input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
-        if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-            cursor->setLenshelp(true);
-        return true;
-    });
     input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [&gameClient](const input::TGameAction&) {
         if (minimap::TMinimapManager* minimap = gameClient.minimap())
             minimap->loadDefaultTilesFromResources();
@@ -1010,16 +1002,13 @@ int main(int argc, char** argv)
     optionsDialog.setPortalBase(env.loginBase);
     qInfo("tibia.boot: after OptionsMenuDialog");
     input::TOpenWebsiteGameActionHandler openWebsiteActions(env);
-    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [&optionsDialog](const input::TGameAction& action) {
-        optionsDialog.open(action.parameter);
-        return true;
-    });
+    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG,
+                            [&optionsDialog](const input::TGameAction& action) { return optionsDialog.handleGameAction(action); });
     gamewindow::TFPSLatencyIndicatorController fpsLatency;
     fpsLatency.setWindow(window);
     fpsLatency.setFrameDurations(gameClient.frameDurations());
     fpsLatency.setRenderProvider(gameClient.worldMapRenderProvider());
-    if (QQuickItem* fpsItem = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("tibiaFpsLatencyIndicator")))
-        fpsItem->setProperty("controller", QVariant::fromValue<QObject*>(&fpsLatency));
+    fpsLatency.setWidgetItem(gameWindowController.gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")));
 
     qInfo("tibia.boot: before ChatController");
     gamewindow::TChatController chat(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), gameClient);

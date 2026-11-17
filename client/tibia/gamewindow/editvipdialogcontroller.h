@@ -29,6 +29,8 @@ public:
     /// Shows the dialog for `vip`: its name, icon, description, notification
     /// and one check box per group (the VIP's checked), sorted by upper-case name.
     void open(const creatures::TVipStorage::Vip& vip, const std::map<uint8_t, creatures::TVipStorage::Group>& groups);
+    /// CIP: deletes the dialog item.
+    void destroyDialog();
 
 public Q_SLOTS:
     void onCancelClicked() override;

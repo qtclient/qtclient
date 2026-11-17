@@ -1,5 +1,9 @@
 #include "gamewindowciptypes.h"
 
+#include <QWheelEvent>
+
+#include "config/clientoptions.h"
+#include "gamewindow/smoothfiltering.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
@@ -56,21 +60,12 @@ TPreventAutoCloseEventFilter::TPreventAutoCloseEventFilter(QObject* parent)
 
 bool TPreventAutoCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
-    // CIP : any mouse or key input keeps the dialog open.
-    switch (event->type()) {
-    case QEvent::MouseButtonPress:
-    case QEvent::MouseButtonRelease:
-    case QEvent::MouseMove:
-    case QEvent::MouseButtonDblClick:
-    case QEvent::KeyPress:
-    case QEvent::KeyRelease:
-    case QEvent::Wheel:
-        Q_EMIT preventAutoClose();
-        break;
-    default:
-        break;
-    }
+    // CIP: key and wheel events and mouse presses and releases keep the dialog open.
     Q_UNUSED(watched);
+    if (event
+        && (dynamic_cast<QKeyEvent*>(event) || dynamic_cast<QWheelEvent*>(event) || event->type() == QEvent::MouseButtonPress
+            || event->type() == QEvent::MouseButtonRelease))
+        Q_EMIT preventAutoClose();
     return false;
 }
 
@@ -400,7 +395,11 @@ void TPassiveAbilityListDataModel::setEntries(std::vector<Entry> entries)
 
 TPassiveAbilityListDataModelSortFilterProxy::TPassiveAbilityListDataModelSortFilterProxy(QObject* parent)
     : cip::tibia::gamewindow::TPassiveAbilityListDataModelSortFilterProxy(parent)
-{}
+{
+    // CIP: kept sorted by name.
+    setDynamicSortFilter(true);
+    sort(0);
+}
 
 QVariant TPassiveAbilityListDataModelSortFilterProxy::getDataWithRoleName(const int RowIndex, const QByteArray& RoleName)
 {
@@ -424,6 +423,14 @@ void TPassiveAbilityListDataModelSortFilterProxy::setNameFilter(const QString& f
     m_nameFilter = filter;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     Q_EMIT configChanged();
+}
+
+/// CIP: by the lower-cased names.
+bool TPassiveAbilityListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
+{
+    const QString ln = left.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
+    const QString rn = right.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
+    return QString::compare(ln, rn, Qt::CaseSensitive) < 0;
 }
 
 bool TPassiveAbilityListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -516,12 +523,23 @@ TPartyHuntMembersListModelSortFilterProxy::TPartyHuntMembersListModelSortFilterP
     setDynamicSortFilter(true);
 }
 
+/// CIP: every member row with a valid index.
+bool TPartyHuntMembersListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
+{
+    if (!sourceModel())
+        return false;
+    return sourceModel()->index(sourceRow, 0, sourceParent).isValid();
+}
+
 bool TPartyHuntMembersListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    // The member model's name role (characterID is Qt::UserRole + 1).
-    const QString ln = sourceModel()->data(left, Qt::UserRole + 2).toString();
-    const QString rn = sourceModel()->data(right, Qt::UserRole + 2).toString();
-    return QString::localeAwareCompare(ln, rn) < 0;
+    // By the member model's name role (characterID is Qt::UserRole + 1),
+    // ignoring case.
+    if (!sourceModel())
+        return false;
+    const QString ln = left.data(Qt::UserRole + 2).toString();
+    const QString rn = right.data(Qt::UserRole + 2).toString();
+    return QString::compare(ln, rn, Qt::CaseInsensitive) < 0;
 }
 
 TBattleListGameActionHandler::TBattleListGameActionHandler(TBattleListControllerStorage* storage, QObject* parent)
@@ -860,6 +878,28 @@ void clearInspectList(Controller& controller, QList<QObject*>& list)
 } // namespace
 
 TInspectObjectDialogController* TInspectObjectDialogController::s_instance = nullptr;
+
+TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const int torso, const int legs, const int detail,
+                                             const int addons, QObject* parent)
+    : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
+{
+    const auto color = [](const int index) {
+        const QColor c = Outfit::getColor(index);
+        return QColor(c.red(), c.green(), c.blue());
+    };
+    m_id = id;
+    m_headColor = color(head);
+    m_torsoColor = color(torso);
+    m_legsColor = color(legs);
+    m_detailColor = color(detail);
+    m_firstAddOn = (addons & 1) != 0;
+    m_secondAddOn = (addons & 2) != 0;
+}
+
+bool smoothFilteringEnabled() { return config::TClientOptions::instance()->antialiasingMode() == 1; }
+
+bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+bool TInspectPlayerDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)

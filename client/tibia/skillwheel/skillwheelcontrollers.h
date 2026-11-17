@@ -192,6 +192,8 @@ public:
 
     void socketOrUnsocketGem(int GemId, int VesselIndex) override;
     void dismantleGem(int GemId) override;
+    /// CIP: closes the dismantle question (the skill wheel dialog closing).
+    void closeMessageDialog();
     void revealGem(int GemQuality) override;
     void reshapeGem(int GemId, int ModIdx) override;
     void selectGem(int GemId, bool NarrowDownFilters) override;
@@ -217,6 +219,9 @@ Q_SIGNALS:
     void requestWorkshopMod(bool isBasic, int modId);
 
 private:
+    /// CIP: Yes/No before a gem is dismantled.
+    gamewindow::TMessageDialogController* m_dismantleConfirm;
+    int m_dismantleGemId = 0;
     void updateSockets();
 
     TSkillWheelStorage* m_storage;

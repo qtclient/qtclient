@@ -99,7 +99,7 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
 
     if (m_gameWindow) {
         bindLoginWait(m_gameWindow);
-        connect(m_gameWindow, &gamewindow::TGameWindowController::createAccountDialogRequested, this,
+        connect(m_gameWindow, &gamewindow::TGameWindowController::createAccountRequested, this,
                 &TSessionBootstrap::openCreateAccount);
     }
 }
@@ -158,8 +158,10 @@ void TSessionBootstrap::openCreateCharacterIfAccountEmpty()
 
 void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWindow)
 {
-    connect(gameWindow, &gamewindow::TGameWindowController::accountLoginRequested, this,
-            [this, gameWindow](const QString&, const QString&) {
+    connect(gameWindow, &gamewindow::TGameWindowController::loginRequested, this,
+            [this, gameWindow](const QString& email, const QString& password) {
+                if (email.trimmed().isEmpty() || password.isEmpty())
+                    return;
                 // CIP hides the login mask while the account service answers.
                 gameWindow->setAuthenticated(true);
                 m_loginWait->showCharacterList();

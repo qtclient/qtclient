@@ -235,6 +235,7 @@ public:
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
     QString m_nameFilter;
@@ -307,6 +308,7 @@ public:
     explicit TPartyHuntMembersListModelSortFilterProxy(QObject* parent = nullptr);
 
 protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 };
 
@@ -433,6 +435,7 @@ class TInspectObjectDialogController final : public TDialogController<cip::tibia
 public:
     explicit TInspectObjectDialogController(QObject* parent = nullptr);
     static TInspectObjectDialogController* instance();
+    bool clientSettingSmoothFiltering() const override;
 
 public Q_SLOTS:
     void closeDialog() override;
@@ -452,6 +455,7 @@ class TInspectPlayerDialogController final : public TDialogController<cip::tibia
 public:
     explicit TInspectPlayerDialogController(QObject* parent = nullptr);
     static TInspectPlayerDialogController* instance();
+    bool clientSettingSmoothFiltering() const override;
 
 public Q_SLOTS:
     /// Also drops the pointing hand and the rows.
@@ -519,7 +523,14 @@ class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAcco
 class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSlotQMLInformation() = default; };
 class TCharacterInformationModelData final : public ::tibia::CipTyped { public: TCharacterInformationModelData() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
-class TOutfitQMLInformation final : public ::tibia::CipTyped { public: TOutfitQMLInformation() = default; };
+/// An outfit as QML shows it (CIP: TOutfitQMLInformation): the look type, the four colour indices as
+/// colours and the addons.
+class TOutfitQMLInformation final : public cip::tibia::gamewindow::TOutfitQMLInformation
+{
+    Q_OBJECT
+public:
+    TOutfitQMLInformation(int id, int head, int torso, int legs, int detail, int addons, QObject* parent = nullptr);
+};
 class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };
 class TQmlLoot final : public ::tibia::CipTyped { public: TQmlLoot() = default; };
 class TQmlLootOfRarity final : public ::tibia::CipTyped { public: TQmlLootOfRarity() = default; };

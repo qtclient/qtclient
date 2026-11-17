@@ -1,6 +1,6 @@
 #include "exaltationforgedialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
-#include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
@@ -184,14 +184,6 @@ using ObjectKey = std::pair<uint16_t, uint8_t>;
 void publish(const A type)
 {
     input::publish(input::makeAction(type));
-}
-
-/// Option antialiasingMode is AntialiasingModeAntialiasing (CIP ,
-/// ).
-bool smoothTextureFilteringOption()
-{
-    return app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
-           == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing);
 }
 
 }
@@ -774,8 +766,9 @@ TExaltationResultDialogController::TExaltationResultDialogController(exaltation:
     : TDialogController(QStringLiteral("ExaltationResultDialog.qml"), parent)
     , m_storage(storage)
 {
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
 }
+
+bool TExaltationResultDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
 
 uchar TExaltationResultDialogController::dustCost() const
 {
@@ -828,6 +821,8 @@ void TExaltationResultDialogController::requestClose()
 // ---------------------------------------------------------------------------
 // Forge dialog
 
+bool TExaltationForgeDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
+
 TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::TExaltationStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), parent)
     , m_storage(storage)
@@ -840,7 +835,6 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     m_transferController = transfer;
     m_conversionController = new TExaltationForgeConversionPageController(storage, this);
     m_historyController = new TExaltationForgeHistoryPageController(storage, this);
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
     m_readOnlyMode = true;
     m_errorDialog->setCloseOnButtonClicked(true);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, fusion, &TExaltationForgeFusionPageController::prepareOpenDialog);

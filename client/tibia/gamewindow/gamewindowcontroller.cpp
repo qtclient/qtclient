@@ -1,12 +1,17 @@
 #include "gamewindowcontroller.h"
 
+#include <QQmlComponent>
+#include <QQmlEngine>
+
 #include "app/clientoptions.h"
 #include "randomhints.h"
 #include "app/launcherenv.h"
 #include "game/boostedcreaturerequestuploader.h"
 #include "game/liveinformationrequestuploader.h"
 #include "game/showoffrequestuploader.h"
+#include "cyclopedia/bosstiarystorage.h"
 #include "gamewindow/calendardialogcontroller.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/newsdialogcontroller.h"
 #include "input/gameaction.h"
@@ -29,6 +34,7 @@
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLoggingCategory>
 #include <QQuickItem>
@@ -36,6 +42,10 @@
 #include <QTime>
 #include <QTimeZone>
 #include <tibia/game/gamesession.h>
+
+#if defined(Q_OS_WIN)
+#include <qt_windows.h>
+#endif
 
 Q_LOGGING_CATEGORY(lcGameWindow, "tibia.gamewindow")
 
@@ -51,6 +61,23 @@ constexpr auto LowerPaneHeight = "gameWindowLowerPaneHeight";
 constexpr auto ResizingMode = "gameWindowResizingMode";
 constexpr auto LoginEmail = "loginEmailAddress";
 constexpr auto RememberEmail = "rememberEmail";
+/// CIP option showEMailAsPlainText (0x80).
+constexpr auto ShowEmailAsPlainText = "showEMailAsPlainText";
+
+/// The OS Caps Lock state with a key event (CIP asks the platform).
+bool capsLockActive(const QKeyEvent* event)
+{
+#if defined(Q_OS_MACOS)
+    // NSEventModifierFlagCapsLock.
+    return (event->nativeModifiers() & (1u << 16)) != 0;
+#elif defined(Q_OS_WIN)
+    Q_UNUSED(event);
+    return (GetKeyState(VK_CAPITAL) & 1) != 0;
+#else
+    Q_UNUSED(event);
+    return false;
+#endif
+}
 
 std::atomic_bool g_processExitAllowed{ false };
 
@@ -61,7 +88,51 @@ const QTime ServerSaveTime(10, 0);
 
 bool TGameWindowController::eventFilter(QObject* watched, QEvent* event)
 {
+    // CIP: every key release on the start screen refreshes the Caps Lock hint.
+    if (event->type() == QEvent::KeyRelease) {
+        const bool active = capsLockActive(static_cast<QKeyEvent*>(event));
+        if (m_isCapsLockActive != active) {
+            m_isCapsLockActive = active;
+            Q_EMIT isCapsLockActiveChanged();
+        }
+    }
     return cip::tibia::gamewindow::TGameWindowController::eventFilter(watched, event);
+}
+
+QString TGameWindowController::boostedCreatureName() const
+{
+    const QString name = cyclopedia::bossName(m_boostedCreatureRace);
+    return name.isEmpty() ? m_boostedCreatureName : name;
+}
+
+QString TGameWindowController::boostedBossName() const
+{
+    const QString name = cyclopedia::bossName(m_boostedBossRace);
+    return name.isEmpty() ? m_boostedBossName : name;
+}
+
+void TGameWindowController::linkClicked(const QString& Url)
+{
+    input::publish(std::make_shared<input::TGameActionOpenUrl>(Url));
+}
+
+void TGameWindowController::linkHoverChanged(const bool IsOverLink)
+{
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(IsOverLink);
+}
+
+bool TGameWindowController::showEmailAsPlainText() const
+{
+    return app::ClientOptions::load().options().value(QLatin1String(ShowEmailAsPlainText)).toBool(false);
+}
+
+void TGameWindowController::setShowEmailAsPlainText(const bool v)
+{
+    if (showEmailAsPlainText() == v)
+        return;
+    app::ClientOptions::store(QLatin1String(ShowEmailAsPlainText), v);
+    Q_EMIT showEmailChanged();
 }
 
 TGameWindowController::TGameWindowController(QQuickItem* container, QObject* parent)
@@ -105,14 +176,16 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             Q_EMIT statusBarVisibilityChanged();
             return;
         }
-        if (name == QLatin1String("sessionRemainLoggedIn")) {
-            // Misc "Stay logged in by default" mirrors onto the login checkbox.
-            setRememberEmail(app::ClientOptions::load().options().value(name).toBool(true));
-            return;
-        }
         if (name == QLatin1String("soundAnthemEnabled") || name == QLatin1String("soundMusicVolume")
             || name == QLatin1String("soundMasterVolume"))
             syncAnthemButton();
+    });
+
+    connect(this, &TGameWindowController::newLeftAndRightStatusActionBarWidth, this, [this](const int width) {
+        if (m_container) {
+            if (QQuickWindow* window = m_container->window())
+                window->setProperty("leftAndRightStatusActionBarWidth", width);
+        }
     });
 
     connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
@@ -144,7 +217,34 @@ TGameWindowController::~TGameWindowController()
     input::setActionHandler(A::OPEN_NEWS_DIALOG, nullptr);
     input::setActionHandler(A::OPEN_NEWS_CATEGORY, nullptr);
     input::setActionHandler(A::REFRESH_COMPENDIUM_NEWS, nullptr);
+    // CIP also releases its native window helper and the keep-renderer prompt here; qtclient's
+    // prompt lives in app/sessionbootstrap and has no native helper.
     clearEventModels();
+}
+
+QQuickItem* TGameWindowController::gameWindowChild(const QString& name) const
+{
+    return m_gameWindowItem ? m_gameWindowItem->findChild<QQuickItem*>(name) : nullptr;
+}
+
+std::unique_ptr<QObject> TGameWindowController::createGameWindow(QQmlEngine* engine)
+{
+    QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/gamewindow.qml")));
+    std::unique_ptr<QObject> object(component.create());
+    auto* item = qobject_cast<QQuickItem*>(object.get());
+    if (!item) {
+        qCritical().noquote() << component.errorString();
+        return nullptr;
+    }
+    item->setParentItem(m_container);
+    item->setProperty("controller", QVariant::fromValue<QObject*>(this));
+    if (m_container)
+        m_container->setProperty("backgroundImageVisible", true);
+    connect(this, &TGameWindowController::bindFocusToChatInput, item, [item] { QMetaObject::invokeMethod(item, "bindFocusToChatInput"); });
+    connect(this, &TGameWindowController::releaseFocusFromChatInput, item,
+            [item] { QMetaObject::invokeMethod(item, "releaseFocusFromChatInput"); });
+    setGameWindowItem(item);
+    return object;
 }
 
 void TGameWindowController::setStatusBarController(QObject* controller)
@@ -166,7 +266,7 @@ void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
     if (m_container)
         m_container->setProperty("backgroundImageSmooth", options.value(QLatin1String("antialiasingMode")).toInt() == 1);
     if (m_gameWindowItem) {
-        if (auto* cooldownBar = m_gameWindowItem->findChild<QQuickItem*>(QStringLiteral("cooldownBar")))
+        if (auto* cooldownBar = gameWindowChild(QStringLiteral("cooldownBar")))
             cooldownBar->setVisible(options.value(QLatin1String("cooldownBarEnabled")).toBool(true));
     }
     // The pane layout getters read their options.
@@ -449,11 +549,15 @@ void TGameWindowController::showGameScreen()
 {
     setAuthenticated(true);
     setScreen(QStringLiteral("INGAME"), false, Qt::black);
+    // CIP: the start screen's key filter goes; the game screen is announced.
+    QCoreApplication::instance()->removeEventFilter(this);
+    Q_EMIT gameScreenNowDisplayed();
 }
 
 void TGameWindowController::showStartScreen()
 {
     setScreen(QString(), true, QColor(QStringLiteral("#041020")));
+    QCoreApplication::instance()->installEventFilter(this);
     requestStartScreenServices();
     Q_EMIT startScreenNowDisplayed();
 }
@@ -473,10 +577,7 @@ void TGameWindowController::setScreen(const QString& state, const bool backgroun
 
 void TGameWindowController::leftAndRightStatusActionBarWidthChanged(const int newWidth)
 {
-    if (!m_container)
-        return;
-    if (QQuickWindow* window = m_container->window())
-        window->setProperty("leftAndRightStatusActionBarWidth", newWidth);
+    Q_EMIT newLeftAndRightStatusActionBarWidth(newWidth);
 }
 
 void TGameWindowController::setUpperPaneHeight(const uint height)
@@ -534,11 +635,7 @@ void TGameWindowController::rememberLoginEmailIfEnabled(const QString& email)
 
 void TGameWindowController::loginPressed(const QString& EMailAddress, const QString& Password)
 {
-    const QString email = EMailAddress.trimmed();
-    if (email.isEmpty() || Password.isEmpty())
-        return;
-    rememberLoginEmailIfEnabled(email);
-    Q_EMIT accountLoginRequested(email, Password);
+    Q_EMIT loginRequested(EMailAddress, Password);
 }
 
 void TGameWindowController::forgotEMailAddressOrPasswordPressed()
@@ -548,13 +645,12 @@ void TGameWindowController::forgotEMailAddressOrPasswordPressed()
 
 void TGameWindowController::handleCreateNewAccount()
 {
-    setShowCreateAccountOption(false);
-    Q_EMIT createAccountDialogRequested();
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::createNewAccountPressed()
 {
-    handleCreateNewAccount();
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_CREATE_ACCOUNT));
 }
 
 void TGameWindowController::goToLogin()
@@ -564,7 +660,9 @@ void TGameWindowController::goToLogin()
 
 void TGameWindowController::goToCreateNewAccount()
 {
-    handleCreateNewAccount();
+    // CIP: the create-account option goes without its change signal.
+    m_showCreateAccountOption = false;
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::tibiaLogoPressed()
@@ -613,10 +711,10 @@ bool TGameWindowController::processExitAllowed()
 void TGameWindowController::syncAnthemButton()
 {
     const QJsonObject options = app::ClientOptions::load().options();
-    // Checked (muted look) when anthem is off or master volume is 0 — playFile is silent then.
-    const bool anthemMuted = !options.value(QLatin1String("soundAnthemEnabled")).toBool(true)
-        || options.value(QLatin1String("soundMasterVolume")).toInt(100) <= 0;
-    const bool musicMuted = options.value(QLatin1String("soundMusicVolume")).toInt(50) <= 0;
+    // CIP: anthemMuted is !soundAnthemEnabled; musicMuted is a master or music volume of 0.
+    const bool anthemMuted = !options.value(QLatin1String("soundAnthemEnabled")).toBool(true);
+    const bool musicMuted = options.value(QLatin1String("soundMasterVolume")).toInt(100) == 0
+                         || options.value(QLatin1String("soundMusicVolume")).toInt(50) == 0;
     if (anthemMuted == m_anthemMuted && musicMuted == m_musicMuted)
         return;
     m_anthemMuted = anthemMuted;
@@ -626,26 +724,9 @@ void TGameWindowController::syncAnthemButton()
 
 void TGameWindowController::muteAnthemPressed()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    if (options.value(QLatin1String("soundMusicVolume")).toInt(50) <= 0)
-        return;
-    const bool anthemOn = options.value(QLatin1String("soundAnthemEnabled")).toBool(true);
-    const int master = options.value(QLatin1String("soundMasterVolume")).toInt(100);
-    // Unmute: turn the anthem back on and restore master if a global mute left it at 0
-    // (playFile refuses masterGain <= 0, so toggling anthem alone was silent).
-    if (!anthemOn || master <= 0) {
-        QJsonObject opts;
-        opts.insert(QStringLiteral("soundAnthemEnabled"), true);
-        if (master <= 0) {
-            const int restored = options.value(QLatin1String("soundMasterVolumeOld")).toInt(100);
-            opts.insert(QStringLiteral("soundMasterVolume"), restored > 0 ? restored : 100);
-        }
-        QJsonObject changes;
-        changes.insert(QStringLiteral("options"), opts);
-        app::ClientOptions::storeAll(changes);
-        return;
-    }
-    app::ClientOptions::store(QStringLiteral("soundAnthemEnabled"), false);
+    // CIP: the login screen's anthem button toggles soundAnthemEnabled (musicMuted disables it).
+    const bool enabled = app::ClientOptions::load().options().value(QLatin1String("soundAnthemEnabled")).toBool(true);
+    app::ClientOptions::store(QStringLiteral("soundAnthemEnabled"), !enabled);
 }
 
 void TGameWindowController::manageAccountPressed()
@@ -655,22 +736,22 @@ void TGameWindowController::manageAccountPressed()
 
 void TGameWindowController::manageClientsPressed()
 {
-    app::LauncherEnv::showLauncher();
+    Q_EMIT openLauncherRequested();
 }
 
 void TGameWindowController::quitPressed()
 {
-    // CIP shows Exit / Logout / Cancel only while a character is in the world.
+    Q_EMIT gameExitRequested();
+}
+
+void TGameWindowController::handleGameExitRequest()
+{
+    // Exit / Logout / Cancel only while a character is in the world.
     // The login mask and the character list close with the window.
     if (!tibia::game::isOnline()) {
         Q_EMIT quitGameExitRequested();
         return;
     }
-    showQuitGameDialog();
-}
-
-void TGameWindowController::showQuitGameDialog()
-{
     using Button = TMessageDialogController::Button;
     if (!m_quitDialog) {
         m_quitDialog = new TMessageDialogController(this);
