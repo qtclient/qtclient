@@ -118,7 +118,6 @@ public:
     /// CIP: saves the preset and sends the wheel when it changed.
     void apply();
     /// The close prompt (CIP mode 1); false when nothing to ask.
-    bool askToSaveBeforeClose();
     void closeMessages();
     /// Domain/gem for the selected vessel tile when opening the gem atelier.
     int gemAtelierDomain() const;
@@ -325,6 +324,7 @@ public:
     void requestSkillWheelPreview() override;
 
     void showMessage(const QString& caption, const QString& text, bool offerPreview);
+    void openDialogTab(EDialogTab tab);
     void openGemAtelier(int domain, int gemId);
     void openWorkshopMod(bool isBasic, int modId);
     void onPremiumChanged() { Q_EMIT premiumStatusChanged(); }

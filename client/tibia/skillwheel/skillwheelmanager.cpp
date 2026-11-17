@@ -36,7 +36,8 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
             clearSkipNextOwnOpen();
             return true;
         }
-        m_dialog->showDialog();
+        const auto tab = m_dialog->dialogTab();
+        m_dialog->openDialogTab(tab == TSkillWheelDialogController::NoTabInitialState ? TSkillWheelDialogController::Wheel : tab);
         return true;
     });
     input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::TGameAction&) {

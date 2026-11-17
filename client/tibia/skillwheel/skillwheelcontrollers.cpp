@@ -188,11 +188,7 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     // CIP: a new server wheel changes the initial data; the server wheel, the current wheel and the
     // mod grades refresh the page.
     connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::initialDataChanged);
-    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, [this] {
-        // Host: the shown wheel starts as the server's (CIP sets it outside this unit).
-        m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel());
-        onWheelChanged();
-    });
+    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, [this] {
@@ -1035,7 +1031,20 @@ void TSkillWheelPageController::setShowFullSummary(const bool Show)
     Q_EMIT summaryModeChanged();
 }
 
-void TSkillWheelPageController::useServerSkillWheelAsCurrent() { m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel()); }
+/// CIP: with a server wheel it becomes the current one (the dialog opens the wheel tab this way); the
+/// presets are checked, their model refreshed, and the matching then the pending preset selected.
+void TSkillWheelPageController::useServerSkillWheelAsCurrent()
+{
+    const std::optional<TWheel> server = m_storage->serverSkillWheel();
+    if (!server)
+        return;
+    m_storage->setCurrentSkillWheel(*server);
+    validatePresets();
+    m_presets->reset();
+    Q_EMIT presetDataChanged();
+    selectMatchingPreset();
+    selectPendingPreset();
+}
 
 /// CIP: drops every selection and clears their information.
 void TSkillWheelPageController::clearSelection()
@@ -1071,7 +1080,7 @@ void TSkillWheelPageController::closeMessages()
 /// CIP: a changed wheel asks before closing (mode 1), otherwise closeConfirmed.
 void TSkillWheelPageController::requestClose()
 {
-    if (!askToSaveBeforeClose()) {
+    if (!m_storage->isCurrentSkillWheelChanged()) {
         Q_EMIT closeConfirmed();
         return;
     }
@@ -1142,12 +1151,6 @@ void TSkillWheelPageController::apply()
     Q_EMIT preapareToSkipNextOpenForOwnPlayer();
     m_storage->addOrReplacePreset(m_currentPresetName, *current);
     publish(A::SAVE_SKILL_WHEEL);
-}
-
-bool TSkillWheelPageController::askToSaveBeforeClose()
-{
-    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->totalPoints() == 0 && m_storage->changeState() != 0
-        && m_storage->isCurrentSkillWheelChanged();
 }
 
 // ---------------------------------------------------------------------------
@@ -1626,6 +1629,21 @@ void TSkillWheelDialogController::showDialog()
     Q_EMIT premiumStatusChanged();
 }
 
+/// CIP (open action): a hidden dialog is shown with no selection; the wheel tab first takes the
+/// server wheel as the current one, then the tab is switched to.
+void TSkillWheelDialogController::openDialogTab(const EDialogTab tab)
+{
+    if (!dialog()->isShown()) {
+        dialog()->show();
+        m_dialogTab = NoTabInitialState;
+        m_page->clearSelection();
+    }
+    if (tab == Wheel)
+        m_page->useServerSkillWheelAsCurrent();
+    requestTabSwitch(tab);
+    Q_EMIT premiumStatusChanged();
+}
+
 void TSkillWheelDialogController::closeDialog()
 {
     if (m_dialogTab == Wheel)
@@ -1641,7 +1659,9 @@ void TSkillWheelDialogController::closeDialog()
     if (m_presetDialog)
         m_presetDialog->dialog()->close();
     dialog()->close();
-    m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel());
+    // CIP: the server data goes with the dialog and the current wheel is reset.
+    m_storage->clearServerData();
+    m_storage->resetCurrentSkillWheel();
 }
 
 /// CIP: the page asks about unsaved changes (closeConfirmed closes).

@@ -7414,6 +7414,7 @@ sub_39a551599246	39a5515992462af1	inlined	gamewindow/containercontroller.cpp:TCo
 sub_39af3334b322	39af3334b3228743	ported	chat/textstorage.h:TFleetingTextQueue::color
 sub_39b0d726845c	39b0d726845c6564	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_39b2e1e066f8	39b2e1e066f86d03	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::onClickedPreviousPage
+sub_39bfe46c01b5	39bfe46c01b5ca10	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::useServerSkillWheelAsCurrent
 sub_39cb427abbb6	39cb427abbb6151c	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_39e8a7a50c32	39e8a7a50c3229c6	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinesChanged
 sub_39e9177b932d	39e9177b932daa33	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowPaladinSpells
