@@ -84,7 +84,6 @@ void TPlayerStatesTracker::refresh()
     PlayerStatesInput input;
     input.states = static_cast<quint32>(tibia::game::localPlayerStates());
     input.inRestingArea = m_inRestingArea;
-    input.restingAreaBonus = m_restingAreaBonus;
     input.restingAreaText = m_restingAreaText;
     input.playerKillerFlag = tibia::game::localPlayerSkull();
     uint8_t emblem = 0;

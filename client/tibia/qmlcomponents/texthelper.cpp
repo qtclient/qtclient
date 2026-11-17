@@ -17,22 +17,21 @@ QString grouped(const qlonglong number)
     return QLocale(QLocale::English).toString(number);
 }
 
-/// CIP : grouped, then " k"/"k", " kk"/"kk", " kkk"/"kkk" from 1,000 on.
+/// Grouped, then " k"/"k", " kk"/"kk", … per further factor of 1,000 the
+/// magnitude reaches (up to "kkkkkk" at 10^18).
 QStringList shortcutVariants(const qlonglong number, const bool withPlus)
 {
     const QString sign = withPlus && number > 0 ? QStringLiteral("+") : QString();
     QStringList variants{ sign + grouped(number) };
-    const auto add = [&](const qlonglong divisor, const char* suffix) {
+    QString suffix;
+    for (qlonglong divisor = 1000; divisor <= 1000000000000000000LL; divisor *= 1000) {
+        if (number < divisor && number > -divisor)
+            break;
+        suffix += u'k';
         const QString value = sign + grouped(number / divisor);
-        variants << value + u' ' + QLatin1String(suffix) << value + QLatin1String(suffix);
-    };
-    if (number >= 1000 || number <= -1000) {
-        add(1000, "k");
-        if (number >= 1000000 || number <= -1000000) {
-            add(1000000, "kk");
-            if (number >= 1000000000 || number <= -1000000000)
-                add(1000000000, "kkk");
-        }
+        variants << value + u' ' + suffix << value + suffix;
+        if (divisor == 1000000000000000000LL)
+            break;
     }
     return variants;
 }
