@@ -2471,6 +2471,7 @@ input::TClipboardGameActionHandler::handleCopyTrustedTextToClipboardGameAction	b
 input::TClipboardGameActionHandler::handleGameAction	76951254c22cb716	ported	input/domainhandlers.cpp:TClipboardGameActionHandler::handleGameAction
 input::TClipboardGameActionHandler::~TClipboardGameActionHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (identical body)
 input::TClipboardGameActionHandler::~TClipboardGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (identical body)
+input::TCrossHairSpellGameActionHandler::v12	7a3b111aa9f8c1e9	ported	input/crosshairgameactionhandlers.cpp:TCrossHairSpellGameActionHandler::handleGameAction
 input::TCrossHairSpellGameActionHandler::~TCrossHairSpellGameActionHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (identical body)
 input::TCrossHairSpellGameActionHandler::~TCrossHairSpellGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (identical body)
 input::TDecoItemKitObjectApperanceTypeGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -3117,6 +3118,7 @@ input::TUpgradeableObjectApperanceTypeGameActionContext::v0	872d4faac408f6d5	ski
 input::TUpgradeableObjectApperanceTypeGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TUpgradeableObjectApperanceTypeGameActionContext::v4	122336d00a45fcbf	ported	input/gameactioncontext.h:TUpgradeableObjectApperanceTypeGameActionContext::objectApperanceTypeContextType
 input::TUpgradeableObjectApperanceTypeGameActionContext::v5	c277aea4072848fe	ported	input/gameactioncontext.h:TUpgradeableObjectApperanceTypeGameActionContext::tier
+input::TUseWithGameActionHandler::v12	bd4f1edc237b8662	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::handleGameAction
 input::TUseWithGameActionHandler::~TUseWithGameActionHandler	234d7c603a625d96	skip	generated: compiler-generated destructor pair (identical body)
 input::TUseWithGameActionHandler::~TUseWithGameActionHandler_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (identical body)
 input::TWindowFocusEventFilter::v0@10	3a20e7dbbd783506	skip	generated: compiler-generated destructor pair
@@ -4465,6 +4467,7 @@ sub_093e80bef008	093e80bef008dd33	ported	gamewindow/chatcontroller.cpp:TChatCont
 sub_09454647cbba	09454647cbbae432	inlined	skillwheel/skillwheeldata.cpp:romanNumeral
 sub_09474d868ba3	09474d868ba32ca4	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_095fecba8325	095fecba83253faf	ported	input/eventfiltermanager.cpp:TEventFilterManager::requestFocus
+sub_09647ba6a9e3	09647ba6a9e3a29d	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::handleUseOnCreature
 sub_097457dc45e8#10	097457dc45e86dd8	inlined	sub_67075aefd67d
 sub_097457dc45e8#11	097457dc45e86dd8	inlined	sub_67075aefd67d
 sub_097457dc45e8#12	097457dc45e86dd8	inlined	shared/src/rpcserviceserver.cpp:TRPCServiceServer::TRPCServiceServer
@@ -5801,7 +5804,9 @@ sub_3065a93422da#2	3065a93422daa1ef	skip	library: libc++ std::vector instantiati
 sub_306d1ba5475c#10	306d1ba5475c61d0	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureUpdated
 sub_306d1ba5475c#12	306d1ba5475c61d0	skip	generated: moc-generated signal
 sub_306d1ba5475c#14	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
+sub_306d1ba5475c#38	306d1ba5475c61d0	skip	generated: moc-generated signal emitter (publishGameAction)
 sub_306d1ba5475c#39	306d1ba5475c61d0	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
+sub_306d1ba5475c#40	306d1ba5475c61d0	skip	generated: moc-generated signal emitter (publishGameAction)
 sub_306d1ba5475c#41	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
 sub_306d1ba5475c#42	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
 sub_306d1ba5475c#43	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
@@ -6471,6 +6476,7 @@ sub_48686e59fd85	48686e59fd852efb	ported	teamfinder/teamfinderciptypes.cpp:TTeam
 sub_48780ab0adc0	48780ab0adc0754d	ported	config/optionspages.cpp:TControlsOptionsPage::controlSchemeIndex
 sub_48810764037a	48810764037a2f24	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
 sub_4885d10e8422	4885d10e8422f62b	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setName
+sub_48afefe3e48a#14	48afefe3e48aec5b	skip	library: protobuf message constructor (GameclientMessageUseTwoObjects / UseOnCreature)
 sub_48afefe3e48a#16	48afefe3e48aec5b	skip	generated: protobuf message constructor (generated)
 sub_48afefe3e48a#18	48afefe3e48aec5b	skip	generated: protobuf message constructor (generated)
 sub_48afefe3e48a#2	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v2
@@ -8513,6 +8519,7 @@ sub_8b45f2c5b624	8b45f2c5b6245362	skip	library: libc++ std::vector/std::unordere
 sub_8b547d445443	8b547d445443c5d6	ported	analysers/impactwidgets.cpp:TImpactWidgetController::isHpsGraphVisible
 sub_8b55c9bedfc0	8b55c9bedfc06231	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipStateChanged
 sub_8b579d3509ca	8b579d3509ca1b18	skip	library: std::deque internals (library)
+sub_8b87cf8da858	8b87cf8da858a4c6	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::handleTargetSelected
 sub_8b91f6c23675	8b91f6c236755077	ported	controllers/characterselectioncontroller.cpp:TCharacterSelectionController::onMorePremiumFeaturesClicked
 sub_8b979eff9889	8b979eff98897c5c	skip	library: std::vector/shared_ptr template instantiations
 sub_8b9dc9ebeeff	8b9dc9ebeeff66eb	inlined	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleSaveJsonDocumentToFile
@@ -9631,6 +9638,7 @@ sub_ae202507b9f2#2	ae202507b9f2eb53	skip	library: std vector internals (push_bac
 sub_ae2328220358#4	ae23282203580d86	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_ae2ed924c7b0	ae2ed924c7b06939	inlined	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::createLoginRequest
 sub_ae30b7a094d0	ae30b7a094d0bcc7	ported	analysers/analyserstorages.h:sessionLengthMs
+sub_ae3c0766d36d	ae3c0766d36d3ec7	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::handleUseWith
 sub_ae3c5f8bfe98	ae3c5f8bfe98140c	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::bankGoldBalanceString
 sub_ae3fc104bd6e	ae3fc104bd6e6080	tested	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::TSessiondumpPacketReader	test=tests/client/sessiondumpreader_test.cpp
 sub_ae3fc104bd6e#2	ae3fc104bd6e6080	tested	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::TSessiondumpPacketReader	test=tests/client/sessiondumpreader_test.cpp
@@ -10821,6 +10829,7 @@ sub_d048a40a6342	d048a40a63425653	ported	gamewindow/sidebarwidgetsmanager.cpp:TS
 sub_d097924d44b0	d097924d44b01f46	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::onAllowedGroupsChanged
 sub_d09906c6464b	d09906c6464b654b	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout
 sub_d09b0270d771	d09b0270d7716a4c	skip	data: translation-unit static initializer (misattributed)
+sub_d09b0270d771#4	d09b0270d7716a4c	skip	data: translation-unit static initialiser (string constants, vocation names)
 sub_d09c1f97b5f7	d09c1f97b5f753a1	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onStartAssembleTeamClicked
 sub_d0a98016e8b1	d0a98016e8b12ced	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onOkClicked
 sub_d0aa9244635d	d0aa9244635de63b	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
@@ -11404,6 +11413,7 @@ sub_dead7ffe3a8d	dead7ffe3a8d6c85	inlined	gamewindow/friendsbadgespagecontroller
 sub_ded71acf3fb9	ded71acf3fb9b2c0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardDetails
 sub_deddd931f0f5	deddd931f0f548ab	skip	data: translation-unit static initializer (misattributed)
 sub_dee1d9a87d87#12	dee1d9a87d87e369	inlined	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleUseAction
+sub_dee1d9a87d87#14	dee1d9a87d87e369	skip	library: protobuf message constructor (GameclientMessageUseTwoObjects / UseOnCreature)
 sub_dee1d9a87d87#18	dee1d9a87d87e369	skip	generated: protobuf-generated message constructor
 sub_dee1d9a87d87#22	dee1d9a87d87e369	inlined	protocol::TProtobufServerMessageTranslator::v152
 sub_dee1d9a87d87#24	dee1d9a87d87e369	inlined	protocol::TProtobufServerMessageTranslator::v211
@@ -11655,6 +11665,7 @@ sub_e7147767e7e3	e7147767e7e36493	inlined	assets/spritesheet.cpp:SpriteStore::ad
 sub_e71baf80a769#3	e71baf80a769426d	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::addRewardStreakBonus
 sub_e71baf80a769#6	e71baf80a769426d	inlined	reporting/reportingciptypes.cpp:TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage
 sub_e72a1696fb8d	e72a1696fb8d7b56	ported	gamewindow/minimapcontroller.cpp:TMinimapController::TMinimapController
+sub_e72aed9abdb1	e72aed9abdb1ead4	ported	input/crosshairgameactionhandlers.cpp:TCrossHairSpellGameActionHandler::handleTargetSelected
 sub_e73341c1cb0b	e73341c1cb0b4238	skip	library: libc++ std::vector destroy / exception-guard / uninitialized_copy instantiation
 sub_e747c5f8bb7c	e747c5f8bb7c5f8d	skip	library: Qt/std container template code
 sub_e747c5f8bb7c#2	e747c5f8bb7c5f8d	skip	library: Qt/std container template code
@@ -12085,6 +12096,7 @@ sub_f8495e2c7fea	f8495e2c7fea0c51	skip	library: std::vector copy / growth of sto
 sub_f84a5f5ffa54	f84a5f5ffa544028	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::load
 sub_f84c03b3289f	f84c03b3289faae3	skip	generated: moc property getter, provided by the generated cip base
 sub_f84f003e6488	f84f003e6488cb5b	skip	data: translation-unit static initializer (misattributed)
+sub_f84f003e6488#16	f84f003e6488cb5b	skip	data: translation-unit static initialiser (string constants, vocation names)
 sub_f84f003e6488#19	f84f003e6488cb5b	skip	data: static initializer of inventory filter strings (misattributed neighbour)
 sub_f84f003e6488#6	f84f003e6488cb5b	skip	data: translation-unit static initializer (misattributed)
 sub_f85264fa3114	f85264fa3114cec7	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedOfferIndex

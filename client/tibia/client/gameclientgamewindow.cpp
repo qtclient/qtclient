@@ -20,6 +20,8 @@
 #include "exivaoptions/exivaoptionsdialogcontroller.h"
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpgamesession.h"
+#include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
 #include "game/tgamenotify.h"
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/battlelistcontroller.h"
@@ -768,6 +770,19 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &input::TUseWithGameActionHandler::handleGameAction);
     connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::publishGameAction, router,
             &game::TInternalGameActionRouter::handleGameActionInternal);
+    // CIP connects the messages to the session's protocol queue.
+    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::sendUseTwoObjects, this,
+            [](const tibia::protobuf::protocol::GameclientMessageUseTwoObjects& message) {
+                if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
+                    queue && tibia::game::canPerformGameAction())
+                    queue->sendUseTwoObjects(message);
+            });
+    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::sendUseOnCreature, this,
+            [](const tibia::protobuf::protocol::GameclientMessageUseOnCreature& message) {
+                if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
+                    queue && tibia::game::canPerformGameAction())
+                    queue->sendUseOnCreature(message);
+            });
     g.crossHairSpellActions = std::make_unique<input::TCrossHairSpellGameActionHandler>();
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.crossHairSpellActions.get(),
             &input::TCrossHairSpellGameActionHandler::handleGameAction);

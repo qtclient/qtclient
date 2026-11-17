@@ -7,6 +7,9 @@
 #include <cip_gen.h>
 
 #include <client/const.h>
+#include <protocol.pb.h>
+
+#include <memory>
 
 namespace tibia {
 namespace input {
@@ -18,8 +21,10 @@ namespace input {
 /// mouse tile or attack target (needDirection on the server). Else plain talk.
 void say(tibia::client::MessageMode mode, const QString& text, int spellCastType);
 
-/// CIP input::TUseWithGameActionHandler (USE_WITH, TARGET_SELECTED) plus
-/// USE_ON_* from TCreaturesGameActionHandler; a router slot of the game window.
+/// CIP input::TUseWithGameActionHandler (USE_WITH, USE_ON_CREATURE,
+/// TARGET_SELECTED, CANCEL_USE_WITH) plus USE_ON_TARGET / USE_ON_YOURSELF from
+/// TCreaturesGameActionHandler; a router slot of the game window. A use with
+/// without a target waits (+0x20) for the next TARGET_SELECTED.
 class TUseWithGameActionHandler final : public cip::tibia::input::TUseWithGameActionHandler
 {
     Q_OBJECT
@@ -31,13 +36,24 @@ public:
 
 Q_SIGNALS:
     void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+    void sendUseTwoObjects(tibia::protobuf::protocol::GameclientMessageUseTwoObjects UseTwoObjectsMessage);
+    void sendUseOnCreature(tibia::protobuf::protocol::GameclientMessageUseOnCreature UseOnCreatureMessage);
 
 public Q_SLOTS:
     void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+
+private:
+    void handleUseWith(const std::shared_ptr<const TGameActionUseWith>& action);
+    void handleUseOnCreature(const TGameActionUseOnCreature& action);
+    void handleTargetSelected(const TTargetSelectedPtr& target);
+    void startTargetSelectionBridge();
+
+    std::shared_ptr<const TGameActionUseWith> m_pPendingAction;
 };
 
-/// CIP input::TCrossHairSpellGameActionHandler (CROSSHAIR_SPELL); a router slot
-/// of the game window.
+/// CIP input::TCrossHairSpellGameActionHandler (CROSSHAIR_SPELL,
+/// TARGET_SELECTED, CANCEL_CROSSHAIR_SPELL); a router slot of the game window.
+/// A spell without a target waits (+0x30) for the next TARGET_SELECTED.
 class TCrossHairSpellGameActionHandler final : public cip::tibia::input::TCrossHairSpellGameActionHandler
 {
     Q_OBJECT
@@ -52,6 +68,12 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+
+private:
+    void handleCrossHairSpell(const std::shared_ptr<const TGameActionCrossHairSpell>& action);
+    void handleTargetSelected(const TTargetSelectedPtr& target);
+
+    std::shared_ptr<const TGameActionCrossHairSpell> m_pPendingAction;
 };
 
 }
