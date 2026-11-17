@@ -61,10 +61,6 @@ TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(QObject* parent)
     m_timer.setInterval(1000);
     connect(&m_timer, &QTimer::timeout, this, &TFPSLatencyIndicatorController::tick);
 
-    input::setActionHandler(input::EGameAction::TOGGLE_FPS_LATENCY_INDICATOR, [this](const input::TGameAction&) {
-        toggle();
-        return true;
-    });
 
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == ShowFpsOption)
@@ -76,7 +72,6 @@ TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(QObject* parent)
 
 TFPSLatencyIndicatorController::~TFPSLatencyIndicatorController()
 {
-    input::setActionHandler(input::EGameAction::TOGGLE_FPS_LATENCY_INDICATOR, nullptr);
     disconnect(m_frameConnection);
 }
 

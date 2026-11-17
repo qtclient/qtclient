@@ -168,18 +168,6 @@ bool isCreatureActionType(const EGameAction type)
 
 }
 
-TGameActionLook::TGameActionLook(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::LOOK;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUse::TGameActionUse(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::USE;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
 TGameActionUseWith::TGameActionUseWith(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::USE_WITH;
@@ -211,36 +199,6 @@ TGameActionPlayerMovementIntent::TGameActionPlayerMovementIntent(Position pos, c
     position = pos;
     autoWalkPathMode = pathMode;
     enterUnwalkableGoal = enterUnwalkable;
-}
-
-TGameActionOpen::TGameActionOpen(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::OPEN;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionOpenInNewWindow::TGameActionOpenInNewWindow(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::OPEN_IN_NEW_WINDOW;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionWrap::TGameActionWrap(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::WRAP;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionUnwrap::TGameActionUnwrap(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::UNWRAP;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionRotate::TGameActionRotate(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::ROTATE_OBJECT;
-    fillObject(*this, position, stackPosition, objectClientId);
 }
 
 TGameActionQuickLoot::TGameActionQuickLoot(Position position, int stackPosition, const uint16_t objectClientId)
@@ -294,12 +252,6 @@ TGameActionAddTextMessage::TGameActionAddTextMessage(const EGameAction actionTyp
     type = actionType;
 }
 
-TGameActionBrowseField::TGameActionBrowseField(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::BROWSE_FIELD;
-    fillObject(*this, position, stackPosition, objectClientId);
-}
-
 TGameActionBuyHirelingNameOrSexChange::TGameActionBuyHirelingNameOrSexChange(const uint32_t id)
 {
     type = EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE;
@@ -329,12 +281,6 @@ TGameActionChatChannelModeration::TGameActionChatChannelModeration(const EGameAc
 {
     type = actionType;
     text = std::move(playerName);
-}
-
-TGameActionConfigureShowOffSocket::TGameActionConfigureShowOffSocket(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::CONFIGURE_SHOW_OFF_SOCKET;
-    fillObject(*this, position, stackPosition, objectClientId);
 }
 
 TGameActionCopyChatEntryToClipboard::TGameActionCopyChatEntryToClipboard(QString value)
@@ -427,12 +373,6 @@ TGameActionInvitePlayerToPrivateChatChannel::TGameActionInvitePlayerToPrivateCha
 TGameActionManagedContainer::TGameActionManagedContainer(const EGameAction actionType)
 {
     type = actionType;
-}
-
-TGameActionMoveUp::TGameActionMoveUp(Position position, int stackPosition, const uint16_t objectClientId)
-{
-    type = EGameAction::MOVE_UP;
-    fillObject(*this, position, stackPosition, objectClientId);
 }
 
 TGameActionOpenEditVipDialog::TGameActionOpenEditVipDialog(QString value)
@@ -855,8 +795,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
     case EGameAction::MAKE_BATTLE_LIST_PRIMARY:
         return std::make_shared<TGameActionMakeBattleListPrimary>();
-    case EGameAction::MOVE_UP:
-        return std::make_shared<TGameActionMoveUp>();
     case EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR:
         return std::make_shared<TGameActionOpenContainerInSpecificSidebar>();
     case EGameAction::OPEN_EDIT_VIP_DIALOG:
@@ -1101,10 +1039,6 @@ TGameActionPtr makeAction(const EGameAction type)
 TGameActionPtr makeObjectAction(const EGameAction type, const Position& position, const int stackPosition, const uint16_t objectClientId)
 {
     switch (type) {
-    case EGameAction::LOOK:
-        return std::make_shared<TGameActionLook>(position, stackPosition, objectClientId);
-    case EGameAction::USE:
-        return std::make_shared<TGameActionUse>(position, stackPosition, objectClientId);
     case EGameAction::USE_WITH: {
         auto action = std::make_shared<TGameActionUseWith>(position, stackPosition, objectClientId);
         return action;
@@ -1119,30 +1053,14 @@ TGameActionPtr makeObjectAction(const EGameAction type, const Position& position
         return std::make_shared<TGameActionUseAtMouseCursor>(position, stackPosition, objectClientId);
     case EGameAction::MOVE_OBJECT:
         return std::make_shared<TGameActionMoveObject>(position, stackPosition, objectClientId);
-    case EGameAction::OPEN:
-        return std::make_shared<TGameActionOpen>(position, stackPosition, objectClientId);
-    case EGameAction::OPEN_IN_NEW_WINDOW:
-        return std::make_shared<TGameActionOpenInNewWindow>(position, stackPosition, objectClientId);
-    case EGameAction::WRAP:
-        return std::make_shared<TGameActionWrap>(position, stackPosition, objectClientId);
-    case EGameAction::UNWRAP:
-        return std::make_shared<TGameActionUnwrap>(position, stackPosition, objectClientId);
-    case EGameAction::ROTATE_OBJECT:
-        return std::make_shared<TGameActionRotate>(position, stackPosition, objectClientId);
     case EGameAction::QUICK_LOOT:
         return std::make_shared<TGameActionQuickLoot>(position, stackPosition, objectClientId);
     case EGameAction::TRADE_ITEM:
         return std::make_shared<TGameActionPlayerTradeItem>(position, stackPosition, objectClientId);
     case EGameAction::GATHER_ALL:
         return std::make_shared<gameactions::TGameActionGatherAll>(position, stackPosition, objectClientId);
-    case EGameAction::BROWSE_FIELD:
-        return std::make_shared<TGameActionBrowseField>(position, stackPosition, objectClientId);
-    case EGameAction::CONFIGURE_SHOW_OFF_SOCKET:
-        return std::make_shared<TGameActionConfigureShowOffSocket>(position, stackPosition, objectClientId);
     case EGameAction::INSPECT_OBJECT:
         return std::make_shared<TGameActionInspectObject>(position, stackPosition, objectClientId);
-    case EGameAction::MOVE_UP:
-        return std::make_shared<TGameActionMoveUp>(position, stackPosition, objectClientId);
     case EGameAction::OPEN_PARENT_CONTAINER:
         return std::make_shared<TGameActionOpenParentContainer>(position, stackPosition, objectClientId);
     case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
@@ -1164,6 +1082,55 @@ TGameActionPtr makeObjectAction(const EGameAction type, const Position& position
         return action;
     }
     }
+}
+
+IGameActionPtr makeObjectGameAction(const EGameAction type, const Position& position, const int stackPosition,
+                                    const uint16_t objectClientId)
+{
+    const TObjectGameActionContext context{ position, stackPosition, objectClientId };
+    switch (type) {
+    case EGameAction::LOOK:
+        return std::make_shared<TGameActionLook>(context);
+    case EGameAction::USE:
+        return std::make_shared<TGameActionUse>(context);
+    case EGameAction::OPEN:
+        return std::make_shared<TGameActionOpen>(context);
+    case EGameAction::OPEN_IN_NEW_WINDOW:
+        return std::make_shared<TGameActionOpenInNewWindow>(context);
+    case EGameAction::WRAP:
+        return std::make_shared<TGameActionWrap>(context);
+    case EGameAction::UNWRAP:
+        return std::make_shared<TGameActionUnwrap>(context);
+    case EGameAction::ROTATE_OBJECT:
+        return std::make_shared<TGameActionRotate>(context);
+    case EGameAction::BROWSE_FIELD:
+        return std::make_shared<TGameActionBrowseField>(context);
+    case EGameAction::MOVE_UP:
+        return std::make_shared<TGameActionMoveUp>(context);
+    case EGameAction::CONFIGURE_SHOW_OFF_SOCKET:
+        return std::make_shared<TGameActionConfigureShowOffSocket>(context);
+    default:
+        return makeObjectAction(type, position, stackPosition, objectClientId);
+    }
+}
+
+std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& action)
+{
+    if (const auto* object = dynamic_cast<const TObjectGameAction*>(&action))
+        return object->context();
+    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
+        return TObjectGameActionContext{ fields->position, fields->stackPosition, fields->objectClientId };
+    return std::nullopt;
+}
+
+std::shared_ptr<TGameAction> mutableClone(const IGameAction& action)
+{
+    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
+        return mutableClone(*fields);
+    qCCritical(lcGameAction) << "mutableClone: action" << static_cast<int>(action.gameActionType()) << "has its class";
+    auto carrier = std::make_shared<TGameAction>();
+    carrier->type = action.gameActionType();
+    return carrier;
 }
 
 uint32_t creatureIdOf(const IGameAction& action)

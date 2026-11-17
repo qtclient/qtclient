@@ -80,11 +80,11 @@ void toggleOption(const char* name)
     app::ClientOptions::store(QLatin1String(name), !option(name));
 }
 
-input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
+input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
     for (const input::IGameActionPtr& action : actions) {
         if (action->gameActionType() == type)
-            return input::unportedGameAction(action);
+            return action;
     }
     return nullptr;
 }
@@ -448,11 +448,8 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
         actions.push_back(std::move(openParent));
         ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
         if (!type || !type->isNotMoveable()) {
-            auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, position, pageSlot));
-            moveUp->objectClientId = slot.typeId;
-            moveUp->destination = Position(UINT16_MAX, static_cast<uint16_t>(0x40 | m_containerId), ParentContainerSlot);
-            moveUp->moveAll = true;
-            actions.push_back(std::move(moveUp));
+            // The generic handler moves the whole stack to the parent slot.
+            actions.push_back(input::makeObjectGameAction(A::MOVE_UP, position, pageSlot, slot.typeId));
         }
     }
     actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
@@ -519,7 +516,7 @@ void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = firstOfType(slotActions(slotId), A::MOVE_OBJECT))
+    if (const input::TGameActionPtr move = input::unportedGameAction(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -540,7 +537,7 @@ void TContainerController::onSlotDragDropped(const int slotId)
 
 void TContainerController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
+    if (const input::TGameActionPtr target = input::unportedGameAction(firstOfType(slotActions(slotId), A::TARGET_SELECTED)))
         input::publish(target);
 }
 

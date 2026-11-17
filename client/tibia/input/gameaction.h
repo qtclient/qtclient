@@ -426,6 +426,115 @@ public:
     }
 };
 
+/// qtclient's encoding of CIP's location and object action contexts
+/// (TLocationWorldMapGameActionContext / TLocationInventoryGameActionContext /
+/// TLocationContainerWithSlotGameActionContext with TObjectApperanceTypeGameActionContext):
+/// the field (an inventory slot is Position(0xFFFF, slot, 0), a container slot
+/// Position(0xFFFF, 0x40 | container, slot)), the stack position and the item's client id.
+struct TObjectGameActionContext
+{
+    Position position;
+    int stackPosition = -1;
+    uint16_t objectClientId = 0;
+};
+
+/// The object actions CIP builds from a location and an object context.
+class TObjectGameAction : public IGameAction
+{
+public:
+    explicit TObjectGameAction(const TObjectGameActionContext& context)
+        : m_context(context)
+    {
+    }
+    const TObjectGameActionContext& context() const { return m_context; }
+    const Position& position() const { return m_context.position; }
+    int stackPosition() const { return m_context.stackPosition; }
+    uint16_t objectClientId() const { return m_context.objectClientId; }
+
+private:
+    TObjectGameActionContext m_context;
+};
+
+/// CIP input::TGameActionLook (LOOK).
+class TGameActionLook final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::LOOK; }
+};
+
+/// CIP input::TGameActionUse (USE).
+class TGameActionUse final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::USE; }
+};
+
+/// CIP input::TGameActionOpen (OPEN).
+class TGameActionOpen final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::OPEN; }
+};
+
+/// CIP input::TGameActionOpenInNewWindow (OPEN_IN_NEW_WINDOW).
+class TGameActionOpenInNewWindow final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::OPEN_IN_NEW_WINDOW; }
+};
+
+/// CIP input::TGameActionWrap (WRAP).
+class TGameActionWrap final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::WRAP; }
+};
+
+/// CIP input::TGameActionUnwrap (UNWRAP).
+class TGameActionUnwrap final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::UNWRAP; }
+};
+
+/// CIP input::TGameActionRotate (ROTATE_OBJECT).
+class TGameActionRotate final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::ROTATE_OBJECT; }
+};
+
+/// CIP input::TGameActionBrowseField (BROWSE_FIELD).
+class TGameActionBrowseField final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::BROWSE_FIELD; }
+};
+
+/// CIP input::TGameActionMoveUp (MOVE_UP).
+class TGameActionMoveUp final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::MOVE_UP; }
+};
+
+/// CIP input::TGameActionConfigureShowOffSocket (CONFIGURE_SHOW_OFF_SOCKET).
+class TGameActionConfigureShowOffSocket final : public TObjectGameAction
+{
+public:
+    using TObjectGameAction::TObjectGameAction;
+    EGameAction gameActionType() const override { return EGameAction::CONFIGURE_SHOW_OFF_SOCKET; }
+};
+
 /// CIP input::TGameActionShowLenshelp (LENSHELP_SHOW, 0xc4): the lenshelp text
 /// of an object (its appearance's lenshelp id) at its field and the scene
 /// rectangle the help points at.
@@ -569,21 +678,7 @@ inline TGameActionPtr unportedGameAction(const IGameActionPtr& action)
     return std::dynamic_pointer_cast<const TGameAction>(action);
 }
 
-/// CIP input::TGameActionLook (v0 → LOOK).
-class TGameActionLook final : public TGameAction
-{
-public:
-    TGameActionLook() { type = EGameAction::LOOK; }
-    TGameActionLook(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionUse (v0 → USE).
-class TGameActionUse final : public TGameAction
-{
-public:
-    TGameActionUse() { type = EGameAction::USE; }
-    TGameActionUse(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 /// CIP input::TGameActionUseWith (ctor); also USE_ON_*.
 class TGameActionUseWith final : public TGameAction
@@ -655,45 +750,10 @@ public:
 };
 
 
-/// CIP input::TGameActionOpen (v0 → OPEN).
-class TGameActionOpen final : public TGameAction
-{
-public:
-    TGameActionOpen() { type = EGameAction::OPEN; }
-    TGameActionOpen(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionOpenInNewWindow (v0).
-class TGameActionOpenInNewWindow final : public TGameAction
-{
-public:
-    TGameActionOpenInNewWindow() { type = EGameAction::OPEN_IN_NEW_WINDOW; }
-    TGameActionOpenInNewWindow(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionWrap (v0).
-class TGameActionWrap final : public TGameAction
-{
-public:
-    TGameActionWrap() { type = EGameAction::WRAP; }
-    TGameActionWrap(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionUnwrap (v0).
-class TGameActionUnwrap final : public TGameAction
-{
-public:
-    TGameActionUnwrap() { type = EGameAction::UNWRAP; }
-    TGameActionUnwrap(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
-/// CIP input::TGameActionRotate (v0 → ROTATE_OBJECT).
-class TGameActionRotate final : public TGameAction
-{
-public:
-    TGameActionRotate() { type = EGameAction::ROTATE_OBJECT; }
-    TGameActionRotate(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 /// CIP input::TGameActionQuickLoot (v0).
 class TGameActionQuickLoot final : public TGameAction
@@ -821,13 +881,6 @@ public:
 
 
 
-/// CIP input::TGameActionBrowseField (v0 → BROWSE_FIELD).
-class TGameActionBrowseField final : public TGameAction
-{
-public:
-    TGameActionBrowseField() { type = EGameAction::BROWSE_FIELD; }
-    TGameActionBrowseField(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 /// CIP input::TGameActionBuyHirelingNameOrSexChange .
 class TGameActionBuyHirelingNameOrSexChange final : public TGameAction
@@ -917,13 +970,6 @@ public:
 
 
 
-/// CIP input::TGameActionConfigureShowOffSocket (v0).
-class TGameActionConfigureShowOffSocket final : public TGameAction
-{
-public:
-    TGameActionConfigureShowOffSocket() { type = EGameAction::CONFIGURE_SHOW_OFF_SOCKET; }
-    TGameActionConfigureShowOffSocket(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 /// CIP input::TGameActionCopyChatEntryToClipboard .
 class TGameActionCopyChatEntryToClipboard final : public TGameAction
@@ -1101,13 +1147,6 @@ public:
 
 
 
-/// CIP input::TGameActionMoveUp .
-class TGameActionMoveUp final : public TGameAction
-{
-public:
-    TGameActionMoveUp() { type = EGameAction::MOVE_UP; }
-    TGameActionMoveUp(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
 
 
 
@@ -1884,6 +1923,13 @@ TGameActionPtr makeAction(EGameAction type);
 /// none (TGameActionSimple or its named subclass), else the field carrier.
 IGameActionPtr makeGameAction(EGameAction type);
 TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
+/// An object action of `type`: the CIP class when ported, else the field carrier.
+IGameActionPtr makeObjectGameAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
+/// The object an action is on (CIP: its location and object contexts); empty for none.
+std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& action);
+/// A mutable field carrier copy of an unported action (a ported class's action gives
+/// an empty carrier of its type).
+std::shared_ptr<TGameAction> mutableClone(const IGameAction& action);
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 /// The creature an action is on (CIP: the creature classes' v4); 0 for none.
 uint32_t creatureIdOf(const IGameAction& action);

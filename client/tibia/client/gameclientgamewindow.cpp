@@ -724,6 +724,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     input::TGenericGameActionHandler* genericActions = g.genericActions.get();
     connect(genericActions, &input::TGenericGameActionHandler::publishGameAction,
             gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
+    connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
+            genericActions, &input::TGenericGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
             [this] { requestLogoutOrShowStartScreen(nullptr); });
     connect(genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,

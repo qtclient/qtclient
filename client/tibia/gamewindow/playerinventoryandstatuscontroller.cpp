@@ -86,11 +86,11 @@ container::TInventorySlot slotAppearance(const int slotId)
     return {};
 }
 
-input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
+input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
     for (const input::IGameActionPtr& action : actions) {
         if (action->gameActionType() == type)
-            return input::unportedGameAction(action);
+            return action;
     }
     return nullptr;
 }
@@ -495,7 +495,7 @@ void TPlayerInventoryAndStatusController::onBlessingsButtonClicked()
 
 void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()
 {
-    if (const input::TGameActionPtr open = firstOfType(slotActions(StoreInboxSlot), A::OPEN_IN_NEW_WINDOW))
+    if (const input::IGameActionPtr open = firstOfType(slotActions(StoreInboxSlot), A::OPEN_IN_NEW_WINDOW))
         input::publish(open);
 }
 
@@ -550,7 +550,7 @@ void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObj
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = firstOfType(slotActions(slotId), A::MOVE_OBJECT))
+    if (const input::TGameActionPtr move = input::unportedGameAction(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -569,7 +569,7 @@ void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
 
 void TPlayerInventoryAndStatusController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
+    if (const input::TGameActionPtr target = input::unportedGameAction(firstOfType(slotActions(slotId), A::TARGET_SELECTED)))
         input::publish(target);
 }
 

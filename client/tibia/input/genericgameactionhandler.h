@@ -27,23 +27,18 @@ public:
     TGenericGameActionHandler(const TGenericGameActionHandler&) = delete;
     TGenericGameActionHandler& operator=(const TGenericGameActionHandler&) = delete;
 
-    /// The action types handleGameAction handles.
-    static bool handles(EGameAction type);
-
-    /// Hands `action` to its handler by type; other types are ignored.
-    void handleGameAction(const TGameAction& action);
-    void handleLookAction(const TGameAction& action);
+    void handleLookAction(const TGameActionLook& action);
     /// USE, OPEN and OPEN_IN_NEW_WINDOW: the use message with the container
     /// the server opens a container in: none (0xFF) for USE, the container
     /// the object lies in for OPEN (0 outside one), a free one for a new window.
-    void handleUseAction(const TGameAction& action);
-    void handleBrowseFieldAction(const TGameAction& action);
+    void handleUseAction(const TObjectGameAction& action);
+    void handleBrowseFieldAction(const TGameActionBrowseField& action);
     /// MOVE_UP: moves the whole stack to the parent slot (254) of the
     /// container it lies in.
-    void handleMoveUpAction(const TGameAction& action);
-    void handleWrapAndUnwrapAction(const TGameAction& action);
-    void handleConfigureShowOffSocketAction(const TGameAction& action);
-    void handleRotateAction(const TGameAction& action);
+    void handleMoveUpAction(const TGameActionMoveUp& action);
+    void handleWrapAndUnwrapAction(const TObjectGameAction& action);
+    void handleConfigureShowOffSocketAction(const TGameActionConfigureShowOffSocket& action);
+    void handleRotateAction(const TGameActionRotate& action);
     void handleQuitGameAction();
     void handleChangeCharacterAction();
     void handleRequestResourceBalanceAction(const TGameAction& action);
@@ -52,6 +47,9 @@ public:
     void handleSaveJsonDocumentToFile(const TGameAction& action);
 
 public Q_SLOTS:
+    /// CIP v12: hands an action of a type it handles to its handler; other
+    /// types are ignored. Connected to the router's publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
     /// Flips the client window's full-screen option (clientWindowIsBorderless).
     void handleToggleFullscreenAction() override;
     /// Resets the loot, waste, impact, damage input, hunting session, progress

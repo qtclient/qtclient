@@ -377,19 +377,11 @@ TGameClient::TGameClient(QObject* parent)
                                     Q_EMIT self->characterSelectionClosed();
                                 return true;
                             });
-    // CIP Ctrl+G ChangeCharacter → in-game CharacterSelection (Cmd+G on macOS).
-    input::setActionHandler(input::EGameAction::CHANGE_CHARACTER,
-                            [self = QPointer<TGameClient>(this)](const input::TGameAction&) {
-                                if (self && tibia::game::isOnline())
-                                    self->toggleCharacterSelectionForSwitch();
-                                return true;
-                            });
 }
 
 TGameClient::~TGameClient()
 {
     m_gameWindow.reset();
-    input::setActionHandler(input::EGameAction::CHANGE_CHARACTER, nullptr);
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
     input::setGameActionRouter(nullptr);

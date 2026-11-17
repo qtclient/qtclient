@@ -35,11 +35,12 @@ TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(QObject* pare
     }
     // So does using or opening an object on the map, or using one with another
     // when either lies on the map (not in a container or the inventory).
-    const auto onMap = [](const TGameAction& action) {
-        return action.creatureId == 0 && action.position.isValid() && action.position.x != 0xffff;
+    const auto onMap = [](const IGameAction& action) {
+        const std::optional<TObjectGameActionContext> object = objectContextOf(action);
+        return creatureIdOf(action) == 0 && object && object->position.isValid() && object->position.x != 0xffff;
     };
     for (const A type : { A::USE, A::OPEN, A::OPEN_IN_NEW_WINDOW }) {
-        m_listeners.push_back(addActionListener(type, [onMap](const TGameAction& action) {
+        m_listeners.push_back(addActionListener(type, [onMap](const IGameAction& action) {
             if (onMap(action))
                 tibia::game::localPlayerClearMovementGoal();
             return false;

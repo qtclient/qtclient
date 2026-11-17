@@ -159,11 +159,11 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (!clientId)
         return actions;
     const uint32_t id = clientId;
-    const auto make = [&](const EGameAction type) -> TGameActionPtr {
-        return makeObjectAction(type, position, stackPosition, clientId);
+    const auto make = [&](const EGameAction type) -> IGameActionPtr {
+        return makeObjectGameAction(type, position, stackPosition, clientId);
     };
     const auto push = [&](const EGameAction type) {
-        TGameActionPtr action = make(type);
+        IGameActionPtr action = make(type);
         actions.push_back(action);
         return action;
     };
@@ -180,11 +180,11 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
                                     ? static_cast<uint16_t>(stackCountOverride)
                                     : (fieldObject ? fieldObject->count() : 0);
 
-    const TGameActionPtr look = push(A::LOOK);
+    const IGameActionPtr look = push(A::LOOK);
     if (take && !has(&ThingType::isIgnoreLook))
         push(A::INSPECT_OBJECT);
 
-    TGameActionPtr use;
+    IGameActionPtr use;
     if (!isContainer) {
         use = push(has(&ThingType::isMultiUse) ? A::USE_WITH : A::USE);
     } else {
@@ -192,7 +192,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         if (id != tibia::game::supplyStashId()) {
             // A container inside a container opens in its window by default;
             // anywhere else in a new one.
-            const TGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
+            const IGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
             const bool inContainer = position.x == UINT16_MAX && (position.y & 0x40);
             if (!inContainer)
                 use = openInNewWindow;
@@ -265,7 +265,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (isContainer && has(&ThingType::isCorpse) && !has(&ThingType::isPlayerCorpse))
         push(A::QUICK_LOOT);
 
-    TGameActionPtr inner;
+    IGameActionPtr inner;
     if (!has(&ThingType::hasAction)) {
         inner = has(&ThingType::isUsable) ? use : look;
     } else {

@@ -113,7 +113,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
                                               : TGameActionList{};
     const TGameActionList targetList = actionsOf(pick.multiUse, pick.field, pick.position, { A::TARGET_SELECTED });
 
-    result.push_back(input::makeObjectAction(A::BROWSE_FIELD, pick.position, -1));
+    result.push_back(input::makeObjectGameAction(A::BROWSE_FIELD, pick.position, -1));
     result.push_back(input::makeObjectAction(A::REPORT_BUG_MAP, pick.position, -1));
 
     const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
@@ -170,10 +170,9 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
 TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mouseTargetObjectOf(
     const input::IGameActionPtr& pGameAction)
 {
-    const TGameActionPtr action = input::unportedGameAction(pGameAction);
-    if (!action)
+    if (!pGameAction)
         return {};
-    switch (action->type) {
+    switch (pGameAction->gameActionType()) {
     case A::USE:
     case A::USE_WITH:
     case A::WRAP:
@@ -181,12 +180,13 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
     case A::OPEN:
     case A::OPEN_IN_NEW_WINDOW:
     case A::LOOK: {
+        const std::optional<input::TObjectGameActionContext> object = input::objectContextOf(*pGameAction);
         TMouseTargetObject target;
-        target.typeId = action->objectClientId;
+        target.typeId = object ? object->objectClientId : 0;
         if (!target.typeId)
             return {};
-        target.field = action->position;
-        target.stackPos = action->stackPosition;
+        target.field = object->position;
+        target.stackPos = object->stackPosition;
         return target;
     }
     case A::USE_ON_CREATURE:
@@ -202,7 +202,9 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
         // Creature hover is id-based (see mouseTargetCreatureIdOf).
         return {};
     case A::SMART_CLICK:
-        return mouseTargetObjectOf(action->inner);
+        if (const TGameActionPtr smartClick = input::unportedGameAction(pGameAction))
+            return mouseTargetObjectOf(smartClick->inner);
+        return {};
     default:
         return {};
     }
