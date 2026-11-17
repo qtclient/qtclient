@@ -496,11 +496,13 @@ void TCreateCharacterDialogController::onCharacterCreated(QNetworkReply* reply)
         cancel();
         return;
     }
-    if (succeeded(answer))
+    if (answer.isEmpty())
         return;
+    // A failed creation shows the error; only error code 2 keeps the form for
+    // a correction.
     showError(errorMessage(answer));
-    // Product: the portal's codes differ from CipSoft's (which closes the dialog
-    // unless errorCode is 2), so the form always stays for a correction.
+    if (answer[QLatin1String("errorCode")].toInt() != 2)
+        cancel();
 }
 
 void TCreateCharacterDialogController::post(const QJsonObject& request, ReplyHandler onReply)

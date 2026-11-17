@@ -11206,6 +11206,7 @@ sub_d50170a737b9	d50170a737b9b62b	skip	generated: destructor body: member teardo
 sub_d50a9934ce00	d50a9934ce0037ca	skip	library: QMap/QList template instantiations
 sub_d519a27504e0	d519a27504e0736a	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_d51a15ac13f3	d51a15ac13f3e9bf	skip	library: SFML/miniaudio library helper, only called from library code
+sub_d55e0aaeb418	d55e0aaeb41883fe	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onCharacterCreated
 sub_d5762ebdcb4f	d5762ebdcb4fd9c3	skip	library: libc++ std::stable_sort internals (merge / buffered inplace merge / insertion sort over pointer ranges)
 sub_d5803ac21393	d5803ac21393ddd3	ported	skillwheel/skillwheeldata.cpp:smallPerkValueText
 sub_d5a20b95763e	d5a20b95763e2393	skip	library: std library template (vector length error, map emplace, vector push_back)
