@@ -39,6 +39,7 @@
 #include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
+#include "app/bootstrap.h"
 #include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
@@ -1254,8 +1255,7 @@ void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
         app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl(),
         std::make_shared<systemsurvey::TFPSHistoryToJsonConverter>(),
         std::make_shared<shared::TJsonDocumentHttpPostSender>());
-    // Host: CipSoft reports its renderer's id; qtclient reports the scene graph's graphics API.
-    const int renderer = int(QQuickWindow::graphicsApi());
+    const int renderer = app::rendererIndexForGraphicsApi(QQuickWindow::graphicsApi());
     m_fpsHistoryController = std::make_shared<systemsurvey::TFPSHistoryController>(uploader, m_fpsHistory, renderer);
     const QString group = QStringLiteral("FPSHISTORY");
     startFpsHistoryTimers(config::clientSettingAtLeast(group, QStringLiteral("sampleRateMsec"), 1000, 100),
