@@ -226,6 +226,7 @@ void TCreature::update(const qint64 nowMs)
         m_outfitIdleAnimator->update(nowMs);
     if (m_mountIdleAnimator)
         m_mountIdleAnimator->update(nowMs);
+    updateOutfitPatterns();
     m_animationPhase = animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
     m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
@@ -318,9 +319,18 @@ void TCreature::rebuildOutfitAppearance()
 {
     TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
     m_outfitAppearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
+    if (m_outfitAppearance)
+        m_outfitAppearance->linkCreature(m_creatureId);
     if (const auto outfitInstance =
             std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-        outfitInstance->setOutfitLook(m_outfit, m_patternX);
+        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), true);
+}
+
+void TCreature::updateOutfitPatterns()
+{
+    if (const auto outfitInstance =
+            std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
+        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), false);
 }
 
 void TCreature::syncLocalPlayerStats()
@@ -465,11 +475,7 @@ void TCreature::setDirection(const uint8_t direction)
 
     m_direction = direction;
     m_patternX = patternX;
-    if (m_outfitAppearance) {
-        if (const auto outfitInstance =
-                std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-            outfitInstance->setOutfitLook(m_outfit, m_patternX);
-    }
+    updateOutfitPatterns();
 }
 
 void TCreature::attachEffect(const AttachedEffectPtr& effect)

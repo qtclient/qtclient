@@ -1,4 +1,5 @@
 #include "gameclient.h"
+#include "colorhelper.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"

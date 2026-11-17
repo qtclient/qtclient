@@ -1,4 +1,5 @@
 #include "taskboardshopcontroller.h"
+#include "colorhelper.h"
 
 #include "taskboard/taskboardciptypes.h"
 
@@ -34,7 +35,7 @@ uint32_t mapU32(const ShopMap& map, const char* key, const uint32_t fallback = 0
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

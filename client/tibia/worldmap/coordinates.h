@@ -232,6 +232,16 @@ public:
             shearFloor);
     }
 
+    /// The field, seen from the shear floor, lies inside the box (half-open on
+    /// every axis).
+    bool contains(const TWorldMapCoordinate& coordinate) const
+    {
+        const int shift = coordinate.z - shearFloor;
+        const int x = coordinate.x + shift;
+        const int y = coordinate.y + shift;
+        return origin.x <= x && x < end.x && origin.y <= y && y < end.y && origin.z <= coordinate.z && coordinate.z < end.z;
+    }
+
     bool operator==(const TShearedWorldMapCuboid& other) const
     {
         return TWorldMapCuboid::operator==(other) && shearFloor == other.shearFloor;

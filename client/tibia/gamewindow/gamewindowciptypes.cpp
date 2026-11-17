@@ -1,5 +1,6 @@
 #include "gamewindowciptypes.h"
 #include "game/worldtype.h"
+#include "colorhelper.h"
 
 #include <QWheelEvent>
 
@@ -771,7 +772,7 @@ const char* const InspectSlotBackgrounds[] = {
 
 QColor inspectOutfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

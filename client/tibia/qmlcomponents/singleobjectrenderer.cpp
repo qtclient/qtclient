@@ -5,6 +5,8 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "clockservice.h"
+#include "appearances/spriteinfo.h"
+#include "renderer/spritetextureprovider.h"
 
 #include <QQuickWindow>
 #include <QSGImageNode>
@@ -180,9 +182,9 @@ void TSingleObjectAppearanceInstanceRenderer::updatePolish()
     QRect bounds;
     if (m_type && m_type->getAnimationPhases() > 0) {
         if (const auto sprite = m_type->spriteIdAt(0, m_patternX, m_patternY, m_patternZ, m_phase))
-            m_sprite.spriteId = *sprite;
+            m_sprite.identifier = std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite);
     }
-    if (m_sprite.spriteId) {
+    if (m_sprite.identifier) {
         const QSize size(m_type->getSize().width() * FieldSize, m_type->getSize().height() * FieldSize);
         // The sprite ends at the bottom-right of the object's field.
         const QPoint spriteAt(FieldSize - size.width(), FieldSize - size.height());
@@ -226,11 +228,12 @@ void TSingleObjectAppearanceInstanceRenderer::updatePolish()
 
 QSGNode* TSingleObjectAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
-    if (!m_sprite.spriteId || m_target.isEmpty()) {
+    if (!m_sprite.identifier || m_target.isEmpty()) {
         delete oldNode;
         return nullptr;
     }
-    QSGTexture* texture = TSpriteTextureCache::shared(window()).texture(m_sprite);
+    const renderer::TSpriteTexture sprite = renderer::TSpriteTextureProviderManager::sharedProvider(window()).texture(m_sprite);
+    QSGTexture* texture = sprite.texture;
     if (!texture) {
         // CipSoft pending: keep the prior tree while the sheet
         // decompresses (same class as TAppearanceInstanceRenderer char-select).
@@ -247,7 +250,12 @@ QSGNode* TSingleObjectAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNo
     node->setTexture(texture);
     node->setFiltering(m_smoothTextureFiltering ? QSGTexture::Linear : QSGTexture::Nearest);
     node->setSourceRect(QRectF(QPointF(), texture->textureSize()));
-    node->setRect(m_target);
+    // The texture holds the part `sprite.rect` of the sprite drawn at m_target.
+    const QSize spriteSize = spriteSizeOf(m_sprite);
+    const qreal sx = spriteSize.width() > 0 ? m_target.width() / spriteSize.width() : 1.0;
+    const qreal sy = spriteSize.height() > 0 ? m_target.height() / spriteSize.height() : 1.0;
+    node->setRect(QRectF(m_target.left() + sprite.rect.left() * sx, m_target.top() + sprite.rect.top() * sy,
+                         sprite.rect.width() * sx, sprite.rect.height() * sy));
     return node;
 }
 

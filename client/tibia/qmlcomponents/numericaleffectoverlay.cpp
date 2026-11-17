@@ -173,7 +173,7 @@ void TNumericalEffectOverlayQuickItem::update()
         // : (16, 8) into the field, lifted by its elevation.
         int elevation = 0;
         if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coordinate))
-            elevation = tile->getDrawElevation();
+            elevation = tile->objectElevation();
         const QPoint camera = frame.camera;
         const QPoint pixel = m_provider->mapPixelOf(coordinate) + QPoint(16 - elevation, 8 - elevation) - camera;
         const QPointF position = cover.toPaneRounded(pixel.x(), pixel.y());

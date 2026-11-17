@@ -106,14 +106,18 @@ public:
     /// ignore look.
     bool isPickable() const;
 
-    int getDrawElevation() const { return m_drawElevation; }
     const std::vector<uint32_t>& walkingCreatureIds() const { return m_walkingCreatureIds; }
     /// CipSoft field stack (items/effects + creature outfit appearances; gameplay items/creatures resolved on demand).
-    const std::vector<appearances::TAppearanceInstancePtr>& appearances() const { return m_appearanceCache; }
+    const std::vector<appearances::TAppearanceInstancePtr>& appearances() const { return m_stack; }
     appearances::TAppearanceInstancePtr appearanceAt(int stackPos) const;
     uint16_t itemClientIdAt(int stackPos) const;
     uint32_t stackCreatureId(int stackPos) const;
     bool removeThingAtStackPos(int stackPos);
+    /// Takes the creature instance at `stackPos` off the field; null when
+    /// none is there.
+    appearances::TAppearanceInstancePtr takeCreatureInstance(int stackPos);
+    /// Advances every instance's animation to `nowMs` (CIP v45).
+    void updateAnimations(qint64 nowMs);
     /// Refresh outfit/direction appearance entries when the live creature changes look.
     void syncCreatureStackAppearance(uint32_t creatureId);
     /// The graphical effects on this field, from the effect storage.
@@ -218,19 +222,13 @@ Q_SIGNALS:
     void appearanceInstancesChanged(const TWorldMapField* field);
 
 private:
-    struct TFieldStackEntry
-    {
-        appearances::TAppearanceInstancePtr appearance;
-        uint32_t creatureId{ 0 }; // 0 = item/effect appearance on stack
-    };
     /// The stack entry at `stackIndex` as an object, at its stack position.
     TFieldObject fieldObject(int stackIndex) const;
     /// Where an object sorts on the stack: 0 bank, 1 clip, 2 bottom, 3 top,
     /// 4 creature, 5 any other object.
-    static int stackOrder(const TFieldStackEntry& entry);
+    static int stackOrder(const appearances::TAppearanceInstancePtr& entry);
     /// The stack position an object without one takes.
-    int insertionIndex(const TFieldStackEntry& entry) const;
-    void rebuildAppearanceCache();
+    int insertionIndex(const appearances::TAppearanceInstancePtr& entry) const;
     /// Sets each object's elevation and the hangables' hook side from the stack.
     void updateElevation();
     /// Recomputes isOpaque and blocksSight from the stack.
@@ -238,7 +236,7 @@ private:
     /// Takes the stack entry at `stackIndex` off the field without touching a
     /// creature's placed-on-field flag (the stack's overflow).
     void eraseStackEntry(int stackIndex);
-    void setStackEntryFlag(const TFieldStackEntry& entry);
+    void setStackEntryFlag(const appearances::TAppearanceInstancePtr& entry);
     void applyStackFlagsFromThingType(TAppearanceType* type);
     void applyCreatureStackFlags(const tibia::creatures::TCreature& stored, TAppearanceType* outfitType);
 
@@ -249,8 +247,8 @@ private:
 
     bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
     std::vector<uint32_t> m_walkingCreatureIds;
-    std::vector<TFieldStackEntry> m_stack;
-    std::vector<appearances::TAppearanceInstancePtr> m_appearanceCache;
+    /// The field's appearance instances in stack order (a creature's is linked to it).
+    std::vector<appearances::TAppearanceInstancePtr> m_stack;
 
 
 
@@ -263,7 +261,6 @@ private:
     mutable Position m_positionCache;
 
 
-    uint8_t m_drawElevation{ 0 };
     uint8_t m_minimapColor{ 0 };
     uint8_t m_elevation{ 0 };
     bool m_opaque{ false };

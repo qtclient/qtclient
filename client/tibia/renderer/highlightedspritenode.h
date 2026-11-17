@@ -47,9 +47,13 @@ public:
     THighlightedSpriteScenegraphNode();
 
     void set(QSGTexture* texture, const QRectF& rect, const QColor& color, bool smooth);
+    /// CIP: shows `texture` (its part of the atlas; the whole texture without one)
+    /// in the node's rectangle.
+    void setTexture(QSGTexture* texture);
 
 private:
     QSGGeometry m_geometry;
+    QRectF m_rect;
     TSpriteDrawCommandHighlightMaterial m_material;
 };
 

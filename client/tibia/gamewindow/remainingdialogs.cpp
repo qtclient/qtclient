@@ -1,4 +1,5 @@
 #include "remainingdialogs.h"
+#include "colorhelper.h"
 
 #include "shared/simplevectorabstractlistmodel.h"
 

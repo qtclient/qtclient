@@ -281,6 +281,20 @@ if(TARGET cip_messages)
     target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
 endif()
 
+# CIP appearance instance tracker and the appearance type -> spritesheet mapping.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_appearanceinstancetracker_tests
+        appearanceinstancetracker_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearanceinstancetracker.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearanceinstancetracker.h
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/appearancetypespritesheetmapping.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    )
+    target_link_libraries(client_appearanceinstancetracker_tests PRIVATE cip_messages Qt6::Gui)
+    set_target_properties(client_appearanceinstancetracker_tests PROPERTIES AUTOMOC ON)
+endif()
+
 # CIP minimap marker file (minimapmarkers.bin) conversions.
 if(TARGET cip_messages)
     qtclient_add_port_test(client_minimapmarker_tests

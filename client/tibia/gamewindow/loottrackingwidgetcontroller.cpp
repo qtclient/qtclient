@@ -1,4 +1,5 @@
 #include "loottrackingwidgetcontroller.h"
+#include "colorhelper.h"
 
 #include "analysers/itempricestorage.h"
 #include "config/sidebaroptions.h"
@@ -57,7 +58,7 @@ QString trackedItemName(const uint16_t typeId)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

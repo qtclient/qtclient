@@ -239,6 +239,9 @@ void TWorldMapRenderProvider::advance()
 
     QElapsedTimer cost;
     cost.start();
+    // The stored fields' animations advance to this frame before it is built.
+    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage())
+        storage->updateAnimations(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     m_frame.valid = build();
     m_buildNs = cost.nsecsElapsed();
     // The view follows the drawn frame's field, so the picker's floor and
@@ -422,10 +425,10 @@ bool TWorldMapRenderProvider::build()
         if (m_mouseHighlight && m_mouseHighlightField.isValid() && m_mouseHighlightField.z == z) {
             const QPoint cell = gridCell(m_mouseHighlightField);
             m_key = DrawKey{ .group = 3, .x = cell.x(), .y = cell.y(), .layer = 7 };
-            const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
+            auto info = std::make_shared<appearances::TWorldmapHighlightBaseplateSpriteInfo>(
                 appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(tibia::shared::TClockService::frameMillis()));
             const QPoint topLeft = mapPixelOf(m_mouseHighlightField);
-            m_floorSprites.push_back({ .anchor = topLeft + QPoint(FieldSize, FieldSize), .sprite = info.key() });
+            m_floorSprites.push_back({ .anchor = topLeft + QPoint(FieldSize, FieldSize), .sprite = { std::move(info) } });
             m_floorKeys.push_back(m_key.packed());
         }
 
@@ -923,11 +926,11 @@ void TWorldMapRenderProvider::updateHighlightBaseplate()
 {
     // CIP v21: the square's frame follows the wall clock (& 7). build() keys it
     // into its field's slot; this refreshes the frame in place.
-    const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
+    const auto info = std::make_shared<appearances::TWorldmapHighlightBaseplateSpriteInfo>(
         appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(tibia::shared::TClockService::frameMillis()));
     for (SpriteRecord& sprite : m_frame.sprites) {
-        if (sprite.sprite.isHighlightBaseplate())
-            sprite.sprite = info.key();
+        if (dynamic_cast<const appearances::TWorldmapHighlightBaseplateSpriteInfo*>(sprite.sprite.identifier.get()))
+            sprite.sprite.identifier = info;
     }
 }
 
@@ -1261,23 +1264,27 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         yPattern = object->patternY();
         zPattern = object->patternZ();
     }
-    if (const auto* hang = dynamic_cast<const appearances::THangableObjectAppearanceInstance*>(appearance.get())) {
-        const int patterns = type->getNumPatternX();
-        const uint8_t side = hang->hangSide();
-        if (side == 1 && patterns >= 2)
-            xPattern = 1;
-        else if (side >= 2 && patterns >= 3)
-            xPattern = 2;
-    }
 
-    const int phase = object ? object->calculateAnimationPhase() : 0;
+    // The object's sprite sequence holds its pattern's sprites per phase; its
+    // animator picks the phase.
+    const appearances::TAppearanceInstanceSpriteSequence* sequence = object ? object->spriteSequence().get() : nullptr;
+    const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
+        : object                                       ? object->calculateAnimationPhase()
+                                                       : 0;
+    // Objects draw their sequence's current sprite; without one the type's pattern.
+    const auto addObjectSprite = [&] {
+        if (sequence)
+            addSequenceSprite(*appearance, dest, phase, xPattern, 1.f, 0, highlight);
+        else
+            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+    };
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile)))
         : std::nullopt;
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
         if (showOff->drawsSocket()) {
-            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+            addObjectSprite();
             if (type->hasLight())
                 addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
         }
@@ -1292,7 +1299,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         return;
     }
 
-    addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+    addObjectSprite();
     if (type->hasLight())
         addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
@@ -1334,9 +1341,16 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     }
 
     if (const std::array<uint32_t, 3> marks = creatureMarks(stored); marks[0]) {
-        const appearances::TCreatureMarkAppearanceInstanceSpriteInfo markInfo(marks);
+        std::vector<QColor> colors;
+        for (const uint32_t mark : marks) {
+            if (!mark)
+                break;
+            colors.push_back(QColor::fromRgba(mark));
+        }
         const QPoint anchor = at - stored.displacement() + QPoint(FieldSize, FieldSize);
-        m_floorSprites.push_back({ .anchor = QPoint(anchor.x(), anchor.y()), .sprite = markInfo.key() });
+        m_floorSprites.push_back({ .anchor = QPoint(anchor.x(), anchor.y()),
+                                   .sprite = { std::make_shared<appearances::TCreatureMarkAppearanceInstanceSpriteInfo>(
+                                       std::move(colors)) } });
         m_floorKeys.push_back(m_key.packed());
     }
 
@@ -1379,12 +1393,20 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
             at += stored.displacement();
         }
         const int phase = stored.animationPhase();
-        const bool colorize = stored.drawOutfitColor() && type->getLayers() > 1;
-        const uint32_t colors = colorize ? outfitColors(outfit) : 0;
-        for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-            if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
-                continue;
-            addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
+        if (outfitInst) {
+            // The outfit instance's sequences hold the sprite of every phase:
+            // masked with the outfit's colours, its addons layered over it.
+            const int stampPhase = m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(phase) : phase;
+            addSpriteInfo(type, at, outfitInst->spriteInfoAtPhase(phase), outfitInst->spriteInfoAtPhase(stampPhase),
+                          stored.drawnPatternX(), highlight);
+        } else {
+            const bool colorize = stored.drawOutfitColor() && type->getLayers() > 1;
+            const uint32_t colors = colorize ? outfitColors(outfit) : 0;
+            for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
+                if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
+                    continue;
+                addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
+            }
         }
         addAttachedEffects(stored, walked, jumped, true);
         return;
@@ -1462,7 +1484,7 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppear
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(type, at, xPattern, yPattern, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
+    addSequenceSprite(*effect, at, phase, xPattern, opacity, tint);
     if (type && type->hasLight()) {
         const QPoint center = at + QPoint(FieldSize / 2, FieldSize / 2);
         addLight(center, type->getLight().intensity, type->getLight().color);
@@ -1488,8 +1510,7 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(type, dest, missile->patternX(), missile->patternY(), 0, missile->phase(), false, 0, SpriteRecord::NoHighlight,
-               opacity);
+    addSequenceSprite(*missile, dest, missile->phase(), missile->patternX(), opacity, 0);
     // TWorldMapRenderProvider::v11 : missiles share TEffectStorage with field effects
     // and light the map from their current flight position.
     if (type && type->hasLight()) {
@@ -1498,6 +1519,79 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
         if (m_lighting)
             m_lighting->addCenterLight(center.x(), center.y(), type->getLight().intensity, type->getLight().color);
     }
+}
+
+namespace {
+
+/// The sprite infos `info` draws, bottom first: a layered info's layers, else itself.
+std::vector<const appearances::IAppearanceInstanceSpriteInfo*> drawnLayers(const appearances::IAppearanceInstanceSpriteInfo* info)
+{
+    if (!info)
+        return {};
+    if (const auto* layered = dynamic_cast<const appearances::TLayeredAppearanceInstanceSpriteInfo*>(info)) {
+        std::vector<const appearances::IAppearanceInstanceSpriteInfo*> layers;
+        for (const auto& layer : layered->layers())
+            layers.push_back(layer.get());
+        return layers;
+    }
+    return { info };
+}
+
+/// The spritesheet sprite id a (masked) sprite info draws; 0 for other kinds.
+uint32_t drawnSpriteId(const appearances::IAppearanceInstanceSpriteInfo* info)
+{
+    using EKind = appearances::IAppearanceInstanceSpriteInfo::EKind;
+    if (!info)
+        return 0;
+    if (info->kind() == EKind::Spritesheet)
+        return static_cast<const appearances::TSpritesheetAppearanceInstanceSpriteInfo*>(info)->spriteId();
+    if (info->kind() == EKind::Masked) {
+        const auto& sprite = static_cast<const appearances::TMaskedAppearanceInstanceSpriteInfo*>(info)->sprite();
+        return sprite ? sprite->spriteId : 0;
+    }
+    return 0;
+}
+
+} // namespace
+
+void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint& dest,
+                                            const appearances::TAppearanceInstanceSpriteInfoPtr& info,
+                                            const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, const int xPattern,
+                                            const SpriteRecord::Highlight highlight, const float opacity,
+                                            const uint8_t tint)
+{
+    if (!type || type->isNull() || !info)
+        return;
+    // A thing's frame ends at the bottom-right of its field, less its displacement.
+    const QPoint anchor = dest - type->getDisplacement() + QPoint(FieldSize, FieldSize);
+    if (info->kind() != appearances::IAppearanceInstanceSpriteInfo::EKind::Dummy) {
+        m_floorSprites.push_back(
+            { .anchor = anchor, .sprite = { info, tint }, .opacity = opacity, .highlight = highlight });
+        m_floorKeys.push_back(m_key.packed());
+    }
+    if (m_lighting && m_lighting->frameActive()) {
+        for (const appearances::IAppearanceInstanceSpriteInfo* layer : drawnLayers(stamp.get())) {
+            if (const uint32_t stampId = drawnSpriteId(layer))
+                m_lighting->addFrame(peelLightingFrame(*type, anchor, stampId, xPattern));
+        }
+    }
+}
+
+void TWorldMapRenderProvider::addSequenceSprite(const appearances::TAppearanceInstance& instance, const QPoint& dest,
+                                                const int phase, const int xPattern, const float opacity, const uint8_t tint,
+                                                const SpriteRecord::Highlight highlight)
+{
+    const appearances::TAppearanceInstanceSpriteSequence* sequence = instance.spriteSequence().get();
+    if (!sequence)
+        return;
+    appearances::TAppearanceInstanceSpriteInfoPtr stamp = sequence->currentSpriteInfo();
+    if (m_lighting && m_lighting->frameActive()) {
+        const int stampPhase = m_lighting->stampPhase(phase);
+        const auto infos = sequence->spriteInfos();
+        if (stampPhase != phase && stampPhase >= 0 && static_cast<size_t>(stampPhase) < infos.size())
+            stamp = infos[static_cast<size_t>(stampPhase)];
+    }
+    addSpriteInfo(instance.thingType(), dest, sequence->currentSpriteInfo(), stamp, xPattern, highlight, opacity, tint);
 }
 
 void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& dest, const int xPattern, const int yPattern,
@@ -1509,29 +1603,29 @@ void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& de
 
     // A thing's frame ends at the bottom-right of its field, less its displacement.
     const QPoint anchor = dest - type->getDisplacement() + QPoint(FieldSize, FieldSize);
-    const uint64_t drawKey = m_key.packed();
-    const bool raycast = (m_lighting && m_lighting->frameActive());
-
     const std::optional<uint32_t> sprite = type->spriteIdAt(0, xPattern, yPattern, zPattern, animationPhase);
     if (sprite) {
-        SpriteKey key{ .spriteId = *sprite, .tint = tint };
-        if (colorize) {
-            if (const std::optional<uint32_t> mask = type->spriteIdAt(1, xPattern, yPattern, zPattern, animationPhase)) {
-                key.maskId = *mask;
-                key.colors = colors;
-            }
+        appearances::TAppearanceInstanceSpriteInfoPtr info;
+        const std::optional<uint32_t> mask = colorize ? type->spriteIdAt(1, xPattern, yPattern, zPattern, animationPhase)
+                                                      : std::nullopt;
+        if (mask) {
+            info = std::make_shared<appearances::TMaskedAppearanceInstanceSpriteInfo>(
+                *sprite, *mask, appearances::TOutfitColors::fromPacked(colors));
+        } else {
+            info = std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite);
         }
-        m_floorSprites.push_back({ .anchor = anchor, .sprite = key, .opacity = opacity, .highlight = highlight });
-        m_floorKeys.push_back(drawKey);
+        m_floorSprites.push_back({ .anchor = anchor, .sprite = { std::move(info), tint }, .opacity = opacity, .highlight = highlight });
+        m_floorKeys.push_back(m_key.packed());
     }
-    if (raycast) {
-        const int stampPhase = m_lighting ? m_lighting->stampPhase(animationPhase) : 0;
+    if (m_lighting && m_lighting->frameActive()) {
+        const int stampPhase = m_lighting->stampPhase(animationPhase);
         const std::optional<uint32_t> stamp = stampPhase == animationPhase
             ? sprite
             : type->spriteIdAt(0, xPattern, yPattern, zPattern, stampPhase);
-        if (stamp && m_lighting)
+        if (stamp)
             m_lighting->addFrame(peelLightingFrame(*type, anchor, *stamp, xPattern));
     }
 }
+
 
 }

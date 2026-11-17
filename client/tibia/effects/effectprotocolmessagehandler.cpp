@@ -31,20 +31,19 @@ bool visible(const uint32_t source)
     return client::magicEffectOpacity(static_cast<client::MagicEffectSources>(source)) >= 0.01f;
 }
 
-appearances::TAppearanceInstancePtr makeEffect(const uint16_t effectId)
+/// Effect `effectId` on `field` (a pack effect variant draws its base effect).
+std::shared_ptr<appearances::TFieldEffectInstance> makeEffect(const uint16_t effectId, const Position& field,
+                                                              const uint8_t source, const qint64 now, const qint64 delay)
 {
     const uint16_t drawId = game::resolveEffectId(effectId);
     if (!game::isValidDatId(drawId, ThingCategoryEffect))
         return nullptr;
-    const auto appearance = appearances::TAppearanceInstanceFactory::fromThingType(game::rawThingType(drawId, ThingCategoryEffect));
-    auto* effect = dynamic_cast<appearances::TEffectInstance*>(appearance.get());
-    if (!effect)
-        return nullptr;
+    auto effect = appearances::TAppearanceInstanceFactory::createFieldEffect(drawId, field, source, now, delay);
     if (const auto* variant = game::findEffectVariant(effectId)) {
         effect->setUnderCreatures(variant->underCreatures);
         effect->setVariantId(effectId);
     }
-    return appearance;
+    return effect;
 }
 
 }
@@ -60,26 +59,17 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
         case 0: {
             if (!visible(entry.source()))
                 break;
-            const auto appearance = makeEffect(static_cast<uint16_t>(entry.appearance_id()));
-            auto* effect = dynamic_cast<appearances::TEffectInstance*>(appearance.get());
-            if (!effect)
-                break;
-            effect->setSource(static_cast<client::MagicEffectSources>(entry.source()));
-            effect->start(at, now, entry.delay());
-            map->addEffectAppearance(appearance, at);
+            if (const auto effect = makeEffect(static_cast<uint16_t>(entry.appearance_id()), at,
+                                               static_cast<uint8_t>(entry.source()), now, entry.delay()))
+                map->addEffectAppearance(effect, at);
             break;
         }
         case 1: {
             const auto id = static_cast<uint16_t>(entry.appearance_id());
             if (!visible(entry.source()) || !game::isValidDatId(id, ThingCategoryMissile))
                 break;
-            const auto appearance = appearances::TAppearanceInstanceFactory::fromThingType(game::rawThingType(id, ThingCategoryMissile));
-            auto* missile = dynamic_cast<appearances::TMissileEffectInstance*>(appearance.get());
-            if (!missile)
-                break;
-            missile->setSource(static_cast<client::MagicEffectSources>(entry.source()));
-            missile->setPath(at, positionOf(entry.destination()), now);
-            map->addMissileAppearance(appearance);
+            map->addMissileAppearance(appearances::TAppearanceInstanceFactory::createMissile(
+                id, at, positionOf(entry.destination()), static_cast<uint8_t>(entry.source()), now));
             break;
         }
         case 2:

@@ -303,6 +303,8 @@ Q_SIGNALS:
 
 private:
     void rebuildOutfitAppearance();
+    /// The outfit instance draws the creature's direction, movement look and mount.
+    void updateOutfitPatterns();
     static QColor informationColorForHealthPercent(uint8_t healthPercent);
     void restartWalkAnimators();
     void refreshWalkAnimators();

@@ -8,6 +8,9 @@
 #include "cyclopedia/staticcontentinformation.h"
 
 #include "appearances/appearanceinstance.h"
+#include "appearances/appearanceinstancetracker.h"
+#include "assets/assetasyncloader.h"
+#include "sprites/appearancetypespritesheetmapping.h"
 #include "sprites/spritesystem.h"
 
 #include <tibia/game/gamesession.h>
@@ -136,9 +139,16 @@ TAppearancesManager& TAppearancesManager::instance()
 
 TAppearanceInstanceTracker& TAppearancesManager::tracker()
 {
+    return *sharedTracker();
+}
+
+const std::shared_ptr<TAppearanceInstanceTracker>& TAppearancesManager::sharedTracker()
+{
+    if (!m_spritesheetMapping)
+        m_spritesheetMapping = std::make_shared<sprites::TAppearanceTypeSpritesheetMapping>();
     if (!m_tracker)
-        m_tracker = std::make_unique<TAppearanceInstanceTracker>();
-    return *m_tracker;
+        m_tracker = std::make_shared<TAppearanceInstanceTracker>(m_spritesheetMapping);
+    return m_tracker;
 }
 
 TAppearanceInstanceGenericStoragesManager& TAppearancesManager::storages()
@@ -260,13 +270,21 @@ void TAppearancesManager::postprocessAppearances()
     for (const uint16_t coin : { special.goldCoin, special.platinumCoin, special.crystalCoin })
         objects[coin].setMarketCategory(30);
 
+    // Every type's spritesheets, for the instance tracker to load.
+    (void)sharedTracker();
+    if (const auto& metadata = tibia::sprites::TSpriteSystem::instance().metadata()) {
+        for (const auto& [category, types] : m_appearanceTypes) {
+            for (const auto& [id, type] : types)
+                m_spritesheetMapping->addAppearanceType(*metadata, type);
+        }
+    }
+
 }
 
 bool TAppearancesManager::loadAppearances(const std::string& directory)
 {
     try {
         init();
-        (void)tracker();
         (void)storages();
         (void)genericStorage();
         m_assetIdentifier = loadAssetIdentifier(directory);
@@ -287,6 +305,9 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         const auto appearancesPath = tibia::files::data().resolvePath(directory + appearancesFile);
         initialize(tibia::files::data().readFileContents(appearancesPath));
         postprocessAppearances();
+        if (auto* loader = tibia::sprites::TSpriteSystem::instance().assetLoader())
+            QObject::connect(m_tracker.get(), &TAppearanceInstanceTracker::loadSpritesheetWithID, loader,
+                             &tibia::assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::UniqueConnection);
         m_datLoaded = true;
         return true;
     } catch (const std::exception& e) {

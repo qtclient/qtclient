@@ -1,8 +1,14 @@
 #include "worldmap/worldmapstorage.h"
 
+#include <sstream>
+#include <stdexcept>
+#include <typeinfo>
+
 #include "worldmap/worldmapfield.h"
 
 #include "creatures/creaturestorage.h"
+#include "creatures/movementdirection.h"
+#include "appearances/appearancetype.h"
 #include "clockservice.h"
 
 #include "client/const.h"
@@ -148,6 +154,51 @@ TWorldMapField* TWorldMapStorage::getOrCreateField(const Position& position)
     return field.get();
 }
 
+std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> TWorldMapStorage::fields() const
+{
+    return { m_fields.begin(), m_fields.end() };
+}
+
+std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>>
+TWorldMapStorage::fieldsIn(const TShearedWorldMapCuboid& cuboid) const
+{
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> inside;
+    for (const auto& entry : m_fields) {
+        if (cuboid.contains(entry.first))
+            inside.push_back(entry);
+    }
+    return inside;
+}
+
+std::vector<std::shared_ptr<creatures::TCreature>> TWorldMapStorage::creaturesIn(const TShearedWorldMapCuboid& cuboid) const
+{
+    std::vector<std::shared_ptr<creatures::TCreature>> creatures;
+    for (const auto& [coordinate, field] : m_fields) {
+        if (!cuboid.contains(coordinate))
+            continue;
+        const auto onField = field->creatures();
+        creatures.insert(creatures.end(), onField.begin(), onField.end());
+    }
+    return creatures;
+}
+
+void TWorldMapStorage::setField(const TWorldMapCoordinate& coordinate, std::shared_ptr<TWorldMapField> field)
+{
+    if (!m_sessionState.isAwareOfPosition(coordinate.toPosition()))
+        return;
+    if (const auto stored = m_fields.find(coordinate); stored != m_fields.end())
+        disconnect(stored->second.get(), &TWorldMapField::appearanceInstancesChanged, this,
+                   &TWorldMapStorage::fieldAppearanceInstancesChanged);
+    if (!field) {
+        m_fields.erase(coordinate);
+    } else {
+        m_fields.insert_or_assign(coordinate, field);
+        connect(field.get(), &TWorldMapField::appearanceInstancesChanged, this,
+                &TWorldMapStorage::fieldAppearanceInstancesChanged);
+    }
+    Q_EMIT informationAtWorldMapCoordinateHasChanged(coordinate);
+}
+
 void TWorldMapStorage::clearField(const Position& position)
 {
     // Map::cleanTile → notificateTileUpdate → notifyCoordinateChanged when live.
@@ -255,7 +306,89 @@ int TWorldMapStorage::groundSpeedAt(const Position& position)
 int TWorldMapStorage::elevationAt(const Position& position)
 {
     TWorldMapField* field = fieldAt(position);
-    return field ? field->getDrawElevation() : 0;
+    return field ? field->objectElevation() : 0;
+}
+
+void TWorldMapStorage::updateAnimations(const qint64 nowMs)
+{
+    for (const auto& [coordinate, field] : m_fields)
+        field->updateAnimations(nowMs);
+}
+
+appearances::TAppearanceInstancePtr TWorldMapStorage::appearanceInstanceAt(const TWorldMapCoordinate& coordinate,
+                                                                          const int stackPos)
+{
+    TWorldMapField* field = fieldAt(coordinate);
+    return field ? field->appearanceAt(stackPos) : nullptr;
+}
+
+appearances::TAppearanceInstancePtr TWorldMapStorage::creatureInstanceAt(const TWorldMapCoordinate& coordinate,
+                                                                        const int stackPos)
+{
+    appearances::TAppearanceInstancePtr found = appearanceInstanceAt(coordinate, stackPos);
+    if (found && found->creatureId() != 0)
+        return found;
+    std::ostringstream error;
+    error << "Coordinate( " << coordinate.x << ", " << coordinate.y << ", " << coordinate.z << " ) Index( " << stackPos
+          << " ) ";
+    if (!found)
+        error << "null";
+    else
+        error << "FoundAppearanceInstance::AppearanceType( " << found->id() << " )  FoundAppearanceInstanceTypeId( "
+              << typeid(*found).name() << " )";
+    error << " Appearances in Network Order: ";
+    if (TWorldMapField* field = fieldAt(coordinate)) {
+        int index = 0;
+        for (const appearances::TAppearanceInstancePtr& instance : field->appearances()) {
+            if (instance)
+                error << "Appearance: (" << instance->id() << ", "
+                      << static_cast<int>(instance->thingType() ? instance->thingType()->category()
+                                                                : appearances::EAppearanceCategory::Object)
+                      << ") Index in Stack: " << index << "; ";
+            ++index;
+        }
+    }
+    throw std::runtime_error(error.str());
+}
+
+void TWorldMapStorage::placeCreatureInstance(const appearances::TAppearanceInstancePtr& instance,
+                                             const TWorldMapCoordinate& target)
+{
+    TWorldMapField* field = fieldAt(target);
+    if (!field)
+        throw std::runtime_error(QStringLiteral("target field not existing").toStdString());
+    const creatures::TCreatureID creatureId = instance ? instance->creatureId() : 0;
+    if (creatureId == 0)
+        throw std::runtime_error(
+            QStringLiteral("pCreatureInstance is not linked to a creature which should be placed at [%1,%2,%3]")
+                .arg(target.x)
+                .arg(target.y)
+                .arg(target.z)
+                .toStdString());
+    // The field adds the creature's instance and sets the creature's position.
+    field->addCreatureId(creatureId, -1);
+}
+
+bool TWorldMapStorage::moveCreatureInstance(const TWorldMapCoordinate& from, const int stackPos,
+                                            const TWorldMapCoordinate& target)
+{
+    TWorldMapField* source = fieldAt(from);
+    if (!source)
+        return false;
+    const int elevationFrom = source->objectElevation();
+    const appearances::TAppearanceInstancePtr instance = source->takeCreatureInstance(stackPos);
+    if (!instance)
+        return false;
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    const auto creature = storage ? storage->creatureAt(instance->creatureId()) : nullptr;
+    if (!creature)
+        return false;
+    placeCreatureInstance(instance, target);
+    const auto look = creatures::lookDirectionAfter(static_cast<creatures::ECreatureLookDirection>(creature->patternX()),
+                                                    creatures::directionBetween(from, target));
+    creature->setDirection(static_cast<uint8_t>(look));
+    moveCreature(*creature, from.toPosition(), target.toPosition(), elevationFrom, elevationAt(target.toPosition()));
+    return true;
 }
 
 void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Position& from, const Position& to,

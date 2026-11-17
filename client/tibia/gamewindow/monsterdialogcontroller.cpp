@@ -1,4 +1,5 @@
 #include "monsterdialogcontroller.h"
+#include "colorhelper.h"
 
 #include "analysers/analyserstorages.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
@@ -49,7 +50,7 @@ QString englishNumber(const qlonglong value) { return QLocale(QLocale::English).
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

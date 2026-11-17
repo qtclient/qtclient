@@ -1,28 +1,13 @@
-#include "spritetexturecache.h"
-#include "tibia/runtime/host.h"
-
-#include "renderer/spritetextureprovider.h"
+#include "renderer/spritetexturecache.h"
 
 #include "appearances/spriteinfo.h"
-#include "appearances/worldmaphighlightbaseplate.h"
-#include "mods/registry.h"
-#include "sprites/spritesystem.h"
-
-#include <tibia/game/gamesession.h>
-#include <client/outfit.h>
-#include "assets/cipbmpimage.h"
-#include "sprites/hdscale.h"
 
 #include <QImage>
-#include <QMutex>
-#include <QPainter>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QRunnable>
 #include <QSGRendererInterface>
 #include <QSGTexture>
-#include <QSet>
-#include <QThread>
-#include <QThreadPool>
 #include <QtDebug>
 
 #include <algorithm>
@@ -30,45 +15,25 @@
 
 namespace tibia::qmlcomponents {
 
-namespace {
-
-QImage spriteImage(const uint32_t id, bool& loading)
+bool SpriteIdentifier::operator==(const SpriteIdentifier& other) const
 {
-    return tibia::sprites::TSpriteSystem::instance().spriteImage(id, loading);
+    if (tint != other.tint)
+        return false;
+    if (!identifier || !other.identifier)
+        return !identifier && !other.identifier;
+    return sprites::sameSpriteIdentifier(*identifier, *other.identifier);
 }
 
-/// Outfit masks mark the head yellow, the body red, the legs green and the feet
-/// blue; those pixels are multiplied by the outfit's colors.
-void colorize(QImage& image, const QImage& mask, const uint32_t colors)
+size_t qHash(const SpriteIdentifier& identifier, const size_t seed) noexcept
 {
-    if (mask.size() != image.size())
-        return;
-    const QColor head = Outfit::getColor(colors & 0xFF);
-    const QColor body = Outfit::getColor((colors >> 8) & 0xFF);
-    const QColor legs = Outfit::getColor((colors >> 16) & 0xFF);
-    const QColor feet = Outfit::getColor(colors >> 24);
-    for (int y = 0; y < image.height(); ++y) {
-        uint8_t* px = image.scanLine(y);
-        const uint8_t* m = mask.constScanLine(y);
-        for (int x = 0; x < image.width(); ++x, px += 4, m += 4) {
-            if (m[3] == 0)
-                continue;
-            const bool r = m[0] > 0x7F, g = m[1] > 0x7F, b = m[2] > 0x7F;
-            const QColor* color = r && g && !b ? &head
-                : r && !g && !b                ? &body
-                : !r && g && !b                ? &legs
-                : !r && !g && b                ? &feet
-                                               : nullptr;
-            if (!color)
-                continue;
-            px[0] = static_cast<uint8_t>(px[0] * color->red() / 255);
-            px[1] = static_cast<uint8_t>(px[1] * color->green() / 255);
-            px[2] = static_cast<uint8_t>(px[2] * color->blue() / 255);
-        }
-    }
+    return qHashMulti(seed, identifier.identifier ? identifier.identifier->hash() : 0, identifier.tint);
 }
 
-
+QSize spriteSizeOf(const SpriteIdentifier& identifier)
+{
+    if (!identifier.identifier || identifier.identifier->identifierKind() != sprites::ISpriteIdentifier::SpriteInfoIdentifier)
+        return {};
+    return static_cast<const appearances::TAppearanceInstanceSpriteInfo&>(*identifier.identifier).spriteSize();
 }
 
 TSpriteTextureCache::TSpriteTextureCache(QQuickWindow* window, const bool allowEvict)
@@ -85,13 +50,6 @@ TSpriteTextureCache::~TSpriteTextureCache()
         delete texture;
     for (QSGTexture* texture : std::as_const(m_graveyard))
         delete texture;
-}
-
-TSpriteTextureCache& TSpriteTextureCache::shared(QQuickWindow* window)
-{
-    // CIP: TSpriteTextureProviderManager owns the shared UI providers; cache is the
-    // backing store (no parallel keep-alive map beside the manager).
-    return ::tibia::renderer::TSpriteTextureProviderManager::sharedCache(window);
 }
 
 void TSpriteTextureCache::retire(QSGTexture* texture)
@@ -157,9 +115,6 @@ void TSpriteTextureCache::flushRetired()
 
 void TSpriteTextureCache::clear()
 {
-    for (QSGTexture* texture : std::as_const(m_baked))
-        retire(texture);
-    m_baked.clear();
     for (Entry& entry : m_textures) {
         retire(entry.texture);
         entry.texture = nullptr;
@@ -172,100 +127,41 @@ void TSpriteTextureCache::clear()
     m_deleteHold = 2;
 }
 
-QImage TSpriteTextureCache::raster(const SpriteKey& key, bool& loading) const
+bool TSpriteTextureCache::syncHdMode(const bool hd)
 {
-    loading = false;
-    QImage image;
-    if (key.isCreatureMark()) {
-        image = appearances::TCreatureMarkAppearanceInstanceSpriteInfo::imageForColors(key.markColors);
-    } else if (key.isHighlightBaseplate()) {
-        image = appearances::TWorldmapHighlightBaseplateSpriteInfo::imageForFrame(
-            static_cast<uint8_t>(key.highlightBaseplate));
-    } else {
-        // Not stored: a sheet still decompressing must be asked for again. Caching
-        // the miss paints a hole until something clears the texture cache.
-        image = spriteImage(key.spriteId, loading);
-        if (loading)
-            return {};
-    }
-    if (!image.isNull() && key.maskId) {
-        const QImage mask = spriteImage(key.maskId, loading);
-        if (loading)
-            return {};
-        colorize(image, mask, key.colors);
-    }
-    if (!image.isNull() && key.tint) {
-        if (const auto apply = tibia::mods::applyImageTintHook())
-            apply(image, key.tint);
-    }
-    // Product HD scaler (product registers xBRZ 4× on tibia::sprites::setHdScaler).
-    // Creature marks stay native (vector frames); draw path divides HD textures by factor.
-    if (m_hdMode && !image.isNull() && !key.isCreatureMark() && !key.isHighlightBaseplate()
-        && tibia::sprites::hdFactor() > 1) {
-        if (QImage scaled = tibia::sprites::scaleHd(image); !scaled.isNull())
-            image = std::move(scaled);
-    }
-    return image;
+    if (hd == m_hdMode)
+        return false;
+    qWarning("tibia.sprites: HD mode %s — rebuilding sprite textures", hd ? "on" : "off");
+    m_hdMode = hd;
+    // Callers that own the scene graph (WorldMap) must clear nodes before clear.
+    // Shared UI rebuilds nodes each paint; retire frees after swap.
+    clear();
+    // update from this thread re-enters QML (caption items, bindings) while the
+    // scene graph is rendering and parents new objects on the engine.
+    if (m_window)
+        QMetaObject::invokeMethod(m_window, [this] { markSceneDirty(); }, Qt::QueuedConnection);
+    return true;
 }
 
-QSGTexture* TSpriteTextureCache::texture(const SpriteKey& key)
-{
-    const bool hd = tibia::host::app().isHdMode();
-    if (hd != m_hdMode) {
-        qWarning("tibia.sprites: HD mode %s — rebuilding sprite textures", hd ? "on" : "off");
-        m_hdMode = hd;
-        // Callers that own the scene graph (WorldMap) must clear nodes before clear.
-        // Shared UI rebuilds nodes each paint; retire frees after swap (CIP-shaped delay).
-        clear();
-        // update from this thread re-enters QML (caption items, bindings) while the
-        // scene graph is rendering and parents new objects on the engine.
-        if (m_window) {
-            QMetaObject::invokeMethod(m_window, [this] { markSceneDirty(); }, Qt::QueuedConnection);
-        }
-    }
-
-    bool found = false;
-    if (QSGTexture* cached = lookup(key, found); found)
-        return cached;
-
-    // CIP TSpriteTextureProvider::getTexture: a sprite still loading is handed out
-    // but not cached; here it is null and asked for again.
-    bool loading = false;
-    QImage image = raster(key, loading);
-    if (loading)
-        return nullptr;
-    Entry entry{ .frame = m_frame };
-    if (!image.isNull()) {
-        // CIP TQtTextureAtlasTextureCreator : always TextureCanUseAtlas.
-        entry.texture = m_window->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas);
-        if (!entry.texture) {
-            qWarning("tibia.sprites: createTextureFromImage failed (%dx%d hd=%d sprite=%u)", image.width(),
-                     image.height(), hd ? 1 : 0, key.spriteId);
-        }
-    }
-    insert(key, entry);
-    return entry.texture;
-}
-
-QSGTexture* TSpriteTextureCache::lookup(const SpriteKey& key, bool& found)
+TSpriteTexture TSpriteTextureCache::lookup(const SpriteIdentifier& identifier, bool& found)
 {
     // CIP TSpriteTextureCache::get: a strong hit is stamped with this frame; a weak
     // hit keeps its insert frame (that is what ages it out).
-    const auto it = m_textures.find(key);
+    const auto it = m_textures.find(identifier);
     found = it != m_textures.end();
     if (!found)
-        return nullptr;
+        return {};
     if (it->budgeted)
         it->frame = m_frame;
-    return it->texture;
+    return { it->texture, it->rect };
 }
 
-void TSpriteTextureCache::insert(const SpriteKey& key, const Entry& stored)
+void TSpriteTextureCache::insert(const SpriteIdentifier& identifier, const TSpriteTexture& texture)
 {
-    Entry entry = stored;
+    Entry entry{ .texture = texture.texture, .rect = texture.rect, .frame = m_frame };
     // A sprite that does not exist is remembered so it is not looked up again.
     if (!entry.texture) {
-        m_textures.insert(key, entry);
+        m_textures.insert(identifier, entry);
         return;
     }
     const bool openGL = m_window->rendererInterface()->graphicsApi() == QSGRendererInterface::OpenGL;
@@ -293,13 +189,13 @@ void TSpriteTextureCache::insert(const SpriteKey& key, const Entry& stored)
     entry.budgeted = atlas || openGL;
     if (entry.budgeted)
         m_budgetedPixels += entry.pixels;
-    m_textures.insert(key, entry);
+    m_textures.insert(identifier, entry);
 }
 
-void TSpriteTextureCache::remove(const SpriteKey& key)
+void TSpriteTextureCache::remove(const SpriteIdentifier& identifier)
 {
     // CIP: the texture is marked deleted and dropped; the budget keeps its pixels.
-    const auto it = m_textures.find(key);
+    const auto it = m_textures.find(identifier);
     if (it == m_textures.end())
         return;
     if (!it->budgeted && !it->texture)
@@ -324,36 +220,6 @@ void TSpriteTextureCache::beginFrame()
 {
     ++m_frame;
     m_evicted = false;
-}
-
-QSGTexture* TSpriteTextureCache::highlighted(const SpriteKey& key, const QColor& color)
-{
-    const QRgb rgb = color.rgba();
-    const BakedKey baked{ key, rgb };
-    if (const auto it = m_baked.find(baked); it != m_baked.end())
-        return it.value();
-    bool loading = false;
-    QImage image = raster(key, loading);
-    if (loading || image.isNull())
-        return nullptr;
-    // CIP solid highlight: every texel becomes the highlight colour, its alpha the
-    // sprite alpha scaled by the colour's alpha. Sprite images are RGBA8888.
-    if (image.format() != QImage::Format_RGBA8888)
-        image = image.convertToFormat(QImage::Format_RGBA8888);
-    const float alpha = static_cast<float>(color.alphaF());
-    for (int y = 0; y < image.height(); ++y) {
-        uchar* px = image.scanLine(y);
-        for (int x = 0; x < image.width(); ++x, px += 4) {
-            const auto a = static_cast<int>((static_cast<float>(px[3]) / 255.0f) * alpha * 255.0f);
-            px[0] = static_cast<uchar>(color.red());
-            px[1] = static_cast<uchar>(color.green());
-            px[2] = static_cast<uchar>(color.blue());
-            px[3] = static_cast<uchar>(a);
-        }
-    }
-    QSGTexture* texture = m_window->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas);
-    m_baked.insert(baked, texture);
-    return texture;
 }
 
 void TSpriteTextureCache::endFrame()

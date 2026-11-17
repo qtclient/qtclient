@@ -1,4 +1,5 @@
 #include "battlelistcontroller.h"
+#include "colorhelper.h"
 
 #include "chat/chatchannel.h"
 #include "config/sidebaroptions.h"
@@ -79,7 +80,7 @@ int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
 
 QColor colorOf(const QColor& c) { return QColor(c.red(), c.green(), c.blue()); }
 
-QColor outfitColor(const int index) { return colorOf(Outfit::getColor(index)); }
+QColor outfitColor(const int index) { return colorOf(tibia::shared::outfitColor(index)); }
 
 QString stripIcon(const char* provider, const uint8_t value)
 {

@@ -1,4 +1,5 @@
 #include "preydialogcontroller.h"
+#include "colorhelper.h"
 
 #include <utility>
 #include "gamewindow/smoothfiltering.h"
@@ -359,7 +360,7 @@ int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(tibia
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

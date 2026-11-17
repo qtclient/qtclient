@@ -61,7 +61,7 @@ private:
     int m_patternZ = 0;
     int m_phase = 0;
     /// What updatePaintNode draws, laid out by updatePolish.
-    SpriteKey m_sprite;
+    SpriteIdentifier m_sprite;
     QRectF m_target;
     QMetaObject::Connection m_frameConnection;
 };
