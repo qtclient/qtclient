@@ -135,7 +135,7 @@ void TItemSummaryModelSortFilterProxy::setFlag(bool& flag, const bool value)
         return;
     beginFilterChange();
     flag = value;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
 }
 
@@ -151,7 +151,7 @@ void TItemSummaryModelSortFilterProxy::updateNameFilter(const QString& NameFilte
         return;
     beginFilterChange();
     m_nameFilter = NameFilter;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
 }
 
 bool TItemSummaryModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const

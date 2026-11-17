@@ -1,6 +1,7 @@
 #include "remainingdialogs.h"
 
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -8,6 +9,7 @@
 #include <set>
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "game/gameciptypes.h"
 #include "game/offlineskilltrainingdata.h"
 #include "game/tgamenotify.h"
@@ -561,20 +563,27 @@ TEmergencyDialogController::TEmergencyDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ImportantBalancingMessageDialog.qml"), parent)
 {
     m_showAgain = true;
+    QString data;
+    QFile file(QStringLiteral(":/data/ImportantBalancingMessageData.json"));
+    if (file.open(QIODevice::ReadOnly))
+        data = QString::fromUtf8(file.readAll());
+    file.close();
+    m_data = QJsonDocument::fromJson(data.toUtf8());
+    m_id = m_data.object().value(QStringLiteral("id")).toInt();
 }
 
-void TEmergencyDialogController::showEmergency(const QVariant& data)
+QVariant TEmergencyDialogController::dialogData() const
 {
-    m_dialogData = data;
-    Q_EMIT dialogDataChanged();
-    dialog()->create();
-    dialog()->show();
+    return QVariant(m_data.object());
 }
 
+/// CIP: the dialog closes; with "show again" cleared the message id is
+/// stored before dialogClosed goes out.
 void TEmergencyDialogController::onOKClicked()
 {
+    if (!m_showAgain)
+        config::TClientOptions::instance()->setIntOption(config::EClientOption::emergencyDialogVersion, m_id);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController(QObject* parent)
@@ -597,18 +606,14 @@ TGenericConfirmWithDontShowAgainDialogController::TGenericConfirmWithDontShowAga
     m_showThisDialogAgain = true;
 }
 
-void TGenericConfirmWithDontShowAgainDialogController::configure(const QString& caption, const QString& content,
-                                                                 const QString& dontShowAgain, const bool showAgain)
+TGenericConfirmWithDontShowAgainDialogController::TGenericConfirmWithDontShowAgainDialogController(
+    const QString& caption, const QString& content, const QString& dontShowAgain, const bool showAgain, QObject* parent)
+    : TDialogController(QStringLiteral("GenericConfirmWithDontShowAgainDialog.qml"), parent)
 {
     m_captionText = caption;
     m_contentText = content;
     m_dontShowAgainText = dontShowAgain;
     m_showThisDialogAgain = showAgain;
-}
-
-void TGenericConfirmWithDontShowAgainDialogController::setConfirmHandler(std::function<void(bool)> onYes)
-{
-    m_onYes = std::move(onYes);
 }
 
 void TGenericConfirmWithDontShowAgainDialogController::showDialog()
@@ -619,16 +624,14 @@ void TGenericConfirmWithDontShowAgainDialogController::showDialog()
 
 void TGenericConfirmWithDontShowAgainDialogController::onYesClicked(const bool ShowDialogAgain)
 {
-    if (m_onYes)
-        m_onYes(ShowDialogAgain);
+    Q_EMIT yesClicked(ShowDialogAgain);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 void TGenericConfirmWithDontShowAgainDialogController::onNoClicked()
 {
+    Q_EMIT noClicked();
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 THirelingNameChangeController* THirelingNameChangeController::s_instance = nullptr;
@@ -809,10 +812,35 @@ TMainCharacterChangeDialogController::TMainCharacterChangeDialogController(QObje
     : TDialogController(QStringLiteral("MainCharacterChangeDialog.qml"), parent)
 {}
 
+TMainCharacterChangeDialogController::~TMainCharacterChangeDialogController()
+{
+    closeDialog();
+}
+
+void TMainCharacterChangeDialogController::showDialog(const uint32_t OfferIDForMainCharChange,
+                                                      std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo)
+{
+    closeDialog();
+    m_offerId = OfferIDForMainCharChange;
+    m_possibleMainChars = std::move(PossibleMainCharInfo);
+    createMainCharInfos();
+    if (dialog()->item())
+        return;
+    dialog()->create();
+    dialog()->show();
+}
+
+void TMainCharacterChangeDialogController::createMainCharInfos()
+{
+    for (const TPossibleMainCharacterInformation& info : m_possibleMainChars)
+        m_mainCharInfos.append(new TQmlPossibleMainChar(info.characterName, info.worldName, info.vocation, info.level));
+}
+
 void TMainCharacterChangeDialogController::closeDialog()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
+    qDeleteAll(m_mainCharInfos);
+    m_mainCharInfos.clear();
 }
 
 void TMainCharacterChangeDialogController::requestClose()
@@ -822,7 +850,9 @@ void TMainCharacterChangeDialogController::requestClose()
 
 void TMainCharacterChangeDialogController::requestMainCharChange(const QString& ChosenCharacter)
 {
-    Q_EMIT mainCharacterChangeRequested(ChosenCharacter);
+    if (ChosenCharacter.isEmpty())
+        return;
+    Q_EMIT mainCharChangeConfirmed(m_offerId, ChosenCharacter);
     closeDialog();
 }
 
@@ -853,14 +883,14 @@ namespace {
 
 using OfflineTrainingSkill = cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType;
 
-/// CIP MultiOfflineTrainingDialog skill list order (Sword..Fist, Magic).
+/// CIP: the skill rows in the dialog's order.
 constexpr OfflineTrainingSkill kOfflineTrainingSkills[] = {
-    OfflineTrainingSkill::OfflineTrainingSkillTypeSword,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeAxe,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeClub,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeDistance,
     OfflineTrainingSkill::OfflineTrainingSkillTypeMagic,
     OfflineTrainingSkill::OfflineTrainingSkillTypeFist,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeClub,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeSword,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeAxe,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeDistance,
 };
 
 }
@@ -869,11 +899,17 @@ TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QOb
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), parent)
 {
     s_instance = this;
-    rebuildSkillsModel();
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiOfflineTrainingDialog", [this](GameObject*, const Args&) {
         showSkillsDialog();
         return std::any{};
     });
+}
+
+TMultiOfflineTrainingDialogController::~TMultiOfflineTrainingDialogController()
+{
+    clearSkillsModel();
+    if (s_instance == this)
+        s_instance = nullptr;
 }
 
 TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::instance()
@@ -883,36 +919,55 @@ TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::in
 
 QList<QObject*> TMultiOfflineTrainingDialogController::skillsModel() const { return m_skillsModel; }
 
+void TMultiOfflineTrainingDialogController::clearSkillsModel()
+{
+    const QList<QObject*> old = std::exchange(m_skillsModel, {});
+    Q_EMIT skillsModelChanged();
+    qDeleteAll(old);
+}
+
 void TMultiOfflineTrainingDialogController::rebuildSkillsModel()
 {
-    qDeleteAll(m_skillsModel);
-    m_skillsModel.clear();
+    const QList<QObject*> old = std::exchange(m_skillsModel, {});
     for (const OfflineTrainingSkill skill : kOfflineTrainingSkills) {
         auto* data = new game::TOfflineSkillTrainingData(skill, this);
         data->assign(game::buildOfflineTrainingEntry(skill));
         m_skillsModel.append(data);
     }
     Q_EMIT skillsModelChanged();
+    qDeleteAll(old);
+}
+
+void TMultiOfflineTrainingDialogController::handleGameAction(const input::TGameAction& action)
+{
+    if (action.type == input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS)
+        showSkillsDialog();
 }
 
 void TMultiOfflineTrainingDialogController::showSkillsDialog()
 {
+    closeDialog();
     rebuildSkillsModel();
     dialog()->create();
     dialog()->show();
 }
 
-void TMultiOfflineTrainingDialogController::requestClose()
+void TMultiOfflineTrainingDialogController::closeDialog()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
+    clearSkillsModel();
+}
+
+void TMultiOfflineTrainingDialogController::requestClose()
+{
+    closeDialog();
 }
 
 void TMultiOfflineTrainingDialogController::startOfflineTraining(
     const cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType Skill)
 {
     tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(Skill));
-    requestClose();
+    closeDialog();
 }
 
 TOutfitMemorialDialogController* TOutfitMemorialDialogController::s_instance = nullptr;
@@ -935,6 +990,7 @@ TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
 
 void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& data)
 {
+    dialog()->close();
     const auto toList = [](const std::vector<std::string>& names) {
         QStringList list;
         list.reserve(int(names.size()));
@@ -967,7 +1023,6 @@ void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& dat
 void TOutfitMemorialDialogController::requestClose()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 TReturnerRewardDialogController::TReturnerRewardDialogController(QObject* parent)

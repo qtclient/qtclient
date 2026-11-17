@@ -278,9 +278,9 @@ void TContainerController::onShowConfigurationMenu()
 void TContainerController::showConfirmDialog(const char* caption, const char* content,
                                              std::function<void(bool showAgain)> onYes)
 {
-    m_confirmDialog = std::make_unique<TGenericConfirmWithDontShowAgainDialogController>();
-    m_confirmDialog->configure(qtTrId(caption), qtTrId(content), qtTrId("confirmation_do_not_show_again"), true);
-    m_confirmDialog->setConfirmHandler(std::move(onYes));
+    m_confirmDialog = std::make_unique<TGenericConfirmWithDontShowAgainDialogController>(
+        qtTrId(caption), qtTrId(content), qtTrId("confirmation_do_not_show_again"), true);
+    connect(m_confirmDialog.get(), &TGenericConfirmWithDontShowAgainDialogController::yesClicked, this, std::move(onYes));
     m_confirmDialog->showDialog();
 }
 

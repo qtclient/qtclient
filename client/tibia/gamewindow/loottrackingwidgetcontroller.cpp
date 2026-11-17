@@ -110,15 +110,18 @@ void TQmlTrackedItem::setLootDrops(const std::vector<cyclopedia::TItemInfoStorag
     for (const cyclopedia::TItemInfoStorage::DroppedLoot& drop : drops)
         m_lootDrops.append(new TQmlDroppedLoot(drop, this));
     Q_EMIT lootDropsChanged();
-    for (QObject* object : old)
-        object->deleteLater();
+    qDeleteAll(old);
 }
 
 TLootTrackingWidgetController::TLootTrackingWidgetController(cyclopedia::TItemInfoStorage* storage, QQuickItem* gameWindowItem,
                                                              QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_storage(storage)
+    , m_valueDialog(new TGenericEnterTextDialogController(qtTrId("loottracker_valueinput_caption"),
+                                                          qtTrId("loottracker_valueinput_description"), 9, this))
 {
+    m_valueDialog->setIntOnly(true);
+    connect(m_valueDialog, &TGenericEnterTextDialogController::textEntered, this, &TLootTrackingWidgetController::onAutoTrackLootValueChanged);
     connect(m_storage, &cyclopedia::TItemInfoStorage::characterChanged, this,
             &TLootTrackingWidgetController::onCharacterConfigurationLoaded);
     connect(m_storage, &cyclopedia::TItemInfoStorage::trackingChanged, this,
@@ -133,7 +136,7 @@ TLootTrackingWidgetController::TLootTrackingWidgetController(cyclopedia::TItemIn
         connect(item, &QObject::destroyed, this, &TLootTrackingWidgetController::onWidgetQuickItemDestroyed);
 }
 
-TLootTrackingWidgetController::~TLootTrackingWidgetController() { delete m_valueDialog; }
+TLootTrackingWidgetController::~TLootTrackingWidgetController() = default;
 
 QList<QObject*> TLootTrackingWidgetController::trackedItems() const { return m_trackedItems; }
 
@@ -158,12 +161,7 @@ void TLootTrackingWidgetController::onWidgetQuickItemDestroyed() {}
 void TLootTrackingWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+    onWidgetOptionsChanged();
 }
 
 void TLootTrackingWidgetController::saveWidgetOptions()
@@ -176,21 +174,36 @@ void TLootTrackingWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TLootTrackingWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored content height and maximized state are applied to the widget.
+void TLootTrackingWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
+    if (json.contains(QLatin1String("contentHeight")))
+        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
+                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+}
 
+/// CIP: without a loaded character the list stays as it is.
 void TLootTrackingWidgetController::onCharacterConfigurationLoaded()
 {
+    if (m_storage->hasCharacter())
+        rebuildTrackedItems();
+}
+
+/// CIP: one TQmlTrackedItem per actively tracked item, with its recent drops
+/// and its value; the previous items are deleted after trackedItemsChanged.
+void TLootTrackingWidgetController::rebuildTrackedItems()
+{
     const QList<QObject*> old = std::exchange(m_trackedItems, {});
-    if (m_storage->hasCharacter()) {
-        for (const cyclopedia::TItemInfoStorage::TrackedItem& item : m_storage->activeTrackedItems()) {
-            auto* qmlItem = new TQmlTrackedItem(item, m_storage->lootPrice(item.typeId), this);
-            qmlItem->setLootDrops(m_storage->lootDropsForTrackedItem(item.typeId));
-            m_trackedItems.append(qmlItem);
-        }
+    for (const cyclopedia::TItemInfoStorage::TrackedItem& item : m_storage->activeTrackedItems()) {
+        auto* qmlItem = new TQmlTrackedItem(item, m_storage->lootPrice(item.typeId), this);
+        qmlItem->setLootDrops(m_storage->lootDropsForTrackedItem(item.typeId));
+        m_trackedItems.append(qmlItem);
     }
     Q_EMIT trackedItemsChanged();
-    for (QObject* object : old)
-        object->deleteLater();
+    qDeleteAll(old);
 }
 
 void TLootTrackingWidgetController::onItemDropTracked(const quint16 typeId, const quint32 dropCount)
@@ -246,17 +259,7 @@ void TLootTrackingWidgetController::requestContextMenu(const int TrackedItemInde
 
 void TLootTrackingWidgetController::requestConfigurationMenu()
 {
-    if (!m_valueDialog) {
-        // CIP ctor : the prompt at +0xc0.
-        m_valueDialog = new TGenericEnterTextDialogController();
-        m_valueDialog->setCaption(qtTrId("loottracker_valueinput_caption"));
-        m_valueDialog->setDescription(qtTrId("loottracker_valueinput_description"));
-        m_valueDialog->setMaxInputLength(9);
-        m_valueDialog->setIntOnly(true);
-        connect(m_valueDialog, &TGenericEnterTextDialogController::textEntered, this, &TLootTrackingWidgetController::onAutoTrackLootValueChanged);
-    }
-    m_valueDialog->setText(QString::number(m_storage->autoTrackAboveValue()));
-    m_valueDialog->dialog()->show();
+    m_valueDialog->showWithText(QString::number(m_storage->autoTrackAboveValue()));
 }
 
 TLootTrackingWidgetManager::TLootTrackingWidgetManager(cyclopedia::TItemInfoStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,

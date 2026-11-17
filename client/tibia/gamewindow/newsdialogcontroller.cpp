@@ -154,6 +154,12 @@ void TNewsDialogController::onNewsStorageContentsChanged()
         }
     }
     refresh();
+    // CIP: with the dialog not open, an unread unlocked entry highlights the
+    // news button.
+    if (m_storage && m_storage->hasUnreadUnlockedEntry() && !dialog()->item()) {
+        if (TNewsButtonController* button = TNewsButtonController::instance())
+            button->highlight();
+    }
 }
 
 void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()

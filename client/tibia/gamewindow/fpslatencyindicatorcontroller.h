@@ -44,6 +44,9 @@ public:
     QString worldmapBuildUs() const { return m_worldmapBuildUs; }
     void toggle();
     void setVisibleFromOptions(bool on);
+    /// CIP: the game client's values before a frame renders; each property
+    /// signals when it changed (the frame count silently).
+    void update(double frameRate, qint64 latencyMs, bool latencyMeasured, bool optimizedConnectionStability, int frameCount);
 
 Q_SIGNALS:
     void worldmapBuildUsChanged();
@@ -51,7 +54,6 @@ Q_SIGNALS:
 private:
     void applyVisible(bool on);
     void tick();
-    void syncLatency();
     void syncOptimizedConnectionStability();
 
     QPointer<QQuickWindow> m_window;
@@ -61,6 +63,9 @@ private:
     QTimer m_timer;
     std::atomic<int> m_frames { 0 };
     QString m_worldmapBuildUs { QStringLiteral("0") };
+    double m_frameRate = 0.0;
+    bool m_stabilityOption = false;
+    bool m_latencyMeasured = true;
 };
 
 }

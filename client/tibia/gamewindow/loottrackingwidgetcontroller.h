@@ -97,15 +97,17 @@ private Q_SLOTS:
     void onRecentLootDropsChanged();
     /// CIP onAutoTrackLootValueChanged .
     void onAutoTrackLootValueChanged(const QString& text);
-    /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
+    /// CIP onWidgetOptionsChanged: applies the stored contentHeight / contentMaximized.
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
 private:
+    void rebuildTrackedItems();
+
     cyclopedia::TItemInfoStorage* m_storage;
     QPointer<config::TSidebarOptions> m_options;
-    /// CIP +0xc0.
-    TGenericEnterTextDialogController* m_valueDialog = nullptr;
+    /// The auto-track value prompt.
+    TGenericEnterTextDialogController* m_valueDialog;
 };
 
 /// Owns the Drop Tracker widget while it is open (EWidgetType 14).

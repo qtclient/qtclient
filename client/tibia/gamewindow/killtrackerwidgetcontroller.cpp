@@ -212,12 +212,7 @@ void TKillTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+    onWidgetOptionsChanged();
 }
 
 void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeAction(input::EGameAction::OPEN_PREY_DIALOG)); }
@@ -246,7 +241,16 @@ void TKillTrackerWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TKillTrackerWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored content height and maximized state are applied to the widget.
+void TKillTrackerWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
+    if (json.contains(QLatin1String("contentHeight")))
+        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
+                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+}
 
 TKillTrackerWidgetManager::TKillTrackerWidgetManager(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                      QObject* parent)

@@ -784,7 +784,7 @@ TPartyHuntWidgetController::TPartyHuntWidgetController(TPartyHuntStorage* storag
 void TPartyHuntWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, PartyHuntOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TPartyHuntWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -815,7 +815,8 @@ void TPartyHuntWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TPartyHuntWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, PartyHuntOptionsKey); }
 
-void TPartyHuntWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored content height and maximized state are applied to the widget.
+void TPartyHuntWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, PartyHuntOptionsKey); }
 
 void TPartyHuntWidgetController::tryConnectToPlayerPartyStateSignal()
 {

@@ -1,5 +1,7 @@
 #include "preydialogcontroller.h"
 
+#include "qmlcomponents/texthelper.h"
+
 #include "input/gameactionhandlers.h"
 
 #include <client/outfit.h>
@@ -268,20 +270,6 @@ constexpr int FreeListRerollRefreshMs = 7000;
 const QChar MultiStringSeparator(0x9c);
 
 QString english(const qint64 value) { return QLocale(QLocale::English).toString(value); }
-
-/// CIP : the number and its " k"/"k", " kk"/"kk", ... forms as a
-/// multi string.
-QString numberVariants(const qint64 value)
-{
-    QStringList variants{ english(value) };
-    for (const auto& [divisor, unit] : { std::pair<qint64, const char*>{ 1000, "k" }, { 1000000, "kk" }, { 1000000000, "kkk" } }) {
-        if (value < divisor)
-            break;
-        const QString shortened = english(value / divisor);
-        variants << shortened + u' ' + QLatin1String(unit) << shortened + QLatin1String(unit);
-    }
-    return variants.join(MultiStringSeparator);
-}
 
 uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
@@ -702,7 +690,7 @@ TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QO
 }
 
 QString TPreyPreyPageController::preyWildcards() const { return english(m_storage->preyWildcards()); }
-QString TPreyPreyPageController::listRerollPrice() const { return numberVariants(m_storage->listRerollPrice()); }
+QString TPreyPreyPageController::listRerollPrice() const { return qmlcomponents::thousandShortcutsMultiString(m_storage->listRerollPrice()); }
 bool TPreyPreyPageController::listRerollTooExpensive() const { return totalGold() < static_cast<uint64_t>(m_storage->listRerollPrice()); }
 QString TPreyPreyPageController::bonusRerollPrice() const { return english(m_storage->bonusRerollPrice()); }
 bool TPreyPreyPageController::bonusRerollTooExpensive() const { return !m_storage->bonusRerollPossible(); }
@@ -914,10 +902,10 @@ void TPreyDialogController::getMorePreyWildcardsClicked() { openStore(3, 1); }
 
 void TPreyDialogController::requestClose() { closeDialog(); }
 
+/// CIP: the creatures tab's page is hidden and shown again even when the
+/// tab does not change.
 void TPreyDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
-    if (m_activeTab == NewTab)
-        return;
     if (m_activeTab == PreyCreatures)
         m_page->hideDialogTab();
     m_activeTab = NoTabInitialState;

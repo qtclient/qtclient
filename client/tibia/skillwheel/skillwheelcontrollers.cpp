@@ -1054,13 +1054,12 @@ void TGemAtelierPageController::dismantleGem(const int GemId) { gemAction(0, Gem
 void TGemAtelierPageController::revealGem(const int GemQuality) { gemAction(1, GemQuality); }
 void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { gemAction(2, GemId, ModIdx); }
 void TGemAtelierPageController::toggleGemLock(const int GemId) { gemAction(3, GemId); }
+/// CIP: an index beyond the active vessels selects none (-1).
 void TGemAtelierPageController::selectVessel(const int Index)
 {
-    if (Index >= VesselCount || Index == m_selectedVesselIndex)
+    if (Index == m_selectedVesselIndex)
         return;
-    if (Index >= 0 && Index >= activeVesselCount())
-        return;
-    m_selectedVesselIndex = Index;
+    m_selectedVesselIndex = Index < activeVesselCount() ? Index : -1;
     Q_EMIT selectedVesselIndexChanged();
 }
 
