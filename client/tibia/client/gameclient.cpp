@@ -50,7 +50,9 @@
 #include "config/clientsettings.h"
 #include "config/sidebaroptions.h"
 #include "clockservice.h"
+#include "downloadpool.h"
 #include "jsondocumenthttppostsender.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "systemsurvey/fpscounter.h"
 #include "systemsurvey/fpshistory.h"
 #include "systemsurvey/fpshistorycontroller.h"
@@ -247,7 +249,8 @@ TGameClient::TGameClient(QObject* parent)
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
     , m_sessiondumpRecorder(this)
     , m_sessiondumpAsyncLoader(this)
-    , m_sessiondumpCatalogLoader(this)
+    , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
+          1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
     , m_sessiondumpPlayer(this)
 {
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();

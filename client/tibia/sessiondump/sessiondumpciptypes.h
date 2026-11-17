@@ -27,13 +27,6 @@ public:
     using cip::tibia::sessiondump::TSessiondumpAsyncLoader::TSessiondumpAsyncLoader;
 };
 
-class TSessiondumpCatalogLoader final : public cip::tibia::sessiondump::TSessiondumpCatalogLoader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::sessiondump::TSessiondumpCatalogLoader::TSessiondumpCatalogLoader;
-};
-
 class TSessiondumpPlayer final : public cip::tibia::sessiondump::TSessiondumpPlayer
 {
     Q_OBJECT

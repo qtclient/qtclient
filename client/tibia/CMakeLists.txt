@@ -295,6 +295,8 @@ if(TIBIA_WITH_GAMECORE)
     config/runtimegameconfig.cpp config/runtimegameconfig.h
     sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
+    sessiondump/sessiondumpcatalog.cpp sessiondump/sessiondumpcatalog.h
+    sessiondump/sessiondumpcatalogloader.cpp sessiondump/sessiondumpcatalogloader.h
     sessiondump/lightweightsessiondumpmessageprocessor.cpp sessiondump/lightweightsessiondumpmessageprocessor.h
     sessiondump/sessiondumpfactory.cpp sessiondump/sessiondumpfactory.h
     sessiondump/sessiondumpmessageprocessor.cpp sessiondump/sessiondumpmessageprocessor.h

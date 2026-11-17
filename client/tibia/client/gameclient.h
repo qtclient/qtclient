@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sessiondump/sessiondumpciptypes.h"
+#include "sessiondump/sessiondumpcatalogloader.h"
 
 #include "app/launcherenv.h"
 #include "authentication/loginrequestuploader.h"
