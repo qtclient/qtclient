@@ -1,6 +1,5 @@
 #pragma once
 
-#include "sound/soundciptypes.h"
 #include "sound/soundmetadatamanager.h"
 
 #include <cip_gen.h>
@@ -98,24 +97,7 @@ public:
     void stopAll();
 
 private:
-    // CIP-named engine surfaces (live playback is miniaudio via Engine).
-    TActiveSoundPlayer m_activeSoundPlayer;
-    TGameSessionSoundProvider m_gameSessionSoundProvider;
-    TObjectSoundController m_objectSoundController;
-    TSoundConcurrentException m_soundConcurrentException;
-    TSoundConfiguration m_soundConfiguration;
-    TSoundController m_soundController;
-    TSoundControllerAmbienceObjectSound m_ambienceObjectSound;
-    TSoundControllerAmbienceStream m_ambienceStream;
-    TSoundControllerBase m_soundControllerBase;
-    TSoundControllerCombatSound m_combatSound;
-    TSoundControllerMusic m_musicController;
-    TSoundDecompressorThreadpool m_decompressorThreadpool;
-    TSoundEngine m_soundEngine;
-    TSoundManager m_soundManager;
     TSoundMetadataManager m_soundMetadataManager;
-    TSoundPlayer m_soundPlayer;
-    TSoundPlayerManager m_soundPlayerManager;
 
     struct Engine;
     struct CatalogEffect {

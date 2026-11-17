@@ -314,18 +314,7 @@ void playProtocolSoundSecondary(const uint8_t soundEnum, const uint8_t soundSour
 
 TSoundStorage::TSoundStorage(QObject* parent)
     : cip::tibia::sound::TSoundStorage(parent)
-    , m_activeSoundPlayer(this)
-    , m_gameSessionSoundProvider(this)
-    , m_objectSoundController(this)
-    , m_soundConfiguration(this)
-    , m_soundController(this)
-    , m_soundControllerBase(this)
-    , m_decompressorThreadpool(this)
-    , m_soundEngine(this)
-    , m_soundManager(this)
     , m_soundMetadataManager(this)
-    , m_soundPlayer(this)
-    , m_soundPlayerManager(this)
 {
     g_soundStorage = this;
     ensureEngine();
@@ -420,7 +409,6 @@ QStringList TSoundStorage::playbackDeviceNames()
                 names.append(name);
         }
     });
-    m_soundEngine.notifyAvailableSoundDevicesChanged();
     return names;
 }
 

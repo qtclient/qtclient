@@ -293,7 +293,6 @@ if(TIBIA_WITH_GAMECORE)
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
-    sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
     sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
     sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
@@ -452,6 +451,19 @@ if(TIBIA_WITH_GAMECORE)
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h
     sound/soundmetadatamanager.cpp sound/soundmetadatamanager.h
     sound/soundstorage.cpp sound/soundstorage.h
+    sound/audiobackend.cpp sound/audiobackend.h
+    sound/soundengine.cpp sound/soundengine.h
+    sound/soundconfiguration.cpp sound/soundconfiguration.h
+    sound/soundmanager.cpp sound/soundmanager.h
+    sound/sounddecompressorthreadpool.cpp sound/sounddecompressorthreadpool.h
+    sound/soundplayer.cpp sound/soundplayer.h
+    sound/soundplayermanager.cpp sound/soundplayermanager.h
+    sound/activesoundplayer.cpp sound/activesoundplayer.h
+    sound/soundcontrollerbase.cpp sound/soundcontrollerbase.h
+    sound/soundcontrollermusic.cpp sound/soundcontrollermusic.h
+    sound/soundcontrollerambiencestream.cpp sound/soundcontrollerambiencestream.h
+    sound/soundcontrollerambienceobjectsound.cpp sound/soundcontrollerambienceobjectsound.h
+    sound/soundcontrollercombatsound.cpp sound/soundcontrollercombatsound.h
     sound/miniaudio_impl.cpp
     game/playerstates.cpp game/playerstates.h
     game/playerstatestracker.cpp game/playerstatestracker.h
@@ -657,7 +669,6 @@ if(TIBIA_WITH_GAMECORE)
     cip_ports/sessiondump_ports.h
     cip_ports/shared_ports.h
     cip_ports/skillwheel_ports.h
-    cip_ports/sound_ports.h
     cip_ports/spells_ports.h
     cip_ports/sprites_ports.h
     cip_ports/store_ports.h
