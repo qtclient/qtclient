@@ -4359,6 +4359,7 @@ sub_0b204129c402	0b204129c402c43d	inlined	analysers/analyserwidgets.cpp:THunting
 sub_0b3460654a25	0b3460654a2581da	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::nextTransactionPage
 sub_0b48e270d349	0b48e270d349565a	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionAcceptTransferClicked
 sub_0b54b1f9f472	0b54b1f9f472d11b	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleItemLootedMessage
+sub_0b609294ce59	0b609294ce59641c	inlined	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::fromField
 sub_0b61be40c545	0b61be40c54580e4	ported	gamewindow/chatcontroller.cpp:TChatController::TChatController
 sub_0b6e12f81352#2	0b6e12f8135222fa	skip	generated: moc property getter (generated in cip_gen)
 sub_0b6e12f81352#5	0b6e12f8135222fa	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::teamsList
@@ -5428,6 +5429,7 @@ sub_2d84df1aad73	2d84df1aad732997	inlined	authentication/authenticationjsondocum
 sub_2d87557f4d4d	2d87557f4d4de438	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::TRewardWallDialogController
 sub_2d92041cb7e2	2d92041cb7e2fe49	skip	library: same code as the skipped family: std::unordered_map construction/rehash/destruction (library)
 sub_2d92041cb7e2#14	2d92041cb7e2fe49	skip	library: std::unordered_map construction/rehash/destruction (library)
+sub_2d923c84918d	2d923c84918d6130	inlined	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::fromField
 sub_2d946c662949	2d946c6629495801	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_2d9a5c487d57	2d9a5c487d5781d0	skip	generated: compiler-generated destructor pair
 sub_2dc045b2f94a	2dc045b2f94a2a07	skip	library: std vector internals (push_back/realloc/assign/clear)
@@ -8581,6 +8583,7 @@ sub_99de8b1426ec	99de8b1426ec428a	ported	gamewindow/createaccountdialogcontrolle
 sub_99de8b1426ec#2	99de8b1426ec428a	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::updateCharacterName
 sub_99e458d55703	99e458d557035708	inlined	prey/preyciptypes.cpp:TPreyProtocolMessageHandler::handlePreyDataMessage
 sub_9a0011eb6093	9a0011eb6093da86	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_9a02215905e4	9a02215905e4682c	ported	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::fromField
 sub_9a0ffd5590b2	9a0ffd5590b23418	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_9a4fe08d12d1	9a4fe08d12d1517e	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setMembers
 sub_9a683f305b22	9a683f305b221a31	ported	worldmap/worldmapfield.cpp:TWorldMapField::~TWorldMapField
