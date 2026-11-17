@@ -89,7 +89,7 @@ public:
     void setGameSessionActive(bool active);
 
 Q_SIGNALS:
-    void publishGameAction(const tibia::input::TGameActionPtr& action);
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
 
 public Q_SLOTS:
     /// TAKE_MANUAL_SCREENSHOT / TAKE_AUTOMATIC_SCREENSHOT.

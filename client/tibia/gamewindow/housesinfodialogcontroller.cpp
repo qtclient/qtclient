@@ -754,9 +754,8 @@ void THousesInfoDialogController::showOnCyclopediaMap()
     const THouseRecord* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 4;
-    action->position = Position(house->x, house->y, static_cast<uint8_t>(house->z));
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
+    action->setCoordinate(Position(house->x, house->y, static_cast<uint8_t>(house->z)));
     input::publish(action);
 }
 

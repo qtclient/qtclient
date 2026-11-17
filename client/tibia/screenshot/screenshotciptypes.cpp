@@ -99,7 +99,7 @@ TScreenshotManager::TScreenshotManager(QObject* parent)
                     onScreenshotMangerOptionsChanged();
             });
     connect(this, &TScreenshotManager::publishGameAction, this,
-            [](const input::TGameActionPtr& action) { input::publish(action); });
+            [](const input::IGameActionPtr& action) { input::publish(action); });
 }
 
 TScreenshotManager::~TScreenshotManager()
@@ -315,8 +315,7 @@ void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, cons
     auto message = std::make_shared<input::TGameActionAddTextMessage>(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE);
     message->text = text;
     message->color = chat::consoleColor(ScreenshotSavedMessageMode);
-    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>();
-    sound->parameter = ScreenshotSavedSoundEffect;
+    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ ScreenshotSavedSoundEffect });
     // Saving runs on the thread pool; actions are published on the manager's thread.
     QMetaObject::invokeMethod(
         this,

@@ -260,9 +260,8 @@ void TBossTrackerWidgetController::requestFilterByBossName(const QString& Filter
 
 void TBossTrackerWidgetController::requestOpenBosstiary(const int BossRaceID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 6;
-    action->category = BossRaceID;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(6);
+    action->setRaceId(static_cast<uint16_t>(BossRaceID));
     input::publish(action);
 }
 

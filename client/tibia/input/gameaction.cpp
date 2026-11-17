@@ -4,6 +4,8 @@
 
 #include <algorithm>
 
+#include <QLoggingCategory>
+
 namespace tibia::input {
 
 namespace {
@@ -82,6 +84,16 @@ const IGameActionPtr* firstOfType(const TGameActionList& candidates, const EGame
 }
 
 namespace {
+
+Q_LOGGING_CATEGORY(lcGameAction, "tibia.input.gameaction")
+
+/// The field carrier for a type with no class of its own yet.
+TGameActionPtr unportedSimpleAction(const EGameAction type)
+{
+    auto action = std::make_shared<TGameAction>();
+    action->type = type;
+    return action;
+}
 
 void fillObject(TGameAction& action, const Position& position, const int stackPosition,
                 const uint16_t objectClientId = 0)
@@ -670,10 +682,59 @@ TGameActionGatherAll::TGameActionGatherAll(Position position, int stackPosition,
     fillObject(*this, position, stackPosition, objectClientId);
 }
 
-gameactions::TGameActionSimple::TGameActionSimple(const EGameAction actionType)
+std::optional<bool> TGameActionSoundTrigger::pauseLoopingSounds() const
 {
-    type = actionType;
+    if (const bool* pause = std::get_if<bool>(&m_trigger))
+        return *pause;
+    return std::nullopt;
 }
+
+std::optional<int> TGameActionSoundTrigger::soundEffectId() const
+{
+    if (const TSoundEffect* effect = std::get_if<TSoundEffect>(&m_trigger))
+        return effect->id;
+    return std::nullopt;
+}
+
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setRaceId(const uint16_t raceId)
+{
+    m_raceId = raceId;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setCoordinate(const Position& coordinate)
+{
+    m_coordinate = coordinate;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setZoom(const float zoom)
+{
+    m_zoom = zoom;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setCategory(const int category)
+{
+    m_category = category;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setTypeId(const uint16_t typeId)
+{
+    m_typeId = typeId;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setCharmId(const uint8_t charmId)
+{
+    m_charmId = charmId;
+    return *this;
+}
+
+namespace gameactions {
 
 }
 
@@ -822,8 +883,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionOpenAddVipGroupDialog>();
     case EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR:
         return std::make_shared<TGameActionOpenContainerInSpecificSidebar>();
-    case EGameAction::OPEN_CYCLOPEDIA:
-        return std::make_shared<TGameActionOpenCyclopedia>();
     case EGameAction::OPEN_EDIT_VIP_DIALOG:
         return std::make_shared<TGameActionOpenEditVipDialog>();
     case EGameAction::OPEN_EDIT_VIP_GROUP_DIALOG:
@@ -966,8 +1025,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionShowConfirmMoveObjectToStashDialog>();
     case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
         return std::make_shared<TGameActionShowExaltationResultDialog>();
-    case EGameAction::LENSHELP_SHOW:
-        return std::make_shared<TGameActionShowLenshelp>();
     case EGameAction::SHOW_MESSAGE_YOU_SEE_NOTHING:
     case EGameAction::SHOW_INVENTORY_CAPACITY_WARNING:
     case EGameAction::SHOW_OFFLINE_TRAINING_SKILLS:
@@ -997,7 +1054,7 @@ TGameActionPtr makeAction(const EGameAction type)
     case EGameAction::STASH_OPEN_STOW_STACK_DIALOG:
         return std::make_shared<TGameActionStashOpenStowStackDialog>();
     case EGameAction::STASH_REQUEST_REOPEN:
-        return std::make_shared<gameactions::TGameActionSimple>(EGameAction::STASH_REQUEST_REOPEN);
+        return unportedSimpleAction(EGameAction::STASH_REQUEST_REOPEN);
     case EGameAction::STASH_RETRIEVE:
         return std::make_shared<TGameActionStashRetrieve>();
     case EGameAction::STASH_STOW_CONTAINER_CONTENT:
@@ -1073,16 +1130,20 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<gameactions::TGameActionSaveSkillWheel>();
     case EGameAction::SHOW_CREATE_CHARACTER_DIALOG:
         return std::make_shared<gameactions::TGameActionShowCreateCharacterDialog>();
-    case EGameAction::SOUND_TRIGGER:
-        return std::make_shared<gameactions::TGameActionSoundTrigger>();
     case EGameAction::GEM_ATELIER_SELECT_GEM:
         return std::make_shared<gameactions::TSelectAtelierGemGameAction>();
     case EGameAction::FRAGMENT_WORKSHOP_SELECT_MOD:
         return std::make_shared<gameactions::TSelectFragmentWorkshopModGameAction>();
     case EGameAction::FINISHED_TUTORIAL_FOR_CHARACTER:
         return std::make_shared<TGameActionFinishedTutorialForCharacter>();
+    case EGameAction::OPEN_CYCLOPEDIA:
+    case EGameAction::LENSHELP_SHOW:
+    case EGameAction::SOUND_TRIGGER:
+        // Ported classes are constructed with their fields, not by type.
+        qCCritical(lcGameAction) << "makeAction: construct" << static_cast<int>(type) << "with its class";
+        return unportedSimpleAction(type);
     default:
-        return std::make_shared<gameactions::TGameActionSimple>(type);
+        return unportedSimpleAction(type);
     }
 }
 

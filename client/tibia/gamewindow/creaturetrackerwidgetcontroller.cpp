@@ -317,16 +317,14 @@ void TCreatureTrackerWidgetController::updateCooldownExpiry()
 
 void TCreatureTrackerWidgetController::requestOpenBestiary()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = m_mode == Mode::Bosstiary ? 6 : 1;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
     input::publish(action);
 }
 
 void TCreatureTrackerWidgetController::requestOpenBestiaryEntry(const uint RaceID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = m_mode == Mode::Bosstiary ? 6 : 1;
-    action->category = static_cast<int>(RaceID);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
+    action->setRaceId(static_cast<uint16_t>(static_cast<int>(RaceID)));
     input::publish(action);
 }
 

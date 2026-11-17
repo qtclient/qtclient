@@ -39,7 +39,7 @@ public:
     void setChatItem(QQuickItem* chatItem) { m_chatItem = chatItem; }
 
     /// CIP : a static hotkey action by name, or null.
-    static TGameActionPtr staticAction(const QString& name);
+    static IGameActionPtr staticAction(const QString& name);
 
     /// product product hotkey: binding `name` in a hotkey set runs `run`; `defaultKeys` (may be
     /// empty) runs it while unbound. `description` is "Category: text" for the hotkey options
@@ -79,7 +79,7 @@ private:
     /// TRY_TO_EQUIP 100 ms, the USE_WITH..USE_AT_MOUSECURSOR family and
     /// ACTION_BUTTON_TRIGGERED 500 ms, SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT 1 s,
     /// MINIMAP_SCROLL_* 1 ms; any other action does not repeat.
-    bool throttled(const TGameAction& action, const QKeySequence& keys);
+    bool throttled(EGameAction type, const QKeySequence& keys);
 
     QPointer<QQuickWindow> m_window;
     QPointer<QQuickItem> m_chatItem;

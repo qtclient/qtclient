@@ -144,9 +144,8 @@ void TSpellListWidgetController::onShowContextMenu()
 void TSpellListWidgetController::onShowMoreForSpell(const int SpellID)
 {
     // The Magical Archive tab with the spell.
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 8;
-    action->instance = uint16_t(SpellID);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(8);
+    action->setTypeId(static_cast<uint16_t>(uint16_t(SpellID)));
     input::publish(action);
 }
 

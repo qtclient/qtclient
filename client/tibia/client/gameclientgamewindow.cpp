@@ -527,9 +527,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [](const input::TGameAction&) {
-        auto open = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-        open->parameter = 6; // the Bosstiary tab
-        input::publish(open);
+        input::publish(std::make_shared<input::TGameActionOpenCyclopedia>(6)); // the Bosstiary tab
         return true;
     });
     input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::TGameAction& action) {

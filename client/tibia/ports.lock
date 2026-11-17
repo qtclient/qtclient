@@ -2778,6 +2778,7 @@ input::TGameActionShowDialogEditMinimapMarker::v1	5da25f171b630b5a	skip	generate
 input::TGameActionShowDialogEditMinimapMarker::v2	673838c5a2ac71b7	skip	generated: compiler-generated destructor pair
 input::TGameActionShowExaltationResultDialog::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionShowExaltationResultDialog::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionShowLenshelp::v0	26fc55f8994e2d91	ported	input/gameaction.h:TGameActionShowLenshelp::gameActionType
 input::TGameActionShowLenshelp::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionShowLenshelp::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionShowMessageDialog::v1	78a8158a8ae00854	skip	generated: compiler-generated destructor pair
@@ -3041,8 +3042,10 @@ input::gameactions::TGameActionSaveSkillWheel::v1	872d4faac408f6d5	skip	generate
 input::gameactions::TGameActionSaveSkillWheel::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionShowCreateCharacterDialog::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionShowCreateCharacterDialog::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::gameactions::TGameActionSimple::v0	991c96350cfda1d0	ported	input/gameaction.h:TGameActionSimple::gameActionType
 input::gameactions::TGameActionSimple::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionSimple::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::gameactions::TGameActionSimple::v3	bcccd51b8b153f85	ported	input/gameaction.h:IGameAction::isAllowedWhileShortcutsAreRestricted
 input::gameactions::TGameActionSoundTrigger::v1	dada57b0221dadc5	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionSoundTrigger::v2	850b5c4907d06cb0	skip	generated: compiler-generated destructor pair
 input::gameactions::TGameActionSoundTrigger::v40	effdaac214d4e219	skip	generated: std::variant alternative destructor visitor (compiler-generated)
@@ -5604,6 +5607,8 @@ sub_2efabd86aa67	2efabd86aa6798f2	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_2f20affc2bf7	2f20affc2bf75544	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::savePresetChangesThanSwapPreset
 sub_2f2d7046c2e5	2f2d7046c2e5c6c6	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::tick
 sub_2f3f890b5f45	2f3f890b5f450b33	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::setLootvalueImageSources
+sub_2f4483bc4020	2f4483bc402000ee	ported	input/gameaction.h:TGameActionSoundTrigger::TGameActionSoundTrigger
+sub_2f4483bc4020#2	2f4483bc402000ee	ported	input/gameaction.h:TGameActionSoundTrigger::TGameActionSoundTrigger
 sub_2f52f0e007d2	2f52f0e007d280be	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_2f5387f621da	2f5387f621da0423	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onEditMemberStatusClicked
 sub_2f59241085be	2f59241085bef6f2	ported	shared/src/rpcserviceclient.cpp:TRPCServiceClient::connectToServer
@@ -5691,6 +5696,8 @@ sub_320fc454aa8f#2	320fc454aa8fb21a	skip	library: QList<QKeySequence> instantiat
 sub_321316bd51d2	321316bd51d287ac	skip	library: std::sort instantiation
 sub_3215c5991219	3215c59912192f32	ported	config/sidebaroptions.cpp:parseBattleLists
 sub_3221e9ab058d	3221e9ab058d574d	skip	generated: compiler-generated destructor / shared_ptr release
+sub_3225e262a1da	3225e262a1da8889	ported	input/gameaction.h:TGameActionShowLenshelp::TGameActionShowLenshelp
+sub_3225e262a1da#2	3225e262a1da8889	ported	input/gameaction.h:TGameActionShowLenshelp::TGameActionShowLenshelp
 sub_3226a17380a1	3226a17380a17476	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendLookTrade
 sub_3234c5b8c3d9	3234c5b8c3d97aaf	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_323ebefa5391	323ebefa5391aecb	ported	gamewindow/housesinfodialogcontroller.cpp:ownHouseReason
@@ -8757,6 +8764,7 @@ sub_98f184cf664b	98f184cf664b28ee	ported	gamewindow/reportviolationcontroller.cp
 sub_9916e1f09a2e	9916e1f09a2ec752	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onPurchaseConfirmed
 sub_991c8639590f	991c8639590f99a7	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setProficiencyExperience
 sub_991c96350cfd	991c96350cfda1d0	ported	assets/thingtype.h:ThingType::getNumPatternZ
+sub_991c96350cfd#13	991c96350cfda1d0	ported	input/gameaction.h:TGameActionShowLenshelp::lensHelpId
 sub_991c96350cfd#18	991c96350cfda1d0	skip	library: std container template instance
 sub_991c96350cfd#7	991c96350cfda1d0	inlined	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardDetails
 sub_991ed39efe15	991ed39efe150bc9	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
@@ -9388,6 +9396,7 @@ sub_b27a5ea86947	b27a5ea86947078a	ported	gamewindow/questlogcontroller.cpp:TQues
 sub_b27ae8897d8b	b27ae8897d8b571e	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::offsetInField
 sub_b2b298052b96	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
 sub_b2b298052b96#2	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
+sub_b2b82e722e3c	b2b82e722e3cefed	ported	input/gameaction.h:TGameActionShowLenshelp::rect
 sub_b2d317684246	b2d31768424668ba	skip	generated: compiler-generated destructor / move-assignment of store records
 sub_b2d317684246#2	b2d31768424668ba	skip	generated: compiler-generated destructor / move-assignment of store records
 sub_b2dc59c40ca4	b2dc59c40ca4b12c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::toJson	test=tests/client/hotkeyoptions_test.cpp
@@ -11094,6 +11103,8 @@ sub_e30e1d75c4ea	e30e1d75c4ea91b1	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_e3146914ac09	e3146914ac09ef94	skip	generated: compiler-generated destructor
 sub_e3244afad659	e3244afad6591f98	ported	chat/chatchannel.cpp:formatEntry
 sub_e327e63641d3	e327e63641d3c1ec	skip	library: libc++ std::vector/std::map instantiation
+sub_e355692168e3	e355692168e3a3cf	ported	input/gameaction.h:TGameActionOpenCyclopedia::TGameActionOpenCyclopedia
+sub_e355692168e3#2	e355692168e3a3cf	ported	input/gameaction.h:TGameActionOpenCyclopedia::TGameActionOpenCyclopedia
 sub_e3568bc3e686#2	e3568bc3e68695b4	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_e37316bb4d3f	e37316bb4d3fcfd3	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::totalGoldBalanceString
 sub_e37804b3b64b	e37804b3b64bba5a	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchType

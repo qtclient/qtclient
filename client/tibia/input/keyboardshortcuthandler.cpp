@@ -24,8 +24,10 @@ using A = EGameAction;
 /// Sets the one value a table action carries (CIP builds each typed action
 /// with it): the widget for TOGGLE_WIDGET, the bar for TOGGLE_ACTION_BAR, the
 /// mode for SET_PVP_MODE, otherwise TGameAction::parameter.
-TGameActionPtr tableAction(const A type, const int value)
+IGameActionPtr tableAction(const A type, const int value)
 {
+    if (type == A::OPEN_CYCLOPEDIA)
+        return std::make_shared<TGameActionOpenCyclopedia>(value);
     auto action = mutableClone(*makeAction(type));
     switch (type) {
     case A::TOGGLE_WIDGET:
@@ -50,10 +52,10 @@ TGameActionPtr tableAction(const A type, const int value)
 
 /// CIP's hotkey action table: action name -> prebuilt game action. The Go*
 /// names map to no action (movement keys reach the movement interpreter).
-const std::map<QString, TGameActionPtr>& actionsByName()
+const std::map<QString, IGameActionPtr>& actionsByName()
 {
-    static const std::map<QString, TGameActionPtr> actions = [] {
-        std::map<QString, TGameActionPtr> map;
+    static const std::map<QString, IGameActionPtr> actions = [] {
+        std::map<QString, IGameActionPtr> map;
         const auto add = [&map](const QString& name, const A type, const int value) { map.emplace(name, tableAction(type, value)); };
         const auto channel = [&map](const QString& name, const chat::TChatChannelIdentifier& id) {
             map.emplace(name, std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT, id.type, id.id));
@@ -245,7 +247,7 @@ TKeyboardShortcutHandler::~TKeyboardShortcutHandler()
         m_window->removeEventFilter(this);
 }
 
-TGameActionPtr TKeyboardShortcutHandler::staticAction(const QString& name)
+IGameActionPtr TKeyboardShortcutHandler::staticAction(const QString& name)
 {
     const auto it = actionsByName().find(name);
     return it == actionsByName().end() ? nullptr : it->second;
@@ -326,21 +328,25 @@ bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
 
     // : a setting without an action (Go*) is not consumed; the
     // key reaches TPlayerMovementInputInterpreter.
-    const TGameActionPtr bound = staticAction(binding->action);
+    const IGameActionPtr bound = staticAction(binding->action);
     if (!bound)
         return false;
-    auto action = mutableClone(*bound);
-    action->autoRepeat = key->isAutoRepeat();
-    if (action->autoRepeat && throttled(*action, keys))
+    if (key->isAutoRepeat() && throttled(bound->gameActionType(), keys))
         return true;
-    publish(action);
+    if (const TGameActionPtr fields = unportedGameAction(bound)) {
+        auto action = mutableClone(*fields);
+        action->autoRepeat = key->isAutoRepeat();
+        publish(action);
+    } else {
+        publish(bound);
+    }
     return true;
 }
 
-bool TKeyboardShortcutHandler::throttled(const TGameAction& action, const QKeySequence& keys)
+bool TKeyboardShortcutHandler::throttled(const EGameAction type, const QKeySequence& keys)
 {
     qint64 interval = -1;
-    switch (action.type) {
+    switch (type) {
         case A::USE:
         case A::TRY_TO_EQUIP: interval = 100; break;
         case A::USE_WITH:

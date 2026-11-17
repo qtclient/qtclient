@@ -600,9 +600,8 @@ void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::reques
 
 void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 0;
-    action->instance = TypeID;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
+    action->setTypeId(static_cast<uint16_t>(TypeID));
     input::publish(action);
 }
 

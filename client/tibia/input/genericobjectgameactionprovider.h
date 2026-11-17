@@ -31,6 +31,8 @@ public:
     /// Inventory/container slot from CIP storage (typeId path; no ThingPtr keep-alive).
     static TGameActionList objectActions(const container::TInventorySlot& slot, const Position& position,
                                          int stackPosition);
+    /// OPEN_CYCLOPEDIA's items tab on an object type: its Cyclopedia type.
+    static IGameActionPtr openCyclopediaAction(uint16_t clientId);
 };
 
 /// CIP's hireling: an NPC whose mapped inspection type is 4 (raw 7).

@@ -141,6 +141,14 @@ TGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32
     return makeSmartClick(makeCreatureAction(inner, creatureId));
 }
 
+IGameActionPtr TGenericObjectGameActionProvider::openCyclopediaAction(const uint16_t clientId)
+{
+    auto action = std::make_shared<TGameActionOpenCyclopedia>(0);
+    if (ThingType* type = clientId ? tibia::game::thingType(clientId, ThingCategoryItem).get() : nullptr)
+        action->setTypeId(static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId()));
+    return action;
+}
+
 namespace {
 
 TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TObjectAppearanceInstance* fieldObject,
@@ -220,7 +228,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (tibia::game::localPlayerIsMarketAvailable() && has(&ThingType::isMarketable))
         push(A::MARKET_BROWSE);
     if (has(&ThingType::hasCyclopediaItem))
-        push(A::OPEN_CYCLOPEDIA);
+        actions.push_back(TGenericObjectGameActionProvider::openCyclopediaAction(clientId));
     if (flags && flags->getProficiencyId() != 0)
         push(A::OPEN_WEAPON_PROFICIENCY_DIALOG);
     // qtclient loot black/whitelist: menus filter these; handler is ManageLoot.
@@ -251,9 +259,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (isContainer && lensHelp == 0)
         lensHelp = 1002;
     if (lensHelp != 0) {
-        auto help = mutableClone(*make(A::LENSHELP_SHOW));
-        help->lensHelpId = lensHelp;
-        actions.push_back(help);
+        actions.push_back(std::make_shared<TGameActionShowLenshelp>(lensHelp, position, QRectF()));
     }
 
     if (isContainer && has(&ThingType::isCorpse) && !has(&ThingType::isPlayerCorpse))

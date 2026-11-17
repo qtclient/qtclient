@@ -357,9 +357,8 @@ void TCyclopediaMapDialogController::resetSubAreaViewPoints(const int SubAreaID)
 
 void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 1;
-    action->category = RaceIDRaw;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(1);
+    action->setRaceId(static_cast<uint16_t>(RaceIDRaw));
     input::publish(action);
 }
 

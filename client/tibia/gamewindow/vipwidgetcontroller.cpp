@@ -494,8 +494,8 @@ void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
     using Sound = cip::tibia::qmlcomponents::TSoundHelperService;
     if (state != creatures::TVipStorage::LoggedIn && state != creatures::TVipStorage::LoggedOut)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::SOUND_TRIGGER));
-    action->parameter = state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT;
+    auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(
+        input::gameactions::TGameActionSoundTrigger::TSoundEffect{ state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT });
     input::publish(action);
 }
 

@@ -183,11 +183,10 @@ minimap::TMinimapTileStorage* TMinimapController::tileStorage() const { return m
 void TMinimapController::onCyclopediaMapButtonClicked()
 {
     // The cyclopedia's map tab, at the player's field.
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 4;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
     if (tibia::game::hasLocalPlayer()) {
         m_playerPosition = tibia::game::localPlayerPosition();
-        action->position = m_playerPosition;
+        action->setCoordinate(m_playerPosition);
     }
     input::publish(action);
 }

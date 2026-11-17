@@ -409,9 +409,9 @@ void TQuestTrackerWidgetController::onTrackedQuestFlagsChanged(const bool added,
 {
     if (!added && !removed)
         return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-    action->parameter = added ? cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_ADD
-                              : cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_REMOVE;
+    auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{
+        added ? cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_ADD
+              : cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_REMOVE });
     input::publish(action);
 }
 

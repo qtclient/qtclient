@@ -7,10 +7,14 @@
 #include <client/position.h>
 
 #include <QColor>
+#include <QRectF>
 #include <QString>
 
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
+#include <optional>
+#include <variant>
 #include <memory>
 #include <span>
 #include <vector>
@@ -50,6 +54,113 @@ const T* gameActionAs(const IGameActionPtr& action)
     return dynamic_cast<const T*>(action.get());
 }
 
+namespace gameactions {
+/// CIP input::gameactions::TGameActionSimple: an action that carries only its
+/// type, and the base of the classes that store their type.
+class TGameActionSimple : public IGameAction
+{
+public:
+    explicit TGameActionSimple(EGameAction type)
+        : m_type(type)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+
+private:
+    EGameAction m_type;
+};
+
+/// CIP input::gameactions::TGameActionSoundTrigger (SOUND_TRIGGER): plays a sound
+/// effect once (tibia::qmlcomponents::TSoundHelperService::ESound id), or pauses
+/// (true) / resumes (false) the looping sounds.
+class TGameActionSoundTrigger final : public TGameActionSimple
+{
+public:
+    struct TSoundEffect
+    {
+        int id = 0;
+    };
+    using TTrigger = std::variant<bool, TSoundEffect>;
+
+    explicit TGameActionSoundTrigger(TTrigger trigger)
+        : TGameActionSimple(EGameAction::SOUND_TRIGGER)
+        , m_trigger(trigger)
+    {
+    }
+    /// The looping sounds pause (true) or resume (false); empty for a sound effect.
+    std::optional<bool> pauseLoopingSounds() const;
+    /// The sound effect to play; empty when the looping sounds pause or resume.
+    std::optional<int> soundEffectId() const;
+
+private:
+    TTrigger m_trigger;
+};
+}
+
+/// CIP input::TGameActionOpenCyclopedia (OPEN_CYCLOPEDIA): opens a tab of the
+/// Cyclopedia (0 items, 1 bestiary, 2 character, 3 charms, 4 map, 5 houses,
+/// 6 bosstiary, 7 boss slots, 8 magical archive) and what it shows there.
+class TGameActionOpenCyclopedia final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionOpenCyclopedia(int tab)
+        : TGameActionSimple(EGameAction::OPEN_CYCLOPEDIA)
+        , m_tab(tab)
+    {
+    }
+    int tab() const { return m_tab; }
+    /// Bestiary / bosstiary: the race shown (0: none).
+    uint16_t raceId() const { return m_raceId; }
+    TGameActionOpenCyclopedia& setRaceId(uint16_t raceId);
+    /// Map: the field the map centres on (CIP TWorldMapCoordinate, 0,0,0 for none).
+    const Position& coordinate() const { return m_coordinate; }
+    TGameActionOpenCyclopedia& setCoordinate(const Position& coordinate);
+    /// Map: the zoom at the coordinate (NaN: the map's own).
+    float zoom() const { return m_zoom; }
+    TGameActionOpenCyclopedia& setZoom(float zoom);
+    /// Character: the TCharacterInfoDialogController::EDialogCategory shown.
+    std::optional<int> category() const { return m_category; }
+    TGameActionOpenCyclopedia& setCategory(int category);
+    /// Items: the item type shown; magical archive: the spell (0: none).
+    uint16_t typeId() const { return m_typeId; }
+    TGameActionOpenCyclopedia& setTypeId(uint16_t typeId);
+    /// Charms: the charm selected (0xff: none).
+    uint8_t charmId() const { return m_charmId; }
+    TGameActionOpenCyclopedia& setCharmId(uint8_t charmId);
+
+private:
+    int m_tab;
+    uint16_t m_raceId = 0;
+    Position m_coordinate{ 0, 0, 0 };
+    float m_zoom = std::numeric_limits<float>::quiet_NaN();
+    std::optional<int> m_category;
+    uint16_t m_typeId = 0;
+    uint8_t m_charmId = 0xff;
+};
+
+/// CIP input::TGameActionShowLenshelp (LENSHELP_SHOW, 0xc4): the lenshelp text
+/// of an object (its appearance's lenshelp id) at its field and the scene
+/// rectangle the help points at.
+class TGameActionShowLenshelp final : public IGameAction
+{
+public:
+    TGameActionShowLenshelp(int lensHelpId, const Position& coordinate, const QRectF& rect)
+        : m_lensHelpId(lensHelpId)
+        , m_coordinate(coordinate)
+        , m_rect(rect)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::LENSHELP_SHOW; }
+    int lensHelpId() const { return m_lensHelpId; }
+    const Position& coordinate() const { return m_coordinate; }
+    const QRectF& rect() const { return m_rect; }
+
+private:
+    int m_lensHelpId;
+    Position m_coordinate;
+    QRectF m_rect;
+};
+
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<IGameActionPtr>;
@@ -81,8 +192,6 @@ struct TGameAction : public IGameAction
     /// REPORT_TEXT (CIP: TGameActionReportStatement,): `text` is
     /// the author, `parameter` the text's edit id and this the reported text.
     QString statement;
-    /// LENSHELP_SHOW.
-    int lensHelpId = 0;
     /// MOVE_OBJECT: where the object is dropped (inventory slots are
     /// Position(0xFFFF, slot, 0), slot 0 for any) and whether Shift asked
     /// for everything.
@@ -803,12 +912,6 @@ public:
     TGameActionOpenContainerInSpecificSidebar() { type = EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR; }
 };
 
-/// CIP input::TGameActionOpenCyclopedia .
-class TGameActionOpenCyclopedia final : public TGameAction
-{
-public:
-    TGameActionOpenCyclopedia() { type = EGameAction::OPEN_CYCLOPEDIA; }
-};
 
 /// CIP input::TGameActionOpenEditVipDialog .
 class TGameActionOpenEditVipDialog final : public TGameActionVip
@@ -1327,12 +1430,6 @@ class TGameActionShowExaltationResultDialog final : public TGameAction
 public:
     TGameActionShowExaltationResultDialog() { type = EGameAction::SHOW_EXALTATION_RESULT_DIALOG; }
 };
-/// CIP input::TGameActionShowLenshelp .
-class TGameActionShowLenshelp final : public TGameAction
-{
-public:
-    TGameActionShowLenshelp() { type = EGameAction::LENSHELP_SHOW; }
-};
 /// CIP input::TGameActionShowMessageDialog .
 class TGameActionShowMessageDialog final : public TGameAction
 {
@@ -1647,21 +1744,6 @@ class TGameActionShowCreateCharacterDialog final : public TGameAction
 {
 public:
     TGameActionShowCreateCharacterDialog() { type = EGameAction::SHOW_CREATE_CHARACTER_DIALOG; }
-};
-/// CIP input::gameactions::TGameActionSimple .
-class TGameActionSimple final : public TGameAction
-{
-public:
-    TGameActionSimple() = default;
-    explicit TGameActionSimple(EGameAction type);
-};
-/// CIP input::gameactions::TGameActionSoundTrigger: `parameter` is the sound
-/// effect id to play once. CipSoft's trigger can instead carry a pause flag for
-/// the looping sounds (application inactive); qtclient has no such trigger.
-class TGameActionSoundTrigger final : public TGameAction
-{
-public:
-    TGameActionSoundTrigger() { type = EGameAction::SOUND_TRIGGER; }
 };
 /// CIP input::gameactions::TSelectAtelierGemGameAction .
 class TSelectAtelierGemGameAction final : public TGameAction

@@ -1107,8 +1107,7 @@ void TShowSpellBookDialogController::openCyclopedia()
 {
     dialog()->close();
     // The magical archive tab of the cyclopedia.
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 8;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(8);
     input::publish(action);
 }
 

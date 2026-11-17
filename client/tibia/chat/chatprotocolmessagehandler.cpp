@@ -688,8 +688,7 @@ void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, c
     }
     // CIP / / : SOUND_TRIGGER 0xade (2782).
     if (arrivedSound && chatArrivedSoundAllowed(mode, channelId)) {
-        auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-        action->parameter = cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED;
+        auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED });
         input::publish(action);
         Q_EMIT publishGameAction();
     }

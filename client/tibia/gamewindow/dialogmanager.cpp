@@ -221,8 +221,7 @@ void TDialog::show()
     create();
     if (TDialogStackController* stack = TDialogStackController::instance())
         stack->show(this);
-    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-    sound->parameter = cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET;
+    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET });
     input::publish(sound);
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setDefaultCursor();

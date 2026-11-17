@@ -6,6 +6,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
+#include "input/genericobjectgameactionprovider.h"
 
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -502,9 +503,7 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
         return actions;
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
-        auto cyclopedia = input::mutableClone(*input::makeObjectAction(A::OPEN_CYCLOPEDIA, {}, -1));
-        cyclopedia->objectClientId = typeId;
-        actions.push_back(cyclopedia);
+        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
 
     auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));

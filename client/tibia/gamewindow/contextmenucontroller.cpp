@@ -222,15 +222,15 @@ TContextMenuController* TContextMenuController::instance()
 
 QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, QString& shortcut)
 {
+    if (const char* id = simpleLabel(pGameAction.gameActionType())) {
+        if (pGameAction.gameActionType() == A::BUY_HIRELING_NAME_OR_SEX_CHANGE)
+            shortcut = qtTrId("context_store_dialog");
+        return qtTrId(id);
+    }
     const auto* fields = dynamic_cast<const input::TGameAction*>(&pGameAction);
     if (!fields)
         return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
     const input::TGameAction& action = *fields;
-    if (const char* id = simpleLabel(action.type)) {
-        if (action.type == A::BUY_HIRELING_NAME_OR_SEX_CHANGE)
-            shortcut = qtTrId("context_store_dialog");
-        return qtTrId(id);
-    }
     if (const char* id = namedLabel(action.type))
         return qtTrId(id).arg(nameOf(action));
     switch (action.type) {

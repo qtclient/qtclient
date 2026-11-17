@@ -339,8 +339,7 @@ void TManageLootContainerDialogController::requestLootBlackWhitelistSwitch(const
 void TManageLootContainerDialogController::requestAddItemBlackWhitelist()
 {
     // Items are put on the list from the cyclopedia's item page.
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 0;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     input::publish(action);
 }
 
@@ -352,10 +351,8 @@ void TManageLootContainerDialogController::removeItemFromList(const int Appearan
 
 void TManageLootContainerDialogController::showItemDetails(const int AppearanceTypeIDRaw)
 {
-    auto action = input::makeAction(A::OPEN_CYCLOPEDIA);
-    auto mutableAction = std::const_pointer_cast<input::TGameAction>(action);
-    mutableAction->parameter = 0;
-    mutableAction->instance = std::clamp(AppearanceTypeIDRaw, 0, 0xffff);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
+    action->setTypeId(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)));
     input::publish(action);
 }
 

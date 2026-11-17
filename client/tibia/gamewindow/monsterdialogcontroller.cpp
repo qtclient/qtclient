@@ -550,9 +550,8 @@ void TMonsterDialogController::requestSwitchBackToRaceSummary() { requestClassif
 
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 0;
-    action->instance = AppearanceTypeID;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
+    action->setTypeId(static_cast<uint16_t>(AppearanceTypeID));
     input::publish(action);
 }
 
@@ -585,9 +584,8 @@ void TMonsterDialogController::requestToggleBestiaryTracking()
 
 void TMonsterDialogController::viewSelectedCharm(const int charmID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 3;
-    action->category = charmID;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(3);
+    action->setCharmId(static_cast<uint8_t>(charmID));
     input::publish(action);
 }
 

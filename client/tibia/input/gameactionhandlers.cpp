@@ -328,9 +328,9 @@ void publish(const IGameActionPtr& action)
 
 void handleUnportedGameAction(const IGameActionPtr& pGameAction)
 {
-    const TGameActionPtr action = std::dynamic_pointer_cast<const TGameAction>(pGameAction);
-    if (!action)
+    if (!pGameAction)
         return;
+    const EGameAction type = pGameAction->gameActionType();
     // Clipboard COPY_* / REQUEST_COPY_* are owned by TClipboardGameActionHandler.
     // A few actions must work before login (sound helper, mute, HUD toggle, relaunch,
     // character-selection shell, focused-text clipboard helpers).
@@ -355,13 +355,20 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         A::CHANGE_CONTEXT_MENU_ENABLED, A::SESSIONDUMP_START, A::SESSIONDUMP_PAUSE, A::SESSIONDUMP_RESUME,
         A::SESSIONDUMP_SKIP_TO,
     };
-    const bool offlineOk = std::find(std::begin(OfflineActions), std::end(OfflineActions), action->type)
+    const bool offlineOk = std::find(std::begin(OfflineActions), std::end(OfflineActions), type)
         != std::end(OfflineActions);
     if (!tibia::game::isOnline() && !offlineOk)
         return;
-    if (notifyListeners(*action))
+    if (notifyListeners(*pGameAction))
         return;
-    if (const auto it = actionHandlers().find(action->type); it != actionHandlers().end() && it->second(*action))
+    if (const auto it = actionHandlers().find(type); it != actionHandlers().end() && it->second(*pGameAction))
+        return;
+    if (type == A::LENSHELP_SHOW) {
+        setLenshelp(true);
+        return;
+    }
+    const TGameActionPtr action = unportedGameAction(pGameAction);
+    if (!action)
         return;
     switch (action->type) {
     case A::LOOK_AT_CREATURE:
@@ -574,9 +581,6 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     case A::TARGET_SELECTION_FINISHED:
         if (const auto& listener = targetSelectionListener())
             listener(false);
-        break;
-    case A::LENSHELP_SHOW:
-        setLenshelp(true);
         break;
     case A::LENSHELP_HIDE:
         setLenshelp(false);

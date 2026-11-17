@@ -997,8 +997,7 @@ void TInspectPlayerDialogController::okButtonClicked()
 void TInspectPlayerDialogController::openCharacterInfoClicked()
 {
     // The Cyclopedia's character tab.
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 2;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(2);
     input::publish(action);
     closeDialog();
 }

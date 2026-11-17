@@ -581,9 +581,7 @@ input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t 
         return actions;
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
-        auto cyclopedia = input::mutableClone(*input::makeObjectAction(A::OPEN_CYCLOPEDIA, {}, -1));
-        cyclopedia->objectClientId = typeId;
-        actions.push_back(cyclopedia);
+        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
     if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
         auto market = input::mutableClone(*input::makeObjectAction(A::MARKET_BROWSE, {}, -1));

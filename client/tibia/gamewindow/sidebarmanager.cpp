@@ -191,8 +191,7 @@ void TSidebarManager::addWidget(TSidebarWidget* widget)
     if (!widget)
         return;
     const int height = widget->currentHeight();
-    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-    sound->parameter = cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET;
+    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET });
     input::publish(sound);
     if (m_sidebars.empty())
         return;

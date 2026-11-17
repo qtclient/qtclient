@@ -132,9 +132,7 @@ TSoundHelperService::TSoundHelperService(QObject* parent)
 /// Publishes a SOUND_TRIGGER game action for the ESound id.
 void TSoundHelperService::playSound(const ESound Sound)
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-    action->parameter = static_cast<int>(Sound);
-    input::publish(action);
+    input::publish(std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ static_cast<int>(Sound) }));
 }
 
 void updateLoginAnthem(const QJsonObject& options)
@@ -172,8 +170,9 @@ void applyOptionVolumes()
 
 void installSoundActionHandler()
 {
-    input::setActionHandler(input::EGameAction::SOUND_TRIGGER, [](const input::TGameAction& action) {
-        playTriggeredSound(action.parameter);
+    input::setActionHandler(input::EGameAction::SOUND_TRIGGER, [](const input::gameactions::TGameActionSoundTrigger& action) {
+        if (const std::optional<int> effect = action.soundEffectId())
+            playTriggeredSound(*effect);
         return true;
     });
     applyOptionVolumes();

@@ -224,8 +224,7 @@ void TLootTrackingWidgetController::onAutoTrackLootValueChanged(const QString& t
 
 void TLootTrackingWidgetController::requestOpenItemInfoDialog()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 0;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     input::publish(action);
 }
 

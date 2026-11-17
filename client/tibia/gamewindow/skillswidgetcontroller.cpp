@@ -233,9 +233,8 @@ void TSkillsWidgetController::onStoreXpBoostButtonClicked()
 
 void TSkillsWidgetController::onMoreStatDetailsClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 2;
-    action->category = 1;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(2);
+    action->setCategory(1);
     input::publish(action);
 }
 
