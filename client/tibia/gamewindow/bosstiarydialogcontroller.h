@@ -3,11 +3,13 @@
 #include "client/gamecore.h"
 #include "cyclopedia/bosstiarystorage.h"
 #include "gamewindow/assignablebossmodels.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
 
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -42,6 +44,7 @@ public:
     /// CIP : resizes the rows, then refreshes all of them.
     void setEntries(std::vector<cyclopedia::TBosstiaryEntry> entries);
     void refreshAll();
+    void refreshRoles(const QList<int>& roles);
 
 private:
     const cyclopedia::TBosstiaryStorage& m_storage;
@@ -50,6 +53,8 @@ private:
 
 /// The Cyclopedia's bosstiary page, BosstiaryDialog.qml (CIP:
 /// TBosstiaryDialogController, vtable , metacall).
+class TMessageDialogController;
+
 class TBosstiaryDialogController final : public cip::tibia::gamewindow::TBosstiaryDialogController
 {
     Q_OBJECT
@@ -57,10 +62,9 @@ public:
     /// The page left for another tab (CIP).
     struct Context
     {
-        QString search;
-        bool filters[8] = { true, true, true, true, true, true, true, true };
+        cyclopedia::TBosstiaryFilter filter;
         int page = 1;
-        bool operator==(const Context& other) const;
+        bool operator==(const Context&) const = default;
     };
 
     TBosstiaryDialogController(cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
@@ -71,11 +75,24 @@ public:
     void restoreContext(const Context& context);
     /// CIP : shows the boss of `raceId` (its name as the search).
     void showRace(int raceId);
+    /// The Cyclopedia's actions: a received free podium shows its message.
+    void handleGameAction(const input::TGameAction& action);
 
     QString baneTooltip() const override;
     QString archfoeTooltip() const override;
     QString nemesisTooltip() const override;
     bool canTrackMoreBosses() const override;
+
+    int numberOfPages() const override;
+    QString searchString() const override;
+    bool showBaneBosses() const override;
+    bool showArchfoeBosses() const override;
+    bool showNemesisBosses() const override;
+    bool showNoKillBosses() const override;
+    bool showFewKillsBosses() const override;
+    bool showProwessBosses() const override;
+    bool showExpertiseBosses() const override;
+    bool showMasteryBosses() const override;
 
     void setSearchString(const QString& v) override;
     void setShowBaneBosses(bool v) override;
@@ -97,12 +114,17 @@ public:
     void requestToggleBosstiaryTracking(int RaceID, bool ShouldTrack) override;
 
 private:
-    void applyContext(const Context& context);
-    /// CIP .
-    bool accepts(const cyclopedia::TBosstiaryEntry& entry) const;
-    /// CIP .
+    /// The list or the filter changed: the page is rebuilt where it was.
+    void onListChanged();
+    /// Kill stage / boss point changes refresh those roles of every row.
+    void onKillStagesChanged();
+    void onPointsChanged();
+    void changeFilter(const std::function<void(cyclopedia::TBosstiaryFilter&)>& change);
     void rebuild();
 
+    TMessageDialogController* m_message;
+    /// A context is being restored: list changes do not rebuild.
+    bool m_restoring = false;
     cyclopedia::TBosstiaryStorage& m_storage;
     TBosstiaryBossModel* m_model;
 };

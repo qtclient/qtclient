@@ -157,6 +157,10 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
+    input::setActionHandler(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::TGameAction& action) {
+        m_bosstiary->handleGameAction(action);
+        return true;
+    });
     input::setActionHandler(A::OPEN_CYCLOPEDIA, [this](const input::TGameAction& action) {
         // The action's tab and the page it opens there.
         switch (action.parameter) {

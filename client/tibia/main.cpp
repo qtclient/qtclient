@@ -869,12 +869,6 @@ int main(int argc, char** argv)
     };
     input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [](const input::TGameAction&) {
-        auto open = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-        open->parameter = 6; // Bosstiary tab (CIP OPEN_CYCLOPEDIA)
-        input::publish(open);
-        return true;
-    });
     input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::TGameAction& action) {
         // CIP: parameter selects a skill immediately; otherwise open MultiOfflineTrainingDialog.
         if (action.parameter > 0) {

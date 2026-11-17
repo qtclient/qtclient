@@ -182,6 +182,51 @@ QString TBosstiaryStorage::rarityTooltip(const int category) const
         .arg(pointsForStage(category, 3));
 }
 
+void TBosstiaryStorage::setFilter(const TBosstiaryFilter& filter)
+{
+    if (filter == m_filter)
+        return;
+    m_filter = filter;
+    Q_EMIT filterChanged();
+}
+
+/// The search needs a boss already killed whose name holds it; the switches
+/// drop a rarity, the unkilled bosses or a kill stage.
+bool TBosstiaryStorage::accepts(const TBosstiaryEntry& entry) const
+{
+    const qint64 kills = entry.kills;
+    if (!m_filter.search.isEmpty() && (kills == 0 || !entry.name.contains(m_filter.search, Qt::CaseInsensitive)))
+        return false;
+    if ((!m_filter.showBane && entry.category == 0) || (!m_filter.showArchfoe && entry.category == 1)
+        || (!m_filter.showNemesis && entry.category == 2) || (!m_filter.showNoKill && kills == 0))
+        return false;
+    const int prowess = killsForStage(entry.category, 1);
+    const int expertise = killsForStage(entry.category, 2);
+    const int mastery = killsForStage(entry.category, 3);
+    if (!m_filter.showFewKills && kills >= 1 && kills < prowess)
+        return false;
+    if (!m_filter.showProwess && kills >= prowess && kills < expertise)
+        return false;
+    if (!m_filter.showExpertise && kills >= expertise && kills < mastery)
+        return false;
+    return m_filter.showMastery || kills < mastery;
+}
+
+std::vector<TBosstiaryEntry> TBosstiaryStorage::filteredEntries() const
+{
+    std::vector<TBosstiaryEntry> filtered;
+    for (const TBosstiaryEntry& entry : m_entries) {
+        if (accepts(entry))
+            filtered.push_back(entry);
+    }
+    return filtered;
+}
+
+int TBosstiaryStorage::filteredEntryCount() const
+{
+    return static_cast<int>(std::ranges::count_if(m_entries, [this](const TBosstiaryEntry& entry) { return accepts(entry); }));
+}
+
 void TBosstiaryStorage::clearEntries()
 {
     m_entries.clear();
