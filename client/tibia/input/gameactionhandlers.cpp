@@ -369,7 +369,13 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     }
     // The field carrier of the types not ported yet; null for ported classes,
     // whose cases below read only the class.
-    const TGameActionPtr action = unportedGameAction(pGameAction);
+    TGameActionPtr action = unportedGameAction(pGameAction);
+    if (!action) {
+        // A ported class: its cases below read only the class (creatureId) or no fields.
+        auto carrier = std::make_shared<TGameAction>();
+        carrier->type = type;
+        action = carrier;
+    }
     const uint32_t creatureId = creatureIdOf(*pGameAction);
     switch (type) {
     case A::LOOK_AT_CREATURE:
@@ -592,7 +598,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             if (QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection))
                 break;
         }
-        publish(makeAction(A::CHAT_CHANNEL_SELECT_ALL));
+        publish(makeGameAction(A::CHAT_CHANNEL_SELECT_ALL));
         break;
     case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
     case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:

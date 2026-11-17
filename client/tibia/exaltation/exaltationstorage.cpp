@@ -55,7 +55,7 @@ std::vector<TTransferGroup> transferGroupsOf(const std::vector<ForgeTransferData
 
 void publish(const A type)
 {
-    input::publish(input::makeAction(type));
+    input::publish(input::makeGameAction(type));
 }
 
 }

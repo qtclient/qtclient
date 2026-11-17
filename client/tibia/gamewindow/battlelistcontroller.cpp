@@ -89,7 +89,7 @@ QString stripIcon(const char* provider, const uint8_t value)
 input::TGameActionList battleListGameActions(const uint32_t creatureId)
 {
     input::TGameActionList actions = input::TGenericObjectGameActionProvider::creatureActions(creatureId);
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     return actions;
 }
 

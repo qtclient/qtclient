@@ -50,7 +50,7 @@ TChatChannelIdentifier TChatGameActionProvider::identifierOf(const ::tibia::inpu
 
 TGameActionList TChatGameActionProvider::gameActions(const TChatChannelIdentifier* identifier) const
 {
-    TGameActionList result{ ::tibia::input::makeAction(A::CONTEXT_MENU) };
+    TGameActionList result{ ::tibia::input::makeGameAction(A::CONTEXT_MENU) };
     if (!identifier) {
         std::vector<TChatChannelIdentifier> identifiers = m_storage.identifiers();
         std::sort(identifiers.begin(), identifiers.end(), [](const TChatChannelIdentifier& a, const TChatChannelIdentifier& b) {
@@ -95,7 +95,7 @@ TGameActionList TChatGameActionProvider::gameActions(const TChatChannelIdentifie
 TGameActionList TChatGameActionProvider::entryGameActions(const QString& entryText, const TChatEntry& entry, const QString& selectedText,
                                                           const QString& ownName, const bool secondaryShown) const
 {
-    TGameActionList result{ ::tibia::input::makeAction(A::CONTEXT_MENU) };
+    TGameActionList result{ ::tibia::input::makeGameAction(A::CONTEXT_MENU) };
     result.push_back(visibleChannelAction(A::CHAT_CHANNEL_SELECT_ALL, secondaryShown));
     result.push_back(std::make_shared<::tibia::input::TGameActionCopyChatEntryToClipboard>(entryText));
     // Speakers with and without level carry a name.

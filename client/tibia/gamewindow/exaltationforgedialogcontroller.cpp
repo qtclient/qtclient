@@ -183,7 +183,7 @@ using ObjectKey = std::pair<uint16_t, uint8_t>;
 
 void publish(const A type)
 {
-    input::publish(input::makeAction(type));
+    input::publish(input::makeGameAction(type));
 }
 
 /// Option antialiasingMode is AntialiasingModeAntialiasing (CIP ,

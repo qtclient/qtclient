@@ -399,7 +399,7 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action
         setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
     }
     execute(setting, action.autoRepeat);
-    input::publish(input::makeAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
+    input::publish(input::makeGameAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
     return true;
 }
 

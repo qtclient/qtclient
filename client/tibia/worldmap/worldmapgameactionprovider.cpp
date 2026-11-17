@@ -118,7 +118,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
 
     const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
     const TGameActionList creatureActions = Provider::creatureActions(pixelCreatureId);
-    result.push_back(input::makeAction(A::CONTEXT_MENU));
+    result.push_back(input::makeGameAction(A::CONTEXT_MENU));
     (void)input::TLocationWorldMapGameActionContext(pick.position.x, pick.position.y, pick.position.z);
     (void)input::TLocationWorldMapCoordinateContext(pick.position.x, pick.position.y, pick.position.z);
     if (pixelCreatureId)

@@ -501,7 +501,7 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     const auto stored = m_content.find(typeId);
     if (!type || stored == m_content.end())
         return actions;
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
         actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
@@ -545,7 +545,7 @@ void TStashDialogController::requestOpenManageLootContainerDialog()
         m_reopenAfterManageLoot = true;
         closeDialog();
     }
-    input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
+    input::publish(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
 }
 
 void TStashDialogController::handleGameAction(const input::TGameAction& action)
@@ -574,7 +574,7 @@ void TStashDialogController::reopenStash()
         return;
     m_reopenAfterMarket = false;
     m_reopenAfterManageLoot = false;
-    input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
+    input::publish(input::makeGameAction(A::STASH_REQUEST_REOPEN));
 }
 
 void TStashDialogController::onMarketDialogDialogClosed()

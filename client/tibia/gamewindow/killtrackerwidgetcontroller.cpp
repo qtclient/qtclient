@@ -220,7 +220,7 @@ void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* op
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
 }
 
-void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeAction(input::EGameAction::OPEN_PREY_DIALOG)); }
+void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeGameAction(input::EGameAction::OPEN_PREY_DIALOG)); }
 
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
 {

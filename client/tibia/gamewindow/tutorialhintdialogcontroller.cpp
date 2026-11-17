@@ -180,7 +180,7 @@ void TTutorialHintDialogController::emitDisplay() { Q_EMIT displayDataChanged();
 void TTutorialHintDialogController::requestClose()
 {
     dialog()->close();
-    input::publish(input::makeAction(A::CONFIRM_TUTORIAL_HINT));
+    input::publish(input::makeGameAction(A::CONFIRM_TUTORIAL_HINT));
 }
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }

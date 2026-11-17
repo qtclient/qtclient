@@ -4,7 +4,7 @@
 
 namespace tibia::tutorial {
 
-TSessiondumpHintPublishGameAction::TSessiondumpHintPublishGameAction(const EType type, input::TGameActionPtr action)
+TSessiondumpHintPublishGameAction::TSessiondumpHintPublishGameAction(const EType type, input::IGameActionPtr action)
     : TSessiondumpHintBase(type)
     , m_action(std::move(action))
 {

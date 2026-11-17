@@ -430,7 +430,7 @@ void TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout()
 
 void TGameWindowController::requestOpenCalendar()
 {
-    input::publish(input::makeAction(A::OPEN_CALENDAR_DIALOG));
+    input::publish(input::makeGameAction(A::OPEN_CALENDAR_DIALOG));
 }
 
 void TGameWindowController::setAuthenticated(const bool authenticated)
@@ -543,7 +543,7 @@ void TGameWindowController::loginPressed(const QString& EMailAddress, const QStr
 
 void TGameWindowController::forgotEMailAddressOrPasswordPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_LOST_ACCOUNT));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_LOST_ACCOUNT));
 }
 
 void TGameWindowController::handleCreateNewAccount()
@@ -569,22 +569,22 @@ void TGameWindowController::goToCreateNewAccount()
 
 void TGameWindowController::tibiaLogoPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
 }
 
 void TGameWindowController::cipSoftLogoPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_CIPSOFT));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_CIPSOFT));
 }
 
 void TGameWindowController::twitchLogoPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_TWITCH_TIBIA));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_TWITCH_TIBIA));
 }
 
 void TGameWindowController::youTubeLogoPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_YOUTUBE_TIBIA));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_YOUTUBE_TIBIA));
 }
 
 void TGameWindowController::closeOpenMultiActionButtons()
@@ -650,7 +650,7 @@ void TGameWindowController::muteAnthemPressed()
 
 void TGameWindowController::manageAccountPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
 }
 
 void TGameWindowController::manageClientsPressed()

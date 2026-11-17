@@ -389,7 +389,7 @@ void TDepotSearchWidgetController::requestSearch() { publishSimpleAction(A::REQU
 
 void TDepotSearchWidgetController::requestRefresh() { requestSearch(); }
 
-void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { input::publish(input::makeAction(type)); }
+void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { input::publish(input::makeGameAction(type)); }
 
 bool TDepotSearchWidgetController::categorySupportsTiers(const int category) const
 {
@@ -579,7 +579,7 @@ input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t 
     ThingType* type = typeOf(typeId);
     if (!type)
         return actions;
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
         actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
@@ -651,7 +651,7 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
         storageLocation == Inbox ? m_detailList->inboxObjects() : m_detailList->depotObjects();
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
-    input::TGameActionList actions{ input::makeAction(A::CONTEXT_MENU) };
+    input::TGameActionList actions{ input::makeGameAction(A::CONTEXT_MENU) };
     for (input::IGameActionPtr& action :
          input::filterActions(input::TGenericObjectGameActionProvider::objectActions(objects[static_cast<size_t>(slotId)], {}, slotId),
                               ObjectContextMenuOrder))

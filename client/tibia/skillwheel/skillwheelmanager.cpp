@@ -24,7 +24,7 @@ constexpr A Actions[] = { A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG,
                           A::GEM_ATELIER_SELECT_GEM,
                           A::FRAGMENT_WORKSHOP_SELECT_MOD };
 
-void publish(const A type) { input::publish(input::makeAction(type)); }
+void publish(const A type) { input::publish(input::makeGameAction(type)); }
 
 bool hasVocation()
 {

@@ -32,7 +32,7 @@ const QColor ReachedColor(QStringLiteral("#44AD25"));
 
 void publish(const A type)
 {
-    input::publish(input::makeAction(type));
+    input::publish(input::makeGameAction(type));
 }
 
 uint32_t nowSeconds()

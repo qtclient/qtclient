@@ -76,7 +76,7 @@ QList<TMessageDialogButton*> okButton()
 
 void publish(const EGameAction type)
 {
-    input::publish(input::makeAction(type));
+    input::publish(input::makeGameAction(type));
 }
 
 /// CIP DAT_102793370 and the storage directories (,

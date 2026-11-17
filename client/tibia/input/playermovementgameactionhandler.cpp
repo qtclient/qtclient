@@ -18,7 +18,7 @@ TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(QObject* pare
     : cip::tibia::input::TPlayerMovementGameActionHandler(parent)
 {
     setActionHandler(A::SET_PLAYER_MOVEMENT_INTENT, [](const TGameAction& action) {
-        publish(makeAction(A::APPLY_AUTOCHASE_SETTING));
+        publish(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
         publish(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
         (void)TPlayerMovementIntent::target(action.position.x, action.position.y, action.position.z);
         tibia::game::localPlayerAutoWalk(action.position, false,

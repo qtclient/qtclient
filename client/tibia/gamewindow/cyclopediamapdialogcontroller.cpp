@@ -262,7 +262,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia, false));
     // CIP: GOD_TELEPORT is a mapper candidate (Shift+Ctrl); qtclient menus omit it.
     candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, position, -1));
-    candidates.push_back(input::makeAction(A::CONTEXT_MENU));
+    candidates.push_back(input::makeGameAction(A::CONTEXT_MENU));
 
     const input::IGameActionPtr action = m_mapper.map(candidates, 9, static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
     if (!action)

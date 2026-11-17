@@ -147,7 +147,7 @@ void TCharacterSelectionController::createCharacterPressed()
 
 void TCharacterSelectionController::manageAccountPressed()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
 }
 
 QString TCharacterSelectionController::accountStatusText(const int accountState, const int premiumType, const int premiumDays)
@@ -188,7 +188,7 @@ void TCharacterSelectionController::onGetPremiumClicked()
 
 void TCharacterSelectionController::onMorePremiumFeaturesClicked()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_PREMIUM_FEATURES));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_PREMIUM_FEATURES));
 }
 
 void TCharacterSelectionController::onCharacterSelectionConfirmed(const QList<int>& SelectedCharacters)

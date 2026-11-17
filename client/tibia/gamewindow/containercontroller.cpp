@@ -455,7 +455,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
             actions.push_back(std::move(moveUp));
         }
     }
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     for (input::IGameActionPtr& action :
          input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot), SlotActionTypes))
         actions.push_back(std::move(action));
@@ -560,7 +560,7 @@ void TContainerController::onNextPageClicked()
 
 void TContainerController::onSearchButtonClicked()
 {
-    input::publish(input::makeAction(A::REQUEST_DEPOT_SEARCH));
+    input::publish(input::makeGameAction(A::REQUEST_DEPOT_SEARCH));
 }
 
 void TContainerController::onRequestClose()

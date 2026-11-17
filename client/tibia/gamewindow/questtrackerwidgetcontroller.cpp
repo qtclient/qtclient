@@ -452,7 +452,7 @@ void TQuestTrackerWidgetController::onPinnedChanged(const int QuestFlagID, const
 
 void TQuestTrackerWidgetController::requestOpenQuestLogDialog()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
 }
 
 void TQuestTrackerWidgetController::requestConfigurationContextMenu()

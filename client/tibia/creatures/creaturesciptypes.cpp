@@ -595,14 +595,14 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
 
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::widgetGameActions(const bool hideOffline, const bool groupsHidden) const
 {
-    using ::tibia::input::makeAction;
-    return { makeAction(VipAction::CONTEXT_MENU),
-             makeAction(VipAction::OPEN_ADD_VIP_DIALOG),
-             makeAction(VipAction::SORT_VIPS_BY_NAME),
-             makeAction(VipAction::SORT_VIPS_BY_ICON),
-             makeAction(VipAction::SORT_VIPS_BY_STATUS),
-             makeAction(hideOffline ? VipAction::SHOW_OFFLINE_VIPS : VipAction::HIDE_OFFLINE_VIPS),
-             makeAction(groupsHidden ? VipAction::SHOW_VIPS_GROUPS : VipAction::HIDE_VIPS_GROUPS) };
+    using ::tibia::input::makeGameAction;
+    return { makeGameAction(VipAction::CONTEXT_MENU),
+             makeGameAction(VipAction::OPEN_ADD_VIP_DIALOG),
+             makeGameAction(VipAction::SORT_VIPS_BY_NAME),
+             makeGameAction(VipAction::SORT_VIPS_BY_ICON),
+             makeGameAction(VipAction::SORT_VIPS_BY_STATUS),
+             makeGameAction(hideOffline ? VipAction::SHOW_OFFLINE_VIPS : VipAction::HIDE_OFFLINE_VIPS),
+             makeGameAction(groupsHidden ? VipAction::SHOW_VIPS_GROUPS : VipAction::HIDE_VIPS_GROUPS) };
 }
 
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::gameActions(const QString& vipName, const QString& groupName,
@@ -633,7 +633,7 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
     ::tibia::input::TGameActionList result;
     if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerIsPremium())
         return result;
-    result.push_back(::tibia::input::makeAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
+    result.push_back(::tibia::input::makeGameAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
     if (groupName.isEmpty())
         return result;
     if (const std::optional<TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {

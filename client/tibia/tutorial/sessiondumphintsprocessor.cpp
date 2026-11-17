@@ -143,7 +143,7 @@ void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
     if (type == QLatin1String("SWITCH_CHANNEL") || type == QLatin1String("CLEAR_OLDEST_MESSAGE")
         || type == QLatin1String("FINISHED_TUTORIAL")) {
         if (type == QLatin1String("FINISHED_TUTORIAL")) {
-            input::publish(input::makeAction(A::FINISHED_TUTORIAL_FOR_CHARACTER));
+            input::publish(input::makeGameAction(A::FINISHED_TUTORIAL_FOR_CHARACTER));
             return;
         }
         qCInfo(lcHints).noquote() << "action" << type;

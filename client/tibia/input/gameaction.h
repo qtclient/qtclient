@@ -174,6 +174,258 @@ private:
     uint32_t m_creatureId;
 };
 
+/// CIP input::TGameActionAttackFirstTarget (ATTACK_FIRST_TARGET).
+class TGameActionAttackFirstTarget final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAttackFirstTarget()
+        : TGameActionSimple(EGameAction::ATTACK_FIRST_TARGET)
+    {
+    }
+};
+
+/// CIP input::TGameActionAttackNextTarget (ATTACK_NEXT_TARGET).
+class TGameActionAttackNextTarget final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAttackNextTarget()
+        : TGameActionSimple(EGameAction::ATTACK_NEXT_TARGET)
+    {
+    }
+};
+
+/// CIP input::TGameActionAttackPreviousTarget (ATTACK_PREVIOUS_TARGET).
+class TGameActionAttackPreviousTarget final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAttackPreviousTarget()
+        : TGameActionSimple(EGameAction::ATTACK_PREVIOUS_TARGET)
+    {
+    }
+};
+
+/// CIP input::TGameActionChangeCharacter (CHANGE_CHARACTER).
+class TGameActionChangeCharacter final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionChangeCharacter()
+        : TGameActionSimple(EGameAction::CHANGE_CHARACTER)
+    {
+    }
+};
+
+/// CIP input::TGameActionClearOldestMessageFromMapwindow (CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW).
+class TGameActionClearOldestMessageFromMapwindow final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionClearOldestMessageFromMapwindow()
+        : TGameActionSimple(EGameAction::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW)
+    {
+    }
+};
+
+/// CIP input::TGameActionCloseCurrentChatChannel (CLOSE_CURRENT_CHAT_CHANNEL).
+class TGameActionCloseCurrentChatChannel final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionCloseCurrentChatChannel()
+        : TGameActionSimple(EGameAction::CLOSE_CURRENT_CHAT_CHANNEL)
+    {
+    }
+};
+
+/// CIP input::TGameActionDisplayNextChatChannelTab (DISPLAY_NEXT_CHAT_CHANNEL_TAB).
+class TGameActionDisplayNextChatChannelTab final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionDisplayNextChatChannelTab()
+        : TGameActionSimple(EGameAction::DISPLAY_NEXT_CHAT_CHANNEL_TAB)
+    {
+    }
+};
+
+/// CIP input::TGameActionDisplayPreviousChatChannelTab (DISPLAY_PREVIOUS_CHAT_CHANNEL_TAB).
+class TGameActionDisplayPreviousChatChannelTab final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionDisplayPreviousChatChannelTab()
+        : TGameActionSimple(EGameAction::DISPLAY_PREVIOUS_CHAT_CHANNEL_TAB)
+    {
+    }
+};
+
+/// CIP input::TGameActionGetGuildMessage (GET_GUILD_MESSAGE).
+class TGameActionGetGuildMessage final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionGetGuildMessage()
+        : TGameActionSimple(EGameAction::GET_GUILD_MESSAGE)
+    {
+    }
+};
+
+/// CIP input::TGameActionMountPlayer (MOUNT_PLAYER).
+class TGameActionMountPlayer final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionMountPlayer()
+        : TGameActionSimple(EGameAction::MOUNT_PLAYER)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenAddVipDialog (OPEN_ADD_VIP_DIALOG).
+class TGameActionOpenAddVipDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenAddVipDialog()
+        : TGameActionSimple(EGameAction::OPEN_ADD_VIP_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenAddVipGroupDialog (OPEN_ADD_VIP_GROUP_DIALOG).
+class TGameActionOpenAddVipGroupDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenAddVipGroupDialog()
+        : TGameActionSimple(EGameAction::OPEN_ADD_VIP_GROUP_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenHighscoresDialog (OPEN_HIGHSCORES_DIALOG).
+class TGameActionOpenHighscoresDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenHighscoresDialog()
+        : TGameActionSimple(EGameAction::OPEN_HIGHSCORES_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenPreyDialog (OPEN_PREY_DIALOG).
+class TGameActionOpenPreyDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenPreyDialog()
+        : TGameActionSimple(EGameAction::OPEN_PREY_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenTradeCharacterDialog (OPEN_TRADE_CHARACTER_DIALOG).
+class TGameActionOpenTradeCharacterDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenTradeCharacterDialog()
+        : TGameActionSimple(EGameAction::OPEN_TRADE_CHARACTER_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionRemoveAllTutorialMarkers (REMOVE_ALL_TUTORIAL_MARKERS).
+class TGameActionRemoveAllTutorialMarkers final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionRemoveAllTutorialMarkers()
+        : TGameActionSimple(EGameAction::REMOVE_ALL_TUTORIAL_MARKERS)
+    {
+    }
+};
+
+/// CIP input::TGameActionRequestCopySelectedTextToClipboard (REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD).
+class TGameActionRequestCopySelectedTextToClipboard final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionRequestCopySelectedTextToClipboard()
+        : TGameActionSimple(EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD)
+    {
+    }
+};
+
+/// CIP input::TGameActionSelectAllText (REQUEST_SELECT_ALL_TEXT).
+class TGameActionSelectAllText final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSelectAllText()
+        : TGameActionSimple(EGameAction::REQUEST_SELECT_ALL_TEXT)
+    {
+    }
+};
+
+/// CIP input::TGameActionSessiondumpPause (SESSIONDUMP_PAUSE).
+class TGameActionSessiondumpPause final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSessiondumpPause()
+        : TGameActionSimple(EGameAction::SESSIONDUMP_PAUSE)
+    {
+    }
+};
+
+/// CIP input::TGameActionSessiondumpResume (SESSIONDUMP_RESUME).
+class TGameActionSessiondumpResume final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSessiondumpResume()
+        : TGameActionSimple(EGameAction::SESSIONDUMP_RESUME)
+    {
+    }
+};
+
+/// CIP input::TGameActionStartTargetSelection (START_TARGET_SELECTION).
+class TGameActionStartTargetSelection final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionStartTargetSelection()
+        : TGameActionSimple(EGameAction::START_TARGET_SELECTION)
+    {
+    }
+};
+
+/// CIP input::TGameActionTakeManualScreenshot (TAKE_MANUAL_SCREENSHOT).
+class TGameActionTakeManualScreenshot final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionTakeManualScreenshot()
+        : TGameActionSimple(EGameAction::TAKE_MANUAL_SCREENSHOT)
+    {
+    }
+    /// CIP v3: runs while the keyboard shortcuts are restricted.
+    bool isAllowedWhileShortcutsAreRestricted() const override { return true; }
+};
+
+/// CIP input::TGameActionToggleCreatureHudsVisible (TOGGLE_CREATURE_HUDS_VISIBLE).
+class TGameActionToggleCreatureHudsVisible final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionToggleCreatureHudsVisible()
+        : TGameActionSimple(EGameAction::TOGGLE_CREATURE_HUDS_VISIBLE)
+    {
+    }
+};
+
+/// CIP input::TGameActionToggleServerLogSubscriptionInCurrentChatChannel (TOGGLE_SERVER_LOG_SUBSCRIPTION_IN_CURRENT_CHAT_CHANNEL).
+class TGameActionToggleServerLogSubscriptionInCurrentChatChannel final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionToggleServerLogSubscriptionInCurrentChatChannel()
+        : TGameActionSimple(EGameAction::TOGGLE_SERVER_LOG_SUBSCRIPTION_IN_CURRENT_CHAT_CHANNEL)
+    {
+    }
+};
+
+/// CIP input::TGameActionUnmountPlayer (UNMOUNT_PLAYER).
+class TGameActionUnmountPlayer final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionUnmountPlayer()
+        : TGameActionSimple(EGameAction::UNMOUNT_PLAYER)
+    {
+    }
+};
+
 /// CIP input::TGameActionShowLenshelp (LENSHELP_SHOW, 0xc4): the lenshelp text
 /// of an object (its appearance's lenshelp id) at its field and the scene
 /// rectangle the help points at.
@@ -566,26 +818,8 @@ public:
     TGameActionAssignSpellToActionButton() { type = EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON; }
 };
 
-/// CIP input::TGameActionAttackFirstTarget .
-class TGameActionAttackFirstTarget final : public TGameAction
-{
-public:
-    TGameActionAttackFirstTarget() { type = EGameAction::ATTACK_FIRST_TARGET; }
-};
 
-/// CIP input::TGameActionAttackNextTarget .
-class TGameActionAttackNextTarget final : public TGameAction
-{
-public:
-    TGameActionAttackNextTarget() { type = EGameAction::ATTACK_NEXT_TARGET; }
-};
 
-/// CIP input::TGameActionAttackPreviousTarget .
-class TGameActionAttackPreviousTarget final : public TGameAction
-{
-public:
-    TGameActionAttackPreviousTarget() { type = EGameAction::ATTACK_PREVIOUS_TARGET; }
-};
 
 /// CIP input::TGameActionBrowseField (v0 → BROWSE_FIELD).
 class TGameActionBrowseField final : public TGameAction
@@ -610,12 +844,6 @@ public:
     TGameActionChangeAutoPreyExtendType() { type = EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE; }
 };
 
-/// CIP input::TGameActionChangeCharacter .
-class TGameActionChangeCharacter final : public TGameAction
-{
-public:
-    TGameActionChangeCharacter() { type = EGameAction::CHANGE_CHARACTER; }
-};
 
 /// CIP input::TGameActionChangeContextMenuEnabled .
 class TGameActionChangeContextMenuEnabled final : public TGameAction
@@ -679,12 +907,6 @@ public:
     TGameActionClearObtainContainer() { type = EGameAction::OBTAIN_CONTAINER_CLEAR; }
 };
 
-/// CIP input::TGameActionClearOldestMessageFromMapwindow .
-class TGameActionClearOldestMessageFromMapwindow final : public TGameAction
-{
-public:
-    TGameActionClearOldestMessageFromMapwindow() { type = EGameAction::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW; }
-};
 
 /// CIP input::TGameActionCloseAllMultiActionButtons .
 class TGameActionCloseAllMultiActionButtons final : public TGameAction
@@ -693,12 +915,6 @@ public:
     TGameActionCloseAllMultiActionButtons() { type = EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS; }
 };
 
-/// CIP input::TGameActionCloseCurrentChatChannel .
-class TGameActionCloseCurrentChatChannel final : public TGameAction
-{
-public:
-    TGameActionCloseCurrentChatChannel() { type = EGameAction::CLOSE_CURRENT_CHAT_CHANNEL; }
-};
 
 
 /// CIP input::TGameActionConfigureShowOffSocket (v0).
@@ -774,19 +990,7 @@ public:
     TGameActionDepotSearchRetrieve() { type = EGameAction::DEPOT_SERACH_RETRIEVE; }
 };
 
-/// CIP input::TGameActionDisplayNextChatChannelTab .
-class TGameActionDisplayNextChatChannelTab final : public TGameAction
-{
-public:
-    TGameActionDisplayNextChatChannelTab() { type = EGameAction::DISPLAY_NEXT_CHAT_CHANNEL_TAB; }
-};
 
-/// CIP input::TGameActionDisplayPreviousChatChannelTab .
-class TGameActionDisplayPreviousChatChannelTab final : public TGameAction
-{
-public:
-    TGameActionDisplayPreviousChatChannelTab() { type = EGameAction::DISPLAY_PREVIOUS_CHAT_CHANNEL_TAB; }
-};
 
 /// CIP input::TGameActionExaltationForgeConvergenceFusion .
 class TGameActionExaltationForgeConvergenceFusion final : public TGameAction
@@ -840,12 +1044,6 @@ public:
     TGameActionGetChatChannelList() { type = EGameAction::GET_CHAT_CHANNEL_LIST; }
 };
 
-/// CIP input::TGameActionGetGuildMessage .
-class TGameActionGetGuildMessage final : public TGameAction
-{
-public:
-    TGameActionGetGuildMessage() { type = EGameAction::GET_GUILD_MESSAGE; }
-};
 
 /// CIP input::TGameActionGetTextForReport .
 class TGameActionGetTextForReport final : public TGameAction
@@ -902,13 +1100,6 @@ public:
 };
 
 
-/// CIP input::TGameActionMountPlayer .
-class TGameActionMountPlayer final : public TGameAction
-{
-public:
-    TGameActionMountPlayer() { type = EGameAction::MOUNT_PLAYER; }
-    explicit TGameActionMountPlayer(uint32_t creatureId);
-};
 
 /// CIP input::TGameActionMoveUp .
 class TGameActionMoveUp final : public TGameAction
@@ -918,19 +1109,7 @@ public:
     TGameActionMoveUp(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
-/// CIP input::TGameActionOpenAddVipDialog .
-class TGameActionOpenAddVipDialog final : public TGameActionVip
-{
-public:
-    TGameActionOpenAddVipDialog() { type = EGameAction::OPEN_ADD_VIP_DIALOG; }
-};
 
-/// CIP input::TGameActionOpenAddVipGroupDialog .
-class TGameActionOpenAddVipGroupDialog final : public TGameActionVipGroup
-{
-public:
-    TGameActionOpenAddVipGroupDialog() { type = EGameAction::OPEN_ADD_VIP_GROUP_DIALOG; }
-};
 
 /// CIP input::TGameActionOpenContainerInSpecificSidebar .
 class TGameActionOpenContainerInSpecificSidebar final : public TGameAction
@@ -963,12 +1142,6 @@ public:
     TGameActionOpenGetPremiumUrl() { type = EGameAction::OPEN_URL_GET_PREMIUM; }
 };
 
-/// CIP input::TGameActionOpenHighscoresDialog .
-class TGameActionOpenHighscoresDialog final : public TGameAction
-{
-public:
-    TGameActionOpenHighscoresDialog() { type = EGameAction::OPEN_HIGHSCORES_DIALOG; }
-};
 
 /// CIP input::TGameActionOpenLootContainer .
 class TGameActionOpenLootContainer final : public TGameActionManagedContainer
@@ -1021,13 +1194,6 @@ public:
     TGameActionOpenParentContainer(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
-/// CIP input::TGameActionOpenPreyDialog .
-class TGameActionOpenPreyDialog final : public TGameAction
-{
-public:
-    TGameActionOpenPreyDialog() { type = EGameAction::OPEN_PREY_DIALOG; }
-    explicit TGameActionOpenPreyDialog(uint32_t creatureId);
-};
 
 /// CIP input::TGameActionOpenQuestLog .
 class TGameActionOpenQuestLog final : public TGameAction
@@ -1072,12 +1238,6 @@ public:
     TGameActionOpenSurveyUrl() { type = EGameAction::OPEN_URL_SURVEY; }
 };
 
-/// CIP input::TGameActionOpenTradeCharacterDialog .
-class TGameActionOpenTradeCharacterDialog final : public TGameAction
-{
-public:
-    TGameActionOpenTradeCharacterDialog() { type = EGameAction::OPEN_TRADE_CHARACTER_DIALOG; }
-};
 
 /// CIP input::TGameActionOpenUrl .
 class TGameActionOpenUrl final : public TGameAction
@@ -1117,12 +1277,6 @@ public:
     TGameActionRefreshCompendiumNews() { type = EGameAction::REFRESH_COMPENDIUM_NEWS; }
 };
 
-/// CIP input::TGameActionRemoveAllTutorialMarkers .
-class TGameActionRemoveAllTutorialMarkers final : public TGameAction
-{
-public:
-    TGameActionRemoveAllTutorialMarkers() { type = EGameAction::REMOVE_ALL_TUTORIAL_MARKERS; }
-};
 
 /// CIP input::TGameActionRemoveSpriteIdentifierFromCache .
 class TGameActionRemoveSpriteIdentifierFromCache final : public TGameAction
@@ -1199,12 +1353,6 @@ public:
     explicit TGameActionRequestConformationForCopyingTextToClipboard(QString text);
 };
 
-/// CIP input::TGameActionRequestCopySelectedTextToClipboard .
-class TGameActionRequestCopySelectedTextToClipboard final : public TGameAction
-{
-public:
-    TGameActionRequestCopySelectedTextToClipboard() { type = EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD; }
-};
 
 /// CIP input::TGameActionRequestOutfitsFromServer .
 class TGameActionRequestOutfitsFromServer final : public TGameAction
@@ -1263,12 +1411,6 @@ public:
     TGameActionSaveTextToFile() { type = EGameAction::SAVE_TEXT_TO_FILE; }
     explicit TGameActionSaveTextToFile(QString filePath);
 };
-/// CIP input::TGameActionSelectAllText .
-class TGameActionSelectAllText final : public TGameAction
-{
-public:
-    TGameActionSelectAllText() { type = EGameAction::REQUEST_SELECT_ALL_TEXT; }
-};
 /// CIP input::TGameActionSelectLootContainer .
 class TGameActionSelectLootContainer final : public TGameActionManagedContainer
 {
@@ -1326,18 +1468,6 @@ class TGameActionSendChatMessageWithSpeechVolume final : public TGameAction
 public:
     TGameActionSendChatMessageWithSpeechVolume() { type = EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME; }
     explicit TGameActionSendChatMessageWithSpeechVolume(QString text);
-};
-/// CIP input::TGameActionSessiondumpPause .
-class TGameActionSessiondumpPause final : public TGameAction
-{
-public:
-    TGameActionSessiondumpPause() { type = EGameAction::SESSIONDUMP_PAUSE; }
-};
-/// CIP input::TGameActionSessiondumpResume .
-class TGameActionSessiondumpResume final : public TGameAction
-{
-public:
-    TGameActionSessiondumpResume() { type = EGameAction::SESSIONDUMP_RESUME; }
 };
 /// CIP input::TGameActionSessiondumpSkipTo .
 class TGameActionSessiondumpSkipTo final : public TGameAction
@@ -1496,12 +1626,6 @@ class TGameActionSpriteResolved final : public TGameAction
 public:
     TGameActionSpriteResolved() { type = EGameAction::SPRITE_RESOLVED; }
 };
-/// CIP input::TGameActionStartTargetSelection .
-class TGameActionStartTargetSelection final : public TGameAction
-{
-public:
-    TGameActionStartTargetSelection() { type = EGameAction::START_TARGET_SELECTION; }
-};
 /// CIP input::TGameActionStashOpenRetrieveDialog .
 class TGameActionStashOpenRetrieveDialog final : public TGameAction
 {
@@ -1565,12 +1689,6 @@ class TGameActionTakeAutomaticScreenshot final : public TGameAction
 public:
     TGameActionTakeAutomaticScreenshot() { type = EGameAction::TAKE_AUTOMATIC_SCREENSHOT; }
 };
-/// CIP input::TGameActionTakeManualScreenshot .
-class TGameActionTakeManualScreenshot final : public TGameAction
-{
-public:
-    TGameActionTakeManualScreenshot() { type = EGameAction::TAKE_MANUAL_SCREENSHOT; }
-};
 /// CIP input::TGameActionTargetSelected .
 class TGameActionTargetSelected final : public TGameAction
 {
@@ -1603,23 +1721,11 @@ public:
     TGameActionToggleBlackWhitelistStatus() = default;
     explicit TGameActionToggleBlackWhitelistStatus(EGameAction type);
 };
-/// CIP input::TGameActionToggleCreatureHudsVisible .
-class TGameActionToggleCreatureHudsVisible final : public TGameAction
-{
-public:
-    TGameActionToggleCreatureHudsVisible() { type = EGameAction::TOGGLE_CREATURE_HUDS_VISIBLE; }
-};
 /// CIP input::TGameActionToggleMounted .
 class TGameActionToggleMounted final : public TGameAction
 {
 public:
     TGameActionToggleMounted() { type = EGameAction::TOGGLE_MOUNTED; }
-};
-/// CIP input::TGameActionToggleServerLogSubscriptionInCurrentChatChannel .
-class TGameActionToggleServerLogSubscriptionInCurrentChatChannel final : public TGameAction
-{
-public:
-    TGameActionToggleServerLogSubscriptionInCurrentChatChannel() { type = EGameAction::TOGGLE_SERVER_LOG_SUBSCRIPTION_IN_CURRENT_CHAT_CHANNEL; }
 };
 /// CIP input::TGameActionToggleWidget .
 class TGameActionToggleWidget final : public TGameAction
@@ -1659,13 +1765,6 @@ class TGameActionUnignoreName final : public TGameAction
 public:
     TGameActionUnignoreName() { type = EGameAction::UNIGNORE_NAME; }
     explicit TGameActionUnignoreName(QString text);
-};
-/// CIP input::TGameActionUnmountPlayer .
-class TGameActionUnmountPlayer final : public TGameAction
-{
-public:
-    TGameActionUnmountPlayer() { type = EGameAction::UNMOUNT_PLAYER; }
-    explicit TGameActionUnmountPlayer(uint32_t creatureId);
 };
 /// CIP input::TGameActionUpdateExivaOptions .
 class TGameActionUpdateExivaOptions final : public TGameAction
@@ -1779,7 +1878,11 @@ public:
 };
 }
 
+/// The field carrier of `type` (qtclient, while TGameAction exists).
 TGameActionPtr makeAction(EGameAction type);
+/// An action of `type` without fields: CIP's class of the type when it carries
+/// none (TGameActionSimple or its named subclass), else the field carrier.
+IGameActionPtr makeGameAction(EGameAction type);
 TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 /// The creature an action is on (CIP: the creature classes' v4); 0 for none.

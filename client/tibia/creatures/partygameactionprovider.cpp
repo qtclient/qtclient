@@ -61,7 +61,7 @@ void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, co
             shared->enable = !player->isSharingExperience();
             actions.push_back(shared);
         }
-        actions.push_back(input::makeAction(EGameAction::LEAVE_PARTY));
+        actions.push_back(input::makeGameAction(EGameAction::LEAVE_PARTY));
     }
     if (!creature->isLocalPlayer() && creature->isPartyMember())
         push(EGameAction::JOIN_AGGRESSION);

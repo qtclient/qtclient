@@ -593,7 +593,7 @@ void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
     action->parameter = 1;
     action->instance = 1;
     input::publish(action);
-    input::publish(input::makeAction(A::CLOSE_CYCLOPEDIA));
+    input::publish(input::makeGameAction(A::CLOSE_CYCLOPEDIA));
 }
 
 void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::requestBless(); }

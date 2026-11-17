@@ -60,8 +60,16 @@ std::function<bool(const IGameAction&)> typedGameActionHandler(F&& handler)
     } else {
         using Action = typename GameActionHandlerArgument<Handler>::type;
         return [handler = Handler(std::forward<F>(handler))](const IGameAction& action) mutable -> bool {
-            const auto* typed = dynamic_cast<const Action*>(&action);
-            return typed && handler(*typed);
+            if (const auto* typed = dynamic_cast<const Action*>(&action))
+                return handler(*typed);
+            if constexpr (std::is_same_v<Action, TGameAction>) {
+                // qtclient: a handler still taking the field carrier sees a
+                // ported class's action as an empty carrier of its type.
+                TGameAction carrier;
+                carrier.type = action.gameActionType();
+                return handler(carrier);
+            }
+            return false;
         };
     }
 }

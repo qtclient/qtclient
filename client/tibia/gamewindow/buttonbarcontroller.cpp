@@ -573,7 +573,7 @@ void TButtonBarController::activateShortcut(const int buttonId)
         if (m_newsButtonController)
             QMetaObject::invokeMethod(m_newsButtonController, "onOpenNewsButtonClicked");
         else
-            input::publish(input::makeAction(input::EGameAction::OPEN_NEWS_DIALOG));
+            input::publish(input::makeGameAction(input::EGameAction::OPEN_NEWS_DIALOG));
         break;
     case B::CYCLOPEDIA_DIALOG:
         if (m_cyclopediaButtonController)

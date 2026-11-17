@@ -316,7 +316,7 @@ TNewsButtonController* TNewsButtonController::instance()
 
 void TNewsButtonController::onOpenNewsButtonClicked()
 {
-    input::publish(input::makeAction(A::OPEN_NEWS_DIALOG));
+    input::publish(input::makeGameAction(A::OPEN_NEWS_DIALOG));
     stopHighlight();
 }
 
@@ -334,7 +334,7 @@ void TNewsButtonController::highlight()
 void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
 {
     // Refresh portal gamenews so the dialog / unread badges stay current.
-    input::publish(input::makeAction(A::REFRESH_COMPENDIUM_NEWS));
+    input::publish(input::makeGameAction(A::REFRESH_COMPENDIUM_NEWS));
     if (notificationOnly) {
         highlight();
         return;

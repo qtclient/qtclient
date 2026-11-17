@@ -668,7 +668,7 @@ void TMarketController::onCloseButtonPressed()
 
 void TMarketController::onGetCoinsButtonClicked()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
 void TMarketController::onStoreDeeplinkClicked()

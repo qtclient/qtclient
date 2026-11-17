@@ -266,7 +266,7 @@ input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const in
     const Position position(UINT16_MAX, static_cast<uint16_t>(slotId), 0);
     input::TGameActionList actions =
         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, 0), SlotActionTypes);
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     return actions;
 }
 
@@ -575,7 +575,7 @@ void TPlayerInventoryAndStatusController::onSlotTargetSelected(const int slotId)
 
 void TPlayerInventoryAndStatusController::onStopClicked()
 {
-    input::publish(input::makeAction(A::STOP_ATTACKING_FOLLOWING_WALKING));
+    input::publish(input::makeGameAction(A::STOP_ATTACKING_FOLLOWING_WALKING));
 }
 
 }

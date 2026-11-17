@@ -1271,12 +1271,12 @@ bool TChatController::exivaOptionsAvailable() const
 
 void TChatController::openWhiteBlacklistDialog()
 {
-    input::publish(input::makeAction(A::OPEN_WHITEBLACKLIST_DIALOG));
+    input::publish(input::makeGameAction(A::OPEN_WHITEBLACKLIST_DIALOG));
 }
 
 void TChatController::openExivaOptionsDialog()
 {
-    input::publish(input::makeAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
+    input::publish(input::makeGameAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
 }
 
 void TChatController::addLogMessage(const QString& text)

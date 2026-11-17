@@ -25,7 +25,7 @@ using A = input::EGameAction;
 
 void publish(const A type)
 {
-    input::publish(input::makeAction(type));
+    input::publish(input::makeGameAction(type));
 }
 } // namespace
 

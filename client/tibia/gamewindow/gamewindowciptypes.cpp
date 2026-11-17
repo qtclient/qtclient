@@ -214,7 +214,7 @@ void TTextCopyController::copyOrCut(QObject* textInput, const bool cut)
         clip->setText(selected);
     if (cut)
         QMetaObject::invokeMethod(textInput, "remove", Qt::DirectConnection);
-    input::publish(input::makeAction(cut ? A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD : A::COPY_TEXT_TO_CLIPBOARD));
+    input::publish(input::makeGameAction(cut ? A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD : A::COPY_TEXT_TO_CLIPBOARD));
 }
 
 TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)

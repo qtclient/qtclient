@@ -862,7 +862,7 @@ void TStoreDialogController::requestSearch(const QString& SearchString)
 
 void TStoreDialogController::openGetCoinsUrl()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
 void TStoreDialogController::openTransactionHistory()
@@ -976,7 +976,7 @@ void TStoreDialogController::requestTransactionDetailsAndShowPage(const int Tran
 
 void TStoreDialogController::requestTradeCharacter()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
+    input::publish(input::makeGameAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
 }
 
 void TStoreDialogController::rebuildAvailableOffers()

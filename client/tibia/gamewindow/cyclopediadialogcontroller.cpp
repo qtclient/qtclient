@@ -243,7 +243,7 @@ void TCyclopediaDialogController::requestOpenManageLootContainerDialog()
 {
     clearBacklog();
     closeDialog();
-    input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER));
+    input::publish(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
 }
 
 void TCyclopediaDialogController::requestBack()

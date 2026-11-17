@@ -2824,6 +2824,7 @@ input::TGameActionTakeAutomaticScreenshot::v1	872d4faac408f6d5	skip	generated: c
 input::TGameActionTakeAutomaticScreenshot::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionTakeManualScreenshot::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionTakeManualScreenshot::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionTakeManualScreenshot::v3	9583ec69b8585ef5	ported	input/gameaction.h:TGameActionTakeManualScreenshot::isAllowedWhileShortcutsAreRestricted
 input::TGameActionTargetSelected::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionTargetSelected::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
 input::TGameActionTeleportToCoordinate::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
