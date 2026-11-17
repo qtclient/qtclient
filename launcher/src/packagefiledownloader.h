@@ -68,7 +68,8 @@ private:
     /// Pending file downloaded from `url` (pending files are sorted by url), or end().
     TFileIterator findPendingFile(const QUrl& url);
     void handleDownloadedFile(const QUrl& url, const QByteArray& data, bool unpacked);
-    void saveFile(const TFileInPackage& file, const QByteArray& data);
+    static bool saveFile(const QDir& targetDirectory, int updateMode, const TFileInPackage& file,
+                         const QByteArray& data);
     TFileSize downloadedBytes() const;
     TFileSize totalBytes() const;
     void checkFinished();

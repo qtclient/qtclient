@@ -118,54 +118,64 @@ void TPackageFileDownloader::handleDownloadedFile(const QUrl& url, const QByteAr
     const auto file = findPendingFile(url);
     if (file == m_pendingFiles.end())
         return;
-    if (!unpacked && file->unpack) {
-        // Unpack off the main thread, then come back here with the result.
-        using TResult = std::pair<bool, QByteArray>;
-        auto* watcher = new QFutureWatcher<TResult>();
-        connect(watcher, &QFutureWatcher<TResult>::finished, this, [this, watcher, url]() {
-            watcher->deleteLater();
-            const TResult result = watcher->isCanceled() ? TResult{false, {}} : watcher->result();
-            if (result.first) {
-                handleDownloadedFile(url, result.second, true);
-                return;
-            }
+    // Host: unpack and write on a pool thread; the main thread only books the
+    // result. On /play every file-system call from the main thread is a round
+    // trip to the OPFS worker that suspends the event loop, and so every
+    // download, for its duration (mkpath + QSaveFile is a dozen of them per
+    // file); a pool thread blocks on it cheaply instead.
+    enum class TSaved { Ok, UnpackFailed, WriteFailed };
+    auto* watcher = new QFutureWatcher<TSaved>();
+    connect(watcher, &QFutureWatcher<TSaved>::finished, this, [this, watcher, url]() {
+        watcher->deleteLater();
+        const TSaved saved = watcher->isCanceled() ? TSaved::UnpackFailed : watcher->result();
+        const auto done = findPendingFile(url);
+        if (done == m_pendingFiles.end())
+            return;
+        if (saved == TSaved::UnpackFailed) {
             qWarning() << "Failed to decompress file downloaded from" << url.toString();
-            const auto failed = findPendingFile(url);
-            if (failed != m_pendingFiles.end())
-                m_pendingFiles.erase(failed);
+            m_pendingFiles.erase(done);
             m_downloadFailed = true;
             checkFinished();
-        });
-        watcher->setFuture(QtConcurrent::run([data]() {
+            return;
+        }
+        if (saved == TSaved::WriteFailed)
+            m_diskAccessFailed = true;
+        m_completedFiles.push_back(*done);
+        m_pendingFiles.erase(done);
+        checkFinished();
+    });
+    const bool unpack = !unpacked && file->unpack;
+    watcher->setFuture(QtConcurrent::run(
+        [file = *file, data, unpack, url, targetDirectory = m_targetDirectory, updateMode = m_updateMode]() {
             QByteArray output;
-            QString error;
-            const bool ok = unpackLzmaAlone(data, output, &error);
-            return std::pair<bool, QByteArray>(ok, output);
+            if (unpack) {
+                QString error;
+                if (!unpackLzmaAlone(data, output, &error))
+                    return TSaved::UnpackFailed;
+            } else {
+                output = data;
+            }
+            qInfo() << "Downloading" << url.toString() << "was finished, now saving to disk.";
+            return saveFile(targetDirectory, updateMode, file, output) ? TSaved::Ok : TSaved::WriteFailed;
         }));
-        return;
-    }
-    qInfo() << "Downloading" << url.toString() << "was finished, now saving to disk.";
-    saveFile(*file, data);
-    m_completedFiles.push_back(*file);
-    m_pendingFiles.erase(file);
-    checkFinished();
 }
 
-void TPackageFileDownloader::saveFile(const TFileInPackage& file, const QByteArray& data)
+bool TPackageFileDownloader::saveFile(const QDir& targetDirectory, int updateMode, const TFileInPackage& file,
+                                      const QByteArray& data)
 {
-    const QString path = m_targetDirectory.filePath(file.localFile);
+    const QString path = targetDirectory.filePath(file.localFile);
     // A self-update keeps the replaced file as "<file>.old" until the next start.
-    if (m_updateMode == 1 && TLauncherFilesystemHelper::fileExists(path))
+    if (updateMode == 1 && TLauncherFilesystemHelper::fileExists(path))
         TLauncherFilesystemHelper::renameFile(path, path + TLauncherFilesystemHelper::backupFileSuffix());
     if (!TLauncherFilesystemHelper::writeFile(path, data)) {
         qCritical() << "Writing" << path << "failed.";
-        m_diskAccessFailed = true;
-        return;
+        return false;
     }
     if (file.executable) {
         QFile::setPermissions(path, QFile::permissions(path) | QFileDevice::ExeOwner | QFileDevice::ExeGroup
                                         | QFileDevice::ExeOther);
     }
+    return true;
 }
 
 void TPackageFileDownloader::onDownloadFailed(const QUrl& url, QNetworkReply::NetworkError, const QString& errorString)
