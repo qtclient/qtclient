@@ -1,4 +1,6 @@
 #include "skillwheel/skillwheelciptypes.h"
+
+#include "cyclopedia/cyclopediaciptypes.h"
 #include <vector>
 #include <map>
 #include <client/staticdata.h>
@@ -48,6 +50,11 @@ void TSkillWheelProtocolMessageHandler::saveSkillWheel(const TWheel& wheel)
     for (const std::optional<TGem>& gem : wheel.vessels)
         m->add_vessel_gems(gem ? static_cast<uint32_t>(gem->id & 0xffff) : UINT32_MAX);
     protocol::sendGameclientMessage(std::move(message));
+}
+
+void TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(const uint32_t characterId)
+{
+    cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenCharacterInfo(characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL);
 }
 
 void TSkillWheelProtocolMessageHandler::dismantleGem(const int gemId)

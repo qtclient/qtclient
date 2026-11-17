@@ -101,6 +101,8 @@ public:
     /// grade (4).
     /// The wheel of a player.
     static void requestSkillWheel(uint32_t playerId);
+    /// The character's wheel through the cyclopedia character info (the character info dialog).
+    static void requestCharacterSkillWheel(uint32_t characterId);
     /// The 36 slice points and the eight vessels' gems (-1 empty).
     static void saveSkillWheel(const TWheel& wheel);
     static void dismantleGem(int gemId);

@@ -1,5 +1,7 @@
 #include "characterinfodialogcontroller.h"
 
+#include "skillwheel/skillwheelciptypes.h"
+
 #include "cyclopedia/characterinfostorage.h"
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
@@ -563,7 +565,7 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
     uint32_t characterId = m_characterId;
     if (characterId == 0)
         characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, characterId));
+    skillwheel::TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(characterId);
 }
 
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)
