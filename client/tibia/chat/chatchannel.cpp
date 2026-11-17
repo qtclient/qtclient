@@ -2,6 +2,9 @@
 #include "game/gamesessionbase.h"
 
 #include "chat/chatgameactionhandler.h"
+#include <stdexcept>
+#include "input/gameactionhandlers.h"
+#include "input/gameaction.h"
 #include "creatures/creaturestorage.h"
 #include "cyclopedia/iteminfostorage.h"
 
@@ -292,6 +295,7 @@ void TChatChannelStorage::addLocalEntry(const QColor& color, const QString& name
 void TChatChannelStorage::addNpcChannelEntry(const QColor& color, const QString& name, const QString& text)
 {
     open({ TChatChannelIdentifier::Npc }, false, false)->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
+    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, m_npcMessageSounds);
 }
 
 void TChatChannelStorage::addOwnNpcChannelEntry(const QColor& color, const QString& name, const QString& text, const int level)
@@ -308,8 +312,19 @@ void TChatChannelStorage::addNpcEntry(const QColor& color, const QString& text, 
 void TChatChannelStorage::addChannelEntry(const QColor& color, const uint16_t channelId, const QString& name, const QString& text,
                                           const int level, const bool traded, const uint32_t statementId)
 {
-    if (TChatChannel* channel = findChannelId(channelId))
-        channel->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId));
+    TChatChannel* channel = findChannelId(channelId);
+    if (!channel)
+        return;
+    channel->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId));
+    if (name.toLower() == m_ownName)
+        return;
+    const TChatChannelIdentifier& id = channel->identifier();
+    // Team Finder is channel 5.
+    const bool enabled = id.isPartyChannel() ? m_partyMessageSounds
+                         : id.isGuildChannel() ? m_guildMessageSounds
+                         : channelId == 5 ? m_teamFinderMessageSounds
+                                          : true;
+    publishChatSound(cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED, enabled);
 }
 
 void TChatChannelStorage::addChannelSystemEntry(const QColor& color, const uint16_t channelId, const QString& text)
@@ -336,9 +351,35 @@ void TChatChannelStorage::addPrivateEntry(const QColor& color, const QString& pa
 {
     const TChatEntry entry = TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId);
     TChatChannel* channel = find(TChatChannelIdentifier::messageTo(partner));
-    if (!channel)
+    int sound = cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED;
+    if (!channel) {
         channel = m_localChat;
+        sound = cip::tibia::qmlcomponents::TSoundHelperService::PRIVATE_MESSAGE_IN_LOCAL_CHAT;
+    }
     channel->addEntry(entry);
+    if (name.toLower() != m_ownName)
+        publishChatSound(sound, m_privateMessageSounds);
+}
+
+void TChatChannelStorage::setSoundOptions(const QJsonObject& options)
+{
+    const auto option = [&options](const char* key) { return options.value(QLatin1String(key)).toBool(true); };
+    m_chatSoundsEnabled = option("ChatEnabled");
+    m_partyMessageSounds = option("PartyMessagesEnabled");
+    m_guildMessageSounds = option("GuildMessagesEnabled");
+    m_privateMessageSounds = option("PrivateMessagesEnabled");
+    m_npcMessageSounds = option("NpcMessageseEnabled");
+    m_teamFinderMessageSounds = option("TeamFinderMessagesEnabled");
+}
+
+void TChatChannelStorage::publishChatSound(const int sound, const bool categoryEnabled)
+{
+    if (!m_chatSoundsEnabled || !categoryEnabled)
+        return;
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
+    action->parameter = sound;
+    input::publish(action);
+    Q_EMIT publishGameAction();
 }
 
 void TChatChannelStorage::addBroadcastEntry(const QColor& color, const QString& name, const QString& text, const int level,
@@ -503,8 +544,18 @@ void TChatChannelStorage::addSystemEntry(TChatChannel* channel, const QColor& co
         channel->addEntry(TClientChatEntryFactory::systemEntry(color, text));
 }
 
+int chatMessageMode(const uint32_t protocolMode)
+{
+    if (protocolMode < 0x37 && ((0x7f1dffffffffffULL >> protocolMode) & 1) != 0)
+        return static_cast<int>(protocolMode);
+    throw std::runtime_error(QStringLiteral("EChatmessageMode %1 couldn't be converted").arg(protocolMode).toStdString());
+}
+
 QColor consoleColor(const int mode)
 {
+    const unsigned index = static_cast<unsigned>(mode - 1);
+    if (index >= 0x35 || ((0x178c67ffefffffULL >> index) & 1) == 0)
+        throw std::runtime_error(QStringLiteral("No chat channel color selected for EChatmessageMode %1!").arg(mode).toStdString());
     switch (mode) {
     case 1: case 2: case 3: case 7: case 9:
         return QColor(0xf0, 0xf0, 0x00);
@@ -519,6 +570,27 @@ QColor consoleColor(const int mode)
     case 13: case 14: case 15: case 18: case 20:
         return QColor(0xf8, 0x60, 0x60);
     case 53:
+        return QColor(0xff, 0x66, 0x00);
+    default:
+        return QColor(0xf0, 0xf0, 0xf0);
+    }
+}
+
+QColor overlayColor(const int mode)
+{
+    const unsigned index = static_cast<unsigned>(mode - 1);
+    if (index >= 0x36 || ((0x3f087ae03f570fULL >> index) & 1) == 0)
+        throw std::runtime_error(QStringLiteral("No text overlay color selected for EChatmessageMode %1!").arg(mode).toStdString());
+    switch (mode) {
+    case 1: case 2: case 3: case 9:
+        return QColor(0xf0, 0xf0, 0x00);
+    case 4: case 10: case 11:
+        return QColor(0x60, 0xf8, 0xf8);
+    case 13: case 15: case 18: case 20:
+        return QColor(0xf8, 0x60, 0x60);
+    case 22: case 31: case 32: case 34: case 39:
+        return QColor(0x00, 0xf0, 0x00);
+    case 36: case 37: case 52: case 53:
         return QColor(0xff, 0x66, 0x00);
     default:
         return QColor(0xf0, 0xf0, 0xf0);

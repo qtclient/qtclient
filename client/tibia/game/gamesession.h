@@ -271,10 +271,6 @@ void processUpdateTarget(uint32_t seq, uint32_t targetId);
 void processPlayerTactics(tibia::client::ChaseModes chaseMode, bool safeMode, tibia::client::PVPModes pvpMode);
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                         tibia::client::PVPModes pvpMode);
-void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value, uint8_t color);
-void processTextMessage(tibia::client::MessageMode mode, std::string_view text);
-void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text,
-                 uint16_t channelId, const Position& pos, uint32_t statement = 0);
 void processTeamFinderLeader(const TeamFinderLeaderData& data);
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                           std::string_view name, uint8_t capacity, bool hasParent,

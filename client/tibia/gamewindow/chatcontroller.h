@@ -263,6 +263,7 @@ public:
     chat::TChatChannelStorage& storage() { return m_storage; }
     /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
+    chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes

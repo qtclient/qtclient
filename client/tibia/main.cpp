@@ -1024,6 +1024,7 @@ int main(int argc, char** argv)
     gamewindow::TChatController chat(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), gameClient);
     qInfo("tibia.boot: after ChatController");
     gameClient.setMessageIgnoreList(&chat.ignoreList());
+    gameClient.setChatProtocolMessageHandler(chat.protocolHandler());
     if (cyclopedia::TItemInfoStorage* itemInfo = cyclopedia::TItemInfoStorage::instance())
         itemInfo->setChatStorage(&chat.storage());
 

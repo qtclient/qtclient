@@ -495,21 +495,6 @@ void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::Chas
 {
     gameSessionState().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
 }
-void processNumericalEffect(const tibia::client::MessageMode mode, const Position& pos, const uint64_t value, const uint8_t color)
-{
-    tibia::game::notify("onNumericalEffect", mode, pos, value, color);
-}
-void processTextMessage(const tibia::client::MessageMode mode, const std::string_view text)
-{
-    tibia::game::notify("onTextMessage", mode, text);
-    tibia::game::TGameNotify::instance()->emitTextMessage(static_cast<int>(mode),
-                                                          QString::fromUtf8(text.data(), static_cast<int>(text.size())));
-}
-void processTalk(const std::string_view name, const uint16_t level, const tibia::client::MessageMode mode, const std::string_view text, const uint16_t channelId, const Position& pos, const uint32_t statement)
-{
-    tibia::game::notify("onTalk", name, level, mode, text, channelId, pos, statement);
-}
-
 void processTeamFinderLeader(const TeamFinderLeaderData& data)
 {
     tibia::game::notify("onTeamFinderLeader", data);
