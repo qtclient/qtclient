@@ -1031,16 +1031,10 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     // CIP / : both console buttons flash for 1000 ms.
     m_ignoredFlashTimer.setSingleShot(true);
     m_ignoredFlashTimer.setInterval(1000);
-    connect(&m_ignoredFlashTimer, &QTimer::timeout, this, [this] {
-        m_ignoredFlash = false;
-        Q_EMIT messageIgnoredFlashChanged();
-    });
+    connect(&m_ignoredFlashTimer, &QTimer::timeout, this, &TChatController::onIgnoredFlashTimeout);
     m_exivaSuppressedTimer.setSingleShot(true);
     m_exivaSuppressedTimer.setInterval(1000);
-    connect(&m_exivaSuppressedTimer, &QTimer::timeout, this, [this] {
-        m_exivaSuppressedFlash = false;
-        Q_EMIT exivaSuppressedFlashChanged();
-    });
+    connect(&m_exivaSuppressedTimer, &QTimer::timeout, this, &TChatController::onExivaSuppressedFlashTimeout);
 
     for (TGenericEnterTextDialogController* prompt : { &m_inviteDialog, &m_excludeDialog }) {
         const bool exclude = prompt == &m_excludeDialog;
@@ -1059,10 +1053,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_storage, &chat::TChatChannelStorage::channelAdded, this, &TChatController::onChannelAdded);
     connect(&m_tabs, &TChatChannelTabController::currentChannelChanged, &m_primary, &TChatChannelController::setChannel);
     connect(&m_tabs, &TChatChannelTabController::tabClicked, this, &TChatController::showTabMenu);
-    connect(&m_storage, &chat::TChatChannelStorage::channelRemoved, this, [this](TChatChannel* channel) {
-        if (m_secondary.channel() == channel)
-            setSecondary(nullptr);
-    });
+    connect(&m_storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatController::onChatChannelRemoved);
     for (TChatChannelController* model : { &m_primary, &m_secondary }) {
         connect(model, &TChatChannelController::closeRequested, this, &TChatController::closeChannel);
         connect(model, &TChatChannelController::entryClicked, this,
@@ -1246,20 +1237,32 @@ void TChatController::storeOpenChannels() const
 
 void TChatController::onMessageFiltered()
 {
-    if (!m_ignoredFlash) {
-        m_ignoredFlash = true;
-        Q_EMIT messageIgnoredFlashChanged();
-    }
+    m_ignoredFlash = true;
+    Q_EMIT messageIgnoredFlashChanged();
     m_ignoredFlashTimer.start();
 }
 
 void TChatController::onExivaSuppressed()
 {
-    if (!m_exivaSuppressedFlash) {
-        m_exivaSuppressedFlash = true;
-        Q_EMIT exivaSuppressedFlashChanged();
-    }
+    m_exivaSuppressedFlash = true;
+    Q_EMIT exivaSuppressedFlashChanged();
     m_exivaSuppressedTimer.start();
+}
+
+void TChatController::onIgnoredFlashTimeout()
+{
+    if (!m_ignoredFlash)
+        return;
+    m_ignoredFlash = false;
+    Q_EMIT messageIgnoredFlashChanged();
+}
+
+void TChatController::onExivaSuppressedFlashTimeout()
+{
+    if (!m_exivaSuppressedFlash)
+        return;
+    m_exivaSuppressedFlash = false;
+    Q_EMIT exivaSuppressedFlashChanged();
 }
 
 bool TChatController::exivaOptionsAvailable() const
@@ -1358,6 +1361,11 @@ void TChatController::onChannelListReceived(const std::vector<TChatChannelIdenti
 }
 
 void TChatController::requestChannelList()
+{
+    input::publish(input::makeAction(A::GET_CHAT_CHANNEL_LIST));
+}
+
+void TChatController::requestChannelListFromServer()
 {
     if (!tibia::game::isOnline())
         return;
@@ -1661,6 +1669,13 @@ void TChatController::onSecondaryChannelClicked(const int mouseButtonRaw, const 
     showTabMenu(m_secondary.channel(), mouseButtonRaw, keyboardModifiersRaw);
 }
 
+void TChatController::onChatChannelRemoved(TChatChannel* channel)
+{
+    // The secondary pane hides when its channel goes.
+    if (m_secondary.channel() == channel)
+        setSecondary(nullptr);
+}
+
 void TChatController::onSelectTabAsSecondaryChannel(const int rowId)
 {
     if (TChatChannel* channel = m_tabs.channelAt(rowId))
@@ -1672,7 +1687,7 @@ bool TChatController::handleAction(const input::TGameAction& action)
     const bool noDialog = !TDialogStackController::instance() || TDialogStackController::instance()->isEmpty();
     switch (action.type) {
     case A::GET_CHAT_CHANNEL_LIST:
-        requestChannelList();
+        requestChannelListFromServer();
         return true;
     case A::OPEN_CHAT_CHANNEL:
     case A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT: {

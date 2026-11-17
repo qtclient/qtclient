@@ -308,6 +308,12 @@ public Q_SLOTS:
     void onSelectTabAsSecondaryChannel(int rowId) override;
 
 private:
+    /// GET_CHAT_CHANNEL_LIST: asks the server; its answer opens the channel dialog.
+    void requestChannelListFromServer();
+    /// The console buttons stop flashing 1000 ms after the last trigger.
+    void onIgnoredFlashTimeout();
+    void onExivaSuppressedFlashTimeout();
+    void onChatChannelRemoved(chat::TChatChannel* channel);
     /// What a typed line asks for ('s return value).
     enum class EInput
     {
