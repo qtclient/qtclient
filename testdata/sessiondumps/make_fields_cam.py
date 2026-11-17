@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Writes fields.cam: a synthetic session dump for the no-server tile render check.
+
+The player stands at (100, 100, 7) on a lit field set of real appearances:
+grounds 4526 and 351 (351 draws a 4x4 pattern from the field coordinate),
+50 gold coins (3031, pile pattern), a backpack (2854) under a white flower (102),
+the player in outfit 128 with colours, and effect 63 on the field west of it.
+The objects and outfit are single-phase; effect 63's first phase lasts 400 ms and
+starts at 1300 ms, so a screenshot 1500 ms after world entry (replay
+--screenshot-delay=1500) is the same frame on every run.
+Usage: make_fields_cam.py > fields.cam
+"""
+import struct
+
+PLAYER = 0x10000001
+X, Y, Z = 100, 100, 7
+LEFT, TOP, RIGHT, BOTTOM = 8, 6, 9, 7
+
+
+def u8(v): return struct.pack('<B', v)
+def u16(v): return struct.pack('<H', v)
+def u32(v): return struct.pack('<I', v)
+def string(s): return u16(len(s)) + s.encode()
+def position(x, y, z): return u16(x) + u16(y) + u8(z)
+def ot_double(v): return u8(3) + u32(int(round(v * 1000)) + 0x7fffffff)
+
+
+def player_creature():
+    return (u16(0x61) + u32(0) + u32(PLAYER) + u8(0) + string('Render Check') + u8(100) + u8(2)
+            + u16(128) + u8(78) + u8(69) + u8(58) + u8(76) + u8(0)  # outfit + colours + addons
+            + u16(0)  # no mount
+            + u8(0) + u8(0) + u16(220)  # light, speed
+            + u8(0) + u8(0)  # icons, extra icons
+            + u8(0) + u8(0) + u8(0)  # skull, shield, emblem
+            + u8(0) + u8(1)  # player, vocation
+            + u8(0) + u8(0) + u8(0) + u8(0))  # icon, mark, inspection, unpassable
+
+
+def field_objects(x, y, z):
+    if z != Z:
+        return b''
+    dx, dy = x - X, y - Y
+    ground = u16(351) if -2 <= dx <= 1 and -2 <= dy <= 1 else u16(4526)
+    if (dx, dy) == (0, 0):
+        return ground + player_creature()
+    if (dx, dy) == (1, 0):
+        return ground + u16(3031) + u8(50)
+    if (dx, dy) == (2, 0):
+        return ground + u16(2854) + u8(0) + u16(102)
+    return ground
+
+
+def full_map():
+    body = u8(0x64) + position(X, Y, Z)
+    for z in range(7, -1, -1):
+        offset = Z - z
+        for nx in range(LEFT + RIGHT + 1):
+            for ny in range(TOP + BOTTOM + 1):
+                x, y = X - LEFT + nx + offset, Y - TOP + ny + offset
+                body += field_objects(x, y, z) + u16(0xff00)
+    return body
+
+
+def login_success():
+    return u8(0x17) + u32(PLAYER) + u16(50) + ot_double(857.36) + ot_double(261.29) + ot_double(-4795.01) + u8(0) + u8(0)
+
+
+def effect():
+    # Graphical effects from the field west of the player: effect 63, default source.
+    return u8(0x83) + position(X - 1, Y, Z) + u8(3) + u16(63) + u8(0) + u8(0)
+
+
+lines = [
+    (0, login_success()),
+    (1, u8(0x0f)),
+    (2, u8(0x82) + u8(255) + u8(215)),
+    (3, full_map()),
+    (1300, effect()),
+    (8000, u8(0x05) + u8(0x05) + u8(0x00) + b'smoke'),
+]
+for millis, body in lines:
+    print(f'< {millis} {body.hex()}')

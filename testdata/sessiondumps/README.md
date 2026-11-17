@@ -121,3 +121,15 @@ cp tmp/re/tibia/ui-art/tutorial/tutorial-sessiondump.hints \
 Smoke oracle (play.cam): `play-baseline.oracle` pins IHDR + 8×8 average-hash
 (`max_hamming=24` for animation phase). Override with `TIBIA_SCREENSHOT_ORACLE`.
 Optional extra IHDR check: `TIBIA_SCREENSHOT_BASELINE=/path.png`.
+
+## No-server tile render check (`fields.cam`)
+
+`make_fields_cam.py` writes `fields.cam`: login → world entry → a lit FullMap of
+real appearances (grounds 4526 / 351 with coordinate patterns, 50 gold coins, a
+backpack under a white flower, the player in outfit 128 with colours) and effect
+63 timed into the screenshot. `tools/render-check.sh` replays it with
+`QTCLIENT_TEST_PATHS=1` (settings and data under `~/.qttest`, never the real
+Application Support or Preferences), crops the world map pane and compares it with
+`fields.golden.png` (the creature name strip is masked: its brightness follows the
+light map's moving clouds). `tools/render-check.sh --update` rewrites the golden.
+Needs `make extract` assets and python3 with Pillow.
