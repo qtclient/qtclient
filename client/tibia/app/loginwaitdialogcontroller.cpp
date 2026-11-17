@@ -5,7 +5,7 @@
 namespace tibia::app {
 
 TLoginWaitDialogController::TLoginWaitDialogController(QObject* parent)
-    : gamewindow::TDialogController(QStringLiteral("WaitDialog.qml"), parent)
+    : gamewindow::TDialogController<cip::tibia::gamewindow::TWaitDialogController>(QStringLiteral("WaitDialog.qml"), parent)
 {
     m_fillPercentage = 0.0;
     m_tick.setInterval(200);

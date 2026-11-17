@@ -296,15 +296,15 @@ public Q_SLOTS:
     void onRequestOpenStoreDialog() override;
 
 private:
-    void onStoreDeeplinkChanged(int openAction, int detail);
+    /// The server's deep link: kept for the next click; any link but the home
+    /// page highlights the button.
+    void onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink);
     void clearDeeplink();
 
     QPointer<TStoreDialogController> m_dialog;
-    std::vector<client::gamecore::Hook> m_hooks;
     /// The highlight (600000 ms, single shot).
     QTimer m_highlightTimer;
-    int m_deeplinkAction = 0;
-    int m_deeplinkDetail = -1;
+    store::TStoreOpenParameters m_deeplink;
 };
 
 }

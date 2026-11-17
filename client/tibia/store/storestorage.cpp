@@ -923,13 +923,6 @@ void TStoreProtocolMessageHandler::handleSetStoreButtonDeeplinkMessage(const Gam
 {
     const ProtocolStoreOpenParameters& p = message.parameters();
     Q_EMIT storeButtonDeeplinkChanged(openParameters(p));
-    // Host: the store button controller takes the deep link through the game
-    // notify hook.
-    const auto action = static_cast<uint8_t>(p.open_action());
-    const uint32_t detail = action == OPEN_OFFER ? p.offer_id() : p.detail();
-    const std::string category = action == OPEN_SEARCH ? p.search_text() : p.category();
-    tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(), static_cast<uint8_t>(p.sort_order()),
-                        static_cast<uint8_t>(p.service_type()));
 }
 
 void TStoreProtocolMessageHandler::handleStoreButtonIndicatorsMessage(const GameserverMessageStoreButtonIndicators& message)

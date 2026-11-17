@@ -1101,35 +1101,39 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
                 &TStoreButtonController::onStoreButtonIndicatorsChanged);
         connect(dialog->messages(), &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this,
                 &TStoreButtonController::onRequestOpenStoreDialog);
+        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, this,
+                &TStoreButtonController::onStoreDeeplinkChanged);
     }
 
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const std::vector<std::any>& args) {
-        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)), static_cast<int>(client::gamecore::argInt(args, 1)));
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { clearDeeplink(); });
 }
 
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = m_deeplinkAction;
-    action->instance = m_deeplinkDetail;
+    // The open action carries the link's detail, or its category / search
+    // text.
+    action->parameter = m_deeplink.openAction;
+    switch (m_deeplink.openAction) {
+        case store::OPEN_USEFUL_THING: action->instance = m_deeplink.usefulThing; break;
+        case store::OPEN_OFFER: action->instance = static_cast<int>(m_deeplink.offerId); break;
+        default: action->instance = m_deeplink.premiumDetail; break;
+    }
+    action->text = m_deeplink.category;
     input::publish(action);
     onRequestOpenStoreDialog();
 }
 
-void TStoreButtonController::onStoreDeeplinkChanged(const int openAction, const int detail)
+void TStoreButtonController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)
 {
-    if (openAction == 0) {
+    m_deeplink = StoreDeeplink;
+    if (m_deeplink.openAction == 0) {
         clearDeeplink();
         return;
     }
-    m_deeplinkAction = openAction;
-    m_deeplinkDetail = detail;
     m_highlightTimer.start();
     Q_EMIT changed();
 }
@@ -1142,8 +1146,7 @@ void TStoreButtonController::onHighlightStoreButtonEnds(bool)
 void TStoreButtonController::clearDeeplink()
 {
     m_highlightTimer.stop();
-    m_deeplinkAction = 0;
-    m_deeplinkDetail = -1;
+    m_deeplink = {};
     Q_EMIT changed();
 }
 

@@ -1181,8 +1181,11 @@ int main(int argc, char** argv)
             sidebarWidgets.setSidebarOptions(gameClient.sidebarOptions());
             depotSearchWidget.setSidebarOptions(gameClient.sidebarOptions());
             sidebarPanels.setSidebarOptions(gameClient.sidebarOptions());
-            if (gamewindow::TPremiumPanelController* premiumPanel = sidebarPanels.premiumPanel())
+            if (gamewindow::TPremiumPanelController* premiumPanel = sidebarPanels.premiumPanel()) {
                 premiumPanel->onSessionStarted(gameClient.account().session.isPremium, gameClient.account().session.premiumUntil);
+                QObject::connect(&storeMessages, &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, premiumPanel,
+                                 &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
+            }
             skillWheel.setSessionPremium(gameClient.account().session.isPremium);
             containers.setSidebarOptions(gameClient.sidebarOptions());
             containers.onLoginRampUpFinished();

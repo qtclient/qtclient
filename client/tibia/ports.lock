@@ -2551,6 +2551,12 @@ gamewindow::TVipWidgetDataModelSortFilterProxy::~TVipWidgetDataModelSortFilterPr
 gamewindow::TVipWidgetDataModelSortFilterProxy::~TVipWidgetDataModelSortFilterProxy_deleting	a4ee8ed8617445e4	skip	generated: compiler-generated destructor pair
 gamewindow::TVocationSelectionDialogController::~TVocationSelectionDialogController	ee1c695f4c2e3601	skip	generated: compiler-generated destructor pair
 gamewindow::TVocationSelectionDialogController::~TVocationSelectionDialogController_deleting	ff97d56fba43c178	skip	generated: compiler-generated destructor pair
+gamewindow::TWaitDialogController::abortWait	f9fef220be42d734	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::abortWait
+gamewindow::TWaitDialogController::reduceRemainingWaitDurationByOneSecond	5cd93c75435c091e	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::waitTextWithRemainingDuration
+gamewindow::TWaitDialogController::remainingWaitDurationChanged	af291871bf5d85c9	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::fillPercentage
+gamewindow::TWaitDialogController::v14	53b51c9a2118a656	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::close
+gamewindow::TWaitDialogController::waitAborted	392e79029412ec82	skip	generated: dialogText / dialogCaption property getters (generated in cip_gen; catalog names are shifted)
+gamewindow::TWaitDialogController::waitTimeElapsed	c95a9524390b11fd	skip	generated: dialogText / dialogCaption property getters (generated in cip_gen; catalog names are shifted)
 gamewindow::TWaitDialogController::~TWaitDialogController	297d40beb24064ba	skip	generated: compiler-generated destructor pair
 gamewindow::TWaitDialogController::~TWaitDialogController_deleting	99d9d1ec65f57ee8	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyDialogController::canEditPerksChanged	f56376b0fd3d9dd8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentIsUseRestricted
@@ -7881,6 +7887,7 @@ sub_78ffc6dab469	78ffc6dab469e9a5	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_79014107a84b	79014107a84b5e3c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoPath
 sub_7902c1a4e2ec	7902c1a4e2ec2568	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onContextMenuControllerMenuClosed
 sub_7908df400ddd	7908df400ddd62e5	inlined	skillwheel/skillwheeldata.cpp:revelationPoints
+sub_7909be9ea61f	7909be9ea61fc0e2	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCharacterWorldTransferWorldEntered
 sub_792474049232	792474049232bcc4	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::creatureOutfitId
 sub_7926a8cdfa89#2	7926a8cdfa893688	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::setShowNoResultsFound
 sub_792e51d6a0da	792e51d6a0dae86d	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::setTab
@@ -11493,6 +11500,7 @@ sub_e30e1d75c4ea	e30e1d75c4ea91b1	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_e3146914ac09	e3146914ac09ef94	skip	generated: compiler-generated destructor
 sub_e3244afad659	e3244afad6591f98	ported	chat/chatchannel.cpp:formatEntry
 sub_e327e63641d3	e327e63641d3c1ec	skip	library: libc++ std::vector/std::map instantiation
+sub_e330cb5b253a	e330cb5b253a15cf	ported	gamewindow/waitdialogcontroller.cpp:formatRemainingTime
 sub_e3568bc3e686#2	e3568bc3e68695b4	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_e37316bb4d3f	e37316bb4d3fcfd3	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::totalGoldBalanceString
 sub_e37804b3b64b	e37804b3b64bba5a	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchType
@@ -11646,6 +11654,7 @@ sub_e8075c22c978	e8075c22c9784926	ported	gamewindow/contextmenucontroller.cpp:TC
 sub_e807de94454a	e807de94454a2962	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::selectWorld
 sub_e8082de37776	e8082de37776fbbb	skip	generated: compiler-generated destructor (CryptoPP cipher members)
 sub_e811de8c315a	e811de8c315a1a98	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTeamFinderAssembleTeam
+sub_e8148e656c0b	e8148e656c0bf4a3	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::reduceRemainingWaitDurationByOneSecond
 sub_e817ae9d50bb	e817ae9d50bbf68a	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::removeHighlight
 sub_e817b35a1661	e817b35a1661d211	inlined	proficiency/proficiencyciptypes.cpp:handleWeaponProficiencyMessage
 sub_e823d02c4766	e823d02c47662cac	skip	data: static initializer (misattributed)
@@ -11734,6 +11743,7 @@ sub_ec476fcbd7b2	ec476fcbd7b2215a	ported	gamewindow/taskboarddialogcontroller.cp
 sub_ec4d1808c108	ec4d1808c1083f43	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeTarget
 sub_ec4e61a8530c	ec4e61a8530cff96	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowDragDropped
 sub_ec59f70fb622	ec59f70fb6227fe6	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
+sub_ec77c5b2ce80	ec77c5b2ce801037	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::TWaitDialogController
 sub_ec81728c3176	ec81728c3176d4a2	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::spellIdAt
 sub_ecb20c773a6b	ecb20c773a6b98e2	ported	cyclopedia/cyclopediaciptypes.cpp:monsterRaceAppearance
 sub_ecb5baf450e4	ecb5baf450e43944	skip	generated: compiler-generated destructors of the friends data types and their vectors
@@ -11832,6 +11842,7 @@ sub_f127363e0a29#2	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeSto
 sub_f13097f75d1f	f13097f75d1ff527	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::setSelectedCharmID
 sub_f13ada1e18f2	f13ada1e18f2fe33	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
 sub_f13ada1e18f2#2	f13ada1e18f2fe33	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::onPlayerLevelUp
+sub_f14ded0e7691	f14ded0e76914f44	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onMainCharChangeConfigurationFinished
 sub_f15ad6a352e4	f15ad6a352e4a1e9	skip	library: miniaudio library
 sub_f16bdcbb9e00	f16bdcbb9e009c55	skip	generated: compiler-generated destructor pair
 sub_f170d52d7541	f170d52d754137d6	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
