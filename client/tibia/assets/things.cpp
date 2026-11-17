@@ -428,10 +428,7 @@ bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
 
 TAppearanceTypePtr TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
 {
-    static TAppearanceType empty;
-    if (TAppearanceType* type = getRawThingType(id, category))
-        return type;
-    return &empty;
+    return TAppearanceInstanceFactory::appearanceType(category < ThingLastCategory ? category : ThingCategoryItem, id);
 }
 
 TAppearanceType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)

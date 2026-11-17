@@ -9,6 +9,8 @@
 #include <tibia/game/gamesession.h>
 #include "tibia/runtime/host.h"
 #include "animation/animator.h"
+
+#include <map>
 #include <client/const.h>
 
 #include <client/const.h>
@@ -407,6 +409,34 @@ TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, c
 }
 
 } // namespace
+
+TAppearanceType* TAppearanceInstanceFactory::dummyAppearanceType(const ThingCategory category)
+{
+    // One dummy per category: a type without flags whose only frame group is an
+    // empty initial one.
+    static std::map<ThingCategory, TAppearanceType> dummies = [] {
+        std::map<ThingCategory, TAppearanceType> types;
+        for (const ThingCategory key : { ThingCategoryItem, ThingCategoryCreature, ThingCategoryEffect, ThingCategoryMissile }) {
+            TAppearanceType dummy;
+            dummy.addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
+            types.emplace(key, std::move(dummy));
+        }
+        return types;
+    }();
+    return &dummies.at(category);
+}
+
+TAppearanceType* TAppearanceInstanceFactory::appearanceType(const ThingCategory category, const uint16_t id)
+{
+    if (TAppearanceType* type = TAppearancesManager::instance().getRawThingType(id, category))
+        return type;
+    return dummyAppearanceType(category);
+}
+
+bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category, const uint16_t id)
+{
+    return TAppearancesManager::instance().hasAppearanceType(category, id);
+}
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
 {

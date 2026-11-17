@@ -60,6 +60,8 @@ appearances::TAppearanceInstanceFactory::v0	f6314da58750ec3c	skip	generated: com
 appearances::TAppearanceInstanceFactory::v1	187ed52c4af39879	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstanceFactory::v14	5853906c26f37574	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
 appearances::TAppearanceInstanceFactory::v2	ecaff8f9d277e7d6	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createObject
+appearances::TAppearanceInstanceFactory::v21	986f1c2797659be3	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::appearanceType
+appearances::TAppearanceInstanceFactory::v22	a06869b428dc7f86	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::hasAppearanceType
 appearances::TAppearanceInstanceFactory::v24	fbb038851d5aaed3	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createTutorialFieldEffect
 appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStorage	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
@@ -4982,6 +4984,7 @@ sub_1d49599883d5	1d49599883d55dfa	ported	gamewindow/characterinfodialogcontrolle
 sub_1d4d9e61b677	1d4d9e61b677f209	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::hasMainCharacter
 sub_1d50eaacfd64	1d50eaacfd6459e5	inlined	shared::TTibiaFileSystemHelper::v20
 sub_1d514fadb947	1d514fadb947cf79	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
+sub_1d628a61d649	1d628a61d649eea6	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::dummyAppearanceType
 sub_1d64865ab3fc	1d64865ab3fcb99d	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setTraders
 sub_1d6fcf3fff03	1d6fcf3fff036008	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::post
 sub_1d78d4a40d22#2	1d78d4a40d22541c	skip	generated: moc signal emitter
@@ -5461,6 +5464,7 @@ sub_2d92041cb7e2#14	2d92041cb7e2fe49	skip	library: std::unordered_map constructi
 sub_2d923c84918d	2d923c84918d6130	inlined	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::fromField
 sub_2d946c662949	2d946c6629495801	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_2d9a5c487d57	2d9a5c487d5781d0	skip	generated: compiler-generated destructor pair
+sub_2da55b3fbc0d	2da55b3fbc0d3217	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::appearanceType
 sub_2dc045b2f94a	2dc045b2f94a2a07	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_2ddf8de3686b	2ddf8de3686baed9	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerWidgetController::updateCooldownExpiry
 sub_2df0d8962f85	2df0d8962f850e5c	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::updateOffenceStats

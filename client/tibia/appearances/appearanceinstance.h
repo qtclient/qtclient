@@ -417,6 +417,13 @@ public:
 class TAppearanceInstanceFactory final : public ::tibia::CipTyped
 {
 public:
+    /// The type of `id` in `category`, or the category's dummy type: no flags
+    /// and one empty frame group (it reports isNull()).
+    static TAppearanceType* appearanceType(ThingCategory category, uint16_t id);
+    /// The appearances define `id` in `category`.
+    static bool hasAppearanceType(ThingCategory category, uint16_t id);
+    /// The dummy type of `category` (every category has one).
+    static TAppearanceType* dummyAppearanceType(ThingCategory category);
     static TAppearanceInstancePtr fromThingType(TAppearanceType* type);
     /// An object with no state of its own: hangable objects hang, every other
     /// one follows its field's pattern.
