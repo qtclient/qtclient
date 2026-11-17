@@ -21707,7 +21707,6 @@ sub_f91fca3c4d04	f91fca3c4d04ce62	skip	library: Abseil (protobuf dependency): Mu
 sub_f9267e0ea236	f9267e0ea2362fec	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_f93038196551	f930381965512747	ported	skillwheel/skillwheelcontrollers.cpp:TGemAtelierPageController::unrevealedGreaterGemAppearanceType
 sub_f932a58355c0	f932a58355c09dad	inlined	analysers/impactwidgets.cpp:TPartyHuntWidgetController::requestConfigurationContextMenu
-sub_f93bbd13ccb8#2	f93bbd13ccb892e7	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_f94a7adfeaad	f94a7adfeaad91b3	skip	data: translation-unit static initializer (string constants, vocation names, typeid name maps registered with atexit)
 sub_f94a7adfeaad#2	f94a7adfeaad91b3	skip	data: static initialisers of file-scope constants (vocation names, directory/file names, time zone)
 sub_f9515db0fa1e	f9515db0fa1e2d3a	ported	gamewindow/hitpointmanabarcontroller.cpp:THitpointManabarController::setHitpoints
