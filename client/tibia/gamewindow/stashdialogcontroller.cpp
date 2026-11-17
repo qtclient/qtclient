@@ -78,11 +78,13 @@ uint32_t sellValue(TAppearanceType* type)
 /// The NPCs the stash and depot search trader filters offer.
 std::set<QString> traderNames()
 {
-    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
+    std::set<QString> names = tibia::appearances::TAppearancesManager::instance().creatureProductBuyerNames();
+    names.insert({ QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
              QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
              QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
              QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
-             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
+             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") });
+    return names;
 }
 
 TStashProxyModel::TStashProxyModel(TAppearanceTypeListModel* model, std::function<int(uint16_t)> counts, QObject* parent)

@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <map>
+#include <set>
 #include <memory>
 #include <unordered_map>
 
@@ -110,6 +111,8 @@ public:
     /// The object kinds the protocol reads extra data for; empty before the appearances load.
     const TSpecialAppearancesForProtocolParsing& specialAppearancesForProtocolParsing() const;
     std::string getCyclopediaItemName(uint16_t id);
+    /// The NPCs that buy more than nine kinds of creature products (computed once).
+    std::set<QString> creatureProductBuyerNames() const;
     std::string getProficienciesFile();
 
     bool setThingShape(uint16_t itemId, const std::string& shape);

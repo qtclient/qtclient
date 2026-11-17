@@ -605,6 +605,28 @@ std::string TAppearancesManager::getCyclopediaItemName(const uint16_t id)
     return type->getName();
 }
 
+std::set<QString> TAppearancesManager::creatureProductBuyerNames() const
+{
+    static constexpr int CreatureProductsMarketCategory = 24;
+    static std::set<QString> names;
+    if (!names.empty())
+        return names;
+    std::unordered_map<QString, int> objectsBought;
+    for (const TAppearanceType* type : getNpcSaleObjectTypes()) {
+        if (!type->isMarketable() || type->marketCategory() != CreatureProductsMarketCategory)
+            continue;
+        for (const TNpcTradeData& npc : type->npcTradeData()) {
+            if (npc.buyPrice != 0)
+                ++objectsBought[npc.name];
+        }
+    }
+    for (const auto& [name, count] : objectsBought) {
+        if (count > 9)
+            names.insert(name);
+    }
+    return names;
+}
+
 std::string TAppearancesManager::getProficienciesFile()
 {
     if (!m_proficienciesFile.empty() && tibia::files::data().fileExists(m_proficienciesFile))

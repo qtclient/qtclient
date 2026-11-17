@@ -4197,6 +4197,7 @@ sub_08bcb9af4f84	08bcb9af4f84341a	ported	proficiency/weaponproficiencyshapedialo
 sub_08c045e5d684	08c045e5d684ddb9	inlined	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
 sub_08d3a92ea700	08d3a92ea7005d58	ported	config/optionspages.cpp:THotkeysOptionsPage::requestCloneCurrentPreset
 sub_08dc6b373f3e	08dc6b373f3ebf9b	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::dispatchGameserverMessage
+sub_08ecadbb5001	08ecadbb500197da	skip	library: std::unordered_map<QString, int> emplace / rehash instantiations
 sub_08f8e916e283	08f8e916e28384af	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sub_08fa4311f388	08fa4311f388428d	skip	library: std::unordered_map template
 sub_08fa4311f388#2	08fa4311f388428d	skip	library: std::unordered_map template
@@ -4817,6 +4818,7 @@ sub_19ad976eb551	19ad976eb5519fb3	ported	shared/src/zlibinflatewrapper.cpp:TZlib
 sub_19b00edff520	19b00edff520cf96	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fieldAppearanceInstancesChanged
 sub_19bf31286b6d	19bf31286b6dbc81	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::updateExtent
 sub_19d2423bb5a0	19d2423bb5a0e8cc	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
+sub_19f430833703	19f430833703fc99	ported	appearances/appearancetype.h:marketCategory
 sub_19f430833703#2	19f430833703fc99	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_19f430833703#4	19f430833703fc99	ported	gamewindow/actionbarcontroller.h:actionBarCount
 sub_1a0bb25777c8	1a0bb25777c8766d	ported	gamewindow/containercontroller.cpp:TContainerController::refreshViewOptions
@@ -6102,6 +6104,7 @@ sub_46d7549a56ae	46d7549a56ae7562	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_46f0c594e340	46f0c594e340552a	ported	gamewindow/socialdialogcontroller.cpp:TSocialDialogController::refreshButtonVisible
 sub_46f0d421906f	46f0d421906f9478	skip	library: libc++ std::string assign / stringbuf / map node construct
 sub_46f7c5235023	46f7c5235023c703	ported	config/optionspages.cpp:fractionOf
+sub_470c1898a52e	470c1898a52e87f6	ported	assets/things.cpp:TAppearancesManager::creatureProductBuyerNames
 sub_4716547d34fd	4716547d34fd77a8	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
 sub_4720ee3bd8bb	4720ee3bd8bbef9c	skip	library: std::map / unordered_map template instantiation
 sub_472a8bfca87f	472a8bfca87f0d79	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::connectToGameSession
@@ -6622,6 +6625,7 @@ sub_5522f99aaaa8	5522f99aaaa82dfe	skip	generated: compiler-generated destructor 
 sub_55245e0e7214	55245e0e7214b834	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onStoreImageBaseUrlChanged
 sub_554205d0658b	554205d0658b42ec	inlined	teamfinder/teamfinderciptypes.h:TTeamMember::operator==
 sub_55582a22f403	55582a22f403bdd5	skip	library: QList::reserve (library)
+sub_556da48b31ce	556da48b31ce3f86	ported	appearances/appearancetype.h:isMarketable
 sub_55807342e458	55807342e45896c4	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_5581414748b1	5581414748b18d3e	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::closeDialog
 sub_5584d91c0a54	5584d91c0a54f3f9	skip	generated: moc property getter (generated in cip_gen)
@@ -10574,6 +10578,7 @@ sub_d8c5bda7d68f	d8c5bda7d68fc106	inlined	effects/effectprotocolmessagehandler.c
 sub_d8fed7d8f51c	d8fed7d8f51c844d	skip	library: Qt/std container template code
 sub_d902425e069b#15	d902425e069b0690	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_d902425e069b#16	d902425e069b0690	inlined	sub_92f98c376ee9
+sub_d902425e069b#2	d902425e069b0690	skip	library: std::unordered_map<QString, int> emplace / rehash instantiations
 sub_d902425e069b#20	d902425e069b0690	skip	library: std::unordered_set rehash (library)
 sub_d902425e069b#22	d902425e069b0690	skip	library: std::unordered_map construction/rehash/destruction (library)
 sub_d902425e069b#23	d902425e069b0690	skip	library: std::unordered_set insert / find / erase / rehash (library)
@@ -11465,6 +11470,7 @@ sub_f98ceae25008	f98ceae25008c033	tested	shared/src/xteahelper.cpp:TXteaHelper::
 sub_f98eb3aa1b73	f98eb3aa1b73e53d	tested	sessiondump/sessiondumpprocessor.cpp:TSessiondumpProcessor::TSessiondumpProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_f9a0a702deba#5	f9a0a702deba7f63	inlined	quickloot/managedcontainerstorage.h:TManagedContainerStorage::managedContainers
 sub_f9a50c2bdd79	f9a50c2bdd796f99	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedSortOrderIndex
+sub_f9a9d3151556	f9a9d3151556602b	ported	appearances/appearancetype.cpp:TAppearanceType::npcTradeData
 sub_f9cb681b5d0d#2	f9cb681b5d0dc995	skip	library: SFML/miniaudio library helper, only called from library code
 sub_f9cf6c7d2f2f	f9cf6c7d2f2f4e94	ported	proficiency/proficiencystorage.cpp:parseProficiencyLevel
 sub_f9d4d52b5316	f9d4d52b53169402	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestChoosePrey
