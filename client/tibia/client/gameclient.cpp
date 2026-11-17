@@ -381,6 +381,9 @@ TGameClient::TGameClient(QObject* parent)
 
 TGameClient::~TGameClient()
 {
+    // The manager saves the character's configuration on destruction, through
+    // storages the game window owns: it goes first.
+    m_characterConfigurationManager.reset();
     m_gameWindow.reset();
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
