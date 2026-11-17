@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # No-server tile render check: replays testdata/sessiondumps/fields.cam (grounds,
-# a coin pile, a backpack under a flower, the player's outfit and an effect, all
-# from the real appearances / spritesheets in data/assets), screenshots the client
+# a coin pile, a flower on a backpack, the player's outfit, a creature that took a
+# step and an effect, all from the real appearances / spritesheets in data/assets),
+# screenshots the client
 # and compares the world map pane with fields.golden.png.
 #
 #   tools/render-check.sh            compare (exit 1 on a difference)
@@ -30,13 +31,16 @@ if mode == '--update':
     print('render-check: golden updated')
     sys.exit(0)
 diff = ImageChops.difference(pane, Image.open(golden).convert('RGB'))
-# The creature name's brightness follows the light map's moving clouds: masked.
+# The creature names' brightness follows the light map's moving clouds: masked
+# (the player's label and the walker's).
 diff.paste((0, 0, 0), (199, 138, 283, 155))
+diff.paste((0, 0, 0), (152, 74, 204, 96))
 box = diff.getbbox()
 if box is None:
-    print('render-check: OK (pixel-identical outside the name label)')
+    print('render-check: OK (pixel-identical outside the name labels)')
     sys.exit(0)
-count = sum(1 for p in diff.getdata() if p != (0, 0, 0))
+pixels = diff.get_flattened_data() if hasattr(diff, 'get_flattened_data') else diff.getdata()
+count = sum(1 for p in pixels if p != (0, 0, 0))
 pane.save(out + '/pane.png')
 diff.point(lambda v: 255 if v else 0).save(out + '/diff.png')
 print(f'render-check: {count} pixels differ in {box}; see {out}/pane.png and {out}/diff.png')
