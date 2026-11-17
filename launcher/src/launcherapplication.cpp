@@ -1,5 +1,9 @@
 #include "launcherapplication.h"
 
+#include "hostprocess.h"
+
+#include <QScreen>
+
 #include "brand.h"
 #include "cloudflarecdntrace.h"
 #include "downloadpool.h"
@@ -27,7 +31,6 @@
 #include <QMutex>
 #include <QNetworkAccessManager>
 #include <QPixmap>
-#include <QProcess>
 #include <QSplashScreen>
 
 #ifndef Q_OS_WIN
@@ -249,8 +252,7 @@ void TLauncherApplication::onSelfUpdateFinished()
     if (!arguments.isEmpty())
         arguments.removeFirst();
     arguments.append(QStringLiteral("--%1").arg(m_skipSelfUpdateOption.names().constLast()));
-    const bool started =
-        QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments, QDir::currentPath());
+    const bool started = host::startDetached(QCoreApplication::applicationFilePath(), arguments, QDir::currentPath());
     if (started)
         qDebug() << "Followup process successfully started.";
     else
@@ -332,6 +334,8 @@ void TLauncherApplication::showMainWindow()
             availablePackages(*m_installationManager), m_installationManager.get(),
             m_configurationHandler->showPackageNames(), m_networkAccessManager, m_filesystemHelper->eulaAccepted(),
             m_downloadPool, m_cdnTrace, m_filesystemHelper);
+        if (m_configurationHandler->configuration())
+            m_mainWindow->setHintBaseUrl(m_configurationHandler->configuration()->hintsUrl());
         m_configurationHandler->downloadHints();
         m_mainWindow->setHint(m_configurationHandler->hint());
         connect(m_configurationHandler.get(), &TLauncherConfigurationHandler::hintAreaDataReceived,
@@ -341,8 +345,24 @@ void TLauncherApplication::showMainWindow()
         connect(m_mainWindow.get(), &TLauncherMainWindow::clientPackageButtonClicked, this,
                 &TLauncherApplication::onClientPackageButtonClicked);
         connect(m_mainWindow.get(), &TLauncherMainWindow::eulaAccepted, this, &TLauncherApplication::onEulaAccepted);
+#ifdef Q_OS_WASM
+        // Host: on the web the page is the desktop. The window is shown normal
+        // (Qt for WebAssembly shows top-level windows full screen by default)
+        // and kept centred, as CipSoft centres it on the screen.
+        const auto centre = [window = m_mainWindow.get()]() {
+            window->adjustSize();
+            const QRect page = window->screen()->availableGeometry();
+            window->move(page.center() - QPoint(window->width() / 2, window->height() / 2));
+        };
+        centre();
+        connect(m_mainWindow->screen(), &QScreen::availableGeometryChanged, m_mainWindow.get(), centre);
+#endif
     }
+#ifdef Q_OS_WASM
+    m_mainWindow->showNormal();
+#else
     m_mainWindow->show();
+#endif
 }
 
 void TLauncherApplication::onAllStartedUpdatesFinished()
@@ -407,18 +427,13 @@ void TLauncherApplication::launchPackage(const std::shared_ptr<TPackage>& packag
     const QString packageRevision = configuration ? configuration->packageVersion().trimmed() : QString();
     hostResolveLoginRevision(packageRevision, [this, executable, parameters, workingDirectory](const QString& revision) {
         // Host: the qtclient launcher → client contract (login revision, launcher path, CDN).
-        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        QHash<QString, QString> environment;
         environment.insert(QStringLiteral("QTCLIENT_LAUNCHER"), QStringLiteral("1"));
         environment.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), revision);
         environment.insert(QStringLiteral("QTCLIENT_LAUNCHER_BIN"), QCoreApplication::applicationFilePath());
         if (const QString cdn = TLauncherFilesystemHelper::cdnBase(); !cdn.isEmpty())
             environment.insert(QStringLiteral("QTCLIENT_ASSET_BASE"), cdn);
-        QProcess process;
-        process.setProgram(executable);
-        process.setArguments(parameters);
-        process.setWorkingDirectory(workingDirectory);
-        process.setProcessEnvironment(environment);
-        if (!process.startDetached()) {
+        if (!host::startDetached(executable, parameters, workingDirectory, environment)) {
             QCoreApplication::exit(1);
             return;
         }

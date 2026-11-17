@@ -49,6 +49,8 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void setHint(launcher::THint hint);
+    /// Host: the hint feed url, for its relative image paths.
+    void setHintBaseUrl(const QUrl& url);
     void onDefaultClientPackageCheckboxChanged(std::shared_ptr<launcher::TPackage> package, bool isDefault);
     void setDefault(std::shared_ptr<launcher::TPackage> package, bool isDefault);
     void onInstallationOrUpdateStarted(launcher::TPackageInstallation* installationInProgress);

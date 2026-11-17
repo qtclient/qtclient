@@ -101,6 +101,17 @@
     var idle = [];
     /** path → Promise<access rec> while createSyncAccessHandle is in flight */
     var opening = new Map();
+    /**
+     * POSIX unlink of an open file: the name goes at once, open descriptors keep
+     * working and the data goes with the last close. OPFS cannot remove an entry
+     * while its access handle is open, so the entry is hidden until then.
+     * path → { dir, name } (unlinked, still open); path → Promise (removing).
+     */
+    var unlinked = new Map();
+    var removing = new Map();
+    function removalsSettled() {
+      return removing.size ? Promise.all(Array.from(removing.values())) : null;
+    }
 
     function join(dir, name) { return dir ? dir + '/' + name : name; }
     function under(path, prefix) { return path === prefix || path.indexOf(prefix + '/') === 0; }
@@ -294,6 +305,16 @@
     /** keepIdle: leave the handle open for a cheap reopen (wasm files). */
     function closeAccess(rec, keepIdle) {
       if (--rec.refs > 0) return;
+      var gone = unlinked.get(rec.path);
+      if (gone) {
+        // Last close of an unlinked file: now the entry can go.
+        closeRec(rec);
+        unlinked.delete(rec.path);
+        var path = rec.path, removal = gone.dir.removeEntry(gone.name).catch(function () {});
+        removing.set(path, removal);
+        removal.then(function () { if (removing.get(path) === removal) removing.delete(path); });
+        return;
+      }
       if (!keepIdle) {
         closeRec(rec);
         return;
@@ -344,6 +365,8 @@
       switch (op) {
       case OP.CHILD: {
         var dir = node(arg(s, 0)), name = readName(s, 1, 2), path = join(dir.path, name);
+        if (unlinked.has(path)) throw fsError('NOENT', path + ' is unlinked');
+        await removalsSettled();
         try {
           return [1, addNode('file', await dir.handle.getFileHandle(name), path)];
         } catch (e) {
@@ -354,6 +377,9 @@
       case OP.INSERT_FILE: {
         var fdir = node(arg(s, 0)), fname = readName(s, 1, 2);
         var fpath = join(fdir.path, fname);
+        // The unlinked file still owns that entry until its last close.
+        if (unlinked.has(fpath)) throw fsError('BUSY', fpath + ' is unlinked but still open');
+        await removalsSettled();
         var fh = await fdir.handle.getFileHandle(fname, { create: true });
         var fid = addNode('file', fh, fpath);
         // WasmFS opens a file right after creating it: hand back an open access
@@ -373,6 +399,11 @@
       }
       case OP.REMOVE: {
         var rdir = node(arg(s, 0)), rname = readName(s, 1, 2), rpath = join(rdir.path, rname);
+        var openRec = accessByPath.get(rpath);
+        if (openRec && openRec.refs > 0) {
+          unlinked.set(rpath, { dir: rdir.handle, name: rname });
+          return [0];
+        }
         releaseHandlesUnder(rpath);
         await rdir.handle.removeEntry(rname);
         return [0];
@@ -380,7 +411,9 @@
       case OP.ENTRIES: {
         var edir = node(arg(s, 0)), buf = arg(s, 1) >>> 0, cap = arg(s, 2);
         var enc = new TextEncoder(), parts = [], bytes = 0;
+        await removalsSettled();
         for await (var entry of edir.handle.entries()) {
+          if (unlinked.has(join(edir.path, entry[0]))) continue;
           var nb = enc.encode(entry[0]);
           parts.push([entry[1].kind === 'directory' ? 2 : 1, nb]);
           bytes += 3 + nb.length;

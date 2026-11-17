@@ -33,8 +33,14 @@ int QTextBrowserWithNetwork::heightForWidth(const int width) const
     return int(document()->size().height());
 }
 
-QVariant QTextBrowserWithNetwork::loadResource(const int type, const QUrl& name)
+QVariant QTextBrowserWithNetwork::loadResource(const int type, const QUrl& relativeName)
 {
+    // Host: relative names (a feed's "/images/…") resolve against the
+    // document's base url, the feed's location, when one is set.
+    const QUrl base = document()->baseUrl();
+    const QUrl name = relativeName.isRelative() && base.isValid() && !base.isEmpty()
+        ? base.resolved(relativeName)
+        : relativeName;
     if (!m_resources.contains(name)) {
         const QStringList networkSchemes = { QStringLiteral("http"), QStringLiteral("https"), QStringLiteral("ftp") };
         if (!networkSchemes.contains(name.scheme(), Qt::CaseSensitive)) {
