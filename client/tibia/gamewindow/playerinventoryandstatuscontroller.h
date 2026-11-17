@@ -86,6 +86,8 @@ private:
     void refreshSlots();
     /// CIP on every slot: counting-down texts.
     void refreshClocks();
+    /// CIP: every player value the panel shows, each emitted when it changed.
+    void onPlayerDataChanged();
     void refreshSoul();
     void refreshCapacity();
     void refreshBlessings();

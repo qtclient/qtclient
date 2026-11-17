@@ -128,15 +128,10 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
         updateMouseCursorForCurrentSlot();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulChange", onPlayer(&TPlayerInventoryAndStatusController::refreshSoul));
-    for (const char* event : { "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::refreshCapacity));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBlessingsChange", onPlayer(&TPlayerInventoryAndStatusController::refreshBlessings));
-    for (const char* event : { "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const Args&) {
-            refreshTactics();
-            return std::any{};
-        });
+    // CIP: the player's data-changed signal refreshes everything the panel shows.
+    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange",
+                               "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::onPlayerDataChanged));
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
     });
@@ -312,6 +307,15 @@ void TPlayerInventoryAndStatusController::readExpireOptions()
     const QJsonObject options = app::ClientOptions::load().options();
     m_showExpire = options.value(QLatin1String(ShowExpireOption)).toBool(true);
     m_showExpireWhenUnused = options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false);
+}
+
+void TPlayerInventoryAndStatusController::onPlayerDataChanged()
+{
+    refreshSoul();
+    refreshCapacity();
+    refreshBlessings();
+    refreshTactics();
+    refreshExpertMode();
 }
 
 void TPlayerInventoryAndStatusController::refreshSoul()
