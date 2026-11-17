@@ -4954,6 +4954,7 @@ sub_1e623603abe2#4	1e623603abe28653	ported	analysers/impactwidgets.cpp:TDamageIn
 sub_1e69cff8e0c1	1e69cff8e0c1676f	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onProgressAnalyserWidgetClosed
 sub_1e6e3af0598a	1e6e3af0598a8d45	inlined	gamewindow/remainingdialogs.cpp:TShowImageDialogController::showImages
 sub_1e6f15aa9c81#2	1e6f15aa9c81f615	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
+sub_1eaa57715c76	1eaa57715c767177	inlined	worldmap/worldmaptutorialmarkeroverlaycontroller.cpp:TWorldMapTutorialMarkerOverlayController::update
 sub_1eaee21bec60	1eaee21bec6066b4	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::isEquipeAction
 sub_1eb33b9f8266	1eb33b9f82663392	ported	shared/src/rpcserviceerror.cpp:TRPCServiceError::TRPCServiceError
 sub_1eb7b796d7ff	1eb7b796d7ffd120	ported	input/gameactionmapper.cpp:TGameActionMapper::ruleTypes
@@ -11617,6 +11618,8 @@ worldmap::TWorldMapSubfieldCoordinate::v0	872d4faac408f6d5	skip	generated: same 
 worldmap::TWorldMapSubfieldCoordinate::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 worldmap::TWorldMapSubfieldExtent::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 worldmap::TWorldMapSubfieldExtent::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
+worldmap::TWorldMapTutorialMarkerOverlayController::update	8f0cb2657efd3432	ported	worldmap/worldmaptutorialmarkeroverlaycontroller.cpp:TWorldMapTutorialMarkerOverlayController::update
+worldmap::TWorldMapTutorialMarkerOverlayController::v12	63d3fbb0f05bee67	ported	worldmap/worldmaptutorialmarkeroverlaycontroller.cpp:TWorldMapTutorialMarkerOverlayController::handleGameAction
 worldmap::TWorldMapTutorialMarkerOverlayController::~TWorldMapTutorialMarkerOverlayController	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 worldmap::TWorldMapTutorialMarkerOverlayController::~TWorldMapTutorialMarkerOverlayController_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 worldmap::TWorldMapViewport::v12	b0a24b6d79152186	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setCenter
