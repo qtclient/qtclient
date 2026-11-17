@@ -5926,6 +5926,7 @@ sub_33eb2d7351b9	33eb2d7351b9c90e	ported	input/eventfiltermanager.cpp:TEventFilt
 sub_340dfdfddaf1	340dfdfddaf103a1	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendClientCheck
 sub_3417d1eac14a	3417d1eac14a28e6	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::sendKeyword
 sub_3431ddca3764	3431ddca376415ac	inlined	worldmap/worldmapfield.cpp:TWorldMapField::light
+sub_343e00dfdcc6	343e00dfdcc65e61	ported	config/optionspages.cpp:hotkeyActionSettingDescriptionColor
 sub_34437ff80c96	34437ff80c967a82	skip	generated: compiler-generated destructor pair
 sub_344698e02439	344698e02439cefc	ported	config/optionspages.cpp:TButtonBarOptionsPage::sortDisabledButtons
 sub_34486d87e79c	34486d87e79c9d86	skip	generated: Qt slot-object impl (QtPrivate::QCallableObject/QSlotObject impl, template-generated)
@@ -6576,6 +6577,7 @@ sub_4c803c205e0d#2	4c803c205e0d81bb	ported	gamewindow/createaccountdialogcontrol
 sub_4c9e81f0fdec	4c9e81f0fdec8bce	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::showContextMenuForTextInputQmlItem
 sub_4ca3c6ebe6f9	4ca3c6ebe6f936f2	ported	shared/src/jsondocumentuploaderbase.cpp:TJsonDocumentUploaderBase::errorCode
 sub_4ca89c0b4977	4ca89c0b4977f8bf	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
+sub_4ca9c7597cbe	4ca9c7597cbe5231	ported	config/optionspages.cpp:THotkeysOptionsPage::rebuildModel
 sub_4caa0728f441	4caa0728f44130a9	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::stop	test=tests/client/sharednet_test.cpp
 sub_4cb3233caacc#19	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#20	4cb3233caacc1428	skip	generated: moc-generated signal emitter
@@ -9144,6 +9146,9 @@ sub_9b2585cad7ab#34	9b2585cad7abb4c2	ported	worldmap/worldmapgameactionprovider.
 sub_9b2585cad7ab#7	9b2585cad7abb4c2	ported	input/gameaction.h:TObjectGameAction::TObjectGameAction
 sub_9b2585cad7ab#8	9b2585cad7abb4c2	ported	input/gameaction.h:TObjectGameAction::TObjectGameAction
 sub_9b2585cad7ab#9	9b2585cad7abb4c2	ported	input/gameaction.h:TObjectGameAction::TObjectGameAction
+sub_9b38f5e8557b	9b38f5e8557b5071	ported	config/optionspages.cpp:THotkeyActionRow::sync
+sub_9b38f5e8557b#2	9b38f5e8557b5071	ported	config/optionspages.cpp:THotkeyActionRow::sync
+sub_9b38f5e8557b#3	9b38f5e8557b5071	ported	config/optionspages.cpp:THotkeyActionRow::sync
 sub_9b449b2715d8	9b449b2715d8e771	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::requestLootBlackWhitelistSwitch
 sub_9b47edd196cc	9b47edd196cc5e19	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_9b60479aa5d4#2	9b60479aa5d4de1a	skip	generated: moc-generated signal emitter
@@ -12037,6 +12042,7 @@ sub_f5176c1d6a15	f5176c1d6a15de99	skip	library: libc++ std::sort instantiation (
 sub_f51ca78d9816	f51ca78d981662b9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::placeWidget
 sub_f520d90d5790	f520d90d5790d09a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
 sub_f54e3e14c391	f54e3e14c3915dd2	ported	input/keyboardstatusstorage.h:TKeyboardStatusStorage::TKey::operator==
+sub_f576a1b39785	f576a1b3978522e6	ported	config/optionspages.cpp:hotkeyActionSettingDescription
 sub_f58ad2d66834	f58ad2d668348c01	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbilityIconUrl
 sub_f5b999c169aa	f5b999c169aa3cc8	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_f5e5ccfc9f03	f5e5ccfc9f03ccb3	ported	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries

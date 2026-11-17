@@ -11,6 +11,9 @@
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
+#include "appearances/appearanceinstance.h"
+
+#include <tibia/game/thingsession_forward.h>
 
 #include "sound/soundstorage.h"
 
@@ -1024,14 +1027,15 @@ QString hotkeyActionSettingDescription(const TActionSetting& setting)
 {
     if (!setting.text.isEmpty())
         return setting.text;
-    if (setting.action.isEmpty() && setting.objectId == 0) {
-        // CipSoft also gives an empty text when the setting's +0x47 flag is set
-        // (not identified yet).
+    if (setting.action.isEmpty() && setting.objectId == 0 && setting.kind != TActionSetting::PASSIVE_ABILITY) {
         if (!setting.multiActions.empty())
             return {};
         return qtTrId("hotkey_empty");
     }
     if (setting.objectId == 0) {
+        // A passive ability has no text.
+        if (setting.action.isEmpty())
+            return {};
         for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
             if (product.name == setting.action)
                 return product.description.isEmpty() ? setting.action : product.description;
@@ -1068,6 +1072,48 @@ QString hotkeyActionSettingDescription(const TActionSetting& setting)
     return QStringLiteral("invalid use object type");
 }
 
+/// CIP: the description colour of a setting in the hotkeys page: an empty
+/// setting red, a chat text white when sent automatically (else grey), an
+/// object by its use type, a static action light grey; none for any other.
+QColor hotkeyActionSettingDescriptionColor(const TActionSetting& setting)
+{
+    if (setting.isEmpty())
+        return QColor(0xff, 0x00, 0x00);
+    if (!setting.text.isEmpty())
+        return setting.sendAutomatically ? QColor(0xff, 0xff, 0xff) : QColor(0xaf, 0xaf, 0xaf);
+    if (setting.objectId != 0) {
+        switch (setting.useType) {
+        case EUseType::Use: return QColor(0xb0, 0xb0, 0xff);
+        case EUseType::UseOnYourself: return QColor(0xb0, 0xff, 0xb0);
+        case EUseType::UseOnTarget: return QColor(0xff, 0xb0, 0xb0);
+        case EUseType::SelectUseTarget:
+        case EUseType::UseAtMouseCursor: return QColor(0xc8, 0x7d, 0x7d);
+        case EUseType::Equip: return QColor(0xbf, 0xbf, 0x00);
+        }
+        return QColor(0xff, 0x00, 0x00);
+    }
+    if (!setting.action.isEmpty())
+        return QColor(0xc0, 0xc0, 0xc0);
+    return {};
+}
+
+/// CIP (row builder): the picture of an object setting: its liquid, else its
+/// tier, else the plain type.
+appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting& setting)
+{
+    ThingType* type = setting.objectId > 0 ? tibia::game::rawThingType(static_cast<uint16_t>(setting.objectId), ThingCategoryItem)
+                                           : nullptr;
+    if (!type)
+        return nullptr;
+    if (setting.liquidType)
+        return std::make_shared<appearances::TLiquidObjectAppearanceInstance>(type, static_cast<uint32_t>(*setting.liquidType));
+    appearances::TAppearanceInstancePtr instance = appearances::TAppearanceInstanceFactory::fromThingType(type);
+    if (setting.upgradeTier)
+        if (auto* object = dynamic_cast<appearances::TObjectAppearanceInstance*>(instance.get()))
+            object->setTier(static_cast<uint8_t>(*setting.upgradeTier));
+    return instance;
+}
+
 /// CIP TTibiaHotkeyActionSettingQmlWrapper row for OptionsPageHotkeys.qml.
 class THotkeyActionRow final : public cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper
 {
@@ -1077,12 +1123,13 @@ public:
     QKeySequence first;
     QKeySequence second;
     bool matchesFilter = true;
+    /// +0x78: a custom object row's picture.
+    appearances::TAppearanceInstancePtr appearance;
 
     explicit THotkeyActionRow(QObject* parent = nullptr)
         : cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper(parent)
     {
         m_isStaticAction = true;
-        m_descriptionColor = QColor(QStringLiteral("#c0c0c0"));
     }
 
     void sync()
@@ -1098,11 +1145,17 @@ public:
         m_isStaticAction = setting.kind == TActionSetting::ACTION || setting.kind == TActionSetting::NONE;
         m_chatText = setting.text;
         m_sendAutomatically = setting.sendAutomatically;
-        m_objectID = uint(setting.objectId);
+        // The picture's type, count and liquid (none without a picture).
+        m_objectID = appearance ? appearance->id() : 0;
+        const auto* cumulative = dynamic_cast<const appearances::TCumulativeObjectAppearanceInstance*>(appearance.get());
+        m_objectCount = cumulative ? cumulative->count() : 1;
+        const auto* liquid = dynamic_cast<const appearances::TLiquidObjectAppearanceInstance*>(appearance.get());
+        m_liquidType = static_cast<decltype(m_liquidType)>(liquid ? liquid->fluid() : 0);
         m_useObjectType = int(setting.useType);
         m_smartModeEnabled = setting.useEquipSmartMode;
         m_canHaveSmartMode = setting.useType == EUseType::Equip;
         m_descriptionText = hotkeyActionSettingDescription(setting);
+        m_descriptionColor = hotkeyActionSettingDescriptionColor(setting);
         Q_EMIT changed();
     }
 };
@@ -1314,7 +1367,10 @@ void THotkeysOptionsPage::rebuildModel()
             (*existing)->second = binding.keys;
             continue;
         }
-        addRow(CustomHotkeys, binding.setting)->first = binding.keys;
+        THotkeyActionRow* row = addRow(CustomHotkeys, binding.setting);
+        row->first = binding.keys;
+        if (binding.setting.objectId != 0)
+            row->appearance = hotkeyObjectAppearance(binding.setting);
     }
     for (THotkeyActionRow* row : rows)
         row->sync();
