@@ -13,6 +13,7 @@ namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageGemAtelierGemRevealed;
+class GameserverMessageSkillWheel;
 }
 }
 }
@@ -53,8 +54,8 @@ public:
     void handleGemAtelierGemRevealedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
 
-    /// Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    /// The wheel of destiny: points, scrolls, gems and grades.
+    void handleSkillWheelMessage(const ::tibia::protobuf::protocol::GameserverMessageSkillWheel& message);
 };
 
 }

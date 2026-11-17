@@ -294,8 +294,6 @@ private:
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
-    /// Queue connections of the static protocol ingresses (reconnected per session).
-    std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;

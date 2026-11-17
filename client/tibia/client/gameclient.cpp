@@ -392,33 +392,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
     m_dualConnection = std::make_unique<network::TGameserverDualConnection>();
-    // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
-    // The active game session connects its own map and effect handlers.
-    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
-                    &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        // Static ingresses take the client as context: drop the previous
-        // session's connections before connecting the queue again.
-        using StaticIngress = void (*)(int);
-        static constexpr StaticIngress kStaticIngresses[] = {
-            &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
-            &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
-            &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &market::TMarketProtocolMessageHandler::onServerMessageEnqueued,
-        };
-        for (const QMetaObject::Connection& connection : m_staticIngressConnections)
-            disconnect(connection);
-        m_staticIngressConnections.clear();
-        for (const StaticIngress ingress : kStaticIngresses)
-            m_staticIngressConnections.push_back(
-                connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, this, ingress));
-    }
     const QJsonObject clientOptions = app::ClientOptions::load().options();
     m_frameRateLimitEnabled = clientOptions.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
     m_frameRateLimit = std::clamp(clientOptions.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);

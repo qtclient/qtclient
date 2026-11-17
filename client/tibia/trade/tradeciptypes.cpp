@@ -278,50 +278,16 @@ void TNPCTradeProtocolMessageHandler::handleResourceBalanceMessage(
         m_storage->setQuestFlagCurrencyBalance(message.small_value());
 }
 
-void TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage()
+void TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade&)
 {
     if (m_storage)
         m_storage->setTraderInventory({}, {});
     Q_EMIT requestCloseNpcTrade();
 }
 
-void TNPCTradeProtocolMessageHandler::handleDeadMessage()
+void TNPCTradeProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
 {
     Q_EMIT requestCloseNpcTrade();
-}
-
-void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    TNPCTradeProtocolMessageHandler* handler = s_npcTradeLive;
-    if (!handler)
-        return;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 122:
-        if (shadow->HasExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer))
-            handler->handleNPCOfferMessage(shadow->GetExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer));
-        break;
-    case 123:
-        if (shadow->HasExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods))
-            handler->handlePlayerGoodsMessage(shadow->GetExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods));
-        break;
-    case 124:
-        handler->handleCloseNPCTradeMessage();
-        break;
-    case 238:
-        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
-            handler->handleResourceBalanceMessage(
-                shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
-        break;
-    case 40:
-        handler->handleDeadMessage();
-        break;
-    default:
-        break;
-    }
 }
 
 TPlayerTradeProtocolMessageHandler* TPlayerTradeProtocolMessageHandler::s_instance = nullptr;
@@ -359,51 +325,26 @@ void TPlayerTradeProtocolMessageHandler::handleOwnOfferMessage(const ::tibia::pr
 {
     m_storage.setOwnOffer(QString::fromStdString(OwnOfferMessage.name()), offerItems(OwnOfferMessage));
     Q_EMIT requestOpenPlayerTradeWidget();
+    // Host: product packs follow trades on the notify bus.
+    tibia::game::processOwnTrade(tibia::game::formatCreatureName(OwnOfferMessage.name()), offerItems(OwnOfferMessage));
 }
 
 void TPlayerTradeProtocolMessageHandler::handleCounterOfferMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage)
 {
     m_storage.setCounterOffer(QString::fromStdString(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
+    tibia::game::processCounterTrade(tibia::game::formatCreatureName(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
 }
 
-void TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage()
+TPlayerTradeProtocolMessageHandler* TPlayerTradeProtocolMessageHandler::instance()
+{
+    return s_instance;
+}
+
+void TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade&)
 {
     Q_EMIT requestClosePlayerTradeWidget();
     m_storage.reset();
-}
-
-void TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 125:
-        if (shadow->HasExtension(GameserverMessageOwnOffer::gameserver_message_own_offer)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOwnOffer::gameserver_message_own_offer);
-            if (s_instance)
-                s_instance->handleOwnOfferMessage(m);
-            tibia::game::processOwnTrade(tibia::game::formatCreatureName(m.name()), offerItems(m));
-        }
-        break;
-    case 126:
-        if (shadow->HasExtension(GameserverMessageCounterOffer::gameserver_message_counter_offer)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCounterOffer::gameserver_message_counter_offer);
-            if (s_instance)
-                s_instance->handleCounterOfferMessage(m);
-            tibia::game::processCounterTrade(tibia::game::formatCreatureName(m.name()), offerItems(m));
-        }
-        break;
-    case 127:
-        if (s_instance)
-            s_instance->handleCloseTradeMessage();
-        tibia::game::processCloseTrade();
-        break;
-    default:
-        break;
-    }
 }
 
 void ownProductSurface(QObject* parent)

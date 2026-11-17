@@ -33,6 +33,10 @@ class GameserverMessageMonsterCyclopediaRace;
 class GameserverMessageMonsterCyclopedia;
 class GameserverMessageMonsterCyclopediaNewDetails;
 class GameserverMessageXpChanged;
+class GameserverMessageCyclopediaCurrentHouseData;
+class GameserverMessageCyclopediaMapData;
+class GameserverMessageCyclopediaStaticHouseData;
+class GameserverMessageMonsterCyclopediaBonusEffects;
 }
 
 namespace tibia {
@@ -86,9 +90,11 @@ class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::T
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler;
+    static void handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage);
+    static void handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
+    static void handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
+    static void handleCyclopediaMapDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaMapData& CyclopediaMapDataMessage);
 public:
-    /// Tip Q→H wire: XpChanged, ItemWasted, MonsterCyclopediaNewDetails and ResourceBalance from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
 
     // Slots, one per server message.
     /// The party hunt: session start, loot type (0 or 1 only), leader, then the members with names.
@@ -117,7 +123,7 @@ public:
     static void handleMonsterCyclopediaMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message);
     static void handleMonsterCyclopediaNewDetailsMessage(
         const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message);
-    static void handleCyclopediaHouseActionResulMessage(
+    static void handleCyclopediaHouseActionResultMessage(
         const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message);
     static void handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message);
 

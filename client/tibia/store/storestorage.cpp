@@ -861,92 +861,33 @@ void TStoreProtocolMessageHandler::handleOfferDescriptionMessage(const Gameserve
     Q_EMIT storeOfferDescriptionReceived(static_cast<int>(message.offer_id()), toQString(message.description()));
 }
 
-void TStoreProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+TStoreProtocolMessageHandler* TStoreProtocolMessageHandler::instance()
 {
-    TStoreProtocolMessageHandler* handler = s_live;
-    if (!handler)
-        return;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 23:
-        if (shadow->HasExtension(GameserverMessageLoginSuccess::gameserver_message_login_success))
-            handler->handleLoginSuccessMessage(shadow->GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success));
-        break;
-    case 252:
-        if (shadow->HasExtension(GameserverMessageStoreOffers::gameserver_message_store_offers))
-            handler->handleStoreOffersMessage(shadow->GetExtension(GameserverMessageStoreOffers::gameserver_message_store_offers));
-        break;
-    case 168:
-        if (shadow->HasExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)) {
-            // Host: the store button controller takes the deep link through
-            // the game notify hook.
-            const auto& p = shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)
-                                .parameters();
-            const auto action = static_cast<uint8_t>(p.open_action());
-            const uint32_t detail = action == OPEN_OFFER ? p.offer_id() : p.detail();
-            const std::string category = action == OPEN_SEARCH ? p.search_text() : p.category();
-            tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(),
-                                static_cast<uint8_t>(p.sort_order()), static_cast<uint8_t>(p.service_type()));
-        }
-        break;
-    case 203:
-        if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details)) {
-            const auto& m = shadow->GetExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details);
-            // Host: the detail text of the record the server sent.
-            std::string details;
-            if (m.has_purchase())
-                details = m.purchase().text();
-            else if (m.has_transfer())
-                details = m.transfer().first_text();
-            if (handler->m_storage)
-                handler->m_storage->setTransactionDetails(toQString(details));
-        }
-        break;
-    case 225:
-        if (shadow->HasExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data))
-            handler->handleRequestPurchaseDataMessage(
-                shadow->GetExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data));
-        break;
-    case 251:
-        if (shadow->HasExtension(GameserverMessageStoreCategories::gameserver_message_store_categories))
-            handler->handleStoreCategoriesMessage(shadow->GetExtension(GameserverMessageStoreCategories::gameserver_message_store_categories));
-        break;
-    case 253:
-        if (shadow->HasExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history))
-            handler->handleTransactionHistoryMessage(
-                shadow->GetExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history));
-        break;
-    case 223:
-        if (shadow->HasExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance))
-            handler->handleCreditBalanceMessage(shadow->GetExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance));
-        break;
-    case 25:
-        if (shadow->HasExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators))
-            handler->handleStoreButtonIndicatorsMessage(
-                shadow->GetExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators));
-        break;
-    case 242:
-        if (shadow->HasExtension(GameserverMessageUpdatingShopBalance::gameserver_message_updating_shop_balance))
-            handler->handleUpdatingShopBalanceMessage(
-                shadow->GetExtension(GameserverMessageUpdatingShopBalance::gameserver_message_updating_shop_balance));
-        break;
-    case 224:
-        if (shadow->HasExtension(GameserverMessageStoreError::gameserver_message_store_error))
-            handler->handleStoreErrorMessage(shadow->GetExtension(GameserverMessageStoreError::gameserver_message_store_error));
-        break;
-    case 234:
-        if (shadow->HasExtension(GameserverMessageOfferDescription::gameserver_message_offer_description))
-            handler->handleOfferDescriptionMessage(shadow->GetExtension(GameserverMessageOfferDescription::gameserver_message_offer_description));
-        break;
-    case 254:
-        if (shadow->HasExtension(GameserverMessageStoreSuccess::gameserver_message_store_success))
-            handler->handleStoreSuccessMessage(shadow->GetExtension(GameserverMessageStoreSuccess::gameserver_message_store_success));
-        break;
-    default:
-        break;
-    }
+    return s_live;
+}
+
+void TStoreProtocolMessageHandler::handleSetStoreButtonDeeplinkMessage(const GameserverMessageSetStoreButtonDeeplink& message)
+{
+    // Host: the store button controller takes the deep link through the game
+    // notify hook.
+    const auto& p = message.parameters();
+    const auto action = static_cast<uint8_t>(p.open_action());
+    const uint32_t detail = action == OPEN_OFFER ? p.offer_id() : p.detail();
+    const std::string category = action == OPEN_SEARCH ? p.search_text() : p.category();
+    tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(), static_cast<uint8_t>(p.sort_order()),
+                        static_cast<uint8_t>(p.service_type()));
+}
+
+void TStoreProtocolMessageHandler::handleTransactionDetailsMessage(const GameserverMessageTransactionDetails& message)
+{
+    // Host: the detail text of the record the server sent.
+    std::string details;
+    if (message.has_purchase())
+        details = message.purchase().text();
+    else if (message.has_transfer())
+        details = message.transfer().first_text();
+    if (m_storage)
+        m_storage->setTransactionDetails(toQString(details));
 }
 
 }

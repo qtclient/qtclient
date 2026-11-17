@@ -7,6 +7,7 @@
 
 #include <protocol.pb.h>
 
+#include "chat/chatprotocolmessagehandler.h"
 #include "chat/textstorage.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturemovementspeedcalculator.h"
@@ -28,6 +29,8 @@
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
 #include "market/marketciptypes.h"
+#include "store/storestorage.h"
+#include "skillwheel/skillwheelciptypes.h"
 #include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
@@ -158,6 +161,19 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
         m_queueConnections.push_back(connect(queue, signal, receiver, slot));
     };
 
+    using chat::TChatProtocolMessageHandler;
+    if (auto* chat = TChatProtocolMessageHandler::liveInstance()) {
+        link(&Queue::receivedTalkMessage, chat, &TChatProtocolMessageHandler::handleTalkMessage);
+        link(&Queue::receivedMessageMessage, chat, &TChatProtocolMessageHandler::handleMessageMessage);
+        link(&Queue::receivedOpenChannelMessage, chat, &TChatProtocolMessageHandler::handleOpenChannelMessage);
+        link(&Queue::receivedOpenOwnChannelMessage, chat, &TChatProtocolMessageHandler::handleOpenOwnChannelMessage);
+        link(&Queue::receivedCloseChannelMessage, chat, &TChatProtocolMessageHandler::handleCloseChannelMessage);
+        link(&Queue::receivedChannelsMessage, chat, &TChatProtocolMessageHandler::handleChannelsMessage);
+        link(&Queue::receivedPrivateChannelMessage, chat, &TChatProtocolMessageHandler::handlePrivateChannelMessage);
+        link(&Queue::receivedChannelEventMessage, chat, &TChatProtocolMessageHandler::handleChannelEventMessage);
+        link(&Queue::receivedNpcTalkPartersMessage, chat, &TChatProtocolMessageHandler::handleNpcTalkPartersMessage);
+    }
+
     auto* effects = m_effectProtocolMessageHandler.get();
     link(&Queue::receivedGraphicalEffectsMessage, effects, &effects::TEffectProtocolMessageHandler::handleGraphicalEffectsMessage);
     link(&Queue::receivedRemoveGraphicalEffectMessage, effects,
@@ -280,8 +296,29 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
         link(&Queue::receivedCloseDepotSearchMessage, containers, &TContainerProtocolMessageHandler::handleCloseDepotSearchMessage);
     }
 
-    // Market and NPC trade: their session-owned handlers decode the queue's
-    // messages through their own ingress (registered by the game client).
+
+    using market::TMarketProtocolMessageHandler;
+    if (auto* market = TMarketProtocolMessageHandler::instance()) {
+        link(&Queue::receivedMarketEnterMessage, market, &TMarketProtocolMessageHandler::handleMarketEnterMessage);
+        link(&Queue::receivedMarketLeaveMessage, market, &TMarketProtocolMessageHandler::handleMarketLeaveMessage);
+        link(&Queue::receivedMarketDetailMessage, market, &TMarketProtocolMessageHandler::handleMarketDetailMessage);
+        link(&Queue::receivedMarketBrowseMessage, market, &TMarketProtocolMessageHandler::handleMarketBrowseMessage);
+        link(&Queue::receivedMessageMessage, market, &TMarketProtocolMessageHandler::handleMessageMessage);
+    }
+    using trade::TNPCTradeProtocolMessageHandler;
+    if (auto* npcTrade = TNPCTradeProtocolMessageHandler::instance()) {
+        link(&Queue::receivedNPCOfferMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleNPCOfferMessage);
+        link(&Queue::receivedPlayerGoodsMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage);
+        link(&Queue::receivedResourceBalanceMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleResourceBalanceMessage);
+        link(&Queue::receivedCloseNPCTradeMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage);
+        link(&Queue::receivedDeadMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleDeadMessage);
+    }
+    using trade::TPlayerTradeProtocolMessageHandler;
+    if (auto* playerTrade = TPlayerTradeProtocolMessageHandler::instance()) {
+        link(&Queue::receivedOwnOfferMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleOwnOfferMessage);
+        link(&Queue::receivedCounterOfferMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleCounterOfferMessage);
+        link(&Queue::receivedCloseTradeMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage);
+    }
 
     using questlog::TQuestLogProtocolMessageHandler;
     link(&Queue::receivedQuestLogMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLogMessage);
@@ -295,6 +332,24 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
 
     link(&Queue::receivedEditTextMessage, this, &TEditTextProtocolMessageHandler::handleEditTextMessage);
     link(&Queue::receivedEditListMessage, this, &TEditTextProtocolMessageHandler::handleEditListMessage);
+    link(&Queue::receivedEditGuildMessageMessage, this, &TEditTextProtocolMessageHandler::handleEditGuildMessageMessage);
+
+    using store::TStoreProtocolMessageHandler;
+    if (auto* store = TStoreProtocolMessageHandler::instance()) {
+        link(&Queue::receivedLoginSuccessMessage, store, &TStoreProtocolMessageHandler::handleLoginSuccessMessage);
+        link(&Queue::receivedStoreCategoriesMessage, store, &TStoreProtocolMessageHandler::handleStoreCategoriesMessage);
+        link(&Queue::receivedStoreOffersMessage, store, &TStoreProtocolMessageHandler::handleStoreOffersMessage);
+        link(&Queue::receivedRequestPurchaseDataMessage, store, &TStoreProtocolMessageHandler::handleRequestPurchaseDataMessage);
+        link(&Queue::receivedCreditBalanceMessage, store, &TStoreProtocolMessageHandler::handleCreditBalanceMessage);
+        link(&Queue::receivedUpdatingShopBalanceMessage, store, &TStoreProtocolMessageHandler::handleUpdatingShopBalanceMessage);
+        link(&Queue::receivedTransactionHistoryMessage, store, &TStoreProtocolMessageHandler::handleTransactionHistoryMessage);
+        link(&Queue::receivedStoreSuccessMessage, store, &TStoreProtocolMessageHandler::handleStoreSuccessMessage);
+        link(&Queue::receivedStoreErrorMessage, store, &TStoreProtocolMessageHandler::handleStoreErrorMessage);
+        link(&Queue::receivedSetStoreButtonDeeplinkMessage, store, &TStoreProtocolMessageHandler::handleSetStoreButtonDeeplinkMessage);
+        link(&Queue::receivedStoreButtonIndicatorsMessage, store, &TStoreProtocolMessageHandler::handleStoreButtonIndicatorsMessage);
+        link(&Queue::receivedOfferDescriptionMessage, store, &TStoreProtocolMessageHandler::handleOfferDescriptionMessage);
+        link(&Queue::receivedTransactionDetailsMessage, store, &TStoreProtocolMessageHandler::handleTransactionDetailsMessage);
+    }
 
     link(&Queue::receivedShowGameNewsMessage, this, &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
 
@@ -328,6 +383,35 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
          &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
     link(&Queue::receivedShowMessageDialogMessage, this, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
 
+    using cyclopedia::TCyclopediaProtocolMessageHandler;
+    link(&Queue::receivedKillTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleKillTrackingMessage);
+    link(&Queue::receivedImpactTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage);
+    link(&Queue::receivedMarketStatisticsMessage, this, &TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage);
+    link(&Queue::receivedItemLootedMessage, this, &TCyclopediaProtocolMessageHandler::handleItemLootedMessage);
+    link(&Queue::receivedItemWastedMessage, this, &TCyclopediaProtocolMessageHandler::handleItemWastedMessage);
+    link(&Queue::receivedMonsterCyclopediaMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage);
+    link(&Queue::receivedMonsterCyclopediaMonstersMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage);
+    link(&Queue::receivedMonsterCyclopediaRaceMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage);
+    link(&Queue::receivedMonsterCyclopediaNewDetailsMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage);
+    link(&Queue::receivedMonsterCyclopediaBonusEffectsMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage);
+    link(&Queue::receivedCyclopediaMapDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage);
+    link(&Queue::receivedCyclopediaCharacterInfoMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage);
+    link(&Queue::receivedResourceBalanceMessage, this, &TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage);
+    // Host: the remaining balances (prey, coins, ...) go to the player's
+    // resource table the classic widgets read.
+    link(&Queue::receivedResourceBalanceMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message) {
+        if (message.resource_type() >= tibia::client::RESOURCE_CHARM && message.resource_type() <= tibia::client::RESOURCE_MAX_MINOR_CHARM)
+            return;
+        tibia::game::localPlayerSetResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
+                                                   message.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(message.small_value()))
+                                                                             : message.value());
+    });
+    link(&Queue::receivedCyclopediaStaticHouseDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage);
+    link(&Queue::receivedCyclopediaCurrentHouseDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage);
+    link(&Queue::receivedCyclopediaHouseActionResultMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage);
+    link(&Queue::receivedPartyHuntAnalyserMessage, this, &TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage);
+    link(&Queue::receivedXpChangedMessage, this, &TCyclopediaProtocolMessageHandler::handleXpChangedMessage);
+
     link(&Queue::receivedBestiaryTrackerMessage, this,
          &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);
     link(&Queue::receivedUpdateManagedContainersMessage, this,
@@ -338,8 +422,6 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
 
     link(&Queue::receivedFriendSystemDataMessage, friends::TFriendsProtocolMessageHandler::instance(),
          &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
-    link(&Queue::receivedCyclopediaCharacterInfoMessage, this,
-         &cyclopedia::TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage);
     link(&Queue::receivedGameEventMessage, this, &TGameEventProtocolMessageHandler::handleGameEventMessage);
     link(&Queue::receivedHighscoresMessage, this, &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
@@ -369,10 +451,19 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
         link(&Queue::receivedBugReportsAllowedMessage, bugReport,
              &reporting::TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage);
 
+    link(&Queue::receivedSoundTriggerMessage, m_soundProtocolMessageHandler.get(),
+         &sound::TSoundProtocolMessageHandler::handleSoundTriggerMessage);
+
     using proficiency::TProficiencyProtocolMessageHandler;
     if (auto* spellBook = TSpellBookProtocolMessageHandler::liveInstance())
         link(&Queue::receivedShowMessageDialogMessage, spellBook, &TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage);
 
+    using skillwheel::TSkillWheelProtocolMessageHandler;
+    if (auto* skillWheel = TSkillWheelProtocolMessageHandler::liveInstance()) {
+        link(&Queue::receivedSkillWheelMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleSkillWheelMessage);
+        link(&Queue::receivedGemAtelierGemRevealedMessage, skillWheel,
+             &TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage);
+    }
     link(&Queue::receivedWeaponProficiencyMessage, this, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
     link(&Queue::receivedWeaponProficiencyNotificationMessage, this,
          &TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage);

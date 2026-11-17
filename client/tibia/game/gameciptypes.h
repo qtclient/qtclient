@@ -24,6 +24,7 @@ class GameserverMessageVocationSpecificPlayerData;
 class GameserverMessageBlessingsDialog;
 class GameserverMessageBossDifficultySelection;
 class GameserverMessageEditList;
+class GameserverMessageEditGuildMessage;
 class GameserverMessageEditText;
 class GameserverMessagePremiumTrigger;
 class GameserverMessageShowModalDialog;
@@ -173,6 +174,8 @@ public:
     static void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
     /// A list to edit (house access lists).
     static void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
+    /// The guild message to edit.
+    static void handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& message);
 };
 
 class TGameActionRouter final : public cip::tibia::game::TGameActionRouter

@@ -23,6 +23,8 @@ class GameserverMessageStoreSuccess;
 class GameserverMessageStoreError;
 class GameserverMessageStoreButtonIndicators;
 class GameserverMessageOfferDescription;
+class GameserverMessageSetStoreButtonDeeplink;
+class GameserverMessageTransactionDetails;
 class ProtocolStoreVisual;
 class ProtocolStoreOpenParameters;
 }
@@ -356,6 +358,10 @@ public:
     void handleStoreErrorMessage(const tibia::protobuf::protocol::GameserverMessageStoreError& message);
     void handleStoreButtonIndicatorsMessage(const tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators& message);
     void handleOfferDescriptionMessage(const tibia::protobuf::protocol::GameserverMessageOfferDescription& message);
+    void handleSetStoreButtonDeeplinkMessage(const tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink& message);
+    void handleTransactionDetailsMessage(const tibia::protobuf::protocol::GameserverMessageTransactionDetails& message);
+    /// The live handler.
+    static TStoreProtocolMessageHandler* instance();
 
     /// The protocol's visualisation and open parameters.
     static TStoreVisualisation visualisation(const tibia::protobuf::protocol::ProtocolStoreVisual& visual);
@@ -369,9 +375,6 @@ Q_SIGNALS:
     /// Host: CIP HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
     void hirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
 
-public:
-    /// Host ingress: the protocol queue's server messages.
-    static void onServerMessageEnqueued(int opcode);
 
 private:
     /// After a purchase: asks for the offers shown again.

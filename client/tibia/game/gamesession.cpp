@@ -554,11 +554,6 @@ void processSessionDumpMarker(const std::string_view marker)
 {
     tibia::game::notify("onSessionDumpMarker", std::string(marker));
 }
-void processSoundTrigger(const uint8_t type, const uint16_t soundId)
-{
-    tibia::game::notify("onSoundTrigger", type, soundId);
-}
-
 void processReadyForSecondaryConnection(std::string_view token)
 {
     gameSessionState().processReadyForSecondaryConnection(token);
@@ -637,10 +632,6 @@ void processOwnTrade(std::string_view name, const std::vector<::tibia::container
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
     gameSessionState().processCounterTrade(name, items);
-}
-void processCloseTrade()
-{
-    tibia::game::notify("onCloseTrade");
 }
 void processEditText(const uint32_t id, const uint32_t itemId, const uint16_t maxLength, const std::string_view text, const std::string_view writer, const std::string_view date, const bool recentlyTraded)
 {

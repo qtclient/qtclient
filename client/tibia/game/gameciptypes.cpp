@@ -826,6 +826,11 @@ void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMess
     tibia::game::processEditList(m.list_id(), static_cast<uint8_t>(m.list_type()), m.text());
 }
 
+void TEditTextProtocolMessageHandler::handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& m)
+{
+    tibia::game::notify("onEditGuildMessage", m.text());
+}
+
 namespace {
 TPremiumTimeStorage* g_livePremiumTimeStorage = nullptr;
 }

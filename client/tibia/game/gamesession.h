@@ -288,7 +288,6 @@ void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibi
 void processUpdateNeeded(std::string_view signature);
 void processSessionDumpStart(std::string_view sessionKey);
 void processSessionDumpMarker(std::string_view marker);
-void processSoundTrigger(uint8_t type, uint16_t soundId);
 void processReadyForSecondaryConnection(std::string_view token);
 void processOutfitMemorial(const OutfitMemorialData& data);
 void processWalkCancel(tibia::client::Direction direction);
@@ -311,7 +310,6 @@ void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
-void processCloseTrade();
 void processEditText(uint32_t id, uint32_t itemId, uint16_t maxLength, std::string_view text, std::string_view writer,
                      std::string_view date, bool recentlyTraded = false);
 void processEditList(uint32_t id, uint8_t doorId, std::string_view text);

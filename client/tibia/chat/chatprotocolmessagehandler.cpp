@@ -371,66 +371,6 @@ void TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage(
         m_storage.setOwnName(player->name());
 }
 
-void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk&)
-{
-    // Applied by onServerMessageEnqueued; the console follows the onTalk notify.
-}
-
-void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage&)
-{
-    // Applied by onServerMessageEnqueued; the console follows the onTextMessage / onChannelTextMessage notify.
-}
-
-void TChatProtocolMessageHandler::handleOpenChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenChannel& OpenChannelMessage)
-{
-    QStringList participants;
-    for (const auto& name : OpenChannelMessage.joined_players())
-        participants.append(QString::fromStdString(name));
-    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
-                                QString::fromStdString(OpenChannelMessage.name()), false, participants);
-}
-
-void TChatProtocolMessageHandler::handleOpenOwnChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenOwnChannel& OpenChannelMessage)
-{
-    QStringList participants;
-    for (const auto& name : OpenChannelMessage.joined_players())
-        participants.append(QString::fromStdString(name));
-    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
-                                QString::fromStdString(OpenChannelMessage.name()), true, participants);
-}
-
-void TChatProtocolMessageHandler::handleCloseChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseChannel& CloseChannelMessage)
-{
-    m_storage.closeChannelByServer(static_cast<uint16_t>(CloseChannelMessage.channel_id()));
-}
-
-void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf::protocol::GameserverMessageChannels&)
-{
-    // Applied by onServerMessageEnqueued; the console follows the onChannelList notify.
-}
-
-void TChatProtocolMessageHandler::handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel)
-{
-    m_storage.openPrivateChannel(QString::fromStdString(PrivateChannel.name()), true);
-}
-
-void TChatProtocolMessageHandler::handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent& ChannelEvent)
-{
-    // Joined (0) and left (1) lines, behind consoleShowJoinLeaveMessages;
-    // the invitation events add nothing.
-    const uint32_t event = ChannelEvent.event_type();
-    if ((event != 0 && event != 1) || !m_showJoinLeaveMessages)
-        return;
-    QString text = QString::fromStdString(ChannelEvent.name());
-    text.append(qtTrId(event == 1 ? "chat_user_left_channel" : "chat_user_entered_channel"));
-    m_storage.addChannelSystemEntryIfOpen(systemWhite(), static_cast<uint16_t>(ChannelEvent.channel_id()), text);
-}
-
-void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters&)
-{
-    // Empty pb layout — NPC partners land on TChatStorage (controller-owned).
-}
-
 namespace {
 
 Position toPosition(const ::tibia::protobuf::protocol::ProtocolCoordinate& c)
@@ -487,94 +427,92 @@ void applyChannelPlayers(const Message& m)
 
 }
 
-void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage)
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
+    // The map shows the speech; the console follows the onTalk notify.
+    applyTalk(TalkMessage);
+}
+
+void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage)
+{
+    // The map shows the numbers; the console follows the onTextMessage / onChannelTextMessage notify.
+    applyMessage(MessageMessage);
+}
+
+void TChatProtocolMessageHandler::handleOpenChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenChannel& OpenChannelMessage)
+{
+    applyChannelPlayers(OpenChannelMessage);
+    tibia::game::processOpenChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()), OpenChannelMessage.name());
+    QStringList participants;
+    for (const auto& name : OpenChannelMessage.joined_players())
+        participants.append(QString::fromStdString(name));
+    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
+                                QString::fromStdString(OpenChannelMessage.name()), false, participants);
+}
+
+void TChatProtocolMessageHandler::handleOpenOwnChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenOwnChannel& OpenChannelMessage)
+{
+    applyChannelPlayers(OpenChannelMessage);
+    tibia::game::processOpenOwnPrivateChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()), OpenChannelMessage.name());
+    QStringList participants;
+    for (const auto& name : OpenChannelMessage.joined_players())
+        participants.append(QString::fromStdString(name));
+    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
+                                QString::fromStdString(OpenChannelMessage.name()), true, participants);
+}
+
+void TChatProtocolMessageHandler::handleCloseChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseChannel& CloseChannelMessage)
+{
+    tibia::game::processCloseChannel(static_cast<uint16_t>(CloseChannelMessage.channel_id()));
+    m_storage.closeChannelByServer(static_cast<uint16_t>(CloseChannelMessage.channel_id()));
+}
+
+void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf::protocol::GameserverMessageChannels& ChannelsMessage)
+{
+    // The console follows the onChannelList notify.
+    std::vector<std::tuple<uint16_t, std::string>> channels;
+    for (const auto& channel : ChannelsMessage.channels())
+        channels.emplace_back(static_cast<uint16_t>(channel.id()), channel.name());
+    tibia::game::processChannelList(channels);
+}
+
+void TChatProtocolMessageHandler::handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel)
+{
+    tibia::game::processOpenPrivateChannel(tibia::game::formatCreatureName(PrivateChannel.name()));
+    m_storage.openPrivateChannel(QString::fromStdString(PrivateChannel.name()), true);
+}
+
+void TChatProtocolMessageHandler::handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent& ChannelEvent)
+{
+    tibia::game::notify("onChannelEvent", static_cast<uint16_t>(ChannelEvent.channel_id()), ChannelEvent.name(),
+                        static_cast<uint8_t>(ChannelEvent.event_type()));
+    // Joined (0) and left (1) lines, behind consoleShowJoinLeaveMessages;
+    // the invitation events add nothing.
+    const uint32_t event = ChannelEvent.event_type();
+    if ((event != 0 && event != 1) || !m_showJoinLeaveMessages)
         return;
-    switch (opcode) {
-    case 28:
-        if (shadow->HasExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters)) {
-            const auto& m = shadow->GetExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters);
-            if (m.closed()) {
-                tibia::game::notify("onNpcChatWindowClose");
-                break;
-            }
-            NpcChatWindowData data;
-            data.npcIds.assign(m.npc_ids().begin(), m.npc_ids().end());
-            for (const auto& button : m.buttons())
-                data.buttons.push_back({ .id = static_cast<uint16_t>(button.button_id()), .text = button.text() });
-            tibia::game::notify("onNpcChatWindow", data);
-        }
-        break;
-    case 170:
-        if (shadow->HasExtension(GameserverMessageTalk::gameserver_message_talk))
-            applyTalk(shadow->GetExtension(GameserverMessageTalk::gameserver_message_talk));
-        break;
-    case 171:
-        if (shadow->HasExtension(GameserverMessageChannels::gameserver_message_channels)) {
-            std::vector<std::tuple<uint16_t, std::string>> channels;
-            for (const auto& channel : shadow->GetExtension(GameserverMessageChannels::gameserver_message_channels).channels())
-                channels.emplace_back(static_cast<uint16_t>(channel.id()), channel.name());
-            tibia::game::processChannelList(channels);
-        }
-        break;
-    case 172:
-        if (shadow->HasExtension(GameserverMessageOpenChannel::gameserver_message_open_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOpenChannel::gameserver_message_open_channel);
-            applyChannelPlayers(m);
-            tibia::game::processOpenChannel(static_cast<uint16_t>(m.channel_id()), m.name());
-            if (s_console)
-                s_console->handleOpenChannelMessage(m);
-        }
-        break;
-    case 173:
-        if (shadow->HasExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel);
-            tibia::game::processOpenPrivateChannel(tibia::game::formatCreatureName(m.name()));
-            if (s_console)
-                s_console->handlePrivateChannelMessage(m);
-        }
-        break;
-    case 174:
-        if (shadow->HasExtension(GameserverMessageEditGuildMessage::gameserver_message_edit_guild_message))
-            tibia::game::notify("onEditGuildMessage",
-                                shadow->GetExtension(GameserverMessageEditGuildMessage::gameserver_message_edit_guild_message).text());
-        break;
-    case 178:
-        if (shadow->HasExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel);
-            applyChannelPlayers(m);
-            tibia::game::processOpenOwnPrivateChannel(static_cast<uint16_t>(m.channel_id()), m.name());
-            if (s_console)
-                s_console->handleOpenOwnChannelMessage(m);
-        }
-        break;
-    case 179:
-        if (shadow->HasExtension(GameserverMessageCloseChannel::gameserver_message_close_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCloseChannel::gameserver_message_close_channel);
-            tibia::game::processCloseChannel(static_cast<uint16_t>(m.channel_id()));
-            if (s_console)
-                s_console->handleCloseChannelMessage(m);
-        }
-        break;
-    case 180:
-        if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
-            applyMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
-        break;
-    case 243:
-        if (shadow->HasExtension(GameserverMessageChannelEvent::gameserver_message_channel_event)) {
-            const auto& m = shadow->GetExtension(GameserverMessageChannelEvent::gameserver_message_channel_event);
-            tibia::game::notify("onChannelEvent", static_cast<uint16_t>(m.channel_id()), m.name(),
-                                static_cast<uint8_t>(m.event_type()));
-            if (s_console)
-                s_console->handleChannelEventMessage(m);
-        }
-        break;
-    default:
-        break;
+    QString text = QString::fromStdString(ChannelEvent.name());
+    text.append(qtTrId(event == 1 ? "chat_user_left_channel" : "chat_user_entered_channel"));
+    m_storage.addChannelSystemEntryIfOpen(systemWhite(), static_cast<uint16_t>(ChannelEvent.channel_id()), text);
+}
+
+void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters& Message)
+{
+    // The NPC conversation window: its partners and buttons, or closed.
+    if (Message.closed()) {
+        tibia::game::notify("onNpcChatWindowClose");
+        return;
     }
+    NpcChatWindowData data;
+    data.npcIds.assign(Message.npc_ids().begin(), Message.npc_ids().end());
+    for (const auto& button : Message.buttons())
+        data.buttons.push_back({ .id = static_cast<uint16_t>(button.button_id()), .text = button.text() });
+    tibia::game::notify("onNpcChatWindow", data);
+}
+
+TChatProtocolMessageHandler* TChatProtocolMessageHandler::liveInstance()
+{
+    return s_console;
 }
 
 bool TChatProtocolMessageHandler::consoleMessageAllowed(const int mode, const uint16_t channelId) const
