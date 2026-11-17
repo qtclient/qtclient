@@ -39,6 +39,8 @@ class TQmlStoreCategory final : public cip::tibia::store::TQmlStoreCategory
 public:
     TQmlStoreCategory(const QString& name, const std::vector<QString>& imageIdentifiers, const QList<QObject*>& subcategories,
                       QObject* parent = nullptr);
+    /// Deletes the subcategories it owns.
+    ~TQmlStoreCategory() override;
 };
 
 /// CIP: store::TQmlStoreVisualisation.
@@ -113,6 +115,8 @@ class TQmlStoreOffer final : public cip::tibia::store::TQmlStoreOffer
     Q_PROPERTY(QList<QObject*> cosmeticTokenQuantities READ cosmeticTokenQuantities CONSTANT FINAL)
 public:
     TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManager* descriptionManager, QObject* parent = nullptr);
+    /// Deletes its products, quantities and cosmetic-token quantities.
+    ~TQmlStoreOffer() override;
 
     QString name() const override;
     QString description() const override;
@@ -128,6 +132,9 @@ public:
     bool hasQuantity(int offerId) const;
 
 private:
+    /// A description arrived: tell QML when it is one of this offer's quantities.
+    void onOfferDescriptionLoaded(int offerId);
+
     TStoreOffer m_offer;
     QPointer<TStoreDescriptionManager> m_descriptionManager;
     TQmlStoreVisualisation* m_visualisationObject;
@@ -160,6 +167,8 @@ class TQmlStoreTransactionHistoryPage final : public cip::tibia::store::TQmlStor
     Q_OBJECT
 public:
     explicit TQmlStoreTransactionHistoryPage(const TStoreTransactionHistory& history, QObject* parent = nullptr);
+    /// Deletes its transaction entries.
+    ~TQmlStoreTransactionHistoryPage() override;
 
     bool canLoadNextPage() const override;
     bool canLoadPreviousPage() const override;

@@ -6443,7 +6443,7 @@ store::TQmlStoreBalance::~TQmlStoreBalance	4a00f6b18d7ba357	skip	generated: comp
 store::TQmlStoreBalance::~TQmlStoreBalance_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor (member destruction only, read)
 store::TQmlStoreCategory::~TQmlStoreCategory	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
 store::TQmlStoreCategory::~TQmlStoreCategory_deleting	79674512666b34e2	skip	generated: compiler-generated destructor (member destruction only, read)
-store::TQmlStoreOffer::descriptionChanged	de0bbc010c3f0ca5	skip	generated: moc signal emitter
+store::TQmlStoreOffer::descriptionChanged	de0bbc010c3f0ca5	ported	store/qmlstoreobjects.cpp:TQmlStoreOffer::onOfferDescriptionLoaded
 store::TQmlStoreOffer::onOfferDescriptionLoaded	5fb609c35c3683ea	ported	store/qmlstoreobjects.cpp:TQmlStoreOffer::visualisation
 store::TQmlStoreOffer::visualisationChanged	e4413f84cd8f8522	ported	store/qmlstoreobjects.cpp:TQmlStoreOffer::description
 store::TQmlStoreOffer::~TQmlStoreOffer	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
@@ -8288,7 +8288,6 @@ sub_17449ee924c0	17449ee924c0fae7	inlined	cyclopedia/housesstorage.cpp:THousesSt
 sub_174d816127b9	174d816127b9e726	ported	gamewindow/loottrackingwidgetcontroller.cpp:TQmlTrackedItem::itemValueString
 sub_17515663c9f0	17515663c9f03937	skip	library: std::vector<shared::THint> growth/destructor template
 sub_1753260985b0	1753260985b0e071	skip	library: QHashPrivate::Data destroy (span/entry teardown)
-sub_17584ffcc9f1	17584ffcc9f1eb2d	skip	library: libc++ std::vector reserve/push_back realloc/assign/split-buffer destroy for imbuing data
 sub_175a61769301	175a617693012dda	skip	library: std::sort instantiation over trade goods (library)
 sub_176bafad08bd	176bafad08bd6418	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::undergroundFloor
 sub_177173ae81e4	177173ae81e4af31	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillTile
@@ -10247,6 +10246,7 @@ sub_2a8267f21081	2a8267f21081c7ad	skip	library: libc++ vector/deque internals (l
 sub_2a87ed594a6d	2a87ed594a6d8d5b	skip	data: translation-unit static initializer (misattributed)
 sub_2a8e05bc3181#2	2a8e05bc318111c6	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_2a8e05bc3181#4	2a8e05bc318111c6	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_2a8fcaf06f39	2a8fcaf06f3937e8	ported	store/qmlstoreobjects.cpp:TQmlStoreCategory::~TQmlStoreCategory
 sub_2a91b7837196#18	2a91b783719622f7	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_2a9fa30d8433	2a9fa30d84336cb7	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_2abe6694639b	2abe6694639bdbc0	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openWeaponProficiencyDialog
@@ -14135,7 +14135,7 @@ sub_75859b77da57#2	75859b77da57ac67	ported	input/gameaction.h:TGameActionGetGuil
 sub_758a809ea6ca	758a809ea6ca8e8d	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_75955550cdb0	75955550cdb03047	ported	news/eventqmlentry.cpp:TEventQMLEntry::lessThan
 sub_7599548a9348	7599548a934853b6	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onMonsterRaceDetailsChanged
-sub_759a95dbbc53	759a95dbbc53bc94	skip	generated: compiler-generated destructor body (vtable install + member destruction only, read)
+sub_759a95dbbc53	759a95dbbc53bc94	ported	store/qmlstoreobjects.cpp:TQmlStoreOffer::~TQmlStoreOffer
 sub_75b9827bd6ff	75b9827bd6ff840f	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_75d42dac6d29	75d42dac6d29e7a6	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_75dbd5d1f6df	75dbd5d1f6dfb261	ported	gamewindow/chatcontroller.cpp:TChatController::storeOpenChannels
@@ -16596,7 +16596,7 @@ sub_9f65e74dbd1d	9f65e74dbd1d3c76	inlined	gamewindow/bosstiarydialogcontroller.c
 sub_9f74913c004a	9f74913c004a29b2	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 sub_9f764a647747	9f764a64774767ff	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_9f77eee726a4	9f77eee726a4a016	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::stepDuration	test=tests/client/creaturemovement_test.cpp
-sub_9f8f4c9ee659	9f8f4c9ee659abab	skip	generated: compiler-generated destructor body (vtable install + member destruction only, read)
+sub_9f8f4c9ee659	9f8f4c9ee659abab	ported	store/qmlstoreobjects.cpp:TQmlStoreTransactionHistoryPage::~TQmlStoreTransactionHistoryPage
 sub_9f92376263fc	9f92376263fceb33	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_9f98911bbf9e	9f98911bbf9e3a53	inlined	protocol/mapwire.cpp:fillMapMessage
 sub_9fa21e4bab34	9fa21e4bab34c52c	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::removeAll
@@ -21756,7 +21756,6 @@ sub_f976da1d0695	f976da1d0695bad8	skip	data: translation-unit static initializer
 sub_f97bb48e552d	f97bb48e552dcd55	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_f981d4cb1aaf	f981d4cb1aafc942	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_f98668b33799	f98668b3379923a3	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_f986fab0aab2	f986fab0aab21d78	skip	library: QtConcurrent/QFuture/QFutureWatcher and std::optional<TNewsData> template instantiations (result store, copy/move, run task)
 sub_f98ceae25008	f98ceae25008c033	tested	shared/src/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
 sub_f98eb3aa1b73	f98eb3aa1b73e53d	tested	sessiondump/sessiondumpprocessor.cpp:TSessiondumpProcessor::TSessiondumpProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_f9a0a702deba#2	f9a0a702deba7f63	skip	library: libc++ std::vector/std::map template instantiation (uninitialized copy, growth, range insert, init-list construct, tree destroy)
