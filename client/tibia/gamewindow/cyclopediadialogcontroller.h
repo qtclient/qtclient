@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
+#include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/housesinfodialogcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
@@ -33,7 +34,6 @@ class InstanceBackend;
 namespace tibia {
 namespace gamewindow {
 
-class TCharacterInfoDialogController;
 class TCyclopediaMapDialogController;
 class TMagicalArchiveDialogController;
 
@@ -82,7 +82,7 @@ private:
     struct Context
     {
         DialogTab tab = NoTabInitialState;
-        int characterInfoDataType = 0;
+        TCharacterInfoDialogController::Context characterInfo;
         TItemInfoDialogController::Context itemInfo;
         TMonsterDialogController::Context monsters;
         TMonsterBonusEffectsDialogController::Context bonusEffects;

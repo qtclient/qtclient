@@ -104,34 +104,14 @@ namespace tibia::client {
 
 namespace {
 
-QColor outfitColor(int index)
+/// The account's premium type (0 free, 1 premium, 2 free premium: premium
+/// without an end date, the product's free-premium worlds) and days left.
+std::pair<int, quint16> premiumTypeAndDays(const authentication::TPlaySessionData& session)
 {
-    const QColor c = Outfit::getColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
-
-/// CIP's world type names, by the login service's pvptype.
-QString worldRules(int pvpType)
-{
-    switch (pvpType) {
-        case 0: return QStringLiteral("Open PvP");
-        case 1: return QStringLiteral("Optional PvP");
-        case 2: return QStringLiteral("Hardcore PvP");
-        case 3: return QStringLiteral("Retro Open PvP");
-        case 4: return QStringLiteral("Retro Hardcore PvP");
-        default: return {};
-    }
-}
-
-QString premiumStatus(const authentication::TPlaySessionData& session)
-{
-    // CIP's premium type: 0 free, 1 premium, 2 free premium (premium without
-    // an end date: the product's free-premium worlds).
     const qint64 seconds = session.premiumUntil - QDateTime::currentSecsSinceEpoch();
     const int premiumType = !session.isPremium ? 0 : seconds <= 0 ? 2 : 1;
-    const int days = premiumType == 1 ? static_cast<int>((seconds + 86399) / 86400) : 0;
-    return gamewindow::TCharacterSelectionController::accountStatusText(static_cast<int>(session.status), premiumType,
-                                                                        days);
+    const quint16 days = premiumType == 1 ? static_cast<quint16>((seconds + 86399) / 86400) : 0;
+    return { premiumType, days };
 }
 
 /// Pack façade: composition under TGameClient (CIP base is already QObject).
@@ -341,8 +321,9 @@ TGameClient::TGameClient(QObject* parent)
         m_cloudflareChallenge->startChallenge(challengeUrl);
     });
 
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::characterChosen, this, &TGameClient::onCharacterChosen);
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::cancelled, this, [this] {
+    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
+            [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
+    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
@@ -716,35 +697,7 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
-    QList<gamewindow::CharacterEntry> entries;
-    entries.reserve(result.characters.size());
-    // CIP: no saved selection yet, so prefer ismaincharacter. -1 lets the
-    // sorted list highlight its first visible row instead of players.id order.
-    int lastSelected = -1;
-    for (const auto& c : result.characters) {
-        const auto* world = result.world(c.worldId);
-        gamewindow::CharacterEntry e;
-        e.name = c.name;
-        e.level = c.level;
-        e.vocation = c.vocation;
-        e.world = world ? world->name : QString();
-        e.worldRules = world ? worldRules(world->pvpType) : QString();
-        e.outfitId = c.outfitId;
-        e.headColor = outfitColor(c.headColor);
-        e.torsoColor = outfitColor(c.torsoColor);
-        e.legsColor = outfitColor(c.legsColor);
-        e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.firstAddOn;
-        e.secondAddOn = c.secondAddOn;
-        e.isMainCharacter = c.isMainCharacter;
-        e.isHidden = c.isHidden;
-        e.isOnline = c.isOnline;
-        e.tutorial = c.tutorial;
-        if (c.isMainCharacter)
-            lastSelected = int(entries.size());
-        entries.push_back(e);
-    }
-    qCInfo(lcGameClient) << "account has" << entries.size() << "characters on" << result.worlds.size() << "worlds";
+    qCInfo(lcGameClient) << "account has" << result.characters.size() << "characters on" << result.worlds.size() << "worlds";
     // CIP (TAuthenticationProcessController): the news learn the account's
     // returner state and unlock against its highest character level.
     if (news::TNewsStorage* news = news::TNewsStorage::current()) {
@@ -754,12 +707,11 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
             highestLevel = std::max(highestLevel, c.level);
         news->raiseAccountLevel(static_cast<ushort>(highestLevel));
     }
-    m_characterSelection->setAccount(premiumStatus(result.session), result.session.isPremium, entries, lastSelected);
-
+    showAccount(result.characters);
     if (!m_options.autoCharacter.isEmpty()) {
-        for (const auto& e : entries) {
-            if (e.name.compare(m_options.autoCharacter, Qt::CaseInsensitive) == 0) {
-                onCharacterChosen(e);
+        for (const auto& c : result.characters) {
+            if (c.name.compare(m_options.autoCharacter, Qt::CaseInsensitive) == 0) {
+                onCharacterChosen(c.name);
                 return;
             }
         }
@@ -769,50 +721,11 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
     Q_EMIT characterSelectionRequested();
 }
 
-void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
+void TGameClient::openCharacterSelectionForSwitch()
 {
     if (m_account.characters.empty())
         return;
-    QHash<QString, bool> onlineByName;
-    for (const QJsonValue& v : alts) {
-        const QJsonObject alt = v.toObject();
-        const QString name = alt.value(QLatin1String("name")).toString();
-        if (name.isEmpty())
-            continue;
-        const bool online = alt.value(QLatin1String("playing")).toBool()
-            || alt.value(QLatin1String("online")).toBool()
-            || name.compare(QString::fromStdString(tibia::game::characterName()), Qt::CaseInsensitive) == 0;
-        onlineByName.insert(name.toLower(), online);
-    }
-    QList<gamewindow::CharacterEntry> entries;
-    entries.reserve(m_account.characters.size());
-    // CIP Change Character: keep last confirmed selection (controller), fall back to
-    // ismaincharacter, else first visible row — do not force the currently playing char.
-    int preferred = -1;
-    for (const auto& c : m_account.characters) {
-        const auto* world = m_account.world(c.worldId);
-        gamewindow::CharacterEntry e;
-        e.name = c.name;
-        e.level = c.level;
-        e.vocation = c.vocation;
-        e.world = world ? world->name : QString();
-        e.worldRules = world ? worldRules(world->pvpType) : QString();
-        e.outfitId = c.outfitId;
-        e.headColor = outfitColor(c.headColor);
-        e.torsoColor = outfitColor(c.torsoColor);
-        e.legsColor = outfitColor(c.legsColor);
-        e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.firstAddOn;
-        e.secondAddOn = c.secondAddOn;
-        e.isMainCharacter = c.isMainCharacter;
-        e.isHidden = c.isHidden;
-        e.isOnline = onlineByName.value(c.name.toLower(), c.isOnline);
-        e.tutorial = c.tutorial;
-        if (c.isMainCharacter && preferred < 0)
-            preferred = int(entries.size());
-        entries.push_back(e);
-    }
-    m_characterSelection->setAccount(premiumStatus(m_account.session), m_account.session.isPremium, entries, preferred);
+    showAccount(m_account.characters);
     Q_EMIT characterSelectionRequested();
 }
 
@@ -860,31 +773,48 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
     return true;
 }
 
-void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
+void TGameClient::showAccount(const authentication::TCharacterList& characters)
 {
+    const auto [premiumType, premiumDays] = premiumTypeAndDays(m_account.session);
+    m_characterSelection->setAccountState(static_cast<int>(m_account.session.status));
+    m_characterSelection->setPremium(premiumType, premiumDays);
+    m_characterSelection->setRecoverySetupComplete(m_account.session.recoverySetupComplete);
+    m_characterSelection->setCharacters(characters, m_account.worlds);
+    // Until a character logged in, the table preselects the main character.
+    if (m_characterSelection->lastSelectedCharacterName().isEmpty()) {
+        for (const authentication::TCharacter& c : characters) {
+            if (c.isMainCharacter)
+                m_characterSelection->setLastSelectedCharacterName(c.name);
+        }
+    }
+}
+
+void TGameClient::onCharacterChosen(const QString& characterName)
+{
+    m_characterSelection->setLastSelectedCharacterName(characterName);
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
         if (m_sameSocketCharacterSwitch) {
-            if (!requestCharacterSwitch(character.name))
-                fail(tr("Could not switch to %1.").arg(character.name));
+            if (!requestCharacterSwitch(characterName))
+                fail(tr("Could not switch to %1.").arg(characterName));
             return;
         }
         // CIP: log this character out; the chosen one logs in once it left the world.
-        m_pendingCharacter = character.name;
+        m_pendingCharacter = characterName;
         tibia::game::safeLogout();
         return;
     }
 
     const authentication::TCharacter* chosen = nullptr;
     for (const auto& c : m_account.characters) {
-        if (c.name == character.name) {
+        if (c.name == characterName) {
             chosen = &c;
             break;
         }
     }
     const auto* world = chosen ? m_account.world(chosen->worldId) : nullptr;
     if (!world) {
-        fail(tr("The world of %1 is not in the world list.").arg(character.name));
+        fail(tr("The world of %1 is not in the world list.").arg(characterName));
         return;
     }
     Q_EMIT characterSelectionClosed();
@@ -1076,8 +1006,7 @@ void TGameClient::onWorldLeft()
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
     if (m_pendingCharacter) {
-        gamewindow::CharacterEntry next;
-        next.name = *m_pendingCharacter;
+        const QString next = *m_pendingCharacter;
         m_pendingCharacter.reset();
         QTimer::singleShot(0, this, [this, next] { onCharacterChosen(next); });
     }

@@ -291,6 +291,14 @@ public:
             m_imbumentIcons << QStringLiteral("image://%1/%2").arg(QStringLiteral("imbuement-icons")).arg(icon);
     }
 
+    /// No object in the slot.
+    bool isEmpty() const { return m_appearanceID == 0; }
+    bool isDualWield() const
+    {
+        TAppearanceType* type = tibia::game::rawThingType(static_cast<uint16_t>(m_appearanceID), ThingCategoryItem);
+        return type && type->isDualWield();
+    }
+
     void setPlayer(const CyclopediaCharacterInspection& data)
     {
         setDetails(qstr(data.playerName), data.playerDescriptions);
@@ -424,6 +432,17 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
     Q_EMIT dataIsLoadingChanged();
 }
 
+TCharacterInfoDialogController::Context TCharacterInfoDialogController::captureContext() const
+{
+    return { m_dataType, cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType) };
+}
+
+void TCharacterInfoDialogController::restoreContext(const Context& context)
+{
+    request(context.dataType, false);
+    sendRequest(context.dataType, static_cast<int>(context.page));
+}
+
 void TCharacterInfoDialogController::sendRequest(const int dataType, const int page)
 {
     // 23 entries per page.
@@ -497,11 +516,12 @@ void TCharacterInfoDialogController::clearAllModels()
                   OutfitsMounts, StoreSummary, Inspection });
 }
 
-void TCharacterInfoDialogController::onErrorReceived(const int dataType, const int errorCode)
+/// Explains a failed request; a missing character or one the player may not
+/// view also tells the dialog.
+void TCharacterInfoDialogController::onErrorReceived(int /*dataType*/, const int errorCode)
 {
-    if (!m_shown || dataType != m_dataType)
+    if (!m_shown)
         return;
-    // CIP .
     const char* text = nullptr;
     switch (errorCode) {
         case 1: text = "charinfo_error_no_data"; break;
@@ -512,12 +532,20 @@ void TCharacterInfoDialogController::onErrorReceived(const int dataType, const i
     m_errorMessage->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                           QKeySequence(QStringLiteral("Return"))) });
     m_errorMessage->showMessage(qtTrId("error"), qtTrId(text));
-    if (errorCode == 1)
-        Q_EMIT errorLoadingCharacter();
-    else if (errorCode == 2)
+    if (errorCode == 2)
         Q_EMIT noPermissionsToViewCharacter();
-    else
-        Q_EMIT noPermissionsToInspectCharacter();
+    else if (errorCode == 1)
+        Q_EMIT errorLoadingCharacter();
+}
+
+int TCharacterInfoDialogController::currentPage() const
+{
+    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType));
+}
+
+int TCharacterInfoDialogController::numberOfPages() const
+{
+    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->pageCount(m_dataType));
 }
 
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
@@ -541,8 +569,6 @@ void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 
 void TCharacterInfoDialogController::previousPaginatedPage()
 {
-    if (m_dataType != RecentDeaths && m_dataType != RecentKills)
-        return;
     const qint64 page = cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType);
     if (page > 1)
         sendRequest(m_dataType, static_cast<int>(page - 1));
@@ -550,8 +576,6 @@ void TCharacterInfoDialogController::previousPaginatedPage()
 
 void TCharacterInfoDialogController::nextPaginatedPage()
 {
-    if (m_dataType != RecentDeaths && m_dataType != RecentKills)
-        return;
     const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
     const qint64 page = storage->currentPage(m_dataType);
     if (page < storage->pageCount(m_dataType))
@@ -574,12 +598,63 @@ void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint Appe
     input::publish(action);
 }
 
+/// Opens the outfit dialog in its character info mode over every outfit,
+/// mount and summon skin of the shown character: the clicked one is selected,
+/// the other kinds start on the first of their list (an outfit with its
+/// add-ons), coloured like the appearances page.
 void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const bool IsOutfit, const bool IsMount,
                                                       const bool IsSummonSkin)
 {
+    if (!tibia::game::isOnline())
+        return;
+    Outfit current;
+    current.setCategory(ThingCategoryCreature);
+    if (IsOutfit)
+        current.setId(static_cast<uint16_t>(OutfitID));
+    else if (IsMount)
+        current.setMount(static_cast<uint16_t>(OutfitID));
+    else if (IsSummonSkin)
+        current.setFamiliar(static_cast<uint16_t>(OutfitID));
+    else
+        return;
+    if (const auto* model = dynamic_cast<TOutfitMountSummonSkinsListDataModelSortFilterProxy*>(m_outfitMountModel)) {
+        const auto& colors = model->colors();
+        current.setHead(colors[0]);
+        current.setBody(colors[1]);
+        current.setLegs(colors[2]);
+        current.setFeet(colors[3]);
+        current.setMountColors(colors[4], colors[5], colors[6], colors[7]);
+    }
+
+    using Entry = TCustomiseCharacterModel::Entry;
+    QList<Entry> outfits;
+    QList<Entry> mounts;
+    QList<Entry> summons;
+    if (const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins()) {
+        for (const CharacterInfoOutfits& outfit : appearances->outfits) {
+            if (IsOutfit && outfit.lookType == OutfitID)
+                current.setAddons(outfit.addons);
+            outfits.append({ .id = outfit.lookType, .name = QString::fromStdString(outfit.name), .firstAddOn = (outfit.addons & 1) != 0,
+                             .secondAddOn = (outfit.addons & 2) != 0, .type = outfit.type });
+        }
+        for (const CharacterInfoMounts& mount : appearances->mounts)
+            mounts.append({ .id = mount.mountId, .name = QString::fromStdString(mount.name), .type = mount.type });
+        for (const CharacterInfoFamiliar& summon : appearances->summonSkins)
+            summons.append({ .id = summon.lookType, .name = QString::fromStdString(summon.name), .type = summon.type });
+    }
+    if (!IsOutfit && !outfits.isEmpty()) {
+        current.setId(static_cast<uint16_t>(outfits.first().id));
+        current.setAddons(static_cast<uint8_t>((outfits.first().firstAddOn ? 1 : 0) | (outfits.first().secondAddOn ? 2 : 0)));
+    }
+    if (!IsMount && !mounts.isEmpty())
+        current.setMount(static_cast<uint16_t>(mounts.first().id));
+    if (!IsSummonSkin && !summons.isEmpty())
+        current.setFamiliar(static_cast<uint16_t>(summons.first().id));
+
     if (!m_outfitDialog)
         m_outfitDialog = new TSelectOutfitDialogController(this);
-    m_outfitDialog->openCharacterInfoSelection(OutfitID, IsOutfit, IsMount, IsSummonSkin);
+    m_outfitDialog->openCharacterInfoSelection(current, std::move(outfits), std::move(mounts), std::move(summons), IsOutfit, IsMount,
+                                               IsSummonSkin);
 }
 
 void TCharacterInfoDialogController::rebuildStatsBlocks()
@@ -659,26 +734,20 @@ void TCharacterInfoDialogController::updateMiscStats()
 /// CIP: one death object per entry.
 void TCharacterInfoDialogController::updateDeaths()
 {
-    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
     QList<QObject*> deaths;
-    for (const RecentDeathEntry& entry : storage->recentDeaths())
+    for (const RecentDeathEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentDeaths())
         deaths.append(new TDeathQmlData(entry, this));
     replace(m_characterDeaths, std::move(deaths));
-    m_currentPage = static_cast<int>(storage->currentPage(RecentDeaths));
-    m_numberOfPages = static_cast<int>(storage->pageCount(RecentDeaths));
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: one kill object per entry.
 void TCharacterInfoDialogController::updateKills()
 {
-    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
     QList<QObject*> kills;
-    for (const RecentPvPKillEntry& entry : storage->recentPvpKills())
+    for (const RecentPvPKillEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentPvpKills())
         kills.append(new TKillQmlData(entry, this));
     replace(m_characterKills, std::move(kills));
-    m_currentPage = static_cast<int>(storage->currentPage(RecentKills));
-    m_numberOfPages = static_cast<int>(storage->pageCount(RecentKills));
     Q_EMIT dataModelChanged();
 }
 
@@ -698,36 +767,52 @@ void TCharacterInfoDialogController::updateAccountInfos()
     Q_EMIT dataModelChanged();
 }
 
-/// Slots 1..10 then the player (99), filled from the entries.
+/// The ten equipment slots and the inspected character (slot 99), built only
+/// when the storage holds an inspection.
 void TCharacterInfoDialogController::updateInspection()
 {
-    const CyclopediaCharacterInspection inspection = cyclopedia::TCharacterInfoStorage::instance()->inspection();
-    const CyclopediaCharacterInspection* data = &inspection;
+    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
+    if (!storage->hasInfo(Inspection))
+        return;
+    const CyclopediaCharacterInspection inspection = storage->inspection();
     QList<QObject*> objects;
     for (int slot = 1; slot <= InspectSlots; ++slot)
         objects.append(new TInspectObjectQmlData(slot, this));
     auto* player = new TInspectObjectQmlData(InspectPlayerSlot, this);
     objects.append(player);
-    bool rightHandEmpty = true;
-    uint16_t leftHandTypeId = 0;
-    bool leftHandDualWield = false;
-    for (const InspectionInventoryItem& entry : data->inventoryItems) {
-        if (entry.slot < 1 || entry.slot > InspectSlots)
-            continue;
-        static_cast<TInspectObjectQmlData*>(objects[entry.slot - 1])->setItem(entry);
-        if (entry.slot == InspectRightHandSlot && entry.typeId != 0)
-            rightHandEmpty = false;
-        if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
-            leftHandTypeId = entry.typeId;
-            if (TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
-                leftHandDualWield = type->isDualWield();
-        }
+    for (const InspectionInventoryItem& entry : inspection.inventoryItems) {
+        if (entry.slot >= 1 && entry.slot <= InspectSlots)
+            static_cast<TInspectObjectQmlData*>(objects[entry.slot - 1])->setItem(entry);
     }
-    player->setPlayer(*data);
-    m_hasDualWielding = leftHandDualWield && rightHandEmpty;
-    m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
+    player->setPlayer(inspection);
     replace(m_inspectPlayerList, std::move(objects));
     Q_EMIT dataModelChanged();
+}
+
+/// A dual-wield weapon in the left hand with the right hand empty.
+bool TCharacterInfoDialogController::hasDualWielding() const
+{
+    bool leftHandDualWield = false;
+    bool rightHandEmpty = false;
+    for (QObject* object : m_inspectPlayerList) {
+        const auto* data = static_cast<const TInspectObjectQmlData*>(object);
+        if (data->slotID() == InspectLeftHandSlot && !data->isEmpty() && data->isDualWield())
+            leftHandDualWield = true;
+        if (data->slotID() == InspectRightHandSlot && data->isEmpty())
+            rightHandEmpty = true;
+    }
+    return leftHandDualWield && rightHandEmpty;
+}
+
+/// The left hand's dual-wield weapon, 0 without one.
+int TCharacterInfoDialogController::dualWieldingObjectID() const
+{
+    for (QObject* object : m_inspectPlayerList) {
+        const auto* data = static_cast<const TInspectObjectQmlData*>(object);
+        if (data->slotID() == InspectLeftHandSlot && !data->isEmpty() && data->isDualWield())
+            return static_cast<int>(data->appearanceID());
+    }
+    return 0;
 }
 
 void TCharacterInfoDialogController::hookEvents()

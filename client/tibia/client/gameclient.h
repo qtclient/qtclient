@@ -36,7 +36,6 @@ namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCrashReportDialogController;
-struct CharacterEntry;
 }
 namespace shared {
 class TCrashReportSender;
@@ -210,8 +209,8 @@ public:
     void refreshAccount(const QJsonObject& reply);
     /// Password login from the product login dialog (`make client-start` without SSO).
     void submitCredentials(const QString& account, const QString& password);
-    /// CIP Change Character: show CharacterSelection while online (optional lobby alt Online flags).
-    void openCharacterSelectionForSwitch(const QJsonArray& alts = {});
+    /// CIP Change Character: show CharacterSelection while online.
+    void openCharacterSelectionForSwitch();
     /// Hide CharacterSelection without logging out / quitting (in-game Switch toggle).
     void closeCharacterSelection();
     /// CIP Ctrl/Cmd+G / sidebar Switch: toggle in-game CharacterSelection while online.
@@ -252,7 +251,9 @@ private:
     void sendCrashReport(bool SendFullReport);
     void login();
     void onLoginSuccessful(const authentication::LoginResult& result);
-    void onCharacterChosen(const gamewindow::CharacterEntry& character);
+    /// The character list with the account's premium state.
+    void showAccount(const authentication::TCharacterList& characters);
+    void onCharacterChosen(const QString& characterName);
     void onWorldEntered();
     /// Writes the session's minimap and character options.
     void onWorldLeft();

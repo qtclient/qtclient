@@ -106,6 +106,7 @@ qt_add_executable(tibia
   news/newsdiskio.cpp news/newsdiskio.h
   news/newsentrymodels.cpp news/newsentrymodels.h
   controllers/characterselectioncontroller.cpp controllers/characterselectioncontroller.h
+  gamewindow/characterinformationmodeldata.cpp gamewindow/characterinformationmodeldata.h
   gamewindow/gamewindowcontroller.cpp gamewindow/gamewindowcontroller.h
   gamewindow/newsdialogcontroller.cpp gamewindow/newsdialogcontroller.h
   gamewindow/calendardialogcontroller.cpp gamewindow/calendardialogcontroller.h
@@ -187,6 +188,10 @@ if(TIBIA_QML_DISK)
     TIBIA_QML_CIP_DIR="${CIPSOFT_QML_DIR}"
     TIBIA_QML_MOD_DIR="${_qml_mod_dirs}"
     TIBIA_QML_OVERRIDES_DIR="${_qml_override_dirs}")
+endif()
+if(APPLE AND NOT EMSCRIPTEN)
+  # Carbon: the Caps Lock state (GetCurrentKeyModifiers).
+  target_link_libraries(tibia PRIVATE "-framework Carbon")
 endif()
 if(WIN32)
   # NOMINMAX: windows.h otherwise macros min/max. Full SDK include order and
@@ -365,6 +370,9 @@ if(TIBIA_WITH_GAMECORE)
     chat/textstorage.cpp chat/textstorage.h
     shared/tibiaurltools.cpp shared/tibiaurltools.h
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
+    gamewindow/chatchanneltabrenderinfo.cpp gamewindow/chatchanneltabrenderinfo.h
+    gamewindow/chatchannelfiltercontroller.cpp gamewindow/chatchannelfiltercontroller.h
+    gamewindow/capslockstate.cpp gamewindow/capslockstate.h
     creatures/attachedeffect.cpp creatures/attachedeffect.h
     creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
     creatures/movementtweens.cpp creatures/movementtweens.h

@@ -511,14 +511,8 @@ void publish(const TGameActionPtr& action)
         tibia::game::requestTransactionDetails(static_cast<uint32_t>(action->instance));
         break;
     case A::OPEN_TRADE_CHARACTER_DIALOG:
-        // CIP → TCharacterTradeDialogController (CharacterTradeDialog.qml); action 0 = conditions.
-        if (gamewindow::TCharacterTradeDialogController* trade =
-                gamewindow::TCharacterTradeDialogController::instance()) {
-            tibia::game::requestCharacterTradeConfiguration(0);
+        if (gamewindow::TCharacterTradeDialogController* trade = gamewindow::TCharacterTradeDialogController::instance())
             trade->showDialog();
-        } else {
-            tibia::game::requestCharacterTradeConfiguration(0);
-        }
         break;
     case A::MINIMAP_ONE_FLOOR_UP:
     case A::MINIMAP_ONE_FLOOR_DOWN:
@@ -542,12 +536,9 @@ void publish(const TGameActionPtr& action)
             listener(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
-        // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.
-        if (QObject* field = focusedTextField()) {
-            if (QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection))
-                break;
-        }
-        publish(makeAction(A::CHAT_CHANNEL_SELECT_ALL));
+        // The chat controller handles its own input and output (it listens too).
+        if (QObject* field = focusedTextField())
+            QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection);
         break;
     case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
     case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:

@@ -214,11 +214,36 @@ void TActionButtonController::setPassiveAbility(const int passiveAbility)
 void TActionButtonController::setHotkeys(const QList<QKeySequence>& hotkeys)
 {
     m_hotkeys = hotkeys;
-    const QString hotkeyShort = hotkeys.isEmpty() ? QString() : hotkeys.front().toString(QKeySequence::NativeText);
+    const QString hotkeyShort = hotkeys.isEmpty() ? QString() : shortHotkeyText(hotkeys.front());
     if (hotkeyShort == m_hotkeyShort)
         return;
     m_hotkeyShort = hotkeyShort;
     Q_EMIT changed();
+}
+
+QString TActionButtonController::shortHotkeyText(const QKeySequence& key)
+{
+    QString text;
+    if (key.isEmpty())
+        return text;
+    const QString portable = key.toString(QKeySequence::PortableText);
+    QStringList parts = portable.split(QStringLiteral("+"), Qt::KeepEmptyParts, Qt::CaseSensitive);
+    // A key that is itself "+" leaves empty parts behind.
+    if (portable.endsWith(QStringLiteral("+"))) {
+        if (portable.toUpper().endsWith(QStringLiteral("N+")))
+            parts.back() = QStringLiteral("N+");
+        else
+            parts.append(QStringLiteral("+"));
+    }
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        if (i == parts.size() - 1) {
+            text.append(parts[i]);
+            break;
+        }
+        if (!parts[i].isEmpty())
+            text.append(parts[i].toUpper().at(0));
+    }
+    return text;
 }
 
 QString TActionButtonController::tooltip() const

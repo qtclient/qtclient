@@ -52,9 +52,15 @@ public:
     void refreshClocks();
     /// Re-read loot-value frames after prices or colorizeLootStyle change.
     void refreshLootValues();
+    /// The type counts follow `counts` (the session's inventory counts);
+    /// nullptr detaches.
+    void setObjectCountStorage(container::TObjectCountStorage* counts);
+    /// Every row's typeCount and countString change.
+    void onObjectCountsChanged() override;
 
 private:
     std::vector<container::TInventorySlot> m_objects;
+    QMetaObject::Connection m_objectCountsChanged;
     int m_minimumRows = 0;
     bool m_showExpire = true;
     bool m_showExpireWhenUnused = false;

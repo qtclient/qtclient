@@ -1069,57 +1069,6 @@ void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const ui
     input::publish(action);
 }
 
-TChatChannelFilterController::TChatChannelFilterController(QObject* parent)
-    : cip::tibia::gamewindow::TChatChannelFilterController(parent)
-{}
-
-void TChatChannelFilterController::setChannelModel(QAbstractItemModel* source)
-{
-    setSourceModel(source);
-}
-
-void TChatChannelFilterController::syncFromChannel(const bool canSubscribe, const bool subscribed, const bool writesLocal, const bool canClose,
-                                                   const QString& name)
-{
-    m_canSubscribeToServerLog = canSubscribe;
-    m_isSubscribedToServerLog = subscribed;
-    m_writesToLocalChat = writesLocal;
-    m_canBeClosed = canClose;
-    m_channelName = name;
-    Q_EMIT chatChannelPropertyChanged();
-    Q_EMIT chatChannelChanged();
-}
-
-bool TChatChannelFilterController::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
-{
-    Q_UNUSED(sourceRow);
-    Q_UNUSED(sourceParent);
-    // CIP : currently accepts every channel entry row.
-    return true;
-}
-
-TChatChannelTabRenderInfo::TChatChannelTabRenderInfo(QObject* parent)
-    : cip::tibia::gamewindow::TChatChannelTabRenderInfo(parent)
-{
-    m_timer.setSingleShot(true);
-    connect(&m_timer, &QTimer::timeout, this, &TChatChannelTabRenderInfo::onFlashTimerTimeout);
-}
-
-void TChatChannelTabRenderInfo::startFlash(const int milliseconds)
-{
-    m_timer.start(milliseconds);
-}
-
-void TChatChannelTabRenderInfo::stopFlash()
-{
-    m_timer.stop();
-}
-
-void TChatChannelTabRenderInfo::onFlashTimerTimeout()
-{
-    Q_EMIT flashFinished();
-}
-
 TChatTutorialMarkerRenderInfo::TChatTutorialMarkerRenderInfo(const int markerId, const int startIndex, const int length, QObject* parent)
     : cip::tibia::gamewindow::TChatTutorialMarkerRenderInfo(parent)
 {

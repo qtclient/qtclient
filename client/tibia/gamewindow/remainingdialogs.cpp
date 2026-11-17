@@ -6,6 +6,7 @@
 #include <QLocale>
 #include <QFile>
 #include <QJsonArray>
+#include <QLocale>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -150,32 +151,72 @@ const TSoulSealsMonsterListModel::Entry* TSoulSealsMonsterListModel::entryForRac
 TCharacterAuctionConfiguration::TCharacterAuctionConfiguration(QObject* parent)
     : cip::tibia::gamewindow::TCharacterAuctionConfiguration(parent)
 {
-    m_minimumMinimumBid = 50;
-    m_minimumAuctionEndTimestamp = 0;
-    m_maximumAuctionEndTimestamp = 0;
 }
 
-void TCharacterAuctionConfiguration::setSelectedHighlightCount(const int count)
+void TCharacterAuctionConfiguration::addHighlight(const int highlightId)
 {
-    if (m_selectedHighlightCount == count)
-        return;
-    m_selectedHighlightCount = count;
+    m_highlights.insert(highlightId);
     Q_EMIT selectedHighlightsChanged();
 }
 
-void TCharacterAuctionConfiguration::setSelectedItemCount(const int count)
+void TCharacterAuctionConfiguration::removeHighlight(const int highlightId)
 {
-    if (m_selectedItemCount == count)
-        return;
-    m_selectedItemCount = count;
+    m_highlights.remove(highlightId);
+    Q_EMIT selectedHighlightsChanged();
+}
+
+void TCharacterAuctionConfiguration::clearHighlights()
+{
+    m_highlights.clear();
+    Q_EMIT selectedHighlightsChanged();
+}
+
+void TCharacterAuctionConfiguration::addItem(const int itemId, const int upgradeTier)
+{
+    m_items.insert({ itemId, upgradeTier });
     Q_EMIT selectedItemsChanged();
 }
 
+void TCharacterAuctionConfiguration::removeItem(const int itemId, const int upgradeTier)
+{
+    m_items.remove({ itemId, upgradeTier });
+    Q_EMIT selectedItemsChanged();
+}
+
+void TCharacterAuctionConfiguration::clearItems()
+{
+    m_items.clear();
+    Q_EMIT selectedItemsChanged();
+}
+
+/// The server's minimum bid and auction end window; a bid below the minimum
+/// or an end outside the window moves to the bound.
 void TCharacterAuctionConfiguration::setAuctionBounds(const int minimumBid, const int minEnd, const int maxEnd)
 {
-    m_minimumMinimumBid = minimumBid;
     m_minimumAuctionEndTimestamp = minEnd;
     m_maximumAuctionEndTimestamp = maxEnd;
+    Q_EMIT configurationChanged();
+    if (m_auctionEndTimestamp != maxEnd && (maxEnd < m_auctionEndTimestamp || m_auctionEndTimestamp < minEnd)) {
+        m_auctionEndTimestamp = maxEnd;
+        Q_EMIT configurationChanged();
+    }
+    m_minimumMinimumBid = minimumBid;
+    Q_EMIT configurationChanged();
+    if (m_minimumBid < minimumBid) {
+        m_minimumBid = minimumBid;
+        Q_EMIT configurationChanged();
+    }
+}
+
+void TCharacterAuctionConfiguration::reset()
+{
+    m_minimumBid = 0;
+    m_minimumMinimumBid = 0;
+    m_auctionEndTimestamp = 0;
+    m_minimumAuctionEndTimestamp = 0;
+    m_maximumAuctionEndTimestamp = 0;
+    clearHighlights();
+    clearItems();
     Q_EMIT configurationChanged();
 }
 
@@ -261,10 +302,20 @@ QObject* TCharacterTradeDialogController::characterOverviewItemsModel() const
     return m_characterOverviewItemsModel;
 }
 
+/// Opens on a fresh configuration: the conditions are asked for, the previous
+/// setup is cancelled and nothing is selected until the answers arrive.
 void TCharacterTradeDialogController::showDialog()
 {
     dialog()->create();
     dialog()->show();
+    tibia::game::requestCharacterTradeConfiguration(0);
+    tibia::game::requestCharacterTradeConfiguration(1);
+    m_hasUnfulfilledConditions = true;
+    m_hasConfirmationError = true;
+    m_auction->reset();
+    refreshOverviewModels();
+    Q_EMIT hasUnfulfilledConditionsChanged();
+    Q_EMIT hasConfirmationErrorChanged();
 }
 
 void TCharacterTradeDialogController::closeDialog()
@@ -285,42 +336,42 @@ void TCharacterTradeDialogController::requestClose()
 
 void TCharacterTradeDialogController::addHighlight(const int HighlightID)
 {
-    m_selectedHighlightIds.insert(HighlightID);
+    m_auction->addHighlight(HighlightID);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::removeHighlight(const int HighlightID)
 {
-    m_selectedHighlightIds.remove(HighlightID);
+    m_auction->removeHighlight(HighlightID);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::addItem(const int ItemID, const int UpgradeTier)
 {
-    m_selectedItems.insert({ ItemID, UpgradeTier });
+    m_auction->addItem(ItemID, UpgradeTier);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::removeItem(const int ItemID, const int UpgradeTier)
 {
-    m_selectedItems.remove({ ItemID, UpgradeTier });
+    m_auction->removeItem(ItemID, UpgradeTier);
     refreshOverviewModels();
 }
 
 TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController::configuration() const
 {
     TConfiguration configuration;
-    configuration.minimumBid = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->minimumBid())) : 0;
-    configuration.auctionEnd = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->auctionEndTimestamp())) : 0;
+    configuration.minimumBid = static_cast<uint32_t>(std::max(0, m_auction->minimumBid()));
+    configuration.auctionEnd = static_cast<uint32_t>(std::max(0, m_auction->auctionEndTimestamp()));
     // Highlight ids past 0xffff are store items (store item id + 0xffff).
-    for (const int id : m_selectedHighlightIds) {
+    for (const int id : m_auction->highlights()) {
         const auto value = static_cast<uint32_t>(id);
         if (value < 0x10000)
             configuration.highlights.push_back(static_cast<uint16_t>(value));
         else
             configuration.storeItems.emplace_back(static_cast<uint16_t>((value + 1) & 0xffff), 0);
     }
-    for (const QPair<int, int>& item : m_selectedItems)
+    for (const QPair<int, int>& item : m_auction->items())
         configuration.items.emplace_back(static_cast<uint16_t>(item.first), static_cast<uint8_t>(item.second));
     return configuration;
 }
@@ -359,47 +410,72 @@ void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTr
             const trade::TCharacterTradeBasicData& data = storage->basicData();
             auto* character = static_cast<TQMLCharacterData*>(m_characterData);
             character->setCharacter(data.name, data.vocation, data.level, data.worldType, tradeOutfitConfiguration(data.outfit, character));
-            m_auction->setAuctionBounds(static_cast<int>(data.minimumBid), static_cast<int>(data.startTime), static_cast<int>(data.endTime));
             std::vector<trade::TCharacterTradeConditionEntry> conditions;
-            bool unfulfilled = false;
+            m_hasUnfulfilledConditions = false;
             for (const trade::TCharacterTradeCondition& condition : data.conditions) {
                 // TibiaEnums.EYesNoWarning: Yes=0 No=1.
                 conditions.push_back({ condition.text, condition.fulfilled ? 0 : 1 });
-                unfulfilled = unfulfilled || !condition.fulfilled;
+                if (!condition.fulfilled)
+                    m_hasUnfulfilledConditions = true;
             }
             m_conditions->setEntries(std::move(conditions));
-            if (m_hasUnfulfilledConditions != unfulfilled) {
-                m_hasUnfulfilledConditions = unfulfilled;
-                Q_EMIT hasUnfulfilledConditionsChanged();
-            }
-            showDialog();
+            Q_EMIT hasUnfulfilledConditionsChanged();
+            m_auction->setAuctionBounds(static_cast<int>(data.minimumBid), static_cast<int>(data.startTime), static_cast<int>(data.endTime));
             break;
         }
-        case trade::TCharacterTradeStorage::Items:
-        case trade::TCharacterTradeStorage::StoreItems:
-            m_items->source()->setEntries(
-                itemEntries(dataType == trade::TCharacterTradeStorage::Items ? storage->items() : storage->storeItems()));
+        case trade::TCharacterTradeStorage::Items: {
+            std::vector<trade::TCharacterTradeItemEntry> items = itemEntries(storage->items());
+            m_items->source()->setEntries(items);
+            m_overviewItems->setEntries({});
+            m_auction->clearItems();
             break;
-        case trade::TCharacterTradeStorage::Highlights:
-        {
+        }
+        case trade::TCharacterTradeStorage::StoreItems:
+        case trade::TCharacterTradeStorage::Highlights: {
+            // The store items are highlights too, their id past the highlight ids.
             std::vector<trade::TCharacterTradeHighlightEntry> highlights;
             for (const trade::TCharacterTradeHighlightGroup& group : storage->highlights()) {
                 for (const trade::TCharacterTradeHighlightGroup::Entry& highlight : group.entries)
                     highlights.push_back({ highlight.id, highlight.text, group.name, categoryIconFor(group.category) });
             }
-            m_highlights->source()->setEntries(std::move(highlights));
-        }
-            break;
-        case trade::TCharacterTradeStorage::Summary: {
-            std::vector<trade::TCharacterTradeConditionEntry> confirmations;
-            for (const QString& problem : storage->problems())
-                confirmations.push_back({ problem, 1 });
-            const bool err = !confirmations.empty();
-            m_confirmations->setEntries(std::move(confirmations));
-            if (m_hasConfirmationError != err) {
-                m_hasConfirmationError = err;
-                Q_EMIT hasConfirmationErrorChanged();
+            const QString storeCategory = qtTrId("charactertrade_store_items_category");
+            for (const trade::TCharacterTradeItem& item : storage->storeItems()) {
+                QString name = itemNameOf(item.objectId);
+                if (name.isEmpty())
+                    name = qtTrId("dummy_unknown");
+                const QString text = qtTrId("charactertrade_store_items_template")
+                                         .arg(QLocale(QLocale::English).toString(static_cast<qulonglong>(item.count)), name);
+                highlights.push_back({ item.objectId + 0xffff, text, storeCategory, categoryIconFor(4) });
             }
+            m_highlights->source()->setEntries(std::move(highlights));
+            m_overviewHighlights->setEntries({});
+            m_auction->clearHighlights();
+            break;
+        }
+        case trade::TCharacterTradeStorage::Summary: {
+            // A fee means the server accepted the setup: its problems, then
+            // what the auction will be.
+            if (storage->fee() == 0)
+                break;
+            std::vector<trade::TCharacterTradeConditionEntry> confirmations;
+            m_hasConfirmationError = false;
+            for (const QString& problem : storage->problems()) {
+                confirmations.push_back({ problem, 1 });
+                m_hasConfirmationError = true;
+            }
+            const auto* character = static_cast<TQMLCharacterData*>(m_characterData);
+            confirmations.push_back(
+                { qtTrId("charactertrade_confirmation_minimum_bid").arg(character->characterName()).arg(m_auction->minimumBid()), 0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_auction_end")
+                                          .arg(QDateTime::fromSecsSinceEpoch(m_auction->auctionEndTimestamp())
+                                                   .toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"))),
+                                      0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_auction_fee").arg(storage->fee()), 0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_insecure_coins"), 2 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_no_refund"), 2 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_privacy_warning"), 2 });
+            m_confirmations->setEntries(std::move(confirmations));
+            Q_EMIT hasConfirmationErrorChanged();
             break;
         }
     }
@@ -409,21 +485,17 @@ void TCharacterTradeDialogController::refreshOverviewModels()
 {
     std::vector<trade::TCharacterTradeHighlightEntry> highlights;
     for (const trade::TCharacterTradeHighlightEntry& entry : m_highlights->source()->entries()) {
-        if (m_selectedHighlightIds.contains(entry.highlightId))
+        if (m_auction->highlights().contains(entry.highlightId))
             highlights.push_back(entry);
     }
     m_overviewHighlights->setEntries(std::move(highlights));
-    if (m_auction)
-        m_auction->setSelectedHighlightCount(m_selectedHighlightIds.size());
 
     std::vector<trade::TCharacterTradeItemEntry> items;
     for (const trade::TCharacterTradeItemEntry& entry : m_items->source()->entries()) {
-        if (m_selectedItems.contains({ entry.id, entry.upgradeTier }))
+        if (m_auction->items().contains({ entry.id, entry.upgradeTier }))
             items.push_back(entry);
     }
     m_overviewItems->setEntries(std::move(items));
-    if (m_auction)
-        m_auction->setSelectedItemCount(m_selectedItems.size());
 }
 
 namespace {
@@ -486,20 +558,53 @@ TCharacterWorldTransferDialogController::TCharacterWorldTransferDialogController
     : TDialogController(QStringLiteral("CharacterWorldTransferDialog.qml"), parent)
 {}
 
-void TCharacterWorldTransferDialogController::setTransfer(const QString& characterName, const bool express,
-                                                          QList<QObject*> conditions, QList<QObject*> worlds,
-                                                          const bool canTransfer)
+bool TCharacterWorldTransferDialogController::canTransfer() const
 {
-    m_characterName = characterName;
-    m_isExpressWorldTransfer = express;
-    m_conditions = std::move(conditions);
-    m_worlds = std::move(worlds);
-    m_canTransfer = canTransfer;
+    return std::none_of(std::begin(m_info.flags), std::end(m_info.flags), [](const bool flag) { return flag; });
+}
+
+void TCharacterWorldTransferDialogController::showDialog(const int OfferIDForWorldChange, const QString& CharacterName,
+                                                         const tibia::store::TWorldTransferInformation& WorldTransferInfo)
+{
+    closeDialog();
+    m_offerId = OfferIDForWorldChange;
+    m_info = WorldTransferInfo;
+    m_isExpressWorldTransfer = WorldTransferInfo.flag;
+    m_characterName = CharacterName;
+    m_canTransfer = canTransfer();
+    createConditions();
+    createWorlds();
+    dialog()->show();
+}
+
+void TCharacterWorldTransferDialogController::createConditions()
+{
+    static constexpr std::pair<const char*, const char*> Texts[] = {
+        { "characterworldtransfer_redskull", "characterworldtransfer_no_redskull" },
+        { "characterworldtransfer_blackskull", "characterworldtransfer_no_blackskull" },
+        { "characterworldtransfer_guild_leader", "characterworldtransfer_not_guild_leader" },
+        { "characterworldtransfer_house_owner", "characterworldtransfer_not_house_owner" },
+        { "characterworldtransfer_coin_offers", "characterworldtransfer_no_coin_offers" },
+    };
+    for (size_t i = 0; i < std::size(Texts); ++i) {
+        const bool affected = m_info.flags[i];
+        m_conditions.append(new TQmlWorldTransferCondition(!affected, qtTrId(affected ? Texts[i].first : Texts[i].second)));
+    }
+}
+
+void TCharacterWorldTransferDialogController::createWorlds()
+{
+    for (const tibia::store::TTransferWorld& world : m_info.worlds)
+        m_worlds.append(new TQmlTargetWorld(world.name, QString(), world.firstFlag, world.secondFlag));
 }
 
 void TCharacterWorldTransferDialogController::closeDialog()
 {
     dialog()->close();
+    qDeleteAll(m_conditions);
+    m_conditions.clear();
+    qDeleteAll(m_worlds);
+    m_worlds.clear();
     Q_EMIT dialogClosed();
 }
 
@@ -510,7 +615,9 @@ void TCharacterWorldTransferDialogController::requestClose()
 
 void TCharacterWorldTransferDialogController::requestWorldTransfer(const QString& TargetWorld)
 {
-    Q_EMIT worldTransferRequested(TargetWorld, m_isExpressWorldTransfer);
+    if (TargetWorld.isEmpty())
+        return;
+    Q_EMIT targetWorldConfirmed(m_offerId, TargetWorld);
     closeDialog();
 }
 
@@ -520,7 +627,8 @@ TCinematicSessiondumpPlayerController::TCinematicSessiondumpPlayerController(QOb
 
 void TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed()
 {
-    // CIP empty moc slot: benchmark UI closed; sessiondump player stays owned by information hub.
+    // The benchmark window closing ends the cinematic player.
+    Q_EMIT cinematicSessiondumpPlayerClosed();
 }
 
 TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(QObject* parent)

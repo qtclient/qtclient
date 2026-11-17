@@ -31,7 +31,6 @@ namespace tibia::gamewindow {
 namespace {
 
 using Setting = config::TActionSetting;
-using ECastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
 /// "Action Button <bar>.<button>", the button with two digits.
@@ -50,14 +49,6 @@ bool isEquipable(const TAppearanceTypePtr& type)
     return type && (type->isCloth() || type->getClothSlot() > 0);
 }
 
-/// The "only known spells" box of each action bar's spell dialog. CIP keeps
-/// one dialog per bar for the whole session, so the box keeps its state
-/// between openings; it starts ticked.
-bool& showOnlyKnownSpellsOf(const uint actionBarId)
-{
-    static std::map<uint, bool> showOnlyKnown;
-    return showOnlyKnown.try_emplace(actionBarId, true).first->second;
-}
 
 }
 
@@ -556,60 +547,47 @@ int TSpellListDataModelSortFilterProxy::rowOfSpell(const int spellId) const
     return -1;
 }
 
-void TAssignActionDialogState::bind(QObject* dialog, TActionBarController* bar, const int buttonId, const int multiActionIndex)
+void TAssignActionDialogState::bind(const TActionBarController* bar, const uint buttonId, const int multiActionIndex)
 {
-    this->bar = bar;
     this->multiActionIndex = multiActionIndex;
-    auto* shared = new TAssignActionDialogControllerBase(dialog);
-    shared->bindActionButton(bar, buttonId);
-    actionBarId = shared->actionBarId();
-    this->buttonId = shared->buttonId();
-    buttonName = bar ? actionButtonName(bar->actionBarId(), buttonId) : shared->buttonName();
-    showActionBarTarget = shared->showActionBarTarget();
+    this->buttonId = buttonId;
+    actionBarId = bar ? uint(bar->actionBarId()) : 0;
+    buttonName = bar ? actionButtonName(bar->actionBarId(), int(buttonId)) : QString();
 }
 
-Setting TAssignActionDialogState::current() const
-{
-    return bar ? bar->settingAt(int(buttonId), multiActionIndex) : Setting{};
-}
-
-void TAssignActionDialogState::assign(const Setting& setting) const
-{
-    if (bar)
-        bar->assign(int(buttonId), multiActionIndex, setting);
-}
-
-TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBarController* bar, const int buttonId, const int multiActionIndex,
-                                                                       const int preselectedSpellId, QObject* parent)
+TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBarController* bar, QObject* parent)
     : TDialogController(QStringLiteral("AssignSpellActionDialog.qml"), parent)
+    , m_bar(bar)
 {
-    m_assign.bind(this, bar, buttonId, multiActionIndex);
+    m_spellListModel = QVariant::fromValue<QObject*>(&m_proxy);
+    m_showOnlyKnownSpells = true;
+}
+
+void TAssignSpellActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex)
+{
+    m_proxy.resetFilter();
+    m_proxy.setShowUnkownSpells(!m_showOnlyKnownSpells);
+    showDialog(ButtonId, MultiActionIndex, m_proxy.spellIdAt(0), QString::fromUtf8(""), ECastType(0));
+}
+
+void TAssignSpellActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex, const int SpellId,
+                                                    const QString& Parameters, const ECastType CastType)
+{
+    dialog()->close();
+    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
     m_actionBarId = m_assign.actionBarId;
     m_buttonId = m_assign.buttonId;
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
-    connect(this, &cip::tibia::gamewindow::TAssignSpellActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    m_spellListModel = QVariant::fromValue<QObject*>(&m_proxy);
-    // Every box ticked and the search words cleared on every open; unknown
-    // spells follow the dialog's "only known spells" box.
-    m_showOnlyKnownSpells = showOnlyKnownSpellsOf(m_assign.actionBarId);
+    m_spellId = SpellId;
+    m_spellParameters = Parameters;
+    m_currentSpellCastType = CastType;
+    // Every box ticked and the search words cleared; unknown spells follow
+    // the dialog's "only known spells" box.
     m_proxy.resetFilter();
     m_proxy.setShowUnkownSpells(!m_showOnlyKnownSpells);
-    const Setting setting = m_assign.current();
-    const spells::TSpellInfo* spell = preselectedSpellId ? spells::TSpellInfoStorage::instance()->spell(preselectedSpellId)
-        : setting.kind == Setting::TEXT                  ? spells::TSpellInfoStorage::instance()->spellOfText(setting.text)
-                                                         : nullptr;
-    if (spell) {
-        // The button's spell with its parameters and cast type.
-        m_spellId = spell->id;
-        if (!preselectedSpellId) {
-            m_spellParameters = setting.text.trimmed().mid(spell->words.size()).trimmed();
-            m_currentSpellCastType = ECastType(setting.spellCastType);
-        }
-    } else {
-        // Otherwise the first spell of the list, without parameters.
-        m_spellId = m_proxy.spellIdAt(0);
-    }
+    dialog()->create();
+    dialog()->show();
 }
 
 uint TAssignSpellActionDialogController::actionBarId() const { return m_assign.actionBarId; }
@@ -627,7 +605,6 @@ void TAssignSpellActionDialogController::setShowOnlyKnownSpells(const bool v)
     if (::cip::unchanged(m_showOnlyKnownSpells, v))
         return;
     m_showOnlyKnownSpells = v;
-    showOnlyKnownSpellsOf(m_assign.actionBarId) = v;
     m_proxy.setShowUnkownSpells(!v);
     Q_EMIT selectedSpellChanged();
     Q_EMIT spellFilterChanged();
@@ -641,20 +618,10 @@ void TAssignSpellActionDialogController::onOkClicked(const QString& Parameters, 
 
 void TAssignSpellActionDialogController::onApplyClicked(const QString& Parameters, const ECastType CastType)
 {
-    if (m_spellId == 0)
-        return;
     m_spellParameters = Parameters;
     m_currentSpellCastType = CastType;
     Q_EMIT selectedSpellChanged();
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_spellId);
-    if (!spell)
-        return;
-    Setting setting;
-    setting.kind = Setting::TEXT;
-    setting.text = Parameters.trimmed().isEmpty() ? spell->words : spell->words + QLatin1Char(' ') + Parameters.trimmed();
-    setting.sendAutomatically = true;
-    setting.spellCastType = int(CastType);
-    m_assign.assign(setting);
+    Q_EMIT requestAssignSpell(m_assign.buttonId, m_assign.multiActionIndex, m_spellId, Parameters, CastType);
 }
 
 void TAssignSpellActionDialogController::spellSelected(const uint SpellEnumId)
@@ -672,23 +639,80 @@ void TAssignSpellActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignObjectActionDialogController::TAssignObjectActionDialogController(TActionBarController* bar, const int buttonId, const int multiActionIndex, QObject* parent)
+TAssignObjectActionDialogController::TAssignObjectActionDialogController(TActionBarController* bar, QObject* parent)
     : TDialogController(QStringLiteral("AssignObjectActionDialog.qml"), parent)
+    , m_bar(bar)
 {
-    m_assign.bind(this, bar, buttonId, multiActionIndex);
+    m_useObjectType = uint(config::EUseType::SelectUseTarget);
+}
+
+void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex)
+{
+    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
+    startTargetSelection();
+}
+
+void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
+                                                     const int UpgradeTier, const int LiquidType, const config::EUseType UseType,
+                                                     const bool SmartModeEnabled, const bool assignWithoutDialog)
+{
+    dialog()->close();
+    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
     m_actionBarId = m_assign.actionBarId;
     m_buttonId = m_assign.buttonId;
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
-    connect(this, &cip::tibia::gamewindow::TAssignObjectActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    const Setting setting = m_assign.current();
-    if (setting.kind == Setting::OBJECT) {
-        setObject(setting.objectId, setting.upgradeTier.value_or(0));
-        if (setting.liquidType)
-            m_liquidType = Info::ELiquidType(*setting.liquidType);
-        m_useObjectType = uint(setting.useType);
-        m_smartModeEnabled = setting.useEquipSmartMode;
+    setObject(ObjectId, UpgradeTier);
+    m_liquidType = Info::ELiquidType(LiquidType);
+    setUseObjectType(uint(UseType));
+    setSmartModeEnabled(SmartModeEnabled);
+    if (!assignWithoutDialog) {
+        dialog()->create();
+        dialog()->show();
+        return;
     }
+    emitRequestAssignObject();
+}
+
+void TAssignObjectActionDialogController::showDialogForObject(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
+                                                              const int UpgradeTier, const bool assignWithoutDialog)
+{
+    if (!itemType(ObjectId)) {
+        input::publish(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("invalid_object")));
+        return;
+    }
+    showDialog(ButtonId, MultiActionIndex, ObjectId, UpgradeTier, 0, TActionBarManager::defaultUseType(ObjectId), false,
+               assignWithoutDialog);
+}
+
+void TAssignObjectActionDialogController::setClientSettingSmoothFiltering(const bool enabled)
+{
+    if (m_clientSettingSmoothFiltering == enabled)
+        return;
+    m_clientSettingSmoothFiltering = enabled;
+    Q_EMIT changed();
+}
+
+void TAssignObjectActionDialogController::setUseObjectType(const uint useObjectType)
+{
+    if (m_useObjectType == useObjectType)
+        return;
+    m_useObjectType = useObjectType;
+    Q_EMIT changed();
+}
+
+void TAssignObjectActionDialogController::setSmartModeEnabled(const bool enabled)
+{
+    if (m_smartModeEnabled == enabled)
+        return;
+    m_smartModeEnabled = enabled;
+    Q_EMIT changed();
+}
+
+void TAssignObjectActionDialogController::emitRequestAssignObject()
+{
+    Q_EMIT requestAssignObject(m_assign.buttonId, m_assign.multiActionIndex, int(m_objectID), int(m_upgradeTier), int(m_liquidType),
+                               config::EUseType(m_useObjectType), m_smartModeEnabled);
 }
 
 uint TAssignObjectActionDialogController::actionBarId() const { return m_assign.actionBarId; }
@@ -718,7 +742,6 @@ void TAssignObjectActionDialogController::setObject(const int objectId, const in
     m_canBeMultiUsed = type && type->isMultiUse();
     m_canBeEquiped = isEquipable(type);
     m_canHaveSmartMode = m_canBeEquiped;
-    m_useObjectType = uint(TActionBarManager::defaultUseType(objectId));
     Q_EMIT objectAppearanceChanged();
     Q_EMIT changed();
 }
@@ -731,39 +754,24 @@ void TAssignObjectActionDialogController::onOkClicked(const uint UseObjectTypeEn
 
 void TAssignObjectActionDialogController::onApplyClicked(const uint UseObjectTypeEnumId, const bool UseEquipSmartModeEnabled)
 {
-    if (!m_objectID)
-        return;
-    Setting setting;
-    setting.kind = Setting::OBJECT;
-    setting.objectId = int(m_objectID);
-    setting.useType = config::EUseType(std::min<uint>(UseObjectTypeEnumId, uint(config::EUseType::UseAtMouseCursor)));
-    if (m_upgradeTier)
-        setting.upgradeTier = int(m_upgradeTier);
-    if (m_liquidType != Info::ELiquidType::EMPTY)
-        setting.liquidType = int(m_liquidType);
-    setting.useEquipSmartMode = setting.useType == config::EUseType::Equip && UseEquipSmartModeEnabled;
-    m_useObjectType = UseObjectTypeEnumId;
-    m_smartModeEnabled = setting.useEquipSmartMode;
-    m_assign.assign(setting);
-    Q_EMIT changed();
-}
-
-void TAssignObjectActionDialogController::handleGameAction()
-{
-    // CIP moc shared_ptr dispatch; qtclient routes via startTargetSelection.
+    setUseObjectType(UseObjectTypeEnumId);
+    setSmartModeEnabled(UseEquipSmartModeEnabled);
+    emitRequestAssignObject();
 }
 
 void TAssignObjectActionDialogController::startTargetSelection()
 {
+    m_selectingTarget = true;
+    dialog()->hide();
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setTargetSelection(true);
-    dialog()->hide();
     QPointer<TAssignObjectActionDialogController> self(this);
     input::startTargetSelection([self](const input::TGameActionPtr& target) {
         if (TMouseCursorController* cursor = TMouseCursorController::instance())
             cursor->setTargetSelection(false);
-        if (!self)
+        if (!self || !self->m_selectingTarget)
             return;
+        // A picked object reopens the dialog with it.
         if (target && target->objectClientId) {
             uint8_t tier = 0;
             if (target->position.x == UINT16_MAX) {
@@ -776,9 +784,12 @@ void TAssignObjectActionDialogController::startTargetSelection()
                     tier = inventory->slotAt(target->position.y).tier;
                 }
             }
-            self->setObject(target->objectClientId, tier);
+            self->showDialogForObject(self->m_assign.buttonId, self->m_assign.multiActionIndex, target->objectClientId, tier, false);
         }
-        self->dialog()->show();
+        // The selection ended: a hidden dialog shows again.
+        self->m_selectingTarget = false;
+        if (self->dialog()->item() && !self->dialog()->isShown())
+            self->dialog()->show();
     });
 }
 
@@ -787,21 +798,31 @@ void TAssignObjectActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignTextActionDialogController::TAssignTextActionDialogController(TActionBarController* bar, const int buttonId, const int multiActionIndex, QObject* parent)
+TAssignTextActionDialogController::TAssignTextActionDialogController(TActionBarController* bar, QObject* parent)
     : TDialogController(QStringLiteral("AssignTextActionDialog.qml"), parent)
+    , m_bar(bar)
 {
-    m_assign.bind(this, bar, buttonId, multiActionIndex);
+    m_sendAutomatically = true;
+}
+
+void TAssignTextActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex)
+{
+    showDialog(ButtonId, MultiActionIndex, QString::fromUtf8(""), true);
+}
+
+void TAssignTextActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex, const QString& Text,
+                                                   const bool SendAutomatically)
+{
+    dialog()->close();
+    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
     m_actionBarId = m_assign.actionBarId;
     m_buttonId = m_assign.buttonId;
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
-    connect(this, &cip::tibia::gamewindow::TAssignTextActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    const Setting setting = m_assign.current();
-    m_sendAutomatically = true;
-    if (setting.kind == Setting::TEXT) {
-        m_text = setting.text;
-        m_sendAutomatically = setting.sendAutomatically;
-    }
+    m_text = Text;
+    m_sendAutomatically = SendAutomatically;
+    dialog()->create();
+    dialog()->show();
 }
 
 uint TAssignTextActionDialogController::actionBarId() const { return m_assign.actionBarId; }
@@ -822,11 +843,7 @@ void TAssignTextActionDialogController::onApplyClicked(const QString& Text, cons
     m_text = Text;
     m_sendAutomatically = SendAutomatically;
     Q_EMIT changed();
-    Setting setting;
-    setting.kind = Setting::TEXT;
-    setting.text = Text;
-    setting.sendAutomatically = SendAutomatically;
-    m_assign.assign(setting);
+    Q_EMIT requestAssignText(m_assign.buttonId, m_assign.multiActionIndex, Text, SendAutomatically);
 }
 
 void TAssignTextActionDialogController::onCloseClicked()
@@ -834,43 +851,55 @@ void TAssignTextActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(TActionBarController* bar, const int buttonId, QObject* parent)
+TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(TActionBarController* bar, QObject* parent)
     : TDialogController(QStringLiteral("AssignPassiveAbilityActionDialog.qml"), parent)
+    , m_bar(bar)
 {
-    m_assign.bind(this, bar, buttonId, -1);
+    m_passiveAbilityListIndex = uint(-1);
+    m_model = new TPassiveAbilityListDataModel(this);
+    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(this);
+    m_proxy->setSourceModel(m_model);
+    m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
+}
+
+void TAssignPassiveAbilityActionDialogController::reloadAbilities()
+{
+    game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance();
+    gamewindow::TPassiveAbilityListDataModel* shared = storage ? storage->listModel() : nullptr;
+    if (!shared)
+        return;
+    std::vector<TPassiveAbilityListDataModel::Entry> copy;
+    for (int i = 0; i < shared->rowCount(); ++i) {
+        TPassiveAbilityListDataModel::Entry entry;
+        entry.id = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IdRole).toInt();
+        entry.name = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::NameRole).toString();
+        entry.iconUrl = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IconUrlRole).toString();
+        entry.usableByCurrentVocation = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::UsableRole).toBool();
+        copy.push_back(std::move(entry));
+    }
+    m_model->setEntries(std::move(copy));
+}
+
+void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId)
+{
+    reloadAbilities();
+    const int first = m_proxy->rowCount() > 0 ? m_proxy->index(0, 0).data(TPassiveAbilityListDataModel::IdRole).toInt() : 0;
+    showDialog(ButtonId, first);
+}
+
+void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId, const int PassiveAbility)
+{
+    dialog()->close();
+    reloadAbilities();
+    m_assign.bind(m_bar, ButtonId, -1);
     m_actionBarId = m_assign.actionBarId;
     m_buttonId = m_assign.buttonId;
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
-    connect(this, &cip::tibia::gamewindow::TAssignPassiveAbilityActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    m_passiveAbilityListIndex = uint(-1);
-    m_model = new TPassiveAbilityListDataModel(this);
-    if (game::TPassiveAbilityInfoStorage* storage = game::TPassiveAbilityInfoStorage::instance()) {
-        // Seed from storage's live list when the CipSoft assign dialog opens.
-        if (gamewindow::TPassiveAbilityListDataModel* shared = storage->listModel()) {
-            std::vector<TPassiveAbilityListDataModel::Entry> copy;
-            for (int i = 0; i < shared->rowCount(); ++i) {
-                TPassiveAbilityListDataModel::Entry entry;
-                entry.id = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IdRole).toInt();
-                entry.name = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::NameRole).toString();
-                entry.iconUrl = shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::IconUrlRole).toString();
-                entry.usableByCurrentVocation =
-                    shared->data(shared->index(i, 0), TPassiveAbilityListDataModel::UsableRole).toBool();
-                copy.push_back(std::move(entry));
-            }
-            m_model->setEntries(std::move(copy));
-        }
-    }
-    m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(this);
-    m_proxy->setSourceModel(m_model);
-    m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
-    // The button's passive ability, otherwise the first of the list.
-    const Setting setting = m_assign.current();
-    if (setting.kind == Setting::PASSIVE_ABILITY)
-        m_passiveAbility = setting.passiveAbility;
-    else if (m_proxy->rowCount() > 0)
-        m_passiveAbility = m_proxy->index(0, 0).data(TPassiveAbilityListDataModel::IdRole).toInt();
+    m_passiveAbility = PassiveAbility;
     refreshSelectedPassive();
+    dialog()->create();
+    dialog()->show();
 }
 
 uint TAssignPassiveAbilityActionDialogController::actionBarId() const { return m_assign.actionBarId; }
@@ -913,13 +942,7 @@ void TAssignPassiveAbilityActionDialogController::onOkClicked()
 
 void TAssignPassiveAbilityActionDialogController::onApplyClicked()
 {
-    if (!m_passiveAbility)
-        return;
-    Q_EMIT selectedPassiveAbilityChanged();
-    Setting setting;
-    setting.kind = Setting::PASSIVE_ABILITY;
-    setting.passiveAbility = m_passiveAbility;
-    m_assign.assign(setting);
+    Q_EMIT requestAssignPassiveAbility(m_assign.buttonId, m_passiveAbility);
 }
 
 void TAssignPassiveAbilityActionDialogController::passiveAbilitySelected(const uint PassiveAbilityEnumId)
@@ -936,18 +959,10 @@ void TAssignPassiveAbilityActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController(const int actionBarId, const int buttonId, const bool chatModeOn, QObject* parent)
+TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController(QObject* parent)
     : TDialogController(QStringLiteral("RecordKeyboardShortcutDialog.qml"), parent)
 {
     initKeyLists();
-    connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::dialogClosed, this, &QObject::deleteLater);
-    connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
-            [actionBarId, buttonId, chatModeOn](const QKeySequence& keys) {
-                config::THotkeyOptions::instance()->setButtonKeys(actionBarId, buttonId, chatModeOn, keys);
-            });
-    showDialog(chatModeOn, false, config::THotkeyOptions::instance()->buttonKeys(actionBarId, buttonId, chatModeOn),
-               qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId),
-               occupiedKeys(config::THotkeyOptions::triggerActionButtonName(actionBarId, buttonId), chatModeOn));
 }
 
 TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController(const QString& description, const QString& actionName,
@@ -972,7 +987,7 @@ void TRecordKeyboardShortcutDialogController::initKeyLists()
 }
 
 /// The keys bound to other actions in the chat mode.
-std::set<QKeySequence> TRecordKeyboardShortcutDialogController::occupiedKeys(const QString& ownAction, const bool chatModeOn) const
+std::set<QKeySequence> TRecordKeyboardShortcutDialogController::occupiedKeys(const QString& ownAction, const bool chatModeOn)
 {
     using Setting = config::TActionSetting;
     std::set<QKeySequence> keys;

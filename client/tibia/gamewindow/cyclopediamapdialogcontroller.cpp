@@ -68,16 +68,26 @@ constexpr A CyclopediaMapOrder[] = {
 
 TCyclopediaMapSelectionInfoArea::TCyclopediaMapSelectionInfoArea(const TCyclopediaMapAreaValues& values, QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapSelectionInfoArea(parent)
+    , m_data(values)
 {
     m_selectionType = SelectionType::SelectionTypeArea;
-    m_areaName = values.name;
-    m_areaID = values.id;
-    m_percentExplored = values.percentExplored;
-    m_areaDonationString = values.donation;
-    m_areaDonationThreshold = values.threshold;
-    m_areaDonationsTooltip = values.donationsTooltip;
-    m_percentUnlockedImprovedRespawn = values.percentUnlockedImprovedRespawn;
-    m_rejectDonations = values.rejectDonations;
+}
+
+void TCyclopediaMapSelectionInfoArea::setAreaData(const TCyclopediaMapAreaValues& values)
+{
+    m_data = values;
+    Q_EMIT infoChanged();
+}
+
+QString TCyclopediaMapSelectionInfoArea::areaDonationString() const { return englishNumber(m_data.donated); }
+
+QString TCyclopediaMapSelectionInfoArea::areaDonationThreshold() const { return englishNumber(m_data.donationGoal); }
+
+double TCyclopediaMapSelectionInfoArea::percentUnlockedImprovedRespawn() const
+{
+    if (m_data.donationGoal == 0)
+        return 0.0;
+    return std::min(1.0, double(m_data.donated) / double(m_data.donationGoal));
 }
 
 TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCyclopediaMapAreaValues& area, const Values& values, QObject* parent)
@@ -87,10 +97,11 @@ TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCy
     m_areaName = area.name;
     m_areaID = area.id;
     m_percentExplored = area.percentExplored;
-    m_areaDonationString = area.donation;
-    m_areaDonationThreshold = area.threshold;
+    m_areaDonationString = englishNumber(area.donated);
+    m_areaDonationThreshold = englishNumber(area.donationGoal);
     m_areaDonationsTooltip = area.donationsTooltip;
-    m_percentUnlockedImprovedRespawn = area.percentUnlockedImprovedRespawn;
+    m_percentUnlockedImprovedRespawn =
+        area.donationGoal ? std::min(1.0, double(area.donated) / double(area.donationGoal)) : 0.0;
     m_rejectDonations = area.rejectDonations;
     m_subAreaName = values.name;
     m_subAreaID = values.id;
@@ -482,15 +493,12 @@ TCyclopediaMapAreaValues TCyclopediaMapDialogController::areaValues(const int ar
     if (!area)
         return values;
     values.name = area->name;
-    values.id = area->id;
+    values.id = quint16(area->id);
     const auto* mainArea = m_storage->mainArea(areaId);
     values.percentExplored = mainArea ? mainArea->progress : 0;
-    const quint64 donated = m_storage->donated(areaId);
-    const quint64 goal = m_storage->donationGoal();
-    values.donation = englishNumber(donated);
-    values.threshold = englishNumber(goal);
+    values.donated = m_storage->donated(areaId);
+    values.donationGoal = m_storage->donationGoal();
     values.donationsTooltip = donationsTooltip();
-    values.percentUnlockedImprovedRespawn = goal ? std::min(static_cast<double>(donated) / static_cast<double>(goal), 1.0) : 0.0;
     values.rejectDonations = area->rejectDonations;
     return values;
 }

@@ -510,7 +510,7 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             tibia::game::notify("onConfigureCreaturePodium", outfitOf(m.outfit()), static_cast<uint8_t>(m.boss_podium() ? 1 : 0), races, pos,
                                 static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.stack_position()),
                                 static_cast<uint8_t>(m.podium_visible() ? 1 : 0), static_cast<uint8_t>(m.monster_visible() ? 1 : 0),
-                                static_cast<uint8_t>(m.direction()));
+                                static_cast<uint8_t>(m.direction()), static_cast<uint16_t>(m.reserved()));
         }
         break;
     case 46:

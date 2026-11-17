@@ -11,6 +11,7 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
+#include "game/gamesessionbase.h"
 #include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -112,6 +113,8 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
     if (container::TContainerStorage* storage = container::TContainerStorage::instance())
         connect(storage, &container::TContainerStorage::manualSortModeChanged, this,
                 &TContainerController::refreshViewOptions);
+    if (const game::TGameSessionBase* session = game::TGameSessionBase::active())
+        m_model.setObjectCountStorage(session->objectCountStorage().get());
     m_clockTimer.setInterval(1000);
     connect(&m_clockTimer, &QTimer::timeout, &m_model, &TAppearanceInstanceListModel::refreshClocks);
     m_clockTimer.start();

@@ -88,8 +88,11 @@ public:
     explicit TConfigureCreaturePodiumDialogController(QObject* parent = nullptr);
 
     /// Fills the skin list from the ConfigureCreaturePodium message and shows the dialog.
-    void open(const Outfit& selected, bool bossPodium, const std::vector<RaceRow>& races, const Position& pos,
+    void open(const Outfit& selected, uint16_t selectedRace, bool bossPodium, const std::vector<RaceRow>& races, const Position& pos,
               uint16_t itemId, uint8_t stackpos, bool podiumVisible, bool monsterVisible, uint8_t direction);
+
+    /// The look of the chosen race's skin, 0 without one.
+    int chosenOutfit() const override;
 
 public Q_SLOTS:
     void onIndexChanged(int SelectedIndex, int ChosenRace) override;
@@ -98,12 +101,13 @@ public Q_SLOTS:
     void onControllerFinished() override;
 
 private:
-    void applyEntry(const TBossSkinModel::Entry& entry);
-    void clearSelection();
+    /// The preview shows `outfit` (selectedBossOutfitChanged).
+    void setPreset(const Outfit& outfit);
 
     TBossSkinModel m_skins;
     TBossSkinSortProxyModel m_proxy;
     qmlcomponents::TOutfitPresetQmlType* m_preset = nullptr;
+    Outfit m_selected;
     Position m_position;
     uint8_t m_stackpos = 0;
     std::vector<client::gamecore::Hook> m_hooks;
