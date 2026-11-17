@@ -1,4 +1,6 @@
 #include "gameclient.h"
+
+#include "config/characterconfigurationmanager.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
@@ -236,6 +238,12 @@ TGameClient::TGameClient(QObject* parent)
     , m_worldMapRenderProvider(std::make_unique<qmlcomponents::TWorldMapRenderProvider>())
     , m_sidebarOptions(std::make_unique<config::TSidebarOptions>())
     , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
+    , m_characterConfigurationManager(std::make_unique<config::TCharacterConfigurationManager>(
+          std::vector<config::TCharacterConfigurationManager::TConfiguration>{
+              { m_sidebarOptions.get(), m_sidebarOptions.get() },
+              { m_statusbarStorage.get(), m_statusbarStorage.get() },
+          },
+          m_sidebarOptions.get()))
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
     , m_sessiondumpRecorder(this)
@@ -966,8 +974,7 @@ void TGameClient::onWorldEntered()
     // A new game session: no own team or listed teams, the team finder pages start over.
     teamfinder::TTeamFinderProtocolMessageHandler::instance()->startSession();
     if (const uint32_t playerId = tibia::game::localPlayerId()) {
-        m_sidebarOptions->loadForCharacter(playerId);
-        m_statusbarStorage->loadForCharacter(playerId);
+        m_characterConfigurationManager->onPlayerCreatureLoaded(playerId);
     }
     const std::string assets = gamecore::assetsRoot(ClientVersion);
     // CipSoft: Resources/minimap is a sibling of Resources/assets (assetsRoot adds
@@ -1056,8 +1063,7 @@ void TGameClient::onWorldLeft()
         m_dualConnection->reset();
     tibia::game::clearWaypointCostFactory();
     m_minimap.reset();
-    m_sidebarOptions->save();
-    m_statusbarStorage->save();
+    m_characterConfigurationManager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
     if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())

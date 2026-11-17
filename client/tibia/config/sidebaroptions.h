@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/characterconfigurationmanager.h"
+
 #include <cip_gen.h>
 
 #include <algorithm>
@@ -220,7 +222,7 @@ struct TPlayerGuideWidgetOptions : TWidgetOptionsBase
 /// sections. Like CIP's TCharacterConfigurationManager, changes are written
 /// when the session ends, not as they happen. Keys CIP does not know (written
 /// by qtclient widgets) are kept as read and written back.
-class TSidebarOptions final : public cip::tibia::config::TSidebarOptions
+class TSidebarOptions final : public cip::tibia::config::TSidebarOptions, public ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -230,17 +232,19 @@ public:
 
     explicit TSidebarOptions(QObject* parent = nullptr);
 
-    /// Reads the character's file (saving the previous character's first).
-    void loadForCharacter(quint32 characterId);
-    /// Writes the file if anything changed since it was read.
-    void save();
-
     /// The file's base name.
     static QString fileName();
     /// All sections as written to the file.
     QJsonObject toJson() const;
     /// Replaces the sections present in json and signals every section.
     void fromJson(const QJsonObject& json);
+
+    // TCharacterConfigurationManager: the file also keeps the keys CIP does
+    // not know, as read.
+    QString configurationName() const override { return fileName(); }
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override { fromJson(json); }
+    void resetConfiguration() override;
 
     const QList<SidebarPanelType>& panelsOrder() const { return m_panelsOrder; }
     void setPanelsOrder(const QList<SidebarPanelType>& order);
@@ -329,14 +333,11 @@ private Q_SLOTS:
     void onDelayOptionsForAllContainersChangedTriggerd();
 
 private:
-    QString filePath() const;
     void reset();
     void ensurePartyBattleList();
     void ensurePrimaryBattleList();
     void changed();
 
-    quint32 m_characterId = 0;
-    bool m_dirty = false;
     /// Keys of the file CIP does not know.
     QJsonObject m_unknownSections;
 

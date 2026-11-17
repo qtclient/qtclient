@@ -60,12 +60,6 @@ public:
     using cip::tibia::config::TButtonBarQMLOptionsPage::TButtonBarQMLOptionsPage;
 };
 
-class TCharacterConfigurationManager final : public cip::tibia::config::TCharacterConfigurationManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::config::TCharacterConfigurationManager::TCharacterConfigurationManager;
-};
 
 
 class TConsoleQMLOptionsPage : public cip::tibia::config::TConsoleQMLOptionsPage

@@ -68,6 +68,7 @@ class TWorldMapRenderProvider;
 }
 namespace tibia {
 namespace config {
+class TCharacterConfigurationManager;
 class TSidebarOptions;
 }
 }
@@ -189,6 +190,7 @@ public:
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.
     game::TStatusbarStorage* statusbarStorage() const { return m_statusbarStorage.get(); }
+    config::TCharacterConfigurationManager* characterConfigurationManager() const { return m_characterConfigurationManager.get(); }
     /// The session's minimap; null outside the world.
     minimap::TMinimapManager* minimap() const { return m_minimap.get(); }
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
@@ -294,6 +296,7 @@ private:
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
+    std::unique_ptr<config::TCharacterConfigurationManager> m_characterConfigurationManager;
     /// Queue connections of the static protocol ingresses (reconnected per session).
     std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.

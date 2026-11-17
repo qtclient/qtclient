@@ -333,6 +333,15 @@ config::TButtonBarQMLOptionsPage::v12	439d0b86a9d9d4a6	ported	config/optionspage
 config::TButtonBarQMLOptionsPage::v13	02d415b58dae4208	ported	config/optionspages.cpp:TButtonBarOptionsPage::apply
 config::TButtonBarQMLOptionsPage::~TButtonBarQMLOptionsPage	ecf9526c344f4061	skip	generated: compiler-generated destructor pair
 config::TButtonBarQMLOptionsPage::~TButtonBarQMLOptionsPage_deleting	fc7f25cf17413aa6	skip	generated: compiler-generated destructor pair
+config::TCharacterConfigurationManager::onConfigurationChanged	a0bb7a8bb19be874	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::onConfigurationChanged
+config::TCharacterConfigurationManager::v12	6792e7031c95f2f3	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::saveConfiguration
+config::TCharacterConfigurationManager::v13	6e051a15007f0ecb	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::loadConfigurationForCharacter
+config::TCharacterConfigurationManager::v14	75a5d84d22ca2f0b	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::isConfigurationLoaded
+config::TCharacterConfigurationManager::v15	bd30b87b966fcc28	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::isSidebarConfigurationLoadedFromFile
+config::TCharacterConfigurationManager::v24	a970ae68d15b621d	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::sidebarOptions
+config::TCharacterConfigurationManager::v29	1b0e9d84b9debf66	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::onPlayerCreatureLoaded
+config::TCharacterConfigurationManager::~TCharacterConfigurationManager	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (thunks to the destructor body)
+config::TCharacterConfigurationManager::~TCharacterConfigurationManager_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (thunks to the destructor body)
 config::TClientOptions::clientWindowOptionsChanged	647a908e64e30586	ported	config/clientoptions.cpp:TClientOptions::consolidateSignalsAndEnqueueOptionSetSignalsForEmit
 config::TClientOptions::v12	859eaf762f298337	ported	config/clientoptions.cpp:TClientOptions::announceAllOptions
 config::TClientOptions::v13	e054f844de3ece70	ported	config/clientoptions.cpp:TClientOptions::boolOption
@@ -4146,6 +4155,7 @@ sub_0419695c817a	0419695c817a48c5	skip	library: std container template instance
 sub_04277f0752dd	04277f0752dd95ba	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setUnspentPerk
 sub_044413eab2ad	044413eab2ad3308	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_0450018d4877	0450018d487766a9	ported	gamewindow/minimapcontroller.cpp:TMinimapController::dispatchClick
+sub_047f92730e81	047f92730e81d9d6	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::save
 sub_048417ba91c9	048417ba91c997aa	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketHistoryOpened
 sub_0499962a6cf9	0499962a6cf96644	inlined	config/sidebaroptions.cpp:TSidebarOptions::reset
 sub_04c78b35980a	04c78b35980aa09f	tested	sessiondump/sessiondumpmetadatareader.cpp:TSessiondumpMetadataReader::readFields	test=tests/client/sessiondumpreader_test.cpp
@@ -4405,6 +4415,7 @@ sub_0beb168bf030	0beb168bf030664c	inlined	market/marketciptypes.cpp:TMarketProto
 sub_0bf5a2a472ff	0bf5a2a472ffdbf0	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenBossSlots
 sub_0bfe7f006ec2	0bfe7f006ec21622	inlined	creatures/creaturestorage.cpp:TCreature::hideTargetFrame
 sub_0c0fd56edd4e	0c0fd56edd4ec13f	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
+sub_0c1b02410fbe	0c1b02410fbe1f26	skip	library: QObject::connect template instantiation (QtPrivate slot-object connectImpl)
 sub_0c1be4bb59f2	0c1be4bb59f24e5e	ported	gamewindow/sidebarmanager.h:TSidebarManager::sidebarCount
 sub_0c4213510115	0c4213510115453e	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::TWorldSelectionSortProxyModel
 sub_0c51ed1f7981	0c51ed1f79813e4c	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
@@ -7057,6 +7068,7 @@ sub_64972611cce5	64972611cce50482	ported	teamfinder/teamsortproxymodels.cpp:acti
 sub_64ad90420da0	64ad90420da0b309	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::requestOpenCalendar
 sub_64dbfd54385f	64dbfd54385faa02	ported	gamewindow/actionbuttoncontroller.cpp:row
 sub_64e43f2f9feb	64e43f2f9febb580	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::lastGameLogin
+sub_6501b8da2e78	6501b8da2e78c724	ported	config/characterconfigurationmanager.cpp:defaultSidebarWidgets
 sub_652295b83dbc#2	652295b83dbc362a	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::requestWidgetConfigurationMenu
 sub_65263ac5ec7e	65263ac5ec7eb6f0	skip	generated: compiler-generated destructor
 sub_6529c05f5baa	6529c05f5baad623	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::changedRoles
@@ -7068,6 +7080,7 @@ sub_6576006e30a6	6576006e30a6946c	ported	gamewindow/gamewindowciptypes.cpp:clear
 sub_657e5f8f7e6a	657e5f8f7e6aade6	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onHouseActionConfirmed
 sub_658d24410a9f	658d24410a9fe517	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowAttackSpellGroup
 sub_659b3a47342c	659b3a47342c4af2	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
+sub_659f1ac804fd	659f1ac804fdbd27	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::~TCharacterConfigurationManager
 sub_65bbeaf0f754	65bbeaf0f754d6a6	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoSouth
 sub_65bd7928b801	65bd7928b8017670	skip	library: libc++ std::vector destroy / exception-guard / uninitialized_copy instantiation
 sub_65c2a6b635b1	65c2a6b635b12dcc	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
@@ -8748,6 +8761,7 @@ sub_9e5a06594701	9e5a065947010392	ported	gamewindow/aboutdialogcontroller.cpp:TA
 sub_9e624c3587a6	9e624c3587a69b47	skip	library: QMap/QVariant template instantiation
 sub_9e624c3587a6#3	9e624c3587a69b47	skip	library: std::map<QString,QString> insert (library template)
 sub_9e624c3587a6#7	9e624c3587a69b47	skip	library: std::map emplace-hint instantiation (libc++)
+sub_9e7d52269709	9e7d52269709a3a5	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::TCharacterConfigurationManager
 sub_9e7d87e86fc9	9e7d87e86fc901d8	skip	generated: moc signal bodies of TRPCServiceClient
 sub_9e86a0b262ed	9e86a0b262edbc53	ported	gamewindow/depotsearchwidgetcontroller.h:enableTierAndClassificationSelection
 sub_9e91b9dc37f2	9e91b9dc37f28b14	skip	library: SFML/miniaudio library helper, only called from library code
@@ -11410,6 +11424,7 @@ sub_f81691435739	f81691435739cf60	ported	config/clientoptionsmigration.cpp:migra
 sub_f827c33dea91	f827c33dea918aa2	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::applySelectedWorld
 sub_f83a7adceddc	f83a7adceddc406b	skip	generated: moc-generated signal emitter
 sub_f8495e2c7fea	f8495e2c7fea0c51	skip	library: std::vector copy / growth of store records (library)
+sub_f84a5f5ffa54	f84a5f5ffa544028	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::load
 sub_f84c03b3289f	f84c03b3289faae3	skip	generated: moc property getter, provided by the generated cip base
 sub_f84f003e6488	f84f003e6488cb5b	skip	data: translation-unit static initializer (misattributed)
 sub_f84f003e6488#19	f84f003e6488cb5b	skip	data: static initializer of inventory filter strings (misattributed neighbour)

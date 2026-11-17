@@ -87,7 +87,6 @@ QString localFile(const QString& url)
 TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
     , m_actionBarOptions(this)
-    , m_characterConfigurationManager(this)
     , m_clientOptionsModeSwitcher(config::TClientOptions::instance(), this)
     , m_optionPageQmlWrapperBase(this)
 {

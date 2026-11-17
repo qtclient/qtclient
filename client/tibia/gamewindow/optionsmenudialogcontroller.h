@@ -137,7 +137,6 @@ private:
 
     /// CIP config surfaces owned for the options dialog lifetime.
     config::TActionBarOptions m_actionBarOptions;
-    config::TCharacterConfigurationManager m_characterConfigurationManager;
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
     config::TConfigBackupReader::TConfigBackupException m_configBackupException;

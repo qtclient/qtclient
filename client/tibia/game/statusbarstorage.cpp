@@ -1,11 +1,6 @@
 #include "statusbarstorage.h"
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QJsonDocument>
-#include <QSaveFile>
-#include <QStandardPaths>
 
 #include <stdexcept>
 
@@ -81,7 +76,7 @@ TStatusbarStorage::TStatusbarStorage(QObject* parent)
     m_shown[Experience] = true;
 }
 
-QString TStatusbarStorage::configurationName()
+QString TStatusbarStorage::configurationName() const
 {
     return QStringLiteral("statusBarData");
 }
@@ -114,44 +109,13 @@ void TStatusbarStorage::fromJson(const QJsonObject& json)
     }
 }
 
-QString TStatusbarStorage::filePath() const
+void TStatusbarStorage::resetConfiguration()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(configurationName());
-}
-
-void TStatusbarStorage::loadForCharacter(const quint32 characterId)
-{
-    if (characterId == m_characterId)
-        return;
-    save();
-    m_characterId = characterId;
-    // A new character starts from the defaults, as CIP builds the storage per session.
     m_position = Off;
     m_style = Default;
     m_shown.fill(false);
     m_shown[Experience] = true;
-    if (characterId != 0) {
-        QFile file(filePath());
-        if (file.open(QIODevice::ReadOnly))
-            fromJson(QJsonDocument::fromJson(file.readAll()).object());
-    }
-    m_dirty = false;
     Q_EMIT changed();
-}
-
-void TStatusbarStorage::save()
-{
-    if (!m_dirty || m_characterId == 0)
-        return;
-    const QString path = filePath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(toJson()).toJson());
-        if (file.commit())
-            m_dirty = false;
-    }
 }
 
 void TStatusbarStorage::setPosition(const int position)
@@ -180,7 +144,6 @@ void TStatusbarStorage::setShown(const Entry entry, const bool shown)
 
 void TStatusbarStorage::modified()
 {
-    m_dirty = true;
     Q_EMIT changed();
     Q_EMIT configurationChangedFromUserInput();
 }
