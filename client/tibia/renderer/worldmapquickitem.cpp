@@ -20,6 +20,7 @@
 #include <QSGGeometryNode>
 #include <QSGImageNode>
 #include <QSGMaterial>
+#include <QSGOpacityNode>
 #include <QSGRendererInterface>
 #include <QSGTransformNode>
 
@@ -35,16 +36,24 @@ namespace tibia::qmlcomponents {
 
 namespace {
 
-class ReleaseTextures final : public QRunnable
+/// Drops the item's textures and pooled nodes on the render thread.
+class ReleaseRenderResources final : public QRunnable
 {
 public:
-    explicit ReleaseTextures(std::unique_ptr<renderer::TSpriteTextureProvider> textures)
+    ReleaseRenderResources(std::unique_ptr<renderer::TSpriteTextureProvider> textures,
+                           std::unique_ptr<renderer::TScenegraphNodeProvider> nodes)
         : m_textures(std::move(textures))
+        , m_nodes(std::move(nodes))
     {}
-    void run() override { m_textures.reset(); }
+    void run() override
+    {
+        m_nodes.reset();
+        m_textures.reset();
+    }
 
 private:
     std::unique_ptr<renderer::TSpriteTextureProvider> m_textures;
+    std::unique_ptr<renderer::TScenegraphNodeProvider> m_nodes;
 };
 
 }
@@ -87,8 +96,8 @@ void TWorldMapQuickItem::itemChange(const ItemChange change, const ItemChangeDat
         if (QQuickWindow* window = value.window) {
             m_invalidatedConnection = connect(window, &QQuickWindow::sceneGraphInvalidated, this,
                                               [this] {
+                                                  m_nodes.reset();
                                                   m_textures.reset();
-                                                  clearNodePools();
                                               },
                                               Qt::DirectConnection);
         }
@@ -98,34 +107,9 @@ void TWorldMapQuickItem::itemChange(const ItemChange change, const ItemChangeDat
 
 void TWorldMapQuickItem::releaseResources()
 {
-    clearNodePools();
-    if (m_textures && window())
-        window()->scheduleRenderJob(new ReleaseTextures(std::move(m_textures)), QQuickWindow::NoStage);
-}
-
-namespace {
-
-bool isSoftwareRenderer(const QQuickWindow* window)
-{
-    const QSGRendererInterface* api = window ? window->rendererInterface() : nullptr;
-    return api && api->graphicsApi() == QSGRendererInterface::Software;
-}
-
-/// A sprite drawn with the highlight material. The software backend bakes highlights
-/// instead (no such nodes), and its image nodes carry a placeholder material pointer
-/// that must not be dereferenced.
-bool isHighlightSpriteNode(QSGNode* node, const bool software)
-{
-    if (software || !node || node->type() != QSGNode::GeometryNodeType)
-        return false;
-    static QSGMaterialType* highlightType = [] {
-        static renderer::TSpriteDrawCommandHighlightMaterial sample;
-        return sample.type();
-    }();
-    const QSGMaterial* material = static_cast<QSGGeometryNode*>(node)->material();
-    return material && material->type() == highlightType;
-}
-
+    if ((m_textures || m_nodes) && window())
+        window()->scheduleRenderJob(new ReleaseRenderResources(std::move(m_textures), std::move(m_nodes)),
+                                    QQuickWindow::NoStage);
 }
 
 void TWorldMapQuickItem::recycleNode(QSGNode* node)
@@ -134,21 +118,10 @@ void TWorldMapQuickItem::recycleNode(QSGNode* node)
         return;
     if (node->firstChild())
         harvestNodes(node);
-    if (node->type() == QSGNode::OpacityNodeType) {
-        auto* opacity = static_cast<renderer::TChildrenScenegraphNode*>(node);
-        opacity->setOpacity(1);
-        m_opacityPool.push_back(opacity);
-        return;
-    }
-    if (node->type() == QSGNode::GeometryNodeType) {
-        if (isHighlightSpriteNode(node, isSoftwareRenderer(window()))) {
-            m_highlightPool.push_back(static_cast<renderer::THighlightedSpriteScenegraphNode*>(node));
-            return;
-        }
-        m_imagePool.push_back(static_cast<QSGImageNode*>(node));
-        return;
-    }
-    delete node;
+    if (m_nodes)
+        m_nodes->recycle(node);
+    else
+        delete node;
 }
 
 void TWorldMapQuickItem::harvestNodes(QSGNode* node)
@@ -159,19 +132,6 @@ void TWorldMapQuickItem::harvestNodes(QSGNode* node)
         node->removeChildNode(child);
         recycleNode(child);
     }
-}
-
-void TWorldMapQuickItem::clearNodePools()
-{
-    for (renderer::TChildrenScenegraphNode* node : m_opacityPool)
-        delete node;
-    for (QSGImageNode* node : m_imagePool)
-        delete node;
-    for (renderer::THighlightedSpriteScenegraphNode* node : m_highlightPool)
-        delete node;
-    m_opacityPool.clear();
-    m_imagePool.clear();
-    m_highlightPool.clear();
 }
 
 QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
@@ -208,7 +168,6 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         oldNode = nullptr;
         m_paintedHd = hd;
         m_highlights.clear();
-        m_marks.clear();
         if (m_textures)
             m_textures->cache().clear();
     }
@@ -221,21 +180,18 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             color.setAlphaF(strength);
             highlight.node->set(highlight.texture, highlight.rect, color, highlight.smooth);
         }
-        for (renderer::TChildrenScenegraphNode* mark : m_marks) {
-            const qreal t = (strength - 0.375) / (0.6 - 0.375);
-            mark->setOpacity(0.55 + std::clamp(t, 0.0, 1.0) * 0.45);
-        }
         return oldNode;
     }
     m_highlightOnly = false;
     m_highlights.clear();
-    m_marks.clear();
 
     auto* camera = static_cast<QSGTransformNode*>(oldNode);
     if (!camera)
         camera = new QSGTransformNode;
     if (!m_textures)
         m_textures = std::make_unique<renderer::TSpriteTextureProvider>(window());
+    if (!m_nodes)
+        m_nodes = std::make_unique<renderer::TScenegraphNodeProvider>(window());
 
     // CIP slot 46: camera translation ÷ render scale, rounded to whole pixels,
     // then translate(-x, -y). Scale lives on the QML MapWindowPane; the provider
@@ -262,7 +218,9 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         QSGNode* parent = nullptr;
         QSGNode* next = nullptr;
     };
-    const auto isHighlightNode = [software](QSGNode* node) { return isHighlightSpriteNode(node, software); };
+    const auto isHighlightNode = [](QSGNode* node) {
+        return dynamic_cast<renderer::THighlightedSpriteScenegraphNode*>(node) != nullptr;
+    };
     // Takes the next pooled node if it is of the wanted kind, else puts a new
     // one in its place. `create` must leave the node renderable (textures set)
     // before return — parenting triggers an immediate software update.
@@ -273,9 +231,8 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         Node* reused = nullptr;
         if (node) {
             if constexpr (std::is_same_v<Node, QSGImageNode>) {
-                if (node->type() == QSGNode::GeometryNodeType && !isHighlightNode(node))
-                    reused = static_cast<QSGImageNode*>(node);
-            } else if constexpr (std::is_same_v<Node, renderer::TChildrenScenegraphNode>) {
+                reused = dynamic_cast<QSGImageNode*>(node);
+            } else if constexpr (std::is_same_v<Node, QSGOpacityNode>) {
                 if (node->type() == QSGNode::OpacityNodeType)
                     reused = static_cast<Node*>(node);
             } else if constexpr (std::is_same_v<Node, renderer::THighlightedSpriteScenegraphNode>) {
@@ -310,8 +267,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         camera->appendChildNode(sprites);
     }
 
-    // Opacity groups (CIP: TChildrenScenegraphNode / world draw commands
-    // ): sprites below full opacity share one node per percent,
+    // Opacity groups: sprites below full opacity share one opacity node per percent,
     // placed where that opacity first appears; fully transparent ones are not drawn.
     Children root{ sprites, sprites->firstChild() };
     std::array<std::optional<Children>, 100> groups;
@@ -323,14 +279,8 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             return &root;
         std::optional<Children>& group = groups[percent];
         if (!group) {
-            auto* node = reuse.operator()<renderer::TChildrenScenegraphNode>(root, [this] {
-                if (m_opacityPool.empty())
-                    return new renderer::TChildrenScenegraphNode;
-                renderer::TChildrenScenegraphNode* pooled = m_opacityPool.back();
-                m_opacityPool.pop_back();
-                return pooled;
-            });
-            node->setAlphaF(percent / 100.0);
+            auto* node = reuse.operator()<QSGOpacityNode>(root, [this] { return m_nodes->opacityNode(); });
+            node->setOpacity(percent / 100.0);
             group = Children{ node, node->firstChild() };
         }
         return &*group;
@@ -369,13 +319,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             const bool smooth = m_smoothTextureFiltering;
             auto* node = reuse.operator()<renderer::THighlightedSpriteScenegraphNode>(
                 *parent, [this, texture, rect, color, smooth] {
-                    renderer::THighlightedSpriteScenegraphNode* created = nullptr;
-                    if (m_highlightPool.empty())
-                        created = new renderer::THighlightedSpriteScenegraphNode;
-                    else {
-                        created = m_highlightPool.back();
-                        m_highlightPool.pop_back();
-                    }
+                    renderer::THighlightedSpriteScenegraphNode* created = m_nodes->highlightedSpriteNode();
                     created->set(texture, rect, color, smooth);
                     return created;
                 });
@@ -390,14 +334,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
                 texture = tinted;
         }
         auto* image = reuse.operator()<QSGImageNode>(*parent, [this, texture, filtering, source, rect] {
-            QSGImageNode* created = nullptr;
-            if (m_imagePool.empty()) {
-                created = window()->createImageNode();
-                created->setOwnsTexture(false);
-            } else {
-                created = m_imagePool.back();
-                m_imagePool.pop_back();
-            }
+            QSGImageNode* created = m_nodes->imageNode();
             created->setTexture(texture);
             created->setFiltering(filtering);
             created->setSourceRect(source);

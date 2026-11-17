@@ -3488,12 +3488,29 @@ quickloot::TQuickLootGameActionHandler::~TQuickLootGameActionHandler	2ba80da131d
 quickloot::TQuickLootGameActionHandler::~TQuickLootGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair
 renderer::TChildrenScenegraphNode::v23	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TChildrenScenegraphNode::v29	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
+renderer::THighlightedSpriteScenegraphNode::v0	592c345dd865c09b	skip	generated: compiler-generated destructor pair (QSGGeometryNode base)
+renderer::THighlightedSpriteScenegraphNode::v1	94e3d01e8a52d58a	skip	generated: compiler-generated destructor pair (QSGGeometryNode base)
 renderer::THighlightedSpriteScenegraphNode::v3	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TNextFrameUpdater::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TNextFrameUpdater::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
+renderer::TQSGNodePool<QSGOpacityNode>::v0	309b34424c94e12a	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<QSGOpacityNode>::v1	7c81eb1159d90d0a	inlined	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<QSGTransformNode>::v0	309b34424c94e12a	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<QSGTransformNode>::v1	7c81eb1159d90d0a	inlined	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<tibia::renderer::TChildrenScenegraphNode>::v0	309b34424c94e12a	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<tibia::renderer::TChildrenScenegraphNode>::v1	7c81eb1159d90d0a	inlined	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<tibia::renderer::THighlightedSpriteScenegraphNode>::v0	309b34424c94e12a	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
+renderer::TQSGNodePool<tibia::renderer::THighlightedSpriteScenegraphNode>::v1	7c81eb1159d90d0a	inlined	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
 renderer::TRenderVolumeProvider::v0	7da6e7afa666b74a	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TRenderVolumeProvider::v1	ecfef4ab08ec57af	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TRenderVolumeProvider::v10	ff34c005597d6cca	inlined	renderer/rendervolumeprovider.cpp:TRenderVolumeProvider::firstVisibleFloor
+renderer::TScenegraphNodeProvider::v0	d5fde7ed8de07198	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::childrenNode
+renderer::TScenegraphNodeProvider::v1	260ead9a42a90395	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::opacityNode
+renderer::TScenegraphNodeProvider::v2	55db99aaae7f4787	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::transformNode
+renderer::TScenegraphNodeProvider::v3	0840cbe25e9646fd	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::rectangleNode
+renderer::TScenegraphNodeProvider::v4	8972b78044fc2726	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::imageNode
+renderer::TScenegraphNodeProvider::v5	69460a8784a80446	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::highlightedSpriteNode
+renderer::TScenegraphNodeProvider::v6	c7c25248428dec90	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::recycle
 renderer::TScenegraphNodeProvider::v7	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TScenegraphNodeProvider::v8	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TSpriteTextureProvider::onBeforeRenderNewFrame	cdce7549e5fd4b77	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::onBeforeRenderNewFrame
@@ -5359,6 +5376,12 @@ sub_23c91f1a75a5#364	23c91f1a75a58fdc	skip	library: libc++ vector out_of_range t
 sub_23c91f1a75a5#365	23c91f1a75a58fdc	skip	library: libc++ vector out_of_range throw
 sub_23c91f1a75a5#366	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#367	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
+sub_23c91f1a75a5#374	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
+sub_23c91f1a75a5#375	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
+sub_23c91f1a75a5#376	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
+sub_23c91f1a75a5#377	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
+sub_23c91f1a75a5#378	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
+sub_23c91f1a75a5#379	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw (vector growth)
 sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#60	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#91	23c91f1a75a58fdc	skip	library: libc++ vector growth / length error
@@ -6958,6 +6981,7 @@ sub_59cca3720f2a#2	59cca3720f2ad04b	ported	gamewindow/monsterbonuseffectsdialogc
 sub_59e8ae135dc1	59e8ae135dc18624	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferMaximumAmountRequest
 sub_59e941f7c4bd	59e941f7c4bdc8d6	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::transferTimeout
 sub_59ec81f07c7d	59ec81f07c7d943d	skip	library: miniaudio library
+sub_59f203f85b4a	59f203f85b4a49a8	inlined	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::set
 sub_59f8400a96ae	59f8400a96ae3325	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_5a0b457c5bdc	5a0b457c5bdca3e4	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::rebuildAvailableOffers
 sub_5a16be7efa2e	5a16be7efa2e4631	ported	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::damagePerHourString
@@ -7091,6 +7115,7 @@ sub_5fa9b2742be4	5fa9b2742be422ed	skip	library: nlohmann::json 3.12 parse(): lex
 sub_5faa0ecda1e9	5faa0ecda1e9f158	ported	gamewindow/housesinfodialogcontroller.h:THousesModel::setCharacterInfo
 sub_5fb070463f01#2	5fb070463f015ce5	skip	library: boost::bimap / std::map template instantiation
 sub_5fc11c58ea3c	5fc11c58ea3c89df	skip	library: std::vector growth / copy / length_error (library)
+sub_5fcdc0607645	5fcdc06076459773	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::setTexture
 sub_5fd390190e8a	5fd390190e8aa7c3	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_5ff783944d43	5ff783944d43ebcd	skip	library: std::sort instantiation
 sub_6008af61bf20	6008af61bf2047d6	ported	skillwheel/skillwheeldata.cpp:mediumPerkCount
@@ -7839,6 +7864,7 @@ sub_7c5ef873b610#2	7c5ef873b6101aa4	ported	gamewindow/createcharacterdialogcontr
 sub_7c6d8d67948f#3	7c6d8d67948fc9ca	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_7c6e972f194d#2	7c6e972f194d000a	inlined	config/sidebaroptions.cpp:parsePlayerGuide
 sub_7c705833e01b#2	7c705833e01b5e02	skip	library: std::sort instantiation (library)
+sub_7c7306afc4fa	7c7306afc4faa218	inlined	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::set
 sub_7c782a40a2b0	7c782a40a2b0e041	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardHoverText
 sub_7c9956343f60	7c9956343f60bba9	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_7cc9fc38b2b8	7cc9fc38b2b806a4	ported	gamewindow/storedialogcontroller.cpp:sameCategory
@@ -9278,6 +9304,7 @@ sub_a9cbac99c53f	a9cbac99c53fb194	ported	cyclopedia/cyclopediaciptypes.cpp:TMons
 sub_a9ce0b04eabf	a9ce0b04eabf0f0a	ported	friends/friendsciptypes.cpp:TFriendsFriendListStorage::setFriendList
 sub_a9ce94a90c7a	a9ce94a90c7a3091	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage
 sub_a9cef023c9ea	a9cef023c9ea5a1d	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendLookAtCreature
+sub_a9d03c978558	a9d03c978558fddc	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::~TScenegraphNodeProvider
 sub_a9db6b1bb3c7	a9db6b1bb3c72795	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_a9e611ee3526	a9e611ee3526d3f5	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_a9eaa9d2ea36	a9eaa9d2ea36be92	inlined	sub_92f98c376ee9
@@ -9641,6 +9668,7 @@ sub_b7f13190f841#3	b7f13190f84118cd	skip	generated: atexit registration of a sta
 sub_b7f54e3f819a	b7f54e3f819a6855	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onHomePageChanged
 sub_b7fd6d6434ce	b7fd6d6434cec22a	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_b80c8bc6d2eb	b80c8bc6d2eb212d	skip	library: libc++ vector reserve/emplace slow paths and stringstream construction
+sub_b81750f242c4	b81750f242c4170d	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::TScenegraphNodeProvider
 sub_b81b740abec1	b81b740abec16ff9	inlined	assets/assetcatalog.cpp:TAssetCatalog::isCatalogDocument
 sub_b8249c9e3366	b8249c9e33663f7b	skip	library: Qt/std container template code
 sub_b8249c9e3366#10	b8249c9e33663f7b	skip	library: std::shared_ptr control block
@@ -9889,6 +9917,10 @@ sub_b8501c20280b#3	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTran
 sub_b8501c20280b#4	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v139
 sub_b8501c20280b#5	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_b87167cad10d	b87167cad10d879b	ported	appearances/appearanceinstancespritesequence.cpp:TAppearanceInstanceSpriteSequence::boundingBox
+sub_b886ce5d53dc	b886ce5d53dcb71f	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::put
+sub_b886ce5d53dc#2	b886ce5d53dcb71f	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::put
+sub_b886ce5d53dc#3	b886ce5d53dcb71f	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::put
+sub_b886ce5d53dc#4	b886ce5d53dcb71f	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::put
 sub_b8b7cfb4c651	b8b7cfb4c651d39b	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_b8c6c5516062	b8c6c5516062ccab	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::deleteCurrentPreset
 sub_b8c869f03af1	b8c869f03af130df	ported	gamewindow/actionbarmanager.cpp:TActionBarManager::onActionButtonTriggered
@@ -9985,6 +10017,8 @@ sub_bac3d6f7b701	bac3d6f7b7016707	skip	library: std container template code
 sub_bacb34461c58	bacb34461c5810a9	ported	skillwheel/skillwheeldata.cpp:percentNumberTrimmed
 sub_bad00b56de9f	bad00b56de9ff38f	inlined	gamewindow/taskboarddialogcontroller.cpp:TTaskboardDialogController::switchToTab
 sub_bae0340825ca	bae0340825ca3cad	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onUnjustifiedPointsWidgetClosed
+sub_bae76d6089c1	bae76d6089c1476b	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode
+sub_bae76d6089c1#2	bae76d6089c1476b	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode
 sub_bae7e771cd7d	bae7e771cd7dc351	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_bae87b991fc9	bae87b991fc95c23	skip	library: libc++ std::sort introsort internals, vector range insert, std::unique, map erase-by-key used by v13/v14
 sub_bae8feb8589f#2	bae8feb8589f2307	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
@@ -10661,6 +10695,7 @@ sub_d3a3ea1ddabb	d3a3ea1ddabbd682	ported	config/clientoptions.cpp:deviceCookiesF
 sub_d3b0b0a9a598	d3b0b0a9a5980bd8	ported	teamfinder/teamfinderciptypes.cpp:slotsOrEmpty
 sub_d3b102f0e11b	d3b102f0e11bb1d4	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setCategoryFilter
 sub_d3b9f6f46a43	d3b9f6f46a4334db	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::requestConfirmConfiguration
+sub_d3ca0fc80b8c	d3ca0fc80b8c3b7c	ported	renderer/scenegraphnodeprovider.cpp:TScenegraphNodeProvider::kindOf
 sub_d3d123c98a2d	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedInviteAsFriend
 sub_d3d123c98a2d#2	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSetOnBlacklist
 sub_d3dc7a637a67	d3dc7a637a676503	skip	generated: make_shared control block + default constructor of the work queue
