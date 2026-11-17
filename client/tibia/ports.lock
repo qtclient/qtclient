@@ -1291,9 +1291,12 @@ game::TPlayerGameActionHandler::~TPlayerGameActionHandler_deleting	3e8b297b99dd7
 game::TPlayerProtocolMessageHandler::v12	d126d9239d28bac3	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage
 game::TPlayerProtocolMessageHandler::v13	6f8f3ec586f4379a	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage
 game::TPlayerProtocolMessageHandler::v14	c8b62de17d931e9c	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerStateMessage
+game::TPlayerProtocolMessageHandler::v15	b556f7a7c561effb	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage
 game::TPlayerProtocolMessageHandler::v17	a276a2f5367b4055	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSnapBackMessage
 game::TPlayerProtocolMessageHandler::v18	4c4508ab192d0006	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleStopMessage
 game::TPlayerProtocolMessageHandler::v19	0d72e5426f0a152e	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSetTacticsMessage
+game::TPlayerProtocolMessageHandler::v21	225534aefd5e76bc	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleOutfitMessage
+game::TPlayerProtocolMessageHandler::v22	7e396d3715ffd742	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage
 game::TPlayerProtocolMessageHandler::v24	ba1243024295f019	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSpellDelayMessage
 game::TPlayerProtocolMessageHandler::v25	dab3deb9b7bba291	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage
 game::TPlayerProtocolMessageHandler::v26	a4f462564cf41d81	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleMultiUseDelayMessage
