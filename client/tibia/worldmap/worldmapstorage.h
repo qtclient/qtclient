@@ -74,6 +74,15 @@ public:
     /// The field at `position`, created when the position lies in the stored
     /// volume (null outside it). A new field announces its coordinate.
     TWorldMapField* getOrCreateField(const Position& position);
+    /// Every stored field with its coordinate, in coordinate order (CIP v17).
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> fields() const;
+    /// The stored fields inside `cuboid` (CIP v18).
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> fieldsIn(const TShearedWorldMapCuboid& cuboid) const;
+    /// The creatures standing on the fields inside `cuboid` (CIP v19).
+    std::vector<std::shared_ptr<creatures::TCreature>> creaturesIn(const TShearedWorldMapCuboid& cuboid) const;
+    /// Stores `field` at `coordinate` (null drops the stored field) when the
+    /// coordinate is inside the stored volume, and reports the coordinate (CIP v21).
+    void setField(const TWorldMapCoordinate& coordinate, std::shared_ptr<TWorldMapField> field);
     /// Drops every field outside the stored volume; `onRemoved` runs for each
     /// coordinate after its field left, before the change is announced.
     void removeFieldsOutsideStoredVolume(const std::function<bool(const Position&)>& isStored,

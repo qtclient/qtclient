@@ -154,6 +154,51 @@ TWorldMapField* TWorldMapStorage::getOrCreateField(const Position& position)
     return field.get();
 }
 
+std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> TWorldMapStorage::fields() const
+{
+    return { m_fields.begin(), m_fields.end() };
+}
+
+std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>>
+TWorldMapStorage::fieldsIn(const TShearedWorldMapCuboid& cuboid) const
+{
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> inside;
+    for (const auto& entry : m_fields) {
+        if (cuboid.contains(entry.first))
+            inside.push_back(entry);
+    }
+    return inside;
+}
+
+std::vector<std::shared_ptr<creatures::TCreature>> TWorldMapStorage::creaturesIn(const TShearedWorldMapCuboid& cuboid) const
+{
+    std::vector<std::shared_ptr<creatures::TCreature>> creatures;
+    for (const auto& [coordinate, field] : m_fields) {
+        if (!cuboid.contains(coordinate))
+            continue;
+        const auto onField = field->creatures();
+        creatures.insert(creatures.end(), onField.begin(), onField.end());
+    }
+    return creatures;
+}
+
+void TWorldMapStorage::setField(const TWorldMapCoordinate& coordinate, std::shared_ptr<TWorldMapField> field)
+{
+    if (!m_sessionState.isAwareOfPosition(coordinate.toPosition()))
+        return;
+    if (const auto stored = m_fields.find(coordinate); stored != m_fields.end())
+        disconnect(stored->second.get(), &TWorldMapField::appearanceInstancesChanged, this,
+                   &TWorldMapStorage::fieldAppearanceInstancesChanged);
+    if (!field) {
+        m_fields.erase(coordinate);
+    } else {
+        m_fields.insert_or_assign(coordinate, field);
+        connect(field.get(), &TWorldMapField::appearanceInstancesChanged, this,
+                &TWorldMapStorage::fieldAppearanceInstancesChanged);
+    }
+    Q_EMIT informationAtWorldMapCoordinateHasChanged(coordinate);
+}
+
 void TWorldMapStorage::clearField(const Position& position)
 {
     // Map::cleanTile → notificateTileUpdate → notifyCoordinateChanged when live.

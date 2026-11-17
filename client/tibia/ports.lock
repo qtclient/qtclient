@@ -12018,7 +12018,11 @@ worldmap::TWorldMapStorage::v13	21a6eba164b5a4d7	ported	worldmap/worldmapstorage
 worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
 worldmap::TWorldMapStorage::v15	842019cc137285f3	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasField
 worldmap::TWorldMapStorage::v16	56866489b3351ab0	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::field
+worldmap::TWorldMapStorage::v17	2fd690a3a80145cd	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fields
+worldmap::TWorldMapStorage::v18	f365c46e277412a8	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fieldsIn
+worldmap::TWorldMapStorage::v19	4430e596a8d52ce8	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::creaturesIn
 worldmap::TWorldMapStorage::v20	49a8407ec4411184	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::getOrCreateField
+worldmap::TWorldMapStorage::v21	fc4278b0f4576dda	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setField
 worldmap::TWorldMapStorage::v22	e74004eba777fdb8	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::moveCreatureInstance
 worldmap::TWorldMapStorage::v23	7b87c110f7433860	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::placeCreatureInstance
 worldmap::TWorldMapStorage::v24	08309bed3bf72437	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::appearanceInstanceAt

@@ -41,3 +41,17 @@ TEST(ShearedWorldMapCuboid, RestrictsToFloorsKeepingTheShear)
     EXPECT_EQ(volume.restrictedToFloors(8, 5), TShearedWorldMapCuboid());
     EXPECT_EQ(TShearedWorldMapCuboid(TWorldMapCuboid({ 1, 2, 6 }, TWorldMapExtent(1, 1, 1))).shearFloor, 6);
 }
+
+TEST(ShearedWorldMapCuboid, ContainsFieldsSeenFromTheShearFloor)
+{
+    using tibia::worldmap::TShearedWorldMapCuboid;
+    using tibia::worldmap::TWorldMapCoordinate;
+    using tibia::worldmap::TWorldMapExtent;
+    const TShearedWorldMapCuboid volume(TWorldMapCoordinate(92, 94, 0), TWorldMapExtent(18, 14, 8), 7);
+    EXPECT_TRUE(volume.contains(TWorldMapCoordinate(92, 94, 7)));
+    EXPECT_FALSE(volume.contains(TWorldMapCoordinate(110, 94, 7)));
+    // One floor up the box is one field further south-east.
+    EXPECT_FALSE(volume.contains(TWorldMapCoordinate(92, 94, 6)));
+    EXPECT_TRUE(volume.contains(TWorldMapCoordinate(93, 95, 6)));
+    EXPECT_FALSE(volume.contains(TWorldMapCoordinate(93, 95, 8)));
+}
