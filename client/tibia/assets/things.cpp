@@ -18,6 +18,7 @@
 
 #include <appearances.pb.h>
 #include <staticdata.pb.h>
+#include "assets/assetcatalog.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -427,22 +428,16 @@ uint8_t checkedEnum(const uint32_t value, const uint32_t count)
     return static_cast<uint8_t>(value);
 }
 
-QJsonArray catalogOf(const std::string& directory)
+QJsonDocument catalogDocument(const std::string& directory)
 {
     const auto path = tibia::files::data().resolvePath(tibia::files::data().guessFilePath(directory + "catalog-content", "json"));
     const auto bytes = tibia::files::data().readFileContents(path);
-    const auto doc = QJsonDocument::fromJson(QByteArray::fromStdString(bytes));
-    return doc.isArray() ? doc.array() : QJsonArray{};
+    return QJsonDocument::fromJson(QByteArray::fromStdString(bytes));
 }
 
-std::string catalogFile(const QJsonArray& catalog, const std::string& type)
+std::string catalogFile(const tibia::assets::TAssetCatalog& catalog, const tibia::assets::TAsset::EType type)
 {
-    for (const auto& entryValue : catalog) {
-        const auto entry = entryValue.toObject();
-        if (entry.value("type").toString().toStdString() == type)
-            return entry.value("file").toString().toStdString();
-    }
-    return {};
+    return catalog.fileOf(type).toStdString();
 }
 
 }
@@ -518,15 +513,14 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         }
 
         tibia::assets::sprites().clear();
-        const auto catalog = catalogOf(directory);
-        std::string appearancesFile;
+        const QJsonDocument catalogJson = catalogDocument(directory);
+        const tibia::assets::TAssetCatalog catalog(catalogJson);
+        const std::string appearancesFile = catalogFile(catalog, tibia::assets::TAsset::Appearances);
         int spritesCount = 0;
-        for (const auto& entryValue : catalog) {
+        for (const auto& entryValue : catalogJson.array()) {
             const auto entry = entryValue.toObject();
             const auto type = entry.value("type").toString().toStdString();
-            if (type == "appearances") {
-                appearancesFile = entry.value("file").toString().toStdString();
-            } else if (type == "sprite") {
+            if (type == "sprite") {
                 int lastSpriteId = entry.value("lastspriteid").toInt(0);
                 const std::string file = entry.value("file").toString().toStdString();
                 // CIP sprites::TAssetSpritesheetIdentifier / TSpritesheetsMetadataManager.
@@ -630,14 +624,14 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
 bool TAppearancesManager::loadStaticData(const std::string& directory)
 {
     try {
-        const auto catalog = catalogOf(directory);
-        const auto fileName = catalogFile(catalog, "staticdata");
+        const tibia::assets::TAssetCatalog catalog(catalogDocument(directory));
+        const auto fileName = catalogFile(catalog, tibia::assets::TAsset::StaticData);
         if (fileName.empty())
             throw std::runtime_error("catalog has no staticdata file");
         const auto bytes = tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + fileName));
         setStaticInformation(parseStaticInformation(bytes));
         // The houses' map areas come with the static data (CIP: asset type 6).
-        const auto mapFileName = catalogFile(catalog, "staticmapdata");
+        const auto mapFileName = catalogFile(catalog, tibia::assets::TAsset::StaticMapData);
         m_houseMapAreas.clear();
         if (!mapFileName.empty())
             m_houseMapAreas = parseStaticMapData(
@@ -732,7 +726,7 @@ bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
 {
     m_proficienciesFile.clear();
     try {
-        const auto fileName = catalogFile(catalogOf(directory), "proficiencies");
+        const auto fileName = catalogFile(tibia::assets::TAssetCatalog(catalogDocument(directory)), tibia::assets::TAsset::Proficiencies);
         if (fileName.empty())
             return false;
         const auto path = directory + fileName;

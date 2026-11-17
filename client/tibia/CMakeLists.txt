@@ -319,6 +319,8 @@ if(TIBIA_WITH_GAMECORE)
     protocol/protocolmessagequeue.cpp
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
+    assets/asset.cpp assets/asset.h
+    assets/assetcatalog.cpp assets/assetcatalog.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
