@@ -974,12 +974,7 @@ TReturnerRewardDialogController::TReturnerRewardDialogController(QObject* parent
     : TDialogController(QStringLiteral("ReturnerRewardNotificationDialog.qml"), parent)
 {}
 
-void TReturnerRewardDialogController::showReward(const QString& text)
-{
-    m_dialogText = text;
-    dialog()->create();
-    dialog()->show();
-}
+QString TReturnerRewardDialogController::dialogText() const { return qtTrId("returner_reward_notification_text"); }
 
 void TReturnerRewardDialogController::onContinueClicked()
 {

@@ -480,9 +480,13 @@ QVariant TSimpleNameAndCountModel::data(const QModelIndex& index, const int role
     return {};
 }
 
+/// The default roles with "name" and "count".
 QHash<int, QByteArray> TSimpleNameAndCountModel::roleNames() const
 {
-    return { { NameRole, "name" }, { CountRole, "count" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[NameRole] = "name";
+    roles[CountRole] = "count";
+    return roles;
 }
 
 void TSimpleNameAndCountModel::setEntries(std::vector<Entry> entries)
