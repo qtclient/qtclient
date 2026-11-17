@@ -2167,7 +2167,7 @@ gamewindow::TCharacterTradeDialogController::publishGameAction	9faac4e0be245e40	
 gamewindow::TCharacterTradeDialogController::removeHighlight	0b6e12f8135222fa	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::characterOverviewItemsModel
 gamewindow::TCharacterTradeDialogController::requestClose	89e763668208d2fc	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::hasConfirmationError
 gamewindow::TCharacterTradeDialogController::showDialog	42129e9d4083fa76	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::itemsModel
-gamewindow::TCharacterTradeDialogController::v14	097457dc45e86dd8	skip	generated: override that only calls TDialogControllerBase::v14
+gamewindow::TCharacterTradeDialogController::v14	097457dc45e86dd8	inlined	gamewindow/dialogmanager.cpp:TDialog::close
 gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor
 gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
 gamewindow::TCharacterTradeDuePaymentDialogController::onClosePressed	378c2dacd3321ba3	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::onClosePressed
@@ -7095,7 +7095,7 @@ sub_097457dc45e8#335	097457dc45e86dd8	skip	generated: forwarding thunk (std::mak
 sub_097457dc45e8#336	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#337	097457dc45e86dd8	inlined	gamewindow/actionbarcontroller.cpp:TActionBarGroup::TActionBarGroup
 sub_097457dc45e8#338	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
-sub_097457dc45e8#339	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
+sub_097457dc45e8#339	097457dc45e86dd8	inlined	gamewindow/actionbarcontroller.cpp:TActionBarController::insertSpell
 sub_097457dc45e8#340	097457dc45e86dd8	skip	generated: compiler-generated destructor
 sub_097457dc45e8#341	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#342	097457dc45e86dd8	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::TSpellListDataModel
@@ -7147,7 +7147,6 @@ sub_097457dc45e8#392	097457dc45e86dd8	skip	generated: forwarding thunk (std::mak
 sub_097457dc45e8#393	097457dc45e86dd8	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::reopenStash
 sub_097457dc45e8#394	097457dc45e86dd8	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::reopenStash
 sub_097457dc45e8#395	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
-sub_097457dc45e8#396	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#397	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#398	097457dc45e86dd8	skip	generated: std::make_shared forwarding thunk into the constructor
 sub_097457dc45e8#399	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
@@ -7664,7 +7663,6 @@ sub_10e32b58cfc3#6	10e32b58cfc3edc7	skip	generated: moc property getter, provide
 sub_10e6efdf47b6	10e6efdf47b65409	inlined	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
 sub_10e8217d0c30	10e8217d0c30fa66	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_10e8217d0c30#2	10e8217d0c30fa66	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
-sub_10ea68844483	10ea688444837d68	skip	generated: destructor body: member teardown (row list, timers, collator)
 sub_10ef79046450	10ef790464506d75	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openSkillWheelDialog
 sub_10efbe732e2b	10efbe732e2b59bb	inlined	gamewindow/chatcontroller.cpp:TChatController::storeOpenChannels
 sub_10f549c9ae54	10f549c9ae54c6b7	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
@@ -8074,7 +8072,7 @@ sub_13d08a5407ce#83	13d08a5407ce57fa	ported	taskboard/taskboardciptypes.cpp:chec
 sub_13d08a5407ce#84	13d08a5407ce57fa	ported	taskboard/taskboardciptypes.cpp:checkedEnumValue
 sub_13d08a5407ce#85	13d08a5407ce57fa	ported	taskboard/taskboardciptypes.cpp:checkedEnumValue
 sub_13da7859f616	13da7859f61667b7	skip	generated: protobuf-generated message constructor, rcc resource registration, or compiler-generated default/aggregate constructor of a CipSoft struct
-sub_13e4b9473f17	13e4b9473f17035d	skip	generated: destructor body: member teardown only
+sub_13e4b9473f17	13e4b9473f17035d	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::~TBattleListController
 sub_13e7c452d6b9	13e7c452d6b96d92	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_13ef27e6e285	13ef27e6e285c40d	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_13f11ef4a0a9#3	13f11ef4a0a933de	skip	library: QtConcurrent::run / QFutureInterface<shared_ptr<QImage>> internals
@@ -11536,7 +11534,6 @@ sub_43a5e0ef11dc	43a5e0ef11dc9d7d	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_43af5407e883	43af5407e8838802	skip	library: libc++ std::vector growth / destroy (library)
 sub_43b3611eef4c	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
 sub_43b3611eef4c#2	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
-sub_43b8c2419f4c	43b8c2419f4cec2a	skip	generated: destructor body: member teardown (row list, timers, collator)
 sub_43bf0649ff85	43bf0649ff852867	ported	gamewindow/chatcontroller.cpp:TChatController::onWorldLeft
 sub_43c48b0456f3	43c48b0456f3505f	ported	config/sidebaroptions.cpp:parseContainers
 sub_43de94ae2398	43de94ae2398c66d	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions
@@ -14739,7 +14736,6 @@ sub_7fda558eb569	7fda558eb569830d	skip	library: miniaudio (statically linked via
 sub_7fec8ada9cad	7fec8ada9cad472a	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_7fef0077a4d9#3	7fef0077a4d991fd	inlined	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::rebuildListItems
 sub_7ff23b72124d	7ff23b72124d4389	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::exportText
-sub_7ff7dfe66d8f	7ff7dfe66d8f42e8	skip	library: inlined QString clear / !QString::contains helper
 sub_7ffd3c573bb6	7ffd3c573bb679ed	skip	library: libc++/Qt/absl/protobuf template or runtime internals (map/set tree find/emplace/destroy, QHash<QKeySequence> node/destroy, QList from initializer_list, QVariant(const char*), std::string init, protobuf arena string, absl time)
 sub_8000f8e373c5	8000f8e373c582f8	skip	library: std::sort internals
 sub_80169dd20755	80169dd20755fe3f	skip	generated: moc signal emitter
