@@ -896,6 +896,8 @@ void TBattleListControllerStorage::setOptions(const int battleListId, const Batt
         m_sidebarOptions->setBattleListOptions(battleListId, toSidebarOptions(options));
 }
 
+config::TSidebarOptions* TBattleListControllerStorage::sidebarOptions() const { return m_sidebarOptions; }
+
 bool TBattleListControllerStorage::hasOptions(const int battleListId) const
 {
     return m_sidebarOptions && m_sidebarOptions->battleListsOptions().contains(battleListId);

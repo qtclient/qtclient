@@ -321,7 +321,7 @@ public:
     void setOptions(int battleListId, const BattleListOptions& options);
     /// Whether the sidebar options hold an entry for the list.
     bool hasOptions(int battleListId) const;
-    config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions; }
+    config::TSidebarOptions* sidebarOptions() const;
     void removeOptions(int battleListId);
     /// CIP: the list becomes the primary list in the sidebar options.
     void makePrimary(uint8_t battleListId);
