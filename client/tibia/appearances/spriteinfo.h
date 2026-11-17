@@ -191,7 +191,7 @@ public:
     size_t hash() const override { return 0; }
     EKind kind() const override { return EKind::Dummy; }
     QRect boundingBox() const override { return QRect(); }
-    QSize spriteSize() const override { return QSize(); }
+    QSize spriteSize() const override { return QSize(0, 0); }
 };
 
 /// CIP's sprite sizes by index (32x32, 32x64, 64x32, 64x64); empty past the end.
