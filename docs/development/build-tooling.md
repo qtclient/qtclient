@@ -14,7 +14,7 @@ Blank-slate stack for `apps/qtclient`. Desktop and **wasm are equal target OSes*
 | Dep cache | `VCPKG_BINARY_SOURCES` under monorepo `.cache/vcpkg/` |
 | Compile cache | ccache (preferred in CI) or sccache |
 
-CrystalServer also uses vcpkg; share baseline pins where versions overlap. Qt stays outside vcpkg and tracks CipSoft-Tibia/Qt5 (not stock aqt).
+CrystalServer also uses vcpkg; share baseline pins where versions overlap. Qt stays outside vcpkg: qtclient/Qt5, our fork of CipSoft-Tibia/Qt5, builds the kits (not stock aqt).
 
 `qt5-cip` is `update = none` in `.gitmodules` so umbrella `git submodule update --recursive` does not clone ~multi-GB sources. `make qt` initializes it when a local build is required (after GHCR miss).
 
@@ -27,7 +27,6 @@ export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 # Qt — desktop kit, then WASM (builds host kit first)
 make qt          # desktop CIP Qt → ~/Qt/cip-<sha>/…
 make qt WASM=1   # + wasm_multithread + emsdk
-# CI publishers: PUBLISH=1 make qt   # pushes ghcr.io/qtclient/qt:<sha>-<kit>
 ```
 
 ## Build
@@ -57,4 +56,4 @@ Local presets use monorepo `.cache/vcpkg/archives`. CI uses qtclient composites
 
 Primary keys include `{sha}` so each run can **save** a new tip (Actions keys are immutable). Restore-keys warm from the previous tip. Do not use `save-always` on `actions/cache@v4` — it is broken; use restore + save.
 
-Release pack and Crystal call the same qtclient actions (`uses: qtclient/qtclient/.github/actions/...` or `./_qtclient/.github/actions/...`). Qt prefixes stay on `ghcr.io/qtclient/qt:<sha>-<kit>` (not Actions).
+Release pack and Crystal call the same qtclient actions (`uses: qtclient/qtclient/.github/actions/...` or `./_qtclient/.github/actions/...`). Qt prefixes stay on `ghcr.io/qtclient/qt5:<sha>-<kit>` (not Actions).
