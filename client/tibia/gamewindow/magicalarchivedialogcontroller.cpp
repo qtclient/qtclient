@@ -53,11 +53,10 @@ void TMagicalArchiveDialogController::setSelectedSpellID(const int v)
     Q_EMIT selectedSpellIDChanged();
 }
 
+/// CIP: any selected spell id is a valid selection.
 void TMagicalArchiveDialogController::refreshSelectionFlags()
 {
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_selectedSpellID);
-    m_isValidSpellSelected = spell != nullptr;
-    Q_UNUSED(spell);
+    m_isValidSpellSelected = m_selectedSpellID != 0;
 }
 
 void TMagicalArchiveDialogController::showDialogTab()

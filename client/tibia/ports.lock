@@ -1999,6 +1999,7 @@ gamewindow::TLootTrackingWidgetController::v38	a45fb7ad58cff844	ported	gamewindo
 gamewindow::TLootTrackingWidgetController::~TLootTrackingWidgetController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TLootTrackingWidgetController::~TLootTrackingWidgetController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TMagicalArchiveDialogController::dataChanged	cc68b37ce2d907ad	skip	generated: moc property getter, provided by the generated cip base
+gamewindow::TMagicalArchiveDialogController::hideDialogTab	51d64e7dbf5a4ec2	ported	gamewindow/magicalarchivedialogcontroller.cpp:TMagicalArchiveDialogController::refreshSelectionFlags
 gamewindow::TMagicalArchiveDialogController::publishGameAction	9a556f4ecba4453c	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TMagicalArchiveDialogController::selectedSpellIDChanged	0c2ed7c3c3721cc6	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TMagicalArchiveDialogController::~TMagicalArchiveDialogController	a7a34d11642d2c08	skip	generated: compiler-generated destructor pair
@@ -2097,6 +2098,7 @@ gamewindow::TNaggingMessageDialogController::handleGameAction	720b99a150da326c	p
 gamewindow::TNaggingMessageDialogController::onRefreshSecondsRemaining	d8452386d2cb5552	ported	gamewindow/naggingmessagedialogcontroller.cpp:TNaggingMessageDialogController::onRefreshSecondsRemaining
 gamewindow::TNaggingMessageDialogController::~TNaggingMessageDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TNaggingMessageDialogController::~TNaggingMessageDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+gamewindow::TNewsButtonController::connectToGameSession	e0ea3c622b124c14	inlined	gamewindow/newsdialogcontroller.cpp:TNewsButtonController::TNewsButtonController
 gamewindow::TNewsButtonController::~TNewsButtonController	7b58c6952818c418	skip	generated: compiler-generated destructor pair
 gamewindow::TNewsButtonController::~TNewsButtonController_deleting	07cfb1913175e471	skip	generated: compiler-generated destructor pair
 gamewindow::TNewsDialogController::handleGameAction	09a2608953434691	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::dialogTab
@@ -4980,6 +4982,7 @@ sub_1f1831934413#2	1f1831934413bc5a	inlined	gamewindow/iteminfodialogcontroller.
 sub_1f1831934413#3	1f1831934413bc5a	skip	library: std::sort instantiation (library)
 sub_1f1f532e2be8	1f1f532e2be8cd33	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_1f1f532e2be8#2	1f1f532e2be8cd33	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
+sub_1f261dd1c2a4	1f261dd1c2a47fae	skip	generated: compiler-generated destructor
 sub_1f40f66b4b9e	1f40f66b4b9e5f59	skip	library: std::vector copy / growth of store records (library)
 sub_1f415e15c62b	1f415e15c62b9087	ported	analysers/impactwidgets.cpp:TImpactWidgetController::setDesiredIsHpsGraphVisible
 sub_1f4552e53248	1f4552e532489c50	ported	skillwheel/skillwheeldata.cpp:perkLevelName
@@ -7424,6 +7427,7 @@ sub_7a6f5093038b#126	7a6f5093038bcf22	skip	generated: moc-generated signal emitt
 sub_7a6f5093038b#128	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#130	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#132	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
+sub_7a6f5093038b#133	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#134	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#138	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#142	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
@@ -8713,7 +8717,7 @@ sub_a28c512eac20	a28c512eac200d79	ported	gamewindow/createcharacterdialogcontrol
 sub_a294ae11554c	a294ae11554c28dc	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_a2a4d79c9619	a2a4d79c96195812	ported	gamewindow/housesinfodialogcontroller.cpp:shortStatus
 sub_a2a64f37ce4e	a2a64f37ce4e54fa	skip	library: std::sort instantiation for the category list
-sub_a2bd929f23a2	a2bd929f23a203c3	skip	generated: compiler-generated destructor pair
+sub_a2bd929f23a2	a2bd929f23a203c3	skip	generated: compiler-generated destructor (member teardown only)
 sub_a2c6d3abce3e	a2c6d3abce3eee41	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterListChanged
 sub_a2fc0c207b95	a2fc0c207b95555e	ported	gamewindow/marketcontroller.cpp:TMarketController::getPriceOrProfitMultistring
 sub_a306e2b5b815	a306e2b5b8151a1b	ported	shared/src/randomhints.cpp:selectHint
@@ -10252,6 +10256,7 @@ sub_d7e3b7952598#2	d7e3b79525988ca5	ported	gamewindow/battlelistcontroller.cpp:T
 sub_d7f4cc0b6fab	d7f4cc0b6fab8290	skip	library: std::sort instantiation over team members / member indices (library)
 sub_d80ec14dfbee	d80ec14dfbee9127	skip	generated: compiler-generated destructors of the friends data types and their vectors
 sub_d80ec14dfbee#3	d80ec14dfbee9127	skip	library: std container template instance
+sub_d813b4a6b4ce	d813b4a6b4cef580	ported	gamewindow/magicalarchivedialogcontroller.cpp:TMagicalArchiveDialogController::setSelectedSpellID
 sub_d81773152754	d817731527547e9e	skip	library: std::sort instantiation over achievements (library)
 sub_d8187cbc43c0	d8187cbc43c06a32	tested	sessiondump/sessiondumpreadersfactory.cpp:TSessiondumpReadersFactory::createPacketReader	test=tests/client/sessiondumpreader_test.cpp
 sub_d8187cbc43c0#2	d8187cbc43c06a32	tested	sessiondump/sessiondumpreadersfactory.cpp:TSessiondumpReadersFactory::createMessageReader	test=tests/client/sessiondumpreader_test.cpp
@@ -11060,6 +11065,7 @@ sub_f221f6c4a758	f221f6c4a7580589	ported	shared/src/launcherutils.cpp:TLauncherU
 sub_f23ba582127e	f23ba582127e5cef	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setCategories
 sub_f23eb3024ce5	f23eb3024ce596b3	skip	generated: moc signal bodies paginationDataChanged / sourceModelChanged
 sub_f23eb3024ce5#101	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
+sub_f23eb3024ce5#103	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#104	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#108	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#112	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
