@@ -546,6 +546,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/bosstiarydialogcontroller.cpp gamewindow/bosstiarydialogcontroller.h
     gamewindow/assignablebossmodels.cpp gamewindow/assignablebossmodels.h
     cyclopedia/characterinfostorage.cpp cyclopedia/characterinfostorage.h
+    cyclopedia/generalplayerstatisticsprovider.cpp cyclopedia/generalplayerstatisticsprovider.h game/generalstatsprovider.h
     cyclopedia/itemtrackingstorage.cpp cyclopedia/itemtrackingstorage.h
     cyclopedia/housesstorage.cpp cyclopedia/housesstorage.h
     gamewindow/housesinfodialogcontroller.cpp gamewindow/housesinfodialogcontroller.h

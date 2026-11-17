@@ -126,8 +126,8 @@ public:
         m_loyaltyTitle = infos.loyaltyTitle;
         std::vector<AccountBadgeEntry> badges;
         badges.reserve(infos.badges.size());
-        for (const auto& [id, name] : infos.badges)
-            badges.push_back({ id, QString::fromStdString(name) });
+        for (const friends::TAccountBadge& badge : infos.badges)
+            badges.push_back({ badge.id, badge.name });
         m_accountBadges = new TAccountBadgesModel(std::move(badges), this);
     }
 };
@@ -198,18 +198,6 @@ QString formatXpBoostTime(const uint32_t seconds)
     return QStringLiteral("%1:%2").arg(seconds / 3600, 2, 10, QLatin1Char('0')).arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'));
 }
 
-/// CIP : the hireling job names by job id.
-QString hirelingJobName(const int job)
-{
-    switch (job) {
-        case 0: return qtTrId("charinfo_hireling_job_banker");
-        case 1: return qtTrId("charinfo_hireling_job_cook");
-        case 2: return qtTrId("charinfo_hireling_job_steward");
-        case 3: return qtTrId("charinfo_hireling_job_trader");
-        default: return {};
-    }
-}
-
 /// CIP: TStorePurchasesQmlData over the 0xDA store summary
 /// (CIP reader case 8).
 class TStorePurchasesQmlData final : public cip::tibia::gamewindow::TStorePurchasesQmlData
@@ -222,7 +210,7 @@ public:
         m_remainingDailyRewardXpBoost = formatXpBoostTime(summary.dailyRewardXpBoostTime);
         QList<QVariantList> blessings;
         for (const auto& [name, count] : summary.blessings)
-            blessings.append({ qstr(name), static_cast<int>(count) });
+            blessings.append({ name, count });
         m_storeBlessings = new TStoreSummaryListModel({ "name", "count" }, std::move(blessings), this);
         m_preySlots = summary.preySlots;
         m_preyWildcards = summary.preyWildcards;
@@ -230,15 +218,15 @@ public:
         m_collectionTokens = summary.instantRewardAccesses;
         m_hasCharmExpansion = summary.charmExpansion;
         m_hirelings = summary.hirelings;
-        for (const uint16_t job : summary.hirelingJobs)
-            m_hirelingJobs.append(hirelingJobName(job));
+        for (const QString& job : summary.hirelingJobs)
+            m_hirelingJobs.append(job);
         QList<QVariantList> hirelingOutfits;
         for (const auto& [name, count] : summary.hirelingOutfits)
-            hirelingOutfits.append({ qstr(name), static_cast<int>(count) });
+            hirelingOutfits.append({ name, count });
         m_hirelingOutfits = new TStoreSummaryListModel({ "name", "count" }, std::move(hirelingOutfits), this);
         QList<QVariantList> houseItems;
         for (const auto& [id, name, count] : summary.houseItems)
-            houseItems.append({ static_cast<int>(id), qstr(name), static_cast<int>(count) });
+            houseItems.append({ static_cast<int>(id), name, count });
         m_houseItems = new TStoreSummaryListModel({ "appearanceTypeID", "name", "count" }, std::move(houseItems), this);
     }
 };

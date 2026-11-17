@@ -150,21 +150,6 @@ public:
     static void sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds);
 };
 
-/// CipSoft cache of the combined Cyclopedia combat-stats packet (also consumed by
-/// TCharacterInfoDialogController for CipSoft offence / defence qml data).
-class TGeneralPlayerStatisticsProvider final : public ::tibia::CipTyped
-{
-public:
-    TGeneralPlayerStatisticsProvider();
-    const std::optional<CyclopediaCharacterCombatStats>& lastCombatStats() const { return m_combat; }
-    double lastMitigation() const { return m_mitigation; }
-
-private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::optional<CyclopediaCharacterCombatStats> m_combat;
-    double m_mitigation = 0;
-};
-
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage
 {
     Q_OBJECT

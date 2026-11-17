@@ -549,7 +549,6 @@ void replaceObject(QObject*& member, QObject* object)
 }
 
 /// CIP : the wire's 1 is a quest, 2 a store appearance.
-int appearanceSource(const uint8_t type) { return type == 1 ? 1 : type == 2 ? 2 : 0; }
 
 }
 
@@ -568,25 +567,20 @@ void TCharacterInfoDialogController::updateOutfitsMounts()
     const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins();
     if (!appearances)
         return;
-    const OutfitColorStruct* colors = &appearances->colors;
-    const std::vector<CharacterInfoOutfits>* outfits = &appearances->outfits;
-    const std::vector<CharacterInfoMounts>* mounts = &appearances->mounts;
-    const std::vector<CharacterInfoFamiliar>* familiars = &appearances->summonSkins;
+    const auto& outfitColors = appearances->outfitColors;
+    const auto& mountColors = appearances->mountColors;
     std::vector<AppearanceEntry> entries;
-    entries.reserve(outfits->size() + mounts->size() + familiars->size());
-    for (const CharacterInfoOutfits& o : *outfits)
-        entries.push_back({ AppearanceEntry::Outfit, o.lookType, QString::fromStdString(o.name), appearanceSource(o.type),
-                            static_cast<int>(o.isCurrent), o.addons });
-    for (const CharacterInfoMounts& m : *mounts)
-        entries.push_back(
-            { AppearanceEntry::Mount, m.mountId, QString::fromStdString(m.name), appearanceSource(m.type), static_cast<int>(m.isCurrent), 0 });
-    for (const CharacterInfoFamiliar& f : *familiars)
-        entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, QString::fromStdString(f.name), appearanceSource(f.type),
-                            static_cast<int>(f.isCurrent), 0 });
-    const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ colors->lookHead,      colors->lookBody,
-                                                                               colors->lookLegs,      colors->lookFeet,
-                                                                               colors->lookMountHead, colors->lookMountBody,
-                                                                               colors->lookMountLegs, colors->lookMountFeet };
+    entries.reserve(appearances->outfits.size() + appearances->mounts.size() + appearances->summonSkins.size());
+    for (const auto& o : appearances->outfits)
+        entries.push_back({ AppearanceEntry::Outfit, o.lookType, o.name, static_cast<int>(o.source), static_cast<int>(o.current),
+                            static_cast<uint8_t>(o.addons) });
+    for (const auto& m : appearances->mounts)
+        entries.push_back({ AppearanceEntry::Mount, m.lookType, m.name, static_cast<int>(m.source), static_cast<int>(m.current), 0 });
+    for (const auto& f : appearances->summonSkins)
+        entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, f.name, static_cast<int>(f.source), static_cast<int>(f.current), 0 });
+    const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ outfitColors.head, outfitColors.body, outfitColors.legs,
+                                                                               outfitColors.feet, mountColors.head, mountColors.body,
+                                                                               mountColors.legs,  mountColors.feet };
     replaceObject(m_outfitMountModel, new TOutfitMountSummonSkinsListDataModelSortFilterProxy(std::move(entries), indexes, this));
     Q_EMIT dataModelChanged();
 }
@@ -597,13 +591,11 @@ void TCharacterInfoDialogController::updateTitles()
     const auto info = cyclopedia::TCharacterInfoStorage::instance()->titlesInfo();
     if (!info)
         return;
-    const int* current = &info->currentTitle;
-    const auto* titles = &info->titles;
     std::vector<TitleEntry> entries;
-    entries.reserve(titles->size());
-    for (const auto& [id, name, description, permanent, unlocked] : *titles)
-        entries.push_back({ id, QString::fromStdString(name), QString::fromStdString(description), permanent, unlocked });
-    replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(static_cast<uint8_t>(*current), std::move(entries), this));
+    entries.reserve(info->titles.size());
+    for (const cyclopedia::TCharacterTitle& title : info->titles)
+        entries.push_back({ title.id, title.name, title.description, title.permanent, title.unlocked });
+    replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(info->currentTitle, std::move(entries), this));
     Q_EMIT dataModelChanged();
 }
 

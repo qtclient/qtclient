@@ -41,7 +41,6 @@ using Args = std::vector<std::any>;
 
 struct CipTypedKeep {
     TCyclopediaMapGameActionProvider tCyclopediaMapGameActionProvider;
-    TGeneralPlayerStatisticsProvider tGeneralPlayerStatisticsProvider;
 };
 CipTypedKeep& typedKeep()
 {
@@ -49,19 +48,6 @@ CipTypedKeep& typedKeep()
     return keep;
 }
 
-}
-
-TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider()
-{
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterCombatStats", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterCombatStats>(&args[0]))
-            m_combat = *data;
-        if (const auto* mitigation = args.size() > 1 ? std::any_cast<double>(&args[1]) : nullptr)
-            m_mitigation = *mitigation;
-        else if (args.size() > 1)
-            m_mitigation = static_cast<double>(client::gamecore::argInt(args, 1));
-        return std::any{};
-    });
 }
 
 void ownProductSurface(QObject* parent)
@@ -448,47 +434,7 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
         break;
     }
     case tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS: {
-        const auto& g = m.general();
-        CyclopediaCharacterGeneralStats stats{};
-        stats.experience = g.experience();
-        stats.level = static_cast<uint16_t>(g.level());
-        stats.levelPercent = static_cast<uint16_t>(g.level_percent() / 100);
-        stats.baseExpGain = static_cast<uint16_t>(g.base_xp_gain());
-        stats.lowLevelExpBonus = static_cast<uint16_t>(g.low_level_xp_bonus());
-        stats.XpBoostPercent = static_cast<uint16_t>(g.xp_boost_percent());
-        stats.staminaExpBonus = static_cast<uint16_t>(g.stamina_xp_bonus());
-        stats.XpBoostBonusRemainingTime = static_cast<uint16_t>(g.xp_boost_remaining());
-        stats.canBuyXpBoost = g.can_buy_xp_boost() ? 1 : 0;
-        stats.health = g.health();
-        stats.maxHealth = g.max_health();
-        stats.mana = g.mana();
-        stats.maxMana = g.max_mana();
-        stats.soul = static_cast<uint8_t>(g.soul());
-        stats.staminaMinutes = static_cast<uint16_t>(g.stamina_minutes());
-        stats.regenerationCondition = static_cast<uint16_t>(g.regeneration());
-        stats.offlineTrainingTime = static_cast<uint16_t>(g.offline_training());
-        stats.speed = static_cast<uint16_t>(g.speed());
-        stats.baseSpeed = static_cast<uint16_t>(g.base_speed());
-        stats.capacity = g.capacity();
-        stats.baseCapacity = g.base_capacity();
-        stats.freeCapacity = g.free_capacity();
-        std::vector<std::vector<uint16_t>> skills;
-        for (int i = 0; i < g.skills_size(); ++i) {
-            const auto& s = g.skills(i);
-            if (i == 0) { // the magic level leads the list
-                stats.magicLevel = static_cast<uint16_t>(s.level());
-                stats.baseMagicLevel = static_cast<uint16_t>(s.base_level());
-                stats.loyaltyMagicLevel = static_cast<uint16_t>(s.loyalty_level());
-                stats.magicLevelPercent = static_cast<uint16_t>(s.percent());
-                continue;
-            }
-            skills.push_back({ static_cast<uint16_t>(s.level()), static_cast<uint16_t>(s.base_level()),
-                               static_cast<uint16_t>(s.percent() / 100) });
-        }
-        std::vector<std::tuple<uint8_t, uint16_t>> combats;
-        for (const auto& e : g.specialized_magic_levels())
-            combats.emplace_back(static_cast<uint8_t>(e.element()), static_cast<uint16_t>(e.value()));
-        storage->setGeneralStatistics({ stats, std::move(skills), std::move(combats) });
+        storage->setGeneralStatistics(std::make_unique<::tibia::protobuf::protocol::ProtocolCharacterInfoGeneralStats>(m.general()));
         break;
     }
     case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS: {
@@ -542,48 +488,12 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
         storage->setItemSummary(std::move(data));
         break;
     }
-    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS: {
-        TOutfitsMountsSummonSkins appearances;
-        OutfitColorStruct& colors = appearances.colors;
-        colors.lookHead = static_cast<uint8_t>(m.outfit_colors().head());
-        colors.lookBody = static_cast<uint8_t>(m.outfit_colors().body());
-        colors.lookLegs = static_cast<uint8_t>(m.outfit_colors().legs());
-        colors.lookFeet = static_cast<uint8_t>(m.outfit_colors().feet());
-        colors.lookMountHead = static_cast<uint8_t>(m.mount_colors().head());
-        colors.lookMountBody = static_cast<uint8_t>(m.mount_colors().body());
-        colors.lookMountLegs = static_cast<uint8_t>(m.mount_colors().legs());
-        colors.lookMountFeet = static_cast<uint8_t>(m.mount_colors().feet());
-        for (const auto& o : m.outfits())
-            appearances.outfits.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
-                                static_cast<uint8_t>(o.source()), o.current() });
-        for (const auto& o : m.mounts())
-            appearances.mounts.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
-        for (const auto& o : m.familiars())
-            appearances.summonSkins.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
-        storage->setOutfitsMountsSummonSkins(std::move(appearances));
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS:
+        storage->setOutfitsMountsSummonSkins(m);
         break;
-    }
-    case tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY: {
-        TStoreSummary summary;
-        summary.storeXpBoostTime = m.xp_boost_time();
-        summary.dailyRewardXpBoostTime = m.daily_xp_boost_time();
-        for (const auto& b : m.blessings())
-            summary.blessings.emplace_back(b.name(), static_cast<uint8_t>(b.count()));
-        summary.preySlots = static_cast<uint8_t>(m.prey_slots());
-        summary.preyWildcards = static_cast<uint8_t>(m.prey_wildcards());
-        summary.permanentWeeklyTaskExpansion = m.weekly_task_expansion();
-        summary.instantRewardAccesses = static_cast<uint8_t>(m.instant_rewards());
-        summary.charmExpansion = m.charm_expansion();
-        summary.hirelings = static_cast<uint8_t>(m.hirelings());
-        for (const uint32_t job : m.hireling_jobs())
-            summary.hirelingJobs.push_back(static_cast<uint16_t>(job));
-        for (const auto& h : m.house_items())
-            summary.houseItems.emplace_back(static_cast<uint16_t>(h.object_id()), h.name(), static_cast<uint8_t>(h.count()));
-        for (const auto& o : m.hireling_outfits())
-            summary.hirelingOutfits.emplace_back(o.name(), static_cast<uint8_t>(o.count()));
-        storage->setStoreSummary(std::move(summary));
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY:
+        storage->setStoreSummary(m);
         break;
-    }
     case tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION: {
         CyclopediaCharacterInspection data;
         data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
@@ -602,25 +512,12 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
         storage->setInspection(std::move(data));
         break;
     }
-    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES: {
-        TAccountInfos infos;
-        infos.canShowAccountInfos = m.show_account();
-        infos.online = m.online();
-        infos.premium = m.premium();
-        infos.loyaltyTitle = QString::fromStdString(m.loyalty_title());
-        for (const auto& b : m.badges())
-            infos.badges.emplace_back(b.id(), b.name());
-        storage->setAccountInfos(std::move(infos));
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES:
+        storage->setAccountInfos(m);
         break;
-    }
-    case tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES: {
-        TCharacterTitlesInfo titles;
-        titles.currentTitle = static_cast<int>(m.current_title());
-        for (const auto& t : m.titles())
-            titles.titles.emplace_back(static_cast<uint8_t>(t.id()), t.name(), t.description(), t.permanent(), t.unlocked());
-        storage->setTitlesInfo(std::move(titles));
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES:
+        storage->setTitlesInfo(m);
         break;
-    }
     case tibia::client::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
         storage->setOffenceStats(offenceStats(m.offence()));
         break;

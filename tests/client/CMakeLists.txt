@@ -180,4 +180,11 @@ if(TARGET qtclient_shared)
     target_include_directories(client_newsstorage_tests PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/shared/src)
     target_link_libraries(client_newsstorage_tests PRIVATE GTest::gtest GTest::gtest_main qtclient_shared)
     gtest_discover_tests(client_newsstorage_tests)
+
+    add_executable(client_generalplayerstatisticsprovider_tests generalplayerstatisticsprovider_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/generalplayerstatisticsprovider.cpp)
+    set_target_properties(client_generalplayerstatisticsprovider_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(client_generalplayerstatisticsprovider_tests PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia)
+    target_link_libraries(client_generalplayerstatisticsprovider_tests PRIVATE GTest::gtest GTest::gtest_main protobuf)
+    gtest_discover_tests(client_generalplayerstatisticsprovider_tests)
 endif()

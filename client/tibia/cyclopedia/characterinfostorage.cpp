@@ -1,10 +1,15 @@
 #include "characterinfostorage.h"
 
+#include "cyclopedia/generalplayerstatisticsprovider.h"
 #include "cyclopedia/playerdefencestatsprovider.h"
 #include "cyclopedia/playermiscstatsprovider.h"
 #include "cyclopedia/playeroffencestatsprovider.h"
 
 #include <QCoreApplication>
+
+#include <protocol.pb.h>
+
+#include <stdexcept>
 
 namespace tibia::cyclopedia {
 
@@ -12,6 +17,93 @@ namespace {
 
 TCharacterInfoStorage* s_instance = nullptr;
 
+QString text(const std::string& value) { return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size())); }
+
+/// The name of a hireling job (empty for an unknown job).
+QString hirelingJobName(const uint32_t job)
+{
+    switch (job) {
+        case 0: return qtTrId("charinfo_hireling_job_banker");
+        case 1: return qtTrId("charinfo_hireling_job_trader");
+        case 2: return qtTrId("charinfo_hireling_job_cook");
+        case 3: return qtTrId("charinfo_hireling_job_steward");
+        default: return QString::fromUtf8("");
+    }
+}
+
+TOutfitsMountsSummonSkins::ESource appearanceSource(const uint32_t source)
+{
+    if (source > TOutfitsMountsSummonSkins::Store)
+        throw std::runtime_error("unhandled enum value");
+    return static_cast<TOutfitsMountsSummonSkins::ESource>(source);
+}
+
+TOutfitsMountsSummonSkins::TColors colors(const protobuf::protocol::ProtocolCharacterInfoColors& message)
+{
+    return { static_cast<uint8_t>(message.head()), static_cast<uint8_t>(message.body()), static_cast<uint8_t>(message.legs()),
+             static_cast<uint8_t>(message.feet()) };
+}
+
+}
+
+TAccountInfos::TAccountInfos(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
+    : canShowAccountInfos(message.show_account())
+    , online(message.online())
+    , premium(message.premium())
+    , loyaltyTitle(text(message.loyalty_title()))
+{
+    for (const auto& badge : message.badges())
+        badges.emplace_back(badge.id(), text(badge.name()), QString(), true, true);
+}
+
+TStoreSummary::TStoreSummary(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
+    : storeXpBoostTime(message.xp_boost_time())
+    , dailyRewardXpBoostTime(message.daily_xp_boost_time())
+    , preySlots(static_cast<uint8_t>(message.prey_slots()))
+    , preyWildcards(static_cast<uint8_t>(message.prey_wildcards()))
+    , permanentWeeklyTaskExpansion(message.weekly_task_expansion())
+    , instantRewardAccesses(static_cast<uint8_t>(message.instant_rewards()))
+    , hirelings(static_cast<uint8_t>(message.hirelings()))
+    , charmExpansion(message.charm_expansion())
+{
+    for (const auto& outfit : message.hireling_outfits())
+        hirelingOutfits.push_back({ text(outfit.name()), static_cast<int>(outfit.count()) });
+    for (const auto& blessing : message.blessings())
+        blessings.push_back({ text(blessing.name()), static_cast<int>(blessing.count()) });
+    for (const auto& item : message.house_items())
+        houseItems.push_back({ static_cast<uint16_t>(item.object_id()), text(item.name()), static_cast<int>(item.count()) });
+    for (const uint32_t job : message.hireling_jobs())
+        hirelingJobs.push_back(hirelingJobName(job));
+}
+
+TOutfitsMountsSummonSkins::TOutfitsMountsSummonSkins(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
+{
+    for (const auto& outfit : message.outfits())
+        outfits.push_back({ static_cast<uint16_t>(outfit.look_type()), text(outfit.name()), outfit.addons(), outfit.current() != 0,
+                            appearanceSource(outfit.source()) });
+    outfitColors = colors(message.outfit_colors());
+    for (const auto& mount : message.mounts())
+        mounts.push_back({ static_cast<uint16_t>(mount.look_type()), text(mount.name()), mount.current() != 0, appearanceSource(mount.source()) });
+    mountColors = colors(message.mount_colors());
+    for (const auto& familiar : message.familiars())
+        summonSkins.push_back(
+            { static_cast<uint16_t>(familiar.look_type()), text(familiar.name()), familiar.current() != 0, appearanceSource(familiar.source()) });
+}
+
+TCharacterTitle::TCharacterTitle(const uint8_t id, QString name, QString description, const bool permanent, const bool unlocked)
+    : id(id)
+    , name(std::move(name))
+    , description(std::move(description))
+    , permanent(permanent)
+    , unlocked(unlocked)
+{}
+
+TCharacterTitlesInfo::TCharacterTitlesInfo(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
+    : currentTitle(static_cast<uint8_t>(message.current_title()))
+{
+    for (const auto& title : message.titles())
+        titles.emplace_back(static_cast<uint8_t>(title.id()), text(title.name()), text(title.description()), title.permanent(),
+                            title.unlocked());
 }
 
 TCharacterInfoStorage::TCharacterInfoStorage(QObject* parent)
@@ -42,7 +134,7 @@ bool TCharacterInfoStorage::hasInfo(const int dataType) const
         case MiscStats: return m_miscStats != nullptr;
         case RecentDeaths: return m_recentDeaths != nullptr;
         case RecentPvpKills: return m_recentPvpKills != nullptr;
-        case Achievements: return m_achievements->loaded;
+        case Achievements: return m_achievements->isLoaded();
         case ItemSummary: return m_itemSummary != nullptr;
         case OutfitsMountsSummonSkins: return m_outfitsMountsSummonSkins != nullptr;
         case StoreSummary: return m_storeSummary != nullptr;
@@ -101,9 +193,9 @@ void TCharacterInfoStorage::setBaseInformation(TCharacterBaseInformation informa
     Q_EMIT infoUpdated(BaseInformation);
 }
 
-void TCharacterInfoStorage::setGeneralStatistics(TGeneralPlayerStatistics statistics)
+void TCharacterInfoStorage::setGeneralStatistics(std::unique_ptr<protobuf::protocol::ProtocolCharacterInfoGeneralStats> statistics)
 {
-    m_generalStatistics = std::make_shared<TGeneralPlayerStatistics>(std::move(statistics));
+    m_generalStatistics = std::make_shared<TGeneralPlayerStatisticsProvider>(std::move(statistics));
     Q_EMIT infoUpdated(GeneralStats);
 }
 
@@ -147,21 +239,21 @@ void TCharacterInfoStorage::setItemSummary(CyclopediaCharacterItemSummary summar
     Q_EMIT infoUpdated(ItemSummary);
 }
 
-void TCharacterInfoStorage::setStoreSummary(TStoreSummary summary)
+void TCharacterInfoStorage::setStoreSummary(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
 {
-    m_storeSummary = std::make_shared<TStoreSummary>(std::move(summary));
+    m_storeSummary = std::make_shared<TStoreSummary>(message);
     Q_EMIT infoUpdated(StoreSummary);
 }
 
-void TCharacterInfoStorage::setOutfitsMountsSummonSkins(TOutfitsMountsSummonSkins appearances)
+void TCharacterInfoStorage::setOutfitsMountsSummonSkins(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
 {
-    m_outfitsMountsSummonSkins = std::make_shared<TOutfitsMountsSummonSkins>(std::move(appearances));
+    m_outfitsMountsSummonSkins = std::make_shared<TOutfitsMountsSummonSkins>(message);
     Q_EMIT infoUpdated(OutfitsMountsSummonSkins);
 }
 
-void TCharacterInfoStorage::setAccountInfos(TAccountInfos infos)
+void TCharacterInfoStorage::setAccountInfos(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
 {
-    m_accountInfos = std::make_shared<TAccountInfos>(std::move(infos));
+    m_accountInfos = std::make_shared<TAccountInfos>(message);
     // The account infos belong to the general stats page.
     Q_EMIT infoUpdated(GeneralStats);
 }
@@ -172,17 +264,15 @@ void TCharacterInfoStorage::setInspection(CyclopediaCharacterInspection inspecti
     Q_EMIT infoUpdated(Inspection);
 }
 
-void TCharacterInfoStorage::setTitlesInfo(TCharacterTitlesInfo titles)
+void TCharacterInfoStorage::setTitlesInfo(const protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message)
 {
-    m_titlesInfo = std::make_shared<TCharacterTitlesInfo>(std::move(titles));
+    m_titlesInfo = std::make_shared<TCharacterTitlesInfo>(message);
     Q_EMIT infoUpdated(Titles);
 }
 
 void TCharacterInfoStorage::clearAll()
 {
-    m_achievements->achievements.clear();
-    m_achievements->achievementPoints = 0;
-    m_achievements->loaded = false;
+    m_achievements->clear();
     m_baseInformation.reset();
     m_generalStatistics.reset();
     m_offenceStats.reset();
@@ -212,9 +302,7 @@ void TCharacterInfoStorage::clear(const int dataType)
         case RecentDeaths: m_recentDeaths.reset(); break;
         case RecentPvpKills: m_recentPvpKills.reset(); break;
         case Achievements:
-            m_achievements->achievements.clear();
-            m_achievements->achievementPoints = 0;
-            m_achievements->loaded = false;
+            m_achievements->clear();
             break;
         case ItemSummary: m_itemSummary.reset(); break;
         case OutfitsMountsSummonSkins: m_outfitsMountsSummonSkins.reset(); break;
@@ -226,7 +314,7 @@ void TCharacterInfoStorage::clear(const int dataType)
 
 void TCharacterInfoStorage::setAchievementsLoaded()
 {
-    m_achievements->loaded = true;
+    m_achievements->setLoaded();
     Q_EMIT infoUpdated(Achievements);
 }
 
