@@ -145,32 +145,29 @@ private:
 };
 
 /// One summary line (roles label, effekt, additionalInfo, imageSource, isSeparator).
-struct TSummaryEntry
+/// CIP TPerkInfo: a summary row (a separator row has no texts).
+struct TPerkInfo
 {
     QString label;
     QString effect;
     QString additionalInfo;
-    QUrl image;
-    bool separator = false;
+    QUrl imageSource;
+    bool isSeparator = false;
 };
 
-class TSummaryModel final : public QAbstractListModel
+/// CIP: the summary lists ("label", "effekt", "additionalInfo", "isSeparator", "imageSource").
+class TPerkInfoModel final : public shared::TSimpleVectorAbstractListModel<TPerkInfo, cip::TPerkInfoModel>
 {
     Q_OBJECT
 public:
-    enum ERole { Label = Qt::UserRole + 1, Effect, AdditionalInfo, ImageSource, IsSeparator };
+    enum ERole { Label = Qt::UserRole + 1, Effect, AdditionalInfo, IsSeparator, ImageSource };
 
-    using QAbstractListModel::QAbstractListModel;
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setEntries(QList<TSummaryEntry> entries);
-    const QList<TSummaryEntry>& entries() const { return m_entries; }
-
-private:
-    QList<TSummaryEntry> m_entries;
+protected:
+    QVariant itemData(const TPerkInfo& item, int role) const override;
 };
 
 /// CIP TPresetInfo: a preset row.

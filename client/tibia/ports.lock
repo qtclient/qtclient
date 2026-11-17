@@ -28,6 +28,8 @@
 (anonymous namespace)::TItemHighlightsAbstractListModel::v53	083d3cd74a86cd34	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::data
 (anonymous namespace)::TNewsEntryModel::v44	682218e5b3496335	ported	news/newsentrymodels.cpp:TNewsEntryModel::roleNames
 (anonymous namespace)::TNewsEntryModel::v53	0f1fb51468bfeb9c	ported	news/newsentrymodels.cpp:TNewsEntryModel::itemData
+(anonymous namespace)::TPerkInfoModel::v44	ad57e53df8af78e9	ported	skillwheel/skillwheelmodels.cpp:TPerkInfoModel::roleNames
+(anonymous namespace)::TPerkInfoModel::v53	e54abc84f61ddf3e	ported	skillwheel/skillwheelmodels.cpp:TPerkInfoModel::itemData
 (anonymous namespace)::TPresetInfoModel::v44	7a8573f600acfb70	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::roleNames
 (anonymous namespace)::TPresetInfoModel::v53	34b4d0f8781ee57d	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::itemData
 (anonymous namespace)::TPreyBestiarySelectionModel::v44	50e38fa8c038d2aa	ported	gamewindow/preydialogcontroller.cpp:TPreyBestiarySelectionModel::roleNames

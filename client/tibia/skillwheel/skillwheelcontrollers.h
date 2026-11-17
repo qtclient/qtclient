@@ -156,11 +156,11 @@ private:
     static int stepSize(int modifiers);
 
     TSkillWheelStorage* m_storage;
-    TSummaryModel* m_small;
-    TSummaryModel* m_large;
-    TSummaryModel* m_medium;
-    TSummaryModel* m_vessels;
-    TSummaryModel* m_full;
+    TPerkInfoModel* m_small;
+    TPerkInfoModel* m_large;
+    TPerkInfoModel* m_medium;
+    TPerkInfoModel* m_vessels;
+    TPerkInfoModel* m_full;
     TPresetInfoModel* m_presets;
     cip::tibia::gamewindow::TTileInformation* m_selectedTile;
     cip::tibia::gamewindow::TTileInformation* m_hoveredTile;

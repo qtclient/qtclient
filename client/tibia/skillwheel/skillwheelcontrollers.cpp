@@ -151,11 +151,11 @@ TQmlSocketedGem::TQmlSocketedGem(const int gemId, const int modSlotCount, const 
 TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TSkillWheelPageController(parent)
     , m_storage(storage)
-    , m_small(new TSummaryModel(this))
-    , m_large(new TSummaryModel(this))
-    , m_medium(new TSummaryModel(this))
-    , m_vessels(new TSummaryModel(this))
-    , m_full(new TSummaryModel(this))
+    , m_small(new TPerkInfoModel(this))
+    , m_large(new TPerkInfoModel(this))
+    , m_medium(new TPerkInfoModel(this))
+    , m_vessels(new TPerkInfoModel(this))
+    , m_full(new TPerkInfoModel(this))
     , m_presets(new TPresetInfoModel(this))
     , m_selectedTile(new cip::tibia::gamewindow::TTileInformation(this))
     , m_hoveredTile(new cip::tibia::gamewindow::TTileInformation(this))
@@ -491,15 +491,15 @@ void TSkillWheelPageController::updateSummaries()
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
     const TActiveMods mods = activeMods(wheel, m_storage->gemInventory(), m_storage->basicGrades(), m_storage->supremeGrades(), voc);
-    const auto byLabel = [](QList<TSummaryEntry>& list) {
-        std::ranges::stable_sort(list, [](const TSummaryEntry& a, const TSummaryEntry& b) { return a.label < b.label; });
+    const auto byLabel = [](QList<TPerkInfo>& list) {
+        std::ranges::stable_sort(list, [](const TPerkInfo& a, const TPerkInfo& b) { return a.label < b.label; });
     };
 
-    QList<TSummaryEntry> smallEntries;
+    QList<TPerkInfo> smallEntries;
     for (const ESmallPerk perk : { ESmallPerk::Life, ESmallPerk::Mana, ESmallPerk::Capacity, ESmallPerk::Mitigation }) {
         if (!hasData)
             break;
-        TSummaryEntry e;
+        TPerkInfo e;
         e.label = smallPerkName(perk);
         e.effect = formatValue(smallPerkTotal(wheel.points, perk, voc), smallPerkFormat(perk));
         if (perk == ESmallPerk::Mitigation)
@@ -507,15 +507,15 @@ void TSkillWheelPageController::updateSummaries()
         smallEntries.append(e);
     }
 
-    QList<TSummaryEntry> large;
+    QList<TPerkInfo> large;
     int bonus = 0;
-    QList<TSummaryEntry> perks;
+    QList<TPerkInfo> perks;
     for (int d = 0; d < DomainCount; ++d) {
         const int stage = revelationStage(revelationPoints(wheel, m_storage->gemInventory(), m_storage->supremeGrades(), d, voc));
         bonus += largePerkExtraDamageHealing(stage);
         perks.append({ largePerkName(largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(largePerk(d, voc), stage), QUrl(), false });
     }
-    std::ranges::sort(perks, [](const TSummaryEntry& a, const TSummaryEntry& b) { return a.label < b.label; });
+    std::ranges::sort(perks, [](const TPerkInfo& a, const TPerkInfo& b) { return a.label < b.label; });
     if (hasData) {
         large.append({ qtTrId("damage_and_healing"), QStringLiteral("+%1").arg(englishNumber(bonus)),
                        qtTrId("skill_wheel_dialog_unlock_large_perk_extra_damage_healing_info")
@@ -529,29 +529,29 @@ void TSkillWheelPageController::updateSummaries()
     // The conviction perks: the plain perks, the augmented spells (with their
     // augmentation level icons), the leeches, the resistances under a header and
     // Revelation Mastery per domain, each group sorted by name.
-    const auto mediumEntry = [&](const QString& label, const int perk, const bool withIcons) -> TSummaryEntry {
+    const auto mediumEntry = [&](const QString& label, const int perk, const bool withIcons) -> TPerkInfo {
         QStringList lines = mediumPerkDescriptions(perk);
         if (withIcons)
             lines = withAugmentationIcons(lines, perk, mediumPerkCount(wheel.points, perk, voc));
         return { label, mediumPerkValueText(wheel.points, perk, voc), lines.join(QStringLiteral("<br>")), QUrl(), false };
     };
     const auto mediumGroup = [&](const std::initializer_list<int> perks, const bool withIcons) {
-        QList<TSummaryEntry> group;
+        QList<TPerkInfo> group;
         for (const int perk : perks)
             if (mediumPerkCount(wheel.points, perk, voc) > 0)
                 group.append(mediumEntry(mediumPerkName(perk), perk, withIcons));
         byLabel(group);
         return group;
     };
-    const QList<TSummaryEntry> perkGroup = mediumGroup({ 7, 8, 9, 15, 16, 17, 28, 34, 35, 23, 38, 39, 40, 37 }, false);
-    const QList<TSummaryEntry> augmentedGroup =
+    const QList<TPerkInfo> perkGroup = mediumGroup({ 7, 8, 9, 15, 16, 17, 28, 34, 35, 23, 38, 39, 40, 37 }, false);
+    const QList<TPerkInfo> augmentedGroup =
         mediumGroup({ 10, 11, 14, 13, 12, 18, 19, 20, 21, 22, 24, 25, 26, 27, 29, 30, 31, 32, 33, 36, 41, 42, 43, 44, 45 }, true);
-    QList<TSummaryEntry> leechGroup;
+    QList<TPerkInfo> leechGroup;
     for (const auto& [perk, label] : { std::pair{ 5, "mana_leech" }, std::pair{ 6, "life_leech" } })
         if (mediumPerkCount(wheel.points, perk, voc) > 0)
             leechGroup.append(mediumEntry(qtTrId(label), perk, false));
     byLabel(leechGroup);
-    QList<TSummaryEntry> resistanceGroup;
+    QList<TPerkInfo> resistanceGroup;
     static constexpr const char* ResistanceElements[] = { "damagetype_fire", "damagetype_energy", "damagetype_ice", "damagetype_earth" };
     for (int perk = 0; perk < 4; ++perk)
         if (mediumPerkCount(wheel.points, perk, voc) > 0)
@@ -564,7 +564,7 @@ void TSkillWheelPageController::updateSummaries()
         byLabel(resistanceGroup);
         resistanceGroup.prepend({ qtTrId("skill_wheel_dialog_resistance") + u':', {}, {}, QUrl(), false });
     }
-    QList<TSummaryEntry> masteryGroup;
+    QList<TPerkInfo> masteryGroup;
     for (int d = 0; d < DomainCount; ++d) {
         int filled = 0;
         for (const int slot : domainSlots(d))
@@ -574,7 +574,7 @@ void TSkillWheelPageController::updateSummaries()
             masteryGroup.append(mediumEntry(mediumPerkName(MasteryIncreasePerk, largePerk(d, voc)), MasteryIncreasePerk, false));
     }
     byLabel(masteryGroup);
-    QList<TSummaryEntry> medium;
+    QList<TPerkInfo> medium;
     if (hasData) {
         medium = perkGroup;
         medium.append(augmentedGroup);
@@ -585,7 +585,7 @@ void TSkillWheelPageController::updateSummaries()
 
     // CIP entries (resistances), sorted under a "Resistance:" header.
     const auto resistances = [&](const std::array<double, 9>& values) {
-        QList<TSummaryEntry> group;
+        QList<TPerkInfo> group;
         for (int stat = 0; stat < 9; ++stat)
             if (std::fabs(values[stat]) > 1e-5)
                 group.append({ qtTrId("subentry_prefix").arg(basicStatDamageTypeName(stat)), basicStatValueText(values[stat], stat),
@@ -602,7 +602,7 @@ void TSkillWheelPageController::updateSummaries()
             resistanceValues[stat] = value;
 
     // CIP : the radiant vessels' spell augmentations.
-    QList<TSummaryEntry> augmentations;
+    QList<TPerkInfo> augmentations;
     for (const TActiveMods::TAugmentation& aug : mods.augmentations) {
         QUrl image;
         if (aug.augType == 2 || aug.augType == 3)
@@ -616,37 +616,37 @@ void TSkillWheelPageController::updateSummaries()
                                augmentationDescription(aug.value, aug.spellId, aug.augType, mods.momentum, true, false), image, false });
     }
     // CIP .
-    QList<TSummaryEntry> revelations;
+    QList<TPerkInfo> revelations;
     for (const TActiveMods::TRevelation& rev : mods.revelations)
         revelations.append({ supremeModName(rev.mod, true, true), supremeModValueText(rev.bonus, rev.mod),
                              qtTrId("skillwheel_gem_mod_revelation_mastery_info"), QUrl(), false });
     byLabel(revelations);
-    const auto momentumEntry = [&](const QString& info) -> TSummaryEntry {
+    const auto momentumEntry = [&](const QString& info) -> TPerkInfo {
         return { qtTrId("momentum_caption"), QStringLiteral("+%1%").arg(mods.momentum), info, QUrl(), false };
     };
 
     // CIP: damage and healing, momentum, revelations, augmentations, supreme
     // mods, the stats and the resistances; without wheel data it stays empty.
-    QList<TSummaryEntry> vessels;
+    QList<TPerkInfo> vessels;
     if (mods.damageHealing > 0)
         vessels.append({ qtTrId("damage_and_healing"), QStringLiteral("+%1").arg(englishNumber(mods.damageHealing)), {}, QUrl(), false });
     if (mods.momentum > 0.0)
         vessels.append(momentumEntry(qtTrId("skill_wheel_dialog_momentum_mod_grade_bonus_information")));
     vessels.append(revelations);
-    QList<TSummaryEntry> sortedAugmentations = augmentations;
+    QList<TPerkInfo> sortedAugmentations = augmentations;
     byLabel(sortedAugmentations);
     vessels.append(sortedAugmentations);
-    QList<TSummaryEntry> supremes;
+    QList<TPerkInfo> supremes;
     for (const auto& [mod, value] : mods.supremeStats)
         supremes.append({ supremeModName(mod, true, true), supremeModValueText(value, mod), {}, QUrl(), false });
     byLabel(supremes);
     vessels.append(supremes);
     // CIP : life, mana, capacity, mitigation, then by name.
-    QList<TSummaryEntry> stats;
+    QList<TPerkInfo> stats;
     for (const auto& [stat, value] : mods.basicStats)
         if (stat > 8)
             stats.append({ basicStatName(stat, true), basicStatValueText(value, stat), basicStatInfo(stat), QUrl(), false });
-    std::ranges::stable_sort(stats, [&](const TSummaryEntry& a, const TSummaryEntry& b) {
+    std::ranges::stable_sort(stats, [&](const TPerkInfo& a, const TPerkInfo& b) {
         const int ra = statRank(a.label), rb = statRank(b.label);
         return ra != rb ? ra < rb : a.label < b.label;
     });
@@ -656,15 +656,15 @@ void TSkillWheelPageController::updateSummaries()
         vessels.clear();
 
     // CIP : groups joined by separators .
-    QList<TSummaryEntry> full;
-    const auto appendGroup = [&full](const QList<TSummaryEntry>& group) {
+    QList<TPerkInfo> full;
+    const auto appendGroup = [&full](const QList<TPerkInfo>& group) {
         if (group.isEmpty())
             return;
         if (!full.isEmpty())
             full.append({ {}, {}, {}, QUrl(), true });
         full.append(group);
     };
-    QList<TSummaryEntry> totals;
+    QList<TPerkInfo> totals;
     if (const int damageHealing = bonus + mods.damageHealing; damageHealing > 0)
         totals.append({ qtTrId("damage_and_healing"), QStringLiteral("+%1").arg(englishNumber(damageHealing)), {}, QUrl(), false });
     if (mods.momentum > 0.0)
@@ -681,7 +681,7 @@ void TSkillWheelPageController::updateSummaries()
         { 12, static_cast<int>(mods.basicStat(12)) + smallPerkTotal(wheel.points, ESmallPerk::Capacity, voc) },
         { 9, mods.basicStat(9) + mitigationValue(mitigationPoints) },
     };
-    QList<TSummaryEntry> statGroup;
+    QList<TPerkInfo> statGroup;
     for (const auto& [stat, value] : statTotals)
         statGroup.append({ basicStatName(stat, true), basicStatValueText(value, stat), basicStatInfo(stat), QUrl(), false });
     const std::pair<int, double> supremeTotals[] = {
@@ -690,7 +690,7 @@ void TSkillWheelPageController::updateSummaries()
         { 3, mods.supremeStat(3) + static_cast<double>(static_cast<float>(mediumPerkCount(wheel.points, 5, voc)) * 0.25f) },
         { 2, mods.supremeStat(2) + static_cast<double>(static_cast<float>(mediumPerkCount(wheel.points, 6, voc)) * 0.75f) },
     };
-    QList<TSummaryEntry> supremeGroup;
+    QList<TPerkInfo> supremeGroup;
     for (const auto& [mod, value] : supremeTotals)
         if (std::fabs(value) > 1e-5)
             supremeGroup.append({ supremeModName(mod, true, true), supremeModValueText(value, mod), {}, QUrl(), false });
@@ -699,21 +699,21 @@ void TSkillWheelPageController::updateSummaries()
     appendGroup(statGroup);
 
     appendGroup(perkGroup);
-    QList<TSummaryEntry> augmentedAll = augmentedGroup;
+    QList<TPerkInfo> augmentedAll = augmentedGroup;
     augmentedAll.append(augmentations);
     byLabel(augmentedAll);
     appendGroup(augmentedAll);
-    QList<TSummaryEntry> revelationGroup = perks;
+    QList<TPerkInfo> revelationGroup = perks;
     revelationGroup.append(revelations);
     appendGroup(revelationGroup);
     appendGroup(resistances(resistanceValues));
     appendGroup(masteryGroup);
 
-    m_small->setEntries(smallEntries);
-    m_large->setEntries(large);
-    m_medium->setEntries(medium);
-    m_vessels->setEntries(vessels);
-    m_full->setEntries(full);
+    m_small->setItems({ smallEntries.begin(), smallEntries.end() });
+    m_large->setItems({ large.begin(), large.end() });
+    m_medium->setItems({ medium.begin(), medium.end() });
+    m_vessels->setItems({ vessels.begin(), vessels.end() });
+    m_full->setItems({ full.begin(), full.end() });
 }
 
 void TSkillWheelPageController::updateInformation()

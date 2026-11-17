@@ -419,34 +419,21 @@ bool TModListSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const Q
     return e->active || m_filterMods != 3;
 }
 
-int TSummaryModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_entries.size()); }
-
-QHash<int, QByteArray> TSummaryModel::roleNames() const
+QHash<int, QByteArray> TPerkInfoModel::roleNames() const
 {
-    // CIP QML (External) binds model.label; older qtclient used the misspelled "lable".
-    return { { Label, "label" }, { Effect, "effekt" }, { AdditionalInfo, "additionalInfo" }, { ImageSource, "imageSource" }, { IsSeparator, "isSeparator" } };
+    return { { Label, "label" }, { Effect, "effekt" }, { AdditionalInfo, "additionalInfo" }, { IsSeparator, "isSeparator" }, { ImageSource, "imageSource" } };
 }
 
-QVariant TSummaryModel::data(const QModelIndex& index, const int role) const
+QVariant TPerkInfoModel::itemData(const TPerkInfo& item, const int role) const
 {
-    if (!index.isValid() || index.row() >= m_entries.size())
-        return {};
-    const TSummaryEntry& e = m_entries[index.row()];
     switch (role) {
-        case Label: return e.label;
-        case Effect: return e.effect;
-        case AdditionalInfo: return e.additionalInfo;
-        case ImageSource: return e.image;
-        case IsSeparator: return e.separator;
+        case Label: return item.label;
+        case Effect: return item.effect;
+        case AdditionalInfo: return item.additionalInfo;
+        case IsSeparator: return item.isSeparator;
+        case ImageSource: return item.imageSource;
         default: return {};
     }
-}
-
-void TSummaryModel::setEntries(QList<TSummaryEntry> entries)
-{
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
 }
 
 TPresetInfoModel::TPresetInfoModel(QObject* parent) : TSimpleVectorAbstractListModel(parent) { m_nameEnumValue = Name; }
