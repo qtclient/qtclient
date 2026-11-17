@@ -818,7 +818,6 @@ int main(int argc, char** argv)
     market::TMarketProtocolMessageHandler marketMessages(&marketStorage);
     storeMessages.setMarketStorage(&marketStorage);
     gamewindow::TMarketController marketController(&marketStorage, &marketMessages);
-    marketController.setOpenStore([&storeDialog] { storeDialog.open(); });
     gamewindow::TStashDialogController stashDialog;
     QObject::connect(&marketController, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, &stashDialog,
                      &gamewindow::TStashDialogController::onMarketDialogDialogClosed);

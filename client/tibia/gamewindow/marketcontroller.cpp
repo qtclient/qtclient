@@ -1,6 +1,6 @@
 #include "marketcontroller.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -38,7 +38,6 @@ constexpr uint16_t TibiaCoinTypeId = TMarketStorage::TibiaCoinTypeId;
 /// CIP : the categories with a store deeplink.
 constexpr int PotionsCategory = 10;
 constexpr int RunesCategory = 12;
-const QLatin1StringView ShowLockerOnlyKey("marketShowLockerOnly");
 
 /// CIP 's order.
 constexpr std::array<int, 27> CategoryOrder{ 1, 2, 3, 4, 24, 5, 6, 7, 8, 9, 10, 25, 11, 12, 13, 26, 23, 14, 15, 16, 17, 18, 19, 27, 20, 21, 29 };
@@ -91,13 +90,67 @@ qlonglong offerFee(const int amount, const qlonglong piecePrice)
     return static_cast<qlonglong>(TMarketStorage::marketFee(static_cast<uint32_t>(amount + (amount == 0 ? 1 : 0)), static_cast<uint64_t>(piecePrice)));
 }
 
+/// The floored average price of the statistics (0 without transactions).
+uint64_t averagePrice(const TMarketStatistics& statistics)
+{
+    if (statistics.transactions == 0)
+        return 0;
+    return static_cast<uint64_t>(std::floor(static_cast<double>(statistics.total) / statistics.transactions));
+}
+
+/// The days of the statistics that had transactions.
+int daysWithTransactions(const TMarketStatistics& statistics)
+{
+    return static_cast<int>(std::count_if(statistics.entries.begin(), statistics.entries.end(),
+                                          [](const market::TMarketTradeStatisticsEntry& entry) { return entry.transactions != 0; }));
+}
+
+/// Enough sales to judge prices: more than 9 transactions on more than 4 days.
+bool hasReliableStatistics(const uint32_t transactions, const int days)
+{
+    return days > 4 && transactions > 9;
+}
+
+/// A sell offer at a quarter above the average, a buy offer at a quarter
+/// below it.
+bool isDubiousPrice(const TMarketOffer& offer, const uint64_t average)
+{
+    if (average == 0)
+        return false;
+    if (offer.type != EMarketOfferType::BUY)
+        return average + (average >> 2) <= offer.price;
+    return offer.price <= average - (average >> 2);
+}
+
+/// What the player can accept: the gold buys from a sell offer, the depot
+/// sells to a buy offer; never more than the offer holds.
+uint32_t maximumAcceptAmount(const TMarketOffer& offer, const uint64_t gold, uint32_t count)
+{
+    if (offer.type != EMarketOfferType::BUY)
+        count = offer.price == 0 ? 0 : static_cast<uint32_t>(gold / offer.price);
+    return std::min(count, offer.amount);
+}
+
+QString auctionStatus(const EMarketOfferType type, const EMarketOfferState state)
+{
+    switch (state) {
+    case EMarketOfferState::ACTIVE:
+        return qtTrId("market_status_active");
+    case EMarketOfferState::CANCELLED:
+        return qtTrId("market_status_canceled");
+    case EMarketOfferState::EXPIRED:
+        return qtTrId("expired");
+    case EMarketOfferState::ACCEPTED:
+        return qtTrId(type == EMarketOfferType::BUY ? "market_status_bought" : "market_status_sold");
+    }
+    return QStringLiteral("unknown");
+}
+
 /// CIP .
 void appendStatistics(QStringList& lines, const TMarketStatistics& statistics)
 {
     const QString indent = QStringLiteral("  ");
-    const auto average = statistics.transactions == 0
-                             ? uint64_t{ 0 }
-                             : static_cast<uint64_t>(std::floor(static_cast<double>(statistics.total) / statistics.transactions));
+    const uint64_t average = averagePrice(statistics);
     lines << indent + qtTrId("market_stats_number_of_transactions").arg(QString::number(statistics.transactions));
     lines << indent + qtTrId("market_stats_highest_price").arg(grouped(statistics.highest));
     lines << indent + qtTrId("market_stats_average_price").arg(grouped(average));
@@ -166,58 +219,36 @@ QString statisticsText(const market::TMarketItemDetails& details)
 
 }
 
-TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QString& itemName, const uint64_t gold, const int depotCount,
-                                         const market::TMarketItemDetails& details, QObject* parent)
+TDisplayMarketOffer::TDisplayMarketOffer(QObject* parent)
     : cip::tibia::market::TDisplayMarketOffer(parent)
-    , m_price(offer.price)
 {
-    m_terminationTimestamp = static_cast<int>(offer.timestamp);
-    m_terminationTimestampUniqueIdentifier = offer.counter;
-    m_bidder = offer.bidder;
-    m_itemName = itemName;
-    m_itemNameWithTier = offer.tier.value_or(0) >= 1 ? qtTrId("market_name_with_tier").arg(itemName).arg(*offer.tier) : itemName;
-    m_amountText = multiString(offer.amount);
-    m_piecePriceText = multiString(static_cast<qlonglong>(offer.price));
-    m_totalPriceText = multiString(static_cast<qlonglong>(offer.amount * offer.price));
-    m_endsAtTime = textHelper().formatDateTime(static_cast<int>(offer.timestamp), true);
-    switch (offer.state) {
-    case EMarketOfferState::ACTIVE:
-        m_auctionStatus = qtTrId("market_status_active");
-        break;
-    case EMarketOfferState::CANCELLED:
-        m_auctionStatus = qtTrId("market_status_canceled");
-        break;
-    case EMarketOfferState::EXPIRED:
-        m_auctionStatus = qtTrId("expired");
-        break;
-    case EMarketOfferState::ACCEPTED:
-        m_auctionStatus = qtTrId(offer.type == EMarketOfferType::BUY ? "market_status_bought" : "market_status_sold");
-        break;
-    default:
-        m_auctionStatus = QStringLiteral("unknown");
-        break;
-    }
+}
 
-    uint64_t maximum = 0;
-    if (offer.type == EMarketOfferType::SELL)
-        maximum = offer.price == 0 ? 0 : gold / offer.price;
-    else
-        maximum = static_cast<uint64_t>(std::max(depotCount, 0));
-    m_maximumAcceptAmount = static_cast<int>(std::min<uint64_t>(maximum, offer.amount));
+QString TDisplayMarketOffer::itemNameWithTier() const
+{
+    if (m_tier < 1)
+        return m_itemName;
+    return qtTrId("market_name_with_tier").arg(m_itemName).arg(m_tier);
+}
 
-    const TMarketStatistics& sell = details.sell;
-    if (details.typeId == offer.typeId && sell.transactions > 9 && sell.entries.size() > 4) {
-        const uint64_t average = sell.total / sell.transactions;
-        if (average != 0) {
-            m_isDubious = offer.type != EMarketOfferType::BUY ? offer.price >= average + average / 4
-                                                              : offer.price <= average - average / 4;
-        }
-    }
+QString TDisplayMarketOffer::amountText() const
+{
+    return multiString(m_amount);
+}
+
+QString TDisplayMarketOffer::totalPriceText() const
+{
+    return multiString(static_cast<qlonglong>(m_amount) * static_cast<qlonglong>(m_piecePrice));
+}
+
+QString TDisplayMarketOffer::piecePriceText() const
+{
+    return multiString(static_cast<qlonglong>(m_piecePrice));
 }
 
 QString TDisplayMarketOffer::formatTotalValue(const int Amount)
 {
-    return multiString(static_cast<qlonglong>(Amount) * static_cast<qlonglong>(m_price));
+    return multiString(static_cast<qlonglong>(Amount) * static_cast<qlonglong>(m_piecePrice));
 }
 
 TQmlObjectCategory::TQmlObjectCategory(const int identifier, QObject* parent)
@@ -283,15 +314,20 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     , m_messages(messages)
     , m_model([storage](const uint16_t typeId, const uint8_t tier) { return storage ? static_cast<int>(storage->count(typeId, tier)) : 0; })
     , m_proxy(&m_model)
+    , m_message(new TMessageDialogController(this))
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
     for (const int identifier : CategoryOrder)
         m_categories << new TQmlObjectCategory(identifier, this);
     m_indexOfSelectedTier = -1;
     m_indexOfSelectedClassification = -1;
-    m_showLockerOnly = app::ClientOptions::load().options().value(ShowLockerOnlyKey).toBool();
-    updateFilterLists();
+    config::TClientOptions* options = config::TClientOptions::instance();
+    m_proxy.setShowLockerOnly(options->boolOption(config::EClientOption::marketShowLockerOnly));
 
+    connect(m_message, &TMessageDialogController::acceptClicked, this, &TMarketController::onMessageDialogOkay);
+    connect(options, &config::TClientOptions::marketOtpionsChanged, this, &TMarketController::onMarketOptionsChanged);
+    connect(&m_proxy, &cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy::showLockerOnlyChanged, this,
+            &TMarketController::onShowLockerOnlyChanged);
     connect(messages, &market::TMarketProtocolMessageHandler::requestOpenMarketDialog, this, &TMarketController::showDialog);
     connect(messages, &market::TMarketProtocolMessageHandler::requestCloseMarketDialog, this, &TMarketController::closeDialog);
     connect(messages, &market::TMarketProtocolMessageHandler::requestMarketMessageDialog, this, &TMarketController::showMarketMessage);
@@ -302,10 +338,10 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     connect(storage, &market::TMarketStorage::activeOfferCountChanged, this, &TMarketController::onActiveOfferCountChanged);
     connect(storage, &market::TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged);
     connect(storage, &market::TMarketStorage::classificationsChanged, this, [this] {
-        m_entriesBuilt = false;
         if (dialog()->item())
             rebuildEntries();
-        updateFilterLists();
+        Q_EMIT availableClassificationsChanged();
+        Q_EMIT availableTiersChanged();
     });
 
     // CIP : browse the object's type, with its tier when it has one.
@@ -340,10 +376,74 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
 
 TMarketController::~TMarketController()
 {
-    if (m_message)
-        m_message->dialog()->close();
-    for (std::vector<QObject*>* owned : { &m_offerObjects, &m_historyObjects, &m_ownOfferObjects })
+    m_message->dialog()->close();
+    for (std::vector<QObject*>* owned :
+         { &m_buyOffers, &m_sellOffers, &m_historicBuyOffers, &m_historicSellOffers, &m_ownBuyOffers, &m_ownSellOffers })
         qDeleteAll(*owned);
+}
+
+QString TMarketController::selectedCategoryName() const
+{
+    return TQmlObjectCategory::translate(m_selectedCategory);
+}
+
+bool TMarketController::showStoreDeeplink() const
+{
+    return m_selectedCategory == RunesCategory || m_selectedCategory == PotionsCategory;
+}
+
+bool TMarketController::showLockerOnly() const
+{
+    return m_proxy.showLockerOnly();
+}
+
+QStringList TMarketController::availableClassifications() const
+{
+    if (!m_enableTierAndClassificationSelection)
+        return { QString() };
+    QStringList classifications{ qtTrId("market_filter_class_all"), qtTrId("market_filter_class_none") };
+    if (m_storage) {
+        for (const auto& entry : m_storage->classificationTiers())
+            classifications << qtTrId("market_filter_class").arg(entry.first);
+    }
+    return classifications;
+}
+
+QStringList TMarketController::availableTiers() const
+{
+    if (!m_enableTierSelection || !m_storage)
+        return { QString() };
+    QStringList tiers;
+    const TAppearanceTypeFilter filter = currentFilter();
+    if (filter.classificationMode == 2) {
+        std::set<int> allTiers;
+        for (const auto& [classification, classTiers] : m_storage->classificationTiers())
+            allTiers.insert(classTiers.begin(), classTiers.end());
+        for (const int tier : allTiers)
+            tiers << qtTrId("market_filter_tier").arg(tier);
+    } else if (filter.classificationMode == 3) {
+        for (const int tier : m_storage->classificationTiers().at(filter.classification))
+            tiers << qtTrId("market_filter_tier").arg(tier);
+    }
+    return tiers;
+}
+
+void TMarketController::setEnableTierSelection(const bool v)
+{
+    m_enableTierSelection = v;
+    Q_EMIT enableTierSelectionChanged();
+}
+
+void TMarketController::setIndexOfSelectedTier(const int v)
+{
+    m_indexOfSelectedTier = v;
+    Q_EMIT indexOfSelectedTierChanged();
+}
+
+void TMarketController::setIndexOfSelectedClassification(const int v)
+{
+    m_indexOfSelectedClassification = v;
+    Q_EMIT indexOfSelectedClassificationChanged();
 }
 
 void TMarketController::setItemProperty(const char* name, const QVariant& value)
@@ -385,7 +485,6 @@ void TMarketController::rebuildEntries()
         }
     }
     m_proxy.resetEntries(std::move(entries));
-    m_entriesBuilt = true;
 }
 
 bool TMarketController::categorySupportsTiers(const int category) const
@@ -439,45 +538,13 @@ TAppearanceTypeFilter TMarketController::currentFilter() const
     return filter;
 }
 
-void TMarketController::updateFilterLists()
+void TMarketController::applyFilter(const QString& nameFilter, const bool filterByLevel, const bool filterByVocation, const bool oneHand,
+                                    const bool twoHand, const bool showLockerOnly)
 {
-    QStringList classifications;
-    QStringList tiers;
-    if (!m_enableTierAndClassificationSelection || !m_storage) {
-        classifications << QString();
-        tiers << QString();
-    } else {
-        classifications << qtTrId("market_filter_class_all") << qtTrId("market_filter_class_none");
-        std::set<int> allTiers;
-        for (const auto& [classification, classTiers] : m_storage->classificationTiers()) {
-            classifications << qtTrId("market_filter_class").arg(classification);
-            allTiers.insert(classTiers.begin(), classTiers.end());
-        }
-        const TAppearanceTypeFilter filter = currentFilter();
-        if (filter.classificationMode == 2) {
-            for (const int tier : allTiers)
-                tiers << qtTrId("market_filter_tier").arg(tier);
-        } else if (filter.classificationMode == 3) {
-            for (const int tier : m_storage->classificationTiers().at(filter.classification))
-                tiers << qtTrId("market_filter_tier").arg(tier);
-        }
-        if (tiers.isEmpty())
-            tiers << QString();
-    }
-    if (classifications != m_availableClassifications) {
-        m_availableClassifications = classifications;
-        Q_EMIT availableClassificationsChanged();
-    }
-    if (tiers != m_availableTiers) {
-        m_availableTiers = tiers;
-        Q_EMIT availableTiersChanged();
-    }
-}
-
-void TMarketController::setEnableTierAndClassificationSelection(const bool enable)
-{
-    m_enableTierAndClassificationSelection = enable;
-    Q_EMIT enableTierAndClassificationSelectionChanged();
+    if (nameFilter.isEmpty())
+        m_proxy.setCategoryFilter(m_selectedCategory, filterByLevel, filterByVocation, oneHand, twoHand, currentFilter(), showLockerOnly);
+    else
+        m_proxy.setNameFilter(nameFilter, filterByLevel, filterByVocation, oneHand, twoHand, currentFilter(), showLockerOnly);
 }
 
 void TMarketController::setSelectedCategory(const int category)
@@ -485,22 +552,20 @@ void TMarketController::setSelectedCategory(const int category)
     if (m_selectedCategory == category)
         return;
     m_selectedCategory = category;
-    m_selectedCategoryName = category == -1 ? QString() : TQmlObjectCategory::translate(category);
-    m_showStoreDeeplink = category == RunesCategory || category == PotionsCategory;
     Q_EMIT selectedCategoryChanged();
 }
 
 void TMarketController::clearDetails()
 {
-    setItemProperty("buyOffersModel", QVariant::fromValue(QList<QObject*>{}));
-    setItemProperty("sellOffersModel", QVariant::fromValue(QList<QObject*>{}));
     setItemProperty("itemDetailsModel", QString());
     setItemProperty("itemStatisticsModel", QString());
+    setItemProperty("buyOffersModel", QVariant::fromValue(QList<QObject*>{}));
+    setItemProperty("sellOffersModel", QVariant::fromValue(QList<QObject*>{}));
 }
 
 void TMarketController::reselect()
 {
-    m_proxy.invalidate();
+    m_proxy.applyFilterNow();
     int row = -1;
     if (m_selectedType != 0)
         row = m_proxy.rowOf(m_selectedType, selectedTier());
@@ -520,29 +585,31 @@ void TMarketController::onMarketCategorySelected(const int CategoryIdentifier, c
         setItemProperty("selectedAppearanceTypeID", 0);
     }
     if (!categorySupportsTiers(CategoryIdentifier)) {
-        setEnableTierAndClassificationSelection(false);
+        m_enableTierAndClassificationSelection = false;
+        Q_EMIT enableTierAndClassificationSelectionChanged();
+        Q_EMIT availableClassificationsChanged();
+        Q_EMIT availableTiersChanged();
         setEnableTierSelection(false);
         setIndexOfSelectedClassification(-1);
         setIndexOfSelectedTier(-1);
     } else {
-        setEnableTierAndClassificationSelection(true);
+        m_enableTierAndClassificationSelection = true;
+        Q_EMIT enableTierAndClassificationSelectionChanged();
+        Q_EMIT availableClassificationsChanged();
+        Q_EMIT availableTiersChanged();
         if (changed) {
             setIndexOfSelectedClassification(0);
             setIndexOfSelectedTier(0);
             setEnableTierSelection(true);
         }
     }
-    updateFilterLists();
-    if (ShowLockerOnly != m_showLockerOnly) {
-        m_showLockerOnly = ShowLockerOnly;
-        app::ClientOptions::store(ShowLockerOnlyKey, ShowLockerOnly);
-        Q_EMIT showLockerOnlyChanged();
-    }
     m_proxy.setCategoryFilter(CategoryIdentifier, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, currentFilter(),
                               ShowLockerOnly);
-    m_proxy.applyFilterNow();
     reselect();
     setSelectedCategory(CategoryIdentifier);
+    Q_EMIT enableTierAndClassificationSelectionChanged();
+    Q_EMIT availableTiersChanged();
+    Q_EMIT availableClassificationsChanged();
 }
 
 void TMarketController::onMarketFilterSelected(const QString& NameFilter, const bool FilterByLevel, const bool FilterByVocation,
@@ -552,19 +619,17 @@ void TMarketController::onMarketFilterSelected(const QString& NameFilter, const 
     if (NameFilter.isEmpty()) {
         onMarketCategoryItemSelected(0, 0);
     } else if (m_indexOfSelectedClassification < 0) {
-        setEnableTierAndClassificationSelection(true);
+        m_enableTierAndClassificationSelection = true;
+        Q_EMIT enableTierAndClassificationSelectionChanged();
+        Q_EMIT availableClassificationsChanged();
+        Q_EMIT availableTiersChanged();
         setEnableTierSelection(true);
+        Q_EMIT availableClassificationsChanged();
         setIndexOfSelectedClassification(0);
         setIndexOfSelectedTier(0);
-    }
-    updateFilterLists();
-    if (ShowLockerOnly != m_showLockerOnly) {
-        m_showLockerOnly = ShowLockerOnly;
-        app::ClientOptions::store(ShowLockerOnlyKey, ShowLockerOnly);
-        Q_EMIT showLockerOnlyChanged();
+        Q_EMIT availableTiersChanged();
     }
     m_proxy.setNameFilter(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, currentFilter(), ShowLockerOnly);
-    m_proxy.applyFilterNow();
     reselect();
     setSelectedCategory(-1);
 }
@@ -622,7 +687,9 @@ void TMarketController::onMarketOfferCreate(const QString& OfferTypeString, cons
                            static_cast<uint32_t>(Amount), static_cast<uint64_t>(PiecePrice), CreateAnonymousOffer);
 }
 
-void TMarketController::onClassificationFilterWasSelected(const int SelectedIndex, const QString&, bool, bool, bool, bool, bool)
+void TMarketController::onClassificationFilterWasSelected(const int SelectedIndex, const QString& NameFilter, const bool FilterByLevel,
+                                                          const bool FilterByVocation, const bool OnlyOneHandWeapons,
+                                                          const bool OnlyTwoHandWeapons, const bool ShowLockerOnly)
 {
     setIndexOfSelectedClassification(SelectedIndex);
     const TAppearanceTypeFilter filter = currentFilter();
@@ -633,15 +700,20 @@ void TMarketController::onClassificationFilterWasSelected(const int SelectedInde
         setEnableTierSelection(false);
         setIndexOfSelectedTier(-1);
     }
-    updateFilterLists();
+    Q_EMIT availableTiersChanged();
     clearDetails();
+    applyFilter(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, ShowLockerOnly);
+    reselect();
 }
 
-void TMarketController::onTierFilterWasSelected(const int SelectedIndex, const QString&, bool, bool, bool, bool, bool)
+void TMarketController::onTierFilterWasSelected(const int SelectedIndex, const QString& NameFilter, const bool FilterByLevel,
+                                                const bool FilterByVocation, const bool OnlyOneHandWeapons, const bool OnlyTwoHandWeapons,
+                                                const bool ShowLockerOnly)
 {
     setIndexOfSelectedTier(SelectedIndex);
-    updateFilterLists();
     clearDetails();
+    applyFilter(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, ShowLockerOnly);
+    reselect();
 }
 
 void TMarketController::onMarketHistoryOpened()
@@ -663,7 +735,7 @@ void TMarketController::onMarketRefreshOffers()
 
 void TMarketController::onCloseButtonPressed()
 {
-    close(true);
+    close();
 }
 
 void TMarketController::onGetCoinsButtonClicked()
@@ -681,7 +753,7 @@ void TMarketController::onStoreDeeplinkClicked()
         detail = 3;
     else
         return;
-    close(true);
+    close();
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
     action->parameter = store::OPEN_PREMIUM_OR_BOOSTS;
     action->instance = detail;
@@ -709,52 +781,84 @@ QString TMarketController::getTotalPriceOrProfitMultistring(const QString& Offer
 void TMarketController::showDialog()
 {
     if (!dialog()->item()) {
-        if (!m_entriesBuilt)
-            rebuildEntries();
-        dialog()->create();
+        rebuildEntries();
+        createDialog();
         dialog()->show();
-        onActiveOfferCountChanged();
         return;
     }
-    onOffersChanged();
+    if (m_storage)
+        onOffersChanged(m_storage->offers());
 }
 
 void TMarketController::closeDialog()
 {
-    close(false);
+    close();
 }
 
-void TMarketController::close(const bool leave)
+void TMarketController::close()
 {
-    if (leave && m_messages)
+    if (m_messages)
         m_messages->sendLeave();
+    destroyDialog();
+    setIndexOfSelectedClassification(-1);
+    setIndexOfSelectedTier(-1);
+    m_enableTierAndClassificationSelection = false;
+    Q_EMIT enableTierAndClassificationSelectionChanged();
+    Q_EMIT availableClassificationsChanged();
+    Q_EMIT availableTiersChanged();
+    setEnableTierSelection(false);
+    dialog()->close();
+}
+
+void TMarketController::createDialog()
+{
+    dialog()->create();
+    if (dialog()->item() && m_storage)
+        onActiveOfferCountChanged(m_storage->activeOfferCount());
+}
+
+void TMarketController::destroyDialog()
+{
+    Q_EMIT disconnectFromControllerRequest();
     for (const char* name : { "buyOffersModel", "sellOffersModel", "historicBuyOffersModel", "historicSellOffersModel", "ownBuyOffersModel",
                               "ownSellOffersModel" })
         setItemProperty(name, QVariant::fromValue(QList<QObject*>{}));
-    dialog()->close();
-    for (std::vector<QObject*>* owned : { &m_offerObjects, &m_historyObjects, &m_ownOfferObjects }) {
+    // The views may still reference the rows until the next turn.
+    for (std::vector<QObject*>* owned :
+         { &m_buyOffers, &m_sellOffers, &m_historicBuyOffers, &m_historicSellOffers, &m_ownBuyOffers, &m_ownSellOffers }) {
         for (QObject* object : *owned)
             object->deleteLater();
         owned->clear();
     }
-    m_selectedType = 0;
-    m_hasSelectedTier = false;
     m_selectedCategory = -1;
-    setIndexOfSelectedClassification(-1);
-    setIndexOfSelectedTier(-1);
-    setEnableTierAndClassificationSelection(false);
-    setEnableTierSelection(false);
-    updateFilterLists();
+    m_selectedType = 0;
+    m_proxy.resetFilters();
+    dialog()->destroy();
+    if (m_storage)
+        m_storage->reset();
 }
 
 void TMarketController::showMarketMessage(const QString& Message)
 {
-    if (!m_message) {
-        m_message = new TMessageDialogController(this);
-        m_message->setCloseOnButtonClicked(true);
-    }
-    m_message->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
+    m_message->setButtons({ new TMessageDialogButton(TMessageDialogController::Button::OK, qtTrId("ok"),
+                                                     TMessageDialogButton::RETURN_KEYS | TMessageDialogButton::ESCAPE_KEY) });
     m_message->showMessage(qtTrId("market_message_caption"), Message);
+}
+
+void TMarketController::onMessageDialogOkay()
+{
+    m_message->dialog()->close();
+}
+
+void TMarketController::onMarketOptionsChanged()
+{
+    m_proxy.setShowLockerOnly(config::TClientOptions::instance()->boolOption(config::EClientOption::marketShowLockerOnly));
+}
+
+void TMarketController::onShowLockerOnlyChanged()
+{
+    config::TClientOptions::instance()->setBoolOption(config::EClientOption::marketShowLockerOnly, m_proxy.showLockerOnly());
+    Q_EMIT showLockerOnlyChanged();
 }
 
 void TMarketController::onItemDetailsChanged()
@@ -778,56 +882,66 @@ void TMarketController::onItemDetailsChanged()
         QMetaObject::invokeMethod(dialog()->item(), "setIndexForItemView", Q_ARG(QVariant, row));
 }
 
-void TMarketController::setOfferLists(const char* buyProperty, const char* sellProperty, const market::TMarketOfferList& offers,
-                                      std::vector<QObject*>& owned)
+QList<QObject*> TMarketController::displayOffers(const std::vector<TMarketOffer>& offers, std::vector<QObject*>& owned)
 {
-    if (!dialog()->item() || !m_storage)
+    for (QObject* object : owned)
+        object->deleteLater();
+    owned.clear();
+    QList<QObject*> result;
+    if (!m_storage)
+        return result;
+    const TMarketStatistics& sell = m_storage->itemDetails().sell;
+    const uint64_t gold = playerGold();
+    for (const TMarketOffer& offer : offers) {
+        const int tier = offer.tier.value_or(0);
+        auto* row = new TDisplayMarketOffer;
+        row->m_terminationTimestamp = static_cast<int>(offer.timestamp);
+        row->m_terminationTimestampUniqueIdentifier = offer.counter;
+        row->m_bidder = offer.bidder;
+        row->m_itemName = typeName(offer.typeId);
+        row->m_amount = static_cast<int>(offer.amount);
+        row->m_piecePrice = offer.price;
+        row->m_endsAtTime = textHelper().formatDateTime(static_cast<int>(offer.timestamp), true);
+        row->m_auctionStatus = auctionStatus(offer.type, offer.state);
+        row->m_isDubious = hasReliableStatistics(sell.transactions, daysWithTransactions(sell)) && isDubiousPrice(offer, averagePrice(sell));
+        row->m_maximumAcceptAmount = static_cast<int>(maximumAcceptAmount(offer, gold, m_storage->count(offer.typeId, static_cast<uint8_t>(tier))));
+        row->m_tier = tier;
+        result << row;
+        owned.push_back(row);
+    }
+    return result;
+}
+
+void TMarketController::setOfferLists(const char* buyProperty, const char* sellProperty, const market::TMarketOfferList& offers,
+                                      std::vector<QObject*>& ownedBuy, std::vector<QObject*>& ownedSell)
+{
+    if (!dialog()->item())
         return;
     // The views drop the old rows before the new ones are built.
     setItemProperty(buyProperty, QVariant::fromValue(QList<QObject*>{}));
     setItemProperty(sellProperty, QVariant::fromValue(QList<QObject*>{}));
-    const uint64_t gold = playerGold();
-    const market::TMarketItemDetails& details = m_storage->itemDetails();
-    std::vector<QObject*> created;
-    const auto display = [&](const std::vector<TMarketOffer>& list) {
-        QList<QObject*> result;
-        for (const TMarketOffer& offer : list) {
-            const auto depotCount = static_cast<int>(offer.tier ? m_storage->count(offer.typeId, *offer.tier) : m_storage->count(offer.typeId));
-            auto* row = new TDisplayMarketOffer(offer, typeName(offer.typeId), gold, depotCount, details);
-            created.push_back(row);
-            result << row;
-        }
-        return result;
-    };
-    setItemProperty(buyProperty, QVariant::fromValue(display(offers.buyOffers)));
-    setItemProperty(sellProperty, QVariant::fromValue(display(offers.sellOffers)));
-    for (QObject* object : owned)
-        object->deleteLater();
-    owned = std::move(created);
+    setItemProperty(buyProperty, QVariant::fromValue(displayOffers(offers.buyOffers, ownedBuy)));
+    setItemProperty(sellProperty, QVariant::fromValue(displayOffers(offers.sellOffers, ownedSell)));
 }
 
-void TMarketController::onOffersChanged()
+void TMarketController::onOffersChanged(const market::TMarketOfferList& NewOffers)
 {
-    if (m_storage)
-        setOfferLists("buyOffersModel", "sellOffersModel", m_storage->offers(), m_offerObjects);
+    setOfferLists("buyOffersModel", "sellOffersModel", NewOffers, m_buyOffers, m_sellOffers);
 }
 
-void TMarketController::onHistoryChanged()
+void TMarketController::onHistoryChanged(const market::TMarketOfferList& NewOffers)
 {
-    if (m_storage)
-        setOfferLists("historicBuyOffersModel", "historicSellOffersModel", m_storage->history(), m_historyObjects);
+    setOfferLists("historicBuyOffersModel", "historicSellOffersModel", NewOffers, m_historicBuyOffers, m_historicSellOffers);
 }
 
-void TMarketController::onOwnOffersChanged()
+void TMarketController::onOwnOffersChanged(const market::TMarketOfferList& NewOffers)
 {
-    if (m_storage)
-        setOfferLists("ownBuyOffersModel", "ownSellOffersModel", m_storage->ownOffers(), m_ownOfferObjects);
+    setOfferLists("ownBuyOffersModel", "ownSellOffersModel", NewOffers, m_ownBuyOffers, m_ownSellOffers);
 }
 
-void TMarketController::onActiveOfferCountChanged()
+void TMarketController::onActiveOfferCountChanged(const uint16_t NewOfferCount)
 {
-    if (m_storage)
-        setItemProperty("canCreateNewOffer", m_storage->activeOfferCount() < market::TMarketStorage::MaximumActiveOffers);
+    setItemProperty("canCreateNewOffer", NewOfferCount < market::TMarketStorage::MaximumActiveOffers);
 }
 
 }
