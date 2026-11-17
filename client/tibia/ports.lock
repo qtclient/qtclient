@@ -5,8 +5,12 @@
 (anonymous namespace)::TAccountBadgesModel::v53	6646714b36459a39	ported	friends/friendlistmodels.cpp:TFriendsAccountBadgesModel::itemData
 (anonymous namespace)::TActivitiesModel::v44	923caaaae28bb6c5	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesModel::roleNames
 (anonymous namespace)::TActivitiesModel::v53	900505ffcc9d8d2a	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesModel::itemData
+(anonymous namespace)::TAssignableBossModel::v44	a5624325cf4df43c	ported	gamewindow/assignablebossmodels.cpp:TAssignableBossModel::roleNames
+(anonymous namespace)::TAssignableBossModel::v53	ecbb5e6181105921	ported	gamewindow/assignablebossmodels.cpp:TAssignableBossModel::data
 (anonymous namespace)::TBlacklistModel::v44	9d2c4c91150e3161	ported	friends/friendlistmodels.cpp:TBlacklistModel::roleNames
 (anonymous namespace)::TBlacklistModel::v53	5d208b256d2fb7ec	ported	friends/friendlistmodels.cpp:TBlacklistModel::itemData
+(anonymous namespace)::TBossTrackerModel::v44	6841ec2c54cecf68	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::roleNames
+(anonymous namespace)::TBossTrackerModel::v53	c46a1c94780d1bad	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::data
 (anonymous namespace)::TBossesModel::v44	d101bb14a8142956	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryBossModel::roleNames
 (anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v44	5100dea98ae710be	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::roleNames
 (anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v53	b4fd5d30ef641587	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::data
@@ -39,6 +43,8 @@
 (anonymous namespace)::TQuestLinePartsModel::v53	1a33c88bc14688ed	ported	gamewindow/questlogcontroller.cpp:TQuestLinePartsModel::data
 (anonymous namespace)::TQuestLinesModel::v44	26c9535a774fd7db	ported	gamewindow/questlogcontroller.cpp:TQuestLinesModel::roleNames
 (anonymous namespace)::TQuestLinesModel::v53	6c48d34a9d57e360	ported	gamewindow/questlogcontroller.cpp:TQuestLinesModel::data
+(anonymous namespace)::TQuestTrackerModel::v44	38a8a2b38eb40065	ported	gamewindow/questtrackerwidgetcontroller.cpp:TQuestTrackerListModel::roleNames
+(anonymous namespace)::TQuestTrackerModel::v53	49b973dc657f7e75	ported	gamewindow/questtrackerwidgetcontroller.cpp:TQuestTrackerListModel::data
 (anonymous namespace)::TShapedPerkOptionsModel::v44	9b55ffed79907c60	ported	proficiency/weaponproficiencyshapedialogs.cpp:TShapedPerkOptionsModel::roleNames
 (anonymous namespace)::TSpellListModel::v44	582d9183ad7a2408	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::roleNames
 (anonymous namespace)::TSpellListModel::v53	44d97b683531b487	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::data
@@ -5679,6 +5685,7 @@ sub_111a8f80ca29	111a8f80ca29206b	ported	gamewindow/preydialogcontroller.cpp:TPr
 sub_112d5ea62412	112d5ea62412bccb	skip	generated: compiler-generated destructor of the boss slots data
 sub_112e5e7a3fd1	112e5e7a3fd16432	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::getSize	test=tests/client/sharedio_test.cpp
 sub_112e5e7a3fd1#12	112e5e7a3fd16432	inlined	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::info
+sub_112e5e7a3fd1#3	112e5e7a3fd16432	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::data
 sub_112e5e7a3fd1#5	112e5e7a3fd16432	skip	generated: moc property getter (generated in cip_gen)
 sub_112e5e7a3fd1#6	112e5e7a3fd16432	skip	generated: moc property getter, provided by the generated cip base
 sub_112e5e7a3fd1#7	112e5e7a3fd16432	skip	generated: moc property getter (generated in cip_gen)
@@ -7411,6 +7418,7 @@ sub_38f91c2ee080	38f91c2ee080503e	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_392309b78e6c	392309b78e6c1c70	skip	generated: protobuf message code (constructors, MergeFrom/CopyFrom, InternalSwap, oneof clear, arena string set)
 sub_3925545a5ff2	3925545a5ff20594	skip	library: libc++ std::vector growth / destroy (library)
 sub_392d3e86c2f1	392d3e86c2f1f368	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
+sub_392e79029412#11	392e79029412ec82	inlined	gamewindow/questtrackerwidgetcontroller.cpp:TQuestTrackerListModel::data
 sub_392e79029412#12	392e79029412ec82	skip	generated: moc property getter (generated in cip_gen)
 sub_392e79029412#3	392e79029412ec82	ported	gamewindow/preydialogcontroller.h:TPreyRenderInfo::listRerollData
 sub_3949915d4229	3949915d42292e1f	skip	library: libc++ std::sort introsort/insertion helpers instantiated with a QCollator comparator
@@ -8673,6 +8681,7 @@ sub_59952c428275	59952c428275e014	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_59a52977038e	59a52977038ee61a	ported	analysers/impactstorage.cpp:TDamageInputStorage::setShowSessionValues
 sub_59b1145eaa9a	59b1145eaa9a71fd	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::refreshPlayerGuideEntries
 sub_59b8c0d2990a	59b8c0d2990a252c	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
+sub_59bd33cb7f4a	59bd33cb7f4a6cb5	ported	cyclopedia/bosstiarystorage.cpp:bossRaritySource
 sub_59c48ba40202	59c48ba40202be0e	skip	generated: moc property getter (generated in cip_gen)
 sub_59cca3720f2a	59cca3720f2ad04b	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::pageOfRow	test=tests/client/sharednet_test.cpp
 sub_59cca3720f2a#2	59cca3720f2ad04b	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
@@ -9087,6 +9096,7 @@ sub_64652a6a0a7e	64652a6a0a7e279a	skip	library: libc++ std::vector internals (sp
 sub_647825f15a2e#21	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 sub_647825f15a2e#26	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleGameAction
 sub_647825f15a2e#28	647825f15a2ef76c	inlined	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleSaveTextToFile
+sub_647825f15a2e#31	647825f15a2ef76c	inlined	gamewindow/questtrackerwidgetcontroller.cpp:TQuestTrackerListModel::data
 sub_647825f15a2e#32	647825f15a2ef76c	skip	generated: moc property getters (filterModName, filterGemQuality), provided by the generated cip base
 sub_647825f15a2e#33	647825f15a2ef76c	skip	generated: moc property getter (generated in cip_gen)
 sub_647825f15a2e#34	647825f15a2ef76c	skip	generated: moc property getter (generated in cip_gen)
@@ -9256,6 +9266,7 @@ sub_697079c2d97e#12	697079c2d97e2d6b	inlined	gamewindow/marketcontroller.cpp:det
 sub_697079c2d97e#14	697079c2d97e2d6b	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
 sub_697079c2d97e#16	697079c2d97e2d6b	inlined	sprites/spriteresolver.cpp:TSpriteResolver::resolveSpritesheetSprite
 sub_697079c2d97e#18	697079c2d97e2d6b	inlined	sprites/spriteresolver.cpp:TSpriteResolver::resolveAssetSpritesheet
+sub_697079c2d97e#2	697079c2d97e2d6b	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::data
 sub_697079c2d97e#4	697079c2d97e2d6b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_697d4be3e2f8#2	697d4be3e2f8b5b1	skip	generated: moc-generated signal emitter
 sub_6980e1b13f51	6980e1b13f513c24	ported	chat/chatchannel.h:TChatChannelIdentifier::isPrivateChannelId
@@ -13935,6 +13946,7 @@ sub_e0c9a17d9d80	e0c9a17d9d800de2	skip	library: libc++ std::map/std::set tree de
 sub_e0d3abc00874	e0d3abc008743040	ported	config/sidebaroptions.cpp:parseBaseOnly
 sub_e0d59894a05e	e0d59894a05e395e	skip	library: miniaudio library
 sub_e0df6a400b33#2	e0df6a400b33ad9e	skip	generated: moc property getter (generated in cip_gen)
+sub_e0df6a400b33#4	e0df6a400b33ad9e	inlined	gamewindow/questtrackerwidgetcontroller.cpp:TQuestTrackerListModel::data
 sub_e0e62bc23aee	e0e62bc23aeebdba	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::TUnjustifiedPointsWidgetController
 sub_e0e90ccdbda9	e0e90ccdbda9d2f7	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_e0efb7112976	e0efb71129768a82	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations

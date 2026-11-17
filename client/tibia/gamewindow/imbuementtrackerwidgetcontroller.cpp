@@ -2,6 +2,7 @@
 
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "qmlcomponents/texthelper.h"
 
 #include <client/staticdata.h>
 
@@ -16,49 +17,11 @@ using Args = std::vector<std::any>;
 using Viz = cip::tibia::qmlcomponents::enums::EVisualizationType;
 constexpr auto OptionsKey = "imbuementTrackerWidgetOptions";
 
-/// CIP: minutes and seconds up to an hour (inclusive), else hours and minutes, days from a day on.
-QString durationString(const qint64 seconds)
-{
-    if (seconds < 3601) {
-        if (seconds < 60)
-            return qtTrId("time_second_short").arg(seconds);
-        if (seconds % 60 == 0)
-            return qtTrId("time_minutes_short").arg(seconds / 60);
-        return qtTrId("time_minutes_and_seconds_short").arg(seconds / 60).arg(seconds % 60);
-    }
-    const qint64 minutes = seconds / 60;
-    if (minutes < 1441) {
-        if (minutes < 60)
-            return qtTrId("time_minutes_short").arg(minutes % 60);
-        return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
-    }
-    return qtTrId("time_days_hours_and_minutes_short").arg(minutes / 1440).arg((minutes % 1440) / 60).arg(minutes % 60);
-}
-
-/// CIP: "10d" / "1d05" / "12h" / "1h05" / "12m" / "1m05" / "5s".
-QString ultraShortDurationString(const qint64 seconds)
-{
-    const QChar zero(u'0');
-    if (seconds >= 864000)
-        return QStringLiteral("%1d").arg(seconds / 86400);
-    if (seconds >= 86400)
-        return QStringLiteral("%1d%2").arg(seconds / 86400).arg((seconds % 86400) / 3600, 2, 10, zero);
-    if (seconds >= 36000)
-        return QStringLiteral("%1h").arg(seconds / 3600);
-    if (seconds >= 3600)
-        return QStringLiteral("%1h%2").arg(seconds / 3600).arg((seconds % 3600) / 60, 2, 10, zero);
-    if (seconds >= 600)
-        return QStringLiteral("%1m").arg(seconds / 60);
-    if (seconds >= 60)
-        return QStringLiteral("%1m%2").arg(seconds / 60).arg(seconds % 60, 2, 10, zero);
-    return QStringLiteral("%1s").arg(seconds);
-}
-
 /// CIP: the remaining time, with the ultra short form as the elided variant when it differs.
 QString remainingTimeString(const qint64 milliseconds)
 {
-    const QString full = durationString(milliseconds / 1000);
-    const QString shortForm = ultraShortDurationString(milliseconds / 1000);
+    const QString full = qmlcomponents::shortDurationString(milliseconds / 1000);
+    const QString shortForm = qmlcomponents::ultraShortDurationString(milliseconds / 1000);
     if (full == shortForm)
         return full;
     return QStringList{ full, shortForm }.join(QChar(0x9c));

@@ -41,6 +41,42 @@ QStringList shortcutVariants(const qlonglong number, const bool withPlus)
 
 }
 
+QString shortDurationString(const qint64 seconds)
+{
+    if (seconds < 3601) {
+        if (seconds < 60)
+            return qtTrId("time_second_short").arg(seconds);
+        if (seconds % 60 == 0)
+            return qtTrId("time_minutes_short").arg(seconds / 60);
+        return qtTrId("time_minutes_and_seconds_short").arg(seconds / 60).arg(seconds % 60);
+    }
+    const qint64 minutes = seconds / 60;
+    if (minutes < 1441) {
+        if (minutes < 60)
+            return qtTrId("time_minutes_short").arg(minutes % 60);
+        return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
+    }
+    return qtTrId("time_days_hours_and_minutes_short").arg(minutes / 1440).arg((minutes % 1440) / 60).arg(minutes % 60);
+}
+
+QString ultraShortDurationString(const qint64 seconds)
+{
+    const QChar zero(u'0');
+    if (seconds >= 864000)
+        return QStringLiteral("%1d").arg(seconds / 86400);
+    if (seconds >= 86400)
+        return QStringLiteral("%1d%2").arg(seconds / 86400).arg((seconds % 86400) / 3600, 2, 10, zero);
+    if (seconds >= 36000)
+        return QStringLiteral("%1h").arg(seconds / 3600);
+    if (seconds >= 3600)
+        return QStringLiteral("%1h%2").arg(seconds / 3600).arg((seconds % 3600) / 60, 2, 10, zero);
+    if (seconds >= 600)
+        return QStringLiteral("%1m").arg(seconds / 60);
+    if (seconds >= 60)
+        return QStringLiteral("%1m%2").arg(seconds / 60).arg(seconds % 60, 2, 10, zero);
+    return QStringLiteral("%1s").arg(seconds);
+}
+
 QString thousandShortcutsMultiString(const qlonglong number, const bool withPlus)
 {
     return shortcutVariants(number, withPlus).join(MultiStringSeparator);
@@ -140,20 +176,7 @@ QString TTextHelperQmlService::formatSecondsToShortHoursMinutesSecondsTimeString
 /// CIP .
 QString TTextHelperQmlService::formatSecondsToUltraShortDaysOrHoursOrMinsOrSecondsTimeString(const qlonglong Seconds)
 {
-    const QChar zero(u'0');
-    if (Seconds >= 864000)
-        return QStringLiteral("%1d").arg(Seconds / 86400);
-    if (Seconds >= 86400)
-        return QStringLiteral("%1d%2").arg(Seconds / 86400).arg((Seconds % 86400) / 3600, 2, 10, zero);
-    if (Seconds >= 36000)
-        return QStringLiteral("%1h").arg(Seconds / 3600);
-    if (Seconds >= 3600)
-        return QStringLiteral("%1h%2").arg(Seconds / 3600).arg((Seconds % 3600) / 60, 2, 10, zero);
-    if (Seconds >= 600)
-        return QStringLiteral("%1m").arg(Seconds / 60);
-    if (Seconds >= 60)
-        return QStringLiteral("%1m%2").arg(Seconds / 60).arg(Seconds % 60, 2, 10, zero);
-    return QStringLiteral("%1s").arg(Seconds);
+    return ultraShortDurationString(Seconds);
 }
 
 /// CIP (on minutes).
