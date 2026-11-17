@@ -216,7 +216,7 @@ void TPackageInstallation::downloadFiles()
     m_downloader->start();
     qInfo() << "Starting download of" << m_filesToDownload.size() << "files for package" << m_package->name();
     for (const TFileInPackage& file : m_filesToDownload)
-        qInfo() << "Queued file for download:" << file.url.toString();
+        qCDebug(lcDownload) << "Queued file for download:" << file.url.toString();
 }
 
 } // namespace launcher

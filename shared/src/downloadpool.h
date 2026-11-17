@@ -3,6 +3,7 @@
 #include "networkaccessmanagerauthenticationhandler.h"
 
 #include <QAbstractNetworkCache>
+#include <QLoggingCategory>
 #include <QByteArray>
 #include <QMap>
 #include <QNetworkReply>
@@ -12,6 +13,11 @@
 
 #include <list>
 #include <memory>
+
+/// Host: per-file download lines (start, finish, queue). Off by default — a
+/// package is thousands of files; enable with QT_LOGGING_RULES="tibia.download.debug=true"
+/// (/play: ?qtclient_log=tibia.download.debug=true). Failures and summaries stay on.
+Q_DECLARE_LOGGING_CATEGORY(lcDownload)
 
 namespace tibia {
 namespace shared {
