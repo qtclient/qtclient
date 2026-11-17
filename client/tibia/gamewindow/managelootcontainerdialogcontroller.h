@@ -104,7 +104,7 @@ private:
 
     void installHandlers();
     void uninstallHandlers();
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     void rebuildListItems();
     void applyListFilter();
     void syncPremium();

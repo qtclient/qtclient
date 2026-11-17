@@ -99,25 +99,30 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
         P::quickLootAreaAtPlayer();
         return true;
     case A::LOOT_CONTAINER_SELECT:
-        P::sendManagedContainer(P::SelectLootContainer, action.category, action.position, action.objectClientId, action.stackPosition);
+    case A::OBTAIN_CONTAINER_SELECT:
+        if (const auto* select = input::gameActionAs<input::TGameActionSelectManagedContainer>(&pGameAction)) {
+            const input::TObjectGameActionContext& container = select->container();
+            P::sendManagedContainer(pGameAction.gameActionType() == A::LOOT_CONTAINER_SELECT ? P::SelectLootContainer
+                                                                                              : P::SelectObtainContainer,
+                                    select->category(), container.position, container.objectClientId, container.stackPosition);
+        }
         return true;
     case A::LOOT_CONTAINER_CLEAR:
-        P::sendManagedContainer(P::ClearLootContainer, action.category);
-        return true;
     case A::LOOT_CONTAINER_OPEN:
-        P::sendManagedContainer(P::OpenLootContainer, action.category);
-        return true;
-    case A::OBTAIN_CONTAINER_SELECT:
-        P::sendManagedContainer(P::SelectObtainContainer, action.category, action.position, action.objectClientId, action.stackPosition);
-        return true;
     case A::OBTAIN_CONTAINER_CLEAR:
-        P::sendManagedContainer(P::ClearObtainContainer, action.category);
-        return true;
     case A::OBTAIN_CONTAINER_OPEN:
-        P::sendManagedContainer(P::OpenObtainContainer, action.category);
+        if (const auto* managed = input::gameActionAs<input::TGameActionManagedContainer>(&pGameAction)) {
+            const A type = pGameAction.gameActionType();
+            P::sendManagedContainer(type == A::LOOT_CONTAINER_CLEAR   ? P::ClearLootContainer
+                                    : type == A::LOOT_CONTAINER_OPEN  ? P::OpenLootContainer
+                                    : type == A::OBTAIN_CONTAINER_CLEAR ? P::ClearObtainContainer
+                                                                        : P::OpenObtainContainer,
+                                    managed->category());
+        }
         return true;
     case A::LOOT_CONTAINER_FALLBACK:
-        P::setLootContainerFallback(action.enable);
+        if (const auto* fallback = input::gameActionAs<input::TGameActionSetLootContainerFallback>(&pGameAction))
+            P::setLootContainerFallback(fallback->useMainContainerAsFallback());
         return true;
     case A::LOOT_ADD_TO_BLACKWHITELIST:
         if (listStatus)

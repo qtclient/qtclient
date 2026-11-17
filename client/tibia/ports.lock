@@ -2750,6 +2750,7 @@ input::TGameActionSelectLootContainer::v1	612787a6fd4ae975	skip	generated: compi
 input::TGameActionSelectLootContainer::v2	6fbe2f86f0cc1cfe	skip	generated: compiler-generated destructor pair
 input::TGameActionSelectObtainContainer::v1	612787a6fd4ae975	skip	generated: compiler-generated destructor pair
 input::TGameActionSelectObtainContainer::v2	6fbe2f86f0cc1cfe	skip	generated: compiler-generated destructor pair
+input::TGameActionSelectObtainContainer::v4	a81553cb360a77e2	ported	input/gameaction.h:TGameActionManagedContainer::category
 input::TGameActionSelectPreyMonsterFromBestiary::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionSelectPreyMonsterFromBestiary::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionSelectPreyMonsterFromList::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -2805,8 +2806,10 @@ input::TGameActionSetTactics::v1	872d4faac408f6d5	skip	generated: compiler-gener
 input::TGameActionSetTactics::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionShowConfirmMoveObjectToStashDialog::v1	7584257adae1ce87	skip	generated: compiler-generated destructor pair
 input::TGameActionShowConfirmMoveObjectToStashDialog::v2	b8a4077e8e1fc512	skip	generated: compiler-generated destructor pair
+input::TGameActionShowDialogCreateMinimapMarker::v0	991c96350cfda1d0	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingCoordinate::gameActionType
 input::TGameActionShowDialogCreateMinimapMarker::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionShowDialogCreateMinimapMarker::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionShowDialogEditMinimapMarker::v0	991c96350cfda1d0	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingFullMarkerData::gameActionType
 input::TGameActionShowDialogEditMinimapMarker::v1	5da25f171b630b5a	skip	generated: compiler-generated destructor pair
 input::TGameActionShowDialogEditMinimapMarker::v2	673838c5a2ac71b7	skip	generated: compiler-generated destructor pair
 input::TGameActionShowExaltationResultDialog::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -4994,6 +4997,8 @@ sub_19053187b939	19053187b939aee0	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_191033395676#2	191033395676e4c3	skip	generated: compiler-generated destructor pair
 sub_1912acf537ba	1912acf537bac5ff	skip	library: std::map construction from an initializer list (library)
 sub_1926f50173f1#3	1926f50173f14a52	ported	gamewindow/housesinfodialogcontroller.h:THousesSortProxyModel::sortOrder
+sub_194928811d84	194928811d843c75	ported	input/gameaction.h:TGameActionShowDialogCreateMinimapMarker::TGameActionShowDialogCreateMinimapMarker
+sub_194928811d84#2	194928811d843c75	ported	input/gameaction.h:TGameActionShowDialogCreateMinimapMarker::TGameActionShowDialogCreateMinimapMarker
 sub_194f14a58987#3	194f14a58987f943	inlined	prey/preyciptypes.cpp:TPreyProtocolMessageHandler::handlePreyDataMessage
 sub_194fba0f12ff#347	194fba0f12ff33db	skip	generated: QMetaType construct/copy/destroy helper for GameclientMessage (Qt-generated)
 sub_194fba0f12ff#348	194fba0f12ff33db	skip	generated: QMetaType construct/copy/destroy helper for GameclientMessage (Qt-generated)
@@ -5305,6 +5310,8 @@ sub_2233d33ba0fa#2	2233d33ba0fa8972	ported	creatures/creatureprotocolapply.cpp:c
 sub_2252f62af7f1	2252f62af7f12bb3	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_226248c01846	226248c018460340	skip	generated: compiler-generated destructor pair
 sub_22768a81705a#2	22768a81705aad12	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onMonsterRaceClicked
+sub_22770d3c2d65	22770d3c2d65eafc	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
+sub_22770d3c2d65#2	22770d3c2d65eafc	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
 sub_22b9b1ad1084	22b9b1ad10845cfe	ported	config/sidebaroptions.cpp:parseWidgetsManager
 sub_22ba63a7bab1	22ba63a7bab1de27	ported	screenshot/screenshotciptypes.cpp:TOutstandingScreenshot::TOutstandingScreenshot
 sub_22be39539623	22be3953962342b6	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::maximumAmount
@@ -5726,6 +5733,8 @@ sub_31629f14051c	31629f14051c9e9f	skip	generated: compiler-generated destructor 
 sub_3172e2619304	3172e26193041224	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_3175b28731b9	3175b28731b94614	ported	cyclopedia/combatstatsqmldata.cpp:makeSourcedStat
 sub_317d4d35cbc2	317d4d35cbc2f554	inlined	creatures/creaturestorage.cpp:TCreatureStorage::remove
+sub_318091cd1e8b	318091cd1e8ba145	ported	input/gameaction.h:TGameActionDeleteMinimapMarker::TGameActionDeleteMinimapMarker
+sub_318091cd1e8b#2	318091cd1e8ba145	ported	input/gameaction.h:TGameActionDeleteMinimapMarker::TGameActionDeleteMinimapMarker
 sub_318eb652e4f5	318eb652e4f522a6	skip	generated: compiler-generated operator== of store records
 sub_31a020b46c4b	31a020b46c4be1d1	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
 sub_31a020b46c4b#2	31a020b46c4be1d1	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
@@ -6090,6 +6099,8 @@ sub_3e9f06285b78	3e9f06285b78d3a4	ported	gamewindow/managelootcontainerdialogcon
 sub_3ea2a6ae64ba	3ea2a6ae64ba83f0	ported	gamewindow/hitpointmanabarcontroller.cpp:toggleOption
 sub_3eae962e9ec4	3eae962e9ec46736	skip	library: std::sort instantiation over team members / member indices (library)
 sub_3eeb22abddeb	3eeb22abddeb9827	skip	library: Qt/std container template code
+sub_3eec9e5de033	3eec9e5de03342b1	ported	input/gameaction.h:TGameActionShowDialogEditMinimapMarker::TGameActionShowDialogEditMinimapMarker
+sub_3eec9e5de033#2	3eec9e5de03342b1	ported	input/gameaction.h:TGameActionShowDialogEditMinimapMarker::TGameActionShowDialogEditMinimapMarker
 sub_3eefd61396e4#2	3eefd61396e4e2a9	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
 sub_3eefd61396e4#3	3eefd61396e4e2a9	skip	generated: moc property getter, provided by the generated cip base
 sub_3f1d55947661	3f1d5594766157ad	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -6908,6 +6919,8 @@ sub_56e401e5eeea#6	56e401e5eeea0e45	skip	generated: moc-generated signal
 sub_56ef08335b32	56ef08335b321dca	inlined	gamewindow/sidebarwidgetcontrollerbase.cpp:TSidebarWidget::createItemFromUrl
 sub_57260bf76336	57260bf7633649f6	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
 sub_5729637feda4	5729637feda4cc33	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
+sub_572db99c6ec3	572db99c6ec32447	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
+sub_572db99c6ec3#2	572db99c6ec32447	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
 sub_572ea5534fb3#2	572ea5534fb3e524	ported	container/qmlitemslotdata.h:TQMLItemSlotData::displayTypeID
 sub_5744152f1cc0	5744152f1cc09aad	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::requestConfigurationContextMenu
 sub_574e9dce5ddf	574e9dce5ddf0e9b	ported	worldmap/worldmapfield.cpp:TWorldMapField::stackOrder
@@ -7542,6 +7555,8 @@ sub_6ff4cc0225fb	6ff4cc0225fbd7c4	ported	analysers/gainwastestorage.cpp:TGainWas
 sub_701454c16bcd	701454c16bcda78b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoNorthWest
 sub_702da4304f46	702da4304f464521	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChannel
 sub_70342e08d452	70342e08d452eac8	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildMonsterInfos
+sub_703dd4e6c218	703dd4e6c218c6c6	ported	input/gameaction.h:TGameActionSetLootContainerFallback::TGameActionWithValue
+sub_703dd4e6c218#2	703dd4e6c218c6c6	ported	input/gameaction.h:TGameActionSetLootContainerFallback::TGameActionWithValue
 sub_7040cf26a06b	7040cf26a06b466d	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::acquireBattleListId
 sub_7041aca92bdb	7041aca92bdbae8a	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStartOfflineTrainingMessage
 sub_704bba5a1cac#2	704bba5a1cacbe95	ported	analysers/impactwidgets.cpp:TImpactWidgetController::hpsGraphData
@@ -8398,6 +8413,8 @@ sub_8ce2025e7b61	8ce2025e7b61a524	ported	gamewindow/assignactiondialogs.cpp:TRec
 sub_8ce70632a85f	8ce70632a85f2ac8	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_8cee8d00a7c1	8cee8d00a7c145f0	skip	library: QMap<QUrl, QVariant> template code
 sub_8ceff5bc2016	8ceff5bc2016d7d0	inlined	gamewindow/imbuingdialogcontroller.cpp:TQmlImbuementData::TQmlImbuementData
+sub_8cfe721dbe89	8cfe721dbe89aaa0	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingFullMarkerData::TGameActionForMinimapMarkerUsingFullMarkerData
+sub_8cfe721dbe89#2	8cfe721dbe89aaa0	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingFullMarkerData::TGameActionForMinimapMarkerUsingFullMarkerData
 sub_8d05e361124c	8d05e361124c234a	ported	gamewindow/actionbarcontroller.cpp:TActionBarController::applySetting
 sub_8d0b7f39ef62	8d0b7f39ef622389	ported	config/optionspages.cpp:TGraphicsOptionsPage::rendererListModel
 sub_8d17619bf583	8d17619bf5833734	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::TContextMenuController
@@ -11380,6 +11397,8 @@ sub_e6a8ffd0b2ea	e6a8ffd0b2eaf301	skip	library: SFML/miniaudio library internals
 sub_e6acaef32a49#6	e6acaef32a4938ce	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
 sub_e6aecdda1f6f	e6aecdda1f6f4a6e	skip	generated: compiler-generated destructor pair
 sub_e6b628813195	e6b628813195f5c3	ported	config/sidebaroptions.cpp:TSidebarOptions::ensurePartyBattleList
+sub_e6b7011385bb	e6b7011385bbf0fb	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate
+sub_e6b7011385bb#2	e6b7011385bbf0fb	ported	input/gameaction.h:TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate
 sub_e6b70690a031	e6b70690a0310f56	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateAccountEmail
 sub_e6c951c0043d	e6c951c0043d0c0b	ported	gamewindow/minimapcontroller.cpp:TMinimapController::currentLayer
 sub_e6cddeaae61e	e6cddeaae61e1171	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
@@ -11653,6 +11672,8 @@ sub_f18a01ced49d	f18a01ced49df9a1	ported	app/bootstrap.cpp:configureProcess
 sub_f1925e99b697	f1925e99b697d858	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onFeaturedOfferClicked
 sub_f19409d7200b	f19409d7200b2570	ported	cyclopedia/creaturetrackerstorage.cpp:TCreatureTrackerStorage::setTrackedMonsters
 sub_f1aee9e48f3b	f1aee9e48f3b0799	ported	teamfinder/teamfinderciptypes.cpp:numberOrEmpty
+sub_f1bc31b96925	f1bc31b96925c86a	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
+sub_f1bc31b96925#2	f1bc31b96925c86a	ported	input/gameaction.h:TGameActionManagedContainer::TGameActionManagedContainer
 sub_f1fa4c4b67a0	f1fa4c4b67a0aa6c	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:toStringList
 sub_f1fa4c4b67a0#2	f1fa4c4b67a0aa6c	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:toStringList
 sub_f2076283203f	f2076283203fdc46	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
@@ -11805,6 +11826,8 @@ sub_f6e41aa66411	f6e41aa6641117c0	ported	game/skillswidgetentrydata.cpp:fillExpe
 sub_f6f02688b75b#3	f6f02688b75b2633	skip	library: std::set template instantiation (construct/assign/destroy)
 sub_f6f8a3bb3781	f6f8a3bb378110b4	skip	library: CryptoPP Deflator (zlib) library code
 sub_f6fe047def33	f6fe047def335d6f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_f6fed83eee86	f6fed83eee861054	ported	input/gameaction.h:TGameActionUpdateMinimapMarker::TGameActionUpdateMinimapMarker
+sub_f6fed83eee86#2	f6fed83eee861054	ported	input/gameaction.h:TGameActionUpdateMinimapMarker::TGameActionUpdateMinimapMarker
 sub_f732fe1f7ae4	f732fe1f7ae47917	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onSearchResultsChanged
 sub_f738befdb20a	f738befdb20aed13	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_f7442f91aefd#22	f7442f91aefd2ca1	skip	library: boost::bimap / std::map template instantiation

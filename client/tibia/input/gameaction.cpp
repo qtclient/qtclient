@@ -289,25 +289,10 @@ TGameActionCyclopediaMapSelectionItem::TGameActionCyclopediaMapSelectionItem(con
     instance = subareaId;
 }
 
-TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionForMinimapMarkerUsingFullMarkerData::TGameActionForMinimapMarkerUsingFullMarkerData(const EGameAction actionType)
-{
-    type = actionType;
-}
-
 TGameActionInspectObject::TGameActionInspectObject(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::INSPECT_OBJECT;
     fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionManagedContainer::TGameActionManagedContainer(const EGameAction actionType)
-{
-    type = actionType;
 }
 
 TGameActionOpenParentContainer::TGameActionOpenParentContainer(Position position, int stackPosition, const uint16_t objectClientId)
@@ -499,14 +484,8 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionChangeTrackedQuestFlags>();
     case EGameAction::CHANGE_TUTORIAL_MODE_ENABLED:
         return std::make_shared<TGameActionChangeTutorialModeEnabled>();
-    case EGameAction::LOOT_CONTAINER_CLEAR:
-        return std::make_shared<TGameActionClearLootContainer>();
-    case EGameAction::OBTAIN_CONTAINER_CLEAR:
-        return std::make_shared<TGameActionClearObtainContainer>();
     case EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM:
         return std::make_shared<TGameActionCyclopediaMapSelectionItem>();
-    case EGameAction::DELETE_MINIMAP_MARKER:
-        return std::make_shared<TGameActionDeleteMinimapMarker>();
     case EGameAction::DEPOT_SERACH_RETRIEVE:
         return std::make_shared<TGameActionDepotSearchRetrieve>();
     case EGameAction::EXALTATION_FORGE_CONVERGENCE_FUSION:
@@ -515,16 +494,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionExaltationForgeFusion>();
     case EGameAction::EXALTATION_FORGE_TRANSFER:
         return std::make_shared<TGameActionExaltationForgeTransfer>();
-    case EGameAction::SHOW_DIALOG_CREATE_MINIMAP_MARKER:
-        return std::make_shared<TGameActionShowDialogCreateMinimapMarker>();
-    case EGameAction::UPDATE_MINIMAP_MARKER:
-        return std::make_shared<TGameActionUpdateMinimapMarker>();
-    case EGameAction::SHOW_DIALOG_EDIT_MINIMAP_MARKER:
-        return std::make_shared<TGameActionShowDialogEditMinimapMarker>();
-    case EGameAction::LOOT_CONTAINER_SELECT:
-        return std::make_shared<TGameActionSelectLootContainer>();
-    case EGameAction::OBTAIN_CONTAINER_SELECT:
-        return std::make_shared<TGameActionSelectObtainContainer>();
     case EGameAction::PREY_REQUEST_LIST_REROLL:
         return std::make_shared<TGameActionPreySystem>(type);
     case EGameAction::PREY_REQUEST_BONUS_REROLL:
@@ -535,10 +504,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionInspectObject>();
     case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
         return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
-    case EGameAction::LOOT_CONTAINER_OPEN:
-        return std::make_shared<TGameActionOpenLootContainer>();
-    case EGameAction::OBTAIN_CONTAINER_OPEN:
-        return std::make_shared<TGameActionOpenObtainContainer>();
     case EGameAction::OPEN_PARENT_CONTAINER:
         return std::make_shared<TGameActionOpenParentContainer>();
     case EGameAction::OPEN_SHOW_IMAGE_DIALOG:
@@ -567,8 +532,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSetHirelingName>();
     case EGameAction::SET_HIRELING_OUTFIT:
         return std::make_shared<TGameActionSetHirelingOutfit>();
-    case EGameAction::LOOT_CONTAINER_FALLBACK:
-        return std::make_shared<TGameActionSetLootContainerFallback>();
     case EGameAction::SET_PLAYER_OUTFIT:
         return std::make_shared<TGameActionSetPlayerOutfit>();
     case EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION:

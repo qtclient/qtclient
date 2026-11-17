@@ -299,18 +299,18 @@ void TMinimapMarkerStorage::bindActions()
     // The marker dialog's actions.
     for (const A type : { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
                           A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION }) {
-        input::setActionHandler(type, [this](const input::TGameAction& action) {
+        input::setActionHandler(type, [this](const input::IGameAction& action) {
             m_dialog->handleGameAction(action);
             return true;
         });
     }
-    input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameAction& action) {
-        const Position pos = action.position;
-        const auto icon = static_cast<uint8_t>(std::clamp(action.parameter, 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
-        return createOrUpdate(pos, icon, action.text);
+    input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameActionUpdateMinimapMarker& action) {
+        const input::TMinimapMarkerData& marker = action.marker();
+        const auto icon = static_cast<uint8_t>(std::clamp(int(marker.icon), 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
+        return createOrUpdate(marker.coordinate, icon, marker.description);
     });
-    input::setActionHandler(A::DELETE_MINIMAP_MARKER, [this](const input::TGameAction& action) {
-        return remove(action.position);
+    input::setActionHandler(A::DELETE_MINIMAP_MARKER, [this](const input::TGameActionDeleteMinimapMarker& action) {
+        return remove(action.coordinate());
     });
 }
 

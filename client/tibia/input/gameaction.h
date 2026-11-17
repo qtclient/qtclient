@@ -1758,7 +1758,137 @@ private:
     int m_actionButtonId;
 };
 
+
+// ---------------------------------------------------------------------------
+// Minimap markers, managed containers
+
+/// CIP input::TGameActionForMinimapMarkerUsingCoordinate: a marker action by
+/// field (SHOW_DIALOG_CREATE_MINIMAP_MARKER, DELETE_MINIMAP_MARKER).
+class TGameActionForMinimapMarkerUsingCoordinate : public IGameAction
+{
+public:
+    TGameActionForMinimapMarkerUsingCoordinate(EGameAction type, const Position& coordinate)
+        : m_type(type)
+        , m_coordinate(coordinate)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const Position& coordinate() const { return m_coordinate; }
+
+private:
+    EGameAction m_type;
+    Position m_coordinate;
+};
+
+/// CIP input::TGameActionShowDialogCreateMinimapMarker (SHOW_DIALOG_CREATE_MINIMAP_MARKER).
+class TGameActionShowDialogCreateMinimapMarker final : public TGameActionForMinimapMarkerUsingCoordinate
+{
+public:
+    explicit TGameActionShowDialogCreateMinimapMarker(const Position& coordinate)
+        : TGameActionForMinimapMarkerUsingCoordinate(EGameAction::SHOW_DIALOG_CREATE_MINIMAP_MARKER, coordinate)
+    {
+    }
+};
+
+/// CIP input::TGameActionDeleteMinimapMarker (DELETE_MINIMAP_MARKER).
+class TGameActionDeleteMinimapMarker final : public TGameActionForMinimapMarkerUsingCoordinate
+{
+public:
+    explicit TGameActionDeleteMinimapMarker(const Position& coordinate)
+        : TGameActionForMinimapMarkerUsingCoordinate(EGameAction::DELETE_MINIMAP_MARKER, coordinate)
+    {
+    }
+};
+
+/// CIP minimap::TMinimapMarker as the marker actions carry it: field, icon, description.
+struct TMinimapMarkerData
+{
+    Position coordinate;
+    uint8_t icon = 0;
+    QString description;
+};
+
+/// CIP input::TGameActionForMinimapMarkerUsingFullMarkerData: a marker action
+/// with the whole marker (SHOW_DIALOG_EDIT_MINIMAP_MARKER, UPDATE_MINIMAP_MARKER).
+class TGameActionForMinimapMarkerUsingFullMarkerData : public IGameAction
+{
+public:
+    TGameActionForMinimapMarkerUsingFullMarkerData(EGameAction type, TMinimapMarkerData marker)
+        : m_type(type)
+        , m_marker(std::move(marker))
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const TMinimapMarkerData& marker() const { return m_marker; }
+
+private:
+    EGameAction m_type;
+    TMinimapMarkerData m_marker;
+};
+
+/// CIP input::TGameActionShowDialogEditMinimapMarker (SHOW_DIALOG_EDIT_MINIMAP_MARKER).
+class TGameActionShowDialogEditMinimapMarker final : public TGameActionForMinimapMarkerUsingFullMarkerData
+{
+public:
+    explicit TGameActionShowDialogEditMinimapMarker(TMinimapMarkerData marker)
+        : TGameActionForMinimapMarkerUsingFullMarkerData(EGameAction::SHOW_DIALOG_EDIT_MINIMAP_MARKER, std::move(marker))
+    {
+    }
+};
+
+/// CIP input::TGameActionUpdateMinimapMarker (UPDATE_MINIMAP_MARKER).
+class TGameActionUpdateMinimapMarker final : public TGameActionForMinimapMarkerUsingFullMarkerData
+{
+public:
+    explicit TGameActionUpdateMinimapMarker(TMinimapMarkerData marker)
+        : TGameActionForMinimapMarkerUsingFullMarkerData(EGameAction::UPDATE_MINIMAP_MARKER, std::move(marker))
+    {
+    }
+};
+
+/// CIP input::TGameActionManagedContainer: a loot / obtain container action on
+/// one category (v4); the base of the select / clear / open classes.
+class TGameActionManagedContainer : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionManagedContainer(EGameAction type, int category)
+        : TGameActionSimple(type)
+        , m_category(category)
+    {
+    }
+    /// CIP v4.
+    int category() const { return m_category; }
+
+private:
+    int m_category;
+};
+
+/// CIP input::TGameActionSelectLootContainer / TGameActionSelectObtainContainer
+/// (LOOT_CONTAINER_SELECT / OBTAIN_CONTAINER_SELECT): the container picked for the category.
+class TGameActionSelectManagedContainer final : public TGameActionManagedContainer
+{
+public:
+    TGameActionSelectManagedContainer(EGameAction type, int category, TObjectGameActionContext container)
+        : TGameActionManagedContainer(type, category)
+        , m_container(container)
+    {
+    }
+    const TObjectGameActionContext& container() const { return m_container; }
+
+private:
+    TObjectGameActionContext m_container;
+};
+
+/// CIP input::TGameActionSetLootContainerFallback (LOOT_CONTAINER_FALLBACK).
+class TGameActionSetLootContainerFallback final : public TGameActionWithValue<EGameAction::LOOT_CONTAINER_FALLBACK, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    bool useMainContainerAsFallback() const { return m_value; }
+};
+
 struct TGameAction;
+class IGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<IGameActionPtr>;
 
@@ -1909,30 +2039,6 @@ public:
     /// CIP `TGameActionPlayerMovementIntent::v0` → action type id `0x2b`.
     int v0() const { return static_cast<int>(type); }
 };
-/// CIP input::TGameActionManagedContainer .
-class TGameActionManagedContainer : public TGameAction
-{
-public:
-    TGameActionManagedContainer() = default;
-    explicit TGameActionManagedContainer(EGameAction type);
-};
-
-/// CIP input::TGameActionForMinimapMarkerUsingCoordinate .
-class TGameActionForMinimapMarkerUsingCoordinate : public TGameAction
-{
-public:
-    TGameActionForMinimapMarkerUsingCoordinate() = default;
-    explicit TGameActionForMinimapMarkerUsingCoordinate(EGameAction type);
-};
-
-/// CIP input::TGameActionForMinimapMarkerUsingFullMarkerData .
-class TGameActionForMinimapMarkerUsingFullMarkerData : public TGameAction
-{
-public:
-    TGameActionForMinimapMarkerUsingFullMarkerData() = default;
-    explicit TGameActionForMinimapMarkerUsingFullMarkerData(EGameAction type);
-};
-
 
 
 
@@ -2086,20 +2192,6 @@ public:
     TGameActionChangeTutorialModeEnabled() { type = EGameAction::CHANGE_TUTORIAL_MODE_ENABLED; }
 };
 
-/// CIP input::TGameActionClearLootContainer (→ LOOT_CONTAINER_CLEAR).
-class TGameActionClearLootContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionClearLootContainer() { type = EGameAction::LOOT_CONTAINER_CLEAR; }
-};
-
-/// CIP input::TGameActionClearObtainContainer (→ OBTAIN_CONTAINER_CLEAR).
-class TGameActionClearObtainContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionClearObtainContainer() { type = EGameAction::OBTAIN_CONTAINER_CLEAR; }
-};
-
 
 
 
@@ -2110,13 +2202,6 @@ class TGameActionCyclopediaMapSelectionItem final : public TGameAction
 public:
     TGameActionCyclopediaMapSelectionItem() { type = EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM; }
     explicit TGameActionCyclopediaMapSelectionItem(int subareaId);
-};
-
-/// CIP input::TGameActionDeleteMinimapMarker .
-class TGameActionDeleteMinimapMarker final : public TGameActionForMinimapMarkerUsingCoordinate
-{
-public:
-    TGameActionDeleteMinimapMarker() { type = EGameAction::DELETE_MINIMAP_MARKER; }
 };
 
 /// CIP input::TGameActionDepotSearchRetrieve (→ DEPOT_SERACH_RETRIEVE).
@@ -2197,20 +2282,6 @@ public:
 
 
 
-/// CIP input::TGameActionOpenLootContainer .
-class TGameActionOpenLootContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionOpenLootContainer() { type = EGameAction::LOOT_CONTAINER_OPEN; }
-};
-
-/// CIP input::TGameActionOpenObtainContainer .
-class TGameActionOpenObtainContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionOpenObtainContainer() { type = EGameAction::OBTAIN_CONTAINER_OPEN; }
-};
-
 /// CIP input::TGameActionOpenParentContainer .
 class TGameActionOpenParentContainer final : public TGameAction
 {
@@ -2271,18 +2342,6 @@ class TGameActionResolveSprite final : public TGameAction
 public:
     TGameActionResolveSprite() { type = EGameAction::RESOLVE_SPRITE; }
 };
-/// CIP input::TGameActionSelectLootContainer .
-class TGameActionSelectLootContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionSelectLootContainer() { type = EGameAction::LOOT_CONTAINER_SELECT; }
-};
-/// CIP input::TGameActionSelectObtainContainer .
-class TGameActionSelectObtainContainer final : public TGameActionManagedContainer
-{
-public:
-    TGameActionSelectObtainContainer() { type = EGameAction::OBTAIN_CONTAINER_SELECT; }
-};
 /// CIP input::TGameActionSelectPreyMonsterFromBestiary .
 class TGameActionSelectPreyMonsterFromBestiary final : public TGameAction
 {
@@ -2326,12 +2385,6 @@ class TGameActionSetHirelingOutfit final : public TGameAction
 public:
     TGameActionSetHirelingOutfit() { type = EGameAction::SET_HIRELING_OUTFIT; }
 };
-/// CIP input::TGameActionSetLootContainerFallback .
-class TGameActionSetLootContainerFallback final : public TGameActionManagedContainer
-{
-public:
-    TGameActionSetLootContainerFallback() { type = EGameAction::LOOT_CONTAINER_FALLBACK; }
-};
 /// CIP input::TGameActionSetPlayerOutfit .
 class TGameActionSetPlayerOutfit final : public TGameAction
 {
@@ -2350,18 +2403,6 @@ class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
 public:
     TGameActionShowConfirmMoveObjectToStashDialog() { type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG; }
     TGameActionShowConfirmMoveObjectToStashDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionShowDialogCreateMinimapMarker .
-class TGameActionShowDialogCreateMinimapMarker final : public TGameActionForMinimapMarkerUsingCoordinate
-{
-public:
-    TGameActionShowDialogCreateMinimapMarker() { type = EGameAction::SHOW_DIALOG_CREATE_MINIMAP_MARKER; }
-};
-/// CIP input::TGameActionShowDialogEditMinimapMarker .
-class TGameActionShowDialogEditMinimapMarker final : public TGameActionForMinimapMarkerUsingFullMarkerData
-{
-public:
-    TGameActionShowDialogEditMinimapMarker() { type = EGameAction::SHOW_DIALOG_EDIT_MINIMAP_MARKER; }
 };
 /// CIP input::TGameActionShowExaltationResultDialog .
 class TGameActionShowExaltationResultDialog final : public TGameAction
@@ -2458,12 +2499,6 @@ class TGameActionTutorialProgress final : public TGameAction
 {
 public:
     TGameActionTutorialProgress() { type = EGameAction::TUTORIAL_PROGRESS; }
-};
-/// CIP input::TGameActionUpdateMinimapMarker .
-class TGameActionUpdateMinimapMarker final : public TGameActionForMinimapMarkerUsingFullMarkerData
-{
-public:
-    TGameActionUpdateMinimapMarker() { type = EGameAction::UPDATE_MINIMAP_MARKER; }
 };
 /// CIP input::TGameActionUseOnCreature .
 class TGameActionUseOnCreature final : public TGameAction

@@ -39,16 +39,9 @@ constexpr uint16_t EmptyAppearance = 0x5ca9;
 
 /// A managed container action for one object category; select actions also
 /// carry the picked container.
-void publishContainerAction(const A type, const int category, const input::TGameAction* target = nullptr)
+void publishContainerAction(const A type, const int category)
 {
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->category = category;
-    if (target) {
-        action->position = target->position;
-        action->stackPosition = target->stackPosition;
-        action->objectClientId = target->objectClientId;
-    }
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionManagedContainer>(type, category));
 }
 
 bool isSet(const uint16_t typeId) { return typeId != 0 && typeId != EmptyAppearance; }
@@ -211,7 +204,7 @@ TManageLootContainerDialogController::~TManageLootContainerDialogController()
 
 void TManageLootContainerDialogController::installHandlers()
 {
-    const auto handle = [this](const input::TGameAction& action) { return handleGameAction(action); };
+    const auto handle = [this](const input::IGameAction& action) { return handleGameAction(action); };
     for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
         input::setActionHandler(type, handle);
 }
@@ -222,9 +215,9 @@ void TManageLootContainerDialogController::uninstallHandlers()
         input::setActionHandler(type, nullptr);
 }
 
-bool TManageLootContainerDialogController::handleGameAction(const input::TGameAction& action)
+bool TManageLootContainerDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::OPEN_MANAGE_LOOT_CONTAINER:
         m_scrollOnShow = false;
         showDialog();
@@ -244,9 +237,7 @@ void TManageLootContainerDialogController::setUseMainBackpackAsFallback(const bo
     // The checkbox only asks the server; the stored flag follows its answer.
     if (m_containers ? m_containers->useMainBackpackAsFallback() == v : !v)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::LOOT_CONTAINER_FALLBACK));
-    action->enable = v;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionSetLootContainerFallback>(v));
 }
 
 void TManageLootContainerDialogController::setFilterString(const QString& v)
@@ -448,8 +439,9 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
         const uint16_t typeId = target->objectClientId;
         ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (type && type->isContainer()) {
-            publishContainerAction(mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
-                                   target.get());
+            input::publish(std::make_shared<input::TGameActionSelectManagedContainer>(
+                mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
+                input::TObjectGameActionContext{ target->position, target->stackPosition, target->objectClientId }));
         } else {
             m_confirm->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                              QKeySequence(QStringLiteral("Return"))) });

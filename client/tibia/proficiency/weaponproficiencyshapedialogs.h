@@ -14,6 +14,7 @@
 namespace tibia {
 namespace input {
 struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 class TMessageDialogController;

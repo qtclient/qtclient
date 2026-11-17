@@ -368,6 +368,7 @@ class GameclientMessageWeaponProficiencyCommand;
 
 namespace tibia::input {
 struct TGameAction;
+class IGameAction;
 } // namespace tibia::input
 
 Q_MOC_INCLUDE(<protocol.pb.h>)

@@ -48,15 +48,15 @@ void TEditMinimapMarkerDialogController::showForCurrentPosition()
     showForMarkerAt(tibia::game::localPlayerPosition());
 }
 
-void TEditMinimapMarkerDialogController::handleGameAction(const input::TGameAction& action)
+void TEditMinimapMarkerDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
         case A::SHOW_DIALOG_CREATE_MINIMAP_MARKER:
-            m_position = action.position;
+            m_position = static_cast<const input::TGameActionForMinimapMarkerUsingCoordinate&>(action).coordinate();
             showDialog(QString(), 0);
             break;
         case A::SHOW_DIALOG_EDIT_MINIMAP_MARKER:
-            showForMarkerAt(action.position);
+            showForMarkerAt(static_cast<const input::TGameActionForMinimapMarkerUsingFullMarkerData&>(action).marker().coordinate);
             break;
         case A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION:
             showForCurrentPosition();

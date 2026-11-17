@@ -11,6 +11,7 @@
 namespace tibia {
 namespace input {
 struct TGameAction;
+class IGameAction;
 }
 namespace minimap {
 class TMinimapMarkerStorage;
@@ -33,7 +34,7 @@ public:
     /// field, SHOW_DIALOG_EDIT_MINIMAP_MARKER one with the field's marker, and
     /// SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION one for the player's
     /// field (with its marker, if it has one).
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void onCancelClicked() override;
