@@ -51,8 +51,8 @@ private:
     void changed();
     void watchFrames();
     int currentPhase() const;
+    TAppearanceType* type() const;
 
-    TAppearanceType* m_type = nullptr;
     /// The shown object's own animator, started at time 0; rebuilt with the type.
     mutable std::optional<tibia::animation::TAnimator> m_animator;
     mutable const TAppearanceType* m_animatorType = nullptr;
