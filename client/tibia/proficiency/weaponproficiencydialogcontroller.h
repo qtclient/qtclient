@@ -125,6 +125,8 @@ class TQmlWeaponTypes final : public cip::tibia::gamewindow::TQmlWeaponTypes
 public:
     TQmlWeaponTypes(const QString& text, std::set<int> types, QObject* parent);
     const std::set<int>& types() const { return m_types; }
+    /// The first weapon type, 0 without any.
+    int anyWeaponIdentifier() const override;
 
 private:
     std::set<int> m_types;

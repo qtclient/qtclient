@@ -294,14 +294,37 @@ TQmlPossibleMainChar::TQmlPossibleMainChar(QString name, QString world, QString 
     m_level = level;
 }
 
-TQmlTargetWorld::TQmlTargetWorld(QString worldName, QString detailedWorldName, const bool premiumOnly, const bool lockedForTransfer,
-                                 QObject* parent)
+TQmlTargetWorld::TQmlTargetWorld(QString worldName, const bool premiumOnly, const bool lockedForTransfer, const int pvpType, QObject* parent)
     : cip::tibia::gamewindow::TQmlTargetWorld(parent)
+    , m_pvpType(pvpType)
 {
     m_worldName = std::move(worldName);
-    m_detailedWorldName = std::move(detailedWorldName);
     m_premiumOnly = premiumOnly;
     m_lockedForTransfer = lockedForTransfer;
+}
+
+namespace {
+
+/// The PvP type's name, unknown outside 0..4.
+QString pvpTypeName(const int pvpType)
+{
+    static const char* const Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
+                                         "world_pvp_retro_hardcore" };
+    return pvpType >= 0 && pvpType < 5 ? qtTrId(Names[pvpType]) : qtTrId("dummy_unknown");
+}
+
+}
+
+QString TQmlTargetWorld::detailedWorldName() const
+{
+    if (!m_premiumOnly && !m_lockedForTransfer)
+        return qtTrId("characterworldtransfer_world_name").arg(m_worldName).arg(pvpTypeName(m_pvpType));
+    const QString detail = qtTrId("characterworldtransfer_world_name_detail").arg(m_worldName).arg(pvpTypeName(m_pvpType));
+    if (!m_premiumOnly)
+        return detail.arg(qtTrId("characterworldtransfer_world_locked"));
+    if (!m_lockedForTransfer)
+        return detail.arg(qtTrId("characterworldtransfer_world_premium"));
+    return detail.arg(qtTrId("characterworldtransfer_world_premium_and_locked"));
 }
 
 TQmlWorldTransferCondition::TQmlWorldTransferCondition(const bool meets, QString text, QObject* parent)

@@ -291,8 +291,9 @@ TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObje
     , m_types(std::move(types))
 {
     m_text = text;
-    m_anyWeaponIdentifier = m_types.empty() ? 0 : *m_types.begin();
 }
+
+int TQmlWeaponTypes::anyWeaponIdentifier() const { return m_types.empty() ? 0 : *m_types.begin(); }
 
 TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), parent)

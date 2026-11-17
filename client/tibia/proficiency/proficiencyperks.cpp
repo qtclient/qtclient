@@ -335,17 +335,20 @@ QString perkAugmentValue(const TProficiencyPerk& perk) { return augmentValue(per
 TQMLProficiencyPerk::TQMLProficiencyPerk(const int index, const TProficiencyPerk& perk, const bool picked, const bool shaped,
                                          const uint rank, QObject* parent)
     : cip::tibia::gamewindow::TQMLProficiencyPerk(parent)
+    , m_perk(perk)
 {
     m_perkIndex = index;
-    m_perkDescription = proficiency::perkDescription(perk);
-    m_perkName = proficiency::perkName(perk);
-    m_imageSource = perkImageSource(perk);
-    m_hasAugmentEffect = perkHasAugmentEffect(perk);
-    m_augmentEffectImageSource = perkAugmentEffectImageSource(perk);
     m_isPicked = picked;
     m_isShaped = shaped;
-    m_perkRank = shaped ? rank : 0;
+    m_perkRank = rank;
 }
+
+QString TQMLProficiencyPerk::perkDescription() const { return proficiency::perkDescription(m_perk); }
+QString TQMLProficiencyPerk::perkName() const { return proficiency::perkName(m_perk); }
+QUrl TQMLProficiencyPerk::imageSource() const { return perkImageSource(m_perk); }
+bool TQMLProficiencyPerk::hasAugmentEffect() const { return perkHasAugmentEffect(m_perk); }
+QUrl TQMLProficiencyPerk::augmentEffectImageSource() const { return perkAugmentEffectImageSource(m_perk); }
+uint TQMLProficiencyPerk::perkRank() const { return m_isShaped ? m_perkRank : 0; }
 
 TQMLProficiencyLevelInformation::TQMLProficiencyLevelInformation(const int levelIndex, const int tableLevels, const uint16_t typeId,
                                                                  const TProficiencyLevel& level, const TPerkPick* localPick,

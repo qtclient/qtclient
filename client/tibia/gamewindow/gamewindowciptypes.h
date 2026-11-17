@@ -169,7 +169,14 @@ class TQmlTargetWorld final : public cip::tibia::gamewindow::TQmlTargetWorld
 {
     Q_OBJECT
 public:
-    TQmlTargetWorld(QString worldName, QString detailedWorldName, bool premiumOnly, bool lockedForTransfer, QObject* parent = nullptr);
+    TQmlTargetWorld(QString worldName, bool premiumOnly, bool lockedForTransfer, int pvpType, QObject* parent = nullptr);
+
+    /// The name with the PvP type, and whether the world is premium only
+    /// and/or locked for transfers.
+    QString detailedWorldName() const override;
+
+private:
+    int m_pvpType = 0;
 };
 
 class TQmlWorldTransferCondition final : public cip::tibia::gamewindow::TQmlWorldTransferCondition
