@@ -558,6 +558,21 @@ config::TUISoundsQMLOptionsPage::~TUISoundsQMLOptionsPage	4a00f6b18d7ba357	skip	
 config::TUISoundsQMLOptionsPage::~TUISoundsQMLOptionsPage_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
 container::TContainer::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 container::TContainer::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
+container::TContainer::v16	2ef21ce22944ddfe	ported	container/containerciptypes.h:TContainer::appendItem
+container::TContainer::v17	df8275bbabed5b25	ported	container/containerciptypes.cpp:TContainer::setItem
+container::TContainer::v18	37018cee199a00da	ported	container/containerciptypes.cpp:TContainer::removeItem
+container::TContainer::v19	72d664eff107fc64	ported	container/containerciptypes.cpp:TContainer::insertItem
+container::TContainer::v20	469e6595d408f2a3	ported	container/containerciptypes.cpp:TContainer::itemAt
+container::TContainer::v21	3601a7ac3e5579cd	ported	container/containerciptypes.h:TContainer::slotIndex
+container::TContainer::v22	63b35665ce136bc9	ported	container/containerciptypes.h:TContainer::nextPageFirstIndex
+container::TContainer::v23	96c2a293116444be	ported	container/containerciptypes.h:TContainer::previousPageFirstIndex
+container::TContainer::v24	7658218b8b7a11f8	ported	container/containerciptypes.cpp:TContainer::pageCount
+container::TContainer::v25	43570ba94ba086e8	ported	container/containerciptypes.cpp:TContainer::currentPage
+container::TContainer::v26	785c8dfc90425173	ported	container/containerciptypes.h:TContainer::isLastPage
+container::TContainer::v27	6e317b69e09fdcc3	ported	container/containerciptypes.h:TContainer::isFirstPage
+container::TContainer::v28	3ba9a7a1d7237ce3	ported	container/containerciptypes.h:TContainer::itemCount
+container::TContainer::v29	400c611e6c4825f0	ported	container/containerciptypes.h:TContainer::increaseSize
+container::TContainer::v30	5ddbfedad03493ee	ported	container/containerciptypes.h:TContainer::decreaseSize
 container::TContainerGameActionHandler::~TContainerGameActionHandler	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TContainerGameActionHandler::~TContainerGameActionHandler_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TContainerGameActionProvider::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
@@ -573,13 +588,25 @@ container::TContainerStorage::v15	55899e5a23e59ef2	ported	container/containercip
 container::TContainerStorage::v16	9c2e274aa60abe3c	ported	container/containerciptypes.cpp:TContainerStorage::containerAt
 container::TContainerStorage::v17	f66ec89ba47e937a	ported	container/containerciptypes.cpp:TContainerStorage::closeContainer
 container::TContainerStorage::v18	ec77c783dd05419a	ported	container/containerciptypes.cpp:TContainerStorage::clear
+container::TContainerStorage::v19	38c20f078e296679	ported	container/containerciptypes.cpp:TContainerStorage::applyUpdateItem
+container::TContainerStorage::v20	c0363e3eb6e46975	ported	container/containerciptypes.cpp:TContainerStorage::applyRemoveItem
+container::TContainerStorage::v21	d9459d549fe67ca8	ported	container/containerciptypes.cpp:TContainerStorage::applyAddItem
+container::TContainerStorage::v35	00891527872e3bcc	ported	container/containerciptypes.cpp:TContainerStorage::manualSortMode
+container::TContainerStorage::v36	93443624cfce954f	ported	container/containerciptypes.cpp:TContainerStorage::setManualSortMode
 container::TContainerStorage::~TContainerStorage	08f8e916e28384af	skip	generated: compiler-generated destructor pair
 container::TContainerStorage::~TContainerStorage_deleting	10c4b855c5a5e474	skip	generated: compiler-generated destructor pair
 container::TDepotSearchDetailListStorage::~TDepotSearchDetailListStorage	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TDepotSearchDetailListStorage::~TDepotSearchDetailListStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
+container::TInventoryContainer::v12	84b65caae938771d	ported	container/containerciptypes.cpp:TInventoryContainer::setSlot
+container::TInventoryContainer::v13	fec3a2f091a56b6f	ported	container/containerciptypes.cpp:TInventoryContainer::slotAt
 container::TInventoryContainer::~TInventoryContainer_deleting	6e743e8e1a657fdb	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TObjectAppearanceInstanceInfoStorage::onAsyncEmitObjectInfosChanged	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 container::TObjectAppearanceInstanceInfoStorage::~TObjectAppearanceInstanceInfoStorage_deleting	2e37c5138499c557	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
+container::TObjectCountStorage::v12	987db751ac9f3405	ported	container/containerciptypes.cpp:TObjectCountStorage::setCounts
+container::TObjectCountStorage::v13	6eef2f5828fe7db1	ported	container/containerciptypes.cpp:TObjectCountStorage::clear
+container::TObjectCountStorage::v14	da364dbf273981b3	ported	container/containerciptypes.h:TObjectCountStorage::counts
+container::TObjectCountStorage::v15	b28cc61e58daba73	ported	container/containerciptypes.h:TObjectCountStorage::count
+container::TObjectCountStorage::v16	8ddc2bc9d01f2145	ported	container/containerciptypes.cpp:TObjectCountStorage::count
 container::TObjectCountStorage::~TObjectCountStorage	8ce292a1ecc0653d	skip	generated: same code as the skipped family: compiler-generated destructor pair
 container::TObjectCountStorage::~TObjectCountStorage_deleting	1531bc616668060c	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TQMLItemSlotData::countChanged	572ea5534fb3e524	ported	container/qmlitemslotdata.h:TQMLItemSlotData::displayTypeID
@@ -4423,6 +4450,7 @@ sub_10a573fc78c3	10a573fc78c3ec91	skip	generated: compiler-generated struct ctor
 sub_10a573fc78c3#2	10a573fc78c3ec91	skip	generated: compiler-generated struct default constructor
 sub_10bdcdec8240	10bdcdec82407ea9	skip	generated: compiler-generated draw command copy / std::vector growth
 sub_10cf80f04153	10cf80f0415337a8	tested	config/clientoptionsmigration.cpp:migrateFromVersion0	test=tests/client/clientoptionsmigration_test.cpp
+sub_10d735fc92a8#4	10d735fc92a8ae81	skip	generated: std::make_shared of a game action
 sub_10d904a97f40	10d904a97f40a0a0	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_10dfd9403a18	10dfd9403a18e506	skip	library: std::__split_buffer<QMetaObject::Connection> destructor
 sub_10e8217d0c30	10e8217d0c30fa66	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
@@ -5550,6 +5578,7 @@ sub_3554cb355755	3554cb3557557df8	inlined	gamewindow/rewardwalldialogcontroller.
 sub_3557a3e411fa	3557a3e411fae542	skip	library: std container template instance
 sub_355a0b2fd5ed	355a0b2fd5ed59f8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::nextLevelProficiencyXP
 sub_355c15533cd8	355c15533cd8d515	skip	data: translation-unit static initializer (misattributed)
+sub_356c1d0f78ad	356c1d0f78ade2a4	skip	library: libc++ vector insert / split buffer instantiations
 sub_3575a8af5da6	3575a8af5da60c76	inlined	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_357e40c53823	357e40c53823ad51	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendQuitGame
 sub_3584c83a9f64	3584c83a9f6489c0	skip	data: translation-unit static initialiser: constant strings/tables, typeid maps, QTimeZone/QTime constants
@@ -7117,6 +7146,7 @@ sub_6e12c0493b8b	6e12c0493b8b7426	ported	gamewindow/stashdialogcontroller.cpp:TS
 sub_6e13770ad5e8	6e13770ad5e8a9dc	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_6e19f52cb57f	6e19f52cb57f72c4	skip	library: std::deque internals (library)
 sub_6e2d43fdfa5d	6e2d43fdfa5d0146	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::lastFloor
+sub_6e32ba65d889	6e32ba65d8891fa3	skip	library: libc++ vector insert / split buffer instantiations
 sub_6e3a0d3c303b	6e3a0d3c303b33c2	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_6e41a5baa999	6e41a5baa999c642	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::setSidebarOptions
 sub_6e54b6269da9	6e54b6269da9013d	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowKnightSpells
@@ -7417,6 +7447,7 @@ sub_7a6f5093038b#247	7a6f5093038bcf22	skip	generated: moc-generated signal emitt
 sub_7a6f5093038b#250	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#251	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#40	7a6f5093038bcf22	skip	generated: moc signal emitter
+sub_7a6f5093038b#46	7a6f5093038bcf22	skip	generated: moc signal emitter objectCountsChanged
 sub_7a6f5093038b#51	7a6f5093038bcf22	skip	generated: moc signal emitter
 sub_7a6f5093038b#52	7a6f5093038bcf22	skip	generated: moc-generated signal body
 sub_7a6f5093038b#53	7a6f5093038bcf22	skip	generated: moc signal emitter
@@ -7489,6 +7520,7 @@ sub_7d29f7c67352#11	7d29f7c67352456a	skip	library: std::vector growth/length_err
 sub_7d29f7c67352#15	7d29f7c67352456a	skip	library: std::vector growth / split buffer (library)
 sub_7d29f7c67352#22	7d29f7c67352456a	inlined	tutorial/sessiondumphints.cpp:TSessiondumpHints::addHint
 sub_7d29f7c67352#4	7d29f7c67352456a	skip	library: libc++ vector/deque internals (library)
+sub_7d29f7c67352#5	7d29f7c67352456a	skip	library: libc++ vector insert / split buffer instantiations
 sub_7d29f7c67352#6	7d29f7c67352456a	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_7d29f7c67352#7	7d29f7c67352456a	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_7d3b2a3ef49d	7d3b2a3ef49df466	inlined	tutorial/sessiondumphints.cpp:TSessiondumpHints::sortHints
@@ -9951,6 +9983,7 @@ sub_ccfc9ccd2fbf#2	ccfc9ccd2fbf36c3	tested	shared/src/jsonvalidator.cpp:TJsonVal
 sub_cd201785d3ce	cd201785d3ce0cd7	inlined	creatures/creaturesciptypes.cpp:TVipGameActionHandler::handleRequestVipGroupUpdateGameAction
 sub_cd2b1959c33f	cd2b1959c33fe9fc	ported	store/storeciptypes.cpp:TStoreDescriptionManager::setMessageHandler
 sub_cd2b8f67e021	cd2b8f67e0211ab2	inlined	gamewindow/gamewindowciptypes.cpp:TInspectObjectDialogController::showObject
+sub_cd3a260e82e6	cd3a260e82e6f79c	skip	library: libc++ vector insert / split buffer instantiations
 sub_cd3bfac23f1c	cd3bfac23f1cbfbf	skip	library: libc++ std::vector/std::map instantiation
 sub_cd4776da43c8	cd4776da43c89fdb	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::setDisableButtonsAfterClick
 sub_cd480579f485	cd480579f485a0a4	ported	gamewindow/playerinventoryandstatuscontroller.h:TPlayerInventoryAndStatusController::onPvPModeDoveRequested
@@ -10648,6 +10681,7 @@ sub_e0239a74bd4d#4	e0239a74bd4df02e	skip	library: QMap/QList template instantiat
 sub_e0239a74bd4d#7	e0239a74bd4df02e	skip	library: std container template instance
 sub_e04b7e1bc5c5	e04b7e1bc5c5fa95	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::TManageLootContainerDialogController
 sub_e056fe83879b	e056fe83879bb063	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onLoginOrLogoutStateUpdate
+sub_e0617a01b788	e0617a01b788434d	skip	library: libc++ std::map assignment instantiation
 sub_e0689629fe35	e0689629fe35d785	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onStashContentChanged
 sub_e07c5fa01887	e07c5fa018872abc	tested	sessiondump/sessiondumppacketprocessor.cpp:TSessiondumpPacketProcessor::TSessiondumpPacketProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_e07c5fa01887#2	e07c5fa018872abc	tested	sessiondump/sessiondumppacketprocessor.cpp:TSessiondumpPacketProcessor::TSessiondumpPacketProcessor	test=tests/client/sessiondumpreader_test.cpp

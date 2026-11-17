@@ -548,15 +548,15 @@ void TContainerController::onSlotTargetSelected(const int slotId)
 void TContainerController::onPreviousPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && row->firstIndex > 0)
-        tibia::game::seekInContainer(m_containerId, std::max(0, static_cast<int>(row->firstIndex) - static_cast<int>(row->capacity)));
+    if (row && !row->isFirstPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->previousPageFirstIndex()));
 }
 
 void TContainerController::onNextPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity) < static_cast<int>(row->size))
-        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity));
+    if (row && !row->isLastPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->nextPageFirstIndex()));
 }
 
 void TContainerController::onSearchButtonClicked()
