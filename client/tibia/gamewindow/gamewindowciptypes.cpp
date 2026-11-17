@@ -4,6 +4,7 @@
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/outfit.h>
@@ -11,7 +12,8 @@
 #include <tibia/assets/things.h>
 #include <QColor>
 #include <QGuiApplication>
-#include <QClipboard>
+#include <QQmlContext>
+#include <QQmlEngine>
 #include <QKeyEvent>
 #include <QMetaObject>
 #include <QMouseEvent>
@@ -185,36 +187,35 @@ TWhiteBlacklistQmlEntry::TWhiteBlacklistQmlEntry(QString name, const bool perman
     setPermanently(permanently);
 }
 
-TTextCopyController::TTextCopyController(QObject* parent)
-    : cip::tibia::gamewindow::TTextCopyController(parent)
-{}
+/// Registers itself in the engine's root context.
+TTextCopyController::TTextCopyController(QQmlEngine* engine)
+    : cip::tibia::gamewindow::TTextCopyController(engine)
+{
+    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), this);
+}
 
+/// Cuts the selection of a QML text input with normal echo that is not read
+/// only: removes it, deselects and copies it through the clipboard action.
 void TTextCopyController::cutFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, true);
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0
+        || pTextInput->property("readOnly").toBool())
+        return;
+    const QString text = pTextInput->property("selectedText").toString();
+    const int selectionStart = pTextInput->property("selectionStart").toInt();
+    const int selectionEnd = pTextInput->property("selectionEnd").toInt();
+    QMetaObject::invokeMethod(pTextInput, "remove", Q_ARG(int, selectionStart), Q_ARG(int, selectionEnd));
+    QMetaObject::invokeMethod(pTextInput, "deselect");
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
 }
 
+/// Copies the selection of a QML text input with normal echo through the
+/// clipboard action.
 void TTextCopyController::copyFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, false);
-}
-
-void TTextCopyController::copyOrCut(QObject* textInput, const bool cut)
-{
-    if (!textInput)
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0)
         return;
-    QString selected;
-    QMetaObject::invokeMethod(textInput, "selectedText", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    if (selected.isEmpty()) {
-        QMetaObject::invokeMethod(textInput, "text", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    }
-    if (selected.isEmpty())
-        return;
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        clip->setText(selected);
-    if (cut)
-        QMetaObject::invokeMethod(textInput, "remove", Qt::DirectConnection);
-    input::publish(input::makeAction(cut ? A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD : A::COPY_TEXT_TO_CLIPBOARD));
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(pTextInput->property("selectedText").toString()));
 }
 
 TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)

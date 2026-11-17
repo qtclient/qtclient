@@ -105,13 +105,10 @@ class TTextCopyController final : public cip::tibia::gamewindow::TTextCopyContro
 {
     Q_OBJECT
 public:
-    explicit TTextCopyController(QObject* parent = nullptr);
+    explicit TTextCopyController(QQmlEngine* engine);
 
     void cutFromTextInputQmlItemIfPossible(QObject* pTextInput) override;
     void copyFromTextInputQmlItemIfPossible(QObject* pTextInput) override;
-
-private:
-    void copyOrCut(QObject* textInput, bool cut);
 };
 
 class TSpritesheetDataObject final : public cip::tibia::gamewindow::TSpritesheetDataObject
@@ -520,14 +517,6 @@ class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSl
 class TCharacterInformationModelData final : public ::tibia::CipTyped { public: TCharacterInformationModelData() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
 class TOutfitQMLInformation final : public ::tibia::CipTyped { public: TOutfitQMLInformation() = default; };
-class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };
-class TQmlLoot final : public ::tibia::CipTyped { public: TQmlLoot() = default; };
-class TQmlLootOfRarity final : public ::tibia::CipTyped { public: TQmlLootOfRarity() = default; };
-class TQmlMonsterBonusEffect final : public ::tibia::CipTyped { public: TQmlMonsterBonusEffect() = default; };
-class TQmlMonsterClassificationSummary final : public ::tibia::CipTyped { public: TQmlMonsterClassificationSummary() = default; };
-class TQmlMonsterInfo final : public ::tibia::CipTyped { public: TQmlMonsterInfo() = default; };
-class TQmlMonsterSensitivity final : public ::tibia::CipTyped { public: TQmlMonsterSensitivity() = default; };
-class TQmlPreviewCharm final : public ::tibia::CipTyped { public: TQmlPreviewCharm() = default; };
 
 }
 }

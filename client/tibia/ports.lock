@@ -2376,6 +2376,8 @@ gamewindow::TTeamJoinPageController::v13	e72128c888b02669	ported	gamewindow/team
 gamewindow::TTeamJoinPageController::v14	bd7cfa016a324732	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::hideDialogTab
 gamewindow::TTeamJoinPageController::~TTeamJoinPageController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TTeamJoinPageController::~TTeamJoinPageController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+gamewindow::TTextCopyController::copyFromTextInputQmlItemIfPossible	c625bb43cb3bb849	ported	gamewindow/gamewindowciptypes.cpp:TTextCopyController::copyFromTextInputQmlItemIfPossible
+gamewindow::TTextCopyController::cutFromTextInputQmlItemIfPossible	17bc99a9c8c1d07b	ported	gamewindow/gamewindowciptypes.cpp:TTextCopyController::cutFromTextInputQmlItemIfPossible
 gamewindow::TTextCopyController::~TTextCopyController	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 gamewindow::TTextCopyController::~TTextCopyController_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
 gamewindow::TTileInformation::~TTileInformation	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -6760,12 +6762,16 @@ sub_607750c316e2	607750c316e2d2db	skip	generated: compiler-generated destructor 
 sub_607765febbde	607765febbde3f2e	skip	generated: moc property getter, provided by the generated cip base
 sub_60792148e642	60792148e6425b6d	ported	gamewindow/dialogmanager.cpp:TDialogStackController::update
 sub_607d242e63d4	607d242e63d45301	ported	gamewindow/marketcontroller.cpp:detailsText
+sub_607fb32a7989	607fb32a7989213b	ported	gamewindow/gamewindowciptypes.cpp:TTextCopyController::TTextCopyController
 sub_609f0ac821f4	609f0ac821f41936	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::showGameActions
 sub_60a18b2d08a6	60a18b2d08a63a4a	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
 sub_60a18b2d08a6#2	60a18b2d08a63a4a	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_60b1b30128a7#11	60b1b30128a74865	skip	library: std container template code
 sub_60b1b30128a7#4	60b1b30128a74865	skip	library: std::set template instantiation (construct/assign/destroy)
+sub_60b1b30128a7#5	60b1b30128a74865	skip	library: std::set range insert template instantiation
+sub_60b1b30128a7#6	60b1b30128a74865	skip	library: std::set range insert template instantiation
 sub_60b1b30128a7#7	60b1b30128a74865	skip	library: std::set template instantiation (construct/assign/destroy)
+sub_60b1b30128a7#8	60b1b30128a74865	skip	library: std::set range insert template instantiation
 sub_60ced133d06c	60ced133d06c5989	ported	cyclopedia/combatstatsqmldata.cpp:makeSourcedStat
 sub_60e4181c1825#2	60e4181c1825ef72	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_60fd1696eab5	60fd1696eab5126e	tested	config/hotkeyoptions.cpp:writeMappings	test=tests/client/hotkeyoptions_test.cpp
@@ -6806,6 +6812,7 @@ sub_625b0785c125#3	625b0785c12500c5	skip	data: translation-unit static initializ
 sub_626db2cbf1ff	626db2cbf1ff37ce	skip	generated: compiler-generated destructor pair
 sub_62871225bbad#11	62871225bbad5568	skip	library: std::shared_ptr control block
 sub_62871225bbad#13	62871225bbad5568	skip	library: std::vector<std::shared_ptr> destroy (library)
+sub_62871225bbad#17	62871225bbad5568	skip	library: std::vector<std::shared_ptr> destroy (library)
 sub_628ab99dd394	628ab99dd394ef09	ported	config/sidebaroptions.cpp:serializeBattleList
 sub_62aae2b67310#2	62aae2b673103642	skip	generated: moc signal emitter
 sub_62b2dd1966cf	62b2dd1966cf3883	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::showDialog
@@ -8265,7 +8272,10 @@ sub_93c91c1f5768#201	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy
 sub_93c91c1f5768#203	93c91c1f57686cf1	skip	generated: compiler-generated destructor pair
 sub_93c91c1f5768#204	93c91c1f57686cf1	skip	generated: compiler-generated destructor pair
 sub_93c91c1f5768#205	93c91c1f57686cf1	skip	library: std container template code
+sub_93c91c1f5768#210	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#22	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
+sub_93c91c1f5768#224	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
+sub_93c91c1f5768#225	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#23	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#24	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#25	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
@@ -8279,10 +8289,15 @@ sub_93c91c1f5768#34	93c91c1f57686cf1	skip	library: QMap/QList template instantia
 sub_93c91c1f5768#56	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#57	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
 sub_93c91c1f5768#58	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
+sub_93c91c1f5768#65	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
+sub_93c91c1f5768#66	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#67	93c91c1f57686cf1	skip	library: std::set template instantiation (construct/assign/destroy)
 sub_93c91c1f5768#69	93c91c1f57686cf1	skip	library: std::set template instantiation (construct/assign/destroy)
 sub_93c91c1f5768#70	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#71	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
+sub_93c91c1f5768#76	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
+sub_93c91c1f5768#77	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
+sub_93c91c1f5768#78	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#82	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#83	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#84	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
