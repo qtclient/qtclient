@@ -150,8 +150,8 @@ const char* namedLabel(const A type)
 A firstPresent(const std::vector<A>& types, const input::TGameActionList& actions)
 {
     for (const A type : types) {
-        for (const input::TGameActionPtr& action : actions) {
-            if (action->type == type)
+        for (const input::IGameActionPtr& action : actions) {
+            if (action->gameActionType() == type)
                 return type;
         }
     }
@@ -220,8 +220,12 @@ TContextMenuController* TContextMenuController::instance()
     return g_instance;
 }
 
-QString TContextMenuController::labelOf(const input::TGameAction& action, QString& shortcut)
+QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, QString& shortcut)
 {
+    const auto* fields = dynamic_cast<const input::TGameAction*>(&pGameAction);
+    if (!fields)
+        return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
+    const input::TGameAction& action = *fields;
     if (const char* id = simpleLabel(action.type)) {
         if (action.type == A::BUY_HIRELING_NAME_OR_SEX_CHANGE)
             shortcut = qtTrId("context_store_dialog");
@@ -251,18 +255,18 @@ void TContextMenuController::showGameActions(const input::TGameActionList& actio
     const A shift = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::ShiftModifier), actions);
     const A ctrl = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::ControlModifier), actions);
     const A alt = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::AltModifier), actions);
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == A::CONTEXT_MENU_SEPARATOR) {
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == A::CONTEXT_MENU_SEPARATOR) {
             addSeparator();
             continue;
         }
         QString shortcut;
         const QString label = labelOf(*action, shortcut);
-        if (action->type == shift)
+        if (action->gameActionType() == shift)
             shortcut = qtTrId("context_keymodifier_shift");
-        if (action->type == ctrl)
+        if (action->gameActionType() == ctrl)
             shortcut = qtTrId("context_keymodifier_ctrl");
-        if (action->type == alt)
+        if (action->gameActionType() == alt)
             shortcut = qtTrId("context_keymodifier_alt");
         TContextMenuEntryItem* entry = addEntry(label, shortcut);
         connect(entry, &TContextMenuEntryItem::triggered, this, [action] { input::publish(action); });

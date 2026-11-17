@@ -16,7 +16,7 @@ public:
     explicit TWorldMapGameActionHandler(QObject* parent = nullptr);
 
 public Q_SLOTS:
-    void handleGameAction(const input::TGameActionPtr& action);
+    void handleGameAction(const input::IGameActionPtr& action);
 };
 
 }

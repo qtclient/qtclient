@@ -43,9 +43,9 @@ namespace {
 
 using A = EGameAction;
 
-std::function<void(const TGameAction&)>& minimapActionHandler()
+std::function<void(const IGameAction&)>& minimapActionHandler()
 {
-    static std::function<void(const TGameAction&)> handler;
+    static std::function<void(const IGameAction&)> handler;
     return handler;
 }
 
@@ -73,11 +73,11 @@ std::map<int, std::pair<EGameAction, ActionListener>>& actionListeners()
     return listeners;
 }
 
-bool notifyListeners(const TGameAction& action)
+bool notifyListeners(const IGameAction& action)
 {
     std::vector<ActionListener> matching;
     for (const auto& [id, listener] : actionListeners())
-        if (listener.first == action.type)
+        if (listener.first == action.gameActionType())
             matching.push_back(listener.second);
     for (const ActionListener& listener : matching)
         if (listener(action))
@@ -491,8 +491,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         moveObject(*action);
         break;
     case A::SHOW_SPLIT_STACK_DIALOG:
-        if (action->inner)
-            moveObject(*action->inner);
+        if (const auto* inner = gameActionAs<TGameAction>(action->inner))
+            moveObject(*inner);
         break;
     case A::STOP_ATTACKING_FOLLOWING_WALKING:
         tibia::game::stop();
@@ -631,12 +631,12 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     }
 }
 
-void setMinimapActionHandler(std::function<void(const TGameAction&)> handler)
+void setMinimapActionHandler(std::function<void(const IGameAction&)> handler)
 {
     minimapActionHandler() = std::move(handler);
 }
 
-void setActionHandler(const EGameAction type, ActionHandler handler)
+void setActionHandlerImpl(const EGameAction type, ActionHandler handler)
 {
     if (handler)
         actionHandlers()[type] = std::move(handler);
@@ -644,7 +644,7 @@ void setActionHandler(const EGameAction type, ActionHandler handler)
         actionHandlers().erase(type);
 }
 
-int addActionListener(const EGameAction type, ActionListener listener)
+int addActionListenerImpl(const EGameAction type, ActionListener listener)
 {
     static int nextId = 0;
     actionListeners().emplace(++nextId, std::make_pair(type, std::move(listener)));

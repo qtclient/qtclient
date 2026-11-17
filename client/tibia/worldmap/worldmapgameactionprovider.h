@@ -40,12 +40,12 @@ public:
         int stackPos = -1;
         explicit operator bool() const { return typeId != 0; }
     };
-    static TMouseTargetObject mouseTargetObjectOf(const input::TGameActionPtr& action);
+    static TMouseTargetObject mouseTargetObjectOf(const input::IGameActionPtr& pGameAction);
     /// Deprecated shim — prefer `mouseTargetObjectOf` (returns null; item hover is id-based).
     /// Creature id under the mouse for an action (0 when not a creature target).
-    static uint32_t mouseTargetCreatureIdOf(const input::TGameActionPtr& action);
+    static uint32_t mouseTargetCreatureIdOf(const input::IGameActionPtr& pGameAction);
     /// The map window's cursor shape for an action (TMouseCursorController shapes).
-    static int cursorShapeOf(const input::TGameActionPtr& action);
+    static int cursorShapeOf(const input::IGameActionPtr& pGameAction);
 
 private:
     const qmlcomponents::TWorldMapRenderProvider& m_provider;

@@ -3,6 +3,7 @@
 // client window exists (CIP: TGameClient creates them on its window-setup
 // timer and keeps them as its members).
 #include "client/gameclient.h"
+#include "game/gameactionrouter.h"
 
 #include "analysers/analyserstorages.h"
 #include "analysers/analyserwidgets.h"
@@ -723,9 +724,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.clipboardActions = std::make_unique<input::TClipboardGameActionHandler>();
     g.genericActions = std::make_unique<input::TGenericGameActionHandler>();
     input::TGenericGameActionHandler* genericActions = g.genericActions.get();
-    // The game action router receives the handler's actions.
-    connect(genericActions, &input::TGenericGameActionHandler::publishGameAction, genericActions,
-            [](const input::TGameActionPtr& action) { input::publish(action); });
+    connect(genericActions, &input::TGenericGameActionHandler::publishGameAction,
+            gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
             [this] { requestLogoutOrShowStartScreen(nullptr); });
     connect(genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,

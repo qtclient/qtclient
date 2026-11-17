@@ -2,7 +2,9 @@
 
 #include "gameaction.h"
 
+#include <cstddef>
 #include <functional>
+#include <type_traits>
 
 namespace tibia::game {
 class TInternalGameActionRouter;
@@ -25,19 +27,69 @@ void handleUnportedGameAction(const IGameActionPtr& action);
 
 /// Receives the minimap actions (93-101; CIP: TMinimapController's handler).
 /// Null drops them.
-void setMinimapActionHandler(std::function<void(const TGameAction&)> handler);
+void setMinimapActionHandler(std::function<void(const IGameAction&)> handler);
+
+namespace detail {
+template<typename F>
+struct GameActionHandlerArgument : GameActionHandlerArgument<decltype(&F::operator())>
+{
+};
+template<typename R, typename A>
+struct GameActionHandlerArgument<R (*)(A)>
+{
+    using type = std::remove_cvref_t<A>;
+};
+template<typename C, typename R, typename A>
+struct GameActionHandlerArgument<R (C::*)(A) const>
+{
+    using type = std::remove_cvref_t<A>;
+};
+template<typename C, typename R, typename A>
+struct GameActionHandlerArgument<R (C::*)(A)>
+{
+    using type = std::remove_cvref_t<A>;
+};
+/// A handler taking the action's class: actions of another class are not its
+/// (returns false).
+template<typename F>
+std::function<bool(const IGameAction&)> typedGameActionHandler(F&& handler)
+{
+    using Handler = std::decay_t<F>;
+    if constexpr (std::is_invocable_v<Handler&, const IGameAction&>) {
+        return std::function<bool(const IGameAction&)>(std::forward<F>(handler));
+    } else {
+        using Action = typename GameActionHandlerArgument<Handler>::type;
+        return [handler = Handler(std::forward<F>(handler))](const IGameAction& action) mutable -> bool {
+            const auto* typed = dynamic_cast<const Action*>(&action);
+            return typed && handler(*typed);
+        };
+    }
+}
+}
 
 /// Receives one action type ahead of the built-in handling (CIP: a
 /// controller's handleGameAction, e.g. the inventory's tactics). Returning
-/// false lets the built-in handling run. A null handler removes it.
-using ActionHandler = std::function<bool(const TGameAction&)>;
-void setActionHandler(EGameAction type, ActionHandler handler);
+/// false lets the built-in handling run. A null handler removes it. The
+/// handler takes IGameAction or the action's class.
+using ActionHandler = std::function<bool(const IGameAction&)>;
+void setActionHandlerImpl(EGameAction type, ActionHandler handler);
+inline void setActionHandler(EGameAction type, std::nullptr_t) { setActionHandlerImpl(type, {}); }
+template<typename F>
+void setActionHandler(EGameAction type, F&& handler)
+{
+    setActionHandlerImpl(type, detail::typedGameActionHandler(std::forward<F>(handler)));
+}
 
 /// One of several controllers seeing an action type before its handler (CIP:
 /// the sidebar manager handing USE_AT_MOUSECURSOR / SPELL_AT_MOUSE_CURSOR to
 /// every widget,). Returning true consumes the action.
-using ActionListener = std::function<bool(const TGameAction&)>;
-int addActionListener(EGameAction type, ActionListener listener);
+using ActionListener = std::function<bool(const IGameAction&)>;
+int addActionListenerImpl(EGameAction type, ActionListener listener);
+template<typename F>
+int addActionListener(EGameAction type, F&& listener)
+{
+    return addActionListenerImpl(type, detail::typedGameActionHandler(std::forward<F>(listener)));
+}
 void removeActionListener(int id);
 
 /// Target selection (CIP: START_TARGET_SELECTION .. TARGET_SELECTION_FINISHED):

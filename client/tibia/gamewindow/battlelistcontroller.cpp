@@ -96,9 +96,9 @@ input::TGameActionList battleListGameActions(const uint32_t creatureId)
 /// The first of the actions with `type`, or none.
 input::TGameActionPtr findAction(const input::TGameActionList& actions, const A type)
 {
-    for (const input::TGameActionPtr& action : actions) {
-        if (action && action->type == type)
-            return action;
+    for (const input::IGameActionPtr& action : actions) {
+        if (action && action->gameActionType() == type)
+            return input::unportedGameAction(action);
     }
     return nullptr;
 }
@@ -685,7 +685,7 @@ void TBattleListController::onCreatureClicked(const int creatureId, const int mo
         m_mapper.map(actions, mapperContext(), static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

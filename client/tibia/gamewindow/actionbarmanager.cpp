@@ -66,8 +66,8 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     , m_displayOptions(config::actionBarsBindings(), this)
     , m_cooldowns(this)
     , m_crossHair(std::make_unique<input::TCrossHairGameActionHandlers>())
-    , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(
-          [this](const input::TGameAction& action) { return onActionButtonTriggered(action); }))
+    , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(input::detail::typedGameActionHandler(
+          [this](const input::TGameAction& action) { return onActionButtonTriggered(action); })))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
 {
     loadDisplayOptions();

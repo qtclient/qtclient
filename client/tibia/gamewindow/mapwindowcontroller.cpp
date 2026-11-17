@@ -625,8 +625,8 @@ void TMapWindowController::updateMouseTarget()
     // mouse (none off creatures) is the temporarily selected one, like a
     // hovered battle-list entry.
     if (m_highlightMouseTarget) {
-        for (const input::TGameActionPtr& candidate : candidates) {
-            if (candidate->type == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
+        for (const input::IGameActionPtr& candidate : candidates) {
+            if (candidate->gameActionType() == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
                 m_actionHandler->handleGameAction(candidate);
                 break;
             }
@@ -668,7 +668,7 @@ void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY
                                                       static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != input::EGameAction::CONTEXT_MENU) {
+    if (action->gameActionType() != input::EGameAction::CONTEXT_MENU) {
         m_actionHandler->handleGameAction(action);
         // A click on the map closes the open multi action buttons.
         input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
@@ -684,9 +684,9 @@ void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mous
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
         return;
-    for (const input::TGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
-        if (action->type == input::EGameAction::MOVE_OBJECT) {
-            dnd->startDrag(action, source);
+    for (const input::IGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
+        if (action->gameActionType() == input::EGameAction::MOVE_OBJECT) {
+            dnd->startDrag(input::unportedGameAction(action), source);
             return;
         }
     }
@@ -713,9 +713,10 @@ input::TGameActionPtr TMapWindowController::targetAt(const QPointF& mapWindowPoi
     if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap)
         return nullptr;
     input::TGameActionPtr target;
-    for (const input::TGameActionPtr& candidate : m_actions->actionsAt(toMapPixel(mapWindowPoint))) {
-        if (candidate->type == input::EGameAction::TARGET_SELECTED && (!target || candidate->creatureId))
-            target = candidate;
+    for (const input::IGameActionPtr& candidate : m_actions->actionsAt(toMapPixel(mapWindowPoint))) {
+        const input::TGameActionPtr selected = input::unportedGameAction(candidate);
+        if (selected && selected->type == input::EGameAction::TARGET_SELECTED && (!target || selected->creatureId))
+            target = selected;
     }
     return target;
 }

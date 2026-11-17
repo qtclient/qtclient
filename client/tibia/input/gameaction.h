@@ -52,7 +52,7 @@ const T* gameActionAs(const IGameActionPtr& action)
 
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
-using TGameActionList = std::vector<TGameActionPtr>;
+using TGameActionList = std::vector<IGameActionPtr>;
 
 /// qtclient's field carrier for the actions whose CIP classes are not ported
 /// yet: every type uses the subset of fields its CIP class carries. Ported
@@ -71,7 +71,7 @@ struct TGameAction : public IGameAction
     /// Creature actions.
     uint32_t creatureId = 0;
     /// SMART_CLICK: the action a click runs.
-    TGameActionPtr inner;
+    IGameActionPtr inner;
     /// ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE.
     QString text;
     QColor color;
@@ -163,6 +163,14 @@ struct TGameAction : public IGameAction
     /// (clicks on the world map or an object; not the minimap or cyclopedia map).
     bool enterUnwalkableGoal = true;
 };
+
+/// qtclient adapter while TGameAction exists: the action as the field carrier,
+/// null for an action whose class is ported. Every reader still using it is
+/// converted together with the classes it reads.
+inline TGameActionPtr unportedGameAction(const IGameActionPtr& action)
+{
+    return std::dynamic_pointer_cast<const TGameAction>(action);
+}
 
 /// CIP input::TGameActionLook (v0 → LOOK).
 class TGameActionLook final : public TGameAction
@@ -320,7 +328,7 @@ class TGameActionSmartClick final : public TGameAction
 {
 public:
     TGameActionSmartClick() { type = EGameAction::SMART_CLICK; }
-    explicit TGameActionSmartClick(TGameActionPtr innerAction);
+    explicit TGameActionSmartClick(IGameActionPtr innerAction);
 };
 
 /// CIP input::TGameActionContextMenu (v0).
@@ -1673,7 +1681,7 @@ TGameActionPtr makeAction(EGameAction type);
 TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
 TGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
-TGameActionPtr makeSmartClick(const TGameActionPtr& inner);
+TGameActionPtr makeSmartClick(const IGameActionPtr& inner);
 
 /// Typed mutable copy: factory dynamic type + field assign (CIP handler reshapes).
 std::shared_ptr<TGameAction> mutableClone(const TGameAction& action);
@@ -1694,7 +1702,7 @@ TGameActionList contextMenuActions(const TGameActionList& candidates, std::span<
 /// A dragged object's drop (CIP:). Shift moves everything; a
 /// stack asks for the amount when Ctrl's state matches option
 /// dragAndDropDefaultActionIsMoveAll.
-TGameActionPtr finalizeDrop(const TGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
+TGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
 
 }
 }

@@ -73,7 +73,7 @@ TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController()
 
 bool TSelectObjectAmountDialogController::handleSplitStack(const input::TGameAction& action)
 {
-    const input::TGameActionPtr& move = action.inner;
+    const input::TGameActionPtr move = input::unportedGameAction(action.inner);
     if (!move || !move->objectClientId)
         return false;
     // Creatures use wire id Proto::Creature — never a stackable item amount.
@@ -89,7 +89,7 @@ bool TSelectObjectAmountDialogController::handleSplitStack(const input::TGameAct
 
 bool TSelectObjectAmountDialogController::handleStash(const input::TGameAction& action)
 {
-    const input::TGameActionPtr& inner = action.inner;
+    const input::TGameActionPtr inner = input::unportedGameAction(action.inner);
     if (!inner)
         return false;
     int typeId = 0;

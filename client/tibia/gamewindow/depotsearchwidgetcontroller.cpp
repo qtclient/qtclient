@@ -603,7 +603,7 @@ void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId,
         m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }
@@ -655,7 +655,7 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
     input::TGameActionList actions{ input::makeAction(A::CONTEXT_MENU) };
-    for (input::TGameActionPtr& action :
+    for (input::IGameActionPtr& action :
          input::filterActions(input::TGenericObjectGameActionProvider::objectActions(objects[static_cast<size_t>(slotId)], {}, slotId),
                               ObjectContextMenuOrder))
         actions.push_back(std::move(action));
@@ -673,14 +673,14 @@ void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const 
         m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }
     input::TGameActionList entries = context == StashContext ? input::contextMenuActions(candidates, TypeContextMenuOrder)
                                                              : input::contextMenuActions(candidates, ObjectContextMenuOrder);
     if (context == ContainerContext)
-        std::erase_if(entries, [](const input::TGameActionPtr& entry) { return entry && entry->type == A::OPEN; });
+        std::erase_if(entries, [](const input::IGameActionPtr& entry) { return entry && entry->gameActionType() == A::OPEN; });
     if (entries.empty())
         return;
     if (TContextMenuController* menu = TContextMenuController::instance())

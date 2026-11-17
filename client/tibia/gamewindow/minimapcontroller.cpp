@@ -53,7 +53,10 @@ TMinimapController::TMinimapController(QObject* parent)
                 onPlayerPositionChanged(*position);
         return std::any{};
     });
-    input::setMinimapActionHandler([this](const input::TGameAction& action) { handleGameAction(action); });
+    input::setMinimapActionHandler([this](const input::IGameAction& action) {
+        if (const auto* fields = dynamic_cast<const input::TGameAction*>(&action))
+            handleGameAction(*fields);
+    });
 }
 
 TMinimapController::~TMinimapController()
@@ -252,7 +255,7 @@ void TMinimapController::dispatchClick(const input::TGameActionList& actions, co
         m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

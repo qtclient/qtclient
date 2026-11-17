@@ -88,9 +88,9 @@ container::TInventorySlot slotAppearance(const int slotId)
 
 input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == type)
-            return action;
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == type)
+            return input::unportedGameAction(action);
     }
     return nullptr;
 }
@@ -506,7 +506,7 @@ void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const 
         m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

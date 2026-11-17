@@ -72,10 +72,10 @@ constexpr EGameAction ContextMenuOrder[] = {
     EGameAction::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
 };
 
-const TGameActionPtr* firstOfType(const TGameActionList& candidates, const EGameAction type)
+const IGameActionPtr* firstOfType(const TGameActionList& candidates, const EGameAction type)
 {
     const auto it = std::find_if(candidates.begin(), candidates.end(),
-                                 [type](const TGameActionPtr& action) { return action && action->type == type; });
+                                 [type](const IGameActionPtr& action) { return action && action->gameActionType() == type; });
     return it == candidates.end() ? nullptr : &*it;
 }
 
@@ -220,7 +220,7 @@ TGameActionPlayerTradeItem::TGameActionPlayerTradeItem(Position position, int st
     fillObject(*this, position, stackPosition, objectClientId);
 }
 
-TGameActionSmartClick::TGameActionSmartClick(TGameActionPtr innerAction)
+TGameActionSmartClick::TGameActionSmartClick(IGameActionPtr innerAction)
 {
     type = EGameAction::SMART_CLICK;
     inner = std::move(innerAction);
@@ -1184,7 +1184,7 @@ TGameActionPtr makeMovementIntent(const Position& position, const int pathMode, 
     return std::make_shared<TGameActionPlayerMovementIntent>(position, pathMode, enterUnwalkableGoal);
 }
 
-TGameActionPtr makeSmartClick(const TGameActionPtr& inner)
+TGameActionPtr makeSmartClick(const IGameActionPtr& inner)
 {
     return std::make_shared<TGameActionSmartClick>(inner);
 }
@@ -1212,7 +1212,7 @@ TGameActionList filterActions(const TGameActionList& candidates, const std::span
 {
     TGameActionList result;
     for (const EGameAction type : types) {
-        if (const TGameActionPtr* action = firstOfType(candidates, type))
+        if (const IGameActionPtr* action = firstOfType(candidates, type))
             result.push_back(*action);
     }
     return result;
@@ -1228,22 +1228,23 @@ TGameActionList contextMenuActions(const TGameActionList& candidates, const std:
     TGameActionList result;
     for (const EGameAction type : order) {
         if (type == Separator) {
-            if (!result.empty() && result.back()->type != Separator)
+            if (!result.empty() && result.back()->gameActionType() != Separator)
                 result.push_back(std::make_shared<TGameActionContextMenuSeparator>());
-        } else if (const TGameActionPtr* action = firstOfType(candidates, type)) {
+        } else if (const IGameActionPtr* action = firstOfType(candidates, type)) {
             result.push_back(*action);
         }
     }
-    while (!result.empty() && result.back()->type == Separator)
+    while (!result.empty() && result.back()->gameActionType() == Separator)
         result.pop_back();
     return result;
 }
 
-TGameActionPtr finalizeDrop(const TGameActionPtr& move, const Position& destination, const int modifiers, const bool defaultIsMoveAll)
+TGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destination, const int modifiers, const bool defaultIsMoveAll)
 {
-    if (!move)
+    const auto* moved = gameActionAs<TGameAction>(move);
+    if (!moved)
         return nullptr;
-    auto action = std::make_shared<TGameActionMoveObject>(*move);
+    auto action = std::make_shared<TGameActionMoveObject>(*moved);
     action->destination = destination;
     if (action->moveAll || action->position == destination)
         return action;

@@ -192,7 +192,7 @@ TGameActionPtr TGameActionMapper::map(const TGameActionList& candidates, const i
     if (types.empty())
         return nullptr;
     const TGameActionList actions = filterActions(candidates, types);
-    return actions.empty() ? nullptr : actions.front();
+    return actions.empty() ? nullptr : unportedGameAction(actions.front());
 }
 
 }

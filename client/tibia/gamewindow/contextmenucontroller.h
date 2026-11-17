@@ -64,7 +64,7 @@ public:
 
     /// The entry text for an action (CIP:); some actions also
     /// set `shortcut`.
-    static QString labelOf(const input::TGameAction& action, QString& shortcut);
+    static QString labelOf(const input::IGameAction& pGameAction, QString& shortcut);
 
     /// A menu its owner builds entry by entry (CIP: clear,
     /// add entry, separator, show).

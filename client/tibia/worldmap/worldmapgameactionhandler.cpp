@@ -9,7 +9,7 @@ TWorldMapGameActionHandler::TWorldMapGameActionHandler(QObject* parent)
 {
 }
 
-void TWorldMapGameActionHandler::handleGameAction(const input::TGameActionPtr& action)
+void TWorldMapGameActionHandler::handleGameAction(const input::IGameActionPtr& action)
 {
     if (action)
         input::publish(action);

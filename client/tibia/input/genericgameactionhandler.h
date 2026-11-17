@@ -63,7 +63,7 @@ public Q_SLOTS:
     void handleToggleFpsLagIndecatorGameAction() override;
 
 Q_SIGNALS:
-    void publishGameAction(const tibia::input::TGameActionPtr& action);
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
     /// QUIT_GAME: the session logs the character out.
     void sendQuitGame();
 };

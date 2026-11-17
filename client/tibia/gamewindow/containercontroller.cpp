@@ -82,9 +82,9 @@ void toggleOption(const char* name)
 
 input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == type)
-            return action;
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == type)
+            return input::unportedGameAction(action);
     }
     return nullptr;
 }
@@ -456,7 +456,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
         }
     }
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
-    for (input::TGameActionPtr& action :
+    for (input::IGameActionPtr& action :
          input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot), SlotActionTypes))
         actions.push_back(std::move(action));
     return actions;
@@ -469,7 +469,7 @@ void TContainerController::onSlotClicked(const int slotId, const int mouseButton
         m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

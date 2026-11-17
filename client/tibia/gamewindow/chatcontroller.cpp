@@ -1896,8 +1896,9 @@ void TChatController::showTabMenu(chat::TChatChannel* channel, const int button,
         if (!menu || m_mapper.map(candidates, ChatTabContext, static_cast<Qt::MouseButton>(button), modifiers) == nullptr)
             return;
         menu->beginCustomMenu();
-        for (const input::TGameActionPtr& action : candidates) {
-            if (action->type != A::SELECT_CHAT_CHANNEL_AS_SECONDARY)
+        for (const input::IGameActionPtr& candidate : candidates) {
+            const input::TGameActionPtr action = input::unportedGameAction(candidate);
+            if (!action || action->type != A::SELECT_CHAT_CHANNEL_AS_SECONDARY)
                 continue;
             const TChatChannelIdentifier identifier = chat::TChatGameActionProvider::identifierOf(*action);
             auto labelled = input::mutableClone(*action);
@@ -1919,7 +1920,7 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
     const input::TGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
     if (!picked)
         return;
-    if (picked->type != A::CONTEXT_MENU) {
+    if (picked->gameActionType() != A::CONTEXT_MENU) {
         runMenuAction(*picked, model, channel);
         return;
     }
@@ -1928,8 +1929,8 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
     if (!menu || entries.empty())
         return;
     menu->beginCustomMenu();
-    for (const input::TGameActionPtr& action : entries) {
-        if (action->type == A::CONTEXT_MENU_SEPARATOR) {
+    for (const input::IGameActionPtr& action : entries) {
+        if (action->gameActionType() == A::CONTEXT_MENU_SEPARATOR) {
             menu->addCustomSeparator();
             continue;
         }
@@ -1937,7 +1938,8 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
         const QString label = TContextMenuController::labelOf(*action, shortcut);
         connect(menu->addCustomEntry(label, shortcut), &TContextMenuEntryItem::triggered, this,
                 [this, action, target = QPointer<TChatChannelController>(model), tab = QPointer<TChatChannel>(channel)] {
-                    runMenuAction(*action, target, tab);
+                    if (const input::TGameActionPtr fields = input::unportedGameAction(action))
+                        runMenuAction(*fields, target, tab);
                 });
     }
     menu->showCustomMenu();
