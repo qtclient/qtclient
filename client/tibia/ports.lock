@@ -104,7 +104,6 @@ appearances::IAppearanceInstanceSpriteInfo::v1	7382774637cec697	skip	generated: 
 appearances::IAppearanceInstanceSpriteInfo::v2	122336d00a45fcbf	ported	appearances/spriteinfo.h:TAppearanceInstanceSpriteInfo::identifierKind
 appearances::TAppearanceInstance::v0	93d4d227dfdd8e50	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstance::v1	c706b9be1f95cd79	skip	generated: compiler-generated destructor pair
-appearances::TAppearanceInstance::v10	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 appearances::TAppearanceInstance::v11	0815b08ac43f51fa	ported	appearances/appearanceinstance.cpp:TAppearanceInstance::setSpritePattern
 appearances::TAppearanceInstance::v2	5468181e0d5064ae	ported	appearances/appearanceinstance.h:TAppearanceInstance::thingType
 appearances::TAppearanceInstance::v5	2f394c907c2a391d	ported	appearances/appearanceinstance.h:TAppearanceInstance::updateAnimation
@@ -207,10 +206,10 @@ appearances::TDummyAppearanceInstanceSpriteInfo::v0	872d4faac408f6d5	skip	genera
 appearances::TDummyAppearanceInstanceSpriteInfo::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::TDummyAppearanceInstanceSpriteInfo::v3	d99e19a09a93515a	ported	appearances/spriteinfo.cpp:TDummyAppearanceInstanceSpriteInfo::clone
 appearances::TDummyAppearanceInstanceSpriteInfo::v4	9583ec69b8585ef5	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::equals
-appearances::TDummyAppearanceInstanceSpriteInfo::v5	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+appearances::TDummyAppearanceInstanceSpriteInfo::v5	bcccd51b8b153f85	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::hash
 appearances::TDummyAppearanceInstanceSpriteInfo::v6	aadf00082e9b6011	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::kind
 appearances::TDummyAppearanceInstanceSpriteInfo::v7	60ec315e13ec38f4	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::boundingBox
-appearances::TDummyAppearanceInstanceSpriteInfo::v8	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+appearances::TDummyAppearanceInstanceSpriteInfo::v8	bcccd51b8b153f85	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::spriteSize
 appearances::TEffectInstance::v0	7382774637cec697	skip	generated: compiler-generated destructor pair
 appearances::TEffectInstance::v1	7382774637cec697	skip	generated: compiler-generated destructor pair
 appearances::TExpireObjectAppearanceInstance::v0	262f45e74a197d9c	skip	generated: compiler-generated destructor pair
@@ -251,7 +250,6 @@ appearances::TObjectAppearanceInstance::v0	262f45e74a197d9c	skip	generated: comp
 appearances::TObjectAppearanceInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair
 appearances::TObjectOutfitAppearanceInstance::v0	cb931b7f72bd5769	skip	generated: compiler-generated destructor pair
 appearances::TObjectOutfitAppearanceInstance::v1	91ff968c1f6e24ec	skip	generated: compiler-generated destructor pair
-appearances::TObjectOutfitAppearanceInstance::v12	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::TOutfitAppearanceInstance::v0	cb931b7f72bd5769	skip	generated: compiler-generated destructor pair
 appearances::TOutfitAppearanceInstance::v1	91ff968c1f6e24ec	skip	generated: compiler-generated destructor pair
 appearances::TOutfitAppearanceInstance::v12	3d377e33a693f589	ported	appearances/appearanceinstance.cpp:TOutfitAppearanceInstance::setPatterns
@@ -870,7 +868,6 @@ container::TDepotSearchDetailListStorage::~TDepotSearchDetailListStorage_deletin
 container::TInventoryContainer::v12	84b65caae938771d	ported	container/containerciptypes.cpp:TInventoryContainer::setSlot
 container::TInventoryContainer::v13	fec3a2f091a56b6f	ported	container/containerciptypes.cpp:TInventoryContainer::slotAt
 container::TInventoryContainer::~TInventoryContainer_deleting	6e743e8e1a657fdb	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
-container::TObjectAppearanceInstanceInfoStorage::onAsyncEmitObjectInfosChanged	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 container::TObjectAppearanceInstanceInfoStorage::~TObjectAppearanceInstanceInfoStorage_deleting	2e37c5138499c557	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 container::TObjectCountStorage::v12	987db751ac9f3405	ported	container/containerciptypes.cpp:TObjectCountStorage::setCounts
 container::TObjectCountStorage::v13	6eef2f5828fe7db1	ported	container/containerciptypes.cpp:TObjectCountStorage::clear
@@ -4418,11 +4415,7 @@ minimap::TMinimapDiskIO::~TMinimapDiskIO_deleting	7382774637cec697	skip	generate
 minimap::TMinimapDiskIOAsync::v14	995f27fafa3c151c	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible
 minimap::TMinimapDiskIOAsync::v15	e38333141a856a48	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk
 minimap::TMinimapDiskIOAsync::~TMinimapDiskIOAsync_deleting	363c0b134e8842c1	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
-minimap::TMinimapDiskIOMemoryOnly::v14	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-minimap::TMinimapDiskIOMemoryOnly::v15	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-minimap::TMinimapDiskIOMemoryOnly::v16	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapDiskIOMemoryOnly::~TMinimapDiskIOMemoryOnly_deleting	0ccf23acd144c81f	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
-minimap::TMinimapDiskIOSynchronous::v16	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapDiskIOSynchronous::~TMinimapDiskIOSynchronous	794529ffd531a259	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapDiskIOSynchronous::~TMinimapDiskIOSynchronous_deleting	6abaf9ebe617b36e	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapGameActionProvider::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -4436,7 +4429,6 @@ minimap::TMinimapMarkerController::~TMinimapMarkerController_deleting	7967451266
 minimap::TMinimapMarkerGameActionHandler::handleGameAction	29fc469f984947b4	inlined	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::bindActions
 minimap::TMinimapMarkerGameActionHandler::~TMinimapMarkerGameActionHandler	b8fa1735222f472e	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapMarkerGameActionHandler::~TMinimapMarkerGameActionHandler_deleting	6e02f94259d3246a	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
-minimap::TMinimapMarkerOverlayController::update	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerOverlayController::~TMinimapMarkerOverlayController	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerOverlayController::~TMinimapMarkerOverlayController_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerQmlRenderInfo::~TMinimapMarkerQmlRenderInfo_deleting	619aa1845adbea80	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
@@ -5016,11 +5008,8 @@ quickloot::TQuickLootGameActionHandler::handleSelectObtainContainerAction	840532
 quickloot::TQuickLootGameActionHandler::handleSetLootContainerFallbackAction	ef5aa95bf9378620	inlined	quickloot/quicklootciptypes.cpp:TQuickLootGameActionHandler::handleGameAction
 quickloot::TQuickLootGameActionHandler::~TQuickLootGameActionHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair
 quickloot::TQuickLootGameActionHandler::~TQuickLootGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair
-renderer::TChildrenScenegraphNode::v23	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-renderer::TChildrenScenegraphNode::v29	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::THighlightedSpriteScenegraphNode::v0	592c345dd865c09b	skip	generated: compiler-generated destructor pair (QSGGeometryNode base)
 renderer::THighlightedSpriteScenegraphNode::v1	94e3d01e8a52d58a	skip	generated: compiler-generated destructor pair (QSGGeometryNode base)
-renderer::THighlightedSpriteScenegraphNode::v3	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TNextFrameUpdater::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TNextFrameUpdater::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TQSGNodePool<QSGOpacityNode>::v0	309b34424c94e12a	ported	renderer/scenegraphnodeprovider.h:TQSGNodePool::~TQSGNodePool
@@ -6359,10 +6348,6 @@ spells::TSpellInfoStorage::~TSpellInfoStorage	20ee35d40ae4c893	skip	generated: c
 spells::TSpellInfoStorage::~TSpellInfoStorage_deleting	dec64d761d2b8fd1	skip	generated: compiler-generated destructor pair
 sprites::IResourceSpriteIdentifier::v0	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::IResourceSpriteIdentifier::v1	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
-sprites::IResourceSpriteIdentifier::v10	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-sprites::IResourceSpriteIdentifier::v7	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-sprites::IResourceSpriteIdentifier::v8	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-sprites::IResourceSpriteIdentifier::v9	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::TAppearanceTypeSpritesheetMapping::v0	00de01561e54f000	skip	generated: compiler-generated destructor pair (map member destroy)
 sprites::TAppearanceTypeSpritesheetMapping::v1	dc278269e3a3469a	skip	generated: compiler-generated destructor pair (map member destroy)
 sprites::TAppearanceTypeSpritesheetMapping::v2	ccdc8a2216dc75b6	tested	sprites/appearancetypespritesheetmapping.cpp:TAppearanceTypeSpritesheetMapping::addAppearanceType	test=tests/client/appearanceinstancetracker_test.cpp
@@ -6429,7 +6414,6 @@ sprites::TSpritesheetsMetadataManager::v1	79674512666b34e2	skip	generated: same 
 sprites::TSpritesheetsMetadataManager::v2	c75e7a2fd12bc9b6	tested	sprites/spritesheetsmetadatamanager.cpp:TSpritesheetsMetadataManager::addSpritesheet	test=tests/client/spritesheetmanager_test.cpp
 sprites::TSpritesheetsMetadataManager::v3	b5a11ed787d75a21	tested	sprites/spritesheetsmetadatamanager.cpp:TSpritesheetsMetadataManager::getSpritesheetIds	test=tests/client/spritesheetmanager_test.cpp
 sprites::TSpritesheetsMetadataManager::v5	c7cb946671ce714c	tested	sprites/spritesheetsmetadatamanager.cpp:TSpritesheetsMetadataManager::getMetadataForSprite	test=tests/client/spritesheetmanager_test.cpp
-sprites::TSpritesheetsMetadataManager::v6	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 store::TDynamicallyLoadedImageManager::onDownloadError	0dc9aa03ffa9e5ae	ported	store/dynamicallyloadedimage.cpp:TDynamicallyLoadedImageManager::onDownloadError
@@ -7208,7 +7192,6 @@ sub_097457dc45e8#483	097457dc45e86dd8	inlined	gamewindow/imbuingdialogcontroller
 sub_097457dc45e8#484	097457dc45e86dd8	inlined	input/keyboardstatusstorage.cpp:TKeyboardStatusStorage::TKeyboardStatusStorage
 sub_097457dc45e8#487	097457dc45e86dd8	inlined	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::TKeyboardShortcutHandler
 sub_097457dc45e8#492	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
-sub_097457dc45e8#493	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 sub_097457dc45e8#495	097457dc45e86dd8	inlined	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::TMinimapVisibleArea
 sub_097457dc45e8#497	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 sub_097457dc45e8#498	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
@@ -21724,7 +21707,6 @@ sub_f91fca3c4d04	f91fca3c4d04ce62	skip	library: Abseil (protobuf dependency): Mu
 sub_f9267e0ea236	f9267e0ea2362fec	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_f93038196551	f930381965512747	ported	skillwheel/skillwheelcontrollers.cpp:TGemAtelierPageController::unrevealedGreaterGemAppearanceType
 sub_f932a58355c0	f932a58355c09dad	inlined	analysers/impactwidgets.cpp:TPartyHuntWidgetController::requestConfigurationContextMenu
-sub_f93bbd13ccb8	f93bbd13ccb892e7	skip	library: same code as the skipped family: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_f93bbd13ccb8#2	f93bbd13ccb892e7	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_f94a7adfeaad	f94a7adfeaad91b3	skip	data: translation-unit static initializer (string constants, vocation names, typeid name maps registered with atexit)
 sub_f94a7adfeaad#2	f94a7adfeaad91b3	skip	data: static initialisers of file-scope constants (vocation names, directory/file names, time zone)
