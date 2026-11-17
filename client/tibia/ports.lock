@@ -6843,7 +6843,7 @@ sub_078147e01900	078147e01900d331	skip	library: miniaudio library code (miniaudi
 sub_07816b4fb92c	07816b4fb92c734e	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_078549f5aae1	078549f5aae1cb5f	skip	library: CryptoPP Deflator (zlib) library code
 sub_07894ad47558	07894ad47558a405	ported	appearances/appearanceinstancetracker.cpp:TAppearanceInstanceTracker::TAppearanceInstanceTracker
-sub_07894e259d40	07894e259d40f93e	skip	generated: destructors, destructor bodies, moc signal emitters and variant/optional copy/destroy and index visitors
+sub_07894e259d40	07894e259d40f93e	ported	sound/soundplayermanager.cpp:TSoundPlayerManager::~TSoundPlayerManager
 sub_078dbbc2ef72	078dbbc2ef7291b2	skip	library: std::set/vector<pair<string,set>>/ostringstream instantiations used by the exclusivity check
 sub_079124a08ff8	079124a08ff8ee50	ported	gamewindow/sidebarmanager.h:TSidebarManager::canOpenSidebar
 sub_07993446644a	07993446644acebc	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
@@ -10039,7 +10039,7 @@ sub_26d205c0900e	26d205c0900e0268	ported	gamewindow/gamewindowcontroller.cpp:TGa
 sub_26d205c0900e#2	26d205c0900e0268	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::boostedBossName
 sub_26d7097a0e6d	26d7097a0e6db85a	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_26e3b8f4b44a	26e3b8f4b44a839f	inlined	protocol::TProtobufServerMessageTranslator::v124
-sub_26ef56afdd3d	26ef56afdd3db5f5	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
+sub_26ef56afdd3d	26ef56afdd3db5f5	inlined	sound/soundplayermanager.cpp:TSoundPlayerManager::~TSoundPlayerManager
 sub_26f2ff1e72d2	26f2ff1e72d2123a	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
 sub_26f3d69d9190	26f3d69d9190c22d	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_26fc70013984#2	26fc70013984c0f9	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
@@ -15279,7 +15279,6 @@ sub_894cc385b9a1#3	894cc385b9a12113	ported	sound/soundcontrollerbase.cpp:TSoundC
 sub_89535b5b73c8	89535b5b73c8f335	ported	assets/assetasyncloader.cpp:TAssetAsyncLoaderWorkQueue::prioritize
 sub_8961c4b304e5	8961c4b304e5d11d	inlined	game/playerstates.cpp:buildPlayerStates
 sub_8963cff194e1	8963cff194e14dde	ported	taskboard/taskboardciptypes.cpp:checkedEnumValue
-sub_8968451dd936	8968451dd9367f5c	skip	data: static initialiser: builds file-scope constants (strings, tables) and registers their destructors with __cxa_atexit
 sub_896e7d31e597	896e7d31e59724f4	skip	library: std::sort instantiation (library)
 sub_897906961a3d	897906961a3d8ffa	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::isFullyUnlocked
 sub_89847fa0ad3a	89847fa0ad3af87a	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
@@ -16671,7 +16670,7 @@ sub_a183aae7be90	a183aae7be9057a2	skip	library: statically linked SFML audio / m
 sub_a1873a1b7dc5	a1873a1b7dc5300a	inlined	gamewindow/marketcontroller.cpp:TMarketController::getTotalPriceOrProfitMultistring
 sub_a190fe1f2ea6	a190fe1f2ea671d7	skip	library: libc++/Qt/protobuf template instantiation (std::map/set find/insert/assign, QHash<QKeySequence> find, ostream string insert, std::variant/optional assign, protobuf ExtensionSet)
 sub_a1944bb0c5e6	a1944bb0c5e6450c	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::openDialog
-sub_a1948c622927	a1948c622927b632	skip	generated: destructors, destructor bodies, moc signal emitters and variant/optional copy/destroy and index visitors
+sub_a1948c622927	a1948c622927b632	ported	sound/activesoundplayer.cpp:TActiveSoundPlayer::~TActiveSoundPlayer
 sub_a1953b2fd79a	a1953b2fd79a37fd	skip	generated: compiler-generated destructor pair
 sub_a195e98ffc2d	a195e98ffc2d9acb	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_a19c48966613	a19c48966613584c	skip	library: libc++/Qt/absl/protobuf container template instantiation (vector push_back slow path, QList insert, btree node ops, RepeatedPtrField, hash)
@@ -16823,7 +16822,7 @@ sub_a4d0da615306	a4d0da615306c7ac	skip	library: libc++abi Itanium demangler (__c
 sub_a4d760741cfd	a4d760741cfd2a2b	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_a4de7f54691a	a4de7f54691a23cb	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openBlessingsDialog
 sub_a4e1e48d67a8	a4e1e48d67a8743a	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
-sub_a4edcef63462	a4edcef6346256a6	skip	data: static initialiser: constructs file-scope constants and registers their destructors with __cxa_atexit
+sub_a4edcef63462	a4edcef6346256a6	skip	library: libc++ std::vector<{QString,qint64}>::assign instantiation; the static-initialiser tail is a decompiler fall-through after the noreturn length_error
 sub_a4f309058732	a4f3090587329aa6	skip	library: std::variant visitation / map<QString> insert / QMap detach / protobuf RepeatedField / absl btree internals
 sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTranslator::v195
 sub_a50cfcb47506	a50cfcb4750681fc	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)
@@ -18340,7 +18339,7 @@ sub_bba8fdcfbf33	bba8fdcfbf33aa9d	ported	shared/src/clockservice.cpp:TClockServi
 sub_bba8fdcfbf33#2	bba8fdcfbf33aa9d	ported	shared/src/clockservice.cpp:TClockService::TClockService
 sub_bbace67e06c0	bbace67e06c0de2f	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_bbb15d90e91e	bbb15d90e91e39b8	skip	library: std::set / std::vector assignment, copy and destruction (library)
-sub_bbb638053df3	bbb638053df31f41	skip	generated: compiler-generated destructor pair
+sub_bbb638053df3	bbb638053df31f41	skip	library: libc++ std::map tree destroy (recursive __tree::destroy)
 sub_bbb638053df3#2	bbb638053df31f41	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_bbb638053df3#3	bbb638053df31f41	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_bbb638053df3#4	bbb638053df31f41	skip	generated: compiler-generated destructor pair
@@ -18387,8 +18386,8 @@ sub_bca043e806a5	bca043e806a57795	ported	gamewindow/vipwidgetcontroller.cpp:TVip
 sub_bca4b219ebad	bca4b219ebade78e	skip	library: libc++ std::vector<T> assign/operator= (and element copy-assign/variant copy-assign) instantiated for the list model items
 sub_bcae0e12c6d3	bcae0e12c6d39db6	skip	library: std::vector copy / growth of store records (library)
 sub_bcc444307684	bcc444307684a90d	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::refreshPlayerGuideEntries
-sub_bccaad2c543b	bccaad2c543b6af4	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
-sub_bccaad2c543b#2	bccaad2c543b6af4	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
+sub_bccaad2c543b	bccaad2c543b6af4	inlined	sound/soundplayer.cpp:TSoundPlayer::play
+sub_bccaad2c543b#2	bccaad2c543b6af4	inlined	sound/soundplayer.cpp:TSoundPlayer::play
 sub_bcccd51b8b15	bcccd51b8b153f85	inlined	sub_f69d6c7e5f47
 sub_bcccd51b8b15#33	bcccd51b8b153f85	skip	library: Crypto++ internals (statically linked library range)
 sub_bcccd51b8b15#34	bcccd51b8b153f85	skip	library: Crypto++ internals (statically linked library range)

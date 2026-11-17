@@ -66,7 +66,6 @@ TSoundPlayerManager::~TSoundPlayerManager()
 {
     for (TEntry& entry : m_players)
         entry.player.reset();
-    m_finishingPlayers.clear();
 }
 
 std::optional<TSoundPlayerToken> TSoundPlayerManager::acquirePlayer()
