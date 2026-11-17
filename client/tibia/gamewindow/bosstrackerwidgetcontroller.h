@@ -2,6 +2,7 @@
 
 #include "bossbestiary/bosstrackerstorage.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "gamewindow/uifocusmanager.h"
 
 #include <cip_gen.h>
 
@@ -132,6 +133,8 @@ private Q_SLOTS:
 private:
     void persistOptions();
 
+    /// CIP TSidebarWidgetControllerWithFocusHandling +0xa0.
+    TUiFocusManager m_focus;
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;
     TBossTrackerListModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;

@@ -183,6 +183,9 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindo
     });
 
     widget()->createItem(QStringLiteral("DepotSearchWidget.qml"));
+    if (QQuickItem* item = widget()->quickItem())
+        m_focus.setClickArea(item);
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TDepotSearchWidgetController::focusChanged);
     tibia::game::onEachGameSession(this, [this] { setGameSession(game::TGameSessionBase::active()); });
 }
 
@@ -354,20 +357,16 @@ QStringList TDepotSearchWidgetController::availableTiers() const
     return tiers;
 }
 
+// CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
+// TUiFocusManager's (a click outside the widget gives it back).
 void TDepotSearchWidgetController::takeFocus()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
+    m_focus.takeFocus();
 }
 
 void TDepotSearchWidgetController::releaseFocus()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
+    m_focus.releaseFocus();
 }
 
 void TDepotSearchWidgetController::onRequestClose()

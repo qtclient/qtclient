@@ -169,8 +169,11 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
     }
     onBossTrackingEntriesChanged();
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
-    if (QQuickItem* item = quickItem())
+    if (QQuickItem* item = quickItem()) {
+        m_focus.setClickArea(item);
         connect(item, &QObject::destroyed, this, &TBossTrackerWidgetController::onWidgetQuickItemDestroyed);
+    }
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TBossTrackerWidgetController::focusChanged);
 }
 
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
@@ -178,7 +181,7 @@ QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
 bool TBossTrackerWidgetController::hasUnlockedAnyBosses() const { return m_storage && m_storage->hasUnlockedAnyBosses(); }
 
 QQuickItem* TBossTrackerWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
-bool TBossTrackerWidgetController::hasFocus() const { return m_hasFocus; }
+bool TBossTrackerWidgetController::hasFocus() const { return m_focus.hasFocus(); }
 
 void TBossTrackerWidgetController::onCloseClicked() { onRequestClose(); }
 void TBossTrackerWidgetController::onRequestClose() { Q_EMIT widgetClosed(); }
@@ -196,21 +199,16 @@ void TBossTrackerWidgetController::setCursorToResizeVertical(const bool Enabled)
 void TBossTrackerWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TBossTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 
+// CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
+// TUiFocusManager's (a click outside the widget gives it back).
 void TBossTrackerWidgetController::takeFocus()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
-    Q_EMIT requestWidgetControlToTakeFocus();
+    m_focus.takeFocus();
 }
 
 void TBossTrackerWidgetController::releaseFocus()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
+    m_focus.releaseFocus();
 }
 
 void TBossTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)

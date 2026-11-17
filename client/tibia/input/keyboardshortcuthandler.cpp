@@ -257,7 +257,10 @@ bool TKeyboardShortcutHandler::keyPressed(const QKeySequence& keys, const bool i
         if (binding != m_actionSettings.end()
                 ? binding->second.kind == config::TActionSetting::ACTION && binding->second.action == product.name
                 : product.defaultKeys == keys) {
-            if (!isAutoRepeat && !m_areShortcutsRestricted)
+            // Restricted (a text field has the keyboard): the key goes on to it.
+            if (m_areShortcutsRestricted)
+                return false;
+            if (!isAutoRepeat)
                 product.run();
             return true;
         }

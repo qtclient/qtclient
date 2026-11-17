@@ -74,6 +74,7 @@ TSpellListWidgetController::TSpellListWidgetController(QQuickItem* gameWindowIte
         m_focus.setClickArea(item);
         connect(item, &QObject::destroyed, this, &TSpellListWidgetController::onWidgetQuickItemDestroyed);
     }
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TSpellListWidgetController::focusChanged);
     connect(m_proxy, &TSpellListDataModelSortFilterProxy::configChanged, this, &TSpellListWidgetController::saveWidgetOptions);
 }
 
@@ -85,7 +86,7 @@ void TSpellListWidgetController::setSidebarOptions(config::TSidebarOptions* opti
 
 QQuickItem* TSpellListWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 QVariant TSpellListWidgetController::spellListModel() const { return m_spellListModel; }
-bool TSpellListWidgetController::hasFocus() const { return m_hasFocus; }
+bool TSpellListWidgetController::hasFocus() const { return m_focus.hasFocus(); }
 
 void TSpellListWidgetController::onShowContextMenu()
 {
@@ -198,23 +199,16 @@ void TSpellListWidgetController::setCursorToResizeVertical(const bool Enabled)
 }
 void TSpellListWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 
+// CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
+// TUiFocusManager's (a click outside the widget gives it back).
 void TSpellListWidgetController::takeFocus()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
     m_focus.takeFocus();
-    Q_EMIT focusChanged();
-    Q_EMIT requestWidgetControlToTakeFocus();
 }
 
 void TSpellListWidgetController::releaseFocus()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
     m_focus.releaseFocus();
-    Q_EMIT focusChanged();
 }
 
 TSpellListWidgetManager::TSpellListWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
