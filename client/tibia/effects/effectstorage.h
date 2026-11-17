@@ -29,11 +29,13 @@ public:
     /// The active game session's storage (instance() falls back to an empty one).
     static void setInstance(TEffectStorage* storage);
 
-    explicit TEffectStorage(QObject* parent = nullptr);
+    /// `maximumEffects`: how many effects, numbers included, the storage holds.
+    explicit TEffectStorage(size_t maximumEffects = maximumEffectsSetting(), QObject* parent = nullptr);
     ~TEffectStorage() override;
 
     /// The `maximumNumberOfEffects` setting: 400, at most 800.
-    static size_t maximumEffects();
+    static size_t maximumEffectsSetting();
+    size_t maximumEffects() const { return m_maximumEffects; }
     /// Effects held, numerical ones included.
     size_t count() const;
     /// Another effect fits.
@@ -94,6 +96,7 @@ private:
     void removeFinishedNumericalEffects();
 
     std::vector<TEffectPtr> m_effects;
+    size_t m_maximumEffects = 0;
     std::unordered_map<Position, std::vector<TEffectPtr>, Position::Hasher> m_byField;
     std::unordered_map<uint8_t, std::vector<TEffectPtr>> m_missilesByFloor;
     std::vector<TEffectPtr> m_trackedEffects;

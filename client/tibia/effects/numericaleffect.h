@@ -15,10 +15,12 @@ namespace effects {
 class TNumericalEffect
 {
 public:
-    /// GRAPHICS/numericalEffectDisplayDurationMsec.
+    /// How long a number rises (GRAPHICS/numericalEffectDisplayDurationMsec until set).
     static qint64 duration();
-    /// GRAPHICS/numericalEffectMergeDurationMsec: a number joins one started this recently.
+    static void setDuration(qint64 durationMs);
+    /// A number joins one started this recently (GRAPHICS/numericalEffectMergeDurationMsec until set).
     static qint64 mergeDuration();
+    static void setMergeDuration(qint64 durationMs);
 
     TNumericalEffect(const Position& coordinate, qint64 value, const QColor& color, qint64 startMs);
     virtual ~TNumericalEffect() = default;
@@ -36,6 +38,11 @@ public:
     bool mergeWith(const TNumericalEffect& other);
     /// Same colour, same field, and `other` started within the merge duration of this one.
     bool canMerge(const TNumericalEffect& other) const;
+    bool operator==(const TNumericalEffect& other) const
+    {
+        return m_coordinate == other.m_coordinate && m_value == other.m_value && m_color == other.m_color
+            && m_tween == other.m_tween;
+    }
 
 private:
     Position m_coordinate;

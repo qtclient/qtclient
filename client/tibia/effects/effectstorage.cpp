@@ -31,8 +31,9 @@ TEffectStorage& TEffectStorage::instance()
     return g_current ? *g_current : fallback;
 }
 
-TEffectStorage::TEffectStorage(QObject* parent)
+TEffectStorage::TEffectStorage(const size_t maximumEffects, QObject* parent)
     : cip::tibia::effects::TEffectStorage(parent)
+    , m_maximumEffects(maximumEffects)
 {
 }
 
@@ -47,7 +48,7 @@ TEffectStorage::~TEffectStorage()
         g_current = nullptr;
 }
 
-size_t TEffectStorage::maximumEffects()
+size_t TEffectStorage::maximumEffectsSetting()
 {
     static const qint64 maximum = config::clientSettingAtMost(QStringLiteral("GRAPHICS"),
                                                                QStringLiteral("maximumNumberOfEffects"), 400, 800);

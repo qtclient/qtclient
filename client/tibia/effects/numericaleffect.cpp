@@ -4,17 +4,29 @@
 
 namespace tibia::effects {
 
-qint64 TNumericalEffect::duration()
+namespace {
+
+qint64& displayDuration()
 {
-    static const qint64 value = config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("numericalEffectDisplayDurationMsec"), 1000);
+    static qint64 value = config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("numericalEffectDisplayDurationMsec"), 1000);
     return value;
 }
 
-qint64 TNumericalEffect::mergeDuration()
+qint64& mergeWindow()
 {
-    static const qint64 value = config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("numericalEffectMergeDurationMsec"), 100);
+    static qint64 value = config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("numericalEffectMergeDurationMsec"), 100);
     return value;
 }
+
+}
+
+qint64 TNumericalEffect::duration() { return displayDuration(); }
+
+void TNumericalEffect::setDuration(const qint64 durationMs) { displayDuration() = durationMs; }
+
+qint64 TNumericalEffect::mergeDuration() { return mergeWindow(); }
+
+void TNumericalEffect::setMergeDuration(const qint64 durationMs) { mergeWindow() = durationMs; }
 
 TNumericalEffect::TNumericalEffect(const Position& coordinate, const qint64 value, const QColor& color, const qint64 startMs)
     : m_coordinate(coordinate)
