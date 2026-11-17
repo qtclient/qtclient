@@ -731,6 +731,13 @@ TLoginConfirmationCodeEnterTextDialogController::TLoginConfirmationCodeEnterText
 {}
 
 /// CIP: the code is dropped, the information line cleared and the dialog aborted.
+void TLoginConfirmationCodeEnterTextDialogController::showDialog()
+{
+    m_enteredText.clear();
+    dialog()->create();
+    dialog()->show();
+}
+
 void TLoginConfirmationCodeEnterTextDialogController::onCancelClicked()
 {
     m_enteredText.clear();

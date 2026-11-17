@@ -347,6 +347,8 @@ public:
     };
 
     explicit TLoginConfirmationCodeEnterTextDialogController(QObject* parent = nullptr);
+    /// CIP v12: shows the dialog with no code entered.
+    void showDialog();
 
     QVariantMap availableMethods() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getAvailableMethods(); }
     QString chosenMethod() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getChosenMethod(); }
