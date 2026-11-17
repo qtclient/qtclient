@@ -4,7 +4,7 @@
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace chat {
 
@@ -37,7 +37,7 @@ public:
     /// v17 (SWITCH_CHAT_MODE, v18): temporary on only from off.
     void switchChatMode(int mode);
     /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient SWITCH_CHAT_MODE.
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
     /// CIP moc onCurrentGamesessionDisconnected (qtclient v19).
     void onCurrentGamesessionDisconnected();
     /// Tip alias of onCurrentGamesessionDisconnected.

@@ -20,6 +20,9 @@
 #include <vector>
 
 namespace tibia {
+namespace chat {
+struct TChatChannelIdentifier;
+}
 namespace input {
 
 using EGameAction = cip::tibia::input::EGameAction;
@@ -141,7 +144,7 @@ private:
 /// CIP input::TGameActionCreature: an action on one creature (attack, follow,
 /// their stops, look at, temporary select, copy name with id, party, inspect,
 /// join aggression, request skill wheel).
-class TGameActionCreature final : public IGameAction
+class TGameActionCreature : public IGameAction
 {
 public:
     TGameActionCreature(EGameAction type, uint32_t creatureId)
@@ -558,6 +561,674 @@ private:
     QRectF m_rect;
 };
 
+
+// ---------------------------------------------------------------------------
+// Chat
+
+/// CIP input::TGameActionChatChannel: an action on one chat channel (open,
+/// open and make current, close, clear, server log subscription, mute, show /
+/// select / hide as secondary).
+class TGameActionChatChannel : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionChatChannel(EGameAction type, std::shared_ptr<const chat::TChatChannelIdentifier> identifier);
+    const chat::TChatChannelIdentifier& chatChannelIdentifier() const { return *m_identifier; }
+
+private:
+    std::shared_ptr<const chat::TChatChannelIdentifier> m_identifier;
+};
+
+/// CIP input::TGameActionOpenMessageToChatChannel (OPEN_MESSAGE_TO_CHAT_CHANNEL):
+/// opens the private conversation with a player (TMessageToChatChannelIdentifier).
+class TGameActionOpenMessageToChatChannel final : public TGameActionChatChannel
+{
+public:
+    explicit TGameActionOpenMessageToChatChannel(const QString& name);
+};
+
+/// CIP input::TGameActionVisibleChatChannel: an action on the channel shown in
+/// the primary or (true) the secondary pane (select all, save to file, invite /
+/// exclude dialogs).
+class TGameActionVisibleChatChannel final : public IGameAction
+{
+public:
+    TGameActionVisibleChatChannel(EGameAction type, bool secondaryChannel)
+        : m_type(type)
+        , m_secondaryChannel(secondaryChannel)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    bool isSecondaryChannel() const { return m_secondaryChannel; }
+
+private:
+    EGameAction m_type;
+    bool m_secondaryChannel;
+};
+
+/// CIP input::TGameActionChatChannelModeration: invites a player to, or
+/// excludes one from, a chat channel.
+class TGameActionChatChannelModeration : public IGameAction
+{
+public:
+    TGameActionChatChannelModeration(uint16_t channelId, QString playerName)
+        : m_channelId(channelId)
+        , m_playerName(std::move(playerName))
+    {
+    }
+    uint16_t channelId() const { return m_channelId; }
+    const QString& playerName() const { return m_playerName; }
+
+private:
+    uint16_t m_channelId;
+    QString m_playerName;
+};
+
+/// CIP input::TGameActionInvitePlayerToChatChannel (INVITE_PLAYER_TO_CHAT_CHANNEL).
+class TGameActionInvitePlayerToChatChannel final : public TGameActionChatChannelModeration
+{
+public:
+    using TGameActionChatChannelModeration::TGameActionChatChannelModeration;
+    EGameAction gameActionType() const override { return EGameAction::INVITE_PLAYER_TO_CHAT_CHANNEL; }
+};
+
+/// CIP input::TGameActionInvitePlayerToPrivateChatChannel (INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL).
+class TGameActionInvitePlayerToPrivateChatChannel final : public TGameActionChatChannelModeration
+{
+public:
+    using TGameActionChatChannelModeration::TGameActionChatChannelModeration;
+    EGameAction gameActionType() const override { return EGameAction::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL; }
+};
+
+/// CIP input::TGameActionExcludePlayerFromChatChannel (EXCLUDE_PLAYER_FROM_CHAT_CHANNEL).
+class TGameActionExcludePlayerFromChatChannel final : public TGameActionChatChannelModeration
+{
+public:
+    using TGameActionChatChannelModeration::TGameActionChatChannelModeration;
+    EGameAction gameActionType() const override { return EGameAction::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL; }
+};
+
+/// qtclient: the CIP classes whose only field is a player name (+0x8) and
+/// whose v0 returns their type.
+template<EGameAction Type>
+class TGameActionWithName : public IGameAction
+{
+public:
+    explicit TGameActionWithName(QString name)
+        : m_name(std::move(name))
+    {
+    }
+    EGameAction gameActionType() const override { return Type; }
+    const QString& name() const { return m_name; }
+
+private:
+    QString m_name;
+};
+
+/// CIP input::TGameActionIgnoreName (IGNORE_NAME).
+class TGameActionIgnoreName final : public TGameActionWithName<EGameAction::IGNORE_NAME>
+{
+public:
+    using TGameActionWithName::TGameActionWithName;
+};
+
+/// CIP input::TGameActionUnignoreName (UNIGNORE_NAME).
+class TGameActionUnignoreName final : public TGameActionWithName<EGameAction::UNIGNORE_NAME>
+{
+public:
+    using TGameActionWithName::TGameActionWithName;
+};
+
+/// CIP input::TGameActionRecentlyTraded (RECENTLY_TRADED): the trade history
+/// with a player.
+class TGameActionRecentlyTraded final : public TGameActionWithName<EGameAction::RECENTLY_TRADED>
+{
+public:
+    using TGameActionWithName::TGameActionWithName;
+};
+
+/// CIP input::TGameActionCreatureWithName: a creature action that also names
+/// the creature (the creature id is 0 for a name from a chat line or the VIP list).
+class TGameActionCreatureWithName final : public TGameActionCreature
+{
+public:
+    TGameActionCreatureWithName(EGameAction type, uint32_t creatureId, QString name)
+        : TGameActionCreature(type, creatureId)
+        , m_name(std::move(name))
+    {
+    }
+    /// CIP v5.
+    const QString& creatureName() const { return m_name; }
+
+private:
+    QString m_name;
+};
+
+/// CIP input::TGameActionSetCurrentChatChannelInputText
+/// (SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT): puts text into the chat input, or
+/// sends it right away; a hotkey's text may cast a spell.
+class TGameActionSetCurrentChatChannelInputText final : public IGameAction
+{
+public:
+    TGameActionSetCurrentChatChannelInputText(QString text, bool sendAutomatically)
+        : m_text(std::move(text))
+        , m_sendAutomatically(sendAutomatically)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT; }
+    const QString& text() const { return m_text; }
+    bool sendAutomatically() const { return m_sendAutomatically; }
+    /// The text casts a spell (+0x21) with this ESpellCastOptionalTargetType (+0x24).
+    bool isSpell() const { return m_isSpell; }
+    int spellCastOptionalTargetType() const { return m_spellCastOptionalTargetType; }
+    TGameActionSetCurrentChatChannelInputText& setSpell(bool isSpell, int spellCastOptionalTargetType);
+
+private:
+    QString m_text;
+    bool m_sendAutomatically;
+    bool m_isSpell = false;
+    int m_spellCastOptionalTargetType = 0;
+};
+
+/// CIP input::TGameActionSwitchChatMode (SWITCH_CHAT_MODE): the
+/// chat::TChatModeManager::EChatMode to switch to.
+class TGameActionSwitchChatMode final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionSwitchChatMode(int chatMode)
+        : TGameActionSimple(EGameAction::SWITCH_CHAT_MODE)
+        , m_chatMode(chatMode)
+    {
+    }
+    int chatMode() const { return m_chatMode; }
+
+private:
+    int m_chatMode;
+};
+
+/// CIP input::TGameActionGetChatChannelList (GET_CHAT_CHANNEL_LIST).
+class TGameActionGetChatChannelList final : public IGameAction
+{
+public:
+    EGameAction gameActionType() const override { return EGameAction::GET_CHAT_CHANNEL_LIST; }
+};
+
+/// CIP input::TGameActionSendChatMessage: says a text (the base of the
+/// SEND_CHAT_MESSAGE_* classes; SEND_CHAT_MESSAGE_AS_GAMEMASTER_BROADCAST uses it as is).
+class TGameActionSendChatMessage : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSendChatMessage(QString text, EGameAction type)
+        : TGameActionSimple(type)
+        , m_text(std::move(text))
+    {
+    }
+    const QString& text() const { return m_text; }
+
+private:
+    QString m_text;
+};
+
+/// CIP input::TGameActionSendChatMessageWithSpeechVolume
+/// (SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME): says, whispers or yells (the
+/// tibia::client::MessageMode).
+class TGameActionSendChatMessageWithSpeechVolume final : public TGameActionSendChatMessage
+{
+public:
+    TGameActionSendChatMessageWithSpeechVolume(QString text, int speechVolume)
+        : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME)
+        , m_speechVolume(speechVolume)
+    {
+    }
+    int speechVolume() const { return m_speechVolume; }
+
+private:
+    int m_speechVolume;
+    int m_reserved = 0; // CIP +0x2c, zeroed by the ctor
+};
+
+/// CIP input::TGameActionSendChatMessageWithChannelID (SEND_CHAT_MESSAGE_WITH_CHANNEL_ID).
+class TGameActionSendChatMessageWithChannelID final : public TGameActionSendChatMessage
+{
+public:
+    TGameActionSendChatMessageWithChannelID(QString text, uint16_t channelId, bool flag)
+        : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_WITH_CHANNEL_ID)
+        , m_channelId(channelId)
+        , m_flag(flag)
+    {
+    }
+    uint16_t channelId() const { return m_channelId; }
+    /// CIP +0x2a (meaning not read yet).
+    bool flag() const { return m_flag; }
+
+private:
+    uint16_t m_channelId;
+    bool m_flag;
+};
+
+/// CIP input::TGameActionSendChatMessageWithRecipient (SEND_CHAT_MESSAGE_WITH_RECIPIENT):
+/// a private message.
+class TGameActionSendChatMessageWithRecipient final : public TGameActionSendChatMessage
+{
+public:
+    TGameActionSendChatMessageWithRecipient(QString text, QString recipient, QString second, uint16_t channelId, int mode)
+        : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_WITH_RECIPIENT)
+        , m_recipient(std::move(recipient))
+        , m_second(std::move(second))
+        , m_channelId(channelId)
+        , m_mode(mode)
+    {
+    }
+    const QString& recipient() const { return m_recipient; }
+
+private:
+    QString m_recipient;
+    QString m_second;
+    uint16_t m_channelId;
+    int m_mode;
+};
+
+/// CIP input::TGameActionSendChatMessageToNpc (SEND_CHAT_MESSAGE_TO_NPC).
+class TGameActionSendChatMessageToNpc final : public TGameActionSendChatMessage
+{
+public:
+    TGameActionSendChatMessageToNpc(QString text, QString npcName, uint16_t channelId)
+        : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_TO_NPC)
+        , m_npcName(std::move(npcName))
+        , m_channelId(channelId)
+    {
+    }
+    const QString& npcName() const { return m_npcName; }
+
+private:
+    QString m_npcName;
+    uint16_t m_channelId;
+};
+
+// ---------------------------------------------------------------------------
+// Clipboard
+
+/// CIP input::TGameActionCopyTextToClipboard: copies a text (COPY_TEXT_TO_CLIPBOARD)
+/// and the base of the other copy actions.
+class TGameActionCopyTextToClipboard : public IGameAction
+{
+public:
+    explicit TGameActionCopyTextToClipboard(QString text)
+        : TGameActionCopyTextToClipboard(EGameAction::COPY_TEXT_TO_CLIPBOARD, std::move(text))
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const QString& text() const { return m_text; }
+
+protected:
+    TGameActionCopyTextToClipboard(EGameAction type, QString text)
+        : m_type(type)
+        , m_text(std::move(text))
+    {
+    }
+
+private:
+    EGameAction m_type;
+    QString m_text;
+};
+
+/// CIP input::TGameActionCopyChatEntryToClipboard (COPY_CHAT_ENTRY_TO_CLIPBOARD).
+class TGameActionCopyChatEntryToClipboard final : public TGameActionCopyTextToClipboard
+{
+public:
+    explicit TGameActionCopyChatEntryToClipboard(QString text)
+        : TGameActionCopyTextToClipboard(EGameAction::COPY_CHAT_ENTRY_TO_CLIPBOARD, std::move(text))
+    {
+    }
+};
+
+/// CIP input::TGameActionCopyCreatureNameToClipboard (COPY_CREATURE_NAME_TO_CLIPBOARD).
+class TGameActionCopyCreatureNameToClipboard final : public TGameActionCopyTextToClipboard
+{
+public:
+    explicit TGameActionCopyCreatureNameToClipboard(QString name)
+        : TGameActionCopyTextToClipboard(EGameAction::COPY_CREATURE_NAME_TO_CLIPBOARD, std::move(name))
+    {
+    }
+};
+
+/// CIP input::TGameActionCopyTrustedTextToClipboard (COPY_TRUSTED_TEXT_TO_CLIPBOARD):
+/// text the client wrote itself, copied without asking.
+class TGameActionCopyTrustedTextToClipboard final : public TGameActionCopyTextToClipboard
+{
+public:
+    explicit TGameActionCopyTrustedTextToClipboard(QString text)
+        : TGameActionCopyTextToClipboard(EGameAction::COPY_TRUSTED_TEXT_TO_CLIPBOARD, std::move(text))
+    {
+    }
+};
+
+/// CIP input::TGameActionRequestConformationForCopyingTextToClipboard
+/// (REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD).
+class TGameActionRequestConformationForCopyingTextToClipboard final : public TGameActionCopyTextToClipboard
+{
+public:
+    explicit TGameActionRequestConformationForCopyingTextToClipboard(QString text)
+        : TGameActionCopyTextToClipboard(EGameAction::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD, std::move(text))
+    {
+    }
+};
+
+// ---------------------------------------------------------------------------
+// VIP list
+
+/// CIP input::TGameActionVip: an action on a VIP by name (name +0x8, type +0x20);
+/// EXIVA_ADD/REMOVE_CHARACTER_TO/FROM_WHITELIST use it as is.
+class TGameActionVip : public IGameAction
+{
+public:
+    TGameActionVip(QString name, EGameAction type)
+        : m_name(std::move(name))
+        , m_type(type)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const QString& vipName() const { return m_name; }
+
+private:
+    QString m_name;
+    EGameAction m_type;
+};
+
+/// CIP input::TGameActionAddNewVip (ADD_NEW_VIP).
+class TGameActionAddNewVip final : public TGameActionVip
+{
+public:
+    explicit TGameActionAddNewVip(QString name)
+        : TGameActionVip(std::move(name), EGameAction::ADD_NEW_VIP)
+    {
+    }
+};
+
+/// CIP input::TGameActionRemoveVip (REMOVE_VIP).
+class TGameActionRemoveVip final : public TGameActionVip
+{
+public:
+    explicit TGameActionRemoveVip(QString name)
+        : TGameActionVip(std::move(name), EGameAction::REMOVE_VIP)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenEditVipDialog (OPEN_EDIT_VIP_DIALOG).
+class TGameActionOpenEditVipDialog final : public TGameActionVip
+{
+public:
+    explicit TGameActionOpenEditVipDialog(QString name)
+        : TGameActionVip(std::move(name), EGameAction::OPEN_EDIT_VIP_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionRequestVipDataUpdate (REQUST_VIP_DATA_UPDATE): the
+/// edit-VIP dialog's result.
+class TGameActionRequestVipDataUpdate final : public IGameAction
+{
+public:
+    TGameActionRequestVipDataUpdate(uint32_t vipId, QString description, uint8_t icon, bool notifyOnLogin,
+                                    std::vector<uint8_t> groupIds)
+        : m_vipId(vipId)
+        , m_description(std::move(description))
+        , m_icon(icon)
+        , m_notifyOnLogin(notifyOnLogin)
+        , m_groupIds(std::move(groupIds))
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::REQUST_VIP_DATA_UPDATE; }
+    uint32_t vipId() const { return m_vipId; }
+    const QString& description() const { return m_description; }
+    uint8_t icon() const { return m_icon; }
+    bool notifyOnLogin() const { return m_notifyOnLogin; }
+    const std::vector<uint8_t>& groupIds() const { return m_groupIds; }
+
+private:
+    uint32_t m_vipId;
+    QString m_description;
+    uint8_t m_icon;
+    bool m_notifyOnLogin;
+    std::vector<uint8_t> m_groupIds;
+};
+
+/// CIP input::TGameActionVipGroup: an action on a VIP group by name (type +0x8, name +0x10).
+class TGameActionVipGroup : public gameactions::TGameActionSimple
+{
+public:
+    const QString& groupName() const { return m_name; }
+
+protected:
+    TGameActionVipGroup(QString name, EGameAction type)
+        : TGameActionSimple(type)
+        , m_name(std::move(name))
+    {
+    }
+
+private:
+    QString m_name;
+};
+
+/// CIP input::TGameActionAddNewVipGroup (ADD_NEW_VIP_GROUP).
+class TGameActionAddNewVipGroup final : public TGameActionVipGroup
+{
+public:
+    explicit TGameActionAddNewVipGroup(QString name)
+        : TGameActionVipGroup(std::move(name), EGameAction::ADD_NEW_VIP_GROUP)
+    {
+    }
+};
+
+/// CIP input::TGameActionRemoveVipGroup (REMOVE_VIP_GROUP).
+class TGameActionRemoveVipGroup final : public TGameActionVipGroup
+{
+public:
+    explicit TGameActionRemoveVipGroup(QString name)
+        : TGameActionVipGroup(std::move(name), EGameAction::REMOVE_VIP_GROUP)
+    {
+    }
+};
+
+/// CIP input::TGameActionOpenEditVipGroupDialog (OPEN_EDIT_VIP_GROUP_DIALOG).
+class TGameActionOpenEditVipGroupDialog final : public TGameActionVipGroup
+{
+public:
+    explicit TGameActionOpenEditVipGroupDialog(QString name)
+        : TGameActionVipGroup(std::move(name), EGameAction::OPEN_EDIT_VIP_GROUP_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionRequestVipGroupUpdate (REQUEST_VIP_GROUP_UPDATE): the
+/// edit-group dialog's result, a creatures::TVipStorage group.
+class TGameActionRequestVipGroupUpdate final : public IGameAction
+{
+public:
+    struct TVipGroup
+    {
+        uint8_t id = 0;
+        QString name;
+        bool editable = false;
+    };
+    explicit TGameActionRequestVipGroupUpdate(TVipGroup group)
+        : m_group(std::move(group))
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::REQUEST_VIP_GROUP_UPDATE; }
+    const TVipGroup& vipGroup() const { return m_group; }
+
+private:
+    TVipGroup m_group;
+};
+
+/// CIP input::TGameActionSortFilterVipList: the SORT_VIPS_BY_* and
+/// SHOW/HIDE_OFFLINE_VIPS / SHOW/HIDE_VIPS_GROUPS actions.
+class TGameActionSortFilterVipList final : public gameactions::TGameActionSimple
+{
+public:
+    using TGameActionSimple::TGameActionSimple;
+};
+
+// ---------------------------------------------------------------------------
+// Reports
+
+/// CIP input::TGameActionReportCharacter: a rule violation report about a
+/// player by name (REPORT_NAME, REPORT_BOT), and the base of the statement and
+/// text reports.
+class TGameActionReportCharacter : public IGameAction
+{
+public:
+    TGameActionReportCharacter(EGameAction type, QString characterName)
+        : m_type(type)
+        , m_characterName(std::move(characterName))
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const QString& characterName() const { return m_characterName; }
+
+private:
+    EGameAction m_type;
+    QString m_characterName;
+};
+
+/// CIP input::TGameActionReportStatement (REPORT_STATEMENT): a chat statement,
+/// its speaker and the server's statement id.
+class TGameActionReportStatement final : public TGameActionReportCharacter
+{
+public:
+    TGameActionReportStatement(QString characterName, int statementId, QString statement)
+        : TGameActionReportCharacter(EGameAction::REPORT_STATEMENT, std::move(characterName))
+        , m_statementId(statementId)
+        , m_statement(std::move(statement))
+    {
+    }
+    int statementId() const { return m_statementId; }
+    const QString& statement() const { return m_statement; }
+
+private:
+    int m_statementId;
+    QString m_statement;
+};
+
+/// CIP input::TGameActionReportText (REPORT_TEXT): an edited text, its author
+/// and the text's edit id.
+class TGameActionReportText final : public TGameActionReportCharacter
+{
+public:
+    TGameActionReportText(QString characterName, int textId, QString text)
+        : TGameActionReportCharacter(EGameAction::REPORT_TEXT, std::move(characterName))
+        , m_textId(textId)
+        , m_text(std::move(text))
+    {
+    }
+    int textId() const { return m_textId; }
+    const QString& text() const { return m_text; }
+
+private:
+    int m_textId;
+    QString m_text;
+};
+
+/// CIP input::TGameActionReportHireling (REPORT_HIRELING_NAME).
+class TGameActionReportHireling final : public IGameAction
+{
+public:
+    TGameActionReportHireling(EGameAction type, QString hirelingName, uint32_t creatureId)
+        : m_type(type)
+        , m_hirelingName(std::move(hirelingName))
+        , m_creatureId(creatureId)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    const QString& hirelingName() const { return m_hirelingName; }
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    EGameAction m_type;
+    QString m_hirelingName;
+    uint32_t m_creatureId;
+};
+
+/// CIP input::TGameActionReportMapBug (REPORT_BUG_MAP): the field reported.
+class TGameActionReportMapBug final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionReportMapBug(const Position& coordinate)
+        : TGameActionSimple(EGameAction::REPORT_BUG_MAP)
+        , m_coordinate(coordinate)
+    {
+    }
+    const Position& coordinate() const { return m_coordinate; }
+
+private:
+    Position m_coordinate;
+};
+
+/// CIP input::TGameActionReportTypo (REPORT_BUG_TYPO): the speaker and the text.
+class TGameActionReportTypo final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionReportTypo(QString speaker, QString text)
+        : TGameActionSimple(EGameAction::REPORT_BUG_TYPO)
+        , m_speaker(std::move(speaker))
+        , m_text(std::move(text))
+    {
+    }
+    const QString& speaker() const { return m_speaker; }
+    const QString& text() const { return m_text; }
+
+private:
+    QString m_speaker;
+    QString m_text;
+};
+
+/// CIP input::TGameActionGetTextForReport (GET_TEXT_FOR_REPORT): an object's
+/// text to report.
+class TGameActionGetTextForReport final : public IGameAction
+{
+public:
+    explicit TGameActionGetTextForReport(TObjectGameActionContext object)
+        : m_object(object)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::GET_TEXT_FOR_REPORT; }
+    const TObjectGameActionContext& object() const { return m_object; }
+
+private:
+    TObjectGameActionContext m_object;
+};
+
+// ---------------------------------------------------------------------------
+// Exiva options, loot lists
+
+/// CIP input::TGameActionUpdateExivaOptions (EXIVA_UPADATE_OPTIONS).
+class TGameActionUpdateExivaOptions final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionUpdateExivaOptions()
+        : TGameActionSimple(EGameAction::EXIVA_UPADATE_OPTIONS)
+    {
+    }
+};
+
+/// CIP input::TGameActionToggleBlackWhitelistStatus (LOOT_ADD_TO_BLACKWHITELIST /
+/// LOOT_REMOVE_FROM_BLACKWHITELIST): the object type.
+class TGameActionToggleBlackWhitelistStatus final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionToggleBlackWhitelistStatus(EGameAction type, uint16_t typeId)
+        : TGameActionSimple(type)
+        , m_typeId(typeId)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+
+private:
+    uint16_t m_typeId;
+};
+
+
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<IGameActionPtr>;
@@ -733,22 +1404,6 @@ public:
     explicit TGameActionForMinimapMarkerUsingFullMarkerData(EGameAction type);
 };
 
-/// CIP input::TGameActionVip .
-class TGameActionVip : public TGameAction
-{
-public:
-    TGameActionVip() = default;
-    explicit TGameActionVip(EGameAction type);
-};
-
-/// CIP input::TGameActionVipGroup .
-class TGameActionVipGroup : public TGameAction
-{
-public:
-    TGameActionVipGroup() = default;
-    explicit TGameActionVipGroup(EGameAction type);
-};
-
 
 
 
@@ -847,21 +1502,6 @@ public:
     TGameActionAddMouseTrailHintAtTutorialMarker() { type = EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER; }
 };
 
-/// CIP input::TGameActionAddNewVip (v0 → ADD_NEW_VIP).
-class TGameActionAddNewVip final : public TGameActionVip
-{
-public:
-    TGameActionAddNewVip() { type = EGameAction::ADD_NEW_VIP; }
-    explicit TGameActionAddNewVip(QString name);
-};
-
-/// CIP input::TGameActionAddNewVipGroup .
-class TGameActionAddNewVipGroup final : public TGameActionVipGroup
-{
-public:
-    TGameActionAddNewVipGroup() { type = EGameAction::ADD_NEW_VIP_GROUP; }
-};
-
 /// CIP input::TGameActionAddTextMessage : ADD_SYSTEM_CHAT_MESSAGE /
 /// ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE.
 class TGameActionAddTextMessage final : public TGameAction
@@ -926,26 +1566,6 @@ public:
     TGameActionChangeTutorialModeEnabled() { type = EGameAction::CHANGE_TUTORIAL_MODE_ENABLED; }
 };
 
-/// CIP input::TGameActionChatChannel : OPEN/CLOSE/MUTE and related
-/// channel-id actions share this carrier.
-class TGameActionChatChannel final : public TGameAction
-{
-public:
-    TGameActionChatChannel() = default;
-    explicit TGameActionChatChannel(EGameAction type);
-    TGameActionChatChannel(EGameAction type, int chatChannelType, int chatChannelId, QString name = {});
-};
-
-/// CIP input::TGameActionChatChannelModeration : invite/exclude
-/// player from a channel.
-class TGameActionChatChannelModeration final : public TGameAction
-{
-public:
-    TGameActionChatChannelModeration() = default;
-    explicit TGameActionChatChannelModeration(EGameAction type);
-    TGameActionChatChannelModeration(EGameAction type, QString playerName);
-};
-
 /// CIP input::TGameActionClearLootContainer (→ LOOT_CONTAINER_CLEAR).
 class TGameActionClearLootContainer final : public TGameActionManagedContainer
 {
@@ -970,49 +1590,6 @@ public:
 
 
 
-
-/// CIP input::TGameActionCopyChatEntryToClipboard .
-class TGameActionCopyChatEntryToClipboard final : public TGameAction
-{
-public:
-    TGameActionCopyChatEntryToClipboard() { type = EGameAction::COPY_CHAT_ENTRY_TO_CLIPBOARD; }
-    explicit TGameActionCopyChatEntryToClipboard(QString text);
-};
-
-/// CIP input::TGameActionCopyCreatureNameToClipboard .
-class TGameActionCopyCreatureNameToClipboard final : public TGameAction
-{
-public:
-    TGameActionCopyCreatureNameToClipboard() { type = EGameAction::COPY_CREATURE_NAME_TO_CLIPBOARD; }
-    explicit TGameActionCopyCreatureNameToClipboard(QString name);
-};
-
-/// CIP input::TGameActionCopyTextToClipboard (v0).
-class TGameActionCopyTextToClipboard final : public TGameAction
-{
-public:
-    TGameActionCopyTextToClipboard() { type = EGameAction::COPY_TEXT_TO_CLIPBOARD; }
-    explicit TGameActionCopyTextToClipboard(QString text);
-};
-
-/// CIP input::TGameActionCopyTrustedTextToClipboard .
-class TGameActionCopyTrustedTextToClipboard final : public TGameAction
-{
-public:
-    TGameActionCopyTrustedTextToClipboard() { type = EGameAction::COPY_TRUSTED_TEXT_TO_CLIPBOARD; }
-    explicit TGameActionCopyTrustedTextToClipboard(QString text);
-};
-
-/// CIP input::TGameActionCreatureWithName : IGNORE/UNIGNORE,
-/// OPEN_MESSAGE_TO_CHAT_CHANNEL, REPORT_NAME, RECENTLY_TRADED, and similar
-/// name-keyed actions share this carrier.
-class TGameActionCreatureWithName final : public TGameAction
-{
-public:
-    TGameActionCreatureWithName() = default;
-    explicit TGameActionCreatureWithName(EGameAction type);
-    TGameActionCreatureWithName(EGameAction type, QString name);
-};
 
 /// CIP input::TGameActionCyclopediaMapSelectionItem .
 class TGameActionCyclopediaMapSelectionItem final : public TGameAction
@@ -1059,14 +1636,6 @@ public:
     TGameActionExaltationForgeTransfer() { type = EGameAction::EXALTATION_FORGE_TRANSFER; }
 };
 
-/// CIP input::TGameActionExcludePlayerFromChatChannel (v0).
-class TGameActionExcludePlayerFromChatChannel final : public TGameAction
-{
-public:
-    TGameActionExcludePlayerFromChatChannel() { type = EGameAction::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL; }
-    explicit TGameActionExcludePlayerFromChatChannel(QString playerName);
-};
-
 /// CIP input::TGameActionFinishedTutorialForCharacter .
 class TGameActionFinishedTutorialForCharacter final : public TGameAction
 {
@@ -1083,29 +1652,6 @@ public:
     TGameActionFriendsDialogSearchAccount() { type = EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT; }
 };
 
-/// CIP input::TGameActionGetChatChannelList .
-class TGameActionGetChatChannelList final : public TGameAction
-{
-public:
-    TGameActionGetChatChannelList() { type = EGameAction::GET_CHAT_CHANNEL_LIST; }
-};
-
-
-/// CIP input::TGameActionGetTextForReport .
-class TGameActionGetTextForReport final : public TGameAction
-{
-public:
-    TGameActionGetTextForReport() { type = EGameAction::GET_TEXT_FOR_REPORT; }
-    explicit TGameActionGetTextForReport(QString text);
-};
-
-/// CIP input::TGameActionIgnoreName .
-class TGameActionIgnoreName final : public TGameAction
-{
-public:
-    TGameActionIgnoreName() { type = EGameAction::IGNORE_NAME; }
-    explicit TGameActionIgnoreName(QString text);
-};
 
 /// CIP input::TGameActionInspectObject .
 class TGameActionInspectObject final : public TGameAction
@@ -1113,22 +1659,6 @@ class TGameActionInspectObject final : public TGameAction
 public:
     TGameActionInspectObject() { type = EGameAction::INSPECT_OBJECT; }
     TGameActionInspectObject(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-
-/// CIP input::TGameActionInvitePlayerToChatChannel .
-class TGameActionInvitePlayerToChatChannel final : public TGameAction
-{
-public:
-    TGameActionInvitePlayerToChatChannel() { type = EGameAction::INVITE_PLAYER_TO_CHAT_CHANNEL; }
-    explicit TGameActionInvitePlayerToChatChannel(QString text);
-};
-
-/// CIP input::TGameActionInvitePlayerToPrivateChatChannel .
-class TGameActionInvitePlayerToPrivateChatChannel final : public TGameAction
-{
-public:
-    TGameActionInvitePlayerToPrivateChatChannel() { type = EGameAction::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL; }
-    explicit TGameActionInvitePlayerToPrivateChatChannel(QString text);
 };
 
 /// CIP input::TGameActionLoadDefaultMinimapTilesFromResources .
@@ -1158,22 +1688,6 @@ public:
 };
 
 
-/// CIP input::TGameActionOpenEditVipDialog .
-class TGameActionOpenEditVipDialog final : public TGameActionVip
-{
-public:
-    TGameActionOpenEditVipDialog() { type = EGameAction::OPEN_EDIT_VIP_DIALOG; }
-    explicit TGameActionOpenEditVipDialog(QString text);
-};
-
-/// CIP input::TGameActionOpenEditVipGroupDialog .
-class TGameActionOpenEditVipGroupDialog final : public TGameActionVipGroup
-{
-public:
-    TGameActionOpenEditVipGroupDialog() { type = EGameAction::OPEN_EDIT_VIP_GROUP_DIALOG; }
-    explicit TGameActionOpenEditVipGroupDialog(QString text);
-};
-
 /// CIP input::TGameActionOpenGetPremiumUrl .
 class TGameActionOpenGetPremiumUrl final : public TGameAction
 {
@@ -1187,14 +1701,6 @@ class TGameActionOpenLootContainer final : public TGameActionManagedContainer
 {
 public:
     TGameActionOpenLootContainer() { type = EGameAction::LOOT_CONTAINER_OPEN; }
-};
-
-/// CIP input::TGameActionOpenMessageToChatChannel .
-class TGameActionOpenMessageToChatChannel final : public TGameAction
-{
-public:
-    TGameActionOpenMessageToChatChannel() { type = EGameAction::OPEN_MESSAGE_TO_CHAT_CHANNEL; }
-    explicit TGameActionOpenMessageToChatChannel(QString text);
 };
 
 /// CIP input::TGameActionOpenNewsDialog .
@@ -1301,14 +1807,6 @@ public:
     TGameActionQuitGame() { type = EGameAction::QUIT_GAME; }
 };
 
-/// CIP input::TGameActionRecentlyTraded .
-class TGameActionRecentlyTraded final : public TGameAction
-{
-public:
-    TGameActionRecentlyTraded() { type = EGameAction::RECENTLY_TRADED; }
-    explicit TGameActionRecentlyTraded(QString text);
-};
-
 /// CIP input::TGameActionRefreshCompendiumNews .
 class TGameActionRefreshCompendiumNews final : public TGameAction
 {
@@ -1322,74 +1820,6 @@ class TGameActionRemoveSpriteIdentifierFromCache final : public TGameAction
 {
 public:
     TGameActionRemoveSpriteIdentifierFromCache() { type = EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE; }
-};
-
-/// CIP input::TGameActionRemoveVip .
-class TGameActionRemoveVip final : public TGameActionVip
-{
-public:
-    TGameActionRemoveVip() { type = EGameAction::REMOVE_VIP; }
-};
-
-/// CIP input::TGameActionRemoveVipGroup .
-class TGameActionRemoveVipGroup final : public TGameActionVipGroup
-{
-public:
-    TGameActionRemoveVipGroup() { type = EGameAction::REMOVE_VIP_GROUP; }
-};
-
-/// CIP input::TGameActionReportCharacter .
-class TGameActionReportCharacter final : public TGameAction
-{
-public:
-    TGameActionReportCharacter() { type = EGameAction::REPORT_NAME; }
-    explicit TGameActionReportCharacter(QString text);
-};
-
-/// CIP input::TGameActionReportHireling .
-class TGameActionReportHireling final : public TGameAction
-{
-public:
-    TGameActionReportHireling() { type = EGameAction::REPORT_HIRELING_NAME; }
-    explicit TGameActionReportHireling(uint32_t creatureId);
-};
-
-/// CIP input::TGameActionReportMapBug .
-class TGameActionReportMapBug final : public TGameAction
-{
-public:
-    TGameActionReportMapBug() { type = EGameAction::REPORT_BUG_MAP; }
-};
-
-/// CIP input::TGameActionReportStatement .
-class TGameActionReportStatement final : public TGameAction
-{
-public:
-    TGameActionReportStatement() { type = EGameAction::REPORT_STATEMENT; }
-    explicit TGameActionReportStatement(QString text);
-};
-
-/// CIP input::TGameActionReportText .
-class TGameActionReportText final : public TGameAction
-{
-public:
-    TGameActionReportText() { type = EGameAction::REPORT_TEXT; }
-    explicit TGameActionReportText(QString text);
-};
-
-/// CIP input::TGameActionReportTypo .
-class TGameActionReportTypo final : public TGameAction
-{
-public:
-    TGameActionReportTypo() { type = EGameAction::REPORT_BUG_TYPO; }
-};
-
-/// CIP input::TGameActionRequestConformationForCopyingTextToClipboard .
-class TGameActionRequestConformationForCopyingTextToClipboard final : public TGameAction
-{
-public:
-    TGameActionRequestConformationForCopyingTextToClipboard() { type = EGameAction::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD; }
-    explicit TGameActionRequestConformationForCopyingTextToClipboard(QString text);
 };
 
 
@@ -1417,18 +1847,6 @@ class TGameActionRequestTransactionDetailsFromServer final : public TGameAction
 {
 public:
     TGameActionRequestTransactionDetailsFromServer() { type = EGameAction::REQUEST_TRANSACTION_DETAILS; }
-};
-/// CIP input::TGameActionRequestVipDataUpdate .
-class TGameActionRequestVipDataUpdate final : public TGameActionVip
-{
-public:
-    TGameActionRequestVipDataUpdate() { type = EGameAction::REQUST_VIP_DATA_UPDATE; }
-};
-/// CIP input::TGameActionRequestVipGroupUpdate .
-class TGameActionRequestVipGroupUpdate final : public TGameActionVipGroup
-{
-public:
-    TGameActionRequestVipGroupUpdate() { type = EGameAction::REQUEST_VIP_GROUP_UPDATE; }
 };
 /// CIP input::TGameActionResolveSprite .
 class TGameActionResolveSprite final : public TGameAction
@@ -1474,40 +1892,6 @@ class TGameActionSelectPreyMonsterFromList final : public TGameAction
 public:
     TGameActionSelectPreyMonsterFromList() { type = EGameAction::PREY_SELECT_MONSTER_FROM_LIST; }
 };
-/// CIP input::TGameActionSendChatMessage .
-class TGameActionSendChatMessage final : public TGameAction
-{
-public:
-    TGameActionSendChatMessage() = default;
-    explicit TGameActionSendChatMessage(EGameAction type);
-};
-/// CIP input::TGameActionSendChatMessageToNpc .
-class TGameActionSendChatMessageToNpc final : public TGameAction
-{
-public:
-    TGameActionSendChatMessageToNpc() { type = EGameAction::SEND_CHAT_MESSAGE_TO_NPC; }
-    explicit TGameActionSendChatMessageToNpc(QString text);
-};
-/// CIP input::TGameActionSendChatMessageWithChannelID .
-class TGameActionSendChatMessageWithChannelID final : public TGameAction
-{
-public:
-    TGameActionSendChatMessageWithChannelID() { type = EGameAction::SEND_CHAT_MESSAGE_WITH_CHANNEL_ID; }
-};
-/// CIP input::TGameActionSendChatMessageWithRecipient .
-class TGameActionSendChatMessageWithRecipient final : public TGameAction
-{
-public:
-    TGameActionSendChatMessageWithRecipient() { type = EGameAction::SEND_CHAT_MESSAGE_WITH_RECIPIENT; }
-    explicit TGameActionSendChatMessageWithRecipient(QString text);
-};
-/// CIP input::TGameActionSendChatMessageWithSpeechVolume .
-class TGameActionSendChatMessageWithSpeechVolume final : public TGameAction
-{
-public:
-    TGameActionSendChatMessageWithSpeechVolume() { type = EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME; }
-    explicit TGameActionSendChatMessageWithSpeechVolume(QString text);
-};
 /// CIP input::TGameActionSessiondumpSkipTo .
 class TGameActionSessiondumpSkipTo final : public TGameAction
 {
@@ -1531,13 +1915,6 @@ class TGameActionSetCreaturePodiumConfiguration final : public TGameAction
 {
 public:
     TGameActionSetCreaturePodiumConfiguration() { type = EGameAction::SET_CREATURE_PODIUM_CONFIGURATION; }
-};
-/// CIP input::TGameActionSetCurrentChatChannelInputText .
-class TGameActionSetCurrentChatChannelInputText final : public TGameAction
-{
-public:
-    TGameActionSetCurrentChatChannelInputText() { type = EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT; }
-    explicit TGameActionSetCurrentChatChannelInputText(QString text);
 };
 /// CIP input::TGameActionSetHirelingName .
 class TGameActionSetHirelingName final : public TGameAction
@@ -1652,13 +2029,6 @@ class TGameActionShowTutorialHint final : public TGameAction
 public:
     TGameActionShowTutorialHint() { type = EGameAction::SHOW_TUTORIAL_HINT; }
 };
-/// CIP input::TGameActionSortFilterVipList .
-class TGameActionSortFilterVipList final : public TGameAction
-{
-public:
-    TGameActionSortFilterVipList() = default;
-    explicit TGameActionSortFilterVipList(EGameAction type);
-};
 /// CIP input::TGameActionSpriteResolved .
 class TGameActionSpriteResolved final : public TGameAction
 {
@@ -1704,12 +2074,6 @@ class TGameActionStashStowType final : public TGameAction
 public:
     TGameActionStashStowType() { type = EGameAction::STASH_STOW_TYPE; }
 };
-/// CIP input::TGameActionSwitchChatMode .
-class TGameActionSwitchChatMode final : public TGameAction
-{
-public:
-    TGameActionSwitchChatMode() { type = EGameAction::SWITCH_CHAT_MODE; }
-};
 /// CIP input::TGameActionSwitchClientOptions .
 class TGameActionSwitchClientOptions final : public TGameAction
 {
@@ -1753,13 +2117,6 @@ class TGameActionToggleActionBars final : public TGameAction
 public:
     TGameActionToggleActionBars() { type = EGameAction::TOGGLE_ACTION_BARS; }
 };
-/// CIP input::TGameActionToggleBlackWhitelistStatus .
-class TGameActionToggleBlackWhitelistStatus final : public TGameAction
-{
-public:
-    TGameActionToggleBlackWhitelistStatus() = default;
-    explicit TGameActionToggleBlackWhitelistStatus(EGameAction type);
-};
 /// CIP input::TGameActionToggleMounted .
 class TGameActionToggleMounted final : public TGameAction
 {
@@ -1798,19 +2155,6 @@ class TGameActionTutorialProgress final : public TGameAction
 public:
     TGameActionTutorialProgress() { type = EGameAction::TUTORIAL_PROGRESS; }
 };
-/// CIP input::TGameActionUnignoreName .
-class TGameActionUnignoreName final : public TGameAction
-{
-public:
-    TGameActionUnignoreName() { type = EGameAction::UNIGNORE_NAME; }
-    explicit TGameActionUnignoreName(QString text);
-};
-/// CIP input::TGameActionUpdateExivaOptions .
-class TGameActionUpdateExivaOptions final : public TGameAction
-{
-public:
-    TGameActionUpdateExivaOptions() { type = EGameAction::EXIVA_UPADATE_OPTIONS; }
-};
 /// CIP input::TGameActionUpdateMinimapMarker .
 class TGameActionUpdateMinimapMarker final : public TGameActionForMinimapMarkerUsingFullMarkerData
 {
@@ -1837,13 +2181,6 @@ class TGameActionUseOnYourself final : public TGameAction
 public:
     TGameActionUseOnYourself() { type = EGameAction::USE_ON_YOURSELF; }
     TGameActionUseOnYourself(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionVisibleChatChannel .
-class TGameActionVisibleChatChannel final : public TGameAction
-{
-public:
-    TGameActionVisibleChatChannel() = default;
-    explicit TGameActionVisibleChatChannel(EGameAction type);
 };
 namespace gameactions {
 

@@ -53,11 +53,6 @@ bool isIgnoredName(const QString& name)
     return false;
 }
 
-TGameActionPtr namedCreatureAction(const EGameAction type, const QString& name)
-{
-    return std::make_shared<TGameActionCreatureWithName>(type, name);
-}
-
 }
 
 bool isHireling(const tibia::creatures::TCreature& stored)
@@ -87,7 +82,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
             push(A::START_TALKING_TO_NPC);
             if (hireling) {
                 push(A::REQUEST_OUTFITS_FROM_SERVER);
-                push(A::REPORT_HIRELING_NAME);
+                actions.push_back(std::make_shared<TGameActionReportHireling>(A::REPORT_HIRELING_NAME, name, creatureId));
                 push(A::BUY_HIRELING_NAME_OR_SEX_CHANGE);
             }
         } else {
@@ -103,13 +98,16 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
 
     if (stored->isPlayer() && !own) {
         // TGenericChatGameActionProvider, then the bot report by name.
-        actions.push_back(namedCreatureAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
-        actions.push_back(namedCreatureAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
-        actions.push_back(namedCreatureAction(A::REPORT_NAME, name));
-        actions.push_back(namedCreatureAction(isIgnoredName(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
+        actions.push_back(std::make_shared<TGameActionOpenMessageToChatChannel>(name));
+        actions.push_back(std::make_shared<TGameActionInvitePlayerToPrivateChatChannel>(0, name));
+        actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_NAME, name));
+        if (isIgnoredName(name))
+            actions.push_back(std::make_shared<TGameActionUnignoreName>(name));
+        else
+            actions.push_back(std::make_shared<TGameActionIgnoreName>(name));
         if (!isVipName(name))
-            actions.push_back(namedCreatureAction(A::ADD_NEW_VIP, name));
-        actions.push_back(namedCreatureAction(A::REPORT_BOT, name));
+            actions.push_back(std::make_shared<TGameActionAddNewVip>(name));
+        actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
         creatures::TPartyGameActionProvider::appendActions(actions, creatureId);
@@ -210,7 +208,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (has(&ThingType::isRotateable) || podium)
         push(A::ROTATE_OBJECT);
     if (has(&ThingType::isReportable))
-        push(A::GET_TEXT_FOR_REPORT);
+        actions.push_back(std::make_shared<TGameActionGetTextForReport>(TObjectGameActionContext{ position, stackPosition, clientId }));
     if (take && !unmove)
         push(A::TRADE_ITEM);
     if (tibia::game::localPlayerIsSupplyStashAvailable()) {
@@ -235,9 +233,11 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (take && id != 0) {
         if (cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance()) {
             if (loot->isLootListed(static_cast<uint16_t>(id)))
-                push(A::LOOT_REMOVE_FROM_BLACKWHITELIST);
+                actions.push_back(std::make_shared<TGameActionToggleBlackWhitelistStatus>(A::LOOT_REMOVE_FROM_BLACKWHITELIST,
+                                                                                          static_cast<uint16_t>(id)));
             else if (!loot->isLootListFull())
-                push(A::LOOT_ADD_TO_BLACKWHITELIST);
+                actions.push_back(std::make_shared<TGameActionToggleBlackWhitelistStatus>(A::LOOT_ADD_TO_BLACKWHITELIST,
+                                                                                          static_cast<uint16_t>(id)));
         }
     }
     {

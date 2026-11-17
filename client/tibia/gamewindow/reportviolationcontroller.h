@@ -52,7 +52,7 @@ public:
     void onRuleViolationReportConfirmedByServer();
 
 private:
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
     void open(EType type, const QString& name, const QString& statement, uint32_t id);
 
     EType m_type = Name;

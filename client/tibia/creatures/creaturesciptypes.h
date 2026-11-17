@@ -97,15 +97,15 @@ public:
     TVipGameActionHandler(TVipStorage* storage, QObject* parent = nullptr);
     ~TVipGameActionHandler() override;
 
-    void handleGameAction(const ::tibia::input::TGameAction& action);
-    void handleAddNewVipGameAction(const ::tibia::input::TGameAction& action);
+    void handleGameAction(const ::tibia::input::IGameAction& action);
+    void handleAddNewVipGameAction(const ::tibia::input::TGameActionVip& action);
     /// Removes the VIP named by the action, locally and on the server.
-    void handleRemoveVipGameAction(const ::tibia::input::TGameAction& action);
+    void handleRemoveVipGameAction(const ::tibia::input::TGameActionVip& action);
     /// Stores the edited VIP (keeping its state) and sends the edit.
-    void handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameAction& action);
-    void handleAddNewVipGroupGameAction(const ::tibia::input::TGameAction& action);
-    void handleRemoveVipGroupGameAction(const ::tibia::input::TGameAction& action);
-    void handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameAction& action);
+    void handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameActionRequestVipDataUpdate& action);
+    void handleAddNewVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action);
+    void handleRemoveVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action);
+    void handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameActionRequestVipGroupUpdate& action);
 
 private:
     TVipStorage* m_storage;

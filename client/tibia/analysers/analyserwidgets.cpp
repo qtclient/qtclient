@@ -468,7 +468,7 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
             [this] { m_storages->huntingSession()->setShowBaseXp(!showBaseXp()); });
     menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { publishAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD, exportText()); });
+            [this] { input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(exportText())); });
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_save_data_to_file")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         const QString path = exportFileName("txt");
         auto action = input::mutableClone(*input::makeAction(A::SAVE_TEXT_TO_FILE));

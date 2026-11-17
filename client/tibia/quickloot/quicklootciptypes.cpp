@@ -75,7 +75,7 @@ TQuickLootGameActionHandler::TQuickLootGameActionHandler(QObject* parent)
     : cip::tibia::quickloot::TQuickLootGameActionHandler(parent)
 {
     for (const A type : QuickLootActions)
-        input::setActionHandler(type, [](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TQuickLootGameActionHandler::~TQuickLootGameActionHandler()
@@ -84,9 +84,14 @@ TQuickLootGameActionHandler::~TQuickLootGameActionHandler()
         input::setActionHandler(type, nullptr);
 }
 
-bool TQuickLootGameActionHandler::handleGameAction(const input::TGameAction& action)
+bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGameAction)
 {
-    switch (action.type) {
+    // The managed container and quick loot actions are still the field carrier.
+    static const input::TGameAction NoFields;
+    const auto* fields = input::gameActionAs<input::TGameAction>(&pGameAction);
+    const input::TGameAction& action = fields ? *fields : NoFields;
+    const auto* listStatus = input::gameActionAs<input::TGameActionToggleBlackWhitelistStatus>(&pGameAction);
+    switch (pGameAction.gameActionType()) {
     case A::QUICK_LOOT:
         P::quickLoot(action.position, action.objectClientId, action.stackPosition, quickLootAllCorpsesInArea());
         return true;
@@ -115,11 +120,12 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::TGameAction& act
         P::setLootContainerFallback(action.enable);
         return true;
     case A::LOOT_ADD_TO_BLACKWHITELIST:
-        handleAddToBlackWhitelistStatusAction(action.objectClientId);
+        if (listStatus)
+            handleAddToBlackWhitelistStatusAction(listStatus->typeId());
         return true;
     case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        if (cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance())
-            storage->setLootListed(action.objectClientId, false);
+        if (cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance(); storage && listStatus)
+            storage->setLootListed(listStatus->typeId(), false);
         return true;
     default:
         return false;

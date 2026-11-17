@@ -134,11 +134,7 @@ void TEditTextController::abortEditing()
 /// CIP .
 void TEditTextController::reportText()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REPORT_TEXT));
-    action->text = m_author;
-    action->parameter = static_cast<int>(m_id);
-    action->statement = m_data.editText();
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionReportText>(m_author, static_cast<int>(m_id), m_data.editText()));
 }
 
 void TEditTextController::reopen()

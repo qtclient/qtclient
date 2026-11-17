@@ -20,6 +20,7 @@ class GameserverMessageUpdateManagedContainers;
 namespace tibia {
 namespace input {
 struct TGameAction;
+class IGameAction;
 }
 namespace quickloot {
 
@@ -68,7 +69,7 @@ public:
     explicit TQuickLootGameActionHandler(QObject* parent = nullptr);
     ~TQuickLootGameActionHandler() override;
 
-    static bool handleGameAction(const input::TGameAction& action);
+    static bool handleGameAction(const input::IGameAction& action);
 
 private:
     /// A full list refuses the object with a status line.

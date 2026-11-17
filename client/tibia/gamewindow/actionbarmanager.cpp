@@ -398,23 +398,18 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action
                                                                              : button->currentMultiAction(game::TCooldownStorage::now());
         setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
     }
-    execute(setting, action.autoRepeat);
+    execute(setting);
     input::publish(input::makeGameAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
     return true;
 }
 
-void TActionBarManager::execute(const Setting& setting, const bool autoRepeat)
+void TActionBarManager::execute(const Setting& setting)
 {
     switch (setting.kind) {
     case Setting::TEXT: {
-        auto text = input::mutableClone(*input::makeAction(A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT));
-        text->text = setting.text;
-        text->enable = setting.sendAutomatically;
-        text->autoRepeat = autoRepeat;
-        if (spells::TSpellInfoStorage::instance()->spellOfText(setting.text)) {
-            text->isSpell = true;
-            text->spellCastType = setting.spellCastType;
-        }
+        auto text = std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(setting.text, setting.sendAutomatically);
+        if (spells::TSpellInfoStorage::instance()->spellOfText(setting.text))
+            text->setSpell(true, setting.spellCastType);
         input::publish(text);
         break;
     }

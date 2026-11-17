@@ -154,7 +154,7 @@ public:
     /// +0x18 the exiva options storage, +0x38 the world type).
     void setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, int worldType);
     /// CIP : the widget's dialogs, sorting and filters.
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
 
     QQuickItem* gameWindowQuickItem() const override;
 

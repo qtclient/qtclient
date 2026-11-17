@@ -4,6 +4,7 @@
 #include "game/gameactionrouter.h"
 
 #include "app/clientoptions.h"
+#include "chat/chatchannel.h"
 #include "appearances/appearanceinstance.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/gamewindowcontroller.h"
@@ -18,6 +19,7 @@
 #include <tibia/assets/thingtype.h>
 #include <client/outfit.h>
 
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QLoggingCategory>
@@ -236,9 +238,8 @@ void startTalking(const uint32_t creatureId)
         publish(status);
         return;
     }
-    auto open = mutableClone(*makeAction(A::OPEN_CHAT_CHANNEL));
-    open->chatChannelType = 0; // TChatChannelIdentifier::Local
-    publish(open);
+    publish(std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL,
+                                                     std::make_shared<const chat::TChatChannelIdentifier>()));
     tibia::game::greetNpc(creatureId);
 }
 
@@ -482,8 +483,11 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         tibia::game::cancelFollow();
         break;
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
-    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        // Handled by TClipboardGameActionHandler when registered.
+        // qtclient: CIP's handler of this TGameActionCreature is not ported yet.
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = creatureId ? storage->creatureAt(creatureId) : nullptr)
+                QGuiApplication::clipboard()->setText(row->name());
+        }
         break;
     case A::SET_PLAYER_MOVEMENT_INTENT:
         // Handled by TPlayerMovementGameActionHandler when registered.
@@ -601,8 +605,17 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         publish(makeGameAction(A::CHAT_CHANNEL_SELECT_ALL));
         break;
     case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
+        // qtclient: the focused text field's selection (CIP's text input handler is not ported).
+        if (QObject* field = focusedTextField()) {
+            const QString text = field->property("selectedText").toString();
+            if (!text.isEmpty())
+                QGuiApplication::clipboard()->setText(text);
+        }
+        break;
     case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:
-        // Handled by TClipboardGameActionHandler when registered.
+        // qtclient: TLinkCopyWarningDialogController is not wired to the router yet; copy.
+        if (const auto* copy = gameActionAs<TGameActionCopyTextToClipboard>(pGameAction))
+            QGuiApplication::clipboard()->setText(copy->text());
         break;
     case A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
         clearSpriteCaches();

@@ -1,5 +1,7 @@
 #include "tutorial/sessiondumphintpublishgameaction.h"
 
+#include "chat/chatchannel.h"
+
 #include <memory>
 
 namespace tibia::tutorial {
@@ -42,7 +44,11 @@ TSessiondumpHintSkipTo::TSessiondumpHintSkipTo(const int64_t& skipToTimestamp)
 
 TSessiondumpHintSwitchChannel::TSessiondumpHintSwitchChannel(const int channelType)
     : TSessiondumpHintPublishGameAction(
-          SwitchChannel, std::make_shared<input::TGameActionChatChannel>(input::EGameAction::OPEN_CHAT_CHANNEL, channelType, 0))
+          SwitchChannel,
+          std::make_shared<input::TGameActionChatChannel>(
+              input::EGameAction::OPEN_CHAT_CHANNEL,
+              std::make_shared<const chat::TChatChannelIdentifier>(
+                  chat::TChatChannelIdentifier{ static_cast<chat::TChatChannelIdentifier::Type>(channelType), 0, {} })))
 {
 }
 

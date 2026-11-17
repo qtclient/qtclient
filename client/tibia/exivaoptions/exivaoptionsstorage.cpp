@@ -57,7 +57,7 @@ TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     });
 
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExivaOptionsStorage::~TExivaOptionsStorage()
@@ -70,15 +70,16 @@ TExivaOptionsStorage::~TExivaOptionsStorage()
 
 TExivaOptionsStorage* TExivaOptionsStorage::instance() { return g_instance; }
 
-bool TExivaOptionsStorage::handleGameAction(const input::TGameAction& action)
+bool TExivaOptionsStorage::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::EXIVA_TOGGLE_ALLOW_EVERYONE:
         toggleAllowEveryone();
         return true;
     case A::EXIVA_ADD_CHARACTER_TO_WHITELIST:
     case A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST:
-        requestWhitelistChange(action.text, action.type == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
+        if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+            requestWhitelistChange(vip->vipName(), action.gameActionType() == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
         return true;
     case A::EXIVA_UPADATE_OPTIONS:
         // The dialog's apply calls update() with its payload; this action

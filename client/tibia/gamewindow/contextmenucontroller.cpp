@@ -1,5 +1,7 @@
 #include "contextmenucontroller.h"
 
+#include "chat/chatchannel.h"
+
 #include "gamewindow/sidebarmanager.h"
 #include "input/gameactionhandlers.h"
 #include "input/gameactionmapper.h"
@@ -30,6 +32,28 @@ QString nameOf(const input::IGameAction& action)
                 return row->name();
         }
     }
+    if (const auto* named = input::gameActionAs<input::TGameActionCreatureWithName>(&action))
+        return named->creatureName();
+    if (const auto* channel = input::gameActionAs<input::TGameActionChatChannel>(&action))
+        return channel->chatChannelIdentifier().type == chat::TChatChannelIdentifier::MessageTo
+                   ? channel->chatChannelIdentifier().name
+                   : channel->chatChannelIdentifier().displayName();
+    if (const auto* moderation = input::gameActionAs<input::TGameActionChatChannelModeration>(&action))
+        return moderation->playerName();
+    if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+        return vip->vipName();
+    if (const auto* group = input::gameActionAs<input::TGameActionVipGroup>(&action))
+        return group->groupName();
+    if (const auto* ignore = input::gameActionAs<input::TGameActionIgnoreName>(&action))
+        return ignore->name();
+    if (const auto* unignore = input::gameActionAs<input::TGameActionUnignoreName>(&action))
+        return unignore->name();
+    if (const auto* traded = input::gameActionAs<input::TGameActionRecentlyTraded>(&action))
+        return traded->name();
+    if (const auto* report = input::gameActionAs<input::TGameActionReportCharacter>(&action))
+        return report->characterName();
+    if (const auto* hireling = input::gameActionAs<input::TGameActionReportHireling>(&action))
+        return hireling->hirelingName();
     const auto* fields = dynamic_cast<const input::TGameAction*>(&action);
     return fields ? fields->text : QString();
 }

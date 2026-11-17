@@ -46,7 +46,7 @@ public:
     Q_INVOKABLE void requestSendBugReport(int ClassificationIndex, const QString& Comment) override;
 
 private:
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
     /// A map report about `position`.
     void showReportMapDialog(const Position& position);
     void show();

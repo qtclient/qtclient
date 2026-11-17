@@ -731,6 +731,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &input::TPlayerMovementGameActionHandler::handleGameAction);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.clipboardActions.get(),
             &input::TClipboardGameActionHandler::handleGameAction);
+    connect(g.clipboardActions.get(), &input::TClipboardGameActionHandler::publishGameAction, router,
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,

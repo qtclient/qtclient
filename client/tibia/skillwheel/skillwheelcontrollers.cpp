@@ -728,9 +728,8 @@ void TSkillWheelPageController::requestCopyExportCodeToClipboard()
 {
     if (!m_storage->hasData())
         return;
-    auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex());
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(
+        encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex())));
 }
 
 /// CIP: the page's message box in one of its modes, with Yes (OK) and No (Cancel).
@@ -809,9 +808,8 @@ void TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked(
     }
     if (ButtonIdentifier != Button::USER_DEFINED || !m_storage->hasData())
         return;
-    auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = m_plannerUrl + encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex());
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(
+        m_plannerUrl + encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex())));
 }
 
 void TSkillWheelPageController::setShowFullSummary(const bool Show)

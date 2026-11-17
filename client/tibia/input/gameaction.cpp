@@ -1,5 +1,6 @@
 #include "gameaction.h"
 
+#include "chat/chatchannel.h"
 #include "protocol/protocolcodes.h"
 
 #include <algorithm>
@@ -168,6 +169,27 @@ bool isCreatureActionType(const EGameAction type)
 
 }
 
+TGameActionChatChannel::TGameActionChatChannel(const EGameAction type,
+                                               std::shared_ptr<const chat::TChatChannelIdentifier> identifier)
+    : TGameActionSimple(type)
+    , m_identifier(std::move(identifier))
+{
+}
+
+TGameActionOpenMessageToChatChannel::TGameActionOpenMessageToChatChannel(const QString& name)
+    : TGameActionChatChannel(EGameAction::OPEN_MESSAGE_TO_CHAT_CHANNEL,
+                             std::make_shared<const chat::TChatChannelIdentifier>(chat::TChatChannelIdentifier::messageTo(name)))
+{
+}
+
+TGameActionSetCurrentChatChannelInputText& TGameActionSetCurrentChatChannelInputText::setSpell(const bool isSpell,
+                                                                                               const int spellCastOptionalTargetType)
+{
+    m_isSpell = isSpell;
+    m_spellCastOptionalTargetType = spellCastOptionalTargetType;
+    return *this;
+}
+
 TGameActionUseWith::TGameActionUseWith(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::USE_WITH;
@@ -241,12 +263,6 @@ TGameActionActionButtonTriggered::TGameActionActionButtonTriggered(const int bar
 }
 
 
-TGameActionAddNewVip::TGameActionAddNewVip(QString name)
-{
-    type = EGameAction::ADD_NEW_VIP;
-    text = std::move(name);
-}
-
 TGameActionAddTextMessage::TGameActionAddTextMessage(const EGameAction actionType)
 {
     type = actionType;
@@ -258,76 +274,10 @@ TGameActionBuyHirelingNameOrSexChange::TGameActionBuyHirelingNameOrSexChange(con
     creatureId = id;
 }
 
-TGameActionChatChannel::TGameActionChatChannel(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionChatChannel::TGameActionChatChannel(const EGameAction actionType, const int channelType, const int channelId,
-                                               QString name)
-{
-    type = actionType;
-    chatChannelType = channelType;
-    chatChannelId = channelId;
-    text = std::move(name);
-}
-
-TGameActionChatChannelModeration::TGameActionChatChannelModeration(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionChatChannelModeration::TGameActionChatChannelModeration(const EGameAction actionType, QString playerName)
-{
-    type = actionType;
-    text = std::move(playerName);
-}
-
-TGameActionCopyChatEntryToClipboard::TGameActionCopyChatEntryToClipboard(QString value)
-{
-    type = EGameAction::COPY_CHAT_ENTRY_TO_CLIPBOARD;
-    text = std::move(value);
-}
-
-TGameActionCopyCreatureNameToClipboard::TGameActionCopyCreatureNameToClipboard(QString name)
-{
-    type = EGameAction::COPY_CREATURE_NAME_TO_CLIPBOARD;
-    text = std::move(name);
-}
-
-TGameActionCopyTextToClipboard::TGameActionCopyTextToClipboard(QString value)
-{
-    type = EGameAction::COPY_TEXT_TO_CLIPBOARD;
-    text = std::move(value);
-}
-
-TGameActionCopyTrustedTextToClipboard::TGameActionCopyTrustedTextToClipboard(QString value)
-{
-    type = EGameAction::COPY_TRUSTED_TEXT_TO_CLIPBOARD;
-    text = std::move(value);
-}
-
-TGameActionCreatureWithName::TGameActionCreatureWithName(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionCreatureWithName::TGameActionCreatureWithName(const EGameAction actionType, QString name)
-{
-    type = actionType;
-    text = std::move(name);
-}
-
 TGameActionCyclopediaMapSelectionItem::TGameActionCyclopediaMapSelectionItem(const int subareaId)
 {
     type = EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM;
     instance = subareaId;
-}
-
-TGameActionExcludePlayerFromChatChannel::TGameActionExcludePlayerFromChatChannel(QString playerName)
-{
-    type = EGameAction::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL;
-    text = std::move(playerName);
 }
 
 TGameActionForMinimapMarkerUsingCoordinate::TGameActionForMinimapMarkerUsingCoordinate(const EGameAction actionType)
@@ -340,57 +290,15 @@ TGameActionForMinimapMarkerUsingFullMarkerData::TGameActionForMinimapMarkerUsing
     type = actionType;
 }
 
-TGameActionGetTextForReport::TGameActionGetTextForReport(QString value)
-{
-    type = EGameAction::GET_TEXT_FOR_REPORT;
-    text = std::move(value);
-}
-
-TGameActionIgnoreName::TGameActionIgnoreName(QString value)
-{
-    type = EGameAction::IGNORE_NAME;
-    text = std::move(value);
-}
-
 TGameActionInspectObject::TGameActionInspectObject(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::INSPECT_OBJECT;
     fillObject(*this, position, stackPosition, objectClientId);
 }
 
-TGameActionInvitePlayerToChatChannel::TGameActionInvitePlayerToChatChannel(QString value)
-{
-    type = EGameAction::INVITE_PLAYER_TO_CHAT_CHANNEL;
-    text = std::move(value);
-}
-
-TGameActionInvitePlayerToPrivateChatChannel::TGameActionInvitePlayerToPrivateChatChannel(QString value)
-{
-    type = EGameAction::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL;
-    text = std::move(value);
-}
-
 TGameActionManagedContainer::TGameActionManagedContainer(const EGameAction actionType)
 {
     type = actionType;
-}
-
-TGameActionOpenEditVipDialog::TGameActionOpenEditVipDialog(QString value)
-{
-    type = EGameAction::OPEN_EDIT_VIP_DIALOG;
-    text = std::move(value);
-}
-
-TGameActionOpenEditVipGroupDialog::TGameActionOpenEditVipGroupDialog(QString value)
-{
-    type = EGameAction::OPEN_EDIT_VIP_GROUP_DIALOG;
-    text = std::move(value);
-}
-
-TGameActionOpenMessageToChatChannel::TGameActionOpenMessageToChatChannel(QString value)
-{
-    type = EGameAction::OPEN_MESSAGE_TO_CHAT_CHANNEL;
-    text = std::move(value);
 }
 
 TGameActionOpenParentContainer::TGameActionOpenParentContainer(Position position, int stackPosition, const uint16_t objectClientId)
@@ -416,42 +324,6 @@ TGameActionPreySystem::TGameActionPreySystem(const EGameAction actionType)
     type = actionType;
 }
 
-TGameActionRecentlyTraded::TGameActionRecentlyTraded(QString value)
-{
-    type = EGameAction::RECENTLY_TRADED;
-    text = std::move(value);
-}
-
-TGameActionReportCharacter::TGameActionReportCharacter(QString value)
-{
-    type = EGameAction::REPORT_NAME;
-    text = std::move(value);
-}
-
-TGameActionReportHireling::TGameActionReportHireling(const uint32_t id)
-{
-    type = EGameAction::REPORT_HIRELING_NAME;
-    creatureId = id;
-}
-
-TGameActionReportStatement::TGameActionReportStatement(QString value)
-{
-    type = EGameAction::REPORT_STATEMENT;
-    text = std::move(value);
-}
-
-TGameActionReportText::TGameActionReportText(QString value)
-{
-    type = EGameAction::REPORT_TEXT;
-    text = std::move(value);
-}
-
-TGameActionRequestConformationForCopyingTextToClipboard::TGameActionRequestConformationForCopyingTextToClipboard(QString value)
-{
-    type = EGameAction::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD;
-    text = std::move(value);
-}
-
 TGameActionRequestOutfitsFromServer::TGameActionRequestOutfitsFromServer(const uint32_t id)
 {
     type = EGameAction::REQUEST_OUTFITS_FROM_SERVER;
@@ -468,35 +340,6 @@ TGameActionSaveTextToFile::TGameActionSaveTextToFile(QString path)
 {
     type = EGameAction::SAVE_TEXT_TO_FILE;
     filePath = std::move(path);
-}
-
-TGameActionSendChatMessage::TGameActionSendChatMessage(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionSendChatMessageToNpc::TGameActionSendChatMessageToNpc(QString value)
-{
-    type = EGameAction::SEND_CHAT_MESSAGE_TO_NPC;
-    text = std::move(value);
-}
-
-TGameActionSendChatMessageWithRecipient::TGameActionSendChatMessageWithRecipient(QString value)
-{
-    type = EGameAction::SEND_CHAT_MESSAGE_WITH_RECIPIENT;
-    text = std::move(value);
-}
-
-TGameActionSendChatMessageWithSpeechVolume::TGameActionSendChatMessageWithSpeechVolume(QString value)
-{
-    type = EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME;
-    text = std::move(value);
-}
-
-TGameActionSetCurrentChatChannelInputText::TGameActionSetCurrentChatChannelInputText(QString value)
-{
-    type = EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT;
-    text = std::move(value);
 }
 
 TGameActionSetHirelingName::TGameActionSetHirelingName(QString value)
@@ -528,11 +371,6 @@ TGameActionShowSplitStackDialog::TGameActionShowSplitStackDialog(Position positi
     fillObject(*this, position, stackPosition, objectClientId);
 }
 
-TGameActionSortFilterVipList::TGameActionSortFilterVipList(const EGameAction actionType)
-{
-    type = actionType;
-}
-
 
 TGameActionStashOpenStowStackDialog::TGameActionStashOpenStowStackDialog(Position position, int stackPosition, const uint16_t objectClientId)
 {
@@ -558,11 +396,6 @@ TGameActionTargetSelected::TGameActionTargetSelected(const uint32_t id)
     creatureId = id;
 }
 
-TGameActionToggleBlackWhitelistStatus::TGameActionToggleBlackWhitelistStatus(const EGameAction actionType)
-{
-    type = actionType;
-}
-
 TGameActionTryToEquip::TGameActionTryToEquip(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::TRY_TO_EQUIP;
@@ -572,12 +405,6 @@ TGameActionTryToEquip::TGameActionTryToEquip(Position position, int stackPositio
 TGameActionTryToSwitchHotkeySet::TGameActionTryToSwitchHotkeySet(QString value)
 {
     type = EGameAction::TRY_TO_SWITCH_HOTKEYSET;
-    text = std::move(value);
-}
-
-TGameActionUnignoreName::TGameActionUnignoreName(QString value)
-{
-    type = EGameAction::UNIGNORE_NAME;
     text = std::move(value);
 }
 
@@ -597,21 +424,6 @@ TGameActionUseOnYourself::TGameActionUseOnYourself(Position position, int stackP
 {
     type = EGameAction::USE_ON_YOURSELF;
     fillObject(*this, position, stackPosition, objectClientId);
-}
-
-TGameActionVip::TGameActionVip(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionVipGroup::TGameActionVipGroup(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionVisibleChatChannel::TGameActionVisibleChatChannel(const EGameAction actionType)
-{
-    type = actionType;
 }
 
 namespace gameactions {
@@ -701,10 +513,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionAddHintAtTutorialMarker>();
     case EGameAction::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER:
         return std::make_shared<TGameActionAddMouseTrailHintAtTutorialMarker>();
-    case EGameAction::ADD_NEW_VIP:
-        return std::make_shared<TGameActionAddNewVip>();
-    case EGameAction::ADD_NEW_VIP_GROUP:
-        return std::make_shared<TGameActionAddNewVipGroup>();
     case EGameAction::ADD_SYSTEM_CHAT_MESSAGE:
     case EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE:
         return std::make_shared<TGameActionAddTextMessage>(type);
@@ -720,33 +528,12 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionChangeTrackedQuestFlags>();
     case EGameAction::CHANGE_TUTORIAL_MODE_ENABLED:
         return std::make_shared<TGameActionChangeTutorialModeEnabled>();
-    case EGameAction::OPEN_CHAT_CHANNEL:
-    case EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT:
-    case EGameAction::CLOSE_CHAT_CHANNEL:
-    case EGameAction::CLEAR_CHAT_CHANNEL:
-    case EGameAction::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG:
-    case EGameAction::CHAT_CHANNEL_UNSUBSCRIBE_SERVER_LOG:
-    case EGameAction::CHAT_CHANNEL_MUTE:
-    case EGameAction::CHAT_CHANNEL_UNMUTE:
-    case EGameAction::SAVE_CHAT_CHANNEL_TO_FILE:
-    case EGameAction::CHAT_CHANNEL_SELECT_ALL:
-    case EGameAction::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES:
-    case EGameAction::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES:
-        return std::make_shared<TGameActionChatChannel>(type);
     case EGameAction::LOOT_CONTAINER_CLEAR:
         return std::make_shared<TGameActionClearLootContainer>();
     case EGameAction::OBTAIN_CONTAINER_CLEAR:
         return std::make_shared<TGameActionClearObtainContainer>();
     case EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS:
         return std::make_shared<TGameActionCloseAllMultiActionButtons>();
-    case EGameAction::COPY_CHAT_ENTRY_TO_CLIPBOARD:
-        return std::make_shared<TGameActionCopyChatEntryToClipboard>();
-    case EGameAction::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        return std::make_shared<TGameActionCopyCreatureNameToClipboard>();
-    case EGameAction::COPY_TEXT_TO_CLIPBOARD:
-        return std::make_shared<TGameActionCopyTextToClipboard>();
-    case EGameAction::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
-        return std::make_shared<TGameActionCopyTrustedTextToClipboard>();
     case EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM:
         return std::make_shared<TGameActionCyclopediaMapSelectionItem>();
     case EGameAction::DELETE_MINIMAP_MARKER:
@@ -759,8 +546,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionExaltationForgeFusion>();
     case EGameAction::EXALTATION_FORGE_TRANSFER:
         return std::make_shared<TGameActionExaltationForgeTransfer>();
-    case EGameAction::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL:
-        return std::make_shared<TGameActionExcludePlayerFromChatChannel>();
     case EGameAction::SHOW_DIALOG_CREATE_MINIMAP_MARKER:
         return std::make_shared<TGameActionShowDialogCreateMinimapMarker>();
     case EGameAction::UPDATE_MINIMAP_MARKER:
@@ -779,34 +564,18 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionPreySystem>(type);
     case EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT:
         return std::make_shared<TGameActionFriendsDialogSearchAccount>();
-    case EGameAction::GET_CHAT_CHANNEL_LIST:
-        return std::make_shared<TGameActionGetChatChannelList>();
-    case EGameAction::GET_TEXT_FOR_REPORT:
-        return std::make_shared<TGameActionGetTextForReport>();
-    case EGameAction::IGNORE_NAME:
-        return std::make_shared<TGameActionIgnoreName>();
     case EGameAction::INSPECT_OBJECT:
         return std::make_shared<TGameActionInspectObject>();
-    case EGameAction::INVITE_PLAYER_TO_CHAT_CHANNEL:
-        return std::make_shared<TGameActionInvitePlayerToChatChannel>();
-    case EGameAction::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL:
-        return std::make_shared<TGameActionInvitePlayerToPrivateChatChannel>();
     case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
         return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
     case EGameAction::MAKE_BATTLE_LIST_PRIMARY:
         return std::make_shared<TGameActionMakeBattleListPrimary>();
     case EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR:
         return std::make_shared<TGameActionOpenContainerInSpecificSidebar>();
-    case EGameAction::OPEN_EDIT_VIP_DIALOG:
-        return std::make_shared<TGameActionOpenEditVipDialog>();
-    case EGameAction::OPEN_EDIT_VIP_GROUP_DIALOG:
-        return std::make_shared<TGameActionOpenEditVipGroupDialog>();
     case EGameAction::OPEN_URL_GET_PREMIUM:
         return std::make_shared<TGameActionOpenGetPremiumUrl>();
     case EGameAction::LOOT_CONTAINER_OPEN:
         return std::make_shared<TGameActionOpenLootContainer>();
-    case EGameAction::OPEN_MESSAGE_TO_CHAT_CHANNEL:
-        return std::make_shared<TGameActionOpenMessageToChatChannel>();
     case EGameAction::OPEN_NEWS_DIALOG:
         return std::make_shared<TGameActionOpenNewsDialog>();
     case EGameAction::OPEN_NEWS_CATEGORY:
@@ -833,30 +602,10 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionOpenUrl>();
     case EGameAction::QUIT_GAME:
         return std::make_shared<TGameActionQuitGame>();
-    case EGameAction::RECENTLY_TRADED:
-        return std::make_shared<TGameActionRecentlyTraded>();
     case EGameAction::REFRESH_COMPENDIUM_NEWS:
         return std::make_shared<TGameActionRefreshCompendiumNews>();
     case EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
         return std::make_shared<TGameActionRemoveSpriteIdentifierFromCache>();
-    case EGameAction::REMOVE_VIP:
-        return std::make_shared<TGameActionRemoveVip>();
-    case EGameAction::REMOVE_VIP_GROUP:
-        return std::make_shared<TGameActionRemoveVipGroup>();
-    case EGameAction::REPORT_NAME:
-        return std::make_shared<TGameActionReportCharacter>();
-    case EGameAction::REPORT_HIRELING_NAME:
-        return std::make_shared<TGameActionReportHireling>();
-    case EGameAction::REPORT_BUG_MAP:
-        return std::make_shared<TGameActionReportMapBug>();
-    case EGameAction::REPORT_STATEMENT:
-        return std::make_shared<TGameActionReportStatement>();
-    case EGameAction::REPORT_TEXT:
-        return std::make_shared<TGameActionReportText>();
-    case EGameAction::REPORT_BUG_TYPO:
-        return std::make_shared<TGameActionReportTypo>();
-    case EGameAction::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:
-        return std::make_shared<TGameActionRequestConformationForCopyingTextToClipboard>();
     case EGameAction::REQUEST_OUTFITS_FROM_SERVER:
         return std::make_shared<TGameActionRequestOutfitsFromServer>();
     case EGameAction::REQUEST_RESOURCE_BALANCE:
@@ -865,10 +614,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionRequestSearchTypeInDepot>();
     case EGameAction::REQUEST_TRANSACTION_DETAILS:
         return std::make_shared<TGameActionRequestTransactionDetailsFromServer>();
-    case EGameAction::REQUST_VIP_DATA_UPDATE:
-        return std::make_shared<TGameActionRequestVipDataUpdate>();
-    case EGameAction::REQUEST_VIP_GROUP_UPDATE:
-        return std::make_shared<TGameActionRequestVipGroupUpdate>();
     case EGameAction::RESOLVE_SPRITE:
         return std::make_shared<TGameActionResolveSprite>();
     case EGameAction::SAVE_JSON_TO_FILE:
@@ -879,16 +624,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSelectPreyMonsterFromBestiary>();
     case EGameAction::PREY_SELECT_MONSTER_FROM_LIST:
         return std::make_shared<TGameActionSelectPreyMonsterFromList>();
-    case EGameAction::PRESS_ENTER_IN_CHAT:
-        return std::make_shared<TGameActionSendChatMessage>(type);
-    case EGameAction::SEND_CHAT_MESSAGE_TO_NPC:
-        return std::make_shared<TGameActionSendChatMessageToNpc>();
-    case EGameAction::SEND_CHAT_MESSAGE_WITH_CHANNEL_ID:
-        return std::make_shared<TGameActionSendChatMessageWithChannelID>();
-    case EGameAction::SEND_CHAT_MESSAGE_WITH_RECIPIENT:
-        return std::make_shared<TGameActionSendChatMessageWithRecipient>();
-    case EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME:
-        return std::make_shared<TGameActionSendChatMessageWithSpeechVolume>();
     case EGameAction::SESSIONDUMP_SKIP_TO:
         return std::make_shared<TGameActionSessiondumpSkipTo>();
     case EGameAction::SESSIONDUMP_START:
@@ -897,8 +632,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSetChaseMode>();
     case EGameAction::SET_CREATURE_PODIUM_CONFIGURATION:
         return std::make_shared<TGameActionSetCreaturePodiumConfiguration>();
-    case EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT:
-        return std::make_shared<TGameActionSetCurrentChatChannelInputText>();
     case EGameAction::SET_HIRELING_NAME:
         return std::make_shared<TGameActionSetHirelingName>();
     case EGameAction::SET_HIRELING_OUTFIT:
@@ -933,14 +666,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionShowSplitStackDialog>();
     case EGameAction::SHOW_TUTORIAL_HINT:
         return std::make_shared<TGameActionShowTutorialHint>();
-    case EGameAction::SORT_VIPS_BY_NAME:
-    case EGameAction::SORT_VIPS_BY_ICON:
-    case EGameAction::SORT_VIPS_BY_STATUS:
-    case EGameAction::HIDE_OFFLINE_VIPS:
-    case EGameAction::SHOW_OFFLINE_VIPS:
-    case EGameAction::SHOW_VIPS_GROUPS:
-    case EGameAction::HIDE_VIPS_GROUPS:
-        return std::make_shared<TGameActionSortFilterVipList>(type);
     case EGameAction::SPRITE_RESOLVED:
         return std::make_shared<TGameActionSpriteResolved>();
     case EGameAction::STASH_OPEN_RETRIEVE_DIALOG:
@@ -957,8 +682,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionStashStowStack>();
     case EGameAction::STASH_STOW_TYPE:
         return std::make_shared<TGameActionStashStowType>();
-    case EGameAction::SWITCH_CHAT_MODE:
-        return std::make_shared<TGameActionSwitchChatMode>();
     case EGameAction::SWITCH_CLIENTOPTIONS_MODE:
         return std::make_shared<TGameActionSwitchClientOptions>();
     case EGameAction::TAKE_AUTOMATIC_SCREENSHOT:
@@ -971,9 +694,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionToggleActionBar>();
     case EGameAction::TOGGLE_ACTION_BARS:
         return std::make_shared<TGameActionToggleActionBars>();
-    case EGameAction::LOOT_ADD_TO_BLACKWHITELIST:
-    case EGameAction::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        return std::make_shared<TGameActionToggleBlackWhitelistStatus>(type);
     case EGameAction::TOGGLE_MOUNTED:
         return std::make_shared<TGameActionToggleMounted>();
     case EGameAction::TOGGLE_WIDGET:
@@ -986,20 +706,12 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionTutorialHintConfirmed>();
     case EGameAction::TUTORIAL_PROGRESS:
         return std::make_shared<TGameActionTutorialProgress>();
-    case EGameAction::UNIGNORE_NAME:
-        return std::make_shared<TGameActionUnignoreName>();
-    case EGameAction::EXIVA_UPADATE_OPTIONS:
-        return std::make_shared<TGameActionUpdateExivaOptions>();
     case EGameAction::USE_ON_CREATURE:
         return std::make_shared<TGameActionUseOnCreature>();
     case EGameAction::USE_ON_TARGET:
         return std::make_shared<TGameActionUseOnTarget>();
     case EGameAction::USE_ON_YOURSELF:
         return std::make_shared<TGameActionUseOnYourself>();
-    case EGameAction::SHOW_CHAT_CHANNEL_AS_SECONDARY:
-    case EGameAction::SELECT_CHAT_CHANNEL_AS_SECONDARY:
-    case EGameAction::HIDE_SECONDARY_CHAT_CHANNEL:
-        return std::make_shared<TGameActionVisibleChatChannel>(type);
     case EGameAction::GAME_EVENT:
         return std::make_shared<gameactions::TGameActionGameEvent>();
     case EGameAction::MARKET_BROWSE:
@@ -1258,8 +970,6 @@ IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
 {
     if (type == EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
         return std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId);
-    if (type == EGameAction::REPORT_HIRELING_NAME)
-        return std::make_shared<TGameActionReportHireling>(creatureId);
     if (type == EGameAction::REQUEST_OUTFITS_FROM_SERVER)
         return std::make_shared<TGameActionRequestOutfitsFromServer>(creatureId);
     if (type == EGameAction::START_TALKING_TO_NPC)

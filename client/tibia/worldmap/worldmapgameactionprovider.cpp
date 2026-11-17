@@ -114,7 +114,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     const TGameActionList targetList = actionsOf(pick.multiUse, pick.field, pick.position, { A::TARGET_SELECTED });
 
     result.push_back(input::makeObjectGameAction(A::BROWSE_FIELD, pick.position, -1));
-    result.push_back(input::makeObjectAction(A::REPORT_BUG_MAP, pick.position, -1));
+    result.push_back(std::make_shared<input::TGameActionReportMapBug>(pick.position));
 
     const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
     const TGameActionList creatureActions = Provider::creatureActions(pixelCreatureId);

@@ -61,15 +61,6 @@ int statusRank(const int state)
     return state >= 0 && state < 6 ? Rank[state] : 2;
 }
 
-input::TGameActionPtr makeNamed(const A type, const QString& text, const int instance = 0, const int parameter = 0)
-{
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->text = text;
-    action->instance = instance;
-    action->parameter = parameter;
-    return action;
-}
-
 }
 
 TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent)
@@ -417,7 +408,7 @@ void TVipWidgetController::runClick(const input::TGameActionList& candidates, co
         menu->showGameActions(entries, VipWidgetContext, m_mapper);
 }
 
-void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::publish(makeNamed(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, VipName)); }
+void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::publish(std::make_shared<input::TGameActionOpenMessageToChatChannel>(VipName)); }
 
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
@@ -433,17 +424,18 @@ void TVipWidgetController::onWidgetClicked(const int MouseButtonRaw, const int K
 
 void TVipWidgetController::onPlayerNameToAddToVipListReceived(const QString& PlayerName)
 {
-    input::publish(makeNamed(A::ADD_NEW_VIP, PlayerName));
+    input::publish(std::make_shared<input::TGameActionAddNewVip>(PlayerName));
 }
 
 void TVipWidgetController::onGroupNameToAddToVipListReceived(const QString& GroupName)
 {
-    input::publish(makeNamed(A::ADD_NEW_VIP_GROUP, GroupName));
+    input::publish(std::make_shared<input::TGameActionAddNewVipGroup>(GroupName));
 }
 
 void TVipWidgetController::onGroupNameEditedReceived(const QString& GroupName)
 {
-    input::publish(makeNamed(A::REQUEST_VIP_GROUP_UPDATE, GroupName, 0, m_editedGroup.id));
+    input::publish(std::make_shared<input::TGameActionRequestVipGroupUpdate>(
+        input::TGameActionRequestVipGroupUpdate::TVipGroup{ m_editedGroup.id, GroupName, m_editedGroup.editable }));
     m_editedGroup = {};
 }
 
@@ -480,13 +472,8 @@ void TVipWidgetController::openEditGroupDialog(const QString& groupName)
 
 void TVipWidgetController::onVipDataEdited(const creatures::TVipStorage::Vip& VipData)
 {
-    auto action = input::mutableClone(*input::makeAction(A::REQUST_VIP_DATA_UPDATE));
-    action->instance = static_cast<int>(VipData.id);
-    action->text = VipData.description;
-    action->parameter = VipData.iconId;
-    action->enable = VipData.notifyLogin;
-    action->vipGroups = VipData.groups;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionRequestVipDataUpdate>(
+        VipData.id, VipData.description, static_cast<uint8_t>(VipData.iconId), VipData.notifyLogin, VipData.groups));
 }
 
 void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
@@ -499,21 +486,23 @@ void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
     input::publish(action);
 }
 
-bool TVipWidgetController::handleAction(const input::TGameAction& action)
+bool TVipWidgetController::handleAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
         case A::OPEN_ADD_VIP_DIALOG:
             m_addVipDialog->setText({});
             m_addVipDialog->dialog()->show();
             return true;
         case A::OPEN_EDIT_VIP_DIALOG:
-            openEditVipDialog(action.text);
+            if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+                openEditVipDialog(vip->vipName());
             return true;
         case A::OPEN_ADD_VIP_GROUP_DIALOG:
             openAddGroupDialog();
             return true;
         case A::OPEN_EDIT_VIP_GROUP_DIALOG:
-            openEditGroupDialog(action.text);
+            if (const auto* group = input::gameActionAs<input::TGameActionVipGroup>(&action))
+                openEditGroupDialog(group->groupName());
             return true;
         case A::SORT_VIPS_BY_NAME:
             m_proxy->sortBy(TVipWidgetDataModelSortFilterProxy::ByName);
@@ -549,7 +538,7 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
     for (const A type : WidgetActions)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return m_controller && m_controller->handleAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
 }
 
 TVipWidgetManager::~TVipWidgetManager()

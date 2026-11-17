@@ -424,11 +424,9 @@ void TOptionsMenuDialogController::openHelpChannel()
     // (Ctrl+T default) uses the same make-current join path.
     applyButtonClicked();
     dialog()->close();
-    const chat::TChatChannelIdentifier help = chat::TChatChannelIdentifier::help();
-    auto action = input::mutableClone(*input::makeAction(EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT));
-    action->chatChannelType = help.type;
-    action->chatChannelId = help.id;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionChatChannel>(
+        EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT,
+        std::make_shared<const chat::TChatChannelIdentifier>(chat::TChatChannelIdentifier::help())));
 }
 
 void TOptionsMenuDialogController::setPortalBase(const QUrl& loginBase)

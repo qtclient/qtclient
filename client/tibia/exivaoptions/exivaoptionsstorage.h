@@ -69,7 +69,7 @@ Q_SIGNALS:
 private:
     /// The exiva actions: toggle allow-everyone, add / remove a whitelisted
     /// character, update the options.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// (EXIVA_TOGGLE_ALLOW_EVERYONE): the current options with
     /// "allow everyone" flipped, and a status line about it.
     void toggleAllowEveryone() const;

@@ -28,6 +28,10 @@ IGameActionPtr tableAction(const A type, const int value)
 {
     if (type == A::OPEN_CYCLOPEDIA)
         return std::make_shared<TGameActionOpenCyclopedia>(value);
+    if (type == A::SWITCH_CHAT_MODE)
+        return std::make_shared<TGameActionSwitchChatMode>(value);
+    if (type == A::GET_CHAT_CHANNEL_LIST)
+        return std::make_shared<TGameActionGetChatChannelList>();
     auto action = mutableClone(*makeAction(type));
     switch (type) {
     case A::TOGGLE_WIDGET:
@@ -58,7 +62,8 @@ const std::map<QString, IGameActionPtr>& actionsByName()
         std::map<QString, IGameActionPtr> map;
         const auto add = [&map](const QString& name, const A type, const int value) { map.emplace(name, tableAction(type, value)); };
         const auto channel = [&map](const QString& name, const chat::TChatChannelIdentifier& id) {
-            map.emplace(name, std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT, id.type, id.id));
+            map.emplace(name, std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT,
+                                                                      std::make_shared<const chat::TChatChannelIdentifier>(id)));
         };
         add(QStringLiteral("ToggleSkillsWidget"), A::TOGGLE_WIDGET, 0);
         add(QStringLiteral("ToggleBattlelist"), A::TOGGLE_WIDGET, 1);

@@ -62,11 +62,9 @@ constexpr uint32_t MessageModeReport = 38;
 
 void TRuleViolationProtocolMessageHandler::handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message)
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REPORT_TEXT));
-    action->text = QString::fromStdString(message.name());
-    action->parameter = static_cast<int>(message.statement_id());
-    action->statement = QString::fromStdString(message.text());
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionReportText>(QString::fromStdString(message.name()),
+                                                                 static_cast<int>(message.statement_id()),
+                                                                 QString::fromStdString(message.text())));
 }
 
 void TRuleViolationProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message)

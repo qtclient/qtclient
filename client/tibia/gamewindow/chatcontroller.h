@@ -327,7 +327,7 @@ private:
     void onChannelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
     void storeOpenChannels() const;
 
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
     /// CIP with its spell arguments: a spell always goes to the
     /// local chat, with its ESpellCastOptionalTargetType. A line holding the
     /// account password is not sent; the account data warning shows instead.
@@ -344,7 +344,7 @@ private:
     void showTabMenu(chat::TChatChannel* channel, int button, int modifiers);
     void showMenu(const input::TGameActionList& candidates, std::span<const input::EGameAction> order, int context, int button,
                   int modifiers, TChatChannelController* model, chat::TChatChannel* channel);
-    void runMenuAction(const input::TGameAction& action, TChatChannelController* model, chat::TChatChannel* channel);
+    void runMenuAction(const input::IGameActionPtr& action, TChatChannelController* model, chat::TChatChannel* channel);
     /// CIP : the channel's lines as its pane shows them, appended to
     /// <app data>/log/<channel>.txt.
     void saveChannel(chat::TChatChannel* channel);

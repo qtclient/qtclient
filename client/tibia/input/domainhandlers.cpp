@@ -3,6 +3,8 @@
 #include <algorithm>
 
 #include "app/portalurls.h"
+#include "config/clientoptions.h"
+#include "shared/tibiaurltools.h"
 #include "gameaction.h"
 
 #include <creatures/creaturestorage.h>
@@ -23,72 +25,6 @@ namespace tibia::input {
 namespace {
 
 using A = EGameAction;
-
-constexpr std::array<A, 7> ClipboardActions = {
-    A::COPY_TEXT_TO_CLIPBOARD,
-    A::COPY_TRUSTED_TEXT_TO_CLIPBOARD,
-    A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD,
-    A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD,
-    A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
-    A::COPY_CREATURE_NAME_TO_CLIPBOARD,
-    A::COPY_CHAT_ENTRY_TO_CLIPBOARD,
-};
-
-QObject* focusedTextField()
-{
-    return QGuiApplication::focusObject();
-}
-
-QString focusedSelectedText()
-{
-    if (QObject* field = focusedTextField())
-        return field->property("selectedText").toString();
-    return {};
-}
-
-void copyFocusedOrActionText(const TGameAction& action)
-{
-    QString text = action.text;
-    if (text.isEmpty())
-        text = focusedSelectedText();
-    if (!text.isEmpty())
-        QGuiApplication::clipboard()->setText(text);
-}
-
-bool handleClipboard(const IGameAction& pGameAction)
-{
-    // The creature actions are TGameActionCreature; the text ones the field carrier.
-    static const TGameAction NoFields;
-    const auto* fields = dynamic_cast<const TGameAction*>(&pGameAction);
-    const TGameAction& action = fields ? *fields : NoFields;
-    const uint32_t creatureId = creatureIdOf(pGameAction);
-    switch (pGameAction.gameActionType()) {
-    case A::COPY_TEXT_TO_CLIPBOARD:
-    case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
-        QGuiApplication::clipboard()->setText(action.text);
-        return true;
-    case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
-    case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:
-    case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
-        copyFocusedOrActionText(action);
-        return true;
-    case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
-    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        if (creatureId) {
-            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId)) {
-                    QGuiApplication::clipboard()->setText(row->name());
-                    return true;
-                }
-            }
-        }
-        if (!action.text.isEmpty())
-            QGuiApplication::clipboard()->setText(action.text);
-        return true;
-    default:
-        return false;
-    }
-}
 
 }
 
@@ -112,9 +48,38 @@ TClipboardGameActionHandler::~TClipboardGameActionHandler() = default;
 
 void TClipboardGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    if (pGameAction
-        && std::find(ClipboardActions.begin(), ClipboardActions.end(), pGameAction->gameActionType()) != ClipboardActions.end())
-        handleClipboard(*pGameAction);
+    switch (pGameAction->gameActionType()) {
+    case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
+    case A::COPY_TEXT_TO_CLIPBOARD:
+        if (auto copy = std::dynamic_pointer_cast<const TGameActionCopyTextToClipboard>(pGameAction))
+            handleCopyTextToClipboardGameAction(std::move(copy));
+        return;
+    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
+    case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
+        if (const auto* copy = gameActionAs<TGameActionCopyTextToClipboard>(pGameAction))
+            QGuiApplication::clipboard()->setText(copy->text());
+        return;
+    default:
+        return;
+    }
+}
+
+void TClipboardGameActionHandler::handleCopyTextToClipboardGameAction(
+    const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
+{
+    const config::TClientOptions* options = config::TClientOptions::instance();
+    if (options && options->boolOption(config::EClientOption::linkCopyWarningEnabled)
+        && shared::TTibiaUrlTools::containsUrl(pGameAction->text())) {
+        Q_EMIT publishGameAction(std::make_shared<TGameActionRequestConformationForCopyingTextToClipboard>(pGameAction->text()));
+        return;
+    }
+    QGuiApplication::clipboard()->setText(pGameAction->text());
+}
+
+void TClipboardGameActionHandler::handleCopyTrustedTextToClipboardGameAction(
+    const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
+{
+    QGuiApplication::clipboard()->setText(pGameAction->text());
 }
 
 TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)

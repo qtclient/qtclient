@@ -45,9 +45,7 @@ void openPremiumStore()
 
 void copyToClipboard(const QString& text)
 {
-    auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = text;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text));
 }
 
 QJsonObject readOptions(config::TSidebarOptions* options, const char* key)

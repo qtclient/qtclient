@@ -14,19 +14,16 @@ using A = ::tibia::input::EGameAction;
 using ::tibia::input::TGameActionList;
 
 /// CIP TGameActionChatChannel: the action and the channel it names.
-::tibia::input::TGameActionPtr channelAction(const A type, const TChatChannelIdentifier& identifier)
+::tibia::input::IGameActionPtr channelAction(const A type, const TChatChannelIdentifier& identifier)
 {
-    return std::make_shared<::tibia::input::TGameActionChatChannel>(type, static_cast<int>(identifier.type),
-                                                                    static_cast<int>(identifier.id), identifier.name);
+    return std::make_shared<::tibia::input::TGameActionChatChannel>(type, std::make_shared<const TChatChannelIdentifier>(identifier));
 }
 
 /// CIP TGameActionVisibleChatChannel: the action and whether the channel is
 /// in the secondary pane.
-::tibia::input::TGameActionPtr visibleChannelAction(const A type, const bool secondaryShown)
+::tibia::input::IGameActionPtr visibleChannelAction(const A type, const bool secondaryShown)
 {
-    auto action = std::make_shared<::tibia::input::TGameActionChatChannel>(type);
-    action->enable = secondaryShown;
-    return action;
+    return std::make_shared<::tibia::input::TGameActionVisibleChatChannel>(type, secondaryShown);
 }
 
 }
@@ -37,15 +34,6 @@ TChatGameActionProvider::TChatGameActionProvider(TChatChannelStorage& storage, N
     , m_nameActions(std::move(nameActions))
     , m_showJoinLeaveMessages(std::move(showJoinLeaveMessages))
 {
-}
-
-TChatChannelIdentifier TChatGameActionProvider::identifierOf(const ::tibia::input::TGameAction& action)
-{
-    TChatChannelIdentifier identifier;
-    identifier.type = static_cast<TChatChannelIdentifier::Type>(action.chatChannelType);
-    identifier.id = static_cast<uint16_t>(action.chatChannelId);
-    identifier.name = action.text;
-    return identifier;
 }
 
 TGameActionList TChatGameActionProvider::gameActions(const TChatChannelIdentifier* identifier) const
@@ -81,9 +69,7 @@ TGameActionList TChatGameActionProvider::gameActions(const TChatChannelIdentifie
         result.push_back(std::make_shared<::tibia::input::TGameActionGetGuildMessage>());
     if (identifier->type == TChatChannelIdentifier::ChannelId && (identifier->isGuildChannel() || identifier->isPartyChannel())) {
         const bool shown = m_showJoinLeaveMessages && m_showJoinLeaveMessages();
-        auto simple = std::make_shared<::tibia::input::TGameAction>();
-        simple->type = shown ? A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES : A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES;
-        result.push_back(std::move(simple));
+        result.push_back(::tibia::input::makeGameAction(shown ? A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES : A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES));
     }
     result.push_back(channelAction(secondaryShown ? A::HIDE_SECONDARY_CHAT_CHANNEL : A::SHOW_CHAT_CHANNEL_AS_SECONDARY, *identifier));
     if (identifier->type == TChatChannelIdentifier::ServerLog)
@@ -104,21 +90,15 @@ TGameActionList TChatGameActionProvider::entryGameActions(const QString& entryTe
     if (!selectedText.isEmpty())
         result.push_back(std::make_shared<::tibia::input::TGameActionCopyTextToClipboard>(selectedText));
     if (entry.kind == TChatEntry::System || entry.kind == TChatEntry::Speaker) {
-        auto typo = std::make_shared<::tibia::input::TGameActionReportTypo>();
-        typo->text = entry.name;
-        typo->statement = entry.text;
-        result.push_back(std::move(typo));
+        result.push_back(std::make_shared<::tibia::input::TGameActionReportTypo>(entry.name, entry.text));
     }
     if (entry.kind != TChatEntry::SpeakerWithLevel)
         return result;
     if (entry.name != ownName) {
         if (m_nameActions)
             m_nameActions(result, entry.name);
-        auto statement = std::make_shared<::tibia::input::TGameActionReportStatement>();
-        statement->text = entry.name;
-        statement->parameter = static_cast<int>(entry.statementId);
-        statement->statement = entry.text;
-        result.push_back(std::move(statement));
+        result.push_back(std::make_shared<::tibia::input::TGameActionReportStatement>(entry.name, static_cast<int>(entry.statementId),
+                                                                                      entry.text));
     }
     if (entry.traded)
         result.push_back(std::make_shared<::tibia::input::TGameActionRecentlyTraded>(entry.name));

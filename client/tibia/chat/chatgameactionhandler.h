@@ -60,8 +60,6 @@ public:
     ::tibia::input::TGameActionList entryGameActions(const QString& entryText, const TChatEntry& entry, const QString& selectedText,
                                                      const QString& ownName, bool secondaryShown) const;
 
-    /// The channel a TGameActionChatChannel names.
-    static TChatChannelIdentifier identifierOf(const ::tibia::input::TGameAction& action);
 
 private:
     TChatChannelStorage& m_storage;

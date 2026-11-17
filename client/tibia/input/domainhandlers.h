@@ -24,8 +24,10 @@ public:
     TActionButtonGameActionHandler& operator=(const TActionButtonGameActionHandler&) = delete;
 };
 
-/// CIP input::TClipboardGameActionHandler: COPY_* / REQUEST_COPY_* /
-/// REQUEST_CONFIRM clipboard actions.
+/// CIP input::TClipboardGameActionHandler: the copy actions. Text and chat
+/// entries ask first (REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD) when
+/// they hold a link and the link copy warning is on; creature names and the
+/// client's own texts are copied at once.
 class TClipboardGameActionHandler final : public cip::tibia::input::TClipboardGameActionHandler
 {
     Q_OBJECT
@@ -35,10 +37,16 @@ public:
     TClipboardGameActionHandler(const TClipboardGameActionHandler&) = delete;
     TClipboardGameActionHandler& operator=(const TClipboardGameActionHandler&) = delete;
 
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
 public Q_SLOTS:
-    /// CIP handleGameAction: acts on the actions of its types; connected to the
-    /// router's publishGameActionInternal.
+    /// CIP handleGameAction: COPY_CHAT_ENTRY / COPY_TEXT go through
+    /// handleCopyTextToClipboardGameAction, COPY_CREATURE_NAME / COPY_TRUSTED_TEXT
+    /// to the clipboard; connected to the router's publishGameActionInternal.
     void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+    void handleCopyTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
+    void handleCopyTrustedTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
 };
 
 /// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
