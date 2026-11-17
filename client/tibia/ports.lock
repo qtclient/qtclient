@@ -4703,8 +4703,10 @@ skillwheel::TModListSortFilterProxyModel::~TModListSortFilterProxyModel_deleting
 skillwheel::TQmlSocketedGem::~TQmlSocketedGem	6aa21017c00c0e27	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TQmlSocketedGem::~TQmlSocketedGem_deleting	7132b89780eba927	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelGameActionHandler::handleCreatureGameAction	4ce8f342a47b4aa4	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleCreatureGameAction
+skillwheel::TSkillWheelGameActionHandler::handleGameAction	7aa6af25876eb368	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleGameAction
 skillwheel::TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction	e4c99cd58bac60de	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction
 skillwheel::TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction	a5e9586c6cc46162	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction
+skillwheel::TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage	354971c9b740b8f5	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage
 skillwheel::TSkillWheelGameActionHandler::~TSkillWheelGameActionHandler	dcd997e664a2cd44	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelGameActionHandler::~TSkillWheelGameActionHandler_deleting	58969a3198b0d455	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelProtocolMessageHandler::v12	1e4cef7e82d4326e	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::requestSkillWheel

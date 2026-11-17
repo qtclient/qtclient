@@ -1,5 +1,6 @@
 #include "skillwheelcontrollers.h"
 #include "skillwheel/skillwheelciptypes.h"
+#include "skillwheel/skillwheelgameactions.h"
 
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
@@ -1170,7 +1171,7 @@ void TSkillWheelPageController::apply()
         return;
     Q_EMIT preapareToSkipNextOpenForOwnPlayer();
     m_storage->addOrReplacePreset(m_currentPresetName, *current);
-    publish(A::SAVE_SKILL_WHEEL);
+    input::publish(std::make_shared<TGameActionSaveSkillWheelConfiguration>(*current));
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,9 @@
 #include "analysers/analyserstorages.h"
 #include "input/gameactionhandlers.h"
 
+#include <creatures/creaturestorage.h>
+#include <tibia/game/gamesessionbase.h>
+
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -52,17 +55,25 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         return true;
     });
     input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        m_actions.handleCreatureGameAction(action.creatureId);
+        m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {
+    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction& action) {
         clearSkipNextOwnOpen();
-        m_actions.handleRequestOnwSkillWheelGameAction();
+        m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::TGameAction&) {
-        saveWheel();
+    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::TGameAction& action) {
+        m_actions.handleGameAction(action);
         return true;
+    });
+    // CIP: the handler keeps the own player's creature id.
+    tibia::game::onEachGameSession(this, [this] {
+        if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
+            m_actions.onPlayerCreatureAddedToCreatureStorage(creatures->player());
+            connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
+                    [this](const std::weak_ptr<creatures::TCreature>& player) { m_actions.onPlayerCreatureAddedToCreatureStorage(player); });
+        }
     });
     input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::TGameAction& action) {
         m_dialog->openDialogTab(TSkillWheelDialogController::GemAtelier);
@@ -132,12 +143,5 @@ void TSkillWheelManager::clearSkipNextOwnOpen()
     m_skipNextOwnOpen = false;
 }
 
-/// SAVE_SKILL_WHEEL carries no wheel here: the own edited wheel is saved.
-void TSkillWheelManager::saveWheel()
-{
-    if (!m_storage->hasData() || !m_storage->isOwnCharacter() || m_storage->totalPoints() == 0)
-        return;
-    m_actions.handleSaveSkillWheelGameAction(m_storage->currentWheel());
-}
 
 }

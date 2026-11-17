@@ -9,7 +9,15 @@
 #include <QByteArray>
 #include <QObject>
 
+#include <memory>
+
 namespace tibia {
+namespace creatures {
+class TCreature;
+}
+namespace input {
+struct TGameAction;
+}
 namespace protobuf {
 namespace protocol {
 class GameserverMessageGemAtelierGemRevealed;
@@ -42,8 +50,13 @@ public:
     /// The login session's premium flag (CIP: the premium time storage).
     void setSessionPremium(bool premium) { m_sessionPremium = premium; }
 
+    /// CIP: SAVE_SKILL_WHEEL sends its configuration, REQUEST_OWN_SKILL_WHEEL the own request,
+    /// REQUEST_SKILL_WHEEL the creature's.
+    void handleGameAction(const input::TGameAction& action);
     /// REQUEST_SKILL_WHEEL: the own player's goes through the own request.
     void handleCreatureGameAction(uint32_t creatureId);
+    /// CIP: the own player's creature id, 0 when it is gone.
+    void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<creatures::TCreature> pPlayerWeak);
     /// SAVE_SKILL_WHEEL.
     void handleSaveSkillWheelGameAction(const TWheel& wheel);
 
@@ -55,6 +68,7 @@ public Q_SLOTS:
 
 private:
     bool m_sessionPremium = false;
+    uint32_t m_playerId = 0;
 };
 
 /// CIP `skillwheel::TSkillWheelProtocolMessageHandler` — native Q→H for GemAtelierGemRevealed.

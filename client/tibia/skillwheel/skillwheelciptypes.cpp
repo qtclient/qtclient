@@ -8,6 +8,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "skillwheel/skillwheeldata.h"
+#include "skillwheel/skillwheelgameactions.h"
 #include "skillwheel/skillwheelstorage.h"
 
 #include <creatures/creaturestorage.h>
@@ -204,10 +205,28 @@ void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
     input::publish(action);
 }
 
+void TSkillWheelGameActionHandler::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+        case input::EGameAction::SAVE_SKILL_WHEEL:
+            if (const auto* save = dynamic_cast<const TGameActionSaveSkillWheelConfiguration*>(&action))
+                TSkillWheelProtocolMessageHandler::saveSkillWheel(save->wheel);
+            return;
+        case input::EGameAction::REQUEST_OWN_SKILL_WHEEL: handleRequestOnwSkillWheelGameAction(); return;
+        case input::EGameAction::REQUEST_SKILL_WHEEL: handleCreatureGameAction(action.creatureId); return;
+        default: return;
+    }
+}
+
+void TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<creatures::TCreature> pPlayerWeak)
+{
+    const std::shared_ptr<creatures::TCreature> player = pPlayerWeak.lock();
+    m_playerId = player ? player->creatureId() : 0;
+}
+
 void TSkillWheelGameActionHandler::handleCreatureGameAction(const uint32_t creatureId)
 {
-    const uint32_t ownId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    if (creatureId == ownId) {
+    if (creatureId == m_playerId) {
         handleRequestOnwSkillWheelGameAction();
         return;
     }

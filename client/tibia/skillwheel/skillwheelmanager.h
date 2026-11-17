@@ -29,7 +29,6 @@ public:
     void setSessionPremium(bool premium) { m_actions.setSessionPremium(premium); }
 
 private:
-    void saveWheel();
     void clearSkipNextOwnOpen();
 
     TSkillWheelGameActionHandler m_actions;
