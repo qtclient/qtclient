@@ -782,6 +782,15 @@ void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMe
     tibia::game::notify("onPreset", preset);
 }
 
+void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& m)
+{
+    // The player's own speed also goes to the player data.
+    if (m.creature_id() != localPlayerId())
+        return;
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        data->setSpeed(static_cast<uint16_t>(m.speed()));
+}
+
 void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessageSnapBack& m)
 {
     // The server refused the step: the walk plan cancels, or without one the

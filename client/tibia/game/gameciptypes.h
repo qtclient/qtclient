@@ -59,6 +59,7 @@ class GameserverMessagePing;
 class GameserverMessagePingBack;
 class GameserverMessageReadyForSecondaryConnection;
 class GameserverMessageSnapBack;
+class GameserverMessageCreatureSpeed;
 class GameserverMessageSpellDataModification;
 class GameserverMessageStop;
 class GameserverMessageSwitchPreset;
@@ -326,6 +327,7 @@ public:
     void handleBlessingsMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessings& message);
     void handleConfigureCreaturePodiumMessage(const ::tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium& message);
     void handleSwitchPresetMessage(const ::tibia::protobuf::protocol::GameserverMessageSwitchPreset& message);
+    void handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& message);
     void handleSnapBackMessage(const ::tibia::protobuf::protocol::GameserverMessageSnapBack& message);
     void handleStopMessage(const ::tibia::protobuf::protocol::GameserverMessageStop& message);
     void handleHirelingNameChangeMessage(const ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange& message);
