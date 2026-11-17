@@ -2314,11 +2314,13 @@ gamewindow::TPreyPreyPageController::bonusRerollTooExpensiveChanged	59bf5e6af3a2
 gamewindow::TPreyPreyPageController::choosePreyPriceChanged	20e53afab7100008	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::choosePreyPrice
 gamewindow::TPreyPreyPageController::choosePreyTooExpensiveChanged	48467c27f63b070b	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::choosePreyTooExpensive
 gamewindow::TPreyPreyPageController::getMorePreyWildcardsClicked	8a80ac82d9da8c30	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::getMorePreyWildcardsClicked
+gamewindow::TPreyPreyPageController::handleGameAction	872d4faac408f6d5	skip	generated: empty virtual override
 gamewindow::TPreyPreyPageController::listRerollPriceChanged	3ddfe40f2a8c7668	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::listRerollPrice
 gamewindow::TPreyPreyPageController::listRerollTooExpensiveChanged	6e70ecd7f374fba2	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::listRerollTooExpensive
 gamewindow::TPreyPreyPageController::preyListChanged	66d0d69016d95d5a	ported	gamewindow/preydialogcontroller.h:TPreyPreyPageController::preyList
 gamewindow::TPreyPreyPageController::preyWildcardAmountChanged	9c626a9b1489a2fe	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::preyWildcards
 gamewindow::TPreyPreyPageController::publishGameAction	bf9b754caa662802	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::clientSettingSmoothFiltering
+gamewindow::TPreyPreyPageController::v12	1a9dee2a215ffc5e	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::TPreyPreyPageController
 gamewindow::TPreyPreyPageController::v13	6565a332cc3d4132	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::showDialogTab
 gamewindow::TPreyPreyPageController::v14	9fbace1568b7a538	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::hideDialogTab
 gamewindow::TPreyPreyPageController::~TPreyPreyPageController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -4162,6 +4164,7 @@ sub_03c437cae24e	03c437cae24e8a76	ported	gamewindow/cyclopediadialogcontroller.c
 sub_03cee8ccceb7	03cee8ccceb708dc	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::insertEntry
 sub_03d1e9896104	03d1e98961045732	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
 sub_03d1e9896104#2	03d1e98961045732	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
+sub_03e39486d45a	03e39486d45a4d68	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::TPreyPreyPageController
 sub_03e48079b1ca	03e48079b1cab683	ported	config/sidebaroptions.cpp:serializeSpellList
 sub_03edf2f1bcbc	03edf2f1bcbc220f	skip	library: std::sort instantiation for the category list
 sub_0406eae67537	0406eae675373ca4	ported	gamewindow/preydialogcontroller.cpp:TListRerollEntryInfo::TListRerollEntryInfo
@@ -4175,6 +4178,7 @@ sub_044413eab2ad	044413eab2ad3308	skip	library: libc++ std::vector/std::unordere
 sub_0450018d4877	0450018d487766a9	ported	gamewindow/minimapcontroller.cpp:TMinimapController::dispatchClick
 sub_048417ba91c9	048417ba91c997aa	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketHistoryOpened
 sub_0499962a6cf9	0499962a6cf96644	inlined	config/sidebaroptions.cpp:TSidebarOptions::reset
+sub_04c56041166a	04c56041166a485a	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::closeMessages
 sub_04c78b35980a	04c78b35980aa09f	tested	sessiondump/sessiondumpmetadatareader.cpp:TSessiondumpMetadataReader::readFields	test=tests/client/sessiondumpreader_test.cpp
 sub_04dd60b6ab4c	04dd60b6ab4c044f	inlined	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModel::entry
 sub_04dfa2aa22c5	04dfa2aa22c529ce	tested	creatures/movementdirection.h:directionBetween	test=tests/client/creaturemovement_test.cpp
@@ -4184,6 +4188,7 @@ sub_04e47cf703c2	04e47cf703c24c0f	skip	library: std::sort instantiation (library
 sub_04e6d888ee2d	04e6d888ee2d9998	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::setDialogCategory
 sub_0515635bab67	0515635bab674310	tested	shared/src/jsonhelper.cpp:jsonString	test=tests/client/sharednet_test.cpp
 sub_0520c57a5dc2	0520c57a5dc22bd1	ported	chat/textstorage.cpp:TTextStorage::TTextStorage
+sub_052141d3ea47	052141d3ea476226	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::TPreyPreyPageController
 sub_054371f87d02	054371f87d02eedf	skip	library: SFML/miniaudio library helper, only called from library code
 sub_054525df57b2	054525df57b20f5b	skip	generated: moc property getter, provided by the generated cip base
 sub_05466ec4be94	05466ec4be9474a3	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::reset
@@ -5176,6 +5181,7 @@ sub_20919a1fc5d0	20919a1fc5d0b08d	tested	input/movementpathplanner.cpp:planMovem
 sub_209c90cef295	209c90cef2954a52	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged
 sub_20c37c48e620	20c37c48e6209a32	skip	library: std::sort instantiation
 sub_20c72e436390	20c72e436390d9d6	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::hasPremium
+sub_20f7ba21369d	20f7ba21369d93b0	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::hideDialogTab
 sub_20fa74c0bd0e	20fa74c0bd0ea977	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::waypointFileName
 sub_2123f5eb86de	2123f5eb86de9177	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_2123f5eb86de#2	2123f5eb86de9177	skip	generated: QtPrivate slot object impls (member-function connections)
@@ -8493,6 +8499,7 @@ sub_923ad91b0ed3#3	923ad91b0ed3d07a	inlined	sessiondump/sessiondumpmessagereader
 sub_923ad91b0ed3#4	923ad91b0ed3d07a	inlined	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::info
 sub_9257fd9262cc	9257fd9262cc4b93	ported	analysers/impactwidgets.cpp:TPartyHuntWidgetController::partyMemberModel
 sub_926b6d498f58	926b6d498f5881f3	skip	generated: compiler-generated destructor
+sub_927595f785f7	927595f785f70741	inlined	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::hideDialogTab
 sub_92775a810d17	92775a810d1718cf	inlined	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::currentFilter
 sub_92781535079a	92781535079afc27	skip	library: std::sort instantiation over achievements (library)
 sub_928096b1633c#2	928096b1633c228b	inlined	protocol::TProtobufServerMessageTranslator::v175
@@ -8940,6 +8947,7 @@ sub_9eaaf4968330	9eaaf49683307eeb	inlined	shared/sortedvectorlistmodel.h:TSorted
 sub_9eb62e72ec3e	9eb62e72ec3ec99a	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::resetCurrentPageToDefault
 sub_9ec96efb44d1	9ec96efb44d1c1e1	ported	skillwheel/skillwheeldata.cpp:basicStatDamageTypeName
 sub_9ecea53a01b7	9ecea53a01b7ea6a	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onAccountCreationStatus
+sub_9ed231254db7	9ed231254db71581	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::~TPreyPreyPageController
 sub_9f242b709b2b	9f242b709b2befab	skip	generated: moc property getter, provided by the generated cip base
 sub_9f310677261e	9f310677261e7bb0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::donateMoneyForArea
 sub_9f3aa773c506	9f3aa773c5060dad	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
@@ -8990,6 +8998,7 @@ sub_a13404738e45	a13404738e45ba8b	ported	gamewindow/minimapcontroller.cpp:TMinim
 sub_a1606252e54f	a1606252e54f5141	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::showIdleSpellGroups
 sub_a16d23bc5925	a16d23bc59258905	inlined	game/playerstatestracker.cpp:TPlayerStatesTracker::refresh
 sub_a1701646fb34	a1701646fb34da3f	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::handleGameAction
+sub_a1754d24fbec	a1754d24fbec6381	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::TPreyPreyPageController
 sub_a17a5656eaa5	a17a5656eaa5da54	skip	data: translation-unit static initializer (misattributed)
 sub_a1873a1b7dc5	a1873a1b7dc5300a	inlined	gamewindow/marketcontroller.cpp:TMarketController::getTotalPriceOrProfitMultistring
 sub_a1944bb0c5e6	a1944bb0c5e6450c	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::openDialog

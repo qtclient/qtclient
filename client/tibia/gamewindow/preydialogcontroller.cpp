@@ -1,4 +1,6 @@
 #include "preydialogcontroller.h"
+
+#include <utility>
 #include "gamewindow/smoothfiltering.h"
 
 #include "qmlcomponents/texthelper.h"
@@ -743,7 +745,22 @@ void TPreyPreyPageController::showDialogTab()
         Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
 }
 
-void TPreyPreyPageController::hideDialogTab() { m_freeRerollTimer.stop(); }
+void TPreyPreyPageController::hideDialogTab()
+{
+    m_freeRerollTimer.stop();
+    // CIP: the slot render infos go and the list change is announced (deferred).
+    const QList<QObject*> old = std::exchange(m_renderInfos, {});
+    for (QObject* info : old)
+        info->deleteLater();
+    if (!m_preyListTimer.isActive())
+        m_preyListTimer.start(0);
+}
+
+TPreyPreyPageController::~TPreyPreyPageController()
+{
+    m_freeRerollTimer.stop();
+    qDeleteAll(std::exchange(m_renderInfos, {}));
+}
 
 /// Asks to pay `price` wildcards; when the storage says it cannot be paid,
 /// only Cancel.
