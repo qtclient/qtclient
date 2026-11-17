@@ -359,17 +359,6 @@ Q_SIGNALS:
     void dialogClosed();
 };
 
-class TDialogControllerWithFocusHandlingBase : public cip::tibia::gamewindow::TDialogControllerWithFocusHandlingBase
-{
-    Q_OBJECT
-public:
-    explicit TDialogControllerWithFocusHandlingBase(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void takeFocus() override;
-    void releaseFocus() override;
-};
-
 class TSidebarPanelControllerBase : public cip::tibia::gamewindow::TSidebarPanelControllerBase
 {
     Q_OBJECT

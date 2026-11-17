@@ -403,7 +403,6 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TQmlWorldTransferCondition(false, {}, this);
     new TSpritesheetDataObject({}, this);
     new TSimpleNameAndCountModel(this);
-    new TDialogControllerWithFocusHandlingBase(this);
     new TCharacterTradeDialogController(this);
     new TCharacterTradeDuePaymentDialogController(this);
     new TCharacterWorldTransferDialogController(this);
