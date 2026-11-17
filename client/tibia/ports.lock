@@ -5917,6 +5917,7 @@ sub_37f26d1e2bb8	37f26d1e2bb851cc	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_380f7a7f155e	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_380f7a7f155e#2	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_381e8c217b00	381e8c217b004980	ported	analysers/impactwidgets.cpp:TImpactWidgetController::damageAllTimeMaxString
+sub_382a91985374	382a919853746ab9	ported	qmlcomponents/worldmapcameraviewport.cpp:TWorldMapCameraViewport::applyCenter
 sub_382fb406d396	382fb406d3967a3a	inlined	gamewindow/preydialogcontroller.cpp:TPreyDialogController::TPreyDialogController
 sub_3834acb34820	3834acb348208892	skip	library: std::vector copy / growth of store records (library)
 sub_383ef5422d05	383ef5422d05db38	ported	client/clientciptypes.cpp:TGameApplication::initializeCrashHandler
@@ -6365,6 +6366,7 @@ sub_492f90eda298	492f90eda2980fe9	ported	minimap/minimaptile.cpp:blankImage
 sub_494cc4268df0	494cc4268df03852	skip	generated: moc-generated signal body (sendMessage, receivedMessage, clientMessageReadyToProcess)
 sub_495fe63abc53	495fe63abc53b681	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateParameters
 sub_496f27f60ecf	496f27f60ecf484a	ported	gamewindow/actionbarcontroller.cpp:TActionBarGroup::managesBar
+sub_4980c943dcb3	4980c943dcb32760	ported	qmlcomponents/worldmapcameraviewport.cpp:TWorldMapCameraViewport::translateToLayer
 sub_498f9ddb4fa1	498f9ddb4fa198f1	ported	gamewindow/gamewindowciptypes.cpp:TInspectObjectDialogController::TInspectObjectDialogController
 sub_499da90226ee	499da90226ee60d0	skip	data: static initializer of unrelated globals (inbox filter names, std::function typeinfo; misattributed)
 sub_49a756bbb168	49a756bbb168b633	skip	library: std::sort instantiation for the category list
@@ -10604,6 +10606,7 @@ sub_d19ef4c3f4af#2	d19ef4c3f4afac94	tested	tutorial/sessiondumphintpublishgameac
 sub_d1a3711ecddf	d1a3711ecddff8e2	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_d1a3711ecddf#3	d1a3711ecddff8e2	inlined	config/sidebaroptions.cpp:parseImbuementTracker
 sub_d1ab623240e4	d1ab623240e48f23	skip	library: std::sort instantiation (library)
+sub_d1bc8cb203cf	d1bc8cb203cfc8df	ported	qmlcomponents/worldmapcameraviewport.cpp:TWorldMapCameraViewport::setTopAndBottomLayer
 sub_d1bd046956f2	d1bd046956f2e5d3	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_d1c82bd8b6c0	d1c82bd8b6c0a290	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::maximum	test=tests/client/sharednet_test.cpp
 sub_d1cf8eca7b41	d1cf8eca7b41a621	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::updateRefine
