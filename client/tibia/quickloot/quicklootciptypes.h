@@ -73,11 +73,11 @@ public:
     explicit TQuickLootGameActionHandler(QObject* parent = nullptr);
     ~TQuickLootGameActionHandler() override;
 
-    static bool handleGameAction(const input::IGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 private:
     /// A full list refuses the object with a status line.
-    static void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
+    void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
 };
 
 }

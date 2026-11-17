@@ -158,13 +158,13 @@ void TExivaOptionsStorage::send(const Options& options, const Names& addCharacte
                             options.allowGuildWhitelist, wire(addCharacters), wire(removeCharacters), wire(addGuilds), wire(removeGuilds));
 }
 
-void TExivaOptionsStorage::toggleAllowEveryone() const
+void TExivaOptionsStorage::toggleAllowEveryone()
 {
     Options options = m_options;
     options.allowAll = !options.allowAll;
     send(options, {}, {}, {}, {});
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false"), chat::systemWhite());
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TExivaOptionsStorage::requestWhitelistChange(const QString& name, const bool add) const

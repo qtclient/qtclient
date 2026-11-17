@@ -131,7 +131,7 @@ void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const Gameserver
     if (!m.can_view()) {
         const int profession = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
         const bool hasVocation = profession >= 1 && profession <= VocationCount;
-        input::publish(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
+        Q_EMIT publishGameAction(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                      : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
         return;
     }
@@ -186,7 +186,7 @@ void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const Gameserver
     m_storage->setServerData(static_cast<int>(m.change_state()), name, ownCharacter, static_cast<int>(m.points()),
                              static_cast<int>(m.extra_points()), scrolls, m.monk_quest(), static_cast<int>(m.hunting_task_points()), wheel);
     m_storage->updateModList();
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));
 }
 
 void TSkillWheelProtocolMessageHandler::handleResourceBalanceMessage(const int type, const qint64 balance)
@@ -208,7 +208,7 @@ void TSkillWheelProtocolMessageHandler::handleResourceBalanceMessage(const int t
 void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
     const GameserverMessageGemAtelierGemRevealed& Message)
 {
-    input::publish(std::make_shared<input::gameactions::TSelectAtelierGemGameAction>(static_cast<uint16_t>(Message.gem_id())));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TSelectAtelierGemGameAction>(static_cast<uint16_t>(Message.gem_id())));
 }
 
 void TSkillWheelGameActionHandler::handleGameAction(const input::IGameAction& action)
@@ -254,7 +254,7 @@ void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
     }
     const int profession = tibia::game::localPlayerVocation() % 10;
     const bool hasVocation = profession >= 1 && profession <= VocationCount;
-    input::publish(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
+    Q_EMIT publishGameAction(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                  : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
 }
 

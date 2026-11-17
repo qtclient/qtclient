@@ -155,6 +155,8 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
+    connect(m_newsDialog.get(), &TNewsDialogController::publishGameAction, this, &TGameWindowController::publishGameAction);
+    connect(m_newsButton.get(), &TNewsButtonController::publishGameAction, this, &TGameWindowController::publishGameAction);
     // CIP (TGameClient): the storage saves through the disk cache and starts
     // from what it holds.
     connect(m_newsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_newsDiskIO.get(),

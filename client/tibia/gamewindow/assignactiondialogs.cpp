@@ -679,7 +679,7 @@ void TAssignObjectActionDialogController::showDialogForObject(const uint ButtonI
                                                               const int UpgradeTier, const bool assignWithoutDialog)
 {
     if (!itemType(ObjectId)) {
-        input::publish(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("invalid_object")));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("invalid_object")));
         return;
     }
     showDialog(ButtonId, MultiActionIndex, ObjectId, UpgradeTier, 0, TActionBarManager::defaultUseType(ObjectId), false,

@@ -75,7 +75,7 @@ void TAboutDialogController::requestClose()
 
 void TAboutDialogController::requestOpenWebsite()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
 }
 
 void TAboutDialogController::requestShowLicensesDialog()

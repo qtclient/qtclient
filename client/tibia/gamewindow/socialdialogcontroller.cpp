@@ -40,6 +40,14 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     m_configurationController = m_config;
     m_joinTeamController = m_join;
     m_assembleTeamController = m_assemble;
+    connect(m_friends, &TFriendsFriendListPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_invites, &TFriendsInvitesPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_search, &TFriendsAccountSearchPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_badges, &TFriendsBadgesPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_config, &TFriendsConfigurationPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_join, &TTeamJoinPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_assemble, &TTeamAssemblePageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_button, &TSocialButtonController::publishGameAction, this, &TSocialDialogController::publishGameAction);
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
     m_errorDialog->setCloseOnButtonClicked(true);

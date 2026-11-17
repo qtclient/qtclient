@@ -203,7 +203,7 @@ void TTextCopyController::cutFromTextInputQmlItemIfPossible(QObject* pTextInput)
     const int selectionEnd = pTextInput->property("selectionEnd").toInt();
     QMetaObject::invokeMethod(pTextInput, "remove", Q_ARG(int, selectionStart), Q_ARG(int, selectionEnd));
     QMetaObject::invokeMethod(pTextInput, "deselect");
-    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
 }
 
 /// Copies the selection of a QML text input with normal echo through the
@@ -212,7 +212,7 @@ void TTextCopyController::copyFromTextInputQmlItemIfPossible(QObject* pTextInput
 {
     if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0)
         return;
-    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(pTextInput->property("selectedText").toString()));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(pTextInput->property("selectedText").toString()));
 }
 
 TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)
@@ -948,7 +948,7 @@ void TInspectObjectDialogController::copyToClipboarClicked()
         if (const auto* row = qobject_cast<cip::tibia::gamewindow::TInspectObjectQMLData*>(object))
             text.append(row->clipboardReadyText());
     }
-    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text));
 }
 
 void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
@@ -957,7 +957,7 @@ void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
         return;
     if (const auto* row = qobject_cast<cip::tibia::gamewindow::TInspectObjectQMLData*>(m_inspectObjectList.front())) {
         auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<uint16_t>(row->appearanceID())));
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
     }
 }
 
@@ -1034,26 +1034,26 @@ void TInspectPlayerDialogController::openCharacterInfoClicked()
 {
     // The Cyclopedia's character tab.
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(2);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     closeDialog();
 }
 
 void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
 {
-    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(Text));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(Text));
 }
 
 void TInspectPlayerDialogController::openSkillWheelDialog()
 {
     if (!tibia::game::hasLocalPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
         return;
-    input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));
 }
 
 void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const uint AppearanceTypeID)
 {
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<uint16_t>(AppearanceTypeID)));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 TChatTutorialMarkerRenderInfo::TChatTutorialMarkerRenderInfo(const int markerId, const int startIndex, const int length, QObject* parent)

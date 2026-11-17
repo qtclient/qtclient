@@ -467,7 +467,7 @@ void TContainerController::onSlotClicked(const int slotId, const int mouseButton
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -533,13 +533,13 @@ void TContainerController::onSlotDragDropped(const int slotId)
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
     const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex) : AnySlot;
     const Position destination = slotPosition(pageSlot);
-    input::publish(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
+    Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
 void TContainerController::onSlotTargetSelected(const int slotId)
 {
     if (const input::IGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
-        input::publish(target);
+        Q_EMIT publishGameAction(target);
 }
 
 void TContainerController::onPreviousPageClicked()
@@ -558,7 +558,7 @@ void TContainerController::onNextPageClicked()
 
 void TContainerController::onSearchButtonClicked()
 {
-    input::publish(input::makeGameAction(A::REQUEST_DEPOT_SEARCH));
+    Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_DEPOT_SEARCH));
 }
 
 void TContainerController::onRequestClose()

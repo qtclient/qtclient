@@ -1,6 +1,7 @@
 #include "gameclient.h"
 #include "game/gameactionrouter.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/soundhelper.h"
 #include <stdexcept>
 
 #include "config/actionbaroptions.h"
@@ -43,6 +44,7 @@
 #include "assets/assetsciptypes.h"
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
+#include "creatures/vipstorage.h"
 #include "trade/tradeciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "store/storestorage.h"
@@ -127,6 +129,22 @@ Q_LOGGING_CATEGORY(lcGameClient, "tibia.client")
 Q_LOGGING_CATEGORY(lcFrameCost, "tibia.frame", QtWarningMsg)
 
 namespace tibia::client {
+
+namespace {
+
+/// CIP: a game session's router and the client's hand each other the actions
+/// their controllers publish (the router ids keep an action from coming back).
+void linkGameActionRouters(game::TGameActionRouter& client, game::TGameSessionBase& session)
+{
+    game::TInternalGameActionRouter* own = client.internalRouter();
+    game::TInternalGameActionRouter* other = session.gameActionRouter()->internalRouter();
+    QObject::connect(own, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, other,
+                     &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+    QObject::connect(other, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, own,
+                     &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+}
+
+}
 
 namespace {
 
@@ -257,6 +275,11 @@ TGameClient::TGameClient(QObject* parent)
     input::setGameActionRouter(m_pGameActionRouter->internalRouter());
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
             [](const input::IGameActionPtr& action) { input::handleUnportedGameAction(action); });
+    // The sound helper the dialogs and the QML singletons play through.
+    auto* soundHelper = new qmlcomponents::TSoundHelperService(this);
+    qmlcomponents::TSoundHelperService::setInstance(soundHelper);
+    connect(soundHelper, &qmlcomponents::TSoundHelperService::publishGameAction, m_pGameActionRouter->internalRouter(),
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
@@ -300,6 +323,23 @@ TGameClient::TGameClient(QObject* parent)
     taskboard::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
     trade::ownProductSurface(this);
+    // The process' storages and handlers above publish to the client's router.
+    {
+        game::TInternalGameActionRouter* router = m_pGameActionRouter->internalRouter();
+        const auto publishToRouter = [router](auto* publisher) {
+            if (publisher)
+                connect(publisher, &std::remove_pointer_t<decltype(publisher)>::publishGameAction, router,
+                        &game::TInternalGameActionRouter::handleGameActionInternal);
+        };
+        const auto publishChildrenToRouter = [this, &publishToRouter]<typename Publisher>(Publisher*) {
+            for (Publisher* child : findChildren<Publisher*>(QString(), Qt::FindDirectChildrenOnly))
+                publishToRouter(child);
+        };
+        publishToRouter(creatures::TVipStorage::instance());
+        publishChildrenToRouter(static_cast<game::TPlayerProtocolMessageHandler*>(nullptr));
+        publishChildrenToRouter(static_cast<quickloot::TQuickLootGameActionHandler*>(nullptr));
+        publishChildrenToRouter(static_cast<skillwheel::TSkillWheelProtocolMessageHandler*>(nullptr));
+    }
 
 
 
@@ -357,6 +397,8 @@ TGameClient::TGameClient(QObject* parent)
         m_cloudflareChallenge->startChallenge(challengeUrl);
     });
 
+    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::publishGameAction,
+            m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
             [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
@@ -392,6 +434,7 @@ TGameClient::~TGameClient()
     m_gameWindow.reset();
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
+    qmlcomponents::TSoundHelperService::setInstance(nullptr);
     input::setGameActionRouter(nullptr);
 }
 
@@ -454,6 +497,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             return true;
         }
         m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
+        linkGameActionRouters(*m_pGameActionRouter, *m_sessiondump);
         m_sessiondump->activate();
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connected, this, [] { qCInfo(lcGameClient) << "session dump connected"; });
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginSuccessful, this, [] { qCInfo(lcGameClient) << "session dump login accepted"; });
@@ -494,6 +538,8 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     }
 
     m_session = std::make_unique<game::TGameserverGameSession>();
+
+    linkGameActionRouters(*m_pGameActionRouter, *m_session);
     game::TGameserverGameSession::setLiveInstance(m_session.get());
     m_session->activate();
     connect(m_session.get(), &game::TGameserverGameSession::connected, this, [] { qCInfo(lcGameClient) << "game server connected"; });
@@ -870,6 +916,7 @@ void TGameClient::connectLive(const game::GameserverCredentials& credentials)
         m_dualConnection->setEndpoint(credentials.host, credentials.port);
     if (!m_session) {
         m_session = std::make_unique<game::TGameserverGameSession>();
+        linkGameActionRouters(*m_pGameActionRouter, *m_session);
         game::TGameserverGameSession::setLiveInstance(m_session.get());
     }
     m_session->activate();
@@ -881,6 +928,7 @@ void TGameClient::startTutorialThenLive(const game::GameserverCredentials& live,
     m_pendingLiveCredentials = live;
     m_tutorialCinematic = true;
     m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
+    linkGameActionRouters(*m_pGameActionRouter, *m_sessiondump);
     m_sessiondump->activate();
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginErrorMessage, this, &TGameClient::fail);

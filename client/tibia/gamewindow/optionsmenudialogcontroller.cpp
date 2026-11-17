@@ -74,9 +74,9 @@ QList<TMessageDialogButton*> okButton()
     return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
 }
 
-void publish(const EGameAction type)
+input::IGameActionPtr simpleAction(const EGameAction type)
 {
-    input::publish(input::makeGameAction(type));
+    return input::makeGameAction(type);
 }
 
 /// CIP DAT_102793370 and the storage directories (,
@@ -166,6 +166,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     m_infoMessage = makeMessageDialog();
     m_importMessage = makeMessageDialog();
     m_about = new TAboutDialogController(this);
+    connect(m_about, &TAboutDialogController::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     connect(m_importMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::importArchive);
     connect(m_resetPageMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetCurrentPageToDefault);
     connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
@@ -396,7 +397,7 @@ void TOptionsMenuDialogController::applyButtonClicked()
 
     // 
     if (m_gameplay->allowAllToInspectPlayer() != current.boolOption(O::inspectPlayerAllowAllEnabled))
-        publish(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER);
+        Q_EMIT publishGameAction(simpleAction(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
 
     // 
     if (!m_controls->rotateWithAlt() && !m_controls->rotateWithCtrl() && !m_controls->rotateWithShift()) {
@@ -444,7 +445,7 @@ void TOptionsMenuDialogController::activateLensehelp()
 {
     applyButtonClicked();
     dialog()->close();
-    publish(EGameAction::LENSHELP_ACTIVATE);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::LENSHELP_ACTIVATE));
 }
 
 void TOptionsMenuDialogController::showRuleViolationsText()
@@ -455,12 +456,12 @@ void TOptionsMenuDialogController::showRuleViolationsText()
 
 void TOptionsMenuDialogController::openManuelUrl()
 {
-    publish(EGameAction::OPEN_URL_MANUAL);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_URL_MANUAL));
 }
 
 void TOptionsMenuDialogController::openFaqUrl()
 {
-    publish(EGameAction::OPEN_URL_FAQ);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_URL_FAQ));
 }
 
 void TOptionsMenuDialogController::openScreenshotDirectory()
@@ -644,7 +645,7 @@ void TOptionsMenuDialogController::onResartMessageControllerClicked(const cip::t
     if (ButtonIdentifier != Button::USER_DEFINED)
         return;
     // OPEN_LAUNCHER starts this client again and quits without the exit prompt.
-    publish(EGameAction::OPEN_LAUNCHER);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_LAUNCHER));
 }
 
 }

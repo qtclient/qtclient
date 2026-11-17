@@ -102,6 +102,7 @@ void TContainerStorageController::onContainerUpdated(const int containerId, cons
         return;
     }
     auto* controller = new TContainerController(containerId, m_gameWindowItem, m_engine, this);
+    connect(controller, &TContainerController::publishGameAction, this, &TContainerStorageController::publishGameAction);
     controller->setControlScheme(m_controlScheme);
     controller->setLootScheme(m_lootScheme);
     controller->setSidebarOptions(m_options);

@@ -59,11 +59,6 @@ constexpr std::pair<const char*, int> ButtonNames[] = {
     { "taskboard", Buttons::TASKBOARD_DIALOG },
 };
 
-void publish(const A type)
-{
-    input::publish(input::makeGameAction(type));
-}
-
 struct TProductShortcut {
     QString id;
     QString label;
@@ -407,30 +402,30 @@ void TButtonBarController::onDropdownButtonClicked()
 void TButtonBarController::toggleWidget(const int widgetType)
 {
     auto action = std::make_shared<input::TGameActionToggleWidget>(widgetType);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TButtonBarController::onSkillButtonClicked() { toggleWidget(W::Skills); }
 void TButtonBarController::onBattleListButtonClicked() { toggleWidget(W::BattleList); }
 void TButtonBarController::onPartyListButtonClicked() { toggleWidget(W::PartyList); }
 void TButtonBarController::onVipWidgetButtonClicked() { toggleWidget(W::Vip); }
-void TButtonBarController::onQuestLogButtonClicked() { input::publish(std::make_shared<input::TGameActionOpenQuestLog>(0)); }
+void TButtonBarController::onQuestLogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenQuestLog>(0)); }
 void TButtonBarController::onQuestTrackerButtonClicked() { toggleWidget(W::QuestTracker); }
 void TButtonBarController::onBestiaryTrackerButtonClicked() { toggleWidget(W::BestiaryTracker); }
 void TButtonBarController::onBosstiaryTrackerButtonClicked() { toggleWidget(W::BosstiaryTracker); }
 void TButtonBarController::onUnjustifiedPointsButtonClicked() { toggleWidget(W::UnjustifiedPoints); }
 void TButtonBarController::onKillTrackerWidgetButtonClicked() { toggleWidget(W::Prey); }
-void TButtonBarController::onPreyDialogButtonClicked() { publish(A::OPEN_PREY_DIALOG); }
+void TButtonBarController::onPreyDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_PREY_DIALOG)); }
 void TButtonBarController::onSpellListWidgetButtonClicked() { toggleWidget(W::SpellList); }
 void TButtonBarController::onOptionsButtonClicked()
 {
-    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
-    input::publish(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0));
 }
 
 void TButtonBarController::onSwitchCharacterButtonClicked()
 {
-    publish(A::CHANGE_CHARACTER);
+    Q_EMIT publishGameAction(input::makeGameAction(A::CHANGE_CHARACTER));
 }
 
 void TButtonBarController::onLogoutButtonClicked()
@@ -444,13 +439,13 @@ void TButtonBarController::onLogoutButtonClicked()
     m_logoutQuestion->showMessage(qtTrId("warning"), qtTrId("buttonbar_logout_warning"));
 }
 
-void TButtonBarController::onRewardWallButtonClicked() { publish(A::REQUEST_OPEN_REWARD_WALL); }
+void TButtonBarController::onRewardWallButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OPEN_REWARD_WALL)); }
 void TButtonBarController::onAnalyticsSelectorWidgetButtonClicked() { toggleWidget(W::AnalyticsSelector); }
-void TButtonBarController::onLenshelpButtonClicked() { publish(A::LENSHELP_ACTIVATE); }
-void TButtonBarController::onHighscoresDialogButtonClicked() { publish(A::OPEN_HIGHSCORES_DIALOG); }
-void TButtonBarController::onExaltationForgeDialogButtonClicked() { publish(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG); }
-void TButtonBarController::onBossSlotsDialogButtonClicked() { input::publish(std::make_shared<input::TGameActionOpenCyclopedia>(7)); }
-void TButtonBarController::onSkillWheelDialogButtonClicked() { publish(A::REQUEST_OWN_SKILL_WHEEL); }
+void TButtonBarController::onLenshelpButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::LENSHELP_ACTIVATE)); }
+void TButtonBarController::onHighscoresDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_HIGHSCORES_DIALOG)); }
+void TButtonBarController::onExaltationForgeDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG)); }
+void TButtonBarController::onBossSlotsDialogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenCyclopedia>(7)); }
+void TButtonBarController::onSkillWheelDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OWN_SKILL_WHEEL)); }
 void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::ImbuementTracker); }
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
@@ -460,11 +455,11 @@ void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
         if (!left.empty())
             typeId = static_cast<uint16_t>(left.typeId);
     }
-    input::publish(std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(typeId));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(typeId));
 }
-void TButtonBarController::onTaskboardDialogButtonClicked() { input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); }
+void TButtonBarController::onTaskboardDialogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); }
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
-void TButtonBarController::onManageShortcutsClicked() { input::publish(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
+void TButtonBarController::onManageShortcutsClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
 
 QStringList TButtonBarController::enabledShortcutIds() const
 {
@@ -568,7 +563,7 @@ void TButtonBarController::activateShortcut(const int buttonId)
         if (m_newsButtonController)
             QMetaObject::invokeMethod(m_newsButtonController, "onOpenNewsButtonClicked");
         else
-            input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
         break;
     case B::CYCLOPEDIA_DIALOG:
         if (m_cyclopediaButtonController)

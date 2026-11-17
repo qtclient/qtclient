@@ -40,9 +40,9 @@ constexpr uint16_t EmptyAppearance = 0x5ca9;
 
 /// A managed container action for one object category; select actions also
 /// carry the picked container.
-void publishContainerAction(const A type, const int category)
+input::IGameActionPtr containerAction(const A type, const int category)
 {
-    input::publish(std::make_shared<input::TGameActionManagedContainer>(type, category));
+    return std::make_shared<input::TGameActionManagedContainer>(type, category);
 }
 
 bool isSet(const uint16_t typeId) { return typeId != 0 && typeId != EmptyAppearance; }
@@ -138,14 +138,14 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
         m_lootContainers.append(row);
         connect(row, &TLootContainerQMLInfo::requestSelectLootContainer, this, [this](const int c) { startContainerPick(c, true); });
         connect(row, &TLootContainerQMLInfo::requestClearLootContainer, this,
-                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_CLEAR, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::LOOT_CONTAINER_CLEAR, c)); });
         connect(row, &TLootContainerQMLInfo::requestOpenLootContainer, this,
-                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_OPEN, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::LOOT_CONTAINER_OPEN, c)); });
         connect(row, &TLootContainerQMLInfo::requestSelectObtainContainer, this, [this](const int c) { startContainerPick(c, false); });
         connect(row, &TLootContainerQMLInfo::requestClearObtainContainer, this,
-                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_CLEAR, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::OBTAIN_CONTAINER_CLEAR, c)); });
         connect(row, &TLootContainerQMLInfo::requestOpenObtainContainer, this,
-                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_OPEN, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::OBTAIN_CONTAINER_OPEN, c)); });
     }
 
     if (m_lootBlackWhitelist) {

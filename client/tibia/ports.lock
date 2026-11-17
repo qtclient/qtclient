@@ -11984,7 +11984,7 @@ sub_4cb9bd497553	4cb9bd497553752a	ported	appearances/appearanceinstance.cpp:cumu
 sub_4cbb0aebcdd8	4cbb0aebcdd8fd8b	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::refreshDualWielding
 sub_4cc5398c1779	4cc5398c17791738	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::setHistory
 sub_4ccdc8faedfb	4ccdc8faedfbd45e	ported	gamewindow/fpslatencyindicatorcontroller.cpp:latencyStateFor
-sub_4cd83a4fd793	4cd83a4fd7931c06	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
+sub_4cd83a4fd793	4cd83a4fd7931c06	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
 sub_4cda374ad031	4cda374ad03116aa	skip	library: libc++ std::unordered_map/set template instantiation (find/emplace/rehash)
 sub_4cddbf18c67f#10	4cddbf18c67fe792	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_4cddbf18c67f#3	4cddbf18c67fe792	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
@@ -16715,7 +16715,7 @@ sub_a1dfbec7d051	a1dfbec7d0514a30	skip	library: protobuf/Abseil/libc++ runtime h
 sub_a1e102ed8308	a1e102ed8308952b	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::hideLevelUpUnlessTimerRuns
 sub_a1e102ed8308#2	a1e102ed8308952b	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::hideLevelUpUnlessTimerRuns
 sub_a1f1e1bb3cb6	a1f1e1bb3cb6c390	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::numberOfPages	test=tests/client/sharednet_test.cpp
-sub_a1f485961802	a1f48596180291d7	ported	gamewindow/playerguidewidgetcontroller.cpp:openNewsEntry
+sub_a1f485961802	a1f48596180291d7	ported	gamewindow/playerguidewidgetcontroller.cpp:openNewsEntryAction
 sub_a20d42b7ac83#3	a20d42b7ac834e6e	inlined	sound/soundcontroller.cpp:TSoundController::deferredPlayChangedEffectSounds
 sub_a20d42b7ac83#4	a20d42b7ac834e6e	inlined	sound/soundmanager.cpp:TSoundManager::soundName
 sub_a20dbbfc4f0e	a20dbbfc4f0e46b5	ported	input/eventfiltermanager.cpp:TEventFilterManager::block
@@ -18507,7 +18507,7 @@ sub_be0237a6c667	be0237a6c66745e3	skip	library: std::sort / std::stable_sort ins
 sub_be04f99d6c95	be04f99d6c953171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditList
 sub_be0f651917b0	be0f651917b032a7	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::baseXpPerHourString
 sub_be14815ad083	be14815ad0831c79	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
-sub_be15361f627e	be15361f627e50e4	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
+sub_be15361f627e	be15361f627e50e4	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
 sub_be1873c46842	be1873c46842f2d3	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_be1e6716d1bc	be1e6716d1bca6c1	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_be25b241bd99	be25b241bd99e3f3	ported	gamewindow/gamewindowciptypes.cpp:TOutfitQMLInformation::TOutfitQMLInformation
@@ -18649,7 +18649,7 @@ sub_c1574a290b8a#18	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTra
 sub_c161f2954050	c161f29540504184	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::unlockWithPermiumClicked
 sub_c161f2954050#2	c161f29540504184	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::getPremiumClicked
 sub_c161f2954050#3	c161f29540504184	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::requestOpenStoreWithPremiumTime
-sub_c161f2954050#4	c161f29540504184	ported	analysers/impactwidgets.cpp:openPremiumStore
+sub_c161f2954050#4	c161f29540504184	ported	analysers/impactwidgets.cpp:premiumStoreAction
 sub_c161f2954050#5	c161f29540504184	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::appendXPGaugeContextMenuEntries
 sub_c1648e20c6ee	c1648e20c6ee9dc4	skip	library: std container template instance
 sub_c16759435f2d#2	c16759435f2d6aa5	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
@@ -19060,8 +19060,8 @@ sub_c99eca0c25e6	c99eca0c25e6c065	inlined	creatures/creaturestorage.cpp:TCreatur
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
 sub_c9ad7d831b9f	c9ad7d831b9f355d	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::xpGaugeValue
 sub_c9b93811408e	c9b93811408e6e96	ported	config/clientoptions.cpp:lootSchemeForListModelIndex
-sub_c9b9ce7c19a7	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
-sub_c9b9ce7c19a7#2	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
+sub_c9b9ce7c19a7	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
+sub_c9b9ce7c19a7#2	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
 sub_c9bca3b0fef9	c9bca3b0fef9bb6b	ported	sound/soundplayer.cpp:TSoundPlayer::playingOffsetMs
 sub_c9bca3b0fef9#2	c9bca3b0fef9bb6b	ported	sound/soundplayer.cpp:TSoundPlayer::durationMs
 sub_c9c5c5bdd7a7	c9c5c5bdd7a78c98	skip	library: nlohmann::json get_number/get_string/type_name instantiations

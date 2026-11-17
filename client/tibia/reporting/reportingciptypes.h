@@ -51,8 +51,8 @@ public:
     using cip::tibia::reporting::TRuleViolationProtocolMessageHandler::TRuleViolationProtocolMessageHandler;
     /// The text the server sends for a report becomes the REPORT_TEXT action:
     /// its author, the text's edit id and the text itself.
-    static void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message);
-    static void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message);
+    void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message);
+    void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message);
 };
 
 }

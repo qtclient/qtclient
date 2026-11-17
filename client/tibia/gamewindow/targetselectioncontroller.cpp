@@ -11,7 +11,7 @@ TTargetSelectionController::TTargetSelectionController(QQuickItem* root, QObject
 {
     m_filterFinishedConn = connect(m_filter, &cip::tibia::gamewindow::TTargetSelectionEventFilter::targetSelectionFinished, this,
                                    &TTargetSelectionController::onTargetSelectionFinished);
-    // CipSoft: input::publish(START_TARGET_SELECTION) → this controller.
+    // CipSoft: START_TARGET_SELECTION reaches this controller through the router.
     // Tip keeps the listener so action-bar / crosshair start paths stay live.
     input::setTargetSelectionListener([this](const bool selecting) { setSelecting(selecting); });
     bindDialogStack();

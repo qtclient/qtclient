@@ -6,6 +6,7 @@
 #include "input/gameaction.h"
 #include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/soundhelper.h"
 
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -217,8 +218,8 @@ void TDialog::show()
     create();
     if (TDialogStackController* stack = TDialogStackController::instance())
         stack->show(this);
-    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET });
-    input::publish(sound);
+    if (qmlcomponents::TSoundHelperService* sound = qmlcomponents::TSoundHelperService::instance())
+        sound->playSound(qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET);
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setDefaultCursor();
 }

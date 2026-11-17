@@ -610,6 +610,8 @@ public Q_SLOTS:
     void onCharacterConfigurationLoaded();
 
 Q_SIGNALS:
+    /// The storages' publishGameAction (impact, item tracking), forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
     void sessionReset();
     /// The character's configurations were read (CIP TCharacterConfigurationManager).
     void configurationLoadedForCharacter();

@@ -84,16 +84,22 @@ public:
     static QStringList staticActionNames();
 
     /// TRY_TO_SWITCH_HOTKEYSET, SWITCH_TO_NEXT_HOTKEYSET and
-    /// SWITCH_TO_PREVIOUS_HOTKEYSET; other actions are ignored.
-    static void handleGameAction(const IGameAction& action);
+    /// SWITCH_TO_PREVIOUS_HOTKEYSET; other actions are ignored. Connected to
+    /// the router's publishGameActionInternal.
+    void handleGameAction(const IGameAction& action);
+    void handleGameAction(const IGameActionPtr& pGameAction)
+    {
+        if (pGameAction)
+            handleGameAction(*pGameAction);
+    }
     /// With auto-switch on, selects the set named action.text when it exists
     /// and is not current, and announces it (on the status line only when
     /// action.enable).
-    static void tryToSwitchHotkeySet(const TGameActionTryToSwitchHotkeySet& action);
+    void tryToSwitchHotkeySet(const TGameActionTryToSwitchHotkeySet& action);
     /// The set after (before) the current one in name order, wrapping, is
     /// selected and announced on the status line and in the console.
-    static void switchToNextHotkeySet();
-    static void switchToPreviousHotkeySet();
+    void switchToNextHotkeySet();
+    void switchToPreviousHotkeySet();
 
     /// The action a setting runs: a chat text, a static action, or an object
     /// used in the setting's way (CIP: also the action button handler's); null

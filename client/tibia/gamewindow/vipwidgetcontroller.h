@@ -195,7 +195,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
 
 private Q_SLOTS:
     /// The edit dialog's result: REQUST_VIP_DATA_UPDATE.
@@ -257,6 +256,11 @@ public:
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
     TVipWidgetController* controller() const { return m_controller; }
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     QQuickItem* m_gameWindowItem;

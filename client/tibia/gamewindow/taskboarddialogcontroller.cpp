@@ -288,6 +288,7 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
 {
     m_bountyTaskController = m_bounty;
     m_weeklyTaskController = m_weekly;
+    connect(m_weekly, &TWeeklyTasksController::publishGameAction, this, &TTaskboardDialogController::publishGameAction);
     m_rewardShopController = m_shop;
     new TSoulSealsDialogController(this);
     new TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(this);

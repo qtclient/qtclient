@@ -58,6 +58,7 @@ TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject
     , m_characterInfo(new TCharacterInfoDialogController(this))
 {
     m_characterInfoDialogController = m_characterInfo;
+    connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TFriendsAccountSearchPageController::publishGameAction);
     m_showEmptyTab = true;
     m_accountCharacterList = new TAccountCharacterList({}, this);
     m_accountBadgeList = new TAccountBadgeList({}, this);

@@ -588,7 +588,7 @@ void TItemInfoDialogController::requestCustomSaleValue(const QString& CustomSale
 void TItemInfoDialogController::requestOpenStoreWithPremiumTime()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TItemInfoDialogController::requestItemTracking(const bool TrackItem)
@@ -614,7 +614,7 @@ void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()
     if (m_typeId == 0)
         return;
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(m_typeId));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TItemInfoDialogController::showType(const uint16_t typeId)

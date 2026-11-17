@@ -1,4 +1,5 @@
 #include "sessiondumpgamesession.h"
+#include "game/gameactionrouter.h"
 
 #include "game/sessiondumpdmpd.h"
 #include "sessiondump/sessiondumpasyncloader.h"
@@ -250,6 +251,8 @@ void TSessiondumpGameSession::startHintsForDump(const QString& dumpPath)
         return;
     }
     m_hints = std::make_unique<tutorial::TSessiondumpHintsProcessor>(this);
+    connect(m_hints.get(), &tutorial::TSessiondumpHintsProcessor::publishGameAction, gameActionRouter()->internalRouter(),
+            &TInternalGameActionRouter::handleGameActionInternal);
     if (!m_hints->load(hintsPath)) {
         m_hints.reset();
         return;

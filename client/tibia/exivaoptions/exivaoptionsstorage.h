@@ -65,6 +65,8 @@ Q_SIGNALS:
     void allowedGroupsChanged();
     void characterWhitelistChanged();
     void guildWhitelistChanged();
+    /// The status line its toggle shows (CIP: TExivaOptionsGameActionHandler's publishGameAction).
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     /// The exiva actions: toggle allow-everyone, add / remove a whitelisted
@@ -72,7 +74,7 @@ private:
     bool handleGameAction(const input::IGameAction& action);
     /// (EXIVA_TOGGLE_ALLOW_EVERYONE): the current options with
     /// "allow everyone" flipped, and a status line about it.
-    void toggleAllowEveryone() const;
+    void toggleAllowEveryone();
     /// (EXIVA_ADD_CHARACTER_TO_WHITELIST) / 
     /// (EXIVA_REMOVE_CHARACTER_FROM_WHITELIST): the current options with `name`
     /// as the only added / removed character.

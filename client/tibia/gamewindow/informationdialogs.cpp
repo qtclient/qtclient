@@ -59,22 +59,34 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     , m_cyclopediaButton(new TCyclopediaButtonController(this))
     , m_bosstiaryButton(new TBosstiaryButtonController(this))
 {
+    // The dialogs' publishGameAction reach the game window's router through this hub.
+    const auto forward = [this](auto* dialog) {
+        connect(dialog, &std::remove_pointer_t<decltype(dialog)>::publishGameAction, this, &TInformationDialogs::publishGameAction);
+    };
+    forward(m_outfitDialog);
+    forward(m_podiumDialog);
+    forward(m_editText);
+    forward(m_questLog);
+    forward(m_prey);
+    forward(m_cyclopedia);
+    forward(m_cyclopediaButton);
+    forward(m_bosstiaryButton);
     // CIP misc dialogs / overlays kept alive on the information hub (ledger wires).
     new TEmergencyDialogController(this);
-    new TGameSessionDisconnectReactionController(this);
+    forward(new TGameSessionDisconnectReactionController(this));
     new TCinematicSessiondumpPlayerController(this);
     new TGenericConfirmWithDontShowAgainDialogController(this);
-    new TLinkCopyWarningDialogController(this);
+    forward(new TLinkCopyWarningDialogController(this));
     new TLoginConfirmationCodeEnterTextDialogController(this);
     new TTwoFactorCodeEnterTextDialogController(this);
     new TMultiOfflineTrainingDialogController(this);
     new TOutfitMemorialDialogController(this);
     new TReturnerRewardDialogController(this);
     new TShowImageDialogController(this);
-    new TShowSpellBookDialogController(this);
-    new TSurveyInvitationDialogController(this);
+    forward(new TShowSpellBookDialogController(this));
+    forward(new TSurveyInvitationDialogController(this));
     new TInfoBannerController(nullptr, this);
-    new TTutorialOverlayController(this);
+    forward(new TTutorialOverlayController(this));
     new TTutorialOverlayItemController(this);
     new TTutorialOverlayMouseFilterController(this);
     new TTutorialOverlayMouseTrailAnimationController(this);

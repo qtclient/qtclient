@@ -391,7 +391,7 @@ void TDepotSearchWidgetController::requestSearch() { publishSimpleAction(A::REQU
 
 void TDepotSearchWidgetController::requestRefresh() { requestSearch(); }
 
-void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { input::publish(input::makeGameAction(type)); }
+void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { Q_EMIT publishGameAction(input::makeGameAction(type)); }
 
 bool TDepotSearchWidgetController::categorySupportsTiers(const int category) const
 {
@@ -559,7 +559,7 @@ void TDepotSearchWidgetController::publishSearchTypeRequest()
     if (m_selectedTypeId == 0)
         return;
     auto action = std::make_shared<input::TGameActionRequestSearchTypeInDepot>(static_cast<uint16_t>(m_selectedTypeId), static_cast<uint16_t>(m_selectedTier.value_or(0)));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TDepotSearchWidgetController::requestItemSelect(const int AppearanceId, const int UpgradeTier)
@@ -600,7 +600,7 @@ void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId,
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     const input::TGameActionList entries = input::contextMenuActions(candidates, TypeContextMenuOrder);
@@ -623,7 +623,7 @@ void TDepotSearchWidgetController::requestRetrieveFromStash(const int TypeID)
     const uint32_t maximum = type && type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
     auto retrieve = std::make_shared<input::TGameActionStashRetrieve>(static_cast<uint16_t>(TypeID),
                                                                       static_cast<int>(std::min(it->second, maximum)));
-    input::publish(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
 }
 
 void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int StorageLocation)
@@ -631,7 +631,7 @@ void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int Stora
     if (StorageLocation < Depot || StorageLocation > Inbox || !m_session || !m_detailList)
         return;
     auto action = std::make_shared<input::TGameActionDepotSearchRetrieve>(static_cast<uint16_t>(m_detailList->typeId()), static_cast<uint16_t>(m_detailList->tier().value_or(0)), StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 input::TGameActionList TDepotSearchWidgetController::slotActions(const int storageLocation, const int slotId) const
@@ -668,7 +668,7 @@ void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const 
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     input::TGameActionList entries = context == StashContext ? input::contextMenuActions(candidates, TypeContextMenuOrder)
@@ -737,7 +737,7 @@ void TDepotSearchWidgetController::slotTargetSelected(const int StorageLocation,
         return;
     const input::TGameActionList candidates = input::filterActions(slotActions(StorageLocation, SlotIDRaw), { A::TARGET_SELECTED });
     if (!candidates.empty())
-        input::publish(candidates.front());
+        Q_EMIT publishGameAction(candidates.front());
 }
 
 TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
@@ -746,6 +746,7 @@ TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, 
     , m_sidebars(sidebars)
     , m_controller(new TDepotSearchWidgetController(gameWindowItem, engine, this))
 {
+    connect(m_controller, &TDepotSearchWidgetController::publishGameAction, this, &TDepotSearchWidgetManager::publishGameAction);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchResults", [this](GameObject*, const std::vector<std::any>&) {
         show();
         return std::any{};

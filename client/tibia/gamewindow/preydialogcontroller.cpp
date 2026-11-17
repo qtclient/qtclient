@@ -376,16 +376,15 @@ QList<TMessageDialogButton*> okButton()
     return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
 }
 
-void publishPreyAction(const A type, const uint preyId)
+input::IGameActionPtr preyAction(const A type, const uint preyId)
 {
-    input::publish(std::make_shared<input::TGameActionPreySystem>(static_cast<uint8_t>(preyId), type));
+    return std::make_shared<input::TGameActionPreySystem>(static_cast<uint8_t>(preyId), type);
 }
 
 /// CIP store requests: open type 1 (premium) or 3 (an offer).
-void openStore(const int openType, const int offer)
+input::IGameActionPtr openStoreAction(const int openType, const int offer)
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(openType, offer);
-    input::publish(action);
+    return std::make_shared<input::TGameActionOpenStore>(openType, offer);
 }
 
 /// CIP: "word word" -> "Word Word".
@@ -688,20 +687,20 @@ void TPreyRenderInfo::choosePreyClicked() { Q_EMIT requestChoosePrey(preyId()); 
 /// CIP .
 void TPreyRenderInfo::confirmGridPreyCreatureClicked(const int Index)
 {
-    input::publish(std::make_shared<input::TGameActionSelectPreyMonsterFromList>(static_cast<uint8_t>(preyId()), static_cast<uint8_t>(Index)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectPreyMonsterFromList>(static_cast<uint8_t>(preyId()), static_cast<uint8_t>(Index)));
 }
 
 /// CIP .
 void TPreyRenderInfo::confirmBestiaryPreyCreatureClicked(const int MonsterRaceID)
 {
-    input::publish(std::make_shared<input::TGameActionSelectPreyMonsterFromBestiary>(static_cast<uint8_t>(preyId()), static_cast<uint16_t>(MonsterRaceID)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectPreyMonsterFromBestiary>(static_cast<uint8_t>(preyId()), static_cast<uint16_t>(MonsterRaceID)));
 }
 
 /// CIP .
-void TPreyRenderInfo::unlockPermanentlyClicked() { openStore(3, 0); }
+void TPreyRenderInfo::unlockPermanentlyClicked() { Q_EMIT publishGameAction(openStoreAction(3, 0)); }
 
 /// CIP .
-void TPreyRenderInfo::unlockWithPermiumClicked() { openStore(1, 0); }
+void TPreyRenderInfo::unlockWithPermiumClicked() { Q_EMIT publishGameAction(openStoreAction(1, 0)); }
 
 /// CIP .
 void TPreyRenderInfo::autoExtendPreydClicked(const EExtendType QMLAutoExtendType)
@@ -799,6 +798,7 @@ void TPreyPreyPageController::showDialogTab()
     m_renderInfos.clear();
     for (prey::TPreyData* data : m_storage->slots()) {
         auto* info = new TPreyRenderInfo(data, this);
+        connect(info, &TPreyRenderInfo::publishGameAction, this, &TPreyPreyPageController::publishGameAction);
         connect(info, &TPreyRenderInfo::requestBonusReroll, this, &TPreyPreyPageController::onRequestBonusReroll);
         connect(info, &TPreyRenderInfo::requestListReroll, this, &TPreyPreyPageController::onRequestListReroll);
         connect(info, &TPreyRenderInfo::requestChoosePrey, this, &TPreyPreyPageController::onRequestChoosePrey);
@@ -901,23 +901,23 @@ void TPreyPreyPageController::onRequestChangeAutoExtendType(const uint preyId, c
         m_autoReroll->showMessage(caption, qtTrId("prey_confirm_enable_auto_prey_extension_description")
                                                .arg(qtTrId("prey_auto_reroll"), english(m_storage->bonusRerollPrice()), currency));
     } else {
-        input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(preyId), 0));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(preyId), 0));
     }
 }
 
-void TPreyPreyPageController::onConfirmBonusReroll() { publishPreyAction(A::PREY_REQUEST_BONUS_REROLL, m_pendingPreyId); }
-void TPreyPreyPageController::onConfirmListReroll() { publishPreyAction(A::PREY_REQUEST_LIST_REROLL, m_pendingPreyId); }
-void TPreyPreyPageController::onConfirmChoosePrey() { publishPreyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS, m_pendingPreyId); }
+void TPreyPreyPageController::onConfirmBonusReroll() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_BONUS_REROLL, m_pendingPreyId)); }
+void TPreyPreyPageController::onConfirmListReroll() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_LIST_REROLL, m_pendingPreyId)); }
+void TPreyPreyPageController::onConfirmChoosePrey() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS, m_pendingPreyId)); }
 
 void TPreyPreyPageController::onConfirmEnableAutoRerollBonus()
 {
-    input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 1));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 1));
 }
 
-void TPreyPreyPageController::onConfirmEnableLockPrey() { input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 2)); }
+void TPreyPreyPageController::onConfirmEnableLockPrey() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 2)); }
 
 /// CIP .
-void TPreyPreyPageController::getMorePreyWildcardsClicked() { openStore(3, 1); }
+void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
 
 TPreyDialogController::TPreyDialogController(QObject* parent)
     : TDialogController(QStringLiteral("prey/PreyDialog.qml"), parent)
@@ -927,6 +927,7 @@ TPreyDialogController::TPreyDialogController(QObject* parent)
     , m_info(new TMessageDialogController(this))
 {
     m_preyPageController = m_page;
+    connect(m_page, &TPreyPreyPageController::publishGameAction, this, &TPreyDialogController::publishGameAction);
     m_notOnMain->setCloseOnButtonClicked(true);
     m_info->setCloseOnButtonClicked(true);
     connect(m_storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyDialogController::preyWildcardAmountChanged);
@@ -961,7 +962,7 @@ void TPreyDialogController::showDialog()
     }
     if (!m_storage->allDataReceived()) {
         auto action = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("prey_information_not_available"));
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     m_storage->setPreyWildcards(wildcardBalance());
@@ -969,7 +970,7 @@ void TPreyDialogController::showDialog()
     requestTabSwitch(PreyCreatures);
     for (const int resource : { 0, 1, 10, 0x32 }) {
         auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
     }
 }
 
@@ -985,7 +986,7 @@ void TPreyDialogController::closeDialog()
 void TPreyDialogController::closeButtonClicked() { closeDialog(); }
 
 /// CIP .
-void TPreyDialogController::getMorePreyWildcardsClicked() { openStore(3, 1); }
+void TPreyDialogController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
 
 void TPreyDialogController::requestClose() { closeDialog(); }
 

@@ -325,14 +325,14 @@ void TCreatureTrackerWidgetController::updateCooldownExpiry()
 void TCreatureTrackerWidgetController::requestOpenBestiary()
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCreatureTrackerWidgetController::requestOpenBestiaryEntry(const uint RaceID)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
     action->setRaceId(static_cast<uint16_t>(static_cast<int>(RaceID)));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCreatureTrackerWidgetController::requestContextMenu(const uint RaceID, const QString& RaceName)
@@ -396,6 +396,7 @@ TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions* opt
 {
     if (!m_controller) {
         m_controller = new TCreatureTrackerWidgetController(m_mode, m_creatures, m_bosses, m_gameWindowItem, m_engine);
+        connect(m_controller, &TCreatureTrackerWidgetController::publishGameAction, this, &TCreatureTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

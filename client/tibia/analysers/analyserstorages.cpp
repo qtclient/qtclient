@@ -202,6 +202,8 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     , m_lootBlackWhitelist(std::make_unique<quickloot::TQuickLootBlackWhitelistStorage>())
 {
     s_instance = this;
+    connect(&m_impact, &TImpactStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction);
+    connect(m_itemTracking.get(), &cyclopedia::TItemTrackingStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
         Q_EMIT premiumTimeChanged();
         return std::any{};

@@ -522,7 +522,7 @@ void TQuestLogController::selectedQuestFlag(const int QuestFlagID)
 void TQuestLogController::questTrackerButtonPressed()
 {
     auto action = std::make_shared<input::TGameActionToggleWidget>(10);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TQuestLogController::setShowCompleted(const bool Show)

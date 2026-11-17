@@ -399,7 +399,7 @@ void TVipWidgetController::runClick(const input::TGameActionList& candidates, co
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -409,7 +409,7 @@ void TVipWidgetController::runClick(const input::TGameActionList& candidates, co
         menu->showGameActions(entries, VipWidgetContext, m_mapper);
 }
 
-void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::publish(std::make_shared<input::TGameActionOpenMessageToChatChannel>(VipName)); }
+void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenMessageToChatChannel>(VipName)); }
 
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
@@ -425,17 +425,17 @@ void TVipWidgetController::onWidgetClicked(const int MouseButtonRaw, const int K
 
 void TVipWidgetController::onPlayerNameToAddToVipListReceived(const QString& PlayerName)
 {
-    input::publish(std::make_shared<input::TGameActionAddNewVip>(PlayerName));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddNewVip>(PlayerName));
 }
 
 void TVipWidgetController::onGroupNameToAddToVipListReceived(const QString& GroupName)
 {
-    input::publish(std::make_shared<input::TGameActionAddNewVipGroup>(GroupName));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddNewVipGroup>(GroupName));
 }
 
 void TVipWidgetController::onGroupNameEditedReceived(const QString& GroupName)
 {
-    input::publish(std::make_shared<input::TGameActionRequestVipGroupUpdate>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestVipGroupUpdate>(
         input::TGameActionRequestVipGroupUpdate::TVipGroup{ m_editedGroup.id, GroupName, m_editedGroup.editable }));
     m_editedGroup = {};
 }
@@ -472,7 +472,7 @@ void TVipWidgetController::openEditGroupDialog(const QString& groupName)
 
 void TVipWidgetController::onVipDataEdited(const creatures::TVipStorage::Vip& VipData)
 {
-    input::publish(std::make_shared<input::TGameActionRequestVipDataUpdate>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestVipDataUpdate>(
         VipData.id, VipData.description, static_cast<uint8_t>(VipData.iconId), VipData.notifyLogin, VipData.groups));
 }
 
@@ -483,7 +483,7 @@ void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
         return;
     auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(
         input::gameactions::TGameActionSoundTrigger::TSoundEffect{ state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT });
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 bool TVipWidgetController::handleAction(const input::IGameAction& action)
@@ -537,6 +537,7 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     , m_storage(creatures::TVipStorage::instance())
     , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
+    connect(m_exivaOptions, &exivaoptions::TExivaOptionsStorage::publishGameAction, this, &TVipWidgetManager::publishGameAction);
     for (const A type : WidgetActions)
         input::setActionHandler(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
 }
@@ -573,6 +574,7 @@ TSidebarWidget* TVipWidgetManager::open()
 {
     if (!m_controller) {
         m_controller = new TVipWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TVipWidgetController::publishGameAction, this, &TVipWidgetManager::publishGameAction);
         m_controller->setControlScheme(m_controlScheme);
         m_controller->setExivaOptions(m_exivaOptions, m_worldType);
         m_controller->setSidebarOptions(m_options);

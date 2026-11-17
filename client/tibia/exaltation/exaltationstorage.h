@@ -159,11 +159,16 @@ public:
 
     const TExaltationResult& lastResult() const { return m_lastResult; }
 
+Q_SIGNALS:
+    /// The protocol handler's actions (CIP: TExaltationProtocolMessageHandler's
+    /// publishGameAction; qtclient handles those messages here).
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
 private:
     /// CIP TExaltationProtocolMessageHandler::handleResourceBalanceMessage.
     void handleResourceBalanceMessage(int type, qint64 balance);
     /// CIP TExaltationProtocolMessageHandler::handleShowMessageDialogMessage.
-    static void handleShowMessageDialogMessage(int type, const QString& message);
+    void handleShowMessageDialogMessage(int type, const QString& message);
 
     /// CIP TExaltationGameActionHandler.
     bool handleGameAction(const input::IGameAction& action);

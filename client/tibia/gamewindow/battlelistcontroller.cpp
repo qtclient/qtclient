@@ -474,7 +474,7 @@ bool TBattleListController::onAtMouseCursor(const input::IGameAction& action)
     if (!target || !target->creatureId())
         return false;
     if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action)) {
-        input::publish(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
+        Q_EMIT m_storage->publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
         return true;
     }
     const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action);
@@ -579,11 +579,11 @@ void TBattleListController::requestOpenSecondaryBattleList()
     // get the store's premium page.
     if (hasPremiumStatus()) {
         auto action = std::make_shared<input::TGameActionOpenSecondaryBattleListInSpecificSidebar>(static_cast<uint8_t>(0xff), static_cast<uint8_t>(0xff));
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
         return;
     }
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT m_storage->publishGameAction(action);
 }
 
 void TBattleListController::requestEditName()
@@ -602,7 +602,7 @@ void TBattleListController::onNewNameEntered(const QString& EnteredName)
 void TBattleListController::requestMakePrimary()
 {
     auto action = std::make_shared<input::TGameActionMakeBattleListPrimary>(static_cast<uint8_t>(m_id));
-    input::publish(action);
+    Q_EMIT m_storage->publishGameAction(action);
 }
 
 void TBattleListController::removeThisBattleListOptionsIfNotSpecialBattleList()
@@ -690,7 +690,7 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
             cursor->onBattleListEntered();
     }
     if (temporarySelect)
-        input::publish(temporarySelect);
+        Q_EMIT m_storage->publishGameAction(temporarySelect);
 }
 
 void TBattleListController::onCreatureClicked(const int creatureId, const int mouseButton, const int keyboardModifiers)
@@ -700,7 +700,7 @@ void TBattleListController::onCreatureClicked(const int creatureId, const int mo
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
         return;
     }
     m_lockedCreature = static_cast<uint32_t>(creatureId);
@@ -730,7 +730,7 @@ void TBattleListController::onContextMenuControllerMenuClosed()
 void TBattleListController::onCreatureTargetSelected(const int creatureId)
 {
     if (const input::IGameActionPtr action = findAction(battleListGameActions(static_cast<uint32_t>(creatureId)), A::TARGET_SELECTED))
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
 }
 
 // ---------------------------------------------------------------------------
@@ -935,7 +935,7 @@ bool TBattleListControllerStorage::acquireBattleListId(const uint8_t requestedId
 void TBattleListControllerStorage::publishStatusLine(const QString& text, const QColor& color)
 {
     auto status = std::make_shared<input::TGameActionSetStatusLine>(text, color);
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TBattleListControllerStorage::maximizeIfLoggedIn(TBattleListController* controller) const
@@ -1246,7 +1246,7 @@ bool TBattleListControllerStorage::attackFirstTarget()
     for (const TCreaturePtr& creature : battleListCreatures()) {
         if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
+        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;
@@ -1267,7 +1267,7 @@ bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previou
     for (const TCreaturePtr& creature : list) {
         if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
+        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;

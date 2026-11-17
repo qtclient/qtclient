@@ -36,7 +36,7 @@ void TSocialButtonController::onSocialButtonClicked()
                         : m_state == EState::OwnTeamUpdate         ? 6
                                                                    : 5);
     setState(EState::None);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSocialButtonController::onFriendsInviteReceived()

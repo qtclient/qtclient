@@ -87,7 +87,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
 
 private Q_SLOTS:
     void onOwnOfferChanged();

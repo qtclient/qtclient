@@ -239,7 +239,7 @@ void TTeamAssemblePageController::onEditMemberStatusClicked(const uint Character
 void TTeamAssemblePageController::getPremiumClicked()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 uint TTeamAssemblePageController::getLeaderlevel()

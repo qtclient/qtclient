@@ -46,10 +46,10 @@ bool isActionBarsOption(const QString& name)
     return name.startsWith(QLatin1String("actionBar")) || name.startsWith(QLatin1String("actionButton"));
 }
 
-void publishMessage(const QString& text)
+input::IGameActionPtr textMessageAction(const QString& text)
 {
     auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, text, Qt::white);
-    input::publish(action);
+    return action;
 }
 
 
@@ -68,6 +68,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
           [this](const input::TGameActionActionButtonTriggered& action) { return onActionButtonTriggered(action); })))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
 {
+    connect(m_targetSelection, &TTargetSelectionController::publishGameAction, this, &TActionBarManager::publishGameAction);
     loadDisplayOptions();
     if (gameWindowItem) {
         const std::array<std::pair<P, const char*>, 3> containers{ { { P::ActionBarPositionBottom, "bottomActionBars" },
@@ -79,6 +80,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
                 qWarning("gamewindow.qml has no %s", containers[i].second);
             m_groups[i] = std::make_unique<TActionBarGroup>(this, containers[i].first, container, engine, gameWindowItem, mapWindowPane,
                                                            &m_displayOptions);
+            connect(m_groups[i].get(), &TActionBarGroup::publishGameAction, this, &TActionBarManager::publishGameAction);
         }
         for (const auto& group : m_groups)
             group->restoreLastAktionBarConfiguration();
@@ -134,11 +136,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
 
     input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::IGameAction& action) { return toggleActionBar(action); });
     input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::IGameAction& action) { return toggleActionBars(action); });
-    for (const A type : { A::TRY_TO_SWITCH_HOTKEYSET, A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET })
-        input::setActionHandler(type, [](const input::IGameAction& action) {
-            input::TKeyboardShortcutHandler::handleGameAction(action);
-            return true;
-        });
     input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameActionCloseAllMultiActionButtons& action) {
         for (const auto& group : m_groups)
             if (group)
@@ -300,7 +297,7 @@ void TActionBarManager::refreshCooldowns()
 
 void TActionBarManager::showMessage(const QString& text)
 {
-    publishMessage(text);
+    Q_EMIT publishGameAction(textMessageAction(text));
 }
 
 config::EUseType TActionBarManager::defaultUseType(const int objectId)

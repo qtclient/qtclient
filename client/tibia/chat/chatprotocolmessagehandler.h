@@ -189,7 +189,6 @@ Q_SIGNALS:
     /// The channels the open-channel dialog offers.
     void currentlyAvailableChannels(const std::vector<TChatChannelIdentifier>& ChannelList);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
 
 private:
     /// Local Chat: yells upper case (CIP volume 2).

@@ -390,8 +390,8 @@ void TChatChannelStorage::publishChatSound(const int sound, const bool categoryE
 {
     if (!m_chatSoundsEnabled || !categoryEnabled)
         return;
-    input::publish(std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ sound }));
-    Q_EMIT publishGameAction();
+    Q_EMIT publishGameAction(
+        std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ sound }));
 }
 
 void TChatChannelStorage::addBroadcastEntry(const QColor& color, const QString& name, const QString& text, const int level,

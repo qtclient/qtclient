@@ -306,7 +306,6 @@ Q_SIGNALS:
     void chatChannelReopend(const tibia::chat::TChatChannelIdentifier& identifier, bool forceMakeCurrent);
     void chatChannelRemoved(const tibia::chat::TChatChannelIdentifier& identifier);
     void entryAddedToChatChannel(const tibia::chat::TChatChannelIdentifier& identifier);
-    void publishGameAction();
     /// Host views: a channel came (or came back) and whether its tab becomes current.
     void channelAdded(TChatChannel* channel, bool makeCurrent);
     void channelRemoved(TChatChannel* channel);

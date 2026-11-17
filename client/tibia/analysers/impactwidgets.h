@@ -153,7 +153,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
 
@@ -233,7 +232,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP class NOTIFY — qtclient already emits.
@@ -336,7 +334,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
 

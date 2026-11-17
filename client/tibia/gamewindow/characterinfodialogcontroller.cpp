@@ -552,8 +552,8 @@ int TCharacterInfoDialogController::numberOfPages() const
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
-    input::publish(action);
-    input::publish(input::makeGameAction(A::CLOSE_CYCLOPEDIA));
+    Q_EMIT publishGameAction(action);
+    Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_CYCLOPEDIA));
 }
 
 void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::requestBless(); }
@@ -562,7 +562,7 @@ void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     action->setTypeId(static_cast<uint16_t>(TypeID));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCharacterInfoDialogController::previousPaginatedPage()
@@ -592,7 +592,7 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)
 {
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<int>(AppearanceTypeID)));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 /// Opens the outfit dialog in its character info mode over every outfit,
@@ -650,6 +650,7 @@ void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const 
 
     if (!m_outfitDialog)
         m_outfitDialog = new TSelectOutfitDialogController(this);
+        connect(m_outfitDialog, &TSelectOutfitDialogController::publishGameAction, this, &TCharacterInfoDialogController::publishGameAction);
     m_outfitDialog->openCharacterInfoSelection(current, std::move(outfits), std::move(mounts), std::move(summons), IsOutfit, IsMount,
                                                IsSummonSkin);
 }

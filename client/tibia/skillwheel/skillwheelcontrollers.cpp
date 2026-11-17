@@ -924,7 +924,7 @@ void TSkillWheelPageController::requestCopyExportCodeToClipboard()
 {
     if (!m_storage->hasData())
         return;
-    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(encodeWheelCode(m_storage->currentWheel())));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(encodeWheelCode(m_storage->currentWheel())));
 }
 
 /// CIP: the page's message box in one of its modes, with Yes (OK) and No (Cancel).
@@ -1016,7 +1016,7 @@ void TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked(
     }
     if (ButtonIdentifier != Button::USER_DEFINED || !m_storage->hasData())
         return;
-    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(m_plannerUrl + encodeWheelCode(m_storage->currentWheel())));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(m_plannerUrl + encodeWheelCode(m_storage->currentWheel())));
 }
 
 void TSkillWheelPageController::setShowFullSummary(const bool Show)
@@ -1143,7 +1143,7 @@ void TSkillWheelPageController::apply()
         return;
     Q_EMIT preapareToSkipNextOpenForOwnPlayer();
     m_storage->addOrReplacePreset(m_currentPresetName, *current);
-    input::publish(std::make_shared<input::gameactions::TGameActionSaveSkillWheel>(*current));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSaveSkillWheel>(*current));
 }
 
 // ---------------------------------------------------------------------------
@@ -1560,6 +1560,9 @@ TSkillWheelDialogController::TSkillWheelDialogController(TSkillWheelStorage* sto
     , m_message(new TMessageDialogController(this))
 {
     m_wheelPageController = m_page;
+    connect(m_page, &TSkillWheelPageController::publishGameAction, this, &TSkillWheelDialogController::publishGameAction);
+    connect(m_atelier, &TGemAtelierPageController::publishGameAction, this, &TSkillWheelDialogController::publishGameAction);
+    connect(m_workshop, &TFragmentWorkshopPageController::publishGameAction, this, &TSkillWheelDialogController::publishGameAction);
     m_gemAtelierPageController = m_atelier;
     m_fragmentWorkshopPageController = m_workshop;
     m_message->setCloseOnButtonClicked(true);
@@ -1656,7 +1659,7 @@ void TSkillWheelDialogController::onOkClicked()
 
 void TSkillWheelDialogController::onApplyClicked() { m_page->requestSaveCurrentPreset(); }
 void TSkillWheelDialogController::onResetClicked() { m_page->resetSkillGrid(); }
-void TSkillWheelDialogController::getPremiumClicked() { input::publish(std::make_shared<input::TGameActionOpenStore>(1)); }
+void TSkillWheelDialogController::getPremiumClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1)); }
 void TSkillWheelDialogController::requestCopyExportCodeToClipboarClicked() { m_page->requestCopyExportCodeToClipboard(); }
 
 /// CIP (308 accepted): an empty wheel of the own vocation.
@@ -1670,7 +1673,7 @@ void TSkillWheelDialogController::requestSkillWheelPreview()
     m_storage->setPreview(QString::fromStdString(tibia::game::localPlayerName()), vocation);
     m_page->clearData();
     // CIP: the preview opens through the open action (the wheel tab takes the empty server wheel).
-    input::publish(input::makeGameAction(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG));
 }
 
 void TSkillWheelDialogController::showMessage(const QString& caption, const QString& text, const bool offerPreview)

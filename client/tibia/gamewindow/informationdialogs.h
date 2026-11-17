@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "input/gameactionptr.h"
 
 #include <QObject>
 
@@ -57,6 +58,11 @@ public:
     void setMinimapTileStorage(minimap::TMinimapTileStorage* tiles);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
+
+
+Q_SIGNALS:
+    /// The dialogs' publishGameAction, forwarded (qtclient groups them here).
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     void hookOutfitDialog();

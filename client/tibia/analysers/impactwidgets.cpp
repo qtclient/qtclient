@@ -35,15 +35,15 @@ QString percentString(const double fraction) { return QString::number(fraction *
 QString rateString(const double value) { return format::multi(static_cast<quint32>(static_cast<qint64>(std::ceil(value)))); }
 
 /// The store's premium page (OPEN_STORE 1 / 0).
-void openPremiumStore()
+input::IGameActionPtr premiumStoreAction()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    return action;
 }
 
-void copyToClipboard(const QString& text)
+input::IGameActionPtr copyToClipboardAction(const QString& text)
 {
-    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text));
+    return std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text);
 }
 
 QJsonObject readOptions(config::TSidebarOptions* options, const char* key)
@@ -412,7 +412,7 @@ void TImpactWidgetController::setVisibleIfPremium(void (TImpactStorage::*set)(TI
     if (isPremiumPlayer())
         (m_storage->*set)(kind, visible);
     else
-        openPremiumStore();
+        Q_EMIT publishGameAction(premiumStoreAction());
 }
 
 void TImpactWidgetController::onShowDpsGaugeContextMenu()
@@ -676,7 +676,7 @@ void TDamageInputWidgetController::onShowContextMenu()
     checkable("damageinput_show_sources_list", m_storage->showSources(), &TDamageInputStorage::setShowSources);
     menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { copyToClipboard(exportText()); });
+            [this] { Q_EMIT publishGameAction(copyToClipboardAction(exportText())); });
     menu->showCustomMenu();
 }
 
@@ -902,7 +902,7 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
     if (hasEntries)
         menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { copyToClipboard(exportText()); });
+            [this] { Q_EMIT publishGameAction(copyToClipboardAction(exportText())); });
     menu->showCustomMenu();
 }
 

@@ -148,7 +148,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -195,7 +194,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -237,7 +235,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -265,7 +262,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:

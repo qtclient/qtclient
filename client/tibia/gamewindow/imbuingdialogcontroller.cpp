@@ -285,10 +285,10 @@ uint32_t imbuementSlotCount(const uint16_t typeId)
     return type ? type->getImbueSlots() : 0;
 }
 
-void publishOpenPremiumStore()
+input::IGameActionPtr openPremiumStoreAction()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    return action;
 }
 
 }
@@ -417,11 +417,11 @@ void TImbuingDialogController::requestClearImbuement()
                                 qtTrId("imbuing_confirm_clearing_text").arg(imbuing::goldText(existing->clearingGoldCost())).arg(selected->name()));
 }
 
-void TImbuingDialogController::requestOpenStoreWithPremiumCategory() { publishOpenPremiumStore(); }
+void TImbuingDialogController::requestOpenStoreWithPremiumCategory() { Q_EMIT publishGameAction(openPremiumStoreAction()); }
 
 void TImbuingDialogController::openPremiumStore()
 {
-    publishOpenPremiumStore();
+    Q_EMIT publishGameAction(openPremiumStoreAction());
     closeDialog();
 }
 

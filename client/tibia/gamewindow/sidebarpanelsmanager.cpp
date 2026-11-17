@@ -49,6 +49,8 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     m_inventoryItem = createQuickItem(engine, QStringLiteral("inventory.qml"));
     if (m_inventoryItem) {
         m_inventory = std::make_unique<TPlayerInventoryAndStatusController>();
+        connect(m_inventory.get(), &TPlayerInventoryAndStatusController::publishGameAction, this,
+                &TSidebarPanelsManager::publishGameAction);
         bindPanelItem(m_inventory.get(), m_inventoryItem);
         m_inventory->setPanelItem(m_inventoryItem);
         sidebars->addPanel(m_inventory.get(), m_inventoryItem);
@@ -63,6 +65,7 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     }
 
     m_buttonBar = std::make_unique<TButtonBarController>();
+    connect(m_buttonBar.get(), &TButtonBarController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);
     m_buttonBarItem = createQuickItem(engine, QStringLiteral("ButtonBarPanel.qml"));
     if (m_buttonBarItem) {
         bindPanelItem(m_buttonBar.get(), m_buttonBarItem);

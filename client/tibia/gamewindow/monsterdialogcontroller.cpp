@@ -782,7 +782,7 @@ void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeI
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     action->setTypeId(static_cast<uint16_t>(AppearanceTypeID));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTypeID)
@@ -797,8 +797,8 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
     const bool listed = loot->isListed(typeId);
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId(listed ? "context_remove_from_loot_blackwhitelist" : "context_add_to_loot_blackwhitelist")),
-            &TContextMenuEntryItem::triggered, this, [typeId, listed] {
-                input::publish(std::make_shared<input::TGameActionToggleBlackWhitelistStatus>(
+            &TContextMenuEntryItem::triggered, this, [this, typeId, listed] {
+                Q_EMIT publishGameAction(std::make_shared<input::TGameActionToggleBlackWhitelistStatus>(
                     listed ? A::LOOT_REMOVE_FROM_BLACKWHITELIST : A::LOOT_ADD_TO_BLACKWHITELIST, typeId));
             });
     menu->showCustomMenu();
@@ -815,7 +815,7 @@ void TMonsterDialogController::viewSelectedCharm(const int charmID)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(3);
     action->setCharmId(static_cast<uint8_t>(charmID));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TMonsterDialogController::removeSelectedCharm()

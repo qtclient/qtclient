@@ -587,7 +587,7 @@ void TChatChannelController::selectAll()
 
 void TChatChannelController::copySelectionToClipboard()
 {
-    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
 }
 
 void TChatChannelController::selectTextPassage(const int entryIndex, const int passageStart, const int passageEnd)
@@ -976,6 +976,9 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     own(&m_secondary);
     own(&m_tabs);
     (void)m_gameActionHandler;
+    connect(&m_storage, &chat::TChatChannelStorage::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
 
     if (client::gamecore::isRunning()) {
         m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_chatStorage, m_blacklist);
@@ -1476,7 +1479,8 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     if (!channel) {
         static constexpr tibia::client::MessageMode Modes[] = { tibia::client::MessageWhisper, tibia::client::MessageSay, tibia::client::MessageYell };
         // CIP : crosshair spells by cast type.
-        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType);
+        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType,
+                   [this](const input::IGameActionPtr& action) { Q_EMIT publishGameAction(action); });
         return;
     }
     const TChatChannelIdentifier& identifier = channel->identifier();

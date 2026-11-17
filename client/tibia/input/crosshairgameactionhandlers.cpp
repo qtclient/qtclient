@@ -84,7 +84,8 @@ void castAtTarget(const TGameActionTargetedSpell& spell, const TObjectGameAction
 
 }
 
-void say(const tibia::client::MessageMode mode, const QString& text, const int spellCastType)
+void say(const tibia::client::MessageMode mode, const QString& text, const int spellCastType,
+         const std::function<void(const IGameActionPtr&)>& publish)
 {
     const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spellOfText(text);
     if (spell && spell->crossHairTarget) {

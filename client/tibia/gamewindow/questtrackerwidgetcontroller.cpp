@@ -23,10 +23,9 @@ constexpr auto OptionsKey = "questTrackerWidgetOptions";
 /// CIP : OPEN_QUESTLOG_DIALOG's parameter carries a flag when this bit is set.
 constexpr int QuestFlagParameter = 0x10000;
 
-void openQuestLogAt(const int questFlagId)
+input::IGameActionPtr openQuestLogAction(const int questFlagId)
 {
-    auto action = std::make_shared<input::TGameActionOpenQuestLog>(QuestFlagParameter | (questFlagId & 0xffff));
-    input::publish(action);
+    return std::make_shared<input::TGameActionOpenQuestLog>(QuestFlagParameter | (questFlagId & 0xffff));
 }
 
 }
@@ -411,7 +410,7 @@ void TQuestTrackerWidgetController::onTrackedQuestFlagsChanged(const bool added,
     auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{
         added ? cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_ADD
               : cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_REMOVE });
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TQuestTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
@@ -433,7 +432,7 @@ void TQuestTrackerWidgetController::onShowContextMenuForQuestFlag(const int Ques
     const int questFlagId = QuestFlagIDRaw & 0xffff;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("quest_tracker_show_in_questlog")), &TContextMenuEntryItem::triggered, this,
-            [questFlagId] { openQuestLogAt(questFlagId); });
+            [this, questFlagId] { Q_EMIT publishGameAction(openQuestLogAction(questFlagId)); });
     connect(menu->addCustomEntry(qtTrId("quest_tracker_remove_tracked")), &TContextMenuEntryItem::triggered, this,
             [this, questFlagId] { m_storage->changeTrackedQuestFlags({ questFlagId }, true); });
     menu->showCustomMenu();
@@ -441,7 +440,7 @@ void TQuestTrackerWidgetController::onShowContextMenuForQuestFlag(const int Ques
 
 void TQuestTrackerWidgetController::onShowQuestInQuestLog(const int QuestFlagIDRaw)
 {
-    openQuestLogAt(QuestFlagIDRaw);
+    Q_EMIT publishGameAction(openQuestLogAction(QuestFlagIDRaw));
 }
 
 void TQuestTrackerWidgetController::onPinnedChanged(const int QuestFlagID, const bool checked)
@@ -451,7 +450,7 @@ void TQuestTrackerWidgetController::onPinnedChanged(const int QuestFlagID, const
 
 void TQuestTrackerWidgetController::requestOpenQuestLogDialog()
 {
-    input::publish(std::make_shared<input::TGameActionOpenQuestLog>(0));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenQuestLog>(0));
 }
 
 void TQuestTrackerWidgetController::requestConfigurationContextMenu()
@@ -580,6 +579,7 @@ TSidebarWidget* TQuestTrackerWidgetManager::open(config::TSidebarOptions* option
 {
     if (!m_controller) {
         m_controller = new TQuestTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TQuestTrackerWidgetController::publishGameAction, this, &TQuestTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
         m_controller->setMissionInvoker([this](const QString& missionKey, const QString& taskEntryId, int questFlagId) {
             if (m_missionBackend)

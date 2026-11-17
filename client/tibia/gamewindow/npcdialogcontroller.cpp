@@ -352,6 +352,7 @@ void TNpcDialogController::setChatController(TChatController* controller)
             [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); });
     connect(talk, &chat::TChatStorage::keywordButtonsChanged, this, [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); });
     m_chat = new TChatChannelController(this);
+    connect(m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
     m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
     connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel);
     connect(storage, &chat::TChatChannelStorage::channelsReset, this, &TNpcDialogController::bindNpcChannel);

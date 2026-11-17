@@ -31,8 +31,6 @@ bool isLoggedIn(const int state) { return state == TVipStorage::LoggedIn || stat
 TVipStorage::TVipStorage(QObject* parent)
     : cip::tibia::creatures::TVipStorage(parent)
 {
-    // CIP's session connects the storage's game actions to the input handlers.
-    connect(this, &TVipStorage::publishGameAction, this, [](const input::IGameActionPtr& action) { input::publish(action); });
     // CIP makes a new storage per game session; the shared one is emptied instead.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TVipStorage::clear);
 }

@@ -14,6 +14,12 @@ public:
     explicit TSoundHelperService(QObject* parent = nullptr);
 
     Q_INVOKABLE void playSound(ESound Sound) override;
+
+    /// The process' sound helper (CIP: the shared service the dialogs play
+    /// their sounds through); the game client owns it and connects its
+    /// publishGameAction. The QML singletons play through it.
+    static TSoundHelperService* instance();
+    static void setInstance(TSoundHelperService* service);
 };
 
 /// Installs the SOUND_TRIGGER game-action handler (CIP parameter = effect id).

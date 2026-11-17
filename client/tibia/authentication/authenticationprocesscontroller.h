@@ -190,7 +190,6 @@ Q_SIGNALS:
     void advanceStateMachineToWaitForAssetCompletion();
     void abort();
     void requestCharacterGameserverLogin();
-    void publishGameAction();
     void authenticatedChanged(bool IsAuthenticated);
     void fpsTrackingActiveChanged(bool FpsTrackingActive);
     void optionsTrackingActiveChanged(bool OptionsTrackingActive);

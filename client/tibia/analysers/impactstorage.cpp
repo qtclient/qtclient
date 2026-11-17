@@ -177,7 +177,7 @@ void TImpactStorage::checkAllTimeMax(const Kind kind, const qint64 hit)
         return;
     m_allTimeMax[kind] = hit;
     emitAllTimeValuesChanged();
-    input::publish(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ScreenshotParameter[kind]));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ScreenshotParameter[kind]));
 }
 
 bool TImpactStorage::computeData(const Kind kind)

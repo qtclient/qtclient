@@ -120,6 +120,7 @@
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
+#include "gamewindow/gamewindowciptypes.h"
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -749,6 +750,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.keyboardShortcuts->onHotkeyOptionsChanged();
     g.playerMovement->onHotkeyOptionsChanged();
     g.playerMovementActions = std::make_unique<input::TPlayerMovementGameActionHandler>();
+    connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, g.keyboardShortcuts.get(),
+            qOverload<const input::IGameActionPtr&>(&input::TKeyboardShortcutHandler::handleGameAction));
     connect(g.keyboardShortcuts.get(), &input::TKeyboardShortcutHandler::publishGameAction, gameActionRouter()->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(g.playerMovement.get(), &input::TPlayerMovementInputInterpreter::publishGameAction, gameActionRouter()->internalRouter(),
@@ -821,6 +824,34 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.optionsDialog.get());
     publishToRouter(g.chat.get());
     publishToRouter(g.actionBars.get());
+    publishToRouter(g.sidebarWidgets.get());
+    publishToRouter(g.vipWidget.get());
+    publishToRouter(g.preyWidget.get());
+    publishToRouter(g.questTrackerWidget.get());
+    publishToRouter(g.lootTrackingWidget.get());
+    publishToRouter(g.spellListWidget.get());
+    publishToRouter(g.bestiaryTrackerWidget.get());
+    publishToRouter(g.bosstiaryTrackerWidget.get());
+    publishToRouter(g.bossCooldownsWidget.get());
+    publishToRouter(g.depotSearchWidget.get());
+    publishToRouter(g.playerGuideWidget.get());
+    publishToRouter(g.sidebarPanels.get());
+    publishToRouter(g.containers.get());
+    publishToRouter(g.informationDialogs.get());
+    publishToRouter(g.imbuingDialog.get());
+    publishToRouter(g.exivaOptionsDialog.get());
+    publishToRouter(g.taskboardDialog.get());
+    publishToRouter(g.skillWheel->dialog());
+    publishToRouter(g.skillWheel->actions());
+    publishToRouter(g.exaltationStorage.get());
+    publishToRouter(g.dailyRewardActions.get());
+    publishToRouter(g.analyserStorages.get());
+    publishToRouter(g.analyserWidgets.get());
+    // The engine's text copy controller outlives the game windows.
+    if (auto* textCopy = qobject_cast<gamewindow::TTextCopyController*>(
+            engine->rootContext()->contextProperty(QStringLiteral("tibiaTextCopyController")).value<QObject*>()))
+        connect(textCopy, &gamewindow::TTextCopyController::publishGameAction, router,
+                &game::TInternalGameActionRouter::handleGameActionInternal, Qt::UniqueConnection);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
@@ -903,6 +934,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     packHost.imbuingDialog = [&g]() -> QObject* { return g.imbuingDialog.get(); };
     packHost.imbuingStorage = [&g]() -> QObject* { return g.imbuingStorage.get(); };
     packHost.sessionBootstrap = [&g]() -> QObject* { return g.sessionBootstrap.get(); };
+    packHost.gameActionRouter = [router]() -> QObject* { return router; };
     packHost.minimapPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->minimapItem(); };
     packHost.inventoryPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->inventoryItem(); };
     packHost.buttonBarPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->buttonBarItem(); };

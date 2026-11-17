@@ -24,6 +24,7 @@ public:
 
     TSkillWheelStorage* storage() const { return m_storage; }
     TSkillWheelDialogController* dialog() const { return m_dialog; }
+    TSkillWheelGameActionHandler* actions() { return &m_actions; }
 
     /// The login session's premium flag (CIP TPremiumTimeStorage::isPremium).
     void setSessionPremium(bool premium) { m_actions.setSessionPremium(premium); }

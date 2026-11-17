@@ -65,17 +65,23 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
     new TSidebarWidgetControllerBase(gameWindowItem, engine, this);
     new TSidebarWidgetControllerWithFocusHandling(gameWindowItem, engine, this);
     // CipSoft DepotSearchWidget is owned by TDepotSearchWidgetManager (main.cpp).
-    new TInspectObjectDialogController(this);
-    new TInspectPlayerDialogController(this);
+    connect(new TInspectObjectDialogController(this), &TInspectObjectDialogController::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
+    connect(new TInspectPlayerDialogController(this), &TInspectPlayerDialogController::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
     // TLargePerkInformation / TTileInformation are owned and
     // filled by TSkillWheelPageController (fillLargePerk / fillTile / fillVessel).
     connect(sidebars, &TSidebarManager::widgetConfigurationChanged, this, &TSidebarWidgetsManager::saveCurrentOpenWidgets);
+    connect(m_battleLists.get(), &TBattleListControllerStorage::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetVisible, this, &TSidebarWidgetsManager::widgetVisible);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetHidden, this, &TSidebarWidgetsManager::widgetHidden);
 
     registerWidget(Skills, { [this]() -> TSidebarWidget* {
                                 if (!m_skills) {
                                     m_skills = new TSkillsWidgetController(m_gameWindowItem, m_engine);
+                                    connect(m_skills, &TSkillsWidgetController::publishGameAction, this,
+                                            &TSidebarWidgetsManager::publishGameAction);
                                     m_skills->setSidebarOptions(m_options);
                                 }
                                 return m_skills->widget();

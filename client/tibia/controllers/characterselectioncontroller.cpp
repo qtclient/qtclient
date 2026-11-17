@@ -353,22 +353,22 @@ int TCharacterSelectionController::getCharacterIndexForSearchString(const QStrin
 
 void TCharacterSelectionController::createCharacterPressed()
 {
-    input::publish(std::make_shared<input::gameactions::TGameActionShowCreateCharacterDialog>(m_characters.empty()));
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionShowCreateCharacterDialog>(m_characters.empty()));
 }
 
 void TCharacterSelectionController::manageAccountPressed()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
 }
 
 void TCharacterSelectionController::onGetPremiumClicked()
 {
-    input::publish(std::make_shared<input::TGameActionOpenGetPremiumUrl>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenGetPremiumUrl>());
 }
 
 void TCharacterSelectionController::onMorePremiumFeaturesClicked()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_URL_PREMIUM_FEATURES));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_URL_PREMIUM_FEATURES));
 }
 
 void TCharacterSelectionController::checkServerSave()

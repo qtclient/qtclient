@@ -97,7 +97,6 @@ public:
     void restartSession() { m_mapKnown = false; }
 
 Q_SIGNALS:
-    void publishGameAction();
 
 private:
     TWorldMapStorage& map() const;

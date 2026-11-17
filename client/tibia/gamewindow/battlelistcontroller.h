@@ -229,7 +229,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// Tip-owned non-chrome signals.
     void battleListClosed(int battleListId);
 
@@ -367,7 +366,7 @@ private:
     bool findFreeBattleListId(uint8_t requestedId, uint8_t* battleListId) const;
     /// CIP: a list opened after login starts maximized.
     void maximizeIfLoggedIn(TBattleListController* controller) const;
-    static void publishStatusLine(const QString& text, const QColor& color);
+    void publishStatusLine(const QString& text, const QColor& color);
     BattleListEntry entryOf(const std::shared_ptr<creatures::TCreature>& creature) const;
     void onUpdateTimer();
 

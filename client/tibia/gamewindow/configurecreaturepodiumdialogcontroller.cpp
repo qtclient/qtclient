@@ -303,7 +303,7 @@ void TConfigureCreaturePodiumDialogController::onOkClicked()
             return;
         showCreature = true;
     }
-    input::publish(std::make_shared<input::TGameActionSetCreaturePodiumConfiguration>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetCreaturePodiumConfiguration>(
         static_cast<uint32_t>(m_chosenRace),
         input::TPodiumLocation{ m_position, static_cast<uint16_t>(m_socketTypeID), static_cast<uint8_t>(std::max(int(m_stackpos), 0)) },
         static_cast<uint8_t>(protocolFromLookDirection(m_direction)), m_showSocket, showCreature));

@@ -93,7 +93,7 @@ TQuickLootGameActionHandler::TQuickLootGameActionHandler(QObject* parent)
     : cip::tibia::quickloot::TQuickLootGameActionHandler(parent)
 {
     for (const A type : QuickLootActions)
-        input::setActionHandler(type, [](const input::IGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TQuickLootGameActionHandler::~TQuickLootGameActionHandler()
@@ -162,7 +162,7 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
         return;
     }
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("iteminfo_maximum_number_of_blacklisted_items"), chat::systemWhite());
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)

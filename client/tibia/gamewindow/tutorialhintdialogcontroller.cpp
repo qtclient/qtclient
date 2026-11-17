@@ -181,7 +181,7 @@ void TTutorialHintDialogController::emitDisplay() { Q_EMIT displayDataChanged();
 void TTutorialHintDialogController::requestClose()
 {
     dialog()->close();
-    input::publish(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
 }
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }

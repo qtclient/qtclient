@@ -93,10 +93,10 @@ store::TStoreOpenParameters openParameters(const int openAction, const int servi
     return parameters;
 }
 
-void publishTextMessage(const input::EGameAction type, const QString& text)
+input::IGameActionPtr textMessageAction(const input::EGameAction type, const QString& text)
 {
     auto message = std::make_shared<input::TGameActionAddTextMessage>(type, text, QColor(0x18, 0x72, 0xc3));
-    input::publish(message);
+    return message;
 }
 
 }
@@ -648,8 +648,8 @@ void TStoreDialogController::onPurchaseSuccessNotification(const QString& messag
         return;
     }
     if (optionBool(ShowStoreMessagesOption, true))
-        publishTextMessage(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, message.trimmed());
-    publishTextMessage(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, message.trimmed());
+        Q_EMIT publishGameAction(textMessageAction(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, message.trimmed()));
+    Q_EMIT publishGameAction(textMessageAction(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, message.trimmed()));
 }
 
 void TStoreDialogController::onTransferSuccessNotification(const QString& message)

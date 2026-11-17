@@ -61,13 +61,6 @@ QString newValuesText(const TShapedSlot& slot, const int rank)
     return qtTrId("weapon_proficiency_shape_dialog_new_values").arg(rank).arg(perkDescription(shapedPerk(slot.perkType, rank)));
 }
 
-void requestBalances()
-{
-    for (const int resource : DialogResources) {
-        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-        input::publish(action);
-    }
-}
 
 int profession()
 {
@@ -241,7 +234,8 @@ void TWeaponProficiencyShapeDialogController::showDialog()
 {
     m_message->dialog()->close();
     update(m_typeId);
-    requestBalances();
+    for (const int resource : DialogResources)
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestResourceBalance>(resource));
     if (!dialog()->item()) {
         dialog()->create();
         dialog()->show();

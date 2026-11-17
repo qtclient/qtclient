@@ -93,10 +93,10 @@ bool isPremiumPlayer()
 }
 
 /// CIP : ADD_SYSTEM_CHAT_MESSAGE in console colour 30.
-void publishSystemMessage(const QString& text)
+input::IGameActionPtr systemMessageAction(const QString& text)
 {
     auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(30));
-    input::publish(action);
+    return action;
 }
 
 QJsonObject readOptions(config::TSidebarOptions* options, const char* key)
@@ -255,7 +255,7 @@ void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType
 void TAnalyticsSelectorWidgetController::toggle(const int widgetType)
 {
     auto action = std::make_shared<input::TGameActionToggleWidget>(widgetType);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TAnalyticsSelectorWidgetController::lootTrackerButtonClicked() { toggle(W::LootTracker); }
@@ -273,7 +273,7 @@ void TAnalyticsSelectorWidgetController::huntingSessionAnalyserButtonClicked()
     if (isPremiumPlayer())
         toggle(W::HuntingSessionAnalyser);
     else
-        input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -449,7 +449,7 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
         return;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_reset_session")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [] { input::publish(input::makeGameAction(A::RESET_HUNTING_SESSION)); });
+            [this] { Q_EMIT publishGameAction(input::makeGameAction(A::RESET_HUNTING_SESSION)); });
     menu->addCustomSeparator();
     gamewindow::TContextMenuEntryItem* baseXp = menu->addCustomEntry(qtTrId("huntinganalyser_show_base_xp"));
     baseXp->setCheckable(true);
@@ -458,16 +458,16 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
             [this] { m_storages->huntingSession()->setShowBaseXp(!showBaseXp()); });
     menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(exportText())); });
+            [this] { Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(exportText())); });
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_save_data_to_file")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         const QString path = exportFileName("txt");
-        input::publish(std::make_shared<input::TGameActionSaveTextToFile>(exportText(), path));
-        publishSystemMessage(qtTrId("huntinganalyser_session_saved").arg(path));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSaveTextToFile>(exportText(), path));
+        Q_EMIT publishGameAction(systemMessageAction(qtTrId("huntinganalyser_session_saved").arg(path)));
     });
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_save_data_to_json")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         const QString path = exportFileName("json");
-        input::publish(std::make_shared<input::TGameActionSaveJsonDocumentToFile>(QJsonDocument(exportJson()), path));
-        publishSystemMessage(qtTrId("huntinganalyser_session_saved").arg(path));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSaveJsonDocumentToFile>(QJsonDocument(exportJson()), path));
+        Q_EMIT publishGameAction(systemMessageAction(qtTrId("huntinganalyser_session_saved").arg(path)));
     });
     menu->showCustomMenu();
 }
@@ -797,7 +797,7 @@ void TProgressWidgetController::appendXPGaugeContextMenuEntries()
         if (isPremiumPlayer())
             m_storage->setGaugeVisible(checked);
         else
-            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
     });
 }
 
@@ -814,7 +814,7 @@ void TProgressWidgetController::appendXPGraphContextMenuEntries()
         if (isPremiumPlayer())
             m_storage->setGraphVisible(checked);
         else
-            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
     });
 }
 
@@ -1055,7 +1055,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGaugeVisible(m_side, checked);
         else
-            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
     });
     gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_graph"))), premiumHint);
     graph->setCheckable(true);
@@ -1064,7 +1064,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGraphVisible(m_side, checked);
         else
-            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
     });
     menu->showCustomMenu();
 }
@@ -1134,7 +1134,7 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
     });
     add<THuntingSessionWidgetController>(W::HuntingSessionAnalyser, [this]() -> THuntingSessionWidgetController* {
         if (!isPremiumPlayer()) {
-            input::publish(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("battlelist_need_premium")));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("battlelist_need_premium")));
             return nullptr;
         }
         auto* controller = new THuntingSessionWidgetController(m_storages, m_gameWindowItem, m_engine);
@@ -1183,7 +1183,12 @@ template <class Controller>
 void TAnalyserWidgets::add(const int widgetType, std::function<Controller*()> make)
 {
     Slot& slot = m_slots[widgetType];
-    slot.make = std::move(make);
+    slot.make = [this, make = std::move(make)]() -> QObject* {
+        Controller* controller = make();
+        if (controller)
+            connect(controller, &Controller::publishGameAction, this, &TAnalyserWidgets::publishGameAction);
+        return controller;
+    };
     slot.widgetOf = [](QObject* controller) { return static_cast<Controller*>(controller)->widget(); };
     if (!m_widgets)
         return;
