@@ -13,7 +13,7 @@
 class QNetworkAccessManager;
 class QSplashScreen;
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 class TSystemSurveyUploader;
 }
 

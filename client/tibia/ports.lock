@@ -3372,6 +3372,10 @@ shared::TDownloadPool::v17	04062eb14d8a921b	ported	shared/src/downloadpool.cpp:T
 shared::TDownloadPool::v18	ed0a05af12caeb4f	ported	shared/src/downloadpool.cpp:TDownloadPool::setCache
 shared::TDownloadPool::~TDownloadPool	097457dc45e86dd8	skip	generated: compiler-generated destructor
 shared::TDownloadPool::~TDownloadPool_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
+shared::TDynamicResourcesHelper::onResourceFileChanged	08637e7df78bf0d6	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
+shared::TDynamicResourcesHelper::onResourceFilesChangedTimerTimeout	097457dc45e86dd8	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
+shared::TDynamicResourcesHelper::~TDynamicResourcesHelper	097457dc45e86dd8	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
+shared::TDynamicResourcesHelper::~TDynamicResourcesHelper_deleting	79674512666b34e2	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 shared::TExecutor::emitExecutedSignal	097457dc45e86dd8	tested	shared/src/executor.cpp:TExecutor::emitExecutedSignal	test=tests/client/sharednet_test.cpp
 shared::TExecutor::~TExecutor	7382774637cec697	skip	generated: compiler-generated destructor of an abstract class
 shared::TExecutor::~TExecutor_deleting	7382774637cec697	skip	generated: compiler-generated deleting destructor
@@ -4961,6 +4965,7 @@ sub_12c2b0e57cdb	12c2b0e57cdb6687	inlined	gamewindow/cyclopediadialogcontroller.
 sub_12fc68e5e646	12fc68e5e646c2ef	skip	library: std container template instance
 sub_132fbd28b58f	132fbd28b58f07cb	skip	library: std::vector/shared_ptr template instantiations
 sub_133616f7d2ed	133616f7d2ed0280	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::operatingSystemName
+sub_134c6dec547c	134c6dec547c94b4	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_1356d493bddf	1356d493bddfeaf9	skip	data: translation-unit static initializer (misattributed)
 sub_13760f6d2af0	13760f6d2af0dc2a	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
 sub_137894f43f9a#2	137894f43f9afea3	skip	generated: moc signal emitter
@@ -5014,6 +5019,7 @@ sub_14f4a51a72a3	14f4a51a72a3c79f	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_1503cab24677	1503cab24677368c	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowHealingSpellGroup
 sub_1507be51886d	1507be51886d0d4b	skip	library: std::unordered_set insert / find / erase / rehash (library)
 sub_1528373c34ba	1528373c34baa147	ported	gamewindow/sidebarmanager.cpp:TSidebarController::addWidget
+sub_152c29d940bb	152c29d940bba927	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_15336fedbc20	15336fedbc207c17	ported	skillwheel/skillwheeldata.cpp:revelationPoints
 sub_1541a2a1b5e6	1541a2a1b5e686fe	skip	library: miniaudio library
 sub_1557a5d43ee6#2	1557a5d43ee646d1	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
@@ -7413,6 +7419,7 @@ sub_69490eb2818e	69490eb2818e5daa	skip	library: miniaudio library code (miniaudi
 sub_69507ce320e9	69507ce320e9c968	inlined	worldmap/worldmapfield.cpp:TWorldMapField::light
 sub_69529f67059c	69529f67059c430c	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::slotEntered
 sub_695be3a9ef1e	695be3a9ef1eab04	ported	game/statusbarstorage.cpp:positionFromString
+sub_6962e762e267	6962e762e2678503	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_697079c2d97e	697079c2d97e2d6b	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::getFilePath	test=tests/client/sharedio_test.cpp
 sub_697079c2d97e#12	697079c2d97e2d6b	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_697079c2d97e#14	697079c2d97e2d6b	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
@@ -7510,6 +7517,7 @@ sub_6ecbea820c0f	6ecbea820c0fec87	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_6ed9c858abf6	6ed9c858abf69e12	skip	generated: compiler-generated destructor pair
 sub_6edfda0fd44c	6edfda0fd44c90a0	skip	library: Qt/std container template code
 sub_6f0a515dd28e	6f0a515dd28ea675	skip	library: std::vector<shared::THint> growth/destructor template
+sub_6f12b83c6f29	6f12b83c6f29fcf0	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_6f3eacf98136	6f3eacf9813613c2	tested	sessiondump/sessiondumpmessageprocessor.cpp:TSessiondumpMessageProcessor::TSessiondumpMessageProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_6f3eacf98136#2	6f3eacf9813613c2	tested	sessiondump/sessiondumpmessageprocessor.cpp:TSessiondumpMessageProcessor::TSessiondumpMessageProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_6f4c61727c5e	6f4c61727c5ec076	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
@@ -7824,6 +7832,7 @@ sub_7b737791289d#5	7b737791289da552	skip	generated: implicit constructor (vtable
 sub_7b737791289d#6	7b737791289da552	skip	generated: implicit constructor (vtable install only)
 sub_7b74798e999d	7b74798e999dca1c	ported	config/optionspages.cpp:percentOf
 sub_7b77af13c9d5	7b77af13c9d5edd8	inlined	analysers/gainwastestorage.cpp:TGainWasteStorage::lastHourItems
+sub_7b908e09f533	7b908e09f533e57b	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_7b923443f03b	7b923443f03b0635	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_7b9f0a835b57	7b9f0a835b570b5b	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::getTooltipForDay
 sub_7bb7a64f75f9	7bb7a64f75f99a71	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseSuccessDialogController::TStorePurchaseSuccessDialogController
@@ -8243,6 +8252,7 @@ sub_88cf87176d6c	88cf87176d6c90bc	ported	gamewindow/characterinfodialogcontrolle
 sub_88d1c813bc05	88d1c813bc052950	skip	generated: compiler-generated std::function holder destructor
 sub_88d1c813bc05#2	88d1c813bc052950	skip	generated: compiler-generated std::function holder destructor
 sub_8900c59190dd	8900c59190ddf393	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_891697e8455d	891697e8455d6857	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_8927e5ddc075	8927e5ddc075a842	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_892d76b85f48	892d76b85f489456	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_892d76b85f48#2	892d76b85f489456	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
@@ -9011,6 +9021,7 @@ sub_9ff871563ea2	9ff871563ea2c3c3	ported	worldmap/cacheforworldmapstoragelookupm
 sub_a01671970487	a0167197048771dc	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatWidth
 sub_a01fa81692d3	a01fa81692d3d4d5	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_a028ddbf252f	a028ddbf252f4464	skip	library: std container template code
+sub_a032070e4f72	a032070e4f729ecf	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_a03279bef16a	a03279bef16a1074	skip	generated: compiler-generated destructor
 sub_a04e1e4b1523	a04e1e4b15236e5f	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onCharacterNameChecked
 sub_a0575407b833	a0575407b833471f	skip	library: std::vector growth / split buffer (library)
@@ -9513,6 +9524,7 @@ sub_b5e1d5998879	b5e1d5998879605b	ported	exivaoptions/exivaoptionsstorage.cpp:TE
 sub_b5f1ecb9c2fe	b5f1ecb9c2fed891	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setLeaderId
 sub_b60ba77a3158	b60ba77a31589617	skip	library: std::vector copy / growth of store records (library)
 sub_b60db259bb83	b60db259bb8394c4	skip	library: SFML/miniaudio library helper, only called from library code
+sub_b63d651edaf4#4	b63d651edaf4def2	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_b667e64b4e80	b667e64b4e80715f	skip	library: QMap<QUrl, QVariant> template code
 sub_b66df66a794b	b66df66a794b8d4f	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
 sub_b67f76756eea	b67f76756eead26c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchRetrieve
@@ -9989,6 +10001,7 @@ sub_bee9a7c95fdf	bee9a7c95fdf1152	ported	shared/src/qnetworkaccessmanagerwrapper
 sub_beeaa34aecd7	beeaa34aecd7e5de	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::viewSelectedCharm
 sub_bef623d0eabb	bef623d0eabb5a42	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendInviteToParty
 sub_bf07cfc916a5#2	bf07cfc916a5f34f	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::closeOpenMultiActionButtons
+sub_bf2de6e8d163	bf2de6e8d163c885	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_bf39b4dc3354	bf39b4dc33549e93	ported	shared/src/rpcserviceclient.cpp:TRPCServiceClient::TRPCServiceClient
 sub_bf50422086f3#10	bf50422086f36ca1	inlined	sessiondump/sessiondumpfactory.cpp:TSessiondumpFactory::createProcessor
 sub_bf50422086f3#8	bf50422086f36ca1	inlined	sessiondump/sessiondumpfactory.cpp:TSessiondumpFactory::createMessageProcessor
@@ -10127,6 +10140,7 @@ sub_c5e6e8c043d6#2	c5e6e8c043d64426	inlined	quickloot/quicklootciptypes.cpp:isOb
 sub_c5fdfb80b521	c5fdfb80b521b245	tested	sessiondump/sessiondumpprogressclockservice.cpp:TSessiondumpProgressClockService::TSessiondumpProgressClockService	test=tests/client/timelapseclockservice_test.cpp
 sub_c5fdfb80b521#2	c5fdfb80b521b245	tested	sessiondump/sessiondumpprogressclockservice.cpp:TSessiondumpProgressClockService::TSessiondumpProgressClockService	test=tests/client/timelapseclockservice_test.cpp
 sub_c6001033e6a4	c6001033e6a4c091	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreSuccessMessage
+sub_c61f3d5e7250	c61f3d5e7250ceac	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_c6257aa3fdf6#3	c6257aa3fdf6ff34	inlined	prey/preyciptypes.cpp:TPreyProtocolMessageHandler::handlePreyDataMessage
 sub_c637fc0ae374	c637fc0ae3743ae9	skip	library: std::sort instantiation
 sub_c63e9dc63e93#2	c63e9dc63e937298	skip	library: std::map / std::deque / std::vector template instantiation
@@ -10402,6 +10416,7 @@ sub_cf86c8b7b474	cf86c8b7b474d6ed	skip	library: std library template (vector pus
 sub_cf9ccbb0da04	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cf9ccbb0da04#2	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cfac87bf58fa	cfac87bf58fa9e1f	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationResultDialogController::TExaltationResultDialogController
+sub_cfd4803b2477	cfd4803b247787e3	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_cfe79a673c77#2	cfe79a673c77cc68	skip	generated: moc signal emitter
 sub_d0304d7bc415	d0304d7bc415b438	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
 sub_d04544b76a80	d04544b76a80dd7e	ported	container/qmlitemslotdata.h:TQMLItemSlotData::lootvalueImageSourceOverItem
@@ -10570,6 +10585,7 @@ sub_d7a700555660#53	d7a700555660c3f0	skip	generated: moc-generated signal emitte
 sub_d7a700555660#9	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a7a0f965b9#4	d7a7a0f965b9294c	skip	generated: compiler-generated Qt slot-object thunk
 sub_d7a874b1d062	d7a874b1d0623627	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::clear
+sub_d7d325a1413b	d7d325a1413b048a	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_d7e3b7952598	d7e3b79525988ca5	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::TBattleListControllerStorage
 sub_d7e3b7952598#2	d7e3b79525988ca5	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::TBattleListControllerStorage
 sub_d7f4cc0b6fab	d7f4cc0b6fab8290	skip	library: std::sort instantiation over team members / member indices (library)
@@ -10729,6 +10745,7 @@ sub_d902425e069b#35	d902425e069b0690	skip	library: std::unordered_map/std::map/s
 sub_d902425e069b#36	d902425e069b0690	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_d902425e069b#37	d902425e069b0690	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_d902425e069b#38	d902425e069b0690	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
+sub_d902425e069b#46	d902425e069b0690	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_d902425e069b#6	d902425e069b0690	skip	library: std::unordered_map instantiation
 sub_d902b7f2da1b	d902b7f2da1bb8cb	skip	data: static initializer of unrelated globals (inbox filter names, vocation names, server time zone; misattributed)
 sub_d9136ad7dbbe	d9136ad7dbbe5cdb	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowInstantSpells
@@ -10757,6 +10774,7 @@ sub_da5e8d6d2e95	da5e8d6d2e959204	ported	gamewindow/vipwidgetcontroller.cpp:TVip
 sub_da74b77a62c7	da74b77a62c7aa78	tested	shared/src/jsonhelper.cpp:jsonArray	test=tests/client/sharednet_test.cpp
 sub_da74b8e8ed50	da74b8e8ed506f41	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreCategoriesMessage
 sub_da778f9ce3b6	da778f9ce3b65c9f	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::clearTrackedUseAtMouseCursorGameAction
+sub_da8d949e9497	da8d949e9497f16b	skip	dead: TDynamicResourcesHelper is never constructed in the release client: its only constructor is called from a make_shared thunk with no call site and no fixup (corpus grep FUN_10101fb80, index/fixups.txt); these are its methods and functions reached only from them
 sub_da8ed7b00431	da8ed7b004314d44	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setSessionStart
 sub_da8f1be998ea#2	da8f1be998ea02bd	inlined	protocol::TProtobufServerMessageTranslator::v42
 sub_da90e64ac38c	da90e64ac38c1d50	ported	gamewindow/contextmenucontroller.cpp:TContextMenuEntryItem::TContextMenuEntryItem
