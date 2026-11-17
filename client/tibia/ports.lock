@@ -5335,6 +5335,7 @@ sub_1f1831934413#2	1f1831934413bc5a	inlined	gamewindow/iteminfodialogcontroller.
 sub_1f1831934413#3	1f1831934413bc5a	skip	library: std::sort instantiation (library)
 sub_1f1f532e2be8	1f1f532e2be8cd33	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_1f1f532e2be8#2	1f1f532e2be8cd33	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
+sub_1f28d8e24072	1f28d8e24072d43b	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_1f40f66b4b9e	1f40f66b4b9e5f59	skip	library: std::vector copy / growth of store records (library)
 sub_1f415e15c62b	1f415e15c62b9087	ported	analysers/impactwidgets.cpp:TImpactWidgetController::setDesiredIsHpsGraphVisible
 sub_1f4552e53248	1f4552e532489c50	ported	skillwheel/skillwheeldata.cpp:perkLevelName
@@ -5617,6 +5618,7 @@ sub_278b7d888bb2#3	278b7d888bb22348	skip	generated: compiler-generated destructo
 sub_27a0e3d67c7c	27a0e3d67c7c7c1b	inlined	gamewindow/dialogmanager.cpp:TDialog::show
 sub_27af30ca2cb9	27af30ca2cb91213	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::setShowTrade
 sub_27c1756a0ea2	27c1756a0ea272f9	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
+sub_27c3cd50fc8f	27c3cd50fc8f13b8	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_27d378265164	27d3782651648a2c	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesSortProxyModel::TActivitiesSortProxyModel
 sub_27e29f853532	27e29f8535320e18	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_27eab9727be0	27eab9727be00c61	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterRaceListChanged
@@ -7679,6 +7681,7 @@ sub_690a4c888f26	690a4c888f26bc1c	tested	shared/src/ringbufferstopwatch.cpp:TRin
 sub_690f76dcbaa6	690f76dcbaa60cb1	ported	config/optionspages.cpp:fractionOf
 sub_691b1e258ba3	691b1e258ba38ba4	inlined	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildBonusEffects
 sub_691b647f88a8	691b647f88a83631	ported	analysers/impactwidgets.cpp:TImpactWidgetController::hpsGraphMaxY
+sub_691eb2d8a195	691eb2d8a1959a4b	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_69290a5a8f7e	69290a5a8f7e8bf3	skip	generated: moc property getter (generated in cip_gen)
 sub_69290a5a8f7e#3	69290a5a8f7e8bf3	skip	generated: moc property getter, provided by the generated cip base
 sub_69290a5a8f7e#5	69290a5a8f7e8bf3	inlined	gamewindow/marketcontroller.cpp:detailsText
@@ -7754,6 +7757,7 @@ sub_6cba20b58f33#3	6cba20b58f33ac88	inlined	cyclopedia/cyclopediaciptypes.cpp:TC
 sub_6cd2509ca3f6#2	6cd2509ca3f645a3	inlined	protocol::TProtobufServerMessageTranslator::v138
 sub_6cf485aa46cd	6cf485aa46cd43d3	ported	gamewindow/containercontroller.cpp:TContainerController::manualSortModeActive
 sub_6d14433cf2cc	6d14433cf2cc7f5b	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapClick
+sub_6d185eb3fbd0	6d185eb3fbd05182	ported	gamewindow/assignablebossmodels.cpp:TAssignableBossModel::refreshRarityTooltips
 sub_6d29cc53beee	6d29cc53beeee26b	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_6d2e925f2c3c	6d2e925f2c3cb7fc	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_6d2e925f2c3c#2	6d2e925f2c3cb7fc	skip	generated: QtPrivate slot object impls (member-function connections)
@@ -11815,6 +11819,7 @@ sub_e44ddaf71be4	e44ddaf71be4678e	inlined	questlog/questlogciptypes.cpp:TQuestLo
 sub_e451901c3828	e451901c382885d3	ported	worldmap/worldmapfield.cpp:TWorldMapField::insertionIndex
 sub_e457654ad6e2#2	e457654ad6e25d3f	skip	generated: Qt slot-object thunk
 sub_e468c6c84413	e468c6c844130bd9	ported	gamewindow/chatcontroller.cpp:TChatController::handleAction
+sub_e4740e1780dd	e4740e1780ddcab7	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_e475b3f34147#2	e475b3f34147116c	skip	generated: moc signal emitter
 sub_e47ef54e419c	e47ef54e419ce1c6	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::showHirelingPurchaseDialog
 sub_e4804a808789	e4804a808789897d	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::setData
@@ -12340,6 +12345,7 @@ sub_f7e7763c3800#3	f7e7763c38008d65	skip	library: QMap/QList template instantiat
 sub_f7ec8decdf22#2	f7ec8decdf220357	skip	library: libc++ std::vector instantiation
 sub_f7ef8179701a	f7ef8179701a376f	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_f7ff2480c0c8	f7ff2480c0c84a49	skip	library: libc++ vector insert/assign/erase/resize, nth_element and partial_sort_copy instantiations over the damage-input source rows and element pairs (callers read)
+sub_f80ebb42d457	f80ebb42d457bc35	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_f81385a1c2d4	f81385a1c2d44257	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_f81691435739	f81691435739cf60	ported	config/clientoptionsmigration.cpp:migrateFromVersion1
 sub_f827c33dea91	f827c33dea918aa2	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::applySelectedWorld
@@ -12393,6 +12399,7 @@ sub_f9e41d0e55ba	f9e41d0e55ba161b	ported	gamewindow/actionbarcontroller.cpp:TAct
 sub_f9e930b88611	f9e930b88611d754	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
 sub_f9eb50c776fc	f9eb50c776fc4ec2	ported	questlog/questlogciptypes.cpp:TQuestLinePart::TQuestLinePart
 sub_f9f6c867fa19	f9f6c867fa196318	ported	config/optionspages.cpp:cloudsIndexOf
+sub_fa06abfd90f0	fa06abfd90f0ac8c	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotsDialogController::onBossPointsChanged
 sub_fa0c19d8e0ca	fa0c19d8e0ca262f	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setText
 sub_fa197e257435#2	fa197e257435bd76	skip	library: std::sort instantiation (library)
 sub_fa1ad8fae83a	fa1ad8fae83ad962	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::tibiaLogoPressed
@@ -12444,6 +12451,7 @@ sub_fc39c90c4db9	fc39c90c4db9702c	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_fc3fc647fe11	fc3fc647fe114faa	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::setShowNoKillBosses
 sub_fc41f416431a	fc41f416431ab802	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_fc4c59941f33	fc4c59941f33faff	skip	generated: compiler-generated destructor
+sub_fc625c3b85fd	fc625c3b85fdcce7	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_fc6d5d1a5220	fc6d5d1a52208aaa	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_fc74b84ae942#3	fc74b84ae9425a5d	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_fc7bcd50ad8f	fc7bcd50ad8f4675	skip	library: libc++ std::deque<TTrackedItem> rotate, add-capacity, split-buffer, erase range and move helpers (read: 0x1000 blocks, 0x80 per block)

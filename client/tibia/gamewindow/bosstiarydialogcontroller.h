@@ -159,8 +159,9 @@ public:
     void onSelectClicked(int SlotNumber, int SelectedRaceID) override;
 
 private:
-    /// CIP .
+    /// The slots, the boss lists and the boss points.
     void update();
+    void onBossPointsChanged();
 
     cyclopedia::TBosstiaryStorage& m_storage;
     TBossSlotInformation* m_first;

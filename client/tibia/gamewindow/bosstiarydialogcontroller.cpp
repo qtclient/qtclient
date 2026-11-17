@@ -295,14 +295,14 @@ TBossSlotsDialogController::TBossSlotsDialogController(cyclopedia::TBosstiarySto
     m_secondSlotBossList = m_secondList;
     // CIP : slot data, boss points per stage and the gold balance.
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::slotsChanged, this, &TBossSlotsDialogController::update);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBossSlotsDialogController::update);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::killStagesChanged, this, &TBossSlotsDialogController::update);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBossSlotsDialogController::onBossPointsChanged);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
         if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT goldBalanceChanged();
     });
     update();
+    onBossPointsChanged();
 }
 
 TBossSlotsDialogController::~TBossSlotsDialogController() = default;
@@ -328,6 +328,14 @@ void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int
 {
     tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
+}
+
+void TBossSlotsDialogController::onBossPointsChanged()
+{
+    // Only the boss lists' rarity tooltips follow the new points; the slots
+    // keep theirs until their next update.
+    m_firstList->source()->refreshRarityTooltips();
+    m_secondList->source()->refreshRarityTooltips();
 }
 
 void TBossSlotsDialogController::update()
