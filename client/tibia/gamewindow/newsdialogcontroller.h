@@ -33,6 +33,8 @@ class TNewsDialogController final : public TDialogController<cip::tibia::gamewin
     Q_OBJECT
 public:
     explicit TNewsDialogController(news::TNewsStorage* storage, QObject* parent = nullptr);
+    /// CIP: the entry list is emptied.
+    ~TNewsDialogController() override;
 
     void setNewsUploader(news::TNewsRequestUploader* uploader);
 

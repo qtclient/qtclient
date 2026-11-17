@@ -48,6 +48,11 @@ TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObjec
     onNewsStorageContentsChanged();
 }
 
+TNewsDialogController::~TNewsDialogController()
+{
+    m_model.setRoots({}, {});
+}
+
 void TNewsDialogController::setNewsUploader(news::TNewsRequestUploader* uploader)
 {
     m_uploader = uploader;
