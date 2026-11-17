@@ -156,7 +156,13 @@ TLootTrackingWidgetController::TLootTrackingWidgetController(analysers::TAnalyse
         connect(item, &QObject::destroyed, this, &TLootTrackingWidgetController::onWidgetQuickItemDestroyed);
 }
 
-TLootTrackingWidgetController::~TLootTrackingWidgetController() = default;
+TLootTrackingWidgetController::~TLootTrackingWidgetController()
+{
+    // CIP: empties trackedItems, announces it, then deletes the old items.
+    const QList<QObject*> old = std::exchange(m_trackedItems, {});
+    Q_EMIT trackedItemsChanged();
+    qDeleteAll(old);
+}
 
 QList<QObject*> TLootTrackingWidgetController::trackedItems() const { return m_trackedItems; }
 

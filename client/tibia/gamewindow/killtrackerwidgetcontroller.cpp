@@ -11,6 +11,8 @@
 #include <tibia/assets/things.h>
 
 #include <QJsonObject>
+
+#include <utility>
 #include <QString>
 
 #include <any>
@@ -169,6 +171,15 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
         entries.push_back(std::move(entry));
     }
     model->setEntries(std::move(entries));
+}
+
+TKillTrackerWidgetController::~TKillTrackerWidgetController() { clearPreyList(); }
+
+void TKillTrackerWidgetController::clearPreyList()
+{
+    const QList<QObject*> old = std::exchange(m_preyList, {});
+    Q_EMIT preyListChanged();
+    qDeleteAll(old);
 }
 
 void TKillTrackerWidgetController::bountyTaskDataChanged() { applyBountyMonsters(m_pendingBounty); }
