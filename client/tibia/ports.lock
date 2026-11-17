@@ -680,6 +680,8 @@ creatures::TCreaturesGameActionHandler::v14	097eb07a159f3eb1	ported	game/gameses
 creatures::TCreaturesGameActionHandler::v15	e572db1f503f1f5d	ported	game/gamesessionstate.cpp:TGameSessionState::follow
 creatures::TCreaturesGameActionHandler::v16	b643b2b6bc2b6ba0	ported	game/gamesessionstate.cpp:TGameSessionState::attack
 creatures::TCreaturesGameActionHandler::v17	47d6febf410dfa24	ported	game/gamesessionstate.cpp:TGameSessionState::attack
+creatures::TCreaturesGameActionHandler::v19	c1d02b97c6435ad2	ported	game/gamesessionstate.cpp:TGameSessionState::lookCreature
+creatures::TCreaturesGameActionHandler::v20	75aa984681e9b50c	ported	input/gameactionhandlers.cpp:inspectPlayerAction
 creatures::TCreaturesGameActionHandler::v21	2ef49d448805d1d9	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::TUseWithGameActionHandler
 creatures::TCreaturesGameActionHandler::v22	9bbbd452ae5eb073	ported	input/crosshairgameactionhandlers.cpp:TUseWithGameActionHandler::TUseWithGameActionHandler
 creatures::TCreaturesGameActionHandler::v23	c1d02b97c6435ad2	ported	game/gamesession_forward.cpp:partyInvite
