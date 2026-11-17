@@ -82,7 +82,7 @@ public:
     void setServerData(int changeState, const QString& playerName, bool ownCharacter, int regularPoints, int extraPoints,
                        const std::vector<std::pair<int, int>>& promotionScrolls, bool shrinesOfInsightPoints, int huntingTaskPoints,
                        const TWheel& wheel);
-    /// An empty, view-only wheel of the own character with `vocation`.
+    /// The server data of an empty wheel of the own character with `vocation` (no points, view only).
     void setPreview(const QString& playerName, int vocation);
     void clearServerData();
 
@@ -117,15 +117,11 @@ public:
 
     /// There is a server wheel.
     bool hasData() const { return m_serverSkillWheel.has_value(); }
-    /// The wheel is the preview (setPreview).
-    bool isPreview() const { return m_preview; }
     /// The vocation of the server wheel (1 knight .. 5 monk).
     int vocation() const;
     int vocationIndex() const { return vocation() - 1; }
     /// The current wheel, else an empty wheel of the vocation.
     TWheel currentWheel() const;
-    /// The vessels' gems of `wheel` matched against the inventory (export code mods first by id, then by mods).
-    TWheel withInventoryGems(const TWheel& wheel) const;
 
     int modGradesPoints() const;
     /// Regular, extra and mod grade points.
@@ -155,7 +151,6 @@ private:
     std::vector<TModListEntry> m_modList;
     int m_lesserFragments = 0;
     int m_greaterFragments = 0;
-    bool m_preview = false;
 };
 
 }

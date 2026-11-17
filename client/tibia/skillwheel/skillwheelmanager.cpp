@@ -134,7 +134,7 @@ void TSkillWheelManager::clearSkipNextOwnOpen()
 /// SAVE_SKILL_WHEEL carries no wheel here: the own edited wheel is saved.
 void TSkillWheelManager::saveWheel()
 {
-    if (!m_storage->hasData() || !m_storage->isOwnCharacter() || m_storage->isPreview())
+    if (!m_storage->hasData() || !m_storage->isOwnCharacter() || m_storage->totalPoints() == 0)
         return;
     m_actions.handleSaveSkillWheelGameAction(m_storage->currentWheel());
 }

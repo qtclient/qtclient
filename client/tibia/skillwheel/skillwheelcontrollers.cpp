@@ -4,6 +4,8 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
+#include <limits>
+#include <numeric>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -68,6 +70,14 @@ int statRank(const QString& label)
     if (label == basicStatName(12, true))
         return 2;
     return label == basicStatName(9, true) ? 3 : 99;
+}
+
+int spentPoints(const std::array<int, SlotCount>& points) { return std::accumulate(points.begin(), points.end(), 0); }
+
+/// A gem's mods as an export code keeps them.
+TCodeGem codeGemOf(const TGem& gem)
+{
+    return { gem.basic1, gem.quality >= 1 ? gem.basic2 : -1, gem.quality >= 2 ? gem.supreme : -1 };
 }
 
 QList<TMessageDialogButton*> okButton()
@@ -175,8 +185,16 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     connect(m_export, &TMessageDialogController::buttonClicked, this,
             &TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked);
 
+    // CIP: a new server wheel changes the initial data; the server wheel, the current wheel and the
+    // mod grades refresh the page.
+    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::initialDataChanged);
+    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, [this] {
+        // Host: the shown wheel starts as the server's (CIP sets it outside this unit).
+        m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel());
+        onWheelChanged();
+    });
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onServerSkillWheelChanged);
+    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, [this] {
         m_presets->reset();
         Q_EMIT presetDataChanged();
@@ -185,9 +203,17 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     onWheelChanged();
 }
 
+/// The mod grade points the current wheel's vocation can reach; 0 without a current wheel.
 int TSkillWheelPageController::totalModGradesSkillPoints() const
 {
-    return m_storage->hasData() ? totalModGradePoints(m_storage->vocationIndex()) : 0;
+    const std::optional<TWheel> current = m_storage->currentSkillWheel();
+    return current ? totalModGradePoints(current->vocation - 1) : 0;
+}
+
+int TSkillWheelPageController::spentSkillPoints() const
+{
+    const std::optional<TWheel> current = m_storage->currentSkillWheel();
+    return current ? spentPoints(current->points) : 0;
 }
 
 /// One tooltip line per consumed promotion scroll: its item name and points.
@@ -199,45 +225,190 @@ QString TSkillWheelPageController::bonusPointItemNames() const
     return lines.join(QStringLiteral("<br>"));
 }
 
+/// The current wheel's vocation; none without a current wheel.
 cip::tibia::qmlcomponents::enums::EVocation TSkillWheelPageController::vocation() const
 {
-    return static_cast<cip::tibia::qmlcomponents::enums::EVocation>(m_storage->vocation());
+    const std::optional<TWheel> current = m_storage->currentSkillWheel();
+    return static_cast<cip::tibia::qmlcomponents::enums::EVocation>(current ? current->vocation : 0);
 }
 
-QString TSkillWheelPageController::currentPresetName() const { return canManagePresets() ? m_currentPresetName : QString(); }
+QString TSkillWheelPageController::currentPresetName() const { return m_currentPresetName; }
 
-/// The own wheel at a temple, not the preview.
-bool TSkillWheelPageController::canManagePresets() const
-{
-    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->isPreview() && m_storage->changeState() == 1;
-}
+/// The own wheel at a temple.
+bool TSkillWheelPageController::canManagePresets() const { return m_storage->isOwnCharacter() && m_storage->changeState() == 1; }
 
 /// The current wheel is not the selected preset's wheel any more.
-bool TSkillWheelPageController::isPresetDirty() const
+bool TSkillWheelPageController::isPresetDirty() const { return m_storage->currentSkillWheel() != m_presetWheel; }
+
+void TSkillWheelPageController::setCurrentPresetName(const QString& name)
 {
-    return canManagePresets() && m_presetWheel && m_storage->currentSkillWheel() != m_presetWheel;
+    if (m_currentPresetName == name)
+        return;
+    m_currentPresetName = name;
+    Q_EMIT presetDataChanged();
 }
 
-/// A new server wheel becomes the current wheel; the own character gets the default preset when
-/// it has none, and the selected preset stays selected.
-void TSkillWheelPageController::onServerSkillWheelChanged()
+bool TSkillWheelPageController::hasOwnWheel() const
 {
-    const std::optional<TWheel> server = m_storage->serverSkillWheel();
-    if (!server)
-        return;
-    m_storage->setCurrentSkillWheel(*server);
-    if (m_storage->isOwnCharacter() && !m_storage->isPreview()) {
-        if (m_storage->presets().empty())
-            m_storage->addOrReplacePreset(TSkillWheelStorage::DefaultPresetName, *server);
-        if (!m_storage->hasPreset(m_currentPresetName))
-            m_currentPresetName = m_storage->presets().begin()->first;
-        m_presetWheel = m_storage->preset(m_currentPresetName);
-        if (m_presetWheel)
-            m_presetWheel = m_storage->withInventoryGems(*m_presetWheel);
+    return m_storage->isOwnCharacter() && totalSkillPoints() != 0 && m_storage->currentSkillWheel().has_value();
+}
+
+/// CIP: the selection goes; unless the show was asked to keep them, the presets are checked against
+/// the character, the preset matching the current wheel is selected, then a pending one.
+void TSkillWheelPageController::showDialogTab()
+{
+    clearSelection();
+    if (!m_skipNextShowUpdate) {
+        validatePresets();
+        m_presets->reset();
+        Q_EMIT presetDataChanged();
+        selectMatchingPreset();
+        selectPendingPreset();
     }
-    Q_EMIT initialDataChanged();
-    Q_EMIT presetDataChanged();
-    onWheelChanged();
+    m_skipNextShowUpdate = false;
+}
+
+void TSkillWheelPageController::hideDialogTab()
+{
+    clearSelection();
+    closeMessages();
+    m_skipNextShowUpdate = false;
+}
+
+/// CIP: presets of another vocation or with an invalid grid are dropped, the vessels' gems are
+/// matched against the gem inventory (a gem that is gone leaves its vessel), at most ten presets
+/// stay. Without presets the current wheel becomes the default preset; a change is reported.
+void TSkillWheelPageController::validatePresets()
+{
+    if (!hasOwnWheel())
+        return;
+    const std::map<QString, TWheel> presets = m_storage->presets();
+    const int vocation = tibia::game::localPlayerVocation() % 10;
+    std::map<QString, TWheel> valid;
+    bool changed = false;
+    for (const auto& [name, preset] : presets) {
+        if (preset.vocation != vocation || !isValid(preset.points)) {
+            changed = true;
+            continue;
+        }
+        TWheel resolved = preset;
+        for (int vessel = 0; vessel < VesselCount; ++vessel) {
+            TGem pattern;
+            pattern.id = resolved.gems[vessel];
+            if (const std::optional<TGem> socketed = m_storage->gem(resolved.gems[vessel])) {
+                pattern = *socketed;
+            } else {
+                const TCodeGem& mods = resolved.gemMods[vessel];
+                if (mods.basic1 < 0)
+                    continue;
+                pattern.basic1 = mods.basic1;
+                pattern.basic2 = mods.basic2;
+                pattern.supreme = mods.supreme;
+                pattern.quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
+            }
+            if (const std::optional<TGem> found = m_storage->findGem(pattern)) {
+                resolved.gems[vessel] = found->id;
+                resolved.gemMods[vessel] = codeGemOf(*found);
+            } else {
+                resolved.gems[vessel] = NoGem;
+                resolved.gemMods[vessel] = TCodeGem{};
+                changed = true;
+            }
+        }
+        valid.emplace(name, resolved);
+        if (valid.size() >= static_cast<size_t>(MaxPresets))
+            break;
+    }
+    m_storage->setPresets(valid);
+    if (presets.empty())
+        ensureDefaultPreset();
+    if (changed)
+        showPresetsAdjustedMessage();
+}
+
+/// CIP: the current wheel is stored as the default preset (making room by dropping the preset with
+/// the fewest spent points when ten exist), reported, and selected.
+void TSkillWheelPageController::ensureDefaultPreset()
+{
+    if (!hasOwnWheel())
+        return;
+    std::map<QString, TWheel> presets = m_storage->presets();
+    if (presets.size() >= static_cast<size_t>(MaxPresets) && !presets.contains(TSkillWheelStorage::DefaultPresetName)) {
+        QString fewest;
+        int fewestPoints = std::numeric_limits<int>::max();
+        for (const auto& [name, preset] : presets) {
+            if (const int points = spentPoints(preset.points); points < fewestPoints) {
+                fewest = name;
+                fewestPoints = points;
+            }
+        }
+        presets.erase(fewest);
+    }
+    presets.insert_or_assign(TSkillWheelStorage::DefaultPresetName, *m_storage->currentSkillWheel());
+    m_storage->setPresets(presets);
+    showPresetsAdjustedMessage();
+    selectPresetByName(TSkillWheelStorage::DefaultPresetName, true);
+}
+
+/// CIP: the selected preset when it is the current wheel, else the preset the current wheel grew
+/// from (every slice at least the preset's points) with the fewest points and vessel changes to it;
+/// without one the current wheel becomes the default preset. The chosen preset takes the current
+/// wheel. Without the own wheel nothing is selected.
+void TSkillWheelPageController::selectMatchingPreset()
+{
+    if (!hasOwnWheel()) {
+        selectPresetByName(QString(), true);
+        return;
+    }
+    const TWheel current = *m_storage->currentSkillWheel();
+    QString name;
+    if (const std::optional<TWheel> selected = m_storage->preset(m_currentPresetName); selected && *selected == current) {
+        name = m_currentPresetName;
+    } else {
+        int bestPoints = std::numeric_limits<int>::max();
+        int bestVessels = std::numeric_limits<int>::max();
+        for (const auto& [presetName, preset] : m_storage->presets()) {
+            bool grown = true;
+            for (int slot = 0; slot < SlotCount && grown; ++slot)
+                grown = current.points[slot] >= preset.points[slot];
+            if (!grown)
+                continue;
+            const int points = spentPoints(current.points) - spentPoints(preset.points);
+            int vessels = 0;
+            for (int vessel = 0; vessel < VesselCount; ++vessel)
+                vessels += current.gems[vessel] != preset.gems[vessel] ? 1 : 0;
+            if (points < bestPoints || (points == bestPoints && vessels < bestVessels)) {
+                name = presetName;
+                bestPoints = points;
+                bestVessels = vessels;
+            }
+        }
+        if (name.isEmpty()) {
+            ensureDefaultPreset();
+            return;
+        }
+    }
+    if (m_storage->preset(name) != current) {
+        m_storage->addOrReplacePreset(name, current);
+        showPresetsAdjustedMessage();
+    }
+    selectPresetByName(name, false);
+}
+
+/// CIP: a preset waiting from a switch is selected without asking.
+void TSkillWheelPageController::selectPendingPreset()
+{
+    if (m_pendingPreset.isEmpty() || !hasOwnWheel())
+        return;
+    selectPresetByName(m_pendingPreset, true);
+    m_pendingPreset.clear();
+}
+
+void TSkillWheelPageController::showPresetsAdjustedMessage()
+{
+    m_messageMode = PresetsAdjustedMessage;
+    m_message->setButtons(okButton());
+    m_message->showMessage(qtTrId("info"), qtTrId("skill_wheel_dialog_presets_adjusted"));
 }
 
 /// CIP: the slices and corners, the summaries, the selected and hovered
@@ -776,9 +947,7 @@ void TSkillWheelPageController::showMessage(const EMessageMode mode, const QStri
 /// selected one.
 void TSkillWheelPageController::selectPresetByName(const QString& PresetName, const bool IgnoreChanges)
 {
-    std::optional<TWheel> wheel = m_storage->preset(PresetName);
-    if (wheel)
-        wheel = m_storage->withInventoryGems(*wheel);
+    const std::optional<TWheel> wheel = m_storage->preset(PresetName);
     if (!m_storage->hasPreset(m_currentPresetName)) {
         if (!m_currentPresetName.isEmpty()) {
             m_currentPresetName.clear();
@@ -977,7 +1146,7 @@ void TSkillWheelPageController::apply()
 
 bool TSkillWheelPageController::askToSaveBeforeClose()
 {
-    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->isPreview() && m_storage->changeState() != 0
+    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->totalPoints() == 0 && m_storage->changeState() != 0
         && m_storage->isCurrentSkillWheelChanged();
 }
 
@@ -1482,7 +1651,7 @@ void TSkillWheelDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
     if (NewTab == m_dialogTab)
         return;
-    if ((NewTab == GemAtelier || NewTab == FragmentWorkshop) && (!m_storage->isOwnCharacter() || m_storage->isPreview()))
+    if ((NewTab == GemAtelier || NewTab == FragmentWorkshop) && (!m_storage->isOwnCharacter() || m_storage->totalPoints() == 0))
         return;
     if (m_dialogTab == Wheel)
         m_page->hideDialogTab();
@@ -1533,7 +1702,7 @@ void TSkillWheelDialogController::showMessage(const QString& caption, const QStr
 
 void TSkillWheelDialogController::openGemAtelier(const int domain, const int gemId)
 {
-    if (!m_storage->isOwnCharacter() || m_storage->isPreview())
+    if (!m_storage->isOwnCharacter() || m_storage->totalPoints() == 0)
         return;
     requestTabSwitch(GemAtelier);
     m_atelier->showDomain(domain, gemId);
@@ -1541,7 +1710,7 @@ void TSkillWheelDialogController::openGemAtelier(const int domain, const int gem
 
 void TSkillWheelDialogController::openWorkshopMod(const bool isBasic, const int modId)
 {
-    if (!m_storage->isOwnCharacter() || m_storage->isPreview())
+    if (!m_storage->isOwnCharacter() || m_storage->totalPoints() == 0)
         return;
     requestTabSwitch(FragmentWorkshop);
     m_workshop->selectMod(isBasic, modId);

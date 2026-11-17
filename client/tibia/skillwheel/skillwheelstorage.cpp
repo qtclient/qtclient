@@ -190,7 +190,6 @@ void TSkillWheelStorage::setServerData(const int changeState, const QString& pla
     m_shrinesOfInsightPoints = shrinesOfInsightPoints;
     m_huntingTaskPoints = huntingTaskPoints;
     m_serverSkillWheel = wheel;
-    m_preview = false;
     Q_EMIT serverSkillWheelChanged();
 }
 
@@ -199,7 +198,6 @@ void TSkillWheelStorage::setPreview(const QString& playerName, const int vocatio
     TWheel wheel;
     wheel.vocation = vocation;
     setServerData(0, playerName, true, 0, 0, {}, false, 0, wheel);
-    m_preview = true;
 }
 
 void TSkillWheelStorage::clearServerData()
@@ -210,7 +208,6 @@ void TSkillWheelStorage::clearServerData()
     m_regularPoints = 0;
     m_extraPoints = 0;
     m_promotionScrolls.clear();
-    m_preview = false;
     if (m_serverSkillWheel) {
         m_serverSkillWheel.reset();
         Q_EMIT serverSkillWheelChanged();
@@ -357,31 +354,6 @@ TWheel TSkillWheelStorage::currentWheel() const
     TWheel wheel;
     wheel.vocation = vocation();
     return wheel;
-}
-
-TWheel TSkillWheelStorage::withInventoryGems(const TWheel& wheel) const
-{
-    TWheel result = wheel;
-    for (int vessel = 0; vessel < VesselCount; ++vessel) {
-        const TCodeGem mods = wheel.gemMods[vessel];
-        if (result.gems[vessel] != NoGem && gem(result.gems[vessel]))
-            continue;
-        result.gems[vessel] = NoGem;
-        if (mods.basic1 < 0)
-            continue;
-        TGem pattern;
-        pattern.id = NoGem;
-        pattern.basic1 = mods.basic1;
-        pattern.basic2 = mods.basic2;
-        pattern.supreme = mods.supreme;
-        pattern.quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
-        if (const std::optional<TGem> found = findGem(pattern))
-            result.gems[vessel] = found->id;
-    }
-    for (int vessel = 0; vessel < VesselCount; ++vessel)
-        if (const std::optional<TGem> socketed = gem(result.gems[vessel]))
-            result.gemMods[vessel] = codeGem(*socketed);
-    return result;
 }
 
 int TSkillWheelStorage::modGradesPoints() const { return modGradePoints(m_basicGrades, m_supremeGrades); }

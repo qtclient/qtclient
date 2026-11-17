@@ -64,16 +64,17 @@ public:
     int specialSkillPoints() const override { return m_storage->extraPoints(); }
     int modGradesSkillPoints() const override { return m_storage->modGradesPoints(); }
     int totalModGradesSkillPoints() const override;
-    int spentSkillPoints() const override { return m_storage->spentPoints(); }
+    int spentSkillPoints() const override;
     int huntingTaskSkillPoints() const override { return m_storage->huntingTaskPoints(); }
     QString bonusPointItemNames() const override;
     bool hasShrinesOfInsightBonusPoints() const override { return m_storage->hasShrinesOfInsightPoints(); }
     cip::tibia::qmlcomponents::enums::EVocation vocation() const override;
-    bool isWheelDirty() const override { return !m_storage->isPreview() && m_storage->isCurrentSkillWheelChanged(); }
+    bool isWheelDirty() const override { return m_storage->isCurrentSkillWheelChanged(); }
     bool canBeDecreased() const override { return m_storage->changeState() == 1; }
     bool canBeIncreased() const override { return m_storage->changeState() == 1 || m_storage->changeState() == 2; }
     bool isLocalPlayer() const override { return m_storage->isOwnCharacter(); }
-    bool isPreview() const override { return m_storage->isPreview(); }
+    /// A wheel without any points (the preview of the own vocation).
+    bool isPreview() const override { return totalSkillPoints() == 0; }
     QString playerName() const override { return m_storage->playerName(); }
     bool canManagePresets() const override;
     bool isPresetDirty() const override;
@@ -81,6 +82,8 @@ public:
     bool morePresetsPossible() const override { return m_storage->presets().size() < MaxPresets; }
     bool deletePresetsPossible() const override { return m_storage->presets().size() > 1; }
 
+    void showDialogTab() override;
+    void hideDialogTab() override;
     void requestClose() override;
     void requestSaveCurrentPreset() override;
     void onGridTileRightClicked(int GridTileQML, int KeyboardModifiers) override;
@@ -127,10 +130,17 @@ Q_SIGNALS:
 
 private:
     /// What the page's message box asks (CIP: the box's mode).
-    enum EMessageMode { NoMessage = 0, CloseMessage = 1, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
+    enum EMessageMode { NoMessage = 0, CloseMessage = 1, PresetsAdjustedMessage = 2, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
 
     void onWheelChanged();
-    void onServerSkillWheelChanged();
+    /// The own character with points and a current wheel (the preset handling needs them).
+    bool hasOwnWheel() const;
+    void setCurrentPresetName(const QString& name);
+    void validatePresets();
+    void ensureDefaultPreset();
+    void selectMatchingPreset();
+    void selectPendingPreset();
+    void showPresetsAdjustedMessage();
     void updateParameters();
     void showMessage(EMessageMode mode, const QString& caption, const QString& text);
     void deleteCurrentPreset();
@@ -163,6 +173,8 @@ private:
     gamewindow::TMessageDialogController* m_export;
     gamewindow::TMessageDialogController* m_info;
     EMessageMode m_messageMode = NoMessage;
+    /// The next showDialogTab keeps the presets as they are.
+    bool m_skipNextShowUpdate = false;
     QString m_pendingPreset;
     /// The selected preset and its wheel when it was selected.
     QString m_currentPresetName;
