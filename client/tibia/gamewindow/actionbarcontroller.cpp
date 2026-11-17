@@ -410,15 +410,10 @@ void TActionBarController::onRequestContextMenu(const uint ButtonId, const int M
 void TActionBarController::onOpenAssignSpellActionDialog(const uint ButtonId, const int MultiActionChild)
 {
     // A button casting a spell opens with it, any other with the list's first.
-    if (buttonController(int(ButtonId), MultiActionChild)) {
-        const Setting setting = settingAt(int(ButtonId), MultiActionChild);
-        const spells::TSpellInfo* spell =
-            setting.kind == Setting::TEXT ? spells::TSpellInfoStorage::instance()->spellOfText(setting.text) : nullptr;
-        if (spell && setting.sendAutomatically) {
-            m_spellDialog->showDialog(ButtonId, MultiActionChild, spell->id, setting.text.trimmed().mid(spell->words.size()).trimmed(),
-                                      ECastType(setting.spellCastType));
-            return;
-        }
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::SPELL) {
+        m_spellDialog->showDialog(ButtonId, MultiActionChild, button->spellId(), button->actionText(), ECastType(button->castType()));
+        return;
     }
     m_spellDialog->showDialog(ButtonId, MultiActionChild);
 }
@@ -429,40 +424,31 @@ void TActionBarController::onOpenAssignObjectActionDialog(const uint ButtonId, c
     m_objectDialog->setClientSettingSmoothFiltering(
         app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt() ==
         int(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
-    if (buttonController(int(ButtonId), MultiActionChild)) {
-        const Setting setting = settingAt(int(ButtonId), MultiActionChild);
-        if (setting.kind == Setting::OBJECT) {
-            m_objectDialog->showDialog(ButtonId, MultiActionChild, setting.objectId, setting.upgradeTier.value_or(0),
-                                       setting.liquidType.value_or(0), setting.useType, setting.useEquipSmartMode, false);
-            return;
-        }
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::OBJECT) {
+        m_objectDialog->showDialog(ButtonId, MultiActionChild, int(button->objectID()), int(button->objectUpgradeTier()),
+                                   int(button->liquidType()), button->useType(), button->useEquipSmartMode(), false);
+        return;
     }
     m_objectDialog->showDialog(ButtonId, MultiActionChild);
 }
 
 void TActionBarController::onOpenAssignTextActionDialog(const uint ButtonId, const int MultiActionChild)
 {
-    // A spell sent automatically counts as a spell, not as a text.
-    if (buttonController(int(ButtonId), MultiActionChild)) {
-        const Setting setting = settingAt(int(ButtonId), MultiActionChild);
-        const bool spell = setting.kind == Setting::TEXT && setting.sendAutomatically &&
-                           spells::TSpellInfoStorage::instance()->spellOfText(setting.text);
-        if (setting.kind == Setting::TEXT && !spell) {
-            m_textDialog->showDialog(ButtonId, MultiActionChild, setting.text, setting.sendAutomatically);
-            return;
-        }
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::TEXT) {
+        m_textDialog->showDialog(ButtonId, MultiActionChild, button->actionText(), button->sendAutomatically());
+        return;
     }
     m_textDialog->showDialog(ButtonId, MultiActionChild);
 }
 
 void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint ButtonId)
 {
-    if (buttonController(int(ButtonId), -1)) {
-        const Setting setting = settingAt(int(ButtonId), -1);
-        if (setting.kind == Setting::PASSIVE_ABILITY) {
-            m_passiveAbilityDialog->showDialog(ButtonId, setting.passiveAbility);
-            return;
-        }
+    const TActionButtonController* button = buttonController(int(ButtonId), -1);
+    if (button && button->type() == TActionButtonController::PASSIVEABILITY) {
+        m_passiveAbilityDialog->showDialog(ButtonId, button->passiveAbility());
+        return;
     }
     m_passiveAbilityDialog->showDialog(ButtonId);
 }
