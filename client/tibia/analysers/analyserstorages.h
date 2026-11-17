@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "config/icharacterconfiguration.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -26,17 +27,6 @@ namespace analysers {
 std::vector<double> linearWeights(int n);
 /// CIP : a graph's y range follows its maximum with hysteresis.
 double adjustGraphMaxY(double currentMaxY, double maxValue);
-
-/// The character's analyser options (CIP: ICharacterConfigurationBase::name / toJson / fromJson),
-/// one file per storage in <app data>/characterdata/<character id>/<name>.json.
-class TCharacterConfiguration : public ::tibia::CipTyped
-{
-public:
-    virtual ~TCharacterConfiguration() = default;
-    virtual QString configurationName() const = 0;
-    virtual QJsonObject toJson() const = 0;
-    virtual void fromJson(const QJsonObject& json) = 0;
-};
 
 /// One of TProgressStorage's TExperienceChangeTracker (CIP ctor in): the session total
 /// and 4501 one-second bins, the newest last.
@@ -65,15 +55,16 @@ private:
 };
 
 /// XP analyser storage (CIP: tibia::cyclopedia::TProgressStorage, config "xpanalyser").
-class TProgressStorage final : public cip::tibia::cyclopedia::TProgressStorage, public TCharacterConfiguration
+class TProgressStorage final : public cip::tibia::cyclopedia::TProgressStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
     explicit TProgressStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("xpanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// CIP vt15.
     void tick(qint64 nowMs);
@@ -119,7 +110,7 @@ class TItemPriceStorage;
 
 /// Loot and supply analyser storage (CIP: tibia::cyclopedia::TGainWasteStorage, config
 /// "gainandwaste"). Items are added as they come; metrics and signals follow on the next tick.
-class TGainWasteStorage final : public cip::tibia::cyclopedia::TGainWasteStorage, public TCharacterConfiguration
+class TGainWasteStorage final : public cip::tibia::cyclopedia::TGainWasteStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -163,8 +154,9 @@ public:
     TGainWasteStorage(TItemPriceStorage* prices, QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("gainandwaste"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     void addLoot(uint16_t itemId, quint32 count, const QString& name, qint64 nowMs);
     void addWaste(uint16_t itemId, quint32 count, qint64 nowMs);
@@ -233,7 +225,7 @@ private:
 
 /// Damage and healing output (CIP: tibia::cyclopedia::TImpactStorage, ctor ,
 /// config "impactanalyser").
-class TImpactStorage final : public cip::tibia::cyclopedia::TImpactStorage, public TCharacterConfiguration
+class TImpactStorage final : public cip::tibia::cyclopedia::TImpactStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -271,8 +263,9 @@ public:
     explicit TImpactStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("impactanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// Element -1: the secondary amount has no element.
     void addDamage(qint64 primary, qint64 secondary, int element, qint64 nowMs);
@@ -359,7 +352,7 @@ private:
 };
 
 /// Damage taken (CIP: tibia::cyclopedia::TDamageInputStorage, config "damageinputanalyser").
-class TDamageInputStorage final : public cip::tibia::cyclopedia::TDamageInputStorage, public TCharacterConfiguration
+class TDamageInputStorage final : public cip::tibia::cyclopedia::TDamageInputStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -377,8 +370,9 @@ public:
     explicit TDamageInputStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("damageinputanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// CIP .
     void addDamage(qint64 amount, int element, const QString& source, qint64 nowMs);
@@ -452,7 +446,7 @@ private:
 
 /// Hunting session analyser storage (CIP: tibia::cyclopedia::THuntingSessionStorage, config
 /// "huntingsessionanalyser").
-class THuntingSessionStorage final : public cip::tibia::cyclopedia::THuntingSessionStorage, public TCharacterConfiguration
+class THuntingSessionStorage final : public cip::tibia::cyclopedia::THuntingSessionStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -461,8 +455,9 @@ public:
     explicit THuntingSessionStorage(TProgressStorage* progress, QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("huntingsessionanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     void tick(qint64 nowMs);
     /// CIP .
@@ -562,8 +557,8 @@ private:
 /// The session's analyser storages (CIP: the storage container behind session+0x40 vt0xb0) and
 /// the engine hooks that feed them. One instance lives in main; widgets and the product HUD read
 /// it through instance. A new game session starts from zero, as CIP makes new storages per
-/// session; the options are character configuration, read when a character enters the world
-/// and written when it leaves.
+/// session; the options are character configuration the TCharacterConfigurationManager reads
+/// and writes.
 class TAnalyserStorages final : public QObject
 {
     Q_OBJECT
@@ -588,16 +583,12 @@ public:
 
     /// RESET_HUNTING_SESSION (CIP).
     void resetAll();
-    /// The character whose configuration the storages use (0: none; saves the previous one).
-    void setCharacter(quint32 characterId);
-    void saveConfiguration();
 
 Q_SIGNALS:
     void sessionReset();
 
 private:
     void tick();
-    QString configurationPath(const TCharacterConfiguration& configuration) const;
 
     TProgressStorage m_progress;
     TGainWasteStorage m_gainWaste;
@@ -607,7 +598,6 @@ private:
     TPartyHuntStorage m_partyHunt;
     std::vector<client::gamecore::Hook> m_hooks;
     QTimer m_timer;
-    quint32 m_characterId = 0;
 };
 
 }

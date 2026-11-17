@@ -317,6 +317,13 @@ chat::TWhiteBlacklist::v35	c4b9cb7606f42c46	ported	chat/chatprotocolmessagehandl
 chat::TWhiteBlacklist::v36	25b376f4a419dc71	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setAllowVips
 chat::TWhiteBlacklist::~TWhiteBlacklist	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TWhiteBlacklist::~TWhiteBlacklist_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+config::TActionBarOptions::v12	b29a409affcd1b81	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationName
+config::TActionBarOptions::v13	cdf123a95bb58257	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationToJson
+config::TActionBarOptions::v14	89e7aa59c6087f15	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationFromJson
+config::TActionBarOptions::v15	d7a497143fd5fd7f	ported	config/actionbaroptions.cpp:TActionBarOptions::firstVisibleButton
+config::TActionBarOptions::v16	8fc18cf990044e8d	ported	config/actionbaroptions.cpp:TActionBarOptions::setFirstVisibleButton
+config::TActionBarOptions::~TActionBarOptions	8ce292a1ecc0653d	skip	generated: destructor pair and std::map<uint8_t,int> node teardown
+config::TActionBarOptions::~TActionBarOptions_deleting	1531bc616668060c	skip	generated: destructor pair and std::map<uint8_t,int> node teardown
 config::TActionBarsQMLOptionsPage::v12	1724f65c9b23046a	ported	config/optionspages.cpp:actionBarsBindings
 config::TActionBarsQMLOptionsPage::v13	5f670e5dfb6d75d1	ported	config/optionspages.cpp:actionBarsBindings
 config::TActionBarsQMLOptionsPage::~TActionBarsQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
@@ -338,7 +345,18 @@ config::TCharacterConfigurationManager::v12	6792e7031c95f2f3	ported	config/chara
 config::TCharacterConfigurationManager::v13	6e051a15007f0ecb	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::loadConfigurationForCharacter
 config::TCharacterConfigurationManager::v14	75a5d84d22ca2f0b	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::isConfigurationLoaded
 config::TCharacterConfigurationManager::v15	bd30b87b966fcc28	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::isSidebarConfigurationLoadedFromFile
+config::TCharacterConfigurationManager::v16	d9d83e590c37e74b	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::itemPriceStorage
+config::TCharacterConfigurationManager::v17	0d6620628f241c78	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::itemTrackingStorage
+config::TCharacterConfigurationManager::v18	8598073459ef839a	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::gainWasteStorage
+config::TCharacterConfigurationManager::v19	a74ef0ff18d141c0	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::impactStorage
+config::TCharacterConfigurationManager::v20	71cc2012854d23a2	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::damageInputStorage
+config::TCharacterConfigurationManager::v21	8d902f1bd01ce0b8	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::progressStorage
+config::TCharacterConfigurationManager::v22	54f5d2b8e524ae0d	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::huntingSessionStorage
+config::TCharacterConfigurationManager::v23	7b923443f03b0635	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::quickLootBlackWhitelistStorage
 config::TCharacterConfigurationManager::v24	a970ae68d15b621d	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::sidebarOptions
+config::TCharacterConfigurationManager::v25	c3da08be09dd9a8e	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::actionBarOptions
+config::TCharacterConfigurationManager::v26	f9a9d3151556602b	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::statusbarStorage
+config::TCharacterConfigurationManager::v28	c43fdecdaf7b4bb4	ported	config/characterconfigurationmanager.h:TCharacterConfigurationManager::skillWheelStorage
 config::TCharacterConfigurationManager::v29	1b0e9d84b9debf66	ported	config/characterconfigurationmanager.cpp:TCharacterConfigurationManager::onPlayerCreatureLoaded
 config::TCharacterConfigurationManager::~TCharacterConfigurationManager	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (thunks to the destructor body)
 config::TCharacterConfigurationManager::~TCharacterConfigurationManager_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (thunks to the destructor body)
@@ -791,8 +809,8 @@ cyclopedia::TCyclopediaProtocolMessageHandler::v36	a7fb0bbc2a099b4c	ported	cyclo
 cyclopedia::TCyclopediaProtocolMessageHandler::v38	d2b6eacbd0168ba7	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices
 cyclopedia::TCyclopediaProtocolMessageHandler::~TCyclopediaProtocolMessageHandler	097457dc45e86dd8	skip	generated: compiler-generated destructor
 cyclopedia::TCyclopediaProtocolMessageHandler::~TCyclopediaProtocolMessageHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
-cyclopedia::TDamageInputStorage::v13	417cf6444c73e4ca	ported	analysers/impactstorage.cpp:TDamageInputStorage::toJson
-cyclopedia::TDamageInputStorage::v14	e8217d022796d1e4	ported	analysers/impactstorage.cpp:TDamageInputStorage::fromJson
+cyclopedia::TDamageInputStorage::v13	417cf6444c73e4ca	ported	analysers/impactstorage.cpp:TDamageInputStorage::configurationToJson
+cyclopedia::TDamageInputStorage::v14	e8217d022796d1e4	ported	analysers/impactstorage.cpp:TDamageInputStorage::configurationFromJson
 cyclopedia::TDamageInputStorage::~TDamageInputStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor
 cyclopedia::TDamageInputStorage::~TDamageInputStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
 cyclopedia::TDefenceStatsQmlData::~TDefenceStatsQmlData	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -800,8 +818,8 @@ cyclopedia::TDefenceStatsQmlData::~TDefenceStatsQmlData_deleting	79674512666b34e
 cyclopedia::TGainWasteStorage::onItemPriceConfigurationChanged	a8d58485fe1485d3	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::onItemPriceConfigurationChanged
 cyclopedia::TGainWasteStorage::onObjectInfosChanged	d6d6c87bf70d81d2	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::onObjectInfosChanged
 cyclopedia::TGainWasteStorage::v12	694198fa349a11c4	ported	analysers/analyserstorages.h:configurationName
-cyclopedia::TGainWasteStorage::v13	6a4f700fe3612395	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::toJson
-cyclopedia::TGainWasteStorage::v14	23f9d753b6d44a3c	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::fromJson
+cyclopedia::TGainWasteStorage::v13	6a4f700fe3612395	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::configurationToJson
+cyclopedia::TGainWasteStorage::v14	23f9d753b6d44a3c	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::configurationFromJson
 cyclopedia::TGainWasteStorage::v15	d623b724e0e9c2dc	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::tick
 cyclopedia::TGainWasteStorage::~TGainWasteStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor
 cyclopedia::TGainWasteStorage::~TGainWasteStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
@@ -824,15 +842,15 @@ cyclopedia::THousesStorage::v27	c6c0322a8edfee2f	ported	cyclopedia/housesstorage
 cyclopedia::THousesStorage::~THousesStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 cyclopedia::THousesStorage::~THousesStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 cyclopedia::THuntingSessionStorage::v12	132480efc43a1648	ported	analysers/analyserstorages.h:configurationName
-cyclopedia::THuntingSessionStorage::v13	12f0f95f203063d6	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::toJson
-cyclopedia::THuntingSessionStorage::v14	c53a982617ea7038	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::fromJson
+cyclopedia::THuntingSessionStorage::v13	12f0f95f203063d6	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::configurationToJson
+cyclopedia::THuntingSessionStorage::v14	c53a982617ea7038	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::configurationFromJson
 cyclopedia::THuntingSessionStorage::v15	c917141ae8e3b452	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::tick
 cyclopedia::THuntingSessionStorage::~THuntingSessionStorage	ef52bd3425b60f09	skip	generated: compiler-generated destructor
 cyclopedia::THuntingSessionStorage::~THuntingSessionStorage_deleting	cbc2cd62c721bb23	skip	generated: compiler-generated destructor
 cyclopedia::TImpactStorage::onTriggerUpdateImpactData	a0787049bdfa60e2	ported	analysers/impactstorage.cpp:TImpactStorage::onTriggerUpdateImpactData
 cyclopedia::TImpactStorage::onTriggerUpdateImpactGraphsValues	3ff1ffe0c0a24ee0	ported	analysers/impactstorage.cpp:TImpactStorage::onTriggerUpdateImpactGraphsValues
-cyclopedia::TImpactStorage::v13	318ca988a5825649	ported	analysers/impactstorage.cpp:TImpactStorage::toJson
-cyclopedia::TImpactStorage::v14	02a8cc534ed97844	ported	analysers/impactstorage.cpp:TImpactStorage::fromJson
+cyclopedia::TImpactStorage::v13	318ca988a5825649	ported	analysers/impactstorage.cpp:TImpactStorage::configurationToJson
+cyclopedia::TImpactStorage::v14	02a8cc534ed97844	ported	analysers/impactstorage.cpp:TImpactStorage::configurationFromJson
 cyclopedia::TImpactStorage::v15	f764966ac6964e43	ported	analysers/analyserstorages.h:hasSession
 cyclopedia::TImpactStorage::v16	e53d58729ca2c2e7	ported	analysers/impactstorage.cpp:TImpactStorage::tick
 cyclopedia::TImpactStorage::v17	9f4145c2c399ae5a	ported	analysers/impactstorage.cpp:TImpactStorage::reset
@@ -844,8 +862,8 @@ cyclopedia::TImpactStorage::v40	09ae52bb1db54b4e	ported	analysers/impactstorage.
 cyclopedia::TImpactStorage::v42	fd4ea809eb34709d	ported	analysers/impactstorage.cpp:TImpactStorage::setShowSessionValues
 cyclopedia::TItemPriceStorage::onPremiumTimeChanged	87b3a2417e9c41fc	ported	analysers/itempricestorage.cpp:TItemPriceStorage::onPremiumTimeChanged
 cyclopedia::TItemPriceStorage::v12	0c9a734182a91d23	ported	analysers/itempricestorage.cpp:TItemPriceStorage::configurationName
-cyclopedia::TItemPriceStorage::v13	0933aa57376d0ac0	ported	analysers/itempricestorage.cpp:TItemPriceStorage::toJson
-cyclopedia::TItemPriceStorage::v14	daecd3af0fb34418	ported	analysers/itempricestorage.cpp:TItemPriceStorage::fromJson
+cyclopedia::TItemPriceStorage::v13	0933aa57376d0ac0	ported	analysers/itempricestorage.cpp:TItemPriceStorage::configurationToJson
+cyclopedia::TItemPriceStorage::v14	daecd3af0fb34418	ported	analysers/itempricestorage.cpp:TItemPriceStorage::configurationFromJson
 cyclopedia::TItemPriceStorage::v15	e641d1005394e099	ported	analysers/itempricestorage.cpp:TItemPriceStorage::npcBuyPrice
 cyclopedia::TItemPriceStorage::v16	72509b0b18af956f	ported	analysers/itempricestorage.cpp:TItemPriceStorage::npcSalePrice
 cyclopedia::TItemPriceStorage::v17	9724fb97ef38992b	ported	analysers/itempricestorage.cpp:TItemPriceStorage::marketPrice
@@ -3425,8 +3443,8 @@ questlog::TQuestLogProtocolMessageHandler::v14	1336af5349eba5f0	ported	questlog/
 questlog::TQuestLogProtocolMessageHandler::~TQuestLogProtocolMessageHandler	234d7c603a625d96	skip	generated: compiler-generated destructor
 questlog::TQuestLogProtocolMessageHandler::~TQuestLogProtocolMessageHandler_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor
 questlog::TQuestLogStorage::v12	0c9a734182a91d23	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::configurationName
-questlog::TQuestLogStorage::v13	ccd668568b72762c	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::toJson
-questlog::TQuestLogStorage::v14	ebe0d3b8ca5d3578	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::fromJson
+questlog::TQuestLogStorage::v13	ccd668568b72762c	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::configurationToJson
+questlog::TQuestLogStorage::v14	ebe0d3b8ca5d3578	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::configurationFromJson
 questlog::TQuestLogStorage::v15	6e185d2f2423978d	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::clearQuestLines
 questlog::TQuestLogStorage::v16	da364dbf273981b3	ported	questlog/questlogciptypes.h:TQuestLogStorage::questLines
 questlog::TQuestLogStorage::v17	eba11d5406a9de76	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::setQuestLines
@@ -8484,6 +8502,7 @@ sub_93c91c1f5768#34	93c91c1f57686cf1	skip	library: QMap/QList template instantia
 sub_93c91c1f5768#56	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#57	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
 sub_93c91c1f5768#58	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
+sub_93c91c1f5768#6	93c91c1f57686cf1	skip	generated: destructor pair and std::map<uint8_t,int> node teardown
 sub_93c91c1f5768#67	93c91c1f57686cf1	skip	library: std::set template instantiation (construct/assign/destroy)
 sub_93c91c1f5768#69	93c91c1f57686cf1	skip	library: std::set template instantiation (construct/assign/destroy)
 sub_93c91c1f5768#70	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)

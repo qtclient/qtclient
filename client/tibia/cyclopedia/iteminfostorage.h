@@ -1,6 +1,9 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "config/icharacterconfiguration.h"
+
+#include <cip_gen.h>
 
 #include <client/outfit.h>
 
@@ -29,12 +32,55 @@ class TChatChannelStorage;
 namespace tibia {
 namespace cyclopedia {
 
+class TItemInfoStorage;
+
+/// The character's drop tracker configuration, itemtracking.json (the state lives in
+/// TItemInfoStorage).
+class TItemTrackingStorage final : public cip::tibia::cyclopedia::TItemTrackingStorage, public config::ICharacterConfiguration
+{
+    Q_OBJECT
+public:
+    explicit TItemTrackingStorage(TItemInfoStorage* items);
+
+    QString configurationName() const override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
+
+private:
+    TItemInfoStorage* m_items;
+};
+
+}
+namespace quickloot {
+
+/// The character's quick loot black/whitelist, lootBlackWhitelist.json (the lists live in
+/// cyclopedia::TItemInfoStorage).
+class TQuickLootBlackWhitelistStorage final : public cip::tibia::quickloot::TQuickLootBlackWhitelistStorage,
+                                              public config::ICharacterConfiguration
+{
+    Q_OBJECT
+public:
+    explicit TQuickLootBlackWhitelistStorage(cyclopedia::TItemInfoStorage* items);
+
+    QString configurationName() const override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
+
+private:
+    cyclopedia::TItemInfoStorage* m_items;
+};
+
+}
+namespace cyclopedia {
+
 /// The client-side item settings the Cyclopedia's item page edits: the loot
 /// value settings (CIP: TItemPriceStorage, vtable), the drop
 /// tracker (CIP: TItemTrackingStorage, vtable , ctor)
 /// and the quick loot black/whitelist (CIP: TQuickLootBlackWhitelistStorage,
-/// vtable). They persist per character as
-/// `characterdata/<id>/{itemprices,itemtracking,lootBlackWhitelist}.json`.
+/// vtable). They are character configuration: TItemPriceStorage, itemTracking and
+/// lootBlackWhitelist go to the TCharacterConfigurationManager.
 class TItemInfoStorage final : public QObject
 {
     Q_OBJECT
@@ -84,6 +130,10 @@ public:
     ~TItemInfoStorage() override;
 
     static TItemInfoStorage* instance();
+
+    /// The character configuration parts of the drop tracker and the loot lists.
+    TItemTrackingStorage* itemTracking() { return &m_itemTracking; }
+    quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() { return &m_lootBlackWhitelist; }
 
     bool hasCharacter() const { return m_characterId != 0; }
 
@@ -146,6 +196,10 @@ public:
     /// CIP ObjectInfo (S 0xF4) → typeId description cache (prefer over hub onItemInfo).
     void applyItemInfo(const std::vector<std::tuple<uint16_t, std::string>>& itemList);
 
+public Q_SLOTS:
+    /// The character's configuration was loaded: the views read prices, tracking and lists again.
+    void onCharacterConfigurationLoaded();
+
 Q_SIGNALS:
     void characterChanged();
     void premiumChanged();
@@ -163,6 +217,9 @@ Q_SIGNALS:
     void itemInfoChanged();
 
 private:
+    friend class TItemTrackingStorage;
+    friend class quickloot::TQuickLootBlackWhitelistStorage;
+
     void setCharacter(quint32 characterId);
     void onKill(std::vector<DroppedLoot> drops);
     std::deque<TrackedItem>::iterator findActiveTracked(uint16_t typeId);
@@ -176,15 +233,10 @@ private:
     /// CIP onUpdateSignalTimerExpired .
     void onUpdateTimer();
     void announce(const QStringList& names, const QString& monsterName);
-    /// The configuration manager's dirty flag and save .
+    /// The tracker changed from user input: the configuration manager saves it.
     void markTrackerDirty();
-    void saveTrackerIfDirty();
-    void saveTracker() const;
-    QString configurationPath(const QString& name) const;
-    QJsonObject readConfiguration(const QString& name) const;
-    void writeConfiguration(const QString& name, const QJsonObject& object) const;
-    void savePrices() const;
-    void saveLootList() const;
+    /// The loot lists changed from user input.
+    void markLootListDirty();
     void sendLootList() const;
     int trackLimit() const;
 
@@ -192,7 +244,6 @@ private:
     std::deque<TrackedItem> m_tracked;
     std::vector<DroppedLoot> m_recentDrops;
     quint32 m_autoTrackAboveValue = 0;
-    bool m_trackerDirty = false;
     /// CIP +0xd8 (100 ms, single shot) and its flags +0xe8 / +0xe9 / +0xea.
     QTimer m_updateTimer;
     bool m_pendingConfigurationChanged = false;
@@ -207,6 +258,8 @@ private:
     std::vector<int> m_classifications;
     std::unordered_map<uint16_t, QString> m_itemInfoDescriptions;
     std::vector<client::gamecore::Hook> m_hooks;
+    TItemTrackingStorage m_itemTracking{ this };
+    quickloot::TQuickLootBlackWhitelistStorage m_lootBlackWhitelist{ this };
 };
 
 }

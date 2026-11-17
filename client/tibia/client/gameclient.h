@@ -4,6 +4,7 @@
 
 #include "app/launcherenv.h"
 #include "authentication/loginrequestuploader.h"
+#include "config/characterconfigurationmanager.h"
 #include "game/gameservergamesession.h"
 #include "runtime/gamehost.h"
 
@@ -44,6 +45,7 @@ class TCrashReportSender;
 }
 namespace tibia {
 namespace game {
+class TOutfitDialogStorage;
 class TGameserverGameSession;
 class TSessiondumpGameSession;
 class TStatusbarStorage;
@@ -68,7 +70,7 @@ class TWorldMapRenderProvider;
 }
 namespace tibia {
 namespace config {
-class TCharacterConfigurationManager;
+class TActionBarOptions;
 class TSidebarOptions;
 }
 }
@@ -190,7 +192,15 @@ public:
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.
     game::TStatusbarStorage* statusbarStorage() const { return m_statusbarStorage.get(); }
+    /// The character's actionbars.json.
+    config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions.get(); }
+    /// The character's outfit presets.
+    game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
+    /// Null until createCharacterConfigurationManager.
     config::TCharacterConfigurationManager* characterConfigurationManager() const { return m_characterConfigurationManager.get(); }
+    /// Builds the manager of every character configuration storage: the game client's own
+    /// (sidebars, action bars, statusbar, outfit presets) and the given ones.
+    void createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages);
     /// The session's minimap; null outside the world.
     minimap::TMinimapManager* minimap() const { return m_minimap.get(); }
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
@@ -296,6 +306,8 @@ private:
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
+    std::unique_ptr<config::TActionBarOptions> m_actionBarOptions;
+    std::unique_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
     std::unique_ptr<config::TCharacterConfigurationManager> m_characterConfigurationManager;
     /// Queue connections of the static protocol ingresses (reconnected per session).
     std::vector<QMetaObject::Connection> m_staticIngressConnections;

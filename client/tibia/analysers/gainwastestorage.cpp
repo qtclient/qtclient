@@ -123,7 +123,7 @@ void TGainWasteStorage::onObjectInfosChanged()
     }
 }
 
-QJsonObject TGainWasteStorage::toJson() const
+QJsonObject TGainWasteStorage::configurationToJson() const
 {
     return { { QLatin1String(KeyLootGaugeVisible), m_sides[Loot].gaugeVisible },
              { QLatin1String(KeyLootGraphVisible), m_sides[Loot].graphVisible },
@@ -133,7 +133,7 @@ QJsonObject TGainWasteStorage::toJson() const
              { QLatin1String(KeyWasteGaugeTarget), m_sides[Waste].gaugeTarget } };
 }
 
-void TGainWasteStorage::fromJson(const QJsonObject& json)
+void TGainWasteStorage::configurationFromJson(const QJsonObject& json)
 {
     m_sides[Loot].gaugeVisible = json.value(QLatin1String(KeyLootGaugeVisible)).toBool(false);
     m_sides[Loot].graphVisible = json.value(QLatin1String(KeyLootGraphVisible)).toBool(false);
@@ -141,6 +141,16 @@ void TGainWasteStorage::fromJson(const QJsonObject& json)
     m_sides[Waste].graphVisible = json.value(QLatin1String(KeyWasteGraphVisible)).toBool(false);
     m_sides[Loot].gaugeTarget = readTarget(json, KeyLootGaugeTarget);
     m_sides[Waste].gaugeTarget = readTarget(json, KeyWasteGaugeTarget);
+    emitOptionsChanged();
+}
+
+void TGainWasteStorage::resetConfiguration()
+{
+    for (SideData& side : m_sides) {
+        side.gaugeVisible = true;
+        side.graphVisible = true;
+        side.gaugeTarget = 0;
+    }
     emitOptionsChanged();
 }
 

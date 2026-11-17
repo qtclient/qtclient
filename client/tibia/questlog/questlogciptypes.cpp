@@ -114,7 +114,7 @@ QString TQuestLogStorage::configurationName() const
     return QStringLiteral("questtracking");
 }
 
-QJsonObject TQuestLogStorage::toJson() const
+QJsonObject TQuestLogStorage::configurationToJson() const
 {
     QJsonArray trackedQuests;
     for (const TQuestFlag& flag : m_trackedQuestFlags)
@@ -134,7 +134,7 @@ QJsonObject TQuestLogStorage::toJson() const
 
 /// CIP: tracked flags are plain ids (older files) or {id, isPinned}; the server
 /// fills their data in later.
-void TQuestLogStorage::fromJson(const QJsonObject& json)
+void TQuestLogStorage::configurationFromJson(const QJsonObject& json)
 {
     m_trackedQuestFlags.clear();
     if (json.contains(TrackedQuestsKey) && json[TrackedQuestsKey].type() == QJsonValue::Array) {
@@ -159,6 +159,17 @@ void TQuestLogStorage::fromJson(const QJsonObject& json)
         m_hiddenQuestLines = fromJsonArray(json[HiddenQuestLinesKey].toArray());
     if (json.contains(PinnedQuestLinesKey) && json[PinnedQuestLinesKey].type() == QJsonValue::Array)
         m_pinnedQuestLines = fromJsonArray(json[PinnedQuestLinesKey].toArray());
+}
+
+void TQuestLogStorage::resetConfiguration()
+{
+    m_trackedQuestFlags.clear();
+    m_autoTrackNewQuests = true;
+    m_autoUntrackCompletedQuests = true;
+    m_showCompleted = true;
+    m_showHidden = false;
+    m_hiddenQuestLines.clear();
+    m_pinnedQuestLines.clear();
 }
 
 void TQuestLogStorage::clearQuestLines()

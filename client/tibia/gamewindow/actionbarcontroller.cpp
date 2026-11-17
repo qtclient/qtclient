@@ -1,6 +1,7 @@
 #include "actionbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/actionbaroptions.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/actionbuttoncontroller.h"
@@ -244,12 +245,18 @@ void TActionBarController::onActionBarOptionsChanged()
         if (TActionButtonController* button = buttonController(id, -1))
             applySetting(button, hotkeys->mapping(m_actionBarId, id));
     refreshObjects();
-    // The current preset's first visible button.
-    const int first = hotkeys->firstVisibleButton(m_actionBarId);
-    if (first != m_firstVisibleButtonId) {
-        m_firstVisibleButtonId = first;
-        Q_EMIT firstVisibleButtonIdChanged();
-    }
+}
+
+void TActionBarController::onCharacterConfigurationLoaded()
+{
+    config::TActionBarOptions* options = m_manager->actionBarOptions();
+    const int first = options ? options->firstVisibleButton(static_cast<uint8_t>(m_actionBarId)) : 0;
+    if (first == m_firstVisibleButtonId)
+        return;
+    m_firstVisibleButtonId = first;
+    if (options && m_firstVisibleCanBeSaved)
+        options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), first);
+    Q_EMIT firstVisibleButtonIdChanged();
 }
 
 void TActionBarController::onHotkeyOptionsChanged()
@@ -265,8 +272,8 @@ void TActionBarController::setFirstVisibleButtonId(const int v)
     if (v == m_firstVisibleButtonId)
         return;
     m_firstVisibleButtonId = v;
-    if (m_firstVisibleCanBeSaved)
-        config::THotkeyOptions::instance()->setFirstVisibleButton(m_actionBarId, v);
+    if (config::TActionBarOptions* options = m_manager->actionBarOptions(); options && m_firstVisibleCanBeSaved)
+        options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), v);
     Q_EMIT firstVisibleButtonIdChanged();
 }
 

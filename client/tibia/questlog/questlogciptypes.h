@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/icharacterconfiguration.h"
+
 // CIP-named questlog surfaces (promoted from cipwire).
 
 #include "shared/cip_typed.h"
@@ -110,16 +112,17 @@ struct TQuestFlag
 
 /// The character's quest log and quest tracker state (CIP: questlog::TQuestLogStorage,
 /// character configuration "questtracking").
-class TQuestLogStorage final : public cip::tibia::questlog::TQuestLogStorage
+class TQuestLogStorage final : public cip::tibia::questlog::TQuestLogStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
     explicit TQuestLogStorage(QObject* parent = nullptr);
     ~TQuestLogStorage() override;
 
-    QString configurationName() const;
-    QJsonObject toJson() const;
-    void fromJson(const QJsonObject& json);
+    QString configurationName() const override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     void clearQuestLines();
     const std::map<TQuestLineID, TQuestLine>& questLines() const { return m_questLines; }

@@ -525,25 +525,6 @@ void THotkeyOptions::setMapping(const int actionBarId, const int buttonId, const
     Q_EMIT mappingsChanged();
 }
 
-int THotkeyOptions::firstVisibleButton(const int actionBarId) const
-{
-    const auto it = m_sets.find(m_current);
-    if (it == m_sets.end())
-        return 0;
-    return it->second.actionBarExtra.value(QLatin1String("firstVisibleButtons")).toObject().value(QString::number(actionBarId)).toInt(0);
-}
-
-void THotkeyOptions::setFirstVisibleButton(const int actionBarId, const int index)
-{
-    if (firstVisibleButton(actionBarId) == index)
-        return;
-    QJsonObject& extra = currentSet().actionBarExtra;
-    QJsonObject buttons = extra.value(QLatin1String("firstVisibleButtons")).toObject();
-    buttons.insert(QString::number(actionBarId), index);
-    extra.insert(QStringLiteral("firstVisibleButtons"), buttons);
-    save();
-}
-
 QString THotkeyOptions::triggerActionButtonName(const int actionBarId, const int buttonId)
 {
     return QStringLiteral("TriggerActionButton_%1.%2").arg(actionBarId).arg(buttonId);

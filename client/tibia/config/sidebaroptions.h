@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config/characterconfigurationmanager.h"
+#include "config/icharacterconfiguration.h"
 
 #include <cip_gen.h>
 

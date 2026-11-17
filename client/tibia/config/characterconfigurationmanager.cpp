@@ -1,6 +1,14 @@
 #include "characterconfigurationmanager.h"
 
+#include "analysers/analyserstorages.h"
+#include "analysers/itempricestorage.h"
+#include "config/actionbaroptions.h"
 #include "config/sidebaroptions.h"
+#include "cyclopedia/iteminfostorage.h"
+#include "game/gameciptypes.h"
+#include "game/statusbarstorage.h"
+#include "questlog/questlogciptypes.h"
+#include "skillwheel/skillwheelstorage.h"
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QJsonDocument>
@@ -8,6 +16,11 @@
 namespace tibia::config {
 
 namespace {
+
+constexpr std::size_t HuntingSessionIndex = 7;
+constexpr std::size_t SidebarIndex = 9;
+/// CIP loads and saves the hunting session before the progress storage.
+constexpr std::array<std::size_t, 15> StorageOrder{ 0, 1, 2, 3, 4, 5, 7, 6, 8, 9, 10, 11, 12, 13, 14 };
 
 /// CIP's sidebar widgets for a character without a sidebars file: the
 /// primary battle list and widgets 24 and 10 in the first sidebar.
@@ -21,16 +34,35 @@ TSidebarWidgetsManagerOptions defaultSidebarWidgets()
 
 }
 
-TCharacterConfigurationManager::TCharacterConfigurationManager(std::vector<TConfiguration> configurations,
-                                                               TSidebarOptions* sidebarOptions, QObject* parent)
-    : cip::tibia::config::TCharacterConfigurationManager(parent)
-    , m_configurations(std::move(configurations))
-    , m_sidebarOptions(sidebarOptions)
+namespace {
+
+template<typename Storage>
+TCharacterConfigurationManager::TConfiguration configuration(Storage* storage)
 {
-    for (const TConfiguration& configuration : m_configurations) {
-        if (configuration.object)
-            connect(configuration.object, &cip::tibia::config::ICharacterConfigurationBase::configurationChangedFromUserInput,
-                    this, &TCharacterConfigurationManager::onConfigurationChanged);
+    return { storage, storage };
+}
+
+}
+
+TCharacterConfigurationManager::TCharacterConfigurationManager(const TStorages& storages, QObject* parent)
+    : cip::tibia::config::TCharacterConfigurationManager(parent)
+    , m_storages(storages)
+    , m_configurations{ configuration(storages.itemPrice),     configuration(storages.itemTracking),
+                        configuration(storages.questLog),      configuration(storages.gainWaste),
+                        configuration(storages.impact),        configuration(storages.damageInput),
+                        configuration(storages.progress),      configuration(storages.huntingSession),
+                        configuration(storages.quickLootBlackWhitelist), configuration(storages.sidebar),
+                        configuration(storages.actionBar),     configuration(storages.statusbar),
+                        TConfiguration{},                      configuration(storages.outfitDialog),
+                        configuration(storages.skillWheel) }
+{
+    // Every storage but the hunting session marks the configuration dirty (CIP connects the
+    // progress storage twice instead).
+    for (std::size_t index = 0; index < m_configurations.size(); ++index) {
+        const TConfiguration& entry = m_configurations[index];
+        if (entry.object && index != HuntingSessionIndex)
+            connect(entry.object, &cip::tibia::config::ICharacterConfigurationBase::configurationChangedFromUserInput, this,
+                    &TCharacterConfigurationManager::onConfigurationChanged);
     }
 }
 
@@ -63,8 +95,9 @@ void TCharacterConfigurationManager::saveConfiguration()
 {
     if (!m_dirty || m_characterId == 0)
         return;
-    for (const TConfiguration& configuration : m_configurations)
-        save(configuration);
+    for (const std::size_t index : StorageOrder)
+        if (m_configurations[index].configuration)
+            save(m_configurations[index]);
     m_dirty = false;
 }
 
@@ -72,15 +105,19 @@ void TCharacterConfigurationManager::loadConfigurationForCharacter(const quint32
 {
     m_characterId = characterId;
     if (characterId != 0) {
-        for (const TConfiguration& configuration : m_configurations)
-            configuration.configuration->resetConfiguration();
+        for (const TConfiguration& entry : m_configurations)
+            if (entry.configuration)
+                entry.configuration->resetConfiguration();
         bool sidebarLoaded = true;
-        for (const TConfiguration& configuration : m_configurations) {
-            const bool loaded = load(configuration);
-            if (m_sidebarOptions && configuration.configuration == static_cast<ICharacterConfiguration*>(m_sidebarOptions)) {
+        for (const std::size_t index : StorageOrder) {
+            const TConfiguration& entry = m_configurations[index];
+            if (!entry.configuration)
+                continue;
+            const bool loaded = load(entry);
+            if (index == SidebarIndex) {
                 sidebarLoaded = loaded;
                 if (!loaded)
-                    m_sidebarOptions->setWidgetsManagerOptions(defaultSidebarWidgets());
+                    m_storages.sidebar->setWidgetsManagerOptions(defaultSidebarWidgets());
             }
         }
         m_sidebarLoadedFromFile = sidebarLoaded;

@@ -88,7 +88,9 @@ void TItemPriceStorage::onPremiumTimeChanged()
 
 QString TItemPriceStorage::configurationName() const { return ConfigurationName; }
 
-QJsonObject TItemPriceStorage::toJson() const
+void TItemPriceStorage::resetConfiguration() { configurationFromJson({}); }
+
+QJsonObject TItemPriceStorage::configurationToJson() const
 {
     QJsonObject prices;
     for (const auto& [typeId, price] : m_customSalePrices) {
@@ -112,7 +114,7 @@ QJsonObject TItemPriceStorage::toJson() const
     return json;
 }
 
-void TItemPriceStorage::fromJson(const QJsonObject& json)
+void TItemPriceStorage::configurationFromJson(const QJsonObject& json)
 {
     // Only market sources are kept: a missing entry reads as Npc.
     m_primaryLootValueSources.clear();

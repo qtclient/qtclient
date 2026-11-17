@@ -25,6 +25,9 @@ class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
+namespace config {
+class TActionBarOptions;
+}
 namespace gamewindow {
 
 /// The nine action bars around the map (CIP: TActionBarManager with its
@@ -43,6 +46,9 @@ public:
 
     TActionBarController* bar(int actionBarId) const;
     bool chatOn() const;
+    /// The character's action bar scroll positions (CIP: the session's TActionBarOptions).
+    config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions; }
+    void setActionBarOptions(config::TActionBarOptions* options) { m_actionBarOptions = options; }
 
     void openAssignDialog(TActionBarController* bar, TActionBarController::EAssignKind kind, int buttonId, int multiActionIndex);
     /// CIP : RecordKeyboardShortcutDialog for
@@ -61,6 +67,8 @@ public:
 
 public Q_SLOTS:
     void onChatModeChanged();
+    /// The character's configuration was loaded: every bar reads its first visible button.
+    void onCharacterConfigurationLoaded();
     /// Character entered the world: auto-switch preset, fresh counts.
     void onWorldEntered();
     void onWorldLeft();
@@ -95,6 +103,7 @@ private:
     config::TActionBarsOptionsPage m_displayOptions;
     game::TCooldownStorage m_cooldowns;
     std::array<std::unique_ptr<TActionBarGroup>, 3> m_groups;
+    config::TActionBarOptions* m_actionBarOptions = nullptr;
     QTimer m_cooldownTimer;
     QTimer m_objectsTimer;
     std::vector<client::gamecore::Hook> m_hooks;

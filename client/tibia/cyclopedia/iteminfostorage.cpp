@@ -33,16 +33,15 @@
 
 namespace tibia::cyclopedia {
 
+const QString LootListConfiguration = QStringLiteral("lootBlackWhitelist");
+const QString TrackerConfiguration = QStringLiteral("itemtracking");
+
 namespace {
 
 using Args = std::vector<std::any>;
 
 TItemInfoStorage* s_instance = nullptr;
 
-const QString PricesConfiguration = QStringLiteral("itemprices");
-const QString LootListConfiguration = QStringLiteral("lootBlackWhitelist");
-/// CIP configurationName ; keys in.
-const QString TrackerConfiguration = QStringLiteral("itemtracking");
 /// CIP TAKE_AUTOMATIC_SCREENSHOT parameter for valuable loot .
 constexpr int ValuableLootScreenshot = 52;
 /// CIP DAT_1022bc210, the separator colour of coloured names.
@@ -146,8 +145,6 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
 
 TItemInfoStorage::~TItemInfoStorage()
 {
-    // CIP ~TCharacterConfigurationManager saves what is dirty.
-    saveTrackerIfDirty();
     if (s_instance == this)
         s_instance = nullptr;
 }
@@ -170,20 +167,14 @@ qint64 TItemInfoStorage::marketPrice(const uint16_t typeId) const { return stati
 
 bool TItemInfoStorage::setCustomPrice(const uint16_t typeId, const int price)
 {
-    if (!prices()->setCustomSalePrice(typeId, static_cast<quint32>(price)))
-        return false;
-    savePrices();
-    return true;
+    return prices()->setCustomSalePrice(typeId, static_cast<quint32>(price));
 }
 
 int TItemInfoStorage::customPrice(const uint16_t typeId) const { return static_cast<int>(prices()->customSalePrice(typeId)); }
 
 bool TItemInfoStorage::setLootValueSource(const uint16_t typeId, const int source)
 {
-    if (!prices()->setPrimaryLootValueSource(typeId, source))
-        return false;
-    savePrices();
-    return true;
+    return prices()->setPrimaryLootValueSource(typeId, source);
 }
 
 int TItemInfoStorage::lootValueSource(const uint16_t typeId) const { return prices()->primaryLootValueSource(typeId); }
@@ -413,28 +404,52 @@ void TItemInfoStorage::scheduleExpiry()
     m_expiryTimer.start(static_cast<int>(std::min<qint64>(delay, RecentDropDurationMs + 1)));
 }
 
-void TItemInfoStorage::markTrackerDirty() { m_trackerDirty = m_characterId != 0; }
+void TItemInfoStorage::markTrackerDirty() { Q_EMIT m_itemTracking.configurationChangedFromUserInput(); }
 
-void TItemInfoStorage::saveTrackerIfDirty()
+void TItemInfoStorage::markLootListDirty() { Q_EMIT m_lootBlackWhitelist.configurationChangedFromUserInput(); }
+
+TItemTrackingStorage::TItemTrackingStorage(TItemInfoStorage* items)
+    : m_items(items)
 {
-    if (!std::exchange(m_trackerDirty, false) || m_characterId == 0)
-        return;
-    saveTracker();
 }
 
-void TItemInfoStorage::saveTracker() const
+QString TItemTrackingStorage::configurationName() const { return TrackerConfiguration; }
+
+QJsonObject TItemTrackingStorage::configurationToJson() const
 {
     // CIP : temporarily tracked entries are not saved.
     QJsonArray tracked;
-    for (const TrackedItem& item : m_tracked) {
+    for (const TItemInfoStorage::TrackedItem& item : m_items->m_tracked) {
         if (item.temporary)
             continue;
         tracked.append(QJsonObject{ { QStringLiteral("objectType"), static_cast<int>(item.typeId) },
                                     { QStringLiteral("recordStartTimestamp"), static_cast<qint64>(item.recordStartTimestamp) },
                                     { QStringLiteral("dropCount"), static_cast<qint64>(item.dropCount) } });
     }
-    writeConfiguration(TrackerConfiguration, QJsonObject{ { QStringLiteral("trackedItems"), tracked },
-                                                          { QStringLiteral("autoTrackAboveValue"), static_cast<qint64>(m_autoTrackAboveValue) } });
+    return QJsonObject{ { QStringLiteral("trackedItems"), tracked },
+                        { QStringLiteral("autoTrackAboveValue"), static_cast<qint64>(m_items->m_autoTrackAboveValue) } };
+}
+
+void TItemTrackingStorage::configurationFromJson(const QJsonObject& json)
+{
+    // CIP : saved order, duplicates skipped.
+    for (const QJsonValue& value : json.value(QLatin1String("trackedItems")).toArray()) {
+        const QJsonObject entry = value.toObject();
+        const int typeId = entry.value(QLatin1String("objectType")).toInt();
+        if (typeId <= 0 || typeId > 0xffff || m_items->isTracked(static_cast<uint16_t>(typeId))
+            || !entry.contains(QLatin1String("recordStartTimestamp")) || !entry.contains(QLatin1String("dropCount")))
+            continue;
+        m_items->m_tracked.push_back({ static_cast<uint16_t>(typeId),
+                                       static_cast<quint32>(entry.value(QLatin1String("recordStartTimestamp")).toInteger()),
+                                       static_cast<quint32>(entry.value(QLatin1String("dropCount")).toInteger()), false });
+    }
+    m_items->m_autoTrackAboveValue = static_cast<quint32>(json.value(QLatin1String("autoTrackAboveValue")).toInt());
+}
+
+void TItemTrackingStorage::resetConfiguration()
+{
+    m_items->m_tracked.clear();
+    m_items->m_autoTrackAboveValue = 0;
 }
 
 int TItemInfoStorage::trackLimit() const { return premium() ? TrackedItemsPremium : TrackedItemsFree; }
@@ -452,7 +467,7 @@ void TItemInfoStorage::setLootListed(const uint16_t typeId, const bool listed)
     } else if (list.erase(typeId) == 0) {
         return;
     }
-    saveLootList();
+    markLootListDirty();
     sendLootList();
     Q_EMIT lootListChanged();
 }
@@ -469,7 +484,7 @@ void TItemInfoStorage::setLootListType(const int type)
     if (m_lootListType == next)
         return;
     m_lootListType = next;
-    saveLootList();
+    markLootListDirty();
     sendLootList();
     Q_EMIT lootListChanged();
 }
@@ -485,7 +500,7 @@ void TItemInfoStorage::replaceLootLists(const int type, std::set<uint16_t> black
     m_lootListType = type == Whitelist ? Whitelist : Blacklist;
     m_lootLists[Blacklist] = std::move(black);
     m_lootLists[Whitelist] = std::move(white);
-    saveLootList();
+    markLootListDirty();
     sendLootList();
     Q_EMIT lootListChanged();
 }
@@ -494,92 +509,13 @@ void TItemInfoStorage::setCharacter(const quint32 characterId)
 {
     if (characterId == m_characterId)
         return;
-    // CIP onPlayerCreatureLoaded (vslot 30,): save, then load the new character.
-    saveTrackerIfDirty();
     m_characterId = characterId;
-    m_tracked.clear();
     m_recentDrops.clear();
     m_expiryTimer.stop();
     m_updateTimer.stop();
     m_pendingConfigurationChanged = m_pendingRecentDropsChanged = m_pendingScreenshot = false;
-    m_autoTrackAboveValue = 0;
-    m_lootListType = Blacklist;
-    m_lootLists[Blacklist].clear();
-    m_lootLists[Whitelist].clear();
-    prices()->fromJson(m_characterId != 0 ? readConfiguration(PricesConfiguration) : QJsonObject{});
-    if (m_characterId != 0) {
-        const QJsonObject lootList = readConfiguration(LootListConfiguration);
-        m_lootListType = lootList.value(QLatin1String("listType")).toString() == QLatin1String("whitelist") ? Whitelist : Blacklist;
-        const auto readList = [&lootList](const char* key, std::set<uint16_t>& list) {
-            for (const QJsonValue& value : lootList.value(QLatin1String(key)).toArray()) {
-                const int typeId = value.toInt();
-                if (typeId > 0 && typeId <= 0xffff && static_cast<int>(list.size()) < MaxLootListSize)
-                    list.insert(static_cast<uint16_t>(typeId));
-            }
-        };
-        readList("blacklistTypes", m_lootLists[Blacklist]);
-        readList("whitelistTypes", m_lootLists[Whitelist]);
-
-        // CIP : saved order, duplicates skipped.
-        const QJsonObject tracker = readConfiguration(TrackerConfiguration);
-        for (const QJsonValue& value : tracker.value(QLatin1String("trackedItems")).toArray()) {
-            const QJsonObject entry = value.toObject();
-            const int typeId = entry.value(QLatin1String("objectType")).toInt();
-            if (typeId <= 0 || typeId > 0xffff || isTracked(static_cast<uint16_t>(typeId))
-                || !entry.contains(QLatin1String("recordStartTimestamp")) || !entry.contains(QLatin1String("dropCount")))
-                continue;
-            m_tracked.push_back({ static_cast<uint16_t>(typeId),
-                                  static_cast<quint32>(entry.value(QLatin1String("recordStartTimestamp")).toInteger()),
-                                  static_cast<quint32>(entry.value(QLatin1String("dropCount")).toInteger()), false });
-        }
-        m_autoTrackAboveValue = static_cast<quint32>(tracker.value(QLatin1String("autoTrackAboveValue")).toInt());
-    }
     Q_EMIT characterChanged();
-    Q_EMIT pricesChanged();
-    Q_EMIT trackingChanged();
     Q_EMIT recentLootDropsChanged();
-    Q_EMIT lootListChanged();
-}
-
-QString TItemInfoStorage::configurationPath(const QString& name) const
-{
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(name);
-}
-
-QJsonObject TItemInfoStorage::readConfiguration(const QString& name) const
-{
-    QFile file(configurationPath(name));
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    return QJsonDocument::fromJson(file.readAll()).object();
-}
-
-void TItemInfoStorage::writeConfiguration(const QString& name, const QJsonObject& object) const
-{
-    if (m_characterId == 0)
-        return;
-    const QString path = configurationPath(name);
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
-}
-
-void TItemInfoStorage::savePrices() const { writeConfiguration(PricesConfiguration, prices()->toJson()); }
-
-void TItemInfoStorage::saveLootList() const
-{
-    const auto toArray = [](const std::set<uint16_t>& list) {
-        QJsonArray array;
-        for (const uint16_t typeId : list)
-            array.append(typeId);
-        return array;
-    };
-    writeConfiguration(LootListConfiguration,
-                       QJsonObject{ { QStringLiteral("listType"), m_lootListType == Whitelist ? QStringLiteral("whitelist") : QStringLiteral("blacklist") },
-                                    { QStringLiteral("blacklistTypes"), toArray(m_lootLists[Blacklist]) },
-                                    { QStringLiteral("whitelistTypes"), toArray(m_lootLists[Whitelist]) } });
 }
 
 void TItemInfoStorage::sendLootList() const
@@ -587,6 +523,63 @@ void TItemInfoStorage::sendLootList() const
     const std::set<uint16_t>& list = m_lootLists[m_lootListType];
     const std::vector<uint16_t> items(list.begin(), list.end());
     tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(m_lootListType), static_cast<uint16_t>(items.size()), items);
+}
+
+void TItemInfoStorage::onCharacterConfigurationLoaded()
+{
+    Q_EMIT pricesChanged();
+    Q_EMIT trackingChanged();
+    Q_EMIT lootListChanged();
+}
+
+}
+
+namespace tibia::quickloot {
+
+TQuickLootBlackWhitelistStorage::TQuickLootBlackWhitelistStorage(cyclopedia::TItemInfoStorage* items)
+    : m_items(items)
+{
+}
+
+QString TQuickLootBlackWhitelistStorage::configurationName() const { return cyclopedia::LootListConfiguration; }
+
+void TQuickLootBlackWhitelistStorage::configurationFromJson(const QJsonObject& json)
+{
+    using cyclopedia::TItemInfoStorage;
+    m_items->m_lootListType = json.value(QLatin1String("listType")).toString() == QLatin1String("whitelist") ? TItemInfoStorage::Whitelist
+                                                                                                             : TItemInfoStorage::Blacklist;
+    const auto readList = [&json](const char* key, std::set<uint16_t>& list) {
+        for (const QJsonValue& value : json.value(QLatin1String(key)).toArray()) {
+            const int typeId = value.toInt();
+            if (typeId > 0 && typeId <= 0xffff && static_cast<int>(list.size()) < TItemInfoStorage::MaxLootListSize)
+                list.insert(static_cast<uint16_t>(typeId));
+        }
+    };
+    readList("blacklistTypes", m_items->m_lootLists[TItemInfoStorage::Blacklist]);
+    readList("whitelistTypes", m_items->m_lootLists[TItemInfoStorage::Whitelist]);
+}
+
+void TQuickLootBlackWhitelistStorage::resetConfiguration()
+{
+    using cyclopedia::TItemInfoStorage;
+    m_items->m_lootListType = TItemInfoStorage::Blacklist;
+    m_items->m_lootLists[TItemInfoStorage::Blacklist].clear();
+    m_items->m_lootLists[TItemInfoStorage::Whitelist].clear();
+}
+
+QJsonObject TQuickLootBlackWhitelistStorage::configurationToJson() const
+{
+    using cyclopedia::TItemInfoStorage;
+    const auto toArray = [](const std::set<uint16_t>& list) {
+        QJsonArray array;
+        for (const uint16_t typeId : list)
+            array.append(typeId);
+        return array;
+    };
+    return QJsonObject{ { QStringLiteral("listType"),
+                          m_items->m_lootListType == TItemInfoStorage::Whitelist ? QStringLiteral("whitelist") : QStringLiteral("blacklist") },
+                        { QStringLiteral("blacklistTypes"), toArray(m_items->m_lootLists[TItemInfoStorage::Blacklist]) },
+                        { QStringLiteral("whitelistTypes"), toArray(m_items->m_lootLists[TItemInfoStorage::Whitelist]) } };
 }
 
 }

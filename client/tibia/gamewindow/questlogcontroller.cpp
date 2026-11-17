@@ -303,7 +303,6 @@ TQuestLogController::TQuestLogController(QObject* parent)
     connect(&m_storage, &questlog::TQuestLogStorage::questLinePartsChanged, this, &TQuestLogController::onQuestLinePartsChanged);
     connect(&m_storage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this] { Q_EMIT trackingChanged(); });
     connect(&m_storage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
-    connect(&m_storage, &questlog::TQuestLogStorage::configurationChangedFromUserInput, this, &TQuestLogController::saveStorage);
     onFilterOptionChanged();
 
     input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameAction& action) {
@@ -323,7 +322,6 @@ TQuestLogController::~TQuestLogController()
 {
     input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, nullptr);
     input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, nullptr);
-    saveStorage();
     resetSelection();
 }
 
@@ -369,7 +367,6 @@ bool TQuestLogController::showHidden() const
 /// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
 void TQuestLogController::showDialog(const int parameter)
 {
-    ensureStorage();
     if (tibia::game::isOnline())
         tibia::game::requestQuestLog();
     if ((parameter & 0xff0000) == 0) {
@@ -390,21 +387,9 @@ void TQuestLogController::showDialog(const int parameter)
     dialog()->show();
 }
 
-void TQuestLogController::ensureStorage()
-{
-    const quint32 characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    if (characterId == m_characterId)
-        return;
-    saveStorage();
-    m_characterId = characterId;
-    loadStorage();
-}
-
 void TQuestLogController::clear()
 {
     dialog()->close();
-    saveStorage();
-    m_characterId = 0;
     m_storage.clearQuestLines();
     m_storage.setTrackedQuestFlags({}, 0, true);
     m_lines.setLines({});
@@ -473,6 +458,8 @@ void TQuestLogController::onQuestLinePartsChanged(const int questLineId)
 /// CIP: sends the stored tracked flags once the character's configuration is in.
 void TQuestLogController::onCharacterConfigurationLoaded()
 {
+    m_tracker.reload();
+    onQuestLinesChanged();
     QList<int> ids;
     for (const questlog::TQuestFlag& flag : m_storage.trackedQuestFlags())
         ids.append(flag.id);
@@ -656,36 +643,5 @@ void TQuestLogController::startMission(const QString& taskEntryId)
     m_missionBackend->missionAdvance(key, entryId, m_selectedQuestFlagId);
 }
 
-/// The character's "questtracking" configuration, one file per character.
-void TQuestLogController::loadStorage()
-{
-    QJsonObject json;
-    if (m_characterId != 0) {
-        const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                                  + QStringLiteral("/characterdata/%1").arg(m_characterId);
-        QFile file(directory + QStringLiteral("/%1.json").arg(m_storage.configurationName()));
-        if (file.open(QIODevice::ReadOnly))
-            json = QJsonDocument::fromJson(file.readAll()).object();
-    }
-    m_storage.fromJson(json);
-    m_tracker.reload();
-    onQuestLinesChanged();
-    if (m_characterId != 0)
-        onCharacterConfigurationLoaded();
-}
-
-void TQuestLogController::saveStorage()
-{
-    if (m_characterId == 0)
-        return;
-    const QString path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                         + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(m_storage.configurationName());
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly))
-        return;
-    file.write(QJsonDocument(m_storage.toJson()).toJson());
-    file.commit();
-}
 
 }

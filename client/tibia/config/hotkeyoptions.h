@@ -158,11 +158,6 @@ public:
     /// CIP 's lookup: the bar button's setting in the current set.
     TActionSetting mapping(int actionBarId, int buttonId) const;
     void setMapping(int actionBarId, int buttonId, const TActionSetting& setting);
-    /// actionBarOptions.firstVisibleButtons of the current set: the 0-based
-    /// index of a bar's first scrolled-in button by bar id (CIP: read by
-    /// , written by).
-    int firstVisibleButton(int actionBarId) const;
-    void setFirstVisibleButton(int actionBarId, int index);
     /// The key bound to TriggerActionButton_<bar>.<button> (the button's label).
     QKeySequence buttonKeys(int actionBarId, int buttonId, bool chatOn) const;
     /// Every key bound to TriggerActionButton_<bar>.<button> in one chat mode

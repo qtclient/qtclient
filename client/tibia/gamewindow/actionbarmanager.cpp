@@ -272,6 +272,14 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
     }
 }
 
+void TActionBarManager::onCharacterConfigurationLoaded()
+{
+    for (const auto& group : m_groups)
+        if (group)
+            for (TActionBarController* bar : group->bars())
+                bar->onCharacterConfigurationLoaded();
+}
+
 void TActionBarManager::onWorldLeft()
 {
     m_cooldownTimer.stop();

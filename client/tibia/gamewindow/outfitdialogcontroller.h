@@ -162,9 +162,6 @@ public:
     QObject* createFromClipboard() override;
 
 private:
-    QString presetsFilePath() const;
-    void loadPresets();
-    void savePresets();
 
     TCustomiseCharacterModel m_outfits;
     TCustomiseCharacterModel m_mounts;
@@ -176,8 +173,9 @@ private:
     tibia::qmlcomponents::TOutfitPresetQmlType* m_preset;
     TGenericEnterTextDialogController* m_renameDialog = nullptr;
     int m_renameIndex = -1;
-    quint32 m_characterId = 0;
-    QJsonArray m_presetArray;
+    /// The game client's outfit presets (empty without a game client).
+    const QJsonArray& presets() const;
+    void setPresets(QJsonArray presets);
     WindowOptions m_windowOptions;
 };
 

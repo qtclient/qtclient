@@ -66,9 +66,6 @@ TSkillWheelStorage::TSkillWheelStorage(QObject* parent)
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clear();
-        m_presetsOwner = 0;
-        m_presets.clear();
-        m_currentPreset.clear();
     });
 }
 
@@ -151,7 +148,7 @@ void TSkillWheelStorage::onDestinyWheel(const Args& args)
 
     m_currentWheel = m_serverWheel;
     if (m_isLocal)
-        loadPresets();
+        ensureDefaultPreset();
     Q_EMIT serverSkillWheelChanged();
     Q_EMIT gemInventoryChanged();
     Q_EMIT modGradesChanged();
@@ -241,47 +238,41 @@ int TSkillWheelStorage::lesserFragments() const { return static_cast<int>(balanc
 int TSkillWheelStorage::greaterFragments() const { return static_cast<int>(balance(tibia::client::RESOURCE_GREATER_FRAGMENT)); }
 uint64_t TSkillWheelStorage::gold() const { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
 
-QString TSkillWheelStorage::presetsPath() const
+void TSkillWheelStorage::configurationFromJson(const QJsonObject& json)
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/skillWheel.json").arg(m_presetsOwner);
+    for (const QJsonValue& value : json.value(QLatin1String("presets")).toArray()) {
+        const QJsonObject object = value.toObject();
+        TPreset preset{ object.value(QLatin1String("name")).toString(), {} };
+        if (preset.name.isEmpty() || this->preset(preset.name) || m_presets.size() >= MaxPresets)
+            continue;
+        const QJsonArray points = object.value(QLatin1String("points")).toArray();
+        for (int i = 0; i < SlotCount && i < points.size(); ++i)
+            preset.wheel.points[i] = points.at(i).toInt();
+        const QJsonArray gems = object.value(QLatin1String("gems")).toArray();
+        for (int v = 0; v < VesselCount && v < gems.size(); ++v)
+            preset.wheel.gems[v] = gems.at(v).toInt(NoGem);
+        m_presets.append(preset);
+    }
+    m_currentPreset = json.value(QLatin1String("active")).toString();
+    Q_EMIT presetsChanged();
 }
 
-void TSkillWheelStorage::loadPresets()
+void TSkillWheelStorage::resetConfiguration()
 {
-    if (m_presetsOwner == m_playerId && !m_presets.isEmpty())
-        return;
-    m_presetsOwner = m_playerId;
     m_presets.clear();
     m_currentPreset.clear();
-    QFile file(presetsPath());
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
-        for (const QJsonValue& value : root.value(QLatin1String("presets")).toArray()) {
-            const QJsonObject object = value.toObject();
-            TPreset preset{ object.value(QLatin1String("name")).toString(), {} };
-            if (preset.name.isEmpty() || this->preset(preset.name) || m_presets.size() >= MaxPresets)
-                continue;
-            const QJsonArray points = object.value(QLatin1String("points")).toArray();
-            for (int i = 0; i < SlotCount && i < points.size(); ++i)
-                preset.wheel.points[i] = points.at(i).toInt();
-            const QJsonArray gems = object.value(QLatin1String("gems")).toArray();
-            for (int v = 0; v < VesselCount && v < gems.size(); ++v)
-                preset.wheel.gems[v] = gems.at(v).toInt(NoGem);
-            m_presets.append(preset);
-        }
-        m_currentPreset = root.value(QLatin1String("active")).toString();
-    }
+}
+
+void TSkillWheelStorage::ensureDefaultPreset()
+{
     if (m_presets.isEmpty())
         m_presets.append({ DefaultPresetName, m_serverWheel });
     if (!preset(m_currentPreset))
         m_currentPreset = m_presets.first().name;
 }
 
-void TSkillWheelStorage::savePresets() const
+QJsonObject TSkillWheelStorage::configurationToJson() const
 {
-    if (m_presetsOwner == 0)
-        return;
     QJsonArray presets;
     for (const TPreset& preset : m_presets) {
         QJsonArray points, gems;
@@ -291,15 +282,10 @@ void TSkillWheelStorage::savePresets() const
             gems.append(g);
         presets.append(QJsonObject{ { QLatin1String("name"), preset.name }, { QLatin1String("points"), points }, { QLatin1String("gems"), gems } });
     }
-    const QJsonObject root{ { QLatin1String("active"), m_currentPreset }, { QLatin1String("presets"), presets } };
-    const QString path = presetsPath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(root).toJson());
-        file.commit();
-    }
+    return QJsonObject{ { QLatin1String("active"), m_currentPreset }, { QLatin1String("presets"), presets } };
 }
+
+void TSkillWheelStorage::markPresetsChanged() { Q_EMIT configurationChangedFromUserInput(); }
 
 const TPreset* TSkillWheelStorage::preset(const QString& name) const
 {
@@ -345,7 +331,7 @@ bool TSkillWheelStorage::selectPreset(const QString& name)
     bool adjusted = false;
     const TWheel wheel = sanitized(selected->wheel, &adjusted);
     m_currentPreset = name;
-    savePresets();
+    markPresetsChanged();
     setCurrentWheel(wheel);
     Q_EMIT presetsChanged();
     return !adjusted;
@@ -357,7 +343,7 @@ void TSkillWheelStorage::saveCurrentPreset()
     if (it == m_presets.end())
         return;
     it->wheel = m_currentWheel;
-    savePresets();
+    markPresetsChanged();
     Q_EMIT presetsChanged();
 }
 
@@ -367,7 +353,7 @@ bool TSkillWheelStorage::addPreset(const QString& name, const TWheel& wheel)
         return false;
     m_presets.append({ name, wheel });
     m_currentPreset = name;
-    savePresets();
+    markPresetsChanged();
     setCurrentWheel(wheel);
     Q_EMIT presetsChanged();
     return true;
@@ -382,7 +368,7 @@ bool TSkillWheelStorage::renameCurrentPreset(const QString& name)
         return false;
     it->name = name;
     m_currentPreset = name;
-    savePresets();
+    markPresetsChanged();
     Q_EMIT presetsChanged();
     return true;
 }
@@ -393,7 +379,7 @@ bool TSkillWheelStorage::deleteCurrentPreset()
         return false;
     m_presets.removeIf([&](const TPreset& p) { return p.name == m_currentPreset; });
     m_currentPreset = m_presets.first().name;
-    savePresets();
+    markPresetsChanged();
     Q_EMIT presetsChanged();
     return true;
 }

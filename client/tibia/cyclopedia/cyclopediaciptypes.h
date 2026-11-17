@@ -179,13 +179,6 @@ public:
     using cip::tibia::cyclopedia::TItemPriceStorage::TItemPriceStorage;
 };
 
-class TItemTrackingStorage final : public cip::tibia::cyclopedia::TItemTrackingStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TItemTrackingStorage::TItemTrackingStorage;
-};
-
 class TMonsterBonusEffectStorage final : public cip::tibia::cyclopedia::TMonsterBonusEffectStorage
 {
     Q_OBJECT

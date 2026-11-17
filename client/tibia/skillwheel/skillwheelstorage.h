@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/icharacterconfiguration.h"
+
 #include "client/gamecore.h"
 #include "skillwheel/skillwheeldata.h"
 
@@ -25,8 +27,8 @@ struct TPreset
 /// The Wheel of Destiny data of the shown player (CIP: TSkillWheelStorage):
 /// the server's wheel (onDestinyWheel), the edited current wheel, the revealed
 /// gems and mod grades, the gem and fragment balances, and the own presets
-/// (<app data>/characterdata/<player id>/skillWheel.json).
-class TSkillWheelStorage final : public cip::tibia::skillwheel::TSkillWheelStorage
+/// (character configuration "skillWheel").
+class TSkillWheelStorage final : public cip::tibia::skillwheel::TSkillWheelStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -34,6 +36,12 @@ public:
 
     explicit TSkillWheelStorage(QObject* parent = nullptr);
     ~TSkillWheelStorage() override;
+
+    QString configurationName() const override { return QStringLiteral("skillWheel"); }
+    /// {"active": name, "presets": [{"name", "points", "gems"}]}.
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     bool hasData() const { return m_hasData; }
     uint32_t playerId() const { return m_playerId; }
@@ -104,9 +112,10 @@ private:
     void onDestinyWheel(const std::vector<std::any>& args);
     void onGemAtelierGemRevealed(const std::vector<std::any>& args);
     void emitResourceSignals();
-    void loadPresets();
-    void savePresets() const;
-    QString presetsPath() const;
+    /// The own wheel's presets start with the server's wheel as the default one.
+    void ensureDefaultPreset();
+    /// The presets changed from user input: the configuration manager saves them.
+    void markPresetsChanged();
     TWheel sanitized(const TWheel& wheel, bool* adjusted) const;
 
     std::vector<client::gamecore::Hook> m_hooks;
@@ -128,7 +137,6 @@ private:
     TGrades m_basicGrades;
     TGrades m_supremeGrades;
 
-    uint32_t m_presetsOwner = 0;
     QList<TPreset> m_presets;
     QString m_currentPreset;
 };

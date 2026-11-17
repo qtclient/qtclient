@@ -83,6 +83,8 @@ public:
 public Q_SLOTS:
     /// The current hotkey set's mappings of this bar onto its buttons.
     void onActionBarOptionsChanged() override;
+    /// The character's first visible button from TActionBarOptions.
+    void onCharacterConfigurationLoaded();
     /// The keys of each button's TriggerActionButton action in the current
     /// chat mode.
     void onHotkeyOptionsChanged() override;

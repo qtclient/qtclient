@@ -4,11 +4,13 @@
 
 #include <deque>
 #include "client/gamecore.h"
+#include "config/icharacterconfiguration.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
 #include <QByteArray>
+#include <QJsonArray>
 #include <QObject>
 
 #include <array>
@@ -230,11 +232,28 @@ public:
     using cip::tibia::game::TInternalGameActionRouter::TInternalGameActionRouter;
 };
 
-class TOutfitDialogStorage final : public cip::tibia::game::TOutfitDialogStorage
+/// The character's outfit presets (character configuration "outfitPresets", qtclient's
+/// format {"presets": [...]}).
+class TOutfitDialogStorage final : public cip::tibia::game::TOutfitDialogStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TOutfitDialogStorage::TOutfitDialogStorage;
+    explicit TOutfitDialogStorage(QObject* parent = nullptr);
+    ~TOutfitDialogStorage() override;
+    /// The game client's storage (CIP: the session's); null without one.
+    static TOutfitDialogStorage* instance();
+
+    QString configurationName() const override { return QStringLiteral("outfitPresets"); }
+    QJsonObject configurationToJson() const override { return QJsonObject{ { QStringLiteral("presets"), m_presets } }; }
+    void configurationFromJson(const QJsonObject& json) override { m_presets = json.value(QStringLiteral("presets")).toArray(); }
+    void resetConfiguration() override { m_presets = {}; }
+
+    const QJsonArray& presets() const { return m_presets; }
+    /// Announces configurationChangedFromUserInput.
+    void setPresets(QJsonArray presets);
+
+private:
+    QJsonArray m_presets;
 };
 
 class TPassiveAbilityInfoStorage final : public cip::tibia::game::TPassiveAbilityInfoStorage

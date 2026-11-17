@@ -136,7 +136,6 @@ private:
     void sendTurnTowardsMoveDirection(bool enabled);
 
     /// CIP config surfaces owned for the options dialog lifetime.
-    config::TActionBarOptions m_actionBarOptions;
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
     config::TConfigBackupReader::TConfigBackupException m_configBackupException;

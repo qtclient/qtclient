@@ -25,6 +25,8 @@
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpgamesession.h"
 #include "gamewindow/actionbarmanager.h"
+#include "analysers/itempricestorage.h"
+#include "config/characterconfigurationmanager.h"
 #include "gamewindow/cooldownbarcontroller.h"
 #include "gamewindow/buttonbarcontroller.h"
 #include "config/hotkeyoptions.h"
@@ -1031,6 +1033,32 @@ int main(int argc, char** argv)
     gamewindow::TActionBarManager actionBars(gameWindowItem, mapWindowPane, engine.get(), [&chat] { return chat.chatMode(); });
     qInfo("tibia.boot: after ActionBarManager");
     QObject::connect(&chat, &gamewindow::TChatController::chatModeChanged, &actionBars, &gamewindow::TActionBarManager::onChatModeChanged);
+    actionBars.setActionBarOptions(gameClient.actionBarOptions());
+    {
+        config::TCharacterConfigurationManager::TStorages storages;
+        storages.itemPrice = analysers::TItemPriceStorage::instance();
+        storages.questLog = informationDialogs.questLog() ? informationDialogs.questLog()->questLogStorage() : nullptr;
+        storages.gainWaste = analyserStorages.gainWaste();
+        storages.impact = analyserStorages.impact();
+        storages.damageInput = analyserStorages.damageInput();
+        storages.progress = analyserStorages.progress();
+        storages.huntingSession = analyserStorages.huntingSession();
+        if (cyclopedia::TItemInfoStorage* itemInfo = cyclopedia::TItemInfoStorage::instance()) {
+            storages.itemTracking = itemInfo->itemTracking();
+            storages.quickLootBlackWhitelist = itemInfo->lootBlackWhitelist();
+        }
+        storages.skillWheel = skillWheel.storage();
+        gameClient.createCharacterConfigurationManager(storages);
+        config::TCharacterConfigurationManager* manager = gameClient.characterConfigurationManager();
+        QObject::connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, &actionBars,
+                         &gamewindow::TActionBarManager::onCharacterConfigurationLoaded);
+        if (cyclopedia::TItemInfoStorage* itemInfo = cyclopedia::TItemInfoStorage::instance())
+            QObject::connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, itemInfo,
+                             &cyclopedia::TItemInfoStorage::onCharacterConfigurationLoaded);
+        if (gamewindow::TQuestLogController* questLog = informationDialogs.questLog())
+            QObject::connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
+                             &gamewindow::TQuestLogController::onCharacterConfigurationLoaded);
+    }
     // After actionBars so TCooldownStorage::instance exists (CIP TCooldownBarController).
     gamewindow::TCooldownBarController cooldownBar(gameWindowItem);
     input::TKeyboardShortcutHandler keyboardShortcuts(window, gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")),

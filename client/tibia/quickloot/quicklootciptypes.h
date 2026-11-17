@@ -59,13 +59,6 @@ public:
                                      int stackPosition = 0);
 };
 
-class TQuickLootBlackWhitelistStorage final : public cip::tibia::quickloot::TQuickLootBlackWhitelistStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::quickloot::TQuickLootBlackWhitelistStorage::TQuickLootBlackWhitelistStorage;
-};
-
 /// The quick-loot game actions: loot, the managed loot / obtain containers,
 /// the fallback flag and the loot black/whitelist.
 class TQuickLootGameActionHandler final : public cip::tibia::quickloot::TQuickLootGameActionHandler

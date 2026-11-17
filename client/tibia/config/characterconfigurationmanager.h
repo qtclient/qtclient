@@ -1,33 +1,42 @@
 #pragma once
 
+#include "config/icharacterconfiguration.h"
+
 #include <cip_gen.h>
 
-#include <QJsonObject>
 #include <QString>
 
-#include <vector>
+#include <array>
 
 namespace tibia {
+namespace analysers {
+class TItemPriceStorage;
+class TGainWasteStorage;
+class TImpactStorage;
+class TDamageInputStorage;
+class TProgressStorage;
+class THuntingSessionStorage;
+}
+namespace cyclopedia {
+class TItemTrackingStorage;
+}
+namespace questlog {
+class TQuestLogStorage;
+}
+namespace quickloot {
+class TQuickLootBlackWhitelistStorage;
+}
+namespace game {
+class TStatusbarStorage;
+class TOutfitDialogStorage;
+}
+namespace skillwheel {
+class TSkillWheelStorage;
+}
 namespace config {
 
 class TSidebarOptions;
-
-/// What a per-character configuration storage gives the manager (CIP:
-/// ICharacterConfigurationBase's name / toJson / fromJson). The storage's
-/// QObject side is cip::tibia::config::ICharacterConfigurationBase, whose
-/// configurationChangedFromUserInput marks the configuration dirty.
-class ICharacterConfiguration
-{
-public:
-    virtual ~ICharacterConfiguration() = default;
-    /// The file's base name in the character's data directory.
-    virtual QString configurationName() const = 0;
-    virtual QJsonObject configurationToJson() const = 0;
-    virtual void configurationFromJson(const QJsonObject& json) = 0;
-    /// Host: qtclient's storages outlive a session (CIP builds them per
-    /// session), so a new character starts them from their defaults.
-    virtual void resetConfiguration() = 0;
-};
+class TActionBarOptions;
 
 /// Loads and saves every per-character configuration storage in
 /// <characterdata>/<character id>/<name>.json: on the player's creature
@@ -44,9 +53,28 @@ public:
         cip::tibia::config::ICharacterConfigurationBase* object = nullptr;
     };
 
-    /// The storages in load order; `sidebarOptions` is one of them.
-    TCharacterConfigurationManager(std::vector<TConfiguration> configurations, TSidebarOptions* sidebarOptions,
-                                   QObject* parent = nullptr);
+    /// The session's character configuration storages; a null one is left out. CIP's
+    /// cyclopedia map character configuration (the slot between the statusbar and the
+    /// outfit dialog) has no qtclient storage.
+    struct TStorages
+    {
+        analysers::TItemPriceStorage* itemPrice = nullptr;
+        cyclopedia::TItemTrackingStorage* itemTracking = nullptr;
+        questlog::TQuestLogStorage* questLog = nullptr;
+        analysers::TGainWasteStorage* gainWaste = nullptr;
+        analysers::TImpactStorage* impact = nullptr;
+        analysers::TDamageInputStorage* damageInput = nullptr;
+        analysers::TProgressStorage* progress = nullptr;
+        analysers::THuntingSessionStorage* huntingSession = nullptr;
+        quickloot::TQuickLootBlackWhitelistStorage* quickLootBlackWhitelist = nullptr;
+        TSidebarOptions* sidebar = nullptr;
+        TActionBarOptions* actionBar = nullptr;
+        game::TStatusbarStorage* statusbar = nullptr;
+        game::TOutfitDialogStorage* outfitDialog = nullptr;
+        skillwheel::TSkillWheelStorage* skillWheel = nullptr;
+    };
+
+    explicit TCharacterConfigurationManager(const TStorages& storages, QObject* parent = nullptr);
     ~TCharacterConfigurationManager() override;
 
     /// Writes every storage when one changed since the last load or save.
@@ -56,7 +84,19 @@ public:
     bool isConfigurationLoaded() const { return m_loaded; }
     /// Whether the character had a sidebars file.
     bool isSidebarConfigurationLoadedFromFile() const { return m_sidebarLoadedFromFile; }
-    TSidebarOptions* sidebarOptions() const { return m_sidebarOptions; }
+
+    analysers::TItemPriceStorage* itemPriceStorage() const { return m_storages.itemPrice; }
+    cyclopedia::TItemTrackingStorage* itemTrackingStorage() const { return m_storages.itemTracking; }
+    analysers::TGainWasteStorage* gainWasteStorage() const { return m_storages.gainWaste; }
+    analysers::TImpactStorage* impactStorage() const { return m_storages.impact; }
+    analysers::TDamageInputStorage* damageInputStorage() const { return m_storages.damageInput; }
+    analysers::TProgressStorage* progressStorage() const { return m_storages.progress; }
+    analysers::THuntingSessionStorage* huntingSessionStorage() const { return m_storages.huntingSession; }
+    quickloot::TQuickLootBlackWhitelistStorage* quickLootBlackWhitelistStorage() const { return m_storages.quickLootBlackWhitelist; }
+    TSidebarOptions* sidebarOptions() const { return m_storages.sidebar; }
+    TActionBarOptions* actionBarOptions() const { return m_storages.actionBar; }
+    game::TStatusbarStorage* statusbarStorage() const { return m_storages.statusbar; }
+    skillwheel::TSkillWheelStorage* skillWheelStorage() const { return m_storages.skillWheel; }
 
 public Q_SLOTS:
     /// Saves, then loads the player's character if it is another one.
@@ -64,11 +104,14 @@ public Q_SLOTS:
     void onConfigurationChanged();
 
 private:
+    static constexpr std::size_t ConfigurationCount = 15;
+
     void save(const TConfiguration& configuration) const;
     bool load(const TConfiguration& configuration) const;
 
-    std::vector<TConfiguration> m_configurations;
-    TSidebarOptions* m_sidebarOptions = nullptr;
+    TStorages m_storages;
+    /// The storages in CIP's member order (item prices first, skill wheel last).
+    std::array<TConfiguration, ConfigurationCount> m_configurations;
     quint32 m_characterId = 0;
     bool m_loaded = false;
     bool m_dirty = false;

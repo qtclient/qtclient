@@ -259,11 +259,6 @@ void TInformationDialogs::hookQuestLog()
         return std::any{};
     });
 
-    // Loading the character's quest tracking sends its stored flags (CIP onCharacterConfigurationLoaded).
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
-        m_questLog->ensureStorage();
-    });
-
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestTracker", [this](GameObject*, const Args& args) {
         const auto* flags = arg<std::map<questlog::TQuestFlagID, questlog::TQuestFlagData>>(args, 0);
         const auto* timestamp = arg<qint64>(args, 1);
@@ -271,7 +266,6 @@ void TInformationDialogs::hookQuestLog()
         const auto* canTrack = arg<std::optional<bool>>(args, 3);
         if (!flags || !timestamp || !fullList || !canTrack)
             return std::any{};
-        m_questLog->ensureStorage();
         questlog::TQuestLogStorage* storage = m_questLog->questLogStorage();
         if (*canTrack)
             storage->setCanTrackAdditionalQuestFlags(**canTrack);

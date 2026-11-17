@@ -1,5 +1,6 @@
 #include "gameclient.h"
 
+#include "config/actionbaroptions.h"
 #include "config/characterconfigurationmanager.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
@@ -238,12 +239,8 @@ TGameClient::TGameClient(QObject* parent)
     , m_worldMapRenderProvider(std::make_unique<qmlcomponents::TWorldMapRenderProvider>())
     , m_sidebarOptions(std::make_unique<config::TSidebarOptions>())
     , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
-    , m_characterConfigurationManager(std::make_unique<config::TCharacterConfigurationManager>(
-          std::vector<config::TCharacterConfigurationManager::TConfiguration>{
-              { m_sidebarOptions.get(), m_sidebarOptions.get() },
-              { m_statusbarStorage.get(), m_statusbarStorage.get() },
-          },
-          m_sidebarOptions.get()))
+    , m_actionBarOptions(std::make_unique<config::TActionBarOptions>())
+    , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
     , m_sessiondumpRecorder(this)
@@ -268,7 +265,6 @@ TGameClient::TGameClient(QObject* parent)
     authentication::ownProductSurface(this);
     bossbestiary::ownProductSurface(this);
     client::ownProductSurface(this);
-    config::ownProductSurface(this);
     common::ownProductSurface(this);
     container::ownProductSurface(this);
     creatures::ownProductSurface(this);
@@ -973,9 +969,8 @@ void TGameClient::onWorldEntered()
     Q_EMIT characterSelectionClosed();
     // A new game session: no own team or listed teams, the team finder pages start over.
     teamfinder::TTeamFinderProtocolMessageHandler::instance()->startSession();
-    if (const uint32_t playerId = tibia::game::localPlayerId()) {
+    if (const uint32_t playerId = tibia::game::localPlayerId(); playerId != 0 && m_characterConfigurationManager)
         m_characterConfigurationManager->onPlayerCreatureLoaded(playerId);
-    }
     const std::string assets = gamecore::assetsRoot(ClientVersion);
     // CipSoft: Resources/minimap is a sibling of Resources/assets (assetsRoot adds
     // Resources as a search path so short name `minimap/` resolves). Prefer that
@@ -1057,13 +1052,23 @@ void TGameClient::onWorldEntered()
     }
 }
 
+void TGameClient::createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages)
+{
+    storages.sidebar = m_sidebarOptions.get();
+    storages.actionBar = m_actionBarOptions.get();
+    storages.statusbar = m_statusbarStorage.get();
+    storages.outfitDialog = m_outfitDialogStorage.get();
+    m_characterConfigurationManager = std::make_unique<config::TCharacterConfigurationManager>(storages);
+}
+
 void TGameClient::onWorldLeft()
 {
     if (m_dualConnection)
         m_dualConnection->reset();
     tibia::game::clearWaypointCostFactory();
     m_minimap.reset();
-    m_characterConfigurationManager->saveConfiguration();
+    if (m_characterConfigurationManager)
+        m_characterConfigurationManager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
     if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())

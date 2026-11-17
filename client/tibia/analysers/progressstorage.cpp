@@ -92,7 +92,7 @@ TProgressStorage::TProgressStorage(QObject* parent)
     : cip::tibia::cyclopedia::TProgressStorage(parent)
 {}
 
-QJsonObject TProgressStorage::toJson() const
+QJsonObject TProgressStorage::configurationToJson() const
 {
     return { { QLatin1String(KeyGaugeVisible), m_gaugeVisible },
              { QLatin1String(KeyGaugeTarget), m_gaugeTarget },
@@ -100,7 +100,7 @@ QJsonObject TProgressStorage::toJson() const
              { QLatin1String(KeyShowBaseXp), m_showBaseXp } };
 }
 
-void TProgressStorage::fromJson(const QJsonObject& json)
+void TProgressStorage::configurationFromJson(const QJsonObject& json)
 {
     m_gaugeVisible = json.value(QLatin1String(KeyGaugeVisible)).toBool(true);
     m_gaugeTarget = std::clamp(json.value(QLatin1String(KeyGaugeTarget)).toDouble(100.0), MinGaugeTarget, MaxGaugeTarget);
@@ -108,6 +108,15 @@ void TProgressStorage::fromJson(const QJsonObject& json)
     m_showBaseXp = json.value(QLatin1String(KeyShowBaseXp)).toBool(false);
     Q_EMIT optionsChanged();
     Q_EMIT configurationChangedFromUserInput();
+}
+
+void TProgressStorage::resetConfiguration()
+{
+    m_gaugeVisible = true;
+    m_gaugeTarget = 100.0;
+    m_graphVisible = true;
+    m_showBaseXp = false;
+    Q_EMIT optionsChanged();
 }
 
 void TProgressStorage::tick(const qint64 nowMs)

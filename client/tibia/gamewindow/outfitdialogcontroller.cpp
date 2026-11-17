@@ -1,4 +1,5 @@
 #include "outfitdialogcontroller.h"
+#include "game/gameciptypes.h"
 
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/gameaction.h"
@@ -254,9 +255,19 @@ TSelectOutfitDialogController::TSelectOutfitDialogController(QObject* parent)
         m_hsvColors.append(qmlcomponents::outfitpalette::color(i));
 }
 
-TSelectOutfitDialogController::~TSelectOutfitDialogController()
+TSelectOutfitDialogController::~TSelectOutfitDialogController() = default;
+
+const QJsonArray& TSelectOutfitDialogController::presets() const
 {
-    savePresets();
+    static const QJsonArray None;
+    const game::TOutfitDialogStorage* storage = game::TOutfitDialogStorage::instance();
+    return storage ? storage->presets() : None;
+}
+
+void TSelectOutfitDialogController::setPresets(QJsonArray presets)
+{
+    if (game::TOutfitDialogStorage* storage = game::TOutfitDialogStorage::instance())
+        storage->setPresets(std::move(presets));
 }
 
 void TSelectOutfitDialogController::setWindowOptions(WindowOptions options)
@@ -286,13 +297,6 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
 {
     if (dialog()->isShown())
         dialog()->close();
-
-    const quint32 characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    if (characterId != m_characterId) {
-        savePresets();
-        m_characterId = characterId;
-        loadPresets();
-    }
 
     const auto& pairs = m_windowOptions.genderPairs;
     for (auto& entry : outfits) {
@@ -415,7 +419,7 @@ void TSelectOutfitDialogController::onCharacterPresetsChanged()
     QList<QJsonObject> presets;
     QList<bool> owned;
     TOutfitPresetQmlType preset;
-    for (const QJsonValue& value : std::as_const(m_presetArray)) {
+    for (const QJsonValue& value : this->presets()) {
         const QJsonObject json = value.toObject();
         if (!preset.canBeFilledFromJsonObject(json))
             continue;
@@ -482,44 +486,47 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
 /// CIP : -1 appends.
 void TSelectOutfitDialogController::outfitPresetsSaveIndex(const QJsonObject& JsonObject, const int Index)
 {
-    if (Index >= 0 && Index < m_presetArray.size())
-        m_presetArray.replace(Index, JsonObject);
+    QJsonArray list = presets();
+    if (Index >= 0 && Index < list.size())
+        list.replace(Index, JsonObject);
     else
-        m_presetArray.append(JsonObject);
-    savePresets();
+        list.append(JsonObject);
+    setPresets(std::move(list));
     onCharacterPresetsChanged();
 }
 
 /// CIP .
 void TSelectOutfitDialogController::outfitPresetsDeleteIndex(const int Index)
 {
-    if (Index < 0 || Index >= m_presetArray.size())
+    if (Index < 0 || Index >= presets().size())
         return;
-    m_presetArray.removeAt(Index);
-    savePresets();
+    QJsonArray list = presets();
+    list.removeAt(Index);
+    setPresets(std::move(list));
     onCharacterPresetsChanged();
 }
 
 /// CIP : asks for the new name in a GenericEnterTextDialog.
 void TSelectOutfitDialogController::outfitPresetsRenameIndex(const int Index)
 {
-    if (Index < 0 || Index >= m_presetArray.size())
+    if (Index < 0 || Index >= presets().size())
         return;
     m_renameIndex = Index;
     if (!m_renameDialog) {
         m_renameDialog = new TGenericEnterTextDialogController(this);
         m_renameDialog->setCaption(qtTrId("outfit_preset_rename_dialog_caption"));
         connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, [this](const QString& name) {
-            if (m_renameIndex < 0 || m_renameIndex >= m_presetArray.size() || name.trimmed().isEmpty())
+            QJsonArray list = presets();
+            if (m_renameIndex < 0 || m_renameIndex >= list.size() || name.trimmed().isEmpty())
                 return;
-            QJsonObject json = m_presetArray.at(m_renameIndex).toObject();
+            QJsonObject json = list.at(m_renameIndex).toObject();
             json.insert(QStringLiteral("name"), name.trimmed());
-            m_presetArray.replace(m_renameIndex, json);
-            savePresets();
+            list.replace(m_renameIndex, json);
+            setPresets(std::move(list));
             onCharacterPresetsChanged();
         });
     }
-    m_renameDialog->setText(m_presetArray.at(Index).toObject().value(QStringLiteral("name")).toString());
+    m_renameDialog->setText(presets().at(Index).toObject().value(QStringLiteral("name")).toString());
     m_renameDialog->dialog()->show();
 }
 
@@ -559,33 +566,5 @@ QObject* TSelectOutfitDialogController::createFromClipboard()
     return result;
 }
 
-QString TSelectOutfitDialogController::presetsFilePath() const
-{
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/outfitPresets.json").arg(m_characterId);
-}
-
-void TSelectOutfitDialogController::loadPresets()
-{
-    m_presetArray = {};
-    if (m_characterId == 0)
-        return;
-    QFile file(presetsFilePath());
-    if (file.open(QIODevice::ReadOnly))
-        m_presetArray = QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("presets")).toArray();
-}
-
-void TSelectOutfitDialogController::savePresets()
-{
-    if (m_characterId == 0)
-        return;
-    const QString path = presetsFilePath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(QJsonObject{ { QStringLiteral("presets"), m_presetArray } }).toJson());
-        file.commit();
-    }
-}
 
 }

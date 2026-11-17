@@ -1130,4 +1130,28 @@ void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
         Q_EMIT requestShowSpellBookDialog(QString::fromStdString(Message.message()), static_cast<uint16_t>(Message.extra_value()));
 }
 
+namespace {
+TOutfitDialogStorage* g_outfitDialogStorage = nullptr;
+}
+
+TOutfitDialogStorage::TOutfitDialogStorage(QObject* parent)
+    : cip::tibia::game::TOutfitDialogStorage(parent)
+{
+    g_outfitDialogStorage = this;
+}
+
+TOutfitDialogStorage::~TOutfitDialogStorage()
+{
+    if (g_outfitDialogStorage == this)
+        g_outfitDialogStorage = nullptr;
+}
+
+TOutfitDialogStorage* TOutfitDialogStorage::instance() { return g_outfitDialogStorage; }
+
+void TOutfitDialogStorage::setPresets(QJsonArray presets)
+{
+    m_presets = std::move(presets);
+    Q_EMIT configurationChangedFromUserInput();
+}
+
 } // namespace tibia::game

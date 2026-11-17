@@ -74,7 +74,7 @@ void TImpactStorage::emitOptionsChanged()
     Q_EMIT configurationChangedFromUserInput();
 }
 
-QJsonObject TImpactStorage::toJson() const
+QJsonObject TImpactStorage::configurationToJson() const
 {
     return { { QLatin1String(KeyShowSessionValues), m_showSessionValues },
              { QLatin1String(KeyDpsGaugeVisible), m_gaugeVisible[Damage] },
@@ -88,7 +88,7 @@ QJsonObject TImpactStorage::toJson() const
              { QLatin1String(KeyMaxHealing), static_cast<int>(std::min<qint64>(m_allTimeMax[Healing], INT_MAX)) } };
 }
 
-void TImpactStorage::fromJson(const QJsonObject& json)
+void TImpactStorage::configurationFromJson(const QJsonObject& json)
 {
     const auto target = [&json](const char* key) {
         return std::clamp(json.value(QLatin1String(key)).toDouble(100.0), MinGaugeTarget, MaxGaugeTarget);
@@ -106,6 +106,8 @@ void TImpactStorage::fromJson(const QJsonObject& json)
     Q_EMIT optionsChanged();
     Q_EMIT allTimeValuesChanged();
 }
+
+void TImpactStorage::resetConfiguration() { configurationFromJson({}); }
 
 void TImpactStorage::shiftRecords(const qint64 nowMs)
 {
@@ -358,7 +360,7 @@ void TDamageInputStorage::emitOptionsChanged()
     Q_EMIT configurationChangedFromUserInput();
 }
 
-QJsonObject TDamageInputStorage::toJson() const
+QJsonObject TDamageInputStorage::configurationToJson() const
 {
     return { { QLatin1String(KeyShowSessionValues), m_showSessionValues },
              { QLatin1String(KeyShowDamageGraph), m_showGraph },
@@ -366,7 +368,7 @@ QJsonObject TDamageInputStorage::toJson() const
              { QLatin1String(KeyShowDamageSources), m_showSources } };
 }
 
-void TDamageInputStorage::fromJson(const QJsonObject& json)
+void TDamageInputStorage::configurationFromJson(const QJsonObject& json)
 {
     m_showSessionValues = json.value(QLatin1String(KeyShowSessionValues)).toBool(false);
     m_showGraph = json.value(QLatin1String(KeyShowDamageGraph)).toBool(true);
@@ -375,6 +377,8 @@ void TDamageInputStorage::fromJson(const QJsonObject& json)
     rebuildLists();
     emitOptionsChanged();
 }
+
+void TDamageInputStorage::resetConfiguration() { configurationFromJson({}); }
 
 void TDamageInputStorage::addDamage(const qint64 amount, const int element, const QString& source, const qint64 nowMs)
 {
