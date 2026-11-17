@@ -25,4 +25,16 @@ qint64 clientSettingAtMost(const QString& group, const QString& key, const qint6
     return maximum;
 }
 
+qint64 clientSettingAtLeast(const QString& group, const QString& key, const qint64 defaultValue, const qint64 minimum)
+{
+    const qint64 value = clientSetting(group, key, defaultValue);
+    if (value >= minimum)
+        return value;
+    QSettings settings;
+    settings.beginGroup(group);
+    settings.setValue(key, minimum);
+    settings.endGroup();
+    return minimum;
+}
+
 }

@@ -47,7 +47,15 @@
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
+#include "config/clientsettings.h"
 #include "config/sidebaroptions.h"
+#include "clockservice.h"
+#include "jsondocumenthttppostsender.h"
+#include "systemsurvey/fpscounter.h"
+#include "systemsurvey/fpshistory.h"
+#include "systemsurvey/fpshistorycontroller.h"
+#include "systemsurvey/fpshistorytojsonconverter.h"
+#include "systemsurvey/fpshistoryuploader.h"
 #include "controllers/characterselectioncontroller.h"
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
@@ -706,6 +714,7 @@ void TGameClient::refreshAccount(const QJsonObject& reply)
 void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
 {
     m_account = result;
+    onFpsTrackingActiveChanged(result.session.fpsTracking);
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
@@ -1089,6 +1098,11 @@ void TGameClient::setWindow(QQuickWindow* window)
     // CIP: .
     connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
     connect(window, &QQuickWindow::frameSwapped, this, [ring = m_frameDurations.get()] { ring->finish(); }, Qt::DirectConnection);
+    // CIP onRenderThreadFrameSwapped: every swapped frame starts a frame of the FPS counter.
+    connect(window, &QQuickWindow::frameSwapped, this, [this] {
+        if (m_fpsHistory)
+            m_fpsHistory->fpsCounter()->startNewFrame();
+    }, Qt::DirectConnection);
 
     // Render-thread cost per frame, sync and render, against the plan's budgets.
     if (!lcFrameCost().isDebugEnabled())
@@ -1217,6 +1231,52 @@ void TGameClient::checkForCrashDump()
         fileSystem.getFilePath(shared::TTibiaFileSystemHelper::DIRECTORY_CRASHDUMP, sessiondumpFileName);
     m_crashReportSender = std::make_shared<shared::TCrashReportSender>(crashDumpFilePath, sessiondumpFilePath, crashReportData);
     m_crashReportDialog->showDialog(crashReportData);
+}
+
+void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
+{
+    if (!FpsTrackingActive) {
+        m_fpsHistory.reset();
+        m_fpsHistoryController.reset();
+        m_fpsSampleTimer.stop();
+        m_fpsUploadTimer.stop();
+        return;
+    }
+    auto clockService = shared::TClockService::process();
+    m_fpsHistory = std::make_shared<systemsurvey::TFPSHistory>(
+        std::make_shared<systemsurvey::TFPSCounter>(clockService), clockService);
+    // Host: CipSoft posts to [URLS] fpsHistoryRecipient; qtclient posts to the
+    // qtc-aac hardware receiver.
+    auto uploader = std::make_shared<systemsurvey::TFPSHistoryUploader>(
+        app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl(),
+        std::make_shared<systemsurvey::TFPSHistoryToJsonConverter>(),
+        std::make_shared<shared::TJsonDocumentHttpPostSender>());
+    // Host: CipSoft reports its renderer's id; qtclient reports the scene graph's graphics API.
+    const int renderer = int(QQuickWindow::graphicsApi());
+    m_fpsHistoryController = std::make_shared<systemsurvey::TFPSHistoryController>(uploader, m_fpsHistory, renderer);
+    const QString group = QStringLiteral("FPSHISTORY");
+    startFpsHistoryTimers(config::clientSettingAtLeast(group, QStringLiteral("sampleRateMsec"), 1000, 100),
+                          config::clientSettingAtLeast(group, QStringLiteral("uploadRateSec"), 60, 1));
+}
+
+void TGameClient::startFpsHistoryTimers(const qint64 sampleRateMsec, const qint64 uploadRateSec)
+{
+    if (m_fpsHistory) {
+        m_fpsSampleTimer.setInterval(int(sampleRateMsec));
+        connect(&m_fpsSampleTimer, &QTimer::timeout, m_fpsHistory.get(),
+                &systemsurvey::TFPSHistory::sampleCurrentFPSInformationAndClearFPSCounter);
+        m_fpsSampleTimer.start();
+    }
+    if (m_fpsHistoryController) {
+        auto* controller = m_fpsHistoryController.get();
+        m_fpsUploadTimer.setInterval(int(uploadRateSec * 1000));
+        connect(&m_fpsUploadTimer, &QTimer::timeout, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::worldLeft, controller, &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::clientReadyToClose, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        m_fpsUploadTimer.start();
+    }
 }
 
 void TGameClient::sendCrashReport(const bool SendFullReport)

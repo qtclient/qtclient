@@ -16,6 +16,11 @@
 
 #include <memory>
 #include <vector>
+
+namespace tibia::systemsurvey {
+class TFPSHistory;
+class TFPSHistoryController;
+}
 #include <optional>
 
 class QQuickWindow;
@@ -245,7 +250,15 @@ Q_SIGNALS:
     /// Account email after CipSoft password login / CLI (for remember-email).
     void sessionEmailAvailable(const QString& email);
 
+public Q_SLOTS:
+    /// CIP: with FPS tracking on, samples the frame rate every
+    /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
+    /// (and when the session ends or the client closes); off drops both.
+    void onFpsTrackingActiveChanged(bool FpsTrackingActive);
+
 private:
+    /// CIP: (re)arms the FPS sample and upload timers for the current history.
+    void startFpsHistoryTimers(qint64 sampleRateMsec, qint64 uploadRateSec);
     /// CIP: posts the pending crash report to the configured crashReportUrl
     /// (the dumps only for a full report), then deletes the crash dumps.
     void sendCrashReport(bool SendFullReport);
@@ -271,6 +284,10 @@ private:
     QTimer m_idleTick;
     QTimer m_frameLimitTimer;
     std::unique_ptr<worldmap::TFrameDurationRing> m_frameDurations;
+    std::shared_ptr<systemsurvey::TFPSHistory> m_fpsHistory;
+    std::shared_ptr<systemsurvey::TFPSHistoryController> m_fpsHistoryController;
+    QTimer m_fpsSampleTimer;
+    QTimer m_fpsUploadTimer;
     std::unique_ptr<worldmap::TNextFrameTimestampPredictor> m_predictor;
     std::unique_ptr<renderer::TNextFrameUpdater> m_updater;
     bool m_frameRateLimitEnabled = false;
