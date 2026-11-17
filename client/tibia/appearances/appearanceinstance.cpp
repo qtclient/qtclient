@@ -420,36 +420,47 @@ void TEffectInstance::start(const Position& field, const qint64 nowMs, const qin
     m_startMs = nowMs;
     m_nowMs = nowMs;
     m_delayMs = std::max<qint64>(0, delayMs);
-    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
-        m_animator.emplace(*info, nowMs);
-    // The pattern follows the field's coordinate.
+    // The pattern follows the field's coordinate; the sequence's animation
+    // starts now.
     if (m_type) {
         m_patternX = static_cast<int>(static_cast<uint32_t>(field.x) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternX())));
         m_patternY = static_cast<int>(static_cast<uint32_t>(field.y) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternY())));
     }
+    m_animationStartMs = nowMs;
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
 }
 
 void TEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
-    if (!m_animator)
-        return;
     if (m_delayMs == 0)
-        m_animator->update(nowMs);
+        updateAnimation(nowMs);
     else if (m_startMs + m_delayMs < nowMs)
-        m_animator->update(nowMs - m_delayMs);
+        updateAnimation(nowMs - m_delayMs);
+}
+
+const animation::TAnimator* TEffectInstance::animator() const
+{
+    return m_spriteSequence ? m_spriteSequence->animator().get() : nullptr;
+}
+
+int TEffectInstance::phase() const
+{
+    const animation::TAnimator* running = animator();
+    return running ? running->phase() : 0;
 }
 
 bool TEffectInstance::isFinished() const
 {
-    return !m_animator || m_animator->isFinished();
+    const animation::TAnimator* running = animator();
+    return !running || running->isFinished();
 }
 
 bool TEffectInstance::getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const
 {
     if (!m_type || m_type->isNull() || !isShown() || isFinished())
         return false;
-    animationPhase = m_animator->phase();
+    animationPhase = phase();
     xPattern = m_patternX;
     yPattern = m_patternY;
     return true;
@@ -460,14 +471,6 @@ bool TEffectInstance::isTopEffectType() const
     return m_type && m_type->isTopEffect();
 }
 
-void TFieldEffectInstance::setDrawState(const int animationPhase, const int patternX, const int patternY, const float opacity)
-{
-    m_animationPhase = animationPhase;
-    m_patternX = patternX;
-    m_patternY = patternY;
-    m_opacity = opacity;
-}
-
 float TMissileEffectInstance::setPath(const Position& from, const Position& to, const qint64 nowMs)
 {
     m_pathFrom = from;
@@ -475,8 +478,6 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_fieldPosition = from;
     m_startMs = nowMs;
     m_nowMs = nowMs;
-    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
-        m_animator.emplace(*info, nowMs);
     m_delta = QPoint(to.x - from.x, to.y - from.y);
     // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
     static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
@@ -484,14 +485,15 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
     directionPattern(fieldDirection(m_delta.x(), m_delta.y()), m_patternX, m_patternY);
     m_delta *= tibia::config::spriteSize();
+    m_animationStartMs = nowMs;
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
     return m_flightDuration;
 }
 
 void TMissileEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
-    if (m_animator)
-        m_animator->update(nowMs);
+    updateAnimation(nowMs);
 }
 
 QPoint TMissileEffectInstance::flightOffset() const
@@ -540,6 +542,7 @@ void TDirectionalFieldEffectInstance::start(const Position& field, const qint64 
 {
     TEffectInstance::start(field, nowMs);
     directionPattern(direction, m_patternX, m_patternY);
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
 }
 
 template <class T, class... Args>

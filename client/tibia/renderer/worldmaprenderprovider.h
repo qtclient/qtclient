@@ -302,7 +302,11 @@ private:
     /// raycast lighting, `stamp`'s sprites stamp the light frame.
     void addSpriteInfo(TAppearanceType* type, const QPoint& dest, const appearances::TAppearanceInstanceSpriteInfoPtr& info,
                        const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, int xPattern,
-                       SpriteRecord::Highlight highlight);
+                       SpriteRecord::Highlight highlight, float opacity = 1.f, uint8_t tint = 0);
+    /// The current sprite of `instance`'s sequence at `dest` (effects and
+    /// missiles); `phase` picks the raycast stamp.
+    void addSequenceSprite(const appearances::TAppearanceInstance& instance, const QPoint& dest, int phase, int xPattern,
+                           float opacity, uint8_t tint);
     void addSprites(TAppearanceType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0,

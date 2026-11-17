@@ -149,6 +149,7 @@ appearances::TExpireObjectAppearanceInstance::v1	2044fbd007d58c04	skip	generated
 appearances::TExpireObjectAppearanceInstance::v5	253e067508196fcb	ported	appearances/appearanceinstance.cpp:TExpireObjectAppearanceInstance::updateRemainingTime
 appearances::TFieldEffectInstance::v0	262f45e74a197d9c	skip	generated: compiler-generated destructor pair
 appearances::TFieldEffectInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair
+appearances::TFieldEffectInstance::v13	717038a35036f549	ported	appearances/appearanceinstance.h:TEffectInstance::field
 appearances::TFieldEffectInstance::v14	f333968b638feb36	ported	appearances/appearanceinstance.cpp:TEffectInstance::isFinished
 appearances::THangableObjectAppearanceInstance::v0	262f45e74a197d9c	skip	generated: compiler-generated destructor pair
 appearances::THangableObjectAppearanceInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair

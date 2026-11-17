@@ -420,7 +420,7 @@ public:
     bool getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const;
     const Position& field() const { return m_fieldPosition; }
     /// The animation's phase, 0 without one.
-    int phase() const { return m_animator ? m_animator->phase() : 0; }
+    int phase() const;
     bool underCreatures() const { return m_underCreatures; }
     void setUnderCreatures(const bool under) { m_underCreatures = under; }
     uint16_t variantId() const { return m_variantId; }
@@ -432,7 +432,9 @@ public:
     bool isTopEffectType() const;
 
 protected:
-    std::optional<animation::TAnimator> m_animator;
+    /// The sequence's animator (the effect's animation).
+    const animation::TAnimator* animator() const;
+
     qint64 m_startMs{ 0 };
     qint64 m_delayMs{ 0 };
     qint64 m_nowMs{ 0 };
@@ -440,7 +442,6 @@ protected:
     tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
     bool m_underCreatures{ false };
     Position m_fieldPosition;
-    int m_animationPhase{ 0 };
     int m_patternX{ 0 };
     int m_patternY{ 0 };
     float m_opacity{ 1.f };
@@ -450,11 +451,6 @@ class TFieldEffectInstance final : public TEffectInstance
 {
 public:
     using TEffectInstance::TEffectInstance;
-
-    int animationPhase() const { return m_animationPhase; }
-    int patternX() const { return m_patternX; }
-    int patternY() const { return m_patternY; }
-    void setDrawState(int animationPhase, int patternX, int patternY, float opacity);
 };
 
 class TMissileEffectInstance final : public TEffectInstance

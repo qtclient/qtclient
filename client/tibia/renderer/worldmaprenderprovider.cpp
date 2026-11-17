@@ -1473,7 +1473,7 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppear
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(type, at, xPattern, yPattern, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
+    addSequenceSprite(*effect, at, phase, xPattern, opacity, tint);
     if (type && type->hasLight()) {
         const QPoint center = at + QPoint(FieldSize / 2, FieldSize / 2);
         addLight(center, type->getLight().intensity, type->getLight().color);
@@ -1499,8 +1499,7 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(type, dest, missile->patternX(), missile->patternY(), 0, missile->phase(), false, 0, SpriteRecord::NoHighlight,
-               opacity);
+    addSequenceSprite(*missile, dest, missile->phase(), missile->patternX(), opacity, 0);
     // TWorldMapRenderProvider::v11 : missiles share TEffectStorage with field effects
     // and light the map from their current flight position.
     if (type && type->hasLight()) {
@@ -1532,7 +1531,8 @@ std::vector<const appearances::IAppearanceInstanceSpriteInfo*> drawnLayers(const
 void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint& dest,
                                             const appearances::TAppearanceInstanceSpriteInfoPtr& info,
                                             const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, const int xPattern,
-                                            const SpriteRecord::Highlight highlight)
+                                            const SpriteRecord::Highlight highlight, const float opacity,
+                                            const uint8_t tint)
 {
     if (!type || type->isNull() || !info)
         return;
@@ -1543,9 +1543,10 @@ void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint&
     const auto layers = drawnLayers(info.get());
     const auto stampLayers = drawnLayers(stamp.get());
     for (size_t i = 0; i < layers.size(); ++i) {
-        const SpriteKey key = layers[i] ? layers[i]->key() : SpriteKey{};
+        SpriteKey key = layers[i] ? layers[i]->key() : SpriteKey{};
+        key.tint = tint;
         if (key.spriteId != 0) {
-            m_floorSprites.push_back({ .anchor = anchor, .sprite = key, .highlight = highlight });
+            m_floorSprites.push_back({ .anchor = anchor, .sprite = key, .opacity = opacity, .highlight = highlight });
             m_floorKeys.push_back(drawKey);
         }
         if (raycast && m_lighting) {
@@ -1554,6 +1555,23 @@ void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint&
                 m_lighting->addFrame(peelLightingFrame(*type, anchor, stampId, xPattern));
         }
     }
+}
+
+void TWorldMapRenderProvider::addSequenceSprite(const appearances::TAppearanceInstance& instance, const QPoint& dest,
+                                                const int phase, const int xPattern, const float opacity, const uint8_t tint)
+{
+    const appearances::TAppearanceInstanceSpriteSequence* sequence = instance.spriteSequence().get();
+    if (!sequence)
+        return;
+    appearances::TAppearanceInstanceSpriteInfoPtr stamp = sequence->currentSpriteInfo();
+    if (m_lighting && m_lighting->frameActive()) {
+        const int stampPhase = m_lighting->stampPhase(phase);
+        const auto infos = sequence->spriteInfos();
+        if (stampPhase != phase && stampPhase >= 0 && static_cast<size_t>(stampPhase) < infos.size())
+            stamp = infos[static_cast<size_t>(stampPhase)];
+    }
+    addSpriteInfo(instance.thingType(), dest, sequence->currentSpriteInfo(), stamp, xPattern, SpriteRecord::NoHighlight,
+                  opacity, tint);
 }
 
 void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& dest, const int xPattern, const int yPattern,
