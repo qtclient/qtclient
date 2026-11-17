@@ -184,12 +184,12 @@ void TGameSessionState::createMovementIntent()
         if (!options->autoChaseEnabled && isAttacking() && m_chaseMode == tibia::client::ChaseOpponent)
             setChaseMode(tibia::client::DontChase);
         if (isFollowing()) {
-            tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE));
-            tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_ATTACKING_CREATURE));
+            tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
+            tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_ATTACKING_CREATURE, 0));
         }
     };
     env.stopFollowing = [] {
-        tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE));
+        tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
     };
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });

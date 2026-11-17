@@ -53,9 +53,14 @@ void copyFocusedOrActionText(const TGameAction& action)
         QGuiApplication::clipboard()->setText(text);
 }
 
-bool handleClipboard(const TGameAction& action)
+bool handleClipboard(const IGameAction& pGameAction)
 {
-    switch (action.type) {
+    // The creature actions are TGameActionCreature; the text ones the field carrier.
+    static const TGameAction NoFields;
+    const auto* fields = dynamic_cast<const TGameAction*>(&pGameAction);
+    const TGameAction& action = fields ? *fields : NoFields;
+    const uint32_t creatureId = creatureIdOf(pGameAction);
+    switch (pGameAction.gameActionType()) {
     case A::COPY_TEXT_TO_CLIPBOARD:
     case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
         QGuiApplication::clipboard()->setText(action.text);
@@ -67,9 +72,9 @@ bool handleClipboard(const TGameAction& action)
         return true;
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
     case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        if (action.creatureId) {
+        if (creatureId) {
             if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId)) {
+                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId)) {
                     QGuiApplication::clipboard()->setText(row->name());
                     return true;
                 }

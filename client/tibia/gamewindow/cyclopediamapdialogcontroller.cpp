@@ -264,18 +264,19 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, position, -1));
     candidates.push_back(input::makeAction(A::CONTEXT_MENU));
 
-    const input::TGameActionPtr action = m_mapper.map(candidates, 9, static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
+    const input::IGameActionPtr action = m_mapper.map(candidates, 9, static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
     if (!action)
         return;
-    if (action->type == A::CONTEXT_MENU) {
+    if (action->gameActionType() == A::CONTEXT_MENU) {
         if (TContextMenuController* menu = TContextMenuController::instance()) {
             if (const input::TGameActionList entries = input::contextMenuActions(candidates, CyclopediaMapOrder); !entries.empty())
                 menu->showGameActions(entries, 9, m_mapper);
         }
         return;
     }
-    if (action->type == A::CYCLOPEDIA_MAP_SELECT_ITEM) {
-        select(action->instance, false);
+    if (const input::TGameActionPtr selection = input::unportedGameAction(action);
+        selection && selection->type == A::CYCLOPEDIA_MAP_SELECT_ITEM) {
+        select(selection->instance, false);
         return;
     }
     input::publish(action);
@@ -502,7 +503,7 @@ void TCyclopediaMapDialogController::updateMouseCursor(const int x, const int y)
     candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia, false));
 
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(candidates, 9, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, 9, Qt::LeftButton, modifiers);
     const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
     cursor->setLayerShape(Cursor::CyclopediaMap, shape);
 }

@@ -19,7 +19,7 @@ TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(QObject* pare
 {
     setActionHandler(A::SET_PLAYER_MOVEMENT_INTENT, [](const TGameAction& action) {
         publish(makeAction(A::APPLY_AUTOCHASE_SETTING));
-        publish(makeAction(A::STOP_FOLLOWING_CREATURE));
+        publish(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
         (void)TPlayerMovementIntent::target(action.position.x, action.position.y, action.position.z);
         tibia::game::localPlayerAutoWalk(action.position, false,
                                          static_cast<tibia::client::AutoWalkPathMode>(action.autoWalkPathMode),
@@ -28,7 +28,7 @@ TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler(QObject* pare
     });
     // Attacking or following a creature drops the walk goal.
     for (const A type : { A::ATTACK_CREATURE, A::FOLLOW_CREATURE }) {
-        m_listeners.push_back(addActionListener(type, [](const TGameAction&) {
+        m_listeners.push_back(addActionListener(type, [](const IGameAction&) {
             tibia::game::localPlayerClearMovementGoal();
             return false;
         }));

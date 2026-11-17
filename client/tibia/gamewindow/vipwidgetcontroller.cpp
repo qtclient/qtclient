@@ -403,10 +403,10 @@ void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* e
 
 void TVipWidgetController::runClick(const input::TGameActionList& candidates, const int mouseButton, const int modifiers)
 {
-    const input::TGameActionPtr action = m_mapper.map(candidates, VipWidgetContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, VipWidgetContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

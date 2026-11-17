@@ -39,7 +39,7 @@ public:
     /// context wins over the last matching rule of every context.
     std::vector<EGameAction> ruleTypes(int context, Qt::MouseButton button, int modifiers) const;
     /// The first candidate of the matching rule's types, or null.
-    TGameActionPtr map(const TGameActionList& candidates, int context, Qt::MouseButton button, int modifiers) const;
+    IGameActionPtr map(const TGameActionList& candidates, int context, Qt::MouseButton button, int modifiers) const;
 
 private:
     bool isLootSchemeChord(int cipButton, int modifiers) const;

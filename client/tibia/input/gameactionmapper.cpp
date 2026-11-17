@@ -186,13 +186,13 @@ std::vector<EGameAction> TGameActionMapper::ruleTypes(const int context, const Q
     return types;
 }
 
-TGameActionPtr TGameActionMapper::map(const TGameActionList& candidates, const int context, const Qt::MouseButton button, const int modifiers) const
+IGameActionPtr TGameActionMapper::map(const TGameActionList& candidates, const int context, const Qt::MouseButton button, const int modifiers) const
 {
     const std::vector<EGameAction> types = ruleTypes(context, button, modifiers);
     if (types.empty())
         return nullptr;
     const TGameActionList actions = filterActions(candidates, types);
-    return actions.empty() ? nullptr : unportedGameAction(actions.front());
+    return actions.empty() ? nullptr : actions.front();
 }
 
 }

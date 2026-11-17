@@ -22,15 +22,16 @@ using A = input::EGameAction;
 TContextMenuController* g_instance = nullptr;
 
 /// The name an action names: its creature's, else its text.
-QString nameOf(const input::TGameAction& action)
+QString nameOf(const input::IGameAction& action)
 {
-    if (action.creatureId) {
+    if (const uint32_t creatureId = input::creatureIdOf(action)) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId))
                 return row->name();
         }
     }
-    return action.text;
+    const auto* fields = dynamic_cast<const input::TGameAction*>(&action);
+    return fields ? fields->text : QString();
 }
 
 const char* simpleLabel(const A type)
@@ -227,12 +228,12 @@ QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, Q
             shortcut = qtTrId("context_store_dialog");
         return qtTrId(id);
     }
+    if (const char* id = namedLabel(pGameAction.gameActionType()))
+        return qtTrId(id).arg(nameOf(pGameAction));
     const auto* fields = dynamic_cast<const input::TGameAction*>(&pGameAction);
     if (!fields)
         return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
     const input::TGameAction& action = *fields;
-    if (const char* id = namedLabel(action.type))
-        return qtTrId(id).arg(nameOf(action));
     switch (action.type) {
     case A::QUICK_LOOT:
         return qtTrId(action.position.x != UINT16_MAX ? "context_loot_all" : "context_loot");

@@ -56,11 +56,11 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
                               true);
         return true;
     });
-    input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        if (tibia::game::hasLocalPlayer() && action.creatureId == tibia::game::localPlayerId())
+    input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameActionCreature& action) {
+        if (tibia::game::hasLocalPlayer() && action.creatureId() == tibia::game::localPlayerId())
             requestOwnWheel();
-        else if (action.creatureId != 0)
-            tibia::game::openWheel(action.creatureId);
+        else if (action.creatureId() != 0)
+            tibia::game::openWheel(action.creatureId());
         return true;
     });
     input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {

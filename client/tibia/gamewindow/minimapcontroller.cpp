@@ -250,8 +250,7 @@ void TMinimapController::onMinimapDragged(const float deltaX, const float deltaY
 void TMinimapController::dispatchClick(const input::TGameActionList& actions, const int mouseButton, const int modifiers,
                                        const std::span<const input::EGameAction> contextMenuOrder)
 {
-    const input::TGameActionPtr action =
-        m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    const input::IGameActionPtr action = m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -296,7 +295,7 @@ void TMinimapController::updateMouseCursor()
         return;
     }
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
     const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
     if (auto* cursor = Cursor::instance())
         cursor->setLayerShape(Cursor::Minimap, shape);

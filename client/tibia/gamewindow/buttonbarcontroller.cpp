@@ -452,7 +452,7 @@ void TButtonBarController::onAnalyticsSelectorWidgetButtonClicked() { toggleWidg
 void TButtonBarController::onLenshelpButtonClicked() { publish(A::LENSHELP_ACTIVATE); }
 void TButtonBarController::onHighscoresDialogButtonClicked() { publish(A::OPEN_HIGHSCORES_DIALOG); }
 void TButtonBarController::onExaltationForgeDialogButtonClicked() { publish(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG); }
-void TButtonBarController::onBossSlotsDialogButtonClicked() { publish(A::OPEN_CYCLOPEDIA, 7); }
+void TButtonBarController::onBossSlotsDialogButtonClicked() { input::publish(std::make_shared<input::TGameActionOpenCyclopedia>(7)); }
 void TButtonBarController::onSkillWheelDialogButtonClicked() { publish(A::REQUEST_OWN_SKILL_WHEEL); }
 void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::ImbuementTracker); }
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()

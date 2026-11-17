@@ -210,6 +210,17 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
 
 uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGameActionPtr& pGameAction)
 {
+    if (!pGameAction)
+        return 0;
+    if (const auto* creature = input::gameActionAs<input::TGameActionCreature>(pGameAction))
+        return creature->gameActionType() == A::TEMPORARY_SELECT_CREATURE || creature->gameActionType() == A::LOOK_AT_CREATURE
+                || creature->gameActionType() == A::ATTACK_CREATURE || creature->gameActionType() == A::STOP_ATTACKING_CREATURE
+                || creature->gameActionType() == A::FOLLOW_CREATURE || creature->gameActionType() == A::STOP_FOLLOWING_CREATURE
+                || creature->gameActionType() == A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD
+            ? creature->creatureId()
+            : 0;
+    if (const auto* npc = input::gameActionAs<input::TGameActionStartTalkingToNPC>(pGameAction))
+        return npc->creatureId();
     const TGameActionPtr action = input::unportedGameAction(pGameAction);
     if (!action)
         return 0;
@@ -241,10 +252,9 @@ uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGame
 
 int TWorldMapGameActionProvider::cursorShapeOf(const input::IGameActionPtr& pGameAction)
 {
-    const TGameActionPtr action = input::unportedGameAction(pGameAction);
-    if (!action)
+    if (!pGameAction)
         return Cursor::Default;
-    switch (action->type) {
+    switch (pGameAction->gameActionType()) {
     case A::USE:
     case A::USE_WITH:
     case A::USE_ON_CREATURE:
@@ -276,7 +286,9 @@ int TWorldMapGameActionProvider::cursorShapeOf(const input::IGameActionPtr& pGam
     case A::START_TALKING_TO_NPC:
         return Cursor::Talk;
     case A::SMART_CLICK:
-        return cursorShapeOf(action->inner);
+        if (const TGameActionPtr smartClick = input::unportedGameAction(pGameAction))
+            return cursorShapeOf(smartClick->inner);
+        return Cursor::Default;
     default:
         return Cursor::Default;
     }

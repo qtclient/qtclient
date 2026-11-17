@@ -525,10 +525,10 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(TypeID));
-    const input::TGameActionPtr action = m_mapper.map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
+    if (action->gameActionType() != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }

@@ -94,11 +94,11 @@ input::TGameActionList battleListGameActions(const uint32_t creatureId)
 }
 
 /// The first of the actions with `type`, or none.
-input::TGameActionPtr findAction(const input::TGameActionList& actions, const A type)
+input::IGameActionPtr findAction(const input::TGameActionList& actions, const A type)
 {
     for (const input::IGameActionPtr& action : actions) {
         if (action && action->gameActionType() == type)
-            return input::unportedGameAction(action);
+            return action;
     }
     return nullptr;
 }
@@ -469,7 +469,7 @@ bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
 {
     if (!m_hoveredCreature)
         return false;
-    const input::TGameActionPtr target = findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED);
+    const input::TGameActionPtr target = input::unportedGameAction(findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED));
     if (!target || !target->creatureId)
         return false;
     if (action.type == A::USE_AT_MOUSECURSOR) {
@@ -663,9 +663,9 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
     // While an entry's context menu is open, that entry stays selected.
     const uint32_t selected = m_lockedCreature ? m_lockedCreature : m_hoveredCreature;
     const input::TGameActionList actions = battleListGameActions(selected);
-    const input::TGameActionPtr temporarySelect = findAction(actions, A::TEMPORARY_SELECT_CREATURE);
+    const input::IGameActionPtr temporarySelect = findAction(actions, A::TEMPORARY_SELECT_CREATURE);
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(actions, mapperContext(), Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(actions, mapperContext(), Qt::LeftButton, modifiers);
     if (Cursor* cursor = Cursor::instance()) {
         if (action)
             cursor->setLayerShape(Cursor::BattleList, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
@@ -681,8 +681,7 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
 void TBattleListController::onCreatureClicked(const int creatureId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList actions = battleListGameActions(static_cast<uint32_t>(creatureId));
-    const input::TGameActionPtr action =
-        m_mapper.map(actions, mapperContext(), static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+    const input::IGameActionPtr action = m_mapper.map(actions, mapperContext(), static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -715,7 +714,7 @@ void TBattleListController::onContextMenuControllerMenuClosed()
 
 void TBattleListController::onCreatureTargetSelected(const int creatureId)
 {
-    if (const input::TGameActionPtr action = findAction(battleListGameActions(static_cast<uint32_t>(creatureId)), A::TARGET_SELECTED))
+    if (const input::IGameActionPtr action = findAction(battleListGameActions(static_cast<uint32_t>(creatureId)), A::TARGET_SELECTED))
         input::publish(action);
 }
 
@@ -788,13 +787,13 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
     // otherwise the mouse target is cleared.
-    input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameAction& action) {
-        setTemporarySelectedCreature(action.creatureId);
+    input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
+        setTemporarySelectedCreature(action.creatureId());
         if (m_worldMapRenderProvider) {
             creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
             const bool highlighted = creatures::TCreature::markOptions().mouseHighlightTarget && storage
-                && storage->creatureAt(action.creatureId);
-            m_worldMapRenderProvider->setMouseTargetCreatureId(highlighted ? action.creatureId : 0);
+                && storage->creatureAt(action.creatureId());
+            m_worldMapRenderProvider->setMouseTargetCreatureId(highlighted ? action.creatureId() : 0);
         }
         return true;
     });

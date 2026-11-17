@@ -634,7 +634,7 @@ void TMapWindowController::updateMouseTarget()
     }
     // CIP : the action a left click with the held modifiers would run.
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
     if (!action) {
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
@@ -664,7 +664,8 @@ void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY
         return;
     }
     const input::TGameActionList candidates = m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)));
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
+    const input::IGameActionPtr action =
+m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
                                                       static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;

@@ -2547,8 +2547,10 @@ input::TGameActionCopyTextToClipboard::v1	7b2c7d4716bd76d5	skip	generated: compi
 input::TGameActionCopyTextToClipboard::v2	2c55a421f1eb236f	skip	generated: compiler-generated destructor pair
 input::TGameActionCopyTrustedTextToClipboard::v1	7b2c7d4716bd76d5	skip	generated: compiler-generated destructor pair
 input::TGameActionCopyTrustedTextToClipboard::v2	2c55a421f1eb236f	skip	generated: compiler-generated destructor pair
+input::TGameActionCreature::v0	991c96350cfda1d0	ported	input/gameaction.h:TGameActionCreature::gameActionType
 input::TGameActionCreature::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionCreature::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionCreature::v4	a81553cb360a77e2	ported	input/gameaction.h:TGameActionCreature::creatureId
 input::TGameActionCreatureWithName::v1	42162af33a3706d7	skip	generated: compiler-generated destructor pair
 input::TGameActionCreatureWithName::v2	adf52eaa853b6dc1	skip	generated: compiler-generated destructor pair
 input::TGameActionCrossHairSpell::v1	0a6c452db18db8d3	skip	generated: compiler-generated destructor pair
@@ -2799,6 +2801,7 @@ input::TGameActionSpriteResolved::v1	a97ec1dee0709cb0	skip	generated: compiler-g
 input::TGameActionSpriteResolved::v2	6afeabacff9f72e5	skip	generated: compiler-generated destructor pair
 input::TGameActionStartTalkingToNPC::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionStartTalkingToNPC::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionStartTalkingToNPC::v4	a81553cb360a77e2	ported	input/gameaction.h:TGameActionStartTalkingToNPC::creatureId
 input::TGameActionStartTargetSelection::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionStartTargetSelection::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionStashOpenRetrieveDialog::v1	7584257adae1ce87	skip	generated: compiler-generated destructor pair
@@ -8395,6 +8398,8 @@ sub_8df0e071c723	8df0e071c7232e61	ported	gamewindow/gamewindowcontroller.cpp:TGa
 sub_8df8e8457715	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
 sub_8df8e8457715#2	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
 sub_8e1421a88061	8e1421a880613cf7	ported	skillwheel/skillwheeldata.cpp:formatValue
+sub_8e29e5df53ef	8e29e5df53ef0ee8	ported	input/gameaction.h:TGameActionStartTalkingToNPC::TGameActionStartTalkingToNPC
+sub_8e29e5df53ef#2	8e29e5df53ef0ee8	ported	input/gameaction.h:TGameActionStartTalkingToNPC::TGameActionStartTalkingToNPC
 sub_8e3b35af5159#2	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8e3b35af5159#3	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8e3cca519cd1	8e3cca519cd1550c	tested	tutorial/sessiondumphintbase.cpp:TSessiondumpHintBase::TSessiondumpHintBase	test=tests/client/sessiondumphints_test.cpp
@@ -11753,6 +11758,8 @@ sub_fd94fc8b0bc1	fd94fc8b0bc13307	inlined	worldmap/worldmapfield.cpp:TWorldMapFi
 sub_fd9d6ff26336	fd9d6ff26336f71d	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::showLevelSpecialPopup
 sub_fda5886882ca	fda5886882cacc79	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::trackedQuestFlagIds
 sub_fdad026fe3b2	fdad026fe3b25d9f	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowRuneSpells
+sub_fdcdd1af4602#3	fdcdd1af4602d6a3	ported	input/gameaction.h:TGameActionCreature::TGameActionCreature
+sub_fdcdd1af4602#4	fdcdd1af4602d6a3	ported	input/gameaction.h:TGameActionCreature::TGameActionCreature
 sub_fde53446abe4	fde53446abe4d7c7	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::selectCharm
 sub_fdecfee0bd3b#2	fdecfee0bd3b491b	skip	generated: compiler-generated destructor pair
 sub_fe041a11c72c	fe041a11c72c846f	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowOnlyCurrentVocation

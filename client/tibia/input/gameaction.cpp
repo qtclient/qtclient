@@ -103,6 +103,34 @@ void fillObject(TGameAction& action, const Position& position, const int stackPo
     action.objectClientId = objectClientId;
 }
 
+/// The types CIP builds as TGameActionCreature.
+bool isTGameActionCreatureType(const EGameAction type)
+{
+    switch (type) {
+    case EGameAction::ATTACK_CREATURE:
+    case EGameAction::STOP_ATTACKING_CREATURE:
+    case EGameAction::FOLLOW_CREATURE:
+    case EGameAction::STOP_FOLLOWING_CREATURE:
+    case EGameAction::LOOK_AT_CREATURE:
+    case EGameAction::TEMPORARY_SELECT_CREATURE:
+    case EGameAction::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
+    case EGameAction::INVITE_TO_PARTY:
+    case EGameAction::JOIN_PARTY:
+    case EGameAction::REVOKE_PARTY_INVITATION:
+    case EGameAction::PASS_PARTY_LEADERSHIP:
+    case EGameAction::JOIN_AGGRESSION:
+    case EGameAction::INSPECT_PLAYER:
+    case EGameAction::ASK_TO_INSPECT_PLAYER:
+    case EGameAction::INVITE_TO_INSPECT_PLAYER:
+    case EGameAction::ALLOW_INSPECT_PLAYER:
+    case EGameAction::REVOKE_INSPECT_PLAYER:
+    case EGameAction::REQUEST_SKILL_WHEEL:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool isCreatureActionType(const EGameAction type)
 {
     switch (type) {
@@ -164,11 +192,6 @@ TGameActionUseWith::TGameActionUseWith(const TGameAction& other)
     type = EGameAction::USE_WITH;
 }
 
-TGameActionCreature::TGameActionCreature(const EGameAction actionType, const uint32_t id)
-{
-    type = actionType;
-    creatureId = id;
-}
 
 TGameActionMoveObject::TGameActionMoveObject(Position position, int stackPosition, const uint16_t objectClientId)
 {
@@ -582,11 +605,6 @@ TGameActionSortFilterVipList::TGameActionSortFilterVipList(const EGameAction act
     type = actionType;
 }
 
-TGameActionStartTalkingToNPC::TGameActionStartTalkingToNPC(const uint32_t id)
-{
-    type = EGameAction::START_TALKING_TO_NPC;
-    creatureId = id;
-}
 
 TGameActionStashOpenStowStackDialog::TGameActionStashOpenStowStackDialog(Position position, int stackPosition, const uint16_t objectClientId)
 {
@@ -1045,8 +1063,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSortFilterVipList>(type);
     case EGameAction::SPRITE_RESOLVED:
         return std::make_shared<TGameActionSpriteResolved>();
-    case EGameAction::START_TALKING_TO_NPC:
-        return std::make_shared<TGameActionStartTalkingToNPC>();
     case EGameAction::START_TARGET_SELECTION:
         return std::make_shared<TGameActionStartTargetSelection>();
     case EGameAction::STASH_OPEN_RETRIEVE_DIALOG:
@@ -1139,10 +1155,13 @@ TGameActionPtr makeAction(const EGameAction type)
     case EGameAction::OPEN_CYCLOPEDIA:
     case EGameAction::LENSHELP_SHOW:
     case EGameAction::SOUND_TRIGGER:
+    case EGameAction::START_TALKING_TO_NPC:
         // Ported classes are constructed with their fields, not by type.
         qCCritical(lcGameAction) << "makeAction: construct" << static_cast<int>(type) << "with its class";
         return unportedSimpleAction(type);
     default:
+        if (isTGameActionCreatureType(type))
+            qCCritical(lcGameAction) << "makeAction: construct" << static_cast<int>(type) << "with TGameActionCreature";
         return unportedSimpleAction(type);
     }
 }
@@ -1215,7 +1234,18 @@ TGameActionPtr makeObjectAction(const EGameAction type, const Position& position
     }
 }
 
-TGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatureId)
+uint32_t creatureIdOf(const IGameAction& action)
+{
+    if (const auto* creature = dynamic_cast<const TGameActionCreature*>(&action))
+        return creature->creatureId();
+    if (const auto* npc = dynamic_cast<const TGameActionStartTalkingToNPC*>(&action))
+        return npc->creatureId();
+    if (const auto* fields = dynamic_cast<const TGameAction*>(&action))
+        return fields->creatureId;
+    return 0;
+}
+
+IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatureId)
 {
     if (type == EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
         return std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId);
@@ -1233,7 +1263,7 @@ TGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
         return std::make_shared<TGameActionTargetSelected>(creatureId);
     if (type == EGameAction::UNMOUNT_PLAYER)
         return std::make_shared<TGameActionUnmountPlayer>(creatureId);
-    if (isCreatureActionType(type))
+    if (isTGameActionCreatureType(type))
         return std::make_shared<TGameActionCreature>(type, creatureId);
     auto action = mutableClone(*makeAction(type));
     action->creatureId = creatureId;
@@ -1259,7 +1289,9 @@ std::shared_ptr<TGameAction> mutableClone(const TGameAction& action)
     if (action.objectClientId || action.stackPosition >= 0)
         typed = makeObjectAction(action.type, action.position, action.stackPosition, action.objectClientId);
     else if (action.creatureId)
-        typed = makeCreatureAction(action.type, action.creatureId);
+        typed = unportedGameAction(makeCreatureAction(action.type, action.creatureId));
+    if (!typed)
+        typed = unportedSimpleAction(action.type);
     else
         typed = makeAction(action.type);
     auto out = std::const_pointer_cast<TGameAction>(typed);

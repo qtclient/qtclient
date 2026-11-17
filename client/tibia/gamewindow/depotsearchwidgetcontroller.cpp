@@ -597,8 +597,7 @@ void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId,
     if (!m_session)
         return;
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(AppearanceId));
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -667,8 +666,7 @@ void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const 
         return;
     const int context = StorageLocation == Stash ? StashContext : ContainerContext;
     const input::TGameActionList candidates = slotActions(StorageLocation, SlotIDRaw);
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -693,7 +691,7 @@ void TDepotSearchWidgetController::updateHoverCursor()
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::TGameActionList candidates =
         m_hoveredStorageLocation == Stash ? input::TGameActionList{} : slotActions(m_hoveredStorageLocation, m_hoveredSlot);
-    const input::TGameActionPtr action = m_mapper.map(candidates, ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(Cursor::ContainerNoDrop, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 

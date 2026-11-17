@@ -1917,11 +1917,14 @@ void TChatController::showTabMenu(chat::TChatChannel* channel, const int button,
 void TChatController::showMenu(const input::TGameActionList& candidates, const std::span<const input::EGameAction> order, const int context,
                                const int button, const int modifiers, TChatChannelController* model, chat::TChatChannel* channel)
 {
-    const input::TGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
+    const input::IGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
     if (!picked)
         return;
     if (picked->gameActionType() != A::CONTEXT_MENU) {
-        runMenuAction(*picked, model, channel);
+        if (const input::TGameActionPtr fields = input::unportedGameAction(picked))
+            runMenuAction(*fields, model, channel);
+        else
+            input::publish(picked);
         return;
     }
     auto* menu = TContextMenuController::instance();
@@ -1940,6 +1943,8 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
                 [this, action, target = QPointer<TChatChannelController>(model), tab = QPointer<TChatChannel>(channel)] {
                     if (const input::TGameActionPtr fields = input::unportedGameAction(action))
                         runMenuAction(*fields, target, tab);
+                    else
+                        input::publish(action);
                 });
     }
     menu->showCustomMenu();

@@ -217,13 +217,13 @@ int parentContainerId(const TGameAction& action)
 
 /// CIP's NPC talk handler : greet NPCs closer than four fields
 /// on the player's floor.
-void startTalking(const TGameAction& action)
+void startTalking(const uint32_t creatureId)
 {
-    if (!action.creatureId)
+    if (!creatureId)
         return;
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> npc =
-        storage ? storage->creatureAt(action.creatureId) : nullptr;
+        storage ? storage->creatureAt(creatureId) : nullptr;
     if (!npc || !tibia::game::hasLocalPlayer())
         return;
     // Within three fields on the floor the local channel opens and the NPC is
@@ -239,7 +239,7 @@ void startTalking(const TGameAction& action)
     auto open = mutableClone(*makeAction(A::OPEN_CHAT_CHANNEL));
     open->chatChannelType = 0; // TChatChannelIdentifier::Local
     publish(open);
-    tibia::game::greetNpc(action.creatureId);
+    tibia::game::greetNpc(creatureId);
 }
 
 void openLauncher()
@@ -367,13 +367,14 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         setLenshelp(true);
         return;
     }
+    // The field carrier of the types not ported yet; null for ported classes,
+    // whose cases below read only the class.
     const TGameActionPtr action = unportedGameAction(pGameAction);
-    if (!action)
-        return;
-    switch (action->type) {
+    const uint32_t creatureId = creatureIdOf(*pGameAction);
+    switch (type) {
     case A::LOOK_AT_CREATURE:
-        if (action->creatureId)
-            tibia::game::lookCreature(action->creatureId);
+        if (creatureId)
+            tibia::game::lookCreature(creatureId);
         break;
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
@@ -403,8 +404,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     case A::ASK_TO_INSPECT_PLAYER:
     case A::ALLOW_INSPECT_PLAYER:
     case A::REVOKE_INSPECT_PLAYER:
-        if (action->creatureId)
-            tibia::game::inspectCharacter(action->creatureId, inspectPlayerAction(action->type));
+        if (creatureId)
+            tibia::game::inspectCharacter(creatureId, inspectPlayerAction(type));
         break;
     case A::ALLOW_ALL_TO_INSPECT_PLAYER:
         app::ClientOptions::store(QStringLiteral("inspectPlayerAllowAllEnabled"), true);
@@ -416,20 +417,20 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         tibia::game::inspectCharacter(0, inspectPlayerAction(A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
         break;
     case A::INVITE_TO_PARTY:
-        if (action->creatureId)
-            tibia::game::partyInvite(action->creatureId);
+        if (creatureId)
+            tibia::game::partyInvite(creatureId);
         break;
     case A::JOIN_PARTY:
-        if (action->creatureId)
-            tibia::game::partyJoin(action->creatureId);
+        if (creatureId)
+            tibia::game::partyJoin(creatureId);
         break;
     case A::REVOKE_PARTY_INVITATION:
-        if (action->creatureId)
-            tibia::game::partyRevokeInvitation(action->creatureId);
+        if (creatureId)
+            tibia::game::partyRevokeInvitation(creatureId);
         break;
     case A::PASS_PARTY_LEADERSHIP:
-        if (action->creatureId)
-            tibia::game::partyPassLeadership(action->creatureId);
+        if (creatureId)
+            tibia::game::partyPassLeadership(creatureId);
         break;
     case A::LEAVE_PARTY:
         tibia::game::partyLeave();
@@ -461,15 +462,15 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         openLauncher();
         break;
     case A::ATTACK_CREATURE:
-        if (action->creatureId)
-            tibia::game::attack(action->creatureId);
+        if (creatureId)
+            tibia::game::attack(creatureId);
         break;
     case A::STOP_ATTACKING_CREATURE:
         tibia::game::cancelAttack();
         break;
     case A::FOLLOW_CREATURE:
-        if (action->creatureId)
-            tibia::game::follow(action->creatureId);
+        if (creatureId)
+            tibia::game::follow(creatureId);
         break;
     case A::STOP_FOLLOWING_CREATURE:
         tibia::game::cancelFollow();
@@ -482,7 +483,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         // Handled by TPlayerMovementGameActionHandler when registered.
         break;
     case A::START_TALKING_TO_NPC:
-        startTalking(*action);
+        startTalking(creatureId);
         break;
     case A::MOUNT_PLAYER:
         tibia::game::mount(true);
@@ -514,7 +515,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     case A::SET_HIRELING_OUTFIT:
         if (action->outfit.getId() != 0)
-            tibia::game::setHirelingOutfit(action->outfit, action->creatureId);
+            tibia::game::setHirelingOutfit(action->outfit, creatureId);
         break;
     case A::SET_SHOW_OFF_SOCKET_CONFIGURATION: {
         // Outfit id 0 is valid (clear the displayed look / hide outfit).
@@ -532,7 +533,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         const uint16_t typedId = wireTypeId(*action);
         const uint16_t itemId = typedId ? typedId : static_cast<uint16_t>(action->parameter);
         const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
-        tibia::game::setCreaturePodiumConfiguration(action->creatureId, action->position, itemId, stackpos,
+        tibia::game::setCreaturePodiumConfiguration(creatureId, action->position, itemId, stackpos,
                                               static_cast<uint8_t>(action->lookDirection),
                                               action->enable ? 1 : 0, action->showSocket || action->chase ? 1 : 0);
         break;
@@ -545,8 +546,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     }
     case A::JOIN_AGGRESSION:
-        if (action->creatureId)
-            tibia::game::joinAggression(action->creatureId);
+        if (creatureId)
+            tibia::game::joinAggression(creatureId);
         break;
     case A::REQUEST_TRANSACTION_DETAILS:
         tibia::game::requestTransactionDetails(static_cast<uint32_t>(action->instance));
@@ -571,7 +572,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     case A::MINIMAP_SCROLL_WEST:
     case A::MINIMAP_CENTER:
         if (const auto& handler = minimapActionHandler())
-            handler(*action);
+            handler(*pGameAction);
         break;
     case A::START_TARGET_SELECTION:
         // CIP: TTargetSelectionController handles this; our listener mirrors it.

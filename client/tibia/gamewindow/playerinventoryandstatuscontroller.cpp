@@ -502,8 +502,7 @@ void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()
 void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = input::filterActions(slotActions(slotId), ClickActionTypes);
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
@@ -542,7 +541,7 @@ void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 

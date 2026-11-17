@@ -138,6 +138,42 @@ private:
     uint8_t m_charmId = 0xff;
 };
 
+/// CIP input::TGameActionCreature: an action on one creature (attack, follow,
+/// their stops, look at, temporary select, copy name with id, party, inspect,
+/// join aggression, request skill wheel).
+class TGameActionCreature final : public IGameAction
+{
+public:
+    TGameActionCreature(EGameAction type, uint32_t creatureId)
+        : m_type(type)
+        , m_creatureId(creatureId)
+    {
+    }
+    EGameAction gameActionType() const override { return m_type; }
+    /// CIP v4.
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    EGameAction m_type;
+    uint32_t m_creatureId;
+};
+
+/// CIP input::TGameActionStartTalkingToNPC (START_TALKING_TO_NPC): greets the NPC.
+class TGameActionStartTalkingToNPC final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionStartTalkingToNPC(uint32_t creatureId)
+        : TGameActionSimple(EGameAction::START_TALKING_TO_NPC)
+        , m_creatureId(creatureId)
+    {
+    }
+    /// CIP v4.
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    uint32_t m_creatureId;
+};
+
 /// CIP input::TGameActionShowLenshelp (LENSHELP_SHOW, 0xc4): the lenshelp text
 /// of an object (its appearance's lenshelp id) at its field and the scene
 /// rectangle the help points at.
@@ -306,15 +342,6 @@ public:
     explicit TGameActionUseWith(const TGameAction& other);
 };
 
-/// CIP input::TGameActionCreature (ctor): ATTACK_CREATURE,
-/// FOLLOW_CREATURE, LOOK_AT_CREATURE, stop variants, and other creature-id
-/// actions share this carrier.
-class TGameActionCreature final : public TGameAction
-{
-public:
-    TGameActionCreature() = default;
-    TGameActionCreature(EGameAction type, uint32_t creatureId);
-};
 
 /// CIP input::TGameActionMoveObject (ctor).
 class TGameActionMoveObject final : public TGameAction
@@ -1469,13 +1496,6 @@ class TGameActionSpriteResolved final : public TGameAction
 public:
     TGameActionSpriteResolved() { type = EGameAction::SPRITE_RESOLVED; }
 };
-/// CIP input::TGameActionStartTalkingToNPC .
-class TGameActionStartTalkingToNPC final : public TGameAction
-{
-public:
-    TGameActionStartTalkingToNPC() { type = EGameAction::START_TALKING_TO_NPC; }
-    explicit TGameActionStartTalkingToNPC(uint32_t creatureId);
-};
 /// CIP input::TGameActionStartTargetSelection .
 class TGameActionStartTargetSelection final : public TGameAction
 {
@@ -1761,7 +1781,9 @@ public:
 
 TGameActionPtr makeAction(EGameAction type);
 TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
-TGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
+IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
+/// The creature an action is on (CIP: the creature classes' v4); 0 for none.
+uint32_t creatureIdOf(const IGameAction& action);
 TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
 TGameActionPtr makeSmartClick(const IGameActionPtr& inner);
 
