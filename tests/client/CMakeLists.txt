@@ -68,6 +68,8 @@ if(Qt6_FOUND AND TARGET tibia)
     target_compile_definitions(client_gameactionmapper_tests PRIVATE
         $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>
     )
+    # gameaction.h includes the generated cip_gen.h (tibia's cipgen include dir).
+    add_dependencies(client_gameactionmapper_tests cip_codegen_tibia)
     include(GoogleTest)
     gtest_discover_tests(client_gameactionmapper_tests)
 endif()
@@ -164,6 +166,7 @@ if(Qt6_FOUND AND TARGET tibia)
     target_compile_definitions(client_sessiondumphints_tests PRIVATE
         $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>
         QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
+    add_dependencies(client_sessiondumphints_tests cip_codegen_tibia)
     gtest_discover_tests(client_sessiondumphints_tests)
 endif()
 
