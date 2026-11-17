@@ -6,6 +6,7 @@
 #include "appearances/spriteinfo.h"
 #include "appearances/worldmaphighlightbaseplate.h"
 #include "mods/registry.h"
+#include "sprites/spriteresolver.h"
 #include "sprites/spritesystem.h"
 
 #include <tibia/game/gamesession.h>
@@ -36,38 +37,6 @@ QImage spriteImage(const uint32_t id, bool& loading)
 {
     return tibia::sprites::TSpriteSystem::instance().spriteImage(id, loading);
 }
-
-/// Outfit masks mark the head yellow, the body red, the legs green and the feet
-/// blue; those pixels are multiplied by the outfit's colors.
-void colorize(QImage& image, const QImage& mask, const uint32_t colors)
-{
-    if (mask.size() != image.size())
-        return;
-    const QColor head = Outfit::getColor(colors & 0xFF);
-    const QColor body = Outfit::getColor((colors >> 8) & 0xFF);
-    const QColor legs = Outfit::getColor((colors >> 16) & 0xFF);
-    const QColor feet = Outfit::getColor(colors >> 24);
-    for (int y = 0; y < image.height(); ++y) {
-        uint8_t* px = image.scanLine(y);
-        const uint8_t* m = mask.constScanLine(y);
-        for (int x = 0; x < image.width(); ++x, px += 4, m += 4) {
-            if (m[3] == 0)
-                continue;
-            const bool r = m[0] > 0x7F, g = m[1] > 0x7F, b = m[2] > 0x7F;
-            const QColor* color = r && g && !b ? &head
-                : r && !g && !b                ? &body
-                : !r && g && !b                ? &legs
-                : !r && !g && b                ? &feet
-                                               : nullptr;
-            if (!color)
-                continue;
-            px[0] = static_cast<uint8_t>(px[0] * color->red() / 255);
-            px[1] = static_cast<uint8_t>(px[1] * color->green() / 255);
-            px[2] = static_cast<uint8_t>(px[2] * color->blue() / 255);
-        }
-    }
-}
-
 
 }
 
@@ -192,7 +161,10 @@ QImage TSpriteTextureCache::raster(const SpriteKey& key, bool& loading) const
         const QImage mask = spriteImage(key.maskId, loading);
         if (loading)
             return {};
-        colorize(image, mask, key.colors);
+        image = tibia::sprites::TSpriteResolver::colorizedOutfit(
+            image, mask,
+            appearances::TOutfitColors(static_cast<uint8_t>(key.colors), static_cast<uint8_t>(key.colors >> 8),
+                                       static_cast<uint8_t>(key.colors >> 16), static_cast<uint8_t>(key.colors >> 24)));
     }
     if (!image.isNull() && key.tint) {
         if (const auto apply = tibia::mods::applyImageTintHook())

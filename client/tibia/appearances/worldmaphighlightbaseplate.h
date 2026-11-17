@@ -24,6 +24,7 @@ public:
     }
 
     uint8_t frame() const { return m_frame; }
+    EKind kind() const override { return EKind::HighlightBaseplate; }
 
     SpriteKey key() const override;
     QImage raster() const override;

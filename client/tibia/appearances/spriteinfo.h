@@ -32,7 +32,10 @@ public:
         Spritesheet = 0,
         Masked = 1,
         Layered = 2,
-        Other = 3,
+        CreatureMark = 3,
+        HighlightBaseplate = 5,
+        Dummy = 7,
+        Other = 8,
     };
 
     virtual ~TAppearanceInstanceSpriteInfo() = default;
@@ -84,6 +87,7 @@ public:
 
     SpriteKey key() const override;
     QImage raster() const override;
+    EKind kind() const override { return EKind::CreatureMark; }
     const std::array<uint32_t, 3>& colors() const { return m_colors; }
 
     /// / spritetexturecache creatureMarkImage.
@@ -182,6 +186,7 @@ private:
 class TDummyAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpriteInfo
 {
 public:
+    EKind kind() const override { return EKind::Dummy; }
     SpriteKey key() const override;
     QImage raster() const override;
 };
