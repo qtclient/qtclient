@@ -65,12 +65,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         return true;
     });
     input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::TGameAction& action) {
-        m_dialog->showDialog();
+        m_dialog->openDialogTab(TSkillWheelDialogController::GemAtelier);
         m_dialog->openGemAtelier(0, action.parameter);
         return true;
     });
     input::setActionHandler(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::TGameAction& action) {
-        m_dialog->showDialog();
+        m_dialog->openDialogTab(TSkillWheelDialogController::FragmentWorkshop);
         m_dialog->openWorkshopMod(action.instance != 0, action.parameter);
         return true;
     });

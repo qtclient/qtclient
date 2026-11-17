@@ -1619,13 +1619,11 @@ bool TSkillWheelDialogController::isPremium() const
     return tibia::game::localPlayerIsPremium();
 }
 
+/// CIP: shows the dialog; the tab is chosen by the caller.
 void TSkillWheelDialogController::showDialog()
 {
-    if (!dialog()->isShown()) {
+    if (!dialog()->isShown())
         dialog()->show();
-        m_dialogTab = NoTabInitialState;
-        requestTabSwitch(Wheel);
-    }
     Q_EMIT premiumStatusChanged();
 }
 
@@ -1634,14 +1632,12 @@ void TSkillWheelDialogController::showDialog()
 void TSkillWheelDialogController::openDialogTab(const EDialogTab tab)
 {
     if (!dialog()->isShown()) {
-        dialog()->show();
-        m_dialogTab = NoTabInitialState;
+        showDialog();
         m_page->clearSelection();
     }
     if (tab == Wheel)
         m_page->useServerSkillWheelAsCurrent();
     requestTabSwitch(tab);
-    Q_EMIT premiumStatusChanged();
 }
 
 void TSkillWheelDialogController::closeDialog()
@@ -1710,7 +1706,8 @@ void TSkillWheelDialogController::requestSkillWheelPreview()
         return;
     m_storage->setPreview(QString::fromStdString(tibia::game::localPlayerName()), vocation);
     m_page->clearData();
-    showDialog();
+    // CIP: the preview opens through the open action (the wheel tab takes the empty server wheel).
+    publish(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG);
 }
 
 void TSkillWheelDialogController::showMessage(const QString& caption, const QString& text, const bool offerPreview)
