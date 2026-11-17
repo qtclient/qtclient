@@ -206,7 +206,8 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
     const auto make = [&](const EGameAction type) -> IGameActionPtr { return makeObjectGameAction(type, object); };
     const auto push = [&](const EGameAction type) {
         IGameActionPtr action = make(type);
-        actions.push_back(action);
+        if (action) // makeObjectGameAction logs a type it has no object action for
+            actions.push_back(action);
         return action;
     };
     const bool mapLocation = isMapLocation(location.get());

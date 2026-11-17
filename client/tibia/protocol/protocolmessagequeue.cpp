@@ -4,7 +4,13 @@
 
 #include <protocol.pb.h>
 
+#include <QLoggingCategory>
+
+#include <exception>
+
 namespace tibia::protocol {
+
+Q_LOGGING_CATEGORY(lcProtocolQueue, "tibia.protocol.queue")
 
 namespace {
 
@@ -153,8 +159,16 @@ void TProtocolMessageQueue::dispatchGameserverMessage(const std::shared_ptr<Game
 {
     m_lastGameserverMessage = message;
     const auto handler = m_gameserverMessageHandlers.find(message->type());
-    if (handler != m_gameserverMessageHandlers.end())
-        handler->second(*message);
+    if (handler != m_gameserverMessageHandlers.end()) {
+        // A handler that rejects the message (CIP's "unhandled enum value" /
+        // invalid mode throws) drops that message only: a server sending a value
+        // CipSoft's never does must not take the whole client down.
+        try {
+            handler->second(*message);
+        } catch (const std::exception& e) {
+            qCCritical(lcProtocolQueue) << "dropped server message" << message->type() << ":" << e.what();
+        }
+    }
     Q_EMIT serverMessageEnqueued(message->has_type() ? message->type() : -1);
 }
 
