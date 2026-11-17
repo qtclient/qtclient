@@ -267,8 +267,8 @@ void TCyclopediaDialogController::requestBack()
     m_backlog.pop_back();
     // The page gets its context back. Pages that rebuild on showDialogTab
     // take it as pending before the switch; the item page takes it after.
-    if (context.tab == CharacterInfo && context.characterInfoDataType > 0)
-        m_characterInfo->setNextDataType(context.characterInfoDataType);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->setNextDataType(context.characterInfo.dataType);
     if (context.tab == Monsters)
         m_monsters->restoreContext(context.monsters);
     if (context.tab == BonusEffects)
@@ -280,6 +280,8 @@ void TCyclopediaDialogController::requestBack()
     switchTab(context.tab);
     if (context.tab == ItemInfo)
         m_itemInfo->restoreContext(context.itemInfo);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->restoreContext(context.characterInfo);
     Q_EMIT navigationBacklogChanged();
 }
 
@@ -322,7 +324,7 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
     if (m_dialogTab == ItemInfo)
         context.itemInfo = m_itemInfo->captureContext();
     if (m_dialogTab == CharacterInfo)
-        context.characterInfoDataType = m_characterInfo->dataType();
+        context.characterInfo = m_characterInfo->captureContext();
     if (m_dialogTab == Monsters)
         context.monsters = m_monsters->captureContext();
     if (m_dialogTab == BonusEffects)

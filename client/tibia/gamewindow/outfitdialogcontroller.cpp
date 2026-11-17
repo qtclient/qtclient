@@ -20,6 +20,14 @@
 
 namespace tibia::gamewindow {
 
+bool outfitCanBeColorized(const int lookType)
+{
+    if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature))
+        return false;
+    const ThingTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
+    return type && type->getLayers() > 1;
+}
+
 namespace {
 
 using cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType;
@@ -348,38 +356,12 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
     dialog()->show();
 }
 
-void TSelectOutfitDialogController::openCharacterInfoSelection(const int outfitId, const bool isOutfit, const bool isMount,
-                                                               const bool isSummonSkin)
+void TSelectOutfitDialogController::openCharacterInfoSelection(const Outfit& current, Entries outfits, Entries mounts, Entries summons,
+                                                               const bool isOutfit, const bool isMount, const bool isSummonSkin)
 {
-    if (outfitId <= 0)
-        return;
-    TCustomiseCharacterModel::Entry entry;
-    entry.id = outfitId;
-    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(outfitId), ThingCategoryCreature)) {
-        entry.name = QString::fromStdString(type->getName());
-        entry.canBeColorized = true;
-    } else {
-        entry.name = QString::number(outfitId);
-    }
-    Entries outfits;
-    Entries mounts;
-    Entries summons;
-    Outfit current;
-    if (tibia::game::hasLocalPlayer())
-        current = tibia::game::localPlayerOutfit();
-    if (isOutfit) {
-        outfits << entry;
-        current.setId(outfitId);
-    } else if (isMount) {
-        mounts << entry;
-        current.setMount(outfitId);
-    } else if (isSummonSkin) {
-        summons << entry;
-        current.setFamiliar(outfitId);
-    } else {
-        outfits << entry;
-        current.setId(outfitId);
-    }
+    for (Entries* list : { &outfits, &mounts })
+        for (auto& entry : *list)
+            entry.canBeColorized = outfitCanBeColorized(entry.id);
     m_dialogMode = CharacterInfoShowSelection;
     m_showOutfit = isOutfit || (!isMount && !isSummonSkin);
     m_showSummon = isSummonSkin;

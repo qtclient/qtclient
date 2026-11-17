@@ -39,14 +39,6 @@ const T* arg(const Args& args, const size_t index)
     return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
 }
 
-bool canBeColorized(const int lookType)
-{
-    if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature))
-        return false;
-    const ThingTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
-    return type && type->getLayers() > 1;
-}
-
 QString qstr(const std::string& text)
 {
     return QString::fromStdString(text);
@@ -164,12 +156,12 @@ void TInformationDialogs::hookOutfitDialog()
         if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>>(args, 1)) {
             for (const auto& [id, name, addons, mode] : *list)
                 outfits.append({ .id = id, .name = qstr(name), .firstAddOn = (addons & 1) != 0, .secondAddOn = (addons & 2) != 0,
-                                 .type = mode, .canBeColorized = canBeColorized(id) });
+                                 .type = mode, .canBeColorized = outfitCanBeColorized(id) });
         }
         QList<Entry> mounts;
         if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t>>>(args, 2)) {
             for (const auto& [id, name, mode] : *list)
-                mounts.append({ .id = id, .name = qstr(name), .type = mode, .canBeColorized = canBeColorized(id) });
+                mounts.append({ .id = id, .name = qstr(name), .type = mode, .canBeColorized = outfitCanBeColorized(id) });
         }
         QList<Entry> summons;
         if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string>>>(args, 3)) {

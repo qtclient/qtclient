@@ -45,7 +45,19 @@ public:
         Titles = 13,
     };
 
+    /// The page and the deaths / kills page a Cyclopedia backlog entry keeps.
+    struct Context
+    {
+        int dataType = GeneralStats;
+        qint64 page = 1;
+        bool operator==(const Context&) const = default;
+    };
+
     explicit TCharacterInfoDialogController(QObject* parent = nullptr);
+
+    Context captureContext() const;
+    /// Shows the context's page and asks for its deaths / kills page.
+    void restoreContext(const Context& context);
     ~TCharacterInfoDialogController() override;
 
     int dataType() const { return m_dataType; }
@@ -55,6 +67,11 @@ public:
     EDialogCategory dialogCategory() const override;
     /// CIP .
     bool dataIsLoading() const override;
+    /// The shown page of the recent deaths or kills, 1 elsewhere.
+    int currentPage() const override;
+    int numberOfPages() const override;
+    bool hasDualWielding() const override;
+    int dualWieldingObjectID() const override;
 
     /// The page the next showDialogTab opens (CIP: the open action's sub-page,
     /// or the backlog context restored by); general stats after it.

@@ -222,6 +222,7 @@ public:
     QColor torsoColor() const override { return color(1); }
     QColor legsColor() const override { return color(2); }
     QColor detailColor() const override { return color(3); }
+    const Colors& colors() const { return m_colors; }
 
 protected:
     /// CIP .
