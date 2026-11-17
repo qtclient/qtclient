@@ -119,7 +119,7 @@ void TInformationDialogs::setControlScheme(const int controlScheme) { m_cycloped
 
 void TInformationDialogs::hookOutfitDialog()
 {
-    input::setActionHandler(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::TGameAction&) {
+    input::setActionHandler(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::IGameAction&) {
         tibia::game::requestOutfit();
         return true;
     });
@@ -328,7 +328,7 @@ void TInformationDialogs::hookPrey()
     using client::gamecore::argInt;
     using client::gamecore::argString;
 
-    input::setActionHandler(A::OPEN_PREY_DIALOG, [this](const input::TGameAction&) {
+    input::setActionHandler(A::OPEN_PREY_DIALOG, [this](const input::IGameAction&) {
         m_prey->showDialog();
         return true;
     });
@@ -336,8 +336,15 @@ void TInformationDialogs::hookPrey()
     // 1 bonus reroll, 2 list choice, 3 bestiary list, 4 bestiary choice,
     // 5 automatic extension).
     const auto preyAction = [](const A type, const uint8_t actionType) {
-        input::setActionHandler(type, [actionType](const input::TGameAction& action) {
-            tibia::game::preyAction(static_cast<uint8_t>(action.instance), actionType, static_cast<uint16_t>(action.parameter));
+        input::setActionHandler(type, [actionType](const input::TGameActionPreySystem& action) {
+            uint16_t value = 0;
+            if (const auto* list = input::gameActionAs<input::TGameActionSelectPreyMonsterFromList>(&action))
+                value = list->listIndex();
+            else if (const auto* bestiary = input::gameActionAs<input::TGameActionSelectPreyMonsterFromBestiary>(&action))
+                value = bestiary->raceId();
+            else if (const auto* extend = input::gameActionAs<input::TGameActionChangeAutoPreyExtendType>(&action))
+                value = static_cast<uint16_t>(extend->extendType());
+            tibia::game::preyAction(action.preyId(), actionType, value);
             return true;
         });
     };

@@ -2054,6 +2054,325 @@ private:
     int m_value14;
 };
 
+
+// ---------------------------------------------------------------------------
+// Outfits, hirelings, podiums, exaltation forge, prey
+
+/// CIP input::TGameActionSetPlayerOutfit (SET_PLAYER_OUTFIT): the chosen look,
+/// whether the character rides, and a random mount.
+class TGameActionSetPlayerOutfit final : public IGameAction
+{
+public:
+    TGameActionSetPlayerOutfit(const Outfit& outfit, bool mountCharacter, bool randomMount)
+        : m_outfit(outfit)
+        , m_mountCharacter(mountCharacter)
+        , m_randomMount(randomMount)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_PLAYER_OUTFIT; }
+    const Outfit& outfit() const { return m_outfit; }
+    bool mountCharacter() const { return m_mountCharacter; }
+    bool randomMount() const { return m_randomMount; }
+
+private:
+    Outfit m_outfit;
+    bool m_mountCharacter;
+    bool m_randomMount;
+};
+
+/// CIP input::TGameActionSetHirelingOutfit (SET_HIRELING_OUTFIT).
+class TGameActionSetHirelingOutfit final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSetHirelingOutfit(const Outfit& outfit, uint32_t creatureId)
+        : TGameActionSimple(EGameAction::SET_HIRELING_OUTFIT)
+        , m_outfit(outfit)
+        , m_creatureId(creatureId)
+    {
+    }
+    const Outfit& outfit() const { return m_outfit; }
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    Outfit m_outfit;
+    uint32_t m_creatureId;
+};
+
+/// CIP input::TGameActionSetHirelingName (SET_HIRELING_NAME): the name and two
+/// values at +0x28 / +0x2c (meaning not read yet).
+class TGameActionSetHirelingName final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSetHirelingName(QString name, int value28, int value2c)
+        : TGameActionSimple(EGameAction::SET_HIRELING_NAME)
+        , m_name(std::move(name))
+        , m_value28(value28)
+        , m_value2c(value2c)
+    {
+    }
+    const QString& name() const { return m_name; }
+
+private:
+    QString m_name;
+    int m_value28;
+    int m_value2c;
+};
+
+/// The podium an outfit or creature shows on (CIP: the world map coordinate
+/// with the podium's stack position and type).
+struct TPodiumLocation
+{
+    Position position;
+    uint16_t itemId = 0;
+    uint8_t stackPosition = 0;
+};
+
+/// CIP input::TGameActionSetShowOffSocketConfiguration (SET_SHOW_OFF_SOCKET_CONFIGURATION):
+/// the outfit shown on a podium, its look direction and whether the podium shows.
+class TGameActionSetShowOffSocketConfiguration final : public IGameAction
+{
+public:
+    TGameActionSetShowOffSocketConfiguration(TPodiumLocation podium, const Outfit& outfit, uint8_t lookDirection, bool showSocket)
+        : m_podium(podium)
+        , m_outfit(outfit)
+        , m_lookDirection(lookDirection)
+        , m_showSocket(showSocket)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION; }
+    const TPodiumLocation& podium() const { return m_podium; }
+    const Outfit& outfit() const { return m_outfit; }
+    uint8_t lookDirection() const { return m_lookDirection; }
+    bool showSocket() const { return m_showSocket; }
+
+private:
+    TPodiumLocation m_podium;
+    Outfit m_outfit;
+    uint8_t m_lookDirection;
+    bool m_showSocket;
+};
+
+/// CIP input::TGameActionSetCreaturePodiumConfiguration (SET_CREATURE_PODIUM_CONFIGURATION):
+/// the race shown on a podium (0: none), its look direction, whether the podium
+/// and the creature show.
+class TGameActionSetCreaturePodiumConfiguration final : public IGameAction
+{
+public:
+    TGameActionSetCreaturePodiumConfiguration(uint32_t raceId, TPodiumLocation podium, uint8_t lookDirection, bool showPodium,
+                                              bool showCreature)
+        : m_raceId(raceId)
+        , m_podium(podium)
+        , m_lookDirection(lookDirection)
+        , m_showPodium(showPodium)
+        , m_showCreature(showCreature)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_CREATURE_PODIUM_CONFIGURATION; }
+    uint32_t raceId() const { return m_raceId; }
+    const TPodiumLocation& podium() const { return m_podium; }
+    uint8_t lookDirection() const { return m_lookDirection; }
+    bool showPodium() const { return m_showPodium; }
+    bool showCreature() const { return m_showCreature; }
+
+private:
+    uint32_t m_raceId;
+    TPodiumLocation m_podium;
+    uint8_t m_lookDirection;
+    bool m_showPodium;
+    bool m_showCreature;
+};
+
+/// CIP input::TGameActionRequestOutfitsFromServer (REQUEST_OUTFITS_FROM_SERVER): the
+/// outfit window for the player (mode 0), a store try-on (mode, object type) or a
+/// hireling (mode 2, creature).
+class TGameActionRequestOutfitsFromServer final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionRequestOutfitsFromServer()
+        : TGameActionSimple(EGameAction::REQUEST_OUTFITS_FROM_SERVER)
+    {
+    }
+    TGameActionRequestOutfitsFromServer(int mode, uint16_t typeId)
+        : TGameActionSimple(EGameAction::REQUEST_OUTFITS_FROM_SERVER)
+        , m_mode(mode)
+        , m_typeId(typeId)
+    {
+    }
+    static std::shared_ptr<TGameActionRequestOutfitsFromServer> forHireling(uint32_t creatureId);
+    int mode() const { return m_mode; }
+    uint16_t typeId() const { return m_typeId; }
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    int m_mode = 0;
+    uint16_t m_typeId = 0;
+    uint32_t m_creatureId = 0;
+};
+
+/// CIP input::TGameActionBuyHirelingNameOrSexChange (BUY_HIRELING_NAME_OR_SEX_CHANGE):
+/// the store's open parameters (qtclient opens the store's front page; CIP
+/// passes open action 1, detail 7).
+class TGameActionBuyHirelingNameOrSexChange final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionBuyHirelingNameOrSexChange(uint32_t creatureId)
+        : TGameActionSimple(EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
+        , m_creatureId(creatureId)
+    {
+    }
+    const TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
+    uint32_t creatureId() const { return m_creatureId; }
+
+private:
+    TStoreOpenParameters m_parameters;
+    uint32_t m_creatureId;
+};
+
+/// CIP input::TGameActionExaltationForgeFusion (EXALTATION_FORGE_FUSION).
+class TGameActionExaltationForgeFusion final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionExaltationForgeFusion(uint16_t typeId, uint8_t tier, uint16_t resourceTypeId, bool successRateIncreased,
+                                     bool tierLossReduced)
+        : TGameActionSimple(EGameAction::EXALTATION_FORGE_FUSION)
+        , m_typeId(typeId)
+        , m_tier(tier)
+        , m_resourceTypeId(resourceTypeId)
+        , m_successRateIncreased(successRateIncreased)
+        , m_tierLossReduced(tierLossReduced)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    uint8_t tier() const { return m_tier; }
+    uint16_t resourceTypeId() const { return m_resourceTypeId; }
+    bool successRateIncreased() const { return m_successRateIncreased; }
+    bool tierLossReduced() const { return m_tierLossReduced; }
+
+private:
+    uint16_t m_typeId;
+    uint8_t m_tier;
+    uint16_t m_resourceTypeId;
+    bool m_successRateIncreased;
+    bool m_tierLossReduced;
+};
+
+/// CIP input::TGameActionExaltationForgeConvergenceFusion (EXALTATION_FORGE_CONVERGENCE_FUSION).
+class TGameActionExaltationForgeConvergenceFusion final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionExaltationForgeConvergenceFusion(uint16_t typeId, uint8_t tier, uint16_t resourceTypeId)
+        : TGameActionSimple(EGameAction::EXALTATION_FORGE_CONVERGENCE_FUSION)
+        , m_typeId(typeId)
+        , m_tier(tier)
+        , m_resourceTypeId(resourceTypeId)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    uint8_t tier() const { return m_tier; }
+    uint16_t resourceTypeId() const { return m_resourceTypeId; }
+
+private:
+    uint16_t m_typeId;
+    uint8_t m_tier;
+    uint16_t m_resourceTypeId;
+};
+
+/// CIP input::TGameActionExaltationForgeTransfer (EXALTATION_FORGE_TRANSFER).
+class TGameActionExaltationForgeTransfer final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionExaltationForgeTransfer(uint16_t sourceTypeId, uint8_t tier, uint16_t targetTypeId, bool convergence)
+        : TGameActionSimple(EGameAction::EXALTATION_FORGE_TRANSFER)
+        , m_sourceTypeId(sourceTypeId)
+        , m_tier(tier)
+        , m_targetTypeId(targetTypeId)
+        , m_convergence(convergence)
+    {
+    }
+    uint16_t sourceTypeId() const { return m_sourceTypeId; }
+    uint8_t tier() const { return m_tier; }
+    uint16_t targetTypeId() const { return m_targetTypeId; }
+    bool convergence() const { return m_convergence; }
+
+private:
+    uint16_t m_sourceTypeId;
+    uint8_t m_tier;
+    uint16_t m_targetTypeId;
+    bool m_convergence;
+};
+
+/// CIP input::TGameActionShowExaltationResultDialog (SHOW_EXALTATION_RESULT_DIALOG).
+/// qtclient: the result travels in the exaltation storage (CIP's action carries it).
+class TGameActionShowExaltationResultDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionShowExaltationResultDialog()
+        : TGameActionSimple(EGameAction::SHOW_EXALTATION_RESULT_DIALOG)
+    {
+    }
+};
+
+/// CIP input::TGameActionPreySystem: a prey action on one slot (+0xc); the list /
+/// bonus rerolls and the bestiary list use it as is.
+class TGameActionPreySystem : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionPreySystem(uint8_t preyId, EGameAction type)
+        : TGameActionSimple(type)
+        , m_preyId(preyId)
+    {
+    }
+    uint8_t preyId() const { return m_preyId; }
+
+private:
+    uint8_t m_preyId;
+};
+
+/// CIP input::TGameActionSelectPreyMonsterFromList (PREY_SELECT_MONSTER_FROM_LIST).
+class TGameActionSelectPreyMonsterFromList final : public TGameActionPreySystem
+{
+public:
+    TGameActionSelectPreyMonsterFromList(uint8_t preyId, uint8_t listIndex)
+        : TGameActionPreySystem(preyId, EGameAction::PREY_SELECT_MONSTER_FROM_LIST)
+        , m_listIndex(listIndex)
+    {
+    }
+    uint8_t listIndex() const { return m_listIndex; }
+
+private:
+    uint8_t m_listIndex;
+};
+
+/// CIP input::TGameActionSelectPreyMonsterFromBestiary (PREY_SELECT_MONSTER_FROM_BESTIARY).
+class TGameActionSelectPreyMonsterFromBestiary final : public TGameActionPreySystem
+{
+public:
+    TGameActionSelectPreyMonsterFromBestiary(uint8_t preyId, uint16_t raceId)
+        : TGameActionPreySystem(preyId, EGameAction::PREY_SELECT_MONSTER_FROM_BESTIARY)
+        , m_raceId(raceId)
+    {
+    }
+    uint16_t raceId() const { return m_raceId; }
+
+private:
+    uint16_t m_raceId;
+};
+
+/// CIP input::TGameActionChangeAutoPreyExtendType (PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE).
+class TGameActionChangeAutoPreyExtendType final : public TGameActionPreySystem
+{
+public:
+    TGameActionChangeAutoPreyExtendType(uint8_t preyId, int extendType)
+        : TGameActionPreySystem(preyId, EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE)
+        , m_extendType(extendType)
+    {
+    }
+    int extendType() const { return m_extendType; }
+
+private:
+    int m_extendType;
+};
+
 struct TGameAction;
 class IGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
@@ -2294,21 +2613,6 @@ public:
 
 
 
-/// CIP input::TGameActionBuyHirelingNameOrSexChange .
-class TGameActionBuyHirelingNameOrSexChange final : public TGameAction
-{
-public:
-    TGameActionBuyHirelingNameOrSexChange() { type = EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE; }
-    explicit TGameActionBuyHirelingNameOrSexChange(uint32_t creatureId);
-};
-
-/// CIP input::TGameActionChangeAutoPreyExtendType .
-class TGameActionChangeAutoPreyExtendType final : public TGameAction
-{
-public:
-    TGameActionChangeAutoPreyExtendType() { type = EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE; }
-};
-
 
 /// CIP input::TGameActionChangeQuesttrackerOptions .
 class TGameActionChangeQuesttrackerOptions final : public TGameAction
@@ -2344,27 +2648,6 @@ public:
 };
 
 
-
-/// CIP input::TGameActionExaltationForgeConvergenceFusion .
-class TGameActionExaltationForgeConvergenceFusion final : public TGameAction
-{
-public:
-    TGameActionExaltationForgeConvergenceFusion() { type = EGameAction::EXALTATION_FORGE_CONVERGENCE_FUSION; }
-};
-
-/// CIP input::TGameActionExaltationForgeFusion .
-class TGameActionExaltationForgeFusion final : public TGameAction
-{
-public:
-    TGameActionExaltationForgeFusion() { type = EGameAction::EXALTATION_FORGE_FUSION; }
-};
-
-/// CIP input::TGameActionExaltationForgeTransfer .
-class TGameActionExaltationForgeTransfer final : public TGameAction
-{
-public:
-    TGameActionExaltationForgeTransfer() { type = EGameAction::EXALTATION_FORGE_TRANSFER; }
-};
 
 
 
@@ -2425,14 +2708,6 @@ public:
 };
 
 
-/// CIP input::TGameActionPreySystem .
-class TGameActionPreySystem final : public TGameAction
-{
-public:
-    TGameActionPreySystem() = default;
-    explicit TGameActionPreySystem(EGameAction type);
-};
-
 
 /// CIP input::TGameActionRemoveSpriteIdentifierFromCache .
 class TGameActionRemoveSpriteIdentifierFromCache final : public TGameAction
@@ -2442,13 +2717,6 @@ public:
 };
 
 
-/// CIP input::TGameActionRequestOutfitsFromServer .
-class TGameActionRequestOutfitsFromServer final : public TGameAction
-{
-public:
-    TGameActionRequestOutfitsFromServer() { type = EGameAction::REQUEST_OUTFITS_FROM_SERVER; }
-    explicit TGameActionRequestOutfitsFromServer(uint32_t creatureId);
-};
 /// CIP input::TGameActionRequestSearchTypeInDepot .
 class TGameActionRequestSearchTypeInDepot final : public TGameAction
 {
@@ -2467,61 +2735,12 @@ class TGameActionResolveSprite final : public TGameAction
 public:
     TGameActionResolveSprite() { type = EGameAction::RESOLVE_SPRITE; }
 };
-/// CIP input::TGameActionSelectPreyMonsterFromBestiary .
-class TGameActionSelectPreyMonsterFromBestiary final : public TGameAction
-{
-public:
-    TGameActionSelectPreyMonsterFromBestiary() { type = EGameAction::PREY_SELECT_MONSTER_FROM_BESTIARY; }
-};
-/// CIP input::TGameActionSelectPreyMonsterFromList .
-class TGameActionSelectPreyMonsterFromList final : public TGameAction
-{
-public:
-    TGameActionSelectPreyMonsterFromList() { type = EGameAction::PREY_SELECT_MONSTER_FROM_LIST; }
-};
-/// CIP input::TGameActionSetCreaturePodiumConfiguration .
-class TGameActionSetCreaturePodiumConfiguration final : public TGameAction
-{
-public:
-    TGameActionSetCreaturePodiumConfiguration() { type = EGameAction::SET_CREATURE_PODIUM_CONFIGURATION; }
-};
-/// CIP input::TGameActionSetHirelingName .
-class TGameActionSetHirelingName final : public TGameAction
-{
-public:
-    TGameActionSetHirelingName() { type = EGameAction::SET_HIRELING_NAME; }
-    explicit TGameActionSetHirelingName(QString text);
-};
-/// CIP input::TGameActionSetHirelingOutfit .
-class TGameActionSetHirelingOutfit final : public TGameAction
-{
-public:
-    TGameActionSetHirelingOutfit() { type = EGameAction::SET_HIRELING_OUTFIT; }
-};
-/// CIP input::TGameActionSetPlayerOutfit .
-class TGameActionSetPlayerOutfit final : public TGameAction
-{
-public:
-    TGameActionSetPlayerOutfit() { type = EGameAction::SET_PLAYER_OUTFIT; }
-};
-/// CIP input::TGameActionSetShowOffSocketConfiguration .
-class TGameActionSetShowOffSocketConfiguration final : public TGameAction
-{
-public:
-    TGameActionSetShowOffSocketConfiguration() { type = EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION; }
-};
 /// CIP input::TGameActionShowConfirmMoveObjectToStashDialog .
 class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
 {
 public:
     TGameActionShowConfirmMoveObjectToStashDialog() { type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG; }
     TGameActionShowConfirmMoveObjectToStashDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionShowExaltationResultDialog .
-class TGameActionShowExaltationResultDialog final : public TGameAction
-{
-public:
-    TGameActionShowExaltationResultDialog() { type = EGameAction::SHOW_EXALTATION_RESULT_DIALOG; }
 };
 /// CIP input::TGameActionShowSplitStackDialog .
 class TGameActionShowSplitStackDialog final : public TGameAction

@@ -166,11 +166,11 @@ private:
     static void handleShowMessageDialogMessage(int type, const QString& message);
 
     /// CIP TExaltationGameActionHandler.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     void handleExaltationForgeDialogClosedGameAction();
-    void handleExaltationForgeFusionGameAction(const input::TGameAction& action);
-    void handleExaltationForgeConvergenceFusionGameAction(const input::TGameAction& action);
-    void handleExaltationForgeTransferGameAction(const input::TGameAction& action);
+    void handleExaltationForgeFusionGameAction(const input::TGameActionExaltationForgeFusion& action);
+    void handleExaltationForgeConvergenceFusionGameAction(const input::TGameActionExaltationForgeConvergenceFusion& action);
+    void handleExaltationForgeTransferGameAction(const input::TGameActionExaltationForgeTransfer& action);
     void handleExaltationForgeHistoryNextPageGameAction();
     void handleExaltationForgeHistoryPreviousPageGameAction();
 

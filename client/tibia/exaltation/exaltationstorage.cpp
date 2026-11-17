@@ -156,7 +156,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
             .bonusTypeId = static_cast<uint16_t>(client::gamecore::argInt(args, 1)),
             .bonusTier = static_cast<uint8_t>(client::gamecore::argInt(args, 2)),
         };
-        publish(A::SHOW_EXALTATION_RESULT_DIALOG);
+        input::publish(std::make_shared<input::TGameActionShowExaltationResultDialog>());
         return std::any{};
     });
     // CIP handleCloseExaltationDialogMessage.
@@ -172,7 +172,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
     for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
                           A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
                           A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExaltationStorage::~TExaltationStorage()
@@ -204,13 +204,19 @@ void TExaltationStorage::handleShowMessageDialogMessage(const int type, const QS
     input::publish(std::make_shared<input::TGameActionShowMessageDialog>(A::SHOW_EXALTATION_ERROR_DIALOG, message));
 }
 
-bool TExaltationStorage::handleGameAction(const input::TGameAction& action)
+bool TExaltationStorage::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::EXALTATION_FORGE_DIALOG_CLOSED: handleExaltationForgeDialogClosedGameAction(); break;
-    case A::EXALTATION_FORGE_FUSION: handleExaltationForgeFusionGameAction(action); break;
-    case A::EXALTATION_FORGE_CONVERGENCE_FUSION: handleExaltationForgeConvergenceFusionGameAction(action); break;
-    case A::EXALTATION_FORGE_TRANSFER: handleExaltationForgeTransferGameAction(action); break;
+    case A::EXALTATION_FORGE_FUSION:
+        handleExaltationForgeFusionGameAction(static_cast<const input::TGameActionExaltationForgeFusion&>(action));
+        break;
+    case A::EXALTATION_FORGE_CONVERGENCE_FUSION:
+        handleExaltationForgeConvergenceFusionGameAction(static_cast<const input::TGameActionExaltationForgeConvergenceFusion&>(action));
+        break;
+    case A::EXALTATION_FORGE_TRANSFER:
+        handleExaltationForgeTransferGameAction(static_cast<const input::TGameActionExaltationForgeTransfer&>(action));
+        break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE: tibia::game::sendForgeBrowseHistoryRequest(0); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE: handleExaltationForgeHistoryNextPageGameAction(); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE: handleExaltationForgeHistoryPreviousPageGameAction(); break;
@@ -224,22 +230,21 @@ void TExaltationStorage::handleExaltationForgeDialogClosedGameAction()
     reset();
 }
 
-void TExaltationStorage::handleExaltationForgeFusionGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeFusionGameAction(const input::TGameActionExaltationForgeFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.exaltationTypeId, action.exaltationTier,
-                              action.exaltationSecondTypeId, action.exaltationSuccessIncreased, action.exaltationTierLossImproved);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.typeId(), action.tier(), action.resourceTypeId(),
+                              action.successRateIncreased(), action.tierLossReduced());
 }
 
-void TExaltationStorage::handleExaltationForgeConvergenceFusionGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeConvergenceFusionGameAction(const input::TGameActionExaltationForgeConvergenceFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.exaltationTypeId, action.exaltationTier,
-                              action.exaltationSecondTypeId);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.typeId(), action.tier(), action.resourceTypeId());
 }
 
-void TExaltationStorage::handleExaltationForgeTransferGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeTransferGameAction(const input::TGameActionExaltationForgeTransfer& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.exaltationConvergence, action.exaltationTypeId,
-                              action.exaltationTier, action.exaltationSecondTypeId);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.convergence(), action.sourceTypeId(), action.tier(),
+                              action.targetTypeId());
 }
 
 void TExaltationStorage::handleExaltationForgeHistoryNextPageGameAction()

@@ -313,15 +313,10 @@ void TConfigureCreaturePodiumDialogController::onOkClicked()
 {
     if (tibia::game::isOnline()) {
         const bool showCreature = m_showOutfit && m_chosenRace != 0;
-        auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_CREATURE_PODIUM_CONFIGURATION));
-        action->creatureId = showCreature ? static_cast<uint32_t>(m_chosenRace) : 0;
-        action->position = m_position;
-        action->parameter = m_socketTypeID;
-        action->stackPosition = m_stackpos;
-        action->lookDirection = protocolFromLookDirection(m_direction);
-        action->enable = m_showSocket;
-        action->showSocket = showCreature;
-        input::publish(action);
+        input::publish(std::make_shared<input::TGameActionSetCreaturePodiumConfiguration>(
+            showCreature ? static_cast<uint32_t>(m_chosenRace) : 0,
+            input::TPodiumLocation{ m_position, static_cast<uint16_t>(m_socketTypeID), static_cast<uint8_t>(std::max(int(m_stackpos), 0)) },
+            static_cast<uint8_t>(protocolFromLookDirection(m_direction)), m_showSocket, showCreature));
     }
     dialog()->close();
 }

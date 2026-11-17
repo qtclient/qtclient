@@ -81,9 +81,9 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         if (stored->isNpc()) {
             push(A::START_TALKING_TO_NPC);
             if (hireling) {
-                push(A::REQUEST_OUTFITS_FROM_SERVER);
+                actions.push_back(TGameActionRequestOutfitsFromServer::forHireling(creatureId));
                 actions.push_back(std::make_shared<TGameActionReportHireling>(A::REPORT_HIRELING_NAME, name, creatureId));
-                push(A::BUY_HIRELING_NAME_OR_SEX_CHANGE);
+                actions.push_back(std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId));
             }
         } else {
             push(attackingId == creatureId ? A::STOP_ATTACKING_CREATURE : A::ATTACK_CREATURE);
@@ -91,7 +91,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         if (!hireling)
             push(followingId == creatureId ? A::STOP_FOLLOWING_CREATURE : A::FOLLOW_CREATURE);
     } else {
-        push(A::REQUEST_OUTFITS_FROM_SERVER);
+        actions.push_back(std::make_shared<TGameActionRequestOutfitsFromServer>());
         push(stored->outfit().getMount() == 0 ? A::MOUNT_PLAYER : A::UNMOUNT_PLAYER);
         push(A::OPEN_PREY_DIALOG);
     }

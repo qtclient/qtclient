@@ -310,12 +310,9 @@ QList<TMessageDialogButton*> okButton()
     return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
 }
 
-void publishPreyAction(const A type, const uint preyId, const int parameter = 0)
+void publishPreyAction(const A type, const uint preyId)
 {
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->instance = static_cast<int>(preyId);
-    action->parameter = parameter;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionPreySystem>(static_cast<uint8_t>(preyId), type));
 }
 
 /// CIP store requests: open type 1 (premium) or 3 (an offer).
@@ -625,13 +622,13 @@ void TPreyRenderInfo::choosePreyClicked() { Q_EMIT requestChoosePrey(preyId()); 
 /// CIP .
 void TPreyRenderInfo::confirmGridPreyCreatureClicked(const int Index)
 {
-    publishPreyAction(A::PREY_SELECT_MONSTER_FROM_LIST, preyId(), static_cast<uint8_t>(Index));
+    input::publish(std::make_shared<input::TGameActionSelectPreyMonsterFromList>(static_cast<uint8_t>(preyId()), static_cast<uint8_t>(Index)));
 }
 
 /// CIP .
 void TPreyRenderInfo::confirmBestiaryPreyCreatureClicked(const int MonsterRaceID)
 {
-    publishPreyAction(A::PREY_SELECT_MONSTER_FROM_BESTIARY, preyId(), static_cast<uint16_t>(MonsterRaceID));
+    input::publish(std::make_shared<input::TGameActionSelectPreyMonsterFromBestiary>(static_cast<uint8_t>(preyId()), static_cast<uint16_t>(MonsterRaceID)));
 }
 
 /// CIP .
@@ -822,7 +819,7 @@ void TPreyPreyPageController::onRequestChangeAutoExtendType(const uint preyId, c
         m_autoReroll->showMessage(caption, qtTrId("prey_confirm_enable_auto_prey_extension_description")
                                                .arg(qtTrId("prey_auto_reroll"), english(m_storage->bonusRerollPrice()), currency));
     } else {
-        publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, preyId, 0);
+        input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(preyId), 0));
     }
 }
 
@@ -832,10 +829,10 @@ void TPreyPreyPageController::onConfirmChoosePrey() { publishPreyAction(A::PREY_
 
 void TPreyPreyPageController::onConfirmEnableAutoRerollBonus()
 {
-    publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, m_pendingPreyId, 1);
+    input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 1));
 }
 
-void TPreyPreyPageController::onConfirmEnableLockPrey() { publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, m_pendingPreyId, 2); }
+void TPreyPreyPageController::onConfirmEnableLockPrey() { input::publish(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 2)); }
 
 /// CIP .
 void TPreyPreyPageController::getMorePreyWildcardsClicked() { openStore(3, 1); }

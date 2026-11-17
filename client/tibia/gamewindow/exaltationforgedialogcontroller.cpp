@@ -342,13 +342,9 @@ void TExaltationForgeFusionPageController::resourceObjectSelected(const int Type
 /// CIP .
 void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanceIncreased, const bool TierLossImproved)
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_FUSION));
-    action->exaltationTypeId = m_fusionObjectTypeId;
-    action->exaltationTier = m_fusionObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_resourceObjectTypeId;
-    action->exaltationSuccessIncreased = SuccessChanceIncreased;
-    action->exaltationTierLossImproved = TierLossImproved;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionExaltationForgeFusion>(
+        static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
+        static_cast<uint16_t>(m_resourceObjectTypeId), SuccessChanceIncreased, TierLossImproved));
     m_fusionObjectTypeId = 0;
     m_fusionObjectUpgradeTier = 0;
     m_resourceObjectTypeId = 0;
@@ -359,11 +355,9 @@ void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanc
 /// CIP .
 void TExaltationForgeFusionPageController::requestConvergenceFusion()
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_CONVERGENCE_FUSION));
-    action->exaltationTypeId = m_fusionObjectTypeId;
-    action->exaltationTier = m_fusionObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_resourceObjectTypeId;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionExaltationForgeConvergenceFusion>(
+        static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
+        static_cast<uint16_t>(m_resourceObjectTypeId)));
     m_fusionObjectTypeId = 0;
     m_fusionObjectUpgradeTier = 0;
     m_resourceObjectTypeId = 0;
@@ -588,12 +582,9 @@ void TExaltationForgeTransferPageController::targetSelected(const int TypeID)
 /// CIP .
 void TExaltationForgeTransferPageController::requestTransfer()
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_TRANSFER));
-    action->exaltationTypeId = m_sourceObjectTypeId;
-    action->exaltationTier = m_sourceObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_targetObjectTypeId;
-    action->exaltationConvergence = m_convergenceTransferEnabled;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionExaltationForgeTransfer>(
+        static_cast<uint16_t>(m_sourceObjectTypeId), static_cast<uint8_t>(m_sourceObjectUpgradeTier),
+        static_cast<uint16_t>(m_targetObjectTypeId), m_convergenceTransferEnabled));
 }
 
 /// CIP : every donor of every group, counted.

@@ -459,23 +459,12 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
         if (m_dialogMode == CharacterInfoShowSelection) {
             // Preview-only: Character Info never applies an outfit from this dialog.
         } else if (m_dialogMode == ConfigureShowOffSocket) {
-            auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION));
-            action->outfit = outfit;
-            action->position = m_windowOptions.podiumPosition;
-            action->parameter = m_windowOptions.podiumItemId;
-            action->stackPosition = m_windowOptions.podiumStackpos;
-            action->lookDirection = LookDirectionRaw;
-            action->showSocket = ShowSocket;
-            action->enable = ShowSocket;
-            input::publish(action);
+            input::publish(std::make_shared<input::TGameActionSetShowOffSocketConfiguration>(
+                input::TPodiumLocation{ m_windowOptions.podiumPosition, m_windowOptions.podiumItemId,
+                                        m_windowOptions.podiumStackpos },
+                outfit, static_cast<uint8_t>(LookDirectionRaw), ShowSocket));
         } else {
-            auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_PLAYER_OUTFIT));
-            action->outfit = outfit;
-            action->mountCharacter = MountCharacter;
-            action->randomMount = m_randomMount;
-            action->showSocket = ShowSocket;
-            action->lookDirection = LookDirectionRaw;
-            input::publish(action);
+            input::publish(std::make_shared<input::TGameActionSetPlayerOutfit>(outfit, MountCharacter, m_randomMount));
         }
     }
     dialog()->close();

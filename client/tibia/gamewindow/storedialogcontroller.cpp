@@ -335,13 +335,13 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
         m_messageDialog->dialog()->close();
         return true;
     });
-    input::setActionHandler(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, [this](const input::TGameAction& action) {
-        openWith(action.parameter > 0 ? action.parameter : 0, action.instance);
+    input::setActionHandler(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, [this](const input::TGameActionBuyHirelingNameOrSexChange& action) {
+        openWith(action.storeOpenParameters().openAction, action.storeOpenParameters().detail);
         return true;
     });
-    input::setActionHandler(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameAction& action) {
-        if (!action.text.isEmpty())
-            tibia::game::sendSetHirelingName(action.text.toStdString());
+    input::setActionHandler(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameActionSetHirelingName& action) {
+        if (!action.name().isEmpty())
+            tibia::game::sendSetHirelingName(action.name().toStdString());
         return true;
     });
 }
@@ -944,10 +944,7 @@ void TStoreDialogController::tryOutfitForCurrentOffer()
         mode = 3;
     else
         return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_OUTFITS_FROM_SERVER));
-    action->parameter = mode;
-    action->instance = typeId;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionRequestOutfitsFromServer>(mode, static_cast<uint16_t>(typeId)));
 }
 
 void TStoreDialogController::requestTransferCredits()

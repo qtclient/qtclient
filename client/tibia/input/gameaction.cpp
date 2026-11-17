@@ -182,6 +182,14 @@ TGameActionOpenMessageToChatChannel::TGameActionOpenMessageToChatChannel(const Q
 {
 }
 
+std::shared_ptr<TGameActionRequestOutfitsFromServer> TGameActionRequestOutfitsFromServer::forHireling(const uint32_t creatureId)
+{
+    auto action = std::make_shared<TGameActionRequestOutfitsFromServer>();
+    action->m_mode = 2;
+    action->m_creatureId = creatureId;
+    return action;
+}
+
 std::shared_ptr<TGameActionOpenNewsDialog> TGameActionOpenNewsDialog::withNews(const uint32_t newsId)
 {
     auto action = std::make_shared<TGameActionOpenNewsDialog>();
@@ -277,12 +285,6 @@ TGameActionActionButtonTriggered::TGameActionActionButtonTriggered(const int bar
 }
 
 
-TGameActionBuyHirelingNameOrSexChange::TGameActionBuyHirelingNameOrSexChange(const uint32_t id)
-{
-    type = EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE;
-    creatureId = id;
-}
-
 TGameActionCyclopediaMapSelectionItem::TGameActionCyclopediaMapSelectionItem(const int subareaId)
 {
     type = EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM;
@@ -304,23 +306,6 @@ TGameActionOpenParentContainer::TGameActionOpenParentContainer(Position position
 TGameActionOpenShowImageDialog::TGameActionOpenShowImageDialog(QString value)
 {
     type = EGameAction::OPEN_SHOW_IMAGE_DIALOG;
-    text = std::move(value);
-}
-
-TGameActionPreySystem::TGameActionPreySystem(const EGameAction actionType)
-{
-    type = actionType;
-}
-
-TGameActionRequestOutfitsFromServer::TGameActionRequestOutfitsFromServer(const uint32_t id)
-{
-    type = EGameAction::REQUEST_OUTFITS_FROM_SERVER;
-    creatureId = id;
-}
-
-TGameActionSetHirelingName::TGameActionSetHirelingName(QString value)
-{
-    type = EGameAction::SET_HIRELING_NAME;
     text = std::move(value);
 }
 
@@ -468,8 +453,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionSmartClick>();
     case EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON:
         return std::make_shared<TGameActionAssignSpellToActionButton>();
-    case EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE:
-        return std::make_shared<TGameActionChangeAutoPreyExtendType>();
     case EGameAction::CHANGE_QUESTTRACKER_OPTIONS:
         return std::make_shared<TGameActionChangeQuesttrackerOptions>();
     case EGameAction::CHANGE_TRACKED_QUESTFLAGS:
@@ -478,18 +461,6 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionCyclopediaMapSelectionItem>();
     case EGameAction::DEPOT_SERACH_RETRIEVE:
         return std::make_shared<TGameActionDepotSearchRetrieve>();
-    case EGameAction::EXALTATION_FORGE_CONVERGENCE_FUSION:
-        return std::make_shared<TGameActionExaltationForgeConvergenceFusion>();
-    case EGameAction::EXALTATION_FORGE_FUSION:
-        return std::make_shared<TGameActionExaltationForgeFusion>();
-    case EGameAction::EXALTATION_FORGE_TRANSFER:
-        return std::make_shared<TGameActionExaltationForgeTransfer>();
-    case EGameAction::PREY_REQUEST_LIST_REROLL:
-        return std::make_shared<TGameActionPreySystem>(type);
-    case EGameAction::PREY_REQUEST_BONUS_REROLL:
-        return std::make_shared<TGameActionPreySystem>(type);
-    case EGameAction::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS:
-        return std::make_shared<TGameActionPreySystem>(type);
     case EGameAction::INSPECT_OBJECT:
         return std::make_shared<TGameActionInspectObject>();
     case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
@@ -500,32 +471,14 @@ TGameActionPtr makeAction(const EGameAction type)
         return std::make_shared<TGameActionOpenShowImageDialog>();
     case EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
         return std::make_shared<TGameActionRemoveSpriteIdentifierFromCache>();
-    case EGameAction::REQUEST_OUTFITS_FROM_SERVER:
-        return std::make_shared<TGameActionRequestOutfitsFromServer>();
     case EGameAction::REQUEST_SEARCH_TYPE_IN_DEPOT:
         return std::make_shared<TGameActionRequestSearchTypeInDepot>();
     case EGameAction::REQUEST_TRANSACTION_DETAILS:
         return std::make_shared<TGameActionRequestTransactionDetailsFromServer>();
     case EGameAction::RESOLVE_SPRITE:
         return std::make_shared<TGameActionResolveSprite>();
-    case EGameAction::PREY_SELECT_MONSTER_FROM_BESTIARY:
-        return std::make_shared<TGameActionSelectPreyMonsterFromBestiary>();
-    case EGameAction::PREY_SELECT_MONSTER_FROM_LIST:
-        return std::make_shared<TGameActionSelectPreyMonsterFromList>();
-    case EGameAction::SET_CREATURE_PODIUM_CONFIGURATION:
-        return std::make_shared<TGameActionSetCreaturePodiumConfiguration>();
-    case EGameAction::SET_HIRELING_NAME:
-        return std::make_shared<TGameActionSetHirelingName>();
-    case EGameAction::SET_HIRELING_OUTFIT:
-        return std::make_shared<TGameActionSetHirelingOutfit>();
-    case EGameAction::SET_PLAYER_OUTFIT:
-        return std::make_shared<TGameActionSetPlayerOutfit>();
-    case EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION:
-        return std::make_shared<TGameActionSetShowOffSocketConfiguration>();
     case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
         return std::make_shared<TGameActionShowConfirmMoveObjectToStashDialog>();
-    case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
-        return std::make_shared<TGameActionShowExaltationResultDialog>();
     case EGameAction::SHOW_SPLIT_STACK_DIALOG:
         return std::make_shared<TGameActionShowSplitStackDialog>();
     case EGameAction::SPRITE_RESOLVED:
@@ -810,10 +763,6 @@ IGameActionPtr makeGameAction(const EGameAction type)
 
 IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatureId)
 {
-    if (type == EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE)
-        return std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId);
-    if (type == EGameAction::REQUEST_OUTFITS_FROM_SERVER)
-        return std::make_shared<TGameActionRequestOutfitsFromServer>(creatureId);
     if (type == EGameAction::START_TALKING_TO_NPC)
         return std::make_shared<TGameActionStartTalkingToNPC>(creatureId);
     if (type == EGameAction::TARGET_SELECTED)

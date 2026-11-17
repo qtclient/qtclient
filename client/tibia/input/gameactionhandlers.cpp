@@ -523,34 +523,25 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         }
         break;
     case A::SET_PLAYER_OUTFIT:
-        if (action->outfit.getId() != 0)
-            tibia::game::changeOutfitAndMount(action->outfit, action->mountCharacter, action->randomMount);
+        if (const auto* set = gameActionAs<TGameActionSetPlayerOutfit>(pGameAction); set && set->outfit().getId() != 0)
+            tibia::game::changeOutfitAndMount(set->outfit(), set->mountCharacter(), set->randomMount());
         break;
     case A::SET_HIRELING_OUTFIT:
-        if (action->outfit.getId() != 0)
-            tibia::game::setHirelingOutfit(action->outfit, creatureId);
+        if (const auto* set = gameActionAs<TGameActionSetHirelingOutfit>(pGameAction); set && set->outfit().getId() != 0)
+            tibia::game::setHirelingOutfit(set->outfit(), set->creatureId());
         break;
-    case A::SET_SHOW_OFF_SOCKET_CONFIGURATION: {
+    case A::SET_SHOW_OFF_SOCKET_CONFIGURATION:
         // Outfit id 0 is valid (clear the displayed look / hide outfit).
-        const uint16_t typedId = wireTypeId(*action);
-        const uint16_t itemId = typedId ? typedId : static_cast<uint16_t>(action->parameter);
-        if (itemId != 0) {
-            const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
-            tibia::game::setShowOffSocketConfiguration(action->outfit, action->position, itemId, stackpos,
-                                                 static_cast<uint8_t>(action->lookDirection),
-                                                 action->showSocket || action->enable ? 1 : 0);
-        }
+        if (const auto* set = gameActionAs<TGameActionSetShowOffSocketConfiguration>(pGameAction); set && set->podium().itemId != 0)
+            tibia::game::setShowOffSocketConfiguration(set->outfit(), set->podium().position, set->podium().itemId,
+                                                       set->podium().stackPosition, set->lookDirection(), set->showSocket() ? 1 : 0);
         break;
-    }
-    case A::SET_CREATURE_PODIUM_CONFIGURATION: {
-        const uint16_t typedId = wireTypeId(*action);
-        const uint16_t itemId = typedId ? typedId : static_cast<uint16_t>(action->parameter);
-        const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
-        tibia::game::setCreaturePodiumConfiguration(creatureId, action->position, itemId, stackpos,
-                                              static_cast<uint8_t>(action->lookDirection),
-                                              action->enable ? 1 : 0, action->showSocket || action->chase ? 1 : 0);
+    case A::SET_CREATURE_PODIUM_CONFIGURATION:
+        if (const auto* set = gameActionAs<TGameActionSetCreaturePodiumConfiguration>(pGameAction))
+            tibia::game::setCreaturePodiumConfiguration(set->raceId(), set->podium().position, set->podium().itemId,
+                                                        set->podium().stackPosition, set->lookDirection(), set->showPodium() ? 1 : 0,
+                                                        set->showCreature() ? 1 : 0);
         break;
-    }
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
         auto message = std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, action->text.isEmpty() ? qtTrId("you_see_nothing") : action->text, action->color.isValid() ? action->color : QColor(Qt::green));
         publish(message);
