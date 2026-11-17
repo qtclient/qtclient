@@ -138,12 +138,14 @@ TActionBarController::TActionBarController(TActionBarManager* manager, const int
     m_mapWindowPane = mapWindowPane;
     for (int id = 1; id <= ButtonCount; ++id) {
         auto* button = new TActionButtonController(this, id, -1, this);
+        connect(button, &TActionButtonController::publishGameAction, this, &TActionBarController::publishGameAction);
         connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu);
         m_buttons.push_back(button);
         m_actionButtonModel << button;
     }
     m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(this);
     m_objectDialog = std::make_unique<TAssignObjectActionDialogController>(this);
+    connect(m_objectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this, &TActionBarController::publishGameAction);
     m_textDialog = std::make_unique<TAssignTextActionDialogController>(this);
     m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(this);
     m_hotkeyDialog = std::make_unique<TRecordKeyboardShortcutDialogController>();
@@ -525,7 +527,7 @@ void TActionBarController::closeAllDialogs()
 void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
 {
     auto close = std::make_shared<input::TGameActionCloseAllMultiActionButtons>(static_cast<uint8_t>(m_actionBarId), int(ButtonId));
-    input::publish(close);
+    Q_EMIT publishGameAction(close);
     if (TActionButtonController* button = buttonController(int(ButtonId), -1)) {
         button->createMultiActions(int(Setting::MaxMultiActions));
         button->setMultiActionExpanded(!button->multiActionExpanded());
@@ -739,6 +741,7 @@ void TActionBarGroup::createActionBar(const uint8_t actionBarId)
         return;
     auto bar = std::make_unique<TActionBarController>(m_manager, actionBarId, positionOfBar(actionBarId), m_buttonsDisplayOptions,
                                                       m_gameWindowItem, m_mapWindowPane, this);
+    connect(bar.get(), &TActionBarController::publishGameAction, this, &TActionBarGroup::publishGameAction);
     bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
     bar->setLocked(locked());
     bar->createItem(m_engine, barContainer);

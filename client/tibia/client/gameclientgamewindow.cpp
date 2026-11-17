@@ -120,6 +120,8 @@
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
+#include "gamewindow/gamewindowciptypes.h"
+#include "input/gameactiondispatch.h"
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -169,6 +171,9 @@ private:
 struct TGameClient::TGameWindow
 {
     app::LauncherEnv env;
+    /// The game actions the client handles itself while the game window exists
+    /// (store, screenshots, offline training, default minimap tiles).
+    input::TGameActionDispatch gameActions;
     /// The keyboard input and the application event filters (CipSoft creates
     /// them with the client, before the game window).
     std::shared_ptr<input::TKeyboardStatusStorage> keyboardStatus;
@@ -537,7 +542,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>(g.exaltationStorage.get());
     g.storeBalance->setExaltationStorage(g.exaltationStorage.get());
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
-    input::setActionHandler(input::EGameAction::OPEN_STORE, [storeDialog](const input::TGameActionOpenStore& action) {
+    g.gameActions.on(input::EGameAction::OPEN_STORE, [storeDialog](const input::TGameActionOpenStore& action) {
         const input::TGameActionOpenStore::TStoreOpenParameters& parameters = action.storeOpenParameters();
         storeDialog->openWith(parameters.openAction, parameters.detail, parameters.text);
         return true;
@@ -545,7 +550,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // The daily reward: the session's storage and its game actions (238, 243, 244).
     g.dailyRewardStorage = std::make_unique<dailyreward::TDailyRewardStorage>();
     g.dailyRewardActions = std::make_unique<dailyreward::TDailyRewardGameActionHandler>(g.dailyRewardStorage.get());
-    input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::IGameAction&) {
+    g.gameActions.on(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::IGameAction&) {
         if (minimap::TMinimapManager* manager = minimap())
             manager->loadDefaultTilesFromResources();
         return true;
@@ -556,14 +561,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     const auto takeScreenshot = [screenshotManager](const input::IGameAction& action) {
         return screenshotManager->handleGameAction(action);
     };
-    input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::IGameAction&) {
+    g.gameActions.on(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
+    g.gameActions.on(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
+    g.gameActions.on(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::IGameAction&) {
         if (auto* offline = gamewindow::TMultiOfflineTrainingDialogController::instance())
             offline->showSkillsDialog();
         return true;
     });
-    qmlcomponents::installSoundActionHandler();
+    qmlcomponents::followSoundOptions();
 
     g.sidebarPanels = std::make_unique<gamewindow::TSidebarPanelsManager>(sidebarManager, engine);
     gamewindow::TSidebarPanelsManager* sidebarPanels = g.sidebarPanels.get();
@@ -689,8 +694,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     optionsDialog->setGameClient(this);
     optionsDialog->setPortalBase(g.env.loginBase);
     g.openWebsiteActions = std::make_unique<input::TOpenWebsiteGameActionHandler>(g.env);
-    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG,
-                            [optionsDialog](const input::IGameAction& action) { return optionsDialog->handleGameAction(action); });
     g.fpsLatency = std::make_unique<gamewindow::TFPSLatencyIndicatorController>();
     g.fpsLatency->setWindow(window);
     g.fpsLatency->setFrameDurations(frameDurations());
@@ -749,6 +752,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.keyboardShortcuts->onHotkeyOptionsChanged();
     g.playerMovement->onHotkeyOptionsChanged();
     g.playerMovementActions = std::make_unique<input::TPlayerMovementGameActionHandler>();
+    connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, g.keyboardShortcuts.get(),
+            qOverload<const input::IGameActionPtr&>(&input::TKeyboardShortcutHandler::handleGameAction));
     connect(g.keyboardShortcuts.get(), &input::TKeyboardShortcutHandler::publishGameAction, gameActionRouter()->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(g.playerMovement.get(), &input::TPlayerMovementInputInterpreter::publishGameAction, gameActionRouter()->internalRouter(),
@@ -821,6 +826,34 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.optionsDialog.get());
     publishToRouter(g.chat.get());
     publishToRouter(g.actionBars.get());
+    publishToRouter(g.sidebarWidgets.get());
+    publishToRouter(g.vipWidget.get());
+    publishToRouter(g.preyWidget.get());
+    publishToRouter(g.questTrackerWidget.get());
+    publishToRouter(g.lootTrackingWidget.get());
+    publishToRouter(g.spellListWidget.get());
+    publishToRouter(g.bestiaryTrackerWidget.get());
+    publishToRouter(g.bosstiaryTrackerWidget.get());
+    publishToRouter(g.bossCooldownsWidget.get());
+    publishToRouter(g.depotSearchWidget.get());
+    publishToRouter(g.playerGuideWidget.get());
+    publishToRouter(g.sidebarPanels.get());
+    publishToRouter(g.containers.get());
+    publishToRouter(g.informationDialogs.get());
+    publishToRouter(g.imbuingDialog.get());
+    publishToRouter(g.exivaOptionsDialog.get());
+    publishToRouter(g.taskboardDialog.get());
+    publishToRouter(g.skillWheel->dialog());
+    publishToRouter(g.skillWheel->actions());
+    publishToRouter(g.exaltationStorage.get());
+    publishToRouter(g.dailyRewardActions.get());
+    publishToRouter(g.analyserStorages.get());
+    publishToRouter(g.analyserWidgets.get());
+    // The engine's text copy controller outlives the game windows.
+    if (auto* textCopy = qobject_cast<gamewindow::TTextCopyController*>(
+            engine->rootContext()->contextProperty(QStringLiteral("tibiaTextCopyController")).value<QObject*>()))
+        connect(textCopy, &gamewindow::TTextCopyController::publishGameAction, router,
+                &game::TInternalGameActionRouter::handleGameActionInternal, Qt::UniqueConnection);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
@@ -839,6 +872,55 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.npcDialog->setChatController(chat);
     publishToRouter(g.npcDialog.get());
     g.playerTrade = std::make_unique<gamewindow::TPlayerTradeWidgetManager>(sidebarManager, gameWindowItem, engine);
+
+    // The handlers' handleGameAction slots get the router's actions (CIP
+    // TClipboardHelper). The map window goes first: a battle list taking an
+    // at-mouse-cursor action clears the map window's tracking of it.
+    const auto handleFromRouter = [router](auto* handler) {
+        if (handler)
+            connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
+                    qOverload<const input::IGameActionPtr&>(&std::remove_pointer_t<decltype(handler)>::handleGameAction));
+    };
+    handleFromRouter(g.mapWindowController);
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.productHost.get(),
+            [&g](const input::IGameActionPtr& action) { g.gameActions.handle(action); });
+    handleFromRouter(gameWindowController);
+    handleFromRouter(g.sidebarWidgets.get());
+    if (g.mapWindowController)
+        connect(g.sidebarWidgets->battleLists(), &gamewindow::TBattleListControllerStorage::atMouseCursorGameActionTaken,
+                g.mapWindowController, &gamewindow::TMapWindowController::clearTrackedUseAtMouseCursorGameAction);
+    handleFromRouter(g.sidebarPanels.get());
+    handleFromRouter(g.containers.get());
+    handleFromRouter(g.contextMenu.get());
+    handleFromRouter(g.splitStackDialog.get());
+    handleFromRouter(g.storeDialog.get());
+    handleFromRouter(g.marketController.get());
+    handleFromRouter(g.stashDialog.get());
+    handleFromRouter(g.manageLootDialog.get());
+    handleFromRouter(g.exaltationForgeDialog.get());
+    handleFromRouter(g.exaltationStorage.get());
+    handleFromRouter(g.dailyRewardActions.get());
+    handleFromRouter(g.minimapController);
+    handleFromRouter(g.reportViolation.get());
+    handleFromRouter(g.bugReport.get());
+    handleFromRouter(g.naggingDialog.get());
+    handleFromRouter(g.rewardWallDialog.get());
+    handleFromRouter(g.optionsDialog.get());
+    handleFromRouter(g.chat.get());
+    handleFromRouter(g.actionBars.get());
+    handleFromRouter(g.informationDialogs.get());
+    handleFromRouter(g.exivaOptionsDialog.get());
+    handleFromRouter(g.taskboardDialog.get());
+    handleFromRouter(g.tutorialShell.get());
+    handleFromRouter(g.vipWidget.get());
+    handleFromRouter(g.weaponProficiencyDialog.get());
+    handleFromRouter(g.weaponProficiencyShapeDialog.get());
+    handleFromRouter(g.weaponProficiencyShapeOptionsDialog.get());
+    handleFromRouter(g.lenshelpManager.get());
+    handleFromRouter(g.skillWheel.get());
+    handleFromRouter(g.npcDialog.get());
+    handleFromRouter(g.playerTrade.get());
+    handleFromRouter(g.sessionBootstrap.get());
 
     // Must outlive bootstrapAll: SuiteRuntime keeps PackHostWire* for deferred
     // slots (HUD chat switch, store/options/logout).
@@ -903,6 +985,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     packHost.imbuingDialog = [&g]() -> QObject* { return g.imbuingDialog.get(); };
     packHost.imbuingStorage = [&g]() -> QObject* { return g.imbuingStorage.get(); };
     packHost.sessionBootstrap = [&g]() -> QObject* { return g.sessionBootstrap.get(); };
+    packHost.gameActionRouter = [router]() -> QObject* { return router; };
     packHost.minimapPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->minimapItem(); };
     packHost.inventoryPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->inventoryItem(); };
     packHost.buttonBarPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->buttonBarItem(); };

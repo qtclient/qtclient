@@ -108,6 +108,8 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
+            &effects::TEffectGameActionHandler::handleGameAction);
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -166,6 +168,16 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     using Queue = protocol::TProtocolMessageQueue;
     const auto link = [this, queue](auto signal, auto* receiver, auto slot) {
         m_queueConnections.push_back(connect(queue, signal, receiver, slot));
+    };
+    // The session's handlers of these messages, publishing through its router.
+    const auto sessionHandler = [this]<typename Handler>(Handler*) {
+        auto* handler = findChild<Handler*>(QString(), Qt::FindDirectChildrenOnly);
+        if (!handler) {
+            handler = new Handler(this);
+            connect(handler, &Handler::publishGameAction, m_gameActionRouter->internalRouter(),
+                    &TInternalGameActionRouter::handleGameActionInternal);
+        }
+        return handler;
     };
 
     using chat::TChatProtocolMessageHandler;
@@ -335,8 +347,9 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
 
     link(&Queue::receivedShowModalDialogMessage, this, &TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage);
     using reporting::TRuleViolationProtocolMessageHandler;
-    link(&Queue::receivedMessageMessage, this, &TRuleViolationProtocolMessageHandler::handleMessageMessage);
-    link(&Queue::receivedTextForReportMessage, this, &TRuleViolationProtocolMessageHandler::handleTextForReportMessage);
+    auto* ruleViolation = sessionHandler(static_cast<TRuleViolationProtocolMessageHandler*>(nullptr));
+    link(&Queue::receivedMessageMessage, ruleViolation, &TRuleViolationProtocolMessageHandler::handleMessageMessage);
+    link(&Queue::receivedTextForReportMessage, ruleViolation, &TRuleViolationProtocolMessageHandler::handleTextForReportMessage);
 
     link(&Queue::receivedEditTextMessage, this, &TEditTextProtocolMessageHandler::handleEditTextMessage);
     link(&Queue::receivedEditListMessage, this, &TEditTextProtocolMessageHandler::handleEditListMessage);
@@ -381,16 +394,17 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedBlessingsDialogMessage, this, &TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage);
 
     using dailyreward::TDailyRewardProtocolMessageHandler;
-    link(&Queue::receivedRestingAreaStateMessage, this, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
-    link(&Queue::receivedOpenRewardWallMessage, this, &TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage);
-    link(&Queue::receivedCloseRewardWallMessage, this, &TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage);
-    link(&Queue::receivedResourceBalanceMessage, this, &TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage);
-    link(&Queue::receivedDailyRewardBasicMessage, this, &TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage);
-    link(&Queue::receivedDailyRewardHistoryMessage, this, &TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage);
-    link(&Queue::receivedDailyRewardCollectionStateMessage, this,
+    auto* dailyReward = sessionHandler(static_cast<TDailyRewardProtocolMessageHandler*>(nullptr));
+    link(&Queue::receivedRestingAreaStateMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
+    link(&Queue::receivedOpenRewardWallMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage);
+    link(&Queue::receivedCloseRewardWallMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage);
+    link(&Queue::receivedResourceBalanceMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage);
+    link(&Queue::receivedDailyRewardBasicMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage);
+    link(&Queue::receivedDailyRewardHistoryMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage);
+    link(&Queue::receivedDailyRewardCollectionStateMessage, dailyReward,
          &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
-    link(&Queue::receivedShowMessageDialogMessage, this, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
-    link(&Queue::receivedLoginSuccessMessage, this, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
+    link(&Queue::receivedShowMessageDialogMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedLoginSuccessMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
 
     using cyclopedia::TCyclopediaProtocolMessageHandler;
     link(&Queue::receivedKillTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleKillTrackingMessage);
@@ -426,12 +440,14 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedUpdateManagedContainersMessage, this,
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
-    link(&Queue::receivedExivaSuppressedMessage, this, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
-    link(&Queue::receivedUpdateExivaOptionsMessage, this, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
+    auto* exivaOptions = sessionHandler(static_cast<TExivaOptionsProtocolMessageHandler*>(nullptr));
+    link(&Queue::receivedExivaSuppressedMessage, exivaOptions, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
+    link(&Queue::receivedUpdateExivaOptionsMessage, exivaOptions, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
 
     link(&Queue::receivedFriendSystemDataMessage, friends::TFriendsProtocolMessageHandler::instance(),
          &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
-    link(&Queue::receivedGameEventMessage, this, &TGameEventProtocolMessageHandler::handleGameEventMessage);
+    link(&Queue::receivedGameEventMessage, sessionHandler(static_cast<TGameEventProtocolMessageHandler*>(nullptr)),
+         &TGameEventProtocolMessageHandler::handleGameEventMessage);
     link(&Queue::receivedHighscoresMessage, this, &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
     using teamfinder::TTeamFinderProtocolMessageHandler;

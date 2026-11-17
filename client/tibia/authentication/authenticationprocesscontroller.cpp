@@ -478,9 +478,6 @@ void TAuthenticationProcessController::onCloudflareSolverSuccess(const TCloudfla
     Q_EMIT advanceStateMachineToLoginUpload();
 }
 
-void TAuthenticationProcessController::handleGameAction()
-{
-    Q_EMIT publishGameAction();
-}
+void TAuthenticationProcessController::handleGameAction() {}
 
 } // namespace tibia::authentication

@@ -1,6 +1,7 @@
 #include "game/gamesessionbase.h"
 #include <stdexcept>
 #include "game/gamesessionstate.h"
+#include "game/gameactionrouter.h"
 #include "tibia/runtime/host.h"
 #include <tibia/game/sessionhooks.h>
 #include "tibia/gamewindow/remainingdialogs.h"
@@ -184,22 +185,30 @@ void TGameSessionState::createMovementIntent()
         if (!options->autoChaseEnabled && isAttacking() && m_chaseMode == tibia::client::ChaseOpponent)
             setChaseMode(tibia::client::DontChase);
         if (isFollowing()) {
-            tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
-            tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_ATTACKING_CREATURE, 0));
+            Q_EMIT m_movementIntent->publishGameAction(
+                std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
+            Q_EMIT m_movementIntent->publishGameAction(
+                std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_ATTACKING_CREATURE, 0));
         }
     };
-    env.stopFollowing = [] {
-        tibia::input::publish(std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
+    env.stopFollowing = [this] {
+        Q_EMIT m_movementIntent->publishGameAction(
+            std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
     };
     env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
     };
     env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
-    env.showFailure = [](const QString& textId) {
-        tibia::input::publish(std::make_shared<tibia::input::TGameActionSetStatusLine>(qtTrId(textId.toLatin1().constData())));
+    env.showFailure = [this](const QString& textId) {
+        Q_EMIT m_movementIntent->publishGameAction(
+            std::make_shared<tibia::input::TGameActionSetStatusLine>(qtTrId(textId.toLatin1().constData())));
     };
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
+    // CIP: the session's movement intent handler publishes through the session's router.
+    if (TGameserverGameSession* session = TGameserverGameSession::liveInstance())
+        QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
+                         &TInternalGameActionRouter::handleGameActionInternal);
     QObject::connect(tibia::app::ClientOptionsNotifier::instance(), &tibia::app::ClientOptionsNotifier::optionChanged, intent,
                      [options](const QString& name) {
                          if (name.startsWith(QLatin1String("keyboardDelay")) || name == QLatin1String("alwaysTurnTowardsMoveDirection")

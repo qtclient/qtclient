@@ -102,7 +102,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP class NOTIFY — qtclient already emits.
@@ -178,7 +177,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP class NOTIFY — qtclient already emits / forwards from storage.
@@ -255,7 +253,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
 
@@ -360,7 +357,6 @@ Q_SIGNALS:
     void sidebarIdChanged();
     void widgetClosed();
     /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP class NOTIFY — qtclient already emits.
@@ -398,6 +394,10 @@ public:
     TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSidebarWidgetsManager* widgets, QQuickItem* gameWindowItem,
                      QQmlEngine* engine, std::function<config::TSidebarOptions*()> options, QObject* parent = nullptr);
     ~TAnalyserWidgets() override;
+
+Q_SIGNALS:
+    /// The widgets' publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     using Factory = std::function<QObject*()>;

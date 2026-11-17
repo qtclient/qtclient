@@ -59,22 +59,34 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     , m_cyclopediaButton(new TCyclopediaButtonController(this))
     , m_bosstiaryButton(new TBosstiaryButtonController(this))
 {
+    // The dialogs' publishGameAction reach the game window's router through this hub.
+    const auto forward = [this](auto* dialog) {
+        connect(dialog, &std::remove_pointer_t<decltype(dialog)>::publishGameAction, this, &TInformationDialogs::publishGameAction);
+    };
+    forward(m_outfitDialog);
+    forward(m_podiumDialog);
+    forward(m_editText);
+    forward(m_questLog);
+    forward(m_prey);
+    forward(m_cyclopedia);
+    forward(m_cyclopediaButton);
+    forward(m_bosstiaryButton);
     // CIP misc dialogs / overlays kept alive on the information hub (ledger wires).
     new TEmergencyDialogController(this);
-    new TGameSessionDisconnectReactionController(this);
+    forward(new TGameSessionDisconnectReactionController(this));
     new TCinematicSessiondumpPlayerController(this);
     new TGenericConfirmWithDontShowAgainDialogController(this);
-    new TLinkCopyWarningDialogController(this);
+    forward(new TLinkCopyWarningDialogController(this));
     new TLoginConfirmationCodeEnterTextDialogController(this);
     new TTwoFactorCodeEnterTextDialogController(this);
     new TMultiOfflineTrainingDialogController(this);
     new TOutfitMemorialDialogController(this);
     new TReturnerRewardDialogController(this);
     new TShowImageDialogController(this);
-    new TShowSpellBookDialogController(this);
-    new TSurveyInvitationDialogController(this);
+    forward(new TShowSpellBookDialogController(this));
+    forward(new TSurveyInvitationDialogController(this));
     new TInfoBannerController(nullptr, this);
-    new TTutorialOverlayController(this);
+    forward(new TTutorialOverlayController(this));
     new TTutorialOverlayItemController(this);
     new TTutorialOverlayMouseFilterController(this);
     new TTutorialOverlayMouseTrailAnimationController(this);
@@ -89,13 +101,6 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
 
 TInformationDialogs::~TInformationDialogs()
 {
-    input::setActionHandler(A::REQUEST_OUTFITS_FROM_SERVER, nullptr);
-    input::setActionHandler(A::OPEN_QUESTLOG_DIALOG, nullptr);
-    input::setActionHandler(A::OPEN_HIGHSCORES_DIALOG, nullptr);
-    for (const A type : { A::OPEN_PREY_DIALOG, A::PREY_REQUEST_LIST_REROLL, A::PREY_SELECT_MONSTER_FROM_LIST, A::PREY_REQUEST_BONUS_REROLL,
-                          A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS,
-                          A::PREY_SELECT_MONSTER_FROM_BESTIARY })
-        input::setActionHandler(type, nullptr);
 }
 
 void TInformationDialogs::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
@@ -111,7 +116,7 @@ void TInformationDialogs::setControlScheme(const int controlScheme) { m_cycloped
 
 void TInformationDialogs::hookOutfitDialog()
 {
-    input::setActionHandler(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::IGameAction&) {
+    m_gameActions.on(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::IGameAction&) {
         tibia::game::requestOutfit();
         return true;
     });
@@ -231,7 +236,7 @@ void TInformationDialogs::hookTextDialogs()
 
 void TInformationDialogs::hookQuestLog()
 {
-    input::setActionHandler(A::OPEN_QUESTLOG_DIALOG, [this](const input::TGameActionOpenQuestLog& action) {
+    m_gameActions.on(A::OPEN_QUESTLOG_DIALOG, [this](const input::TGameActionOpenQuestLog& action) {
         m_questLog->showDialog(action.questId());
         return true;
     });
@@ -268,7 +273,7 @@ void TInformationDialogs::hookQuestLog()
 
 void TInformationDialogs::hookHighscores()
 {
-    input::setActionHandler(A::OPEN_HIGHSCORES_DIALOG, [this](const input::IGameAction&) {
+    m_gameActions.on(A::OPEN_HIGHSCORES_DIALOG, [this](const input::IGameAction&) {
         m_highscores->openDialog();
         return true;
     });
@@ -320,7 +325,7 @@ void TInformationDialogs::hookPrey()
     using client::gamecore::argInt;
     using client::gamecore::argString;
 
-    input::setActionHandler(A::OPEN_PREY_DIALOG, [this](const input::IGameAction&) {
+    m_gameActions.on(A::OPEN_PREY_DIALOG, [this](const input::IGameAction&) {
         m_prey->showDialog();
         return true;
     });
@@ -328,8 +333,8 @@ void TInformationDialogs::hookPrey()
     // 1 bonus reroll, 2 list choice, 3 bestiary list, 4 bestiary choice,
     // 5 automatic extension).
     using PreyMessages = prey::TPreyProtocolMessageHandler;
-    const auto preyAction = [](const A type, void (*send)(int, int)) {
-        input::setActionHandler(type, [send](const input::TGameActionPreySystem& action) {
+    const auto preyAction = [this](const A type, void (*send)(int, int)) {
+        m_gameActions.on(type, [send](const input::TGameActionPreySystem& action) {
             int value = 0;
             if (const auto* list = input::gameActionAs<input::TGameActionSelectPreyMonsterFromList>(&action))
                 value = list->listIndex();
@@ -416,6 +421,16 @@ void TInformationDialogs::hookPrey()
                 if ((code & ~1) == 0x14)
                     m_prey->onRequestShowMessageDialog(message);
             });
+}
+
+
+void TInformationDialogs::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_cyclopedia)
+        m_cyclopedia->handleGameAction(pGameAction);
+    if (m_questLog)
+        m_questLog->handleGameAction(pGameAction);
 }
 
 }

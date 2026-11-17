@@ -166,6 +166,13 @@ void* ph_sidebar_manager(void*)
     return g_packWire->sidebarManager();
 }
 
+void* ph_game_action_router(void*)
+{
+    if (!g_packWire || !g_packWire->gameActionRouter)
+        return nullptr;
+    return g_packWire->gameActionRouter();
+}
+
 void* ph_sidebar_widgets(void*)
 {
     if (!g_packWire || !g_packWire->sidebarWidgets)
@@ -264,6 +271,7 @@ void fillPackHostAbiFromPackHostWire(qtclient::PackHostWire* wire)
         .minimap_panel_item = &ph_minimap_panel_item,
         .inventory_panel_item = &ph_inventory_panel_item,
         .button_bar_panel_item = &ph_button_bar_panel_item,
+        .game_action_router = &ph_game_action_router,
     };
 }
 

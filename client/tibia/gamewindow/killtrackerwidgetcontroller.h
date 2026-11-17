@@ -120,7 +120,6 @@ Q_SIGNALS:
     void widgetClosed();
     /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
     /// CIP preyList NOTIFY — qtclient emits after slot render-info list is built.
@@ -162,6 +161,11 @@ public:
     /// Saves its options and deletes it.
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     prey::TPreyStorage* m_storage;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactionptr.h"
 #include "sound/soundcontrollerambienceobjectsound.h"
 #include "sound/soundcontrollerambiencestream.h"
 #include "sound/soundcontrollerbase.h"
@@ -52,6 +53,9 @@ public:
     TSoundControllerCombatSound& combatSound() const { return *m_combatSound; }
 
 public Q_SLOTS:
+    /// SOUND_TRIGGER (CIP handleGameAction; connected to the router's
+    /// publishGameActionInternal): the senders already applied their options.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
     void onEffectSoundsChanged();
     void deferredPlayChangedEffectSounds();
     void onPlayerPositionChanged(const Position& position);

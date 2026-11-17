@@ -125,7 +125,7 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     // set m_selectionType on the cip::ICyclopediaMapSelectionInfo base.
     (void)tipICyclopediaMapSelectionInfo();
 
-    input::setActionHandler(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameActionCyclopediaMapSelectionItem& action) {
+    m_gameActions.on(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameActionCyclopediaMapSelectionItem& action) {
         if (action.subareaId() > 0)
             select(action.subareaId(), false);
         return true;
@@ -320,7 +320,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
         select(selection->subareaId(), false);
         return;
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCyclopediaMapDialogController::centerToPlayer()
@@ -401,7 +401,7 @@ void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(1);
     action->setRaceId(static_cast<uint16_t>(RaceIDRaw));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCyclopediaMapDialogController::onMouseExited()

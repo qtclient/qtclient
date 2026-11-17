@@ -226,14 +226,14 @@ void TSkillsWidgetController::onPlayerSkillStatsChanged()
 void TSkillsWidgetController::onStoreXpBoostButtonClicked()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSkillsWidgetController::onMoreStatDetailsClicked()
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(2);
     action->setCategory(1);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSkillsWidgetController::setProgressBarVisible(const SkillType type, const bool visible)

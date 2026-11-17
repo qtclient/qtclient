@@ -45,7 +45,7 @@ TCalendarDialogController::TCalendarDialogController(QObject* parent)
     : TDialogController(QStringLiteral("CalendarDialog.qml"), parent)
     , m_serverClock([] { return QDateTime::currentDateTimeUtc(); })
 {
-    input::setActionHandler(A::OPEN_CALENDAR_DIALOG, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::OPEN_CALENDAR_DIALOG, [this](const input::IGameAction& action) {
         handleGameAction(action);
         return true;
     });
@@ -53,7 +53,6 @@ TCalendarDialogController::TCalendarDialogController(QObject* parent)
 
 TCalendarDialogController::~TCalendarDialogController()
 {
-    input::setActionHandler(A::OPEN_CALENDAR_DIALOG, nullptr);
     clearEvents();
 }
 

@@ -14,8 +14,12 @@ TGameNotify::TGameNotify(QObject* parent)
 
 TGameNotify* TGameNotify::instance()
 {
-    static TGameNotify hub;
-    return &hub;
+    // Process-lifetime hub: Hooks/SoftHooks outlive QObject teardown during
+    // exit() (QThreadDataDestroyer deferred deletes). A function-local static
+    // QObject is destroyed in __cxa_finalize and leaves unsubscribe() reading
+    // a dead unordered_map (SIGSEGV in TSkillsWidgetController::~ / Hook::~).
+    static TGameNotify* hub = new TGameNotify;
+    return hub;
 }
 
 int TGameNotify::subscribe(std::string_view field, FieldHandler handler)

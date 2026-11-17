@@ -109,13 +109,11 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         connect(pane, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
     }
     for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TMapWindowController::~TMapWindowController()
 {
-    for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, nullptr);
     unbind();
 }
 
@@ -626,7 +624,7 @@ void TMapWindowController::updateMouseTarget()
     if (m_highlightMouseTarget) {
         for (const input::IGameActionPtr& candidate : candidates) {
             if (candidate->gameActionType() == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
-                m_actionHandler->handleGameAction(candidate);
+                Q_EMIT publishGameAction(candidate);
                 break;
             }
         }
@@ -669,9 +667,9 @@ m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
     if (!action)
         return;
     if (action->gameActionType() != input::EGameAction::CONTEXT_MENU) {
-        m_actionHandler->handleGameAction(action);
+        Q_EMIT publishGameAction(action);
         // A click on the map closes the open multi action buttons.
-        input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -704,7 +702,7 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
     if (!pick.isValid())
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String("dragAndDropDefaultActionIsMoveAll")).toBool(false);
-    m_actionHandler->handleGameAction(
+    Q_EMIT publishGameAction(
         input::finalizeDrop(move, pick.position, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
@@ -726,7 +724,7 @@ void TMapWindowController::onMapWindowTargetSelected(const int mouseX, const int
     if (!tibia::game::isOnline())
         return;
     if (const input::TTargetSelectedPtr target = targetAt(QPointF(mouseX, mouseY)))
-        m_actionHandler->handleGameAction(target);
+        Q_EMIT publishGameAction(target);
 }
 
 bool TMapWindowController::handleGameAction(const input::IGameAction& action)
@@ -768,9 +766,9 @@ void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActio
     if (!target)
         return;
     if (target->creatureId())
-        m_actionHandler->handleGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
     else
-        m_actionHandler->handleGameAction(std::make_shared<input::TGameActionUseWith>(action.context(), target->context()));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseWith>(action.context(), target->context()));
 }
 
 void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)

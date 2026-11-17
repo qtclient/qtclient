@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "shared/simplevectorabstractlistmodel.h"
 
 #include "gamewindow/dialogmanager.h"
@@ -148,7 +149,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -195,7 +195,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -237,7 +236,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -265,7 +263,6 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
@@ -318,6 +315,17 @@ private:
     exaltation::TExaltationStorage* m_storage;
     TExaltationResultDialogController* m_resultDialog;
     TMessageDialogController* m_errorDialog;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

@@ -210,7 +210,6 @@ Q_SIGNALS:
     void widgetClosed();
     /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
 
@@ -248,6 +247,11 @@ public:
     TSidebarWidget* current() const;
     void setMissionBackend(mods::MissionBackend* storage);
     void setBrowseOpener(std::function<void(const QString& filter)> opener);
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     void applyMissions();

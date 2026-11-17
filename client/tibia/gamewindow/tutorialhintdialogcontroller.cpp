@@ -181,7 +181,7 @@ void TTutorialHintDialogController::emitDisplay() { Q_EMIT displayDataChanged();
 void TTutorialHintDialogController::requestClose()
 {
     dialog()->close();
-    input::publish(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
 }
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }
@@ -201,24 +201,24 @@ TTutorialShell::TTutorialShell(QObject* parent)
         m_vocation->dialog()->destroy();
     });
 
-    input::setActionHandler(A::SHOW_TUTORIAL_HINT, [this](const input::TGameActionShowTutorialHint& action) {
+    m_gameActions.on(A::SHOW_TUTORIAL_HINT, [this](const input::TGameActionShowTutorialHint& action) {
         if (action.tutorialHintId() > 0)
             handleTutorialHintId(action.tutorialHintId());
         return true;
     });
-    input::setActionHandler(A::ADD_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameActionAddHintAtTutorialMarker& action) {
+    m_gameActions.on(A::ADD_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameActionAddHintAtTutorialMarker& action) {
         m_hint->showHint(action.text(), action.image(), action.caption(), action.markerId(), true);
         return true;
     });
-    input::setActionHandler(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker& action) {
+    m_gameActions.on(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker& action) {
         qCInfo(lcTutorial) << "ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER" << action.markerId();
         return true;
     });
-    input::setActionHandler(A::CONFIRM_TUTORIAL_HINT, [this](const input::IGameAction&) {
+    m_gameActions.on(A::CONFIRM_TUTORIAL_HINT, [this](const input::IGameAction&) {
         m_hint->dialog()->close();
         return true;
     });
-    input::setActionHandler(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameActionAddGUITutorialMarker& action) {
+    m_gameActions.on(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameActionAddGUITutorialMarker& action) {
         qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.markerId() << action.creatureId();
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
@@ -235,7 +235,7 @@ TTutorialShell::TTutorialShell(QObject* parent)
         }
         return true;
     });
-    input::setActionHandler(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::IGameAction&) {
+    m_gameActions.on(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "REMOVE_ALL_TUTORIAL_MARKERS";
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
@@ -244,29 +244,29 @@ TTutorialShell::TTutorialShell(QObject* parent)
             lists->clearCreatureTutorialMarkers();
         return true;
     });
-    input::setActionHandler(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {
+    m_gameActions.on(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {
         qCInfo(lcTutorial) << "FINISHED_TUTORIAL_FOR_CHARACTER";
         Q_EMIT tutorialFinished();
         return true;
     });
-    input::setActionHandler(A::TUTORIAL_PROGRESS, [](const input::TGameActionTutorialProgress& action) {
+    m_gameActions.on(A::TUTORIAL_PROGRESS, [](const input::TGameActionTutorialProgress& action) {
         qCInfo(lcTutorial) << "TUTORIAL_PROGRESS" << action.tutorialProgress();
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_PAUSE, [](const input::IGameAction&) {
+    m_gameActions.on(A::SESSIONDUMP_PAUSE, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "SESSIONDUMP_PAUSE (PacketPlayer has no pause yet)";
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_RESUME, [](const input::IGameAction&) {
+    m_gameActions.on(A::SESSIONDUMP_RESUME, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "SESSIONDUMP_RESUME (PacketPlayer has no resume yet)";
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_SKIP_TO, [](const input::TGameActionSessiondumpSkipTo& action) {
+    m_gameActions.on(A::SESSIONDUMP_SKIP_TO, [](const input::TGameActionSessiondumpSkipTo& action) {
         // CIP `.hints` use SKIP_TO 0 as a no-op / restart marker at TutorialStart.
         qCInfo(lcTutorial) << "SESSIONDUMP_SKIP_TO" << action.timestamp();
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_START, [](const input::TGameActionSessiondumpStart& action) {
+    m_gameActions.on(A::SESSIONDUMP_START, [](const input::TGameActionSessiondumpStart& action) {
         qCInfo(lcTutorial) << "SESSIONDUMP_START" << action.url();
         return true;
     });
@@ -274,18 +274,6 @@ TTutorialShell::TTutorialShell(QObject* parent)
 
 TTutorialShell::~TTutorialShell()
 {
-    input::setActionHandler(A::SHOW_TUTORIAL_HINT, nullptr);
-    input::setActionHandler(A::ADD_HINT_AT_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::CONFIRM_TUTORIAL_HINT, nullptr);
-    input::setActionHandler(A::ADD_GUI_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::REMOVE_ALL_TUTORIAL_MARKERS, nullptr);
-    input::setActionHandler(A::FINISHED_TUTORIAL_FOR_CHARACTER, nullptr);
-    input::setActionHandler(A::TUTORIAL_PROGRESS, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_PAUSE, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_RESUME, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_SKIP_TO, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_START, nullptr);
 }
 
 void TTutorialShell::handleTutorialHintId(const int hintId)

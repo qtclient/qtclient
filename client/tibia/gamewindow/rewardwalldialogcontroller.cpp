@@ -30,9 +30,9 @@ const QChar MultiStringSeparator(0x9c);
 const QColor LockedColor(QStringLiteral("#D33C3C"));
 const QColor ReachedColor(QStringLiteral("#44AD25"));
 
-void publish(const A type)
+input::IGameActionPtr simpleAction(const A type)
 {
-    input::publish(input::makeGameAction(type));
+    return input::makeGameAction(type);
 }
 
 uint32_t nowSeconds()
@@ -154,14 +154,11 @@ TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewa
 
     for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
                           A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TRewardWallDialogController::~TRewardWallDialogController()
 {
-    for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
-                          A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
-        input::setActionHandler(type, nullptr);
     m_timer.stop();
     clearHistory();
     clearDailyRewards();
@@ -414,7 +411,7 @@ void TRewardWallDialogController::getPremiumClicked()
     Q_EMIT publishGameAction(action);
 }
 
-void TRewardWallDialogController::historyButtonClicked() { publish(A::REQUEST_DAILY_REWARD_HISTORY); }
+void TRewardWallDialogController::historyButtonClicked() { Q_EMIT publishGameAction(simpleAction(A::REQUEST_DAILY_REWARD_HISTORY)); }
 
 /// The player's reward of the next position once it is unlocked.
 std::shared_ptr<TDailyReward> TRewardWallDialogController::collectableReward() const
@@ -635,6 +632,6 @@ void TRewardWallDialogController::onConfirmedPartialCollect()
     requestCollectFixedItemsReward();
 }
 
-void TRewardWallDialogController::requestCollectFixedItemsReward() { publish(A::COLLECT_FIXED_ITEMS_DAILY_REWARD); }
+void TRewardWallDialogController::requestCollectFixedItemsReward() { Q_EMIT publishGameAction(simpleAction(A::COLLECT_FIXED_ITEMS_DAILY_REWARD)); }
 
 }

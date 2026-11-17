@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "input/gameaction.h"
 
 #include <cip_gen.h>
@@ -35,6 +36,17 @@ private:
 
     TClientOptions* m_options = nullptr;
     std::function<TSidebarOptions*()> m_sidebarOptions;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

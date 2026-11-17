@@ -61,13 +61,6 @@ QString newValuesText(const TShapedSlot& slot, const int rank)
     return qtTrId("weapon_proficiency_shape_dialog_new_values").arg(rank).arg(perkDescription(shapedPerk(slot.perkType, rank)));
 }
 
-void requestBalances()
-{
-    for (const int resource : DialogResources) {
-        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-        input::publish(action);
-    }
-}
 
 int profession()
 {
@@ -100,7 +93,7 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
         m_typeId = 0;
     });
 
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action) {
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action) {
         handleGameAction(action);
         return true;
     });
@@ -125,7 +118,6 @@ void TWeaponProficiencyShapeDialogController::handleGameAction(const input::game
 
 TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController()
 {
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, nullptr);
 }
 
 std::optional<TShapedSlot> TWeaponProficiencyShapeDialogController::shapedSlot() const
@@ -241,7 +233,8 @@ void TWeaponProficiencyShapeDialogController::showDialog()
 {
     m_message->dialog()->close();
     update(m_typeId);
-    requestBalances();
+    for (const int resource : DialogResources)
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestResourceBalance>(resource));
     if (!dialog()->item()) {
         dialog()->create();
         dialog()->show();
@@ -490,7 +483,7 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
         if (dialog()->isShown())
             dialog()->close();
     });
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
         const int profession = action.profession();
         if (profession >= 1 && profession <= 5) {
             std::vector<TProficiencyPerk> perks;
@@ -507,7 +500,6 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
 
 TWeaponProficiencyShapeOptionsDialogController::~TWeaponProficiencyShapeOptionsDialogController()
 {
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, nullptr);
 }
 
 void TWeaponProficiencyShapeOptionsDialogController::requestClose() { closeDialog(); }

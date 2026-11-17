@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
 
@@ -182,6 +183,17 @@ private:
     Qt::MouseButton m_mapPressButton = Qt::NoButton;
     Qt::KeyboardModifiers m_mapPressModifiers = Qt::NoModifier;
     QPointF m_mapPressPos;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

@@ -34,7 +34,7 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
     , m_dialog(new TSkillWheelDialogController(m_storage, this))
 {
     // The own wheel's answer to a save does not open the dialog again.
-    input::setActionHandler(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::IGameAction&) {
+    m_gameActions.on(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::IGameAction&) {
         if (m_storage->isOwnCharacter() && m_skipNextOwnOpen) {
             clearSkipNextOwnOpen();
             return true;
@@ -43,27 +43,27 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         m_dialog->openDialogTab(tab == TSkillWheelDialogController::NoTabInitialState ? TSkillWheelDialogController::Wheel : tab);
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::IGameAction&) {
+    m_gameActions.on(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"), qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel), false);
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::IGameAction&) {
+    m_gameActions.on(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"),
                               qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel)
                                   + qtTrId("skill_wheel_warning_no_skill_wheel_show_preview_part").arg(qtTrId("ok")),
                               true);
         return true;
     });
-    input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::REQUEST_SKILL_WHEEL, [this](const input::IGameAction& action) {
         m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::IGameAction& action) {
         clearSkipNextOwnOpen();
         m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::SAVE_SKILL_WHEEL, [this](const input::IGameAction& action) {
         m_actions.handleGameAction(action);
         return true;
     });
@@ -75,12 +75,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
                     [this](const std::weak_ptr<creatures::TCreature>& player) { m_actions.onPlayerCreatureAddedToCreatureStorage(player); });
         }
     });
-    input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::gameactions::TSelectAtelierGemGameAction& action) {
+    m_gameActions.on(A::GEM_ATELIER_SELECT_GEM, [this](const input::gameactions::TSelectAtelierGemGameAction& action) {
         m_dialog->openDialogTab(TSkillWheelDialogController::GemAtelier);
         m_dialog->openGemAtelier(0, action.gemId());
         return true;
     });
-    input::setActionHandler(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::gameactions::TSelectFragmentWorkshopModGameAction& action) {
+    m_gameActions.on(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::gameactions::TSelectFragmentWorkshopModGameAction& action) {
         m_dialog->openDialogTab(TSkillWheelDialogController::FragmentWorkshop);
         m_dialog->openWorkshopMod(action.supremeMod(), action.modId());
         return true;
@@ -126,8 +126,6 @@ TSkillWheelManager::~TSkillWheelManager()
 {
     if (TSkillWheelProtocolMessageHandler* handler = TSkillWheelProtocolMessageHandler::liveInstance())
         handler->setSkillWheelStorage(nullptr);
-    for (const A type : Actions)
-        input::setActionHandler(type, nullptr);
 }
 
 void TSkillWheelManager::clearSkipNextOwnOpen()

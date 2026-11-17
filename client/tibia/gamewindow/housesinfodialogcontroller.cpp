@@ -678,7 +678,7 @@ void THousesInfoDialogController::showOnCyclopediaMap()
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
     action->setCoordinate(Position(house->x, house->y, static_cast<uint8_t>(house->z)));
     action->setZoom(0.5f);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void THousesInfoDialogController::ensureTownAndHouseSelection()

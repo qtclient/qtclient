@@ -373,19 +373,16 @@ QStringList TKeyboardShortcutHandler::staticActionNames()
 namespace {
 
 /// The switched set goes to the status line (when statusLine) and the console.
-void announceHotkeySet(const QString& name, const bool statusLine)
+void announceHotkeySet(TKeyboardShortcutHandler& handler, const QString& name, const bool statusLine)
 {
     const QString text = qtTrId("hotkey_preset_switched").arg(name);
-    if (statusLine) {
-        auto status = std::make_shared<TGameActionSetStatusLine>(text);
-        publish(status);
-    }
-    auto system = std::make_shared<TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(30));
-    publish(system);
+    if (statusLine)
+        Q_EMIT handler.publishGameAction(std::make_shared<TGameActionSetStatusLine>(text));
+    Q_EMIT handler.publishGameAction(std::make_shared<TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(30)));
 }
 
 /// The set `step` places after the current one in name order, wrapping.
-void switchHotkeySetBy(const int step)
+void switchHotkeySetBy(TKeyboardShortcutHandler& handler, const int step)
 {
     config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
     const QStringList names = hotkeys->setNames();
@@ -394,7 +391,7 @@ void switchHotkeySetBy(const int step)
     const qsizetype count = names.size();
     const qsizetype index = ((names.indexOf(hotkeys->currentSetName()) + step) % count + count) % count;
     hotkeys->selectSet(names.at(index));
-    announceHotkeySet(hotkeys->currentSetName(), true);
+    announceHotkeySet(handler, hotkeys->currentSetName(), true);
 }
 
 }
@@ -419,17 +416,17 @@ void TKeyboardShortcutHandler::tryToSwitchHotkeySet(const TGameActionTryToSwitch
     if (!hotkeys->autoSwitchHotkeyPreset() || !hotkeys->set(name) || name == hotkeys->currentSetName())
         return;
     hotkeys->selectSet(name);
-    announceHotkeySet(name, action.showStatusLine());
+    announceHotkeySet(*this, name, action.showStatusLine());
 }
 
 void TKeyboardShortcutHandler::switchToNextHotkeySet()
 {
-    switchHotkeySetBy(1);
+    switchHotkeySetBy(*this, 1);
 }
 
 void TKeyboardShortcutHandler::switchToPreviousHotkeySet()
 {
-    switchHotkeySetBy(-1);
+    switchHotkeySetBy(*this, -1);
 }
 
 }

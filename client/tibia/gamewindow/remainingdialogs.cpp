@@ -1330,7 +1330,7 @@ void TShowSpellBookDialogController::openCyclopedia()
     dialog()->close();
     // The magical archive tab of the cyclopedia.
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(8);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TShowSpellBookDialogController::requestClose() { dialog()->close(); }

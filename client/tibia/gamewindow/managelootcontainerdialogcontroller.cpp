@@ -40,9 +40,9 @@ constexpr uint16_t EmptyAppearance = 0x5ca9;
 
 /// A managed container action for one object category; select actions also
 /// carry the picked container.
-void publishContainerAction(const A type, const int category)
+input::IGameActionPtr containerAction(const A type, const int category)
 {
-    input::publish(std::make_shared<input::TGameActionManagedContainer>(type, category));
+    return std::make_shared<input::TGameActionManagedContainer>(type, category);
 }
 
 bool isSet(const uint16_t typeId) { return typeId != 0 && typeId != EmptyAppearance; }
@@ -138,14 +138,14 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
         m_lootContainers.append(row);
         connect(row, &TLootContainerQMLInfo::requestSelectLootContainer, this, [this](const int c) { startContainerPick(c, true); });
         connect(row, &TLootContainerQMLInfo::requestClearLootContainer, this,
-                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_CLEAR, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::LOOT_CONTAINER_CLEAR, c)); });
         connect(row, &TLootContainerQMLInfo::requestOpenLootContainer, this,
-                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_OPEN, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::LOOT_CONTAINER_OPEN, c)); });
         connect(row, &TLootContainerQMLInfo::requestSelectObtainContainer, this, [this](const int c) { startContainerPick(c, false); });
         connect(row, &TLootContainerQMLInfo::requestClearObtainContainer, this,
-                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_CLEAR, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::OBTAIN_CONTAINER_CLEAR, c)); });
         connect(row, &TLootContainerQMLInfo::requestOpenObtainContainer, this,
-                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_OPEN, c); });
+                [this](const int c) { Q_EMIT publishGameAction(containerAction(A::OBTAIN_CONTAINER_OPEN, c)); });
     }
 
     if (m_lootBlackWhitelist) {
@@ -202,13 +202,11 @@ void TManageLootContainerDialogController::installHandlers()
 {
     const auto handle = [this](const input::IGameAction& action) { return handleGameAction(action); };
     for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
-        input::setActionHandler(type, handle);
+        m_gameActions.on(type, handle);
 }
 
 void TManageLootContainerDialogController::uninstallHandlers()
 {
-    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
-        input::setActionHandler(type, nullptr);
 }
 
 bool TManageLootContainerDialogController::handleGameAction(const input::IGameAction& action)

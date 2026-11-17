@@ -28,15 +28,18 @@ using A = EGameAction;
 
 }
 
-TActionButtonGameActionHandler::TActionButtonGameActionHandler(ActionHandler handler, QObject* parent)
+TActionButtonGameActionHandler::TActionButtonGameActionHandler(Handler handler, QObject* parent)
     : cip::tibia::input::TActionButtonGameActionHandler(parent)
+    , m_handler(std::move(handler))
 {
-    setActionHandler(A::ACTION_BUTTON_TRIGGERED, std::move(handler));
 }
 
-TActionButtonGameActionHandler::~TActionButtonGameActionHandler()
+TActionButtonGameActionHandler::~TActionButtonGameActionHandler() = default;
+
+void TActionButtonGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr& pGameAction)
 {
-    setActionHandler(A::ACTION_BUTTON_TRIGGERED, nullptr);
+    if (const auto* triggered = gameActionAs<TGameActionActionButtonTriggered>(pGameAction); triggered && m_handler)
+        m_handler(*triggered);
 }
 
 TClipboardGameActionHandler::TClipboardGameActionHandler(QObject* parent)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "store/storestorage.h"
 
@@ -273,6 +274,17 @@ private:
     int m_transactionDetailsId = 0;
     /// Host: hireling renaming outside the store.
     TGenericEnterTextDialogController* m_hirelingNameDialog;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// The control buttons' store button (CIP: TStoreButtonController); the sale

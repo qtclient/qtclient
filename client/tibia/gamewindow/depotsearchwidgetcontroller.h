@@ -190,6 +190,11 @@ public:
     void setSidebarOptions(config::TSidebarOptions* options);
     TSidebarWidget* current() const;
 
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
 private:
     /// Results or a detail list arrived: the widget shows in a sidebar.
     void show();

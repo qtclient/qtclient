@@ -151,7 +151,6 @@ Q_SIGNALS:
     void widgetClosed();
     /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
 

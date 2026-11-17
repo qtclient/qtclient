@@ -46,6 +46,9 @@ typedef struct QtClientPackHostApiV1 {
     void* (*minimap_panel_item)(void* user);
     void* (*inventory_panel_item)(void* user);
     void* (*button_bar_panel_item)(void* user);
+
+    /** game::TInternalGameActionRouter* the pack's publishGameAction signals connect to. */
+    void* (*game_action_router)(void* user);
 } QtClientPackHostApiV1;
 
 #ifdef __cplusplus

@@ -303,11 +303,11 @@ TQuestLogController::TQuestLogController(QObject* parent)
     connect(&m_storage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
     onFilterOptionChanged();
 
-    input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameActionChangeQuesttrackerOptions& action) {
+    m_gameActions.on(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameActionChangeQuesttrackerOptions& action) {
         m_tracker.setOption(action.option(), action.enabled());
         return true;
     });
-    input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, [this](const input::TGameActionChangeTrackedQuestFlags& action) {
+    m_gameActions.on(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, [this](const input::TGameActionChangeTrackedQuestFlags& action) {
         if (!action.questIds().empty())
             m_tracker.changeTrackedQuestFlags(QList<int>(action.questIds().begin(), action.questIds().end()), !action.track());
         return true;
@@ -316,8 +316,6 @@ TQuestLogController::TQuestLogController(QObject* parent)
 
 TQuestLogController::~TQuestLogController()
 {
-    input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, nullptr);
-    input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, nullptr);
     resetSelection();
 }
 
@@ -522,7 +520,7 @@ void TQuestLogController::selectedQuestFlag(const int QuestFlagID)
 void TQuestLogController::questTrackerButtonPressed()
 {
     auto action = std::make_shared<input::TGameActionToggleWidget>(10);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TQuestLogController::setShowCompleted(const bool Show)

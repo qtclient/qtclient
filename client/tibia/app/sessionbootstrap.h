@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "app/launcherenv.h"
 
 #include <QMetaObject>
@@ -69,6 +70,17 @@ private:
     gamewindow::TMessageDialogController* m_keepRenderer = nullptr;
     QMetaObject::Connection m_createCharacterIfEmpty;
     QMetaObject::Connection m_characterCreated;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

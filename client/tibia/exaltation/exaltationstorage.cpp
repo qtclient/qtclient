@@ -54,10 +54,6 @@ std::vector<TTransferGroup> transferGroupsOf(const std::vector<ForgeTransferData
     return groups;
 }
 
-void publish(const A type)
-{
-    input::publish(input::makeGameAction(type));
-}
 
 }
 
@@ -121,7 +117,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         setTransferGroups(transferGroupsOf(data->transfers));
         setConvergenceTransferGroups(transferGroupsOf(data->convergenceTransfers));
         setDustLimitRaw(static_cast<uint8_t>(data->dustLevel));
-        publish(A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG);
+        Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG));
         return std::any{};
     });
     // CIP handleExaltationHistoryMessage: the action caption by type.
@@ -157,33 +153,29 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
             .bonusTypeId = static_cast<uint16_t>(client::gamecore::argInt(args, 1)),
             .bonusTier = static_cast<uint8_t>(client::gamecore::argInt(args, 2)),
         };
-        input::publish(std::make_shared<input::TGameActionShowExaltationResultDialog>());
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowExaltationResultDialog>());
         return std::any{};
     });
     // CIP handleCloseExaltationDialogMessage.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseForgeCloseWindows", [](GameObject*, const Args&) {
-        publish(A::CLOSE_EXALTATION_FORGE_DIALOG);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseForgeCloseWindows", [this](GameObject*, const Args&) {
+        Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_EXALTATION_FORGE_DIALOG));
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
-            [](const int type, const QString& message) { handleShowMessageDialogMessage(type, message); });
+            [this](const int type, const QString& message) { handleShowMessageDialogMessage(type, message); });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](const qint64 balance, qint64, const int type) { handleResourceBalanceMessage(type, balance); });
 
     for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
                           A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
                           A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExaltationStorage::~TExaltationStorage()
 {
     if (s_instance == this)
         s_instance = nullptr;
-    for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
-                          A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
-                          A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Dust, slivers and cores (resource types 70 to 72), as 16 bits.
@@ -202,7 +194,7 @@ void TExaltationStorage::handleShowMessageDialogMessage(const int type, const QS
 {
     if (type != ExaltationErrorDialogType)
         return;
-    input::publish(std::make_shared<input::TGameActionShowMessageDialog>(A::SHOW_EXALTATION_ERROR_DIALOG, message));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowMessageDialog>(A::SHOW_EXALTATION_ERROR_DIALOG, message));
 }
 
 bool TExaltationStorage::handleGameAction(const input::IGameAction& action)

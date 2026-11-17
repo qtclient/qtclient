@@ -82,7 +82,7 @@ void TFriendsFriendListPageController::showAccountDetails(const int AccountIDRaw
             break;
         }
     }
-    input::publish(std::make_shared<input::TGameActionFriendsDialogSearchAccount>(name));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionFriendsDialogSearchAccount>(name));
 }
 
 void TFriendsFriendListPageController::showContextMenuForAccountID(const int AccountIDRaw)

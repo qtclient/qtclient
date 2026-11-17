@@ -587,7 +587,7 @@ void TChatChannelController::selectAll()
 
 void TChatChannelController::copySelectionToClipboard()
 {
-    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
 }
 
 void TChatChannelController::selectTextPassage(const int entryIndex, const int passageStart, const int passageEnd)
@@ -976,6 +976,9 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     own(&m_secondary);
     own(&m_tabs);
     (void)m_gameActionHandler;
+    connect(&m_storage, &chat::TChatChannelStorage::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
 
     if (client::gamecore::isRunning()) {
         m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_chatStorage, m_blacklist);
@@ -1044,20 +1047,18 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
     }
 
     // Every handler sees these actions; the chat acts unless the NPC dialog
     // holds the keyboard.
-    m_copySelectionListenerId = input::addActionListener(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::IGameAction&) {
+    m_gameActions.on(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::IGameAction&) {
         if (!m_npcDialog || !m_npcDialog->hasFocus())
             copySelectedText();
-        return false;
     });
-    m_selectAllListenerId = input::addActionListener(A::REQUEST_SELECT_ALL_TEXT, [this](const input::IGameAction&) {
+    m_gameActions.on(A::REQUEST_SELECT_ALL_TEXT, [this](const input::IGameAction&) {
         if (!m_npcDialog || !m_npcDialog->hasFocus())
             selectAllText();
-        return false;
     });
 
     m_primary.setChannel(m_tabs.currentChannel());
@@ -1066,13 +1067,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
 
 TChatController::~TChatController()
 {
-    if (m_copySelectionListenerId)
-        input::removeActionListener(m_copySelectionListenerId);
-    if (m_selectAllListenerId)
-        input::removeActionListener(m_selectAllListenerId);
-    for (const A type : HandledActions) {
-        input::setActionHandler(type, nullptr);
-    }
 }
 
 void TChatController::setChatItem(QQuickItem* chatItem)
@@ -1476,7 +1470,8 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     if (!channel) {
         static constexpr tibia::client::MessageMode Modes[] = { tibia::client::MessageWhisper, tibia::client::MessageSay, tibia::client::MessageYell };
         // CIP : crosshair spells by cast type.
-        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType);
+        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType,
+                   [this](const input::IGameActionPtr& action) { Q_EMIT publishGameAction(action); });
         return;
     }
     const TChatChannelIdentifier& identifier = channel->identifier();

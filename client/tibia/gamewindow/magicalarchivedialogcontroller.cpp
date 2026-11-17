@@ -84,7 +84,7 @@ void TMagicalArchiveDialogController::requestAssignSpellToActionButton()
     if (m_selectedSpellID <= 0)
         return;
     auto action = std::make_shared<input::TGameActionAssignSpellToActionButton>(static_cast<uint8_t>(1), 0, -1, static_cast<uint16_t>(m_selectedSpellID), A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 }

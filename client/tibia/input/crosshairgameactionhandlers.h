@@ -9,6 +9,7 @@
 #include <client/const.h>
 #include <protocol.pb.h>
 
+#include <functional>
 #include <memory>
 
 namespace tibia {
@@ -19,7 +20,9 @@ namespace input {
 /// ESpellCastOptionalTargetType (mouse → SPELL_AT_MOUSE_CURSOR, target → aim 3,
 /// else CROSSHAIR_SPELL). aimattarget waves use the same cast types toward the
 /// mouse tile or attack target (needDirection on the server). Else plain talk.
-void say(tibia::client::MessageMode mode, const QString& text, int spellCastType);
+/// The spell actions go to `publish` (the chat controller's publishGameAction).
+void say(tibia::client::MessageMode mode, const QString& text, int spellCastType,
+         const std::function<void(const IGameActionPtr&)>& publish);
 
 /// CIP input::TUseWithGameActionHandler (USE_WITH, USE_ON_CREATURE,
 /// TARGET_SELECTED, CANCEL_USE_WITH) plus USE_ON_TARGET / USE_ON_YOURSELF from

@@ -96,9 +96,9 @@ QJsonArray levelArray(const std::set<int>& levels)
     return array;
 }
 
-void openNewsEntry(const int newsEntryId)
+input::IGameActionPtr openNewsEntryAction(const int newsEntryId)
 {
-    input::publish(input::TGameActionOpenNewsDialog::withNews(static_cast<uint32_t>(newsEntryId)));
+    return input::TGameActionOpenNewsDialog::withNews(static_cast<uint32_t>(newsEntryId));
 }
 
 }
@@ -339,10 +339,10 @@ void TPlayerGuideWidgetController::startContentSizeChangedTimer() { widget()->st
 void TPlayerGuideWidgetController::showLatestUnlockedPlayerGuide()
 {
     if (m_latestUnlockedNewsEntryId != 0)
-        openNewsEntry(m_latestUnlockedNewsEntryId);
+        Q_EMIT publishGameAction(openNewsEntryAction(m_latestUnlockedNewsEntryId));
 }
 
-void TPlayerGuideWidgetController::showPreviousUnlockedPlayerGuide(const int newsEntryId) { openNewsEntry(newsEntryId); }
+void TPlayerGuideWidgetController::showPreviousUnlockedPlayerGuide(const int newsEntryId) { Q_EMIT publishGameAction(openNewsEntryAction(newsEntryId)); }
 
 void TPlayerGuideWidgetController::showLevelSpecialPopup()
 {
@@ -443,6 +443,7 @@ TSidebarWidget* TPlayerGuideWidgetManager::open(config::TSidebarOptions* options
     m_options = options;
     if (!m_controller) {
         m_controller = new TPlayerGuideWidgetController(news::TNewsStorage::current(), m_gameWindowItem, m_engine);
+        connect(m_controller, &TPlayerGuideWidgetController::publishGameAction, this, &TPlayerGuideWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

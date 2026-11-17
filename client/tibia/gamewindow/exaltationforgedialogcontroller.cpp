@@ -181,9 +181,9 @@ using A = input::EGameAction;
 using exaltation::classificationOf;
 using ObjectKey = std::pair<uint16_t, uint8_t>;
 
-void publish(const A type)
+input::IGameActionPtr simpleAction(const A type)
 {
-    input::publish(input::makeGameAction(type));
+    return input::makeGameAction(type);
 }
 
 }
@@ -334,7 +334,7 @@ void TExaltationForgeFusionPageController::resourceObjectSelected(const int Type
 /// CIP .
 void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanceIncreased, const bool TierLossImproved)
 {
-    input::publish(std::make_shared<input::TGameActionExaltationForgeFusion>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeFusion>(
         static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
         static_cast<uint16_t>(m_resourceObjectTypeId), SuccessChanceIncreased, TierLossImproved));
     m_fusionObjectTypeId = 0;
@@ -347,7 +347,7 @@ void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanc
 /// CIP .
 void TExaltationForgeFusionPageController::requestConvergenceFusion()
 {
-    input::publish(std::make_shared<input::TGameActionExaltationForgeConvergenceFusion>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeConvergenceFusion>(
         static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
         static_cast<uint16_t>(m_resourceObjectTypeId)));
     m_fusionObjectTypeId = 0;
@@ -574,7 +574,7 @@ void TExaltationForgeTransferPageController::targetSelected(const int TypeID)
 /// CIP .
 void TExaltationForgeTransferPageController::requestTransfer()
 {
-    input::publish(std::make_shared<input::TGameActionExaltationForgeTransfer>(
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeTransfer>(
         static_cast<uint16_t>(m_sourceObjectTypeId), static_cast<uint8_t>(m_sourceObjectUpgradeTier),
         static_cast<uint16_t>(m_targetObjectTypeId), m_convergenceTransferEnabled));
 }
@@ -722,7 +722,7 @@ ushort TExaltationForgeHistoryPageController::numberOfPages() const
 
 void TExaltationForgeHistoryPageController::showDialogTab()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE));
     onHistoryChanged();
 }
 
@@ -733,12 +733,12 @@ void TExaltationForgeHistoryPageController::hideDialogTab()
 
 void TExaltationForgeHistoryPageController::requestPreviousPage()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE));
 }
 
 void TExaltationForgeHistoryPageController::requestNextPage()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE));
 }
 
 /// Newest first.
@@ -825,7 +825,12 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     m_fusionController = fusion;
     m_transferController = transfer;
     m_conversionController = new TExaltationForgeConversionPageController(storage, this);
-    m_historyController = new TExaltationForgeHistoryPageController(storage, this);
+    auto* history = new TExaltationForgeHistoryPageController(storage, this);
+    m_historyController = history;
+    connect(fusion, &TExaltationForgeFusionPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
+    connect(transfer, &TExaltationForgeTransferPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
+    connect(history, &TExaltationForgeHistoryPageController::publishGameAction, this,
+            &TExaltationForgeDialogController::publishGameAction);
     m_readOnlyMode = true;
     m_errorDialog->setCloseOnButtonClicked(true);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, fusion, &TExaltationForgeFusionPageController::prepareOpenDialog);
@@ -833,7 +838,7 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
 
     for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
                           A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 /// The result travels in the storage instead of the action.
@@ -874,16 +879,13 @@ bool TExaltationForgeDialogController::handleGameAction(const input::IGameAction
 
 TExaltationForgeDialogController::~TExaltationForgeDialogController()
 {
-    for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
-                          A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Closes and tells the storage (EXALTATION_FORGE_DIALOG_CLOSED).
 void TExaltationForgeDialogController::requestClose()
 {
     closeDialog();
-    publish(A::EXALTATION_FORGE_DIALOG_CLOSED);
+    Q_EMIT publishGameAction(simpleAction(A::EXALTATION_FORGE_DIALOG_CLOSED));
 }
 
 void TExaltationForgeDialogController::requestTabSwitch(const EDialogTab NewTab)

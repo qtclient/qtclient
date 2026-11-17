@@ -347,7 +347,7 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     });
 
     // CIP : browse the object's type, with its tier when it has one.
-    input::setActionHandler(input::EGameAction::MARKET_BROWSE, [this](const input::gameactions::TGameActionMarketBrowse& browse) {
+    m_gameActions.on(input::EGameAction::MARKET_BROWSE, [this](const input::gameactions::TGameActionMarketBrowse& browse) {
         if (!m_messages)
             return false;
         const input::TObjectGameActionContext& action = browse.context();

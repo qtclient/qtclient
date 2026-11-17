@@ -383,7 +383,7 @@ void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMe
     case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
         if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
             if (tibia::game::hasLocalPlayer()) {
-                tibia::input::publish(std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(static_cast<int>(small)));
+                Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(static_cast<int>(small)));
             }
         } else {
             tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));
@@ -771,7 +771,7 @@ void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMe
     static constexpr const char* kVocationHotkeySets[] = { "Knight", "Paladin", "Sorcerer", "Druid", "Monk" };
     const uint32_t preset = m.preset_id();
     if (preset >= 1 && preset <= std::size(kVocationHotkeySets)) {
-        tibia::input::publish(std::make_shared<tibia::input::TGameActionTryToSwitchHotkeySet>(
+        Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTryToSwitchHotkeySet>(
             QString::fromLatin1(kVocationHotkeySets[preset - 1]), true));
     }
     // Host: the skill wheel follows the preset on the notify bus.

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "input/gameactionptr.h"
 
 #include <QObject>
 
@@ -58,6 +60,11 @@ public:
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
 
+
+Q_SIGNALS:
+    /// The dialogs' publishGameAction, forwarded (qtclient groups them here).
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
 private:
     void hookOutfitDialog();
     void hookCreaturePodium();
@@ -77,6 +84,14 @@ private:
     TCyclopediaDialogController* m_cyclopedia;
     TCyclopediaButtonController* m_cyclopediaButton;
     TBosstiaryButtonController* m_bosstiaryButton;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

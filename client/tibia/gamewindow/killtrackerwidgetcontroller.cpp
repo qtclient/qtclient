@@ -101,8 +101,11 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
 {
     m_bountyTasksModel = new TTaskMonsterModel(this);
     m_weeklyTasksModel = new TTaskMonsterModel(this);
-    for (prey::TPreyData* data : m_storage->slots())
-        m_preyList.append(new TPreyRenderInfo(data, this));
+    for (prey::TPreyData* data : m_storage->slots()) {
+        auto* info = new TPreyRenderInfo(data, this);
+        connect(info, &TPreyRenderInfo::publishGameAction, this, &TKillTrackerWidgetController::publishGameAction);
+        m_preyList.append(info);
+    }
     Q_EMIT preyListChanged();
     connect(m_storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TKillTrackerWidgetController::bonusRerollPossibleChanged);
     connect(m_storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TKillTrackerWidgetController::lockPreyPossibleChanged);
@@ -220,16 +223,16 @@ void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* op
     onWidgetOptionsChanged();
 }
 
-void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeGameAction(input::EGameAction::OPEN_PREY_DIALOG)); }
+void TKillTrackerWidgetController::requestOpenPreyDialog() { Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_PREY_DIALOG)); }
 
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
 {
-    input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); // the bounty tasks tab
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); // the bounty tasks tab
 }
 
 void TKillTrackerWidgetController::requestOpenWeeklyTasksDialog()
 {
-    input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(1)); // the weekly tasks tab
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(1)); // the weekly tasks tab
 }
 
 void TKillTrackerWidgetController::saveWidgetOptions()
@@ -267,6 +270,7 @@ TSidebarWidget* TKillTrackerWidgetManager::open(config::TSidebarOptions* options
 {
     if (!m_controller) {
         m_controller = new TKillTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TKillTrackerWidgetController::publishGameAction, this, &TKillTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

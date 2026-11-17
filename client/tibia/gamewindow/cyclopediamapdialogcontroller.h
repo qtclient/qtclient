@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "input/gameactionmapper.h"
 
@@ -186,6 +187,17 @@ private:
     bool m_selectedIsArea = false;
     QTimer m_tooltipTimer;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

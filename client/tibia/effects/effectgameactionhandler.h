@@ -19,11 +19,12 @@ public:
     explicit TEffectGameActionHandler(TEffectStorage& storage, QObject* parent = nullptr);
     ~TEffectGameActionHandler() override;
 
-    void handleGameAction(const input::IGameAction& action);
+public Q_SLOTS:
+    /// Connected to the session router's publishGameActionInternal.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
 
 private:
     TEffectStorage& m_storage;
-    std::vector<int> m_listeners;
 };
 
 }

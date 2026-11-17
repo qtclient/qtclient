@@ -1,5 +1,7 @@
 #include "sound/soundcontroller.h"
 
+#include "input/gameaction.h"
+
 #include "sound/gamesessionsoundprovider.h"
 #include "sound/soundstorage.h"
 
@@ -99,6 +101,26 @@ void TSoundController::setMusicTemplate(const uint16_t templateId)
 void TSoundController::setAmbienceStream(const uint16_t streamId)
 {
     m_ambienceStream->setAmbienceStream(streamId);
+}
+
+void TSoundController::handleGameAction(const tibia::input::IGameActionPtr& pGameAction)
+{
+    const auto* action = tibia::input::gameActionAs<tibia::input::gameactions::TGameActionSoundTrigger>(pGameAction);
+    if (!action)
+        return;
+    // TGameActionSoundTrigger's variant: pause/resume the looping sounds (the
+    // game screen publishes the resume) or play an effect once.
+    if (const std::optional<bool> pause = action->pauseLoopingSounds()) {
+        handleSoundTrigger(*pause);
+        return;
+    }
+    const int effect = action->soundEffectId().value_or(0);
+    if (effect <= 0)
+        return;
+    TSoundEffectRequest request;
+    request.effectId = static_cast<TSoundEffectID>(effect);
+    request.chat = TChatSoundContext{ true };
+    handleSoundTrigger(request);
 }
 
 void TSoundController::handleSoundTrigger(const TSoundTrigger& trigger)

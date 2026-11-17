@@ -68,6 +68,13 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     m_bosstiaryDialogController = m_bosstiary;
     m_bossSlotsDialogController = m_bossSlots;
     m_magicalArchiveDialogController = m_magicalArchive;
+    connect(m_itemInfo, &TItemInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_monsters, &TMonsterDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_bonusEffects, &TMonsterBonusEffectsDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_houses, &THousesInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_map, &TCyclopediaMapDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_magicalArchive, &TMagicalArchiveDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
 
     // Tip ICyclopediaDialogTab / IDialogTabPage twins (moc floor); live tabs
     // inherit cip::ICyclopediaDialogTab via their CIP T* bases.
@@ -105,8 +112,6 @@ void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_
 
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, nullptr);
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, nullptr);
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -142,11 +147,11 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
-    input::setActionHandler(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
         m_bosstiary->handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
+    m_gameActions.on(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
         // The action's tab and the page it opens there.
         switch (action.tab()) {
             case 0: {
@@ -200,7 +205,7 @@ void TCyclopediaDialogController::hookActions()
         }
         return true;
     });
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
+    m_gameActions.on(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
         clearBacklog();
         closeDialog();
         return true;
@@ -213,7 +218,7 @@ void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
     // CIP asks the server for the charm, bank and inventory balances.
     for (const int resource : { 30, 0, 1 }) {
         auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
-        input::publish(action);
+        Q_EMIT publishGameAction(action);
     }
     if (!dialog()->isShown())
         dialog()->show();
@@ -256,7 +261,7 @@ void TCyclopediaDialogController::requestOpenManageLootContainerDialog()
 {
     clearBacklog();
     closeDialog();
-    input::publish(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
 }
 
 void TCyclopediaDialogController::requestBack()
@@ -405,7 +410,7 @@ void TCyclopediaButtonController::onCyclopediaButtonClicked()
     } else {
         action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     stopHighlight();
 }
 
@@ -457,7 +462,7 @@ void TBosstiaryButtonController::onOpenBosstiaryButtonClicked()
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(6);
     action->setRaceId(static_cast<uint16_t>(m_highlightedBossRaceId));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     if (m_highlightedBossRaceId != 0) {
         m_highlightedBossRaceId = 0;
         Q_EMIT changed();
@@ -483,6 +488,14 @@ void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
         return;
     m_highlightedBossRaceId = BossRaceID;
     Q_EMIT changed();
+}
+
+
+void TCyclopediaDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_map)
+        m_map->handleGameAction(pGameAction);
 }
 
 }

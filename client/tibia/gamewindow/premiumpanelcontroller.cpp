@@ -99,15 +99,15 @@ TPremiumPanelController::TPremiumPanelController()
         applySessionVisibility();
     });
 
-    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
+    m_gameActions.on(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         togglePanel();
         return true;
     });
-    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::IGameAction&) {
+    m_gameActions.on(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         setPanelVisible(false);
         return true;
     });
-    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameActionChangeTutorialModeEnabled& action) {
+    m_gameActions.on(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameActionChangeTutorialModeEnabled& action) {
         onTutorialModeChanged(action.enabled());
         return false;
     });
@@ -115,9 +115,6 @@ TPremiumPanelController::TPremiumPanelController()
 
 TPremiumPanelController::~TPremiumPanelController()
 {
-    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, nullptr);
-    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, nullptr);
-    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, nullptr);
     setPanelItem(nullptr);
 }
 

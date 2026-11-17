@@ -477,7 +477,7 @@ bool TBattleListController::onAtMouseCursor(const input::IGameAction& action)
     if (!target || !target->creatureId())
         return false;
     if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action)) {
-        input::publish(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
+        Q_EMIT m_storage->publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
         return true;
     }
     const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action);
@@ -582,11 +582,11 @@ void TBattleListController::requestOpenSecondaryBattleList()
     // get the store's premium page.
     if (hasPremiumStatus()) {
         auto action = std::make_shared<input::TGameActionOpenSecondaryBattleListInSpecificSidebar>(static_cast<uint8_t>(0xff), static_cast<uint8_t>(0xff));
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
         return;
     }
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT m_storage->publishGameAction(action);
 }
 
 void TBattleListController::requestEditName()
@@ -605,7 +605,7 @@ void TBattleListController::onNewNameEntered(const QString& EnteredName)
 void TBattleListController::requestMakePrimary()
 {
     auto action = std::make_shared<input::TGameActionMakeBattleListPrimary>(static_cast<uint8_t>(m_id));
-    input::publish(action);
+    Q_EMIT m_storage->publishGameAction(action);
 }
 
 void TBattleListController::removeThisBattleListOptionsIfNotSpecialBattleList()
@@ -693,7 +693,7 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
             cursor->onBattleListEntered();
     }
     if (temporarySelect)
-        input::publish(temporarySelect);
+        Q_EMIT m_storage->publishGameAction(temporarySelect);
 }
 
 void TBattleListController::onCreatureClicked(const int creatureId, const int mouseButton, const int keyboardModifiers)
@@ -703,7 +703,7 @@ void TBattleListController::onCreatureClicked(const int creatureId, const int mo
     if (!action)
         return;
     if (action->gameActionType() != A::CONTEXT_MENU) {
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
         return;
     }
     m_lockedCreature = static_cast<uint32_t>(creatureId);
@@ -733,7 +733,7 @@ void TBattleListController::onContextMenuControllerMenuClosed()
 void TBattleListController::onCreatureTargetSelected(const int creatureId)
 {
     if (const input::IGameActionPtr action = findAction(battleListGameActions(static_cast<uint32_t>(creatureId)), A::TARGET_SELECTED))
-        input::publish(action);
+        Q_EMIT m_storage->publishGameAction(action);
 }
 
 // ---------------------------------------------------------------------------
@@ -791,7 +791,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::onUpdateTimer);
 
     for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY }) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) {
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
             handleGameAction(action);
             return true;
         });
@@ -799,13 +799,15 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     // CIP forwards the at-mouse-cursor actions to every list; the hovered one
     // takes it.
     for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR }) {
-        m_actionListeners.push_back(
-            input::addActionListener(type, [this](const input::IGameAction& action) { return handleGameAction(action); }));
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
+            if (handleGameAction(action))
+                Q_EMIT atMouseCursorGameActionTaken();
+        });
     }
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
     // otherwise the mouse target is cleared.
-    input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
+    m_gameActions.on(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
         setTemporarySelectedCreature(action.creatureId());
         if (m_worldMapRenderProvider) {
             creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
@@ -816,15 +818,15 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         return true;
     });
     m_gameActionHandler = new TBattleListGameActionHandler(this, this);
-    input::setActionHandler(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackFirstTarget();
         return true;
     });
-    input::setActionHandler(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(false);
         return true;
     });
-    input::setActionHandler(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(true);
         return true;
     });
@@ -846,11 +848,6 @@ TBattleListControllerStorage::~TBattleListControllerStorage()
 {
     if (g_battleListStorage == this)
         g_battleListStorage = nullptr;
-    for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY, A::TEMPORARY_SELECT_CREATURE,
-                          A::ATTACK_FIRST_TARGET, A::ATTACK_NEXT_TARGET, A::ATTACK_PREVIOUS_TARGET })
-        input::setActionHandler(type, nullptr);
-    for (const int id : m_actionListeners)
-        input::removeActionListener(id);
     for (auto& [id, controller] : m_controllers)
         delete controller;
 }
@@ -938,7 +935,7 @@ bool TBattleListControllerStorage::acquireBattleListId(const uint8_t requestedId
 void TBattleListControllerStorage::publishStatusLine(const QString& text, const QColor& color)
 {
     auto status = std::make_shared<input::TGameActionSetStatusLine>(text, color);
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TBattleListControllerStorage::maximizeIfLoggedIn(TBattleListController* controller) const
@@ -1249,7 +1246,7 @@ bool TBattleListControllerStorage::attackFirstTarget()
     for (const TCreaturePtr& creature : battleListCreatures()) {
         if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
+        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;
@@ -1270,7 +1267,7 @@ bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previou
     for (const TCreaturePtr& creature : list) {
         if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
+        Q_EMIT publishGameAction(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;

@@ -134,7 +134,7 @@ void TEditTextController::abortEditing()
 /// CIP .
 void TEditTextController::reportText()
 {
-    input::publish(std::make_shared<input::TGameActionReportText>(m_author, static_cast<int>(m_id), m_data.editText()));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionReportText>(m_author, static_cast<int>(m_id), m_data.editText()));
 }
 
 void TEditTextController::reopen()

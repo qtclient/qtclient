@@ -285,7 +285,7 @@ void TBossTrackerWidgetController::requestOpenBosstiary(const int BossRaceID)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(6);
     action->setRaceId(static_cast<uint16_t>(BossRaceID));
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 /// Two checkable sort entries; picking one sorts and saves the options.
@@ -327,6 +327,7 @@ TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options
 {
     if (!m_controller) {
         m_controller = new TBossTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TBossTrackerWidgetController::publishGameAction, this, &TBossTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

@@ -393,7 +393,7 @@ void TSelectOutfitDialogController::onClickedOpenStoreOffer(const int offerID)
 {
     dialog()->close();
     auto action = std::make_shared<input::TGameActionOpenStore>(4, offerID);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSelectOutfitDialogController::onControllerFinished()
@@ -453,11 +453,11 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
             // The socket shows a mount only when the character is mounted.
             if (!MountCharacter)
                 outfit.setMount(0);
-            input::publish(std::make_shared<input::TGameActionSetShowOffSocketConfiguration>(
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetShowOffSocketConfiguration>(
                 input::TPodiumLocation{ m_windowOptions.podiumPosition, m_windowOptions.podiumItemId, m_windowOptions.podiumStackpos },
                 outfit, static_cast<uint8_t>(LookDirectionRaw), ShowSocket));
         } else {
-            input::publish(std::make_shared<input::TGameActionSetPlayerOutfit>(outfit, MountCharacter, m_randomMount));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetPlayerOutfit>(outfit, MountCharacter, m_randomMount));
         }
     }
     dialog()->close();

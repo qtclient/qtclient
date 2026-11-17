@@ -138,6 +138,7 @@ void TActionButtonController::createMultiActions(const int count)
     reset();
     for (int i = 0; i < count; ++i) {
         auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
+        connect(child, &Base::publishGameAction, this, &Base::publishGameAction);
         connect(child, &Base::changed, this, &Base::changed);
         connect(child, &Base::cooldownRemainingPercentChanged, this, &Base::cooldownRemainingPercentChanged);
         connect(child, &Base::cooldownTextChanged, this, &Base::cooldownTextChanged);
@@ -493,7 +494,7 @@ QString TActionButtonController::cooldownText(const qint64 remainingMs)
 void TActionButtonController::onTriggered()
 {
     // A multi-action slot triggers its button, which runs its current slot.
-    input::publish(std::make_shared<input::TGameActionActionButtonTriggered>(static_cast<uint8_t>(m_actionBarID), int(m_actionButtonID)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionActionButtonTriggered>(static_cast<uint8_t>(m_actionBarID), int(m_actionButtonID)));
 }
 
 void TActionButtonController::contextMenuRequested()

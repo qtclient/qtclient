@@ -109,28 +109,33 @@ void TSingleObjectAppearanceInstanceRenderer::itemChange(const ItemChange change
         watchFrames();
 }
 
+/// The shown type, looked up by id each time: the appearances behind it can go
+/// away (session end, shutdown) while the item still polishes.
+TAppearanceType* TSingleObjectAppearanceInstanceRenderer::type() const
+{
+    if (m_typeid <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem))
+        return nullptr;
+    TAppearanceType* const found = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem);
+    return found && !found->isNull() ? found : nullptr;
+}
+
 /// The type and its patterns, as the engine picks them for an item of that count,
 /// liquid and hook (appearances::objectPatternsFor).
 void TSingleObjectAppearanceInstanceRenderer::changed()
 {
-    m_type = nullptr;
+    TAppearanceType* const appearanceType = type();
     m_patternX = m_patternY = m_patternZ = 0;
-    if (m_typeid > 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem)) {
-        m_type = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem);
-        if (m_type && m_type->isNull())
-            m_type = nullptr;
-    }
-    if (m_type) {
-        const bool liquid = m_type->isFluidContainer() || m_type->isSplash();
+    if (appearanceType) {
+        const bool liquid = appearanceType->isFluidContainer() || appearanceType->isSplash();
         int x = 0;
         int y = 0;
         int z = 0;
-        tibia::appearances::objectPatternsFor(m_type, liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount, x, y, z);
+        tibia::appearances::objectPatternsFor(appearanceType, liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount, x, y, z);
         m_patternX = x;
         m_patternY = y;
         m_patternZ = z;
-        if (m_type->isHangable()) {
-            const int patterns = m_type->getNumPatternX();
+        if (appearanceType->isHangable()) {
+            const int patterns = appearanceType->getNumPatternX();
             if (m_hookDirection == Info::EHookDirection::SOUTH)
                 m_patternX = patterns >= 2 ? 1 : 0;
             else if (m_hookDirection == Info::EHookDirection::EAST)
@@ -145,8 +150,9 @@ void TSingleObjectAppearanceInstanceRenderer::changed()
 /// Animated objects re-lay out when their phase moves on.
 void TSingleObjectAppearanceInstanceRenderer::watchFrames()
 {
+    TAppearanceType* const appearanceType = type();
     disconnect(m_frameConnection);
-    if (!window() || !m_animated || !m_type || m_type->getAnimationPhases() <= 1)
+    if (!window() || !m_animated || !appearanceType || appearanceType->getAnimationPhases() <= 1)
         return;
     m_frameConnection = connect(window(), &QQuickWindow::afterAnimating, this, [this] {
         if (currentPhase() != m_phase) {
@@ -158,17 +164,18 @@ void TSingleObjectAppearanceInstanceRenderer::watchFrames()
 
 int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
 {
-    if (!m_animated || !m_type)
+    TAppearanceType* const appearanceType = type();
+    if (!m_animated || !appearanceType)
         return 0;
-    if (const tibia::animation::TAnimationInfo* info = m_type->idleAnimation()) {
-        if (!m_animator || m_animatorType != m_type) {
+    if (const tibia::animation::TAnimationInfo* info = appearanceType->idleAnimation()) {
+        if (!m_animator || m_animatorType != appearanceType) {
             m_animator.emplace(*info, 0);
-            m_animatorType = m_type;
+            m_animatorType = appearanceType;
         }
         m_animator->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         return m_animator->phase();
     }
-    const int phases = m_type->getAnimationPhases();
+    const int phases = appearanceType->getAnimationPhases();
     if (phases <= 1)
         return 0;
     const int ticks = tibia::config::itemTicksPerFrame();
@@ -177,18 +184,19 @@ int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
 
 void TSingleObjectAppearanceInstanceRenderer::updatePolish()
 {
+    TAppearanceType* const appearanceType = type();
     m_sprite = {};
     m_target = {};
     QRect bounds;
-    if (m_type && m_type->getAnimationPhases() > 0) {
-        if (const auto sprite = m_type->spriteIdAt(0, m_patternX, m_patternY, m_patternZ, m_phase))
+    if (appearanceType && appearanceType->getAnimationPhases() > 0) {
+        if (const auto sprite = appearanceType->spriteIdAt(0, m_patternX, m_patternY, m_patternZ, m_phase))
             m_sprite.identifier = std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite);
     }
     if (m_sprite.identifier) {
-        const QSize size(m_type->getSize().width() * FieldSize, m_type->getSize().height() * FieldSize);
+        const QSize size(appearanceType->getSize().width() * FieldSize, appearanceType->getSize().height() * FieldSize);
         // The sprite ends at the bottom-right of the object's field.
         const QPoint spriteAt(FieldSize - size.width(), FieldSize - size.height());
-        const auto& boxes = m_type->getBoundingBoxes();
+        const auto& boxes = appearanceType->getBoundingBoxes();
         if (m_patternX < static_cast<int>(boxes.size())) {
             const QRect& box = boxes[m_patternX];
             bounds = QRect(box.x(), box.y(), box.width(), box.height());

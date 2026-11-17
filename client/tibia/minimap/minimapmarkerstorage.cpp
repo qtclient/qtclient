@@ -140,18 +140,18 @@ void TMinimapMarkerStorage::bindActions()
     // The marker dialog's actions.
     for (const A type : { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
                           A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION }) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) {
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
             m_dialog->handleGameAction(action);
             return true;
         });
     }
-    input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameActionUpdateMinimapMarker& action) {
+    m_gameActions.on(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameActionUpdateMinimapMarker& action) {
         const input::TMinimapMarkerData& marker = action.marker();
         const auto icon = static_cast<uint8_t>(std::clamp(int(marker.icon), 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
         addMarker(TMinimapMarker(TWorldMapCoordinate(marker.coordinate), icon, marker.description, QDateTime::currentDateTimeUtc()));
         return true;
     });
-    input::setActionHandler(A::DELETE_MINIMAP_MARKER, [this](const input::TGameActionDeleteMinimapMarker& action) {
+    m_gameActions.on(A::DELETE_MINIMAP_MARKER, [this](const input::TGameActionDeleteMinimapMarker& action) {
         removeMarker(TWorldMapCoordinate(action.coordinate()));
         return true;
     });
@@ -159,8 +159,6 @@ void TMinimapMarkerStorage::bindActions()
 
 void TMinimapMarkerStorage::unbindActions()
 {
-    for (const A type : HandledActions)
-        input::setActionHandler(type, nullptr);
 }
 
 }

@@ -266,7 +266,7 @@ void TLootTrackingWidgetController::onAutoTrackLootValueChanged(const QString& t
 void TLootTrackingWidgetController::requestOpenItemInfoDialog()
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TLootTrackingWidgetController::requestContextMenu(const int TrackedItemIndex)
@@ -305,6 +305,7 @@ TSidebarWidget* TLootTrackingWidgetManager::open(config::TSidebarOptions* option
         return nullptr;
     if (!m_controller) {
         m_controller = new TLootTrackingWidgetController(m_storages, m_gameWindowItem, m_engine);
+        connect(m_controller, &TLootTrackingWidgetController::publishGameAction, this, &TLootTrackingWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

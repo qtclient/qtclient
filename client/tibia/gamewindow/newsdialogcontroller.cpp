@@ -279,7 +279,7 @@ void TNewsDialogController::setDialogCategory(const uint ID)
 
 void TNewsDialogController::linkClicked(const QString& Url)
 {
-    input::publish(std::make_shared<input::TGameActionOpenUrl>(Url));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenUrl>(Url));
 }
 
 void TNewsDialogController::linkHoverChanged(const bool IsOverLink)
@@ -292,13 +292,13 @@ void TNewsDialogController::onNewsQueryFailed(const QString& ErrorMessage)
 {
     qWarning() << "News query failed:" << ErrorMessage;
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("news_error_text"), chat::systemWhite());
-    input::publish(status);
+    Q_EMIT publishGameAction(status);
 }
 
 void TNewsDialogController::requestUpdateNewsFromWebsite()
 {
     auto refresh = std::make_shared<input::TGameActionRefreshCompendiumNews>(1 != 0);
-    input::publish(refresh);
+    Q_EMIT publishGameAction(refresh);
 }
 
 TNewsButtonController* TNewsButtonController::s_instance = nullptr;
@@ -332,7 +332,7 @@ TNewsButtonController* TNewsButtonController::instance()
 
 void TNewsButtonController::onOpenNewsButtonClicked()
 {
-    input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
     stopHighlight();
 }
 
@@ -350,7 +350,7 @@ void TNewsButtonController::highlight()
 void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
 {
     // Refresh portal gamenews so the dialog / unread badges stay current.
-    input::publish(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
     if (notificationOnly) {
         highlight();
         return;
@@ -368,7 +368,7 @@ void TNewsButtonController::onShowGameNews(const int newsType, const bool notifi
     default:
         break;
     }
-    input::publish(std::make_shared<input::TGameActionOpenNewsDialogWithCategory>(category));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialogWithCategory>(category));
 }
 
 void TNewsButtonController::stopHighlight()

@@ -392,7 +392,7 @@ void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
     const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
     auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? 3 : 1, expansionOrPremium ? 3 : -1);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()

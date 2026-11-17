@@ -301,7 +301,7 @@ void TItemTrackingStorage::onUpdateSignalTimerExpired()
     if (std::exchange(m_recentLootDropsChangedPending, false))
         Q_EMIT recentLootDropAddedOrRemoved();
     if (std::exchange(m_screenshotPending, false)) {
-        input::publish(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ValuableLootScreenshot));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionTakeAutomaticScreenshot>(ValuableLootScreenshot));
     }
 }
 

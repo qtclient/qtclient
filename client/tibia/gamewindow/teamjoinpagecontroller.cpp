@@ -99,7 +99,7 @@ void TTeamJoinPageController::onJoinLeaveTeamClicked(const uint TeamIDRaw, const
 void TTeamJoinPageController::getPremiumClicked()
 {
     auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 void TTeamJoinPageController::onTeamLisUpdateAvailable()

@@ -187,7 +187,7 @@ class TGameEventProtocolMessageHandler final : public cip::tibia::game::TGameEve
 public:
     using cip::tibia::game::TGameEventProtocolMessageHandler::TGameEventProtocolMessageHandler;
 
-    static void handleGameEventMessage(const ::tibia::protobuf::protocol::GameserverMessageGameEvent& message);
+    void handleGameEventMessage(const ::tibia::protobuf::protocol::GameserverMessageGameEvent& message);
 };
 
 /// CIP `game::TGameProtocolMessageHandler` — native Q→H for session dump/end.

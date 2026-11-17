@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "chat/chatchannel.h"
 #include "chat/chatgameactionhandler.h"
 #include "chat/chatmodemanager.h"
@@ -407,8 +408,17 @@ private:
     qsizetype m_historyIndex = 0;
     QPointer<TNpcDialogController> m_npcDialog;
     /// Cmd/Ctrl+C while chat output has a selection (CipSoft).
-    int m_copySelectionListenerId = 0;
-    int m_selectAllListenerId = 0;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

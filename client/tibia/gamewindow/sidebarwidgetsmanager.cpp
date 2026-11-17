@@ -65,17 +65,23 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
     new TSidebarWidgetControllerBase(gameWindowItem, engine, this);
     new TSidebarWidgetControllerWithFocusHandling(gameWindowItem, engine, this);
     // CipSoft DepotSearchWidget is owned by TDepotSearchWidgetManager (main.cpp).
-    new TInspectObjectDialogController(this);
-    new TInspectPlayerDialogController(this);
+    connect(new TInspectObjectDialogController(this), &TInspectObjectDialogController::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
+    connect(new TInspectPlayerDialogController(this), &TInspectPlayerDialogController::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
     // TLargePerkInformation / TTileInformation are owned and
     // filled by TSkillWheelPageController (fillLargePerk / fillTile / fillVessel).
     connect(sidebars, &TSidebarManager::widgetConfigurationChanged, this, &TSidebarWidgetsManager::saveCurrentOpenWidgets);
+    connect(m_battleLists.get(), &TBattleListControllerStorage::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetVisible, this, &TSidebarWidgetsManager::widgetVisible);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetHidden, this, &TSidebarWidgetsManager::widgetHidden);
 
     registerWidget(Skills, { [this]() -> TSidebarWidget* {
                                 if (!m_skills) {
                                     m_skills = new TSkillsWidgetController(m_gameWindowItem, m_engine);
+                                    connect(m_skills, &TSkillsWidgetController::publishGameAction, this,
+                                            &TSidebarWidgetsManager::publishGameAction);
                                     m_skills->setSidebarOptions(m_options);
                                 }
                                 return m_skills->widget();
@@ -86,8 +92,8 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
     connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
     connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
-    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
-    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
+    m_gameActions.on(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
+    m_gameActions.on(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
         if (!m_containers)
             return false;
         m_containers->openInSidebar(action.containerId(), action.sidebarId());
@@ -97,8 +103,6 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
 TSidebarWidgetsManager::~TSidebarWidgetsManager()
 {
-    input::setActionHandler(A::TOGGLE_WIDGET, nullptr);
-    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, nullptr);
     delete m_skills;
 }
 
@@ -451,6 +455,14 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
         restoreSidebar(TSidebarManager::LeftSidebarIdBase + static_cast<uint>(i), saved.openWidgetsOrderPerSidebar.at(right + i).toArray());
     if (m_containers)
         m_containers->endRestore();
+}
+
+
+void TSidebarWidgetsManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_battleLists)
+        m_battleLists->handleGameAction(pGameAction);
 }
 
 }

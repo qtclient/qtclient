@@ -221,7 +221,7 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
     m_showTimer.setSingleShot(true);
     connect(&m_showTimer, &QTimer::timeout, this, &TContextMenuController::onAsyncShow);
 
-    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameActionChangeContextMenuEnabled& action) {
+    m_gameActions.on(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameActionChangeContextMenuEnabled& action) {
         setEnabled(action.enabled());
         return true;
     });
@@ -229,7 +229,6 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
 
 TContextMenuController::~TContextMenuController()
 {
-    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, nullptr);
     if (g_instance == this)
         g_instance = nullptr;
     delete m_menu;

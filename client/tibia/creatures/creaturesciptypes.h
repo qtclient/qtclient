@@ -2,6 +2,7 @@
 
 // CIP-named creatures surfaces (promoted from cipwire).
 
+#include "input/gameactiondispatch.h"
 #include "creatures/creaturestorage.h"
 #include "input/gameaction.h"
 #include "shared/cip_typed.h"
@@ -119,6 +120,17 @@ public:
 
 private:
     TVipStorage* m_storage;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// BuddyData, BuddyStatusChange and BuddyGroupData into the VIP storage

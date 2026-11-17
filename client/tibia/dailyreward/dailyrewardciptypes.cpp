@@ -23,10 +23,6 @@ TDailyRewardStorage* g_storage = nullptr;
 
 using A = input::EGameAction;
 
-void publish(const A type)
-{
-    input::publish(input::makeGameAction(type));
-}
 } // namespace
 
 void ownProductSurface(QObject* parent)
@@ -244,13 +240,11 @@ TDailyRewardGameActionHandler::TDailyRewardGameActionHandler(TDailyRewardStorage
     , m_storage(storage)
 {
     for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TDailyRewardGameActionHandler::~TDailyRewardGameActionHandler()
 {
-    for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
-        input::setActionHandler(type, nullptr);
 }
 
 bool TDailyRewardGameActionHandler::handleGameAction(const input::IGameAction& action)
@@ -267,7 +261,7 @@ bool TDailyRewardGameActionHandler::handleGameAction(const input::IGameAction& a
 void TDailyRewardGameActionHandler::handleRequestOpenRewardWallGameAction()
 {
     if (!tibia::game::localPlayerHasReachedMain()) {
-        publish(A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE);
+        Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE));
         return;
     }
     tibia::game::sendOpenRewardWall();
@@ -353,12 +347,12 @@ void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const Games
     storage.setRewardStreakEndTime(streakEnd);
     storage.setJokersNeededForCollecting(jokers);
     storage.setRewardStreakLength(static_cast<uint16_t>(message.streak_level()));
-    publish(A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG);
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG));
 }
 
 void TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage(const GameserverMessageCloseRewardWall&)
 {
-    publish(A::CLOSE_REWARD_WALL_DIALOG);
+    Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_REWARD_WALL_DIALOG));
 }
 
 void TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
@@ -429,7 +423,7 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage
     if (!instance)
         return;
     TDailyRewardStorage& storage = *instance;
-    publish(message.collected() ? A::DAILY_REWARD_READY_TO_PICK_UP : A::DAILY_REWARD_NOT_COLLECTABLE);
+    Q_EMIT publishGameAction(input::makeGameAction(message.collected() ? A::DAILY_REWARD_READY_TO_PICK_UP : A::DAILY_REWARD_NOT_COLLECTABLE));
     storage.setDailyRewardReadyToPickUp(message.collected());
 }
 
@@ -437,7 +431,7 @@ void TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage(const Ga
 {
     if (message.dialog_type() != 40)
         return;
-    input::publish(std::make_shared<input::TGameActionShowMessageDialog>(A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE,
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowMessageDialog>(A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE,
                                                                         QString::fromStdString(message.message())));
 }
 

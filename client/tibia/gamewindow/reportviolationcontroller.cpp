@@ -27,7 +27,7 @@ TReportViolationController::TReportViolationController(QObject* parent)
     : TDialogController(QStringLiteral("ReportViolationDialog.qml"), parent)
 {
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onRuleViolationReportConfirmed", [this](GameObject*, const std::vector<std::any>&) {
         onRuleViolationReportConfirmedByServer();
         return std::any{};
@@ -36,8 +36,6 @@ TReportViolationController::TReportViolationController(QObject* parent)
 
 TReportViolationController::~TReportViolationController()
 {
-    for (const A type : Handled)
-        input::setActionHandler(type, nullptr);
 }
 
 /// The report actions open the dialog for their report type;
