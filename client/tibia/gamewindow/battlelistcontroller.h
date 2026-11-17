@@ -6,6 +6,7 @@
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
+#include <qtconnectionmanager.h>
 
 #include <client/declarations.h>
 
@@ -264,6 +265,9 @@ private:
     uint32_t m_hoveredCreature = 0;
     uint32_t m_lockedCreature = 0;
     QMetaObject::Connection m_contextMenuClosed;
+    /// CIP +0xa0: the widget item's three signals and the rename dialog's
+    /// textEntered; the destructor disconnects them.
+    shared::TQtConnectionManager m_connections;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     QPointer<config::TSidebarOptions> m_sidebarOptions;
     QMetaObject::Connection m_sidebarOptionsChanged;

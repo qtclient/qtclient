@@ -434,21 +434,24 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     m_renameDialog->setDescription(qtTrId("battlelist_rename_text"));
     m_renameDialog->setMaxInputLength(30);
     m_renameDialog->setAllowEmptyText(true);
-    connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TBattleListController::onNewNameEntered);
     m_proxy->setSourceModel(model);
     m_battleListModel = QVariant::fromValue<QObject*>(m_proxy);
     attachSidebarOptions(storage->sidebarOptions());
 
     widget()->createItem(QStringLiteral("battlelist.qml"));
-    QQuickItem* item = quickItem();
-    if (!item)
-        return;
-    connect(item, SIGNAL(currentlyHoveredCreatureChanged(int)), this, SLOT(onCurrentlyHoveredCreatureChanged(int)));
-    connect(item, SIGNAL(creatureClicked(int, int, int)), this, SLOT(onCreatureClicked(int, int, int)));
-    connect(item, SIGNAL(creatureTargetSelected(int)), this, SLOT(onCreatureTargetSelected(int)));
+    if (QQuickItem* item = quickItem()) {
+        m_connections.add(connect(item, SIGNAL(currentlyHoveredCreatureChanged(int)), this, SLOT(onCurrentlyHoveredCreatureChanged(int))));
+        m_connections.add(connect(item, SIGNAL(creatureClicked(int, int, int)), this, SLOT(onCreatureClicked(int, int, int))));
+        m_connections.add(connect(item, SIGNAL(creatureTargetSelected(int)), this, SLOT(onCreatureTargetSelected(int))));
+    }
+    m_connections.add(connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TBattleListController::onNewNameEntered));
 }
 
-TBattleListController::~TBattleListController() { QObject::disconnect(m_contextMenuClosed); }
+TBattleListController::~TBattleListController()
+{
+    m_connections.disconnectAll();
+    QObject::disconnect(m_contextMenuClosed);
+}
 
 void TBattleListController::handleGameAction()
 {
