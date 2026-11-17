@@ -10154,6 +10154,7 @@ sub_5f57ff31b6c6#3	5f57ff31b6c67c13	skip	library: libc++/Qt/absl template instan
 sub_5f5a14fb6d1b	5f5a14fb6d1ba65c	skip	generated: compiler-generated destructor
 sub_5f642b92a3a6	5f642b92a3a6daa4	ported	skillwheel/skillwheeldata.cpp:stageValues
 sub_5f66ae6a090a	5f66ae6a090a191e	skip	library: std::vector reserve / std::sort instantiation
+sub_5f6b2f6e4e5c	5f6b2f6e4e5c3784	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::ensureDefaultPreset
 sub_5f81f8d404be	5f81f8d404be94be	skip	library: QMap/QVariant template instantiation
 sub_5f8eb1889ab4	5f8eb1889ab46a84	skip	library: libc++ std::map tree destroy (library)
 sub_5f94bb18e16c	5f94bb18e16ce0bb	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::open
@@ -10454,6 +10455,7 @@ sub_650970dc6b9d#2	650970dc6b9da585	skip	library: libc++ std::set<QByteArray> co
 sub_65207f2fc9b0	65207f2fc9b0b9b2	ported	analysers/impactstorage.cpp:TDamageInputStorage::addHit
 sub_652295b83dbc#2	652295b83dbc362a	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::requestWidgetConfigurationMenu
 sub_65263ac5ec7e	65263ac5ec7eb6f0	skip	generated: compiler-generated destructor
+sub_65296233622f	65296233622f9d77	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::selectMatchingPreset
 sub_6529c05f5baa	6529c05f5baad623	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::changedRoles
 sub_652c56904f24	652c56904f241718	skip	library: Crypto++ internals (Algorithm ctor, NonblockingRng, AllocatorWithCleanup/UnalignedAllocate, SecByteBlock)
 sub_6532f776a823	6532f776a8234d67	skip	generated: compiler-generated destructor pair
@@ -12277,6 +12279,7 @@ sub_8e3b35af5159#3	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> in
 sub_8e3cca519cd1	8e3cca519cd1550c	tested	tutorial/sessiondumphintbase.cpp:TSessiondumpHintBase::TSessiondumpHintBase	test=tests/client/sessiondumphints_test.cpp
 sub_8e3eaf44e75d	8e3eaf44e75dc91f	skip	library: libc++ vector reserve/emplace slow paths and stringstream construction
 sub_8e41078e29e4	8e41078e29e4f859	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::clearPendingReward
+sub_8e4196f3c76d	8e4196f3c76dcde2	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::selectPendingPreset
 sub_8e54381e2ac5	8e54381e2ac5a0f5	ported	game/statusbarstorage.cpp:TStatusbarStorage::TStatusbarStorage
 sub_8e54381e2ac5#2	8e54381e2ac5a0f5	ported	game/statusbarstorage.cpp:TStatusbarStorage::TStatusbarStorage
 sub_8e5f68fbc1ef	8e5f68fbc1eff58b	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbueModeScroll
@@ -13767,6 +13770,7 @@ sub_b09c52784568	b09c52784568bfaa	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_b0a425df67b3	b0a425df67b3e738	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_b0aba8b61398	b0aba8b613985fad	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::monsterName
 sub_b0b26f1cad8d	b0b26f1cad8db3b6	inlined	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerStateMessage
+sub_b0b67ecc36c0	b0b67ecc36c0beca	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::showPresetsAdjustedMessage
 sub_b0cfedcd1cb5	b0cfedcd1cb53f61	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardTimeToUnlockProgress
 sub_b0d52e4ee667	b0d52e4ee6679777	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::timeToFreeListReroll
 sub_b0dab5683b44	b0dab5683b4474bc	ported	gamewindow/skillswidgetcontroller.cpp:TSkillsWidgetController::miscStats

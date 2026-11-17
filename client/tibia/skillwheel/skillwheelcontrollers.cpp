@@ -26,6 +26,7 @@ namespace {
 using A = input::EGameAction;
 using gamewindow::TMessageDialogButton;
 using gamewindow::TMessageDialogController;
+using gamewindow::okDialogButtons;
 using Button = TMessageDialogController::Button;
 using EManageMode = cip::tibia::gamewindow::TSkillWheelPresetManagmentDialogController::EManageMode;
 
@@ -400,7 +401,7 @@ void TSkillWheelPageController::selectMatchingPreset()
 /// CIP: a preset waiting from a switch is selected without asking.
 void TSkillWheelPageController::selectPendingPreset()
 {
-    if (m_pendingPreset.isEmpty() || !hasOwnWheel())
+    if (m_pendingPreset.isEmpty() || !m_storage->isOwnCharacter() || totalSkillPoints() == 0)
         return;
     selectPresetByName(m_pendingPreset, true);
     m_pendingPreset.clear();
@@ -409,7 +410,7 @@ void TSkillWheelPageController::selectPendingPreset()
 void TSkillWheelPageController::showPresetsAdjustedMessage()
 {
     m_messageMode = PresetsAdjustedMessage;
-    m_message->setButtons(okButton());
+    m_message->setButtons(okDialogButtons());
     m_message->showMessage(qtTrId("info"), qtTrId("skill_wheel_dialog_presets_adjusted"));
 }
 
