@@ -384,19 +384,5 @@ QVariantMap TQmlSortFilterProxyModel::rowMap(const QModelIndex& index) const
     return row;
 }
 
-void TLenshelpQuickItem::hoverEnterEvent(QHoverEvent* event)
-{
-    cip::tibia::qmlcomponents::TLenshelpQuickItem::hoverEnterEvent(event);
-}
-
-void TLenshelpQuickItem::hoverLeaveEvent(QHoverEvent* event)
-{
-    cip::tibia::qmlcomponents::TLenshelpQuickItem::hoverLeaveEvent(event);
-}
-
-bool TNotMouseMoveEventFilter::eventFilter(QObject* watched, QEvent* event)
-{
-    return cip::tibia::qmlcomponents::TNotMouseMoveEventFilter::eventFilter(watched, event);
-}
 
 } // namespace tibia::qmlcomponents

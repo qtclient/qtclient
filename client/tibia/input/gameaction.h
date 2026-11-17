@@ -7,6 +7,7 @@
 #include <client/position.h>
 
 #include <QColor>
+#include <QRectF>
 #include <QString>
 
 #include <cstdint>
@@ -51,8 +52,9 @@ struct TGameAction
     /// REPORT_TEXT (CIP: TGameActionReportStatement,): `text` is
     /// the author, `parameter` the text's edit id and this the reported text.
     QString statement;
-    /// LENSHELP_SHOW.
+    /// LENSHELP_SHOW: the world object's lenshelp id and its scene rectangle.
     int lensHelpId = 0;
+    QRectF lensHelpRect;
     /// MOVE_OBJECT: where the object is dropped (inventory slots are
     /// Position(0xFFFF, slot, 0), slot 0 for any) and whether Shift asked
     /// for everything.

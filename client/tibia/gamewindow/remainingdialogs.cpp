@@ -658,38 +658,6 @@ void TInfoBannerController::clearQueue()
     Q_EMIT clearInfoBannerQueue();
 }
 
-TLenshelpController* TLenshelpController::s_instance = nullptr;
-
-TLenshelpController::TLenshelpController(QObject* parent)
-    : cip::tibia::gamewindow::TLenshelpController(parent)
-{
-    s_instance = this;
-}
-
-TLenshelpController* TLenshelpController::instance()
-{
-    return s_instance;
-}
-
-void TLenshelpController::showHelp(const QString& caption, const QString& content)
-{
-    m_caption = caption;
-    m_content = content;
-    Q_EMIT contentChanged();
-    if (!m_lenshelpVisible) {
-        m_lenshelpVisible = true;
-        Q_EMIT lenshelpVisibleChanged();
-    }
-}
-
-void TLenshelpController::hideHelp()
-{
-    if (!m_lenshelpVisible)
-        return;
-    m_lenshelpVisible = false;
-    Q_EMIT lenshelpVisibleChanged();
-}
-
 TLinkCopyWarningDialogController::TLinkCopyWarningDialogController(QObject* parent)
     : cip::tibia::gamewindow::TLinkCopyWarningDialogController(parent)
 {}

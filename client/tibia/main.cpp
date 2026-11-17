@@ -36,6 +36,7 @@
 #include "gamewindow/cyclopediadialogcontroller.h"
 #include "cyclopedia/iteminfostorage.h"
 #include "gamewindow/informationdialogs.h"
+#include "qmlcomponents/lenshelpmanager.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/newsdialogcontroller.h"
 #include "gamewindow/killtrackerwidgetcontroller.h"
@@ -645,6 +646,8 @@ int main(int argc, char** argv)
     auto* gameWindowItem = qobject_cast<QQuickItem*>(gameWindow.get());
     if (!gameWindowItem)
         return 1;
+    // CIP: lenshelp mode and its popup over the game window.
+    qmlcomponents::TLenshelpManager lenshelpManager(engine.get(), gameWindowItem);
     gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
     gameWindowController.showStartScreen();
     auto* dialogPlaceholder = gameWindowController.gameWindowChild(QStringLiteral("dialogPlaceholder"));
@@ -834,11 +837,6 @@ int main(int argc, char** argv)
     // The daily reward: the session's storage and its game actions (238, 243, 244).
     dailyreward::TDailyRewardStorage dailyRewardStorage;
     dailyreward::TDailyRewardGameActionHandler dailyRewardActions(&dailyRewardStorage);
-    input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
-        if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-            cursor->setLenshelp(true);
-        return true;
-    });
     input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [&gameClient](const input::TGameAction&) {
         if (minimap::TMinimapManager* minimap = gameClient.minimap())
             minimap->loadDefaultTilesFromResources();

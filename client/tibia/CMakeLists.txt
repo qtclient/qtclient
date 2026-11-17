@@ -376,6 +376,9 @@ if(TIBIA_WITH_GAMECORE)
     client/gamecore.cpp client/gamecore.h
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     qmlcomponents/qmlcomponentsciptypes.cpp qmlcomponents/qmlcomponentsciptypes.h
+    qmlcomponents/lenshelpmanager.cpp qmlcomponents/lenshelpmanager.h
+    qmlcomponents/lenshelpquickitem.cpp qmlcomponents/lenshelpquickitem.h
+    gamewindow/lenshelpcontroller.cpp gamewindow/lenshelpcontroller.h
     qmlcomponents/soundhelper.cpp qmlcomponents/soundhelper.h
     config/sidebaroptions.cpp config/sidebaroptions.h
     container/containerciptypes.cpp container/containerciptypes.h

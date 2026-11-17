@@ -296,21 +296,6 @@ private:
     QPointer<QQuickItem> m_mapWindowPane;
 };
 
-/// CIP TLenshelpController — LenshelpTemplate.qml (v3).
-class TLenshelpController final : public cip::tibia::gamewindow::TLenshelpController
-{
-    Q_OBJECT
-public:
-    explicit TLenshelpController(QObject* parent = nullptr);
-    static TLenshelpController* instance();
-
-    void showHelp(const QString& caption, const QString& content);
-    void hideHelp();
-
-private:
-    static TLenshelpController* s_instance;
-};
-
 /// CIP TLinkCopyWarningDialogController (names.txt TLinkCopyWarningDialogController).
 class TLinkCopyWarningDialogController final : public cip::tibia::gamewindow::TLinkCopyWarningDialogController
 {

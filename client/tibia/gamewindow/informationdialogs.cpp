@@ -81,7 +81,6 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     new TShowSpellBookDialogController(this);
     new TSurveyInvitationDialogController(this);
     new TInfoBannerController(nullptr, this);
-    new TLenshelpController(this);
     new TTutorialOverlayController(this);
     new TTutorialOverlayItemController(this);
     new TTutorialOverlayMouseFilterController(this);
