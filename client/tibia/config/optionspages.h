@@ -119,6 +119,12 @@ class TInterfaceOptionsPage final : public TBoundOptionsPage<TInterfaceQMLOption
     Q_OBJECT
 public:
     explicit TInterfaceOptionsPage(QObject* parent = nullptr);
+
+    /// The index of the pending colorize loot style's name in the list model (0 when absent).
+    uint colorizeLootStyleIndex() const override;
+    /// The style whose name the list entry shows; none past the list.
+    void setColorizeLootStyleIndex(uint index) override;
+    QStringList colorizeLootStyleListModel() const override;
 };
 
 /// CIP.
@@ -261,6 +267,9 @@ public:
     Q_INVOKABLE void moveEnabledButtonDown(const QString& ButtonName) override;
 
 private:
+    /// The disabled buttons in button type order, without duplicates.
+    void sortDisabledButtons();
+
     QStringList m_enabled;
     QStringList m_disabled;
 };

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <utility>
 
 namespace tibia::config {
@@ -91,6 +92,21 @@ constexpr int RendererOrder[] = { 0, 6, 10, 7, 9, 8, SoftwareRenderer };
 constexpr int MaxRenderer = 10;
 
 constexpr int AntialiasingModeCount = 3;
+constexpr int ColorizeLootStyleCount = 3;
+
+QString colorizeLootStyleName(const int style)
+{
+    switch (style) {
+    case 0:
+        return qtTrId("colorizelootstyle_none");
+    case 1:
+        return qtTrId("colorizelootstyle_normal");
+    case 2:
+        return qtTrId("colorizelootstyle_compact");
+    default:
+        return qtTrId("dummy_unknown");
+    }
+}
 
 QString antialiasingModeName(const int mode)
 {
@@ -447,7 +463,39 @@ void applyBindings(const QObject* page, const std::span<const TOptionBinding> bi
 TInterfaceOptionsPage::TInterfaceOptionsPage(QObject* parent)
     : TBoundOptionsPage(InterfaceBindings, parent)
 {
-    m_colorizeLootStyleListModel = { qtTrId("colorizelootstyle_none"), qtTrId("colorizelootstyle_normal"), qtTrId("colorizelootstyle_compact") };
+}
+
+uint TInterfaceOptionsPage::colorizeLootStyleIndex() const
+{
+    // m_colorizeLootStyleIndex holds the style.
+    const qsizetype index = colorizeLootStyleListModel().indexOf(colorizeLootStyleName(static_cast<int>(m_colorizeLootStyleIndex)));
+    return index < 0 ? 0u : static_cast<uint>(index);
+}
+
+void TInterfaceOptionsPage::setColorizeLootStyleIndex(const uint index)
+{
+    const QStringList styles = colorizeLootStyleListModel();
+    uint style = 0;
+    if (index < static_cast<uint>(styles.size())) {
+        for (int candidate = 0; candidate < ColorizeLootStyleCount; ++candidate) {
+            if (styles.at(index) == colorizeLootStyleName(candidate)) {
+                style = static_cast<uint>(candidate);
+                break;
+            }
+        }
+    }
+    if (m_colorizeLootStyleIndex == style)
+        return;
+    m_colorizeLootStyleIndex = style;
+    Q_EMIT changed();
+}
+
+QStringList TInterfaceOptionsPage::colorizeLootStyleListModel() const
+{
+    QStringList styles;
+    for (int style = 0; style < ColorizeLootStyleCount; ++style)
+        styles << colorizeLootStyleName(style);
+    return styles;
 }
 
 TGameWindowOptionsPage::TGameWindowOptionsPage(QObject* parent)
@@ -492,7 +540,7 @@ void THudOptionsPage::apply(TClientOptions& options) const
 void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialConditionIndex, const bool Enabled)
 {
     if (SpecialConditionIndex < 0 || SpecialConditionIndex >= m_specialConditions.specialConditionsOrder.size())
-        return;
+        throw std::out_of_range("vector");
     const SpecialCondition condition = m_specialConditions.specialConditionsOrder.at(SpecialConditionIndex);
     if (Enabled)
         m_specialConditions.visibleInHUD.insert(condition);
@@ -504,7 +552,7 @@ void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialCondi
 void THudOptionsPage::setSpecialConditionShowInBarEnabled(const int SpecialConditionIndex, const bool Enabled)
 {
     if (SpecialConditionIndex < 0 || SpecialConditionIndex >= m_specialConditions.specialConditionsOrder.size())
-        return;
+        throw std::out_of_range("vector");
     const SpecialCondition condition = m_specialConditions.specialConditionsOrder.at(SpecialConditionIndex);
     if (Enabled)
         m_specialConditions.visibleInBar.insert(condition);
@@ -834,7 +882,22 @@ void TButtonBarOptionsPage::load(const TClientOptions& options)
         if (!gamewindow::TButtonBarController::defaultEnabledProductShortcutIds().contains(id))
             m_disabled << id;
     }
+    sortDisabledButtons();
     Q_EMIT changed();
+}
+
+void TButtonBarOptionsPage::sortDisabledButtons()
+{
+    // Button type order; pack shortcuts (no type) after them, as they were.
+    const auto typeOf = [](const QString& id) {
+        for (size_t type = 0; type < std::size(ButtonBarButtons); ++type)
+            if (id == QLatin1String(ButtonBarButtons[type].id))
+                return static_cast<int>(type);
+        return static_cast<int>(std::size(ButtonBarButtons));
+    };
+    std::stable_sort(m_disabled.begin(), m_disabled.end(),
+                     [&typeOf](const QString& a, const QString& b) { return typeOf(a) < typeOf(b); });
+    m_disabled.erase(std::unique(m_disabled.begin(), m_disabled.end()), m_disabled.end());
 }
 
 void TButtonBarOptionsPage::apply(TClientOptions& options) const
@@ -878,6 +941,7 @@ void TButtonBarOptionsPage::disableButton(const QString& ButtonName)
     const QString id = buttonId(ButtonName);
     m_enabled.removeAll(id);
     m_disabled << id;
+    sortDisabledButtons();
     Q_EMIT changed();
 }
 
