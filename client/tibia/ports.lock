@@ -4636,6 +4636,7 @@ sub_13d08a5407ce#57	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:T
 sub_13d08a5407ce#58	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
 sub_13d08a5407ce#60	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
 sub_13d08a5407ce#62	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
+sub_13d08a5407ce#65	13d08a5407ce57fa	inlined	trade/tradeciptypes.cpp:TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage
 sub_13d08a5407ce#72	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_13d08a5407ce#74	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_13d08a5407ce#79	13d08a5407ce57fa	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::revealGem
@@ -7925,6 +7926,7 @@ sub_85f2a7214ee8#2	85f2a7214ee8c8f8	inlined	chat/chatchannel.cpp:TChatChannelIde
 sub_85f7033f85fd	85f7033f85fdedf9	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStoreEvent
 sub_86066f29adb0	86066f29adb0919a	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onDailyRewardHistoryChanged
 sub_862abfcaaf30	862abfcaaf308835	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onConfirmDialogAccepted
+sub_863769e4687c	863769e4687c6895	ported	trade/tradeciptypes.cpp:TCharacterTradeStorage::setBasicData
 sub_8647a43309dc	8647a43309dcae4c	ported	store/qmlstoreobjects.cpp:TQmlStoreVisualisation::detailColor
 sub_866433735cee	866433735cee5f10	ported	authentication/authenticationjsondocumenthelper.cpp:jsonKeys
 sub_86833d86ea14	86833d86ea141873	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::automaticPreyExtendType
@@ -8963,6 +8965,7 @@ sub_a3d1ff165859#12	a3d1ff16585996a0	skip	data: static initializer of unrelated 
 sub_a3d1ff165859#13	a3d1ff16585996a0	skip	data: static initializer of unrelated globals (inbox filter names, vocation names; misattributed)
 sub_a3d1ff165859#14	a3d1ff16585996a0	skip	data: translation-unit static initializer (store inbox filter name strings)
 sub_a3d1ff165859#15	a3d1ff16585996a0	skip	data: translation-unit static initializer (constant strings, vocation names, tables; read)
+sub_a3d1ff165859#16	a3d1ff16585996a0	skip	data: translation-unit static initializer (store inbox filter name strings and constant tables; read)
 sub_a3d1ff165859#17	a3d1ff16585996a0	skip	data: static initializer of unrelated globals, misattributed
 sub_a3d1ff165859#3	a3d1ff16585996a0	skip	data: static initializer misattributed to the class
 sub_a3d6df26e6de#2	a3d6df26e6de0b5e	skip	generated: moc-generated signal emitter
@@ -9340,6 +9343,7 @@ sub_b27ae8897d8b	b27ae8897d8b571e	ported	worldmap/worldmapviewport.cpp:TWorldMap
 sub_b28938e3de2c	b28938e3de2c50f9	inlined	chat::TChatProtocolMessageHandler::handleTalkMessage
 sub_b2b298052b96	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
 sub_b2b298052b96#2	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
+sub_b2cdd43d16cc	b2cdd43d16ccd660	skip	generated: implicit move assignment of the character trade basic data (member swaps, condition vector move; read)
 sub_b2d317684246	b2d31768424668ba	skip	generated: compiler-generated destructor / move-assignment of store records
 sub_b2d317684246#2	b2d31768424668ba	skip	generated: compiler-generated destructor / move-assignment of store records
 sub_b2dc59c40ca4	b2dc59c40ca4b12c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::toJson	test=tests/client/hotkeyoptions_test.cpp
@@ -11809,6 +11813,7 @@ teamfinder::TTeamStartTimeManager::setTime	44b3da397740f8e4	ported	teamfinder/te
 teamfinder::TTeamStartTimeManager::timeChanged	f23f843f387e2735	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::localDateString
 teamfinder::TTeamStartTimeManager::~TTeamStartTimeManager	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 teamfinder::TTeamStartTimeManager::~TTeamStartTimeManager_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
+trade::TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage	e6967891875974a6	ported	trade/tradeciptypes.cpp:TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage
 trade::TCharacterTradeProtocolMessageHandler::~TCharacterTradeProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor (member destruction only, read)
 trade::TCharacterTradeProtocolMessageHandler::~TCharacterTradeProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor (member destruction only, read)
 trade::TCharacterTradeStorage::~TCharacterTradeStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
