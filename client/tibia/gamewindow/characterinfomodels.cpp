@@ -1,7 +1,8 @@
 #include "characterinfomodels.h"
 #include "cyclopedia/staticcontentinformation.h"
 
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
+#include "config/clientoptions.h"
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 
@@ -33,7 +34,7 @@ QString appearanceName(const uint16_t typeId)
 /// +0x34 store inbox).
 void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummary>& list, uint32_t ItemSummaryEntry::* amount)
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
+    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
     rows.reserve(rows.size() + list.size());
     for (const ItemSummary& item : list) {
         const auto it = std::lower_bound(rows.begin(), rows.end(), item, [](const ItemSummaryEntry& row, const ItemSummary& key) {
@@ -48,7 +49,7 @@ void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummar
         row.upgradeTier = item.tier;
         row.*amount = item.amount;
         row.name = appearanceName(item.itemId);
-        row.lootValueLevel = prices ? prices->lootValueLevel(item.itemId) : 0;
+        row.lootValueLevel = prices->lootValueLevel(item.itemId);
         rows.insert(it, std::move(row));
     }
 }
@@ -56,8 +57,7 @@ void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummar
 /// CIP.
 QString lootValueImage(const int level, const int style)
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (level == 0 || !prices || prices->colorizeLootStyle() != style)
+    if (level == 0 || config::TClientOptions::instance()->colorizeLootStyle() != style)
         return QStringLiteral("");
     return QStringLiteral("image://%1/%2")
         .arg(style == 1 ? QStringLiteral("containerslot-glowingborders") : QStringLiteral("containerslot-coloredges"))

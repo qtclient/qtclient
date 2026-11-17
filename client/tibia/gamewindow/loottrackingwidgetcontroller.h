@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cyclopedia/iteminfostorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include <cip_gen.h>
@@ -8,6 +8,9 @@
 #include <QPointer>
 
 namespace tibia {
+namespace analysers {
+class TAnalyserStorages;
+}
 namespace config {
 class TSidebarOptions;
 }
@@ -23,7 +26,7 @@ class TQmlDroppedLoot final : public cip::tibia::gamewindow::TQmlDroppedLoot
 {
     Q_OBJECT
 public:
-    TQmlDroppedLoot(const cyclopedia::TItemInfoStorage::DroppedLoot& drop, QObject* parent);
+    TQmlDroppedLoot(const cyclopedia::TDroppedLoot& drop, QObject* parent);
 };
 
 /// One tracked item (CIP: TQmlTrackedItem, built in).
@@ -31,12 +34,12 @@ class TQmlTrackedItem final : public cip::tibia::gamewindow::TQmlTrackedItem
 {
     Q_OBJECT
 public:
-    TQmlTrackedItem(const cyclopedia::TItemInfoStorage::TrackedItem& item, qint64 value, QObject* parent);
+    TQmlTrackedItem(const cyclopedia::TTrackedItem& item, qint64 value, QObject* parent);
 
     /// CIP : the new drop count.
     void setDropCount(quint32 count);
     /// CIP : the item's recent drops.
-    void setLootDrops(const std::vector<cyclopedia::TItemInfoStorage::DroppedLoot>& drops);
+    void setLootDrops(const std::vector<cyclopedia::TDroppedLoot>& drops);
 };
 
 /// The Drop Tracker sidebar widget, LootTrackingWidget.qml (CIP:
@@ -46,7 +49,7 @@ class TLootTrackingWidgetController final : public TSidebarWidgetController<cip:
     Q_OBJECT
 
 public:
-    TLootTrackingWidgetController(cyclopedia::TItemInfoStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
+    TLootTrackingWidgetController(analysers::TAnalyserStorages* storages, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                   QObject* parent = nullptr);
     ~TLootTrackingWidgetController() override;
 
@@ -92,7 +95,7 @@ private Q_SLOTS:
     /// CIP (via onCharacterConfigurationLoaded).
     void onCharacterConfigurationLoaded();
     /// CIP onItemDropTracked .
-    void onItemDropTracked(quint16 typeId, quint32 dropCount);
+    void onItemDropTracked(const cyclopedia::TTrackedItem& trackedItem, const cyclopedia::TDroppedLoot& loot);
     /// CIP onRecentLootDropsChanged .
     void onRecentLootDropsChanged();
     /// CIP onAutoTrackLootValueChanged .
@@ -102,7 +105,8 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
-    cyclopedia::TItemInfoStorage* m_storage;
+    analysers::TAnalyserStorages* m_storages;
+    cyclopedia::TItemTrackingStorage* m_storage;
     QPointer<config::TSidebarOptions> m_options;
     /// CIP +0xc0.
     TGenericEnterTextDialogController* m_valueDialog = nullptr;
@@ -113,7 +117,7 @@ class TLootTrackingWidgetManager final : public QObject
 {
     Q_OBJECT
 public:
-    TLootTrackingWidgetManager(cyclopedia::TItemInfoStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
+    TLootTrackingWidgetManager(analysers::TAnalyserStorages* storages, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                QObject* parent = nullptr);
     ~TLootTrackingWidgetManager() override;
 
@@ -122,7 +126,7 @@ public:
     TSidebarWidget* current() const;
 
 private:
-    cyclopedia::TItemInfoStorage* m_storage;
+    analysers::TAnalyserStorages* m_storages;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TLootTrackingWidgetController> m_controller;

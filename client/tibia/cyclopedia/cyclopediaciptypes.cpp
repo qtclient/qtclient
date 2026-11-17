@@ -6,7 +6,8 @@
 #include "analysers/analyserstorages.h"
 #include "cyclopedia/bosstiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
 #include "game/inspectedobject.h"
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
@@ -16,6 +17,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QUuid>
 
 #include <algorithm>
 #include <map>
@@ -594,21 +596,33 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
 void TCyclopediaProtocolMessageHandler::handleKillTrackingMessage(
     const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message)
 {
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (!storages)
+        return;
     const QString monsterName = QString::fromStdString(message.name());
     const Outfit outfit = creatures::outfitFromProtocol(message.outfit(), nullptr);
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    std::vector<TItemInfoStorage::DroppedLoot> drops;
+    const qint64 now = analysers::TAnalyserStorages::nowMs();
+    const auto timestamp = static_cast<quint32>(QDateTime::currentMSecsSinceEpoch() / 1000);
+    const QUuid killIdentifier = QUuid::createUuid();
+    std::vector<TDroppedLoot> drops;
     drops.reserve(static_cast<std::size_t>(message.items_size()));
     for (const auto& item : message.items()) {
         const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(item);
         if (slot.empty())
             continue;
+        TDroppedLoot loot;
+        loot.killIdentifier = killIdentifier;
+        loot.objectType = slot.typeId;
         // A cumulative object drops with its count, any other once.
-        const int count = slot.stackable ? std::max(1, static_cast<int>(slot.count)) : 1;
-        drops.push_back({ slot.typeId, count, monsterName, outfit, now + TItemInfoStorage::RecentDropDurationMs,
-                          static_cast<quint32>(now / 1000) });
+        loot.count = slot.stackable ? std::max(1, static_cast<int>(slot.count)) : 1;
+        loot.monsterName = monsterName;
+        loot.outfit = outfit;
+        loot.expirationTime = now + TItemTrackingStorage::RecentDropDurationMs;
+        loot.timestamp = timestamp;
+        drops.push_back(std::move(loot));
     }
-    tibia::game::notify("onKillTracker", message.name(), outfit, drops);
+    storages->itemTracking()->addDroppedLoot(drops);
+    storages->huntingSession()->addKill(monsterName);
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage(
@@ -1164,11 +1178,11 @@ void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vec
     auto message = protocol::newGameclientMessage(43);
     auto* m = message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser);
     m->set_action(2);
-    const TItemInfoStorage* prices = TItemInfoStorage::instance();
+    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
     for (const uint16_t objectId : objectIds) {
         auto* entry = m->add_prices();
         entry->set_object_id(objectId);
-        entry->set_price(prices ? static_cast<uint64_t>(prices->lootPrice(objectId)) : 0);
+        entry->set_price(static_cast<uint64_t>(prices->lootPrice(objectId)));
     }
     protocol::sendGameclientMessage(std::move(message));
 }

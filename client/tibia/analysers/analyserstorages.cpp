@@ -1,5 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include <client/staticdata.h>
 
@@ -194,8 +196,20 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
     , m_gainWaste(TItemPriceStorage::instance())
     , m_huntingSession(&m_progress)
+    , m_itemTracking(std::make_unique<cyclopedia::TItemTrackingStorage>(TItemPriceStorage::instance()))
+    , m_lootBlackWhitelist(std::make_unique<quickloot::TQuickLootBlackWhitelistStorage>())
 {
     s_instance = this;
+    // CIP TCharacterConfigurationManager: a configuration changed by the user is saved.
+    connect(TItemPriceStorage::instance(), &TItemPriceStorage::configurationChangedFromUserInput, this, &TAnalyserStorages::onConfigurationChanged);
+    connect(m_itemTracking.get(), &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput, this,
+            &TAnalyserStorages::onConfigurationChanged);
+    connect(m_lootBlackWhitelist.get(), &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
+            &TAnalyserStorages::onConfigurationChanged);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        Q_EMIT premiumTimeChanged();
+        return std::any{};
+    });
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         resetAll();
@@ -241,11 +255,6 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
             m_damageInput.addHit({ static_cast<int>(amount), element, argString(args, 3), nowMs() });
         return std::any{};
     });
-    // CIP KillTracking handler .
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onKillTracker", [this](GameObject*, const Args& args) {
-        m_huntingSession.addKill(argString(args, 0));
-        return std::any{};
-    });
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
     if (tibia::game::isOnline()) {
@@ -279,6 +288,9 @@ void TAnalyserStorages::tick()
     m_gainWaste.tick(now);
     m_impact.tick(now);
     m_damageInput.update(now);
+    m_itemTracking->update(now);
+    if (std::exchange(m_configurationDirty, false))
+        saveConfiguration();
 }
 
 void TAnalyserStorages::resetAll()
@@ -298,31 +310,41 @@ QString TAnalyserStorages::configurationPath(const TCharacterConfiguration& conf
            + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(configuration.configurationName());
 }
 
+std::vector<TCharacterConfiguration*> TAnalyserStorages::configurations()
+{
+    return { &m_progress, &m_gainWaste, &m_impact, &m_damageInput, &m_huntingSession, TItemPriceStorage::instance(),
+             m_itemTracking.get(), m_lootBlackWhitelist.get() };
+}
+
 void TAnalyserStorages::setCharacter(const quint32 characterId)
 {
     if (characterId == m_characterId)
         return;
     saveConfiguration();
     m_characterId = characterId;
-    if (m_characterId == 0)
-        return;
-    TCharacterConfiguration* const configurations[] = { &m_progress, &m_gainWaste, &m_impact, &m_damageInput, &m_huntingSession };
-    for (TCharacterConfiguration* configuration : configurations) {
-        QFile file(configurationPath(*configuration));
-        if (!file.open(QIODevice::ReadOnly))
-            continue;
-        const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-        if (document.isObject())
-            configuration->fromJson(document.object());
+    // CIP makes the item storages per game session; the configurations start empty.
+    TItemPriceStorage::instance()->fromJson(QJsonObject{});
+    m_itemTracking->clear();
+    m_lootBlackWhitelist->clear();
+    if (m_characterId != 0) {
+        for (TCharacterConfiguration* configuration : configurations()) {
+            QFile file(configurationPath(*configuration));
+            if (!file.open(QIODevice::ReadOnly))
+                continue;
+            const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+            if (document.isObject())
+                configuration->fromJson(document.object());
+        }
     }
+    m_configurationDirty = false;
+    Q_EMIT configurationLoadedForCharacter();
 }
 
 void TAnalyserStorages::saveConfiguration()
 {
     if (m_characterId == 0)
         return;
-    const TCharacterConfiguration* const configurations[] = { &m_progress, &m_gainWaste, &m_impact, &m_damageInput, &m_huntingSession };
-    for (const TCharacterConfiguration* configuration : configurations) {
+    for (const TCharacterConfiguration* configuration : configurations()) {
         const QString path = configurationPath(*configuration);
         QDir().mkpath(QFileInfo(path).absolutePath());
         QFile file(path);

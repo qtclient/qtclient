@@ -1,7 +1,7 @@
 #include "proficiency/weaponproficiencydialogcontroller.h"
 
 #include "app/clientoptions.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -85,10 +85,9 @@ void TWeaponObjectsModel::onLootValueImagesChanged()
 // over it for style 2 .
 QString TWeaponObjectsModel::lootValueImageSource(const uint16_t typeId, const int style) const
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (!prices || m_colorizeLootStyle != style)
+    if (m_colorizeLootStyle != style)
         return {};
-    const int level = prices->lootValueLevel(typeId);
+    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -176,8 +175,12 @@ void TWeaponObjectsModel::rebuild()
     m_entries = std::move(entries);
     endResetModel();
     // CIP hands the character's item price storage to the model.
-    if (cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance(); prices && !m_pricesConnection)
-        m_pricesConnection = connect(prices, &cyclopedia::TItemInfoStorage::pricesChanged, this, &TWeaponObjectsModel::onLootValueImagesChanged);
+    if (!m_pricesConnection) {
+        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+        m_pricesConnection = connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
+                                     &TWeaponObjectsModel::onLootValueImagesChanged);
+        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TWeaponObjectsModel::onLootValueImagesChanged);
+    }
 }
 
 void TWeaponObjectsModel::onObjectProficiencyXPChanged()

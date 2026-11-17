@@ -11,7 +11,8 @@
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "config/optionspages.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "input/gameactionhandlers.h"
 
 namespace tibia::quickloot {
@@ -69,6 +70,12 @@ namespace {
 
 using A = input::EGameAction;
 using P = TManagedContainersProtocolMessageHandler;
+
+TQuickLootBlackWhitelistStorage* lootBlackWhitelist()
+{
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    return storages ? storages->lootBlackWhitelist() : nullptr;
+}
 
 constexpr A QuickLootActions[] = { A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER, A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR,
                                    A::LOOT_CONTAINER_OPEN, A::OBTAIN_CONTAINER_SELECT, A::OBTAIN_CONTAINER_CLEAR, A::OBTAIN_CONTAINER_OPEN,
@@ -128,8 +135,8 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::TGameAction& act
         handleAddToBlackWhitelistStatusAction(action.objectClientId);
         return true;
     case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        if (cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance())
-            storage->setLootListed(action.objectClientId, false);
+        if (TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist())
+            storage->setListed(action.objectClientId, false);
         return true;
     default:
         return false;
@@ -138,11 +145,11 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::TGameAction& act
 
 void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const uint16_t objectId)
 {
-    cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance();
+    TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist();
     if (!storage)
         return;
-    if (!storage->isLootListFull()) {
-        storage->setLootListed(objectId, true);
+    if (!storage->isListFull()) {
+        storage->setListed(objectId, true);
         return;
     }
     auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));

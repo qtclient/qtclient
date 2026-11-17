@@ -13,8 +13,15 @@
 #include <vector>
 
 namespace tibia {
+namespace analysers {
+class TAnalyserStorages;
+class TItemPriceStorage;
+}
 namespace cyclopedia {
-class TItemInfoStorage;
+class TItemTrackingStorage;
+}
+namespace quickloot {
+class TQuickLootBlackWhitelistStorage;
 }
 }
 
@@ -139,7 +146,14 @@ private:
     /// CIP .
     void sendInspect();
 
-    cyclopedia::TItemInfoStorage* m_storage;
+    analysers::TAnalyserStorages* storages() const;
+    analysers::TItemPriceStorage* prices() const;
+    cyclopedia::TItemTrackingStorage* itemTracking() const;
+    quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() const;
+    bool hasCharacter() const;
+
+    /// The item classes of the forge data, sorted.
+    std::vector<int> m_classifications;
     TAppearanceTypeListModel m_model;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     bool m_entriesBuilt = false;

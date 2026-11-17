@@ -537,7 +537,7 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/bosstiarystorage.cpp cyclopedia/bosstiarystorage.h
     gamewindow/bosstiarydialogcontroller.cpp gamewindow/bosstiarydialogcontroller.h
     gamewindow/assignablebossmodels.cpp gamewindow/assignablebossmodels.h
-    cyclopedia/iteminfostorage.cpp cyclopedia/iteminfostorage.h
+    cyclopedia/itemtrackingstorage.cpp cyclopedia/itemtrackingstorage.h
     cyclopedia/housesstorage.cpp cyclopedia/housesstorage.h
     gamewindow/housesinfodialogcontroller.cpp gamewindow/housesinfodialogcontroller.h
     cyclopedia/cyclopediamapdata.cpp cyclopedia/cyclopediamapdata.h
@@ -567,6 +567,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/stashdialogcontroller.cpp gamewindow/stashdialogcontroller.h
     gamewindow/managelootcontainerdialogcontroller.cpp gamewindow/managelootcontainerdialogcontroller.h
     quickloot/managedcontainerstorage.cpp quickloot/managedcontainerstorage.h
+    quickloot/quicklootblackwhiteliststorage.cpp quickloot/quicklootblackwhiteliststorage.h
     gamewindow/statusbarcontroller.cpp gamewindow/statusbarcontroller.h
     gamewindow/storeandresourcebalancehelpercontroller.cpp gamewindow/storeandresourcebalancehelpercontroller.h
     gamewindow/storedialogcontroller.cpp gamewindow/storedialogcontroller.h

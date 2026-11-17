@@ -358,6 +358,8 @@ QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool
 /// Loot / look rich text: {id|name} (item-value colours when colorizeLootStyle ≠ 0)
 /// then {#rrggbb|text}. Shared by console + map bubbles.
 QString formatLootRichText(QString text);
+/// "{#rrggbb|text}" -> "<font color="#rrggbb">text</font>".
+QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings);
 
 /// CIP's clamped integer setting: the QSettings value in the
 /// group, a value below the minimum is stored back as the minimum.

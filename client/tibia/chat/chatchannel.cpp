@@ -6,7 +6,8 @@
 #include "input/gameactionhandlers.h"
 #include "input/gameaction.h"
 #include "creatures/creaturestorage.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
+#include "config/clientoptions.h"
 
 #include <tibia/game/tgamenotify.h>
 
@@ -54,9 +55,8 @@ QString keywordLinks(QString text)
 QString formatLootRichText(QString text)
 {
     static const QRegularExpression item(QStringLiteral("\\{([0-9]+)\\|([^\\}]*)\\}"));
-    static const QRegularExpression colored(QStringLiteral("\\{(#[0-9a-fA-F]{6})\\|([^\\}]*)\\}"));
-    cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (prices && prices->colorizeLootStyle() != 0) {
+    if (config::TClientOptions::instance()->colorizeLootStyle() != 0) {
+        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
         QString out;
         out.reserve(text.size() + 32);
         qsizetype pos = 0;
@@ -73,7 +73,19 @@ QString formatLootRichText(QString text)
     } else {
         text.replace(item, QStringLiteral("\\2"));
     }
-    text.replace(colored, QStringLiteral("<font color=\"\\1\">\\2</font>"));
+    return replaceColorCodingsWithHtmlTags(text);
+}
+
+QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings)
+{
+    static const QRegularExpression coding(QStringLiteral("\\{(#[0-9a-fA-F]{6})\\|([^\\}]*)\\}"));
+    QString text = textWithColorCodings;
+    qsizetype from = 0;
+    for (QRegularExpressionMatch match = coding.match(text, from); match.hasMatch(); match = coding.match(text, from)) {
+        const QString html = QStringLiteral("<font color=\"%1\">%2</font>").arg(QColor::fromString(match.captured(1)).name(), match.captured(2));
+        text.replace(match.capturedStart(), match.capturedLength(), html);
+        from = match.capturedStart() + html.size();
+    }
     return text;
 }
 

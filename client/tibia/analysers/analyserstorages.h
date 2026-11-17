@@ -16,8 +16,18 @@
 #include <cstdint>
 #include <deque>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <vector>
+
+namespace tibia {
+namespace cyclopedia {
+class TItemTrackingStorage;
+}
+namespace quickloot {
+class TQuickLootBlackWhitelistStorage;
+}
+}
 
 namespace tibia {
 namespace analysers {
@@ -591,19 +601,28 @@ public:
     TDamageInputStorage* damageInput() { return &m_damageInput; }
     THuntingSessionStorage* huntingSession() { return &m_huntingSession; }
     TPartyHuntStorage* partyHunt() { return &m_partyHunt; }
+    cyclopedia::TItemTrackingStorage* itemTracking() { return m_itemTracking.get(); }
+    quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() { return m_lootBlackWhitelist.get(); }
 
     /// RESET_HUNTING_SESSION (CIP).
     void resetAll();
     /// The character whose configuration the storages use (0: none; saves the previous one).
     void setCharacter(quint32 characterId);
+    bool hasCharacter() const { return m_characterId != 0; }
     void saveConfiguration();
 
 Q_SIGNALS:
     void sessionReset();
+    /// The character's configurations were read (CIP TCharacterConfigurationManager).
+    void configurationLoadedForCharacter();
+    /// The own character's premium time changed.
+    void premiumTimeChanged();
 
 private:
     void tick();
     QString configurationPath(const TCharacterConfiguration& configuration) const;
+    std::vector<TCharacterConfiguration*> configurations();
+    void onConfigurationChanged() { m_configurationDirty = true; }
 
     TProgressStorage m_progress;
     TGainWasteStorage m_gainWaste;
@@ -611,9 +630,12 @@ private:
     TDamageInputStorage m_damageInput;
     THuntingSessionStorage m_huntingSession;
     TPartyHuntStorage m_partyHunt;
+    std::unique_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
+    std::unique_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_lootBlackWhitelist;
     std::vector<client::gamecore::Hook> m_hooks;
     QTimer m_timer;
     quint32 m_characterId = 0;
+    bool m_configurationDirty = false;
 };
 
 }
