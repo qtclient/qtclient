@@ -2,7 +2,6 @@
 
 #include "shared/cip_typed.h"
 
-#include "renderer/spritetexturecache.h"
 #include "sprites/spritefromspritesheetinfo.h"
 
 #include <QColor>
@@ -18,11 +17,9 @@
 namespace tibia {
 namespace appearances {
 
-using qmlcomponents::SpriteKey;
-
 /// What an instance draws for one animation phase (CIP
-/// appearances::IAppearanceInstanceSpriteInfo). The CIP part is the vtable from
-/// v3 on; key() and raster() are the host's texture cache keys.
+/// appearances::IAppearanceInstanceSpriteInfo). Texture providers are asked
+/// for the sprite an info describes and cache it by hash() and equals().
 class TAppearanceInstanceSpriteInfo : public ::tibia::CipTyped
 {
 public:
@@ -39,6 +36,9 @@ public:
     };
 
     virtual ~TAppearanceInstanceSpriteInfo() = default;
+    /// CIP v2: the sprite identifier kind of every sprite info (2; resource
+    /// identifiers are 1, the others 3 to 5).
+    int identifierKind() const { return 2; }
     /// CIP v3.
     virtual std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const { return nullptr; }
     /// CIP v4: callers compare only infos of the same dynamic type.
@@ -51,9 +51,6 @@ public:
     virtual QRect boundingBox() const { return QRect(0, 0, 32, 32); }
     /// CIP v8: the sprite's size in pixels.
     virtual QSize spriteSize() const { return QSize(32, 32); }
-
-    virtual SpriteKey key() const = 0;
-    virtual QImage raster() const = 0;
 };
 
 /// CIP interface name used by some call sites / units.
@@ -65,17 +62,20 @@ using TAppearanceInstanceSpriteInfoPtr = std::shared_ptr<TAppearanceInstanceSpri
 bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearanceInstanceSpriteInfoPtr& b);
 
 /// The four colours of an outfit (head, body, legs, feet) and their hash (CIP:
-/// four QColors and a hash built from the outfit's colour indices). The host
-/// keeps the indices for its texture cache key.
+/// four QColors and a hash built from them).
 struct TOutfitColors
 {
     std::array<QColor, 4> colors;
     uint32_t hash = 0;
-    /// head | body << 8 | legs << 16 | feet << 24 (host).
-    uint32_t indices = 0;
 
     TOutfitColors() = default;
     TOutfitColors(uint8_t head, uint8_t body, uint8_t legs, uint8_t feet);
+    /// Host: from head | body << 8 | legs << 16 | feet << 24.
+    static TOutfitColors fromPacked(uint32_t packed)
+    {
+        return TOutfitColors(static_cast<uint8_t>(packed), static_cast<uint8_t>(packed >> 8),
+                             static_cast<uint8_t>(packed >> 16), static_cast<uint8_t>(packed >> 24));
+    }
     bool operator==(const TOutfitColors& other) const;
 };
 
@@ -83,18 +83,23 @@ struct TOutfitColors
 class TCreatureMarkAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpriteInfo
 {
 public:
-    explicit TCreatureMarkAppearanceInstanceSpriteInfo(std::array<uint32_t, 3> colors);
+    /// The frames' colours, outer to inner.
+    explicit TCreatureMarkAppearanceInstanceSpriteInfo(std::vector<QColor> colors);
 
-    SpriteKey key() const override;
-    QImage raster() const override;
+    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    size_t hash() const override;
     EKind kind() const override { return EKind::CreatureMark; }
-    const std::array<uint32_t, 3>& colors() const { return m_colors; }
+    QRect boundingBox() const override;
+    QSize spriteSize() const override;
+    /// CIP v9.
+    std::vector<QColor> colors() const { return m_colors; }
 
-    /// / spritetexturecache creatureMarkImage.
-    static QImage imageForColors(const std::array<uint32_t, 3>& colors);
+    /// A field-sized image with one 2-pixel frame per colour.
+    static QImage imageForColors(const std::vector<QColor>& colors);
 
 private:
-    std::array<uint32_t, 3> m_colors{};
+    std::vector<QColor> m_colors;
 };
 
 /// One sprite of a spritesheet drawn for an instance, with the bounding box of
@@ -104,9 +109,9 @@ class TSpritesheetAppearanceInstanceSpriteInfo final : public TAppearanceInstanc
 public:
     TSpritesheetAppearanceInstanceSpriteInfo(std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite,
                                              const QRect& boundingBox);
+    /// Host: sprite `spriteId` of its spritesheet, the whole sprite as bounding box
+    /// (things drawn from a type's pattern without an instance).
     explicit TSpritesheetAppearanceInstanceSpriteInfo(uint32_t spriteId);
-    SpriteKey key() const override;
-    QImage raster() const override;
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
     bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
@@ -134,9 +139,8 @@ public:
     TMaskedAppearanceInstanceSpriteInfo(std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite,
                                         std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> mask,
                                         const TOutfitColors& colors, const QRect& boundingBox);
-
-    SpriteKey key() const override;
-    QImage raster() const override;
+    /// Host: sprite `spriteId` coloured through sprite `maskId`, the whole sprite as bounding box.
+    TMaskedAppearanceInstanceSpriteInfo(uint32_t spriteId, uint32_t maskId, const TOutfitColors& colors);
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
     bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
@@ -163,10 +167,6 @@ class TLayeredAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpr
 public:
     TLayeredAppearanceInstanceSpriteInfo(std::vector<TAppearanceInstanceSpriteInfoPtr> layers, const QRect& boundingBox);
 
-    /// The bottom layer's key (draw layers() for all of them).
-    SpriteKey key() const override;
-    QImage raster() const override;
-
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
     bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
     size_t hash() const override;
@@ -186,10 +186,16 @@ private:
 class TDummyAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpriteInfo
 {
 public:
+    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    bool equals(const TAppearanceInstanceSpriteInfo&) const override { return true; }
+    size_t hash() const override { return 0; }
     EKind kind() const override { return EKind::Dummy; }
-    SpriteKey key() const override;
-    QImage raster() const override;
+    QRect boundingBox() const override { return QRect(); }
+    QSize spriteSize() const override { return QSize(); }
 };
+
+/// CIP's sprite sizes by index (32x32, 32x64, 64x32, 64x64); empty past the end.
+QSize spriteSizeOfIndex(unsigned index);
 
 }
 }

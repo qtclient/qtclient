@@ -50,6 +50,7 @@ animation::TWorldMapLinearMovementTween::v0	872d4faac408f6d5	skip	generated: sam
 animation::TWorldMapLinearMovementTween::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::IAppearanceInstanceSpriteInfo::v0	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::IAppearanceInstanceSpriteInfo::v1	7382774637cec697	skip	generated: same code as the skipped family: compiler-generated destructor pair
+appearances::IAppearanceInstanceSpriteInfo::v2	122336d00a45fcbf	ported	appearances/spriteinfo.h:TAppearanceInstanceSpriteInfo::identifierKind
 appearances::TAppearanceInstance::v0	93d4d227dfdd8e50	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstance::v1	c706b9be1f95cd79	skip	generated: compiler-generated destructor pair
 appearances::TAppearanceInstance::v10	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
@@ -116,7 +117,15 @@ appearances::TAppearancesManager::v7	0ab1a831b12200bc	ported	assets/things.cpp:T
 appearances::TAppearancesManager::v8	33bcf0ecb571a4e4	ported	assets/things.cpp:TAppearancesManager::specialAppearancesForProtocolParsing
 appearances::TContainerObjectAppearanceInstance::v0	174284ae632b6768	skip	generated: compiler-generated destructor pair
 appearances::TContainerObjectAppearanceInstance::v1	021d70acba35c5dd	skip	generated: compiler-generated destructor pair
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v0	1658e38eb10c9d8a	skip	generated: compiler-generated destructor (QColor vector member)
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v1	fbd32cfef41aa7d7	skip	generated: compiler-generated destructor (QColor vector member)
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v3	8f24ebd6bdb7546b	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::clone
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v4	2242cbff3153f949	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::equals
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v5	a36abebef93eeb6f	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::hash
 appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v6	18ccf7a6719f1d5b	ported	appearances/spriteinfo.h:TCreatureMarkAppearanceInstanceSpriteInfo::kind
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v7	dfb70b81a99ca14a	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::boundingBox
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v8	e443bea5b231ab0e	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::spriteSize
+appearances::TCreatureMarkAppearanceInstanceSpriteInfo::v9	d18380b94cc6a45f	ported	appearances/spriteinfo.h:TCreatureMarkAppearanceInstanceSpriteInfo::colors
 appearances::TCreaturePlaceholderAppearanceInstance::v0	0571258944923e03	skip	generated: compiler-generated destructor pair
 appearances::TCreaturePlaceholderAppearanceInstance::v1	74f682f5aa312753	skip	generated: compiler-generated destructor pair
 appearances::TCreaturePlaceholderAppearanceInstance::v14	4c040b7c33c2f573	ported	creatures/creaturestorage.cpp:TCreature::drawElevation
@@ -145,8 +154,11 @@ appearances::TDirectionalFieldEffectInstance::v0	262f45e74a197d9c	skip	generated
 appearances::TDirectionalFieldEffectInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair
 appearances::TDummyAppearanceInstanceSpriteInfo::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::TDummyAppearanceInstanceSpriteInfo::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
+appearances::TDummyAppearanceInstanceSpriteInfo::v3	d99e19a09a93515a	ported	appearances/spriteinfo.cpp:TDummyAppearanceInstanceSpriteInfo::clone
+appearances::TDummyAppearanceInstanceSpriteInfo::v4	9583ec69b8585ef5	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::equals
 appearances::TDummyAppearanceInstanceSpriteInfo::v5	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 appearances::TDummyAppearanceInstanceSpriteInfo::v6	aadf00082e9b6011	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::kind
+appearances::TDummyAppearanceInstanceSpriteInfo::v7	60ec315e13ec38f4	ported	appearances/spriteinfo.h:TDummyAppearanceInstanceSpriteInfo::boundingBox
 appearances::TDummyAppearanceInstanceSpriteInfo::v8	bcccd51b8b153f85	skip	library: same code as the skipped family: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 appearances::TEffectInstance::v0	7382774637cec697	skip	generated: compiler-generated destructor pair
 appearances::TEffectInstance::v1	7382774637cec697	skip	generated: compiler-generated destructor pair
@@ -225,7 +237,13 @@ appearances::TWorldMapAppearanceInstance::v0	262f45e74a197d9c	skip	generated: co
 appearances::TWorldMapAppearanceInstance::v1	2044fbd007d58c04	skip	generated: compiler-generated destructor pair
 appearances::TWorldmapHighlightBaseplateSpriteInfo::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 appearances::TWorldmapHighlightBaseplateSpriteInfo::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v3	d99e19a09a93515a	ported	appearances/worldmaphighlightbaseplate.cpp:TWorldmapHighlightBaseplateSpriteInfo::clone
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v4	208e92a26b6ef31c	ported	appearances/worldmaphighlightbaseplate.cpp:TWorldmapHighlightBaseplateSpriteInfo::equals
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v5	4868523402fea69a	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::hash
 appearances::TWorldmapHighlightBaseplateSpriteInfo::v6	bc0d3c643ad8f0d1	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::kind
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v7	dfb70b81a99ca14a	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::boundingBox
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v8	e443bea5b231ab0e	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::spriteSize
+appearances::TWorldmapHighlightBaseplateSpriteInfo::v9	4868523402fea69a	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::frame
 assets::TAsset::v0	7b2c7d4716bd76d5	skip	generated: destructor variants
 assets::TAsset::v1	2c55a421f1eb236f	skip	generated: destructor variants
 assets::TAssetAsyncLoader::onWorkerThreadAssetLoaded	4ac6923284961a39	ported	assets/assetasyncloader.cpp:TAssetAsyncLoader::onWorkerThreadAssetLoaded
@@ -3480,6 +3498,8 @@ renderer::TScenegraphNodeProvider::v7	097457dc45e86dd8	skip	generated: same code
 renderer::TScenegraphNodeProvider::v8	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TSpriteTextureProvider::onBeforeRenderNewFrame	cdce7549e5fd4b77	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::onBeforeRenderNewFrame
 renderer::TSpriteTextureProvider::onSceneGraphInvalidated	029078eaf862d2af	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::onSceneGraphInvalidated
+renderer::TSpriteTextureProvider::v12	ff87d017734b4b3f	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::texture
+renderer::TSpriteTextureProvider::v1@10	a555d11cb8ae6f61	ported	renderer/spritetextureprovider.h:TSpriteTextureProvider::texture
 renderer::TSpriteTextureProvider::~TSpriteTextureProvider	097457dc45e86dd8	skip	generated: compiler-generated destructor
 renderer::TSpriteTextureProvider::~TSpriteTextureProvider_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
 renderer::TSpriteTextureProviderManager::~TSpriteTextureProviderManager	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
@@ -4035,6 +4055,8 @@ sprites::TMinimapTileSpritesheetIdentifier::v0	872d4faac408f6d5	skip	generated: 
 sprites::TMinimapTileSpritesheetIdentifier::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::TQtTextureAtlasTextureCreator::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 sprites::TQtTextureAtlasTextureCreator::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
+sprites::TQtTextureAtlasTextureCreator::v2	a9a707b6fd145749	inlined	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::texture
+sprites::TQtTextureAtlasTextureCreator::v3	4533a2c275d873fb	inlined	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::texture
 sprites::TResourceSpritesManager::~TResourceSpritesManager_deleting	b8be3da7b6e3e498	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 sprites::TSingleSprite::v0	015109dece1399b1	skip	generated: destructor variants
 sprites::TSingleSprite::v1	9929252d4a7bf5ae	skip	generated: destructor variants
@@ -6866,7 +6888,7 @@ sub_581473ab0464	581473ab0464def0	ported	assets/assetcatalog.h:TAssetCatalog::TA
 sub_581473ab0464#2	581473ab0464def0	ported	assets/assetcatalog.h:TAssetCatalog::TAssetCatalog
 sub_5814e6293e39	5814e6293e39c8d3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendAnswerModalDialog
 sub_581632105d73	581632105d73c018	skip	library: Qt6 QHash instantiation: QHashPrivate::Data ctor/rehash/findOrInsert, Span::addStorage, detach-and-emplace
-sub_581c5b4eec3a	581c5b4eec3aa9c9	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProviderManager::sharedCache
+sub_581c5b4eec3a	581c5b4eec3aa9c9	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProviderManager::sharedProvider
 sub_581eaeeeee53	581eaeeeee5320e5	tested	worldmap/coordinates.h:TWorldMapCoordinate::shiftedAwayFromFloor	test=tests/client/worldmapcuboid_test.cpp
 sub_5829752f57fb	5829752f57fb9db3	ported	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_582bb5d24811	582bb5d24811b713	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::TCyclopediaButtonController
@@ -7226,6 +7248,8 @@ sub_6437b0302bd1	6437b0302bd1f20d	skip	data: static init of the cloud wave table
 sub_6439bb87ce90	6439bb87ce903522	ported	assets/asset.cpp:TAsset::readJson
 sub_643b7400e1be	643b7400e1be702b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_64650157623d	64650157623d09cc	skip	generated: compiler-generated destructors of parsed asset structs / vectors
+sub_64741cbf417b	64741cbf417bde88	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::TCreatureMarkAppearanceInstanceSpriteInfo
+sub_64741cbf417b#2	64741cbf417bde88	ported	appearances/spriteinfo.cpp:TCreatureMarkAppearanceInstanceSpriteInfo::TCreatureMarkAppearanceInstanceSpriteInfo
 sub_647825f15a2e#21	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 sub_647825f15a2e#26	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleGameAction
 sub_647825f15a2e#28	647825f15a2ef76c	inlined	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleSaveTextToFile
@@ -8079,7 +8103,7 @@ sub_862abfcaaf30	862abfcaaf308835	ported	gamewindow/cyclopediamapdialogcontrolle
 sub_866433735cee	866433735cee5f10	ported	authentication/authenticationjsondocumenthelper.cpp:jsonKeys
 sub_86645a602c08	86645a602c082c22	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_86833d86ea14	86833d86ea141873	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::automaticPreyExtendType
-sub_868fd3459b34	868fd3459b34fc1a	tested	sprites/spritesheetsmetadatamanager.cpp:spriteSizeOfLayout	test=tests/client/spritesheetmanager_test.cpp
+sub_868fd3459b34	868fd3459b34fc1a	ported	appearances/spriteinfo.cpp:spriteSizeOfIndex
 sub_86963ced4498	86963ced4498c06b	skip	library: std::unordered_set move-assign/rehash internals
 sub_86963ced4498#2	86963ced4498c06b	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::onPlayerDataChanged
 sub_869c9046efbe	869c9046efbe196e	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setLootType
@@ -10024,7 +10048,7 @@ sub_bd19ef3aa1b3	bd19ef3aa1b33f99	ported	market/marketstorage.h:TMarketOfferList
 sub_bd3568a75ccf	bd3568a75ccfa1e7	ported	config/clientoptiondefaults.cpp:buttonIds
 sub_bd35cb2599b5	bd35cb2599b5e1a3	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage
 sub_bd438b4db8c0	bd438b4db8c0b628	ported	gamewindow/dialogmanager.cpp:TDialogStackController::contains
-sub_bd476cc1c839	bd476cc1c839783b	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::highlighted
+sub_bd476cc1c839	bd476cc1c839783b	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::bakeHighlight
 sub_bd4acd5c8724	bd4acd5c8724ef7d	skip	library: std::vector<std::string> grow-and-append
 sub_bd4b79475561	bd4b79475561ede1	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_bd56735863c1	bd56735863c1fbd9	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::blackWhiteListType
@@ -10305,6 +10329,7 @@ sub_c82c2ec365fb	c82c2ec365fb8891	ported	gamewindow/playerinventoryandstatuscont
 sub_c82f3f47ee3c	c82f3f47ee3c1f99	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestClassificationSelection
 sub_c82f62828f43	c82f62828f4364a2	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_c83bfc99ba27	c83bfc99ba273cbf	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowClicked
+sub_c86a045181e0	c86a045181e0553f	inlined	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::texture
 sub_c86c94ddaeb0#2	c86c94ddaeb06f7c	skip	library: std::deque / std::variant library code
 sub_c86c94ddaeb0#3	c86c94ddaeb06f7c	skip	library: same code as the skipped family: std::deque / std::variant library code
 sub_c87d8149227e	c87d8149227e205e	skip	data: translation-unit static initializer of shared header constants
@@ -11010,6 +11035,7 @@ sub_ddccbebfc064	ddccbebfc0644033	inlined	teamfinder/teamsortproxymodels.cpp:TTe
 sub_ddd126b4fbb7	ddd126b4fbb70a04	ported	shared/src/jsondocumentuploaderbase.cpp:TJsonDocumentUploaderBase::errorMessage
 sub_ddd126b4fbb7#6	ddd126b4fbb70a04	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_ddd126b4fbb7#7	ddd126b4fbb70a04	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
+sub_dddfd65d037b	dddfd65d037b8fdb	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::trimmedToOpaquePixels
 sub_ddecc8a7daca	ddecc8a7daca5a69	ported	gamewindow/chatcontroller.cpp:TChatController::closeChannel
 sub_ddf2fc91831f	ddf2fc91831f79ac	ported	config/sidebaroptions.cpp:serializeBattleLists
 sub_ddf6614bb749	ddf6614bb74937da	skip	library: std::vector<TEventInformation> reserve/growth template
@@ -11824,6 +11850,7 @@ sub_faaadfc7d891#6	faaadfc7d8913d91	skip	generated: Qt slot-object impl (templat
 sub_fae2bd72e52a	fae2bd72e52a4ed7	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_faf02f06338c	faf02f06338c7d92	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::updateDialog
 sub_faf8a03b3d2e	faf8a03b3d2e990c	inlined	tutorial/sessiondumphints.cpp:TSessiondumpHints::createHint
+sub_faf9961fc145	faf9961fc1451a0f	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::textureImage
 sub_fb0d76d230e5	fb0d76d230e5c991	skip	library: std::unordered_set insert / find / erase / rehash (library)
 sub_fb12b9e02972	fb12b9e0297200fb	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::refresh
 sub_fb2ddecb4a4f	fb2ddecb4a4ffa1c	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
@@ -11906,6 +11933,8 @@ sub_ff71f16a14d7	ff71f16a14d734fa	skip	generated: moc property getter, provided 
 sub_ff7f3c5a1e5c	ff7f3c5a1e5caebc	skip	library: protobuf runtime: ExtensionSet merge/flat storage, arena allocation and absl check logging reached from message copies
 sub_ff810966fd5f	ff810966fd5f0b40	ported	gamewindow/chatcontroller.cpp:TChatChannelController::resetChannel
 sub_ffa5a8fbf471#2	ffa5a8fbf471c931	inlined	sprites/spriteresolver.cpp:TSpriteResolver::resolveSpritesheetSprite
+sub_ffc395dee2f5	ffc395dee2f5073d	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::TWorldmapHighlightBaseplateSpriteInfo
+sub_ffc395dee2f5#2	ffc395dee2f5073d	ported	appearances/worldmaphighlightbaseplate.h:TWorldmapHighlightBaseplateSpriteInfo::TWorldmapHighlightBaseplateSpriteInfo
 sub_ffcb550e4d4c	ffcb550e4d4c246b	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferAccept
 sub_ffd47c9e6a6a	ffd47c9e6a6abf99	skip	generated: compiler-generated destructor of the optional picked field
 sub_ffdb2d50bbca	ffdb2d50bbca3e0e	ported	sprites/appearancetypespritesheetmapping.cpp:TAppearanceTypeSpritesheetMapping::TAppearanceTypeSpritesheetMapping

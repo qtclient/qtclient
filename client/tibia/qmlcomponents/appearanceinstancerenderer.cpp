@@ -13,7 +13,7 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "clockservice.h"
-#include "sprites/hdscale.h"
+#include "renderer/spritetextureprovider.h"
 
 #include <QLineF>
 #include <QQuickWindow>
@@ -516,17 +516,16 @@ void TAppearanceInstanceRenderer::addSprites(TAppearanceType* type, const QPoint
     // of the podium (~shift, typically 8×8).
     const QPoint anchor = fieldTopLeft + QPoint(FieldSize, FieldSize);
     const std::optional<uint32_t> sprite = type->spriteIdAt(0, xPattern, yPattern, zPattern, phase);
-    if (!sprite) {
-        (void)appearances::TDummyAppearanceInstanceSpriteInfo{}.key();
+    if (!sprite)
         return;
-    }
-    SpriteKey key;
+    appearances::TAppearanceInstanceSpriteInfoPtr info;
     const std::optional<uint32_t> mask = colorize ? type->spriteIdAt(1, xPattern, yPattern, zPattern, phase) : std::nullopt;
     if (mask)
-        key = SpriteKey{ .spriteId = *sprite, .maskId = *mask, .colors = colors };
+        info = std::make_shared<appearances::TMaskedAppearanceInstanceSpriteInfo>(*sprite, *mask,
+                                                                                 appearances::TOutfitColors::fromPacked(colors));
     else
-        key = appearances::TSpritesheetAppearanceInstanceSpriteInfo(*sprite).key();
-    m_sprites.push_back({ key, anchor, spriteSizeOf(type) });
+        info = std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite);
+    m_sprites.push_back({ { std::move(info) }, anchor, spriteSizeOf(type) });
 }
 
 /// As the world map draws a creature: the mount first, then the outfit and its addons
@@ -668,7 +667,7 @@ void TAppearanceInstanceRenderer::updatePolish()
 QSGNode* TAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     const QRectF view(QPointF(), size());
-    auto& cache = TSpriteTextureCache::shared(window());
+    renderer::TSpriteTextureProvider& provider = renderer::TSpriteTextureProviderManager::sharedProvider(window());
     struct Prepared {
         QSGTexture* texture = nullptr;
         QSizeF textureSize;
@@ -678,24 +677,25 @@ QSGNode* TAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNode, UpdatePa
     prepared.reserve(static_cast<size_t>(m_sprites.size()));
     bool pending = false;
     for (const Sprite& sprite : std::as_const(m_sprites)) {
-        QSGTexture* texture = cache.texture(sprite.key);
+        const renderer::TSpriteTexture drawn = provider.texture(sprite.sprite);
+        QSGTexture* texture = drawn.texture;
         if (!texture) {
-            pending = true;
+            if (!provider.cache().contains(sprite.sprite))
+                pending = true;
             continue;
         }
         const QSizeF textureSize = texture->textureSize();
-        // HD textures are 4× (xBR4); draw at logical size like the world map.
-        const int hdDiv = (!sprite.key.isCreatureMark() && tibia::host::app().isHdMode())
-            ? std::max(1, tibia::sprites::hdFactor())
-            : 1;
-        const QSizeF drawSize(textureSize.width() / qreal(hdDiv), textureSize.height() / qreal(hdDiv));
-        const QPointF topLeft = (QPointF(sprite.anchor) - QPointF(drawSize.width(), drawSize.height()) - m_origin) * m_scale;
-        const QRectF rect(topLeft, drawSize * m_scale);
+        // The texture holds the part drawn.rect of the sprite (HD textures more texels).
+        const QSize spriteSize = sprite.sprite.info->spriteSize();
+        const QPointF topLeft = (QPointF(sprite.anchor) - QPointF(spriteSize.width(), spriteSize.height())
+                                 + QPointF(drawn.rect.topLeft()) - m_origin)
+            * m_scale;
+        const QRectF rect(topLeft, QSizeF(drawn.rect.size()) * m_scale);
         if (!rect.intersects(view))
             continue;
         prepared.push_back({ texture, textureSize, rect });
     }
-    cache.endFrame();
+    provider.cache().endFrame();
 
     // CipSoft TScenegraphDrawCommandsRendererQuickItem::updatePaintNode
     // + : a still-loading sheet sets the pending flag and schedules

@@ -1,6 +1,7 @@
 #include "worldmapquickitem.h"
 #include "tibia/runtime/host.h"
 
+#include "appearances/spriteinfo.h"
 #include "renderer/childrenscenegraphnode.h"
 #include "renderer/highlightedspritenode.h"
 #include "renderer/mapscale.h"
@@ -342,7 +343,8 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         Children* parent = parentFor(record.opacity);
         if (!parent)
             continue;
-        QSGTexture* texture = m_textures->cache().texture(record.sprite);
+        const renderer::TSpriteTexture sprite = m_textures->texture(record.sprite);
+        QSGTexture* texture = sprite.texture;
         if (!texture) {
             // A sheet that is still decompressing is not stored. Keep painting
             // until it arrives; a missing sprite is stored and is not waited on.
@@ -351,16 +353,13 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             continue;
         }
         ++drawn;
-        const QSize size = texture->textureSize();
-        // HD textures are 4×; draw at logical size. ShaderEffectSource.textureSize is empty
-        // in HD so the FBO is the item's native size and each texel lands 1:1.
-        const int hdDiv = (!record.sprite.isCreatureMark() && !record.sprite.isHighlightBaseplate() && hd)
-            ? std::max(1, tibia::sprites::hdFactor())
-            : 1;
-        const qreal drawW = size.width() / qreal(hdDiv);
-        const qreal drawH = size.height() / qreal(hdDiv);
-        const QRectF source(QPointF(), size);
-        const QRectF rect(record.anchor.x() - drawW, record.anchor.y() - drawH, drawW, drawH);
+        // The texture holds the sprite's part `sprite.rect` (HD textures hold more
+        // texels per pixel; they are drawn at the part's size).
+        const QRectF source(QPointF(), texture->textureSize());
+        const QPoint topLeft = record.anchor - QPoint(record.sprite.info->spriteSize().width(),
+                                                      record.sprite.info->spriteSize().height())
+            + sprite.rect.topLeft();
+        const QRectF rect(topLeft, sprite.rect.size());
 
         if (record.highlight != SpriteRecord::NoHighlight && !bakeHighlight) {
             ++highlighted;
@@ -387,7 +386,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         if (record.highlight != SpriteRecord::NoHighlight && bakeHighlight) {
             QColor baked = renderer::TScenegraphNodeProvider::highlightColor(record.highlight);
             baked.setAlpha(255);
-            if (QSGTexture* tinted = m_textures->cache().highlighted(record.sprite, baked))
+            if (QSGTexture* tinted = m_textures->highlightedTexture(record.sprite, baked))
                 texture = tinted;
         }
         auto* image = reuse.operator()<QSGImageNode>(*parent, [this, texture, filtering, source, rect] {

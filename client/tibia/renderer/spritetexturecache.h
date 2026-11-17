@@ -6,46 +6,43 @@
 #include <QImage>
 #include <QVector>
 
-#include <array>
+#include <QRect>
+
 #include <cstdint>
+#include <memory>
 
 class QQuickWindow;
 class QSGTexture;
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceSpriteInfo;
+}
 namespace qmlcomponents {
 
-/// A sprite as the world draws it: one sprite sheet entry, an outfit sprite
-/// colorized through its mask sprite, or a creature mark.
-struct SpriteKey
+/// What a sprite texture is asked for (CIP: the sprite identifier handed to
+/// TSpriteTextureProvider; the world and UI hand it an appearance instance's
+/// sprite info, identifier kind 2), with the host's mod tint.
+struct SpriteIdentifier
 {
-    uint32_t spriteId = 0;
-    /// Mask sprite to colorize with; 0 draws the sprite as is.
-    uint32_t maskId = 0;
-    /// Outfit color indices: head | body << 8 | legs << 16 | feet << 24.
-    uint32_t colors = 0;
-    /// With spriteId 0: a creature mark's frames, outer to inner, as ARGB; 0 is
-    /// no frame (CIP: TCreatureMarkAppearanceInstanceSpriteInfo).
-    std::array<uint32_t, 3> markColors{};
+    std::shared_ptr<appearances::TAppearanceInstanceSpriteInfo> info;
     /// Product colour map (mods effect tint) applied to the sprite; 0 draws it as is.
     uint8_t tint = 0;
-    /// With spriteId 0 and no mark: CIP highlight baseplate frame 0–7
-    /// (`TWorldmapHighlightBaseplateSpriteInfo`); -1 = none.
-    int8_t highlightBaseplate = -1;
 
-    bool isCreatureMark() const { return spriteId == 0 && markColors[0] != 0; }
-    bool isHighlightBaseplate() const
-    {
-        return spriteId == 0 && markColors[0] == 0 && highlightBaseplate >= 0;
-    }
-    bool operator==(const SpriteKey&) const = default;
+    bool operator==(const SpriteIdentifier& other) const;
 };
 
-inline size_t qHash(const SpriteKey& key, size_t seed = 0) noexcept
+size_t qHash(const SpriteIdentifier& identifier, size_t seed = 0) noexcept;
+
+/// A sprite's texture and the part of the sprite it holds (CIP:
+/// renderer::TSpriteTexture: the texture and its rectangle in sprite pixels,
+/// texture pixels divided by the sprite's scale).
+struct TSpriteTexture
 {
-    return qHashMulti(seed, key.spriteId, key.maskId, key.colors, key.markColors[0], key.markColors[1], key.markColors[2],
-                      key.tint, key.highlightBaseplate);
-}
+    QSGTexture* texture = nullptr;
+    /// In sprite pixels; the sprite's top-left is (0, 0).
+    QRect rect;
+};
 
 /// Sprite textures of one window, in Qt's shared texture atlas (CIP:
 /// TSpriteTextureCache + TQtTextureAtlasTextureCreator). Render thread only.
@@ -66,21 +63,25 @@ public:
     explicit TSpriteTextureCache(QQuickWindow* window, bool allowEvict = true);
     ~TSpriteTextureCache();
 
-    /// The window's cache shared by its small renderers (slots, action buttons), dropped
-    /// with its scene graph. Eviction is off — holders may skip texture for idle keys.
-    static TSpriteTextureCache& shared(QQuickWindow* window);
-
     TSpriteTextureCache(const TSpriteTextureCache&) = delete;
     TSpriteTextureCache& operator=(const TSpriteTextureCache&) = delete;
 
-    /// Null while the sprite's sheet is still loading, or for a sprite that does not exist.
-    QSGTexture* texture(const SpriteKey& key);
-    /// True once texture has stored this key, including a sprite that does not exist.
-    /// False while the sheet is still loading (texture returned null without storing it).
-    bool contains(const SpriteKey& key) const { return m_textures.contains(key); }
-    /// Software-renderer highlight bake: sprite RGB replaced by the highlight colour
-    /// (CIP OpenGL TEffectWrapper path; unused when worldmap-highlight runs).
-    QSGTexture* highlighted(const SpriteKey& key, const QColor& color);
+    /// CIP TSpriteTextureCache get: the stored texture of `identifier` (`found`
+    /// false when none is stored). A stored null texture is a sprite that does not exist.
+    TSpriteTexture lookup(const SpriteIdentifier& identifier, bool& found);
+    /// CIP TSpriteTextureCache insert: stores `texture` (null: the sprite does not exist).
+    void insert(const SpriteIdentifier& identifier, const TSpriteTexture& texture);
+    /// True once a texture of this identifier is stored, including a sprite that does not exist.
+    bool contains(const SpriteIdentifier& identifier) const { return m_textures.contains(identifier); }
+    /// Software-renderer highlight bake (CIP OpenGL TEffectWrapper path; unused
+    /// when worldmap-highlight runs): the stored baked texture, null when none.
+    QSGTexture* bakedHighlight(const SpriteIdentifier& identifier, QRgb color) const;
+    /// Bakes `image` with every texel's RGB replaced by `color` and stores it.
+    QSGTexture* bakeHighlight(const SpriteIdentifier& identifier, const QColor& color, QImage image);
+    /// HD mode toggled since the last call: every texture was dropped.
+    bool syncHdMode(bool hd);
+    bool hdMode() const { return m_hdMode; }
+    QQuickWindow* window() const { return m_window; }
     qsizetype size() const { return m_textures.size(); }
     /// The caller asked for every texture it draws. Retired textures from
     /// clear/evict/remove are deleted after the next swap.
@@ -88,7 +89,9 @@ public:
     /// CIP onBeforeRenderNewFrame: next frame, eviction allowed again.
     void beginFrame();
     /// CIP REMOVE_SPRITEIDENTIFIER_FROM_CACHE: drop one key from either map.
-    void remove(const SpriteKey& key);
+    void remove(const SpriteIdentifier& identifier);
+    /// A texture that is not stored: deleted with the retired ones.
+    void release(QSGTexture* texture) { retire(texture); }
     /// CIP onSceneGraphInvalidated: drop every key.
     void removeAll();
     /// Drop every texture (HD mode toggle rebuilds with/without xBR4). Callers must
@@ -100,6 +103,7 @@ private:
     {
         /// Null for a sprite that does not exist; it is not looked up again.
         QSGTexture* texture = nullptr;
+        QRect rect;
         /// Frame it was last requested in.
         uint32_t frame = 0;
         uint32_t pixels = 0;
@@ -107,10 +111,7 @@ private:
         /// textures outside the atlas (its weak map).
         bool budgeted = false;
     };
-    QSGTexture* lookup(const SpriteKey& key, bool& found);
-    void insert(const SpriteKey& key, const Entry& entry);
     void evict(double share);
-    QImage raster(const SpriteKey& key, bool& loading) const;
     void retire(QSGTexture* texture);
     void flushRetired();
     void markSceneDirty() const;
@@ -118,7 +119,7 @@ private:
     QQuickWindow* m_window;
     struct BakedKey
     {
-        SpriteKey sprite;
+        SpriteIdentifier sprite;
         QRgb color = 0;
         bool operator==(const BakedKey&) const = default;
     };
@@ -126,7 +127,7 @@ private:
     {
         return qHash(key.sprite, seed ^ (static_cast<size_t>(key.color) * 0x9e3779b97f4a7c15ull));
     }
-    QHash<SpriteKey, Entry> m_textures;
+    QHash<SpriteIdentifier, Entry> m_textures;
     QHash<BakedKey, QSGTexture*> m_baked;
     QVector<QSGTexture*> m_retired;
     QVector<QSGTexture*> m_graveyard;

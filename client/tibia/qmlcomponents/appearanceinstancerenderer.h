@@ -94,7 +94,7 @@ protected:
 private:
     struct Sprite
     {
-        SpriteKey key;
+        SpriteIdentifier sprite;
         /// Bottom-right corner in world pixels.
         QPoint anchor;
         QSize size;

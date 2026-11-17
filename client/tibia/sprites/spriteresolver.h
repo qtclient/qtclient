@@ -34,6 +34,9 @@ public:
     /// A whole asset spritesheet as one sprite drawn at `scale`, not cached; null
     /// while it is not decompressed yet.
     virtual std::shared_ptr<TSprite> resolveAssetSpritesheet(const TSpritesheetID& spritesheetId, float scale) const;
+    /// CIP v12 for sprite infos (identifier kind 2): resolveSpriteInfo, marked as
+    /// a sprite of a resource. Null while a spritesheet is not decompressed yet.
+    std::shared_ptr<TSprite> resolveSpriteIdentifier(const appearances::TAppearanceInstanceSpriteInfo& info) const;
     /// CIP v13: the sprite an instance's sprite info draws, by its kind
     /// (spritesheet, masked, layered); null for other kinds and while a
     /// spritesheet is not decompressed yet.

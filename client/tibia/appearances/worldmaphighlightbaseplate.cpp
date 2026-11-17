@@ -9,14 +9,14 @@
 
 namespace tibia::appearances {
 
-SpriteKey TWorldmapHighlightBaseplateSpriteInfo::key() const
+std::shared_ptr<TAppearanceInstanceSpriteInfo> TWorldmapHighlightBaseplateSpriteInfo::clone() const
 {
-    return SpriteKey{ .highlightBaseplate = static_cast<int8_t>(m_frame) };
+    return std::make_shared<TWorldmapHighlightBaseplateSpriteInfo>(m_frame);
 }
 
-QImage TWorldmapHighlightBaseplateSpriteInfo::raster() const
+bool TWorldmapHighlightBaseplateSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
 {
-    return imageForFrame(m_frame);
+    return m_frame == static_cast<const TWorldmapHighlightBaseplateSpriteInfo&>(other).m_frame;
 }
 
 uint8_t TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(const qint64 millis)

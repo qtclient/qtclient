@@ -9,86 +9,6 @@
 
 namespace tibia::appearances {
 
-TCreatureMarkAppearanceInstanceSpriteInfo::TCreatureMarkAppearanceInstanceSpriteInfo(
-    const std::array<uint32_t, 3> colors)
-    : m_colors(colors)
-{
-}
-
-SpriteKey TCreatureMarkAppearanceInstanceSpriteInfo::key() const
-{
-    return SpriteKey{ .markColors = m_colors };
-}
-
-QImage TCreatureMarkAppearanceInstanceSpriteInfo::raster() const
-{
-    return imageForColors(m_colors);
-}
-
-QImage TCreatureMarkAppearanceInstanceSpriteInfo::imageForColors(const std::array<uint32_t, 3>& colors)
-{
-    // CIP : a field-sized image with one 2-pixel frame per colour.
-    constexpr int Size = 32;
-    QImage image(Size, Size, QImage::Format_RGBA8888_Premultiplied);
-    image.fill(Qt::transparent);
-    QPainter painter(&image);
-    QPen pen;
-    pen.setWidth(2);
-    pen.setJoinStyle(Qt::MiterJoin);
-    painter.setBrush(Qt::NoBrush);
-    int inset = 1;
-    int extent = Size;
-    for (const uint32_t color : colors) {
-        if (!color)
-            break;
-        extent -= 2;
-        pen.setColor(QColor::fromRgba(color));
-        painter.setPen(pen);
-        painter.drawRect(QRect(QPoint(inset, inset), QPoint(extent, extent)));
-        inset += 2;
-    }
-    return image;
-}
-
-TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(
-    std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite, const QRect& boundingBox)
-    : m_sprite(std::move(sprite))
-    , m_boundingBox(boundingBox)
-{
-}
-
-TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(const uint32_t spriteId)
-    : m_sprite(std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(sprites::TSpriteSystem::instance().spriteInfo(spriteId)))
-    , m_boundingBox(0, 0, 32, 32)
-{
-}
-
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TSpritesheetAppearanceInstanceSpriteInfo::clone() const
-{
-    return std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(m_sprite, m_boundingBox);
-}
-
-bool TSpritesheetAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
-{
-    return hasSameSprite(static_cast<const TSpritesheetAppearanceInstanceSpriteInfo&>(other));
-}
-
-bool TSpritesheetAppearanceInstanceSpriteInfo::hasSameSprite(const TSpritesheetAppearanceInstanceSpriteInfo& other) const
-{
-    return spriteId() == other.spriteId();
-}
-
-SpriteKey TSpritesheetAppearanceInstanceSpriteInfo::key() const
-{
-    return SpriteKey{ .spriteId = spriteId() };
-}
-
-QImage TSpritesheetAppearanceInstanceSpriteInfo::raster() const
-{
-    // Drawn via TSpriteTextureCache sheet decompress using key; no eager raster.
-    return {};
-}
-
 namespace {
 
 /// boost::hash_combine (64 bit): mixes `value` into `seed`.
@@ -107,6 +27,105 @@ uint32_t spriteIdOf(const std::shared_ptr<const sprites::TSpriteFromSpritesheetI
 
 } // namespace
 
+QSize spriteSizeOfIndex(const unsigned index)
+{
+    static constexpr std::array<QSize, 4> Sizes{ QSize(32, 32), QSize(32, 64), QSize(64, 32), QSize(64, 64) };
+    return index < Sizes.size() ? Sizes[index] : QSize(0, 0);
+}
+
+TCreatureMarkAppearanceInstanceSpriteInfo::TCreatureMarkAppearanceInstanceSpriteInfo(std::vector<QColor> colors)
+    : m_colors(std::move(colors))
+{
+}
+
+std::shared_ptr<TAppearanceInstanceSpriteInfo> TCreatureMarkAppearanceInstanceSpriteInfo::clone() const
+{
+    return std::make_shared<TCreatureMarkAppearanceInstanceSpriteInfo>(m_colors);
+}
+
+bool TCreatureMarkAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+{
+    return m_colors == static_cast<const TCreatureMarkAppearanceInstanceSpriteInfo&>(other).colors();
+}
+
+size_t TCreatureMarkAppearanceInstanceSpriteInfo::hash() const
+{
+    size_t seed = 0;
+    for (const QColor& color : m_colors)
+        seed = hashCombine(seed, color.rgb());
+    return seed;
+}
+
+QRect TCreatureMarkAppearanceInstanceSpriteInfo::boundingBox() const
+{
+    return QRect(QPoint(0, 0), spriteSize());
+}
+
+QSize TCreatureMarkAppearanceInstanceSpriteInfo::spriteSize() const
+{
+    return spriteSizeOfIndex(0);
+}
+
+QImage TCreatureMarkAppearanceInstanceSpriteInfo::imageForColors(const std::vector<QColor>& colors)
+{
+    // CIP : a field-sized image with one 2-pixel frame per colour.
+    constexpr int Size = 32;
+    QImage image(Size, Size, QImage::Format_RGBA8888_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    QPen pen;
+    pen.setWidth(2);
+    pen.setJoinStyle(Qt::MiterJoin);
+    painter.setBrush(Qt::NoBrush);
+    int inset = 1;
+    int extent = Size;
+    for (const QColor& color : colors) {
+        extent -= 2;
+        pen.setColor(color);
+        painter.setPen(pen);
+        painter.drawRect(QRect(QPoint(inset, inset), QPoint(extent, extent)));
+        inset += 2;
+    }
+    return image;
+}
+
+TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(
+    std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> sprite, const QRect& boundingBox)
+    : m_sprite(std::move(sprite))
+    , m_boundingBox(boundingBox)
+{
+}
+
+namespace {
+
+std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> spritesheetSprite(const uint32_t spriteId)
+{
+    return std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(sprites::TSpriteSystem::instance().spriteInfo(spriteId));
+}
+
+} // namespace
+
+TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteInfo(const uint32_t spriteId)
+    : m_sprite(spritesheetSprite(spriteId))
+    , m_boundingBox(QPoint(0, 0), m_sprite->size)
+{
+}
+
+std::shared_ptr<TAppearanceInstanceSpriteInfo> TSpritesheetAppearanceInstanceSpriteInfo::clone() const
+{
+    return std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(m_sprite, m_boundingBox);
+}
+
+bool TSpritesheetAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+{
+    return hasSameSprite(static_cast<const TSpritesheetAppearanceInstanceSpriteInfo&>(other));
+}
+
+bool TSpritesheetAppearanceInstanceSpriteInfo::hasSameSprite(const TSpritesheetAppearanceInstanceSpriteInfo& other) const
+{
+    return spriteId() == other.spriteId();
+}
+
 bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearanceInstanceSpriteInfoPtr& b)
 {
     if (!a || !b)
@@ -116,7 +135,6 @@ bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearance
 
 TOutfitColors::TOutfitColors(const uint8_t head, const uint8_t body, const uint8_t legs, const uint8_t feet)
     : colors{ Outfit::getColor(head), Outfit::getColor(body), Outfit::getColor(legs), Outfit::getColor(feet) }
-    , indices(head | body << 8 | legs << 16 | static_cast<uint32_t>(feet) << 24)
 {
     hash = colors[3].rgba() * 13 ^ colors[2].rgba() * 11 ^ colors[1].rgba() * 7 ^ colors[0].rgba();
 }
@@ -133,6 +151,15 @@ TMaskedAppearanceInstanceSpriteInfo::TMaskedAppearanceInstanceSpriteInfo(
     , m_mask(std::move(mask))
     , m_colors(colors)
     , m_boundingBox(boundingBox)
+{
+}
+
+TMaskedAppearanceInstanceSpriteInfo::TMaskedAppearanceInstanceSpriteInfo(const uint32_t spriteId, const uint32_t maskId,
+                                                                         const TOutfitColors& colors)
+    : m_sprite(spritesheetSprite(spriteId))
+    , m_mask(spritesheetSprite(maskId))
+    , m_colors(colors)
+    , m_boundingBox(QPoint(0, 0), m_sprite->size)
 {
 }
 
@@ -153,16 +180,6 @@ size_t TMaskedAppearanceInstanceSpriteInfo::hash() const
     size_t seed = hashCombine(0, spriteIdOf(m_sprite));
     seed = hashCombine(seed, spriteIdOf(m_mask));
     return hashCombine(seed, m_colors.hash);
-}
-
-SpriteKey TMaskedAppearanceInstanceSpriteInfo::key() const
-{
-    return SpriteKey{ .spriteId = spriteIdOf(m_sprite), .maskId = spriteIdOf(m_mask), .colors = m_colors.indices };
-}
-
-QImage TMaskedAppearanceInstanceSpriteInfo::raster() const
-{
-    return {};
 }
 
 TLayeredAppearanceInstanceSpriteInfo::TLayeredAppearanceInstanceSpriteInfo(std::vector<TAppearanceInstanceSpriteInfoPtr> layers,
@@ -202,24 +219,9 @@ QSize TLayeredAppearanceInstanceSpriteInfo::spriteSize() const
     return m_layers.front()->spriteSize();
 }
 
-SpriteKey TLayeredAppearanceInstanceSpriteInfo::key() const
+std::shared_ptr<TAppearanceInstanceSpriteInfo> TDummyAppearanceInstanceSpriteInfo::clone() const
 {
-    return m_layers.empty() || !m_layers.front() ? SpriteKey{} : m_layers.front()->key();
-}
-
-QImage TLayeredAppearanceInstanceSpriteInfo::raster() const
-{
-    return {};
-}
-
-SpriteKey TDummyAppearanceInstanceSpriteInfo::key() const
-{
-    return {};
-}
-
-QImage TDummyAppearanceInstanceSpriteInfo::raster() const
-{
-    return {};
+    return std::make_shared<TDummyAppearanceInstanceSpriteInfo>();
 }
 
 }

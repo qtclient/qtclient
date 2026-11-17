@@ -19,15 +19,18 @@ public:
     static constexpr int FrameSize = 32;
 
     explicit TWorldmapHighlightBaseplateSpriteInfo(uint8_t frame = 0)
-        : m_frame(static_cast<uint8_t>(frame % FrameCount))
+        : m_frame(static_cast<uint8_t>(frame & 7))
     {
     }
 
+    /// CIP v9 (v5 hashes it).
     uint8_t frame() const { return m_frame; }
+    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    size_t hash() const override { return m_frame; }
     EKind kind() const override { return EKind::HighlightBaseplate; }
-
-    SpriteKey key() const override;
-    QImage raster() const override;
+    QRect boundingBox() const override { return QRect(QPoint(0, 0), spriteSize()); }
+    QSize spriteSize() const override { return spriteSizeOfIndex(0); }
 
     /// CIP / v21: frame from wall-clock ms (`(t * k) & 7`).
     static uint8_t frameAtMillis(qint64 millis);

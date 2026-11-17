@@ -300,7 +300,7 @@ void clearSpriteCaches()
     const QWindowList windows = QGuiApplication::allWindows();
     for (QWindow* window : windows) {
         if (auto* quick = qobject_cast<QQuickWindow*>(window))
-            renderer::TSpriteTextureProviderManager::sharedCache(quick).clear();
+            renderer::TSpriteTextureProviderManager::sharedProvider(quick).cache().clear();
     }
 }
 
@@ -577,7 +577,7 @@ void publish(const TGameActionPtr& action)
         break;
     case A::RESOLVE_SPRITE:
         // CIP resolves a sprite id into the texture atlas. Without a window-bound
-        // SpriteKey here we acknowledge the action; sheets load on next draw.
+        // sprite identifier here we acknowledge the action; sheets load on next draw.
         qCInfo(lcGameActions) << "RESOLVE_SPRITE" << action->parameter;
         break;
     case A::SPRITE_RESOLVED:

@@ -106,6 +106,14 @@ QImage TSpriteResolver::composed(const QImage& bottom, const QImage& top)
     return result;
 }
 
+std::shared_ptr<TSprite> TSpriteResolver::resolveSpriteIdentifier(const appearances::TAppearanceInstanceSpriteInfo& info) const
+{
+    std::shared_ptr<TSprite> sprite = resolveSpriteInfo(info);
+    if (sprite)
+        sprite->setFromResource(true);
+    return sprite;
+}
+
 std::shared_ptr<TSprite> TSpriteResolver::resolveSpriteInfo(const appearances::TAppearanceInstanceSpriteInfo& info) const
 {
     using EKind = appearances::TAppearanceInstanceSpriteInfo::EKind;
