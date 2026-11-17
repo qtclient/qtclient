@@ -14,6 +14,7 @@
 (anonymous namespace)::TBossTrackerModel::v44	6841ec2c54cecf68	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::roleNames
 (anonymous namespace)::TBossTrackerModel::v53	c46a1c94780d1bad	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::data
 (anonymous namespace)::TBossesModel::v44	d101bb14a8142956	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryBossModel::roleNames
+(anonymous namespace)::TBossesModel::v53	24a11af1b77bf544	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryBossModel::data
 (anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v44	5100dea98ae710be	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::roleNames
 (anonymous namespace)::TCharacterTradeNotificationsAbstractListModel::v53	b4fd5d30ef641587	ported	trade/charactertrademodels.cpp:TCharacterTradeNotificationsAbstractListModel::data
 (anonymous namespace)::TCreatureOtherIconModel::v44	9b246f673fbd73f5	ported	worldmap/creaturehud.cpp:TCreatureOtherIconModel::roleNames
@@ -8001,6 +8002,7 @@ sub_4a3c01181d88	4a3c01181d88a137	ported	assets/assetcatalog.cpp:TAssetCatalog::
 sub_4a4f3b4295c3	4a4f3b4295c36452	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::setStateFilter
 sub_4a506ea54402	4a506ea54402ad12	ported	gamewindow/housesinfodialogcontroller.cpp:dateMulti
 sub_4a68811bf099	4a68811bf099e9bf	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
+sub_4a6df87758f5	4a6df87758f54b55	ported	cyclopedia/bosstiarystorage.cpp:TBosstiaryStorage::killsForStage
 sub_4a88f7c99b1a	4a88f7c99b1a8e7a	inlined	gamewindow/actionbarcontroller.cpp:TActionBarController::onHotkeyOptionsChanged
 sub_4a8c42d3d14e#7	4a8c42d3d14ec1a6	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_4a9b20c2cd71	4a9b20c2cd71201f	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::onStoreButtonClicked
@@ -10673,6 +10675,7 @@ sub_8ed4bd584347#3	8ed4bd584347a230	ported	gamewindow/skillswidgetcontroller.cpp
 sub_8edb9eaba86b#2	8edb9eaba86b0437	skip	library: Qt/std container template code
 sub_8edc90fbb172	8edc90fbb17237cb	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_8edd50f3d0df	8edd50f3d0df6d67	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::~TContextMenuController
+sub_8ee838bd84b9	8ee838bd84b9e773	ported	cyclopedia/bosstiarystorage.cpp:categoryIndex
 sub_8eeed222eb97	8eeed222eb97ddbf	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::TFriendsAccountSearchStorage
 sub_8eeed222eb97#2	8eeed222eb97ddbf	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::TFriendsAccountSearchStorage
 sub_8f028080de4e	8f028080de4e824e	skip	generated: moc property getter, provided by the generated cip base
