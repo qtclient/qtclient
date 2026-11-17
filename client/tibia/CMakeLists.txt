@@ -582,7 +582,7 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
     minimap/minimapmanager.cpp minimap/minimapmanager.h
     minimap/minimapmarkerstorage.cpp minimap/minimapmarkerstorage.h
-    minimap/minimapmarkertypes.h
+    minimap/minimapmarker.cpp minimap/minimapmarker.h
     minimap/minimaprenderprovider.cpp minimap/minimaprenderprovider.h
     minimap/minimaptile.cpp minimap/minimaptile.h
     minimap/minimaptilestorage.cpp minimap/minimaptilestorage.h

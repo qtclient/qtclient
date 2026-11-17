@@ -2862,6 +2862,8 @@ market::TMarketStorage::~TMarketStorage	097457dc45e86dd8	skip	generated: compile
 market::TMarketStorage::~TMarketStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 minimap::TMinimapDiskIO::~TMinimapDiskIO	7382774637cec697	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapDiskIO::~TMinimapDiskIO_deleting	7382774637cec697	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
+minimap::TMinimapDiskIOAsync::v14	995f27fafa3c151c	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible
+minimap::TMinimapDiskIOAsync::v15	e38333141a856a48	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk
 minimap::TMinimapDiskIOAsync::~TMinimapDiskIOAsync_deleting	363c0b134e8842c1	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapDiskIOMemoryOnly::v14	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapDiskIOMemoryOnly::v15	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
@@ -2878,6 +2880,7 @@ minimap::TMinimapImagesChache::~TMinimapImagesChache_deleting	95905a4d935bdf31	s
 minimap::TMinimapManager::~TMinimapManager_deleting	1e50e046fb393a55	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerController::~TMinimapMarkerController	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerController::~TMinimapMarkerController_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
+minimap::TMinimapMarkerGameActionHandler::handleGameAction	29fc469f984947b4	inlined	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::bindActions
 minimap::TMinimapMarkerGameActionHandler::~TMinimapMarkerGameActionHandler	b8fa1735222f472e	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapMarkerGameActionHandler::~TMinimapMarkerGameActionHandler_deleting	6e02f94259d3246a	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerOverlayController::update	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
@@ -2886,6 +2889,15 @@ minimap::TMinimapMarkerOverlayController::~TMinimapMarkerOverlayController_delet
 minimap::TMinimapMarkerQmlRenderInfo::~TMinimapMarkerQmlRenderInfo_deleting	619aa1845adbea80	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapMarkerRenderProvider::v0	7da6e7afa666b74a	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapMarkerRenderProvider::v1	ecfef4ab08ec57af	skip	generated: same code as the skipped family: compiler-generated destructor pair
+minimap::TMinimapMarkerStorage::v12	60cdf5a3421fbd3d	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::markerAt
+minimap::TMinimapMarkerStorage::v13	bb537cc6982df738	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::addMarker
+minimap::TMinimapMarkerStorage::v14	9c1b66e0860c33a3	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::removeMarker
+minimap::TMinimapMarkerStorage::v15	35982ab244ebd44a	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::markers
+minimap::TMinimapMarkerStorage::v16	e54c57e8022c1f84	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::markers
+minimap::TMinimapMarkerStorage::v17	7abe0fd3a86ac746	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::saveMarkers
+minimap::TMinimapMarkerStorage::v18	11cbc82f1ebca5f6	ported	minimap/minimapmarkerstorage.h:isDirty
+minimap::TMinimapMarkerStorage::v19	f3bc49943c4d8310	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::onDelayedCallback
+minimap::TMinimapMarkerStorage::v20	6440a038c2eecb89	ported	minimap/minimapmarkerstorage.cpp:TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile
 minimap::TMinimapMarkerStorage::~TMinimapMarkerStorage	8ce292a1ecc0653d	skip	generated: same code as the skipped family: compiler-generated destructor pair
 minimap::TMinimapMarkerStorage::~TMinimapMarkerStorage_deleting	1531bc616668060c	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapProtocolMessageHandler::~TMinimapProtocolMessageHandler	234d7c603a625d96	skip	generated: same code as the skipped family: compiler-generated destructor pair
@@ -4071,10 +4083,12 @@ sub_032106eb27f5	032106eb27f513e4	inlined	creatures/creaturestorage.cpp:TCreatur
 sub_03357197e0f5	03357197e0f5d47c	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onLootAnalyserWidgetClosed
 sub_035a53eea2f6	035a53eea2f6ae9c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetHirelingName
 sub_036fc29b76c1	036fc29b76c1ab08	ported	creatures/creaturestorage.h:TCreature::hasInspectionState
+sub_038ac0b6e46b#2	038ac0b6e46b5fbe	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TMinimapMarker>> emplace / erase / tree destroy
 sub_038ac0b6e46b#4	038ac0b6e46b5fbe	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TWorldMapField>> emplace / erase instantiations
 sub_03a51ce157dd#2	03a51ce157dd1197	skip	generated: moc property getter (generated in cip_gen)
 sub_03a51ce157dd#3	03a51ce157dd1197	skip	generated: generated property getter (cip_gen)
 sub_03bb3b9ed3cd	03bb3b9ed3cd715f	skip	library: std::map / std::deque / std::vector template instantiation
+sub_03c1b80a74a1	03c1b80a74a10aa1	inlined	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk
 sub_03c437cae24e	03c437cae24e8a76	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::page
 sub_03cee8ccceb7	03cee8ccceb708dc	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::insertEntry
 sub_03d1e9896104	03d1e98961045732	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
@@ -4639,6 +4653,7 @@ sub_12390e1cc87f	12390e1cc87f895c	inlined	gamewindow/battlelistcontroller.cpp:TB
 sub_1246837a5f1d	1246837a5f1d1777	ported	config/sidebaroptions.cpp:TSidebarOptions::TSidebarOptions
 sub_124b49744803	124b49744803441f	skip	library: std::unordered_map template
 sub_124b49744803#2	124b49744803441f	skip	library: std::unordered_map template
+sub_1264a3434d8d	1264a3434d8d2c94	inlined	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible
 sub_12680f4ffaed#2	12680f4ffaedf916	inlined	protocol::TProtobufServerMessageTranslator::v143
 sub_129bc71f0af9	129bc71f0af93d95	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::requestConfirmConfiguration
 sub_12abd83722e1	12abd83722e12c03	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
@@ -5289,6 +5304,7 @@ sub_285b5a8fc90e#16	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTra
 sub_285b5a8fc90e#17	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v140
 sub_285b5a8fc90e#18	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v140
 sub_285b5a8fc90e#19	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v143
+sub_285b5a8fc90e#2	285b5a8fc90e3585	skip	generated: protobuf RepeatedPtrField<MinimapMarker>::Add / MinimapMarker arena constructor
 sub_285b5a8fc90e#20	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_285b5a8fc90e#21	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v195
 sub_285b5a8fc90e#22	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v201
@@ -6819,6 +6835,7 @@ sub_5d59e0616af6	5d59e0616af67663	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_5d5f25b3a9b9	5d5f25b3a9b96dff	ported	config/sidebaroptions.cpp:serializeSkills
 sub_5d728ed357a4	5d728ed357a4e0ec	ported	appearances/appearanceinstance.cpp:TCumulativeObjectAppearanceInstance::setCount
 sub_5d9d998e6ae3	5d9d998e6ae30628	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::onDragChanged
+sub_5d9f3b7b2097	5d9f3b7b20977e5b	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TMinimapMarker>> emplace / erase / tree destroy
 sub_5dc89d282591	5dc89d28259137ee	ported	skillwheel/skillwheeldata.cpp:revelationPoints
 sub_5dd80a9a9e7a	5dd80a9a9e7aeb94	inlined	protocol::TProtobufServerMessageTranslator::v26
 sub_5de431fe2d65	5de431fe2d65565b	ported	gamewindow/chatcontroller.cpp:TChatChannelController::Row::selectAnchorTo
@@ -7054,6 +7071,7 @@ sub_6659aa791177	6659aa7911775994	ported	gamewindow/depotsearchwidgetcontroller.
 sub_666842634d2d	666842634d2d59ab	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendAddBuddy
 sub_66780dbeb3c9	66780dbeb3c9e40d	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogController
 sub_66788bcaaac5	66788bcaaac5a25e	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
+sub_66a0063a0a6a	66a0063a0a6ab1fe	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::serializeMinimapMarkerFileContent
 sub_66a70bf42dfc	66a70bf42dfc3ea4	skip	data: translation-unit static initializer (misattributed)
 sub_66d0d69016d9#2	66d0d69016d95d5a	skip	generated: moc property getter (generated in cip_gen)
 sub_66d0d69016d9#6	66d0d69016d95d5a	inlined	gamewindow/marketcontroller.cpp:detailsText
@@ -7076,6 +7094,7 @@ sub_6784be96c631#10	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTra
 sub_6784be96c631#12	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v201
 sub_67908f05fda6	67908f05fda66535	skip	library: protobuf runtime: ExtensionSet merge/flat storage, arena allocation and absl check logging reached from message copies
 sub_6799962b2b2d	6799962b2b2d3482	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::informationAtWorldMapCoordinateHasChanged
+sub_67a6f450484b	67a6f450484b8043	tested	minimap/minimapmarker.cpp:isObsoleteMarker	test=tests/client/minimapmarker_test.cpp
 sub_67a7fc0249a6	67a7fc0249a6744c	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_67aebdb4db89	67aebdb4db8950d7	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onConfirmationDialogRequested
 sub_67b39dbc8134	67b39dbc8134ad4d	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
@@ -7450,6 +7469,7 @@ sub_78b8d939159d	78b8d939159d0cad	ported	gamewindow/preydialogcontroller.cpp:TPr
 sub_78bdf8719e54#2	78bdf8719e54b49e	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_78bfa03c21d2#2	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v171
 sub_78bfa03c21d2#4	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_78c6bb5d44ea	78c6bb5d44ea8f71	skip	generated: QMetaType registration of shared_ptr<MinimapMarkerFileContent> / MinimapMarkerFileContent
 sub_78eb2d342ee0#3	78eb2d342ee0de6b	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::buyOffer
 sub_78ffc6dab469	78ffc6dab469e9a5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopediaRace
 sub_79014107a84b	79014107a84b5e3c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoPath
@@ -7508,6 +7528,7 @@ sub_7a6f5093038b#161	7a6f5093038bcf22	skip	generated: moc-generated signal emitt
 sub_7a6f5093038b#165	7a6f5093038bcf22	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_7a6f5093038b#187	7a6f5093038bcf22	inlined	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter
 sub_7a6f5093038b#192	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
+sub_7a6f5093038b#195	7a6f5093038bcf22	skip	generated: moc signal emitters (requestDelayedCallback, markersChanged)
 sub_7a6f5093038b#2	7a6f5093038bcf22	skip	generated: moc signal bodies paginationDataChanged / sourceModelChanged
 sub_7a6f5093038b#200	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#201	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
@@ -7568,6 +7589,8 @@ sub_7b77af13c9d5	7b77af13c9d5edd8	inlined	analysers/gainwastestorage.cpp:TGainWa
 sub_7b923443f03b	7b923443f03b0635	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_7b9f0a835b57	7b9f0a835b570b5b	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::getTooltipForDay
 sub_7bb7a64f75f9	7bb7a64f75f99a71	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseSuccessDialogController::TStorePurchaseSuccessDialogController
+sub_7bd29ce4177c	7bd29ce4177cec9b	skip	generated: QMetaType registration of shared_ptr<MinimapMarkerFileContent> / MinimapMarkerFileContent
+sub_7bd29ce4177c#2	7bd29ce4177cec9b	skip	generated: QMetaType registration of shared_ptr<MinimapMarkerFileContent> / MinimapMarkerFileContent
 sub_7be100c54991	7be100c549912679	ported	gamewindow/gamewindowciptypes.cpp:clearInspectList
 sub_7beb2116b405	7beb2116b4053de2	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::lootValueString
 sub_7bf081bb7fa9	7bf081bb7fa9c96a	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::refresh
@@ -7599,6 +7622,7 @@ sub_7d1e47349400	7d1e47349400f6f1	inlined	creatures/creaturestorage.cpp:TCreatur
 sub_7d29f7c67352	7d29f7c67352456a	skip	library: same code as the skipped family: std::vector growth/length_error (library)
 sub_7d29f7c67352#11	7d29f7c67352456a	skip	library: std::vector growth/length_error (library)
 sub_7d29f7c67352#15	7d29f7c67352456a	skip	library: std::vector growth / split buffer (library)
+sub_7d29f7c67352#20	7d29f7c67352456a	skip	library: std::vector<shared_ptr<TMinimapMarker>> push_back reallocation
 sub_7d29f7c67352#22	7d29f7c67352456a	inlined	tutorial/sessiondumphints.cpp:TSessiondumpHints::addHint
 sub_7d29f7c67352#4	7d29f7c67352456a	skip	library: libc++ vector/deque internals (library)
 sub_7d29f7c67352#5	7d29f7c67352456a	skip	library: libc++ vector insert / split buffer instantiations
@@ -7652,6 +7676,7 @@ sub_7f7adeab4a82#6	7f7adeab4a82cc3c	skip	generated: protobuf-generated message c
 sub_7f7adeab4a82#8	7f7adeab4a82cc3c	inlined	protocol::TProtobufServerMessageTranslator::v113
 sub_7f8bf135665d	7f8bf135665d070b	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_7f95c61d2338	7f95c61d2338accd	skip	generated: compiler-generated destructor (minimap marker value)
+sub_7f95c61d2338#2	7f95c61d2338accd	skip	generated: TMinimapMarker destructor / vector destroy of the obsolete marker list
 sub_7fa238922cdb	7fa238922cdbb1d0	skip	library: std::vector growth / copy / length_error (library)
 sub_7fb1a8945be4	7fb1a8945be4b489	ported	gamewindow/imbuingdialogcontroller.cpp:ownedAstralSources
 sub_7fcd36b78c7a	7fcd36b78c7acab4	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setFromParameters
@@ -7766,6 +7791,7 @@ sub_835525f18506	835525f185068637	ported	gamewindow/statusbarcontroller.cpp:TSta
 sub_835de2e6cd81	835de2e6cd81cdd5	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_837932b7e775#4	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v88
 sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_837932b7e775#8	837932b7e775c89f	skip	generated: protobuf RepeatedPtrField<MinimapMarker>::Add / MinimapMarker arena constructor
 sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 sub_8382c73d673c	8382c73d673c68cc	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbuementFilter
 sub_8399d7350593	8399d7350593422f	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModel::lessThan
@@ -7986,6 +8012,7 @@ sub_88652aa95093#5	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTran
 sub_88701261813d	88701261813de7a8	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_88701261813d#2	88701261813de7a8	inlined	config/sidebaroptions.cpp:parseImbuementTracker
 sub_88aa3c1e14ae	88aa3c1e14ae9785	skip	library: std container template instance
+sub_88aff70e3795	88aff70e37957dc8	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TMinimapMarker>> emplace / erase / tree destroy
 sub_88aff70e3795#2	88aff70e37957dc8	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TWorldMapField>> emplace / erase instantiations
 sub_88c5a608098f	88c5a608098f0d84	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::openPremiumStore
 sub_88cf87176d6c	88cf87176d6c90bc	ported	gamewindow/characterinfodialogcontroller.cpp:TKillQmlData::TKillQmlData
@@ -8119,6 +8146,7 @@ sub_8d306255397c#26	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTra
 sub_8d306255397c#27	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v120
 sub_8d306255397c#28	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v121
 sub_8d306255397c#29	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_8d306255397c#3	8d306255397c3dbe	skip	generated: protobuf RepeatedPtrField<MinimapMarker>::Add / MinimapMarker arena constructor
 sub_8d306255397c#30	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v122
 sub_8d306255397c#31	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v122
 sub_8d306255397c#32	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -9031,6 +9059,7 @@ sub_aa1661145acf	aa1661145acfaaf6	skip	library: std::set/vector<pair<string,set>
 sub_aa46cbb940af#2	aa46cbb940af0423	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_aa612d92f679	aa612d92f679d3d1	skip	generated: compiler-generated destructor body
 sub_aa882ee6585c	aa882ee6585c93eb	ported	game/skillswidgetentrydata.cpp:specialMagicLevelInformation
+sub_aa8fdd70fc64	aa8fdd70fc649232	skip	generated: TMinimapMarker destructor / vector destroy of the obsolete marker list
 sub_aa986f2d2cee	aa986f2d2cee0f37	ported	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage
 sub_aa9ca53ba037	aa9ca53ba037a8ea	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
 sub_aa9cc9f22ef0	aa9cc9f22ef0a453	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedFilterTagIndex
@@ -9178,6 +9207,7 @@ sub_b14ee3249cb0	b14ee3249cb0f8b4	inlined	gamewindow/iteminfodialogcontroller.cp
 sub_b15087ae3d2f	b15087ae3d2f6ba5	inlined	sub_7ce2c2eb96cb
 sub_b176b67f5b83	b176b67f5b83ca80	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::setCategory
 sub_b195a48d07a4	b195a48d07a4a081	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::changeFriendGroup
+sub_b1989e44dc3e	b1989e44dc3e3593	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::deserializeMinimapMarkerFileContent
 sub_b1a6cace7306	b1a6cace7306bfb1	skip	generated: compiler-generated destructor pair
 sub_b1ace6a52d8f	b1ace6a52d8fe0ff	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::TQuestLogController
 sub_b1b32ae7a4ac	b1b32ae7a4ac5b48	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::first	test=tests/client/jsonvalidator_test.cpp
@@ -11228,6 +11258,7 @@ sub_f23eb3024ce5#142	f23eb3024ce596b3	skip	generated: moc-generated signal emitt
 sub_f23eb3024ce5#144	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#145	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#162	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
+sub_f23eb3024ce5#165	f23eb3024ce596b3	skip	generated: moc signal emitters (requestDelayedCallback, markersChanged)
 sub_f23eb3024ce5#169	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#17	f23eb3024ce596b3	skip	generated: moc signal emitter
 sub_f23eb3024ce5#170	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
@@ -11343,6 +11374,7 @@ sub_f5b999c169aa	f5b999c169aa3cc8	skip	library: std::vector<bool>/vector<int> re
 sub_f5e5ccfc9f03	f5e5ccfc9f03ccb3	ported	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_f5e6087b4b3f	f5e6087b4b3fad9b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_f5e73db6d503	f5e73db6d503d854	ported	config/sidebaroptions.cpp:parseDepotSearch
+sub_f611e75d51fc	f611e75d51fcd654	tested	minimap/minimapmarker.cpp:fileContentFromMarkers	test=tests/client/minimapmarker_test.cpp
 sub_f6657f3648f3	f6657f3648f3878c	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::hideDialogTab
 sub_f68144bd11b2	f68144bd11b263ac	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRequestStoreCategories
 sub_f6853eb6e19b	f6853eb6e19bcc27	tested	tutorial/sessiondumphintpublishgameaction.cpp:TSessiondumpHintPublishGameAction::TSessiondumpHintPublishGameAction	test=tests/client/sessiondumphints_test.cpp
@@ -11387,6 +11419,7 @@ sub_f7d489716feb	f7d489716feb843e	skip	library: std container internals (map/vec
 sub_f7e7763c3800	f7e7763c38008d65	skip	library: QMap/QVariant template instantiation
 sub_f7e7763c3800#2	f7e7763c38008d65	skip	library: QMap<QUrl, QVariant> template code
 sub_f7e7763c3800#3	f7e7763c38008d65	skip	library: QMap/QList template instantiations
+sub_f7e7e11e7c11	f7e7e11e7c117f18	tested	minimap/minimapmarker.cpp:markersFromFileContent	test=tests/client/minimapmarker_test.cpp
 sub_f7ec8decdf22#2	f7ec8decdf220357	skip	library: libc++ std::vector instantiation
 sub_f7ef8179701a	f7ef8179701a376f	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_f81385a1c2d4	f81385a1c2d44257	inlined	animation/phaseanimator.cpp:TAnimator::update

@@ -196,3 +196,12 @@ if(TARGET cip_messages)
     )
     target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
 endif()
+
+# CIP minimap marker file (minimapmarkers.bin) conversions.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_minimapmarker_tests
+        minimapmarker_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/minimap/minimapmarker.cpp
+    )
+    target_link_libraries(client_minimapmarker_tests PRIVATE cip_messages)
+endif()

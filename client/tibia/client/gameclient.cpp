@@ -970,10 +970,8 @@ void TGameClient::onWorldEntered()
     std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
     if (defaultMinimapPath.empty())
         defaultMinimapPath = tibia::files::data().getRealPath(assets + "minimap");
-    const std::string markersPath = tibia::files::data().getRealPath(assets + "minimap-markers.json");
     m_minimap = std::make_unique<minimap::TMinimapManager>(
-        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
-        markersPath.empty() ? QString() : QString::fromStdString(markersPath));
+        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath));
     // The map handler keeps the minimap's floor and fields current.
     m_minimap->setProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
