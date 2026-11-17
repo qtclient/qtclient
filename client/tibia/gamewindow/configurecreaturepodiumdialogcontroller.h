@@ -23,19 +23,19 @@ class TBossSkinModel final : public cip::TBossSkinModel
 {
     Q_OBJECT
 public:
+    /// CIP's role ids (0x101..0x10b).
     enum ERole {
         OutfitIDRole = Qt::UserRole + 1,
         OutfitNameRole,
+        OutfitTypeRole,
         FirstAddOnRole,
         SecondAddOnRole,
-        OutfitTypeRole,
-        OtherGenderOutfitIDRole,
-        RaceRole,
         HeadColorRole,
         TorsoColorRole,
         LegsColorRole,
         DetailColorRole,
         IsObjectOutfitRole,
+        RaceRole,
     };
 
     struct Entry

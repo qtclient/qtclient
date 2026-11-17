@@ -9,6 +9,8 @@
 (anonymous namespace)::TAssignableBossModel::v53	ecbb5e6181105921	ported	gamewindow/assignablebossmodels.cpp:TAssignableBossModel::data
 (anonymous namespace)::TBlacklistModel::v44	9d2c4c91150e3161	ported	friends/friendlistmodels.cpp:TBlacklistModel::roleNames
 (anonymous namespace)::TBlacklistModel::v53	5d208b256d2fb7ec	ported	friends/friendlistmodels.cpp:TBlacklistModel::itemData
+(anonymous namespace)::TBossSkinModel::v44	ba6c4ac442907e98	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TBossSkinModel::roleNames
+(anonymous namespace)::TBossSkinModel::v53	6e333a14b276c2ba	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TBossSkinModel::data
 (anonymous namespace)::TBossTrackerModel::v44	6841ec2c54cecf68	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::roleNames
 (anonymous namespace)::TBossTrackerModel::v53	c46a1c94780d1bad	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerListModel::data
 (anonymous namespace)::TBossesModel::v44	d101bb14a8142956	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryBossModel::roleNames
