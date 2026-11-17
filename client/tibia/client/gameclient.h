@@ -48,6 +48,7 @@ class TCrashReportSender;
 }
 namespace tibia {
 namespace game {
+class TGameActionRouter;
 class TOutfitDialogStorage;
 class TGameserverGameSession;
 class TSessiondumpGameSession;
@@ -221,6 +222,10 @@ public:
     config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions.get(); }
     /// The character's outfit presets.
     game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
+    /// CIP TGameClientBase's game action router: the game window's controllers
+    /// publish into its internal router and its handlers listen to it. Throws
+    /// std::logic_error before it exists.
+    std::shared_ptr<game::TGameActionRouter> gameActionRouter() const;
     /// Null until the game window exists.
     config::TCharacterConfigurationManager* characterConfigurationManager() const { return m_characterConfigurationManager.get(); }
     /// The session's minimap; null outside the world.
@@ -342,6 +347,7 @@ private:
     std::unique_ptr<config::TActionBarOptions> m_actionBarOptions;
     std::unique_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
     std::unique_ptr<config::TCharacterConfigurationManager> m_characterConfigurationManager;
+    std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
     /// Queue connections of the static protocol ingresses (reconnected per session).
     std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.

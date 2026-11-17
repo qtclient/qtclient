@@ -11,6 +11,7 @@
 #include "container/containerciptypes.h"
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
+#include "game/gameactionrouter.h"
 #include "game/gameciptypes.h"
 #include "trade/tradeciptypes.h"
 #include "teamfinder/teamfinderciptypes.h"

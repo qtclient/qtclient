@@ -162,13 +162,6 @@ public:
     TExperienceCalculator() = default;
 };
 
-class TGameActionRouter final : public cip::tibia::game::TGameActionRouter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TGameActionRouter::TGameActionRouter;
-};
-
 class TGameEventProtocolMessageHandler final : public cip::tibia::game::TGameEventProtocolMessageHandler
 {
     Q_OBJECT
@@ -223,13 +216,6 @@ public:
 class TGameserverGameSessionMetaInfo final : public ::tibia::CipTyped {
 public:
     TGameserverGameSessionMetaInfo() = default;
-};
-
-class TInternalGameActionRouter final : public cip::tibia::game::TInternalGameActionRouter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TInternalGameActionRouter::TInternalGameActionRouter;
 };
 
 /// The character's outfit presets (character configuration "outfitPresets", qtclient's

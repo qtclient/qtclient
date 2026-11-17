@@ -4,13 +4,24 @@
 
 #include <functional>
 
+namespace tibia::game {
+class TInternalGameActionRouter;
+}
+
 namespace tibia {
 namespace input {
 
-/// Runs an action on the game (CIP: publishing to the per-domain
-/// TGameActionHandlers). SMART_CLICK runs its inner action. Actions whose
-/// dialogs and flows are not ported yet do nothing.
-void publish(const TGameActionPtr& action);
+/// qtclient adapter for publishers without a publishGameAction signal: hands
+/// the action to the game client's router (CIP: a controller's
+/// publishGameAction connected to TInternalGameActionRouter::
+/// handleGameActionInternal); without a router it is handled at once.
+void publish(const IGameActionPtr& action);
+/// The router publish() hands actions to; null handles them at once.
+void setGameActionRouter(game::TInternalGameActionRouter* router);
+/// The handling of the actions whose CIP handlers are not connected to the
+/// router yet (registered action handlers and listeners, then built-in cases).
+/// Connected to the router's publishGameActionInternal.
+void handleUnportedGameAction(const IGameActionPtr& action);
 
 /// Receives the minimap actions (93-101; CIP: TMinimapController's handler).
 /// Null drops them.

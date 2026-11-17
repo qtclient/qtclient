@@ -941,7 +941,6 @@ void ownProductSurface(QObject* parent)
         auto* handler = new TGameProtocolMessageHandler(parent);
         TGameProtocolMessageHandler::setLiveInstance(handler);
     }
-    new TInternalGameActionRouter(parent);
     new TPassiveAbilityInfoStorage(parent);
     new TPlayerGameActionHandler(parent);
     TPlayerProtocolMessageHandler::setLiveInstance(new TPlayerProtocolMessageHandler(parent));

@@ -1,4 +1,7 @@
 #include "gameclient.h"
+#include "game/gameactionrouter.h"
+#include "input/gameactionhandlers.h"
+#include <stdexcept>
 
 #include "config/actionbaroptions.h"
 #include "config/characterconfigurationmanager.h"
@@ -248,6 +251,12 @@ TGameClient::TGameClient(QObject* parent)
     , m_sessiondumpCatalogLoader(this)
     , m_sessiondumpPlayer(this)
 {
+    m_pGameActionRouter = std::make_shared<game::TGameActionRouter>();
+    // qtclient: actions published through input::publish and the handlers not
+    // connected to the router yet.
+    input::setGameActionRouter(m_pGameActionRouter->internalRouter());
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
+            [](const input::IGameActionPtr& action) { input::handleUnportedGameAction(action); });
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
@@ -383,6 +392,14 @@ TGameClient::~TGameClient()
     input::setActionHandler(input::EGameAction::CHANGE_CHARACTER, nullptr);
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
+    input::setGameActionRouter(nullptr);
+}
+
+std::shared_ptr<game::TGameActionRouter> TGameClient::gameActionRouter() const
+{
+    if (!m_pGameActionRouter)
+        throw std::logic_error("m_pGameActionRouter was not initialized yet");
+    return m_pGameActionRouter;
 }
 
 bool TGameClient::start(const QString& argv0, const QString& workDir, const Options& options)

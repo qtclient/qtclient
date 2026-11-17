@@ -1,6 +1,7 @@
 #include "game/objectreference.h"
 #include <optional>
 #include "gameactionhandlers.h"
+#include "game/gameactionrouter.h"
 
 #include "app/clientoptions.h"
 #include "appearances/appearanceinstance.h"
@@ -306,8 +307,28 @@ void clearSpriteCaches()
 
 }
 
-void publish(const TGameActionPtr& action)
+namespace {
+game::TInternalGameActionRouter* gameActionRouter = nullptr;
+}
+
+void setGameActionRouter(game::TInternalGameActionRouter* router)
 {
+    gameActionRouter = router;
+}
+
+void publish(const IGameActionPtr& action)
+{
+    if (!action)
+        return;
+    if (gameActionRouter)
+        gameActionRouter->handleGameActionInternal(action);
+    else
+        handleUnportedGameAction(action);
+}
+
+void handleUnportedGameAction(const IGameActionPtr& pGameAction)
+{
+    const TGameActionPtr action = std::dynamic_pointer_cast<const TGameAction>(pGameAction);
     if (!action)
         return;
     // Clipboard COPY_* / REQUEST_COPY_* are owned by TClipboardGameActionHandler.

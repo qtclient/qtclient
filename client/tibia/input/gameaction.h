@@ -20,16 +20,46 @@ namespace input {
 
 using EGameAction = cip::tibia::input::EGameAction;
 
+/// One thing the player can do (CIP: input::IGameAction, the interface of every
+/// input::TGameAction* class). Actions travel as shared pointers from the
+/// controllers' publishGameAction signals through the game action router to
+/// every handler's handleGameAction slot; a handler checks gameActionType()
+/// and reads the class of that type.
+class IGameAction
+{
+public:
+    virtual ~IGameAction() = default;
+    /// CIP v0: the action's EGameAction.
+    virtual EGameAction gameActionType() const = 0;
+    /// CIP v3: the keyboard shortcut handler still runs this action while its
+    /// shortcuts are restricted (only TGameActionTakeManualScreenshot).
+    virtual bool isAllowedWhileShortcutsAreRestricted() const { return false; }
+};
+using IGameActionPtr = std::shared_ptr<const IGameAction>;
+
+/// The action as `T` when it is one (CIP: the handlers' static casts after the
+/// type check); null otherwise.
+template<typename T>
+const T* gameActionAs(const IGameAction* action)
+{
+    return dynamic_cast<const T*>(action);
+}
+template<typename T>
+const T* gameActionAs(const IGameActionPtr& action)
+{
+    return dynamic_cast<const T*>(action.get());
+}
+
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<TGameActionPtr>;
 
-/// One thing the player can do (CIP: the input::TGameAction* classes). Each
-/// type uses the fields its CIP class carries. Typed subclasses are data
-/// carriers constructed at the provider / makeAction sites.
-struct TGameAction
+/// qtclient's field carrier for the actions whose CIP classes are not ported
+/// yet: every type uses the subset of fields its CIP class carries. Ported
+/// classes derive from IGameAction directly and carry only their own fields.
+struct TGameAction : public IGameAction
 {
-    virtual ~TGameAction() = default;
+    EGameAction gameActionType() const override { return type; }
 
     EGameAction type = EGameAction::UNKNOWN;
     /// Object actions: world-map / inventory field and stack position

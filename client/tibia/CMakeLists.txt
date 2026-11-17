@@ -394,6 +394,7 @@ if(TIBIA_WITH_GAMECORE)
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h
     app/portalurls.cpp app/portalurls.h
+    game/gameactionrouter.cpp game/gameactionrouter.h
     game/gameciptypes.cpp game/gameciptypes.h
     game/playerdata.cpp game/playerdata.h
     game/playerskillstats.cpp game/playerskillstats.h
