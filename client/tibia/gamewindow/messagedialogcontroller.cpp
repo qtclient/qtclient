@@ -6,10 +6,40 @@ namespace tibia::gamewindow {
 
 TMessageDialogButton::TMessageDialogButton(const QString& label, const EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent)
     : cip::tibia::gamewindow::TMessageDialogButton(parent)
-    , m_key(key)
+    , m_keys{ key }
 {
     m_label = label;
     m_identifier = identifier;
+}
+
+TMessageDialogButton::TMessageDialogButton(const QString& label, const EMessageDialogButtonIdentifier identifier, const int keys, QObject* parent)
+    : cip::tibia::gamewindow::TMessageDialogButton(parent)
+{
+    m_label = label;
+    m_identifier = identifier;
+    if (keys & ReturnKey)
+        m_keys << QKeySequence(QStringLiteral("Return")) << QKeySequence(QStringLiteral("Enter"));
+    if (keys & EscapeKey)
+        m_keys << QKeySequence(QStringLiteral("Esc"));
+}
+
+QList<TMessageDialogButton*> okDialogButtons()
+{
+    return { new TMessageDialogButton(qtTrId("ok"), TMessageDialogButton::EMessageDialogButtonIdentifier::OK,
+                                      TMessageDialogButton::ReturnKey | TMessageDialogButton::EscapeKey) };
+}
+
+QList<TMessageDialogButton*> cancelDialogButtons()
+{
+    return { new TMessageDialogButton(qtTrId("cancel"), TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL,
+                                      TMessageDialogButton::ReturnKey | TMessageDialogButton::EscapeKey) };
+}
+
+QList<TMessageDialogButton*> okCancelDialogButtons()
+{
+    return { new TMessageDialogButton(qtTrId("ok"), TMessageDialogButton::EMessageDialogButtonIdentifier::OK, TMessageDialogButton::ReturnKey),
+             new TMessageDialogButton(qtTrId("cancel"), TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL,
+                                      TMessageDialogButton::EscapeKey) };
 }
 
 TMessageDialogController::TMessageDialogController(QObject* parent)
@@ -95,7 +125,7 @@ void TMessageDialogController::onDialogButtonClicked(const QVariant& Identifier,
 void TMessageDialogController::pressButtonWithKey(const QKeySequence& key)
 {
     for (TMessageDialogButton* button : std::as_const(m_buttons)) {
-        if (button->key() == key) {
+        if (button->hasKey(key)) {
             const QQuickItem* item = dialog()->item();
             const bool checked = item && item->property("checkBoxIsChecked").toBool();
             onDialogButtonClicked(static_cast<int>(button->identifier()), checked);

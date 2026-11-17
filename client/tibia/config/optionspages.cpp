@@ -1164,9 +1164,7 @@ void THotkeysOptionsPage::requestRemoveCurrentPreset()
 {
     auto* message = new gamewindow::TMessageDialogController(this);
     message->setCloseOnButtonClicked(true);
-    using Button = gamewindow::TMessageDialogController::Button;
-    message->setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
-                          new gamewindow::TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) });
+    message->setButtons(gamewindow::okCancelDialogButtons());
     connect(message, &gamewindow::TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
     message->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
 }

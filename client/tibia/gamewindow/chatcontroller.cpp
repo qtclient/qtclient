@@ -1054,8 +1054,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
                 exclude ? &TChatController::onPlayerNameToExcludeFromChatChannelReceived
                         : &TChatController::onPlayerNameToInviteToChatChannelReceived);
     }
-    m_messageDialog.setButtons(
-        { new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
+    m_messageDialog.setButtons(okDialogButtons());
     m_messageDialog.setCloseOnButtonClicked(true);
 
     connect(&m_mode, &chat::TChatModeManager::chatModeChanged, this, &TChatController::chatModeChanged);

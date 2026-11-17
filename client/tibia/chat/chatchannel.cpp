@@ -14,6 +14,8 @@
 
 #include <algorithm>
 
+#include <stdexcept>
+
 namespace tibia::chat {
 
 TChatChannelIdentifier TChatChannelIdentifier::channel(const uint16_t id, const QString& name)
@@ -520,8 +522,12 @@ QColor consoleColor(const int mode)
         return QColor(0xf8, 0x60, 0x60);
     case 53:
         return QColor(0xff, 0x66, 0x00);
-    default:
+    case 17: case 19: case 23: case 24: case 25: case 26: case 27: case 28: case 29: case 30:
+    case 33: case 35: case 38: case 43: case 44: case 48: case 49: case 50: case 51:
         return QColor(0xf0, 0xf0, 0xf0);
+    default:
+        throw std::runtime_error(
+            QStringLiteral("No chat channel color selected for EChatmessageMode %1!").arg(mode).toStdString());
     }
 }
 

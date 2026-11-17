@@ -11,6 +11,8 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
+#include <stdexcept>
+
 namespace tibia::chat {
 
 namespace {
@@ -162,8 +164,12 @@ QColor TGameMessageHandler::overlayColor(const int mode)
             return QColor(0, 240, 0);
         case MonsterSay: case MonsterYell: case Potion: case Mode53:
             return QColor(255, 102, 0);
-        default:
+        case Login: case Game: case Failure: case Status: case Report: case BeyondLast:
+        case BoostedCreature: case OfflineTraining: case Transaction: case Mode54:
             return QColor(240, 240, 240);
+        default:
+            throw std::runtime_error(
+                QStringLiteral("No text overlay color selected for EChatmessageMode %1!").arg(mode).toStdString());
     }
 }
 

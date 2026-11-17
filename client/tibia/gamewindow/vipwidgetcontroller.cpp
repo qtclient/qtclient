@@ -457,8 +457,7 @@ void TVipWidgetController::openAddGroupDialog()
         return;
     }
     m_messageDialog->setCloseOnButtonClicked(true);
-    m_messageDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                           QKeySequence(QStringLiteral("Return"))) });
+    m_messageDialog->setButtons(okDialogButtons());
     m_messageDialog->showMessage(qtTrId("no_more_userdefined_groups_caption"), qtTrId("no_more_userdefined_groups_text"));
 }
 

@@ -16,13 +16,24 @@ class TMessageDialogButton final : public cip::tibia::gamewindow::TMessageDialog
 {
     Q_OBJECT
 public:
-    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent = nullptr);
+    /// Which keys press the button: Return (and Enter), Escape.
+    enum EKeys { ReturnKey = 1, EscapeKey = 2 };
 
-    const QKeySequence& key() const { return m_key; }
+    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent = nullptr);
+    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, int keys, QObject* parent = nullptr);
+
+    bool hasKey(const QKeySequence& key) const { return m_keys.contains(key); }
 
 private:
-    QKeySequence m_key;
+    QList<QKeySequence> m_keys;
 };
+
+/// "OK" pressed by Return or Escape.
+QList<TMessageDialogButton*> okDialogButtons();
+/// "Cancel" pressed by Return or Escape.
+QList<TMessageDialogButton*> cancelDialogButtons();
+/// "OK" (Return) and "Cancel" (Escape).
+QList<TMessageDialogButton*> okCancelDialogButtons();
 
 /// A message box with buttons and an optional check box,
 /// TibiaMessageDialog.qml (CIP: TMessageDialogController, ctor ,
