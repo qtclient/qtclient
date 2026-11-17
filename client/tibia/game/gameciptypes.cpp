@@ -5,7 +5,7 @@
 #include <utility>
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tuple>
 #include <client/outfit.h>
 #include "creatures/creatureprotocolapply.h"
@@ -407,7 +407,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
                 }
                 data.playerDescriptions = details(m.player_details());
                 tibia::game::notify("onParseCharacterInspection", data);
-                tibia::game::notify("onParseCyclopediaCharacterInspection", data);
             } else if (m.objects_size() > 0) {
                 const auto& o = m.objects(0);
                 ItemInspectionData data;
@@ -512,7 +511,7 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             tibia::game::notify("onConfigureCreaturePodium", outfitOf(m.outfit()), static_cast<uint8_t>(m.boss_podium() ? 1 : 0), races, pos,
                                 static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.stack_position()),
                                 static_cast<uint8_t>(m.podium_visible() ? 1 : 0), static_cast<uint8_t>(m.monster_visible() ? 1 : 0),
-                                static_cast<uint8_t>(m.direction()));
+                                static_cast<uint8_t>(m.direction()), static_cast<uint16_t>(m.reserved()));
         }
         break;
     case 46:
@@ -775,7 +774,7 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
 {
     using tibia::client::ExperienceRate_t;
     tibia::game::localPlayerSetHealth(message.health(), message.max_health());
-    tibia::game::localPlayerSetFreeCapacity(message.free_capacity() / 100);
+    tibia::game::localPlayerSetFreeCapacity(message.free_capacity());
     tibia::game::localPlayerSetExperience(message.experience());
     tibia::game::localPlayerSetLevel(static_cast<uint16_t>(message.level()),
                                      static_cast<uint16_t>(message.level_percent_hundredths()));

@@ -1,401 +1,341 @@
 #include "skillwheelstorage.h"
 
-#include <creatures/creaturestorage.h>
-#include <client/staticdata.h>
-
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
+#include <QDebug>
 #include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QSaveFile>
-#include <QStandardPaths>
 
 #include <algorithm>
 #include <numeric>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::skillwheel {
 
 namespace {
 
-using Args = std::vector<std::any>;
-using client::gamecore::argInt;
+TSkillWheelStorage* s_liveInstance = nullptr;
 
-template<class T>
-const T* arg(const Args& args, const size_t index)
-{
-    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
-}
-
-uint64_t balance(const tibia::client::ResourceTypes_t type)
-{
-    return tibia::game::localPlayerResourceBalance(type);
-}
-
-QString toQString(const std::string& text) { return QString::fromStdString(text); }
+bool isSocketed(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel, gemId).has_value(); }
 
 }
 
 TSkillWheelStorage::TSkillWheelStorage(QObject* parent)
     : cip::tibia::skillwheel::TSkillWheelStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDestinyWheel", [this](GameObject*, const Args& args) {
-        onDestinyWheel(args);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onGemAtelierGemRevealed", [this](GameObject*, const Args& args) {
-        onGemAtelierGemRevealed(args);
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this](qint64, qint64, int type) {
-        if ((type >= static_cast<int>(tibia::client::RESOURCE_LESSER_GEMS) && type <= static_cast<int>(tibia::client::RESOURCE_GREATER_FRAGMENT))
-            || type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE)
-            || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
-            emitResourceSignals();
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreset", [this](GameObject*, const Args& args) {
-        const auto* id = arg<uint32_t>(args, 0);
-        if (id && *id > 0 && static_cast<int>(*id) <= m_presets.size())
-            selectPreset(m_presets.at(static_cast<int>(*id) - 1).name);
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        clear();
-        m_presetsOwner = 0;
-        m_presets.clear();
-        m_currentPreset.clear();
-    });
+    s_liveInstance = this;
 }
 
-TSkillWheelStorage::~TSkillWheelStorage() = default;
-
-void TSkillWheelStorage::clear()
+TSkillWheelStorage::~TSkillWheelStorage()
 {
-    m_hasData = false;
-    m_playerId = 0;
-    m_isLocal = false;
-    m_isPreview = false;
-    m_playerName.clear();
-    m_changeState = 0;
-    m_points = m_extraPoints = m_huntingTaskPoints = 0;
-    m_hasMonkQuest = false;
-    m_scrolls.clear();
-    m_serverWheel = {};
-    m_currentWheel = {};
-    m_gems.clear();
-    m_basicGrades.clear();
-    m_supremeGrades.clear();
+    if (s_liveInstance == this)
+        s_liveInstance = nullptr;
 }
 
-/// CIP protocol handler : the player id, view and change state,
-/// vocation, points, slices, consumed scrolls, socketed and revealed gems and
-/// the mod grades (qtclient parseOpenWheelWindow).
-void TSkillWheelStorage::onDestinyWheel(const Args& args)
+TSkillWheelStorage* TSkillWheelStorage::liveInstance() { return s_liveInstance; }
+
+QString TSkillWheelStorage::configurationName() const { return QStringLiteral("wheelOfDestiny"); }
+
+/// Every preset as its name and its export code.
+QJsonObject TSkillWheelStorage::toJson() const
 {
-    const bool canView = argInt(args, 1) != 0;
-    if (!canView) {
-        Q_EMIT serverDataReceived(false);
+    QJsonObject json;
+    QJsonArray presets;
+    for (const auto& [name, wheel] : m_presets) {
+        QJsonObject preset;
+        preset.insert(QLatin1String("name"), name);
+        preset.insert(QLatin1String("exportString"), encodeWheelCode(wheel));
+        presets.append(preset);
+    }
+    json.insert(QLatin1String("presets"), presets);
+    return json;
+}
+
+/// A preset without a name or code, or with a code that is not a valid wheel, is skipped. The
+/// presets read before are dropped (CIP has one storage per game session).
+void TSkillWheelStorage::fromJson(const QJsonObject& json)
+{
+    m_presets.clear();
+    for (const QJsonValue value : json.value(QLatin1String("presets")).toArray()) {
+        const QJsonObject preset = value.toObject();
+        const QString name = preset.value(QLatin1String("name")).toString();
+        const QString code = preset.value(QLatin1String("exportString")).toString();
+        if (name.isEmpty() || code.isEmpty()) {
+            qDebug() << "Skipped Preset with insufficient data";
+            continue;
+        }
+        const std::optional<TWheel> decoded = decodeWheelCode(code);
+        if (!decoded || !isValidWheelCode(*decoded)) {
+            qDebug() << "Skipped invalid Preset " << name;
+            continue;
+        }
+        m_presets.insert_or_assign(name, *decoded);
+    }
+}
+
+void TSkillWheelStorage::setUnspentSkillPoints(const int points)
+{
+    m_unspentSkillPoints = points;
+    Q_EMIT unspentSkillPointsChanged();
+}
+
+void TSkillWheelStorage::setPresets(const std::map<QString, TWheel>& presets)
+{
+    if (presets == m_presets)
         return;
-    }
-    clear();
-    m_hasData = true;
-    m_playerId = static_cast<uint32_t>(argInt(args, 0));
-    m_isLocal = tibia::game::localPlayerId() == m_playerId;
-    if (m_isLocal)
-        m_playerName = QString::fromStdString(tibia::game::localPlayerName());
-    else if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(m_playerId))
-            m_playerName = row->name();
-    }
-    m_changeState = static_cast<int>(argInt(args, 2));
-    m_vocation = std::clamp(static_cast<int>(argInt(args, 3)), 1, VocationCount);
-    m_points = static_cast<int>(argInt(args, 4));
-    m_extraPoints = static_cast<int>(argInt(args, 5));
-    if (const auto* points = arg<std::vector<uint16_t>>(args, 6))
-        for (size_t i = 0; i < points->size() && i < SlotCount; ++i)
-            m_serverWheel.points[i] = (*points)[i];
+    m_presets = presets;
+    Q_EMIT configurationChangedFromUserInput();
+}
 
-    if (const auto* gems = arg<std::vector<GemData>>(args, 9)) {
-        m_gems.reserve(gems->size());
-        for (const GemData& g : *gems)
-            m_gems.push_back({ g.gemID, g.locked != 0, std::clamp<int>(g.gemDomain, 0, DomainCount - 1), std::clamp<int>(g.gemType, 0, 2),
-                               g.lesserBonus, g.regularBonus, g.supremeBonus });
+void TSkillWheelStorage::addOrReplacePreset(const QString& name, const TWheel& wheel)
+{
+    if (name.isEmpty())
+        return;
+    std::map<QString, TWheel> presets = m_presets;
+    presets.insert_or_assign(name, wheel);
+    setPresets(presets);
+}
+
+std::optional<TWheel> TSkillWheelStorage::preset(const QString& name) const
+{
+    const auto it = m_presets.find(name);
+    if (it == m_presets.end())
+        return std::nullopt;
+    return it->second;
+}
+
+void TSkillWheelStorage::removePreset(const QString& name)
+{
+    std::map<QString, TWheel> presets = m_presets;
+    presets.erase(name);
+    setPresets(presets);
+}
+
+bool TSkillWheelStorage::hasPreset(const QString& name) const { return m_presets.contains(name); }
+
+bool TSkillWheelStorage::renamePreset(const QString& oldName, const QString& newName)
+{
+    const std::optional<TWheel> wheel = preset(oldName);
+    if (!wheel)
+        return false;
+    removePreset(oldName);
+    addOrReplacePreset(newName, *wheel);
+    return true;
+}
+
+void TSkillWheelStorage::setCurrentSkillWheel(const TWheel& wheel) { setCurrentSkillWheel(std::optional<TWheel>(wheel)); }
+
+void TSkillWheelStorage::setCurrentSkillWheel(const std::optional<TWheel>& wheel)
+{
+    if (wheel == m_currentSkillWheel)
+        return;
+    m_currentSkillWheel = wheel;
+    Q_EMIT currentSkillWheelChanged();
+}
+
+void TSkillWheelStorage::resetCurrentSkillWheel()
+{
+    if (!m_currentSkillWheel)
+        return;
+    m_currentSkillWheel.reset();
+    Q_EMIT currentSkillWheelChanged();
+}
+
+bool TSkillWheelStorage::isCurrentSkillWheelChanged() const { return m_serverSkillWheel != m_currentSkillWheel; }
+
+void TSkillWheelStorage::setServerData(const int changeState, const QString& playerName, const bool ownCharacter, const int regularPoints,
+                                       const int extraPoints, const std::vector<std::pair<int, int>>& promotionScrolls,
+                                       const bool shrinesOfInsightPoints, const int huntingTaskPoints, const TWheel& wheel)
+{
+    m_changeState = changeState;
+    m_playerName = playerName;
+    m_ownCharacter = ownCharacter;
+    m_regularPoints = regularPoints;
+    m_extraPoints = extraPoints;
+    m_promotionScrolls = promotionScrolls;
+    m_shrinesOfInsightPoints = shrinesOfInsightPoints;
+    m_huntingTaskPoints = huntingTaskPoints;
+    m_serverSkillWheel = wheel;
+    Q_EMIT serverSkillWheelChanged();
+}
+
+void TSkillWheelStorage::setPreview(const QString& playerName, const int vocation)
+{
+    TWheel wheel;
+    wheel.vocation = vocation;
+    setServerData(0, playerName, true, 0, 0, {}, false, 0, wheel);
+}
+
+void TSkillWheelStorage::clearServerData()
+{
+    m_changeState = 0;
+    m_playerName.clear();
+    m_ownCharacter = false;
+    m_regularPoints = 0;
+    m_extraPoints = 0;
+    m_promotionScrolls.clear();
+    if (m_serverSkillWheel) {
+        m_serverSkillWheel.reset();
+        Q_EMIT serverSkillWheelChanged();
     }
-    // Equipped gem list order is vessel index 0..7 (CipSoft Winter 2026).
-    if (const auto* equipped = arg<std::vector<uint16_t>>(args, 8)) {
-        for (size_t i = 0; i < equipped->size() && i < static_cast<size_t>(VesselCount); ++i) {
-            const uint16_t id = (*equipped)[i];
-            if (gem(id))
-                m_serverWheel.gems[i] = id;
+    Q_EMIT serverSkillWheelChanged();
+}
+
+/// A gem of the current wheel whose id is in the new inventory with other mods leaves its vessel; a
+/// gem that is not in the inventory stays.
+void TSkillWheelStorage::setGemInventory(std::vector<TGem> gems)
+{
+    m_gemInventory = std::move(gems);
+    if (m_currentSkillWheel) {
+        for (int vessel = 0; vessel < VesselCount; ++vessel) {
+            const std::optional<TGem>& socketed = m_currentSkillWheel->vessels[vessel];
+            if (!socketed)
+                continue;
+            const auto now = std::ranges::find_if(m_gemInventory, [&](const TGem& g) {
+                return static_cast<uint16_t>(g.id) == static_cast<uint16_t>(socketed->id);
+            });
+            if (now != m_gemInventory.end() && !sameMods(*now, *socketed))
+                unsocketGem(*m_currentSkillWheel, vessel);
         }
     }
-    if (const auto* grades = arg<std::map<uint8_t, uint8_t>>(args, 10))
-        for (const auto& [mod, grade] : *grades)
-            m_basicGrades[mod] = grade;
-    if (const auto* grades = arg<std::map<uint8_t, uint8_t>>(args, 11))
-        for (const auto& [mod, grade] : *grades)
-            m_supremeGrades[mod] = grade;
-
-    const auto* scrolls = arg<std::vector<uint16_t>>(args, 7);
-    const auto* scrollPoints = arg<std::vector<uint16_t>>(args, 13);
-    if (scrolls)
-        for (size_t i = 0; i < scrolls->size(); ++i)
-            m_scrolls.emplace_back((*scrolls)[i], scrollPoints && i < scrollPoints->size() ? (*scrollPoints)[i] : 0);
-    m_huntingTaskPoints = static_cast<int>(argInt(args, 14));
-    m_hasMonkQuest = argInt(args, 15) != 0;
-
-    m_currentWheel = m_serverWheel;
-    if (m_isLocal)
-        loadPresets();
-    Q_EMIT serverSkillWheelChanged();
     Q_EMIT gemInventoryChanged();
+}
+
+std::optional<TGem> TSkillWheelStorage::gem(const int id) const
+{
+    const auto it = std::ranges::find_if(m_gemInventory, [id](const TGem& g) { return g.id == id; });
+    if (it == m_gemInventory.end())
+        return std::nullopt;
+    return *it;
+}
+
+std::optional<TGem> TSkillWheelStorage::findGem(const TGem& gem) const
+{
+    std::optional<TGem> sameModsGem;
+    for (const TGem& candidate : m_gemInventory) {
+        if (!sameMods(candidate, gem))
+            continue;
+        if (candidate.id == gem.id)
+            return candidate;
+        if (!sameModsGem)
+            sameModsGem = candidate;
+    }
+    return sameModsGem;
+}
+
+int TSkillWheelStorage::basicModGemCount(const int mod) const
+{
+    int count = 0;
+    for (const TGem& gem : m_gemInventory) {
+        count += gem.basic1 == mod ? 1 : 0;
+        if (hasBasic2(gem))
+            count += gem.basic2 == mod ? 1 : 0;
+    }
+    return count;
+}
+
+int TSkillWheelStorage::supremeModGemCount(const int mod) const
+{
+    return static_cast<int>(std::ranges::count_if(m_gemInventory, [mod](const TGem& g) { return hasSupreme(g) && g.supreme == mod; }));
+}
+
+bool TSkillWheelStorage::isBasicModActive(const int mod) const
+{
+    if (!m_currentSkillWheel)
+        return false;
+    return std::ranges::any_of(m_gemInventory, [&](const TGem& g) {
+        return (g.basic1 == mod || (hasBasic2(g) && g.basic2 == mod)) && isSocketed(*m_currentSkillWheel, g.id);
+    });
+}
+
+bool TSkillWheelStorage::isSupremeModActive(const int mod) const
+{
+    if (!m_currentSkillWheel)
+        return false;
+    return std::ranges::any_of(m_gemInventory,
+                               [&](const TGem& g) { return hasSupreme(g) && g.supreme == mod && isSocketed(*m_currentSkillWheel, g.id); });
+}
+
+void TSkillWheelStorage::setModGrades(TGrades basicGrades, TGrades supremeGrades)
+{
+    m_basicGrades = std::move(basicGrades);
+    m_supremeGrades = std::move(supremeGrades);
     Q_EMIT modGradesChanged();
-    Q_EMIT modListChanged();
-    Q_EMIT unspentSkillPointsChanged();
-    Q_EMIT currentSkillWheelChanged();
-    Q_EMIT serverDataReceived(true);
-    Q_EMIT currentWheelChanged();
-    Q_EMIT presetsChanged();
-    emitResourceSignals();
 }
 
-void TSkillWheelStorage::onGemAtelierGemRevealed(const Args& args)
+void TSkillWheelStorage::setUnrevealedGems(const int quality, const int count)
 {
-    const auto* id = arg<uint32_t>(args, 0);
-    if (!id || *id == 0)
-        return;
-    const int gemId = static_cast<int>(*id);
-    const auto it = std::ranges::find_if(m_gems, [gemId](const TGem& g) { return g.id == gemId; });
-    if (it == m_gems.end() || !it->locked)
-        return;
-    it->locked = false;
-    Q_EMIT gemInventoryChanged();
-}
-
-void TSkillWheelStorage::emitResourceSignals()
-{
+    m_unrevealedGems[quality] = count;
     Q_EMIT unrevealedGemsChanged();
+}
+
+int TSkillWheelStorage::unrevealedGems(const int quality) const
+{
+    const auto it = m_unrevealedGems.find(quality);
+    return it != m_unrevealedGems.end() ? it->second : 0;
+}
+
+void TSkillWheelStorage::setModList(const std::vector<TModListEntry>& modList)
+{
+    m_modList = modList;
+    Q_EMIT modListChanged();
+}
+
+/// The supreme mods (of the current wheel's vocation when it is valid), then the basic mods.
+void TSkillWheelStorage::updateModList()
+{
+    std::vector<TModListEntry> list;
+    const auto grade = [](const TGrades& grades, const int mod) {
+        const auto it = grades.find(mod);
+        return it != grades.end() ? it->second : 0;
+    };
+    for (int mod = 0; mod < supremeModCount(); ++mod) {
+        if (m_currentSkillWheel && isValid(m_currentSkillWheel->points) && !supremeModForVocation(mod, m_currentSkillWheel->vocation - 1))
+            continue;
+        list.push_back({ false, isSupremeModActive(mod), mod, supremeModGemCount(mod), grade(m_supremeGrades, mod) });
+    }
+    for (int mod = 0; mod < basicModCount(); ++mod) {
+        if (!hasBasicMod(mod))
+            continue;
+        list.push_back({ true, isBasicModActive(mod), mod, basicModGemCount(mod), grade(m_basicGrades, mod) });
+    }
+    setModList(list);
+}
+
+void TSkillWheelStorage::setLesserFragments(const int fragments)
+{
+    m_lesserFragments = fragments;
     Q_EMIT lesserFragmentsChanged();
+}
+
+void TSkillWheelStorage::setGreaterFragments(const int fragments)
+{
+    m_greaterFragments = fragments;
     Q_EMIT greaterFragmentsChanged();
-    Q_EMIT resourcesChanged();
 }
 
-/// CIP : vt0x128 with change state 0, no points and no gems.
-void TSkillWheelStorage::setPreview(const QString& name, const int vocation)
-{
-    clear();
-    m_hasData = true;
-    m_isPreview = true;
-    m_isLocal = true;
-    m_playerName = name;
-    m_vocation = std::clamp(vocation, 1, VocationCount);
-    m_playerId = tibia::game::localPlayerId();
-    Q_EMIT serverSkillWheelChanged();
-    Q_EMIT currentSkillWheelChanged();
-    Q_EMIT unspentSkillPointsChanged();
-    Q_EMIT currentWheelChanged();
-    Q_EMIT presetsChanged();
-}
+int TSkillWheelStorage::vocation() const { return m_serverSkillWheel ? std::clamp(m_serverSkillWheel->vocation, 1, VocationCount) : 1; }
 
-void TSkillWheelStorage::setCurrentWheel(const TWheel& wheel)
+TWheel TSkillWheelStorage::currentWheel() const
 {
-    if (m_currentWheel == wheel)
-        return;
-    m_currentWheel = wheel;
-    Q_EMIT currentSkillWheelChanged();
-    Q_EMIT unspentSkillPointsChanged();
-    Q_EMIT configurationChangedFromUserInput();
-    Q_EMIT currentWheelChanged();
-}
-
-const TGem* TSkillWheelStorage::gem(const int id) const
-{
-    const auto it = std::ranges::find_if(m_gems, [id](const TGem& g) { return g.id == id; });
-    return it != m_gems.end() ? &*it : nullptr;
+    if (m_currentSkillWheel)
+        return *m_currentSkillWheel;
+    TWheel wheel;
+    wheel.vocation = vocation();
+    return wheel;
 }
 
 int TSkillWheelStorage::modGradesPoints() const { return modGradePoints(m_basicGrades, m_supremeGrades); }
 
-/// CIP : regular + special + mod grade points.
-int TSkillWheelStorage::totalPoints() const { return m_points + m_extraPoints + modGradesPoints(); }
+int TSkillWheelStorage::totalPoints() const { return m_regularPoints + m_extraPoints + modGradesPoints(); }
 
-/// CIP .
-int TSkillWheelStorage::spentPoints() const { return std::accumulate(m_currentWheel.points.begin(), m_currentWheel.points.end(), 0); }
-
-int TSkillWheelStorage::unrevealedGems(const int quality) const
+int TSkillWheelStorage::spentPoints() const
 {
-    switch (quality) {
-        case 0: return static_cast<int>(balance(tibia::client::RESOURCE_LESSER_GEMS));
-        case 1: return static_cast<int>(balance(tibia::client::RESOURCE_REGULAR_GEMS));
-        case 2: return static_cast<int>(balance(tibia::client::RESOURCE_GREATER_GEMS));
-        default: return 0;
-    }
+    const TWheel wheel = currentWheel();
+    return std::accumulate(wheel.points.begin(), wheel.points.end(), 0);
 }
 
-int TSkillWheelStorage::lesserFragments() const { return static_cast<int>(balance(tibia::client::RESOURCE_LESSER_FRAGMENT)); }
-int TSkillWheelStorage::greaterFragments() const { return static_cast<int>(balance(tibia::client::RESOURCE_GREATER_FRAGMENT)); }
-uint64_t TSkillWheelStorage::gold() const { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
-
-QString TSkillWheelStorage::presetsPath() const
+uint64_t TSkillWheelStorage::gold() const
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/skillWheel.json").arg(m_presetsOwner);
-}
-
-void TSkillWheelStorage::loadPresets()
-{
-    if (m_presetsOwner == m_playerId && !m_presets.isEmpty())
-        return;
-    m_presetsOwner = m_playerId;
-    m_presets.clear();
-    m_currentPreset.clear();
-    QFile file(presetsPath());
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
-        for (const QJsonValue& value : root.value(QLatin1String("presets")).toArray()) {
-            const QJsonObject object = value.toObject();
-            TPreset preset{ object.value(QLatin1String("name")).toString(), {} };
-            if (preset.name.isEmpty() || this->preset(preset.name) || m_presets.size() >= MaxPresets)
-                continue;
-            const QJsonArray points = object.value(QLatin1String("points")).toArray();
-            for (int i = 0; i < SlotCount && i < points.size(); ++i)
-                preset.wheel.points[i] = points.at(i).toInt();
-            const QJsonArray gems = object.value(QLatin1String("gems")).toArray();
-            for (int v = 0; v < VesselCount && v < gems.size(); ++v)
-                preset.wheel.gems[v] = gems.at(v).toInt(NoGem);
-            m_presets.append(preset);
-        }
-        m_currentPreset = root.value(QLatin1String("active")).toString();
-    }
-    if (m_presets.isEmpty())
-        m_presets.append({ DefaultPresetName, m_serverWheel });
-    if (!preset(m_currentPreset))
-        m_currentPreset = m_presets.first().name;
-}
-
-void TSkillWheelStorage::savePresets() const
-{
-    if (m_presetsOwner == 0)
-        return;
-    QJsonArray presets;
-    for (const TPreset& preset : m_presets) {
-        QJsonArray points, gems;
-        for (const int p : preset.wheel.points)
-            points.append(p);
-        for (const int g : preset.wheel.gems)
-            gems.append(g);
-        presets.append(QJsonObject{ { QLatin1String("name"), preset.name }, { QLatin1String("points"), points }, { QLatin1String("gems"), gems } });
-    }
-    const QJsonObject root{ { QLatin1String("active"), m_currentPreset }, { QLatin1String("presets"), presets } };
-    const QString path = presetsPath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(root).toJson());
-        file.commit();
-    }
-}
-
-const TPreset* TSkillWheelStorage::preset(const QString& name) const
-{
-    const auto it = std::ranges::find_if(m_presets, [&](const TPreset& p) { return p.name == name; });
-    return it != m_presets.end() ? &*it : nullptr;
-}
-
-bool TSkillWheelStorage::canManagePresets() const { return m_hasData && m_isLocal && !m_isPreview && m_changeState == 1; }
-
-bool TSkillWheelStorage::isPresetDirty() const
-{
-    const TPreset* current = preset(m_currentPreset);
-    return current && !(current->wheel == m_currentWheel);
-}
-
-TWheel TSkillWheelStorage::sanitized(const TWheel& wheel, bool* adjusted) const
-{
-    TWheel result = wheel;
-    *adjusted = false;
-    const int unlocked = unlockedVesselCount(result.points, vocationIndex());
-    for (int v = 0; v < VesselCount; ++v) {
-        const TGem* g = result.gems[v] == NoGem ? nullptr : gem(result.gems[v]);
-        if (result.gems[v] == NoGem)
-            continue;
-        if (!g || v >= unlocked || g->quality != vesselQualityAt(v)) {
-            result.gems[v] = NoGem;
-            *adjusted = true;
-        }
-    }
-    const int spent = std::accumulate(result.points.begin(), result.points.end(), 0);
-    if (!isValid(result.points) || spent > totalPoints()) {
-        result.points = {};
-        *adjusted = true;
-    }
-    return result;
-}
-
-bool TSkillWheelStorage::selectPreset(const QString& name)
-{
-    const TPreset* selected = preset(name);
-    if (!selected)
-        return true;
-    bool adjusted = false;
-    const TWheel wheel = sanitized(selected->wheel, &adjusted);
-    m_currentPreset = name;
-    savePresets();
-    setCurrentWheel(wheel);
-    Q_EMIT presetsChanged();
-    return !adjusted;
-}
-
-void TSkillWheelStorage::saveCurrentPreset()
-{
-    const auto it = std::ranges::find_if(m_presets, [&](const TPreset& p) { return p.name == m_currentPreset; });
-    if (it == m_presets.end())
-        return;
-    it->wheel = m_currentWheel;
-    savePresets();
-    Q_EMIT presetsChanged();
-}
-
-bool TSkillWheelStorage::addPreset(const QString& name, const TWheel& wheel)
-{
-    if (name.isEmpty() || preset(name) || m_presets.size() >= MaxPresets)
-        return false;
-    m_presets.append({ name, wheel });
-    m_currentPreset = name;
-    savePresets();
-    setCurrentWheel(wheel);
-    Q_EMIT presetsChanged();
-    return true;
-}
-
-bool TSkillWheelStorage::renameCurrentPreset(const QString& name)
-{
-    if (name.isEmpty() || preset(name))
-        return false;
-    const auto it = std::ranges::find_if(m_presets, [&](const TPreset& p) { return p.name == m_currentPreset; });
-    if (it == m_presets.end())
-        return false;
-    it->name = name;
-    m_currentPreset = name;
-    savePresets();
-    Q_EMIT presetsChanged();
-    return true;
-}
-
-bool TSkillWheelStorage::deleteCurrentPreset()
-{
-    if (m_presets.size() <= 1)
-        return false;
-    m_presets.removeIf([&](const TPreset& p) { return p.name == m_currentPreset; });
-    m_currentPreset = m_presets.first().name;
-    savePresets();
-    Q_EMIT presetsChanged();
-    return true;
+    return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BANK_BALANCE)
+           + tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
 }
 
 }

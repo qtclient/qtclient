@@ -8,7 +8,7 @@
 #include "worldmap/worldmapstorage.h"
 
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 
@@ -26,7 +26,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
                             dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get())) {
-                        if (ThingType* type = object->thingType(); type && type->isStackable())
+                        if (TAppearanceType* type = object->thingType(); type && type->isStackable())
                             return std::max<int>(1, object->count());
                     }
                 }

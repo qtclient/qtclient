@@ -40,6 +40,8 @@ public:
     static void handleExaltationBaseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationBaseData& ExaltationBaseDataMessage);
     static void handleExaltationResultMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationResult& ExaltationResultMessage);
     static void handleExaltationHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationHistory& ExaltationHistoryMessage);
+    /// Asks for one page of the exaltation history.
+    static void requestHistoryPage(int page);
 public:
 };
 

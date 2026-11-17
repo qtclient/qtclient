@@ -8,6 +8,33 @@
 
 namespace tibia {
 
+namespace trade {
+
+/// A condition or summary row of the character trade dialog.
+struct TCharacterTradeConditionEntry {
+    QString notification;
+    int status = 1; // TibiaEnums.EYesNoWarning: Yes=0 No=1 Warning=2
+};
+
+/// A highlight row of the character trade dialog.
+struct TCharacterTradeHighlightEntry {
+    int highlightId = 0;
+    QString highlight;
+    QString category;
+    QString categoryIcon;
+};
+
+/// An item row of the character trade dialog.
+struct TCharacterTradeItemEntry {
+    int id = 0;
+    QString name;
+    int amount = 0;
+    QString description;
+    int upgradeTier = 0;
+};
+
+}
+
 /// CharacterTradeNotifications.qml rows (CIP: TCharacterTradeNotificationsAbstractListModel).
 class TCharacterTradeNotificationsAbstractListModel final
     : public cip::TCharacterTradeNotificationsAbstractListModel
@@ -34,7 +61,7 @@ class TTextualHighlightsAbstractListModel final : public cip::TTextualHighlights
 {
     Q_OBJECT
 public:
-    enum Role { CategoryIconRole = Qt::UserRole + 1, HighlightRole, HighlightIdRole, CategoryRole };
+    enum Role { CategoryRole = Qt::UserRole + 1, HighlightIdRole, HighlightRole, CategoryIconRole };
 
     explicit TTextualHighlightsAbstractListModel(QObject* parent = nullptr);
 
@@ -74,7 +101,7 @@ class TItemHighlightsAbstractListModel final : public cip::TItemHighlightsAbstra
 {
     Q_OBJECT
 public:
-    enum Role { IdRole = Qt::UserRole + 1, NameRole, AmountRole, DescriptionRole, UpgradeTierRole };
+    enum Role { IdRole = Qt::UserRole + 1, NameRole, DescriptionRole, AmountRole, UpgradeTierRole };
 
     explicit TItemHighlightsAbstractListModel(QObject* parent = nullptr);
 

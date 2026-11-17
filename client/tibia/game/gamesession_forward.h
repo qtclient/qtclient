@@ -29,12 +29,6 @@ void applyImbuement(uint8_t slot, uint32_t imbuementId, bool protectionCharm);
 
 void attack(uint32_t creatureId);
 
-void bountyPreferredAction(uint8_t actionType, uint16_t slot, uint16_t raceId);
-
-void bountyTalismanUpgrade(uint8_t pathIndex);
-
-void bountyTaskAction(uint8_t actionType, uint16_t value = 0);
-
 void browseField(const Position& position);
 
 void browseMarket(uint8_t browseId, uint16_t browseType, uint8_t tier = 0);
@@ -76,7 +70,6 @@ void editGuildMessage(std::string_view text);
 void editList(uint32_t id, uint8_t doorId, std::string_view text);
 
 void editText(uint32_t id, std::string_view text);
-
 
 void equipItemId(const uint16_t itemId, const uint8_t tier);
 
@@ -134,7 +127,6 @@ void openStore(uint8_t serviceType = 0, std::string_view category = "");
 
 void openTransactionHistory(uint8_t entriesPerPage);
 
-void openWheel(uint32_t playerId);
 
 void partyDisband();
 
@@ -177,7 +169,6 @@ void requestDepotSearchItem(uint16_t itemId, uint8_t tier = 0);
 void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
 
 void requestGuildMessage();
-
 
 void requestItemInfo(uint16_t typeId, uint8_t subType, uint8_t index);
 
@@ -223,8 +214,6 @@ void selectImbuementScroll();
 
 void sellItem(uint16_t typeId, uint8_t subType, uint16_t amount, bool ignoreEquipped);
 
-void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints, const std::array<uint16_t, 8>& vesselGems);
-
 
 void sendContainerAction(uint8_t action, uint8_t containerId = 0);
 
@@ -238,7 +227,8 @@ void sendForgeBrowseHistoryRequest(uint16_t page);
 
 void sendOpenRewardWall();
 
-void sendPartyAnalyzerPriceType();
+/// The party hunt loot type: 0 market prices, 1 the leader's prices.
+void sendPartyAnalyzerPriceType(int lootType);
 
 void sendPartyAnalyzerReset();
 
@@ -256,13 +246,11 @@ void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool au
 
 void sendRequestUsefulThings(const uint8_t serviceType);
 
-
 void sendSetHirelingName(std::string_view name);
 
 void sendStartOfflineTraining(const uint8_t skillType);
 
 void sendTeleport(const Position& pos);
-
 
 void sendTutorialChangeVocation(uint8_t vocationClientId);
 
@@ -300,10 +288,6 @@ void talkChannel(tibia::client::MessageMode mode, uint16_t channelId, std::strin
 
 void talkPrivate(tibia::client::MessageMode mode, std::string_view receiver, std::string_view message);
 
-void taskHuntingShopPurchase(uint8_t offerIndex);
-
-void taskHuntingShopRequest();
-
 void transferCoins(std::string_view recipient, uint32_t amount);
 
 void useInventoryItem(uint16_t itemId);
@@ -312,8 +296,6 @@ void useMapObjectOnCreature(const Position& from, uint16_t fromId, int fromStack
 
 void useWithMapObject(const Position& from, uint16_t fromId, int fromStack, const Position& to, uint16_t toId, int toStack);
 
-void weeklyTaskAction(uint8_t actionType, uint16_t value = 0);
-
 void wrapMapObject(const Position& position, uint16_t itemId, int stackPos);
 
 int getProtocolVersion();
@@ -321,7 +303,6 @@ int getProtocolVersion();
 bool isUsingProtobuf();
 
 int getPing();
-
 
 uint32_t getFollowingCreatureId();
 
@@ -370,7 +351,6 @@ void resetMapUpdatedAt();
 void updateMapLatency();
 
 void requestStop();
-
 
 } // namespace game
 } // namespace tibia

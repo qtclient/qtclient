@@ -35,7 +35,15 @@ void installSoundActionHandler()
     // already applied their channel options, so a chat sound counts as gated.
     input::setActionHandler(input::EGameAction::SOUND_TRIGGER, [](const input::TGameAction& action) {
         sound::TSoundController* controller = sound::TSoundController::instance();
-        if (!controller || action.parameter <= 0)
+        if (!controller)
+            return true;
+        // CIP TGameActionSoundTrigger's variant: pause/resume the looping sounds
+        // (the game screen publishes the resume) or play an effect once.
+        if (action.pauseLoopingSounds) {
+            controller->handleSoundTrigger(*action.pauseLoopingSounds);
+            return true;
+        }
+        if (action.parameter <= 0)
             return true;
         sound::TSoundEffectRequest request;
         request.effectId = static_cast<sound::TSoundEffectID>(action.parameter);

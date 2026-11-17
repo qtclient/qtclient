@@ -42,7 +42,6 @@ namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCrashReportDialogController;
-struct CharacterEntry;
 }
 namespace shared {
 class TCrashReportSender;
@@ -90,7 +89,6 @@ namespace worldmap {
 class TAmbientLightStorage;
 class TFrameDurationRing;
 class TNextFrameTimestampPredictor;
-class TNumericalEffectStorage;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -99,6 +97,7 @@ class TWorldmapProtocolMessageHandler;
 namespace tibia {
 namespace chat {
 class TGameMessageHandler;
+class TChatProtocolMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
 }
@@ -189,11 +188,12 @@ public:
     chat::TTextStorage* textStorage() const;
     /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
     void setMessageIgnoreList(chat::TWhiteBlacklist* list);
+    /// The chat handler the active session's game window texts go to.
+    void setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler);
     /// The active game session changed: its message handler, frame updater,
     /// view and minimap feed are rebuilt on it.
     void bindActiveSession();
-    worldmap::TNumericalEffectStorage* numericalEffects() const;
-    effects::TEffectStorage* effectStorage() const;
+        effects::TEffectStorage* effectStorage() const;
     /// The character's sidebars.json, loaded on entering the world.
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.
@@ -218,8 +218,8 @@ public:
     void refreshAccount(const QJsonObject& reply);
     /// Password login from the product login dialog (`make client-start` without SSO).
     void submitCredentials(const QString& account, const QString& password);
-    /// CIP Change Character: show CharacterSelection while online (optional lobby alt Online flags).
-    void openCharacterSelectionForSwitch(const QJsonArray& alts = {});
+    /// CIP Change Character: show CharacterSelection while online.
+    void openCharacterSelectionForSwitch();
     /// Hide CharacterSelection without logging out / quitting (in-game Switch toggle).
     void closeCharacterSelection();
     /// CIP Ctrl/Cmd+G / sidebar Switch: toggle in-game CharacterSelection while online.
@@ -270,7 +270,9 @@ private:
     void sendCrashReport(bool SendFullReport);
     void login();
     void onLoginSuccessful(const authentication::LoginResult& result);
-    void onCharacterChosen(const gamewindow::CharacterEntry& character);
+    /// The character list with the account's premium state.
+    void showAccount(const authentication::TCharacterList& characters);
+    void onCharacterChosen(const QString& characterName);
     void onWorldEntered();
     /// Writes the session's minimap and character options.
     void onWorldLeft();
@@ -321,6 +323,7 @@ private:
     std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
+    chat::TChatProtocolMessageHandler* m_chatProtocol = nullptr;
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).

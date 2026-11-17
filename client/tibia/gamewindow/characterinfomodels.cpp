@@ -1,13 +1,16 @@
 #include "characterinfomodels.h"
+#include "cyclopedia/staticcontentinformation.h"
 
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
+#include "cyclopedia/characterinfostorage.h"
+#include "config/clientoptions.h"
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
@@ -23,7 +26,7 @@ namespace {
 
 QString appearanceName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
@@ -32,7 +35,7 @@ QString appearanceName(const uint16_t typeId)
 /// +0x34 store inbox).
 void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummary>& list, uint32_t ItemSummaryEntry::* amount)
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
+    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
     rows.reserve(rows.size() + list.size());
     for (const ItemSummary& item : list) {
         const auto it = std::lower_bound(rows.begin(), rows.end(), item, [](const ItemSummaryEntry& row, const ItemSummary& key) {
@@ -47,7 +50,7 @@ void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummar
         row.upgradeTier = item.tier;
         row.*amount = item.amount;
         row.name = appearanceName(item.itemId);
-        row.lootValueLevel = prices ? prices->lootValueLevel(item.itemId) : 0;
+        row.lootValueLevel = prices->lootValueLevel(item.itemId);
         rows.insert(it, std::move(row));
     }
 }
@@ -55,8 +58,7 @@ void mergeList(std::vector<ItemSummaryEntry>& rows, const std::vector<ItemSummar
 /// CIP.
 QString lootValueImage(const int level, const int style)
 {
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (level == 0 || !prices || prices->colorizeLootStyle() != style)
+    if (level == 0 || config::TClientOptions::instance()->colorizeLootStyle() != style)
         return QStringLiteral("");
     return QStringLiteral("image://%1/%2")
         .arg(style == 1 ? QStringLiteral("containerslot-glowingborders") : QStringLiteral("containerslot-coloredges"))
@@ -135,7 +137,7 @@ void TItemSummaryModelSortFilterProxy::setFlag(bool& flag, const bool value)
         return;
     beginFilterChange();
     flag = value;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
 }
 
@@ -151,7 +153,7 @@ void TItemSummaryModelSortFilterProxy::updateNameFilter(const QString& NameFilte
         return;
     beginFilterChange();
     m_nameFilter = NameFilter;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
 }
 
 bool TItemSummaryModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -419,7 +421,7 @@ TQmlAchievement::TQmlAchievement(const AchievementEntry& entry, QObject* parent)
 namespace {
 
 /// CIP : the static achievements (staticdata).
-const std::vector<CyclopediaAchievementType>& staticAchievements() { return tibia::game::getCyclopediaAchievements(); }
+const std::vector<cyclopedia::TStaticAchievement>& staticAchievements() { return cyclopedia::staticAchievements(); }
 
 }
 
@@ -501,11 +503,11 @@ void TAchievementInfoController::rebuildList()
     if (m_filterCriterion != Locked)
         rows = m_unlocked;
     if (m_filterCriterion != Discovered) {
-        for (const CyclopediaAchievementType& known : staticAchievements()) {
+        for (const cyclopedia::TStaticAchievement& known : staticAchievements()) {
             const bool unlocked =
                 std::any_of(m_unlocked.begin(), m_unlocked.end(), [&known](const AchievementEntry& entry) { return entry.id == known.id; });
             if (!unlocked)
-                rows.push_back({ known.id, 0, false, QString::fromStdString(known.name), QString::fromStdString(known.description), known.grade });
+                rows.push_back({ known.id, 0, false, known.name, known.description, known.grade });
         }
     }
 
@@ -547,99 +549,67 @@ void replaceObject(QObject*& member, QObject* object)
 }
 
 /// CIP : the wire's 1 is a quest, 2 a store appearance.
-int appearanceSource(const uint8_t type) { return type == 1 ? 1 : type == 2 ? 2 : 0; }
 
 }
 
 /// CIP: a new proxy (inventory only) per answer, sorted.
-void TCharacterInfoDialogController::updateItemSummary(const Args& args)
+void TCharacterInfoDialogController::updateItemSummary()
 {
-    if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
-        replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(*data), this));
+    const CyclopediaCharacterItemSummary summary = cyclopedia::TCharacterInfoStorage::instance()->itemSummary();
+    replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(summary), this));
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: a new proxy over the outfits, mounts and summon skins, with the
 /// character's eight colors.
-void TCharacterInfoDialogController::updateOutfitsMounts(const Args& args)
+void TCharacterInfoDialogController::updateOutfitsMounts()
 {
-    if (args.size() < 4)
+    const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins();
+    if (!appearances)
         return;
-    const auto* colors = std::any_cast<OutfitColorStruct>(&args[0]);
-    const auto* outfits = std::any_cast<std::vector<CharacterInfoOutfits>>(&args[1]);
-    const auto* mounts = std::any_cast<std::vector<CharacterInfoMounts>>(&args[2]);
-    const auto* familiars = std::any_cast<std::vector<CharacterInfoFamiliar>>(&args[3]);
-    if (!colors || !outfits || !mounts || !familiars)
-        return;
+    const auto& outfitColors = appearances->outfitColors;
+    const auto& mountColors = appearances->mountColors;
     std::vector<AppearanceEntry> entries;
-    entries.reserve(outfits->size() + mounts->size() + familiars->size());
-    for (const CharacterInfoOutfits& o : *outfits)
-        entries.push_back({ AppearanceEntry::Outfit, o.lookType, QString::fromStdString(o.name), appearanceSource(o.type),
-                            static_cast<int>(o.isCurrent), o.addons });
-    for (const CharacterInfoMounts& m : *mounts)
-        entries.push_back(
-            { AppearanceEntry::Mount, m.mountId, QString::fromStdString(m.name), appearanceSource(m.type), static_cast<int>(m.isCurrent), 0 });
-    for (const CharacterInfoFamiliar& f : *familiars)
-        entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, QString::fromStdString(f.name), appearanceSource(f.type),
-                            static_cast<int>(f.isCurrent), 0 });
-    const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ colors->lookHead,      colors->lookBody,
-                                                                               colors->lookLegs,      colors->lookFeet,
-                                                                               colors->lookMountHead, colors->lookMountBody,
-                                                                               colors->lookMountLegs, colors->lookMountFeet };
+    entries.reserve(appearances->outfits.size() + appearances->mounts.size() + appearances->summonSkins.size());
+    for (const auto& o : appearances->outfits)
+        entries.push_back({ AppearanceEntry::Outfit, o.lookType, o.name, static_cast<int>(o.source), static_cast<int>(o.current),
+                            static_cast<uint8_t>(o.addons) });
+    for (const auto& m : appearances->mounts)
+        entries.push_back({ AppearanceEntry::Mount, m.lookType, m.name, static_cast<int>(m.source), static_cast<int>(m.current), 0 });
+    for (const auto& f : appearances->summonSkins)
+        entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, f.name, static_cast<int>(f.source), static_cast<int>(f.current), 0 });
+    const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ outfitColors.head, outfitColors.body, outfitColors.legs,
+                                                                               outfitColors.feet, mountColors.head, mountColors.body,
+                                                                               mountColors.legs,  mountColors.feet };
     replaceObject(m_outfitMountModel, new TOutfitMountSummonSkinsListDataModelSortFilterProxy(std::move(entries), indexes, this));
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: a new titles object with the current title.
-void TCharacterInfoDialogController::updateTitles(const Args& args)
+void TCharacterInfoDialogController::updateTitles()
 {
-    using Wire = std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>>;
-    if (args.size() < 2)
-        return;
-    const int* current = std::any_cast<int>(&args[0]);
-    const auto* titles = std::any_cast<Wire>(&args[1]);
-    if (!current || !titles)
+    const auto info = cyclopedia::TCharacterInfoStorage::instance()->titlesInfo();
+    if (!info)
         return;
     std::vector<TitleEntry> entries;
-    entries.reserve(titles->size());
-    for (const auto& [id, name, description, permanent, unlocked] : *titles)
-        entries.push_back({ id, QString::fromStdString(name), QString::fromStdString(description), permanent, unlocked });
-    replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(static_cast<uint8_t>(*current), std::move(entries), this));
+    entries.reserve(info->titles.size());
+    for (const cyclopedia::TCharacterTitle& title : info->titles)
+        entries.push_back({ title.id, title.name, title.description, title.permanent, title.unlocked });
+    replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(info->currentTitle, std::move(entries), this));
     Q_EMIT dataModelChanged();
-}
-
-void TCharacterInfoDialogController::hookModelEvents()
-{
-    const auto storeAs = [this](const int dataType) {
-        return [this, dataType](GameObject*, const Args& args) {
-            store(dataType, args);
-            return std::any{};
-        };
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", storeAs(ItemSummary));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", storeAs(OutfitsMounts));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", storeAs(Titles));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterAchievements", storeAs(Achievements));
 }
 
 /// The achievements controller from the record: points, secret total and the
 /// unlocked achievements.
-void TCharacterInfoDialogController::updateAchievements(const Args& args)
+void TCharacterInfoDialogController::updateAchievements()
 {
-    using Wire = std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>>;
-    if (args.size() < 3)
-        return;
-    const int* points = std::any_cast<int>(&args[0]);
-    const int* totalSecret = std::any_cast<int>(&args[1]);
-    const auto* achievements = std::any_cast<Wire>(&args[2]);
-    if (!points || !totalSecret || !achievements)
-        return;
+    const cyclopedia::TAchievementStorage& storage = cyclopedia::TCharacterInfoStorage::instance()->achievementStorage();
     std::vector<AchievementEntry> unlocked;
-    unlocked.reserve(achievements->size());
-    for (const auto& [id, timestamp, secret, name, description, grade] : *achievements)
-        unlocked.push_back({ id, timestamp, secret, QString::fromStdString(name), QString::fromStdString(description), grade });
+    unlocked.reserve(storage.achievements.size());
+    for (const cyclopedia::TAchievementStorage::TAchievement& achievement : storage.achievements)
+        unlocked.push_back({ achievement.id, achievement.timestamp, achievement.secret, achievement.name, achievement.description, achievement.grade });
     if (auto* controller = dynamic_cast<TAchievementInfoController*>(m_achievementsController))
-        controller->setData(*points, *totalSecret, std::move(unlocked));
+        controller->setData(storage.achievementPoints, storage.secretAchievements, std::move(unlocked));
 }
 
 /// CIP .

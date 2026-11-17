@@ -5,8 +5,23 @@
 
 #include <cip_gen.h>
 
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
+
 namespace tibia {
+namespace taskboard {
+struct TBountyTaskData;
+struct TWeeklyTaskData;
+}
 namespace gamewindow {
+
+/// Rows of the task board storages in the shape the tab controllers and the
+/// kill tracker consume.
+std::vector<std::map<std::string, uint32_t>> taskboardBountyMonsterRows(const taskboard::TBountyTaskData& data);
+std::vector<std::map<std::string, uint32_t>> taskboardWeeklyMonsterRows(const taskboard::TWeeklyTaskData& data);
+bool taskboardWeeklyActive(const taskboard::TWeeklyTaskData& data);
 
 class TBountyTasksController;
 class TMessageDialogController;
@@ -15,7 +30,7 @@ class TTaskboardShopController;
 
 /// TaskboardDialog.qml (CIP: TTaskboardDialogController). Opens from the
 /// OPEN_TASKBOARD_DIALOG action (bounty or weekly tab) and fills tabs from
-/// onBountyTaskData / onWeeklyTaskData / onTaskHuntingShopData.
+/// the task board storages.
 class TTaskboardDialogController final : public TDialogController<cip::tibia::gamewindow::TTaskboardDialogController>
 {
     Q_OBJECT

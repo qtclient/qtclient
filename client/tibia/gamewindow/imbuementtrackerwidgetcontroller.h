@@ -3,6 +3,8 @@
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
+#include "container/containerciptypes.h"
+
 #include <cip_gen.h>
 
 #include <QJsonObject>
@@ -26,28 +28,36 @@ class TImbuedObjectsModel final : public cip::TImbuedObjectsModel
 {
     Q_OBJECT
 public:
+    /// CIP's role ids (0x101..0x11c).
     enum Role
     {
-        InventoryPositionRole = Qt::UserRole + 1,
-        ManagedContainerTooltipRole,
-        TypeIdRole,
-        UpgradeTierRole,
+        TypeIdRole = Qt::UserRole + 1,
         CumulativeCountRole,
+        TypeCountRole,
+        CountStringRole,
+        AlternativeSlotStringRole,
         LiquidTypeRole,
         HookDirectionRole,
-        AlternativeSlotStringRole,
+        LootValueImageSourceUnderItemRole,
+        LootValueImageSourceOverItemRole,
+        ManagedContainerTooltipRole,
+        UpgradeTierRole,
+        InventoryPositionRole,
         SlotCountRole,
-        Imbuement1IconIdRole,
         Imbuement1NameRole,
+        Imbuement1IconIdRole,
         Imbuement1RemainingTimeStringRole,
+        Imbuement1RemainingTimeMsRole,
         Imbuement1VisualizationRole,
-        Imbuement2IconIdRole,
         Imbuement2NameRole,
+        Imbuement2IconIdRole,
         Imbuement2RemainingTimeStringRole,
+        Imbuement2RemainingTimeMsRole,
         Imbuement2VisualizationRole,
-        Imbuement3IconIdRole,
         Imbuement3NameRole,
+        Imbuement3IconIdRole,
         Imbuement3RemainingTimeStringRole,
+        Imbuement3RemainingTimeMsRole,
         Imbuement3VisualizationRole,
     };
 
@@ -59,24 +69,19 @@ public:
 
     void setItems(std::vector<ImbuementTrackerItem> items);
 
-private:
-    friend class TImbuedObjectsSortFilterProxyModel;
-
     struct Row
     {
         int inventoryPosition = 0;
-        quint16 typeId = 0;
-        int upgradeTier = 0;
-        int cumulativeCount = 0;
-        int liquidType = 0;
-        int hookDirection = 0;
+        container::TInventorySlot object;
         int slotCount = 0;
         int iconId[3] = {};
         QString name[3];
-        QString remaining[3];
-        int visualization[3] = {};
+        qint64 remainingMs[3] = {};
         int filledSlots = 0;
     };
+
+private:
+    friend class TImbuedObjectsSortFilterProxyModel;
 
     std::vector<Row> m_rows;
 };
@@ -86,9 +91,10 @@ class TImbuedObjectsSortFilterProxyModel final : public cip::TImbuedObjectsSortF
 {
     Q_OBJECT
 public:
-    explicit TImbuedObjectsSortFilterProxyModel(TImbuedObjectsModel* source, QObject* parent = nullptr);
+    /// CIP: the proxy owns its model and sorts column 0.
+    explicit TImbuedObjectsSortFilterProxyModel(QObject* parent = nullptr);
 
-    TImbuedObjectsModel* source() const { return m_source; }
+    TImbuedObjectsModel* source() { return &m_source; }
 
     void setShowFlags(bool showAlmostGone, bool showUsed, bool showAlmostNew, bool showEmptySlots);
 
@@ -100,7 +106,7 @@ protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
 private:
-    TImbuedObjectsModel* m_source = nullptr;
+    TImbuedObjectsModel m_source;
     bool m_showAlmostGone = true;
     bool m_showUsed = true;
     bool m_showAlmostNew = true;
@@ -156,8 +162,8 @@ private:
     void applyFilterOptionsFromJson(const QJsonObject& json);
     void toggleShowFlag(bool& flag);
 
-    TImbuedObjectsModel* m_model;
     TImbuedObjectsSortFilterProxyModel* m_proxy;
+    TImbuedObjectsModel* m_model;
     std::vector<client::gamecore::Hook> m_hooks;
     QPointer<config::TSidebarOptions> m_options;
     bool m_showAlmostGone = true;

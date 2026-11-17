@@ -8,7 +8,7 @@ using A = input::EGameAction;
 
 input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coord) const
 {
-    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active(); markers && markers->markerAt(coord))
+    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active(); markers && markers->markerAt(worldmap::TWorldMapCoordinate(coord)))
         return markerActions(coord);
     return fieldActions(coord);
 }

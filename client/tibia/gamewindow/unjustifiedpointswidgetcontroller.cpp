@@ -80,6 +80,12 @@ void TUnjustifiedPointsWidgetController::onWidgetQuickItemDestroyed() {}
 void TUnjustifiedPointsWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
+    onWidgetOptionsChanged();
+}
+
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TUnjustifiedPointsWidgetController::onWidgetOptionsChanged()
+{
     if (!m_options)
         return;
     const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
@@ -118,7 +124,6 @@ void TUnjustifiedPointsWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TUnjustifiedPointsWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 
 void TUnjustifiedPointsWidgetController::connectPlayerKillerModeChangedToDisplayDataChanged()
 {

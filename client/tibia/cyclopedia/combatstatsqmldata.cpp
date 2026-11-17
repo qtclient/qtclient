@@ -2,7 +2,7 @@
 
 #include "proficiency/proficiencyperks.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -685,7 +685,7 @@ QList<QObject*> timedEffectData(const std::vector<IMiscStatsProvider::TimedEffec
     QList<QObject*> out;
     for (const IMiscStatsProvider::TimedEffect& effect : effects) {
         QString name;
-        if (const ThingTypePtr& type = tibia::game::thingType(effect.appearanceTypeId, ThingCategoryItem))
+        if (const TAppearanceTypePtr& type = tibia::game::thingType(effect.appearanceTypeId, ThingCategoryItem))
             name = QString::fromStdString(type->getName());
         out.append(new TConcoctionQmlData(effect.appearanceTypeId, effect.secondsRemaining, name, parent));
     }

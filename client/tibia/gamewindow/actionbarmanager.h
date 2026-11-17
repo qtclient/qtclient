@@ -44,16 +44,6 @@ public:
     TActionBarController* bar(int actionBarId) const;
     bool chatOn() const;
 
-    void openAssignDialog(TActionBarController* bar, TActionBarController::EAssignKind kind, int buttonId, int multiActionIndex);
-    /// CIP : RecordKeyboardShortcutDialog for
-    /// TriggerActionButton_<bar>.<button> in the current chat mode.
-    void editHotkey(TActionBarController* bar, int buttonId);
-    /// CIP : an object dragged onto a button. Alt opens the
-    /// object dialog; otherwise it is assigned with its default use.
-    void assignDroppedObject(TActionBarController* bar, int buttonId, int multiActionIndex, uint16_t typeId, uint8_t tier,
-                             bool alt);
-    void openSpellDialogFor(TActionBarController* bar, int buttonId, int multiActionIndex, int spellId);
-
     /// The default use of an object on a button (CIP): Equip
     /// for wearable non-multi-use objects, SelectUseTarget for multi-use,
     /// otherwise Use.

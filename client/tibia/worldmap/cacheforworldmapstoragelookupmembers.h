@@ -5,7 +5,6 @@
 #include <cip_gen.h>
 
 #include <functional>
-#include <unordered_map>
 #include <vector>
 
 namespace tibia {
@@ -32,17 +31,30 @@ public:
     /// The answer for `coordinate`; false outside the stored volume.
     bool lookup(const TWorldMapCoordinate& coordinate);
 
+    /// Fields whose answer is known and true.
+    size_t countTrue() const;
+    /// Fields the stored volume holds.
+    size_t size() const { return m_valid.size(); }
+
 private:
     void storedVolumeHasChanged(const TShearedWorldMapCuboid& volume);
     void informationAtWorldMapCoordinateHasChanged(const TWorldMapCoordinate& coordinate);
-    bool inVolume(const TWorldMapCoordinate& coordinate) const;
-    static quint64 key(const TWorldMapCoordinate& coordinate);
+    /// The bit of `coordinate` in the stored volume; -1 outside it.
+    int inVolume(const TWorldMapCoordinate& coordinate) const;
+    int indexOf(const TWorldMapCoordinate& coordinate) const;
+    /// Forgets the answers at the offsets from `index` and asks the field again.
+    void refresh(const TWorldMapCoordinate& coordinate, int index);
 
     TWorldMapStorage* m_storage = nullptr;
     Lookup m_lookup;
     std::vector<TWorldMapExtent> m_extents;
-    /// The kept answers by field.
-    std::unordered_map<quint64, bool> m_answers;
+    /// The extents as bit offsets in the stored volume.
+    std::vector<int> m_offsets;
+    TShearedWorldMapCuboid m_volume;
+    /// The floors of the stored volume (the whole world column).
+    static constexpr int Floors = 16;
+    std::vector<bool> m_values;
+    std::vector<bool> m_valid;
 };
 
 }

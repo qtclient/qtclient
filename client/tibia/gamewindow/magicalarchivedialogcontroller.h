@@ -20,6 +20,14 @@ class TMagicalArchiveDialogController final : public cip::tibia::gamewindow::TMa
 {
     Q_OBJECT
 public:
+    /// CIP v15: the cyclopedia back-navigation context (the selected spell).
+    int captureContext() const { return m_selectedSpellID; }
+    /// CIP v16: the spell the next showDialogTab selects.
+    void restoreContext(const int spellId)
+    {
+        m_initialSpellID = spellId;
+        Q_EMIT selectedSpellIDChanged();
+    }
     explicit TMagicalArchiveDialogController(QObject* parent = nullptr);
 
     QObject* spellListModel() const override { return m_proxy; }

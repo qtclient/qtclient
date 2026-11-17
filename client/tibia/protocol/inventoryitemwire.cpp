@@ -1,12 +1,10 @@
 #include "protocol/inventoryitemwire.h"
 
 #include <client/const.h>
-#include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::protocol {
 
@@ -80,11 +78,9 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
     // The appearance kinds that carry extra data are exclusive: the first kind
     // the appearance belongs to decides what follows. An appearance of no such
     // kind (or one the client does not know) has no extra data.
-    const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
-    if (!type || type->getId() == 0)
-        return true;
+    const auto& special = tibia::appearances::TAppearancesManager::instance().specialAppearancesForProtocolParsing();
 
-    if (type->isStackable() || type->isFluidContainer() || type->isSplash()) {
+    if (special.isCumulative(id) || special.isLiquid(id)) {
         uint8_t count = 0;
         if (!r.u8(count))
             return false;
@@ -92,7 +88,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->isContainer()) {
+    if (special.isContainer(id)) {
         uint8_t flags = 0;
         if (!r.u8(flags))
             return false;
@@ -119,7 +115,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->isPodium()) {
+    if (special.isShowOffSocket(id)) {
         out->set_has_podium(true);
         uint8_t direction = 0, visible = 0;
         if (!readOutfitLook(r, out) || !readMountLook(r, out) || !r.u8(direction) || !r.u8(visible))
@@ -129,7 +125,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->getClassification() > 0) {
+    if (special.isUpgradeable(id)) {
         uint8_t tier = 0;
         if (!r.u8(tier))
             return false;
@@ -137,7 +133,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->hasWearOut()) {
+    if (special.isWearOut(id)) {
         uint32_t charges = 0;
         uint8_t brandNew = 0;
         if (!r.u32(charges) || !r.u8(brandNew))
@@ -147,7 +143,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->hasExpireStop() || type->hasExpire() || type->hasClockExpire()) {
+    if (special.isExpireStop(id) || special.isExpire(id)) {
         uint32_t duration = 0;
         uint8_t brandNew = 0;
         if (!r.u32(duration) || !r.u8(brandNew))
@@ -157,7 +153,7 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
         return true;
     }
 
-    if (type->isDecoKit()) {
+    if (special.isDecoKit(id)) {
         uint16_t deco = 0;
         if (!r.u16(deco))
             return false;
@@ -171,13 +167,10 @@ void writeInventoryItem(ClassicWriter& w, const ProtocolInventoryItem& item)
     const uint16_t id = static_cast<uint16_t>(item.item_id());
     w.u16(id);
 
-    const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
-    if (!type || type->getId() == 0)
-        return;
-
-    if (type->isStackable() || type->isFluidContainer() || type->isSplash()) {
+    const auto& special = tibia::appearances::TAppearancesManager::instance().specialAppearancesForProtocolParsing();
+    if (special.isCumulative(id) || special.isLiquid(id)) {
         w.u8(uint8_t(item.count_or_subtype()));
-    } else if (type->isContainer()) {
+    } else if (special.isContainer(id)) {
         const uint8_t flags = uint8_t(item.container_type());
         w.u8(flags);
         if (flags & ContainerLootFlags)
@@ -186,7 +179,7 @@ void writeInventoryItem(ClassicWriter& w, const ProtocolInventoryItem& item)
             w.u32(item.container_ammo_total());
         if (flags & ContainerObtainFlags)
             w.u32(item.obtain_flags());
-    } else if (type->isPodium()) {
+    } else if (special.isShowOffSocket(id)) {
         const uint16_t looktype = static_cast<uint16_t>(item.look_type());
         w.u16(looktype);
         if (looktype != 0) {
@@ -208,15 +201,15 @@ void writeInventoryItem(ClassicWriter& w, const ProtocolInventoryItem& item)
         }
         w.u8(uint8_t(item.podium_direction()));
         w.u8(item.podium_visible() ? 1 : 0);
-    } else if (type->getClassification() > 0) {
+    } else if (special.isUpgradeable(id)) {
         w.u8(uint8_t(item.tier()));
-    } else if (type->hasWearOut()) {
+    } else if (special.isWearOut(id)) {
         w.u32(item.charges());
         w.u8(item.brand_new() ? 1 : 0);
-    } else if (type->hasExpireStop() || type->hasExpire() || type->hasClockExpire()) {
+    } else if (special.isExpireStop(id) || special.isExpire(id)) {
         w.u32(item.duration_seconds());
         w.u8(item.brand_new() ? 1 : 0);
-    } else if (type->isDecoKit()) {
+    } else if (special.isDecoKit(id)) {
         w.u16(uint16_t(item.deco_item_id()));
     }
 }

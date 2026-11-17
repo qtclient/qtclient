@@ -387,8 +387,7 @@ std::unique_ptr<QQmlEngine> createEngine()
 
     auto* cursor = new gamewindow::TMouseCursorController(ClientOptions::load().options(), engine.get());
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaMouseCursorController"), cursor);
-    auto* textCopy = new gamewindow::TTextCopyController(engine.get());
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), textCopy);
+    new gamewindow::TTextCopyController(engine.get());
     // Root context objects CIP's components test for null before use.
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaContextMenuController"),
                                               QVariant::fromValue<QObject*>(nullptr));

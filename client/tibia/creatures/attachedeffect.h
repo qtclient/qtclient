@@ -113,7 +113,7 @@ public:
     const Light& getLight() const { return m_light; }
     void setLight(const Light& light) { m_light = light; }
 
-    ThingType* getThingType() const;
+    TAppearanceType* getThingType() const;
 
 private:
     int getCurrentAnimationPhase();
@@ -154,7 +154,7 @@ private:
     tibia::shared::TFrameStopWatch m_animationTimer;
     /// The phase clock of the shown appearance, run on `m_animationTimer` and the speed.
     std::optional<tibia::animation::TAnimator> m_phaseAnimator;
-    const ThingType* m_phaseAnimatorType = nullptr;
+    const TAppearanceType* m_phaseAnimatorType = nullptr;
 
     tibia::client::Direction m_direction{ tibia::client::North };
 

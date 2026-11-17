@@ -8,19 +8,14 @@
 namespace tibia {
 namespace game {
 
-inline const ThingTypePtr& thingType(uint16_t id, ThingCategory category)
+inline TAppearanceTypePtr thingType(uint16_t id, ThingCategory category)
 {
     return tibia::appearances::TAppearancesManager::instance().getThingType(id, category);
 }
 
-inline ThingType* rawThingType(uint16_t id, ThingCategory category)
+inline TAppearanceType* rawThingType(uint16_t id, ThingCategory category)
 {
     return tibia::appearances::TAppearancesManager::instance().getRawThingType(id, category);
-}
-
-inline const ThingTypeList& thingTypes(ThingCategory category)
-{
-    return tibia::appearances::TAppearancesManager::instance().getThingTypes(category);
 }
 
 inline bool isValidDatId(uint16_t id, ThingCategory category)
@@ -46,16 +41,6 @@ inline const RaceType& raceData(uint32_t raceId)
 inline uint16_t resolveEffectId(uint16_t id)
 {
     return tibia::appearances::TAppearancesManager::instance().resolveEffectId(id);
-}
-
-inline const std::vector<CyclopediaHouseType>& cyclopediaHouses()
-{
-    return tibia::appearances::TAppearancesManager::instance().getCyclopediaHouses();
-}
-
-inline const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements()
-{
-    return tibia::appearances::TAppearancesManager::instance().getCyclopediaAchievements();
 }
 
 inline uint16_t stampedLetterId()

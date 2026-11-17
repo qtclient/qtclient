@@ -102,7 +102,7 @@ struct StampResult
 StampResult writeHeightStampFrame(const StampFrame& stamp);
 
 // Where a thing's frames go in its stamp images. Only the first layer is stamped (the others
-// are a creature's outfit masks), and ThingType::getTextureIndex lays the layers out one after
+// are a creature's outfit masks), and TAppearanceType::getTextureIndex lays the layers out one after
 // another, so its frames are the texture's first ones, `columns` to a row as in the texture,
 // each `frameSize` plus `pad`.
 struct StampLayout

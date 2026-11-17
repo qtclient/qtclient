@@ -1,4 +1,5 @@
 #include "trade/tradeciptypes.h"
+#include <stdexcept>
 #include <tuple>
 #include <client/outfit.h>
 #include "creatures/creatureprotocolapply.h"
@@ -10,7 +11,7 @@
 
 #include <protocol.pb.h>
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -24,22 +25,21 @@ using Args = std::vector<std::any>;
 using client::gamecore::argInt;
 using client::gamecore::argString;
 
-QString itemNameOf(const uint16_t typeId)
+/// The vocation's name; promoted vocations have their own names.
+QString vocationName(const int vocation, const bool promoted)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    if (!type || type->getId() == 0)
-        return QString::number(typeId);
-    const MarketData& market = type->getMarketData();
-    return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
+    static constexpr const char* Base[] = { "knight", "paladin", "sorcerer", "druid", "monk" };
+    static constexpr const char* Promoted[] = { "knight_promoted", "paladin_promoted", "sorcerer_promoted", "druid_promoted", "monk_promoted" };
+    if (vocation < 1 || vocation > 5)
+        return qtTrId("none");
+    return qtTrId(promoted ? Promoted[vocation - 1] : Base[vocation - 1]);
 }
 
-QString categoryIconFor(const uint8_t category)
+QString worldTypeName(const int worldType)
 {
-    switch (category) {
-        case 1: return QStringLiteral("/images/icon-yes.png");
-        case 2: return QStringLiteral("/images/icon-exclamationmark.png");
-        default: return QStringLiteral("/images/icon-no.png");
-    }
+    static constexpr const char* Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
+                                             "world_pvp_retro_hardcore" };
+    return worldType >= 0 && worldType < 5 ? qtTrId(Names[worldType]) : qtTrId("dummy_unknown");
 }
 
 } // namespace
@@ -50,108 +50,6 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
     : cip::tibia::trade::TCharacterTradeStorage(parent)
 {
     s_instance = this;
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeConditions", [this](GameObject*, const Args& args) {
-        m_characterName = argString(args, 0);
-        m_characterLevel = static_cast<int>(argInt(args, 1));
-        m_vocationClientId = static_cast<uint8_t>(argInt(args, 2));
-        if (const auto* outfit = args.size() > 3 ? std::any_cast<Outfit>(&args[3]) : nullptr)
-            m_outfit = *outfit;
-        m_worldType = static_cast<uint8_t>(argInt(args, 4));
-        m_startTimestamp = static_cast<uint32_t>(argInt(args, 5));
-        m_endTimestamp = static_cast<uint32_t>(argInt(args, 6));
-        m_minimumBid = static_cast<uint16_t>(argInt(args, 7));
-        m_conditions.clear();
-        if (const auto* list = args.size() > 8 ? std::any_cast<std::vector<std::tuple<std::string, uint8_t>>>(&args[8]) : nullptr) {
-            m_conditions.reserve(list->size());
-            for (const auto& [text, status] : *list) {
-                TCharacterTradeConditionEntry entry;
-                entry.notification = QString::fromStdString(text);
-                entry.status = static_cast<int>(status);
-                m_conditions.push_back(std::move(entry));
-            }
-        }
-        Q_EMIT infoUpdated(Conditions);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeItems", [this](GameObject*, const Args& args) {
-        const int dataType = static_cast<int>(argInt(args, 0));
-        std::vector<TCharacterTradeItemEntry> rows;
-        if (const auto* list = args.size() > 1 ? std::any_cast<std::vector<std::tuple<uint16_t, uint8_t, uint32_t>>>(&args[1]) : nullptr) {
-            rows.reserve(list->size());
-            for (const auto& [itemId, tier, count] : *list) {
-                TCharacterTradeItemEntry entry;
-                entry.id = static_cast<int>(itemId);
-                entry.upgradeTier = static_cast<int>(tier);
-                entry.amount = static_cast<int>(count);
-                entry.name = itemNameOf(itemId);
-                rows.push_back(std::move(entry));
-            }
-        }
-        if (dataType == StoreItems) {
-            m_storeItems = std::move(rows);
-            Q_EMIT infoUpdated(StoreItems);
-        } else {
-            m_items = std::move(rows);
-            Q_EMIT infoUpdated(Items);
-        }
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeHighlights", [this](GameObject*, const Args& args) {
-        m_highlights.clear();
-        using Group = std::tuple<uint8_t, std::string, std::vector<std::tuple<uint16_t, std::string>>>;
-        if (const auto* groups = args.empty() ? nullptr : std::any_cast<std::vector<Group>>(&args[0])) {
-            for (const auto& [category, groupName, entries] : *groups) {
-                const QString categoryLabel = QString::fromStdString(groupName);
-                const QString icon = categoryIconFor(category);
-                for (const auto& [id, text] : entries) {
-                    TCharacterTradeHighlightEntry entry;
-                    entry.highlightId = static_cast<int>(id);
-                    entry.highlight = QString::fromStdString(text);
-                    entry.category = categoryLabel;
-                    entry.categoryIcon = icon;
-                    m_highlights.push_back(std::move(entry));
-                }
-            }
-        }
-        Q_EMIT infoUpdated(Highlights);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeSummary", [this](GameObject*, const Args& args) {
-        m_summaryFee = static_cast<uint16_t>(argInt(args, 0));
-        m_confirmations.clear();
-        if (const auto* problems = args.size() > 1 ? std::any_cast<std::vector<std::string>>(&args[1]) : nullptr) {
-            m_confirmations.reserve(problems->size());
-            for (const std::string& problem : *problems) {
-                TCharacterTradeConditionEntry entry;
-                entry.notification = QString::fromStdString(problem);
-                entry.status = 1; // No / error
-                m_confirmations.push_back(std::move(entry));
-            }
-        }
-        Q_EMIT infoUpdated(Summary);
-        return std::any{};
-    });
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_characterName.clear();
-        m_characterLevel = 0;
-        m_vocationClientId = 0;
-        m_outfit = {};
-        m_worldType = 0;
-        m_startTimestamp = 0;
-        m_endTimestamp = 0;
-        m_minimumBid = 0;
-        m_conditions.clear();
-        m_items.clear();
-        m_storeItems.clear();
-        m_highlights.clear();
-        m_summaryFee = 0;
-        m_confirmations.clear();
-    });
 }
 
 TCharacterTradeStorage* TCharacterTradeStorage::instance()
@@ -159,18 +57,35 @@ TCharacterTradeStorage* TCharacterTradeStorage::instance()
     return s_instance;
 }
 
-bool TCharacterTradeStorage::hasUnfulfilledConditions() const
+void TCharacterTradeStorage::setBasicData(TCharacterTradeBasicData data)
 {
-    for (const TCharacterTradeConditionEntry& entry : m_conditions) {
-        if (entry.status != 0)
-            return true;
-    }
-    return false;
+    m_basicData = std::move(data);
+    Q_EMIT infoUpdated(Conditions);
 }
 
-bool TCharacterTradeStorage::hasConfirmationError() const
+void TCharacterTradeStorage::setItems(std::vector<TCharacterTradeItem> items)
 {
-    return !m_confirmations.empty();
+    m_items = std::move(items);
+    Q_EMIT infoUpdated(Items);
+}
+
+void TCharacterTradeStorage::setStoreItems(std::vector<TCharacterTradeItem> items)
+{
+    m_storeItems = std::move(items);
+    Q_EMIT infoUpdated(StoreItems);
+}
+
+void TCharacterTradeStorage::setHighlights(std::vector<TCharacterTradeHighlightGroup> highlights)
+{
+    m_highlights = std::move(highlights);
+    Q_EMIT infoUpdated(Highlights);
+}
+
+void TCharacterTradeStorage::setSummary(std::vector<QString> problems, const quint16 fee)
+{
+    m_problems = std::move(problems);
+    m_fee = fee;
+    Q_EMIT infoUpdated(Summary);
 }
 
 namespace {
@@ -352,6 +267,8 @@ void TPlayerTradeProtocolMessageHandler::rejectTrade()
 
 void TPlayerTradeProtocolMessageHandler::lookTrade(const int index, const int side)
 {
+    if (static_cast<unsigned>(side) >= 2)
+        throw std::runtime_error("unhandled enum value");
     tibia::game::inspectTrade(side != 0, static_cast<uint8_t>(index));
 }
 
@@ -418,39 +335,59 @@ void ownProductSurface(QObject* parent)
 void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& m)
 {
+    if (m.data_type() > TCharacterTradeStorage::Summary)
+        throw std::logic_error("unhandled enum value");
+    TCharacterTradeStorage* storage = TCharacterTradeStorage::instance();
+    if (!storage)
+        return;
     switch (m.data_type()) {
-    case 0: {
-        std::vector<std::tuple<std::string, uint8_t>> conditions;
-        for (const auto& c : m.conditions())
-            conditions.emplace_back(c.text(), static_cast<uint8_t>(c.fulfilled() ? 1 : 0));
-        tibia::game::notify("onCharacterTradeConditions", m.name(), static_cast<uint16_t>(m.level()), static_cast<uint8_t>(m.vocation()),
-                            creatures::outfitFromProtocol(m.outfit(), nullptr), static_cast<uint8_t>(m.world_type()), m.start_time(),
-                            m.end_time(), static_cast<uint16_t>(m.minimum_bid()), conditions);
+    case TCharacterTradeStorage::Conditions: {
+        TCharacterTradeBasicData data;
+        data.name = QString::fromStdString(m.name());
+        data.level = static_cast<quint16>(m.level());
+        // Promoted vocations come as the base vocation plus ten.
+        data.vocation = vocationName(static_cast<int>(m.vocation() % 10), m.vocation() >= 10);
+        data.worldType = worldTypeName(static_cast<int>(m.world_type()));
+        data.startTime = m.start_time();
+        data.endTime = m.end_time();
+        data.minimumBid = m.minimum_bid();
+        for (const auto& condition : m.conditions())
+            data.conditions.push_back({ QString::fromStdString(condition.text()), condition.fulfilled() });
+        data.outfit = creatures::outfitFromProtocol(m.outfit(), nullptr);
+        storage->setBasicData(std::move(data));
         break;
     }
-    case 1:
-    case 2: {
-        std::vector<std::tuple<uint16_t, uint8_t, uint32_t>> items;
-        for (const auto& i : m.items())
-            items.emplace_back(static_cast<uint16_t>(i.object().object_id()), static_cast<uint8_t>(i.object().tier()), i.count());
-        tibia::game::notify("onCharacterTradeItems", static_cast<uint8_t>(m.data_type()), items);
+    case TCharacterTradeStorage::Items:
+    case TCharacterTradeStorage::StoreItems: {
+        std::vector<TCharacterTradeItem> items;
+        for (const auto& item : m.items())
+            items.push_back({ static_cast<quint16>(item.object().object_id()), static_cast<quint8>(item.object().tier()), item.count() });
+        if (m.data_type() == TCharacterTradeStorage::Items)
+            storage->setItems(std::move(items));
+        else
+            storage->setStoreItems(std::move(items));
         break;
     }
-    case 3: {
-        std::vector<std::tuple<uint8_t, std::string, std::vector<std::tuple<uint16_t, std::string>>>> groups;
-        for (const auto& g : m.groups()) {
-            std::vector<std::tuple<uint16_t, std::string>> entries;
-            for (const auto& e : g.entries())
-                entries.emplace_back(static_cast<uint16_t>(e.entry_id()), e.text());
-            groups.emplace_back(static_cast<uint8_t>(g.category()), g.name(), entries);
+    case TCharacterTradeStorage::Highlights: {
+        std::vector<TCharacterTradeHighlightGroup> groups;
+        for (const auto& group : m.groups()) {
+            TCharacterTradeHighlightGroup entry;
+            entry.category = static_cast<int>(group.category());
+            entry.name = QString::fromStdString(group.name());
+            for (const auto& highlight : group.entries())
+                entry.entries.push_back({ static_cast<quint16>(highlight.entry_id()), QString::fromStdString(highlight.text()) });
+            groups.push_back(std::move(entry));
         }
-        tibia::game::notify("onCharacterTradeHighlights", groups);
+        storage->setHighlights(std::move(groups));
         break;
     }
-    case 4:
-        tibia::game::notify("onCharacterTradeSummary", static_cast<uint16_t>(m.fee()),
-                            std::vector<std::string>(m.problems().begin(), m.problems().end()));
+    case TCharacterTradeStorage::Summary: {
+        std::vector<QString> problems;
+        for (const std::string& problem : m.problems())
+            problems.push_back(QString::fromStdString(problem));
+        storage->setSummary(std::move(problems), static_cast<quint16>(m.fee()));
         break;
+    }
     default:
         break;
     }

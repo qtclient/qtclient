@@ -1,3 +1,4 @@
+#include "crashhandler.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/ambientlightstorage.h"
 
@@ -133,6 +134,14 @@ void TWorldmapProtocolMessageHandler::moveKnownArea(const Position& center)
         m_minimap->setPlayerZ(center.z);
         m_minimap->markUnseen();
     }
+    setCrashReportPosition(center);
+}
+
+void TWorldmapProtocolMessageHandler::setCrashReportPosition(const Position& center)
+{
+    // A crash report tells where the player stood.
+    tibia::shared::TCrashHandler::instance().setAnnotation(
+        QStringLiteral("Position"), QStringLiteral("[%1,%2,%3]").arg(center.x).arg(center.y).arg(center.z));
 }
 
 void TWorldmapProtocolMessageHandler::applyArea(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields)

@@ -4,7 +4,7 @@
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
 #include "gameactionhandlers.h"
 #include "protocol/clientmessages.h"
 
@@ -262,10 +262,10 @@ void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameActi
 
 void TGenericGameActionHandler::handleResetHuntingSessionAction()
 {
-    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance()) {
         storages->resetAll();
-    if (cyclopedia::TItemInfoStorage* itemTracking = cyclopedia::TItemInfoStorage::instance())
-        itemTracking->clearRecentLootDrops();
+        storages->itemTracking()->clearRecentLootDrops();
+    }
 }
 
 void TGenericGameActionHandler::handleToggleCreatureHudsVisibleGameAction()

@@ -1,5 +1,7 @@
 #include "highscoresdialogcontroller.h"
 
+#include "gamewindow/waitdialogcontroller.h"
+
 #include "protocol/protocolciptypes.h"
 
 #include <tibia/game/gamesession.h>
@@ -65,15 +67,6 @@ namespace tibia::gamewindow {
 namespace {
 
 constexpr int EntriesPerPage = 20;
-
-/// The age of the data: seconds up to a minute, then minutes.
-QString formatElapsed(const qint64 milliseconds)
-{
-    const uint seconds = static_cast<uint>(std::llround(static_cast<double>(milliseconds) / 1000.0));
-    if (seconds < 61)
-        return qtTrId(seconds == 1 ? "time_second" : "time_seconds_plural").arg(seconds);
-    return qtTrId("time_minutes").arg(std::lround(seconds / 60.0));
-}
 
 }
 
@@ -235,7 +228,7 @@ QString THighscoresDialogController::dataActualisationText() const
     if (!m_storage)
         return {};
     const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - static_cast<qint64>(m_storage->lastUpdate()) * 1000;
-    return qtTrId("highscores_refreshtext").arg(formatElapsed(elapsed));
+    return qtTrId("highscores_refreshtext").arg(formatRemainingTime(elapsed));
 }
 
 void THighscoresDialogController::setIndexOfSelectedWorld(const int v)

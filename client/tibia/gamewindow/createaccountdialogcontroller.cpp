@@ -1,5 +1,10 @@
 #include "createaccountdialogcontroller.h"
 
+#include "gamewindow/capslockstate.h"
+
+#include <QCoreApplication>
+#include <QEvent>
+
 #include "gamewindow/messagedialogcontroller.h"
 
 #include <QDebug>
@@ -84,6 +89,8 @@ TCreateAccountDialogController::TCreateAccountDialogController(QObject* parent)
     m_characterSexMale = true;
     m_error->setCloseOnButtonClicked(true);
     m_error->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
+    m_capsLock = isCapsLockActive();
+    qApp->installEventFilter(this);
 }
 
 TCreateAccountDialogController::~TCreateAccountDialogController() = default;
@@ -96,8 +103,11 @@ void TCreateAccountDialogController::showDialog()
 
 bool TCreateAccountDialogController::eventFilter(QObject* watched, QEvent* event)
 {
-    // Host: CipSoft refreshes capsLock from the OS key state here; qtclient has
-    // no caps lock query yet.
+    // Every key release refreshes the Caps Lock warning.
+    if (event->type() == QEvent::KeyRelease && m_capsLock != isCapsLockActive()) {
+        m_capsLock = isCapsLockActive();
+        Q_EMIT accountCreationDataChanged();
+    }
     return cip::tibia::gamewindow::TCreateAccountDialogController::eventFilter(watched, event);
 }
 
@@ -472,8 +482,9 @@ void TCreateAccountDialogController::onAccountCreated(QNetworkReply* reply)
     if (succeeded(answer))
         return;
     showError(errorMessage(answer));
-    // Product: the portal's codes differ from CipSoft's (which closes the dialog
-    // unless errorCode is 2), so the form always stays for a correction.
+    // Error code 2 keeps the form for a correction; any other error ends it.
+    if (answer.value(QLatin1String("errorCode")).toInt() != 2)
+        cancel();
 }
 
 void TCreateAccountDialogController::setStartPlayingInProgress(const bool inProgress)
@@ -507,6 +518,8 @@ void TCreateAccountDialogController::setPending(const int pending)
 
 void TCreateAccountDialogController::showError(const QString& message)
 {
+    m_error->setCloseOnButtonClicked(true);
+    m_error->setMessageDialogTextFormat(TMessageDialogController::RICH_TEXT);
     m_error->showMessage(qtTrId("error"), message);
 }
 

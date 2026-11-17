@@ -1,44 +1,100 @@
 #include "newsrequestuploader.h"
 
+#include "iclockservice.h"
 #include "news/newsstorage.h"
-#include "shared/clientservicesuploader.h"
+#include "shared/tibiafilesystemhelper.h"
 
-#include <QNetworkAccessManager>
+#include <QDebug>
+#include <QJsonObject>
 
 namespace tibia::news {
 
-TNewsRequestUploader::TNewsRequestUploader(TNewsStorage* storage, QObject* parent)
-    : cip::tibia::news::TNewsRequestUploader(parent)
-    , m_network(new QNetworkAccessManager(this))
-    , m_storage(storage)
+QJsonDocument newsQueryDocument(const TNewsQueryParameters& parameters)
 {
-    connect(this, &TNewsRequestUploader::finished, this, &TNewsRequestUploader::onFinished);
+    QJsonObject object;
+    object.insert(QStringLiteral("type"), QStringLiteral("news"));
+    object.insert(QStringLiteral("fromtimestamp"), static_cast<qint64>(parameters.maxKnownEditDate));
+    object.insert(QStringLiteral("isreturner"), parameters.returner);
+    object.insert(QStringLiteral("showrewardnews"), parameters.highPotential);
+    return QJsonDocument(object);
+}
+
+QJsonDocument newsViewedDocument(const uint id)
+{
+    QJsonObject object;
+    object.insert(QStringLiteral("type"), QStringLiteral("newsviewed"));
+    object.insert(QStringLiteral("viewedid"), static_cast<qint64>(id));
+    return QJsonDocument(object);
+}
+
+TNewsRequestUploader::TNewsRequestUploader(const QUrl& url, std::shared_ptr<TNewsStorage> storage,
+                                           std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                                           std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                           std::shared_ptr<shared::IClockService> clock, QObject* parent)
+    : shared::TJsonDocumentUploaderBase(std::move(sender), parent)
+    , m_fileSystemHelper(std::move(fileSystemHelper))
+    , m_clock(std::move(clock))
+    , m_url(url)
+    , m_storage(std::move(storage))
+{
+    connect(this, &shared::TJsonDocumentUploaderBase::finished, this, &TNewsRequestUploader::onFinished);
+    // A changed returner state asks for every entry again.
+    connect(m_storage.get(), &TNewsStorage::returnerInformationChanged, this,
+            [this] { requestNews(storageParameters(), true); });
+}
+
+TNewsRequestUploader::~TNewsRequestUploader() = default;
+
+TNewsQueryParameters TNewsRequestUploader::storageParameters() const
+{
+    return { m_storage->isReturner(), m_storage->showRewardNews(), static_cast<uint>(m_storage->version()) };
+}
+
+void TNewsRequestUploader::requestNews(const TNewsQueryParameters& parameters, const bool force)
+{
+    TNewsQueryParameters query = parameters;
+    m_retries.try_emplace(query, 0u);
+    if (force)
+        query.maxKnownEditDate = 0;
+    uint& tries = m_retries.try_emplace(query, 0u).first->second;
+    if (tries < 3 || force) {
+        ++tries;
+        upload(m_url, newsQueryDocument(query));
+        return;
+    }
+    qWarning() << "Didn't send news query with params (HighPotential:" << (query.highPotential ? "true" : "false")
+               << "Returner:" << (query.returner ? "true" : "false") << "MaxKnownEditDate:" << query.maxKnownEditDate
+               << ") (URL:" << m_url << ") due to too many retries.";
 }
 
 void TNewsRequestUploader::requestUpdate()
 {
-    shared::postClientService(m_network, this, m_url, QStringLiteral("news"), {}, m_revision,
-                              [this](bool ok, QJsonDocument doc) { Q_EMIT finished(ok, doc); });
+    if (isCachedDocumentOutdated(m_fileSystemHelper->readCompendium(), m_clock->currentDateTime()))
+        requestNews(storageParameters(), false);
 }
 
 void TNewsRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
     if (!UploadSuccessful) {
-        Q_EMIT newsQueryFailed(tr("Could not reach the news service."));
+        Q_EMIT newsQueryFailed(errorMessage());
         return;
     }
-    if (!ReplyFromServerJD.isObject()) {
-        Q_EMIT newsQueryFailed(tr("The news service sent an invalid response."));
-        return;
-    }
-    m_reply = ReplyFromServerJD.object();
-    if (m_reply.contains(QStringLiteral("errorCode"))) {
-        Q_EMIT newsQueryFailed(m_reply.value(QStringLiteral("errorMessage")).toString());
-        return;
-    }
-    if (m_storage)
-        m_storage->setFromNewsDocument(m_reply);
-    Q_EMIT newsReceived();
+    TNewsData data = parseNewsData(ReplyFromServerJD);
+    data.lastUpdateTimestamp = m_clock->currentDateTime().toSecsSinceEpoch();
+    // A new edit date starts the retry counts over.
+    if (m_storage->version() != data.maxEditDate)
+        m_retries.clear();
+    m_storage->mergeNewsData(data);
 }
+
+TNewsViewsUploader::TNewsViewsUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                                       QObject* parent)
+    : shared::TJsonDocumentUploaderBase(std::move(sender), parent)
+    , m_url(url)
+{}
+
+TNewsViewsUploader::~TNewsViewsUploader() = default;
+
+void TNewsViewsUploader::reportNewsViewed(const uint id) { upload(m_url, newsViewedDocument(id)); }
 
 }
