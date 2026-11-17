@@ -26,7 +26,8 @@ struct TSessiondumpMetadata
     QString sessionKey;
     QDateTime creationTime;
     QString characterName;
-    uint32_t worldId = 0;
+    /// The recording character's player id.
+    uint32_t playerId = 0;
     QString worldName;
     /// Version 5 and later.
     uint32_t extraFlag = 0;

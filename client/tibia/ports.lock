@@ -676,6 +676,7 @@ creatures::TCreatureStorage::v30	ec13b62cab94d74b	ported	creatures/creaturestora
 creatures::TCreatureStorage::v31	ec13b62cab94d74b	ported	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureAppearanceUpdated
 creatures::TCreatureStorage::~TCreatureStorage	8ce292a1ecc0653d	skip	generated: compiler-generated destructor pair
 creatures::TCreatureStorage::~TCreatureStorage_deleting	1531bc616668060c	skip	generated: compiler-generated destructor pair
+creatures::TCreaturesGameActionHandler::v13	7d518326cf59019c	inlined	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::TBattleListControllerStorage
 creatures::TCreaturesGameActionHandler::v14	097eb07a159f3eb1	ported	game/gamesessionstate.cpp:TGameSessionState::follow
 creatures::TCreaturesGameActionHandler::v15	e572db1f503f1f5d	ported	game/gamesessionstate.cpp:TGameSessionState::follow
 creatures::TCreaturesGameActionHandler::v16	b643b2b6bc2b6ba0	ported	game/gamesessionstate.cpp:TGameSessionState::attack
@@ -3532,6 +3533,8 @@ shared::TLocalFileInfo::v0	30f98ed2b8d1c834	skip	generated: compiler-generated d
 shared::TLocalFileInfo::v1	77f8582a0cc0d18e	skip	generated: compiler-generated destructor (QString path)
 shared::TNetworkAccessManagerAuthenticationHandler::~TNetworkAccessManagerAuthenticationHandler	8ce292a1ecc0653d	skip	generated: compiler-generated destructor (std::map member, QObject base)
 shared::TNetworkAccessManagerAuthenticationHandler::~TNetworkAccessManagerAuthenticationHandler_deleting	1531bc616668060c	skip	generated: compiler-generated deleting destructor
+shared::TNullExperiencePerHourProvider::v0	872d4faac408f6d5	skip	generated: destructor pair
+shared::TNullExperiencePerHourProvider::v1	e9caf669ab302182	skip	generated: destructor pair
 shared::TOptimized1PixelBorderImageProvider::requestImage	b2eac1c3d0e19609	ported	imageproviders/optimizedborderimageprovider.cpp:TOptimized1PixelBorderImageProvider::requestImage
 shared::TOptimized1PixelBorderImageProvider::~TOptimized1PixelBorderImageProvider	4e6fe949c0adff3d	skip	generated: destructor pair
 shared::TOptimized1PixelBorderImageProvider::~TOptimized1PixelBorderImageProvider_deleting	59ec6ba05b2ef29b	skip	generated: destructor pair
@@ -4427,6 +4430,9 @@ spells::TSpellInfoStorage::v19	57ec580ceaaf3576	ported	spells/spellinfostorage.c
 spells::TSpellInfoStorage::v20	38618c379fd24b94	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::parseSpellText
 spells::TSpellInfoStorage::v21	d392441858577807	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::castParameters
 spells::TSpellInfoStorage::v22	9ee505aa93ff0ab8	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::runeSpellInfo
+spells::TSpellInfoStorage::v23	3341c58176e453cf	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::setUnlockedSpells
+spells::TSpellInfoStorage::v24	3341c58176e453cf	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::clearUnlockedSpells
+spells::TSpellInfoStorage::v25	3341c58176e453cf	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::isSpellUnlocked
 spells::TSpellInfoStorage::v26	550055d63dd15610	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::isCrossHairTarget
 spells::TSpellInfoStorage::v27	18795eb958131098	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::isAimAtTarget
 spells::TSpellInfoStorage::v28	eccc791acb0562d0	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::spellIdOfText
@@ -4852,6 +4858,7 @@ sub_0bbf4e03b4d3#2	0bbf4e03b4d38f5f	skip	library: std::sort internals
 sub_0bbf4e03b4d3#3	0bbf4e03b4d38f5f	skip	library: std::sort instantiation (introsort/insertion helpers)
 sub_0bbf4e03b4d3#4	0bbf4e03b4d38f5f	skip	library: std::sort instantiation (introsort/insertion helpers)
 sub_0bbf4e03b4d3#5	0bbf4e03b4d38f5f	skip	library: std::sort instantiation
+sub_0bc03098d4f7	0bc03098d4f7f5f4	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::isSpellUnlocked
 sub_0bc8bf02f945	0bc8bf02f945f093	ported	config/sidebaroptions.cpp:serializeCreatureTracker
 sub_0bc9c709b9f0#2	0bc9c709b9f01592	inlined	dailyreward/dailyrewardciptypes.cpp:handleDailyRewardHistoryMessage
 sub_0bd30ede57d3	0bd30ede57d37515	inlined	teamfinder/teamsortproxymodels.cpp:activityDisplayName
@@ -9345,6 +9352,7 @@ sub_9ed23d957f0a	9ed23d957f0afe1b	skip	library: libc++ vector/map/unordered_map/
 sub_9f310677261e	9f310677261e7bb0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::donateMoneyForArea
 sub_9f3aa773c506	9f3aa773c5060dad	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_9f3c8e62110f	9f3c8e62110f8c75	ported	config/optionspages.cpp:THotkeysOptionsPage::requestEnterNewHotkeyForAction
+sub_9f4376356a65	9f4376356a6595e3	skip	dead: TDynamicResourcesHelper rcc compile path (rcc.exe, resource file compilation): no callers, no vtable or data references in the catalog
 sub_9f4599a4f73a	9f4599a4f73a8dc9	ported	sound/soundcontrollerambienceobjectsound.cpp:TSoundControllerAmbienceObjectSound::stopAllAmbienceObjectSounds
 sub_9f4653c2aa31	9f4653c2aa318d9a	skip	library: QList<QKeySequence> instantiation
 sub_9f50bb9e1673#5	9f50bb9e1673a30a	ported	friends/friendlistmodels.cpp:TFriendListModel::TFriendListModel
@@ -9486,6 +9494,7 @@ sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTran
 sub_a5138262d4c3	a5138262d4c35305	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::TSessiondumpAsyncLoader
 sub_a5255b73483e	a5255b73483ea101	skip	generated: compiler-generated destructor
 sub_a528e91f3860	a528e91f38606723	skip	library: libc++ std::vector<T> assign/operator= (and element copy-assign/variant copy-assign) instantiated for the list model items
+sub_a53b8b47ec54	a53b8b47ec541591	skip	dead: TDynamicResourcesHelper rcc compile path (rcc.exe, resource file compilation): no callers, no vtable or data references in the catalog
 sub_a540602af04c	a540602af04c02b0	ported	renderer/worldmaprenderprovider.cpp:hasCreatureIcon
 sub_a5502213f47e	a5502213f47e491f	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::hasPickedPerks
 sub_a57838a1af09	a57838a1af0908dd	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowClicked
@@ -9657,6 +9666,7 @@ sub_aaa30d7665ca	aaa30d7665ca1f71	ported	gamewindow/cyclopediadialogcontroller.c
 sub_aaa313eafbdb	aaa313eafbdbd079	ported	analysers/impactwidgets.cpp:TImpactWidgetController::maxHpsString
 sub_aaad830785f7	aaad830785f70c11	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateGraph
 sub_aab976edddf6	aab976edddf6c4d6	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeVisible
+sub_aacb74b66aa7#2	aacb74b66aa7ba76	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::clearUnlockedSpells
 sub_aae8e0f69017	aae8e0f6901764cc	inlined	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSetOnBlacklist
 sub_aaeedcbad801	aaeedcbad8010acd	skip	data: static initializer of unrelated globals
 sub_ab2c6290295f	ab2c6290295f0168	skip	library: libc++ vector/map/unordered_map/variant/optional/make_shared instantiations, comparators, QFuture/QtConcurrent templates, QDebug QList printing
@@ -10596,6 +10606,7 @@ sub_c66eaae8b084	c66eaae8b0844e66	ported	gamewindow/iteminfodialogcontroller.cpp
 sub_c67c53827a80	c67c53827a80ad11	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_c67d36297b78	c67d36297b781e5a	skip	generated: compiler-generated destructor pair
 sub_c68bb6563eef	c68bb6563eefe14d	skip	data: static bimap destructors (atexit)
+sub_c68d39d70334#2	c68d39d703347ef0	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::setUnlockedSpells
 sub_c695c9ddbd8b	c695c9ddbd8bf18b	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_c6a36ee6fe82	c6a36ee6fe823f91	ported	config/optionspages.cpp:percentOf
 sub_c6a434183fd5#3	c6a434183fd51aa9	skip	generated: compiler-generated destructor pair
@@ -10865,6 +10876,7 @@ sub_cf024bab73ce	cf024bab73ce9204	ported	config/hotkeyoptions.cpp:TActionSetting
 sub_cf37b99cfc3d	cf37b99cfc3d8ff2	skip	generated: compiler-generated destructor of the static empty metadata
 sub_cf599477d831	cf599477d83197ed	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::setSortingCriterion
 sub_cf5a3261c15f#5	cf5a3261c15f16d6	inlined	shared::TTibiaFileSystemHelper::v2
+sub_cf5a3261c15f#6	cf5a3261c15f16d6	skip	data: static initialisers of file-scope constants (vocation names, directory/file names, time zone)
 sub_cf69eeabe14f	cf69eeabe14f3aa0	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_cf6dc45ac74e	cf6dc45ac74e1988	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::spellTooltip
 sub_cf7e73f42778	cf7e73f42778e883	inlined	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::open
@@ -12100,6 +12112,7 @@ sub_f90d3b4c0cc7	f90d3b4c0cc76269	ported	chat/textstorage.cpp:TCreatureSpeechBub
 sub_f90e2980f56a	f90e2980f56a8e4d	inlined	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::info
 sub_f90e2980f56a#2	f90e2980f56a8e4d	inlined	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::info
 sub_f919b998c4fd	f919b998c4fde2aa	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
+sub_f94a7adfeaad#2	f94a7adfeaad91b3	skip	data: static initialisers of file-scope constants (vocation names, directory/file names, time zone)
 sub_f9515db0fa1e	f9515db0fa1e2d3a	ported	gamewindow/hitpointmanabarcontroller.cpp:THitpointManabarController::setHitpoints
 sub_f95cde2cfa95	f95cde2cfa951c01	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_f98ceae25008	f98ceae25008c033	tested	shared/src/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp

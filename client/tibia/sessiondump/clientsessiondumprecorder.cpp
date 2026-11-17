@@ -82,7 +82,7 @@ QByteArray TClientPartialSessiondump::sessiondump()
     // (TSessiondumpMetadataReader reads it as seconds).
     metadataWriter->writeUInt32(uint32_t(metadata.creationTime.toMSecsSinceEpoch()));
     metadataWriter->writeString8(metadata.characterName);
-    metadataWriter->writeUInt32(metadata.worldId);
+    metadataWriter->writeUInt32(metadata.playerId);
     metadataWriter->writeString8(metadata.worldName);
     metadataWriter->writeUInt8(uint8_t(metadata.extraFlag));
     metadataWriter->writeString8(metadata.extraText);
@@ -135,8 +135,8 @@ void TClientSessiondumpRecorder::start(const QString& characterName, const QStri
 
 void TClientSessiondumpRecorder::setPlayerId(const uint32_t playerId)
 {
-    m_currentSegment.metadata.worldId = playerId;
-    m_nextSegment.metadata.worldId = playerId;
+    m_currentSegment.metadata.playerId = playerId;
+    m_nextSegment.metadata.playerId = playerId;
 }
 
 void TClientSessiondumpRecorder::startNewSegmentIfDue()

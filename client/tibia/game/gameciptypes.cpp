@@ -1,3 +1,4 @@
+#include "spells/spellinfostorage.h"
 #include "game/gameciptypes.h"
 #include "game/inspectedobject.h"
 #include "cyclopedia/cyclopediaciptypes.h"
@@ -519,6 +520,7 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             std::vector<uint16_t> spellIds;
             for (const uint32_t id : shadow->GetExtension(GameserverMessageUnlockedSpells::gameserver_message_unlocked_spells).spell_ids())
                 spellIds.push_back(static_cast<uint16_t>(id));
+            spells::TSpellInfoStorage::instance()->setUnlockedSpells(spellIds);
             tibia::game::notify("onUnlockedSpells", spellIds);
         }
         break;
