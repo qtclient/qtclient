@@ -1,4 +1,5 @@
 #include "gameclient.h"
+#include "colorhelper.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
@@ -104,7 +105,7 @@ namespace {
 
 QColor outfitColor(int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

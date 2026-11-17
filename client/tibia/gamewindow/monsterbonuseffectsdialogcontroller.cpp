@@ -1,4 +1,5 @@
 #include "monsterbonuseffectsdialogcontroller.h"
+#include "colorhelper.h"
 
 #include "cyclopedia/bestiarystorage.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -30,7 +31,7 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

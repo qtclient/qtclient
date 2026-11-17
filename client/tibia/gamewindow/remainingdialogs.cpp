@@ -1,4 +1,5 @@
 #include "remainingdialogs.h"
+#include "colorhelper.h"
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -38,7 +39,7 @@ constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

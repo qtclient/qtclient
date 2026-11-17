@@ -26,14 +26,7 @@
 
 class Outfit
 {
-    enum
-    {
-        HSI_SI_VALUES = 7,
-        HSI_H_STEPS = 19
-    };
-
 public:
-    static QColor getColor(int color);
 
     void setId(const uint16_t id) { m_id = id; }
     void setAuxId(const uint16_t id) { m_auxId = id; }

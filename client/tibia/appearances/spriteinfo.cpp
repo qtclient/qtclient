@@ -1,4 +1,5 @@
 #include "appearances/spriteinfo.h"
+#include "colorhelper.h"
 #include "sprites/spritesystem.h"
 
 #include <client/outfit.h>
@@ -127,7 +128,7 @@ bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearance
 }
 
 TOutfitColors::TOutfitColors(const uint8_t head, const uint8_t body, const uint8_t legs, const uint8_t feet)
-    : colors{ Outfit::getColor(head), Outfit::getColor(body), Outfit::getColor(legs), Outfit::getColor(feet) }
+    : colors{ tibia::shared::outfitColor(head), tibia::shared::outfitColor(body), tibia::shared::outfitColor(legs), tibia::shared::outfitColor(feet) }
 {
     hash = colors[3].rgba() * 13 ^ colors[2].rgba() * 11 ^ colors[1].rgba() * 7 ^ colors[0].rgba();
 }

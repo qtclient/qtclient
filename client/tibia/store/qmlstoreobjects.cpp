@@ -1,4 +1,5 @@
 #include "qmlstoreobjects.h"
+#include "colorhelper.h"
 
 #include "store/storeciptypes.h"
 
@@ -22,7 +23,7 @@ QString englishNumber(const qint64 value)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

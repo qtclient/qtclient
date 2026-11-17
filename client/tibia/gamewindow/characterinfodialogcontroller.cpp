@@ -1,4 +1,5 @@
 #include "characterinfodialogcontroller.h"
+#include "colorhelper.h"
 
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
@@ -45,7 +46,7 @@ QString qstr(const std::string& text) { return QString::fromStdString(text); }
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 

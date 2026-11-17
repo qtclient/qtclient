@@ -1,4 +1,5 @@
 #include "characterinfomodels.h"
+#include "colorhelper.h"
 
 #include "cyclopedia/iteminfostorage.h"
 #include "gamewindow/characterinfodialogcontroller.h"
@@ -348,7 +349,7 @@ QColor TOutfitMountSummonSkinsListDataModelSortFilterProxy::color(const int part
 {
     if (m_typeFilter != Outfits && m_typeFilter != Mounts)
         return QColor(Qt::black);
-    const QColor c = Outfit::getColor(m_colors[(m_typeFilter == Mounts ? 4 : 0) + part]);
+    const QColor c = tibia::shared::outfitColor(m_colors[(m_typeFilter == Mounts ? 4 : 0) + part]);
     return QColor(c.red(), c.green(), c.blue());
 }
 

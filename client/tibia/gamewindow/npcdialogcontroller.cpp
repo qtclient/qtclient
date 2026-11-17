@@ -1,4 +1,5 @@
 #include "npcdialogcontroller.h"
+#include "colorhelper.h"
 
 #include "trade/tradeciptypes.h"
 
@@ -24,7 +25,7 @@ namespace {
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
