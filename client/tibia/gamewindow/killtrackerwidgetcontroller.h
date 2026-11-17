@@ -78,6 +78,8 @@ class TKillTrackerWidgetController final : public TSidebarWidgetController<cip::
 
 public:
     TKillTrackerWidgetController(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CIP: clears the prey list first (clearPreyList).
+    ~TKillTrackerWidgetController() override;
 
     /// preyWidgetOptions: contentHeight, contentMaximized.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -133,6 +135,8 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
+    /// CIP: empties preyList, announces it, then deletes the old render infos.
+    void clearPreyList();
     void applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
     void applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
 

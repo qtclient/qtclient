@@ -120,6 +120,8 @@ class TImbuementTrackerWidgetController final
     Q_OBJECT
 public:
     TImbuementTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CIP: empties the imbued objects model before it is destroyed.
+    ~TImbuementTrackerWidgetController() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
 

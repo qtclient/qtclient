@@ -233,6 +233,8 @@ TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem*
         connect(item, &QObject::destroyed, this, &TImbuementTrackerWidgetController::onWidgetQuickItemDestroyed);
 }
 
+TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController() { m_model->setItems({}); }
+
 QObject* TImbuementTrackerWidgetController::imbuedObjectsModel() const { return m_proxy; }
 
 QQuickItem* TImbuementTrackerWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
