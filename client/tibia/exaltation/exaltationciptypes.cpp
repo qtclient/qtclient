@@ -1,4 +1,5 @@
 #include "exaltation/exaltationciptypes.h"
+#include <tibia/game/gamesession_forward.h>
 #include <vector>
 #include <algorithm>
 #include "protocol/protocolciptypes.h"
@@ -121,6 +122,11 @@ void TExaltationProtocolMessageHandler::handleExaltationResultMessage(const ::ti
     result.coreCount = static_cast<uint8_t>(m.core_count());
     tibia::game::notify("forgeResultData", result, static_cast<uint16_t>(m.bonus_object().object_id()),
                         static_cast<uint8_t>(m.bonus_object().tier()));
+}
+
+void TExaltationProtocolMessageHandler::requestHistoryPage(const int page)
+{
+    tibia::game::sendForgeBrowseHistoryRequest(static_cast<uint16_t>(page));
 }
 
 void TExaltationProtocolMessageHandler::handleExaltationHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationHistory& ExaltationHistoryMessage)

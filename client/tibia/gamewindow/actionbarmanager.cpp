@@ -12,7 +12,7 @@
 #include "input/keyboardshortcuthandler.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QQuickItem>
@@ -341,7 +341,7 @@ void TActionBarManager::editHotkey(TActionBarController* bar, const int buttonId
 
 config::EUseType TActionBarManager::defaultUseType(const int objectId)
 {
-    const ThingTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
+    const TAppearanceTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
     if (!type)
         return config::EUseType::Use;
     if ((type->isCloth() || type->getClothSlot() > 0) && !type->isMultiUse())

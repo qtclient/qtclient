@@ -81,7 +81,6 @@ namespace worldmap {
 class TAmbientLightStorage;
 class TFrameDurationRing;
 class TNextFrameTimestampPredictor;
-class TNumericalEffectStorage;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -90,6 +89,7 @@ class TWorldmapProtocolMessageHandler;
 namespace tibia {
 namespace chat {
 class TGameMessageHandler;
+class TChatProtocolMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
 }
@@ -180,11 +180,12 @@ public:
     chat::TTextStorage* textStorage() const;
     /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
     void setMessageIgnoreList(chat::TWhiteBlacklist* list);
+    /// The chat handler the active session's game window texts go to.
+    void setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler);
     /// The active game session changed: its message handler, frame updater,
     /// view and minimap feed are rebuilt on it.
     void bindActiveSession();
-    worldmap::TNumericalEffectStorage* numericalEffects() const;
-    effects::TEffectStorage* effectStorage() const;
+        effects::TEffectStorage* effectStorage() const;
     /// The character's sidebars.json, loaded on entering the world.
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.
@@ -298,6 +299,7 @@ private:
     std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
+    chat::TChatProtocolMessageHandler* m_chatProtocol = nullptr;
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).

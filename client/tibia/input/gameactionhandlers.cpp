@@ -14,7 +14,7 @@
 
 #include <creatures/creaturestorage.h>
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <client/outfit.h>
 
 #include <QCoreApplication>
@@ -93,7 +93,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
                             dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get())) {
-                        if (ThingType* type = object->thingType(); type && type->isStackable())
+                        if (TAppearanceType* type = object->thingType(); type && type->isStackable())
                             return std::max<int>(1, object->count());
                     }
                 }
@@ -276,19 +276,6 @@ uint8_t inspectPlayerAction(const EGameAction type)
     case A::INSPECT_PLAYER:
     default:
         return 5;
-    }
-}
-
-void setLenshelp(const bool enabled)
-{
-    if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-        cursor->setLenshelp(enabled);
-    if (gamewindow::TLenshelpController* lenshelp = gamewindow::TLenshelpController::instance()) {
-        if (enabled)
-            lenshelp->showHelp(QCoreApplication::translate("cip", "Lenshelp"),
-                               QCoreApplication::translate("cip", "Click an object for more information."));
-        else
-            lenshelp->hideHelp();
     }
 }
 
@@ -553,12 +540,6 @@ void publish(const TGameActionPtr& action)
     case A::TARGET_SELECTION_FINISHED:
         if (const auto& listener = targetSelectionListener())
             listener(false);
-        break;
-    case A::LENSHELP_SHOW:
-        setLenshelp(true);
-        break;
-    case A::LENSHELP_HIDE:
-        setLenshelp(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
         // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.

@@ -5601,9 +5601,15 @@
         "type": "uint32",
         "number": 12,
         "label": "optional"
+      },
+      {
+        "name": "daily_reward_streak_length",
+        "type": "uint32",
+        "number": 13,
+        "label": "optional"
       }
     ],
-    "classic": "u32 playerId; u16 beat; [GameNewSpeedLaw] 3\u00d7 double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]",
+    "classic": "u32 playerId; u16 beat; [GameNewSpeedLaw] 3\u00d7 double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]; u8 daily reward streak length",
     "note": "CIP RE via dmpd mapLoginSuccess (fields 1\u20135,8\u201310,12). Fields 6\u20137 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates."
   },
   "GameserverMessageCreatureHealth": {
@@ -11215,19 +11221,61 @@
         "label": "optional"
       },
       {
-        "name": "small_value",
+        "name": "bounty_difficulty",
         "type": "uint32",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "value",
+        "name": "task_index",
         "type": "uint32",
         "number": 3,
         "label": "optional"
+      },
+      {
+        "name": "talisman_index",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "delivery_task_index",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "weekly_difficulty",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "offer_index",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "slot_index",
+        "type": "uint32",
+        "number": 8,
+        "label": "optional"
+      },
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 9,
+        "label": "optional"
+      },
+      {
+        "name": "elite",
+        "type": "bool",
+        "number": 10,
+        "label": "optional"
       }
     ],
-    "note": "CIP TProtobufClientMessageTranslator::v118."
+    "note": "CIP TProtobufClientMessageTranslator::v118. u8 option; 2: u8 difficulty, bool elite; 5/7/8/9: u8 index or difficulty; 11: u16 offer; 13/14: u16 slot; 15/16: u16 slot, u16 race."
   },
   "GameclientMessageTrackImbuements": {
     "fields": [

@@ -1,12 +1,17 @@
 #include "gamewindowcontroller.h"
 
+#include <QQmlComponent>
+#include <QQmlEngine>
+
 #include "app/clientoptions.h"
 #include "randomhints.h"
 #include "app/launcherenv.h"
 #include "game/boostedcreaturerequestuploader.h"
 #include "game/liveinformationrequestuploader.h"
 #include "game/showoffrequestuploader.h"
+#include "cyclopedia/bosstiarystorage.h"
 #include "gamewindow/calendardialogcontroller.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/newsdialogcontroller.h"
 #include "input/gameaction.h"
@@ -14,8 +19,12 @@
 
 #include "news/eventqmlentry.h"
 #include "news/eventsuploader.h"
+#include "news/newsdiskio.h"
 #include "news/newsrequestuploader.h"
 #include "news/newsstorage.h"
+#include "clockservice.h"
+#include "jsondocumenthttppostsender.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -29,6 +38,7 @@
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLoggingCategory>
 #include <QQuickItem>
@@ -36,6 +46,10 @@
 #include <QTime>
 #include <QTimeZone>
 #include <tibia/game/gamesession.h>
+
+#if defined(Q_OS_WIN)
+#include <qt_windows.h>
+#endif
 
 Q_LOGGING_CATEGORY(lcGameWindow, "tibia.gamewindow")
 
@@ -51,6 +65,23 @@ constexpr auto LowerPaneHeight = "gameWindowLowerPaneHeight";
 constexpr auto ResizingMode = "gameWindowResizingMode";
 constexpr auto LoginEmail = "loginEmailAddress";
 constexpr auto RememberEmail = "rememberEmail";
+/// CIP option showEMailAsPlainText (0x80).
+constexpr auto ShowEmailAsPlainText = "showEMailAsPlainText";
+
+/// The OS Caps Lock state with a key event (CIP asks the platform).
+bool capsLockActive(const QKeyEvent* event)
+{
+#if defined(Q_OS_MACOS)
+    // NSEventModifierFlagCapsLock.
+    return (event->nativeModifiers() & (1u << 16)) != 0;
+#elif defined(Q_OS_WIN)
+    Q_UNUSED(event);
+    return (GetKeyState(VK_CAPITAL) & 1) != 0;
+#else
+    Q_UNUSED(event);
+    return false;
+#endif
+}
 
 std::atomic_bool g_processExitAllowed{ false };
 
@@ -61,23 +92,75 @@ const QTime ServerSaveTime(10, 0);
 
 bool TGameWindowController::eventFilter(QObject* watched, QEvent* event)
 {
+    // CIP: every key release on the start screen refreshes the Caps Lock hint.
+    if (event->type() == QEvent::KeyRelease) {
+        const bool active = capsLockActive(static_cast<QKeyEvent*>(event));
+        if (m_isCapsLockActive != active) {
+            m_isCapsLockActive = active;
+            Q_EMIT isCapsLockActiveChanged();
+        }
+    }
     return cip::tibia::gamewindow::TGameWindowController::eventFilter(watched, event);
+}
+
+QString TGameWindowController::boostedCreatureName() const
+{
+    const QString name = cyclopedia::bossName(m_boostedCreatureRace);
+    return name.isEmpty() ? m_boostedCreatureName : name;
+}
+
+QString TGameWindowController::boostedBossName() const
+{
+    const QString name = cyclopedia::bossName(m_boostedBossRace);
+    return name.isEmpty() ? m_boostedBossName : name;
+}
+
+void TGameWindowController::linkClicked(const QString& Url)
+{
+    input::publish(std::make_shared<input::TGameActionOpenUrl>(Url));
+}
+
+void TGameWindowController::linkHoverChanged(const bool IsOverLink)
+{
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(IsOverLink);
+}
+
+bool TGameWindowController::showEmailAsPlainText() const
+{
+    return app::ClientOptions::load().options().value(QLatin1String(ShowEmailAsPlainText)).toBool(false);
+}
+
+void TGameWindowController::setShowEmailAsPlainText(const bool v)
+{
+    if (showEmailAsPlainText() == v)
+        return;
+    app::ClientOptions::store(QLatin1String(ShowEmailAsPlainText), v);
+    Q_EMIT showEmailChanged();
 }
 
 TGameWindowController::TGameWindowController(QQuickItem* container, QObject* parent)
     : cip::tibia::gamewindow::TGameWindowController(parent)
     , m_container(container)
-    , m_newsStorage(std::make_unique<news::TNewsStorage>())
+    , m_fileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
+    , m_clientServicesSender(std::make_shared<shared::TJsonDocumentHttpPostSender>())
+    , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
+    , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
+    , m_eventsStorage(std::make_unique<news::TEventsStorage>())
     , m_boostedUploader(std::make_unique<game::TBoostedCreatureRequestUploader>())
     , m_liveInfoUploader(std::make_unique<game::TLiveInformationRequestUploader>())
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
-    , m_eventsUploader(std::make_unique<news::TEventsUploader>())
-    , m_newsUploader(std::make_unique<news::TNewsRequestUploader>(m_newsStorage.get()))
     , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
     , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
-    m_newsDialog->setNewsUploader(m_newsUploader.get());
+    // CIP (TGameClient): the storage saves through the disk cache and starts
+    // from what it holds.
+    connect(m_newsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_newsDiskIO.get(),
+            &news::TNewsDiskIO::saveNewsDataToDisk);
+    connect(m_newsDiskIO.get(), &news::TNewsDiskIO::loadingNewsDataSucceeded, m_newsStorage.get(),
+            &news::TNewsStorage::loadFromDisk);
+    m_newsDiskIO->loadNewsDataFromDiskIfPossible();
     // CIP launcher authenticates before the game window; local client-start
     // shows the login mask until setAuthenticated(true).
     m_isAuthenticated = false;
@@ -105,14 +188,16 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             Q_EMIT statusBarVisibilityChanged();
             return;
         }
-        if (name == QLatin1String("sessionRemainLoggedIn")) {
-            // Misc "Stay logged in by default" mirrors onto the login checkbox.
-            setRememberEmail(app::ClientOptions::load().options().value(name).toBool(true));
-            return;
-        }
         if (name == QLatin1String("soundAnthemEnabled") || name == QLatin1String("soundMusicVolume")
             || name == QLatin1String("soundMasterVolume"))
             syncAnthemButton();
+    });
+
+    connect(this, &TGameWindowController::newLeftAndRightStatusActionBarWidth, this, [this](const int width) {
+        if (m_container) {
+            if (QQuickWindow* window = m_container->window())
+                window->setProperty("leftAndRightStatusActionBarWidth", width);
+        }
     });
 
     connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
@@ -121,14 +206,11 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             &TGameWindowController::onLiveInformationReceived);
     connect(m_showOffUploader.get(), &game::TShowOffRequestUploader::showOffReceived, this,
             &TGameWindowController::onShowOffReceived);
-    connect(m_eventsUploader.get(), &news::TEventsUploader::scheduleUpdated, this, &TGameWindowController::onEventScheduleUpdated);
     // qtclient: CIP's interval is not recoverable; once a minute catches the server save.
     m_eventsSchedulePreviewTimer.setInterval(60 * 1000);
     connect(&m_eventsSchedulePreviewTimer, &QTimer::timeout, this,
             &TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout);
     m_eventsSchedulePreviewTimer.start();
-    connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
-            &TNewsDialogController::onNewsQueryFailed);
 
     for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
         input::setActionHandler(type, [this](const input::TGameAction& action) {
@@ -144,7 +226,34 @@ TGameWindowController::~TGameWindowController()
     input::setActionHandler(A::OPEN_NEWS_DIALOG, nullptr);
     input::setActionHandler(A::OPEN_NEWS_CATEGORY, nullptr);
     input::setActionHandler(A::REFRESH_COMPENDIUM_NEWS, nullptr);
+    // CIP also releases its native window helper and the keep-renderer prompt here; qtclient's
+    // prompt lives in app/sessionbootstrap and has no native helper.
     clearEventModels();
+}
+
+QQuickItem* TGameWindowController::gameWindowChild(const QString& name) const
+{
+    return m_gameWindowItem ? m_gameWindowItem->findChild<QQuickItem*>(name) : nullptr;
+}
+
+std::unique_ptr<QObject> TGameWindowController::createGameWindow(QQmlEngine* engine)
+{
+    QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/gamewindow.qml")));
+    std::unique_ptr<QObject> object(component.create());
+    auto* item = qobject_cast<QQuickItem*>(object.get());
+    if (!item) {
+        qCritical().noquote() << component.errorString();
+        return nullptr;
+    }
+    item->setParentItem(m_container);
+    item->setProperty("controller", QVariant::fromValue<QObject*>(this));
+    if (m_container)
+        m_container->setProperty("backgroundImageVisible", true);
+    connect(this, &TGameWindowController::bindFocusToChatInput, item, [item] { QMetaObject::invokeMethod(item, "bindFocusToChatInput"); });
+    connect(this, &TGameWindowController::releaseFocusFromChatInput, item,
+            [item] { QMetaObject::invokeMethod(item, "releaseFocusFromChatInput"); });
+    setGameWindowItem(item);
+    return object;
 }
 
 void TGameWindowController::setStatusBarController(QObject* controller)
@@ -166,7 +275,7 @@ void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
     if (m_container)
         m_container->setProperty("backgroundImageSmooth", options.value(QLatin1String("antialiasingMode")).toInt() == 1);
     if (m_gameWindowItem) {
-        if (auto* cooldownBar = m_gameWindowItem->findChild<QQuickItem*>(QStringLiteral("cooldownBar")))
+        if (auto* cooldownBar = gameWindowChild(QStringLiteral("cooldownBar")))
             cooldownBar->setVisible(options.value(QLatin1String("cooldownBarEnabled")).toBool(true));
     }
     // The pane layout getters read their options.
@@ -185,10 +294,18 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
     m_liveInfoUploader->setClientRevision(clientRevision);
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
-    m_eventsUploader->setServiceUrl(service);
-    m_eventsUploader->setClientRevision(clientRevision);
-    m_newsUploader->setServiceUrl(service);
-    m_newsUploader->setClientRevision(clientRevision);
+    // CIP builds the client services uploaders with their URL.
+    m_eventsUploader = std::make_unique<news::TEventsUploader>(service, m_clientServicesSender, m_fileSystemHelper,
+                                                               shared::TClockService::process());
+    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
+            &news::TEventsStorage::onEventsUpdated);
+    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, &TGameWindowController::onEventScheduleUpdated);
+    m_newsUploader = std::make_unique<news::TNewsRequestUploader>(service, m_newsStorage, m_clientServicesSender,
+                                                                  m_fileSystemHelper, shared::TClockService::process());
+    connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
+            &TNewsDialogController::onNewsQueryFailed);
+    m_newsViewsUploader = std::make_unique<news::TNewsViewsUploader>(service, m_clientServicesSender);
+    m_newsDialog->setNewsUploaders(m_newsUploader.get(), m_newsViewsUploader.get());
     requestStartScreenServices();
 }
 
@@ -202,8 +319,10 @@ void TGameWindowController::requestStartScreenServices()
     // a fresh Module. Defer multiplex until account login (setAuthenticated).
 #else
     m_liveInfoUploader->requestUpdate();
-    m_eventsUploader->requestUpdate();
-    m_newsUploader->requestUpdate();
+    if (m_eventsUploader)
+        m_eventsUploader->requestUpdate();
+    if (m_newsUploader)
+        m_newsUploader->requestUpdate();
     m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 #endif
@@ -212,8 +331,10 @@ void TGameWindowController::requestStartScreenServices()
 void TGameWindowController::requestDeferredStartScreenServices()
 {
     m_liveInfoUploader->requestUpdate();
-    m_eventsUploader->requestUpdate();
-    m_newsUploader->requestUpdate();
+    if (m_eventsUploader)
+        m_eventsUploader->requestUpdate();
+    if (m_newsUploader)
+        m_newsUploader->requestUpdate();
     m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 }
@@ -350,11 +471,11 @@ void TGameWindowController::clearEventModels()
     qDeleteAll(upcoming);
 }
 
-void TGameWindowController::onEventScheduleUpdated()
+void TGameWindowController::onEventScheduleUpdated(const std::vector<news::TEventInformation>& events)
 {
-    updateEventsSchedulePreview(m_eventsUploader->events());
+    updateEventsSchedulePreview(events);
     if (m_calendarDialog)
-        m_calendarDialog->setEvents(m_eventsUploader->eventList());
+        m_calendarDialog->setEvents(m_eventsStorage->events());
 }
 
 void TGameWindowController::updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events)
@@ -449,11 +570,15 @@ void TGameWindowController::showGameScreen()
 {
     setAuthenticated(true);
     setScreen(QStringLiteral("INGAME"), false, Qt::black);
+    // CIP: the start screen's key filter goes; the game screen is announced.
+    QCoreApplication::instance()->removeEventFilter(this);
+    Q_EMIT gameScreenNowDisplayed();
 }
 
 void TGameWindowController::showStartScreen()
 {
     setScreen(QString(), true, QColor(QStringLiteral("#041020")));
+    QCoreApplication::instance()->installEventFilter(this);
     requestStartScreenServices();
     Q_EMIT startScreenNowDisplayed();
 }
@@ -473,10 +598,7 @@ void TGameWindowController::setScreen(const QString& state, const bool backgroun
 
 void TGameWindowController::leftAndRightStatusActionBarWidthChanged(const int newWidth)
 {
-    if (!m_container)
-        return;
-    if (QQuickWindow* window = m_container->window())
-        window->setProperty("leftAndRightStatusActionBarWidth", newWidth);
+    Q_EMIT newLeftAndRightStatusActionBarWidth(newWidth);
 }
 
 void TGameWindowController::setUpperPaneHeight(const uint height)
@@ -534,11 +656,7 @@ void TGameWindowController::rememberLoginEmailIfEnabled(const QString& email)
 
 void TGameWindowController::loginPressed(const QString& EMailAddress, const QString& Password)
 {
-    const QString email = EMailAddress.trimmed();
-    if (email.isEmpty() || Password.isEmpty())
-        return;
-    rememberLoginEmailIfEnabled(email);
-    Q_EMIT accountLoginRequested(email, Password);
+    Q_EMIT loginRequested(EMailAddress, Password);
 }
 
 void TGameWindowController::forgotEMailAddressOrPasswordPressed()
@@ -548,13 +666,12 @@ void TGameWindowController::forgotEMailAddressOrPasswordPressed()
 
 void TGameWindowController::handleCreateNewAccount()
 {
-    setShowCreateAccountOption(false);
-    Q_EMIT createAccountDialogRequested();
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::createNewAccountPressed()
 {
-    handleCreateNewAccount();
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_CREATE_ACCOUNT));
 }
 
 void TGameWindowController::goToLogin()
@@ -564,7 +681,9 @@ void TGameWindowController::goToLogin()
 
 void TGameWindowController::goToCreateNewAccount()
 {
-    handleCreateNewAccount();
+    // CIP: the create-account option goes without its change signal.
+    m_showCreateAccountOption = false;
+    Q_EMIT createAccountRequested();
 }
 
 void TGameWindowController::tibiaLogoPressed()
@@ -613,10 +732,10 @@ bool TGameWindowController::processExitAllowed()
 void TGameWindowController::syncAnthemButton()
 {
     const QJsonObject options = app::ClientOptions::load().options();
-    // Checked (muted look) when anthem is off or master volume is 0 — playFile is silent then.
-    const bool anthemMuted = !options.value(QLatin1String("soundAnthemEnabled")).toBool(true)
-        || options.value(QLatin1String("soundMasterVolume")).toInt(100) <= 0;
-    const bool musicMuted = options.value(QLatin1String("soundMusicVolume")).toInt(50) <= 0;
+    // CIP: anthemMuted is !soundAnthemEnabled; musicMuted is a master or music volume of 0.
+    const bool anthemMuted = !options.value(QLatin1String("soundAnthemEnabled")).toBool(true);
+    const bool musicMuted = options.value(QLatin1String("soundMasterVolume")).toInt(100) == 0
+                         || options.value(QLatin1String("soundMusicVolume")).toInt(50) == 0;
     if (anthemMuted == m_anthemMuted && musicMuted == m_musicMuted)
         return;
     m_anthemMuted = anthemMuted;
@@ -626,26 +745,9 @@ void TGameWindowController::syncAnthemButton()
 
 void TGameWindowController::muteAnthemPressed()
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    if (options.value(QLatin1String("soundMusicVolume")).toInt(50) <= 0)
-        return;
-    const bool anthemOn = options.value(QLatin1String("soundAnthemEnabled")).toBool(true);
-    const int master = options.value(QLatin1String("soundMasterVolume")).toInt(100);
-    // Unmute: turn the anthem back on and restore master if a global mute left it at 0
-    // (playFile refuses masterGain <= 0, so toggling anthem alone was silent).
-    if (!anthemOn || master <= 0) {
-        QJsonObject opts;
-        opts.insert(QStringLiteral("soundAnthemEnabled"), true);
-        if (master <= 0) {
-            const int restored = options.value(QLatin1String("soundMasterVolumeOld")).toInt(100);
-            opts.insert(QStringLiteral("soundMasterVolume"), restored > 0 ? restored : 100);
-        }
-        QJsonObject changes;
-        changes.insert(QStringLiteral("options"), opts);
-        app::ClientOptions::storeAll(changes);
-        return;
-    }
-    app::ClientOptions::store(QStringLiteral("soundAnthemEnabled"), false);
+    // CIP: the login screen's anthem button toggles soundAnthemEnabled (musicMuted disables it).
+    const bool enabled = app::ClientOptions::load().options().value(QLatin1String("soundAnthemEnabled")).toBool(true);
+    app::ClientOptions::store(QStringLiteral("soundAnthemEnabled"), !enabled);
 }
 
 void TGameWindowController::manageAccountPressed()
@@ -655,22 +757,22 @@ void TGameWindowController::manageAccountPressed()
 
 void TGameWindowController::manageClientsPressed()
 {
-    app::LauncherEnv::showLauncher();
+    Q_EMIT openLauncherRequested();
 }
 
 void TGameWindowController::quitPressed()
 {
-    // CIP shows Exit / Logout / Cancel only while a character is in the world.
+    Q_EMIT gameExitRequested();
+}
+
+void TGameWindowController::handleGameExitRequest()
+{
+    // Exit / Logout / Cancel only while a character is in the world.
     // The login mask and the character list close with the window.
     if (!tibia::game::isOnline()) {
         Q_EMIT quitGameExitRequested();
         return;
     }
-    showQuitGameDialog();
-}
-
-void TGameWindowController::showQuitGameDialog()
-{
     using Button = TMessageDialogController::Button;
     if (!m_quitDialog) {
         m_quitDialog = new TMessageDialogController(this);

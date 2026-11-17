@@ -5,6 +5,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
+#include <tibia/game/gamesession.h>
+
 namespace tibia::gamewindow {
 
 namespace {
@@ -38,7 +40,6 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     m_configurationController = m_config;
     m_joinTeamController = m_join;
     m_assembleTeamController = m_assemble;
-    m_hasPremium = true;
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
     m_errorDialog->setCloseOnButtonClicked(true);
@@ -112,9 +113,10 @@ bool TSocialDialogController::refreshButtonVisible() const
     return m_dialogTab == JoinTeam;
 }
 
+/// The local player's premium state, false without a player.
 bool TSocialDialogController::hasPremium() const
 {
-    return m_hasPremium;
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 cip::tibia::gamewindow::IDialogTabPage* TSocialDialogController::page(const EDialogTab tab) const

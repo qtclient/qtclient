@@ -93,8 +93,7 @@ QVariant TBossSkinModel::data(const QModelIndex& index, const int role) const
     const bool objectOutfit = outfit.getCategory() == ThingCategoryItem || outfit.getId() == 0;
     const int outfitId = objectOutfit ? outfit.getAuxId() : outfit.getId();
     switch (role) {
-        case OutfitIDRole:
-        case OtherGenderOutfitIDRole: return outfitId;
+        case OutfitIDRole: return outfitId;
         case OutfitNameRole: return entry.name;
         case FirstAddOnRole: return (outfit.getAddons() & 1) != 0;
         case SecondAddOnRole: return (outfit.getAddons() & 2) != 0;
@@ -117,13 +116,12 @@ QHash<int, QByteArray> TBossSkinModel::roleNames() const
         { FirstAddOnRole, "firstAddOn" },
         { SecondAddOnRole, "secondAddOn" },
         { OutfitTypeRole, "outfitType" },
-        { OtherGenderOutfitIDRole, "otherGenderOutfitID" },
-        { RaceRole, "race" },
         { HeadColorRole, "headColor" },
         { TorsoColorRole, "torsoColor" },
         { LegsColorRole, "legsColor" },
         { DetailColorRole, "detailColor" },
         { IsObjectOutfitRole, "isObjectOutfit" },
+        { RaceRole, "race" },
     };
 }
 

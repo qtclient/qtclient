@@ -7,6 +7,9 @@
 #include "protocol/protocolciptypes.h"
 #include <tibia/game/gamenotify.h>
 #include <protocol.pb.h>
+#include <tibia/game/gamesession_forward.h>
+
+#include <stdexcept>
 
 namespace tibia::prey {
 
@@ -25,6 +28,47 @@ void ownProductSurface(QObject* parent)
 } // namespace tibia::prey
 
 namespace tibia::prey {
+
+namespace {
+
+void sendPreyAction(const int preyId, const uint8_t action, const int value)
+{
+    tibia::game::preyAction(static_cast<uint8_t>(preyId), action, static_cast<uint16_t>(value));
+}
+
+}
+
+void TPreyProtocolMessageHandler::requestListReroll(const int preyId)
+{
+    sendPreyAction(preyId, 0, 0);
+}
+
+void TPreyProtocolMessageHandler::requestBonusReroll(const int preyId)
+{
+    sendPreyAction(preyId, 1, 0);
+}
+
+void TPreyProtocolMessageHandler::selectMonsterFromList(const int preyId, const int index)
+{
+    sendPreyAction(preyId, 2, index);
+}
+
+void TPreyProtocolMessageHandler::requestFreezeAndShowBestiaryMonsters(const int preyId)
+{
+    sendPreyAction(preyId, 3, 0);
+}
+
+void TPreyProtocolMessageHandler::selectMonsterFromBestiary(const int preyId, const int raceId)
+{
+    sendPreyAction(preyId, 4, raceId);
+}
+
+void TPreyProtocolMessageHandler::setAutomaticExtendType(const int preyId, const int option)
+{
+    if (static_cast<unsigned>(option) >= 3)
+        throw std::invalid_argument("Invalid enum value");
+    sendPreyAction(preyId, 5, option);
+}
 
 void TPreyProtocolMessageHandler::handlePreyTimeLeftMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyTimeLeft& message)
 {

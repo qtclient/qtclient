@@ -1,6 +1,6 @@
 #include "minimapworldfeed.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/mapsession.h>
 #include "appearances/appearanceinstance.h"
 
@@ -46,7 +46,7 @@ TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
     // The topmost object with an automap colour .
     data.color = 0;
     for (const auto& appearance : std::views::reverse(appearances)) {
-        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
         if (type && type->hasMiniMapColor()) {
             data.color = static_cast<uint8_t>(type->getMinimapColor());
             break;
@@ -56,7 +56,7 @@ TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
     // The first object with a bank , 0xff without one; at most 250.
     int cost = 0xff;
     for (const auto& appearance : appearances) {
-        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
         if (type && type->isGround()) {
             cost = type->getGroundSpeed();
             break;
@@ -66,7 +66,7 @@ TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
 
     // Any unpassable object that is not a creature .
     data.blocked = std::ranges::any_of(appearances, [](const appearances::TAppearanceInstancePtr& appearance) {
-        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
         return type && type->getCategory() != ThingCategoryCreature && type->isNotWalkable();
     });
     return data;

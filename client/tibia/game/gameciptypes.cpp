@@ -4,7 +4,7 @@
 #include <utility>
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tuple>
 #include <client/outfit.h>
 #include "creatures/creatureprotocolapply.h"
@@ -406,7 +406,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
                 }
                 data.playerDescriptions = details(m.player_details());
                 tibia::game::notify("onParseCharacterInspection", data);
-                tibia::game::notify("onParseCyclopediaCharacterInspection", data);
             } else if (m.objects_size() > 0) {
                 const auto& o = m.objects(0);
                 ItemInspectionData data;

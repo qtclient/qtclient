@@ -101,6 +101,8 @@ public:
     void setChatController(TChatController* controller);
 
     bool isShown() const { return dialog()->isShown(); }
+    /// CIP: more than one talk partner.
+    bool isMultiNpcTalk() const override { return m_talkPartners.size() > 1; }
     /// CIP (PRESS_ENTER_IN_CHAT while focused,): sends the input
     /// and keeps what the chat leaves of it.
     void pressEnter();
@@ -144,6 +146,8 @@ protected:
 private:
     void setShowTrade(bool show);
     void setTalkPartnerNames(const QString& names);
+    /// CIP: positionAndSize follows the client options' NPC dialog rectangle.
+    void onDialogOptionsChanged();
     void bindNpcChannel();
     /// CIP (onNpcTalkPartnersChanged) and 
     /// (onKeywordButtonsChanged): no talk partners closes the dialog, else the
@@ -151,10 +155,11 @@ private:
     void onNpcChatWindow(const std::vector<uint32_t>& npcIds, std::vector<TNpcKeywordButtonModel::Button> buttons);
     /// CIP : "A", "A, B and C"; a partner not on screen is the fallback name.
     static QString partnerNamesOf(const std::vector<uint32_t>& npcIds);
+    /// CIP: "npc_dialog_talking_to" in the NPCs channel when the talk partners change.
+    void postTalkingTo(const QString& names);
 
     QPointer<trade::TNPCTradeStorage> m_storage;
     std::vector<uint32_t> m_talkPartners;
-    std::vector<client::gamecore::Hook> m_hooks;
     TNPCTradeController m_trade;
     TUiFocusManager m_tradeFocus;
     TNpcDialogOutfit m_outfit;

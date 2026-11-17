@@ -14,7 +14,7 @@
 #include <format>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 #include <array>
@@ -1635,14 +1635,11 @@ void sendStashStow(const Position& position, const uint16_t itemId, const uint32
 
 void sendTaskBoardAction(const uint8_t option, const uint16_t value, const uint16_t extraValue)
 {
-    (void)extraValue;
     auto message = tibia::protocol::newGameclientMessage(95);
     auto* m = message->MutableExtension(GameclientMessageTaskboard::gameclient_message_taskboard);
     m->set_option(option);
-    if (option == tibia::client::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY)
-        m->set_small_value(static_cast<uint8_t>(std::min<uint16_t>(value, 0xff)));
-    else
-        m->set_value(value);
+    m->set_slot_index(value);
+    m->set_race_id(extraValue);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 

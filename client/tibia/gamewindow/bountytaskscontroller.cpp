@@ -1,5 +1,7 @@
 #include "bountytaskscontroller.h"
 
+#include "taskboard/taskboardciptypes.h"
+
 #include <tibia/assets/things.h>
 
 #include <QString>
@@ -74,12 +76,6 @@ int clampedRerollTokenBalance()
     return static_cast<int>(std::min<uint64_t>(rerollTokenBalance(), static_cast<uint64_t>(INT_MAX)));
 }
 
-/// CIP QML combo is 0..3; OTC Lua helpers expect 1..4.
-uint16_t toLuaDifficulty(const int cipDifficulty)
-{
-    return static_cast<uint16_t>(std::clamp(cipDifficulty, 0, 3) + 1);
-}
-
 /// Provisional elite Premium dust by CIP difficulty 0..3 × grade (1/2/4/8).
 /// Matches server getEliteDustReward until External dust table is RE'd.
 int eliteDustFor(const int cipDifficulty, const uint8_t rarity)
@@ -118,7 +114,7 @@ TBountyTasksController::TBountyTasksController(QObject* parent)
 void TBountyTasksController::showDialogTab()
 {
     refreshBountyPoints();
-    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_REQUEST);
+    taskboard::TTaskboardProtocolMessageHandler::requestBountyTasks();
 }
 
 void TBountyTasksController::hideDialogTab() {}
@@ -217,7 +213,7 @@ void TBountyTasksController::applyPreferredData(const std::vector<std::map<std::
     for (size_t i = 0; i < preferredSlots.size(); ++i) {
         const auto& slot = preferredSlots[i];
         taskboard::PreferredMonsterSlotRow row;
-        // Protocol / bountyPreferredAction use 1-based slot indices (0 is rejected).
+        // The model shows 1-based slot numbers; the commands send the 0-based slot.
         row.slotIndex = static_cast<int>(mapU32(slot, "slot", static_cast<uint32_t>(i + 1)));
         if (row.slotIndex <= 0)
             row.slotIndex = static_cast<int>(i + 1);
@@ -314,12 +310,12 @@ void TBountyTasksController::setBountyTaskDifficulty(const int Difficulty)
         return;
     m_bountyTaskDifficulty = std::clamp(Difficulty, 0, 3);
     notifyChanged();
-    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_CHANGE_DIFFICULTY, toLuaDifficulty(m_bountyTaskDifficulty));
+    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(m_bountyTaskDifficulty, m_isElite);
 }
 
 void TBountyTasksController::rerollTasksAction()
 {
-    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_REROLL);
+    taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks();
 }
 
 void TBountyTasksController::setElite(const bool isElite)
@@ -330,63 +326,51 @@ void TBountyTasksController::setElite(const bool isElite)
     if (m_tasksModel)
         m_tasksModel->setEliteDust(m_isElite, m_bountyTaskDifficulty);
     notifyChanged();
-    // External OTC CHANGE_DIFFICULTY carries only the difficulty byte — no elite field
-    // found in qtclient/server protocol or protobuf field names. Do not invent a wire byte.
+    // The elite preference travels with the difficulty.
+    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(m_bountyTaskDifficulty, m_isElite);
 }
 
 void TBountyTasksController::acceptBountyTask(const int TaskIndex)
 {
-    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_SELECT, static_cast<uint16_t>(std::max(0, TaskIndex)));
+    taskboard::TTaskboardProtocolMessageHandler::acceptBountyTask(std::max(0, TaskIndex));
 }
 
 void TBountyTasksController::claimReward()
 {
-    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_CLAIM_REWARD);
+    taskboard::TTaskboardProtocolMessageHandler::claimBountyReward();
 }
 
 void TBountyTasksController::upgradeBountyTalisman(const int BountyTalismanIndex)
 {
     if (BountyTalismanIndex < 0 || BountyTalismanIndex > 3)
         return;
-    tibia::game::bountyTalismanUpgrade(static_cast<uint8_t>(BountyTalismanIndex));
+    taskboard::TTaskboardProtocolMessageHandler::upgradeBountyTalisman(BountyTalismanIndex);
 }
 
+/// The server unlocks the next locked slot.
 void TBountyTasksController::unlockPreferredMonsterSlot()
 {
-    // Unlock targets the first locked slot (1-based); 0 is rejected by tibia::game::bountyPreferredAction.
-    int slot = 1;
-    if (m_preferredModel) {
-        for (int row = 0; row < m_preferredModel->rowCount(); ++row) {
-            const QModelIndex idx = m_preferredModel->index(row, 0);
-            if (!m_preferredModel->data(idx, taskboard::TBountyTasksPreferredMonsterListModel::IsUnlockedRole).toBool()) {
-                slot = m_preferredModel->data(idx, taskboard::TBountyTasksPreferredMonsterListModel::SlotIndexRole).toInt();
-                break;
-            }
-        }
-    }
-    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_BUY_SLOT, static_cast<uint16_t>(std::max(1, slot)), 0);
+    taskboard::TTaskboardProtocolMessageHandler::unlockPreferredMonsterSlot();
 }
 
 void TBountyTasksController::clearPreferredMonster(const int slotIndex)
 {
-    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_REMOVE_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
+    taskboard::TTaskboardProtocolMessageHandler::clearPreferredMonster(std::max(0, slotIndex - 1));
 }
 
 void TBountyTasksController::clearAvoidedMonster(const int slotIndex)
 {
-    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_REMOVE_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
+    taskboard::TTaskboardProtocolMessageHandler::clearAvoidedMonster(std::max(0, slotIndex - 1));
 }
 
 void TBountyTasksController::assignPreferredMonster(const int slotIndex, const int RaceId)
 {
-    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_SET_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)),
-                                 static_cast<uint16_t>(std::max(0, RaceId)));
+    taskboard::TTaskboardProtocolMessageHandler::assignPreferredMonster(std::max(0, slotIndex - 1), std::max(0, RaceId));
 }
 
 void TBountyTasksController::assignAvoidedMonster(const int slotIndex, const int RaceId)
 {
-    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_SET_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)),
-                                 static_cast<uint16_t>(std::max(0, RaceId)));
+    taskboard::TTaskboardProtocolMessageHandler::assignAvoidedMonster(std::max(0, slotIndex - 1), std::max(0, RaceId));
 }
 
 /// Also forgets the creature picked for a preferred / avoided slot.

@@ -2,6 +2,7 @@
 
 #include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/actionbarmanager.h"
@@ -14,7 +15,7 @@
 
 #include "container/containerciptypes.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <QCoreApplication>
 #include <QKeyEvent>
@@ -39,12 +40,12 @@ QString actionButtonName(const int actionBarId, const int buttonId)
     return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
 }
 
-ThingTypePtr itemType(const int objectId)
+TAppearanceTypePtr itemType(const int objectId)
 {
     return objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
 }
 
-bool isEquipable(const ThingTypePtr& type)
+bool isEquipable(const TAppearanceTypePtr& type)
 {
     return type && (type->isCloth() || type->getClothSlot() > 0);
 }
@@ -680,7 +681,6 @@ TAssignObjectActionDialogController::TAssignObjectActionDialogController(TAction
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
     connect(this, &cip::tibia::gamewindow::TAssignObjectActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    m_clientSettingSmoothFiltering = true;
     const Setting setting = m_assign.current();
     if (setting.kind == Setting::OBJECT) {
         setObject(setting.objectId, setting.upgradeTier.value_or(0));
@@ -705,11 +705,11 @@ bool TAssignObjectActionDialogController::canBeEquiped() const { return m_canBeE
 bool TAssignObjectActionDialogController::canBeMultiUsed() const { return m_canBeMultiUsed; }
 bool TAssignObjectActionDialogController::canHaveSmartMode() const { return m_canHaveSmartMode; }
 bool TAssignObjectActionDialogController::smartModeEnabled() const { return m_smartModeEnabled; }
-bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return m_clientSettingSmoothFiltering; }
+bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 void TAssignObjectActionDialogController::setObject(const int objectId, const int upgradeTier)
 {
-    const ThingTypePtr type = itemType(objectId);
+    const TAppearanceTypePtr type = itemType(objectId);
     m_objectID = uint(objectId);
     m_upgradeTier = uint(upgradeTier);
     m_objectCount = 0;
@@ -719,7 +719,6 @@ void TAssignObjectActionDialogController::setObject(const int objectId, const in
     m_canBeEquiped = isEquipable(type);
     m_canHaveSmartMode = m_canBeEquiped;
     m_useObjectType = uint(TActionBarManager::defaultUseType(objectId));
-    m_clientSettingSmoothFiltering = true;
     Q_EMIT objectAppearanceChanged();
     Q_EMIT changed();
 }

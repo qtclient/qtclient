@@ -17,6 +17,7 @@
 #include <vector>
 
 namespace tibia::protobuf::protocol {
+class GameserverMessageLoginSuccess;
 class GameserverMessageCloseRewardWall;
 class GameserverMessageDailyRewardBasic;
 class GameserverMessageDailyRewardCollectionState;
@@ -221,7 +222,8 @@ public:
     static void handleDailyRewardCollectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState& message);
     /// Message dialog type 40 says the daily rewards are disabled.
     static void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
-public:
+    /// The login success carries the reward streak length.
+    static void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
 };
 
 }

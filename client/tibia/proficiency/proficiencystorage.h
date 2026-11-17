@@ -41,6 +41,8 @@ struct TProficiencyLevel
 
 struct TProficiencyInfo
 {
+    int proficiencyId = 0;
+    int version = 0;
     QString name;
     std::vector<TProficiencyLevel> levels;
 };
@@ -162,6 +164,8 @@ Q_SIGNALS:
 private:
     void loadTables() const;
     void readTables(const std::string& path) const;
+    /// Keeps the parsed catalogue by proficiency id; the first entry of an id wins.
+    void setTables(const std::vector<TProficiencyInfo>& proficiencies) const;
     int reachedLevel(uint16_t typeId, int count) const;
 
     std::unordered_map<uint16_t, TProficiencyData> m_data;

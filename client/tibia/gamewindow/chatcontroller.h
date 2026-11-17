@@ -220,6 +220,8 @@ class TOpenChatChannelDialogController final : public TDialogController<cip::tib
     Q_OBJECT
 public:
     explicit TOpenChatChannelDialogController(QObject* parent = nullptr);
+    /// CIP v27: the dialog's item goes.
+    void destroyDialog() { dialog()->destroy(); }
 
     void open(const std::vector<chat::TChatChannelIdentifier>& channels);
 
@@ -263,6 +265,8 @@ public:
     chat::TChatChannelStorage& storage() { return m_storage; }
     /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
+    chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
+    chat::TChatStorage& chatStorage() { return m_chatStorage; }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
@@ -324,7 +328,7 @@ private:
     void reloadOptions();
     void onOptionChanged(const QString& name);
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
-    void onChannelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
+    void onChannelListReceived(const std::vector<chat::TChatChannelIdentifier>& channels);
     void storeOpenChannels() const;
 
     bool handleAction(const input::TGameAction& action);

@@ -1,5 +1,7 @@
 #include "taskboardshopcontroller.h"
 
+#include "taskboard/taskboardciptypes.h"
+
 #include <client/const.h>
 #include <client/outfit.h>
 
@@ -80,7 +82,7 @@ void TTaskboardShopController::showDialogTab()
 {
     syncPlayerColors();
     refreshHuntingTaskPoints();
-    tibia::game::taskHuntingShopRequest();
+    taskboard::TTaskboardProtocolMessageHandler::requestShopRewards();
 }
 
 void TTaskboardShopController::hideDialogTab() {}
@@ -97,7 +99,7 @@ void TTaskboardShopController::requestBuyOffer(const int Index)
         return;
     if (huntingPoints() < static_cast<uint64_t>(row->cost))
         return;
-    tibia::game::taskHuntingShopPurchase(static_cast<uint8_t>(std::clamp(row->offerIndex, 0, 255)));
+    taskboard::TTaskboardProtocolMessageHandler::buyShopReward(std::clamp(row->offerIndex, 0, 0xffff));
 }
 
 void TTaskboardShopController::refreshHuntingTaskPoints()

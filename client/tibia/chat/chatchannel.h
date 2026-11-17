@@ -3,6 +3,7 @@
 #include <cip_gen.h>
 
 #include <QColor>
+#include <QJsonObject>
 #include <QDateTime>
 #include <QObject>
 #include <QString>
@@ -291,6 +292,9 @@ public:
     /// The NPC dialog's own line; prefer addOwnNpcChannelEntry.
     void addNpcEntry(const QColor& color, const QString& text, const QString& name);
 
+    /// Host: the UI Sounds chat options the arrived sounds follow (CIP's
+    /// sound service reads them).
+    void setSoundOptions(const QJsonObject& options);
     void setOwnName(const QString& name) { m_ownName = name.toLower(); }
     const QString& ownName() const { return m_ownName; }
 
@@ -323,10 +327,26 @@ private:
     std::vector<TChatChannel*> m_channels;
     /// Lower case.
     QString m_ownName;
+
+    /// The game action that plays a chat sound (CIP SOUND_TRIGGER), when the
+    /// UI Sounds options allow it.
+    void publishChatSound(int sound, bool categoryEnabled);
+    bool m_chatSoundsEnabled = true;
+    bool m_partyMessageSounds = true;
+    bool m_guildMessageSounds = true;
+    bool m_privateMessageSounds = true;
+    bool m_npcMessageSounds = true;
+    bool m_teamFinderMessageSounds = true;
 };
 
-/// CIP's console colour of a protocol message mode.
+/// CIP's chat message mode of a protocol mode (the same numbers; 41 and
+/// 45..47 and anything above 54 are invalid and throw).
+int chatMessageMode(uint32_t protocolMode);
+/// CIP's console colour of a chat message mode (throws for a mode without one).
 QColor consoleColor(int mode);
+/// CIP's colour of a mode's text over the game window (throws for a mode
+/// without one).
+QColor overlayColor(int mode);
 /// The system colours.
 QColor systemRed();
 QColor systemWhite();
@@ -338,6 +358,8 @@ QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool
 /// Loot / look rich text: {id|name} (item-value colours when colorizeLootStyle ≠ 0)
 /// then {#rrggbb|text}. Shared by console + map bubbles.
 QString formatLootRichText(QString text);
+/// "{#rrggbb|text}" -> "<font color="#rrggbb">text</font>".
+QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings);
 
 /// CIP's clamped integer setting: the QSettings value in the
 /// group, a value below the minimum is stored back as the minimum.

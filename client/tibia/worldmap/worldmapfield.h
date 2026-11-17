@@ -160,7 +160,7 @@ public:
     /// A type and creature id per stack position (flag scans).
     struct TStackView
     {
-        const ThingType* type = nullptr;
+        const TAppearanceType* type = nullptr;
         uint32_t creatureId = 0;
     };
     std::vector<TStackView> stackView() const;
@@ -207,7 +207,6 @@ public:
     }
 
     bool hasElevation(const int elevation = 1) { return m_elevation >= elevation; }
-    bool hasFloorChange() const;
     void notifyAppearanceInstancesChanged()
     {
         updateElevation();
@@ -240,8 +239,8 @@ private:
     /// creature's placed-on-field flag (the stack's overflow).
     void eraseStackEntry(int stackIndex);
     void setStackEntryFlag(const TFieldStackEntry& entry);
-    void applyStackFlagsFromThingType(ThingType* type);
-    void applyCreatureStackFlags(const tibia::creatures::TCreature& stored, ThingType* outfitType);
+    void applyStackFlagsFromThingType(TAppearanceType* type);
+    void applyCreatureStackFlags(const tibia::creatures::TCreature& stored, TAppearanceType* outfitType);
 
     void updateThingStackPos();
 

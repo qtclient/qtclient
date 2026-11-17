@@ -16,6 +16,7 @@
 namespace tibia {
 namespace cyclopedia {
 class TCyclopediaMapStorage;
+class TCyclopediaMapCharacterConfigurationStorage;
 }
 }
 
@@ -102,6 +103,10 @@ public:
 
     void showDialogTab() override;
     void hideDialogTab() override;
+    /// The panel states are the character's cyclopedia map configuration.
+    void setShowNavigationPanel(bool v) override;
+    void setShowAreaAndSubAreaInfoPanel(bool v) override;
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration; }
     /// CIP .
     void onSelectedItemChanged() override;
     /// CIP .
@@ -123,6 +128,10 @@ public:
     void onMouseExited() override;
 
 private:
+    /// The configuration joins the analyser storages' per-character files once they exist.
+    void registerCharacterConfiguration();
+    /// A loaded configuration sets the panels.
+    void applyCharacterConfiguration();
     /// CIP confirm for reset (dialog result type 0 at +0x58).
     void confirmResetViewpoints(int subAreaId);
     /// CIP: sends the confirmed viewpoint reset or donation.
@@ -141,6 +150,8 @@ private:
     void setTooltip(const QString& tooltip);
     void updateMouseCursor(int x, int y);
 
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* m_configuration;
+    bool m_configurationRegistered = false;
     cyclopedia::TCyclopediaMapStorage* m_storage;
     TMessageDialogController* m_confirmDialog;
     int m_donationAreaId = 0;

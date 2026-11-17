@@ -431,6 +431,7 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     m_renameDialog->setCaption(qtTrId("battlelist_rename"));
     m_renameDialog->setDescription(qtTrId("battlelist_rename_text"));
     m_renameDialog->setMaxInputLength(30);
+    m_renameDialog->setAllowEmptyText(true);
     connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TBattleListController::onNewNameEntered);
     m_proxy->setSourceModel(model);
     m_battleListModel = QVariant::fromValue<QObject*>(m_proxy);

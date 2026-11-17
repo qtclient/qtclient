@@ -88,6 +88,7 @@ private:
         TMonsterBonusEffectsDialogController::Context bonusEffects;
         TBosstiaryDialogController::Context bosstiary;
         THousesInfoDialogController::Context houses;
+        int magicalArchiveSpellId = 0;
         bool operator==(const Context&) const = default;
     };
 

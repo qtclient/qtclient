@@ -38,7 +38,6 @@ private:
     void notifyChanged();
     static int htpPerKillTask(int cipDifficulty);
     static int htpMultiplier(int completedTasks);
-    static uint16_t toLuaDifficulty(int cipDifficulty);
 
     taskboard::TMonsterKillTasksListModel* m_killModel = nullptr;
     taskboard::TDeliveryTasksListModel* m_deliveryModel = nullptr;

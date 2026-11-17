@@ -10,7 +10,7 @@
 #include "spells/spellinfostorage.h"
 
 #include <client/position.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <QQmlComponent>
 #include <QQmlEngine>

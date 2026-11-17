@@ -19,7 +19,7 @@
 #include "protocol/clientmessages.h"
 #include "protocol/protocolcodes.h"
 #include "tibia/protocol/extendedopcode.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "worldmap/worldmapfield.h"
 #include "container/containerciptypes.h"
@@ -196,8 +196,9 @@ void TGameSessionState::createMovementIntent()
     };
     env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
     env.showFailure = [](const QString& textId) {
-        const std::string text = qtTrId(textId.toLatin1().constData()).toStdString();
-        tibia::game::notify("onTextMessage", tibia::client::MessageFailure, std::string_view(text));
+        auto status = tibia::input::mutableClone(*tibia::input::makeAction(tibia::input::EGameAction::SET_STATUS_LINE));
+        status->text = qtTrId(textId.toLatin1().constData());
+        tibia::input::publish(status);
     };
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
@@ -513,11 +514,11 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
 {
     tibia::container::TInventorySlot row = item;
     if (!row.empty() && row.durationSeconds > 0) {
-        ThingType* type = row.appearance ? row.appearance->thingType()
+        TAppearanceType* type = row.appearance ? row.appearance->thingType()
                                          : tibia::game::rawThingType(row.typeId, ThingCategoryItem);
         // expirestop-only items are paused server-side when equipped in their cloth slot.
         if (type && type->getClothSlot() == static_cast<int>(slot)
-            && (type->hasExpire() || type->hasClockExpire())) {
+            && type->hasExpire()) {
             row.decaying = true;
             row.durationEndMs = tibia::shared::TClockService::frameMillis() + static_cast<int64_t>(row.durationSeconds) * 1000;
         }
@@ -895,16 +896,6 @@ void TGameSessionState::cancelAttackAndFollow()
 
 
 
-void TGameSessionState::sendPartyAnalyzerPriceValue()
-{
-    if (!canPerformGameAction())
-        return;
-
-    // For now, send empty items vector - the server will handle getting the prices
-    // This matches what the server code expects for PARTYANALYZERACTION_PRICEVALUE
-    gameclient::sendPartyAnalyzerAction(tibia::client::PartyAnalyzerAction_t::PARTYANALYZERACTION_PRICEVALUE);
-}
-
 void TGameSessionState::sendPartyAnalyzerAction(const uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items)
 {
     if (!canPerformGameAction())
@@ -1175,20 +1166,7 @@ int TGameSessionState::findEmptyContainerId()
 
 
 
-namespace
-{
-    uint8_t toServerDifficulty(const uint16_t uiDifficulty)
-    {
-        if (std::cmp_equal(uiDifficulty, 0)) {
-            qWarning("%s", std::format("ToServerDifficulty received invalid UI difficulty 0").c_str());
-            return 1;
-        }
-        if (std::cmp_greater_equal(uiDifficulty, 4)) {
-            return 3;
-        }
-        return static_cast<uint8_t>(uiDifficulty - 1);
-    }
-}
+
 
 
 

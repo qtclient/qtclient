@@ -1,7 +1,7 @@
 #pragma once
 
 /// CIP-neutral pack helpers over qtclient `g_things` — name / data peels only.
-/// Implementation includes `things.h` out-of-line; this header stays free of ThingTypePtr.
+/// Implementation includes `things.h` out-of-line; this header stays free of TAppearanceTypePtr.
 
 #include <cstdint>
 #include <string>
@@ -16,23 +16,23 @@ std::string itemName(uint16_t id);
 bool isValidItemId(uint16_t id);
 /// Pack shape override (`tibia::appearances::TAppearancesManager::instance().setThingShape`). False when id/shape invalid.
 bool setItemThingShape(uint16_t id, std::string_view shapeName);
-/// True when `id` is a valid item dat id whose ThingType is a container.
+/// True when `id` is a valid item dat id whose TAppearanceType is a container.
 bool itemIsContainer(uint16_t id);
 /// True when `id` is a valid item dat id marked pickupable.
 bool itemIsPickupable(uint16_t id);
 
-/// Mean market/NPC-derived price (`ThingType::getMeanPrice`); 0 when missing.
+/// Mean market/NPC-derived price (`TAppearanceType::getMeanPrice`); 0 when missing.
 int64_t itemMeanPrice(uint16_t id);
 /// Max gold NPC sale price (currencyObjectTypeId == 0, empty quest-flag currency); 0 when none.
 int64_t itemMaxNpcSaleGoldPrice(uint16_t id);
 
-/// Pack effect-variant registry (product pack custom_effects.json). No ThingType in the header.
+/// Pack effect-variant registry (product pack custom_effects.json). No TAppearanceType in the header.
 void clearEffectVariants();
 void registerEffectVariant(uint16_t virtualId, uint16_t baseId, const std::string& shader,
                            bool underCreatures);
 
 /// Attached-effect registry peels (product pack custom_effects.json). No AttachedEffectPtr /
-/// ThingType in the header. `category` matches `ThingCategory` (`ThingCategoryEffect` = 2).
+/// TAppearanceType in the header. `category` matches `ThingCategory` (`ThingCategoryEffect` = 2).
 /// Registration always applies permanent=false / onTop=false (server list resyncs).
 void removeAttachedEffect(uint16_t id);
 void registerAttachedEffectByThing(uint16_t id, std::string_view note, uint16_t baseId,

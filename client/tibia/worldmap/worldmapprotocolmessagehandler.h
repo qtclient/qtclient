@@ -104,6 +104,7 @@ private:
     /// The view's centre moved to `center`: the storage keeps the fields of its
     /// visible area and drops the others, and effects outside it go too.
     void moveKnownArea(const Position& center);
+    void setCrashReportPosition(const Position& center);
     /// The described fields of an area, in the server's order.
     void applyArea(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields);
     /// A row or column: the view moved one field to `center`.

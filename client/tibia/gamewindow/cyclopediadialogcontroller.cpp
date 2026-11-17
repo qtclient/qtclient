@@ -9,7 +9,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -46,7 +46,7 @@ uint16_t cyclopediaTypeOf(const input::TGameAction& action)
     const uint16_t typeId = action.objectClientId;
     if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || !type->hasCyclopediaItem())
         return 0;
     return static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId());
@@ -277,6 +277,8 @@ void TCyclopediaDialogController::requestBack()
         m_bosstiary->restoreContext(context.bosstiary);
     if (context.tab == Houses)
         m_houses->restoreContext(context.houses);
+    if (context.tab == MagicalArchive)
+        m_magicalArchive->restoreContext(context.magicalArchiveSpellId);
     switchTab(context.tab);
     if (context.tab == ItemInfo)
         m_itemInfo->restoreContext(context.itemInfo);
@@ -331,6 +333,8 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
         context.bosstiary = m_bosstiary->captureContext();
     if (m_dialogTab == Houses)
         context.houses = m_houses->captureContext();
+    if (m_dialogTab == MagicalArchive)
+        context.magicalArchiveSpellId = m_magicalArchive->captureContext();
     return context;
 }
 

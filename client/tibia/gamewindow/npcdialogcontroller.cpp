@@ -1,5 +1,8 @@
 #include "npcdialogcontroller.h"
 
+#include "chat/chatgameactionhandler.h"
+#include "config/clientoptions.h"
+
 #include "trade/tradeciptypes.h"
 
 #include "chat/chatchannel.h"
@@ -75,6 +78,10 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     m_npcOutfit = &m_outfit;
     m_keywordButtonsModel = &m_keywordButtons;
     m_positionAndSize = QRect(-1, -1, 0, 0);
+    connect(config::TClientOptions::instance(), &config::TClientOptions::npcDialogOptionsChanged, this,
+            &TNpcDialogController::onDialogOptionsChanged);
+    if (config::TClientOptions::instance()->npcDialogOptions().isValid())
+        onDialogOptionsChanged();
     if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance()) {
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
@@ -92,22 +99,6 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
         Q_EMIT tradeFocusChanged();
     });
 
-    using Args = std::vector<std::any>;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindow", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<NpcChatWindowData>(&args[0]);
-        if (!data)
-            return std::any{};
-        std::vector<TNpcKeywordButtonModel::Button> buttons;
-        buttons.reserve(data->buttons.size());
-        for (const NpcButton& button : data->buttons)
-            buttons.push_back({ button.id, QString::fromStdString(button.text) });
-        onNpcChatWindow(data->npcIds, std::move(buttons));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindowClose", [this](GameObject*, const Args&) {
-        onNpcChatWindow({}, {});
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_talkPartners.clear();
     });
@@ -143,7 +134,17 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
             m_outfit.setOutfit(row->outfit());
     }
     setTalkPartnerNames(partnerNamesOf(npcIds));
+    postTalkingTo(m_talkPartnerNames);
     dialog()->show();
+}
+
+void TNpcDialogController::postTalkingTo(const QString& names)
+{
+    // CIP: a system line in the NPCs channel (opened if needed) names the talk partners.
+    if (!m_chatStorage || names.isEmpty())
+        return;
+    if (chat::TChatChannel* channel = m_chatStorage->open({ chat::TChatChannelIdentifier::Npc }, false, false))
+        channel->addEntry(chat::TClientChatEntryFactory::systemEntry(QColor(240, 240, 240), qtTrId("npc_dialog_talking_to").arg(names)));
 }
 
 TNpcDialogController::~TNpcDialogController()
@@ -256,6 +257,10 @@ void TNpcDialogController::setChatController(TChatController* controller)
     controller->setNpcDialog(this);
     chat::TChatChannelStorage* storage = &controller->storage();
     m_chatStorage = storage;
+    chat::TChatStorage* talk = &controller->chatStorage();
+    connect(talk, &chat::TChatStorage::npcTalkPartnersChanged, this,
+            [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); });
+    connect(talk, &chat::TChatStorage::keywordButtonsChanged, this, [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); });
     m_chat = new TChatChannelController(this);
     m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
     connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel);
@@ -309,12 +314,30 @@ void TNpcDialogController::setShowTrade(const bool show)
 
 void TNpcDialogController::onPositionChanged(const int x, const int y)
 {
-    m_positionAndSize.moveTo(x, y);
+    // CIP: the client options keep the dialog's rectangle.
+    config::TClientOptions* options = config::TClientOptions::instance();
+    QRect rect = options->npcDialogOptions();
+    rect.moveTo(x, y);
+    options->setNpcDialogOptions(rect);
+}
+
+void TNpcDialogController::onDialogOptionsChanged()
+{
+    const QRect rect = config::TClientOptions::instance()->npcDialogOptions();
+    if (rect == m_positionAndSize)
+        return;
+    m_positionAndSize = rect;
+    Q_EMIT dialogOptionsChanged();
 }
 
 void TNpcDialogController::onSizeChanged(const int NewDialogWidth, const int NewContentHeight)
 {
-    m_positionAndSize.setSize(QSize(NewDialogWidth, NewContentHeight));
+    if (!dialog()->item())
+        return;
+    config::TClientOptions* options = config::TClientOptions::instance();
+    QRect rect = options->npcDialogOptions();
+    rect.setSize(QSize(NewDialogWidth, NewContentHeight));
+    options->setNpcDialogOptions(rect);
 }
 
 void TNpcDialogController::onTradeRequestTakeFocus()

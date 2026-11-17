@@ -15,7 +15,7 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -62,10 +62,10 @@ constexpr A TypeContextMenuOrder[] = {
 
 constexpr auto ControlSchemeOption = "controlSchemeIndex";
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
 exaltation::TExaltationStorage* exaltationStorage()
@@ -79,7 +79,7 @@ std::vector<TAppearanceTypeEntry> searchEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
     exaltation::TExaltationStorage* exaltation = exaltationStorage();
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
         TAppearanceTypeEntry entry = TItemInfoDialogController::cyclopediaEntry(type);
         if (entry.classification == 0) {
             entries.push_back(std::move(entry));
@@ -229,7 +229,7 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
 void TDepotSearchWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyWidgetOptions();
+    onWidgetOptionsChanged();
 }
 
 void TDepotSearchWidgetController::applyWidgetOptions()
@@ -251,7 +251,8 @@ void TDepotSearchWidgetController::saveWidgetOptions()
     m_options->setDepotSearchWidgetOptions(options);
 }
 
-void TDepotSearchWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TDepotSearchWidgetController::onWidgetOptionsChanged() { applyWidgetOptions(); }
 
 void TDepotSearchWidgetController::onDetailListChanged()
 {
@@ -260,7 +261,7 @@ void TDepotSearchWidgetController::onDetailListChanged()
     std::vector<container::TInventorySlot> inbox;
     if (m_session && m_detailList) {
         for (const auto& [key, count] : m_detailList->stashCounts()) {
-            if (const ThingTypePtr& type = tibia::game::thingType(key.first, ThingCategoryItem); type && type->getId() != 0)
+            if (const TAppearanceTypePtr& type = tibia::game::thingType(key.first, ThingCategoryItem); type && type->getId() != 0)
                 stash.push_back(TItemInfoDialogController::cyclopediaEntry(type));
         }
         depot = m_detailList->depotObjects();
@@ -284,7 +285,7 @@ QString TDepotSearchWidgetController::detailListObjectName() const
 {
     if (!m_detailList)
         return {};
-    const ThingTypePtr& type = tibia::game::thingType(m_detailList->typeId(), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(m_detailList->typeId(), ThingCategoryItem);
     return type && type->getId() != 0 ? TItemInfoDialogController::cyclopediaEntry(type).name : QString();
 }
 
@@ -299,7 +300,7 @@ bool TDepotSearchWidgetController::isAppearanceAllowedToRetrieve() const
 {
     if (!m_session || !m_detailList || m_detailList->typeId() == 0)
         return false;
-    const ThingType* type = typeOf(m_detailList->typeId());
+    const TAppearanceType* type = typeOf(m_detailList->typeId());
     return type && !type->isNotMoveable();
 }
 
@@ -548,7 +549,7 @@ void TDepotSearchWidgetController::selectType(const uint16_t typeId, const uint8
     m_selectedTier.reset();
     if (!m_session)
         return;
-    if (const ThingType* type = typeOf(typeId); type && type->getClassification() > 0)
+    if (const TAppearanceType* type = typeOf(typeId); type && type->getClassification() > 0)
         m_selectedTier = tier;
 }
 
@@ -576,7 +577,7 @@ void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, con
 input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t typeId) const
 {
     input::TGameActionList actions;
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     if (!type)
         return actions;
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
@@ -623,7 +624,7 @@ void TDepotSearchWidgetController::requestRetrieveFromStash(const int TypeID)
     const auto it = counts.find({ static_cast<uint16_t>(TypeID), 0 });
     if (it == counts.end())
         return;
-    const ThingType* type = typeOf(static_cast<uint16_t>(TypeID));
+    const TAppearanceType* type = typeOf(static_cast<uint16_t>(TypeID));
     const uint32_t maximum = type && type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
     auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));
     retrieve->parameter = TypeID;

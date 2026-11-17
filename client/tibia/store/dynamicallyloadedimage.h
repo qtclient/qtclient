@@ -4,6 +4,10 @@
 
 #include <QHash>
 #include <QImage>
+#include <QSize>
+
+#include <map>
+#include <memory>
 #include <QPointer>
 #include <QSet>
 #include <QUrl>
@@ -17,33 +21,52 @@ namespace store {
 /// The store's web images (CIP: TDynamicallyLoadedImageManager, ctor
 /// , metacall): `<base>/<size>/<key>` 
 /// downloaded once and kept.
+/// One image the store asks for: its key and its size (13, 32 or 64 pixels square).
+struct TImageRequest
+{
+    QString key;
+    QSize size{ -1, -1 };
+
+    /// CIP: a key and a positive size.
+    bool isValid() const { return !key.isEmpty() && size.width() > 0 && size.height() > 0; }
+    bool operator==(const TImageRequest&) const = default;
+};
+
+/// The store's images (CIP: store::TDynamicallyLoadedImageManager): downloaded from
+/// <base>/<size>/<key> through a disk cache and decoded by the sprite system's decompressor.
 class TDynamicallyLoadedImageManager final : public cip::tibia::store::TDynamicallyLoadedImageManager
 {
     Q_OBJECT
 public:
     explicit TDynamicallyLoadedImageManager(QObject* parent = nullptr);
 
-    void setBaseUrl(const QUrl& baseUrl);
+    void setBaseUrl(const QUrl& baseUrl) { m_baseUrl = baseUrl; }
     const QUrl& baseUrl() const { return m_baseUrl; }
-    /// CIP : the image, now if known, else imageLoaded or
-    /// imageLoadFailed later.
-    void request(const QString& key, int size);
+    /// The image of a valid request (13x13, 32x32 or 64x64) is loaded unless it is on its way;
+    /// any other request fails at once.
+    void requestImage(const TImageRequest& request);
     /// `path` relative to the base (the home page's banners).
     QUrl url(const QString& path) const;
 
 Q_SIGNALS:
-    /// CIP signals 0 and 1.
-    void imageLoaded(const QString& key, int size, const QImage& image);
-    void imageLoadFailed(const QString& key, int size);
+    void imageReady(const tibia::store::TImageRequest& ImageRequest, const QImage& Image);
+    void imageDownloadOrDecodingError(const tibia::store::TImageRequest& ImageRequest);
 
 private:
-    /// CIP .
-    void onFinished(QNetworkReply* reply, const QString& key, int size);
+    static bool isValidSize(const QSize& size);
+    /// <base>/<width>/<key>.
+    QUrl imageUrl(const TImageRequest& request) const;
+    void download(const TImageRequest& request);
+    bool isDecompressing(const QUrl& url) const;
+    void decompress(const TImageRequest& request, const QByteArray& data);
+    void onDownloadSuccess(const QUrl& Url, const QByteArray& ImageData);
+    void onDownloadError(const QUrl& Url);
+    void onImageDecompressionFinished(const QString& FullImageUrl, const std::shared_ptr<QImage>& pImagePointer);
 
-    QNetworkAccessManager* m_network;
+    QNetworkAccessManager* m_downloader;
     QUrl m_baseUrl;
-    QHash<QString, QImage> m_images;
-    QSet<QString> m_pending;
+    std::map<QUrl, TImageRequest> m_downloads;
+    std::map<QString, TImageRequest> m_decompressions;
 };
 
 }
@@ -82,12 +105,13 @@ private:
     void requestImage();
     /// CIP .
     void showPlaceholder(bool failed);
-    void onImageLoaded(const QString& key, int size, const QImage& image);
-    void onImageLoadFailed(const QString& key, int size);
+    bool isCurrentRequest(const store::TImageRequest& request) const;
+    void onImageLoaded(const store::TImageRequest& request, const QImage& image);
+    void onImageLoadFailed(const store::TImageRequest& request);
 
     QPointer<store::TDynamicallyLoadedImageManager> m_manager;
-    QString m_requestedKey;
-    int m_requestedSize = -1;
+    /// CIP: the request the item shows.
+    store::TImageRequest m_request;
     QImage m_image;
 };
 

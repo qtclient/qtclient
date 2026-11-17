@@ -4,7 +4,7 @@
 
 #include "container/containerciptypes.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/thingsession_forward.h>
 
 #include <protocol.pb.h>
@@ -35,7 +35,7 @@ void fillInspectedAppearance(Dest& dest, const ::tibia::protobuf::protocol::Prot
     dest.tier = slot.tier;
     dest.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
     dest.fluidOrSplash = slot.fluidOrSplash;
-    ThingType* type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
     dest.hookSouth = type && type->isHookSouth();
     dest.hookEast = type && type->isHookEast();
     dest.hasProficiency = type && type->getProficiencyId() != 0;
