@@ -6320,6 +6320,7 @@ sub_1bf14cb4f58b	1bf14cb4f58bddbe	inlined	gamewindow/highscoresdialogcontroller.
 sub_1bf41e131201#2	1bf41e131201b161	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_1bf6b2627054	1bf6b2627054919d	skip	library: std::vector growth (library)
 sub_1c0f6a3b2f1d	1c0f6a3b2f1d6176	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSearchForCharacter
+sub_1c1a36bb8d62	1c1a36bb8d62c15f	skip	library: std::vector push_back reallocation path (int / 24-byte element) instantiated in handleSkillWheelMessage
 sub_1c22d6256e5b	1c22d6256e5bb101	ported	friends/friendsciptypes.cpp:TFriendsStorage::setSettings
 sub_1c270c93b287	1c270c93b2871920	inlined	quickloot/managedcontainerstorage.cpp:TManagedContainerStorage::setManagedContainers
 sub_1c2e08048b35	1c2e08048b351de3	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::prepareAndEnqueueGameclientMessage
@@ -7948,6 +7949,7 @@ sub_48f0293cbb52	48f0293cbb525795	ported	gamewindow/stashdialogcontroller.cpp:TS
 sub_48fcdd7b051a	48fcdd7b051adb81	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::reset
 sub_49125f831334	49125f831334b843	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
 sub_491bc0e14328	491bc0e143287fb4	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isInt	test=tests/client/jsonvalidator_test.cpp
+sub_49235378dc86	49235378dc86fe41	ported	skillwheel/skillwheelciptypes.cpp:setModGrade
 sub_492ba136ce8d	492ba136ce8d5ce7	ported	shared/src/datetimehelper.cpp:formatTimestamp
 sub_492f90eda298	492f90eda2980fe9	ported	minimap/minimaptile.cpp:blankImage
 sub_494cc4268df0	494cc4268df03852	skip	generated: moc-generated signal body (sendMessage, receivedMessage, clientMessageReadyToProcess)
@@ -8149,6 +8151,7 @@ sub_4fd3da64f08b	4fd3da64f08b2a37	skip	library: miniaudio library
 sub_4fe7ecb13d52	4fe7ecb13d52f555	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setAutomaticExtendType
 sub_50010ee76897	50010ee76897c30e	inlined	appearances/appearancetype.cpp:TAppearanceType::addNpcTradeData
 sub_50180dfc6234	50180dfc6234e61b	ported	skillwheel/skillwheeldata.cpp:largePerkName
+sub_501b90f9bd23	501b90f9bd23d9a8	ported	skillwheel/skillwheelciptypes.cpp:setModGrade
 sub_501dd0393eb1	501dd0393eb1ab49	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_501df5b91c52	501df5b91c52affe	skip	library: libc++ std::vector/std::map instantiations (reserve, push_back realloc, copy, destroy, vector ==/!=) for exaltation data
 sub_502126eeb4d3#2	502126eeb4d38152	ported	gamewindow/genericentertextdialogcontroller.h:TGenericEnterTextDialogController::setConfirmLabel
@@ -14794,6 +14797,7 @@ sub_fa36903027e4	fa36903027e416e4	ported	gamewindow/imbuingdialogcontroller.cpp:
 sub_fa441d03eb86	fa441d03eb86af0d	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onCharacterNameChecked
 sub_fa4b2d3d49ed#3	fa4b2d3d49ed42ad	skip	generated: moc property getter (generated in cip_gen)
 sub_fa5de654f52d	fa5de654f52d7913	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::requestSaveCurrentPreset
+sub_fa63b555d921	fa63b555d92179c3	skip	library: std::vector push_back reallocation path (int / 24-byte element) instantiated in handleSkillWheelMessage
 sub_fa65b0a5978e	fa65b0a5978e07ad	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setShowLockerOnly
 sub_fa75c3295ca6	fa75c3295ca676ac	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::isShowLevelSpecialPopup
 sub_fa8aceb6ca8a	fa8aceb6ca8a7e74	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::getSeasonalTooltipForDay

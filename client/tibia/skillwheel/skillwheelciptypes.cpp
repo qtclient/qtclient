@@ -118,6 +118,19 @@ bool socketGem(TWheel& wheel, const TGem& gem, const int vessel)
 
 }
 
+namespace {
+
+/// CIP: a mod's grade; grade 0 drops the mod.
+void setModGrade(TGrades& grades, const int mod, const int grade)
+{
+    if (grade == 0)
+        grades.erase(mod);
+    else
+        grades[mod] = grade;
+}
+
+}
+
 void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const GameserverMessageSkillWheel& m)
 {
     if (!m.can_view()) {
@@ -167,9 +180,9 @@ void TSkillWheelProtocolMessageHandler::handleSkillWheelMessage(const Gameserver
 
     TGrades basicGrades, supremeGrades;
     for (const auto& g : m.basic_grades())
-        basicGrades[static_cast<int>(g.modifier())] = static_cast<int>(g.grade());
+        setModGrade(basicGrades, static_cast<int>(g.modifier()), static_cast<int>(g.grade()));
     for (const auto& g : m.supreme_grades())
-        supremeGrades[static_cast<int>(g.modifier())] = static_cast<int>(g.grade());
+        setModGrade(supremeGrades, static_cast<int>(g.modifier()), static_cast<int>(g.grade()));
 
     m_storage->setGemInventory(std::move(gems));
     m_storage->setModGrades(std::move(basicGrades), std::move(supremeGrades));
