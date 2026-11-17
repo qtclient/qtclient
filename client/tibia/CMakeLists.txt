@@ -322,6 +322,10 @@ if(TIBIA_WITH_GAMECORE)
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
+    taskboard/taskboardbountytasksstorage.cpp taskboard/taskboardbountytasksstorage.h
+    taskboard/taskboardcurrenciesstorage.cpp taskboard/taskboardcurrenciesstorage.h
+    taskboard/taskboardshopstorage.cpp taskboard/taskboardshopstorage.h
+    taskboard/taskboardweeklytasksstorage.cpp taskboard/taskboardweeklytasksstorage.h
     news/newsciptypes.cpp news/newsciptypes.h
     client/clientciptypes.cpp client/clientciptypes.h
     common/commonciptypes.cpp common/commonciptypes.h

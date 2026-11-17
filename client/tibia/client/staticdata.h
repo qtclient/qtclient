@@ -192,78 +192,6 @@ struct OutfitMemorialData
     std::vector<std::string> fullTokenOutfitOwners;
 };
 
-struct TaskBoardBountyHeaderData
-{
-    uint8_t rerollPoints{ 0 };
-    uint8_t claimDaily{ 0 };
-    uint8_t difficulty{ 1 };
-};
-
-struct TaskBoardBountyMonsterData
-{
-    uint8_t taskIndex{ 0 };
-    uint16_t raceId{ 0 };
-    uint16_t currentKills{ 0 };
-    uint16_t totalKills{ 0 };
-    uint32_t rewardXp{ 0 };
-    uint8_t rewardPoints{ 0 };
-    uint8_t rewardReroll{ 0 };
-    uint16_t rewardDust{ 0 }; // Elite Premium dust (QML); not on OTC wire yet
-    uint8_t rarity{ 0 }; // 0 normal, 1 silver, 2 gold, 3 platinum
-    uint8_t isActive{ 0 };
-    uint8_t isCompleted{ 0 };
-};
-
-struct TaskBoardTalismanData
-{
-    uint16_t currentValue{ 0 };
-    uint16_t nextValue{ 0 };
-    uint16_t upgradeCost{ 0 };
-    uint8_t isActiveUpgrade{ 0 };
-};
-
-struct TaskBoardPreferredSlotData
-{
-    uint8_t slot{ 0 };
-    uint8_t locked{ 1 }; // 1 = locked by default (unpurchased slot)
-    uint16_t preferred{ 0 };
-    uint16_t unwanted{ 0 };
-    uint32_t price{ 0 };
-};
-
-struct TaskBoardWeeklyHeaderData
-{
-    uint8_t difficulty{ 0 };
-    uint16_t currentPlayerLevel{ 0 };
-    uint8_t remainingDays{ 0 };
-    uint8_t totalTaskSlots{ 0 };
-    uint32_t maxExperience{ 0 };
-    uint32_t maxDeliveryExperience{ 0 };
-    uint8_t completedKillTasks{ 0 };
-    uint8_t completedDeliveryTasks{ 0 };
-    uint32_t pointsEarned{ 0 };
-    uint32_t soulsealsEarned{ 0 };
-    uint8_t extraSlot{ 0 };
-};
-
-struct TaskBoardWeeklyMonsterData
-{
-    uint16_t raceId{ 0 };
-    uint32_t current{ 0 };
-    uint32_t total{ 0 };
-    uint8_t state{ 0 };
-};
-
-struct TaskBoardWeeklyItemData
-{
-    uint8_t slotIndex{ 0 };
-    uint16_t itemId{ 0 };
-    uint32_t current{ 0 };
-    uint32_t total{ 0 };
-    uint8_t claimed{ 0 };
-    uint8_t state{ 0 };
-};
-
 struct TaskBoardShopItemData
 {
     uint8_t id{ 0 };
@@ -279,16 +207,6 @@ struct TaskBoardShopItemData
     uint16_t maxPurchases{ 0 };
     uint16_t currentPurchases{ 0 };
     uint32_t nextCost{ 0 };
-};
-
-struct TaskBoardSoulsealEntryData
-{
-    std::string name;
-    uint16_t raceId{ 0 };
-    uint16_t soulsealPoints{ 0 };
-    uint8_t category{ 0 };
-    uint8_t done{ 1 };
-    Outfit outfit;
 };
 
 struct Imbuement

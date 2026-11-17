@@ -15,6 +15,7 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "taskboard/taskboardciptypes.h"
 
 #include <client/outfit.h>
 #include <client/staticdata.h>
@@ -25,7 +26,9 @@
 #include <QColor>
 
 #include <algorithm>
+#include <limits>
 #include <tuple>
+#include <unordered_set>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -1140,6 +1143,43 @@ void TShowSpellBookDialogController::openCyclopedia()
 
 void TShowSpellBookDialogController::requestClose() { dialog()->close(); }
 
+namespace {
+
+/// Every race with a soul pit category, marked done when its animus mastery is
+/// complete; mastered races without a category are appended.
+std::vector<TSoulSealsMonsterListModel::Entry> soulSealsMonsterEntries(const std::vector<uint16_t>& animusMasteryRaceIds)
+{
+    std::unordered_set<uint16_t> mastered;
+    for (const uint16_t raceId : animusMasteryRaceIds) {
+        if (raceId != 0)
+            mastered.insert(raceId);
+    }
+    const auto entryFor = [](const uint16_t raceId, const RaceType& race, const bool done) {
+        TSoulSealsMonsterListModel::Entry entry;
+        entry.raceId = static_cast<int>(raceId);
+        entry.name = race.name.empty() ? QString::number(raceId) : QString::fromStdString(race.name);
+        entry.animusMasteryCompleted = done;
+        const uint32_t category = race.hasCategory ? race.category : 0;
+        entry.soulPitFightPrice = race.hasCategory
+            ? static_cast<int>(std::min<uint32_t>((category + 1U) * 10U, std::numeric_limits<uint16_t>::max()))
+            : 0;
+        entry.category = static_cast<int>(std::min<uint32_t>(category, std::numeric_limits<uint8_t>::max()));
+        return entry;
+    };
+    std::vector<TSoulSealsMonsterListModel::Entry> entries;
+    for (const auto& race : tibia::game::getAllRaces()) {
+        if (!race.hasCategory || race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
+            continue;
+        const auto raceId = static_cast<uint16_t>(race.raceId);
+        entries.push_back(entryFor(raceId, race, mastered.erase(raceId) > 0));
+    }
+    for (const uint16_t raceId : mastered)
+        entries.push_back(entryFor(raceId, tibia::game::raceData(raceId), true));
+    return entries;
+}
+
+}
+
 TSoulSealsDialogController* TSoulSealsDialogController::s_instance = nullptr;
 
 TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
@@ -1153,31 +1193,12 @@ TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
                                                   QStringLiteral("Hard"), QStringLiteral("Expert") };
     m_indexOfSelectedDifficulty = 0;
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulsealsData", [this](GameObject*, const Args& args) {
-        std::vector<TSoulSealsMonsterListModel::Entry> entries;
-        if (const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<TaskBoardSoulsealEntryData>>(&args[0])) {
-            entries.reserve(list->size());
-            for (const TaskBoardSoulsealEntryData& row : *list) {
-                TSoulSealsMonsterListModel::Entry entry;
-                entry.raceId = static_cast<int>(row.raceId);
-                entry.name = QString::fromStdString(row.name);
-                if (entry.name.isEmpty()) {
-                    const RaceType& race = tibia::game::raceData(row.raceId);
-                    entry.name = QString::fromStdString(race.name);
-                    if (!entry.name.isEmpty())
-                        entry.name[0] = entry.name[0].toUpper();
-                }
-                entry.animusMasteryCompleted = row.done != 0;
-                entry.soulPitFightPrice = static_cast<int>(row.soulsealPoints);
-                entry.category = static_cast<int>(row.category);
-                entries.push_back(std::move(entry));
-            }
-        }
-        applyEntries(std::move(entries));
-        dialog()->create();
-        dialog()->show();
-        return std::any{};
-    });
+    connect(taskboard::TTaskboardProtocolMessageHandler::instance(), &taskboard::TTaskboardProtocolMessageHandler::openSoulSealsDialog,
+            this, [this](const std::vector<uint16_t>& animusMasteryRaceIds) {
+                applyEntries(soulSealsMonsterEntries(animusMasteryRaceIds));
+                dialog()->create();
+                dialog()->show();
+            });
 }
 
 TSoulSealsDialogController* TSoulSealsDialogController::instance()

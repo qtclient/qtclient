@@ -1176,20 +1176,7 @@ int TGameSessionState::findEmptyContainerId()
 
 
 
-namespace
-{
-    uint8_t toServerDifficulty(const uint16_t uiDifficulty)
-    {
-        if (std::cmp_equal(uiDifficulty, 0)) {
-            qWarning("%s", std::format("ToServerDifficulty received invalid UI difficulty 0").c_str());
-            return 1;
-        }
-        if (std::cmp_greater_equal(uiDifficulty, 4)) {
-            return 3;
-        }
-        return static_cast<uint8_t>(uiDifficulty - 1);
-    }
-}
+
 
 
 

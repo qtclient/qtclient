@@ -200,6 +200,9 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         uint8_t exiva = 0;
         if (r.u8(exiva))
             m->set_exiva_options(exiva);
+        uint8_t streak = 0;
+        if (r.u8(streak))
+            m->set_daily_reward_streak_length(streak);
         return r.i;
     }
     case 24: {
@@ -661,6 +664,7 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         w.string(m.store_url());
         w.u16(uint16_t(m.coins_packet_size()));
         w.u8(uint8_t(m.exiva_options()));
+        w.u8(uint8_t(m.daily_reward_streak_length()));
         return w.out;
     }
     case 24: {
@@ -1404,14 +1408,33 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 95: {
         const auto& m = msg.GetExtension(GameclientMessageTaskboard::gameclient_message_taskboard);
-        const auto option = static_cast<uint8_t>(m.option());
-        w.u8(option);
-        switch (option) {
+        w.u8(static_cast<uint8_t>(m.option()));
+        switch (m.option()) {
         case 2:
-            w.u8(static_cast<uint8_t>(m.small_value()));
+            w.u8(static_cast<uint8_t>(m.bounty_difficulty()));
+            w.u8(m.elite() ? 1 : 0);
             break;
-        case 5: case 7: case 8: case 9: case 11: case 13: case 14: case 15: case 16:
-            w.u16(static_cast<uint16_t>(m.value()));
+        case 5:
+            w.u8(static_cast<uint8_t>(m.task_index()));
+            break;
+        case 7:
+            w.u8(static_cast<uint8_t>(m.talisman_index()));
+            break;
+        case 8:
+            w.u8(static_cast<uint8_t>(m.delivery_task_index()));
+            break;
+        case 9:
+            w.u8(static_cast<uint8_t>(m.weekly_difficulty()));
+            break;
+        case 11:
+            w.u16(static_cast<uint16_t>(m.offer_index()));
+            break;
+        case 13: case 14:
+            w.u16(static_cast<uint16_t>(m.slot_index()));
+            break;
+        case 15: case 16:
+            w.u16(static_cast<uint16_t>(m.slot_index()));
+            w.u16(static_cast<uint16_t>(m.race_id()));
             break;
         default:
             break;

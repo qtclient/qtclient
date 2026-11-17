@@ -257,6 +257,7 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedDailyRewardCollectionStateMessage, this,
          &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
     link(&Queue::receivedShowMessageDialogMessage, this, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedLoginSuccessMessage, this, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
 
     link(&Queue::receivedBestiaryTrackerMessage, this,
          &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);
@@ -310,6 +311,7 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     using taskboard::TTaskboardProtocolMessageHandler;
     link(&Queue::receivedTaskboardMessage, this, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
     link(&Queue::receivedSoulSealsDialogMessage, this, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
+    link(&Queue::receivedResourceBalanceMessage, this, &TTaskboardProtocolMessageHandler::handleResourceBalanceMessage);
 
     link(&Queue::receivedBossDifficultySelectionMessage, this,
          &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);

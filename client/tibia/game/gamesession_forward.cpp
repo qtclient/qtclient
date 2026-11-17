@@ -41,22 +41,6 @@ namespace game {
 
 namespace gameclient = ::tibia::protocol::gameclient;
 
-namespace {
-
-uint8_t toServerDifficulty(const uint16_t uiDifficulty)
-{
-    if (std::cmp_equal(uiDifficulty, 0)) {
-        qWarning("%s", std::format("ToServerDifficulty received invalid UI difficulty 0").c_str());
-        return 1;
-    }
-    if (std::cmp_greater_equal(uiDifficulty, 4))
-        return 3;
-    return static_cast<uint8_t>(uiDifficulty - 1);
-}
-
-}
-
-
 void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount)
 {
     if (!canPerformGameAction())
@@ -89,87 +73,6 @@ void attack(uint32_t creatureId)
 {
     gameSessionState().attack(creatureId);
 }
-void bountyPreferredAction(const uint8_t actionType, const uint16_t slot, const uint16_t raceId)
-{
-    if (!canPerformGameAction())
-        return;
-
-    switch (actionType) {
-        case tibia::client::PREFERRED_ACTION_REQUEST:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_OPEN_BOUNTY);
-            break;
-        case tibia::client::PREFERRED_ACTION_BUY_SLOT:
-            if (std::cmp_not_equal(slot, 0)) {
-                gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_PREFERRED_UNLOCK, slot);
-            }
-            break;
-        case tibia::client::PREFERRED_ACTION_SET_PREFERRED:
-            if (std::cmp_not_equal(slot, 0) && std::cmp_not_equal(raceId, 0)) {
-                gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_PREFERRED_ASSIGN, slot, raceId);
-            }
-            break;
-        case tibia::client::PREFERRED_ACTION_SET_UNWANTED:
-            if (std::cmp_not_equal(slot, 0) && std::cmp_not_equal(raceId, 0)) {
-                gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_UNWANTED_ASSIGN, slot, raceId);
-            }
-            break;
-        case tibia::client::PREFERRED_ACTION_REMOVE_PREFERRED:
-            if (std::cmp_not_equal(slot, 0)) {
-                gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_PREFERRED_CLEAR, slot);
-            }
-            break;
-        case tibia::client::PREFERRED_ACTION_REMOVE_UNWANTED:
-            if (std::cmp_not_equal(slot, 0)) {
-                gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_UNWANTED_CLEAR, slot);
-            }
-            break;
-        default:
-            qWarning("%s", std::format("Unknown bounty preferred action type {}", static_cast<int>(actionType)).c_str());
-            break;
-    }
-}
-void bountyTalismanUpgrade(const uint8_t pathIndex)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (std::cmp_greater(pathIndex, 3)) {
-        qWarning("%s", std::format("BountyTalismanUpgrade: invalid pathIndex {}", static_cast<int>(pathIndex)).c_str());
-        return;
-    }
-
-    gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_TALISMAN_UPGRADE, pathIndex);
-}
-void bountyTaskAction(const uint8_t actionType, const uint16_t value)
-{
-    if (!canPerformGameAction())
-        return;
-
-    switch (actionType) {
-        case tibia::client::BOUNTY_ACTION_REQUEST:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_OPEN_BOUNTY);
-            break;
-        case tibia::client::BOUNTY_ACTION_REROLL:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_REROLL);
-            break;
-        case tibia::client::BOUNTY_ACTION_SELECT:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_SELECT_TASK, value);
-            break;
-        case tibia::client::BOUNTY_ACTION_CLAIM_REWARD:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_REWARD);
-            break;
-        case tibia::client::BOUNTY_ACTION_CHANGE_DIFFICULTY:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY, toServerDifficulty(value));
-            break;
-        case tibia::client::BOUNTY_ACTION_CLAIM_DAILY:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_DAILY);
-            break;
-        default:
-            qWarning("%s", std::format("Unknown bounty task action type {}", static_cast<int>(actionType)).c_str());
-            break;
-    }
-}
-
 void browseField(const Position& position)
 {
     if (!canPerformGameAction())
@@ -1114,20 +1017,6 @@ void talkPrivate(const tibia::client::MessageMode mode, const std::string_view r
     gameclient::sendTalk(mode, 0, receiver, message);
 }
 
-void taskHuntingShopPurchase(uint8_t offerIndex)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_HUNTING_SHOP_BUY_OFFER, offerIndex, 0);
-}
-
-void taskHuntingShopRequest()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_OPEN_HUNTING_SHOP);
-}
-
 void transferCoins(std::string_view recipient, uint32_t amount)
 {
     if (!canPerformGameAction())
@@ -1158,26 +1047,6 @@ void useWithMapObject(const Position& from, const uint16_t fromId, const int fro
     gameclient::sendUseItemWith(from, fromId, static_cast<uint8_t>(fromStack), to, toId,
                                     static_cast<uint8_t>(toStack));
     tibia::game::notify("onUseWith", from, fromId, to, fromStack);
-}
-void weeklyTaskAction(const uint8_t actionType, const uint16_t value)
-{
-    if (!canPerformGameAction())
-        return;
-
-    switch (actionType) {
-        case tibia::client::WEEKLY_ACTION_REFRESH_DATA:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_OPEN_WEEKLY);
-            break;
-        case tibia::client::WEEKLY_ACTION_SELECT_DIFFICULTY:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_WEEKLY_SELECT_DIFFICULTY, toServerDifficulty(value));
-            break;
-        case tibia::client::WEEKLY_ACTION_DELIVER_ITEM:
-            gameclient::sendTaskBoardAction(tibia::client::TASK_BOARD_OPTION_WEEKLY_DELIVER, value);
-            break;
-        default:
-            qWarning("%s", std::format("Unknown weekly task action type {}", static_cast<int>(actionType)).c_str());
-            break;
-    }
 }
 void wrapMapObject(const Position& position, const uint16_t itemId, const int stackPos)
 {

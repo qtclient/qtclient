@@ -361,6 +361,12 @@ void TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage(const Game
     publish(A::CLOSE_REWARD_WALL_DIALOG);
 }
 
+void TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
+{
+    if (TDailyRewardStorage* const storage = TDailyRewardStorage::instance())
+        storage->setRewardStreakLength(static_cast<uint16_t>(message.daily_reward_streak_length()));
+}
+
 void TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage(const GameserverMessageResourceBalance& message)
 {
     TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
