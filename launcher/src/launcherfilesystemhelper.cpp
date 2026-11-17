@@ -112,6 +112,11 @@ QJsonObject hostSettingsDefaults()
         urls.insert(QStringLiteral("releaseManifest"), cdn + QStringLiteral("/latest/release.json"));
     if (hostUseContentStore(cdn) && !urls.contains(QStringLiteral("contentStore")))
         urls.insert(QStringLiteral("contentStore"), cdn + QStringLiteral("/content"));
+    // The browser host pins the hardware survey to the page origin (a stamped
+    // site on another host is cross-origin there), as it does for login.
+    const QString survey = qEnvironmentVariable("QTCLIENT_SYSTEM_SURVEY_URL");
+    if (!survey.isEmpty())
+        urls.insert(QStringLiteral("systemSurvey"), survey);
     defaults.insert(kGroupUrls, urls);
     return defaults;
 }
