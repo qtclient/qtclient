@@ -577,6 +577,28 @@ void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
                                         m_buyWithCosmeticTokens);
 }
 
+void TStoreDialogController::onCharacterWorldTransferWorldEntered(const int offerId, const QString& worldName)
+{
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_NEW_WORLD;
+    m_newWorldName = worldName;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                        m_buyWithCosmeticTokens);
+}
+
+void TStoreDialogController::onMainCharChangeConfigurationFinished(const int offerId, const QString& characterName)
+{
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_NEW_MAIN_CHARACTER;
+    m_newMainCharacter = characterName;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                        m_buyWithCosmeticTokens);
+}
+
 void TStoreDialogController::onConfirmationDialogRequested(const int offerId, const QString& message, const bool buyWithCosmeticTokens)
 {
     if (!m_messages)

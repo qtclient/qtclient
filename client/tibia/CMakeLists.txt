@@ -86,6 +86,7 @@ qt_add_executable(tibia
   app/crashlog.cpp app/crashlog.h
   app/launcherenv.cpp app/launcherenv.h
   app/sessionbootstrap.cpp app/sessionbootstrap.h
+  app/loginwaitdialogcontroller.cpp app/loginwaitdialogcontroller.h
   app/overrideinterceptor.cpp app/overrideinterceptor.h
   app/packqmlinterceptor.cpp app/packqmlinterceptor.h
   app/qmldisk.cpp app/qmldisk.h

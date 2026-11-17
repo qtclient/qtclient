@@ -199,6 +199,10 @@ private:
     void onTransactionHistoryChanged();
     void onNewCharacterNameRequested(int offerId, bool buyWithCosmeticTokens);
     void onNewCharacterNameEntered(const QString& name);
+    /// The world transfer dialog chose a world: confirm the offer for it.
+    void onCharacterWorldTransferWorldEntered(int offerId, const QString& worldName);
+    /// The main character dialog chose a character: confirm the offer for it.
+    void onMainCharChangeConfigurationFinished(int offerId, const QString& characterName);
     void onConfirmationDialogRequested(int offerId, const QString& message, bool buyWithCosmeticTokens);
     void onHirelingConfigurationRequested(int offerId, bool buyWithCosmeticTokens);
     void onHirelingConfigurationFinished(int offerId, const QString& name, int sex);

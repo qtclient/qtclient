@@ -9,38 +9,43 @@
 namespace tibia {
 namespace gamewindow {
 
-/// WaitDialog.qml (CIP: TWaitDialogController) — connecting / please-wait during login.
+/// CIP gamewindow::TWaitDialogController: WaitDialog.qml counting a fixed wait
+/// down in 100 ms steps; at zero it closes and reports waitTimeElapsed, Abort
+/// closes it and reports waitAborted.
 class TWaitDialogController final : public TDialogController<cip::tibia::gamewindow::TWaitDialogController>
 {
     Q_OBJECT
 public:
     explicit TWaitDialogController(QObject* parent = nullptr);
 
-    /// CIP loginwait_*: "Your character list is being loaded. Please wait."
-    void showCharacterList();
-    /// CIP connecting_*: "Connecting to the game world. Please wait."
-    void showGameWorld();
+    /// Shows the dialog and starts a wait of `seconds`; `waitTextFormat`'s %1
+    /// is the remaining time.
+    void startWait(const QString& caption, const QString& text, qint64 seconds, const QString& waitTextFormat);
+    /// Closes the dialog and stops the countdown.
     void close();
 
-    /// Which wait abortWait() just dismissed. close() clears the live phase.
-    enum class Phase { None, CharacterList, GameWorld };
-    Phase abortedPhase() const { return m_abortedPhase; }
+    /// The part of the wait already over, 0..1.
+    double fillPercentage() const override;
+    /// The wait text with the remaining time (seconds, then minutes).
+    QString waitTextWithRemainingDuration() const override;
 
     Q_INVOKABLE void abortWait() override;
 
-Q_SIGNALS:
-    void aborted();
+public Q_SLOTS:
+    /// One timer step: counts the remaining time down by the timer interval,
+    /// then restarts, or closes and reports waitTimeElapsed at zero.
+    void reduceRemainingWaitDurationByOneSecond();
 
 private:
-    void tick();
-
-    void present(const char* captionId, const char* textId, Phase phase);
-
-    QTimer m_tick;
-    int m_elapsed = 0;
-    Phase m_phase = Phase::None;
-    Phase m_abortedPhase = Phase::None;
+    QString m_waitTextFormat;
+    qint64 m_totalWaitDuration = 0;
+    qint64 m_remainingWaitDuration = 0;
+    QTimer m_timer;
 };
+
+/// A duration for display, rounded up: "N second(s)" up to 60 seconds, then
+/// "N minutes".
+QString formatRemainingTime(qint64 milliseconds);
 
 }
 }
