@@ -882,7 +882,7 @@ TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const
     : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
 {
     const auto color = [](const int index) {
-        const QColor c = Outfit::getColor(index);
+        const QColor c = tibia::shared::outfitColor(index);
         return QColor(c.red(), c.green(), c.blue());
     };
     m_id = id;

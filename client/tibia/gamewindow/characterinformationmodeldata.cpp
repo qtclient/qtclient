@@ -1,5 +1,6 @@
 #include "characterinformationmodeldata.h"
 
+#include "colorhelper.h"
 #include <client/outfit.h>
 
 namespace tibia::gamewindow {
@@ -14,7 +15,7 @@ public:
         : TOutfitQMLInformation(parent)
     {
         const auto color = [](const int index) {
-            const QColor rgb = Outfit::getColor(index);
+            const QColor rgb = tibia::shared::outfitColor(index);
             return QColor(rgb.red(), rgb.green(), rgb.blue());
         };
         m_id = c.outfitId;
