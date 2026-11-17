@@ -10,7 +10,7 @@
 #include "quickloot/quicklootciptypes.h"
 
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QDebug>
@@ -60,20 +60,20 @@ QList<TMessageDialogButton*> yesNoButtons()
              new TMessageDialogButton(qtTrId("no"), TMessageDialogController::Button::NO, QKeySequence(QStringLiteral("Escape"))) };
 }
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
 QString typeName(const uint16_t typeId)
 {
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     if (!type)
         return QStringLiteral("Unknown");
-    const MarketData& market = type->getMarketData();
-    const std::string& name = type->isMarketable() && !market.name.empty() ? market.name : type->getName();
-    return name.empty() ? QStringLiteral("Unknown") : QString::fromStdString(name);
+    const auto* market = type->marketProperties();
+    const QString name = market && !market->name.isEmpty() ? market->name : type->name();
+    return name.isEmpty() ? QStringLiteral("Unknown") : name;
 }
 
 }
@@ -380,8 +380,8 @@ void TManageLootContainerDialogController::rebuildListItems()
         TAppearanceTypeEntry entry;
         entry.typeId = typeId;
         entry.name = typeName(typeId);
-        if (ThingType* type = typeOf(typeId))
-            entry.marketCategory = static_cast<int>(type->getMarketData().category);
+        if (TAppearanceType* type = typeOf(typeId))
+            entry.marketCategory = type->marketCategory();
         entries.push_back(std::move(entry));
     }
     std::ranges::sort(entries, [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) { return a.name < b.name; });
@@ -446,7 +446,7 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
         return;
     if (target && target->objectClientId) {
         const uint16_t typeId = target->objectClientId;
-        ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (type && type->isContainer()) {
             publishContainerAction(mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
                                    target.get());

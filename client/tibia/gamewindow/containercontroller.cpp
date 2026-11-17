@@ -12,7 +12,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QGuiApplication>
@@ -446,7 +446,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
         auto openParent = input::mutableClone(*input::makeObjectAction(A::OPEN_PARENT_CONTAINER, position, pageSlot));
         openParent->objectClientId = slot.typeId;
         actions.push_back(std::move(openParent));
-        ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+        TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
         if (!type || !type->isNotMoveable()) {
             auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, position, pageSlot));
             moveUp->objectClientId = slot.typeId;
@@ -548,15 +548,15 @@ void TContainerController::onSlotTargetSelected(const int slotId)
 void TContainerController::onPreviousPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && row->firstIndex > 0)
-        tibia::game::seekInContainer(m_containerId, std::max(0, static_cast<int>(row->firstIndex) - static_cast<int>(row->capacity)));
+    if (row && !row->isFirstPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->previousPageFirstIndex()));
 }
 
 void TContainerController::onNextPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity) < static_cast<int>(row->size))
-        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity));
+    if (row && !row->isLastPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->nextPageFirstIndex()));
 }
 
 void TContainerController::onSearchButtonClicked()

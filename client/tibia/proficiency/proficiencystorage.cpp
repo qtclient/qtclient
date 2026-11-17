@@ -1,6 +1,6 @@
 #include "proficiency/proficiencystorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "shared/tibiafilesystemhelper.h"
 
@@ -32,7 +32,7 @@ constexpr std::array<uint32_t, 10> DefaultXP { 0, 1750, 25000, 100000, 400000, 2
 constexpr int CrossbowWeaponType = 6;
 constexpr int KnightProfession = 1;
 
-ThingTypePtr itemType(const uint16_t typeId)
+TAppearanceTypePtr itemType(const uint16_t typeId)
 {
     if (typeId == 0 || !tibia::game::isValidDatId(typeId, ThingCategoryItem))
         return nullptr;
@@ -41,7 +41,7 @@ ThingTypePtr itemType(const uint16_t typeId)
 
 const std::array<uint32_t, 10>& tableOf(const uint16_t typeId)
 {
-    const ThingTypePtr type = itemType(typeId);
+    const TAppearanceTypePtr type = itemType(typeId);
     if (!type)
         return DefaultXP;
     if (type->getAppearanceWeaponType() == CrossbowWeaponType)
@@ -142,6 +142,43 @@ TProficiencyPerk parsePerk(const QJsonObject& json)
     return perk;
 }
 
+}
+
+static TProficiencyLevel parseProficiencyLevel(const QJsonObject& json)
+{
+    const QJsonValue perks = field(json, "Perks");
+    if (!perks.isArray())
+        throw std::domain_error("type must be array");
+    TProficiencyLevel level;
+    for (const QJsonValue& perk : perks.toArray())
+        level.perks.push_back(parsePerk(perk.toObject()));
+    return level;
+}
+
+static TProficiencyInfo parseProficiency(const QJsonObject& json)
+{
+    TProficiencyInfo info;
+    info.proficiencyId = integer(json, "ProficiencyId");
+    info.version = integer(json, "Version");
+    info.name = text(json, "Name");
+    const QJsonValue levels = field(json, "Levels");
+    if (!levels.isArray())
+        throw std::domain_error("type must be array");
+    for (const QJsonValue& level : levels.toArray())
+        info.levels.push_back(parseProficiencyLevel(level.toObject()));
+    return info;
+}
+
+static std::vector<TProficiencyInfo> parseProficiencies(const QByteArray& contents)
+{
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(contents, &error);
+    if (error.error != QJsonParseError::NoError)
+        throw std::invalid_argument(error.errorString().toStdString());
+    std::vector<TProficiencyInfo> proficiencies;
+    for (const QJsonValue& entry : document.array())
+        proficiencies.push_back(parseProficiency(entry.toObject()));
+    return proficiencies;
 }
 
 bool TProficiencyData::hasPick(const int level) const
@@ -257,24 +294,19 @@ void TProficiencyStorage::loadTables() const
 
 void TProficiencyStorage::readTables(const std::string& path) const
 {
-    const QJsonDocument document = QJsonDocument::fromJson(QByteArray::fromStdString(tibia::files::data().readFileContents(path)));
-    for (const QJsonValue& entry : document.array()) {
-        const QJsonObject object = entry.toObject();
-        TProficiencyInfo info;
-        info.name = object.value(QLatin1String("Name")).toString();
-        for (const QJsonValue& levelValue : object.value(QLatin1String("Levels")).toArray()) {
-            TProficiencyLevel level;
-            for (const QJsonValue& perk : levelValue.toObject().value(QLatin1String("Perks")).toArray())
-                level.perks.push_back(parsePerk(perk.toObject()));
-            info.levels.push_back(std::move(level));
-        }
-        m_tables[static_cast<uint32_t>(object.value(QLatin1String("ProficiencyId")).toInt())] = std::move(info);
-    }
+    setTables(parseProficiencies(QByteArray::fromStdString(tibia::files::data().readFileContents(path))));
+}
+
+void TProficiencyStorage::setTables(const std::vector<TProficiencyInfo>& proficiencies) const
+{
+    m_tables.clear();
+    for (const TProficiencyInfo& proficiency : proficiencies)
+        m_tables.emplace(static_cast<uint32_t>(proficiency.proficiencyId), proficiency);
 }
 
 const TProficiencyInfo* TProficiencyStorage::info(const uint16_t typeId) const
 {
-    const ThingTypePtr type = itemType(typeId);
+    const TAppearanceTypePtr type = itemType(typeId);
     if (!type || type->getProficiencyId() == 0)
         return nullptr;
     loadTables();

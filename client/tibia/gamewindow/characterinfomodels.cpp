@@ -10,7 +10,7 @@
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
@@ -26,7 +26,7 @@ namespace {
 
 QString appearanceName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 

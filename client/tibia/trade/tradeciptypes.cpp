@@ -11,7 +11,7 @@
 
 #include <protocol.pb.h>
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>

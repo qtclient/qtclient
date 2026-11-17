@@ -93,14 +93,39 @@ TStaticHouse TStaticHouse::unknown(const quint32 id)
     return house;
 }
 
+TStaticContentInformation staticContentInformation(const TStaticInformation& information)
+{
+    const auto text = [](const std::string& value) { return QString::fromStdString(value); };
+    TStaticContentInformation content;
+    content.monsters = information.monsters;
+    content.bosses = information.bosses;
+    for (const MonsterClassType& classification : information.monsterClasses)
+        content.monsterClassifications.push_back({ static_cast<quint8>(classification.id), text(classification.name) });
+    for (const CyclopediaAchievementType& achievement : information.achievements)
+        content.achievements.push_back({ achievement.id, achievement.grade, text(achievement.name), text(achievement.description) });
+    for (const CyclopediaHouseType& house : information.houses) {
+        TStaticHouse entry;
+        entry.id = house.id;
+        entry.name = text(house.name);
+        entry.description = text(house.description);
+        entry.size = static_cast<quint16>(house.size);
+        entry.beds = static_cast<quint8>(house.beds);
+        entry.rent = house.rent;
+        entry.town = text(house.city);
+        entry.isGuildHall = house.isGuildHall;
+        entry.isShop = house.isShop;
+        entry.position = worldmap::TWorldMapCoordinate(house.position.x, house.position.y, house.position.z);
+        content.houses.push_back(std::move(entry));
+    }
+    for (const CyclopediaQuestType& quest : information.quests)
+        content.quests.push_back({ quest.id, text(quest.name) });
+    return content;
+}
+
 void setStaticContentInformation(TStaticContentInformation information)
 {
     setMonsterRaces(std::move(information.monsters));
     setBossRaces(std::move(information.bosses));
-    // Host: the appearances manager lists every race for the name searches.
-    std::vector<RaceType> races = s_monsterRaces;
-    races.insert(races.end(), s_bossRaces.begin(), s_bossRaces.end());
-    appearances::TAppearancesManager::instance().setRaces(std::move(races));
     setMonsterClassifications(std::move(information.monsterClassifications));
     setAchievements(std::move(information.achievements));
     setHouses(std::move(information.houses));

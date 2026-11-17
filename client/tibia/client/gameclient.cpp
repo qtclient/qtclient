@@ -70,7 +70,6 @@
 #include "effects/effectprotocolmessagehandler.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
-#include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturesciptypes.h"
@@ -591,11 +590,6 @@ chat::TTextStorage* TGameClient::textStorage() const
     return activeSession() ? activeSession()->textStorage().get() : nullptr;
 }
 
-worldmap::TNumericalEffectStorage* TGameClient::numericalEffects() const
-{
-    return activeSession() ? activeSession()->numericalEffectStorage().get() : nullptr;
-}
-
 effects::TEffectStorage* TGameClient::effectStorage() const
 {
     return activeSession() ? activeSession()->effectStorage().get() : nullptr;
@@ -610,7 +604,7 @@ void TGameClient::bindActiveSession()
     m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
     if (m_chatProtocol) {
         m_chatProtocol->setTextStorage(session ? session->textStorage().get() : nullptr);
-        m_chatProtocol->setNumericalEffectStorage(session ? session->numericalEffectStorage().get() : nullptr);
+        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
     }
     if (m_minimap)
         m_minimap->setProtocolHandler(worldmapProtocol());
@@ -618,8 +612,7 @@ void TGameClient::bindActiveSession()
         return;
     m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
     m_messageHandler->setOptions(app::ClientOptions::load().options());
-    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage(),
-                                                              *session->numericalEffectStorage());
+    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
 }
 
 void TGameClient::setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler)
@@ -628,7 +621,7 @@ void TGameClient::setChatProtocolMessageHandler(chat::TChatProtocolMessageHandle
     if (m_chatProtocol) {
         m_chatProtocol->setTextStorage(textStorage());
         game::TGameSessionBase* session = activeSession();
-        m_chatProtocol->setNumericalEffectStorage(session ? session->numericalEffectStorage().get() : nullptr);
+        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
     }
 }
 
@@ -998,10 +991,8 @@ void TGameClient::onWorldEntered()
     std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
     if (defaultMinimapPath.empty())
         defaultMinimapPath = tibia::files::data().getRealPath(assets + "minimap");
-    const std::string markersPath = tibia::files::data().getRealPath(assets + "minimap-markers.json");
     m_minimap = std::make_unique<minimap::TMinimapManager>(
-        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
-        markersPath.empty() ? QString() : QString::fromStdString(markersPath));
+        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath));
     // The map handler keeps the minimap's floor and fields current.
     m_minimap->setProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
@@ -1081,8 +1072,6 @@ void TGameClient::onWorldLeft()
     m_statusbarStorage->save();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
-    if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())
-        numerical->clear();
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();

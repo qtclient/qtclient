@@ -14,7 +14,7 @@ std::string itemName(const uint16_t id)
 {
     if (!isValidItemId(id))
         return {};
-    if (const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem); type)
+    if (const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem); type)
         return type->getName();
     return {};
 }
@@ -33,7 +33,7 @@ bool itemIsContainer(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type && type->isContainer();
 }
 
@@ -41,7 +41,7 @@ bool itemIsPickupable(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type && type->isPickupable();
 }
 
@@ -49,7 +49,7 @@ int64_t itemMeanPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type ? static_cast<int64_t>(type->getMeanPrice()) : 0;
 }
 
@@ -57,12 +57,12 @@ int64_t itemMaxNpcSaleGoldPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     if (!type)
         return 0;
     int64_t npcSale = 0;
-    for (const NPCData& npc : type->getNpcSaleData()) {
-        if (npc.currencyObjectTypeId == 0 && npc.currencyQuestFlagDisplayName.empty())
+    for (const auto& npc : type->npcTradeData()) {
+        if (!npc.currency)
             npcSale = std::max<int64_t>(npcSale, static_cast<int64_t>(npc.salePrice));
     }
     return npcSale;

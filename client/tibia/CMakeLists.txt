@@ -321,6 +321,12 @@ if(TIBIA_WITH_GAMECORE)
     protocol/protocolmessagequeue.cpp
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
+    assets/asset.cpp assets/asset.h
+    assets/assetcatalog.cpp assets/assetcatalog.h
+    assets/contentcatalog.cpp assets/contentcatalog.h
+    assets/assetfilesystemhelper.cpp assets/assetfilesystemhelper.h
+    assets/assetasyncloader.cpp assets/assetasyncloader.h
+    assets/assetasyncloaderworker.cpp assets/assetasyncloaderworker.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
@@ -592,7 +598,7 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapgameactionprovider.cpp minimap/minimapgameactionprovider.h
     minimap/minimapmanager.cpp minimap/minimapmanager.h
     minimap/minimapmarkerstorage.cpp minimap/minimapmarkerstorage.h
-    minimap/minimapmarkertypes.h
+    minimap/minimapmarker.cpp minimap/minimapmarker.h
     minimap/minimaprenderprovider.cpp minimap/minimaprenderprovider.h
     minimap/minimaptile.cpp minimap/minimaptile.h
     minimap/minimaptilestorage.cpp minimap/minimaptilestorage.h
@@ -616,7 +622,18 @@ if(TIBIA_WITH_GAMECORE)
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
-    sprites/sprite.cpp sprites/sprite.h
+    effects/effectgameactionhandler.cpp effects/effectgameactionhandler.h
+    sprites/sprite.h sprites/singlesprite.h
+    sprites/spriteinspritesheet.cpp sprites/spriteinspritesheet.h
+    sprites/spritefromspritesheetinfo.cpp sprites/spritefromspritesheetinfo.h
+    sprites/spritesheetsmetadatamanager.cpp sprites/spritesheetsmetadatamanager.h
+    sprites/spritesheetcache.cpp sprites/spritesheetcache.h
+    sprites/spritesheetdecompressor.cpp sprites/spritesheetdecompressor.h
+    sprites/spritesheetdecompressorsynchronous.cpp sprites/spritesheetdecompressorsynchronous.h
+    sprites/spritesheetdecompressorthreadpool.cpp sprites/spritesheetdecompressorthreadpool.h
+    sprites/spritesheetmanager.cpp sprites/spritesheetmanager.h
+    sprites/spriteresolver.cpp sprites/spriteresolver.h
+    sprites/spritesystem.cpp sprites/spritesystem.h
     shared/cip_typed.h
     cip_ports/all_ports.cpp
     cip_ports/native_port.h
@@ -699,19 +716,17 @@ if(TIBIA_WITH_GAMECORE)
     trade/playertradestorage.cpp trade/playertradestorage.h
     worldmap/ambientlightstorage.cpp worldmap/ambientlightstorage.h
     worldmap/cacheforworldmapstoragelookupmembers.cpp worldmap/cacheforworldmapstoragelookupmembers.h
-    worldmap/coordinates.h
+    worldmap/coordinates.cpp worldmap/coordinates.h
     worldmap/creaturehud.cpp worldmap/creaturehud.h
     worldmap/creaturehudcontroller.cpp worldmap/creaturehudcontroller.h
     worldmap/creaturehudrenderprovider.cpp worldmap/creaturehudrenderprovider.h
     worldmap/lightmap.cpp worldmap/lightmap.h
     worldmap/nextframetimestamppredictor.cpp worldmap/nextframetimestamppredictor.h
-    worldmap/numericaleffectstorage.cpp worldmap/numericaleffectstorage.h
     worldmap/worldmapfield.h
     worldmap/worldmapgameactionhandler.cpp worldmap/worldmapgameactionhandler.h
     worldmap/worldmapgameactionprovider.cpp worldmap/worldmapgameactionprovider.h
     worldmap/worldmappicker.cpp worldmap/worldmappicker.h
     worldmap/worldmapprotocolmessagehandler.cpp worldmap/worldmapprotocolmessagehandler.h
-    worldmap/tileblock.cpp worldmap/tileblock.h
     worldmap/worldmapstorage.cpp worldmap/worldmapstorage.h
     worldmap/worldmaptutorialmarkeroverlaycontroller.cpp worldmap/worldmaptutorialmarkeroverlaycontroller.h
     worldmap/worldmapviewport.cpp worldmap/worldmapviewport.h)

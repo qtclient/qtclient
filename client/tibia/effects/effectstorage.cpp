@@ -31,8 +31,9 @@ TEffectStorage& TEffectStorage::instance()
     return g_current ? *g_current : fallback;
 }
 
-TEffectStorage::TEffectStorage(QObject* parent)
+TEffectStorage::TEffectStorage(const size_t maximumEffects, QObject* parent)
     : cip::tibia::effects::TEffectStorage(parent)
+    , m_maximumEffects(maximumEffects)
 {
 }
 
@@ -47,7 +48,7 @@ TEffectStorage::~TEffectStorage()
         g_current = nullptr;
 }
 
-size_t TEffectStorage::maximumEffects()
+size_t TEffectStorage::maximumEffectsSetting()
 {
     static const qint64 maximum = config::clientSettingAtMost(QStringLiteral("GRAPHICS"),
                                                                QStringLiteral("maximumNumberOfEffects"), 400, 800);
@@ -56,7 +57,7 @@ size_t TEffectStorage::maximumEffects()
 
 size_t TEffectStorage::count() const
 {
-    return m_effects.size() + (m_numericalCount ? m_numericalCount() : 0);
+    return m_effects.size() + numericalEffectCount();
 }
 
 bool TEffectStorage::add(const TEffectPtr& effect)
@@ -112,10 +113,89 @@ void TEffectStorage::update(const qint64 nowMs)
         if (appearances::TEffectInstance* instance = effectOf(effect))
             instance->update(nowMs);
     }
+    updateNumericalEffects(nowMs);
+    removeFinished();
+    removeFinishedNumericalEffects();
+}
+
+void TEffectStorage::removeFinishedNumericalEffects()
+{
+    for (auto it = m_numericalEffects.begin(); it != m_numericalEffects.end();) {
+        std::erase_if(it->second, [](const effects::TNumericalEffectPtr& effect) { return effect->isFinished(); });
+        it = it->second.empty() ? m_numericalEffects.erase(it) : std::next(it);
+    }
+}
+
+void TEffectStorage::removeFinished()
+{
     erase([](const TEffectPtr& effect) {
         const appearances::TEffectInstance* instance = effectOf(effect);
         return !instance || instance->isFinished();
     });
+}
+
+void TEffectStorage::trackEffect(const TEffectPtr& effect)
+{
+    m_trackedEffects.push_back(effect);
+    add(effect);
+}
+
+void TEffectStorage::stopTrackedEffects()
+{
+    for (const TEffectPtr& effect : m_trackedEffects) {
+        if (auto* marker = dynamic_cast<appearances::TTutorialFieldEffectInstance*>(effect.get()))
+            marker->stop();
+    }
+    m_trackedEffects.clear();
+    removeFinished();
+}
+
+bool TEffectStorage::addNumericalEffect(const effects::TNumericalEffectPtr& effect)
+{
+    const auto field = m_numericalEffects.find(effect->coordinate());
+    if (field != m_numericalEffects.end()) {
+        for (const effects::TNumericalEffectPtr& shown : field->second) {
+            if (shown->mergeWith(*effect))
+                return false;
+        }
+    }
+    if (count() >= maximumEffects())
+        return false;
+    m_numericalEffects[effect->coordinate()].push_back(effect);
+    return true;
+}
+
+const std::deque<effects::TNumericalEffectPtr>& TEffectStorage::numericalEffectsAt(const Position& field) const
+{
+    static const std::deque<effects::TNumericalEffectPtr> none;
+    const auto it = m_numericalEffects.find(field);
+    return it == m_numericalEffects.end() ? none : it->second;
+}
+
+std::vector<Position> TEffectStorage::numericalEffectFields(const int minZ, const int maxZ) const
+{
+    std::vector<Position> fields;
+    for (const auto& [field, numbers] : m_numericalEffects) {
+        if (minZ <= field.z && field.z <= maxZ)
+            fields.push_back(field);
+    }
+    return fields;
+}
+
+void TEffectStorage::updateNumericalEffects(const qint64 nowMs)
+{
+    for (const auto& [field, numbers] : m_numericalEffects) {
+        for (const effects::TNumericalEffectPtr& effect : numbers)
+            effect->update(nowMs);
+    }
+}
+
+size_t TEffectStorage::numericalEffectCount() const
+{
+    size_t total = 0;
+    for (const auto& [field, numbers] : m_numericalEffects)
+        total += numbers.size();
+    return total;
 }
 
 void TEffectStorage::removeOutside(const std::function<bool(const Position&)>& inArea)
@@ -129,6 +209,8 @@ void TEffectStorage::removeOutside(const std::function<bool(const Position&)>& i
 void TEffectStorage::clear()
 {
     erase([](const TEffectPtr&) { return true; });
+    m_trackedEffects.clear();
+    m_numericalEffects.clear();
 }
 
 const std::vector<TEffectStorage::TEffectPtr>& TEffectStorage::missilesOn(const uint8_t z) const

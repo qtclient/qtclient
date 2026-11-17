@@ -11,6 +11,7 @@
 #include "worldmap/ambientlightstorage.h"
 
 #include "shared/tibiafilesystemhelper.h"
+#include "assets/things.h"
 
 #include <utility>
 
@@ -162,93 +163,18 @@ struct THouseLayers
     int maximum = 0;
 };
 
-quint64 readVarint(const QByteArray& data, qsizetype& at)
-{
-    quint64 value = 0;
-    for (int shift = 0; at < data.size() && shift < 64; shift += 7) {
-        const auto byte = static_cast<quint8>(data.at(at++));
-        value |= quint64(byte & 0x7f) << shift;
-        if (!(byte & 0x80))
-            break;
-    }
-    return value;
-}
-
-/// The fields of one protobuf message: varints and length-delimited bodies.
-template <class F>
-void forEachField(const QByteArray& data, F&& visit)
-{
-    qsizetype at = 0;
-    while (at < data.size()) {
-        const quint64 key = readVarint(data, at);
-        const int field = static_cast<int>(key >> 3);
-        switch (key & 7) {
-            case 0: visit(field, readVarint(data, at), QByteArray()); break;
-            case 2: {
-                const auto length = static_cast<qsizetype>(readVarint(data, at));
-                visit(field, 0, data.mid(at, length));
-                at += length;
-                break;
-            }
-            case 1: at += 8; break;
-            case 5: at += 4; break;
-            default: return;
-        }
-    }
-}
-
-int coordinateZ(const QByteArray& coordinate)
-{
-    int z = 0;
-    forEachField(coordinate, [&z](const int field, const quint64 value, const QByteArray&) {
-        if (field == 3)
-            z = static_cast<int>(value);
-    });
-    return z;
-}
-
 const std::unordered_map<quint32, THouseLayers>& houseLayers()
 {
     static std::unordered_map<quint32, THouseLayers> layers;
     if (!layers.empty())
         return layers;
-    try {
-        const std::string dir = client::gamecore::assetsRoot(client::TGameClient::ClientVersion);
-        const QJsonDocument catalog = QJsonDocument::fromJson(QByteArray::fromStdString(tibia::files::data().readFileContents(dir + "catalog-content.json")));
-        QString file;
-        for (const QJsonValue entry : catalog.array()) {
-            if (entry.toObject().value(QStringLiteral("type")).toString() == QStringLiteral("staticmapdata"))
-                file = entry.toObject().value(QStringLiteral("file")).toString();
-        }
-        if (file.isEmpty())
-            return layers;
-        const QByteArray data = QByteArray::fromStdString(tibia::files::data().readFileContents(dir + file.toStdString()));
-        forEachField(data, [](const int field, quint64, const QByteArray& house) {
-            if (field != 1)
-                return;
-            quint32 id = 0;
-            THouseLayers houseLayers;
-            forEachField(house, [&](const int houseField, const quint64 value, const QByteArray& fields) {
-                if (houseField == 1)
-                    id = static_cast<quint32>(value);
-                if (houseField != 2)
-                    return;
-                int top = 0;
-                int depth = 0;
-                forEachField(fields, [&](const int mapField, quint64, const QByteArray& body) {
-                    if (mapField == 1)
-                        top = coordinateZ(body);
-                    if (mapField == 2)
-                        depth = coordinateZ(body);
-                });
-                if (depth > 0)
-                    houseLayers = { top, top + depth - 1 };
-            });
-            if (id)
-                layers.emplace(id, houseLayers);
-        });
-    } catch (const std::exception& e) {
-        qWarning("houses: no staticmapdata: %s", e.what());
+    for (const THouseMapArea& area : tibia::appearances::TAppearancesManager::instance().getHouseMapAreas()) {
+        if (area.houseId == 0)
+            continue;
+        THouseLayers houseLayers;
+        if (area.depth > 0)
+            houseLayers = { area.topLeft.z, static_cast<int>(area.topLeft.z + area.depth - 1) };
+        layers.emplace(area.houseId, houseLayers);
     }
     return layers;
 }

@@ -8,7 +8,6 @@
 #include "cyclopedia/cyclopediamapdata.h"
 #include "minimap/minimapmanager.h"
 #include "minimap/minimapmarkerstorage.h"
-#include "minimap/minimapmarkertypes.h"
 #include "minimap/minimaptile.h"
 #include "minimap/minimaptilestorage.h"
 
@@ -643,17 +642,18 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
     if (minimap::TMinimapMarkerStorage* markers = minimap::TMinimapMarkerStorage::active()) {
         const int flagSize = m_flagStrip.isNull() ? 0 : m_flagStrip.height();
         const int columns = flagSize > 0 ? std::max(1, m_flagStrip.width() / flagSize) : 1;
-        for (const minimap::MinimapMarker& marker : markers->floorMarkers(static_cast<uint8_t>(z))) {
-            if (marker.icon < m_minimapMarkersFilter.size() && !m_minimapMarkersFilter.at(marker.icon))
+        const auto onFloor = [z](const worldmap::TWorldMapCoordinate& coordinate) { return coordinate.z == z; };
+        for (const minimap::TMinimapMarkerPtr& marker : markers->markers(onFloor)) {
+            if (marker->icon < m_minimapMarkersFilter.size() && !m_minimapMarkersFilter.at(marker->icon))
                 continue;
             QImage icon;
-            if (flagSize > 0 && marker.icon < minimap::MINIMAP_MARKER_ICONS) {
-                const QRect cell((marker.icon % columns) * flagSize, (marker.icon / columns) * flagSize, flagSize,
+            if (flagSize > 0 && marker->icon < minimap::MINIMAP_MARKER_ICONS) {
+                const QRect cell((marker->icon % columns) * flagSize, (marker->icon / columns) * flagSize, flagSize,
                                  flagSize);
                 if (m_flagStrip.rect().contains(cell))
                     icon = m_flagStrip.copy(cell);
             }
-            addPin(icon, QColor(0xff, 0xcc, 0x33), marker.x, marker.y, z, QString::fromStdString(marker.description));
+            addPin(icon, QColor(0xff, 0xcc, 0x33), marker->coordinate.x, marker->coordinate.y, z, marker->description);
         }
     }
     // CIP TPassageMapAreaData from 0xDD subtype 6 (TCyclopediaMapStorage).

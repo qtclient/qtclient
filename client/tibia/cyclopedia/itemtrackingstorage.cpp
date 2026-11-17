@@ -6,7 +6,7 @@
 #include "config/clientoptions.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
@@ -50,9 +50,9 @@ QString trackedItemName(const uint16_t objectType)
         case CrystalCoin: return qtTrId("crystal_coin");
         default: break;
     }
-    const ThingTypePtr& type = tibia::game::thingType(objectType, ThingCategoryItem);
-    if (type && !type->getName().empty())
-        return QString::fromStdString(type->getName());
+    const TAppearanceTypePtr& type = tibia::game::thingType(objectType, ThingCategoryItem);
+    if (type && !type->name().isEmpty())
+        return type->name();
     return qtTrId("dummy_unknown");
 }
 

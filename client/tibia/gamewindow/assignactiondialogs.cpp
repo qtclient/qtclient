@@ -15,7 +15,7 @@
 
 #include "container/containerciptypes.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <QCoreApplication>
 #include <QKeyEvent>
@@ -40,12 +40,12 @@ QString actionButtonName(const int actionBarId, const int buttonId)
     return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
 }
 
-ThingTypePtr itemType(const int objectId)
+TAppearanceTypePtr itemType(const int objectId)
 {
     return objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
 }
 
-bool isEquipable(const ThingTypePtr& type)
+bool isEquipable(const TAppearanceTypePtr& type)
 {
     return type && (type->isCloth() || type->getClothSlot() > 0);
 }
@@ -709,7 +709,7 @@ bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const {
 
 void TAssignObjectActionDialogController::setObject(const int objectId, const int upgradeTier)
 {
-    const ThingTypePtr type = itemType(objectId);
+    const TAppearanceTypePtr type = itemType(objectId);
     m_objectID = uint(objectId);
     m_upgradeTier = uint(upgradeTier);
     m_objectCount = 0;

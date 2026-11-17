@@ -11,7 +11,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <QGuiApplication>
 #include <QQuickItem>

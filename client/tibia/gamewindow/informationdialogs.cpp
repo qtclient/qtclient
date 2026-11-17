@@ -19,7 +19,7 @@
 #include <optional>
 #include <client/outfit.h>
 #include <client/position.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -43,7 +43,7 @@ bool canBeColorized(const int lookType)
 {
     if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature))
         return false;
-    const ThingTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
+    const TAppearanceTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
     return type && type->getLayers() > 1;
 }
 

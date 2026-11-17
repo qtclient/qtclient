@@ -66,9 +66,11 @@ struct TStaticContentInformation
     std::vector<TStaticQuest> quests;
 };
 
+/// The static content of the appearances manager's static information.
+TStaticContentInformation staticContentInformation(const TStaticInformation& information);
+
 /// Replaces the static content: the tables below (sorted by id, plus the
-/// classification and quest look-ups); the appearances manager also gets
-/// every race for its name searches.
+/// classification and quest look-ups).
 void setStaticContentInformation(TStaticContentInformation information);
 
 /// The monster or boss of the race id, null when the static data has none.

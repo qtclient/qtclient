@@ -5,8 +5,8 @@
 #include "appearances/appearanceinstance.h"
 #include <idleot/heightstamp.h>
 #include <client/position.h>
-#include <tibia/assets/thingtype.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
+#include "idleot/appearanceshape.h"
 #include "worldmap/worldmapfield.h"
 #include <algorithm>
 #include <cmath>
@@ -26,9 +26,9 @@ struct OutdoorSurface
 /// Resolve Auto for climate rain splash only (property heuristic).
 /// Stamp Auto stays art-based in writeHeightStampFrame — splash cannot sample pixels
 /// during the outdoor walk, so these diverge by design for the same item id.
-uint8_t encodeThingShape(ThingType& type, const bool wallLike)
+uint8_t encodeThingShape(TAppearanceType& type, const bool wallLike)
 {
-    ThingShape resolved = type.getThingShape();
+    ThingShape resolved = tibia::idleot::thingShapeOf(type);
     if (resolved == ThingShape::Auto) {
         const bool softProp = !type.blockProjectile() && !type.isFullGround() && type.getHeight() > 1;
         if (softProp)
@@ -51,7 +51,7 @@ OutdoorSurface outdoorSurface(tibia::worldmap::TWorldMapField& field)
     for (const appearances::TAppearanceInstancePtr& appearance : field.appearances()) {
         if (!appearance)
             continue;
-        ThingType* type = appearance->thingType();
+        TAppearanceType* type = appearance->thingType();
         if (!type || type->getCategory() != ThingCategoryItem)
             continue;
         int h = 0;
@@ -66,7 +66,7 @@ OutdoorSurface outdoorSurface(tibia::worldmap::TWorldMapField& field)
         if (wall) {
             const int tileH = std::max(1, type->getHeight());
             h = std::max(h, std::min(96, 32 + (tileH - 1) * 32));
-        } else if (type->castsShadow() && !type->isGround() && !type->isGroundBorder()
+        } else if (tibia::idleot::castsShadow(*type) && !type->isGround() && !type->isGroundBorder()
             && !type->isOnTop() && type->isNotWalkable()) {
             h = std::max(h, 16);
         }

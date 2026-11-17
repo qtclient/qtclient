@@ -16,7 +16,6 @@ class TWorldMapRenderProvider;
 }
 namespace tibia {
 namespace worldmap {
-class TNumericalEffectStorage;
 }
 }
 
@@ -37,8 +36,7 @@ namespace renderer {
 class TNextFrameUpdater : public ::tibia::CipTyped
 {
 public:
-    TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts,
-                      worldmap::TNumericalEffectStorage& numericalEffects);
+    TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts);
 
     /// CIP v2 — advance all frame-dependent systems to `timestampMs`.
     void v2(qint64 timestampMs);
@@ -46,7 +44,6 @@ public:
 private:
     qmlcomponents::TWorldMapRenderProvider& m_provider;
     chat::TTextStorage& m_texts;
-    worldmap::TNumericalEffectStorage& m_numericalEffects;
 };
 
 }

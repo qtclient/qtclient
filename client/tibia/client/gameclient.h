@@ -81,7 +81,6 @@ namespace worldmap {
 class TAmbientLightStorage;
 class TFrameDurationRing;
 class TNextFrameTimestampPredictor;
-class TNumericalEffectStorage;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -186,8 +185,7 @@ public:
     /// The active game session changed: its message handler, frame updater,
     /// view and minimap feed are rebuilt on it.
     void bindActiveSession();
-    worldmap::TNumericalEffectStorage* numericalEffects() const;
-    effects::TEffectStorage* effectStorage() const;
+        effects::TEffectStorage* effectStorage() const;
     /// The character's sidebars.json, loaded on entering the world.
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.

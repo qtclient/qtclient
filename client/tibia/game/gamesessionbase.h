@@ -37,6 +37,7 @@ namespace effects {
 class TEffectGameActionHandler;
 class TEffectProtocolMessageHandler;
 class TEffectStorage;
+class TEffectGameActionHandler;
 }
 namespace sound {
 class TSoundProtocolMessageHandler;
@@ -44,7 +45,6 @@ class TSoundStorage;
 }
 namespace worldmap {
 class TAmbientLightStorage;
-class TNumericalEffectStorage;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -104,7 +104,6 @@ public:
         return m_soundProtocolMessageHandler;
     }
     const std::shared_ptr<chat::TTextStorage>& textStorage() const { return m_textStorage; }
-    const std::shared_ptr<worldmap::TNumericalEffectStorage>& numericalEffectStorage() const { return m_numericalEffectStorage; }
     const std::shared_ptr<effects::TEffectStorage>& effectStorage() const { return m_effectStorage; }
     const std::shared_ptr<effects::TEffectGameActionHandler>& effectGameActionHandler() const { return m_effectGameActionHandler; }
     const std::shared_ptr<effects::TEffectProtocolMessageHandler>& effectProtocolMessageHandler() const
@@ -142,7 +141,6 @@ private:
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<chat::TTextStorage> m_textStorage;
-    std::shared_ptr<worldmap::TNumericalEffectStorage> m_numericalEffectStorage;
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;

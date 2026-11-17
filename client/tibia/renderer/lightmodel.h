@@ -55,13 +55,6 @@ FieldFlags fieldFlags(tibia::worldmap::TWorldMapField& field);
 /// not translucent). Returns floors up to that cover, or 0 if open sky.
 uint8_t underRoofFloors(const Position& pos);
 
-struct LightRgb
-{
-    float r = 0.f, g = 0.f, b = 0.f;
-    LightRgb operator*(float k) const { return { r * k, g * k, b * k }; }
-    static LightRgb max(const LightRgb& a, const LightRgb& b);
-};
-
 struct PointLight
 {
     QPoint center;
@@ -69,38 +62,6 @@ struct PointLight
     uint8_t color = 0;
     uint8_t z = 0;
 };
-
-struct BuildInput
-{
-    Position camera;
-    int drawWidth = 0;
-    int drawHeight = 0;
-    int centerX = 0;
-    int centerY = 0;
-    uint8_t firstFloor = 0;
-    uint8_t lastFloor = 0;
-    LightOptions options;
-};
-
-/// One CIP light floor-walk: ambient (no point lights) and classic (ambient + lights).
-/// Raycast samples `ambient`; TLightMap / LightMap UI use `classic`. When `needAmbient` is
-/// false and lights are empty, only one grid is filled (classic ≡ ambient).
-struct ClassicLightBuild
-{
-    std::vector<LightRgb> ambient;
-    std::vector<LightRgb> classic;
-};
-
-ClassicLightBuild buildClassicLightPair(const BuildInput& in, const std::vector<PointLight>& lights,
-                                        bool needAmbient = true);
-
-/// Per-field ambient only (banks, roofs, clouds, indoor attenuation, separator).
-std::vector<LightRgb> buildFieldAmbient(const BuildInput& in);
-
-/// Full classic TLightMap (ambient floors + per-floor point lights), CIP interleaving.
-std::vector<LightRgb> buildClassicLight(const BuildInput& in, const std::vector<PointLight>& lights);
-
-QImage toLightImage(const std::vector<LightRgb>& cells, int width, int height);
 
 Position lightField(const Position& camera, int centerX, int centerY, int x, int y, int z);
 

@@ -27,7 +27,10 @@
 #include <string>
 #include <vector>
 
-class ThingType;
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 // Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
@@ -84,8 +87,8 @@ struct TInventorySlot
     int64_t durationRemainingMilliseconds() const;
 
     /// Bridge from protocol rows.
-    /// Build from ThingType + protocol object fields (no Item::create).
-    static TInventorySlot fromProtocolObject(ThingType* type, uint16_t countOrSubType = 0, uint8_t tier = 0,
+    /// Build from TAppearanceType + protocol object fields (no Item::create).
+    static TInventorySlot fromProtocolObject(TAppearanceType* type, uint16_t countOrSubType = 0, uint8_t tier = 0,
                                              uint8_t hangSide = 0);
     /// TypeId-only (NPC trade list rows, classification helpers).
     static TInventorySlot fromTypeId(uint16_t typeId, uint16_t countOrSubType = 0, uint8_t tier = 0);
@@ -94,9 +97,11 @@ struct TInventorySlot
         const ::tibia::protobuf::protocol::ProtocolInventoryItem& item);
 };
 
-/// Open container row in session storage (CIP TContainer metadata + slots).
-struct TStoredContainer
+/// An open container (CIP: TContainer): its metadata and the slots of the page
+/// shown. A slot number counts over all pages; the page holds `capacity` slots.
+class TContainer
 {
+public:
     TContainerID id = 0;
     uint8_t capacity = 0;
     QString name;
@@ -126,6 +131,32 @@ struct TStoredContainer
         const auto it = tutorialMarkers.find(index);
         return it == tutorialMarkers.end() ? 0 : it->second;
     }
+    /// The position of slot `slot` in the page.
+    size_t slotIndex(uint32_t slot) const { return capacity != 0 ? slot % capacity : slot; }
+    /// The object in slot `slot`, empty outside the page.
+    TInventorySlot itemAt(uint32_t slot) const;
+    /// Replaces the object in slot `slot`.
+    void setItem(uint32_t slot, const TInventorySlot& item);
+    /// Removes the object of slot `slot` when the slot is on the page; one object less in total.
+    void removeItem(uint32_t slot);
+    /// Inserts an object at slot `slot`; the page keeps `capacity` slots. One object more in total.
+    void insertItem(uint32_t slot, const TInventorySlot& item);
+    /// Adds an object at the end of the page.
+    void appendItem(const TInventorySlot& item) { items.push_back(item); }
+    size_t itemCount() const { return items.size(); }
+    void increaseSize() { ++size; }
+    void decreaseSize() { --size; }
+    /// Pages of a paged container, 1 otherwise.
+    uint32_t pageCount() const;
+    /// The page shown, from 1.
+    uint32_t currentPage() const;
+    bool isLastPage() const { return currentPage() == pageCount(); }
+    bool isFirstPage() const { return currentPage() == 1; }
+    /// The first slot of the next page (this page's when it is the last).
+    uint32_t nextPageFirstIndex() const { return (isLastPage() ? 0 : capacity) + firstIndex; }
+    /// The first slot of the previous page (0 on the first).
+    uint32_t previousPageFirstIndex() const { return isFirstPage() ? 0 : firstIndex - capacity; }
+
     bool hasFilterCategories() const { return !filterCategories.empty(); }
     /// The widget shows its configuration button.
     bool hasConfigurationOptions() const
@@ -134,7 +165,7 @@ struct TStoredContainer
     }
 };
 
-class TContainer final : public ::tibia::CipTyped {};
+using TStoredContainer = TContainer;
 
 class TContainerGameActionHandler final : public cip::tibia::container::TContainerGameActionHandler
 {

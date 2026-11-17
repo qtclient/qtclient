@@ -4,7 +4,7 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QGuiApplication>
@@ -48,7 +48,7 @@ QString itemName(const int typeId)
 {
     if (typeId <= 0)
         return {};
-    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 

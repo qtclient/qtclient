@@ -5,7 +5,7 @@
 #include "taskboard/taskboardciptypes.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QString>
@@ -38,7 +38,7 @@ QString raceCaption(const uint16_t raceId)
 
 QString itemCaption(const uint16_t itemId)
 {
-    const ThingTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!type)
         return QString::number(itemId);
     const std::string name = type->getName();

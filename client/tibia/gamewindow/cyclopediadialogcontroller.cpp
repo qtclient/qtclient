@@ -9,7 +9,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -46,7 +46,7 @@ uint16_t cyclopediaTypeOf(const input::TGameAction& action)
     const uint16_t typeId = action.objectClientId;
     if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || !type->hasCyclopediaItem())
         return 0;
     return static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId());

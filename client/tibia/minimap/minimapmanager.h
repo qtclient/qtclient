@@ -30,10 +30,9 @@ class TMinimapManager final : public cip::tibia::minimap::TMinimapManager
 {
     Q_OBJECT
 public:
-    /// `defaultTilesDir`: CIP's bundled minimap, copied in when ours is empty.
-    /// `bundledMarkersJson`: optional tibiamaps `minimap-markers.json`.
-    explicit TMinimapManager(const QString& defaultTilesDir, const QString& bundledMarkersJson = {},
-                             QObject* parent = nullptr);
+    /// `defaultTilesDir`: CIP's bundled minimap, copied in when ours is empty;
+    /// its marker file stands in while we have none.
+    explicit TMinimapManager(const QString& defaultTilesDir, QObject* parent = nullptr);
     ~TMinimapManager() override;
 
     TMinimapTileStorage* tileStorage() { return &m_storage; }

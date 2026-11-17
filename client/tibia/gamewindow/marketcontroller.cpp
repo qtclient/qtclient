@@ -9,7 +9,7 @@
 #include "store/storestorage.h"
 
 #include <client/const.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QJsonValue>
@@ -65,11 +65,11 @@ uint64_t playerGold()
 
 QString typeName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type)
         return {};
-    const std::string& marketName = type->getMarketData().name;
-    return QString::fromStdString(marketName.empty() ? type->getName() : marketName);
+    const auto* market = type->marketProperties();
+    return market && !market->name.isEmpty() ? market->name : type->name();
 }
 
 /// "buy" or "sell"; anything else is a programming error.
@@ -363,12 +363,12 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
                     slotTier = inventory->slotAt(action.position.y).tier;
                 }
             }
-            const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+            const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
             tier = type && type->getClassification() > 0 ? slotTier : 0;
         }
         if (typeId == 0)
             return false;
-        const ThingTypePtr& browsed = tibia::game::thingType(typeId, ThingCategoryItem);
+        const TAppearanceTypePtr& browsed = tibia::game::thingType(typeId, ThingCategoryItem);
         m_messages->sendBrowseItem(typeId, browsed && browsed->getClassification() > 0 ? std::optional<uint8_t>(tier) : std::nullopt);
         return true;
     });
@@ -456,15 +456,15 @@ void TMarketController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
     const auto& classTiers = m_storage ? m_storage->classificationTiers() : std::map<int, std::vector<int>>{};
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getMarketObjectTypes()) {
-        const MarketData& market = type->getMarketData();
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getMarketObjectTypes()) {
+        const auto& market = *type->marketProperties();
         TAppearanceTypeEntry entry;
         entry.typeId = type->getId();
-        entry.name = QString::fromStdString(market.name.empty() ? type->getName() : market.name);
-        entry.marketCategory = static_cast<int>(market.category);
+        entry.name = market.name.isEmpty() ? type->name() : market.name;
+        entry.marketCategory = market.category;
         entry.classification = type->getClassification();
-        entry.requiredLevel = market.requiredLevel;
-        entry.professions = market.restrictVocation;
+        entry.requiredLevel = static_cast<int>(type->getMinimumLevel());
+        entry.professions = type->restrictVocationMask();
         entry.hasClothSlot = type->isCloth();
         entry.clothSlot = type->getClothSlot();
         if (entry.classification == 0) {
@@ -643,7 +643,7 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
     setItemProperty("selectedAppearanceTypeID", AppearanceTypeID);
     if (!m_messages)
         return;
-    const ThingTypePtr& type = tibia::game::thingType(m_selectedType, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(m_selectedType, ThingCategoryItem);
     if (type && type->getClassification() > 0) {
         m_hasSelectedTier = true;
         m_selectedTier = static_cast<uint8_t>(QmlUpgradeTier);

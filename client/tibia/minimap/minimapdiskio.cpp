@@ -1,7 +1,12 @@
 #include "minimapdiskio.h"
 
+#include <minimap.pb.h>
+
 #include <QDir>
 #include <QFile>
+#include <QSaveFile>
+
+#include <stdexcept>
 
 namespace tibia::minimap {
 
@@ -113,6 +118,77 @@ void TMinimapDiskIOAsync::importDefaultTiles(const QString& sourceDir)
 void TMinimapDiskIOAsync::waitForDone()
 {
     m_pool.waitForDone();
+}
+
+QString TMinimapDiskIOAsync::markerFileName()
+{
+    return QStringLiteral("minimapmarkers.bin");
+}
+
+tibia::protobuf::minimap::MinimapMarkerFileContent TMinimapDiskIOAsync::deserializeMinimapMarkerFileContent(const QByteArray& bytes)
+{
+    tibia::protobuf::minimap::MinimapMarkerFileContent content;
+    if (!content.ParseFromArray(bytes.constData(), static_cast<int>(bytes.size())))
+        throw std::invalid_argument("deserializeMinimapMarkerFileContent malformed protobuf data");
+    return content;
+}
+
+QByteArray TMinimapDiskIOAsync::serializeMinimapMarkerFileContent(const tibia::protobuf::minimap::MinimapMarkerFileContent& content)
+{
+    QByteArray bytes;
+    bytes.resize(static_cast<qsizetype>(content.ByteSizeLong()));
+    if (!content.SerializeToArray(bytes.data(), static_cast<int>(bytes.size())))
+        throw std::invalid_argument("serializeMinimapMarkerFileContent malformed protobuf data");
+    return bytes;
+}
+
+void TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible()
+{
+    auto load = [dir = m_dir, defaults = m_defaultTilesDir]() -> std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> {
+        for (const QString& folder : { dir, defaults }) {
+            if (folder.isEmpty())
+                continue;
+            QFile file(QDir(folder).filePath(markerFileName()));
+            if (!file.open(QIODevice::ReadOnly))
+                continue;
+            try {
+                return std::make_shared<tibia::protobuf::minimap::MinimapMarkerFileContent>(
+                    deserializeMinimapMarkerFileContent(file.readAll()));
+            } catch (const std::exception& error) {
+                qWarning("%s: %s", qPrintable(file.fileName()), error.what());
+                return nullptr;
+            }
+        }
+        return nullptr;
+    };
+    auto finish = [this](const std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent>& content) {
+        if (content)
+            Q_EMIT loadingMinimapMarkersSucceeded(*content);
+    };
+#if defined(__EMSCRIPTEN__)
+    const auto content = load();
+    QMetaObject::invokeMethod(this, [finish, content] { finish(content); }, Qt::QueuedConnection);
+#else
+    m_pool.start([this, load, finish] {
+        const auto content = load();
+        QMetaObject::invokeMethod(this, [finish, content] { finish(content); }, Qt::QueuedConnection);
+    });
+#endif
+}
+
+void TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk(
+    std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> fileContent)
+{
+    if (!fileContent)
+        return;
+    m_pool.start([dir = m_dir, fileContent] {
+        QDir().mkpath(dir);
+        QSaveFile file(QDir(dir).filePath(markerFileName()));
+        if (!file.open(QIODevice::WriteOnly))
+            return;
+        file.write(serializeMinimapMarkerFileContent(*fileContent));
+        file.commit();
+    });
 }
 
 }

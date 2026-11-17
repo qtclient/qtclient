@@ -1213,11 +1213,6 @@ enum
     OTCM_VERSION = 1
 };
 
-enum
-{
-    BLOCK_SIZE = 32
-};
-
 enum : uint8_t
 {
     Animation_Force,

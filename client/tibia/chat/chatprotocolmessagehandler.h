@@ -38,8 +38,8 @@ class GameserverMessageTalk;
 }
 
 namespace tibia {
-namespace worldmap {
-class TNumericalEffectStorage;
+namespace effects {
+class TEffectStorage;
 }
 namespace chat {
 
@@ -162,7 +162,7 @@ public:
     /// CIP +0x20: the game window's texts (the active session's).
     void setTextStorage(TTextStorage* textStorage) { m_textStorage = textStorage; }
     /// CIP +0x10: the game window's numerical effects (the active session's).
-    void setNumericalEffectStorage(worldmap::TNumericalEffectStorage* effects) { m_numericalEffects = effects; }
+    void setEffectStorage(effects::TEffectStorage* effects) { m_effects = effects; }
     /// CIP slots (protobuf args; empty layouts → classic notify remains live apply).
     void handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage);
@@ -214,7 +214,7 @@ private:
     /// CIP +0x40: the NPC conversation's partners and keyword buttons.
     TChatStorage& m_chatStorage;
     TTextStorage* m_textStorage = nullptr;
-    worldmap::TNumericalEffectStorage* m_numericalEffects = nullptr;
+    effects::TEffectStorage* m_effects = nullptr;
     TWhiteBlacklist& m_blacklist;
     std::vector<client::gamecore::Hook> m_hooks;
     /// The console handler the session's channel messages go to.

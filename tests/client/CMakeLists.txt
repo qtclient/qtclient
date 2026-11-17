@@ -188,3 +188,54 @@ if(TARGET qtclient_shared)
     target_link_libraries(client_generalplayerstatisticsprovider_tests PRIVATE GTest::gtest GTest::gtest_main protobuf)
     gtest_discover_tests(client_generalplayerstatisticsprovider_tests)
 endif()
+
+# CIP worldmap::TLightMap: the frame's light grid.
+qtclient_add_port_test(client_lightmap_tests
+    lightmap_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/lightmap.cpp
+)
+target_link_libraries(client_lightmap_tests PRIVATE Qt6::Gui)
+
+qtclient_add_port_test(client_specialappearances_tests
+    specialappearances_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/specialappearances.cpp
+)
+
+# CIP appearances::TAppearanceType: appearances.dat objects converted from their protobuf messages.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_appearancetype_tests
+        appearancetype_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    )
+    target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
+endif()
+
+# CIP minimap marker file (minimapmarkers.bin) conversions.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_minimapmarker_tests
+        minimapmarker_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/minimap/minimapmarker.cpp
+    )
+    target_link_libraries(client_minimapmarker_tests PRIVATE cip_messages)
+endif()
+
+# CIP sprite pipeline: spritesheet metadata, cache, manager and sprites cut from spritesheets.
+qtclient_add_port_test(client_spritesheetmanager_tests
+    spritesheetmanager_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetcache.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressor.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetdecompressorsynchronous.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetmanager.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritefromspritesheetinfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteinspritesheet.cpp
+)
+target_link_libraries(client_spritesheetmanager_tests PRIVATE qtclient_shared Qt6::Gui)
+set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)
+
+# CIP worldmap coordinate helpers and cuboids.
+qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp)

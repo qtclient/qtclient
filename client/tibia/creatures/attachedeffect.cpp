@@ -23,7 +23,7 @@
 #include "attachedeffect.h"
 
 #include <tibia/config/runtimegameconfig.h>
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "clockservice.h"
 #include <tibia/game/thingsession_forward.h>
@@ -162,6 +162,6 @@ void AttachedEffect::move(const Position& fromPosition, const Position& toPositi
     m_animationTimer.restart();
 }
 
-ThingType* AttachedEffect::getThingType() const {
+TAppearanceType* AttachedEffect::getThingType() const {
     return m_thingId > 0 ? tibia::game::rawThingType(m_thingId, m_thingCategory) : nullptr;
 }

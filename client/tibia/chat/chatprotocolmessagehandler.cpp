@@ -13,7 +13,8 @@
 #include "input/gameactionhandlers.h"
 #include "shared/tibiaurltools.h"
 #include "chat/textstorage.h"
-#include "worldmap/numericaleffectstorage.h"
+#include "effects/effectstorage.h"
+#include "effects/numericaleffect.h"
 
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolcodes.h"
@@ -550,13 +551,11 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
             m_textStorage->setLookMessage(text, overlayColor(mode), false);
     };
     const auto numericalEffect = [&](const int64_t value, const uint32_t color) {
-        if (m_numericalEffects && m_showTextualEffects && value != 0 && MessageMessage.has_position())
-            m_numericalEffects->add(Position(static_cast<uint16_t>(MessageMessage.position().x()),
-                                             static_cast<uint16_t>(MessageMessage.position().y()),
-                                             static_cast<uint8_t>(MessageMessage.position().z())),
-                                    value,
-                                    worldmap::TNumericalEffectStorage::colorFrom8bit(static_cast<int>(color)),
-                                    TTextStorage::now());
+        if (m_effects && m_showTextualEffects && value != 0 && MessageMessage.has_position())
+            m_effects->addNumericalEffect(std::make_shared<effects::TNumericalEffect>(
+                Position(static_cast<uint16_t>(MessageMessage.position().x()), static_cast<uint16_t>(MessageMessage.position().y()),
+                         static_cast<uint8_t>(MessageMessage.position().z())),
+                value, effects::numericalEffectColorFrom8bit(static_cast<int>(color)), TTextStorage::now()));
     };
     bool log = false;
     switch (mode) {

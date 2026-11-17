@@ -4,7 +4,7 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -25,7 +25,7 @@ using A = input::EGameAction;
 QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 {
     QString name;
-    if (const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
+    if (const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
         name = QString::fromStdString(type->getName());
     if (name.isEmpty())
         name = qtTrId("actionbar_tooltip_object_name_dummy");
@@ -36,7 +36,7 @@ QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 
 bool isMultiUse(const int objectId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
     return type && type->isMultiUse();
 }
 

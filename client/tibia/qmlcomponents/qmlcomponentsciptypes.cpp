@@ -4,7 +4,7 @@
 #include "qmlcomponents/outfitpalette.h"
 
 #include <QColor>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/thingsession_forward.h>
 
 #include <QDir>
@@ -46,7 +46,7 @@ QColor healthColor(const uint8_t healthPercent)
     return COLOR6;
 }
 
-ThingType* objectType(const int id)
+TAppearanceType* objectType(const int id)
 {
     if (id <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(id), ThingCategoryItem))
         return nullptr;
@@ -87,14 +87,14 @@ QColor TColorHelperQmlService::createColorFromName(const QString& Name)
 
 QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeNameForID(const int ID)
 {
-    if (ThingType* type = objectType(ID))
+    if (TAppearanceType* type = objectType(ID))
         return QString::fromStdString(type->getName());
     return {};
 }
 
 QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeDescriptionForID(const int ID)
 {
-    if (ThingType* type = objectType(ID))
+    if (TAppearanceType* type = objectType(ID))
         return QString::fromStdString(type->getDescription());
     return {};
 }
@@ -104,13 +104,14 @@ int TAppearanceTypeHelperQmlService::getObjectAppearanceTypeIDByName(const QStri
     if (Name.isEmpty())
         return 0;
     const QString needle = Name.trimmed();
-    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
-        if (!type || type->getId() == 0)
-            continue;
-        if (QString::fromStdString(type->getName()).compare(needle, Qt::CaseInsensitive) == 0)
-            return static_cast<int>(type->getId());
-    }
-    return 0;
+    int found = 0;
+    tibia::appearances::TAppearancesManager::instance().forEachAppearanceType([&](const TAppearanceType& type) {
+        if (!type.isItem() || type.getId() == 0 || type.name().compare(needle, Qt::CaseInsensitive) != 0)
+            return true;
+        found = static_cast<int>(type.getId());
+        return false;
+    });
+    return found;
 }
 
 TQmlDynamicAbstractListModel::TQmlDynamicAbstractListModel(QObject* parent)

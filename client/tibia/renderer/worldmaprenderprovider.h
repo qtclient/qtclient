@@ -33,6 +33,9 @@ class TCreature;
 }
 namespace worldmap {
 class TWorldMapViewport;
+class TLightMap;
+class TCacheForWorldmapStorageLookupMembers;
+class TWorldMapStorage;
 }
 }
 
@@ -273,7 +276,7 @@ private:
     /// Key for a creature or top object at draw-grid (x, y): moved into the
     /// slot of a lying object down or right of it.
     DrawKey slotKey(int x, int y, uint8_t layer, uint8_t index) const;
-    /// Item layer draw: appearance instance drives ThingType/layers; optional Item for marked/animation.
+    /// Item layer draw: appearance instance drives TAppearanceType/layers; optional Item for marked/animation.
     void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t& elevation);
     void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
@@ -292,7 +295,7 @@ private:
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).
     static constexpr float MinEffectOpacity = 0.01f;
-    void addSprites(ThingType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
+    void addSprites(TAppearanceType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0);
     /// The creature's attached effects on one side of its outfit (product
@@ -302,6 +305,8 @@ private:
                             bool onTop);
     SpriteRecord::Highlight highlightOf(uint32_t creatureId) const;
     void addLight(const QPoint& center, uint8_t intensity, uint8_t color);
+    /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
+    std::shared_ptr<worldmap::TLightMap> buildLightMap(bool withLights);
     /// CIP TWorldMapRenderProvider::v21: animated field square under the mouse.
     void updateHighlightBaseplate();
 
@@ -350,6 +355,14 @@ private:
     bool m_floorsCached = false;
     /// Classic light before weather tint (D); tint reapplies each frame from this.
     QImage m_lightUntinted;
+    /// The light of the last frame (CIP: the provider's TLightMap).
+    std::shared_ptr<worldmap::TLightMap> m_lightMap;
+    /// Memos of the storage questions the light map asks: banks, translucent
+    /// fields, and (while indoor fields are darkened) open sky.
+    worldmap::TWorldMapStorage* m_lightCacheStorage = nullptr;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_bankCache;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_translucentCache;
+    std::shared_ptr<worldmap::TCacheForWorldmapStorageLookupMembers> m_openSkyCache;
     /// Cache key for shared world geometry.
     Position m_geometryCamera;
     uint32_t m_geometryRevision = 0;

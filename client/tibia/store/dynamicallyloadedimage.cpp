@@ -1,6 +1,10 @@
 #include "dynamicallyloadedimage.h"
 
 #include "client/gamecore.h"
+#include "sprites/spritesheetdecompressor.h"
+#include "sprites/spritesystem.h"
+
+#include "readonlymemoryblob.h"
 
 #include <QDir>
 #include <QNetworkAccessManager>
@@ -11,11 +15,6 @@
 namespace tibia::store {
 
 namespace {
-
-QString cacheKey(const QString& key, const int size)
-{
-    return QString::number(size) + QLatin1Char('/') + key;
-}
 
 /// CIP: QNetworkDiskCache under qtclient Resources/storeimages/ (data8/*.d).
 void attachStoreDiskCache(QNetworkAccessManager* network)
@@ -37,17 +36,12 @@ void attachStoreDiskCache(QNetworkAccessManager* network)
 
 TDynamicallyLoadedImageManager::TDynamicallyLoadedImageManager(QObject* parent)
     : cip::tibia::store::TDynamicallyLoadedImageManager(parent)
-    , m_network(new QNetworkAccessManager(this))
+    , m_downloader(new QNetworkAccessManager(this))
 {
-    attachStoreDiskCache(m_network);
-}
-
-void TDynamicallyLoadedImageManager::setBaseUrl(const QUrl& baseUrl)
-{
-    if (m_baseUrl == baseUrl)
-        return;
-    m_baseUrl = baseUrl;
-    m_images.clear();
+    attachStoreDiskCache(m_downloader);
+    if (const auto& decompressor = sprites::TSpriteSystem::instance().decompressor())
+        connect(decompressor.get(), &sprites::TSpritesheetDecompressor::decompressingSpritesheetFinished, this,
+                &TDynamicallyLoadedImageManager::onImageDecompressionFinished);
 }
 
 QUrl TDynamicallyLoadedImageManager::url(const QString& path) const
@@ -58,40 +52,91 @@ QUrl TDynamicallyLoadedImageManager::url(const QString& path) const
     return QUrl(base + path);
 }
 
-void TDynamicallyLoadedImageManager::request(const QString& key, const int size)
+bool TDynamicallyLoadedImageManager::isValidSize(const QSize& size)
 {
-    const QString cached = cacheKey(key, size);
-    if (const auto it = m_images.constFind(cached); it != m_images.constEnd()) {
-        Q_EMIT imageLoaded(key, size, *it);
-        return;
-    }
-    if (!m_baseUrl.isValid() || m_baseUrl.isEmpty()) {
-        Q_EMIT imageLoadFailed(key, size);
-        return;
-    }
-    if (m_pending.contains(cached))
-        return;
-    m_pending.insert(cached);
-    QNetworkRequest req(url(cached));
-    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
-    QNetworkReply* reply = m_network->get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, key, size] { onFinished(reply, key, size); });
+    return size == QSize(32, 32) || size == QSize(64, 64) || size == QSize(13, 13);
 }
 
-void TDynamicallyLoadedImageManager::onFinished(QNetworkReply* reply, const QString& key, const int size)
+QUrl TDynamicallyLoadedImageManager::imageUrl(const TImageRequest& request) const
 {
-    reply->deleteLater();
-    const QString cached = cacheKey(key, size);
-    m_pending.remove(cached);
-    QImage image;
-    if (reply->error() == QNetworkReply::NoError)
-        image.loadFromData(reply->readAll());
-    if (image.isNull()) {
-        Q_EMIT imageLoadFailed(key, size);
+    return url(QString::number(request.size.width()) + QLatin1Char('/') + request.key);
+}
+
+void TDynamicallyLoadedImageManager::requestImage(const TImageRequest& request)
+{
+    if (m_baseUrl.isValid() && isValidSize(request.size)) {
+        download(request);
         return;
     }
-    m_images.insert(cached, image);
-    Q_EMIT imageLoaded(key, size, image);
+    Q_EMIT imageDownloadOrDecodingError(request);
+}
+
+void TDynamicallyLoadedImageManager::download(const TImageRequest& request)
+{
+    const QUrl imageUrl = this->imageUrl(request);
+    if (m_downloads.contains(imageUrl) || isDecompressing(imageUrl))
+        return;
+    QNetworkRequest networkRequest(imageUrl);
+    networkRequest.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
+    QNetworkReply* reply = m_downloader->get(networkRequest);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, imageUrl] {
+        reply->deleteLater();
+        if (reply->error() == QNetworkReply::NoError)
+            onDownloadSuccess(imageUrl, reply->readAll());
+        else
+            onDownloadError(imageUrl);
+    });
+    m_downloads.insert_or_assign(imageUrl, request);
+}
+
+bool TDynamicallyLoadedImageManager::isDecompressing(const QUrl& url) const { return m_decompressions.contains(url.toString()); }
+
+void TDynamicallyLoadedImageManager::decompress(const TImageRequest& request, const QByteArray& data)
+{
+    const QString key = imageUrl(request).toString();
+    m_decompressions.insert_or_assign(key, request);
+    const auto& decompressor = sprites::TSpriteSystem::instance().decompressor();
+    if (!decompressor) {
+        onImageDecompressionFinished(key, nullptr);
+        return;
+    }
+    decompressor->decompress(key, std::make_shared<shared::TReadOnlyMemoryBlob>(data));
+}
+
+void TDynamicallyLoadedImageManager::onDownloadSuccess(const QUrl& Url, const QByteArray& ImageData)
+{
+    const auto it = m_downloads.find(Url);
+    if (it == m_downloads.end())
+        return;
+    const TImageRequest request = it->second;
+    m_downloads.erase(it);
+    if (ImageData.isEmpty())
+        Q_EMIT imageDownloadOrDecodingError(request);
+    else
+        decompress(request, ImageData);
+}
+
+void TDynamicallyLoadedImageManager::onDownloadError(const QUrl& Url)
+{
+    const auto it = m_downloads.find(Url);
+    if (it == m_downloads.end())
+        return;
+    const TImageRequest request = it->second;
+    m_downloads.erase(it);
+    Q_EMIT imageDownloadOrDecodingError(request);
+}
+
+void TDynamicallyLoadedImageManager::onImageDecompressionFinished(const QString& FullImageUrl, const std::shared_ptr<QImage>& pImagePointer)
+{
+    const auto it = m_decompressions.find(FullImageUrl);
+    if (it == m_decompressions.end())
+        return;
+    const TImageRequest request = it->second;
+    m_decompressions.erase(it);
+    if (pImagePointer && !pImagePointer->isNull())
+        Q_EMIT imageReady(request, *pImagePointer);
+    else
+        Q_EMIT imageDownloadOrDecodingError(request);
 }
 
 }
@@ -128,8 +173,8 @@ void TDynamicallyLoadedImageQuickItem::setDynamicallyLoadedImageManager(QObject*
     m_dynamicallyLoadedImageManager = manager;
     m_manager = qobject_cast<store::TDynamicallyLoadedImageManager*>(manager);
     if (m_manager) {
-        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageLoaded, this, &TDynamicallyLoadedImageQuickItem::onImageLoaded);
-        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageLoadFailed, this,
+        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageReady, this, &TDynamicallyLoadedImageQuickItem::onImageLoaded);
+        connect(m_manager, &store::TDynamicallyLoadedImageManager::imageDownloadOrDecodingError, this,
                 &TDynamicallyLoadedImageQuickItem::onImageLoadFailed);
     }
     Q_EMIT propertyChanged();
@@ -181,7 +226,7 @@ void TDynamicallyLoadedImageQuickItem::requestImage()
     m_requestedKey = m_imageKey;
     m_requestedSize = imageSize;
     showPlaceholder(false);
-    m_manager->request(m_imageKey, imageSize);
+    m_manager->requestImage({ m_imageKey, QSize(imageSize, imageSize) });
 }
 
 void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
@@ -198,17 +243,17 @@ void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
     update();
 }
 
-void TDynamicallyLoadedImageQuickItem::onImageLoaded(const QString& key, const int size, const QImage& image)
+void TDynamicallyLoadedImageQuickItem::onImageLoaded(const store::TImageRequest& request, const QImage& image)
 {
-    if (key != m_requestedKey || size != m_requestedSize)
+    if (request.key != m_requestedKey || request.size.width() != m_requestedSize)
         return;
     m_image = image;
     update();
 }
 
-void TDynamicallyLoadedImageQuickItem::onImageLoadFailed(const QString& key, const int size)
+void TDynamicallyLoadedImageQuickItem::onImageLoadFailed(const store::TImageRequest& request)
 {
-    if (key != m_requestedKey || size != m_requestedSize)
+    if (request.key != m_requestedKey || request.size.width() != m_requestedSize)
         return;
     showPlaceholder(true);
 }

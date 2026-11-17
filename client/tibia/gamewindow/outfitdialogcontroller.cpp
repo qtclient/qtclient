@@ -7,7 +7,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/outfittypes.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <client/outfit.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -376,7 +376,7 @@ void TSelectOutfitDialogController::openCharacterInfoSelection(const int outfitI
         return;
     TCustomiseCharacterModel::Entry entry;
     entry.id = outfitId;
-    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(outfitId), ThingCategoryCreature)) {
+    if (TAppearanceType* type = tibia::game::rawThingType(static_cast<uint16_t>(outfitId), ThingCategoryCreature)) {
         entry.name = QString::fromStdString(type->getName());
         entry.canBeColorized = true;
     } else {

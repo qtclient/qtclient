@@ -1155,7 +1155,7 @@ int main(int argc, char** argv)
     // A new game session brings its own texts, effects, view and light.
     QObject::connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, gameWindowItem, [&] {
         if (mapWindowBound)
-            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
+            mapWindowController->bindSession(gameClient.textStorage(), gameClient.effectStorage());
         informationDialogs.setAmbientLightStorage(gameClient.ambientLight());
         if (minimapController)
             minimapController->setAmbientLightStorage(gameClient.ambientLight());
@@ -1165,7 +1165,7 @@ int main(int argc, char** argv)
         // leave the login mask hidden and the game window still off.
         gameWindowController.showGameScreen();
         try {
-            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
+            mapWindowController->bindSession(gameClient.textStorage(), gameClient.effectStorage());
             if (!mapWindowBound && !mapWindowController->isBound())
                 qCritical("MapWindowPane has no WorldMap named worldmap");
             mapWindowBound = true;
