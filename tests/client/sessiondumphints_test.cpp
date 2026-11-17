@@ -55,13 +55,20 @@ TEST(SessiondumpHints, ParsesOutfitsAndSortsHintsByTimestamp)
     EXPECT_EQ(all[2]->type(), TSessiondumpHintBase::SwitchChannel);
     EXPECT_EQ(all[3]->type(), TSessiondumpHintBase::ClearOldestMessage);
 
+    const auto fields = [](const tibia::input::IGameActionPtr& action) {
+        return std::dynamic_pointer_cast<const tibia::input::TGameAction>(action);
+    };
     const auto progress = all[0]->execute();
     ASSERT_EQ(progress.size(), 1u);
-    EXPECT_EQ(progress[0]->type, EGameAction::TUTORIAL_PROGRESS);
-    EXPECT_EQ(progress[0]->text, QStringLiteral("TutorialStart"));
+    EXPECT_EQ(progress[0]->gameActionType(), EGameAction::TUTORIAL_PROGRESS);
+    ASSERT_TRUE(fields(progress[0]));
+    EXPECT_EQ(fields(progress[0])->text, QStringLiteral("TutorialStart"));
     EXPECT_TRUE(all[0]->isDone());
-    EXPECT_EQ(all[1]->execute()[0]->parameter, 12);
-    const auto channel = all[2]->execute()[0];
+    const auto skip = fields(all[1]->execute()[0]);
+    ASSERT_TRUE(skip);
+    EXPECT_EQ(skip->parameter, 12);
+    const auto channel = fields(all[2]->execute()[0]);
+    ASSERT_TRUE(channel);
     EXPECT_EQ(channel->type, EGameAction::OPEN_CHAT_CHANNEL);
     EXPECT_EQ(channel->chatChannelType, 1); // the server log
 

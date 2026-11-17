@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gameaction.h"
+
 #include <cip_gen.h>
 
 #include <vector>
@@ -20,8 +22,11 @@ public:
     TPlayerMovementGameActionHandler(const TPlayerMovementGameActionHandler&) = delete;
     TPlayerMovementGameActionHandler& operator=(const TPlayerMovementGameActionHandler&) = delete;
 
-private:
-    std::vector<int> m_listeners;
+public Q_SLOTS:
+    /// SET_PLAYER_MOVEMENT_INTENT walks; attacking, following, using or opening
+    /// an object on the map drops the walk goal. Connected to the router's
+    /// publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
 }

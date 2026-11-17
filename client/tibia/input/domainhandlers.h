@@ -34,6 +34,11 @@ public:
     ~TClipboardGameActionHandler() override;
     TClipboardGameActionHandler(const TClipboardGameActionHandler&) = delete;
     TClipboardGameActionHandler& operator=(const TClipboardGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// CIP handleGameAction: acts on the actions of its types; connected to the
+    /// router's publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
 /// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
@@ -45,6 +50,11 @@ public:
     ~TGatherAllGameActionHandler() override;
     TGatherAllGameActionHandler(const TGatherAllGameActionHandler&) = delete;
     TGatherAllGameActionHandler& operator=(const TGatherAllGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// CIP handleGameAction: acts on the actions of its types; connected to the
+    /// router's publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
 /// CIP input::TGatherAllProtocolMessageHandler: ClientGatherAll (0xFF) send
@@ -70,7 +80,13 @@ public:
     TOpenWebsiteGameActionHandler(const TOpenWebsiteGameActionHandler&) = delete;
     TOpenWebsiteGameActionHandler& operator=(const TOpenWebsiteGameActionHandler&) = delete;
 
-    void handleGameAction(const TGameAction& action);
+public Q_SLOTS:
+    /// Opens the page of an OPEN_URL_* action; connected to the router's
+    /// publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+
+public:
+
     /// OPEN_URL_GET_PREMIUM: getPremiumUrl followed by the action's number (`parameter`).
     void handleOpenGetPremiumUrlGameAction(const TGameAction& action);
     /// OPEN_URL_SURVEY: limesurveyUrl, the survey id (`parameter`), then

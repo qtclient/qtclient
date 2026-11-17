@@ -1,5 +1,7 @@
 #include "domainhandlers.h"
 
+#include <algorithm>
+
 #include "app/portalurls.h"
 #include "gameaction.h"
 
@@ -104,32 +106,33 @@ TActionButtonGameActionHandler::~TActionButtonGameActionHandler()
 TClipboardGameActionHandler::TClipboardGameActionHandler(QObject* parent)
     : cip::tibia::input::TClipboardGameActionHandler(parent)
 {
-    for (const A type : ClipboardActions)
-        setActionHandler(type, handleClipboard);
 }
 
-TClipboardGameActionHandler::~TClipboardGameActionHandler()
+TClipboardGameActionHandler::~TClipboardGameActionHandler() = default;
+
+void TClipboardGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    for (const A type : ClipboardActions)
-        setActionHandler(type, nullptr);
+    if (pGameAction
+        && std::find(ClipboardActions.begin(), ClipboardActions.end(), pGameAction->gameActionType()) != ClipboardActions.end())
+        handleClipboard(*pGameAction);
 }
 
 TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)
     : cip::tibia::input::TGatherAllGameActionHandler(parent)
 {
-    setActionHandler(A::GATHER_ALL, [](const TGameAction& action) {
-        const uint16_t typeId = action.objectClientId;
-        if (typeId != 0) {
-            const uint8_t stackpos = action.stackPosition >= 0 ? static_cast<uint8_t>(action.stackPosition) : 0;
-            tibia::game::gatherAll(action.position, typeId, stackpos);
-        }
-        return true;
-    });
 }
 
-TGatherAllGameActionHandler::~TGatherAllGameActionHandler()
+TGatherAllGameActionHandler::~TGatherAllGameActionHandler() = default;
+
+void TGatherAllGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    setActionHandler(A::GATHER_ALL, nullptr);
+    if (!pGameAction || pGameAction->gameActionType() != A::GATHER_ALL)
+        return;
+    const std::optional<TObjectGameActionContext> object = objectContextOf(*pGameAction);
+    if (object && object->objectClientId != 0) {
+        const uint8_t stackpos = object->stackPosition >= 0 ? static_cast<uint8_t>(object->stackPosition) : 0;
+        tibia::game::gatherAll(object->position, object->objectClientId, stackpos);
+    }
 }
 
 TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* parent)
@@ -158,22 +161,20 @@ TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const app::Launcher
     : cip::tibia::input::TOpenWebsiteGameActionHandler(parent)
     , m_env(env)
 {
-    for (const A type : OpenWebsiteActions) {
-        setActionHandler(type, [this](const TGameAction& action) {
-            handleGameAction(action);
-            return true;
-        });
-    }
 }
 
-TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler()
-{
-    for (const A type : OpenWebsiteActions)
-        setActionHandler(type, nullptr);
-}
+TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler() = default;
 
-void TOpenWebsiteGameActionHandler::handleGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
+    if (!pGameAction
+        || std::find(OpenWebsiteActions.begin(), OpenWebsiteActions.end(), pGameAction->gameActionType()) == OpenWebsiteActions.end())
+        return;
+    // The parameterised pages (premium, survey, URL) still carry their fields in TGameAction.
+    TGameAction carrier;
+    carrier.type = pGameAction->gameActionType();
+    const TGameActionPtr fields = unportedGameAction(pGameAction);
+    const TGameAction& action = fields ? *fields : carrier;
     switch (action.type) {
     case A::OPEN_URL_GET_PREMIUM:
         handleOpenGetPremiumUrlGameAction(action);

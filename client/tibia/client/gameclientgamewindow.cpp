@@ -726,11 +726,20 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
             genericActions, &input::TGenericGameActionHandler::handleGameAction);
+    game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.playerMovementActions.get(),
+            &input::TPlayerMovementGameActionHandler::handleGameAction);
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.clipboardActions.get(),
+            &input::TClipboardGameActionHandler::handleGameAction);
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
+            &input::TOpenWebsiteGameActionHandler::handleGameAction);
     connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
             [this] { requestLogoutOrShowStartScreen(nullptr); });
     connect(genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
             [this] { openCharacterSelectionForSwitch(); });
     g.gatherAllActions = std::make_unique<input::TGatherAllGameActionHandler>();
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.gatherAllActions.get(),
+            &input::TGatherAllGameActionHandler::handleGameAction);
     g.gatherAllProtocol = std::make_unique<input::TGatherAllProtocolMessageHandler>();
     // Do not install TDiscardMouseWheelEventFilter on the window: that eats every
     // Wheel event (containers, chat, options lists). Dialogs that need it install
