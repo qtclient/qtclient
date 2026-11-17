@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::skillwheel {
@@ -28,10 +29,10 @@ std::pair<QUrl, QUrl> vesselImages(const TSkillWheelStorage* storage, const int 
 {
     const TWheel& wheel = storage->currentWheel();
     const int quality = vesselQualityAt(vesselIndex);
-    const TGem* gem = wheel.gems[vesselIndex] == NoGem ? nullptr : storage->gem(wheel.gems[vesselIndex]);
+    const std::optional<TGem> gem = wheel.gems[vesselIndex] == NoGem ? std::nullopt : storage->gem(wheel.gems[vesselIndex]);
     // Bezel domain index is visual only (cycles 0..3); resonance gate removed.
     return { gem ? gemImage(*gem, storage->vocationIndex()) : QUrl(),
-             socketBezel(vesselIndex % DomainCount, quality + 1, quality, gem != nullptr) };
+             socketBezel(vesselIndex % DomainCount, quality + 1, quality, gem.has_value()) };
 }
 
 /// The icon of a conviction perk; Revelation Mastery has one per revelation perk.
@@ -174,9 +175,9 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     connect(m_export, &TMessageDialogController::buttonClicked, this,
             &TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked);
 
-    connect(m_storage, &TSkillWheelStorage::currentWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TSkillWheelPageController::onInitialData);
-    connect(m_storage, &TSkillWheelStorage::presetsChanged, this, [this] {
+    connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
+    connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onServerSkillWheelChanged);
+    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, [this] {
         m_presets->reset();
         Q_EMIT presetDataChanged();
         Q_EMIT dataChanged();
@@ -203,10 +204,37 @@ cip::tibia::qmlcomponents::enums::EVocation TSkillWheelPageController::vocation(
     return static_cast<cip::tibia::qmlcomponents::enums::EVocation>(m_storage->vocation());
 }
 
-QString TSkillWheelPageController::currentPresetName() const { return m_storage->canManagePresets() ? m_storage->currentPresetName() : QString(); }
+QString TSkillWheelPageController::currentPresetName() const { return canManagePresets() ? m_currentPresetName : QString(); }
 
-void TSkillWheelPageController::onInitialData()
+/// The own wheel at a temple, not the preview.
+bool TSkillWheelPageController::canManagePresets() const
 {
+    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->isPreview() && m_storage->changeState() == 1;
+}
+
+/// The current wheel is not the selected preset's wheel any more.
+bool TSkillWheelPageController::isPresetDirty() const
+{
+    return canManagePresets() && m_presetWheel && m_storage->currentSkillWheel() != m_presetWheel;
+}
+
+/// A new server wheel becomes the current wheel; the own character gets the default preset when
+/// it has none, and the selected preset stays selected.
+void TSkillWheelPageController::onServerSkillWheelChanged()
+{
+    const std::optional<TWheel> server = m_storage->serverSkillWheel();
+    if (!server)
+        return;
+    m_storage->setCurrentSkillWheel(*server);
+    if (m_storage->isOwnCharacter() && !m_storage->isPreview()) {
+        if (m_storage->presets().empty())
+            m_storage->addOrReplacePreset(TSkillWheelStorage::DefaultPresetName, *server);
+        if (!m_storage->hasPreset(m_currentPresetName))
+            m_currentPresetName = m_storage->presets().begin()->first;
+        m_presetWheel = m_storage->preset(m_currentPresetName);
+        if (m_presetWheel)
+            m_presetWheel = m_storage->withInventoryGems(*m_presetWheel);
+    }
     Q_EMIT initialDataChanged();
     Q_EMIT presetDataChanged();
     onWheelChanged();
@@ -253,7 +281,7 @@ void TSkillWheelPageController::updateParameters()
                                                                 mediumPerkImage(medium, large), this));
         }
         for (int d = 0; d < DomainCount; ++d) {
-            const int points = revelationPoints(wheel, m_storage->gems(), m_storage->supremeGrades(), d, voc);
+            const int points = revelationPoints(wheel, m_storage->gemInventory(), m_storage->supremeGrades(), d, voc);
             const int stage = revelationStage(points);
             const int next = stage < -1 ? 0 : std::min(stage + 1, 3);
             const double from = stage >= 1 && stage <= 3 ? revelationThreshold(stage) : 0.0;
@@ -274,7 +302,7 @@ void TSkillWheelPageController::updateSummaries()
     const bool hasData = m_storage->hasData();
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
-    const TActiveMods mods = activeMods(wheel, m_storage->gems(), m_storage->basicGrades(), m_storage->supremeGrades(), voc);
+    const TActiveMods mods = activeMods(wheel, m_storage->gemInventory(), m_storage->basicGrades(), m_storage->supremeGrades(), voc);
     const auto byLabel = [](QList<TSummaryEntry>& list) {
         std::ranges::stable_sort(list, [](const TSummaryEntry& a, const TSummaryEntry& b) { return a.label < b.label; });
     };
@@ -295,7 +323,7 @@ void TSkillWheelPageController::updateSummaries()
     int bonus = 0;
     QList<TSummaryEntry> perks;
     for (int d = 0; d < DomainCount; ++d) {
-        const int stage = revelationStage(revelationPoints(wheel, m_storage->gems(), m_storage->supremeGrades(), d, voc));
+        const int stage = revelationStage(revelationPoints(wheel, m_storage->gemInventory(), m_storage->supremeGrades(), d, voc));
         bonus += largePerkExtraDamageHealing(stage);
         perks.append({ largePerkName(largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(largePerk(d, voc), stage), QUrl(), false });
     }
@@ -595,7 +623,7 @@ void TSkillWheelPageController::fillLargePerk(cip::tibia::gamewindow::TLargePerk
         return;
     }
     const int voc = m_storage->vocationIndex();
-    const int points = revelationPoints(m_storage->currentWheel(), m_storage->gems(), m_storage->supremeGrades(), domain, voc);
+    const int points = revelationPoints(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->supremeGrades(), domain, voc);
     const int stage = revelationStage(points);
     info->setCurrentSkillPoints(points);
     info->setNextSkillPointThreshold(revelationThreshold(std::min(stage + 1, 3)));
@@ -629,7 +657,7 @@ void TSkillWheelPageController::changePoints(const int slot, const int delta)
     wheel.points[slot] = std::clamp(wheel.points[slot] + delta, 0, maxPoints(slot));
     if (!isValid(wheel.points))
         return;
-    m_storage->setCurrentWheel(wheel);
+    m_storage->setCurrentSkillWheel(wheel);
 }
 
 /// CIP .
@@ -721,7 +749,7 @@ void TSkillWheelPageController::resetSkillGrid()
         return;
     TWheel wheel = m_storage->currentWheel();
     wheel.points = {};
-    m_storage->setCurrentWheel(wheel);
+    m_storage->setCurrentSkillWheel(wheel);
 }
 
 /// CIP : the current wheel's export code as COPY_TRUSTED_TEXT_TO_CLIPBOARD.
@@ -730,7 +758,7 @@ void TSkillWheelPageController::requestCopyExportCodeToClipboard()
     if (!m_storage->hasData())
         return;
     auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex());
+    action->text = encodeWheelCode(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->vocationIndex());
     input::publish(action);
 }
 
@@ -743,26 +771,39 @@ void TSkillWheelPageController::showMessage(const EMessageMode mode, const QStri
     m_message->showMessage(caption, text);
 }
 
-/// CIP: switching away from a changed preset asks first (mode 3) unless
-/// `IgnoreChanges`; the preset's wheel becomes the current wheel.
+/// CIP: without a selected preset nothing is selected. A changed current wheel asks first (mode 3)
+/// unless `IgnoreChanges`; otherwise the preset's wheel becomes the current wheel and the preset the
+/// selected one.
 void TSkillWheelPageController::selectPresetByName(const QString& PresetName, const bool IgnoreChanges)
 {
-    const QString current = m_storage->currentPresetName();
-    if (!m_storage->preset(current))
-        return;
-    if (PresetName == current) {
-        m_storage->selectPreset(PresetName);
-        return;
-    }
-    if (m_storage->preset(PresetName) && m_storage->isPresetDirty() && !IgnoreChanges) {
-        m_pendingPreset = PresetName;
-        showMessage(SwitchPresetMessage, qtTrId("skill_wheel_warning_closing_without_saving_title"),
-                    qtTrId("skill_wheel_warning_switch_preset_without_saving").arg(current));
+    std::optional<TWheel> wheel = m_storage->preset(PresetName);
+    if (wheel)
+        wheel = m_storage->withInventoryGems(*wheel);
+    if (!m_storage->hasPreset(m_currentPresetName)) {
+        if (!m_currentPresetName.isEmpty()) {
+            m_currentPresetName.clear();
+            Q_EMIT presetDataChanged();
+        }
         return;
     }
-    if (!m_storage->selectPreset(PresetName)) {
-        m_info->setButtons(okButton());
-        m_info->showMessage(qtTrId("info"), qtTrId("skill_wheel_dialog_presets_adjusted"));
+    if (m_currentPresetName == PresetName) {
+        m_presetWheel = wheel;
+        m_storage->setCurrentSkillWheel(wheel);
+    }
+    if (wheel) {
+        const bool changed = m_storage->currentSkillWheel() != m_presetWheel;
+        if (changed && !IgnoreChanges) {
+            m_pendingPreset = PresetName;
+            showMessage(SwitchPresetMessage, qtTrId("skill_wheel_warning_closing_without_saving_title"),
+                        qtTrId("skill_wheel_warning_switch_preset_without_saving").arg(m_currentPresetName));
+            return;
+        }
+    }
+    m_presetWheel = wheel;
+    m_storage->setCurrentSkillWheel(wheel);
+    if (m_currentPresetName != PresetName) {
+        m_currentPresetName = PresetName;
+        Q_EMIT presetDataChanged();
     }
     Q_EMIT presetDataChanged();
 }
@@ -770,21 +811,23 @@ void TSkillWheelPageController::selectPresetByName(const QString& PresetName, co
 /// CIP: the current wheel into the current preset, then apply.
 void TSkillWheelPageController::requestSaveCurrentPreset()
 {
-    if (m_storage->hasData())
-        m_storage->saveCurrentPreset();
+    if (const std::optional<TWheel> current = m_storage->currentSkillWheel())
+        m_storage->addOrReplacePreset(m_currentPresetName, *current);
     apply();
 }
 
 void TSkillWheelPageController::requestDeletePresetClicked()
 {
-    showMessage(DeletePresetMessage, qtTrId("warning"), qtTrId("skill_wheel_dialog_delete_preset_text").arg(m_storage->currentPresetName()));
+    showMessage(DeletePresetMessage, qtTrId("warning"), qtTrId("skill_wheel_dialog_delete_preset_text").arg(m_currentPresetName));
 }
 
 /// CIP: drops the current preset and shows the first one.
 void TSkillWheelPageController::deleteCurrentPreset()
 {
-    if (m_storage->deleteCurrentPreset() && !m_storage->presets().isEmpty())
-        selectPresetByName(m_storage->presets().first().name, true);
+    m_storage->removePreset(m_currentPresetName);
+    const std::map<QString, TWheel> presets = m_storage->presets();
+    if (!presets.empty())
+        selectPresetByName(presets.begin()->first, true);
 }
 
 void TSkillWheelPageController::requestRenamePresetClicked() { Q_EMIT managePresets(static_cast<int>(EManageMode::Rename)); }
@@ -811,7 +854,7 @@ void TSkillWheelPageController::requestCopyExportCodeOrUrlToClipboardClicked(
     if (ButtonIdentifier != Button::USER_DEFINED || !m_storage->hasData())
         return;
     auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = m_plannerUrl + encodeWheelCode(m_storage->currentWheel(), m_storage->gems(), m_storage->vocationIndex());
+    action->text = m_plannerUrl + encodeWheelCode(m_storage->currentWheel(), m_storage->gemInventory(), m_storage->vocationIndex());
     input::publish(action);
 }
 
@@ -823,7 +866,7 @@ void TSkillWheelPageController::setShowFullSummary(const bool Show)
     Q_EMIT summaryModeChanged();
 }
 
-void TSkillWheelPageController::useServerSkillWheelAsCurrent() { m_storage->useServerWheelAsCurrent(); }
+void TSkillWheelPageController::useServerSkillWheelAsCurrent() { m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel()); }
 
 /// CIP: drops every selection and clears their information.
 void TSkillWheelPageController::clearSelection()
@@ -920,21 +963,22 @@ int TSkillWheelPageController::gemAtelierGemId() const
     return NoGem;
 }
 
-/// CIP: a changed wheel goes into the current preset and to the server
-/// (SAVE_SKILL_WHEEL); the next open of the own wheel is skipped.
+/// CIP: a valid current wheel goes into the current preset and to the server (SAVE_SKILL_WHEEL);
+/// the next open of the own wheel is skipped.
 void TSkillWheelPageController::apply()
 {
-    if (!m_storage->hasData() || !m_storage->isLocalPlayer() || m_storage->isPreview() || !m_storage->isWheelDirty())
+    const std::optional<TWheel> current = m_storage->currentSkillWheel();
+    if (!current || !isValid(current->points))
         return;
     Q_EMIT preapareToSkipNextOpenForOwnPlayer();
-    m_storage->saveCurrentPreset();
+    m_storage->addOrReplacePreset(m_currentPresetName, *current);
     publish(A::SAVE_SKILL_WHEEL);
 }
 
 bool TSkillWheelPageController::askToSaveBeforeClose()
 {
-    return m_storage->hasData() && m_storage->isLocalPlayer() && !m_storage->isPreview() && m_storage->changeState() != 0
-        && m_storage->isWheelDirty();
+    return m_storage->hasData() && m_storage->isOwnCharacter() && !m_storage->isPreview() && m_storage->changeState() != 0
+        && m_storage->isCurrentSkillWheelChanged();
 }
 
 // ---------------------------------------------------------------------------
@@ -965,9 +1009,16 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
         if (filtered.isValid())
             setSelectedGemIndex(m_pages->showSourceRow(filtered.row()));
     });
-    connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TGemAtelierPageController::onGemsChanged);
-    connect(m_storage, &TSkillWheelStorage::currentWheelChanged, this, &TGemAtelierPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::resourcesChanged, this, &TGemAtelierPageController::onResourcesChanged);
+    connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onGemsChanged);
+    connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged);
+    for (const auto signal : { &TSkillWheelStorage::unrevealedGemsChanged, &TSkillWheelStorage::lesserFragmentsChanged,
+                               &TSkillWheelStorage::greaterFragmentsChanged })
+        connect(m_storage, signal, this, &TGemAtelierPageController::onResourcesChanged);
+    // The gold the atelier costs is the bank balance and the carried gold.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this](qint64, qint64, const int type) {
+        if (type == tibia::client::RESOURCE_BANK_BALANCE || type == tibia::client::RESOURCE_GOLD_EQUIPPED)
+            onResourcesChanged();
+    });
     updateSockets();
 }
 
@@ -995,7 +1046,7 @@ void TGemAtelierPageController::updateSockets()
     for (int v = 0; v < VesselCount; ++v) {
         const TWheel& wheel = m_storage->currentWheel();
         const int gemId = wheel.gems[v];
-        const TGem* gem = gemId == NoGem ? nullptr : m_storage->gem(gemId);
+        const std::optional<TGem> gem = gemId == NoGem ? std::nullopt : m_storage->gem(gemId);
         const int quality = vesselQualityAt(v);
         const auto [_, bezel] = vesselImages(m_storage, v);
         QObject* old = m_sockets[v];
@@ -1033,7 +1084,7 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
 {
     if (!canBeChanged() || VesselIndex < 0 || VesselIndex >= activeVesselCount())
         return;
-    const TGem* gem = m_storage->gem(GemId);
+    const std::optional<TGem> gem = m_storage->gem(GemId);
     TWheel wheel = m_storage->currentWheel();
     if (wheel.gems[VesselIndex] == GemId) {
         wheel.gems[VesselIndex] = NoGem;
@@ -1046,7 +1097,7 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
     } else {
         return;
     }
-    m_storage->setCurrentWheel(wheel);
+    m_storage->setCurrentSkillWheel(wheel);
 }
 
 void TGemAtelierPageController::closeMessageDialog()
@@ -1116,7 +1167,7 @@ void TGemAtelierPageController::selectGem(const int GemId) { selectGem(GemId, fa
 void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDownFilters)
 {
     m_selectedGemId = GemId;
-    const TGem* gem = m_storage->gem(GemId);
+    const std::optional<TGem> gem = m_storage->gem(GemId);
     if (!gem)
         return;
     if (NarrowDownFilters && !m_filter->accepts(*gem)) {
@@ -1179,7 +1230,8 @@ TFragmentWorkshopPageController::TFragmentWorkshopPageController(TSkillWheelStor
             Q_EMIT filterChanged();
         }
     });
-    connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TFragmentWorkshopPageController::onModsChanged);
+    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TFragmentWorkshopPageController::onModsChanged);
+    connect(m_storage, &TSkillWheelStorage::modListChanged, this, &TFragmentWorkshopPageController::onModsChanged);
     onModsChanged();
 }
 
@@ -1244,12 +1296,12 @@ void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, con
 // Preset management dialog
 
 TSkillWheelPresetManagmentDialogController::TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, const EManageMode mode,
-                                                                                       QObject* parent)
+                                                                                       const QString& currentPresetName, QObject* parent)
     : TDialogController(QStringLiteral("SkillWheelPresetManagmentDialog.qml"), parent)
     , m_storage(storage)
 {
     m_manageMode = mode;
-    m_currentPresetName = storage->currentPresetName();
+    m_currentPresetName = currentPresetName;
     m_maxNameLength = 29;
     m_nameIsValid = mode == EManageMode::Rename ? isValidName(m_currentPresetName) : false;
 }
@@ -1292,6 +1344,7 @@ QString TSkillWheelPresetManagmentDialogController::importError(TWheel* wheel) c
     if (code->vocationIndex != m_storage->vocationIndex())
         return qtTrId("skill_wheel_manage_presets_vocation_mismatch");
     if (wheel) {
+        wheel->vocation = code->vocationIndex + 1;
         wheel->points = code->points;
         for (int v = 0; v < VesselCount; ++v) {
             const TCodeGem& mods = code->gems[v];
@@ -1300,11 +1353,11 @@ QString TSkillWheelPresetManagmentDialogController::importError(TWheel* wheel) c
             const int quality = mods.supreme >= 0 ? 2 : mods.basic2 >= 0 ? 1 : 0;
             if (quality != vesselQualityAt(v))
                 continue;
-            const auto it = std::ranges::find_if(m_storage->gems(), [&](const TGem& g) {
+            const auto it = std::ranges::find_if(m_storage->gemInventory(), [&](const TGem& g) {
                 return g.quality == quality && g.basic1 == mods.basic1 && (quality < 1 || g.basic2 == mods.basic2)
                     && (quality < 2 || g.supreme == mods.supreme);
             });
-            if (it != m_storage->gems().end())
+            if (it != m_storage->gemInventory().end())
                 wheel->gems[v] = it->id;
         }
     }
@@ -1319,9 +1372,18 @@ void TSkillWheelPresetManagmentDialogController::onOkClicked(const EManageMode M
         return;
     bool done = false;
     switch (ManageMod) {
-        case EManageMode::Rename: done = m_name == m_currentPresetName || m_storage->renameCurrentPreset(m_name); break;
-        case EManageMode::NewEmptyPreset: done = m_storage->addPreset(m_name, TWheel{}); break;
-        case EManageMode::CopyPreset: done = m_storage->addPreset(m_name, m_storage->currentWheel()); break;
+        case EManageMode::Rename: done = m_name == m_currentPresetName || m_storage->renamePreset(m_currentPresetName, m_name); break;
+        case EManageMode::NewEmptyPreset: {
+            TWheel empty;
+            empty.vocation = m_storage->vocation();
+            m_storage->addOrReplacePreset(m_name, empty);
+            done = true;
+            break;
+        }
+        case EManageMode::CopyPreset:
+            m_storage->addOrReplacePreset(m_name, m_storage->currentWheel());
+            done = true;
+            break;
         case EManageMode::ImportPreset: {
             TWheel wheel;
             const QString error = importError(&wheel);
@@ -1332,7 +1394,8 @@ void TSkillWheelPresetManagmentDialogController::onOkClicked(const EManageMode M
                 }
                 return;
             }
-            done = m_storage->addPreset(m_name, wheel);
+            m_storage->addOrReplacePreset(m_name, wheel);
+            done = true;
             break;
         }
     }
@@ -1402,7 +1465,7 @@ void TSkillWheelDialogController::closeDialog()
     if (m_presetDialog)
         m_presetDialog->dialog()->close();
     dialog()->close();
-    m_storage->useServerWheelAsCurrent();
+    m_storage->setCurrentSkillWheel(m_storage->serverSkillWheel());
 }
 
 /// CIP: the page asks about unsaved changes (closeConfirmed closes).
@@ -1412,7 +1475,7 @@ void TSkillWheelDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
     if (NewTab == m_dialogTab)
         return;
-    if ((NewTab == GemAtelier || NewTab == FragmentWorkshop) && (!m_storage->isLocalPlayer() || m_storage->isPreview()))
+    if ((NewTab == GemAtelier || NewTab == FragmentWorkshop) && (!m_storage->isOwnCharacter() || m_storage->isPreview()))
         return;
     if (m_dialogTab == Wheel)
         m_page->hideDialogTab();
@@ -1463,7 +1526,7 @@ void TSkillWheelDialogController::showMessage(const QString& caption, const QStr
 
 void TSkillWheelDialogController::openGemAtelier(const int domain, const int gemId)
 {
-    if (!m_storage->isLocalPlayer() || m_storage->isPreview())
+    if (!m_storage->isOwnCharacter() || m_storage->isPreview())
         return;
     requestTabSwitch(GemAtelier);
     m_atelier->showDomain(domain, gemId);
@@ -1471,7 +1534,7 @@ void TSkillWheelDialogController::openGemAtelier(const int domain, const int gem
 
 void TSkillWheelDialogController::openWorkshopMod(const bool isBasic, const int modId)
 {
-    if (!m_storage->isLocalPlayer() || m_storage->isPreview())
+    if (!m_storage->isOwnCharacter() || m_storage->isPreview())
         return;
     requestTabSwitch(FragmentWorkshop);
     m_workshop->selectMod(isBasic, modId);
@@ -1479,13 +1542,13 @@ void TSkillWheelDialogController::openWorkshopMod(const bool isBasic, const int 
 
 void TSkillWheelDialogController::managePresets(const int mode)
 {
-    if (!m_storage->canManagePresets())
+    if (!m_page->canManagePresets())
         return;
     if (m_presetDialog) {
         m_presetDialog->dialog()->close();
         m_presetDialog->deleteLater();
     }
-    m_presetDialog = new TSkillWheelPresetManagmentDialogController(m_storage, static_cast<EManageMode>(mode), this);
+    m_presetDialog = new TSkillWheelPresetManagmentDialogController(m_storage, static_cast<EManageMode>(mode), m_page->currentPresetName(), this);
     connect(m_presetDialog, &TSkillWheelPresetManagmentDialogController::newPresetName, m_page, &TSkillWheelPageController::onNewPresetName);
     m_presetDialog->dialog()->show();
 }

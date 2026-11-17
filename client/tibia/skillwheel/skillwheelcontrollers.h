@@ -69,14 +69,14 @@ public:
     QString bonusPointItemNames() const override;
     bool hasShrinesOfInsightBonusPoints() const override { return m_storage->hasShrinesOfInsightPoints(); }
     cip::tibia::qmlcomponents::enums::EVocation vocation() const override;
-    bool isWheelDirty() const override { return !m_storage->isPreview() && m_storage->isWheelDirty(); }
+    bool isWheelDirty() const override { return !m_storage->isPreview() && m_storage->isCurrentSkillWheelChanged(); }
     bool canBeDecreased() const override { return m_storage->changeState() == 1; }
     bool canBeIncreased() const override { return m_storage->changeState() == 1 || m_storage->changeState() == 2; }
-    bool isLocalPlayer() const override { return m_storage->isLocalPlayer(); }
+    bool isLocalPlayer() const override { return m_storage->isOwnCharacter(); }
     bool isPreview() const override { return m_storage->isPreview(); }
     QString playerName() const override { return m_storage->playerName(); }
-    bool canManagePresets() const override { return m_storage->canManagePresets(); }
-    bool isPresetDirty() const override { return m_storage->canManagePresets() && m_storage->isPresetDirty(); }
+    bool canManagePresets() const override;
+    bool isPresetDirty() const override;
     QString currentPresetName() const override;
     bool morePresetsPossible() const override { return m_storage->presets().size() < MaxPresets; }
     bool deletePresetsPossible() const override { return m_storage->presets().size() > 1; }
@@ -130,7 +130,7 @@ private:
     enum EMessageMode { NoMessage = 0, CloseMessage = 1, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
 
     void onWheelChanged();
-    void onInitialData();
+    void onServerSkillWheelChanged();
     void updateParameters();
     void showMessage(EMessageMode mode, const QString& caption, const QString& text);
     void deleteCurrentPreset();
@@ -164,6 +164,9 @@ private:
     gamewindow::TMessageDialogController* m_info;
     EMessageMode m_messageMode = NoMessage;
     QString m_pendingPreset;
+    /// The selected preset and its wheel when it was selected.
+    QString m_currentPresetName;
+    std::optional<TWheel> m_presetWheel;
     /// CIP: the planner page the export code is appended to.
     QString m_plannerUrl;
 };
@@ -177,7 +180,7 @@ public:
 
     int totalVesselCount() const override { return VesselCount; }
     int activeVesselCount() const override;
-    int gemsInInventory() const override { return static_cast<int>(m_storage->gems().size()); }
+    int gemsInInventory() const override { return static_cast<int>(m_storage->gemInventory().size()); }
     int unrevealedLesserGems() const override { return m_storage->unrevealedGems(0); }
     int unrevealedRegularGems() const override { return m_storage->unrevealedGems(1); }
     int unrevealedGreaterGems() const override { return m_storage->unrevealedGems(2); }
@@ -270,7 +273,8 @@ class TSkillWheelPresetManagmentDialogController final
 {
     Q_OBJECT
 public:
-    TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, EManageMode mode, QObject* parent = nullptr);
+    TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, EManageMode mode, const QString& currentPresetName,
+                                               QObject* parent = nullptr);
 
     void onOkClicked(EManageMode ManageMod) override;
     void onCloseClicked() override;

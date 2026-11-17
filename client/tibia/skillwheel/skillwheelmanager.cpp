@@ -1,5 +1,6 @@
 #include "skillwheelmanager.h"
 
+#include "analysers/analyserstorages.h"
 #include "input/gameactionhandlers.h"
 
 #include <tibia/game/gamenotify.h>
@@ -22,16 +23,6 @@ constexpr A Actions[] = { A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG,
                           A::GEM_ATELIER_SELECT_GEM,
                           A::FRAGMENT_WORKSHOP_SELECT_MOD };
 
-void publish(const A type) { input::publish(input::makeAction(type)); }
-
-bool hasVocation()
-{
-    if (!tibia::game::hasLocalPlayer())
-        return false;
-    const int profession = tibia::game::localPlayerVocation() % 10;
-    return profession >= 1 && profession <= VocationCount;
-}
-
 }
 
 TSkillWheelManager::TSkillWheelManager(QObject* parent)
@@ -39,7 +30,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
     , m_storage(new TSkillWheelStorage(this))
     , m_dialog(new TSkillWheelDialogController(m_storage, this))
 {
+    // The own wheel's answer to a save does not open the dialog again.
     input::setActionHandler(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::TGameAction&) {
+        if (m_storage->isOwnCharacter() && m_skipNextOwnOpen) {
+            clearSkipNextOwnOpen();
+            return true;
+        }
         m_dialog->showDialog();
         return true;
     });
@@ -86,11 +82,32 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
             m_skipNextOwnOpen = true;
             m_skipNextOwnOpenTimer.start();
         });
-    connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TSkillWheelManager::onServerData);
+    if (TSkillWheelProtocolMessageHandler* handler = TSkillWheelProtocolMessageHandler::liveInstance())
+        handler->setSkillWheelStorage(m_storage);
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance()) {
+        storages->addCharacterConfiguration(m_storage);
+        connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, storages,
+                &analysers::TAnalyserStorages::onConfigurationChanged);
+    }
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clearSkipNextOwnOpen();
         m_dialog->clear();
+        // CIP has one storage per game session.
+        m_storage->clearServerData();
+        m_storage->resetCurrentSkillWheel();
+        m_storage->setGemInventory({});
+        m_storage->setModGrades({}, {});
+    });
+    // SwitchPreset: the preset at the position (from 1) in name order.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreset", [this](GameObject*, const Args& args) {
+        const auto id = static_cast<size_t>(client::gamecore::argInt(args, 0));
+        const std::map<QString, TWheel> presets = m_storage->presets();
+        if (id == 0 || id > presets.size())
+            return std::any{};
+        if (auto* page = qobject_cast<TSkillWheelPageController*>(m_dialog->wheelPageController()))
+            page->selectPresetByName(std::next(presets.begin(), static_cast<std::ptrdiff_t>(id - 1))->first, false);
+        return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
         m_dialog->onPremiumChanged();
@@ -100,23 +117,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
 
 TSkillWheelManager::~TSkillWheelManager()
 {
+    if (TSkillWheelProtocolMessageHandler* handler = TSkillWheelProtocolMessageHandler::liveInstance())
+        handler->setSkillWheelStorage(nullptr);
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
+        storages->removeCharacterConfiguration(m_storage);
     for (const A type : Actions)
         input::setActionHandler(type, nullptr);
-}
-
-/// CIP : a wheel message without slices publishes 308 / 307.
-void TSkillWheelManager::onServerData(const bool canView)
-{
-    if (!canView) {
-        publish(tibia::game::hasLocalPlayer() && hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
-                                                            : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
-        return;
-    }
-    if (m_storage->isLocalPlayer() && m_skipNextOwnOpen) {
-        clearSkipNextOwnOpen();
-        return;
-    }
-    publish(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG);
 }
 
 void TSkillWheelManager::clearSkipNextOwnOpen()
@@ -128,7 +134,7 @@ void TSkillWheelManager::clearSkipNextOwnOpen()
 /// SAVE_SKILL_WHEEL carries no wheel here: the own edited wheel is saved.
 void TSkillWheelManager::saveWheel()
 {
-    if (!m_storage->hasData() || !m_storage->isLocalPlayer() || m_storage->isPreview())
+    if (!m_storage->hasData() || !m_storage->isOwnCharacter() || m_storage->isPreview())
         return;
     m_actions.handleSaveSkillWheelGameAction(m_storage->currentWheel());
 }

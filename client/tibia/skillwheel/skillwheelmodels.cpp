@@ -48,7 +48,7 @@ TInventoryGemListModel::TInventoryGemListModel(TSkillWheelStorage* storage, QObj
     , m_storage(storage)
 {}
 
-int TInventoryGemListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_storage->gems().size()); }
+int TInventoryGemListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_storage->gemInventory().size()); }
 
 QHash<int, QByteArray> TInventoryGemListModel::roleNames() const
 {
@@ -73,7 +73,7 @@ QVariant TInventoryGemListModel::data(const QModelIndex& index, const int role) 
 {
     if (!index.isValid() || index.row() >= rowCount())
         return {};
-    const TGem& gem = m_storage->gems()[index.row()];
+    const TGem& gem = m_storage->gemInventory()[index.row()];
     const int voc = m_storage->vocationIndex();
     const TGrades& basic = m_storage->basicGrades();
     const TGrades& supreme = m_storage->supremeGrades();
@@ -103,9 +103,9 @@ QVariant TInventoryGemListModel::data(const QModelIndex& index, const int role) 
         case Mod3PotentialGrade: return count > 2 ? gemGrade(gem, basic, supreme, 2) : 0;
         case IsSocketed: return socketedIn(m_storage->currentWheel(), gem.id);
         case GemId: return gem.id;
-        case CanBeDismantled: return !socketedIn(m_storage->serverWheel(), gem.id);
+        case CanBeDismantled: return !socketedIn(m_storage->serverSkillWheel().value_or(TWheel{}), gem.id);
         case IsLastOfDomainAffinity:
-            return std::ranges::count_if(m_storage->gems(), [&](const TGem& g) { return g.domain == gem.domain; }) <= 1;
+            return std::ranges::count_if(m_storage->gemInventory(), [&](const TGem& g) { return g.domain == gem.domain; }) <= 1;
         case IsLocked: return gem.locked;
         default: return {};
     }
@@ -125,7 +125,7 @@ void TInventoryGemListModel::refresh()
 
 int TInventoryGemListModel::rowOfGem(const int gemId) const
 {
-    const auto& gems = m_storage->gems();
+    const auto& gems = m_storage->gemInventory();
     const auto it = std::ranges::find_if(gems, [gemId](const TGem& g) { return g.id == gemId; });
     return it != gems.end() ? static_cast<int>(it - gems.begin()) : -1;
 }
@@ -206,7 +206,7 @@ bool TInventoryGemSortFilterProxyModel::accepts(const TGem& gem) const
 
 bool TInventoryGemSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    const auto& gems = m_storage->gems();
+    const auto& gems = m_storage->gemInventory();
     return sourceRow >= 0 && sourceRow < static_cast<int>(gems.size()) && accepts(gems[sourceRow]);
 }
 
@@ -300,7 +300,7 @@ void TModListModel::reset()
     beginResetModel();
     m_entries.clear();
     const int voc = m_storage->vocationIndex();
-    const auto& gems = m_storage->gems();
+    const auto& gems = m_storage->gemInventory();
     const TWheel& wheel = m_storage->currentWheel();
     const auto grade = [](const TGrades& grades, const int mod) {
         const auto it = grades.find(mod);
@@ -442,12 +442,13 @@ QVariant TPresetInfoModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= rowCount())
         return {};
-    const TPreset& preset = m_storage->presets()[index.row()];
+    const std::map<QString, TWheel> presets = m_storage->presets();
+    const auto& [name, wheel] = *std::next(presets.begin(), index.row());
     switch (role) {
-        case Name: return preset.name;
+        case Name: return name;
         case AvailablePoints: {
             int spent = 0;
-            for (const int p : preset.wheel.points)
+            for (const int p : wheel.points)
                 spent += p;
             return m_storage->totalPoints() - spent;
         }

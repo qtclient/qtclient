@@ -55,15 +55,30 @@ struct TGem
     int supreme = 0;
 };
 
-/// The points of the 36 slices and the gem id socketed in each vessel (0..7).
+/// The mods of a socketed gem in an export code (CIP); -1 none.
+struct TCodeGem
+{
+    int basic1 = -1;
+    int basic2 = -1;
+    int supreme = -1;
+};
+
+/// A skill wheel configuration: the vocation (1 knight .. 5 monk), the points of the 36 slices
+/// and the gem id socketed in each vessel (0..7). A configuration read from an export code
+/// keeps the socketed gems' mods until they are matched against the gem inventory.
 struct TWheel
 {
+    int vocation = 0;
     std::array<int, SlotCount> points{};
     std::array<int, VesselCount> gems{
         NoGem, NoGem, NoGem, NoGem, NoGem, NoGem, NoGem, NoGem,
     };
+    std::array<TCodeGem, VesselCount> gemMods{};
 
-    bool operator==(const TWheel&) const = default;
+    bool operator==(const TWheel& other) const
+    {
+        return vocation == other.vocation && points == other.points && gems == other.gems;
+    }
 };
 
 /// Mod grades (0..3) by mod id, as the server sends them.
@@ -277,13 +292,6 @@ QString gemInformation();
 /// The unrevealed gem object of a vocation index and quality (Crystal vocations.xml).
 int unrevealedGemTypeId(int vocationIndex, int quality);
 
-/// The mods of a socketed gem in an export code (CIP); -1 none.
-struct TCodeGem
-{
-    int basic1 = -1;
-    int basic2 = -1;
-    int supreme = -1;
-};
 
 /// A decoded wheel export code.
 struct TWheelCode

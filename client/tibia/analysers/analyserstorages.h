@@ -610,6 +610,12 @@ public:
     void setCharacter(quint32 characterId);
     bool hasCharacter() const { return m_characterId != 0; }
     void saveConfiguration();
+    /// Another configuration of the character (the skill wheel presets): emptied and read with the
+    /// character, saved with the others.
+    void addCharacterConfiguration(TCharacterConfiguration* configuration);
+    void removeCharacterConfiguration(TCharacterConfiguration* configuration);
+    /// A configuration was changed by the user; it is saved on the next tick.
+    void onConfigurationChanged() { m_configurationDirty = true; }
 
 Q_SIGNALS:
     void sessionReset();
@@ -622,7 +628,6 @@ private:
     void tick();
     QString configurationPath(const TCharacterConfiguration& configuration) const;
     std::vector<TCharacterConfiguration*> configurations();
-    void onConfigurationChanged() { m_configurationDirty = true; }
 
     TProgressStorage m_progress;
     TGainWasteStorage m_gainWaste;
@@ -636,6 +641,7 @@ private:
     QTimer m_timer;
     quint32 m_characterId = 0;
     bool m_configurationDirty = false;
+    std::vector<TCharacterConfiguration*> m_otherConfigurations;
 };
 
 }

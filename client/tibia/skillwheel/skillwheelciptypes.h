@@ -13,6 +13,7 @@ namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageGemAtelierGemRevealed;
+class GameserverMessageSkillWheel;
 }
 }
 }
@@ -27,6 +28,7 @@ void ownProductSurface(QObject* parent);
 /// TModListSortFilterProxyModel product twin lives in skillwheelmodels.h (FragmentWorkshop).
 
 struct TWheel;
+class TSkillWheelStorage;
 
 /// The skill wheel game actions (CIP: skillwheel::TSkillWheelGameActionHandler):
 /// another player's wheel, the own wheel or the no-wheel / preview message,
@@ -65,6 +67,14 @@ public:
     static TSkillWheelProtocolMessageHandler* liveInstance();
     static void setLiveInstance(TSkillWheelProtocolMessageHandler* handler);
 
+    void setSkillWheelStorage(TSkillWheelStorage* storage) { m_storage = storage; }
+
+    /// SkillWheel: without a wheel the no-wheel or preview message; otherwise the gem inventory, the
+    /// mod grades and the server wheel go to the storage, the mod list is rebuilt and the dialog opens.
+    void handleSkillWheelMessage(const ::tibia::protobuf::protocol::GameserverMessageSkillWheel& message);
+    /// ResourceBalance 80..85: the unspent points, the unrevealed gems by quality and the fragments.
+    void handleResourceBalanceMessage(int type, qint64 balance);
+
     /// GemAtelierGemRevealed: the atelier selects the revealed gem.
     void handleGemAtelierGemRevealedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
@@ -84,6 +94,9 @@ public:
     static void reshapeGem(int gemId, int modIndex);
     static void toggleGemLock(int gemId);
     static void enhanceModGrade(int modType, int modId);
+
+private:
+    TSkillWheelStorage* m_storage = nullptr;
 };
 
 }

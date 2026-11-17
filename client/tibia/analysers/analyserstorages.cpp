@@ -312,8 +312,31 @@ QString TAnalyserStorages::configurationPath(const TCharacterConfiguration& conf
 
 std::vector<TCharacterConfiguration*> TAnalyserStorages::configurations()
 {
-    return { &m_progress, &m_gainWaste, &m_impact, &m_damageInput, &m_huntingSession, TItemPriceStorage::instance(),
-             m_itemTracking.get(), m_lootBlackWhitelist.get() };
+    std::vector<TCharacterConfiguration*> all{ &m_progress, &m_gainWaste, &m_impact, &m_damageInput, &m_huntingSession,
+                                               TItemPriceStorage::instance(), m_itemTracking.get(), m_lootBlackWhitelist.get() };
+    all.insert(all.end(), m_otherConfigurations.begin(), m_otherConfigurations.end());
+    return all;
+}
+
+void TAnalyserStorages::addCharacterConfiguration(TCharacterConfiguration* configuration)
+{
+    if (std::ranges::find(m_otherConfigurations, configuration) != m_otherConfigurations.end())
+        return;
+    m_otherConfigurations.push_back(configuration);
+    configuration->fromJson(QJsonObject{});
+    if (m_characterId == 0)
+        return;
+    QFile file(configurationPath(*configuration));
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    if (document.isObject())
+        configuration->fromJson(document.object());
+}
+
+void TAnalyserStorages::removeCharacterConfiguration(TCharacterConfiguration* configuration)
+{
+    std::erase(m_otherConfigurations, configuration);
 }
 
 void TAnalyserStorages::setCharacter(const quint32 characterId)
@@ -326,6 +349,8 @@ void TAnalyserStorages::setCharacter(const quint32 characterId)
     TItemPriceStorage::instance()->fromJson(QJsonObject{});
     m_itemTracking->clear();
     m_lootBlackWhitelist->clear();
+    for (TCharacterConfiguration* configuration : m_otherConfigurations)
+        configuration->fromJson(QJsonObject{});
     if (m_characterId != 0) {
         for (TCharacterConfiguration* configuration : configurations()) {
             QFile file(configurationPath(*configuration));
