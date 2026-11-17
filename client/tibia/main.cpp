@@ -636,24 +636,18 @@ int main(int argc, char** argv)
     QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameLogoutRequested, &application,
                      &QCoreApplication::quit);
 #endif
-    QQmlComponent gameWindowComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/gamewindow.qml")));
-    std::unique_ptr<QObject> gameWindow(gameWindowComponent.create());
+    std::unique_ptr<QObject> gameWindow = gameWindowController.createGameWindow(engine.get());
     auto* gameWindowItem = qobject_cast<QQuickItem*>(gameWindow.get());
-    if (!gameWindowItem) {
-        qCritical().noquote() << gameWindowComponent.errorString();
+    if (!gameWindowItem)
         return 1;
-    }
-    gameWindowItem->setParentItem(placeholder);
-    gameWindowItem->setProperty("controller", QVariant::fromValue<QObject*>(&gameWindowController));
-    gameWindowController.setGameWindowItem(gameWindowItem);
     gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
     gameWindowController.showStartScreen();
-    auto* dialogPlaceholder = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dialogPlaceholder"));
-    auto* mapWindowPane = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("mapWindowPane"));
-    gamewindow::TSidebarManager sidebarManager(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarManager")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarManager")));
+    auto* dialogPlaceholder = gameWindowController.gameWindowChild(QStringLiteral("dialogPlaceholder"));
+    auto* mapWindowPane = gameWindowController.gameWindowChild(QStringLiteral("mapWindowPane"));
+    gamewindow::TSidebarManager sidebarManager(gameWindowController.gameWindowChild(QStringLiteral("rightSidebarPlaceholder")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("rightSidebarManager")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("leftSidebarPlaceholder")),
+                                               gameWindowController.gameWindowChild(QStringLiteral("leftSidebarManager")));
     // CIP clientwindow.qml: minimum width grows with each sidebar so the 15×11
     // map is not crushed. The manager already emitted before this connection.
     const auto applySidebarCount = [window, &sidebarManager] {
@@ -785,12 +779,7 @@ int main(int argc, char** argv)
         if (!gameClient.start(QCoreApplication::applicationFilePath(), QDir::currentPath(), clientOptions))
             return 1;
     }
-    // CIP wires these controller signals to gamewindow.qml; TEventFilterManager
-    // emits them while a dialog is up, so dialog inputs get the focus.
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::bindFocusToChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "bindFocusToChatInput"); });
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::releaseFocusFromChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "releaseFocusFromChatInput"); });
+    // TEventFilterManager emits the chat-input focus signals while a dialog is up, so dialog inputs get the focus.
     QObject::connect(&dialogStack, &gamewindow::TDialogStackController::dialogVisible, &gameWindowController, [&gameWindowController](bool visible) {
         if (visible)
             Q_EMIT gameWindowController.releaseFocusFromChatInput();
@@ -806,7 +795,7 @@ int main(int argc, char** argv)
     gamewindow::TSelectObjectAmountDialogController splitStackDialog;
     gamewindow::TInformationDialogs informationDialogs;
     gamewindow::TDragAndDropController dragAndDrop(window->contentItem(),
-                                                   gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dragApperanceInstanceIcon")));
+                                                   gameWindowController.gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), &dragAndDrop);
     store::TStoreStorage storeStorage;
     store::TStoreProtocolMessageHandler storeMessages;
@@ -1015,7 +1004,7 @@ int main(int argc, char** argv)
     fpsLatency.setWindow(window);
     fpsLatency.setFrameDurations(gameClient.frameDurations());
     fpsLatency.setRenderProvider(gameClient.worldMapRenderProvider());
-    if (QQuickItem* fpsItem = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("tibiaFpsLatencyIndicator")))
+    if (QQuickItem* fpsItem = gameWindowController.gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")))
         fpsItem->setProperty("controller", QVariant::fromValue<QObject*>(&fpsLatency));
 
     qInfo("tibia.boot: before ChatController");

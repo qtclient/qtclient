@@ -15,6 +15,7 @@
 #include <vector>
 
 class QEvent;
+class QQmlEngine;
 class QObject;
 class QQuickItem;
 
@@ -59,6 +60,13 @@ public:
     /// gamewindow.qml's item, once it is shown: applies the option-driven game
     /// window state now and again on every option change.
     void setGameWindowItem(QQuickItem* gameWindowItem);
+    /// CIP: gamewindow.qml made in the container with this controller, the background art on, the
+    /// chat-input focus signals wired to the item's functions. The caller keeps the item alive
+    /// (null and the QML error logged when it fails).
+    std::unique_ptr<QObject> createGameWindow(QQmlEngine* engine);
+    /// CIP: gamewindow.qml's item named `name` (dialogPlaceholder, mapWindowPane, the sidebar
+    /// placeholders and managers, the action bars, cooldownBar, ...); null before the item is set.
+    QQuickItem* gameWindowChild(const QString& name) const;
     /// The container's backgroundImageSmooth (option antialiasingMode is
     /// antialiasing), the cooldown bar's visibility (option cooldownBarEnabled)
     /// and the pane layout (options gameWindowUpperPaneHeight,
@@ -92,6 +100,17 @@ public:
     void setResizingMode(cip::tibia::qmlcomponents::enums::EGameWindowResizingMode mode) override;
 
     void setRememberEmail(bool v) override;
+    /// CIP: the static race name of the boosted creature / boss, each word capitalised (the
+    /// service's name when the race is not in the static data).
+    QString boostedCreatureName() const override;
+    QString boostedBossName() const override;
+    /// CIP: OPEN_URL of a link in the hint area.
+    void linkClicked(const QString& Url) override;
+    /// CIP: the pointing hand over a hint-area link.
+    void linkHoverChanged(bool IsOverLink) override;
+    /// CIP: option showEMailAsPlainText.
+    bool showEmailAsPlainText() const override;
+    void setShowEmailAsPlainText(bool v) override;
     void loginPressed(const QString& EMailAddress, const QString& Password) override;
     void forgotEMailAddressOrPasswordPressed() override;
     void handleCreateNewAccount() override;
