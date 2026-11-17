@@ -378,10 +378,17 @@ public:
     void start(const Position& field, qint64 nowMs, int direction);
 };
 
+/// A tutorial field marker: shown until the tutorial removes its markers.
 class TTutorialFieldEffectInstance final : public TEffectInstance
 {
 public:
     using TEffectInstance::TEffectInstance;
+
+    void stop() { m_stopped = true; }
+    bool isFinished() const override { return m_stopped || TEffectInstance::isFinished(); }
+
+private:
+    bool m_stopped = false;
 };
 
 /// CIP appearances::TAppearanceInstanceSpriteSequence — sprite id list for one phase.
@@ -419,6 +426,8 @@ public:
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
     static TAppearanceInstancePtr fromStoredCreature(tibia::creatures::TCreature& stored);
     static TAppearanceInstancePtr fromOutfit(const Outfit& outfit, ThingType* type);
+    /// A tutorial marker on `field`: kind 1 is effect 57, any other kind effect 56.
+    static std::shared_ptr<TTutorialFieldEffectInstance> createTutorialFieldEffect(int kind, const Position& field);
 };
 
 

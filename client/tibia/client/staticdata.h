@@ -136,6 +136,16 @@ struct RaceType
     bool boss{ false };
     /// Boss record field 4: the team finder leaves these bosses out.
     bool notInTeamFinder{ false };
+    /// Bestiary difficulty 0..5 (bosses: 6) and occurrence 0..3.
+    uint8_t difficulty{ 0 };
+    uint8_t occurrence{ 0 };
+};
+
+/// CIP staticdata MonsterClass (the bestiary's classes).
+struct MonsterClassType
+{
+    uint8_t id{ 0 };
+    std::string name;
 };
 
 struct CyclopediaHouseType
@@ -165,6 +175,28 @@ struct CyclopediaQuestType
 {
     uint16_t id{ 0 };
     std::string name;
+};
+
+/// Everything the staticdata asset holds (CIP: TAssetHandler's static information).
+struct TStaticInformation
+{
+    std::vector<RaceType> monsters;
+    std::vector<MonsterClassType> monsterClasses;
+    std::vector<RaceType> bosses;
+    std::vector<CyclopediaAchievementType> achievements;
+    std::vector<CyclopediaHouseType> houses;
+    std::vector<CyclopediaQuestType> quests;
+};
+
+/// One house's area in the staticmapdata asset: its fields stay serialized.
+struct THouseMapArea
+{
+    uint32_t houseId{ 0 };
+    Position topLeft;
+    uint32_t width{ 0 };
+    uint32_t height{ 0 };
+    uint32_t depth{ 0 };
+    std::string serializedFields;
 };
 
 struct CyclopediaHouseEntry

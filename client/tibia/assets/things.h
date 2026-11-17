@@ -69,6 +69,14 @@ public:
     const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements() const { return m_cyclopediaAchievements; }
     const std::vector<CyclopediaQuestType>& getCyclopediaQuests() const { return m_cyclopediaQuests; }
     const CyclopediaQuestType* getCyclopediaQuest(uint16_t id) const;
+    const std::vector<MonsterClassType>& getMonsterClasses() const { return m_monsterClasses; }
+    /// The house areas of the staticmapdata asset.
+    const std::vector<THouseMapArea>& getHouseMapAreas() const { return m_houseMapAreas; }
+    /// Parses the staticdata asset (throws std::invalid_argument on malformed data).
+    static TStaticInformation parseStaticInformation(const std::string& bytes);
+    /// Parses the staticmapdata asset.
+    static std::vector<THouseMapArea> parseStaticMapData(const std::string& bytes);
+    void setStaticInformation(TStaticInformation information);
 
     // Appearance type lookups. A missing category throws std::out_of_range.
     ThingType* findAppearanceType(ThingCategory category, uint16_t id) const;
@@ -117,6 +125,8 @@ private:
     std::vector<CyclopediaHouseType> m_cyclopediaHouses;
     std::vector<CyclopediaAchievementType> m_cyclopediaAchievements;
     std::vector<CyclopediaQuestType> m_cyclopediaQuests;
+    std::vector<MonsterClassType> m_monsterClasses;
+    std::vector<THouseMapArea> m_houseMapAreas;
     ThingTypeList m_marketObjectTypes;
     ThingTypeList m_skillWheelGemObjectTypes;
     bool m_datLoaded = false;

@@ -68,7 +68,6 @@
 #include "effects/effectprotocolmessagehandler.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
-#include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturesciptypes.h"
@@ -590,11 +589,6 @@ chat::TTextStorage* TGameClient::textStorage() const
     return activeSession() ? activeSession()->textStorage().get() : nullptr;
 }
 
-worldmap::TNumericalEffectStorage* TGameClient::numericalEffects() const
-{
-    return activeSession() ? activeSession()->numericalEffectStorage().get() : nullptr;
-}
-
 effects::TEffectStorage* TGameClient::effectStorage() const
 {
     return activeSession() ? activeSession()->effectStorage().get() : nullptr;
@@ -611,11 +605,10 @@ void TGameClient::bindActiveSession()
         m_minimap->setProtocolHandler(worldmapProtocol());
     if (!session)
         return;
-    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage(), *session->numericalEffectStorage());
+    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage(), *session->effectStorage());
     m_messageHandler->setOptions(app::ClientOptions::load().options());
     m_messageHandler->setIgnoreList(m_messageIgnoreList);
-    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage(),
-                                                              *session->numericalEffectStorage());
+    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
 }
 
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
@@ -1060,8 +1053,6 @@ void TGameClient::onWorldLeft()
     m_statusbarStorage->save();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
-    if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())
-        numerical->clear();
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();

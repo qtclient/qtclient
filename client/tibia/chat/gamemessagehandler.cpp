@@ -5,7 +5,7 @@
 #include "chat/textstorage.h"
 #include "config/clientoptiondefaults.h"
 #include "input/gameactionhandlers.h"
-#include "worldmap/numericaleffectstorage.h"
+#include "effects/effectstorage.h"
 
 #include "protocol/protocolcodes.h"
 #include <tibia/game/gamenotify.h>
@@ -92,7 +92,7 @@ bool option(const QJsonObject& options, const char* name)
 
 }
 
-TGameMessageHandler::TGameMessageHandler(TTextStorage& texts, worldmap::TNumericalEffectStorage& effects)
+TGameMessageHandler::TGameMessageHandler(TTextStorage& texts, effects::TEffectStorage& effects)
     : m_texts(texts)
     , m_effects(effects)
 {
@@ -284,7 +284,8 @@ void TGameMessageHandler::onTextMessage(const int mode, const QString& text)
 void TGameMessageHandler::onNumericalEffect(const Position& coordinate, const qint64 value, const int color)
 {
     if (m_showTextualEffects && value != 0)
-        m_effects.add(coordinate, value, worldmap::TNumericalEffectStorage::colorFrom8bit(color), TTextStorage::now());
+        m_effects.addNumericalEffect(std::make_shared<effects::TNumericalEffect>(
+            coordinate, value, effects::numericalEffectColorFrom8bit(color), TTextStorage::now()));
 }
 
 }

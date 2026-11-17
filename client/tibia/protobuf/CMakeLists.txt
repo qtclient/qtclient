@@ -34,6 +34,7 @@ set(ProtoFiles
 	"${CIP_PROTO_DIR}/sounds.proto"
 	"${CIP_PROTO_DIR}/sounds-common.proto"
 	"${TIP_PROTOCOL_PROTO_DIR}/protocol.proto"
+	"${TIP_PROTOCOL_PROTO_DIR}/staticdata.proto"
 )
 
 if (MSVC)

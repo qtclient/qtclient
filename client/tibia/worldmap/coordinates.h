@@ -6,6 +6,10 @@
 
 #include <QPoint>
 
+class QDebug;
+
+#include <iosfwd>
+
 namespace tibia {
 namespace worldmap {
 
@@ -153,6 +157,10 @@ public:
         return topLeft == other.topLeft && extent == other.extent;
     }
 };
+
+/// "[x=fieldX+offsetX, y=fieldY+offsetY, z]" (CIP's debug print of a subfield coordinate).
+QDebug operator<<(QDebug debug, const TWorldMapSubfieldCoordinate& coordinate);
+std::ostream& operator<<(std::ostream& stream, const TWorldMapSubfieldCoordinate& coordinate);
 
 }
 }

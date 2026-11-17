@@ -38,10 +38,10 @@
 #include "tutorial/tutorialciptypes.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
+#include "effects/effectgameactionhandler.h"
 #include "sound/soundprotocolmessagehandler.h"
 #include "sound/soundstorage.h"
 #include "worldmap/ambientlightstorage.h"
-#include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
@@ -81,9 +81,6 @@ void TGameSessionBase::createStorages()
     m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>();
     m_textStorage = std::make_shared<chat::TTextStorage>();
-    m_numericalEffectStorage = std::make_shared<worldmap::TNumericalEffectStorage>();
-    // Numerical effects count against the effect limit.
-    m_effectStorage->setNumericalCount([numerical = m_numericalEffectStorage.get()] { return numerical->effects().size(); });
     // The own creature's arrival clears the map texts (CIP TTextStorage).
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, this,
             [texts = m_textStorage.get()](std::weak_ptr<creatures::TCreature> player) {
@@ -97,7 +94,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_worldmapProtocolMessageHandler->setViewport(m_worldMapViewport.get());
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
-    m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>();
+    m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -325,7 +322,6 @@ void TGameSessionBase::releaseStorages()
     m_effectProtocolMessageHandler.reset();
     m_effectGameActionHandler.reset();
     m_effectStorage.reset();
-    m_numericalEffectStorage.reset();
     m_textStorage.reset();
     m_ambientLightStorage.reset();
     m_worldmapProtocolMessageHandler.reset();

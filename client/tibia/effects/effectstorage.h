@@ -1,12 +1,15 @@
 #pragma once
 
 #include "appearances/appearanceinstance.h"
+#include "effects/numericaleffect.h"
 
 #include <cip_gen.h>
 
 #include <client/position.h>
 
+#include <deque>
 #include <functional>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -47,22 +50,54 @@ public:
     void removeOutside(const std::function<bool(const Position&)>& inArea);
     void clear();
 
+    /// The effect at `index` in the order of arrival.
+    TEffectPtr effectAt(size_t index) const { return m_effects[index]; }
+    /// Every effect, in the order of arrival.
+    std::vector<TEffectPtr> effects() const { return m_effects; }
     /// The missiles flying on floor `z`, in their order of arrival.
     const std::vector<TEffectPtr>& missilesOn(uint8_t z) const;
     /// The effects at `field`, in their order of arrival.
     const std::vector<TEffectPtr>& effectsAt(const Position& field) const;
     bool hasEffectsAt(const Position& field) const { return m_byField.contains(field); }
 
-    /// Counts the numerical effects, which share the limit.
-    void setNumericalCount(std::function<size_t()> count) { m_numericalCount = std::move(count); }
+    /// Adds an effect and keeps it until stopTrackedEffects (the tutorial's field markers).
+    void trackEffect(const TEffectPtr& effect);
+    /// Stops the tracked effects and drops the finished effects.
+    void stopTrackedEffects();
+
+    /// Adds a rising number, or adds its value to a number of the same colour
+    /// started on the same field just before; false when merged or full.
+    bool addNumericalEffect(const effects::TNumericalEffectPtr& effect);
+    /// The numbers rising on `field`, oldest first.
+    const std::deque<effects::TNumericalEffectPtr>& numericalEffectsAt(const Position& field) const;
+    /// The fields of floors `minZ`..`maxZ` with rising numbers.
+    std::vector<Position> numericalEffectFields(int minZ, int maxZ) const;
+    /// Advances every number to `nowMs`.
+    void updateNumericalEffects(qint64 nowMs);
+    size_t numericalEffectCount() const;
 
 private:
+    struct FieldOrder
+    {
+        bool operator()(const Position& a, const Position& b) const
+        {
+            if (a.x != b.x)
+                return a.x < b.x;
+            if (a.y != b.y)
+                return a.y < b.y;
+            return a.z < b.z;
+        }
+    };
+
     void erase(const std::function<bool(const TEffectPtr&)>& predicate);
+    void removeFinished();
+    void removeFinishedNumericalEffects();
 
     std::vector<TEffectPtr> m_effects;
     std::unordered_map<Position, std::vector<TEffectPtr>, Position::Hasher> m_byField;
     std::unordered_map<uint8_t, std::vector<TEffectPtr>> m_missilesByFloor;
-    std::function<size_t()> m_numericalCount;
+    std::vector<TEffectPtr> m_trackedEffects;
+    std::map<Position, std::deque<effects::TNumericalEffectPtr>, FieldOrder> m_numericalEffects;
 };
 
 }

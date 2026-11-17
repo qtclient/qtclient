@@ -471,6 +471,15 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
     return instance;
 }
 
+std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
+                                                                                                    const Position& field)
+{
+    ThingType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
+    auto effect = std::make_shared<TTutorialFieldEffectInstance>(type);
+    effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+    return effect;
+}
+
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, ThingType* type)
 {
     if (!type)

@@ -603,6 +603,7 @@ if(TIBIA_WITH_GAMECORE)
     effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
     effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
+    effects/effectgameactionhandler.cpp effects/effectgameactionhandler.h
     sprites/sprite.cpp sprites/sprite.h
     shared/cip_typed.h
     cip_ports/all_ports.cpp
@@ -686,13 +687,12 @@ if(TIBIA_WITH_GAMECORE)
     trade/playertradestorage.cpp trade/playertradestorage.h
     worldmap/ambientlightstorage.cpp worldmap/ambientlightstorage.h
     worldmap/cacheforworldmapstoragelookupmembers.cpp worldmap/cacheforworldmapstoragelookupmembers.h
-    worldmap/coordinates.h
+    worldmap/coordinates.cpp worldmap/coordinates.h
     worldmap/creaturehud.cpp worldmap/creaturehud.h
     worldmap/creaturehudcontroller.cpp worldmap/creaturehudcontroller.h
     worldmap/creaturehudrenderprovider.cpp worldmap/creaturehudrenderprovider.h
     worldmap/lightmap.cpp worldmap/lightmap.h
     worldmap/nextframetimestamppredictor.cpp worldmap/nextframetimestamppredictor.h
-    worldmap/numericaleffectstorage.cpp worldmap/numericaleffectstorage.h
     worldmap/worldmapfield.h
     worldmap/worldmapgameactionhandler.cpp worldmap/worldmapgameactionhandler.h
     worldmap/worldmapgameactionprovider.cpp worldmap/worldmapgameactionprovider.h

@@ -17,6 +17,7 @@
 #include "shared/tibiafilesystemhelper.h"
 
 #include <appearances.pb.h>
+#include <staticdata.pb.h>
 
 #include <QCoreApplication>
 #include <QDir>
@@ -79,103 +80,6 @@ std::string loadAssetIdentifier(const std::string& directory)
             return id;
     }
     return {};
-}
-
-struct WireField
-{
-    uint32_t id = 0;
-    bool blob = false;
-    uint64_t varint = 0;
-    const uint8_t* data = nullptr;
-    size_t size = 0;
-};
-
-bool readVarint(const uint8_t*& cursor, const uint8_t* end, uint64_t& value)
-{
-    value = 0;
-    int shift = 0;
-    while (cursor < end && shift <= 63) {
-        const uint8_t byte = *cursor++;
-        value |= static_cast<uint64_t>(byte & 0x7F) << shift;
-        if ((byte & 0x80) == 0)
-            return true;
-        shift += 7;
-    }
-    return false;
-}
-
-std::vector<WireField> readMessage(const uint8_t* cursor, const uint8_t* end)
-{
-    std::vector<WireField> fields;
-    while (cursor < end) {
-        uint64_t tag = 0;
-        if (!readVarint(cursor, end, tag))
-            break;
-        WireField field;
-        field.id = static_cast<uint32_t>(tag >> 3);
-        const uint32_t wire = static_cast<uint32_t>(tag & 7);
-        if (wire == 0) {
-            if (!readVarint(cursor, end, field.varint))
-                break;
-        } else if (wire == 2) {
-            uint64_t length = 0;
-            if (!readVarint(cursor, end, length) || cursor + length > end)
-                break;
-            field.blob = true;
-            field.data = cursor;
-            field.size = static_cast<size_t>(length);
-            cursor += length;
-        } else if (wire == 5) {
-            if (cursor + 4 > end)
-                break;
-            cursor += 4;
-            continue;
-        } else if (wire == 1) {
-            if (cursor + 8 > end)
-                break;
-            cursor += 8;
-            continue;
-        } else {
-            break;
-        }
-        fields.push_back(field);
-    }
-    return fields;
-}
-
-const WireField* findField(const std::vector<WireField>& fields, const uint32_t id)
-{
-    for (const auto& field : fields)
-        if (field.id == id)
-            return &field;
-    return nullptr;
-}
-
-uint64_t fieldVarint(const std::vector<WireField>& fields, const uint32_t id)
-{
-    const WireField* field = findField(fields, id);
-    return field && !field->blob ? field->varint : 0;
-}
-
-bool hasField(const std::vector<WireField>& fields, const uint32_t id)
-{
-    return findField(fields, id) != nullptr;
-}
-
-std::string fieldString(const std::vector<WireField>& fields, const uint32_t id)
-{
-    const WireField* field = findField(fields, id);
-    if (!field || !field->blob || !field->data)
-        return {};
-    return { reinterpret_cast<const char*>(field->data), field->size };
-}
-
-std::vector<WireField> subMessage(const std::vector<WireField>& fields, const uint32_t id)
-{
-    const WireField* field = findField(fields, id);
-    if (!field || !field->blob)
-        return {};
-    return readMessage(field->data, field->data + field->size);
 }
 
 void addFlag(AppearanceRecord& record, const uint64_t flag)
@@ -502,43 +406,25 @@ void fillSprites(AppearanceRecord& record, const tibia::protobuf::appearances::A
     record.layers = targetLayers;
 }
 
-Outfit outfitFrom(const std::vector<WireField>& fields)
+Outfit outfitFrom(const tibia::protobuf::staticdata::Outfit& message)
 {
     Outfit outfit;
-    const auto colors = subMessage(fields, 2);
-    const auto lookItem = static_cast<uint16_t>(fieldVarint(fields, 4));
-    if (lookItem != 0) {
-        outfit.setAuxId(lookItem);
-    } else {
-        outfit.setId(static_cast<uint16_t>(fieldVarint(fields, 1)));
-        outfit.setAddons(static_cast<uint8_t>(fieldVarint(fields, 3)));
-        if (!colors.empty()) {
-            outfit.setHead(static_cast<uint8_t>(fieldVarint(colors, 1)));
-            outfit.setBody(static_cast<uint8_t>(fieldVarint(colors, 2)));
-            outfit.setLegs(static_cast<uint8_t>(fieldVarint(colors, 3)));
-            outfit.setFeet(static_cast<uint8_t>(fieldVarint(colors, 4)));
-        }
-    }
+    outfit.setId(static_cast<uint16_t>(message.look_type()));
+    outfit.setAuxId(static_cast<uint16_t>(message.look_type_ex()));
+    outfit.setHead(static_cast<uint8_t>(message.colors().head()));
+    outfit.setBody(static_cast<uint8_t>(message.colors().body()));
+    outfit.setLegs(static_cast<uint8_t>(message.colors().legs()));
+    outfit.setFeet(static_cast<uint8_t>(message.colors().feet()));
+    outfit.setAddons(static_cast<uint8_t>(message.addons() & 3));
     return outfit;
 }
 
-RaceType creatureFrom(const WireField& field, const bool boss, const bool official)
+/// The protobuf difficulty / occurrence values map one to one; others are rejected.
+uint8_t checkedEnum(const uint32_t value, const uint32_t count)
 {
-    const auto fields = readMessage(field.data, field.data + field.size);
-    RaceType race;
-    race.raceId = static_cast<uint32_t>(fieldVarint(fields, 1));
-    race.name = fieldString(fields, 2);
-    race.outfit = outfitFrom(subMessage(fields, 3));
-    race.boss = boss;
-    if (official) {
-        race.notInTeamFinder = boss && fieldVarint(fields, 4) != 0;
-        race.hasCategory = hasField(fields, 6);
-        race.category = static_cast<uint32_t>(fieldVarint(fields, 6));
-    } else {
-        race.hasCategory = hasField(fields, 4);
-        race.category = static_cast<uint32_t>(fieldVarint(fields, 4));
-    }
-    return race;
+    if (value >= count)
+        throw std::runtime_error("unhandled enum value");
+    return static_cast<uint8_t>(value);
 }
 
 QJsonArray catalogOf(const std::string& directory)
@@ -749,58 +635,97 @@ bool TAppearancesManager::loadStaticData(const std::string& directory)
         if (fileName.empty())
             throw std::runtime_error("catalog has no staticdata file");
         const auto bytes = tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + fileName));
-        const auto top = readMessage(reinterpret_cast<const uint8_t*>(bytes.data()),
-                                      reinterpret_cast<const uint8_t*>(bytes.data()) + bytes.size());
-        const bool official = hasField(top, 6);
-        m_monsterRaces.clear();
-        const auto takeCreatures = [&](const uint32_t field, const bool boss) {
-            for (const auto& entry : top) {
-                if (entry.id == field && entry.blob)
-                    m_monsterRaces.push_back(creatureFrom(entry, boss, official));
-            }
-        };
-        takeCreatures(1, false);
-        takeCreatures(official ? 5 : 4, true);
-
-        m_cyclopediaHouses.clear();
-        for (const auto& entry : top) {
-            if (entry.id != (official ? 4u : 3u) || !entry.blob)
-                continue;
-            const auto fields = readMessage(entry.data, entry.data + entry.size);
-            const auto position = subMessage(fields, 6);
-            m_cyclopediaHouses.push_back({ static_cast<uint32_t>(fieldVarint(fields, 1)), fieldString(fields, 2), fieldString(fields, 3),
-                                           static_cast<uint32_t>(fieldVarint(fields, 4)), static_cast<uint32_t>(fieldVarint(fields, 5)),
-                                           Position(static_cast<uint16_t>(fieldVarint(position, 1)), static_cast<uint16_t>(fieldVarint(position, 2)),
-                                                    static_cast<uint8_t>(fieldVarint(position, 3))),
-                                           static_cast<uint32_t>(fieldVarint(fields, 7)), fieldVarint(fields, 8) != 0, fieldString(fields, 9),
-                                           fieldVarint(fields, 10) != 0 });
-        }
-
-        m_cyclopediaAchievements.clear();
-        for (const auto& entry : top) {
-            if (entry.id != (official ? 3u : 2u) || !entry.blob)
-                continue;
-            const auto fields = readMessage(entry.data, entry.data + entry.size);
-            m_cyclopediaAchievements.push_back({ static_cast<uint16_t>(fieldVarint(fields, 1)), fieldString(fields, 2), fieldString(fields, 3),
-                                                 static_cast<uint8_t>(fieldVarint(fields, 4)) });
-        }
-
-        // Official: 6=quests; OTC remap: 5=quests (CIP Team Finder activity list).
-        m_cyclopediaQuests.clear();
-        for (const auto& entry : top) {
-            if (entry.id != (official ? 6u : 5u) || !entry.blob)
-                continue;
-            const auto fields = readMessage(entry.data, entry.data + entry.size);
-            const auto id = static_cast<uint16_t>(fieldVarint(fields, 1));
-            const auto name = fieldString(fields, 2);
-            if (id && !name.empty())
-                m_cyclopediaQuests.push_back({ id, name });
-        }
+        setStaticInformation(parseStaticInformation(bytes));
+        // The houses' map areas come with the static data (CIP: asset type 6).
+        const auto mapFileName = catalogFile(catalog, "staticmapdata");
+        m_houseMapAreas.clear();
+        if (!mapFileName.empty())
+            m_houseMapAreas = parseStaticMapData(
+                tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + mapFileName)));
         return true;
     } catch (const std::exception& e) {
         qCritical("%s", std::format("Failed to load '{}' (StaticData): {}", directory, e.what()).c_str());
         return false;
     }
+}
+
+TStaticInformation TAppearancesManager::parseStaticInformation(const std::string& bytes)
+{
+    tibia::protobuf::staticdata::StaticData message;
+    if (!message.ParseFromString(bytes))
+        throw std::invalid_argument("ParseStaticInformationFromProtobuf malformed protobuf data");
+    TStaticInformation information;
+    information.monsters.reserve(static_cast<size_t>(message.monster_size()));
+    for (const auto& monster : message.monster()) {
+        RaceType race;
+        race.raceId = monster.race_id();
+        race.name = monster.name();
+        race.outfit = outfitFrom(monster.outfit());
+        race.difficulty = checkedEnum(monster.difficulty(), 6);
+        race.occurrence = checkedEnum(monster.occurrence(), 4);
+        race.hasCategory = monster.has_flag6();
+        race.category = monster.flag6() ? 1 : 0;
+        information.monsters.push_back(std::move(race));
+    }
+    information.monsterClasses.reserve(static_cast<size_t>(message.monster_class_size()));
+    for (const auto& monsterClass : message.monster_class())
+        information.monsterClasses.push_back({ static_cast<uint8_t>(monsterClass.id()), monsterClass.name() });
+    information.achievements.reserve(static_cast<size_t>(message.achievement_size()));
+    for (const auto& achievement : message.achievement()) {
+        information.achievements.push_back({ static_cast<uint16_t>(achievement.id()), achievement.name(),
+                                             achievement.description(), static_cast<uint8_t>(achievement.grade()) });
+    }
+    information.houses.reserve(static_cast<size_t>(message.house_size()));
+    for (const auto& house : message.house()) {
+        information.houses.push_back({ house.house_id(), house.name(), house.description(), house.rent(),
+                                       static_cast<uint8_t>(house.beds()),
+                                       Position(static_cast<uint16_t>(house.position().x()), static_cast<uint16_t>(house.position().y()),
+                                                static_cast<uint8_t>(house.position().z())),
+                                       static_cast<uint16_t>(house.size()), house.guildhall(), house.city(), house.shop() });
+    }
+    information.bosses.reserve(static_cast<size_t>(message.boss_size()));
+    for (const auto& boss : message.boss()) {
+        RaceType race;
+        race.raceId = boss.race_id();
+        race.name = boss.name();
+        race.outfit = outfitFrom(boss.outfit());
+        race.boss = true;
+        race.notInTeamFinder = boss.flag4();
+        // Bosses take the difficulty after the bestiary's six.
+        race.difficulty = 6;
+        information.bosses.push_back(std::move(race));
+    }
+    for (const auto& quest : message.quest())
+        information.quests.push_back({ static_cast<uint16_t>(quest.id()), quest.name() });
+    return information;
+}
+
+std::vector<THouseMapArea> TAppearancesManager::parseStaticMapData(const std::string& bytes)
+{
+    tibia::protobuf::staticdata::StaticMapData message;
+    if (!message.ParseFromString(bytes))
+        throw std::invalid_argument("ParseStaticMapDataFromProtobuf malformed protobuf data");
+    std::vector<THouseMapArea> areas;
+    areas.reserve(static_cast<size_t>(message.house_map_area_size()));
+    for (const auto& house : message.house_map_area()) {
+        const auto& area = house.area();
+        areas.push_back({ house.house_id(),
+                          Position(static_cast<uint16_t>(area.top_left().x()), static_cast<uint16_t>(area.top_left().y()),
+                                   static_cast<uint8_t>(area.top_left().z())),
+                          area.extent().width(), area.extent().height(), area.extent().depth(), area.fields() });
+    }
+    return areas;
+}
+
+void TAppearancesManager::setStaticInformation(TStaticInformation information)
+{
+    m_monsterRaces = std::move(information.monsters);
+    m_monsterRaces.insert(m_monsterRaces.end(), std::make_move_iterator(information.bosses.begin()),
+                          std::make_move_iterator(information.bosses.end()));
+    m_monsterClasses = std::move(information.monsterClasses);
+    m_cyclopediaHouses = std::move(information.houses);
+    m_cyclopediaAchievements = std::move(information.achievements);
+    m_cyclopediaQuests = std::move(information.quests);
 }
 
 bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)

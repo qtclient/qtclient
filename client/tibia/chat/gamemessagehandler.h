@@ -14,8 +14,8 @@
 #include <vector>
 
 namespace tibia {
-namespace worldmap {
-class TNumericalEffectStorage;
+namespace effects {
+class TEffectStorage;
 }
 }
 
@@ -31,7 +31,7 @@ class TWhiteBlacklist;
 class TGameMessageHandler : public ::tibia::CipTyped
 {
 public:
-    TGameMessageHandler(TTextStorage& texts, worldmap::TNumericalEffectStorage& effects);
+    TGameMessageHandler(TTextStorage& texts, effects::TEffectStorage& effects);
     ~TGameMessageHandler();
     TGameMessageHandler(const TGameMessageHandler&) = delete;
     TGameMessageHandler& operator=(const TGameMessageHandler&) = delete;
@@ -52,7 +52,7 @@ private:
     void addSpeech(const QString& name, int mode, const QString& text, const Position& coordinate);
 
     TTextStorage& m_texts;
-    worldmap::TNumericalEffectStorage& m_effects;
+    effects::TEffectStorage& m_effects;
     TWhiteBlacklist* m_ignoreList = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
 

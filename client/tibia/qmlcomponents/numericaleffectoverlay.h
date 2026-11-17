@@ -11,8 +11,8 @@
 #include <vector>
 
 namespace tibia {
-namespace worldmap {
-class TNumericalEffectStorage;
+namespace effects {
+class TEffectStorage;
 }
 }
 
@@ -56,7 +56,7 @@ public:
     explicit TNumericalEffectOverlayQuickItem(QQuickItem* parent = nullptr);
     ~TNumericalEffectOverlayQuickItem() override;
 
-    void setSources(TWorldMapRenderProvider* provider, const worldmap::TNumericalEffectStorage* effects);
+    void setSources(TWorldMapRenderProvider* provider, const effects::TEffectStorage* effects);
 
 protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
@@ -78,7 +78,7 @@ private:
     void clear();
 
     QPointer<TWorldMapRenderProvider> m_provider;
-    const worldmap::TNumericalEffectStorage* m_effects = nullptr;
+    const effects::TEffectStorage* m_effects = nullptr;
     QMetaObject::Connection m_frameConnection;
     QQmlComponent* m_component = nullptr;
     std::vector<Field> m_fields;
