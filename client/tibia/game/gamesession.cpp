@@ -629,38 +629,6 @@ void processInspectionState(const uint32_t creatureId, const uint8_t state)
 {
     tibia::game::notify("onInspectionState", creatureId, state);
 }
-void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats, const std::vector<std::vector<uint16_t>>& skills, const std::vector<std::tuple<uint8_t, uint16_t>>& combats)
-{
-    tibia::game::notify("onParseCyclopediaCharacterGeneralStats", stats, skills, combats);
-}
-void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, const double mitigation, const std::vector<std::vector<uint16_t>>& additionalSkillsArray, const std::vector<std::vector<uint16_t>>& forgeSkillsArray, const std::vector<uint16_t>& perfectShotDamageRangesArray, const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray, const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray)
-{
-    tibia::game::notify("onParseCyclopediaCharacterCombatStats", data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
-}
-void processCyclopediaCharacterGeneralStatsBadge(const uint8_t showAccountInformation, const uint8_t playerOnline, const uint8_t playerPremium, const std::string_view loyaltyTitle, const std::vector<std::tuple<uint32_t, std::string>>& badgesVector)
-{
-    tibia::game::notify("onParseCyclopediaCharacterBadges", showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
-}
-void processCyclopediaCharacterInspection(const CyclopediaCharacterInspection& data)
-{
-    tibia::game::notify("onParseCyclopediaCharacterInspection", data);
-}
-void processCyclopediaCharacterItemSummary(const CyclopediaCharacterItemSummary& data)
-{
-    tibia::game::notify("onUpdateCyclopediaCharacterItemSummary", data);
-}
-void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit, const std::vector<CharacterInfoOutfits>& outfits, const std::vector<CharacterInfoMounts>& mounts, const std::vector<CharacterInfoFamiliar>& familiars)
-{
-    tibia::game::notify("onParseCyclopediaCharacterAppearances", currentOutfit, outfits, mounts, familiars);
-}
-void processCyclopediaCharacterRecentDeaths(const CyclopediaCharacterRecentDeaths& data)
-{
-    tibia::game::notify("onCyclopediaCharacterRecentDeaths", data);
-}
-void processCyclopediaCharacterRecentPvpKills(const CyclopediaCharacterRecentPvPKills& data)
-{
-    tibia::game::notify("onCyclopediaCharacterRecentKills", data);
-}
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData)
 {
     tibia::game::notify("onParseBestiaryRaces", bestiaryData);
@@ -684,18 +652,6 @@ void processBosstiaryInfo(const std::vector<BosstiaryData>& boss)
 void processBosstiarySlots(const BosstiarySlotsData& data)
 {
     tibia::game::notify("onParseBosstiarySlots", data);
-}
-void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data)
-{
-    tibia::game::notify("onCyclopediaCharacterOffenceStats", data);
-}
-void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data)
-{
-    tibia::game::notify("onCyclopediaCharacterDefenceStats", data);
-}
-void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data)
-{
-    tibia::game::notify("onCyclopediaCharacterMiscStats", data);
 }
 
 void requestBless()

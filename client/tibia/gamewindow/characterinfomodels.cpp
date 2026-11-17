@@ -2,6 +2,7 @@
 #include "cyclopedia/staticcontentinformation.h"
 
 #include "analysers/itempricestorage.h"
+#include "cyclopedia/characterinfostorage.h"
 #include "config/clientoptions.h"
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -553,25 +554,24 @@ int appearanceSource(const uint8_t type) { return type == 1 ? 1 : type == 2 ? 2 
 }
 
 /// CIP: a new proxy (inventory only) per answer, sorted.
-void TCharacterInfoDialogController::updateItemSummary(const Args& args)
+void TCharacterInfoDialogController::updateItemSummary()
 {
-    if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
-        replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(*data), this));
+    const CyclopediaCharacterItemSummary summary = cyclopedia::TCharacterInfoStorage::instance()->itemSummary();
+    replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(summary), this));
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: a new proxy over the outfits, mounts and summon skins, with the
 /// character's eight colors.
-void TCharacterInfoDialogController::updateOutfitsMounts(const Args& args)
+void TCharacterInfoDialogController::updateOutfitsMounts()
 {
-    if (args.size() < 4)
+    const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins();
+    if (!appearances)
         return;
-    const auto* colors = std::any_cast<OutfitColorStruct>(&args[0]);
-    const auto* outfits = std::any_cast<std::vector<CharacterInfoOutfits>>(&args[1]);
-    const auto* mounts = std::any_cast<std::vector<CharacterInfoMounts>>(&args[2]);
-    const auto* familiars = std::any_cast<std::vector<CharacterInfoFamiliar>>(&args[3]);
-    if (!colors || !outfits || !mounts || !familiars)
-        return;
+    const OutfitColorStruct* colors = &appearances->colors;
+    const std::vector<CharacterInfoOutfits>* outfits = &appearances->outfits;
+    const std::vector<CharacterInfoMounts>* mounts = &appearances->mounts;
+    const std::vector<CharacterInfoFamiliar>* familiars = &appearances->summonSkins;
     std::vector<AppearanceEntry> entries;
     entries.reserve(outfits->size() + mounts->size() + familiars->size());
     for (const CharacterInfoOutfits& o : *outfits)
@@ -592,15 +592,13 @@ void TCharacterInfoDialogController::updateOutfitsMounts(const Args& args)
 }
 
 /// CIP: a new titles object with the current title.
-void TCharacterInfoDialogController::updateTitles(const Args& args)
+void TCharacterInfoDialogController::updateTitles()
 {
-    using Wire = std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>>;
-    if (args.size() < 2)
+    const auto info = cyclopedia::TCharacterInfoStorage::instance()->titlesInfo();
+    if (!info)
         return;
-    const int* current = std::any_cast<int>(&args[0]);
-    const auto* titles = std::any_cast<Wire>(&args[1]);
-    if (!current || !titles)
-        return;
+    const int* current = &info->currentTitle;
+    const auto* titles = &info->titles;
     std::vector<TitleEntry> entries;
     entries.reserve(titles->size());
     for (const auto& [id, name, description, permanent, unlocked] : *titles)
@@ -609,38 +607,17 @@ void TCharacterInfoDialogController::updateTitles(const Args& args)
     Q_EMIT dataModelChanged();
 }
 
-void TCharacterInfoDialogController::hookModelEvents()
-{
-    const auto storeAs = [this](const int dataType) {
-        return [this, dataType](GameObject*, const Args& args) {
-            store(dataType, args);
-            return std::any{};
-        };
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", storeAs(ItemSummary));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", storeAs(OutfitsMounts));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", storeAs(Titles));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterAchievements", storeAs(Achievements));
-}
-
 /// The achievements controller from the record: points, secret total and the
 /// unlocked achievements.
-void TCharacterInfoDialogController::updateAchievements(const Args& args)
+void TCharacterInfoDialogController::updateAchievements()
 {
-    using Wire = std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>>;
-    if (args.size() < 3)
-        return;
-    const int* points = std::any_cast<int>(&args[0]);
-    const int* totalSecret = std::any_cast<int>(&args[1]);
-    const auto* achievements = std::any_cast<Wire>(&args[2]);
-    if (!points || !totalSecret || !achievements)
-        return;
+    const cyclopedia::TAchievementStorage& storage = cyclopedia::TCharacterInfoStorage::instance()->achievementStorage();
     std::vector<AchievementEntry> unlocked;
-    unlocked.reserve(achievements->size());
-    for (const auto& [id, timestamp, secret, name, description, grade] : *achievements)
-        unlocked.push_back({ id, timestamp, secret, QString::fromStdString(name), QString::fromStdString(description), grade });
+    unlocked.reserve(storage.achievements.size());
+    for (const cyclopedia::TAchievementStorage::TAchievement& achievement : storage.achievements)
+        unlocked.push_back({ achievement.id, achievement.timestamp, achievement.secret, achievement.name, achievement.description, achievement.grade });
     if (auto* controller = dynamic_cast<TAchievementInfoController*>(m_achievementsController))
-        controller->setData(*points, *totalSecret, std::move(unlocked));
+        controller->setData(storage.achievementPoints, storage.secretAchievements, std::move(unlocked));
 }
 
 /// CIP .

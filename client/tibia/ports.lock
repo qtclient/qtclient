@@ -785,6 +785,39 @@ creatures::TVipWidgetGameActionProvider::v6	e9225ea127c0b463	ported	creatures/cr
 cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage	8cfb6cd4b51f7d64	ported	cyclopedia/cyclopediaciptypes.cpp:TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage
 cyclopedia::TBestiaryTrackerProtocolMessageHandler::~TBestiaryTrackerProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor
 cyclopedia::TBestiaryTrackerProtocolMessageHandler::~TBestiaryTrackerProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor
+cyclopedia::TCharacterInfoStorage::v12	a3c3bdff599d41b3	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::achievementStorage
+cyclopedia::TCharacterInfoStorage::v13	7a66996a7c5d8b1c	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::hasInfo
+cyclopedia::TCharacterInfoStorage::v14	97f5db7ed38bfc61	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::baseInformation
+cyclopedia::TCharacterInfoStorage::v15	ba4c4a62b6b2f754	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::generalStatistics
+cyclopedia::TCharacterInfoStorage::v16	19aacb45c43ada13	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::offenceStats
+cyclopedia::TCharacterInfoStorage::v17	2c003f95d9cfd813	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::defenceStats
+cyclopedia::TCharacterInfoStorage::v18	87f7a9febab8b57e	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::miscStats
+cyclopedia::TCharacterInfoStorage::v19	e62637d960aa6dd1	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::storeSummary
+cyclopedia::TCharacterInfoStorage::v20	74fd7bebbdd458dc	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::outfitsMountsSummonSkins
+cyclopedia::TCharacterInfoStorage::v21	c7e17f32dafd52a2	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::recentDeaths
+cyclopedia::TCharacterInfoStorage::v22	fc308ad15ee0df34	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::recentPvpKills
+cyclopedia::TCharacterInfoStorage::v23	36b1c92a5c25cca7	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::itemSummary
+cyclopedia::TCharacterInfoStorage::v24	39e3189e4fbe2d5b	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::inspection
+cyclopedia::TCharacterInfoStorage::v25	ea9461ede806184d	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::accountInfos
+cyclopedia::TCharacterInfoStorage::v26	9e3c2e50f94c1be6	ported	cyclopedia/characterinfostorage.h:TCharacterInfoStorage::titlesInfo
+cyclopedia::TCharacterInfoStorage::v27	ebf1a9894b6aa01e	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::currentPage
+cyclopedia::TCharacterInfoStorage::v28	27aedc8900bd5281	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::pageCount
+cyclopedia::TCharacterInfoStorage::v29	02fa8eade92fbd96	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setBaseInformation
+cyclopedia::TCharacterInfoStorage::v30	0ea0162b1ddcba05	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setGeneralStatistics
+cyclopedia::TCharacterInfoStorage::v31	088445d8386c19c5	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setOffenceStats
+cyclopedia::TCharacterInfoStorage::v32	d66229d0b8d60bd8	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setDefenceStats
+cyclopedia::TCharacterInfoStorage::v33	9767bfe1dc2333df	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setMiscStats
+cyclopedia::TCharacterInfoStorage::v34	626366c6c75d62a2	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setRecentDeaths
+cyclopedia::TCharacterInfoStorage::v35	9474b3af0c68150d	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setRecentPvpKills
+cyclopedia::TCharacterInfoStorage::v36	69ae909e9044a7b0	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setItemSummary
+cyclopedia::TCharacterInfoStorage::v37	f42fed73d94d50d2	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setStoreSummary
+cyclopedia::TCharacterInfoStorage::v38	aed81c643e07007b	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setOutfitsMountsSummonSkins
+cyclopedia::TCharacterInfoStorage::v39	736880db8ce523d7	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setAccountInfos
+cyclopedia::TCharacterInfoStorage::v40	4cf1e8a708276415	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setInspection
+cyclopedia::TCharacterInfoStorage::v41	153d37eb6f243cc8	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setTitlesInfo
+cyclopedia::TCharacterInfoStorage::v42	4679c544bfb8a429	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::clearAll
+cyclopedia::TCharacterInfoStorage::v43	dea9c1dbaeb4eae8	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::clear
+cyclopedia::TCharacterInfoStorage::v44	1b85693a7bc34a2a	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setAchievementsLoaded
 cyclopedia::TCharacterInfoStorage::~TCharacterInfoStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
 cyclopedia::TCharacterInfoStorage::~TCharacterInfoStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor (member destruction only, read)
 cyclopedia::TConcoctionQmlData::~TConcoctionQmlData	42d5842b3d92f4d4	skip	generated: compiler-generated destructor (member destruction only, read)
@@ -4723,6 +4756,7 @@ sub_16a9cc86912c#2	16a9cc86912c6add	inlined	protocol::TProtobufServerMessageTran
 sub_16aa7b48c219	16aa7b48c219d994	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
 sub_16b685e4d258	16b685e4d258a5f0	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setTraderFilterIndex
 sub_16b9384f22e2	16b9384f22e2e04d	skip	library: libc++ std::vector push_back/emplace_back slow path, reserve or range assign (read: size/capacity arithmetic, length_error, relocate)
+sub_16b9384f22e2#2	16b9384f22e2e04d	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
 sub_16d6040f4fbe	16d6040f4fbe9306	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
 sub_16d6040f4fbe#2	16d6040f4fbe9306	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
 sub_16d62d6ddd73	16d62d6ddd737659	skip	data: static initialiser
@@ -5133,6 +5167,9 @@ sub_23c91f1a75a5#118	23c91f1a75a58fdc	skip	library: std container internals (map
 sub_23c91f1a75a5#120	23c91f1a75a58fdc	inlined	sub_52ca29368333
 sub_23c91f1a75a5#128	23c91f1a75a58fdc	skip	library: libc++ std::vector<TDroppedLoot>/<TTrackedItem> insert, erase, range construct, length_error (read)
 sub_23c91f1a75a5#129	23c91f1a75a58fdc	skip	library: std::map / std::deque / std::vector template instantiation
+sub_23c91f1a75a5#145	23c91f1a75a58fdc	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
+sub_23c91f1a75a5#146	23c91f1a75a58fdc	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
+sub_23c91f1a75a5#147	23c91f1a75a58fdc	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
 sub_23c91f1a75a5#148	23c91f1a75a58fdc	skip	library: std library template (vector length error, map emplace, vector push_back)
 sub_23c91f1a75a5#149	23c91f1a75a58fdc	skip	library: Qt/std container template code
 sub_23c91f1a75a5#150	23c91f1a75a58fdc	skip	library: std library template (vector push_back / length error, std::sort introsort pieces, unique_ptr deleter)
@@ -5187,6 +5224,8 @@ sub_23c91f1a75a5#366	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int
 sub_23c91f1a75a5#367	23c91f1a75a58fdc	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#60	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#7	23c91f1a75a58fdc	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
+sub_23c91f1a75a5#8	23c91f1a75a58fdc	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
 sub_23c91f1a75a5#93	23c91f1a75a58fdc	skip	library: libc++ std::vector growth
 sub_23d0e799df78	23d0e799df78dd35	ported	teamfinder/teamsortproxymodels.cpp:makeActivity
 sub_23e2bec2fc32	23e2bec2fc321c78	skip	library: std::map / std::deque / std::vector template instantiation
@@ -5835,6 +5874,7 @@ sub_3c77fed97608	3c77fed976086b39	skip	generated: compiler-generated destructor
 sub_3c7910ea4b8a	3c7910ea4b8a4cba	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_3c80093e47e0#3	3c80093e47e0db90	skip	library: QMap<QUrl, QVariant> template code
 sub_3c80093e47e0#4	3c80093e47e0db90	skip	library: QMap<QUrl, QVariant> release
+sub_3c8b1dd8db07	3c8b1dd8db070dc0	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
 sub_3c8b733c90c4	3c8b733c90c4a243	ported	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::findActiveTrackedItem
 sub_3c8ed8d82488	3c8ed8d82488ae83	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showContextMenuForAccountID
 sub_3ca082b72d22	3ca082b72d228b02	skip	library: std::sort instantiation over achievements (library)
@@ -7597,6 +7637,7 @@ sub_798b1c77fbba	798b1c77fbbaa203	skip	library: libc++ std::vector instantiation
 sub_798e334e94e8	798e334e94e89643	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_79954c12a522	79954c12a5226eff	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
 sub_79980e988d93	79980e988d9359f1	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendApplyClearingCharm
+sub_79987247448b	79987247448bb5ec	inlined	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::setBaseInformation
 sub_79a9ac2a2204	79a9ac2a22043fe2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::selectedVocationId
 sub_79b9fca30aa8	79b9fca30aa82ac3	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_79c3dbb6d7d3#3	79c3dbb6d7d3f0dd	skip	library: boost::bimap / std::map template instantiation
@@ -9875,6 +9916,7 @@ sub_bb5ee44b73b1	bb5ee44b73b19067	inlined	shared/sortedvectorlistmodel.h:TSorted
 sub_bb624fa9dc3a	bb624fa9dc3a82e1	ported	dailyreward/dailyrewardciptypes.cpp:addReward
 sub_bb74b26d74cd	bb74b26d74cdcee6	inlined	config/sidebaroptions.h:TSpellListWidgetOptions::operator==
 sub_bb78a0c77f90	bb78a0c77f90724b	inlined	gamewindow/spelllistwidgetcontroller.cpp:TSpellListWidgetController::onShowContextMenu
+sub_bb7d840eebcd	bb7d840eebcd9bb5	ported	cyclopedia/characterinfostorage.cpp:TCharacterInfoStorage::TCharacterInfoStorage
 sub_bb96d5d36b57#2	bb96d5d36b57689f	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_bb9c3c273034	bb9c3c273034aaac	ported	chat/chatchannel.cpp:keywordLinks
 sub_bba47431aa88	bba47431aa88ba0c	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::maximumBonusGrade
@@ -11465,6 +11507,7 @@ sub_f10954593f20	f10954593f205b39	ported	store/storeciptypes.cpp:TStoreDescripti
 sub_f11773391b61	f11773391b610876	skip	generated: compiler-generated destructor pair
 sub_f127363e0a29	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeStorage::TPremiumTimeStorage
 sub_f127363e0a29#2	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeStorage::TPremiumTimeStorage
+sub_f127c11bf12b	f127c11bf12b99ef	skip	library: libc++ std::vector copy-construct / push_back slow path / length_error throw (read)
 sub_f13ada1e18f2	f13ada1e18f2fe33	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
 sub_f13ada1e18f2#2	f13ada1e18f2fe33	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::onPlayerLevelUp
 sub_f15ad6a352e4	f15ad6a352e4a1e9	skip	library: miniaudio library

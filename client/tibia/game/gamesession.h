@@ -311,26 +311,6 @@ void processModalDialog(uint32_t id, std::string_view title, std::string_view me
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority);
 void processItemDetail(const ItemInspectionData& data);
 void processInspectionState(uint32_t creatureId, uint8_t state);
-void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats,
-                                            const std::vector<std::vector<uint16_t>>& skills,
-                                            const std::vector<std::tuple<uint8_t, uint16_t>>& combats);
-void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, double mitigation,
-                                           const std::vector<std::vector<uint16_t>>& additionalSkillsArray,
-                                           const std::vector<std::vector<uint16_t>>& forgeSkillsArray,
-                                           const std::vector<uint16_t>& perfectShotDamageRangesArray,
-                                           const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray,
-                                           const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray);
-void processCyclopediaCharacterGeneralStatsBadge(uint8_t showAccountInformation, uint8_t playerOnline,
-                                                 uint8_t playerPremium, std::string_view loyaltyTitle,
-                                                 const std::vector<std::tuple<uint32_t, std::string>>& badgesVector);
-void processCyclopediaCharacterInspection(const CyclopediaCharacterInspection& data);
-void processCyclopediaCharacterItemSummary(const CyclopediaCharacterItemSummary& data);
-void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit,
-                                           const std::vector<CharacterInfoOutfits>& outfits,
-                                           const std::vector<CharacterInfoMounts>& mounts,
-                                           const std::vector<CharacterInfoFamiliar>& familiars);
-void processCyclopediaCharacterRecentDeaths(const CyclopediaCharacterRecentDeaths& data);
-void processCyclopediaCharacterRecentPvpKills(const CyclopediaCharacterRecentPvPKills& data);
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData);
 void processParseBestiaryOverview(std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data,
                                   uint16_t animusMasteryPoints);
@@ -338,9 +318,6 @@ void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data);
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData);
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
 void processBosstiarySlots(const BosstiarySlotsData& data);
-void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data);
-void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data);
-void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data);
 
 
 void localPlayerSetMarketAvailable(bool available);

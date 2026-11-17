@@ -54,13 +54,6 @@ public:
     static void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
 };
 
-class TCharacterInfoStorage final : public cip::tibia::cyclopedia::TCharacterInfoStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TCharacterInfoStorage::TCharacterInfoStorage;
-};
-
 // TConcoctionQmlData — real implementation in combatstatsqmldata.h.
 
 // TCreatureTrackerStorage — real implementation in creaturetrackerstorage.h.
