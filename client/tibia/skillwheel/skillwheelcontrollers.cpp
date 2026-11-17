@@ -4,6 +4,8 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
+#include <QCollator>
+#include <QQuickWindow>
 #include <limits>
 #include <numeric>
 #include <tibia/appearances/appearancetype.h>
@@ -154,7 +156,7 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     , m_medium(new TSummaryModel(this))
     , m_vessels(new TSummaryModel(this))
     , m_full(new TSummaryModel(this))
-    , m_presets(new TPresetInfoModel(storage, this))
+    , m_presets(new TPresetInfoModel(this))
     , m_selectedTile(new cip::tibia::gamewindow::TTileInformation(this))
     , m_hoveredTile(new cip::tibia::gamewindow::TTileInformation(this))
     , m_selectedLarge(new cip::tibia::gamewindow::TLargePerkInformation(this))
@@ -175,7 +177,6 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     m_hoveredTileInformation = m_hoveredTile;
     m_selectedLargePerkInformation = m_selectedLarge;
     m_hoveredLargePerkInformation = m_hoveredLarge;
-    m_rendererSupportsGraphicEffects = true;
 
     m_message->setCloseOnButtonClicked(true);
     m_export->setCloseOnButtonClicked(true);
@@ -191,12 +192,35 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, [this] {
-        m_presets->reset();
-        Q_EMIT presetDataChanged();
-        Q_EMIT dataChanged();
-    });
+    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, &TSkillWheelPageController::updatePresetsInfoModel);
     onWheelChanged();
+    updatePresetsInfoModel();
+}
+
+/// CIP: the own character's presets (with a known change state) sorted by name, numbers by value and
+/// without case; the rows' available points are the regular, extra and mod grade points.
+void TSkillWheelPageController::updatePresetsInfoModel()
+{
+    std::vector<TPresetInfo> presets;
+    int totalPoints = 0;
+    if (m_storage->isOwnCharacter() && m_storage->changeState() == 1) {
+        for (const auto& [name, wheel] : m_storage->presets())
+            presets.push_back({ name, wheel });
+        totalPoints = m_storage->regularPoints() + m_storage->extraPoints() + m_storage->modGradesPoints();
+    }
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    std::ranges::sort(presets, [&collator](const TPresetInfo& a, const TPresetInfo& b) { return collator.compare(a.name, b.name) < 0; });
+    m_presets->setTotalPoints(totalPoints);
+    m_presets->setItems(presets);
+}
+
+/// CIP: graphic effects need a renderer other than the software one (CIP's renderer index 3, kept
+/// from the scene graph's graphics API once the window exists).
+bool TSkillWheelPageController::rendererSupportsGraphicEffects() const
+{
+    return QQuickWindow::graphicsApi() != QSGRendererInterface::Software;
 }
 
 /// The mod grade points the current wheel's vocation can reach; 0 without a current wheel.
@@ -256,8 +280,7 @@ void TSkillWheelPageController::showDialogTab()
     clearSelection();
     if (!m_skipNextShowUpdate) {
         validatePresets();
-        m_presets->reset();
-        Q_EMIT presetDataChanged();
+        updatePresetsInfoModel();
         selectMatchingPreset();
         selectPendingPreset();
     }
@@ -1040,8 +1063,7 @@ void TSkillWheelPageController::useServerSkillWheelAsCurrent()
         return;
     m_storage->setCurrentSkillWheel(*server);
     validatePresets();
-    m_presets->reset();
-    Q_EMIT presetDataChanged();
+    updatePresetsInfoModel();
     selectMatchingPreset();
     selectPendingPreset();
 }
@@ -1060,7 +1082,7 @@ void TSkillWheelPageController::clearSelection()
 /// CIP: the new preset is shown.
 void TSkillWheelPageController::onNewPresetName(const QString& PresetName)
 {
-    m_presets->reset();
+    updatePresetsInfoModel();
     selectPresetByName(PresetName, true);
 }
 

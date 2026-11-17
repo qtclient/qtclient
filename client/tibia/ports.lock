@@ -29,7 +29,7 @@
 (anonymous namespace)::TNewsEntryModel::v44	682218e5b3496335	ported	news/newsentrymodels.cpp:TNewsEntryModel::roleNames
 (anonymous namespace)::TNewsEntryModel::v53	0f1fb51468bfeb9c	ported	news/newsentrymodels.cpp:TNewsEntryModel::itemData
 (anonymous namespace)::TPresetInfoModel::v44	7a8573f600acfb70	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::roleNames
-(anonymous namespace)::TPresetInfoModel::v53	34b4d0f8781ee57d	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::data
+(anonymous namespace)::TPresetInfoModel::v53	34b4d0f8781ee57d	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::itemData
 (anonymous namespace)::TPreyBestiarySelectionModel::v44	50e38fa8c038d2aa	ported	gamewindow/preydialogcontroller.cpp:TPreyBestiarySelectionModel::roleNames
 (anonymous namespace)::TPreyBestiarySelectionModel::v53	4992ec269886222e	ported	gamewindow/preydialogcontroller.cpp:TPreyBestiarySelectionModel::data
 (anonymous namespace)::TQuestLinePartsModel::v44	71f3118032628362	ported	gamewindow/questlogcontroller.cpp:TQuestLinePartsModel::roleNames
@@ -2891,6 +2891,7 @@ gamewindow::TSkillWheelPageController::requestClose	15b45bba37ea219c	ported	skil
 gamewindow::TSkillWheelPageController::requestSaveCurrentPreset	fa5de654f52d7913	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::requestSaveCurrentPreset
 gamewindow::TSkillWheelPageController::requestShowGemAtelier	09c95d25c2de8b4f	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::bonusPointItemNames
 gamewindow::TSkillWheelPageController::summaryModeChanged	df904f6fcccb002a	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::totalModGradesSkillPoints
+gamewindow::TSkillWheelPageController::v12	73ac98e4c7ad54ca	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::TSkillWheelPageController
 gamewindow::TSkillWheelPageController::v13	606b6db35bb0331d	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::showDialogTab
 gamewindow::TSkillWheelPageController::v14	3e17be36dc42dbef	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::hideDialogTab
 gamewindow::TSkillWheelPageController::~TSkillWheelPageController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -6867,6 +6868,7 @@ sub_29222f312fca	29222f312fca172c	ported	cyclopedia/combatstatsqmldata.cpp:TMisc
 sub_29251f1502ae	29251f1502ae418e	skip	data: translation-unit static initializer (misattributed)
 sub_29296ccab917	29296ccab917d31a	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::requestTabSwitch
 sub_293a14be4566	293a14be4566b316	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
+sub_29534d8f87a0	29534d8f87a03fe6	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updatePresetsInfoModel
 sub_295461c2c304	295461c2c30477ba	ported	gamewindow/preydialogcontroller.cpp:TPreyStorage::TPreyStorage
 sub_29566183753d	29566183753d2eab	ported	analysers/impactwidgets.cpp:TImpactWidgetController::setDesiredIsDpsGraphVisible
 sub_2965fdd1ccfb	2965fdd1ccfb0da9	ported	game/statusbarstorage.cpp:styleFromString
@@ -7714,6 +7716,7 @@ sub_4232a9527d16	4232a9527d16715c	skip	library: std::sort instantiation over par
 sub_423d9456fa72	423d9456fa729acc	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_423f38327e83	423f38327e83337d	ported	news/newsdiskio.cpp:TNewsDiskIOAsync::TNewsDiskIOAsync
 sub_42440053ef49	42440053ef4993ad	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::refreshCurrentCharacterInfo
+sub_4245853cdf40#3	4245853cdf401db6	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::rendererSupportsGraphicEffects
 sub_42594224dda8	42594224dda85330	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_425af6d0d531	425af6d0d5318aaa	inlined	gamewindow/gamewindowcontroller.cpp:TGameWindowController::gameWindowChild
 sub_4260da39b479	4260da39b479a261	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
@@ -9868,6 +9871,7 @@ sub_7d13145ad42c#12	7d13145ad42cd336	inlined	gamewindow/storedialogcontroller.cp
 sub_7d13145ad42c#5	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::setOptions
 sub_7d13145ad42c#7	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
 sub_7d13145ad42c#8	7d13145ad42cd336	ported	gamewindow/appearancetypelistmodel.h:TAppearanceTypeFilter::operator!=
+sub_7d13145ad42c#9	7d13145ad42cd336	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::rendererSupportsGraphicEffects
 sub_7d14f67c00f1	7d14f67c00f1ecc5	ported	gamewindow/chatcontroller.cpp:TChatController::onSecondaryChannelClicked
 sub_7d1ac9f18493	7d1ac9f18493f242	skip	generated: moc property getter, provided by the generated cip base
 sub_7d1e47349400	7d1e47349400f6f1	inlined	creatures/creaturestorage.cpp:TCreature::hideStaticSquare

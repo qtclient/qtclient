@@ -1,5 +1,6 @@
 #include "skillwheelmodels.h"
 
+#include <numeric>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -448,39 +449,28 @@ void TSummaryModel::setEntries(QList<TSummaryEntry> entries)
     endResetModel();
 }
 
-TPresetInfoModel::TPresetInfoModel(TSkillWheelStorage* storage, QObject* parent) : cip::TPresetInfoModel(parent), m_storage(storage)
-{
-    m_nameEnumValue = Name;
-}
+TPresetInfoModel::TPresetInfoModel(QObject* parent) : TSimpleVectorAbstractListModel(parent) { m_nameEnumValue = Name; }
 
 int TPresetInfoModel::nameEnumValue() const { return m_nameEnumValue; }
 
-int TPresetInfoModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_storage->presets().size()); }
-
 QHash<int, QByteArray> TPresetInfoModel::roleNames() const { return { { Name, "name" }, { AvailablePoints, "availablePoints" } }; }
 
-QVariant TPresetInfoModel::data(const QModelIndex& index, const int role) const
+void TPresetInfoModel::setTotalPoints(const int points)
 {
-    if (!index.isValid() || index.row() >= rowCount())
-        return {};
-    const std::map<QString, TWheel> presets = m_storage->presets();
-    const auto& [name, wheel] = *std::next(presets.begin(), index.row());
-    switch (role) {
-        case Name: return name;
-        case AvailablePoints: {
-            int spent = 0;
-            for (const int p : wheel.points)
-                spent += p;
-            return m_storage->totalPoints() - spent;
-        }
-        default: return {};
-    }
+    if (m_totalPoints == points)
+        return;
+    m_totalPoints = points;
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0));
 }
 
-void TPresetInfoModel::reset()
+QVariant TPresetInfoModel::itemData(const TPresetInfo& item, const int role) const
 {
-    beginResetModel();
-    endResetModel();
+    if (role == AvailablePoints)
+        return m_totalPoints - std::accumulate(item.wheel.points.begin(), item.wheel.points.end(), 0);
+    if (role == Name)
+        return item.name;
+    return {};
 }
 
 }

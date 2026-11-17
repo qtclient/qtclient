@@ -104,6 +104,7 @@ public:
     void requestImportPresetClicked() override;
     void requestExportPresetClicked() override;
     void setShowFullSummary(bool Show) override;
+    bool rendererSupportsGraphicEffects() const override;
     void useServerSkillWheelAsCurrent() override;
     void clearSelection() override;
     void onNewPresetName(const QString& PresetName) override;
@@ -136,6 +137,7 @@ private:
     bool hasOwnWheel() const;
     void setCurrentPresetName(const QString& name);
     void validatePresets();
+    void updatePresetsInfoModel();
     void ensureDefaultPreset();
     void selectMatchingPreset();
     void selectPendingPreset();

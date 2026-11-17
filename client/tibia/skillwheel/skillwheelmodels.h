@@ -4,6 +4,7 @@
 
 #include <cip_gen.h>
 #include "paginationproxymodel.h"
+#include "shared/simplevectorabstractlistmodel.h"
 
 #include <QAbstractListModel>
 #include <QSortFilterProxyModel>
@@ -172,26 +173,37 @@ private:
     QList<TSummaryEntry> m_entries;
 };
 
-/// The presets table: "name" and "availablePoints".
-class TPresetInfoModel final : public cip::TPresetInfoModel
+/// CIP TPresetInfo: a preset row.
+struct TPresetInfo
+{
+    QString name;
+    TWheel wheel;
+};
+
+/// CIP: the presets table ("name", "availablePoints") over the page's sorted presets; the available
+/// points are the character's total minus the preset's spent points.
+class TPresetInfoModel final : public shared::TSimpleVectorAbstractListModel<TPresetInfo, cip::TPresetInfoModel>
 {
     Q_OBJECT
 public:
     enum ERole { Name = Qt::UserRole + 1, AvailablePoints };
 
-    explicit TPresetInfoModel(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    explicit TPresetInfoModel(QObject* parent = nullptr);
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
     /// CIP moc property getter.
     int nameEnumValue() const override;
 
-    void reset();
+    int totalPoints() const { return m_totalPoints; }
+    /// A changed total reports every row changed.
+    void setTotalPoints(int points);
+
+protected:
+    QVariant itemData(const TPresetInfo& item, int role) const override;
 
 private:
-    TSkillWheelStorage* m_storage;
+    int m_totalPoints = 0;
 };
 
 }
