@@ -4249,6 +4249,9 @@ sub_06e1396f8bc9	06e1396f8bc9f89c	ported	gamewindow/dialogmanager.cpp:TDialog::c
 sub_06e3451d1448	06e3451d14481e80	ported	gamewindow/minimapcontroller.cpp:TMinimapController::updateTimeDisplay
 sub_06e6eeb7e204	06e6eeb7e204ce0e	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::availableClassifications
 sub_07236ad94db7#4	07236ad94db760bf	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
+sub_07314700e05a#2	07314700e05a3e43	skip	library: std::map/set tree node destruction
+sub_07314700e05a#3	07314700e05a3e43	skip	library: std::map/set tree node destruction
+sub_07314700e05a#4	07314700e05a3e43	skip	library: std::map/set tree node destruction
 sub_07314700e05a#5	07314700e05a3e43	skip	generated: std container/shared_ptr template code or compiler-generated copy
 sub_07314700e05a#6	07314700e05a3e43	skip	library: std::set<QKeySequence> instantiation
 sub_0732eaf39c22	0732eaf39c222050	skip	library: CryptoPP Deflator (zlib) library code
@@ -4402,6 +4405,11 @@ sub_0a82122eb660	0a82122eb6607dd2	inlined	creatures/creaturestorage.cpp:TCreatur
 sub_0a9100f73450	0a9100f73450956d	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
 sub_0a9100f73450#2	0a9100f73450956d	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
 sub_0a92ff6d7031	0a92ff6d70314930	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
+sub_0a92ff6d7031#2	0a92ff6d70314930	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_0a92ff6d7031#3	0a92ff6d70314930	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_0a92ff6d7031#4	0a92ff6d70314930	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_0a92ff6d7031#5	0a92ff6d70314930	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_0a92ff6d7031#6	0a92ff6d70314930	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
 sub_0a92ff6d7031#7	0a92ff6d70314930	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_0a93c95d8670	0a93c95d8670347a	ported	gamewindow/hitpointmanabarcontroller.cpp:toggleOption
 sub_0aa05b4e9958	0aa05b4e99584a58	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::updateIndexOfSelectedCategory
@@ -5816,6 +5824,7 @@ sub_38cd8b333fdc	38cd8b333fdcd8b6	tested	shared/src/jsonvalidator.cpp:TJsonValue
 sub_38d17900821c	38d17900821cc0e2	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_38d2f0a52fd8	38d2f0a52fd8cc04	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::showProcessingOrderMessage
 sub_38d36cca9b78	38d36cca9b780a1f	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
+sub_38d36cca9b78#2	38d36cca9b780a1f	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_38d93c23b1f6	38d93c23b1f62298	skip	library: std::vector growth / std::shared_ptr copy and release (library)
 sub_38f787b6715f	38f787b6715f8909	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEnterWorld
 sub_3925545a5ff2	3925545a5ff20594	skip	library: libc++ std::vector growth / destroy (library)
@@ -6027,6 +6036,9 @@ sub_4160a4af3917#33	4160a4af3917f73f	skip	generated: moc-generated signal emitte
 sub_4160a4af3917#34	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_416bae72f23f#4	416bae72f23f0f3c	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_41799295db0b	41799295db0b94ae	skip	generated: compiler-generated defaulted comparison (operator==/!=/<=> of option structs)
+sub_41799295db0b#2	41799295db0b94ae	skip	generated: defaulted three-way comparison of an int key
+sub_41799295db0b#3	41799295db0b94ae	skip	generated: defaulted three-way comparison of an int key
+sub_41799295db0b#4	41799295db0b94ae	skip	generated: defaulted three-way comparison of an int key
 sub_41801f1792d0	41801f1792d0ad36	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::elapsed	test=tests/client/sharednet_test.cpp
 sub_419006205e73	419006205e73980c	ported	store/storestorage.cpp:TStoreCategory::find
 sub_41961b703a17	41961b703a174638	ported	gamewindow/marketcontroller.cpp:TMarketController::onItemDetailsChanged
@@ -6038,6 +6050,7 @@ sub_41d06c389967	41d06c3899671c36	skip	library: std vector internals (push_back/
 sub_41dc69a172da	41dc69a172daa016	ported	gamewindow/sidebarmanager.cpp:createQuickItem
 sub_41e4f6b01c33	41e4f6b01c331c44	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_4201c1cb8e7d	4201c1cb8e7d8d76	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
+sub_4201c1cb8e7d#2	4201c1cb8e7d8d76	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
 sub_42061ed48ff0#3	42061ed48ff0e8c6	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::setSlotID
 sub_42129e9d4083	42129e9d4083fa76	skip	generated: moc property getter (generated in cip_gen)
 sub_42188ede457f#130	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v160
@@ -6311,6 +6324,7 @@ sub_4cb3233caacc#25	4cb3233caacc1428	skip	generated: moc-generated signal emitte
 sub_4cb3233caacc#26	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#28	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#29	4cb3233caacc1428	skip	generated: moc-generated signal emitter
+sub_4cb3233caacc#3	4cb3233caacc1428	skip	generated: moc signal emitters
 sub_4cb3233caacc#33	4cb3233caacc1428	skip	generated: moc signal emitter
 sub_4cb3233caacc#34	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#4	4cb3233caacc1428	skip	generated: moc signal emitter
@@ -6422,6 +6436,7 @@ sub_50e6cccb62a2	50e6cccb62a23e42	ported	gamewindow/sidebarwidgetsmanager.cpp:TS
 sub_50ecd8e5862a	50ecd8e5862ae3ea	ported	friends/friendsciptypes.cpp:TFriendsFriendListStorage::friendGroupOf
 sub_5102ae333619	5102ae3336199cf0	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::updateMouseTarget
 sub_5105c4ee4032	5105c4ee4032730e	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_5105c4ee4032#2	5105c4ee4032730e	skip	library: CryptoPP AllocatorBase size check
 sub_510834e58251	510834e582517205	skip	library: std container template code
 sub_511a69494d45	511a69494d45ebff	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_511d8f91f93e	511d8f91f93ef73a	ported	config/optionspages.cpp:TButtonBarOptionsPage::disabledButtons
@@ -6758,6 +6773,11 @@ sub_576456edf9d5	576456edf9d5c3a0	inlined	gamewindow/iteminfodialogcontroller.cp
 sub_576711c6b9d3	576711c6b9d3ce6b	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_576d10f91fe2	576d10f91fe23d38	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_577c409e0295	577c409e029532b6	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
+sub_577c409e0295#2	577c409e029532b6	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_577c409e0295#3	577c409e029532b6	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_577c409e0295#4	577c409e029532b6	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_577c409e0295#5	577c409e029532b6	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
+sub_577c409e0295#6	577c409e029532b6	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
 sub_577c409e0295#7	577c409e029532b6	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_579704e75f6b	579704e75f6b2548	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::switchToSellItems
 sub_57a1ac2c048a#2	57a1ac2c048af9ce	skip	library: boost::bimap / std::map template instantiation
@@ -6934,6 +6954,7 @@ sub_5e0df0cb67d9#2	5e0df0cb67d937e7	ported	input/gameaction.h:TGameActionMountPl
 sub_5e0dffef62ff	5e0dffef62ff2212	skip	library: CryptoPP Deflator (zlib) library code
 sub_5e159aa6c3ed	5e159aa6c3ede5bb	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::requestDynamicDataForTown
 sub_5e1a061278c9	5e1a061278c9c1d1	ported	gamewindow/cooldownbarcontroller.cpp:spellGroupName
+sub_5e1e1eca3c45	5e1e1eca3c45dc7d	skip	library: std::vector insert instantiation
 sub_5e5173af64c8	5e5173af64c8c6d8	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTalkMessage
 sub_5e5192a6129e	5e5192a6129e2413	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_5e6c020885da	5e6c020885daea4b	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::showDialog
@@ -9424,6 +9445,10 @@ sub_b6d36fdb5c27	b6d36fdb5c27ec80	skip	library: libc++ unordered_map/map interna
 sub_b6dca9c9d985	b6dca9c9d9853ab6	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onConfirmListReroll
 sub_b6e6f350708f	b6e6f350708fefca	ported	gamewindow/dialogmanager.cpp:TDialog::create
 sub_b6f792369ba5	b6f792369ba54f05	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
+sub_b6f792369ba5#2	b6f792369ba54f05	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_b6f792369ba5#3	b6f792369ba54f05	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_b6f792369ba5#4	b6f792369ba54f05	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_b6f792369ba5#5	b6f792369ba54f05	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_b70182dff846	b70182dff846c340	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::onResourceBalanceChanged
 sub_b72e9d1c360e	b72e9d1c360e28c8	ported	gamewindow/imbuingdialogcontroller.cpp:sortKey
 sub_b730a77c4ed6	b730a77c4ed6c094	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::saveFilter
@@ -9967,6 +9992,7 @@ sub_c24aae6d0a0f#2	c24aae6d0a0f0fef	ported	gamewindow/depotsearchwidgetcontrolle
 sub_c262e1d49b5f	c262e1d49b5ff4e4	skip	library: libc++ std::map/unordered_map/vector/sort internals (tree copy-assign, rehash, node insert, introsort over QKeySequence pairs)
 sub_c28525fb3de5	c28525fb3de5463f	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::openUrlLater
 sub_c2913bfd0c29	c2913bfd0c29227d	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerWidgetController::widgetMode
+sub_c29601dcbd13#2	c29601dcbd13279c	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_c2ab97cd567f	c2ab97cd567f1be7	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::isLootBlackWhitelisted
 sub_c2b18a43bdaa	c2b18a43bdaa35d7	skip	library: std::unordered_map<int, std::function> internals (emplace, rehash, destructor, node holder)
 sub_c2b6369f85f3	c2b6369f85f3e6f8	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onHintDownloadFailed
@@ -10503,6 +10529,11 @@ sub_d77142d1d7d1	d77142d1d7d1a422	skip	library: libc++ unordered_map/map interna
 sub_d794c373e7a8	d794c373e7a84400	inlined	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showDialogTab
 sub_d7a43e15cf23#2	d7a43e15cf234193	skip	library: boost::bimap / std::map template instantiation
 sub_d7a53fa4f62b	d7a53fa4f62b6fec	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
+sub_d7a53fa4f62b#2	d7a53fa4f62b6fec	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d7a53fa4f62b#3	d7a53fa4f62b6fec	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d7a53fa4f62b#4	d7a53fa4f62b6fec	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d7a53fa4f62b#5	d7a53fa4f62b6fec	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d7a53fa4f62b#6	d7a53fa4f62b6fec	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_d7a700555660#11	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#12	d7a700555660c3f0	skip	generated: moc-generated signal
 sub_d7a700555660#15	d7a700555660c3f0	skip	generated: moc-generated signal emitter
@@ -10663,6 +10694,10 @@ sub_d8bdc50ef03e#6	d8bdc50ef03e7355	inlined	protocol::TProtobufServerMessageTran
 sub_d8c5bda7d68f	d8c5bda7d68fc106	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
 sub_d8fed7d8f51c	d8fed7d8f51c844d	skip	library: Qt/std container template code
 sub_d90154b23146	d90154b23146a533	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
+sub_d902425e069b#11	d902425e069b0690	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d902425e069b#12	d902425e069b0690	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d902425e069b#13	d902425e069b0690	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
+sub_d902425e069b#14	d902425e069b0690	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_d902425e069b#15	d902425e069b0690	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_d902425e069b#16	d902425e069b0690	inlined	sub_92f98c376ee9
 sub_d902425e069b#20	d902425e069b0690	skip	library: std::unordered_set rehash (library)
@@ -10678,6 +10713,7 @@ sub_d902425e069b#36	d902425e069b0690	skip	library: std::unordered_map/std::map/s
 sub_d902425e069b#37	d902425e069b0690	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_d902425e069b#38	d902425e069b0690	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_d902425e069b#6	d902425e069b0690	skip	library: std::unordered_map instantiation
+sub_d902425e069b#9	d902425e069b0690	skip	library: std::unordered_map find/emplace/rehash/copy/destroy instantiations (option maps)
 sub_d902b7f2da1b	d902b7f2da1bb8cb	skip	data: static initializer of unrelated globals (inbox filter names, vocation names, server time zone; misattributed)
 sub_d90eb5b368e9	d90eb5b368e93e01	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_d9136ad7dbbe	d9136ad7dbbe5cdb	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowInstantSpells
@@ -11091,6 +11127,7 @@ sub_e6b70690a031	e6b70690a0310f56	ported	gamewindow/createaccountdialogcontrolle
 sub_e6c951c0043d	e6c951c0043d0c0b	ported	gamewindow/minimapcontroller.cpp:TMinimapController::currentLayer
 sub_e6cddeaae61e	e6cddeaae61e1171	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_e6db877f4f89	e6db877f4f89d737	skip	generated: moc signal bodies of TRPCServiceClient
+sub_e6db877f4f89#10	e6db877f4f89d737	skip	generated: moc signal emitters
 sub_e6db877f4f89#102	e6db877f4f89d737	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::rebuildAvailableOffers
 sub_e6db877f4f89#104	e6db877f4f89d737	skip	generated: moc-generated signal emitter
 sub_e6db877f4f89#114	e6db877f4f89d737	skip	generated: moc-generated signal emitter
