@@ -64,6 +64,7 @@ void TPackageFileDownloader::start()
     m_speedTimer.start();
     m_elapsed.start();
     m_progressTicks = 0;
+    m_progressBytes = 0;
     m_lastDownloadedBytes = 0;
     m_speedSamples = 0;
     for (const TFileInPackage& file : m_pendingFiles)
@@ -215,14 +216,16 @@ void TPackageFileDownloader::onDownloadProgress(const QUrl& url, TFileSize bytes
 void TPackageFileDownloader::onMeasureDownloadSpeed()
 {
     const TFileSize downloaded = downloadedBytes();
-    // Host: a progress line every 10 s instead of three lines per file.
+    // Host: a progress line every 10 s (speed over those 10 s) instead of three
+    // lines per file.
     if (++m_progressTicks % 10 == 0) {
         qCInfo(lcDownload).noquote() << QStringLiteral("Downloading: %1/%2 files, %3/%4 MB, %5 KB/s")
                                             .arg(m_completedFiles.size())
                                             .arg(m_files.size())
                                             .arg(double(downloaded) / 1048576.0, 0, 'f', 1)
                                             .arg(double(totalBytes()) / 1048576.0, 0, 'f', 1)
-                                            .arg(double(downloaded - m_lastDownloadedBytes) / 1024.0, 0, 'f', 0);
+                                            .arg(double(downloaded - m_progressBytes) / 1024.0 / 10.0, 0, 'f', 0);
+        m_progressBytes = downloaded;
     }
     const quint64 sample = static_cast<quint64>(downloaded - m_lastDownloadedBytes);
     m_lastDownloadedBytes = downloaded;
