@@ -75,7 +75,9 @@ TEST(ClientSessiondumpRecorder, PartialDumpHasMetadataAndOnePacketPerNetworkPack
     EXPECT_EQ(metadata.characterName, QStringLiteral("Knight"));
     EXPECT_EQ(metadata.worldName, QStringLiteral("Antica"));
     EXPECT_EQ(metadata.sessionKey, QStringLiteral("key"));
-    EXPECT_EQ(metadata.worldId, 4711u);
+    // The partial dump takes the segment metadata at start and at each rollover;
+    // the player id of LoginSuccess reaches it with the next segment.
+    EXPECT_EQ(metadata.worldId, 0u);
 
     int packets = 0;
     const auto packetReader = reader->packetReader();

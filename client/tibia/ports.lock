@@ -3233,8 +3233,8 @@ screenshot::TScreenshotManager::processReadyScreenshot	2cfd308d38d783e9	ported	s
 screenshot::TScreenshotManager::takeScreenshotIfEventIsWainting	827377df7b676295	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::takeScreenshotIfEventIsWainting
 screenshot::TScreenshotManager::~TScreenshotManager	097457dc45e86dd8	skip	generated: compiler-generated destructor
 screenshot::TScreenshotManager::~TScreenshotManager_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
-sessiondump::TClientSessiondumpRecorder::v12	875d776adef8551b	ported	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::start
-sessiondump::TClientSessiondumpRecorder::v13	ec10143dbcf2e8e1	ported	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::handleAnyMessage
+sessiondump::TClientSessiondumpRecorder::v12	875d776adef8551b	tested	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::start	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TClientSessiondumpRecorder::v13	ec10143dbcf2e8e1	tested	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::handleAnyMessage	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TClientSessiondumpRecorder::~TClientSessiondumpRecorder	097457dc45e86dd8	ported	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::~TClientSessiondumpRecorder
 sessiondump::TClientSessiondumpRecorder::~TClientSessiondumpRecorder_deleting	79674512666b34e2	ported	sessiondump/clientsessiondumprecorder.cpp:TClientSessiondumpRecorder::~TClientSessiondumpRecorder
 sessiondump::TLightweightSessiondumpMessageProcessor::v0	cdf8bdef48dece24	skip	generated: compiler-generated destructor
@@ -3243,12 +3243,12 @@ sessiondump::TLightweightSessiondumpMessageProcessor::v2	449f47f7e4eaf814	tested
 sessiondump::TSessiondumpAsyncLoader::downloadError	7edda35d49c35bc6	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::downloadError
 sessiondump::TSessiondumpAsyncLoader::downloadFinished	7f9837b07814023d	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::downloadFinished
 sessiondump::TSessiondumpAsyncLoader::downloadProgress	985d05172c730707	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::downloadProgress
-sessiondump::TSessiondumpAsyncLoader::processNextChunk	856fc4920db48e84	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::processNextChunk
-sessiondump::TSessiondumpAsyncLoader::v12	630eeaae5e7b04a8	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startLoading
-sessiondump::TSessiondumpAsyncLoader::v13	86ceb3087097e452	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startProcessing
-sessiondump::TSessiondumpAsyncLoader::v14	b619f825ad2f2f22	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startProcessing
+sessiondump::TSessiondumpAsyncLoader::processNextChunk	856fc4920db48e84	tested	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::processNextChunk	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpAsyncLoader::v12	630eeaae5e7b04a8	tested	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startLoading	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpAsyncLoader::v13	86ceb3087097e452	tested	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startProcessing	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpAsyncLoader::v14	b619f825ad2f2f22	tested	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::startProcessing	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpAsyncLoader::v15	a9956b5a5ec55df6	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::metadata
-sessiondump::TSessiondumpAsyncLoader::v16	0c80395e0cbd9fb6	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::processUntil
+sessiondump::TSessiondumpAsyncLoader::v16	0c80395e0cbd9fb6	tested	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::processUntil	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpAsyncLoader::v17	0dfa41e6345f98be	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::currentTimestamp
 sessiondump::TSessiondumpAsyncLoader::v18	be520736550a6d0e	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::nextTimestamp
 sessiondump::TSessiondumpAsyncLoader::v19	7e0f17776b3dcbff	ported	sessiondump/sessiondumpasyncloader.cpp:TSessiondumpAsyncLoader::seek
@@ -3306,37 +3306,37 @@ sessiondump::TSessiondumpPacketReader::v5	7bd34b2f3fcb21d2	tested	sessiondump/se
 sessiondump::TSessiondumpPacketReader::v6	96cee1f8fb92ded2	tested	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::atEnd	test=tests/client/sessiondumpreader_test.cpp
 sessiondump::TSessiondumpPacketReader::v7	ea00ca6315082548	tested	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::hasCompletePayload	test=tests/client/sessiondumpreader_test.cpp
 sessiondump::TSessiondumpPacketReader::v8	63926ee6afd2d91d	tested	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::reset	test=tests/client/sessiondumpreader_test.cpp
-sessiondump::TSessiondumpPlayer::v12	f341ea8f1525d695	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::processSessiondump
+sessiondump::TSessiondumpPlayer::v12	f341ea8f1525d695	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::processSessiondump	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v13	f433b50bca0d4902	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setPauseAt
 sessiondump::TSessiondumpPlayer::v14	9faac4e0be245e40	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::pauseAt
 sessiondump::TSessiondumpPlayer::v15	6259fafe93327488	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::progress
 sessiondump::TSessiondumpPlayer::v16	fa4b2d3d49ed42ad	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::position
-sessiondump::TSessiondumpPlayer::v17	74d07e930512fbfc	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::start
+sessiondump::TSessiondumpPlayer::v17	74d07e930512fbfc	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::start	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v18	78e00174023baed2	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::pause
 sessiondump::TSessiondumpPlayer::v19	692f91604be31e1f	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::resume
 sessiondump::TSessiondumpPlayer::v20	47c3cb27e351770c	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::isRunning
 sessiondump::TSessiondumpPlayer::v21	f053c1509fddbf72	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::pauseClock
 sessiondump::TSessiondumpPlayer::v22	1206e1f96187b353	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::resumeClock
 sessiondump::TSessiondumpPlayer::v23	71a8b23c50a81070	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::isPaused
-sessiondump::TSessiondumpPlayer::v24	e56f575a24ed7455	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::faster
-sessiondump::TSessiondumpPlayer::v25	273119c9e6de767a	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::fastest
-sessiondump::TSessiondumpPlayer::v26	437c5bebb9afcf3c	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setPlayspeed
+sessiondump::TSessiondumpPlayer::v24	e56f575a24ed7455	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::faster	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpPlayer::v25	273119c9e6de767a	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::fastest	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpPlayer::v26	437c5bebb9afcf3c	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setPlayspeed	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v27	c8afcfdd8dd7f142	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::currentPlayspeed
-sessiondump::TSessiondumpPlayer::v28	a41efb4eb2aea773	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::skipTo
+sessiondump::TSessiondumpPlayer::v28	a41efb4eb2aea773	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::skipTo	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v29	4170037428ba7ef1	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::cancelSkipTo
 sessiondump::TSessiondumpPlayer::v30	b373390eeb839866	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::isFinishedLoading
 sessiondump::TSessiondumpPlayer::v31	385edb9a7a511f1e	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::duration
 sessiondump::TSessiondumpPlayer::v32	aaeb9fa5085055d1	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::addKeyframe
-sessiondump::TSessiondumpPlayer::v33	9102d5b6516f8e62	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setDuration
-sessiondump::TSessiondumpPlayer::v34	872bbf24fbefe9be	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setLoadedDuration
-sessiondump::TSessiondumpPlayer::v35	0d285ce23b0fa2a1	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::loadingProgress
+sessiondump::TSessiondumpPlayer::v33	9102d5b6516f8e62	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setDuration	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpPlayer::v34	872bbf24fbefe9be	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::setLoadedDuration	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpPlayer::v35	0d285ce23b0fa2a1	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::loadingProgress	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v36	3431ddca376415ac	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::isSkipping
 sessiondump::TSessiondumpPlayer::v37	63b0172c3bc66195	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::metadata
 sessiondump::TSessiondumpPlayer::v38	fca4887fb8318543	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::handleGameAction
-sessiondump::TSessiondumpPlayer::v39	b522edf96b736de8	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSessiondumpMetadataLoaded
+sessiondump::TSessiondumpPlayer::v39	b522edf96b736de8	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSessiondumpMetadataLoaded	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v40	097457dc45e86dd8	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSessiondumpLoaded
-sessiondump::TSessiondumpPlayer::v41	5acadd6018270a71	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onGameserverMessageAvailable
-sessiondump::TSessiondumpPlayer::v42	4a88dec60b521d35	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSkipToMarkerReached
+sessiondump::TSessiondumpPlayer::v41	5acadd6018270a71	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onGameserverMessageAvailable	test=tests/client/sessiondumpplayer_test.cpp
+sessiondump::TSessiondumpPlayer::v42	4a88dec60b521d35	tested	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSkipToMarkerReached	test=tests/client/sessiondumpplayer_test.cpp
 sessiondump::TSessiondumpPlayer::v43	e01d4559c27e9615	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::onSessiondumpFinished
 sessiondump::TSessiondumpPlayer::~TSessiondumpPlayer	097457dc45e86dd8	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::~TSessiondumpPlayer
 sessiondump::TSessiondumpPlayer::~TSessiondumpPlayer_deleting	79674512666b34e2	ported	sessiondump/sessiondumpplayer.cpp:TSessiondumpPlayer::~TSessiondumpPlayer
@@ -8175,7 +8175,7 @@ sub_86066f29adb0	86066f29adb0919a	ported	gamewindow/rewardwalldialogcontroller.c
 sub_862abfcaaf30	862abfcaaf308835	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onConfirmDialogAccepted
 sub_866433735cee	866433735cee5f10	ported	authentication/authenticationjsondocumenthelper.cpp:jsonKeys
 sub_86833d86ea14	86833d86ea141873	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::automaticPreyExtendType
-sub_868bd6fbd1b5	868bd6fbd1b531a2	ported	sessiondump/clientsessiondumprecorder.cpp:TClientPartialSessiondump::sessiondump
+sub_868bd6fbd1b5	868bd6fbd1b531a2	tested	sessiondump/clientsessiondumprecorder.cpp:TClientPartialSessiondump::sessiondump	test=tests/client/sessiondumpplayer_test.cpp
 sub_86963ced4498#2	86963ced4498c06b	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::onPlayerDataChanged
 sub_869c9046efbe	869c9046efbe196e	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setLootType
 sub_869d01f197cd	869d01f197cd3c37	ported	config/optionspages.cpp:THotkeysOptionsPage::requestAddPreset
@@ -10140,7 +10140,7 @@ sub_c028122d37ef	c028122d37ef1d03	ported	config/clientoptions.cpp:chatOptionsFro
 sub_c0301828aee8	c0301828aee80737	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::showContextMenu
 sub_c056991f5215	c056991f5215efc7	skip	generated: moc-generated signal emitter
 sub_c05c5fdf39eb	c05c5fdf39ebdefb	tested	shared/src/qtconnectionwrapper.cpp:TQtConnectionWrapper::disconnectAll	test=tests/client/sharednet_test.cpp
-sub_c05c7dc273b9	c05c7dc273b9dc44	ported	sessiondump/clientsessiondumprecorder.cpp:TClientPartialSessiondump::finishPacket
+sub_c05c7dc273b9	c05c7dc273b9dc44	tested	sessiondump/clientsessiondumprecorder.cpp:TClientPartialSessiondump::finishPacket	test=tests/client/sessiondumpplayer_test.cpp
 sub_c0662658ad58	c0662658ad58dbb3	skip	library: SFML audio library (miniaudio backend)
 sub_c06a006d60e6	c06a006d60e6f4db	skip	generated: compiler-generated destructor pair
 sub_c0e09bc42fe7	c0e09bc42fe78734	ported	cyclopedia/housesstorage.cpp:THousesStorage::applyStaticHouseData
