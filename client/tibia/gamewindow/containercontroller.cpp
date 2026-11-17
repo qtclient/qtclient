@@ -12,7 +12,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QGuiApplication>
@@ -446,7 +446,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
         auto openParent = input::mutableClone(*input::makeObjectAction(A::OPEN_PARENT_CONTAINER, position, pageSlot));
         openParent->objectClientId = slot.typeId;
         actions.push_back(std::move(openParent));
-        ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+        TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
         if (!type || !type->isNotMoveable()) {
             auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, position, pageSlot));
             moveUp->objectClientId = slot.typeId;

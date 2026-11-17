@@ -83,330 +83,6 @@ std::string loadAssetIdentifier(const std::string& directory)
     return {};
 }
 
-void addFlag(AppearanceRecord& record, const uint64_t flag)
-{
-    record.flags |= flag;
-}
-
-void applyFlags(AppearanceRecord& record, const tibia::protobuf::appearances::AppearanceFlags& flags)
-{
-    using namespace tibia::protobuf;
-
-    if (flags.has_bank()) {
-        record.groundSpeed = static_cast<int>(flags.bank().waypoints());
-        addFlag(record, ThingFlagAttrGround);
-    }
-    if (flags.clip())
-        addFlag(record, ThingFlagAttrGroundBorder);
-    if (flags.bottom())
-        addFlag(record, ThingFlagAttrOnBottom);
-    if (flags.top())
-        addFlag(record, ThingFlagAttrOnTop);
-    if (flags.container())
-        addFlag(record, ThingFlagAttrContainer);
-    if (flags.cumulative())
-        addFlag(record, ThingFlagAttrStackable);
-    if (flags.multiuse())
-        addFlag(record, ThingFlagAttrMultiUse);
-    if (flags.forceuse())
-        addFlag(record, ThingFlagAttrForceUse);
-    if (flags.usable())
-        addFlag(record, ThingFlagAttrUsable);
-    if (flags.has_write()) {
-        addFlag(record, ThingFlagAttrWritable);
-        record.maxTextLength = static_cast<int>(flags.write().max_text_length());
-    }
-    if (flags.has_write_once()) {
-        addFlag(record, ThingFlagAttrWritableOnce);
-        record.maxTextLength = static_cast<int>(flags.write_once().max_text_length_once());
-    }
-    if (flags.liquidpool())
-        addFlag(record, ThingFlagAttrSplash);
-    if (flags.unpass())
-        addFlag(record, ThingFlagAttrNotWalkable);
-    if (flags.unmove())
-        addFlag(record, ThingFlagAttrNotMoveable);
-    if (flags.unsight())
-        addFlag(record, ThingFlagAttrBlockProjectile);
-    if (flags.avoid())
-        addFlag(record, ThingFlagAttrNotPathable);
-    if (flags.no_movement_animation())
-        addFlag(record, ThingFlagAttrNoMovementAnimation);
-    if (flags.take())
-        addFlag(record, ThingFlagAttrPickupable);
-    if (flags.liquidcontainer())
-        addFlag(record, ThingFlagAttrFluidContainer);
-    if (flags.hang())
-        addFlag(record, ThingFlagAttrHangable);
-    if (flags.has_hook()) {
-        const auto direction = flags.hook().direction();
-        if (direction == shared::HOOK_TYPE_SOUTH)
-            addFlag(record, ThingFlagAttrHookSouth);
-        else if (direction == shared::HOOK_TYPE_EAST)
-            addFlag(record, ThingFlagAttrHookEast);
-    }
-    if (flags.has_light()) {
-        addFlag(record, ThingFlagAttrLight);
-        record.light = { static_cast<uint8_t>(std::min<uint32_t>(flags.light().brightness(), 255)),
-                         static_cast<uint8_t>(std::min<uint32_t>(flags.light().color(), 255)) };
-    }
-    if (flags.rotate())
-        addFlag(record, ThingFlagAttrRotateable);
-    if (flags.dont_hide())
-        addFlag(record, ThingFlagAttrDontHide);
-    if (flags.translucent())
-        addFlag(record, ThingFlagAttrTranslucent);
-    if (flags.has_shift()) {
-        record.displacement = QPoint(static_cast<int>(flags.shift().x()), static_cast<int>(flags.shift().y()));
-        addFlag(record, ThingFlagAttrDisplacement);
-    }
-    if (flags.has_height()) {
-        record.elevation = static_cast<int>(flags.height().elevation());
-        addFlag(record, ThingFlagAttrElevation);
-    }
-    if (flags.lying_object())
-        addFlag(record, ThingFlagAttrLyingCorpse);
-    if (flags.animate_always())
-        addFlag(record, ThingFlagAttrAnimateAlways);
-    if (flags.has_automap()) {
-        record.minimapColor = static_cast<int>(flags.automap().color());
-        addFlag(record, ThingFlagAttrMinimapColor);
-    }
-    if (flags.has_lenshelp()) {
-        record.lensHelp = static_cast<int>(flags.lenshelp().id());
-        addFlag(record, ThingFlagAttrLensHelp);
-    }
-    if (flags.fullbank())
-        addFlag(record, ThingFlagAttrFullGround);
-    if (flags.ignore_look())
-        addFlag(record, ThingFlagAttrLook);
-    if (flags.has_clothes()) {
-        record.clothSlot = static_cast<int>(flags.clothes().slot());
-        addFlag(record, ThingFlagAttrCloth);
-    }
-    if (flags.has_market()) {
-        record.market.category = static_cast<ITEM_CATEGORY>(flags.market().category());
-        record.market.tradeAs = static_cast<uint16_t>(flags.market().trade_as_object_id());
-        record.market.showAs = static_cast<uint16_t>(flags.market().show_as_object_id());
-        record.market.name = record.name;
-        record.market.requiredLevel = static_cast<uint16_t>(std::min<uint32_t>(flags.minimum_level(), 65535));
-        addFlag(record, ThingFlagAttrMarket);
-    }
-    for (int i = 0; i < flags.restrict_to_vocation_size(); ++i) {
-        const auto vocation = static_cast<int32_t>(flags.restrict_to_vocation(i));
-        record.restrictVocation.push_back(static_cast<uint32_t>(vocation));
-        if (vocation > 0 && vocation < 16)
-            record.market.restrictVocation = static_cast<uint16_t>(record.market.restrictVocation | (1u << (vocation - 1)));
-    }
-    if (flags.has_minimum_level())
-        record.minimumLevel = flags.minimum_level();
-    if (flags.wrap())
-        addFlag(record, ThingFlagAttrWrapable);
-    if (flags.unwrap())
-        addFlag(record, ThingFlagAttrUnwrapable);
-    if (flags.topeffect())
-        addFlag(record, ThingFlagAttrTopEffect);
-    if (flags.has_default_action()) {
-        record.defaultAction = static_cast<PLAYER_ACTION>(flags.default_action().action());
-        addFlag(record, ThingFlagAttrDefaultAction);
-    }
-    for (const auto& sale : flags.npcsaledata()) {
-        NPCData data;
-        data.name = sale.name();
-        data.location = sale.location();
-        data.salePrice = sale.sale_price();
-        data.buyPrice = sale.buy_price();
-        data.currencyObjectTypeId = sale.currency_object_type_id();
-        data.currencyQuestFlagDisplayName = sale.currency_quest_flag_display_name();
-        record.npcSale.push_back(std::move(data));
-    }
-    if (!record.npcSale.empty())
-        addFlag(record, ThingFlagAttrNPC);
-    if (flags.corpse())
-        addFlag(record, ThingFlagAttrCorpse);
-    if (flags.player_corpse())
-        addFlag(record, ThingFlagAttrPlayerCorpse);
-    if (flags.has_cyclopediaitem()) {
-        record.cyclopediaType = flags.cyclopediaitem().cyclopedia_type();
-        addFlag(record, ThingFlagAttrCyclopediaItem);
-    }
-    if (flags.ammo())
-        addFlag(record, ThingFlagAttrAmmo);
-    if (flags.show_off_socket())
-        addFlag(record, ThingFlagAttrPodium);
-    if (flags.reportable())
-        addFlag(record, ThingFlagAttrReportable);
-    if (flags.has_upgradeclassification())
-        record.upgradeClassification = static_cast<int>(flags.upgradeclassification().upgrade_classification());
-    if (flags.wearout())
-        addFlag(record, ThingFlagAttrWearOut);
-    if (flags.clockexpire())
-        addFlag(record, ThingFlagAttrClockExpire);
-    if (flags.expire())
-        addFlag(record, ThingFlagAttrExpire);
-    if (flags.expirestop())
-        addFlag(record, ThingFlagAttrExpireStop);
-    if (flags.deco_item_kit())
-        addFlag(record, ThingFlagAttrDecoKit);
-    if (flags.has_proficiency()) {
-        record.proficiencyId = flags.proficiency().proficiency_id();
-        addFlag(record, ThingFlagAttrProficiency);
-    }
-    if (flags.has_skillwheel_gem()) {
-        record.gemQualityId = flags.skillwheel_gem().gem_quality_id();
-        record.gemVocationId = flags.skillwheel_gem().vocation_id();
-        addFlag(record, ThingFlagAttrSkillWheelGem);
-    }
-    if (flags.dual_wielding())
-        addFlag(record, ThingFlagAttrDualWield);
-    if (flags.has_imbueable()) {
-        record.imbueSlots = flags.imbueable().slot_count();
-        addFlag(record, ThingFlagAttrImbueable);
-    }
-    if (flags.has_weapon_type()) {
-        const auto weapon = flags.weapon_type();
-        record.appearanceWeaponType = static_cast<uint32_t>(weapon);
-        if (weapon == shared::WEAPON_TYPE_SWORD)
-            record.weaponType = ITEM_CATEGORY_SWORDS;
-        else if (weapon == shared::WEAPON_TYPE_AXE)
-            record.weaponType = ITEM_CATEGORY_AXES;
-        else if (weapon == shared::WEAPON_TYPE_CLUB)
-            record.weaponType = ITEM_CATEGORY_CLUBS;
-        else if (weapon == shared::WEAPON_TYPE_FIST)
-            record.weaponType = ITEM_CATEGORY_FIST_WEAPONS;
-        else if (weapon == shared::WEAPON_TYPE_BOW || weapon == shared::WEAPON_TYPE_CROSSBOW || weapon == shared::WEAPON_TYPE_THROW)
-            record.weaponType = ITEM_CATEGORY_DISTANCE_WEAPONS;
-        else if (weapon == shared::WEAPON_TYPE_WAND_ROD)
-            record.weaponType = ITEM_CATEGORY_WANDS_RODS;
-    }
-}
-
-struct FrameGroupInfo
-{
-    int start = 0;
-    int numPatternX = 1;
-    int numPatternY = 1;
-    int numPatternZ = 1;
-    int layers = 1;
-    int phases = 1;
-};
-
-void fillSprites(AppearanceRecord& record, const tibia::protobuf::appearances::Appearance& appearance)
-{
-    record.animationPhases = 0;
-    int totalSprites = 0;
-    std::vector<FrameGroupInfo> groups;
-    bool sizeSet = false;
-
-    for (const auto& frameGroup : appearance.frame_group()) {
-        const auto& spriteInfo = frameGroup.sprite_info();
-        const int patternX = std::max(1, static_cast<int>(spriteInfo.pattern_width()));
-        const int patternY = std::max(1, static_cast<int>(spriteInfo.pattern_height()));
-        const int patternZ = std::max(1, static_cast<int>(spriteInfo.pattern_depth()));
-        const int layers = std::max(1, static_cast<int>(spriteInfo.layers()));
-        const int phases = std::max(1, spriteInfo.animation().sprite_phase_size());
-        record.numPatternX = patternX;
-        record.numPatternY = patternY;
-        record.numPatternZ = patternZ;
-        record.layers = layers;
-        record.opaque = spriteInfo.is_opaque() ? 1 : 0;
-        record.animationPhases += phases;
-
-        if (groups.empty()) {
-            for (const auto& box : spriteInfo.bounding_box_per_direction())
-                record.boundingBoxes.emplace_back(static_cast<int>(box.x()), static_cast<int>(box.y()),
-                                                   static_cast<int>(box.width()), static_cast<int>(box.height()));
-        }
-        if (!sizeSet && spriteInfo.sprite_id_size() > 0) {
-            bool loading = false;
-            if (const auto sheet = tibia::assets::sprites().sheetBySpriteId(static_cast<int>(spriteInfo.sprite_id(0)), loading, false)) {
-                const QSize pixels = sheet->getSpriteSize();
-                const int spriteSize = std::max(1, static_cast<int>(tibia::config::spriteSize()));
-                record.size = QSize(std::max(1, pixels.width() / spriteSize), std::max(1, pixels.height() / spriteSize));
-                record.realSize = std::min(255, std::max(pixels.width(), pixels.height()));
-                sizeSet = true;
-            }
-        }
-        const auto fixedGroup = frameGroup.fixed_frame_group();
-        const bool movingGroup = fixedGroup == tibia::protobuf::appearances::FIXED_FRAME_GROUP_OUTFIT_MOVING;
-        std::optional<tibia::animation::TAnimationInfo>& slot = movingGroup ? record.movingAnimation : record.idleAnimation;
-        if (spriteInfo.has_animation() && !slot) {
-            const auto& animation = spriteInfo.animation();
-            tibia::animation::TAnimationInfo info;
-            for (const auto& phase : animation.sprite_phase())
-                info.phases.emplace_back(phase.duration_min(), phase.duration_max());
-            using L = tibia::animation::TAnimationInfo::ELoopType;
-            switch (animation.loop_type()) {
-            case tibia::protobuf::shared::ANIMATION_LOOP_TYPE_PINGPONG: info.loopType = L::PingPong; break;
-            case tibia::protobuf::shared::ANIMATION_LOOP_TYPE_COUNTED: info.loopType = L::Counted; break;
-            default: info.loopType = L::Infinite; break;
-            }
-            info.synchronized = animation.synchronized();
-            info.loopCount = animation.loop_count();
-            info.finish();
-            slot = std::move(info);
-        }
-
-        const int count = layers * patternX * patternY * patternZ * phases;
-        if (totalSprites + count > 4096) {
-            qCritical("%s", std::format("appearance {} has more than 4096 sprites", record.id).c_str());
-            break;
-        }
-        const int available = spriteInfo.sprite_id_size();
-        const int start = totalSprites;
-        record.sprites.resize(static_cast<size_t>(totalSprites + count));
-        for (int sprite = 0; sprite < count; ++sprite) {
-            record.sprites[static_cast<size_t>(totalSprites + sprite)] = sprite < available ? spriteInfo.sprite_id(sprite) : 0;
-        }
-        groups.push_back({ start, patternX, patternY, patternZ, layers, phases });
-        totalSprites += count;
-    }
-
-    if (groups.size() < 2)
-        return;
-
-    int targetX = 1, targetY = 1, targetZ = 1, targetLayers = 1;
-    for (const auto& group : groups) {
-        targetX = std::max(targetX, group.numPatternX);
-        targetY = std::max(targetY, group.numPatternY);
-        targetZ = std::max(targetZ, group.numPatternZ);
-        targetLayers = std::max(targetLayers, group.layers);
-    }
-    bool mismatch = false;
-    for (const auto& group : groups) {
-        if (group.numPatternX != targetX || group.numPatternY != targetY || group.numPatternZ != targetZ || group.layers != targetLayers)
-            mismatch = true;
-    }
-    if (!mismatch)
-        return;
-
-    const auto old = std::move(record.sprites);
-    record.sprites.clear();
-    record.sprites.reserve(static_cast<size_t>(record.animationPhases * targetX * targetY * targetZ * targetLayers));
-    for (const auto& group : groups) {
-        for (int phase = 0; phase < group.phases; ++phase) {
-            for (int z = 0; z < targetZ; ++z) {
-                for (int y = 0; y < targetY; ++y) {
-                    for (int x = 0; x < targetX; ++x) {
-                        for (int layer = 0; layer < targetLayers; ++layer) {
-                            const int srcX = std::min(x, group.numPatternX - 1);
-                            const int srcY = std::min(y, group.numPatternY - 1);
-                            const int srcZ = std::min(z, group.numPatternZ - 1);
-                            const int srcLayer = std::min(layer, group.layers - 1);
-                            const int src = group.start + (((phase * group.numPatternZ + srcZ) * group.numPatternY + srcY) * group.numPatternX + srcX) * group.layers + srcLayer;
-                            record.sprites.push_back(src >= 0 && static_cast<size_t>(src) < old.size() ? old[static_cast<size_t>(src)] : 0);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    record.numPatternX = targetX;
-    record.numPatternY = targetY;
-    record.numPatternZ = targetZ;
-    record.layers = targetLayers;
-}
-
 Outfit outfitFrom(const tibia::protobuf::staticdata::Outfit& message)
 {
     Outfit outfit;
@@ -481,17 +157,12 @@ TAppearanceInstanceGenericStorage& TAppearancesManager::genericStorage()
 
 void TAppearancesManager::init()
 {
-    if (!m_nullThingType)
-        m_nullThingType = std::make_shared<ThingType>();
-    for (auto& things : m_thingTypes)
-        things.assign(1, m_nullThingType);
+    m_appearanceTypes.clear();
 }
 
 void TAppearancesManager::terminate()
 {
-    for (auto& things : m_thingTypes)
-        things.clear();
-    m_nullThingType.reset();
+    m_appearanceTypes.clear();
     m_monsterRaces.clear();
     m_cyclopediaHouses.clear();
     m_cyclopediaAchievements.clear();
@@ -504,11 +175,107 @@ void TAppearancesManager::terminate()
     tibia::assets::sprites().clear();
 }
 
+void TAppearancesManager::initialize(const std::string& bytes)
+{
+    tibia::protobuf::appearances::Appearances appearances;
+    if (!appearances.ParseFromString(bytes))
+        throw std::logic_error("TAppearancesManager::initialize malformed protobuf data");
+
+    const auto& special = appearances.special_meaning_appearance_ids();
+    setSpecialMeaningAppearanceIds({ static_cast<uint16_t>(special.gold_coin_id()),
+                                     static_cast<uint16_t>(special.platinum_coin_id()),
+                                     static_cast<uint16_t>(special.crystal_coin_id()),
+                                     static_cast<uint16_t>(special.tibia_coin_id()),
+                                     static_cast<uint16_t>(special.stamped_letter_id()),
+                                     static_cast<uint16_t>(special.supply_stash_id()),
+                                     static_cast<uint16_t>(special.standard_reward_chest_id()),
+                                     static_cast<uint16_t>(special.blank_imbuement_scroll_id()) });
+
+    // Each bank is converted into a map by id (a later duplicate id replaces the
+    // earlier one) and added to the types of its category without replacing any.
+    // The sprites' pixel sizes come from their spritesheets.
+    const TSpriteSizeLookup spriteSize = [](const uint32_t spriteId) {
+        bool loading = false;
+        if (const auto sheet = tibia::assets::sprites().sheetBySpriteId(static_cast<int>(spriteId), loading, false))
+            return sheet->getSpriteSize();
+        return QSize();
+    };
+    const auto convert = [this, &spriteSize](const EAppearanceCategory category,
+                                             const google::protobuf::RepeatedPtrField<tibia::protobuf::appearances::Appearance>& bank) {
+        std::map<uint16_t, TAppearanceType> types;
+        for (const auto& appearance : bank) {
+            TAppearanceType type = TAppearanceType::fromProtobuf(category, appearance, spriteSize);
+            types.insert_or_assign(type.getId(), std::move(type));
+        }
+        auto& target = m_appearanceTypes[category];
+        for (auto& [id, type] : types)
+            target.try_emplace(id, std::move(type));
+    };
+    convert(EAppearanceCategory::Effect, appearances.effect());
+    convert(EAppearanceCategory::Missile, appearances.missile());
+    convert(EAppearanceCategory::Object, appearances.object());
+    convert(EAppearanceCategory::Outfit, appearances.outfit());
+    collectObjectLists();
+    linkExpireCounterparts();
+}
+
+void TAppearancesManager::linkExpireCounterparts()
+{
+    auto& objects = m_appearanceTypes.at(EAppearanceCategory::Object);
+    for (auto& [id, type] : objects) {
+        if (!type.hasChangedToExpire())
+            continue;
+        TAppearanceType& former = objects.at(type.formerObjectId());
+        const uint16_t formerId = former.getId();
+        former.setExpireCounterpart(type.getId());
+        type.setExpireCounterpart(formerId);
+    }
+}
+
+void TAppearancesManager::insertAppearanceType(const EAppearanceCategory category, const uint16_t id, const TAppearanceType& type)
+{
+    m_appearanceTypes.at(category).try_emplace(id, type);
+}
+
+void TAppearancesManager::postprocessAppearances()
+{
+    // The creature placeholder: an outfit without id that plays effect 13 as one
+    // synchronised endless loop, shifted half a field.
+    const TAppearanceType* marker = findAppearanceType(ThingCategoryEffect, 13);
+    if (!marker)
+        throw std::logic_error(QStringLiteral("The TAppearanceType::ID %1 does not exist in %2!").arg(13).arg(QStringLiteral("EFFECTS")).toStdString());
+    TAppearanceTypeSpriteInfo markerInfo = marker->frameGroup(EFixedFrameGroup::ObjectInitial);
+    if (const auto* animation = markerInfo.animation()) {
+        tibia::animation::TAnimationInfo looped = *animation;
+        looped.synchronized = true;
+        looped.loopType = tibia::animation::TAnimationInfo::ELoopType::Infinite;
+        looped.finish();
+        markerInfo.setAnimation(std::move(looped));
+    }
+    TAppearanceType placeholder;
+    placeholder.setCategory(EAppearanceCategory::Outfit);
+    placeholder.setId(0);
+    placeholder.setDisplacement(8, 8);
+    placeholder.addFrameGroup(EFixedFrameGroup::OutfitIdle, std::move(markerInfo));
+    m_appearanceTypes[EAppearanceCategory::Outfit].insert_or_assign(placeholder.getId(), std::move(placeholder));
+
+    // The three coins have a market category of their own.
+    auto& objects = m_appearanceTypes[EAppearanceCategory::Object];
+    const TSpecialMeaningAppearanceIds& special = specialMeaningAppearanceIds();
+    for (const uint16_t coin : { special.goldCoin, special.platinumCoin, special.crystalCoin })
+        objects[coin].setMarketCategory(30);
+
+    forEachAppearanceType([](const TAppearanceType& type) {
+        if (const uint32_t sprite = type.firstSpriteId())
+            (void)tibia::sprites::TAppearanceTypeSpritesheetMapping(type.getId(), sprite);
+        return true;
+    });
+}
+
 bool TAppearancesManager::loadAppearances(const std::string& directory)
 {
     try {
-        if (!m_nullThingType)
-            init();
+        init();
         (void)tracker();
         (void)storages();
         (void)genericStorage();
@@ -528,77 +295,9 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         if (appearancesFile.empty())
             throw std::runtime_error("catalog has no appearances file");
 
-        const auto appearancesPath =
-            tibia::files::data().resolvePath(directory + appearancesFile);
-        const auto bytes = tibia::files::data().readFileContents(appearancesPath);
-        tibia::protobuf::appearances::Appearances appearances;
-        if (!appearances.ParseFromString(bytes)) {
-            const auto head = bytes.substr(0, std::min<size_t>(bytes.size(), 8));
-            std::string hex;
-            hex.reserve(head.size() * 2);
-            static const char* kHex = "0123456789abcdef";
-            for (unsigned char c : head) {
-                hex.push_back(kHex[c >> 4]);
-                hex.push_back(kHex[c & 0xf]);
-            }
-            throw std::runtime_error(std::format(
-                "Couldn't parse appearances lib (path={} bytes={} head={})",
-                appearancesPath,
-                bytes.size(),
-                hex.empty() ? "empty" : hex));
-        }
-
-        const auto& special = appearances.special_meaning_appearance_ids();
-        m_supplyStashId = special.supply_stash_id();
-        m_standardRewardChestId = special.standard_reward_chest_id();
-        m_stampedLetterId = special.stamped_letter_id();
-
-        for (int category = ThingCategoryItem; category < ThingLastCategory; ++category) {
-            const google::protobuf::RepeatedPtrField<tibia::protobuf::appearances::Appearance>* bank = nullptr;
-            switch (category) {
-                case ThingCategoryItem: bank = &appearances.object(); break;
-                case ThingCategoryCreature: bank = &appearances.outfit(); break;
-                case ThingCategoryEffect: bank = &appearances.effect(); break;
-                case ThingCategoryMissile: bank = &appearances.missile(); break;
-                default: return false;
-            }
-            uint32_t lastId = 0;
-            for (const auto& appearance : *bank)
-                lastId = std::max(lastId, appearance.id());
-            if (lastId > std::numeric_limits<uint16_t>::max())
-                lastId = std::numeric_limits<uint16_t>::max();
-            auto& things = m_thingTypes[category];
-            things.assign(lastId + 1, m_nullThingType);
-            for (const auto& appearance : *bank) {
-                if (appearance.id() == 0 || appearance.id() > lastId)
-                    continue;
-                AppearanceRecord record;
-                record.null = false;
-                record.id = static_cast<uint16_t>(appearance.id());
-                record.category = static_cast<ThingCategory>(category);
-                record.name = appearance.name();
-                record.description = appearance.description();
-                if (!record.description.empty()
-                    && !QUtf8StringView(record.description.data(), qsizetype(record.description.size())).isValidUtf8())
-                    record.description = QString::fromLatin1(record.description.data(), qsizetype(record.description.size())).toStdString();
-                if (appearance.has_flags())
-                    applyFlags(record, appearance.flags());
-                fillSprites(record, appearance);
-                auto type = std::make_shared<ThingType>();
-                type->adopt(std::move(record));
-                if (category == ThingCategoryItem) {
-                    if (const auto it = m_thingShapes.find(type->getId()); it != m_thingShapes.end())
-                        type->setThingShape(it->second);
-                }
-                // CIP sprites::TAppearanceTypeSpritesheetMapping — appearance id → first sheet sprite.
-                const auto& spriteIds = type->getSprites();
-                if (!spriteIds.empty()) {
-                    (void)tibia::sprites::TAppearanceTypeSpritesheetMapping(type->getId(), spriteIds.front());
-                }
-                things[type->getId()] = std::move(type);
-            }
-        }
-        collectObjectLists();
+        const auto appearancesPath = tibia::files::data().resolvePath(directory + appearancesFile);
+        initialize(tibia::files::data().readFileContents(appearancesPath));
+        postprocessAppearances();
         m_datLoaded = true;
         return true;
     } catch (const std::exception& e) {
@@ -727,30 +426,17 @@ bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
     }
 }
 
-const ThingTypePtr& TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
+TAppearanceTypePtr TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
 {
-    static const ThingTypePtr kEmpty;
-    if (category >= ThingLastCategory || !m_nullThingType || m_thingTypes[category].empty())
-        return m_nullThingType ? m_nullThingType : kEmpty;
-    if (id >= m_thingTypes[category].size()) {
-        qCritical("%s", std::format("Invalid thing type client id {} in category {}", id, static_cast<uint8_t>(category)).c_str());
-        return m_nullThingType;
-    }
-    return m_thingTypes[category][id];
+    static TAppearanceType empty;
+    if (TAppearanceType* type = getRawThingType(id, category))
+        return type;
+    return &empty;
 }
 
-ThingType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)
+TAppearanceType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)
 {
-    if (category >= ThingLastCategory || !m_nullThingType || m_thingTypes[category].empty() || id >= m_thingTypes[category].size())
-        return nullptr;
-    return m_thingTypes[category][id].get();
-}
-
-const ThingTypeList& TAppearancesManager::getThingTypes(const ThingCategory category)
-{
-    if (category < ThingLastCategory)
-        return m_thingTypes[category];
-    throw std::runtime_error("invalid thing type category");
+    return findType(category, id);
 }
 
 const RaceType& TAppearancesManager::getRaceData(const uint32_t raceId)
@@ -780,19 +466,31 @@ const CyclopediaQuestType* TAppearancesManager::getCyclopediaQuest(const uint16_
     return nullptr;
 }
 
-const ThingTypeList& TAppearancesManager::objectTypes() const
+TAppearanceType* TAppearancesManager::findType(const ThingCategory category, const uint16_t id) const
 {
-    return m_thingTypes[ThingCategoryItem];
+    if (category >= ThingLastCategory)
+        return nullptr;
+    const auto bank = m_appearanceTypes.find(static_cast<EAppearanceCategory>(category));
+    if (bank == m_appearanceTypes.end())
+        return nullptr;
+    const auto it = bank->second.find(id);
+    return it != bank->second.end() ? const_cast<TAppearanceType*>(&it->second) : nullptr;
 }
 
-ThingType* TAppearancesManager::findAppearanceType(const ThingCategory category, const uint16_t id) const
+const std::map<uint16_t, TAppearanceType>& TAppearancesManager::appearanceTypes(const EAppearanceCategory category) const
+{
+    static const std::map<uint16_t, TAppearanceType> none;
+    const auto it = m_appearanceTypes.find(category);
+    return it != m_appearanceTypes.end() ? it->second : none;
+}
+
+TAppearanceType* TAppearancesManager::findAppearanceType(const ThingCategory category, const uint16_t id) const
 {
     if (category >= ThingLastCategory)
         throw std::out_of_range("map::at:  key not found");
-    const ThingTypeList& types = m_thingTypes[category];
-    if (id >= types.size() || !types[id] || types[id]->isNull())
-        return nullptr;
-    return types[id].get();
+    const auto& bank = m_appearanceTypes.at(static_cast<EAppearanceCategory>(category));
+    const auto it = bank.find(id);
+    return it != bank.end() ? const_cast<TAppearanceType*>(&it->second) : nullptr;
 }
 
 bool TAppearancesManager::hasAppearanceType(const ThingCategory category, const uint16_t id) const
@@ -809,13 +507,11 @@ void TAppearancesManager::checkAppearanceType(const ThingCategory category, cons
     throw std::logic_error(QStringLiteral("The TAppearanceType::ID %1 does not exist in %2!").arg(id).arg(name).toStdString());
 }
 
-void TAppearancesManager::forEachAppearanceType(const std::function<bool(const ThingType&)>& visit) const
+void TAppearancesManager::forEachAppearanceType(const std::function<bool(const TAppearanceType&)>& visit) const
 {
-    for (const ThingTypeList& types : m_thingTypes) {
-        for (const ThingTypePtr& type : types) {
-            if (!type || type->isNull())
-                continue;
-            if (!visit(*type))
+    for (const auto& [category, types] : m_appearanceTypes) {
+        for (const auto& [id, type] : types) {
+            if (!visit(type))
                 return;
         }
     }
@@ -828,15 +524,13 @@ void TAppearancesManager::collectObjectLists()
     m_skillWheelGemObjectTypes.clear();
     TSpecialAppearancesForProtocolParsing::IdSet cumulative, liquid, container, showOffSocket, upgradeable, wearOut,
         expire, expireStop, decoKit;
-    for (const ThingTypePtr& type : objectTypes()) {
-        if (!type || type->isNull())
-            continue;
+    for (auto& [objectId, object] : m_appearanceTypes[EAppearanceCategory::Object]) {
+        TAppearanceType* type = &object;
         const auto id = static_cast<uint16_t>(type->getId());
         if (type->isMarketable())
             m_marketObjectTypes.push_back(type);
         if (type->isStackable())
             cumulative.insert(id);
-        // ThingType splits CIP's liquid flag into containers and pools; both carry a liquid.
         if (type->isFluidContainer() || type->isSplash())
             liquid.insert(id);
         if (type->isContainer())
@@ -847,7 +541,7 @@ void TAppearancesManager::collectObjectLists()
             upgradeable.insert(id);
         if (type->hasWearOut())
             wearOut.insert(id);
-        if (type->hasExpire() || type->hasClockExpire())
+        if (type->hasExpire())
             expire.insert(id);
         if (type->hasExpireStop())
             expireStop.insert(id);
@@ -871,43 +565,43 @@ const TSpecialAppearancesForProtocolParsing& TAppearancesManager::specialAppeara
     return empty;
 }
 
-ThingTypeList TAppearancesManager::getNpcSaleObjectTypes() const
+TAppearanceTypeList TAppearancesManager::getNpcSaleObjectTypes() const
 {
-    ThingTypeList result;
-    for (const ThingTypePtr& type : objectTypes()) {
-        if (type && !type->isNull() && !type->getNpcSaleData().empty())
-            result.push_back(type);
+    TAppearanceTypeList result;
+    for (const auto& [id, type] : appearanceTypes(EAppearanceCategory::Object)) {
+        if (!type.npcTradeData().empty())
+            result.push_back(const_cast<TAppearanceType*>(&type));
     }
     return result;
 }
 
-ThingTypeList TAppearancesManager::getCyclopediaObjectTypes() const
+TAppearanceTypeList TAppearancesManager::getCyclopediaObjectTypes() const
 {
-    ThingTypeList result;
-    for (const ThingTypePtr& type : objectTypes()) {
-        if (type && !type->isNull() && type->hasCyclopediaItem() && type->getCyclopediaType() == type->getId())
-            result.push_back(type);
+    TAppearanceTypeList result;
+    for (const auto& [id, type] : appearanceTypes(EAppearanceCategory::Object)) {
+        if (type.hasCyclopediaItem() && type.getCyclopediaType() == type.getId())
+            result.push_back(const_cast<TAppearanceType*>(&type));
     }
     return result;
 }
 
-ThingTypeList TAppearancesManager::getProficiencyObjectTypes() const
+TAppearanceTypeList TAppearancesManager::getProficiencyObjectTypes() const
 {
-    ThingTypeList result;
-    for (const ThingTypePtr& type : objectTypes()) {
-        if (type && !type->isNull() && type->hasProficiency())
-            result.push_back(type);
+    TAppearanceTypeList result;
+    for (const auto& [id, type] : appearanceTypes(EAppearanceCategory::Object)) {
+        if (type.hasProficiency())
+            result.push_back(const_cast<TAppearanceType*>(&type));
     }
     return result;
 }
 
 std::string TAppearancesManager::getCyclopediaItemName(const uint16_t id)
 {
-    const auto& type = getThingType(id, ThingCategoryItem);
-    if (!type || type->isNull())
+    const TAppearanceType* type = getRawThingType(id, ThingCategoryItem);
+    if (!type)
         return {};
-    if (!type->getMarketData().name.empty())
-        return type->getMarketData().name;
+    if (const TAppearanceMarketProperties* market = type->marketProperties(); market && !market->name.isEmpty())
+        return market->name.toStdString();
     return type->getName();
 }
 
@@ -929,11 +623,13 @@ bool TAppearancesManager::setThingShape(const uint16_t itemId, const std::string
     if (it == std::end(names))
         return false;
     m_thingShapes[itemId] = it->second;
-    if (isValidDatId(itemId, ThingCategoryItem)) {
-        if (const auto& type = m_thingTypes[ThingCategoryItem][itemId]; type && !type->isNull())
-            type->setThingShape(it->second);
-    }
     return true;
+}
+
+ThingShape TAppearancesManager::thingShape(const uint16_t itemId) const
+{
+    const auto it = m_thingShapes.find(itemId);
+    return it != m_thingShapes.end() ? it->second : ThingShape::Auto;
 }
 
 void TAppearancesManager::registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader, const bool underCreatures)

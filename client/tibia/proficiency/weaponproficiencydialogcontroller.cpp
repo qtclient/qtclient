@@ -8,7 +8,7 @@
 #include "proficiency/proficiencyperks.h"
 
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -161,7 +161,7 @@ QHash<int, QByteArray> TWeaponObjectsModel::roleNames() const
 void TWeaponObjectsModel::rebuild()
 {
     std::vector<TWeaponEntry> entries;
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
         TWeaponEntry entry;
         entry.typeId = type->getId();
         entry.name = QString::fromStdString(type->getName());
@@ -408,7 +408,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 
     // The asked weapon when it is a proficiency weapon not already shown,
     // otherwise the list's first entry with every weapon type.
-    const ThingTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
+    const TAppearanceTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
         ? tibia::game::thingType(typeId, ThingCategoryItem)
         : nullptr;
     const bool selected = typeId != 0 && tibia::game::isOnline() && m_model.contains(typeId) && typeId != m_currentTypeId;
@@ -751,7 +751,7 @@ QString TWeaponProficiencyDialogController::currentTypeName() const
 {
     QString name = qtTrId("weapon_proficiency_nothing_selected");
     if (m_currentTypeId != 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem)) {
-        const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+        const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
         if (type)
             name = QString::fromStdString(type->getName());
     }
@@ -763,7 +763,7 @@ bool TWeaponProficiencyDialogController::currentIsUseRestricted() const
     // CIP: restricted while nothing is selected or there is no session.
     if (m_currentTypeId == 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
         return true;
-    const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
     if (!type || !tibia::game::hasLocalPlayer())
         return true;
     return tibia::game::localPlayerLevel() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());

@@ -4,7 +4,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -274,13 +274,13 @@ bool localPlayerPremium()
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
 }
 
 uint32_t imbuementSlotCount(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? type->getImbueSlots() : 0;
 }
 

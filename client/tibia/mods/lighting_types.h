@@ -31,7 +31,7 @@ struct LightingThingContext {
     uint32_t creatureId = 0;
 };
 
-/// Peeled frame desc for `addFrame` (qtclient peels ThingType; pack never sees ThingType&).
+/// Peeled frame desc for `addFrame` (qtclient peels TAppearanceType; pack never sees TAppearanceType&).
 struct LightingFrameDesc {
     uint32_t spriteId = 0;
     int anchorX = 0;

@@ -2,7 +2,7 @@
 #include "singleobjectrenderer.h"
 
 #include <tibia/config/runtimegameconfig.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "clockservice.h"
 
@@ -114,7 +114,7 @@ void TSingleObjectAppearanceInstanceRenderer::changed()
     m_type = nullptr;
     m_patternX = m_patternY = m_patternZ = 0;
     if (m_typeid > 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem)) {
-        m_type = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem).get();
+        m_type = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem);
         if (m_type && m_type->isNull())
             m_type = nullptr;
     }
@@ -179,10 +179,8 @@ void TSingleObjectAppearanceInstanceRenderer::updatePolish()
     m_target = {};
     QRect bounds;
     if (m_type && m_type->getAnimationPhases() > 0) {
-        const auto& sprites = m_type->getSprites();
-        const uint32_t index = m_type->getSpriteIndex(-1, -1, 0, m_patternX, m_patternY, m_patternZ, m_phase);
-        if (index < sprites.size())
-            m_sprite.spriteId = sprites[index];
+        if (const auto sprite = m_type->spriteIdAt(0, m_patternX, m_patternY, m_patternZ, m_phase))
+            m_sprite.spriteId = *sprite;
     }
     if (m_sprite.spriteId) {
         const QSize size(m_type->getSize().width() * FieldSize, m_type->getSize().height() * FieldSize);

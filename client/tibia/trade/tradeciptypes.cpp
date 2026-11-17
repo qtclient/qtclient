@@ -10,7 +10,7 @@
 
 #include <protocol.pb.h>
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -26,11 +26,11 @@ using client::gamecore::argString;
 
 QString itemNameOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return QString::number(typeId);
-    const MarketData& market = type->getMarketData();
-    return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
+    const auto* market = type->marketProperties();
+    return market && !market->name.isEmpty() ? market->name : type->name();
 }
 
 QString categoryIconFor(const uint8_t category)

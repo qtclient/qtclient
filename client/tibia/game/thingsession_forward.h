@@ -8,19 +8,14 @@
 namespace tibia {
 namespace game {
 
-inline const ThingTypePtr& thingType(uint16_t id, ThingCategory category)
+inline TAppearanceTypePtr thingType(uint16_t id, ThingCategory category)
 {
     return tibia::appearances::TAppearancesManager::instance().getThingType(id, category);
 }
 
-inline ThingType* rawThingType(uint16_t id, ThingCategory category)
+inline TAppearanceType* rawThingType(uint16_t id, ThingCategory category)
 {
     return tibia::appearances::TAppearancesManager::instance().getRawThingType(id, category);
-}
-
-inline const ThingTypeList& thingTypes(ThingCategory category)
-{
-    return tibia::appearances::TAppearancesManager::instance().getThingTypes(category);
 }
 
 inline bool isValidDatId(uint16_t id, ThingCategory category)

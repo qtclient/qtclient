@@ -9,7 +9,10 @@
 
 #include <optional>
 
-class ThingType;
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 namespace tibia {
 namespace qmlcomponents {
@@ -49,10 +52,10 @@ private:
     void watchFrames();
     int currentPhase() const;
 
-    ThingType* m_type = nullptr;
+    TAppearanceType* m_type = nullptr;
     /// The shown object's own animator, started at time 0; rebuilt with the type.
     mutable std::optional<tibia::animation::TAnimator> m_animator;
-    mutable const ThingType* m_animatorType = nullptr;
+    mutable const TAppearanceType* m_animatorType = nullptr;
     int m_patternX = 0;
     int m_patternY = 0;
     int m_patternZ = 0;

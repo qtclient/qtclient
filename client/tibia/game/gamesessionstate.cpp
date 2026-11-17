@@ -19,7 +19,7 @@
 #include "protocol/clientmessages.h"
 #include "protocol/protocolcodes.h"
 #include "tibia/protocol/extendedopcode.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "worldmap/worldmapfield.h"
 #include "container/containerciptypes.h"
@@ -513,11 +513,11 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
 {
     tibia::container::TInventorySlot row = item;
     if (!row.empty() && row.durationSeconds > 0) {
-        ThingType* type = row.appearance ? row.appearance->thingType()
+        TAppearanceType* type = row.appearance ? row.appearance->thingType()
                                          : tibia::game::rawThingType(row.typeId, ThingCategoryItem);
         // expirestop-only items are paused server-side when equipped in their cloth slot.
         if (type && type->getClothSlot() == static_cast<int>(slot)
-            && (type->hasExpire() || type->hasClockExpire())) {
+            && type->hasExpire()) {
             row.decaying = true;
             row.durationEndMs = tibia::shared::TClockService::frameMillis() + static_cast<int64_t>(row.durationSeconds) * 1000;
         }

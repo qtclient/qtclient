@@ -14,7 +14,7 @@
 #include <format>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 #include <array>

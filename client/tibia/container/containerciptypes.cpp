@@ -6,7 +6,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "tibia/client/outfit.h"
 #include "tibia/game/gamenotify.h"
@@ -246,7 +246,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             return;
         const auto& m = shadow->GetExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list);
         const auto typeId = static_cast<uint16_t>(m.object().object_id());
-        const ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         const std::optional<uint8_t> tier =
             type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(m.object().tier())) : std::nullopt;
         std::vector<TInventorySlot> depotObjects;
@@ -305,7 +305,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
         for (const auto& e : shadow->GetExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory).entries()) {
             const auto id = static_cast<uint16_t>(e.object_id());
-            const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+            const TAppearanceType* type = tibia::game::rawThingType(id, ThingCategoryItem);
             const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
             auto& entry = counts[{ id, tier }];
             entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
@@ -355,7 +355,7 @@ int64_t TInventorySlot::durationRemainingMilliseconds() const
     return int64_t(durationSeconds) * 1000;
 }
 
-TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_t countOrSubType, const uint8_t tier,
+TInventorySlot TInventorySlot::fromProtocolObject(TAppearanceType* type, const uint16_t countOrSubType, const uint8_t tier,
                                                   const uint8_t hangSide)
 {
     TInventorySlot slot;
@@ -369,7 +369,7 @@ TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_
     slot.fluid = slot.fluidOrSplash ? static_cast<uint8_t>(std::clamp<uint16_t>(countOrSubType, 0, 255)) : 0;
     slot.tier = tier;
     slot.hasWearOut = type->hasWearOut();
-    slot.hasClock = type->hasClockExpire() || type->hasExpire() || type->hasExpireStop();
+    slot.hasClock = type->hasExpire() || type->hasExpireStop();
     slot.dualWield = type->isDualWield();
 
     const uint16_t count = slot.stackable ? slot.count : 0;
@@ -387,7 +387,7 @@ TInventorySlot TInventorySlot::fromTypeId(const uint16_t typeId, const uint16_t 
 TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventoryItem& item)
 {
     const uint16_t typeId = static_cast<uint16_t>(item.item_id());
-    ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return {};
 

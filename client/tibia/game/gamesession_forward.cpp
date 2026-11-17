@@ -16,7 +16,7 @@
 #include <tibia/game/mapsession.h>
 #include "protocol/protocolcodes.h"
 #include "tibia/protocol/extendedopcode.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "worldmap/worldmapfield.h"
 #include "container/containerciptypes.h"

@@ -20,7 +20,7 @@
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 #include "worldmap/worldmapviewport.h"
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include <QCursor>
 #include <QGuiApplication>
 #include <QHoverEvent>

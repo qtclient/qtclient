@@ -1,10 +1,13 @@
 #pragma once
 
 
-#include "thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "specialappearances.h"
 
+#include <idleot/heightstamp.h>
+
 #include <functional>
+#include <map>
 #include <memory>
 #include <unordered_map>
 
@@ -42,22 +45,22 @@ public:
     bool loadStaticData(const std::string& directory);
     bool resolveProficienciesFile(const std::string& directory);
 
-    const ThingTypePtr& getThingType(uint16_t id, ThingCategory category);
-    ThingType* getRawThingType(uint16_t id, ThingCategory category);
-    const ThingTypeList& getThingTypes(ThingCategory category);
-    const ThingTypePtr& getNullThingType() { return m_nullThingType; }
+    /// The type of `id`, or the empty type (isNull()) when there is none.
+    TAppearanceTypePtr getThingType(uint16_t id, ThingCategory category);
+    /// The type of `id`, or null.
+    TAppearanceType* getRawThingType(uint16_t id, ThingCategory category);
     bool isValidDatId(uint16_t id, ThingCategory category) const
     {
-        return category < ThingLastCategory && id >= 1 && id < m_thingTypes[category].size();
+        return category < ThingLastCategory && id >= 1 && findType(category, id) != nullptr;
     }
     bool isDatLoaded() const { return m_datLoaded; }
 
     uint32_t getDatSignature() const { return 0; }
     uint16_t getContentRevision() const { return 0; }
     const std::string& getAssetIdentifier() const { return m_assetIdentifier; }
-    uint32_t getSupplyStashId() const { return m_supplyStashId; }
-    uint32_t getStandardRewardChestId() const { return m_standardRewardChestId; }
-    uint32_t getStampedLetterId() const { return m_stampedLetterId; }
+    uint32_t getSupplyStashId() const { return specialMeaningAppearanceIds().supplyStash; }
+    uint32_t getStandardRewardChestId() const { return specialMeaningAppearanceIds().standardRewardChest; }
+    uint32_t getStampedLetterId() const { return specialMeaningAppearanceIds().stampedLetter; }
 
     bool isOtbLoaded() const { return false; }
     uint32_t getOtbMajorVersion() const { return 0; }
@@ -79,26 +82,39 @@ public:
     static std::vector<THouseMapArea> parseStaticMapData(const std::string& bytes);
     void setStaticInformation(TStaticInformation information);
 
+    /// Builds every appearance type from the appearances asset (throws
+    /// std::logic_error on malformed data).
+    void initialize(const std::string& bytes);
+    /// Adds the creature placeholder outfit and the coin market category, and
+    /// registers the sprites of every type.
+    void postprocessAppearances();
+    /// Adds `type` as `id` of `category` unless that id exists.
+    void insertAppearanceType(EAppearanceCategory category, uint16_t id, const TAppearanceType& type);
+
     // Appearance type lookups. A missing category throws std::out_of_range.
-    ThingType* findAppearanceType(ThingCategory category, uint16_t id) const;
+    TAppearanceType* findAppearanceType(ThingCategory category, uint16_t id) const;
     bool hasAppearanceType(ThingCategory category, uint16_t id) const;
     /// Throws std::logic_error when the type does not exist.
     void checkAppearanceType(ThingCategory category, uint16_t id) const;
     /// Calls `visit` for every type of every category until it returns false.
-    void forEachAppearanceType(const std::function<bool(const ThingType&)>& visit) const;
+    void forEachAppearanceType(const std::function<bool(const TAppearanceType&)>& visit) const;
+    /// The types of one category in id order.
+    const std::map<uint16_t, TAppearanceType>& appearanceTypes(EAppearanceCategory category) const;
 
     // Object lists, in id order.
-    ThingTypeList getMarketObjectTypes() const { return m_marketObjectTypes; }
-    ThingTypeList getNpcSaleObjectTypes() const;
-    ThingTypeList getCyclopediaObjectTypes() const;
-    ThingTypeList getProficiencyObjectTypes() const;
-    ThingTypeList getSkillWheelGemObjectTypes() const { return m_skillWheelGemObjectTypes; }
+    TAppearanceTypeList getMarketObjectTypes() const { return m_marketObjectTypes; }
+    TAppearanceTypeList getNpcSaleObjectTypes() const;
+    TAppearanceTypeList getCyclopediaObjectTypes() const;
+    TAppearanceTypeList getProficiencyObjectTypes() const;
+    TAppearanceTypeList getSkillWheelGemObjectTypes() const { return m_skillWheelGemObjectTypes; }
     /// The object kinds the protocol reads extra data for; empty before the appearances load.
     const TSpecialAppearancesForProtocolParsing& specialAppearancesForProtocolParsing() const;
     std::string getCyclopediaItemName(uint16_t id);
     std::string getProficienciesFile();
 
     bool setThingShape(uint16_t itemId, const std::string& shape);
+    /// The pack's shape override of an object (Auto without one).
+    ThingShape thingShape(uint16_t itemId) const;
     void unloadTextures() {}
 
     void registerEffectVariant(uint16_t virtualId, uint16_t baseId, const std::string& shader, bool underCreatures);
@@ -115,28 +131,26 @@ public:
     }
 
 private:
-    const ThingTypeList& objectTypes() const;
+    TAppearanceType* findType(ThingCategory category, uint16_t id) const;
     void collectObjectLists();
+    /// Pairs each changed-to-expire object with the object it expires from.
+    void linkExpireCounterparts();
 
     std::unique_ptr<TAppearanceInstanceTracker> m_tracker;
     std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
     std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
 
-    ThingTypeList m_thingTypes[ThingLastCategory];
-    ThingTypePtr m_nullThingType;
+    std::map<EAppearanceCategory, std::map<uint16_t, TAppearanceType>> m_appearanceTypes;
     RaceList m_monsterRaces;
     std::vector<CyclopediaHouseType> m_cyclopediaHouses;
     std::vector<CyclopediaAchievementType> m_cyclopediaAchievements;
     std::vector<CyclopediaQuestType> m_cyclopediaQuests;
     std::vector<MonsterClassType> m_monsterClasses;
     std::vector<THouseMapArea> m_houseMapAreas;
-    ThingTypeList m_marketObjectTypes;
-    ThingTypeList m_skillWheelGemObjectTypes;
+    TAppearanceTypeList m_marketObjectTypes;
+    TAppearanceTypeList m_skillWheelGemObjectTypes;
     std::shared_ptr<TSpecialAppearancesForProtocolParsing> m_specialAppearances;
     bool m_datLoaded = false;
-    uint32_t m_supplyStashId = 0;
-    uint32_t m_standardRewardChestId = 0;
-    uint32_t m_stampedLetterId = 0;
     std::string m_assetIdentifier;
     std::string m_proficienciesFile;
     std::unordered_map<uint16_t, EffectVariant> m_effectVariants;

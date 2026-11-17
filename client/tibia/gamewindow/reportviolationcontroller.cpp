@@ -5,7 +5,7 @@
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>

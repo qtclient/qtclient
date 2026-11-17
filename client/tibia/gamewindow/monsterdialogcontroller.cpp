@@ -564,7 +564,7 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("context_open_in_cyclopedia")), &TContextMenuEntryItem::triggered, this,
             [this, AppearanceTypeID] { requestSwitchToItemInfo(AppearanceTypeID); });
-    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem);
+    if (TAppearanceType* type = tibia::game::rawThingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem);
         type && type->getProficiencyId() != 0) {
         connect(menu->addCustomEntry(qtTrId("inspect_open_weapon_proficiency_dialog")), &TContextMenuEntryItem::triggered, this,
                 [AppearanceTypeID] {

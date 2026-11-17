@@ -14,7 +14,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "game/playerskillstats.h"
 
@@ -794,7 +794,7 @@ void TCharacterInfoDialogController::updateInspection(const Args& args)
             rightHandEmpty = false;
         if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
             leftHandTypeId = entry.typeId;
-            if (ThingType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
+            if (TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
                 leftHandDualWield = type->isDualWield();
         }
     }

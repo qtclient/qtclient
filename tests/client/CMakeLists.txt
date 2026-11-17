@@ -187,3 +187,12 @@ qtclient_add_port_test(client_specialappearances_tests
     specialappearances_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/assets/specialappearances.cpp
 )
+
+# CIP appearances::TAppearanceType: appearances.dat objects converted from their protobuf messages.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_appearancetype_tests
+        appearancetype_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+    )
+    target_link_libraries(client_appearancetype_tests PRIVATE cip_messages Qt6::Gui)
+endif()

@@ -111,7 +111,7 @@ public:
     static std::vector<int> categoryIdentifiers();
     /// A cyclopedia type's list entry, untiered; its NPC filter names are
     /// the NPCs that buy it.
-    static TAppearanceTypeEntry cyclopediaEntry(const ThingTypePtr& type);
+    static TAppearanceTypeEntry cyclopediaEntry(const TAppearanceTypePtr& type);
 
 private:
     /// CIP .

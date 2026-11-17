@@ -146,6 +146,7 @@ set(SOURCE_FILES
         tibia/client/animatedtext.cpp
         tibia/client/client.cpp
         tibia/idleot/heightstamp.cpp
+        tibia/idleot/appearanceshape.cpp
         tibia/idleot/stats.cpp
         tibia/client/outfit.cpp
         tibia/client/position.cpp
@@ -159,7 +160,7 @@ set(SOURCE_FILES
         tibia/assets/spritesheet.cpp
         tibia/assets/cipbmpimage.cpp
         tibia/shared/tibiafilesystemhelper.cpp
-        tibia/assets/thingtype.cpp
+        tibia/appearances/appearancetype.cpp
         tibia/assets/things.cpp
         tibia/assets/specialappearances.cpp
         tibia/game/gamesessionstate.cpp
@@ -178,6 +179,7 @@ set(GAMECORE_SOURCES ${SOURCE_FILES})
 set(_dispatch_gen_abs "${CMAKE_CURRENT_SOURCE_DIR}/tibia/protocol/dispatch.gen.cpp")
 foreach(_rel IN ITEMS
     tibia/assets/things.cpp
+    tibia/appearances/appearancetype.cpp
     tibia/assets/spritesheet.cpp
     tibia/protocol/servermessages.cpp
     tibia/protocol/clientmessages.cpp

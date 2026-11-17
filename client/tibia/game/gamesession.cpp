@@ -28,7 +28,7 @@
 #include "minimap/waypointcosts.h"
 #include "protocol/protocolcodes.h"
 #include "tibia/protocol/extendedopcode.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "container/containerciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"

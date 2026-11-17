@@ -27,7 +27,10 @@
 #include <string>
 #include <vector>
 
-class ThingType;
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 // Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
@@ -84,8 +87,8 @@ struct TInventorySlot
     int64_t durationRemainingMilliseconds() const;
 
     /// Bridge from protocol rows.
-    /// Build from ThingType + protocol object fields (no Item::create).
-    static TInventorySlot fromProtocolObject(ThingType* type, uint16_t countOrSubType = 0, uint8_t tier = 0,
+    /// Build from TAppearanceType + protocol object fields (no Item::create).
+    static TInventorySlot fromProtocolObject(TAppearanceType* type, uint16_t countOrSubType = 0, uint8_t tier = 0,
                                              uint8_t hangSide = 0);
     /// TypeId-only (NPC trade list rows, classification helpers).
     static TInventorySlot fromTypeId(uint16_t typeId, uint16_t countOrSubType = 0, uint8_t tier = 0);

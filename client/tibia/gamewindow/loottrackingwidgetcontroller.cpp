@@ -6,7 +6,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QJsonObject>
@@ -48,7 +48,7 @@ QString trackedItemName(const uint16_t typeId)
         case CrystalCoin: return qtTrId("crystal_coin");
         default: break;
     }
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (type && !type->getName().empty())
         return QString::fromStdString(type->getName());
     return qtTrId("dummy_unknown");

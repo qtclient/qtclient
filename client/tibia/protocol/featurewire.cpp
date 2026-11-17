@@ -4,7 +4,7 @@
 #include "protocol/mapwire.h"
 
 #include <client/const.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>

@@ -43,13 +43,17 @@ class LightView;
 class LightSink;
 class AnimatedText;
 class StaticText;
-class ThingType;
 class ItemType;
 class TileBlock;
 class AttachedEffect;
 
 
 using LightViewPtr = std::unique_ptr<LightView>;
+
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 namespace tibia {
 namespace worldmap {
@@ -60,12 +64,12 @@ using WorldMapFieldPtr = tibia::worldmap::TWorldMapField*;
 
 using AnimatedTextPtr = std::shared_ptr<AnimatedText>;
 using StaticTextPtr = std::shared_ptr<StaticText>;
-using ThingTypePtr = std::shared_ptr<ThingType>;
+using TAppearanceTypePtr = TAppearanceType*;
 using ItemTypePtr = std::shared_ptr<ItemType>;
 using AttachedEffectPtr = std::shared_ptr<AttachedEffect>;
 
 
-using ThingTypeList = std::vector<ThingTypePtr>;
+using TAppearanceTypeList = std::vector<TAppearanceTypePtr>;
 using ItemTypeList = std::vector<ItemTypePtr>;
 
 using WorldMapFieldList = std::vector<tibia::worldmap::TWorldMapField*>;

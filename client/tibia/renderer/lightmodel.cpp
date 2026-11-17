@@ -6,8 +6,8 @@
 #include "appearances/appearanceinstance.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/gamesession.h>
-#include "assets/thingtype.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
+#include <tibia/appearances/appearancetype.h>
 #include "worldmap/worldmapfield.h"
 
 #include <QJsonObject>
@@ -45,7 +45,7 @@ FieldFlags fieldFlags(tibia::worldmap::TWorldMapField& field)
     for (const appearances::TAppearanceInstancePtr& appearance : field.appearances()) {
         if (!appearance)
             continue;
-        ThingType* type = appearance->thingType();
+        TAppearanceType* type = appearance->thingType();
         if (!type || type->getCategory() != ThingCategoryItem)
             continue;
         const bool bank = type->isGround();

@@ -1,8 +1,9 @@
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "worldmaprenderprovider.h"
 #include "tibia/runtime/host.h"
 
 #include "appearances/appearanceinstance.h"
+#include "idleot/appearanceshape.h"
 #include "appearances/spriteinfo.h"
 #include "appearances/worldmaphighlightbaseplate.h"
 #include "app/clientoptions.h"
@@ -25,7 +26,7 @@
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
@@ -73,7 +74,7 @@ tibia::game::MapPos geometryCamera(const Position& camera)
     return { camera.x, camera.y, camera.z };
 }
 
-tibia::mods::LightingThingContext itemLightingContext(ThingType& type, const uint8_t lift,
+tibia::mods::LightingThingContext itemLightingContext(TAppearanceType& type, const uint8_t lift,
                                                       tibia::worldmap::TWorldMapField* tile)
 {
     tibia::mods::LightingThingContext ctx;
@@ -134,7 +135,7 @@ tibia::mods::LightingThingContext transientLightingContext(const uint8_t lift = 
     return ctx;
 }
 
-tibia::mods::LightingFrameDesc peelLightingFrame(ThingType& type, const QPoint& anchor, const uint32_t spriteId,
+tibia::mods::LightingFrameDesc peelLightingFrame(TAppearanceType& type, const QPoint& anchor, const uint32_t spriteId,
                                                  const int xPattern)
 {
     tibia::mods::LightingFrameDesc desc;
@@ -143,11 +144,11 @@ tibia::mods::LightingFrameDesc peelLightingFrame(ThingType& type, const QPoint& 
     desc.anchorY = anchor.y();
     desc.displacementX = type.getDisplacement().x();
     desc.displacementY = type.getDisplacement().y();
-    desc.shape = static_cast<uint8_t>(type.getThingShape());
+    desc.shape = static_cast<uint8_t>(tibia::idleot::thingShapeOf(type));
     desc.elevation = static_cast<uint8_t>(std::clamp(type.getElevation(), 0, 255));
     desc.hook = static_cast<int8_t>(type.isHangable() ? (type.getNumPatternX() >= 2 ? xPattern : 0) : -1);
     desc.onTop = type.isOnTop();
-    desc.castsShadow = type.castsShadow();
+    desc.castsShadow = tibia::idleot::castsShadow(type);
     desc.lyingCorpse = type.isLyingCorpse();
     desc.hasLight = type.hasLight();
     if (desc.hasLight) {
@@ -939,7 +940,7 @@ int floorDiv(const int value, const int divisor)
 }
 
 /// CIP layer of an object: top, then bottom, clip and bank; common otherwise.
-uint8_t objectLayer(const ThingType& type)
+uint8_t objectLayer(const TAppearanceType& type)
 {
     if (type.isOnTop())
         return 6;
@@ -973,7 +974,7 @@ uint8_t TWorldMapRenderProvider::drawIndex(const tibia::worldmap::TWorldMapField
     const int count = static_cast<int>(appearances.size());
     int prefix = 0;
     while (prefix < count) {
-        const ThingType* type = appearances[prefix] ? appearances[prefix]->thingType() : nullptr;
+        const TAppearanceType* type = appearances[prefix] ? appearances[prefix]->thingType() : nullptr;
         if (!type || (!type->isGround() && !type->isGroundBorder() && !type->isOnBottom()))
             break;
         ++prefix;
@@ -999,7 +1000,7 @@ void TWorldMapRenderProvider::mapLyingObjects()
     for (const VisibleField& field : m_visibleFields) {
         const auto& appearances = field.tile->appearances();
         for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
-            const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+            const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
             if (!type || type->getCategory() != ThingCategoryItem || !type->isLyingCorpse())
                 continue;
             const LyingSlot slot{ .set = true, .x = field.x, .y = field.y, .index = drawIndex(*field.tile, i) };
@@ -1054,14 +1055,14 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
     const auto& appearances = tile->appearances();
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
-        const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+        const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (!type || (!type->isGround() && !type->isGroundBorder()))
             break;
         addFieldStackItem(tile, i, dest, elevation);
     }
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
-        const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+        const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (!type || type->isGround() || type->isGroundBorder())
             continue;
         if (!type->isOnBottom())
@@ -1071,7 +1072,7 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
 
     if (tile->hasCommonItem()) {
         for (int i = static_cast<int>(appearances.size()) - 1; i >= 0; --i) {
-            const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+            const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
             if (!type || type->isGround() || type->isGroundBorder() || type->isOnBottom() || type->isOnTop()
                 || type->getCategory() == ThingCategoryCreature)
                 continue;
@@ -1190,7 +1191,7 @@ void TWorldMapRenderProvider::addTileTop(tibia::worldmap::TWorldMapField* tile, 
     uint8_t elevation = 0;
     const auto& appearances = tile->appearances();
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
-        const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+        const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (type && type->isOnTop())
             addFieldStackItem(tile, i, dest, elevation);
     }
@@ -1204,7 +1205,7 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
     const appearances::TAppearanceInstancePtr appearance = tile->appearanceAt(stackIndex);
     if (!appearance)
         return;
-    const ThingType* type = appearance->thingType();
+    const TAppearanceType* type = appearance->thingType();
     if (!type || type->getCategory() == ThingCategoryCreature)
         return;
 
@@ -1245,7 +1246,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
     if (!appearance)
         return;
 
-    ThingType* type = appearance->thingType();
+    TAppearanceType* type = appearance->thingType();
     if (!type)
         return;
 
@@ -1348,7 +1349,7 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
 
     const auto* outfitInst = dynamic_cast<const appearances::TOutfitAppearanceInstance*>(outfitAppearance.get());
     const Outfit& outfit = outfitInst ? outfitInst->outfit() : stored.outfit();
-    ThingType* type = outfitAppearance->thingType();
+    TAppearanceType* type = outfitAppearance->thingType();
     if (!type)
         type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
     if (!type)
@@ -1358,7 +1359,7 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     if (type->hasLight())
         addCreatureLight(type->getLight());
     if (stored.isMounted() && outfit.hasMount()) {
-        if (ThingType* mount = tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature); mount && mount->hasLight())
+        if (TAppearanceType* mount = tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature); mount && mount->hasLight())
             addCreatureLight(mount->getLight());
     }
 
@@ -1370,7 +1371,7 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     if (outfit.isCreature()) {
         // The mount is drawn while riding; the outfit then shows its mounted
         // sprites (pattern depth 1).
-        ThingType* mount = stored.isMounted() && outfit.hasMount()
+        TAppearanceType* mount = stored.isMounted() && outfit.hasMount()
             ? tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature)
             : nullptr;
         if (mount) {
@@ -1418,7 +1419,7 @@ void TWorldMapRenderProvider::addAttachedEffects(const tibia::creatures::TCreatu
         float opacity = 1.f;
         if (!effect->getDrawFrame(onTop, phase, offset, opacity))
             continue;
-        ThingType* type = effect->getThingType();
+        TAppearanceType* type = effect->getThingType();
         const QPoint point = (effect->isFollowingOwner() ? jumped : walked) + offset;
         const int xPattern = static_cast<int>(effect->getDirection()) % std::max<int>(1, type->getNumPatternX());
         uint8_t tint = 0;
@@ -1454,9 +1455,9 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppear
     int phase = 0, xPattern = 0, yPattern = 0;
     if (!effect->getFieldDrawFrame(phase, xPattern, yPattern))
         return;
-    ThingType* type = appearance->thingType();
-    if (type && !type->getSprites().empty())
-        (void)sprites::TEffectWrapperSpritesheetIdentifier(type->getSprites().front());
+    TAppearanceType* type = appearance->thingType();
+    if (const uint32_t first = type ? type->firstSpriteId() : 0)
+        (void)sprites::TEffectWrapperSpritesheetIdentifier(first);
     uint8_t tint = 0;
     if (const auto hook = tibia::mods::effectVariantTintHook())
         tint = hook(effect->variantId());
@@ -1482,7 +1483,7 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     if (opacity < MinEffectOpacity)
         return;
     // CIP appearances::TMissileEffectInstance; missiles share effects::TEffectStorage.
-    ThingType* type = appearance->thingType();
+    TAppearanceType* type = appearance->thingType();
     const QPoint dest = toScreen(missile->pathFrom()) + missile->flightOffset();
     // CIP v11: a missile sorts with the field under its flight position.
     m_key.x = floorDiv(dest.x(), FieldSize);
@@ -1502,78 +1503,37 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     }
 }
 
-void TWorldMapRenderProvider::addSprites(ThingType* type, const QPoint& dest, const int xPattern, const int yPattern,
+void TWorldMapRenderProvider::addSprites(TAppearanceType* type, const QPoint& dest, const int xPattern, const int yPattern,
                                          const int zPattern, const int animationPhase, const bool colorize, const uint32_t colors,
                                          const SpriteRecord::Highlight highlight, const float opacity, const uint8_t tint)
 {
     if (!type || type->isNull() || type->getAnimationPhases() == 0)
         return;
 
-    const auto& sprites = type->getSprites();
     // A thing's frame ends at the bottom-right of its field, less its displacement.
     const QPoint anchor = dest - type->getDisplacement() + QPoint(FieldSize, FieldSize);
     const uint64_t drawKey = m_key.packed();
-    const auto push = [&](SpriteRecord&& record) {
-        m_floorSprites.push_back(std::move(record));
-        m_floorKeys.push_back(drawKey);
-    };
-    const bool protobuf = tibia::game::isUsingProtobuf();
     const bool raycast = (m_lighting && m_lighting->frameActive());
 
-    // .spr files use sprite 0 for blank fields. SpriteKey matches CIP SpriteInfo::key.
-    const auto exists = [&](const uint32_t index) { return index < sprites.size() && (protobuf || sprites[index] != 0); };
-    const auto add = [&](const int w, const int h, const QPoint& at) {
-        const uint32_t index = type->getSpriteIndex(w, h, 0, xPattern, yPattern, zPattern, animationPhase);
-        if (!exists(index))
-            return;
-        SpriteKey key{ .spriteId = sprites[index] };
+    const std::optional<uint32_t> sprite = type->spriteIdAt(0, xPattern, yPattern, zPattern, animationPhase);
+    if (sprite) {
+        SpriteKey key{ .spriteId = *sprite, .tint = tint };
         if (colorize) {
-            const uint32_t maskIndex = type->getSpriteIndex(w, h, 1, xPattern, yPattern, zPattern, animationPhase);
-            if (exists(maskIndex)) {
-                key.maskId = sprites[maskIndex];
+            if (const std::optional<uint32_t> mask = type->spriteIdAt(1, xPattern, yPattern, zPattern, animationPhase)) {
+                key.maskId = *mask;
                 key.colors = colors;
             }
         }
-        key.tint = tint;
-        push({ .anchor = QPoint(at.x(), at.y()),
-                        .sprite = key,
-                        .opacity = opacity,
-                        .highlight = highlight });
-    };
-
-    // Protobuf sprites are the whole frame; .spr ones are 32x32 fields from the
-    // bottom-right one up.
-    if (protobuf) {
-        const uint32_t index = type->getSpriteIndex(-1, -1, 0, xPattern, yPattern, zPattern, animationPhase);
-        if (exists(index)) {
-            SpriteKey key{ .spriteId = sprites[index], .tint = tint };
-            if (colorize) {
-                const uint32_t maskIndex = type->getSpriteIndex(-1, -1, 1, xPattern, yPattern, zPattern, animationPhase);
-                if (exists(maskIndex)) {
-                    key.maskId = sprites[maskIndex];
-                    key.colors = colors;
-                }
-            }
-            push({ .anchor = QPoint(anchor.x(), anchor.y()),
-                            .sprite = key,
-                            .opacity = opacity,
-                            .highlight = highlight });
-        }
-        if (raycast) {
-            const int stampPh = (m_lighting ? m_lighting->stampPhase(animationPhase) : 0);
-            const uint32_t stampIndex = stampPh == animationPhase
-                ? index
-                : type->getSpriteIndex(-1, -1, 0, xPattern, yPattern, zPattern, stampPh);
-            if (stampIndex < sprites.size())
-                if (m_lighting)
-                    m_lighting->addFrame(peelLightingFrame(*type, anchor, sprites[stampIndex], xPattern));
-        }
-        return;
+        m_floorSprites.push_back({ .anchor = anchor, .sprite = key, .opacity = opacity, .highlight = highlight });
+        m_floorKeys.push_back(drawKey);
     }
-    const QSize size = type->getSize();
-    for (int h = 0; h < size.height(); ++h) {
-        for (int w = 0; w < size.width(); ++w)
-            add(w, h, anchor - QPoint(w * FieldSize, h * FieldSize));
+    if (raycast) {
+        const int stampPhase = m_lighting ? m_lighting->stampPhase(animationPhase) : 0;
+        const std::optional<uint32_t> stamp = stampPhase == animationPhase
+            ? sprite
+            : type->spriteIdAt(0, xPattern, yPattern, zPattern, stampPhase);
+        if (stamp && m_lighting)
+            m_lighting->addFrame(peelLightingFrame(*type, anchor, *stamp, xPattern));
     }
 }
 

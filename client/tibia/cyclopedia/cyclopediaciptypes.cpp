@@ -9,7 +9,7 @@
 #include "game/inspectedobject.h"
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/client/outfit.h>
 #include <tibia/game/thingsession_forward.h>
 

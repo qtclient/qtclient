@@ -2,10 +2,10 @@
 #include "config/clientsettings.h"
 
 #include "tibia/assets/things.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/client/outfit.h"
 #include "creatures/creaturestorage.h"
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
 #include "tibia/runtime/host.h"
 #include "animation/animator.h"
@@ -27,7 +27,7 @@ namespace tibia::appearances {
 namespace {
 
 /// The appearance has more than one pattern in some direction.
-bool hasPatterns(const ThingType& type)
+bool hasPatterns(const TAppearanceType& type)
 {
     return type.getNumPatternX() > 1 || type.getNumPatternY() > 1 || type.getNumPatternZ() > 1;
 }
@@ -74,7 +74,7 @@ int hookPattern(const uint8_t hookState, const uint8_t width)
     return last < hookState ? last : hookState;
 }
 
-void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
+void objectPatternsFor(TAppearanceType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
 {
     patternX = patternY = patternZ = 0;
     if (!type || type->isNull())
@@ -93,7 +93,7 @@ void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX,
 }
 
 
-TAppearanceInstance::TAppearanceInstance(ThingType* type)
+TAppearanceInstance::TAppearanceInstance(TAppearanceType* type)
     : m_type(type)
 {
 }
@@ -139,7 +139,7 @@ void TOutfitAppearanceInstance::setOutfitLook(const Outfit& outfit, const uint8_
     m_direction = direction;
 }
 
-TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(ThingType* type, const uint16_t count)
+TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(TAppearanceType* type, const uint16_t count)
     : TObjectAppearanceInstance(type)
 {
     m_count = count;
@@ -169,7 +169,7 @@ void TCumulativeObjectAppearanceInstance::pilePattern(int& patternX, int& patter
     cumulativePilePattern(pile, patternX, patternY);
 }
 
-THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(ThingType* type)
+THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(TAppearanceType* type)
     : TObjectAppearanceInstance(type)
 {
     updateHookPattern();
@@ -187,7 +187,7 @@ void THangableObjectAppearanceInstance::updateHookPattern()
     setDrawPatterns(static_cast<uint8_t>(hookPattern(m_hangSide, width)), 0, 0);
 }
 
-TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(ThingType* type, const uint32_t liquidType)
+TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(TAppearanceType* type, const uint32_t liquidType)
     : TObjectAppearanceInstance(type)
     , m_fluid(liquidType)
 {
@@ -201,7 +201,7 @@ TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(ThingType* type
 
 void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& pos)
 {
-    ThingType* type = thingType();
+    TAppearanceType* type = thingType();
     if (!type)
         return;
     const auto width = static_cast<uint32_t>(std::max(1, type->getNumPatternX()));
@@ -385,7 +385,7 @@ namespace {
 /// sends, so the type's flags pick it, in the order CipSoft tests the kinds of
 /// a protocol object: liquid, cumulative, container, show-off socket,
 /// upgradeable, wearout, expire, deco item kit, then a plain object.
-TAppearanceInstancePtr createItem(ThingType* type, const uint16_t count, const uint32_t liquidType)
+TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, const uint32_t liquidType)
 {
     if (type->isFluidContainer() || type->isSplash())
         return std::make_shared<TLiquidObjectAppearanceInstance>(type, liquidType);
@@ -399,7 +399,7 @@ TAppearanceInstancePtr createItem(ThingType* type, const uint16_t count, const u
         return std::make_shared<TUpgradeableObjectAppearanceInstance>(type);
     if (type->hasWearOut())
         return std::make_shared<TWearoutObjectAppearanceInstance>(type);
-    if (type->hasExpire() || type->hasClockExpire())
+    if (type->hasExpire())
         return std::make_shared<TExpireObjectAppearanceInstance>(type);
     if (type->isDecoKit())
         return std::make_shared<TDecoItemKitAppearanceInstance>(type);
@@ -408,7 +408,7 @@ TAppearanceInstancePtr createItem(ThingType* type, const uint16_t count, const u
 
 } // namespace
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type)
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
 {
     if (!type || type->isNull())
         return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
@@ -427,14 +427,14 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type
     }
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(ThingType* type)
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type)
 {
     if (type && type->isHangable())
         return std::make_shared<THangableObjectAppearanceInstance>(type);
     return std::make_shared<TPatternObjectAppearanceInstance>(type);
 }
 
-std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(ThingType* type, const Outfit& outfit,
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(TAppearanceType* type, const Outfit& outfit,
                                                                                     const uint8_t direction)
 {
     const bool customizable =
@@ -448,7 +448,7 @@ std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOut
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(ThingType* type, const uint16_t count,
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanceType* type, const uint16_t count,
                                                                       const uint8_t subType, const uint8_t tier,
                                                                       const uint8_t fluid, const uint8_t hangSide)
 {
@@ -463,7 +463,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
 {
     if (stored.outfitAppearance())
         return stored.outfitAppearance();
-    ThingType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
+    TAppearanceType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
     auto instance = fromOutfit(stored.outfit(), type);
     if (const auto outfitInstance = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(instance))
         // CIP outfit patternX is the collapsed cardinal (N/E/S/W), not raw diagonal dirs.
@@ -474,13 +474,13 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
 std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
                                                                                                     const Position& field)
 {
-    ThingType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
+    TAppearanceType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
     auto effect = std::make_shared<TTutorialFieldEffectInstance>(type);
     effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     return effect;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, ThingType* type)
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, TAppearanceType* type)
 {
     if (!type)
         type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
@@ -533,7 +533,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     };
 
     if (m_outfit.isCreature()) {
-        ThingType* type = tibia::game::rawThingType(m_outfit.getId(), ThingCategoryCreature);
+        TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), ThingCategoryCreature);
         if (!type)
             return layers;
 
@@ -541,7 +541,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
         int dy = 0;
         const bool mounted = m_outfit.hasMount();
         if (mounted) {
-            if (ThingType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
+            if (TAppearanceType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
                 dx -= mount->getDisplacement().x();
                 dy -= mount->getDisplacement().y();
                 int mountPhase = 0;
@@ -568,7 +568,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     if (!m_outfit.isItem())
         return layers;
 
-    ThingType* type = tibia::game::rawThingType(m_outfit.getAuxId(), ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(m_outfit.getAuxId(), ThingCategoryItem);
     if (!type)
         return layers;
 

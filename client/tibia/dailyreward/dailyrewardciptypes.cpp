@@ -2,7 +2,7 @@
 #include "input/gameactionhandlers.h"
 #include "protocol/protocolciptypes.h"
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -298,7 +298,7 @@ void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& c
     std::vector<TDailyRewardFixedItems::TItem> items;
     for (const ProtocolDailyRewardObject& object : content.objects()) {
         const auto typeId = static_cast<uint16_t>(object.object_id());
-        const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+        const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
         if (!type || type->getId() == 0)
             continue;
         items.push_back({ typeId, QString::fromStdString(object.name()), static_cast<uint8_t>(object.amount()) });

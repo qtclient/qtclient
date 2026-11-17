@@ -28,7 +28,7 @@
 #include "client/animatedtext.h"
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 #include "creatures/creaturestorage.h"

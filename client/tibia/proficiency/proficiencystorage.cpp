@@ -1,6 +1,6 @@
 #include "proficiency/proficiencystorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "shared/tibiafilesystemhelper.h"
 
@@ -32,7 +32,7 @@ constexpr std::array<uint32_t, 10> DefaultXP { 0, 1750, 25000, 100000, 400000, 2
 constexpr int CrossbowWeaponType = 6;
 constexpr int KnightProfession = 1;
 
-ThingTypePtr itemType(const uint16_t typeId)
+TAppearanceTypePtr itemType(const uint16_t typeId)
 {
     if (typeId == 0 || !tibia::game::isValidDatId(typeId, ThingCategoryItem))
         return nullptr;
@@ -41,7 +41,7 @@ ThingTypePtr itemType(const uint16_t typeId)
 
 const std::array<uint32_t, 10>& tableOf(const uint16_t typeId)
 {
-    const ThingTypePtr type = itemType(typeId);
+    const TAppearanceTypePtr type = itemType(typeId);
     if (!type)
         return DefaultXP;
     if (type->getAppearanceWeaponType() == CrossbowWeaponType)
@@ -306,7 +306,7 @@ void TProficiencyStorage::setTables(const std::vector<TProficiencyInfo>& profici
 
 const TProficiencyInfo* TProficiencyStorage::info(const uint16_t typeId) const
 {
-    const ThingTypePtr type = itemType(typeId);
+    const TAppearanceTypePtr type = itemType(typeId);
     if (!type || type->getProficiencyId() == 0)
         return nullptr;
     loadTables();

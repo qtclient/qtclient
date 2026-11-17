@@ -7,7 +7,7 @@
 #include "input/gameactionhandlers.h"
 
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
@@ -43,7 +43,7 @@ constexpr uint8_t CyclopediaInspection = 1;
 
 QString englishNumber(const qint64 value) { return QLocale(QLocale::English).toString(value); }
 
-ThingTypePtr itemType(const uint16_t typeId)
+TAppearanceTypePtr itemType(const uint16_t typeId)
 {
     if (typeId == 0)
         return nullptr;
@@ -51,7 +51,7 @@ ThingTypePtr itemType(const uint16_t typeId)
 }
 
 /// CIP : the market category; the coins are "Gold", the rest "Unsorted".
-int itemCategory(const ThingTypePtr& type)
+int itemCategory(const TAppearanceTypePtr& type)
 {
     switch (type->getId()) {
         case 3031:
@@ -59,7 +59,7 @@ int itemCategory(const ThingTypePtr& type)
         case 3043: return GoldCategory;
         default: break;
     }
-    return type->isMarketable() ? static_cast<int>(type->getMarketData().category) : UnsortedCategory;
+    return type->isMarketable() ? type->marketProperties()->category : UnsortedCategory;
 }
 
 /// The NPCs of one name and currency (CIP).
@@ -73,25 +73,12 @@ struct NpcOffer
     std::string currencyFlag;
 };
 
-std::vector<NpcOffer> npcOffers(const ThingTypePtr& type)
+std::vector<NpcOffer> npcOffers(const TAppearanceTypePtr& type)
 {
     std::vector<NpcOffer> offers;
-    for (const NPCData& npc : type->getNpcSaleData()) {
-        const QString name = QString::fromStdString(npc.name);
-        auto it = std::ranges::find_if(offers, [&](const NpcOffer& offer) {
-            return offer.name == name && offer.currencyTypeId == npc.currencyObjectTypeId
-                   && offer.currencyFlag == npc.currencyQuestFlagDisplayName;
-        });
-        if (it == offers.end()) {
-            offers.push_back({ name, {}, 0, 0, npc.currencyObjectTypeId, npc.currencyQuestFlagDisplayName });
-            it = std::prev(offers.end());
-        }
-        const QString location = QString::fromStdString(npc.location);
-        if (!it->locations.contains(location))
-            it->locations << location;
-        it->buyPrice = std::max(it->buyPrice, npc.buyPrice);
-        if (npc.salePrice != 0 && (it->salePrice == 0 || npc.salePrice < it->salePrice))
-            it->salePrice = npc.salePrice;
+    for (const auto& npc : type->npcTradeData()) {
+        offers.push_back({ npc.name, npc.locations, npc.buyPrice, npc.salePrice, npc.currencyObjectId(),
+                           npc.currencyQuestFlagName().toStdString() });
     }
     return offers;
 }
@@ -99,7 +86,7 @@ std::vector<NpcOffer> npcOffers(const ThingTypePtr& type)
 QString currencyString(const NpcOffer& offer)
 {
     if (offer.currencyTypeId != 0) {
-        const ThingTypePtr currency = itemType(static_cast<uint16_t>(offer.currencyTypeId));
+        const TAppearanceTypePtr currency = itemType(static_cast<uint16_t>(offer.currencyTypeId));
         return qtTrId("iteminfo_npcdata_other_currency").arg(currency ? QString::fromStdString(currency->getName()) : QString());
     }
     if (!offer.currencyFlag.empty())
@@ -210,7 +197,7 @@ std::vector<int> TItemInfoDialogController::categoryIdentifiers()
     return identifiers;
 }
 
-TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const ThingTypePtr& type)
+TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const TAppearanceTypePtr& type)
 {
     TAppearanceTypeEntry entry;
     entry.typeId = type->getId();
@@ -218,15 +205,14 @@ TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const ThingTypeP
     entry.marketCategory = itemCategory(type);
     entry.classification = type->getClassification();
     if (type->isMarketable()) {
-        const MarketData& market = type->getMarketData();
-        entry.requiredLevel = market.requiredLevel;
-        entry.professions = market.restrictVocation;
+        entry.requiredLevel = static_cast<int>(type->getMinimumLevel());
+        entry.professions = type->restrictVocationMask();
     }
     entry.hasClothSlot = type->isCloth();
     entry.clothSlot = type->getClothSlot();
-    for (const NPCData& npc : type->getNpcSaleData()) {
+    for (const auto& npc : type->npcTradeData()) {
         if (npc.buyPrice != 0)
-            entry.imbuements << QString::fromStdString(npc.name);
+            entry.imbuements << npc.name;
     }
     return entry;
 }
@@ -234,7 +220,7 @@ TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const ThingTypeP
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes())
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes())
         entries.push_back(cyclopediaEntry(type));
     m_proxy.resetEntries(std::move(entries));
     m_entriesBuilt = true;
@@ -464,7 +450,7 @@ void TItemInfoDialogController::updateNpcData()
 {
     m_npcBuyData.clear();
     m_npcSellData.clear();
-    if (const ThingTypePtr type = itemType(m_typeId)) {
+    if (const TAppearanceTypePtr type = itemType(m_typeId)) {
         std::vector<NpcOffer> offers = npcOffers(type);
         const auto key = [](const NpcOffer& offer) { return std::tie(offer.buyPrice, offer.locations, offer.name); };
         std::ranges::sort(offers, [](const NpcOffer& a, const NpcOffer& b) {
@@ -486,7 +472,7 @@ void TItemInfoDialogController::updateNpcData()
 
 bool TItemInfoDialogController::hasWeaponProficiency() const
 {
-    const ThingTypePtr type = itemType(m_typeId);
+    const TAppearanceTypePtr type = itemType(m_typeId);
     return type && type->getProficiencyId() != 0;
 }
 
