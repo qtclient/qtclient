@@ -2907,7 +2907,11 @@ minimap::TMinimapTileStorage::v16	3d165fa4490cee00	ported	minimap/minimaptilesto
 minimap::TMinimapTileStorage::v17	d447a16b60aff447	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::updateField
 minimap::TMinimapTileStorage::v18	11d534a32f85c5be	inlined	game/gamesessionstate.cpp:snapshotWaypointCost
 minimap::TMinimapTileStorage::v21	4ed6b78ca2f0a0b1	ported	game/gamesessionstate.cpp:avoidedFieldsInView
+minimap::TMinimapTileStorage::v23	374ec4aaa298858d	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::unloadOutside
+minimap::TMinimapTileStorage::v24	b415366a756e2732	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::setVisibleArea
+minimap::TMinimapTileStorage::v27	24f15a3e5645d5df	inlined	minimap/minimaptilestorage.cpp:TMinimapTileStorage::unloadOutside
 minimap::TMinimapTileStorage::v29	cea4139c75e7a0fc	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::onLoadingSucceeded
+minimap::TMinimapTileStorage::v31	27de474e5f894cbf	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::saveAllTilesToDisk
 minimap::TMinimapTileStorage::~TMinimapTileStorage	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapTileStorage::~TMinimapTileStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapVisibleArea::v12	ce9a0d91946f8b31	ported	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::setOptionsSource
@@ -11290,6 +11294,7 @@ sub_f90e2980f56a	f90e2980f56a8e4d	inlined	sessiondump/sessiondumpmessagereader.c
 sub_f90e2980f56a#2	f90e2980f56a8e4d	inlined	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::info
 sub_f9135af06119	f9135af06119c514	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_f919b998c4fd	f919b998c4fde2aa	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
+sub_f93bbd13ccb8	f93bbd13ccb892e7	skip	library: same code as the skipped family: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_f93bbd13ccb8#2	f93bbd13ccb892e7	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_f9515db0fa1e	f9515db0fa1e2d3a	ported	gamewindow/hitpointmanabarcontroller.cpp:THitpointManabarController::setHitpoints
 sub_f95cde2cfa95	f95cde2cfa951c01	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
