@@ -1,4 +1,8 @@
 #include "monsterdialogcontroller.h"
+
+#include "cyclopedia/iteminfostorage.h"
+
+#include <utility>
 #include "gamewindow/smoothfiltering.h"
 
 #include "cyclopedia/bestiarystorage.h"
@@ -433,11 +437,20 @@ bool TMonsterDialogController::clientSettingSmoothFiltering() const { return smo
 
 TMonsterDialogController::~TMonsterDialogController()
 {
-    // CIP: the session goes first, then the classification, race and single-monster views are emptied.
+    // CIP: the session goes first, then the classification summary, the race list and the single
+    // monster are refreshed from the (now empty) data. The page builders are guarded so nothing new
+    // is made for QML while the controller goes away.
+    m_tearingDown = true;
     m_hooks.clear();
     m_classifications.clear();
     m_races.clear();
     m_details.reset();
+    onClassificationSummaryChanged();
+    onMonsterRacesChanged();
+    if (QObject* single = std::exchange(m_singleMonster, nullptr)) {
+        Q_EMIT qmlSingleMonsterChanged();
+        delete single;
+    }
 }
 
 TQmlMonsterRace* TMonsterDialogController::singleRace() const { return qobject_cast<TQmlMonsterRace*>(m_singleMonster); }
@@ -490,7 +503,13 @@ void TMonsterDialogController::showDialogTab()
         tibia::game::requestBestiaryOverview(context.classification.toStdString());
 }
 
-void TMonsterDialogController::hideDialogTab() { m_shown = false; }
+void TMonsterDialogController::hideDialogTab()
+{
+    m_shown = false;
+    // CIP: the charm confirmation goes with the tab.
+    if (m_confirmDialog->dialog()->item())
+        m_confirmDialog->dialog()->close();
+}
 
 void TMonsterDialogController::requestClassificationSelection(const QString& ClassificationID)
 {
@@ -519,7 +538,7 @@ void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage
     // one, leaves the list empty.
     QList<QObject*> previous;
     previous.swap(m_monsterClassificationSummary);
-    if (NewPage > 0 && NewPage != m_monsterClassificationCurrentPage && NewPage <= m_monsterClassificationTotalPages) {
+    if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterClassificationCurrentPage && NewPage <= m_monsterClassificationTotalPages) {
         m_monsterClassificationCurrentPage = NewPage;
         const size_t end = std::min(m_classifications.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i)
@@ -534,7 +553,7 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
 {
     QList<QObject*> previous;
     previous.swap(m_monsterRaceSummary);
-    if (NewPage > 0 && NewPage != m_monsterRacesCurrentPage && NewPage <= m_monsterRacesTotalPages) {
+    if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterRacesCurrentPage && NewPage <= m_monsterRacesTotalPages) {
         m_monsterRacesCurrentPage = NewPage;
         const size_t end = std::min(m_races.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i) {
@@ -568,21 +587,21 @@ void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeI
 
 void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTypeID)
 {
+    // CIP: the loot tile's menu adds the item to the loot black/whitelist or removes it.
     TContextMenuController* menu = TContextMenuController::instance();
-    if (!menu || AppearanceTypeID <= 0)
+    cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance();
+    if (!menu || !loot || AppearanceTypeID <= 0)
         return;
+    const auto typeId = static_cast<uint16_t>(AppearanceTypeID);
+    const bool listed = loot->isLootListed(typeId);
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("context_open_in_cyclopedia")), &TContextMenuEntryItem::triggered, this,
-            [this, AppearanceTypeID] { requestSwitchToItemInfo(AppearanceTypeID); });
-    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem);
-        type && type->getProficiencyId() != 0) {
-        connect(menu->addCustomEntry(qtTrId("inspect_open_weapon_proficiency_dialog")), &TContextMenuEntryItem::triggered, this,
-                [AppearanceTypeID] {
-                    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-                    action->instance = AppearanceTypeID;
-                    input::publish(action);
-                });
-    }
+    connect(menu->addCustomEntry(qtTrId(listed ? "context_remove_from_loot_blackwhitelist" : "context_add_to_loot_blackwhitelist")),
+            &TContextMenuEntryItem::triggered, this, [typeId, listed] {
+                auto action = input::mutableClone(
+                    *input::makeAction(listed ? A::LOOT_REMOVE_FROM_BLACKWHITELIST : A::LOOT_ADD_TO_BLACKWHITELIST));
+                action->objectClientId = typeId;
+                input::publish(action);
+            });
     menu->showCustomMenu();
 }
 
@@ -674,7 +693,7 @@ void TMonsterDialogController::onMonsterRacesChanged()
 
 void TMonsterDialogController::rebuildSingleMonster()
 {
-    if (!m_details)
+    if (!m_details || m_tearingDown)
         return;
     QObject* previous = m_singleMonster;
     m_singleMonster = new TQmlMonsterRace(m_details->id, m_details->currentLevel, m_details->AnimusMasteryBonus / 1000.0,

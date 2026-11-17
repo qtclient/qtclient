@@ -123,6 +123,8 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
     TMessageDialogController* m_confirmDialog;
     bool m_shown = false;
+    /// Set by the destructor: the page refreshes run but build no QML objects.
+    bool m_tearingDown = false;
 
     std::vector<CyclopediaBestiaryRace> m_classifications;
     std::vector<BestiaryOverviewMonsters> m_races;
