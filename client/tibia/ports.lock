@@ -1067,6 +1067,17 @@ cyclopedia::TPlayerOffenceStatsProvider::v6	301ca430151ffeb2	ported	cyclopedia/p
 cyclopedia::TPlayerOffenceStatsProvider::v7	317a24746a7f5847	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::lifeLeech
 cyclopedia::TPlayerOffenceStatsProvider::v8	d81040ed607e3ebb	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::manaLeech
 cyclopedia::TPlayerOffenceStatsProvider::v9	6c95860970ee4ce8	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::manaLeech
+cyclopedia::TProgressStorage::onExperienceGained	f671464ccd966f25	ported	analysers/progressstorage.cpp:TProgressStorage::onExperienceGained
+cyclopedia::TProgressStorage::v12	caa88fc8086953c4	ported	analysers/analyserstorages.h:TProgressStorage::configurationName
+cyclopedia::TProgressStorage::v13	4927407997fd5541	ported	analysers/progressstorage.cpp:TProgressStorage::toJson
+cyclopedia::TProgressStorage::v15	73ba43dee17c8f07	ported	analysers/progressstorage.cpp:TProgressStorage::tick
+cyclopedia::TProgressStorage::v16	a36e42caece84566	ported	analysers/progressstorage.cpp:TProgressStorage::reset
+cyclopedia::TProgressStorage::v17	0b73a8b378339b63	ported	analysers/analyserstorages.h:TProgressStorage::gaugeVisible
+cyclopedia::TProgressStorage::v18	90cf0554f6e71315	ported	analysers/progressstorage.cpp:TProgressStorage::setGaugeVisible
+cyclopedia::TProgressStorage::v19	7d0576d0a33e21e7	ported	analysers/analyserstorages.h:TProgressStorage::gaugeTarget
+cyclopedia::TProgressStorage::v20	0fe769e7a2073d36	ported	analysers/progressstorage.cpp:TProgressStorage::setGaugeTarget
+cyclopedia::TProgressStorage::v21	07cb773717048400	ported	analysers/analyserstorages.h:TProgressStorage::graphVisible
+cyclopedia::TProgressStorage::v22	2154ce993eefc98d	ported	analysers/progressstorage.cpp:TProgressStorage::setGraphVisible
 cyclopedia::TProgressStorage::~TProgressStorage	234d7c603a625d96	skip	generated: compiler-generated destructor (member destruction only, read)
 cyclopedia::TProgressStorage::~TProgressStorage_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor (member destruction only, read)
 cyclopedia::TQmlStatWithSources::~TQmlStatWithSources	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -7705,6 +7716,7 @@ sub_7a6f5093038b#51	7a6f5093038bcf22	skip	generated: moc signal emitter
 sub_7a6f5093038b#52	7a6f5093038bcf22	skip	generated: moc-generated signal body
 sub_7a6f5093038b#53	7a6f5093038bcf22	skip	generated: moc signal emitter
 sub_7a6f5093038b#55	7a6f5093038bcf22	skip	generated: moc signal emitter
+sub_7a6f5093038b#59	7a6f5093038bcf22	skip	generated: moc signal emitters (experienceDataChanged / experienceDataReset, QMetaObject::activate only)
 sub_7a6f5093038b#60	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#61	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
 sub_7a6f5093038b#62	7a6f5093038bcf22	skip	generated: moc-generated signal emitter
@@ -7754,6 +7766,7 @@ sub_7c6d8d67948f#3	7c6d8d67948fc9ca	inlined	gamewindow/marketcontroller.cpp:deta
 sub_7c6e972f194d#2	7c6e972f194d000a	inlined	config/sidebaroptions.cpp:parsePlayerGuide
 sub_7c705833e01b#2	7c705833e01b5e02	skip	library: std::sort instantiation (library)
 sub_7c782a40a2b0	7c782a40a2b0e041	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardHoverText
+sub_7c91f5d395e1#2	7c91f5d395e14080	ported	analysers/analyserstorages.h:TProgressStorage::showBaseXp
 sub_7c9956343f60	7c9956343f60bba9	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_7cc6df7a67b1	7cc6df7a67b1cc95	ported	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::trackItem
 sub_7cc9fc38b2b8	7cc9fc38b2b806a4	ported	gamewindow/storedialogcontroller.cpp:sameCategory
@@ -7889,6 +7902,7 @@ sub_81b8b6327d0a	81b8b6327d0a3de6	ported	news/newsstorage.h:TNewsStorage::hasEnt
 sub_81c1640bbb63	81c1640bbb63dca4	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
 sub_81c9aea46d07	81c9aea46d07cb29	skip	library: miniaudio library
 sub_81ca564e13b9	81ca564e13b95e94	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_81ef7807246d	81ef7807246dfbe3	ported	analysers/progressstorage.cpp:TProgressStorage::setShowBaseXp
 sub_820857f3081b	820857f3081b1609	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::start	test=tests/client/sharednet_test.cpp
 sub_8216d680ff92	8216d680ff92d78e	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onHirelingConfigurationFinished
 sub_822d90231c9d	822d90231c9d5325	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
@@ -11554,6 +11568,7 @@ sub_f23eb3024ce5#25	f23eb3024ce596b3	skip	generated: moc-generated signal body
 sub_f23eb3024ce5#26	f23eb3024ce596b3	skip	generated: moc signal emitter
 sub_f23eb3024ce5#28	f23eb3024ce596b3	skip	generated: moc signal emitter
 sub_f23eb3024ce5#29	f23eb3024ce596b3	skip	generated: moc signal emitter (recentLootDropAddedOrRemoved, QMetaObject::activate only)
+sub_f23eb3024ce5#32	f23eb3024ce596b3	skip	generated: moc signal emitters (experienceDataChanged / experienceDataReset, QMetaObject::activate only)
 sub_f23eb3024ce5#33	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#34	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
 sub_f23eb3024ce5#35	f23eb3024ce596b3	skip	generated: moc-generated signal emitter
