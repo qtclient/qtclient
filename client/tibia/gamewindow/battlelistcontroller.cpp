@@ -788,7 +788,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::onUpdateTimer);
 
     for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY }) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) {
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
             handleGameAction(action);
             return true;
         });
@@ -796,13 +796,15 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     // CIP forwards the at-mouse-cursor actions to every list; the hovered one
     // takes it.
     for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR }) {
-        m_actionListeners.push_back(
-            input::addActionListener(type, [this](const input::IGameAction& action) { return handleGameAction(action); }));
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
+            if (handleGameAction(action))
+                Q_EMIT atMouseCursorGameActionTaken();
+        });
     }
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
     // otherwise the mouse target is cleared.
-    input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
+    m_gameActions.on(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameActionCreature& action) {
         setTemporarySelectedCreature(action.creatureId());
         if (m_worldMapRenderProvider) {
             creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
@@ -813,15 +815,15 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         return true;
     });
     m_gameActionHandler = new TBattleListGameActionHandler(this, this);
-    input::setActionHandler(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_FIRST_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackFirstTarget();
         return true;
     });
-    input::setActionHandler(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_NEXT_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(false);
         return true;
     });
-    input::setActionHandler(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
+    m_gameActions.on(A::ATTACK_PREVIOUS_TARGET, [this](const input::IGameAction&) {
         m_gameActionHandler->attackNextOrPreviousTarget(true);
         return true;
     });
@@ -843,11 +845,6 @@ TBattleListControllerStorage::~TBattleListControllerStorage()
 {
     if (g_battleListStorage == this)
         g_battleListStorage = nullptr;
-    for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY, A::TEMPORARY_SELECT_CREATURE,
-                          A::ATTACK_FIRST_TARGET, A::ATTACK_NEXT_TARGET, A::ATTACK_PREVIOUS_TARGET })
-        input::setActionHandler(type, nullptr);
-    for (const int id : m_actionListeners)
-        input::removeActionListener(id);
     for (auto& [id, controller] : m_controllers)
         delete controller;
 }

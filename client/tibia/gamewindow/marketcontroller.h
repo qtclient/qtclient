@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
 #include "market/marketciptypes.h"
@@ -172,6 +173,17 @@ private:
     std::vector<QObject*> m_ownBuyOffers;
     std::vector<QObject*> m_ownSellOffers;
     TMessageDialogController* m_message;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

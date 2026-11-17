@@ -202,13 +202,11 @@ void TManageLootContainerDialogController::installHandlers()
 {
     const auto handle = [this](const input::IGameAction& action) { return handleGameAction(action); };
     for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
-        input::setActionHandler(type, handle);
+        m_gameActions.on(type, handle);
 }
 
 void TManageLootContainerDialogController::uninstallHandlers()
 {
-    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
-        input::setActionHandler(type, nullptr);
 }
 
 bool TManageLootContainerDialogController::handleGameAction(const input::IGameAction& action)

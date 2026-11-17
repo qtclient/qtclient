@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
 #include "gamewindow/characterinfodialogcontroller.h"
@@ -118,6 +119,14 @@ private:
     TMagicalArchiveDialogController* m_magicalArchive;
     std::deque<Context> m_backlog;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// The button bar's Cyclopedia button (CIP: TCyclopediaButtonController).

@@ -92,8 +92,8 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
     connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
     connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
-    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
-    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
+    m_gameActions.on(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
+    m_gameActions.on(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
         if (!m_containers)
             return false;
         m_containers->openInSidebar(action.containerId(), action.sidebarId());
@@ -103,8 +103,6 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
 TSidebarWidgetsManager::~TSidebarWidgetsManager()
 {
-    input::setActionHandler(A::TOGGLE_WIDGET, nullptr);
-    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, nullptr);
     delete m_skills;
 }
 
@@ -457,6 +455,14 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
         restoreSidebar(TSidebarManager::LeftSidebarIdBase + static_cast<uint>(i), saved.openWidgetsOrderPerSidebar.at(right + i).toArray());
     if (m_containers)
         m_containers->endRestore();
+}
+
+
+void TSidebarWidgetsManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_battleLists)
+        m_battleLists->handleGameAction(pGameAction);
 }
 
 }

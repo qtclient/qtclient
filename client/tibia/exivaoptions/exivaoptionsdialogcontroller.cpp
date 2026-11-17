@@ -44,12 +44,11 @@ TExivaOptionsDialogController::TExivaOptionsDialogController(QObject* parent)
     m_onlyOptionalPvp.setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), gamewindow::TMessageDialogController::Button::OK,
                                                                         QKeySequence(QStringLiteral("Return"))) });
     m_onlyOptionalPvp.setCloseOnButtonClicked(true);
-    input::setActionHandler(A::OPEN_EXIVA_OPTIONS_DIALOG, [this](const input::IGameAction& action) { return handleAction(action); });
+    m_gameActions.on(A::OPEN_EXIVA_OPTIONS_DIALOG, [this](const input::IGameAction& action) { return handleAction(action); });
 }
 
 TExivaOptionsDialogController::~TExivaOptionsDialogController()
 {
-    input::setActionHandler(A::OPEN_EXIVA_OPTIONS_DIALOG, nullptr);
 }
 
 void TExivaOptionsDialogController::setStorage(TExivaOptionsStorage* storage, std::function<int()> worldType)

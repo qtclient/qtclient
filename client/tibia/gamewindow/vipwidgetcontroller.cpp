@@ -344,7 +344,7 @@ void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TVipWidgetController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; qtclient routes via setActionHandler → handleAction.
+    // CIP moc shared_ptr dispatch; the manager's router slot hands the actions to handleAction.
 }
 
 void TVipWidgetController::setSidebarOptions(config::TSidebarOptions* options)
@@ -539,13 +539,11 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
 {
     connect(m_exivaOptions, &exivaoptions::TExivaOptionsStorage::publishGameAction, this, &TVipWidgetManager::publishGameAction);
     for (const A type : WidgetActions)
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
 }
 
 TVipWidgetManager::~TVipWidgetManager()
 {
-    for (const A type : WidgetActions)
-        input::setActionHandler(type, nullptr);
     delete m_controller;
 }
 
@@ -593,5 +591,13 @@ void TVipWidgetManager::close(const bool saveWidgetOptions)
 }
 
 TSidebarWidget* TVipWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
+
+
+void TVipWidgetManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_exivaOptions)
+        m_exivaOptions->handleGameAction(pGameAction);
+}
 
 }

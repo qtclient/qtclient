@@ -442,7 +442,7 @@ TVipGameActionHandler::TVipGameActionHandler(TVipStorage* storage, QObject* pare
     , m_storage(storage)
 {
     for (const VipAction type : VipGameActions) {
-        ::tibia::input::setActionHandler(type, [this](const ::tibia::input::IGameAction& action) {
+        m_gameActions.on(type, [this](const ::tibia::input::IGameAction& action) {
             handleGameAction(action);
             return true;
         });
@@ -451,8 +451,6 @@ TVipGameActionHandler::TVipGameActionHandler(TVipStorage* storage, QObject* pare
 
 TVipGameActionHandler::~TVipGameActionHandler()
 {
-    for (const VipAction type : VipGameActions)
-        ::tibia::input::setActionHandler(type, nullptr);
 }
 
 void TVipGameActionHandler::handleGameAction(const ::tibia::input::IGameAction& action)

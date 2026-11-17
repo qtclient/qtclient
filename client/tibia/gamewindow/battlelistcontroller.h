@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
@@ -353,6 +354,9 @@ public Q_SLOTS:
     void onBattleListClosed(int battleListId);
 
 Q_SIGNALS:
+    /// A list took a USE_AT_MOUSECURSOR / SPELL_AT_MOUSE_CURSOR (the map window
+    /// then does not report it unhandled).
+    void atMouseCursorGameActionTaken();
     /// EWidgetType 1 (primary list) and 2 (party list).
     void widgetVisible(int widgetType);
     void widgetHidden(int widgetType);
@@ -386,7 +390,17 @@ private:
     QTimer m_updateTimer;
     TBattleListGameActionHandler* m_gameActionHandler = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<int> m_actionListeners;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

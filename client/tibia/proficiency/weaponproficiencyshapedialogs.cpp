@@ -93,7 +93,7 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
         m_typeId = 0;
     });
 
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action) {
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action) {
         handleGameAction(action);
         return true;
     });
@@ -118,7 +118,6 @@ void TWeaponProficiencyShapeDialogController::handleGameAction(const input::game
 
 TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController()
 {
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, nullptr);
 }
 
 std::optional<TShapedSlot> TWeaponProficiencyShapeDialogController::shapedSlot() const
@@ -484,7 +483,7 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
         if (dialog()->isShown())
             dialog()->close();
     });
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
         const int profession = action.profession();
         if (profession >= 1 && profession <= 5) {
             std::vector<TProficiencyPerk> perks;
@@ -501,7 +500,6 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
 
 TWeaponProficiencyShapeOptionsDialogController::~TWeaponProficiencyShapeOptionsDialogController()
 {
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, nullptr);
 }
 
 void TWeaponProficiencyShapeOptionsDialogController::requestClose() { closeDialog(); }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "config/optionsarchive.h"
 #include "config/clientoptionsmodeswitcher.h"
@@ -164,7 +165,6 @@ private:
     QString m_importFile;
     /// CIP +0xbe8: hidden for a hotkey's target selection.
     bool m_hiddenForTargetSelection = false;
-    std::vector<int> m_actionListeners;
     client::TGameClient* m_gameClient = nullptr;
 
     QPointer<QQuickWindow> m_window;
@@ -174,6 +174,19 @@ private:
     QTimer m_frameRateTimer;
     /// CIP +0xbe0.
     double m_frameRate = 0.0;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+        if ((&m_clientOptionsModeSwitcher))
+            (&m_clientOptionsModeSwitcher)->handleGameAction(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

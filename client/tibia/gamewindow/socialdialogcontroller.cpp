@@ -57,15 +57,13 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
             &TSocialDialogController::onGenericFriendSystemError);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)
         g_socialDialog = this;
 }
 
 TSocialDialogController::~TSocialDialogController()
 {
-    input::setActionHandler(input::EGameAction::OPEN_SOCIAL_DIALOG, nullptr);
-    input::setActionHandler(input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT, nullptr);
     if (g_socialDialog == this)
         g_socialDialog = nullptr;
 }

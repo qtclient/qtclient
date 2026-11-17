@@ -169,17 +169,13 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
     for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
                           A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
                           A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExaltationStorage::~TExaltationStorage()
 {
     if (s_instance == this)
         s_instance = nullptr;
-    for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
-                          A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
-                          A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Dust, slivers and cores (resource types 70 to 72), as 16 bits.

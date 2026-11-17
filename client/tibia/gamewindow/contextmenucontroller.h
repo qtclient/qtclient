@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "input/eventfilters.h"
 #include "input/gameaction.h"
 
@@ -102,6 +103,17 @@ private:
     QTimer m_showTimer;
     bool m_enabled = true;
     std::vector<std::pair<QPointer<QObject>, GameActionsExtension>> m_extensions;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

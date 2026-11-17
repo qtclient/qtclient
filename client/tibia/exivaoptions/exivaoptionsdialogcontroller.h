@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -46,6 +47,17 @@ private:
     QPointer<TExivaOptionsStorage> m_storage;
     std::function<int()> m_worldType;
     gamewindow::TMessageDialogController m_onlyOptionalPvp;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

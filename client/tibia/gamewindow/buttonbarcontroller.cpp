@@ -307,11 +307,11 @@ TButtonBarController::TButtonBarController(QObject* parent)
         m_highlightRewardWallButton = on;
         Q_EMIT highlightRewardWallButtonChanged();
     };
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, [setRewardWallHighlight](const input::IGameAction&) {
+    m_gameActions.on(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, [setRewardWallHighlight](const input::IGameAction&) {
         setRewardWallHighlight(true);
         return true;
     });
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, [setRewardWallHighlight](const input::IGameAction&) {
+    m_gameActions.on(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, [setRewardWallHighlight](const input::IGameAction&) {
         setRewardWallHighlight(false);
         return true;
     });
@@ -319,8 +319,6 @@ TButtonBarController::TButtonBarController(QObject* parent)
 
 TButtonBarController::~TButtonBarController()
 {
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, nullptr);
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, nullptr);
 }
 
 void TButtonBarController::setAttentionStorage(mods::AttentionBackend* storage)

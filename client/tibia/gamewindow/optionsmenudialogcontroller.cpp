@@ -172,12 +172,9 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
     connect(m_restartMessage, &TMessageDialogController::buttonClicked, this, &TOptionsMenuDialogController::onResartMessageControllerClicked);
     connect(this, &cip::tibia::gamewindow::TOptionsMenuDialogController::dialogClosed, this, &TOptionsMenuDialogController::closeSubDialogs);
-    m_actionListeners.push_back(input::addActionListener(EGameAction::START_TARGET_SELECTION,
-                                                         [this](const input::IGameAction& action) { return onHotkeyPageGameAction(action); }));
-    m_actionListeners.push_back(input::addActionListener(EGameAction::TARGET_SELECTION_FINISHED, [this](const input::IGameAction& action) {
-        handleGameAction(action);
-        return false;
-    }));
+    m_gameActions.on(EGameAction::START_TARGET_SELECTION, [this](const input::IGameAction& action) { onHotkeyPageGameAction(action); });
+    m_gameActions.on(EGameAction::TARGET_SELECTION_FINISHED, [this](const input::IGameAction& action) { handleGameAction(action); });
+    m_gameActions.on(EGameAction::OPEN_OPTIONS_MENU_DIALOG, [this](const input::IGameAction& action) { handleGameAction(action); });
 
     m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
 
@@ -217,8 +214,6 @@ QString TOptionsMenuDialogController::currentFrameRate() const { return QString:
 
 TOptionsMenuDialogController::~TOptionsMenuDialogController()
 {
-    for (const int listener : m_actionListeners)
-        input::removeActionListener(listener);
     disconnect(m_frameConnection);
 }
 

@@ -17,7 +17,7 @@ TNaggingMessageDialogController::TNaggingMessageDialogController(QObject* parent
 {
     m_tick.setInterval(100);
     connect(&m_tick, &QTimer::timeout, this, &TNaggingMessageDialogController::onRefreshSecondsRemaining);
-    input::setActionHandler(A::SHOW_NAGGING_DIALOG, [this](const input::TGameActionShowNaggingDialog& action) {
+    m_gameActions.on(A::SHOW_NAGGING_DIALOG, [this](const input::TGameActionShowNaggingDialog& action) {
         showNagging(action.text(), static_cast<int>(action.durationSeconds()));
         return true;
     });
@@ -25,7 +25,6 @@ TNaggingMessageDialogController::TNaggingMessageDialogController(QObject* parent
 
 TNaggingMessageDialogController::~TNaggingMessageDialogController()
 {
-    input::setActionHandler(A::SHOW_NAGGING_DIALOG, nullptr);
     m_tick.stop();
 }
 

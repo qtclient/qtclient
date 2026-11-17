@@ -267,12 +267,11 @@ TPlayerTradeWidgetManager::TPlayerTradeWidgetManager(TSidebarManager* sidebars, 
         m_storage.reset();
         close();
     });
-    input::setActionHandler(input::EGameAction::TRADE_ITEM, [this](const input::TGameActionPlayerTradeItem& action) { return tradeItem(action); });
+    m_gameActions.on(input::EGameAction::TRADE_ITEM, [this](const input::TGameActionPlayerTradeItem& action) { return tradeItem(action); });
 }
 
 TPlayerTradeWidgetManager::~TPlayerTradeWidgetManager()
 {
-    input::setActionHandler(input::EGameAction::TRADE_ITEM, nullptr);
     if (input::isSelectingTarget())
         input::finishTargetSelection(nullptr);
 }

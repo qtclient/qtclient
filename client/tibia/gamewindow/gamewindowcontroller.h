@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -216,6 +217,14 @@ private:
     std::unique_ptr<TNewsDialogController> m_newsDialog;
     std::unique_ptr<TNewsButtonController> m_newsButton;
     std::unique_ptr<TCalendarDialogController> m_calendarDialog;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

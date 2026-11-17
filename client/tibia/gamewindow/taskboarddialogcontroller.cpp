@@ -316,7 +316,7 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
 
     m_notOnMain->setCloseOnButtonClicked(true);
     // The action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
-    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::gameactions::TGameActionOpenTaskboardDialog& action) {
+    m_gameActions.on(A::OPEN_TASKBOARD_DIALOG, [this](const input::gameactions::TGameActionOpenTaskboardDialog& action) {
         if (action.tab() == 0)
             showDialog(BountyTasks);
         else if (action.tab() == 1)
@@ -327,7 +327,6 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
 
 TTaskboardDialogController::~TTaskboardDialogController()
 {
-    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, nullptr);
 }
 
 /// Reopens the dialog on `Tab`; before the character reached the main land

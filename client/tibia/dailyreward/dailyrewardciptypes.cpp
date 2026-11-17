@@ -240,13 +240,11 @@ TDailyRewardGameActionHandler::TDailyRewardGameActionHandler(TDailyRewardStorage
     , m_storage(storage)
 {
     for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TDailyRewardGameActionHandler::~TDailyRewardGameActionHandler()
 {
-    for (const A type : { A::REQUEST_OPEN_REWARD_WALL, A::REQUEST_DAILY_REWARD_HISTORY, A::COLLECT_FIXED_ITEMS_DAILY_REWARD })
-        input::setActionHandler(type, nullptr);
 }
 
 bool TDailyRewardGameActionHandler::handleGameAction(const input::IGameAction& action)

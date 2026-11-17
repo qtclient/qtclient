@@ -12,16 +12,24 @@
 namespace tibia {
 namespace input {
 
-/// CIP input::TActionButtonGameActionHandler : owns the
-/// ACTION_BUTTON_TRIGGERED registration for the action-bar lifetime.
+/// CIP input::TActionButtonGameActionHandler: ACTION_BUTTON_TRIGGERED goes to
+/// the action bars (`handler`).
 class TActionButtonGameActionHandler final : public cip::tibia::input::TActionButtonGameActionHandler
 {
     Q_OBJECT
 public:
-    explicit TActionButtonGameActionHandler(ActionHandler handler, QObject* parent = nullptr);
+    using Handler = std::function<void(const TGameActionActionButtonTriggered& action)>;
+    explicit TActionButtonGameActionHandler(Handler handler, QObject* parent = nullptr);
     ~TActionButtonGameActionHandler() override;
     TActionButtonGameActionHandler(const TActionButtonGameActionHandler&) = delete;
     TActionButtonGameActionHandler& operator=(const TActionButtonGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// Connected to the router's publishGameActionInternal.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    Handler m_handler;
 };
 
 /// CIP input::TClipboardGameActionHandler: the copy actions. Text and chat

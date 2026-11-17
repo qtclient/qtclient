@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "config/hotkeyoptions.h"
 #include "config/optionspages.h"
@@ -101,6 +102,21 @@ private:
     /// CIP TActionButtonGameActionHandler .
     std::unique_ptr<input::TActionButtonGameActionHandler> m_actionButtonHandler;
     QPointer<TTargetSelectionController> m_targetSelection;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+        if (m_targetSelection)
+            m_targetSelection->handleGameAction(pGameAction);
+        if (m_actionButtonHandler)
+            m_actionButtonHandler->handleGameAction(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

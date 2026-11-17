@@ -53,14 +53,15 @@ TMinimapController::TMinimapController(QObject* parent)
                 onPlayerPositionChanged(*position);
         return std::any{};
     });
-    input::setMinimapActionHandler([this](const input::IGameAction& action) {
-        handleGameAction(action);
-    });
+    using A = input::EGameAction;
+    for (const A type : { A::MINIMAP_ONE_FLOOR_UP, A::MINIMAP_ONE_FLOOR_DOWN, A::MINIMAP_ZOOM_IN, A::MINIMAP_ZOOM_OUT,
+                          A::MINIMAP_SCROLL_NORTH, A::MINIMAP_SCROLL_EAST, A::MINIMAP_SCROLL_SOUTH, A::MINIMAP_SCROLL_WEST,
+                          A::MINIMAP_CENTER })
+        m_gameActions.on(type, [this](const input::IGameAction& action) { handleGameAction(action); });
 }
 
 TMinimapController::~TMinimapController()
 {
-    input::setMinimapActionHandler(nullptr);
     if (m_minimap)
         m_minimap->setRenderProvider(nullptr);
 }

@@ -59,30 +59,30 @@ using A = input::EGameAction;
 TSelectObjectAmountDialogController::TSelectObjectAmountDialogController(QObject* parent)
     : TDialogController(QStringLiteral("SelectObjectAmountDialog.qml"), parent)
 {
-    input::setActionHandler(A::SHOW_SPLIT_STACK_DIALOG, [this](const input::IGameAction& action) { return handleSplitStack(action); });
-    input::setActionHandler(A::STASH_OPEN_STOW_STACK_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
-    input::setActionHandler(A::STASH_OPEN_RETRIEVE_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
+    m_gameActions.on(A::SHOW_SPLIT_STACK_DIALOG, [this](const input::IGameAction& action) { return handleSplitStack(action); });
+    m_gameActions.on(A::STASH_OPEN_STOW_STACK_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
+    m_gameActions.on(A::STASH_OPEN_RETRIEVE_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
 }
 
 TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController()
 {
-    input::setActionHandler(A::SHOW_SPLIT_STACK_DIALOG, nullptr);
-    input::setActionHandler(A::STASH_OPEN_STOW_STACK_DIALOG, nullptr);
-    input::setActionHandler(A::STASH_OPEN_RETRIEVE_DIALOG, nullptr);
 }
 
 bool TSelectObjectAmountDialogController::handleSplitStack(const input::IGameAction& action)
 {
     const auto* split = input::gameActionAs<input::TGameActionShowSplitStackDialog>(&action);
     const input::TMoveObjectPtr move = split ? split->moveObject() : nullptr;
-    if (!move || !move->objectClientId())
+    if (!move)
         return false;
-    // Creatures use wire id Proto::Creature — never a stackable item amount.
-    if (input::creatureOfObject(move->context()))
+    // Without an amount to pick the move goes as it is. Creatures use wire id
+    // Proto::Creature — never a stackable item amount.
+    const int count = !move->objectClientId() || input::creatureOfObject(move->context())
+        ? 1
+        : move->amount() > 0 ? move->amount() : storageSlotCount(move->position(), move->stackPosition());
+    if (count <= 1) {
+        Q_EMIT publishGameAction(move);
         return false;
-    const int count = move->amount() > 0 ? move->amount() : storageSlotCount(move->position(), move->stackPosition());
-    if (count <= 1)
-        return false;
+    }
     m_inner = move;
     open(static_cast<int>(move->objectClientId()), static_cast<uint>(count));
     return true;

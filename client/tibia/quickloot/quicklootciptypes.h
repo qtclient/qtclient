@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include <set>
 
 // CIP-named quickloot surfaces (promoted from cipwire).
@@ -78,6 +79,17 @@ public:
 private:
     /// A full list refuses the object with a status line.
     void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

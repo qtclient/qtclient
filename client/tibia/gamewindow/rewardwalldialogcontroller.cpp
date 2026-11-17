@@ -154,14 +154,11 @@ TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewa
 
     for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
                           A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TRewardWallDialogController::~TRewardWallDialogController()
 {
-    for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
-                          A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
-        input::setActionHandler(type, nullptr);
     m_timer.stop();
     clearHistory();
     clearDailyRewards();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogcontrollerwithfocushandlingbase.h"
 #include "gamewindow/dialogmanager.h"
@@ -180,7 +181,17 @@ private:
     TChatChannelController* m_chat = nullptr;
     std::optional<TRemoteNpcSession> m_remote;
     int m_savedChatMode = 0;
-    std::vector<int> m_actionListeners;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

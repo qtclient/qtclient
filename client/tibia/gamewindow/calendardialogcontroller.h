@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
 #include "news/eventsuploader.h"
@@ -78,6 +79,17 @@ private:
     QVariantMap m_seasonalEventsMap;
     /// What TEventQMLEntry carries in CIP but the qtclient entry does not.
     QHash<const QObject*, EntryDetails> m_entryDetails;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

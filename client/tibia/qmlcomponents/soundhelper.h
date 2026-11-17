@@ -22,8 +22,8 @@ public:
     static void setInstance(TSoundHelperService* service);
 };
 
-/// Installs the SOUND_TRIGGER game-action handler (CIP parameter = effect id).
-void installSoundActionHandler();
+/// The pack weather audio follows the sound options.
+void followSoundOptions();
 /// Option change: the pack weather audio follows the ambience volume.
 void applyOptionVolumes();
 

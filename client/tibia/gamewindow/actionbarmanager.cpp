@@ -64,8 +64,8 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     , m_chatMode(std::move(chatMode))
     , m_displayOptions(config::actionBarsBindings(), this)
     , m_cooldowns(this)
-    , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(input::detail::typedGameActionHandler(
-          [this](const input::TGameActionActionButtonTriggered& action) { return onActionButtonTriggered(action); })))
+    , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(
+          [this](const input::TGameActionActionButtonTriggered& action) { onActionButtonTriggered(action); }))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
 {
     connect(m_targetSelection, &TTargetSelectionController::publishGameAction, this, &TActionBarManager::publishGameAction);
@@ -134,23 +134,23 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         return std::any{};
     });
 
-    input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::IGameAction& action) { return toggleActionBar(action); });
-    input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::IGameAction& action) { return toggleActionBars(action); });
-    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameActionCloseAllMultiActionButtons& action) {
+    m_gameActions.on(A::TOGGLE_ACTION_BAR, [this](const input::IGameAction& action) { return toggleActionBar(action); });
+    m_gameActions.on(A::TOGGLE_ACTION_BARS, [this](const input::IGameAction& action) { return toggleActionBars(action); });
+    m_gameActions.on(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameActionCloseAllMultiActionButtons& action) {
         for (const auto& group : m_groups)
             if (group)
                 for (TActionBarController* bar : group->bars())
                     bar->closeOpenMultiActionButtons(action.actionBarId(), action.actionButtonId());
         return true;
     });
-    input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+    m_gameActions.on(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
         TActionBarController* target = bar(action.actionBarId() > 0 ? action.actionBarId() : 1);
         if (!target)
             return true;
         target->openSpellDialog(action.actionButtonId(), action.multiActionIndex(), action.spellId());
         return true;
     });
-    input::setActionHandler(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+    m_gameActions.on(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
         TActionBarController* target = bar(action.actionBarId());
         if (!target || action.spellId() == 0)
             return true;
@@ -168,8 +168,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
 
 TActionBarManager::~TActionBarManager()
 {
-    for (const A type : HandledActions)
-        input::setActionHandler(type, nullptr);
     m_hooks.clear();
 }
 

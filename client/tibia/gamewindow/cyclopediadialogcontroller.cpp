@@ -112,8 +112,6 @@ void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_
 
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, nullptr);
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, nullptr);
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -149,11 +147,11 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
-    input::setActionHandler(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
+    m_gameActions.on(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
         m_bosstiary->handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
+    m_gameActions.on(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
         // The action's tab and the page it opens there.
         switch (action.tab()) {
             case 0: {
@@ -207,7 +205,7 @@ void TCyclopediaDialogController::hookActions()
         }
         return true;
     });
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
+    m_gameActions.on(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
         clearBacklog();
         closeDialog();
         return true;
@@ -490,6 +488,14 @@ void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
         return;
     m_highlightedBossRaceId = BossRaceID;
     Q_EMIT changed();
+}
+
+
+void TCyclopediaDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_map)
+        m_map->handleGameAction(pGameAction);
 }
 
 }

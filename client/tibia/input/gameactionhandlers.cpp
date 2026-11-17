@@ -1,7 +1,6 @@
 #include "game/objectreference.h"
 #include <optional>
 #include "gameactionhandlers.h"
-#include "game/gameactionrouter.h"
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
@@ -45,18 +44,6 @@ namespace {
 
 using A = EGameAction;
 
-std::function<void(const IGameAction&)>& minimapActionHandler()
-{
-    static std::function<void(const IGameAction&)> handler;
-    return handler;
-}
-
-std::unordered_map<EGameAction, ActionHandler>& actionHandlers()
-{
-    static std::unordered_map<EGameAction, ActionHandler> handlers;
-    return handlers;
-}
-
 TargetHandler& targetHandler()
 {
     static TargetHandler handler;
@@ -67,24 +54,6 @@ std::function<void(bool)>& targetSelectionListener()
 {
     static std::function<void(bool)> listener;
     return listener;
-}
-
-std::map<int, std::pair<EGameAction, ActionListener>>& actionListeners()
-{
-    static std::map<int, std::pair<EGameAction, ActionListener>> listeners;
-    return listeners;
-}
-
-bool notifyListeners(const IGameAction& action)
-{
-    std::vector<ActionListener> matching;
-    for (const auto& [id, listener] : actionListeners())
-        if (listener.first == action.gameActionType())
-            matching.push_back(listener.second);
-    for (const ActionListener& listener : matching)
-        if (listener(action))
-            return true;
-    return false;
 }
 
 /// CIP stack count for moves: map field appearance count, else inventory/container slot.
@@ -223,7 +192,7 @@ int parentContainerId(const TObjectGameActionContext& action)
 
 /// CIP's NPC talk handler : greet NPCs closer than four fields
 /// on the player's floor.
-void startTalking(const uint32_t creatureId)
+void startTalking(TUnportedGameActionHandler& handler, const uint32_t creatureId)
 {
     if (!creatureId)
         return;
@@ -237,12 +206,11 @@ void startTalking(const uint32_t creatureId)
     const Position& from = tibia::game::localPlayerPosition();
     const Position& to = npc->position();
     if (from.z != to.z || std::abs(from.x - to.x) >= 4 || std::abs(from.y - to.y) >= 4) {
-        auto status = std::make_shared<TGameActionSetStatusLine>(qtTrId("you_are_too_far_away"));
-        publish(status);
+        Q_EMIT handler.publishGameAction(std::make_shared<TGameActionSetStatusLine>(qtTrId("you_are_too_far_away")));
         return;
     }
-    publish(std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL,
-                                                     std::make_shared<const chat::TChatChannelIdentifier>()));
+    Q_EMIT handler.publishGameAction(
+        std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL, std::make_shared<const chat::TChatChannelIdentifier>()));
     tibia::game::greetNpc(creatureId);
 }
 
@@ -295,26 +263,12 @@ void clearSpriteCaches()
 
 }
 
-namespace {
-game::TInternalGameActionRouter* gameActionRouter = nullptr;
-}
-
-void setGameActionRouter(game::TInternalGameActionRouter* router)
+TUnportedGameActionHandler::TUnportedGameActionHandler(QObject* parent)
+    : QObject(parent)
 {
-    gameActionRouter = router;
 }
 
-void publish(const IGameActionPtr& action)
-{
-    if (!action)
-        return;
-    if (gameActionRouter)
-        gameActionRouter->handleGameActionInternal(action);
-    else
-        handleUnportedGameAction(action);
-}
-
-void handleUnportedGameAction(const IGameActionPtr& pGameAction)
+void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAction)
 {
     if (!pGameAction)
         return;
@@ -347,10 +301,6 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         != std::end(OfflineActions);
     if (!tibia::game::isOnline() && !offlineOk)
         return;
-    if (notifyListeners(*pGameAction))
-        return;
-    if (const auto it = actionHandlers().find(type); it != actionHandlers().end() && it->second(*pGameAction))
-        return;
     // The object the action is on (CIP: its location and object contexts).
     const TObjectGameActionContext object = objectContextOf(*pGameAction).value_or(TObjectGameActionContext{});
     const uint32_t creatureId = creatureIdOf(*pGameAction);
@@ -378,9 +328,6 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             // Depot-search parent: the object's field (CIP open parent from search).
             tibia::game::openParentContainerFromDepotSearch(object.position());
         }
-        break;
-    case A::GATHER_ALL:
-        // Handled by TGatherAllGameActionHandler when registered.
         break;
     case A::INSPECT_OBJECT:
         if (object.position().isValid())
@@ -469,11 +416,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
                 QGuiApplication::clipboard()->setText(row->name());
         }
         break;
-    case A::SET_PLAYER_MOVEMENT_INTENT:
-        // Handled by TPlayerMovementGameActionHandler when registered.
-        break;
     case A::START_TALKING_TO_NPC:
-        startTalking(creatureId);
+        startTalking(*this, creatureId);
         break;
     case A::MOUNT_PLAYER:
         tibia::game::mount(true);
@@ -487,11 +431,6 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     case A::MOVE_OBJECT:
         moveObject(static_cast<const TGameActionMoveObject&>(*pGameAction));
-        break;
-    case A::SHOW_SPLIT_STACK_DIALOG:
-        // The amount dialog took no amount: the move goes as it is.
-        if (const auto* split = gameActionAs<TGameActionShowSplitStackDialog>(pGameAction); split && split->moveObject())
-            moveObject(*split->moveObject());
         break;
     case A::STOP_ATTACKING_FOLLOWING_WALKING:
         tibia::game::stop();
@@ -524,9 +463,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
                                                         set->showCreature() ? 1 : 0);
         break;
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
-        auto message = std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, qtTrId("you_see_nothing"),
-                                                                   QColor(Qt::green));
-        publish(message);
+        Q_EMIT publishGameAction(std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE,
+                                                                             qtTrId("you_see_nothing"), QColor(Qt::green)));
         break;
     }
     case A::JOIN_AGGRESSION:
@@ -540,27 +478,6 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     case A::OPEN_TRADE_CHARACTER_DIALOG:
         if (gamewindow::TCharacterTradeDialogController* trade = gamewindow::TCharacterTradeDialogController::instance())
             trade->showDialog();
-        break;
-    case A::MINIMAP_ONE_FLOOR_UP:
-    case A::MINIMAP_ONE_FLOOR_DOWN:
-    case A::MINIMAP_ZOOM_IN:
-    case A::MINIMAP_ZOOM_OUT:
-    case A::MINIMAP_SCROLL_NORTH:
-    case A::MINIMAP_SCROLL_EAST:
-    case A::MINIMAP_SCROLL_SOUTH:
-    case A::MINIMAP_SCROLL_WEST:
-    case A::MINIMAP_CENTER:
-        if (const auto& handler = minimapActionHandler())
-            handler(*pGameAction);
-        break;
-    case A::START_TARGET_SELECTION:
-        // CIP: TTargetSelectionController handles this; our listener mirrors it.
-        if (const auto& listener = targetSelectionListener())
-            listener(true);
-        break;
-    case A::TARGET_SELECTION_FINISHED:
-        if (const auto& listener = targetSelectionListener())
-            listener(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
         // The chat controller handles its own input and output (it listens too).
@@ -601,46 +518,10 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             }
         }
         break;
-    case A::SHOW_TUTORIAL_HINT:
-    case A::CONFIRM_TUTORIAL_HINT:
-    case A::ADD_GUI_TUTORIAL_MARKER:
-    case A::REMOVE_ALL_TUTORIAL_MARKERS:
-    case A::ADD_HINT_AT_TUTORIAL_MARKER:
-    case A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER:
-    case A::FINISHED_TUTORIAL_FOR_CHARACTER:
-    case A::TUTORIAL_PROGRESS:
-    case A::SESSIONDUMP_START:
-    case A::SESSIONDUMP_PAUSE:
-    case A::SESSIONDUMP_RESUME:
-    case A::SESSIONDUMP_SKIP_TO:
-        // Handled by TTutorialShell action handlers when the game window is up.
-        break;
     default:
         break;
     }
 }
-
-void setMinimapActionHandler(std::function<void(const IGameAction&)> handler)
-{
-    minimapActionHandler() = std::move(handler);
-}
-
-void setActionHandlerImpl(const EGameAction type, ActionHandler handler)
-{
-    if (handler)
-        actionHandlers()[type] = std::move(handler);
-    else
-        actionHandlers().erase(type);
-}
-
-int addActionListenerImpl(const EGameAction type, ActionListener listener)
-{
-    static int nextId = 0;
-    actionListeners().emplace(++nextId, std::make_pair(type, std::move(listener)));
-    return nextId;
-}
-
-void removeActionListener(const int id) { actionListeners().erase(id); }
 
 void startTargetSelection(TargetHandler handler)
 {

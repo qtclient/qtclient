@@ -382,7 +382,7 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
 
     // CIP : the character info dialog passes the type, the button
     // bar and the context menus the object.
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyDialog& action) {
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyDialog& action) {
         showDialog(action.typeId());
         return true;
     });
@@ -392,7 +392,6 @@ int TWeaponProficiencyDialogController::maxProficiencyLevels() const { return Ma
 
 TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 {
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_DIALOG, nullptr);
 }
 
 void TWeaponProficiencyDialogController::sendItemInfo(const uint16_t typeId) const

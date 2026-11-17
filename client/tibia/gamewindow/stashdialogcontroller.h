@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
@@ -133,9 +134,19 @@ private:
     input::TGameActionMapper m_mapper;
     input::TMoveObjectPtr m_pendingStow;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<int> m_actionListeners;
     bool m_reopenAfterMarket = false;
     bool m_reopenAfterManageLoot = false;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

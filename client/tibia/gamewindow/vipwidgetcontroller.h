@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "creatures/creaturesciptypes.h"
@@ -271,6 +272,14 @@ private:
     QPointer<config::TSidebarOptions> m_options;
     int m_controlScheme = 0;
     int m_worldType = -1;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

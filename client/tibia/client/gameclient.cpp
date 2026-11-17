@@ -54,6 +54,7 @@
 #include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
+#include "minimap/minimapmarkerstorage.h"
 #include "chat/textstorage.h"
 #include "game/gamesessionbase.h"
 #include "game/tgamenotify.h"
@@ -270,16 +271,23 @@ TGameClient::TGameClient(QObject* parent)
 {
     game::TOutfitDialogStorage::setInstance(m_outfitDialogStorage.get());
     m_pGameActionRouter = std::make_shared<game::TGameActionRouter>();
-    // qtclient: actions published through input::publish and the handlers not
-    // connected to the router yet.
-    input::setGameActionRouter(m_pGameActionRouter->internalRouter());
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
-            [](const input::IGameActionPtr& action) { input::handleUnportedGameAction(action); });
+    // The actions whose CIP handler classes are not ported yet.
+    auto* unported = new input::TUnportedGameActionHandler(this);
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, unported,
+            &input::TUnportedGameActionHandler::handleGameAction);
+    connect(unported, &input::TUnportedGameActionHandler::publishGameAction, m_pGameActionRouter->internalRouter(),
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     // The sound helper the dialogs and the QML singletons play through.
     auto* soundHelper = new qmlcomponents::TSoundHelperService(this);
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);
     connect(soundHelper, &qmlcomponents::TSoundHelperService::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
+    // The active session's game message handler (status line, map messages).
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
+            [this](const input::IGameActionPtr& action) {
+                if (m_messageHandler)
+                    m_messageHandler->handleGameAction(action);
+            });
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
@@ -338,6 +346,13 @@ TGameClient::TGameClient(QObject* parent)
         publishToRouter(creatures::TVipStorage::instance());
         publishChildrenToRouter(static_cast<game::TPlayerProtocolMessageHandler*>(nullptr));
         publishChildrenToRouter(static_cast<quickloot::TQuickLootGameActionHandler*>(nullptr));
+        // Their game actions.
+        for (auto* handler : findChildren<quickloot::TQuickLootGameActionHandler*>(QString(), Qt::FindDirectChildrenOnly))
+            connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
+                    qOverload<const input::IGameActionPtr&>(&quickloot::TQuickLootGameActionHandler::handleGameAction));
+        for (auto* handler : creatures::TVipStorage::instance()->findChildren<creatures::TVipGameActionHandler*>())
+            connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
+                    qOverload<const input::IGameActionPtr&>(&creatures::TVipGameActionHandler::handleGameAction));
         publishChildrenToRouter(static_cast<skillwheel::TSkillWheelProtocolMessageHandler*>(nullptr));
     }
 
@@ -418,12 +433,11 @@ TGameClient::TGameClient(QObject* parent)
         m_characterSelectionOpen = false;
     });
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
-    input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE,
-                            [self = QPointer<TGameClient>(this)](const input::IGameAction&) {
-                                if (self)
-                                    Q_EMIT self->characterSelectionClosed();
-                                return true;
-                            });
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
+            [this](const input::IGameActionPtr& action) {
+                if (action && action->gameActionType() == input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE)
+                    Q_EMIT characterSelectionClosed();
+            });
 }
 
 TGameClient::~TGameClient()
@@ -432,10 +446,8 @@ TGameClient::~TGameClient()
     // storages the game window owns: it goes first.
     m_characterConfigurationManager.reset();
     m_gameWindow.reset();
-    input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
     qmlcomponents::TSoundHelperService::setInstance(nullptr);
-    input::setGameActionRouter(nullptr);
 }
 
 std::shared_ptr<game::TGameActionRouter> TGameClient::gameActionRouter() const
@@ -988,6 +1000,8 @@ void TGameClient::onWorldEntered()
         defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath));
     // The map handler keeps the minimap's floor and fields current.
     m_minimap->setProtocolHandler(worldmapProtocol());
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
+            m_minimap->markerStorage(), qOverload<const input::IGameActionPtr&>(&minimap::TMinimapMarkerStorage::handleGameAction));
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
@@ -1173,6 +1187,8 @@ void TGameClient::initializeSound()
     m_soundController = std::make_shared<sound::TSoundController>(m_soundMetadataManager, m_soundManager,
                                                                   m_soundPlayerManager, m_soundConfiguration);
     sound::TSoundController::setInstance(m_soundController.get());
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, m_soundController.get(),
+            &sound::TSoundController::handleGameAction);
     connect(m_soundManager.get(), &sound::TSoundManager::playableSoundsChanged, m_soundPlayerManager.get(),
             &sound::TSoundPlayerManager::onSoundManagerPlayableSoundsChanged);
     // Out of the game the title music plays once the sound bank is known.

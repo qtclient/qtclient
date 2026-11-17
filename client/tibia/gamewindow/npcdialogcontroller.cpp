@@ -99,7 +99,7 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
             &TNpcDialogController::onFocusChanged);
     for (const input::EGameAction type : { input::EGameAction::CHAT_CHANNEL_SELECT_ALL, input::EGameAction::REQUEST_SELECT_ALL_TEXT,
                                            input::EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD })
-        m_actionListeners.push_back(input::addActionListener(type, [this](const input::IGameAction& action) { return handleGameAction(action); }));
+        m_gameActions.on(type, [this](const input::IGameAction& action) { handleGameAction(action); });
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_talkPartners.clear();
@@ -151,8 +151,6 @@ void TNpcDialogController::postTalkingTo(const QString& names)
 
 TNpcDialogController::~TNpcDialogController()
 {
-    for (const int listener : m_actionListeners)
-        input::removeActionListener(listener);
     resetConversation();
     qApp->removeEventFilter(this);
     if (m_chatControl)

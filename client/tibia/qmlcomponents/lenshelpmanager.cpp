@@ -78,13 +78,11 @@ TLenshelpManager::TLenshelpManager(QQmlEngine* engine, QQuickItem* parentItem, Q
 {
     s_instance = this;
     for (const A type : { A::LENSHELP_ACTIVATE, A::LENSHELP_SHOW, A::LENSHELP_HIDE })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TLenshelpManager::~TLenshelpManager()
 {
-    for (const A type : { A::LENSHELP_ACTIVATE, A::LENSHELP_SHOW, A::LENSHELP_HIDE })
-        input::setActionHandler(type, nullptr);
     s_instance = nullptr;
 }
 

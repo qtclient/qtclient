@@ -109,13 +109,11 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         connect(pane, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
     }
     for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TMapWindowController::~TMapWindowController()
 {
-    for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, nullptr);
     unbind();
 }
 

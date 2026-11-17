@@ -108,6 +108,8 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
+            &effects::TEffectGameActionHandler::handleGameAction);
 }
 
 TGameSessionBase::~TGameSessionBase()

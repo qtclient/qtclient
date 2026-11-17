@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "shared/cip_typed.h"
 
 #include "client/gamecore.h"
@@ -40,6 +41,17 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 
     bool m_showMessages = true;
+
+public:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

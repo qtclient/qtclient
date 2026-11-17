@@ -57,15 +57,13 @@ TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     });
 
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExivaOptionsStorage::~TExivaOptionsStorage()
 {
     if (g_instance == this)
         g_instance = nullptr;
-    for (const A type : Handled)
-        input::setActionHandler(type, nullptr);
 }
 
 TExivaOptionsStorage* TExivaOptionsStorage::instance() { return g_instance; }

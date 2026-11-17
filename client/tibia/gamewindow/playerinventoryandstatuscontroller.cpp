@@ -153,20 +153,19 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     connect(&m_clockTimer, &QTimer::timeout, this, &TPlayerInventoryAndStatusController::refreshClocks);
     m_clockTimer.start();
 
-    using input::setActionHandler;
-    setActionHandler(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
+    m_gameActions.on(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
         if (tibia::game::isOnline() && !tibia::game::localPlayerHasReachedMain())
             Q_EMIT showCapacityWarning();
         return true;
     });
     // CIP handleGameAction case 0x94: walking turns chasing off
     // unless auto chase is enabled.
-    setActionHandler(A::APPLY_AUTOCHASE_SETTING, [this](const input::IGameAction&) {
+    m_gameActions.on(A::APPLY_AUTOCHASE_SETTING, [this](const input::IGameAction&) {
         if (!m_autoChaseEnabled && m_chaseEnabled)
             onChaseModeChangeRequested(false);
         return true;
@@ -175,9 +174,6 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
 
 TPlayerInventoryAndStatusController::~TPlayerInventoryAndStatusController()
 {
-    for (const A type : { A::SET_PVP_MODE, A::SET_CHASE_OPPONENTS, A::TOGGLE_CHASE_OPPONENTS, A::TOGGLE_SECURE_MODE, A::SET_SECURE_MODE,
-                          A::SHOW_INVENTORY_CAPACITY_WARNING, A::APPLY_AUTOCHASE_SETTING })
-        input::setActionHandler(type, nullptr);
 }
 
 void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* panel)

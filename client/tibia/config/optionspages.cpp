@@ -1041,9 +1041,10 @@ QString hotkeyActionSettingDescription(const TActionSetting& setting)
                 return product.description.isEmpty() ? setting.action : product.description;
         }
         const QString id = QStringLiteral("label_gameactionidentifier_") + setting.action;
+        // CIP map::at throws only for an unknown key. Movement names (GoNorth, …)
+        // stay in the static table with a null action — the movement interpreter
+        // owns them — so a missing IGameAction still gets a translated label.
         const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(setting.action);
-        if (!action)
-            throw std::out_of_range("map::at:  key not found");
         QString text;
         if (const auto* button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action)) {
             QString side;

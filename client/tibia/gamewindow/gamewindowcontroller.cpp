@@ -216,7 +216,7 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     m_eventsSchedulePreviewTimer.start();
 
     for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) {
+        m_gameActions.on(type, [this](const input::IGameAction& action) {
             if (m_newsDialog)
                 m_newsDialog->handleGameAction(action);
             return true;
@@ -226,9 +226,6 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
 
 TGameWindowController::~TGameWindowController()
 {
-    input::setActionHandler(A::OPEN_NEWS_DIALOG, nullptr);
-    input::setActionHandler(A::OPEN_NEWS_CATEGORY, nullptr);
-    input::setActionHandler(A::REFRESH_COMPENDIUM_NEWS, nullptr);
     // CIP also releases its native window helper and the keep-renderer prompt here; qtclient's
     // prompt lives in app/sessionbootstrap and has no native helper.
     clearEventModels();
@@ -803,6 +800,14 @@ void TGameWindowController::optionsPressed()
 {
     auto action = std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0);
     Q_EMIT publishGameAction(action);
+}
+
+
+void TGameWindowController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_calendarDialog)
+        m_calendarDialog->handleGameAction(pGameAction);
 }
 
 }

@@ -106,7 +106,6 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
 
 TSessionBootstrap::~TSessionBootstrap()
 {
-    input::setActionHandler(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG, nullptr);
 }
 
 void TSessionBootstrap::installCreateCharacter(gamewindow::TCreateCharacterDialogController* controller)
@@ -136,7 +135,7 @@ void TSessionBootstrap::wireCreateCharacter()
                     m_client->refreshAccount(reply);
                 });
     // CIP : SHOW_CREATE_CHARACTER_DIALOG (parameter: account has no characters).
-    input::setActionHandler(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
+    m_gameActions.on(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
                             [self = QPointer<TSessionBootstrap>(this)](const input::gameactions::TGameActionShowCreateCharacterDialog& action) {
                                 if (!self)
                                     return true;

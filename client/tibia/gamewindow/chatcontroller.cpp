@@ -1047,20 +1047,18 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
     }
 
     // Every handler sees these actions; the chat acts unless the NPC dialog
     // holds the keyboard.
-    m_copySelectionListenerId = input::addActionListener(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::IGameAction&) {
+    m_gameActions.on(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::IGameAction&) {
         if (!m_npcDialog || !m_npcDialog->hasFocus())
             copySelectedText();
-        return false;
     });
-    m_selectAllListenerId = input::addActionListener(A::REQUEST_SELECT_ALL_TEXT, [this](const input::IGameAction&) {
+    m_gameActions.on(A::REQUEST_SELECT_ALL_TEXT, [this](const input::IGameAction&) {
         if (!m_npcDialog || !m_npcDialog->hasFocus())
             selectAllText();
-        return false;
     });
 
     m_primary.setChannel(m_tabs.currentChannel());
@@ -1069,13 +1067,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
 
 TChatController::~TChatController()
 {
-    if (m_copySelectionListenerId)
-        input::removeActionListener(m_copySelectionListenerId);
-    if (m_selectAllListenerId)
-        input::removeActionListener(m_selectAllListenerId);
-    for (const A type : HandledActions) {
-        input::setActionHandler(type, nullptr);
-    }
 }
 
 void TChatController::setChatItem(QQuickItem* chatItem)

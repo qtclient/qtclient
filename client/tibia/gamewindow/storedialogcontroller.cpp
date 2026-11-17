@@ -334,15 +334,15 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     // Host: the session ending closes the store (CIP: the new session's setup).
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TStoreDialogController::closeDialog);
 
-    input::setActionHandler(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
+    m_gameActions.on(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
         m_messageDialog->dialog()->close();
         return true;
     });
-    input::setActionHandler(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, [this](const input::TGameActionBuyHirelingNameOrSexChange& action) {
+    m_gameActions.on(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, [this](const input::TGameActionBuyHirelingNameOrSexChange& action) {
         openWith(action.storeOpenParameters().openAction, action.storeOpenParameters().detail);
         return true;
     });
-    input::setActionHandler(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameActionSetHirelingName& action) {
+    m_gameActions.on(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameActionSetHirelingName& action) {
         if (!action.name().isEmpty())
             tibia::game::sendSetHirelingName(action.name().toStdString());
         return true;
@@ -351,9 +351,6 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
 
 TStoreDialogController::~TStoreDialogController()
 {
-    input::setActionHandler(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, nullptr);
-    input::setActionHandler(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, nullptr);
-    input::setActionHandler(input::EGameAction::SET_HIRELING_NAME, nullptr);
 }
 
 void TStoreDialogController::open()

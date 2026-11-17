@@ -3,6 +3,7 @@
 // The daily reward: the session's reward wall data, the messages that fill
 // it and the game actions that ask the server for it.
 
+#include "input/gameactiondispatch.h"
 #include "input/gameaction.h"
 #include "shared/cip_typed.h"
 
@@ -200,6 +201,17 @@ public Q_SLOTS:
 
 private:
     TDailyRewardStorage* m_storage;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler

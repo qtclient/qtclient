@@ -3,7 +3,6 @@
 #include "appearances/appearanceinstance.h"
 #include "creatures/creaturestorage.h"
 #include "effects/effectstorage.h"
-#include "input/gameactionhandlers.h"
 
 namespace tibia::effects {
 
@@ -11,24 +10,15 @@ TEffectGameActionHandler::TEffectGameActionHandler(TEffectStorage& storage, QObj
     : cip::tibia::effects::TEffectGameActionHandler(parent)
     , m_storage(storage)
 {
-    for (const input::EGameAction type :
-         { input::EGameAction::ADD_GUI_TUTORIAL_MARKER, input::EGameAction::REMOVE_ALL_TUTORIAL_MARKERS }) {
-        m_listeners.push_back(input::addActionListener(type, [this](const input::IGameAction& action) {
-            handleGameAction(action);
-            // The tutorial's other marker views see the action too.
-            return false;
-        }));
-    }
 }
 
-TEffectGameActionHandler::~TEffectGameActionHandler()
-{
-    for (const int listener : m_listeners)
-        input::removeActionListener(listener);
-}
+TEffectGameActionHandler::~TEffectGameActionHandler() = default;
 
-void TEffectGameActionHandler::handleGameAction(const input::IGameAction& action)
+void TEffectGameActionHandler::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
+    if (!pGameAction)
+        return;
+    const input::IGameAction& action = *pGameAction;
     if (action.gameActionType() == input::EGameAction::REMOVE_ALL_TUTORIAL_MARKERS) {
         m_storage.stopTrackedEffects();
         return;

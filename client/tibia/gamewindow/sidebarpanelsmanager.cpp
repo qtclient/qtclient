@@ -168,4 +168,16 @@ void TSidebarPanelsManager::saveCurrentOpenPanels()
     m_options->setPanelsOrder(order);
 }
 
+
+void TSidebarPanelsManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_buttonBar)
+        m_buttonBar->handleGameAction(pGameAction);
+    if (m_inventory)
+        m_inventory->handleGameAction(pGameAction);
+    if (m_premiumPanel)
+        m_premiumPanel->handleGameAction(pGameAction);
+}
+
 }

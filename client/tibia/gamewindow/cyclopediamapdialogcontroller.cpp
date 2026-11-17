@@ -125,7 +125,7 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     // set m_selectionType on the cip::ICyclopediaMapSelectionInfo base.
     (void)tipICyclopediaMapSelectionInfo();
 
-    input::setActionHandler(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameActionCyclopediaMapSelectionItem& action) {
+    m_gameActions.on(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameActionCyclopediaMapSelectionItem& action) {
         if (action.subareaId() > 0)
             select(action.subareaId(), false);
         return true;

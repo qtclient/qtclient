@@ -838,7 +838,7 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
 
     for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
                           A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 /// The result travels in the storage instead of the action.
@@ -879,9 +879,6 @@ bool TExaltationForgeDialogController::handleGameAction(const input::IGameAction
 
 TExaltationForgeDialogController::~TExaltationForgeDialogController()
 {
-    for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
-                          A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Closes and tells the storage (EXALTATION_FORGE_DIALOG_CLOSED).
