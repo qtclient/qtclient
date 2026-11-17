@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "skillwheel/skillwheelciptypes.h"
 #include "skillwheel/skillwheelcontrollers.h"
 
 #include <QObject>
@@ -25,22 +26,20 @@ public:
     TSkillWheelDialogController* dialog() const { return m_dialog; }
 
     /// The login session's premium flag (CIP TPremiumTimeStorage::isPremium).
-    void setSessionPremium(bool premium) { m_sessionPremium = premium; }
+    void setSessionPremium(bool premium) { m_actions.setSessionPremium(premium); }
 
 private:
-    /// CIP : the own wheel, or the no-wheel / preview message.
-    void requestOwnWheel();
     void onServerData(bool canView);
     void saveWheel();
     void clearSkipNextOwnOpen();
 
+    TSkillWheelGameActionHandler m_actions;
     TSkillWheelStorage* m_storage;
     TSkillWheelDialogController* m_dialog;
     std::vector<client::gamecore::Hook> m_hooks;
     /// CIP dialog +0x78 / QTimer +0x68 (: single shot, 1000 ms).
     bool m_skipNextOwnOpen = false;
     QTimer m_skipNextOwnOpenTimer;
-    bool m_sessionPremium = false;
 };
 
 }

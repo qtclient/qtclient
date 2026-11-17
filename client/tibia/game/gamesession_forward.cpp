@@ -419,13 +419,6 @@ void openTransactionHistory(uint8_t entriesPerPage)
     gameclient::sendOpenTransactionHistory(entriesPerPage);
 }
 
-void openWheel(uint32_t playerId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendOpenWheel(playerId);
-}
-
 void partyDisband()
 {
     if (!canPerformGameAction())
@@ -752,13 +745,6 @@ void sellItem(const uint16_t typeId, const uint8_t subType, const uint16_t amoun
         return;
 
     gameclient::sendSellItem(typeId, subType, amount, ignoreEquipped);
-}
-
-void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints, const std::array<uint16_t, 8>& vesselGems)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendApplyWheelPoints(slotPoints, vesselGems);
 }
 
 void sendContainerAction(uint8_t action, uint8_t containerId)

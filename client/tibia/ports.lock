@@ -4278,11 +4278,14 @@ shared::TZlibInflateWrapper::v1	79674512666b34e2	skip	generated: compiler-genera
 shared::executors_private::TaskExecutorObject::execute	733f9be9b5686595	tested	shared/src/singlethreadedlowpriorityexecutor.cpp:TaskExecutorObject::execute	test=tests/client/sharednet_test.cpp
 shared::executors_private::TaskExecutorObject::~TaskExecutorObject	4a00f6b18d7ba357	skip	generated: compiler-generated destructor
 shared::executors_private::TaskExecutorObject::~TaskExecutorObject_deleting	ca1ae45f16270212	skip	generated: compiler-generated deleting destructor
+skillwheel::TGridConfiguration::v0	872d4faac408f6d5	skip	generated: empty virtual destructor / deleting destructor (read)
+skillwheel::TGridConfiguration::v1	e9caf669ab302182	skip	generated: empty virtual destructor / deleting destructor (read)
 skillwheel::TGridConfiguration::v2	c36fcaa3927c009b	ported	skillwheel/skillwheeldata.cpp:maxPoints
 skillwheel::TGridConfiguration::v3	69d2ed7671fddd43	ported	skillwheel/skillwheeldata.cpp:smallPerk
 skillwheel::TGridConfiguration::v4	b2a518461b25c657	ported	skillwheel/skillwheeldata.cpp:mediumPerk
 skillwheel::TGridConfiguration::v5	0048f2c7046b0a0c	ported	skillwheel/skillwheeldata.cpp:largePerk
 skillwheel::TGridConfiguration::v6	6f47555b32b5407c	ported	skillwheel/skillwheeldata.cpp:revelationStage
+skillwheel::TGridConfiguration::v7	38864c6d30f84522	ported	skillwheel/skillwheeldata.cpp:centreSlots
 skillwheel::TInventoryGemListModel::~TInventoryGemListModel	56a3613e2499b78c	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TInventoryGemListModel::~TInventoryGemListModel_deleting	42647d826d053e25	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TInventoryGemSortFilterProxyModel::~TInventoryGemSortFilterProxyModel	0b9445a9ab40b27b	skip	generated: compiler-generated destructor (member destruction only, read)
@@ -4294,13 +4297,19 @@ skillwheel::TModListSortFilterProxyModel::~TModListSortFilterProxyModel	0b9445a9
 skillwheel::TModListSortFilterProxyModel::~TModListSortFilterProxyModel_deleting	f1c14d74e73e3a40	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TQmlSocketedGem::~TQmlSocketedGem	6aa21017c00c0e27	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TQmlSocketedGem::~TQmlSocketedGem_deleting	7132b89780eba927	skip	generated: compiler-generated destructor (member destruction only, read)
+skillwheel::TSkillWheelGameActionHandler::handleCreatureGameAction	4ce8f342a47b4aa4	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleCreatureGameAction
+skillwheel::TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction	e4c99cd58bac60de	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction
+skillwheel::TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction	a5e9586c6cc46162	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction
 skillwheel::TSkillWheelGameActionHandler::~TSkillWheelGameActionHandler	dcd997e664a2cd44	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelGameActionHandler::~TSkillWheelGameActionHandler_deleting	58969a3198b0d455	skip	generated: compiler-generated destructor (member destruction only, read)
+skillwheel::TSkillWheelProtocolMessageHandler::v12	1e4cef7e82d4326e	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::requestSkillWheel
+skillwheel::TSkillWheelProtocolMessageHandler::v13	31ec6009028fd48e	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::saveSkillWheel
 skillwheel::TSkillWheelProtocolMessageHandler::v15	c60a27ad30894186	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::dismantleGem
 skillwheel::TSkillWheelProtocolMessageHandler::v16	59bc71860814bf6e	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::revealGem
 skillwheel::TSkillWheelProtocolMessageHandler::v17	8cfce16c13af63c6	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::reshapeGem
 skillwheel::TSkillWheelProtocolMessageHandler::v18	667855847e892049	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::toggleGemLock
 skillwheel::TSkillWheelProtocolMessageHandler::v19	f18286cc0cae0178	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::enhanceModGrade
+skillwheel::TSkillWheelProtocolMessageHandler::v22	d1f3ade66f467d7c	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage
 skillwheel::TSkillWheelProtocolMessageHandler::~TSkillWheelProtocolMessageHandler	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelProtocolMessageHandler::~TSkillWheelProtocolMessageHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor (member destruction only, read)
 skillwheel::TSkillWheelStorage::~TSkillWheelStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
@@ -7877,6 +7886,8 @@ sub_625691520a79	625691520a79aad9	skip	generated: compiler-generated destructor
 sub_625b0785c125#10	625b0785c12500c5	skip	data: TU static initialiser: type-name registry
 sub_625b0785c125#2	625b0785c12500c5	skip	data: translation-unit static initializer (misattributed)
 sub_625b0785c125#3	625b0785c12500c5	skip	data: translation-unit static initializer (misattributed)
+sub_625b0785c125#32	625b0785c12500c5	skip	data: translation-unit static initializer of constant std::map tables (read)
+sub_625b0785c125#33	625b0785c12500c5	skip	data: translation-unit static initializer of constant std::map tables (read)
 sub_625b0785c125#4	625b0785c12500c5	skip	data: translation-unit static initializer (misattributed)
 sub_6261a245e8cc	6261a245e8cc8e88	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
 sub_626d9158bf58	626d9158bf58cd81	skip	generated: implicit constructors/destructor and defaulted ==/!= of exaltation structs

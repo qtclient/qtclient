@@ -5,7 +5,12 @@
 
 #include "protocol/protocolciptypes.h"
 
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+#include "skillwheel/skillwheeldata.h"
+
 #include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 #include <tibia/game/gamesession_forward.h>
@@ -20,6 +25,25 @@ TSkillWheelProtocolMessageHandler* g_liveSkillWheelProtocolHandler = nullptr;
 using ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed;
 using ::tibia::protobuf::protocol::GameserverMessageSkillWheel;
 } // namespace
+
+void TSkillWheelProtocolMessageHandler::requestSkillWheel(const uint32_t playerId)
+{
+    auto message = protocol::newGameclientMessage(97);
+    message->MutableExtension(protobuf::protocol::GameclientMessageRequestSkillWheel::gameclient_message_request_skill_wheel)
+        ->set_character_id(playerId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TSkillWheelProtocolMessageHandler::saveSkillWheel(const TWheel& wheel)
+{
+    auto message = protocol::newGameclientMessage(98);
+    auto* m = message->MutableExtension(protobuf::protocol::GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
+    for (const int points : wheel.points)
+        m->add_slot_points(static_cast<uint32_t>(points));
+    for (const int gem : wheel.gems)
+        m->add_vessel_gems(gem == NoGem ? UINT32_MAX : static_cast<uint32_t>(gem & 0xffff));
+    protocol::sendGameclientMessage(std::move(message));
+}
 
 void TSkillWheelProtocolMessageHandler::dismantleGem(const int gemId)
 {
@@ -66,8 +90,38 @@ void TSkillWheelProtocolMessageHandler::setLiveInstance(TSkillWheelProtocolMessa
 void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
     const GameserverMessageGemAtelierGemRevealed& Message)
 {
-    const uint32_t gemId = Message.gem_id();
-    tibia::game::notify("onGemAtelierGemRevealed", gemId);
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::GEM_ATELIER_SELECT_GEM));
+    action->parameter = static_cast<uint16_t>(Message.gem_id());
+    input::publish(action);
+}
+
+void TSkillWheelGameActionHandler::handleCreatureGameAction(const uint32_t creatureId)
+{
+    const uint32_t ownId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
+    if (creatureId == ownId) {
+        handleRequestOnwSkillWheelGameAction();
+        return;
+    }
+    TSkillWheelProtocolMessageHandler::requestSkillWheel(creatureId);
+}
+
+void TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction(const TWheel& wheel)
+{
+    TSkillWheelProtocolMessageHandler::saveSkillWheel(wheel);
+}
+
+void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
+{
+    if (!tibia::game::hasLocalPlayer() || tibia::game::localPlayerId() == 0)
+        return;
+    if (tibia::game::localPlayerLevel() > RequiredLevel - 1 && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
+        TSkillWheelProtocolMessageHandler::requestSkillWheel(tibia::game::localPlayerId());
+        return;
+    }
+    const int profession = tibia::game::localPlayerVocation() % 10;
+    const bool hasVocation = profession >= 1 && profession <= VocationCount;
+    input::publish(input::makeAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
+                                                 : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
 }
 
 void TSkillWheelProtocolMessageHandler::onServerMessageEnqueued(int opcode)

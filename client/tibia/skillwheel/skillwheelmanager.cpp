@@ -2,8 +2,6 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <array>
-#include <limits>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -57,15 +55,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         return true;
     });
     input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        if (tibia::game::hasLocalPlayer() && action.creatureId == tibia::game::localPlayerId())
-            requestOwnWheel();
-        else if (action.creatureId != 0)
-            tibia::game::openWheel(action.creatureId);
+        m_actions.handleCreatureGameAction(action.creatureId);
         return true;
     });
     input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {
         clearSkipNextOwnOpen();
-        requestOwnWheel();
+        m_actions.handleRequestOnwSkillWheelGameAction();
         return true;
     });
     input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::TGameAction&) {
@@ -109,22 +104,6 @@ TSkillWheelManager::~TSkillWheelManager()
         input::setActionHandler(type, nullptr);
 }
 
-/// CIP : from level 51 the server is asked when the player data
-/// says Premium or the login session does not; otherwise a vocation offers
-/// the preview (308), none only explains (307).
-void TSkillWheelManager::requestOwnWheel()
-{
-    if (!tibia::game::hasLocalPlayer() || tibia::game::localPlayerId() == 0)
-        return;
-    if (tibia::game::localPlayerLevel() >= RequiredLevel
-        && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
-        tibia::game::openWheel(tibia::game::localPlayerId());
-        return;
-    }
-    publish(hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
-                          : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
-}
-
 /// CIP : a wheel message without slices publishes 308 / 307.
 void TSkillWheelManager::onServerData(const bool canView)
 {
@@ -146,17 +125,12 @@ void TSkillWheelManager::clearSkipNextOwnOpen()
     m_skipNextOwnOpen = false;
 }
 
-/// CIP SAVE_SKILL_WHEEL: the 36 slices and eight vessel gem ids (0xffff empty).
+/// SAVE_SKILL_WHEEL carries no wheel here: the own edited wheel is saved.
 void TSkillWheelManager::saveWheel()
 {
     if (!m_storage->hasData() || !m_storage->isLocalPlayer() || m_storage->isPreview())
         return;
-    const TWheel& wheel = m_storage->currentWheel();
-    std::vector<uint16_t> points(wheel.points.begin(), wheel.points.end());
-    std::array<uint16_t, VesselCount> gems{};
-    for (int v = 0; v < VesselCount; ++v)
-        gems[v] = wheel.gems[v] == NoGem ? std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(wheel.gems[v]);
-    tibia::game::sendApplyWheelPoints(points, gems);
+    m_actions.handleSaveSkillWheelGameAction(m_storage->currentWheel());
 }
 
 }

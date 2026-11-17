@@ -840,15 +840,16 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
         for (int i = 0; i < 36; ++i)
             w.u16(static_cast<uint16_t>(i < m.slot_points_size() ? m.slot_points(i) : 0));
-        // Filled vessels: one presence bit each, vessel 0 in the high bit.
+        // Filled vessels: one presence bit each, vessel 0 in the high bit
+        // (an empty vessel is -1).
         uint8_t mask = 0;
         for (int v = 0; v < 8 && v < m.vessel_gems_size(); ++v) {
-            if (m.vessel_gems(v) != 0xffff)
+            if (m.vessel_gems(v) != UINT32_MAX)
                 mask |= static_cast<uint8_t>(0x80 >> v);
         }
         w.u8(mask);
         for (int v = 0; v < 8 && v < m.vessel_gems_size(); ++v) {
-            if (m.vessel_gems(v) != 0xffff)
+            if (m.vessel_gems(v) != UINT32_MAX)
                 w.u16(static_cast<uint16_t>(m.vessel_gems(v)));
         }
         return w.out;

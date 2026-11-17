@@ -84,6 +84,8 @@ int domainOfSlot(int slot);
 /// The revelation perk of a domain for a vocation index.
 int largePerk(int domain, int vocationIndex);
 
+/// The four centre slices every path starts from.
+const std::array<int, 4>& centreSlots();
 /// CIP grid rules: every slice with points is a centre slice or reaches one
 /// through full slices, and no slice exceeds its maximum.
 bool isValid(const std::array<int, SlotCount>& points);

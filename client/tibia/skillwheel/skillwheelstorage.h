@@ -102,7 +102,6 @@ Q_SIGNALS:
 
 private:
     void onDestinyWheel(const std::vector<std::any>& args);
-    void onGemAtelierGemRevealed(const std::vector<std::any>& args);
     void emitResourceSignals();
     void loadPresets();
     void savePresets() const;

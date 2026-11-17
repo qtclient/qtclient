@@ -127,7 +127,6 @@ void openStore(uint8_t serviceType = 0, std::string_view category = "");
 
 void openTransactionHistory(uint8_t entriesPerPage);
 
-void openWheel(uint32_t playerId);
 
 void partyDisband();
 
@@ -215,7 +214,6 @@ void selectImbuementScroll();
 
 void sellItem(uint16_t typeId, uint8_t subType, uint16_t amount, bool ignoreEquipped);
 
-void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints, const std::array<uint16_t, 8>& vesselGems);
 
 void sendContainerAction(uint8_t action, uint8_t containerId = 0);
 

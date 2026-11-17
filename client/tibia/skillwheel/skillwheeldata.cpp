@@ -416,11 +416,13 @@ int largePerk(const int domain, const int vocationIndex)
     return LargePerks[domain][vocationIndex];
 }
 
+const std::array<int, 4>& centreSlots() { return CentreSlots; }
+
 bool isValid(const std::array<int, SlotCount>& points)
 {
     std::array<bool, SlotCount> reached{};
     std::vector<int> open;
-    for (const int c : CentreSlots)
+    for (const int c : centreSlots())
         if (points[c] > 0) {
             reached[c] = true;
             open.push_back(c);

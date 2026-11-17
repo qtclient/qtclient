@@ -47,10 +47,6 @@ TSkillWheelStorage::TSkillWheelStorage(QObject* parent)
         onDestinyWheel(args);
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onGemAtelierGemRevealed", [this](GameObject*, const Args& args) {
-        onGemAtelierGemRevealed(args);
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
         if ((type >= static_cast<int>(tibia::client::RESOURCE_LESSER_GEMS) && type <= static_cast<int>(tibia::client::RESOURCE_GREATER_FRAGMENT))
@@ -162,19 +158,6 @@ void TSkillWheelStorage::onDestinyWheel(const Args& args)
     Q_EMIT currentWheelChanged();
     Q_EMIT presetsChanged();
     emitResourceSignals();
-}
-
-void TSkillWheelStorage::onGemAtelierGemRevealed(const Args& args)
-{
-    const auto* id = arg<uint32_t>(args, 0);
-    if (!id || *id == 0)
-        return;
-    const int gemId = static_cast<int>(*id);
-    const auto it = std::ranges::find_if(m_gems, [gemId](const TGem& g) { return g.id == gemId; });
-    if (it == m_gems.end() || !it->locked)
-        return;
-    it->locked = false;
-    Q_EMIT gemInventoryChanged();
 }
 
 void TSkillWheelStorage::emitResourceSignals()
