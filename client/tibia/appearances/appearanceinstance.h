@@ -306,30 +306,89 @@ public:
     }
 };
 
+/// An outfit: an idle and a moving sprite sequence, both drawing the pattern of
+/// their direction and mount (CIP appearances::TOutfitAppearanceInstance).
 class TOutfitAppearanceInstance : public TAppearanceInstance
 {
 public:
-    using TAppearanceInstance::TAppearanceInstance;
+    /// CIP: the idle (frame group 1) and moving (frame group 2)
+    /// sequences, the idle one drawn by default, then v21 and v12(direction,
+    /// direction, 0, forced).
+    TOutfitAppearanceInstance(TAppearanceType* type, uint8_t direction);
 
     const Outfit& outfit() const { return m_outfit; }
+    /// The look the instance was made for (host: the HUD and lighting read it).
+    void setOutfit(const Outfit& outfit) { m_outfit = outfit; }
+
+    /// CIP v12: the idle sequence draws (direction, 0, z), the moving one
+    /// (movingDirection, 0, z); only on a change unless `force`.
+    virtual void setPatterns(uint8_t direction, uint8_t movingDirection, uint8_t z, bool force);
+    /// CIP v13 / v14: the current sprite of the idle / moving sequence.
+    const TAppearanceInstanceSpriteInfoPtr& idleSpriteInfo() const;
+    const TAppearanceInstanceSpriteInfoPtr& movingSpriteInfo() const;
+    /// CIP v15: the outfit looking south (UI previews).
+    const TAppearanceInstanceSpriteInfoPtr& previewSpriteInfo() const { return m_previewSpriteInfo; }
+    /// CIP v16: advances the idle and / or moving sequence; true when a phase changed.
+    bool updateSequences(qint64 nowMs, bool idle, bool moving);
+    /// CIP v5.
+    bool updateAnimation(qint64 nowMs) override { return updateSequences(nowMs, true, true); }
+    /// CIP v18 / v19 / v20.
     uint8_t direction() const { return m_direction; }
-    void setOutfitLook(const Outfit& outfit, uint8_t direction);
+    uint8_t movingDirection() const { return m_movingDirection; }
+    uint8_t patternZ() const { return m_patternZ; }
+    const std::shared_ptr<TAppearanceInstanceSpriteSequence>& idleSequence() const { return m_idleSequence; }
+    const std::shared_ptr<TAppearanceInstanceSpriteSequence>& movingSequence() const { return m_movingSequence; }
+    /// The sprite of `phase` counted over the idle phases, then the moving
+    /// ones (host: the creature's animators pick it); null without sprites.
+    TAppearanceInstanceSpriteInfoPtr spriteInfoAtPhase(int phase) const;
+
+    /// The type's reverse addon flags (CIP packs +0x134..0x137 for v3).
+    static TReverseAddons reverseAddonsOf(const TAppearanceType* type);
 
 protected:
+    /// Host: an object drawn as an outfit has no outfit sequences.
+    explicit TOutfitAppearanceInstance(TAppearanceType* type);
+    /// CIP v21: the preview sprite (a new sequence of the idle frame group
+    /// looking south).
+    virtual void updatePreviewSpriteInfo();
+    template <class Sequence>
+    void buildSequences();
+
     Outfit m_outfit;
-    uint8_t m_direction{ 2 };
+    uint8_t m_direction = 0;
+    uint8_t m_movingDirection = 0;
+    uint8_t m_patternZ = 0;
+    std::shared_ptr<TAppearanceInstanceSpriteSequence> m_idleSequence;
+    std::shared_ptr<TAppearanceInstanceSpriteSequence> m_movingSequence;
+    TAppearanceInstanceSpriteInfoPtr m_previewSpriteInfo;
 };
 
+/// An outfit with colours and addons (CIP appearances::TCustomizableOutfitAppearanceInstance).
 class TCustomizableOutfitAppearanceInstance final : public TOutfitAppearanceInstance
 {
 public:
-    using TOutfitAppearanceInstance::TOutfitAppearanceInstance;
+    /// CIP: the outfit with customizable sequences.
+    TCustomizableOutfitAppearanceInstance(TAppearanceType* type, uint8_t direction,
+                                          const TOutfitCustomization& customization);
+
+    /// CIP v12: also hands the sequences the customization and always renews
+    /// the preview.
+    void setPatterns(uint8_t direction, uint8_t movingDirection, uint8_t z, bool force) override;
+    /// CIP v22.
+    const TOutfitCustomization& customization() const { return m_customization; }
+
+protected:
+    /// CIP v21.
+    void updatePreviewSpriteInfo() override;
+
+private:
+    TOutfitCustomization m_customization;
 };
 
 class TObjectOutfitAppearanceInstance final : public TOutfitAppearanceInstance
 {
 public:
-    using TOutfitAppearanceInstance::TOutfitAppearanceInstance;
+    explicit TObjectOutfitAppearanceInstance(TAppearanceType* type) : TOutfitAppearanceInstance(type) {}
 };
 
 class TCreaturePlaceholderAppearanceInstance final : public TAppearanceInstance

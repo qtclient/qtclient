@@ -155,10 +155,156 @@ void applyProtocolObjectState(const TAppearanceInstancePtr& instance, const uint
 
 } // namespace
 
-void TOutfitAppearanceInstance::setOutfitLook(const Outfit& outfit, const uint8_t direction)
+namespace {
+
+/// The frame group `group` of `type`, held as long as the appearances live; null
+/// when the type has none.
+std::shared_ptr<const TAppearanceTypeSpriteInfo> typeSpritesInfo(const TAppearanceType* type, const EFixedFrameGroup group)
 {
-    m_outfit = outfit;
+    if (!type || !type->hasFrameGroup(group))
+        return nullptr;
+    return std::shared_ptr<const TAppearanceTypeSpriteInfo>(std::shared_ptr<void>(), &type->frameGroup(group));
+}
+
+} // namespace
+
+TOutfitAppearanceInstance::TOutfitAppearanceInstance(TAppearanceType* type)
+    : TAppearanceInstance(type)
+{
+}
+
+TOutfitAppearanceInstance::TOutfitAppearanceInstance(TAppearanceType* type, const uint8_t direction)
+    : TAppearanceInstance(type)
+{
+    buildSequences<TAppearanceInstanceSpriteSequence>();
+    updatePreviewSpriteInfo();
+    setPatterns(direction, direction, 0, true);
+}
+
+template <class Sequence>
+void TOutfitAppearanceInstance::buildSequences()
+{
+    // The moving sequence's phases follow the creature's steps.
+    if (auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle))
+        m_idleSequence = std::make_shared<Sequence>(std::move(idle), false);
+    else
+        m_idleSequence.reset();
+    if (auto moving = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitMoving))
+        m_movingSequence = std::make_shared<Sequence>(std::move(moving), true);
+    else
+        m_movingSequence.reset();
+    m_spriteSequence = m_idleSequence;
+}
+
+TReverseAddons TOutfitAppearanceInstance::reverseAddonsOf(const TAppearanceType* type)
+{
+    if (!type)
+        return {};
+    return TReverseAddons{ .east = type->reverseAddonsEast(),
+                           .west = type->reverseAddonsWest(),
+                           .north = type->reverseAddonsNorth(),
+                           .south = type->reverseAddonsSouth() };
+}
+
+void TOutfitAppearanceInstance::setPatterns(const uint8_t direction, const uint8_t movingDirection, const uint8_t z,
+                                            const bool force)
+{
+    if (!force && m_direction == direction && m_movingDirection == movingDirection && m_patternZ == z)
+        return;
+    m_patternZ = z;
     m_direction = direction;
+    m_movingDirection = movingDirection;
+    const TReverseAddons reverse = reverseAddonsOf(m_type);
+    if (m_idleSequence)
+        m_idleSequence->setPattern(TAppearancePattern{ direction, 0, z }, 0, reverse);
+    if (m_movingSequence)
+        m_movingSequence->setPattern(TAppearancePattern{ movingDirection, 0, z }, 0, reverse);
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TOutfitAppearanceInstance::idleSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_idleSequence ? m_idleSequence->currentSpriteInfo() : none;
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TOutfitAppearanceInstance::movingSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_movingSequence ? m_movingSequence->currentSpriteInfo() : none;
+}
+
+bool TOutfitAppearanceInstance::updateSequences(const qint64 nowMs, const bool idle, const bool moving)
+{
+    bool changed = idle && m_idleSequence && m_idleSequence->update(nowMs);
+    if (moving && m_movingSequence)
+        changed = m_movingSequence->update(nowMs) || changed;
+    return changed;
+}
+
+TAppearanceInstanceSpriteInfoPtr TOutfitAppearanceInstance::spriteInfoAtPhase(const int phase) const
+{
+    if (phase < 0)
+        return nullptr;
+    const auto idle = m_idleSequence ? m_idleSequence->spriteInfos() : std::vector<TAppearanceInstanceSpriteInfoPtr>{};
+    if (static_cast<size_t>(phase) < idle.size())
+        return idle[static_cast<size_t>(phase)];
+    const auto moving = m_movingSequence ? m_movingSequence->spriteInfos() : std::vector<TAppearanceInstanceSpriteInfoPtr>{};
+    const size_t index = static_cast<size_t>(phase) - idle.size();
+    return index < moving.size() ? moving[index] : nullptr;
+}
+
+void TOutfitAppearanceInstance::updatePreviewSpriteInfo()
+{
+    m_previewSpriteInfo.reset();
+    auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle);
+    if (!idle)
+        return;
+    TAppearanceInstanceSpriteSequence preview(std::move(idle), false);
+    preview.setPattern(TAppearancePattern{ 2, 0, 0 }, 0, reverseAddonsOf(m_type));
+    m_previewSpriteInfo = preview.firstSpriteInfo();
+}
+
+TCustomizableOutfitAppearanceInstance::TCustomizableOutfitAppearanceInstance(TAppearanceType* type, const uint8_t direction,
+                                                                             const TOutfitCustomization& customization)
+    : TOutfitAppearanceInstance(type, direction)
+    , m_customization(customization)
+{
+    buildSequences<TCustomizableOutfitAppearanceInstanceSpriteSequence>();
+    setPatterns(direction, direction, 0, true);
+}
+
+void TCustomizableOutfitAppearanceInstance::setPatterns(const uint8_t direction, const uint8_t movingDirection,
+                                                        const uint8_t z, const bool force)
+{
+    auto* idle = dynamic_cast<TCustomizableOutfitAppearanceInstanceSpriteSequence*>(m_idleSequence.get());
+    auto* moving = dynamic_cast<TCustomizableOutfitAppearanceInstanceSpriteSequence*>(m_movingSequence.get());
+    if (force || m_direction != direction || m_movingDirection != movingDirection || m_patternZ != z) {
+        m_patternZ = z;
+        m_direction = direction;
+        m_movingDirection = movingDirection;
+        if (idle)
+            idle->setCustomization(m_customization);
+        if (moving)
+            moving->setCustomization(m_customization);
+        const TReverseAddons reverse = reverseAddonsOf(m_type);
+        if (m_idleSequence)
+            m_idleSequence->setPattern(TAppearancePattern{ direction, 0, z }, 0, reverse);
+        if (m_movingSequence)
+            m_movingSequence->setPattern(TAppearancePattern{ movingDirection, 0, z }, 0, reverse);
+    }
+    updatePreviewSpriteInfo();
+}
+
+void TCustomizableOutfitAppearanceInstance::updatePreviewSpriteInfo()
+{
+    m_previewSpriteInfo.reset();
+    auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle);
+    if (!idle)
+        return;
+    TCustomizableOutfitAppearanceInstanceSpriteSequence preview(std::move(idle), false);
+    preview.setCustomization(m_customization);
+    preview.setPattern(TAppearancePattern{ 2, 0, 0 }, 0, reverseAddonsOf(m_type));
+    m_previewSpriteInfo = preview.currentSpriteInfo();
 }
 
 TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(TAppearanceType* type, const uint16_t count)
@@ -599,11 +745,18 @@ std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOut
     const bool customizable =
         type && (type->getLayers() > 1 || (type->getNumPatternY() > 1 && (outfit.getAddons() & 3) != 0));
     std::shared_ptr<TOutfitAppearanceInstance> instance;
-    if (customizable)
-        instance = makeTracked<TCustomizableOutfitAppearanceInstance>(type);
-    else
-        instance = makeTracked<TOutfitAppearanceInstance>(type);
-    instance->setOutfitLook(outfit, direction);
+    if (customizable) {
+        const TOutfitCustomization customization{ .head = outfit.getHead(),
+                                                  .body = outfit.getBody(),
+                                                  .legs = outfit.getLegs(),
+                                                  .feet = outfit.getFeet(),
+                                                  .firstAddon = (outfit.getAddons() & 1) != 0,
+                                                  .secondAddon = (outfit.getAddons() & 2) != 0 };
+        instance = makeTracked<TCustomizableOutfitAppearanceInstance>(type, direction, customization);
+    } else {
+        instance = makeTracked<TOutfitAppearanceInstance>(type, direction);
+    }
+    instance->setOutfit(outfit);
     return instance;
 }
 
@@ -628,7 +781,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
         instance->linkCreature(stored.creatureId());
     if (const auto outfitInstance = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(instance))
         // CIP outfit patternX is the collapsed cardinal (N/E/S/W), not raw diagonal dirs.
-        outfitInstance->setOutfitLook(stored.outfit(), stored.patternX());
+        outfitInstance->setPatterns(stored.patternX(), stored.drawnPatternX(), stored.patternZ(), false);
     return instance;
 }
 

@@ -523,7 +523,7 @@ void TAppearanceInstanceRenderer::addSprites(TAppearanceType* type, const QPoint
     SpriteKey key;
     const std::optional<uint32_t> mask = colorize ? type->spriteIdAt(1, xPattern, yPattern, zPattern, phase) : std::nullopt;
     if (mask)
-        key = appearances::TLayeredAppearanceInstanceSpriteInfo(*sprite, *mask, colors).key();
+        key = SpriteKey{ .spriteId = *sprite, .maskId = *mask, .colors = colors };
     else
         key = appearances::TSpritesheetAppearanceInstanceSpriteInfo(*sprite).key();
     m_sprites.push_back({ key, anchor, spriteSizeOf(type) });

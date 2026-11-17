@@ -5,8 +5,9 @@ The player stands at (100, 100, 7) on a lit field set of real appearances:
 grounds 4526 and 351 (351 draws a 4x4 pattern from the field coordinate),
 50 gold coins (3031, pile pattern), a white flower (102) lying on a backpack (2854)
 (common objects come newest first on the wire: the flower is sent before the
-backpack), the player in outfit 128 with colours, a second creature (outfit 136)
-that steps one field east 200 ms into the replay (done long before the shot),
+backpack), the player in outfit 128 with colours, a second creature (outfit 1581
+with both addons, which it draws in reverse order looking west) that steps one
+field west 200 ms into the replay (done long before the shot),
 and effect 209 on the field west of the player.
 The objects and outfit are single-phase. The screenshot is taken 1500 ms after
 world entry (--screenshot-delay=1500) while the effect is sent 1450 ms after the
@@ -32,7 +33,7 @@ def ot_double(v): return u8(3) + u32(int(round(v * 1000)) + 0x7fffffff)
 
 def walker_creature():
     return (u16(0x61) + u32(0) + u32(WALKER) + u8(1) + string('Walker') + u8(100) + u8(1)
-            + u16(136) + u8(94) + u8(86) + u8(10) + u8(114) + u8(0)  # outfit + colours + addons
+            + u16(1581) + u8(94) + u8(86) + u8(10) + u8(114) + u8(3)  # outfit + colours + addons
             + u16(0)  # no mount
             + u8(0) + u8(0) + u16(2000)  # light, speed (a short step)
             + u8(0) + u8(0)  # icons, extra icons
@@ -63,7 +64,7 @@ def field_objects(x, y, z):
         return ground + u16(3031) + u8(50)
     if (dx, dy) == (2, 0):
         return ground + u16(102) + u16(2854) + u8(0)
-    if (dx, dy) == (-3, -2):
+    if (dx, dy) == (-1, -2):
         return ground + walker_creature()
     return ground
 
@@ -84,8 +85,8 @@ def login_success():
 
 
 def walk():
-    # The walker (stack position 1, after the ground) steps one field east.
-    return u8(0x6d) + position(X - 3, Y - 2, Z) + u8(1) + position(X - 2, Y - 2, Z)
+    # The walker (stack position 1, after the ground) steps one field west.
+    return u8(0x6d) + position(X - 1, Y - 2, Z) + u8(1) + position(X - 2, Y - 2, Z)
 
 
 def effect():

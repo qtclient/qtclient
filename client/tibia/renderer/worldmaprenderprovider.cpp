@@ -1271,8 +1271,9 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
     const int phase = sequence && sequence->animator() ? sequence->animator()->phase()
         : object                                       ? object->calculateAnimationPhase()
                                                        : 0;
-    const appearances::TSpritesheetAppearanceInstanceSpriteInfo* spriteInfo =
-        sequence ? sequence->currentSpriteInfo().get() : nullptr;
+    const auto* spriteInfo = sequence
+        ? dynamic_cast<const appearances::TSpritesheetAppearanceInstanceSpriteInfo*>(sequence->currentSpriteInfo().get())
+        : nullptr;
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile)))
         : std::nullopt;
@@ -1381,12 +1382,20 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
             at += stored.displacement();
         }
         const int phase = stored.animationPhase();
-        const bool colorize = stored.drawOutfitColor() && type->getLayers() > 1;
-        const uint32_t colors = colorize ? outfitColors(outfit) : 0;
-        for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-            if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
-                continue;
-            addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
+        if (outfitInst) {
+            // The outfit instance's sequences hold the sprite of every phase:
+            // masked with the outfit's colours, its addons layered over it.
+            const int stampPhase = m_lighting && m_lighting->frameActive() ? m_lighting->stampPhase(phase) : phase;
+            addSpriteInfo(type, at, outfitInst->spriteInfoAtPhase(phase), outfitInst->spriteInfoAtPhase(stampPhase),
+                          stored.drawnPatternX(), highlight);
+        } else {
+            const bool colorize = stored.drawOutfitColor() && type->getLayers() > 1;
+            const uint32_t colors = colorize ? outfitColors(outfit) : 0;
+            for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
+                if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
+                    continue;
+                addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
+            }
         }
         addAttachedEffects(stored, walked, jumped, true);
         return;
@@ -1499,6 +1508,51 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
         addLight(center, type->getLight().intensity, type->getLight().color);
         if (m_lighting)
             m_lighting->addCenterLight(center.x(), center.y(), type->getLight().intensity, type->getLight().color);
+    }
+}
+
+namespace {
+
+/// The sprite infos `info` draws, bottom first: a layered info's layers, else itself.
+std::vector<const appearances::IAppearanceInstanceSpriteInfo*> drawnLayers(const appearances::IAppearanceInstanceSpriteInfo* info)
+{
+    if (!info)
+        return {};
+    if (const auto* layered = dynamic_cast<const appearances::TLayeredAppearanceInstanceSpriteInfo*>(info)) {
+        std::vector<const appearances::IAppearanceInstanceSpriteInfo*> layers;
+        for (const auto& layer : layered->layers())
+            layers.push_back(layer.get());
+        return layers;
+    }
+    return { info };
+}
+
+} // namespace
+
+void TWorldMapRenderProvider::addSpriteInfo(TAppearanceType* type, const QPoint& dest,
+                                            const appearances::TAppearanceInstanceSpriteInfoPtr& info,
+                                            const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, const int xPattern,
+                                            const SpriteRecord::Highlight highlight)
+{
+    if (!type || type->isNull() || !info)
+        return;
+    // A thing's frame ends at the bottom-right of its field, less its displacement.
+    const QPoint anchor = dest - type->getDisplacement() + QPoint(FieldSize, FieldSize);
+    const uint64_t drawKey = m_key.packed();
+    const bool raycast = (m_lighting && m_lighting->frameActive());
+    const auto layers = drawnLayers(info.get());
+    const auto stampLayers = drawnLayers(stamp.get());
+    for (size_t i = 0; i < layers.size(); ++i) {
+        const SpriteKey key = layers[i] ? layers[i]->key() : SpriteKey{};
+        if (key.spriteId != 0) {
+            m_floorSprites.push_back({ .anchor = anchor, .sprite = key, .highlight = highlight });
+            m_floorKeys.push_back(drawKey);
+        }
+        if (raycast && m_lighting) {
+            const uint32_t stampId = i < stampLayers.size() && stampLayers[i] ? stampLayers[i]->key().spriteId : 0;
+            if (stampId != 0)
+                m_lighting->addFrame(peelLightingFrame(*type, anchor, stampId, xPattern));
+        }
     }
 }
 

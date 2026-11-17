@@ -21,7 +21,8 @@ void TAppearanceInstanceSpriteSequence::restartAnimation(const qint64 startMs)
         m_animator = std::make_shared<animation::TAnimator>(*info, startMs);
 }
 
-void TAppearanceInstanceSpriteSequence::setPattern(const TAppearancePattern& pattern, const qint64 startMs)
+void TAppearanceInstanceSpriteSequence::setPattern(const TAppearancePattern& pattern, const qint64 startMs,
+                                                   std::optional<TReverseAddons>)
 {
     m_spriteInfos.clear();
     if (m_spritesInfo) {
@@ -32,12 +33,12 @@ void TAppearanceInstanceSpriteSequence::setPattern(const TAppearancePattern& pat
     restartAnimation(startMs);
 }
 
-std::vector<std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo>> TAppearanceInstanceSpriteSequence::spriteInfos() const
+std::vector<TAppearanceInstanceSpriteInfoPtr> TAppearanceInstanceSpriteSequence::spriteInfos() const
 {
     return m_spriteInfos;
 }
 
-const std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo>& TAppearanceInstanceSpriteSequence::currentSpriteInfo() const
+const TAppearanceInstanceSpriteInfoPtr& TAppearanceInstanceSpriteSequence::currentSpriteInfo() const
 {
     if (m_animator) {
         const auto phase = static_cast<size_t>(m_animator->phase());
@@ -47,9 +48,9 @@ const std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo>& TAppearanceInst
     return firstSpriteInfo();
 }
 
-const std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo>& TAppearanceInstanceSpriteSequence::firstSpriteInfo() const
+const TAppearanceInstanceSpriteInfoPtr& TAppearanceInstanceSpriteSequence::firstSpriteInfo() const
 {
-    static const std::shared_ptr<TSpritesheetAppearanceInstanceSpriteInfo> none;
+    static const TAppearanceInstanceSpriteInfoPtr none;
     return m_spriteInfos.empty() ? none : m_spriteInfos.front();
 }
 
@@ -97,6 +98,101 @@ QRect TAppearanceInstanceSpriteSequence::boundingBox(const TAppearanceTypeSprite
     if (!spritesInfo.spriteIds().empty() && spritesInfo.spriteSize().isValid())
         return QRect(QPoint(0, 0), spritesInfo.spriteSize());
     return QRect(0, 0, 32, 32);
+}
+
+namespace {
+
+/// The sprite of `layer` at `pattern` in `phase`; none
+/// past the frame group's sprites.
+std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo> patternSprite(const TAppearanceTypeSpriteInfo& spritesInfo,
+                                                                         const TAppearancePattern& pattern, const int layer,
+                                                                         const size_t phase)
+{
+    const auto& ids = spritesInfo.spriteIds();
+    const size_t index = (((spritesInfo.patternDepth() * phase + pattern.z) * spritesInfo.patternHeight() + pattern.y)
+                              * spritesInfo.patternWidth()
+                          + pattern.x)
+            * spritesInfo.layers()
+        + layer;
+    if (index >= ids.size())
+        return nullptr;
+    return std::make_shared<const sprites::TSpriteFromSpritesheetInfo>(
+        sprites::TSpriteSystem::instance().spriteInfo(ids[index], spritesInfo.isOpaque()));
+}
+
+/// The frame group's phases.
+size_t phaseCount(const TAppearanceTypeSpriteInfo& spritesInfo)
+{
+    const uint32_t frame = spritesInfo.patternWidth() * spritesInfo.patternHeight() * spritesInfo.patternDepth() * spritesInfo.layers();
+    return frame == 0 ? 0 : spritesInfo.spriteIds().size() / frame;
+}
+
+} // namespace
+
+void TCustomizableOutfitAppearanceInstanceSpriteSequence::appendPatternSprite(
+    std::vector<TAppearanceInstanceSpriteInfoPtr>& layers, const TAppearancePattern& pattern, const size_t phase,
+    const QRect& boundingBox) const
+{
+    auto sprite = patternSprite(*m_spritesInfo, pattern, 0, phase);
+    if (m_spritesInfo->layers() <= 1) {
+        layers.push_back(std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(std::move(sprite), boundingBox));
+        return;
+    }
+    auto mask = patternSprite(*m_spritesInfo, pattern, 1, phase);
+    const TOutfitColors colors(m_customization.head, m_customization.body, m_customization.legs, m_customization.feet);
+    layers.push_back(
+        std::make_shared<TMaskedAppearanceInstanceSpriteInfo>(std::move(sprite), std::move(mask), colors, boundingBox));
+}
+
+void TCustomizableOutfitAppearanceInstanceSpriteSequence::setPattern(const TAppearancePattern& pattern, const qint64 startMs,
+                                                                     const std::optional<TReverseAddons> reverseAddons)
+{
+    m_spriteInfos.clear();
+    if (m_spritesInfo) {
+        const size_t phases = phaseCount(*m_spritesInfo);
+        const QRect box = boundingBox(*m_spritesInfo, pattern.x);
+        m_spriteInfos.reserve(phases);
+        for (size_t phase = 0; phase < phases; ++phase) {
+            std::vector<TAppearanceInstanceSpriteInfoPtr> layers;
+            layers.reserve(3);
+            appendPatternSprite(layers, pattern, phase, box);
+            const auto addon = [&](const bool worn, const int y) {
+                if (worn && static_cast<int>(m_spritesInfo->patternHeight()) > y)
+                    appendPatternSprite(layers, TAppearancePattern{ pattern.x, y, pattern.z }, phase, box);
+            };
+            bool reversed = false;
+            if (reverseAddons) {
+                switch (pattern.x) {
+                case 0:
+                    reversed = reverseAddons->north;
+                    break;
+                case 1:
+                    reversed = reverseAddons->east;
+                    break;
+                case 2:
+                    reversed = reverseAddons->south;
+                    break;
+                case 3:
+                    reversed = reverseAddons->west;
+                    break;
+                default:
+                    break;
+                }
+            }
+            if (reversed) {
+                addon(m_customization.secondAddon, 2);
+                addon(m_customization.firstAddon, 1);
+            } else {
+                addon(m_customization.firstAddon, 1);
+                addon(m_customization.secondAddon, 2);
+            }
+            if (layers.size() == 1)
+                m_spriteInfos.push_back(std::move(layers.front()));
+            else
+                m_spriteInfos.push_back(std::make_shared<TLayeredAppearanceInstanceSpriteInfo>(std::move(layers), box));
+        }
+    }
+    restartAnimation(startMs);
 }
 
 }

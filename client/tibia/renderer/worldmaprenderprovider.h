@@ -24,6 +24,8 @@ namespace tibia {
 namespace appearances {
 class TAppearanceInstance;
 class TSpritesheetAppearanceInstanceSpriteInfo;
+class TAppearanceInstanceSpriteInfo;
+using TAppearanceInstanceSpriteInfoPtr = std::shared_ptr<TAppearanceInstanceSpriteInfo>;
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 }
 }
@@ -296,6 +298,11 @@ private:
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).
     static constexpr float MinEffectOpacity = 0.01f;
+    /// The sprites of `info` (each layer of a layered info) at `dest`; with
+    /// raycast lighting, `stamp`'s sprites stamp the light frame.
+    void addSpriteInfo(TAppearanceType* type, const QPoint& dest, const appearances::TAppearanceInstanceSpriteInfoPtr& info,
+                       const appearances::TAppearanceInstanceSpriteInfoPtr& stamp, int xPattern,
+                       SpriteRecord::Highlight highlight);
     void addSprites(TAppearanceType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0,
