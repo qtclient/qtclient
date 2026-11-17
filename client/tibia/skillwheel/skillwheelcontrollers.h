@@ -172,7 +172,6 @@ private:
     int m_hoveredLargeDomain = -1;
     gamewindow::TMessageDialogController* m_message;
     gamewindow::TMessageDialogController* m_export;
-    gamewindow::TMessageDialogController* m_info;
     EMessageMode m_messageMode = NoMessage;
     /// The next showDialogTab keeps the presets as they are.
     bool m_skipNextShowUpdate = false;

@@ -163,7 +163,6 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     , m_hoveredLarge(new cip::tibia::gamewindow::TLargePerkInformation(this))
     , m_message(new TMessageDialogController(this))
     , m_export(new TMessageDialogController(this))
-    , m_info(new TMessageDialogController(this))
     // CIP literal; app::PortalUrls::installCipUrlHandler maps www.tibia.com to the portal.
     , m_plannerUrl(QStringLiteral("https://www.tibia.com/community/?subtopic=wheelofdestinyplanner&code="))
 {
@@ -180,7 +179,6 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
 
     m_message->setCloseOnButtonClicked(true);
     m_export->setCloseOnButtonClicked(true);
-    m_info->setCloseOnButtonClicked(true);
     connect(m_message, &TMessageDialogController::acceptClicked, this, &TSkillWheelPageController::onMessageDialogAcceptClicked);
     connect(m_message, &TMessageDialogController::discardClicked, this, &TSkillWheelPageController::onMessageDialogDiscardClicked);
     connect(m_export, &TMessageDialogController::buttonClicked, this,
@@ -1095,7 +1093,7 @@ void TSkillWheelPageController::clearData()
 void TSkillWheelPageController::closeMessages()
 {
     m_messageMode = NoMessage;
-    for (TMessageDialogController* box : { m_message, m_export, m_info })
+    for (TMessageDialogController* box : { m_message, m_export })
         box->dialog()->close();
 }
 
