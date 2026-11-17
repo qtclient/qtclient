@@ -455,7 +455,8 @@ TCinematicSessiondumpPlayerController::TCinematicSessiondumpPlayerController(QOb
 
 void TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed()
 {
-    // CIP empty moc slot: benchmark UI closed; sessiondump player stays owned by information hub.
+    // The benchmark window closing ends the cinematic player.
+    Q_EMIT cinematicSessiondumpPlayerClosed();
 }
 
 TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(QObject* parent)

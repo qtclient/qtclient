@@ -1538,6 +1538,7 @@ gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController	09
 gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
 gamewindow::TCharacterTradeDuePaymentDialogController::~TCharacterTradeDuePaymentDialogController	ecf0cb5883ee6595	skip	generated: compiler-generated destructor (member teardown only)
 gamewindow::TCharacterTradeDuePaymentDialogController::~TCharacterTradeDuePaymentDialogController_deleting	b07e18a8f2a2d2a3	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
+gamewindow::TCharacterWorldTransferDialogController::requestClose	21e4e90e3f186cdf	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::requestClose
 gamewindow::TCharacterWorldTransferDialogController::~TCharacterWorldTransferDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCharacterWorldTransferDialogController::~TCharacterWorldTransferDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TChatChannelController::chatChannelChanged	9bb6e87f77565599	ported	gamewindow/chatcontroller.cpp:TChatChannelController::writesToLocalChat
@@ -1593,12 +1594,15 @@ gamewindow::TChatController::~TChatController	097457dc45e86dd8	skip	generated: c
 gamewindow::TChatController::~TChatController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TChatTutorialMarkerRenderInfo::~TChatTutorialMarkerRenderInfo	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TChatTutorialMarkerRenderInfo::~TChatTutorialMarkerRenderInfo_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
+gamewindow::TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed	097457dc45e86dd8	ported	gamewindow/remainingdialogs.cpp:TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed
 gamewindow::TCinematicSessiondumpPlayerController::~TCinematicSessiondumpPlayerController	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCinematicSessiondumpPlayerController::~TCinematicSessiondumpPlayerController_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TConfigureCreaturePodiumDialogController::chosenOutfitChanged	d39cd1f13b11189b	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TConfigureCreaturePodiumDialogController::chosenRaceChanged	1e623603abe28653	skip	generated: moc property getter, provided by the generated cip base
+gamewindow::TConfigureCreaturePodiumDialogController::onCancelClicked	21e4e90e3f186cdf	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::onCancelClicked
 gamewindow::TConfigureCreaturePodiumDialogController::~TConfigureCreaturePodiumDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TConfigureCreaturePodiumDialogController::~TConfigureCreaturePodiumDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
+gamewindow::TConfirmMoveObjectToStashDialogController::onNoClicked	21e4e90e3f186cdf	ported	gamewindow/remainingdialogs.cpp:TConfirmMoveObjectToStashDialogController::onNoClicked
 gamewindow::TConfirmMoveObjectToStashDialogController::~TConfirmMoveObjectToStashDialogController	12eb795fb8f001f2	skip	generated: compiler-generated destructor (member teardown only)
 gamewindow::TConfirmMoveObjectToStashDialogController::~TConfirmMoveObjectToStashDialogController_deleting	7412f22df0d156a4	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TContainerController::containerIconChanged	40fd47b3eb2e2e3f	skip	generated: moc signal bodies
