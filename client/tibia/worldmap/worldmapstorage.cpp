@@ -192,7 +192,7 @@ TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
     const AwareRange range = m_sessionState.getAwareRange();
     return TShearedWorldMapCuboid(
         TWorldMapCoordinate(center.x - range.left, center.y - range.top, center.z),
-        TWorldMapExtent(range.horizontal(), range.vertical(), 1));
+        TWorldMapExtent(range.horizontal(), range.vertical(), 1), center.z);
 }
 
 void TWorldMapStorage::setStoredVolume(const Position& center)

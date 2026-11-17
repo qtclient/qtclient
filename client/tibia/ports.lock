@@ -4195,6 +4195,7 @@ sub_0739551a7a3e	0739551a7a3e7c30	inlined	analysers/gainwastestorage.cpp:TGainWa
 sub_073bd719c008	073bd719c0089d40	skip	generated: inlined QCborValue destructor
 sub_0740534ad8d0	0740534ad8d03d4e	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRotateWest
 sub_0743539a7b0f	0743539a7b0f59b1	ported	analysers/analyserwidgets.cpp:TAnalyticsSelectorWidgetController::progressAnalyserButtonClicked
+sub_075238bc507d	075238bc507d7890	tested	worldmap/coordinates.h:TWorldMapCoordinate::shiftedTowardsFloor	test=tests/client/worldmapcuboid_test.cpp
 sub_0765b6fa6920	0765b6fa6920fde8	ported	analysers/impactstorage.cpp:TImpactStorage::computeGraph
 sub_076e5118d87b	076e5118d87bb725	skip	data: static initializer of unrelated globals (inbox filter names, std::function typeinfo; misattributed)
 sub_0775583c1bf9	0775583c1bf9e16c	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateParameters
@@ -4408,6 +4409,7 @@ sub_0ab9f40b7995	0ab9f40b79952ee1	skip	generated: compiler-generated destructor 
 sub_0ad5c23b94dd	0ad5c23b94dd2edd	skip	generated: compiler-generated move constructor of the appearance type (vector growth)
 sub_0af40cf147e6	0af40cf147e65ea4	inlined	creatures/creaturestorage.cpp:TCreatureStorage::createCreature
 sub_0af4cad03870	0af4cad03870a29a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::setStartPlayingInProgress
+sub_0af796a16d39	0af796a16d39e66a	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_0afa9102ee69	0afa9102ee6942f0	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
 sub_0b0930970b86	0b0930970b8621c1	ported	gamewindow/playerinventoryandstatuscontroller.h:TPlayerInventoryAndStatusController::onPvPModeWhiteHandRequested
 sub_0b1838bfdd15	0b1838bfdd15c7be	ported	gamewindow/depotsearchwidgetcontroller.h:indexOfSelectedNPC
@@ -4469,6 +4471,7 @@ sub_0d5e550fd692	0d5e550fd6925619	skip	generated: compiler-generated destructor
 sub_0d690ea67eca	0d690ea67ecac130	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_0d715976d6ec#2	0d715976d6ecf379	inlined	market/marketciptypes.cpp:statisticsFrom
 sub_0d776a503054	0d776a503054d829	inlined	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy
+sub_0d9b02e1f350	0d9b02e1f350d313	tested	worldmap/coordinates.h:TShearedWorldMapCuboid::TShearedWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
 sub_0dab3a0d40ea	0dab3a0d40ea4952	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::cooldownRemainingPercent
 sub_0dbd5fbd2ef5	0dbd5fbd2ef54382	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::hasUnlockedAnyBosses
 sub_0dbe628bd7ce	0dbe628bd7cee5da	skip	data: translation-unit static initializer (misattributed)
@@ -4779,6 +4782,8 @@ sub_15a417656d1e	15a417656d1e28f1	skip	library: same code as the skipped family:
 sub_15a417656d1e#4	15a417656d1e28f1	skip	library: libc++ vector/deque internals (library)
 sub_15a417656d1e#8	15a417656d1e28f1	skip	library: std::vector reserve/realloc (library)
 sub_15a4533fe3f4	15a4533fe3f4c771	ported	gamewindow/sidebarmanager.cpp:TSidebarController::remainingHeight
+sub_15a60516ac20	15a60516ac2017ff	tested	worldmap/coordinates.h:TWorldMapCuboid::TWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
+sub_15a60516ac20#2	15a60516ac2017ff	tested	worldmap/coordinates.h:TWorldMapCuboid::TWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
 sub_15a6110bcf42	15a6110bcf422d1b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendUseTwoObjects
 sub_15a7a1b8fc5e	15a7a1b8fc5e5b6c	ported	gamewindow/actionbarcontroller.cpp:TActionBarGroup::showOptionOfBar
 sub_15bedae812cb	15bedae812cb3aa9	tested	animation/durationtween.h:TDurationTween::isFinished	test=tests/client/durationtween_test.cpp
@@ -4957,6 +4962,8 @@ sub_1ad3f9780c1a	1ad3f9780c1a945f	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyc
 sub_1ada54b598a1	1ada54b598a10024	skip	data: translation-unit static initializer (misattributed)
 sub_1adb38db9343	1adb38db9343e2a6	skip	library: std::sort / std::stable_sort instantiation (library)
 sub_1ae0b3594ca6	1ae0b3594ca689bc	skip	generated: compiler-generated destructor (QString path, QByteArray data)
+sub_1af272175dfa	1af272175dfa5dbf	ported	worldmap/coordinates.h:TShearedWorldMapCuboid::cuboid
+sub_1af272175dfa#2	1af272175dfa5dbf	ported	worldmap/coordinates.h:TShearedWorldMapCuboid::cuboid
 sub_1af7d312df28	1af7d312df28ef35	skip	library: std container template code
 sub_1afa2a76c6e8#2	1afa2a76c6e8f882	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_1afc8ddeef07	1afc8ddeef07bff0	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setSelection
@@ -5731,6 +5738,11 @@ sub_3616e876ff01	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCo
 sub_3616e876ff01#2	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCopySelectedTextToClipboard::TGameActionRequestCopySelectedTextToClipboard
 sub_36363b385fdd	36363b385fdde289	ported	gamewindow/chatcontroller.cpp:TChatController::getNewerChatInputHistoryEntry
 sub_36384f613659	36384f6136597c9f	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::valueType
+sub_363b5312620c	363b5312620c477d	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
+sub_363b5312620c#2	363b5312620c477d	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
+sub_363b5312620c#3	363b5312620c477d	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
+sub_363b5312620c#4	363b5312620c477d	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
+sub_363b5312620c#5	363b5312620c477d	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_36586e33c550	36586e33c55077e3	ported	config/clientoptions.cpp:TClientOptions::setDeviceCookie
 sub_3659d1359463	3659d1359463bdcd	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
 sub_3659d1359463#2	3659d1359463bdcd	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
@@ -6105,6 +6117,7 @@ sub_45a3b4e4ebc1	45a3b4e4ebc19919	ported	gamewindow/depotsearchwidgetcontroller.
 sub_45bcf55ed92b	45bcf55ed92b9f5a	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_45c073c75284	45c073c752840f20	skip	library: libc++ vector/deque internals (library)
 sub_45c101f6ae4a	45c101f6ae4a1f2b	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::getNextFeaturedOffer
+sub_45ca6b99f755	45ca6b99f7552565	tested	worldmap/coordinates.h:TShearedWorldMapCuboid::TShearedWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
 sub_45cf53db0da3	45cf53db0da3a600	skip	library: boost::bimap / std::map template instantiation
 sub_45daeaa13232	45daeaa13232bc15	skip	library: nlohmann::json 3.12 at()/type_error/iterator and from_json(std::vector) instantiations, libc++ vector/string growth
 sub_45ecd20812ad	45ecd20812ad5fd6	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -6756,6 +6769,7 @@ sub_581473ab0464#2	581473ab0464def0	ported	assets/assetcatalog.h:TAssetCatalog::
 sub_5814e6293e39	5814e6293e39c8d3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendAnswerModalDialog
 sub_581632105d73	581632105d73c018	skip	library: Qt6 QHash instantiation: QHashPrivate::Data ctor/rehash/findOrInsert, Span::addStorage, detach-and-emplace
 sub_581c5b4eec3a	581c5b4eec3aa9c9	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProviderManager::sharedCache
+sub_581eaeeeee53	581eaeeeee5320e5	tested	worldmap/coordinates.h:TWorldMapCoordinate::shiftedAwayFromFloor	test=tests/client/worldmapcuboid_test.cpp
 sub_5829752f57fb	5829752f57fb9db3	ported	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_582bb5d24811	582bb5d24811b713	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::TCyclopediaButtonController
 sub_585f16159ab3	585f16159ab3694b	skip	library: Qt qRegisterMetaType<T*>(name) / qRegisterNormalizedMetaType template
@@ -6870,6 +6884,7 @@ sub_5b8e7efaaa04	5b8e7efaaa04506c	ported	appearances/appearancetype.h:setDisplac
 sub_5b8ec85eb1fe	5b8ec85eb1fe93c2	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::shapedSlot
 sub_5b9e440b6a86#2	5b9e440b6a8640ee	skip	generated: moc signal emitter
 sub_5bc5003601b7	5bc5003601b71659	skip	library: Qt/std container template code
+sub_5bc818d5fc19	5bc818d5fc19c3d6	tested	worldmap/coordinates.h:TWorldMapCuboid::center	test=tests/client/worldmapcuboid_test.cpp
 sub_5bd86fbbcaa5	5bd86fbbcaa54467	skip	generated: compiler-generated destructor pair
 sub_5bf34629dd2d	5bf34629dd2d8d27	skip	library: boost::bimap / std::map template instantiation
 sub_5c0405457f2c	5c0405457f2c7a50	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::fireEmitSignalForNewProtocolMessage
@@ -7165,6 +7180,7 @@ sub_677e6d43502b	677e6d43502bfddb	inlined	shared/sortedvectorlistmodel.h:TSorted
 sub_6784be96c631#10	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_6784be96c631#12	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v201
 sub_67908f05fda6	67908f05fda66535	skip	library: protobuf runtime: ExtensionSet merge/flat storage, arena allocation and absl check logging reached from message copies
+sub_67921666d0df	67921666d0dfbca4	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_6799962b2b2d	6799962b2b2d3482	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::informationAtWorldMapCoordinateHasChanged
 sub_67a6f450484b	67a6f450484b8043	tested	minimap/minimapmarker.cpp:isObsoleteMarker	test=tests/client/minimapmarker_test.cpp
 sub_67a7fc0249a6	67a7fc0249a6744c	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
@@ -7243,9 +7259,12 @@ sub_69b5be1285fb	69b5be1285fb5633	ported	assets/specialappearances.h:TSpecialApp
 sub_69d81806c852#2	69d81806c852cb4e	inlined	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onOkClicked
 sub_69d9694aa491	69d9694aa4913131	inlined	shared::TTibiaFileSystemHelper::v61
 sub_69de9258ee77	69de9258ee775365	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_69ef85c98cc9	69ef85c98cc96c98	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
+sub_69ef85c98cc9#2	69ef85c98cc96c98	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_69f10198a817	69f10198a8172f9e	inlined	creatures/creaturestorage.cpp:TCreature::addTimedSquare
 sub_69fee40ae4c2	69fee40ae4c2a9cf	ported	sprites/spriteinspritesheet.cpp:TSpriteInSpritesheet::TSpriteInSpritesheet
 sub_69fee40ae4c2#2	69fee40ae4c2a9cf	ported	sprites/spriteinspritesheet.cpp:TSpriteInSpritesheet::TSpriteInSpritesheet
+sub_6a3735db23fb	6a3735db23fb39be	tested	worldmap/coordinates.h:TShearedWorldMapCuboid::restrictedToFloors	test=tests/client/worldmapcuboid_test.cpp
 sub_6a484b5dc447	6a484b5dc447667e	skip	generated: moc property getter, provided by the generated cip base
 sub_6a529ceb3a4b#2	6a529ceb3a4becda	skip	generated: compiler-generated destructor of the dialog update data
 sub_6a54d912339a	6a54d912339acdc5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenChannel
@@ -7305,6 +7324,8 @@ sub_6d845c48bd63	6d845c48bd630a75	inlined	gamewindow/monsterbonuseffectsdialogco
 sub_6d8b98cf54bf	6d8b98cf54bfb195	inlined	worldmap/worldmapfield.cpp:isTop
 sub_6d9101bb1ace	6d9101bb1ace9cdd	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::TDailyRewardStorage
 sub_6d9101bb1ace#2	6d9101bb1ace9cdd	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::TDailyRewardStorage
+sub_6d96899ee867	6d96899ee8677a7c	tested	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::toFieldCoordinate	test=tests/client/worldmapcuboid_test.cpp
+sub_6d96899ee867#2	6d96899ee8677a7c	tested	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::toFieldCoordinate	test=tests/client/worldmapcuboid_test.cpp
 sub_6d9952fd28dd	6d9952fd28ddd4fa	skip	library: std::map / unordered_map template instantiation
 sub_6db9b15fcf76	6db9b15fcf769423	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_6dbb29406869	6dbb2940686916e3	skip	library: std::deque internals (library)
@@ -7550,6 +7571,7 @@ sub_78bdf8719e54#2	78bdf8719e54b49e	skip	library: libc++ std::vector/std::unorde
 sub_78bfa03c21d2#2	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v171
 sub_78bfa03c21d2#4	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v140
 sub_78c6bb5d44ea	78c6bb5d44ea8f71	skip	generated: QMetaType registration of shared_ptr<MinimapMarkerFileContent> / MinimapMarkerFileContent
+sub_78dcf665df50	78dcf665df50a2c8	tested	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::toFieldCoordinate	test=tests/client/worldmapcuboid_test.cpp
 sub_78eb2d342ee0#3	78eb2d342ee0de6b	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::buyOffer
 sub_78ffc6dab469	78ffc6dab469e9a5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopediaRace
 sub_79014107a84b	79014107a84b5e3c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoPath
@@ -7659,6 +7681,7 @@ sub_7b20dd3be2f9	7b20dd3be2f97a1a	skip	generated: compiler-generated destructor 
 sub_7b2c7d4716bd	7b2c7d4716bd76d5	skip	generated: destructor variants
 sub_7b3072cbafdc	7b3072cbafdc37b8	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::resetHouseActionData
 sub_7b4078707a93	7b4078707a930670	ported	analysers/analyserwidgets.cpp:TAnalyticsSelectorWidgetController::partyHuntAnalyserButtonClicked
+sub_7b54142a6ec1	7b54142a6ec1215e	skip	library: std::set<uint16_t>/std::map copy-insert internals of the copied structs
 sub_7b6ae69ad18f	7b6ae69ad18f1eaf	skip	library: std::sort / std::stable_sort instantiation (library)
 sub_7b737791289d	7b737791289da552	skip	generated: vtable install (compiler-generated)
 sub_7b737791289d#2	7b737791289da552	skip	generated: vtable install (compiler-generated)
@@ -7675,6 +7698,7 @@ sub_7be100c54991	7be100c549912679	ported	gamewindow/gamewindowciptypes.cpp:clear
 sub_7beb2116b405	7beb2116b4053de2	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::lootValueString
 sub_7bf081bb7fa9	7bf081bb7fa9c96a	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::refresh
 sub_7bf575a5cbdd	7bf575a5cbdd7583	skip	generated: compiler-generated destructor
+sub_7bfb90522ca0	7bfb90522ca03cbf	tested	worldmap/coordinates.h:TWorldMapCoordinate::shiftedTowardsFloor	test=tests/client/worldmapcuboid_test.cpp
 sub_7c2de202d795	7c2de202d795a5d3	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_7c5ef6eabb26	7c5ef6eabb26d263	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::sendSelection
 sub_7c5ef873b610	7c5ef873b6101aa4	ported	gamewindow/createaccountdialogcontroller.cpp:succeeded
@@ -7874,6 +7898,7 @@ sub_835de2e6cd81	835de2e6cd81cdd5	inlined	protocol::TProtobufServerMessageTransl
 sub_837932b7e775#4	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v88
 sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v108
 sub_837932b7e775#8	837932b7e775c89f	skip	generated: protobuf RepeatedPtrField<MinimapMarker>::Add / MinimapMarker arena constructor
+sub_837ae938cb5c	837ae938cb5cf95f	skip	library: std::set<uint16_t>/std::map copy-insert internals of the copied structs
 sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 sub_8382c73d673c	8382c73d673c68cc	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbuementFilter
 sub_8399d7350593	8399d7350593422f	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModel::lessThan
@@ -8113,6 +8138,7 @@ sub_893573de18e4	893573de18e4e73f	skip	data: static initializers (filter names, 
 sub_89436d17f586#2	89436d17f5865fa2	inlined	protocol::TProtobufServerMessageTranslator::v139
 sub_89535b5b73c8	89535b5b73c8f335	ported	assets/assetasyncloader.cpp:TAssetAsyncLoaderWorkQueue::prioritize
 sub_896e7d31e597	896e7d31e59724f4	skip	library: std::sort instantiation (library)
+sub_899033430a7b	899033430a7bb409	tested	worldmap/coordinates.h:TShearedWorldMapCuboid::TShearedWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
 sub_899aeb21baaa	899aeb21baaab08a	skip	library: std::sort instantiation
 sub_89c59651c9bc	89c59651c9bcd99c	ported	input/gameaction.h:TGameActionChangeCharacter::TGameActionChangeCharacter
 sub_89c59651c9bc#2	89c59651c9bcd99c	ported	input/gameaction.h:TGameActionChangeCharacter::TGameActionChangeCharacter
@@ -8715,6 +8741,7 @@ sub_99307b3194db	99307b3194dbbe67	ported	gamewindow/createaccountdialogcontrolle
 sub_9947193ca6fe	9947193ca6fe70ce	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeTarget
 sub_99482c467b7f#2	99482c467b7faa3a	inlined	protocol::TProtobufServerMessageTranslator::v56
 sub_996f2878c71b	996f2878c71b5adc	skip	library: std::map insert / find-insert-position / tree destroy instantiations
+sub_996f2878c71b#2	996f2878c71b5adc	skip	library: std::set<uint16_t>/std::map copy-insert internals of the copied structs
 sub_998739fbaf65	998739fbaf652f3c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGetObjectInfo
 sub_9988828228d8	9988828228d8a278	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::TFriendsAccountSearchPageController
 sub_99891c277f3a	99891c277f3a1ece	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlRewardStreakBonus::TQmlRewardStreakBonus
@@ -8845,6 +8872,7 @@ sub_9d89de35b921	9d89de35b921f72c	ported	gamewindow/monsterbonuseffectsdialogcon
 sub_9d9ac654d495	9d9ac654d4955e52	ported	skillwheel/skillwheeldata.cpp:augmentationDescription
 sub_9da9109951bd	9da9109951bd8fb4	skip	library: SFML audio library (miniaudio backend)
 sub_9daff4ec827a	9daff4ec827a9cf4	ported	config/clientoptionsmigration.cpp:moveBoolOptions
+sub_9dfae26503f7	9dfae26503f71b4b	tested	worldmap/coordinates.h:TShearedWorldMapCuboid::TShearedWorldMapCuboid	test=tests/client/worldmapcuboid_test.cpp
 sub_9dfefb05affa	9dfefb05affa5d05	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_9e0f3a675770	9e0f3a67577098d6	skip	data: translation-unit static initializer (misattributed)
 sub_9e16ea0f8592	9e16ea0f8592df43	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::configuration
@@ -9055,6 +9083,7 @@ sub_a7bf0c3633c7#3	a7bf0c3633c70a06	skip	library: libc++ uniform_int_distributio
 sub_a7da497b5fb3	a7da497b5fb3d4eb	skip	library: std::map insert / find-insert-position / tree destroy instantiations
 sub_a7db3f788b79	a7db3f788b79f838	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_a7ea6cc05287	a7ea6cc052871ad5	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
+sub_a80c38e993e8	a80c38e993e81714	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_a81553cb360a#15	a81553cb360a77e2	inlined	gamewindow/actionbarcontroller.cpp:TActionBarGroup::handleGameAction
 sub_a81553cb360a#17	a81553cb360a77e2	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
 sub_a81553cb360a#20	a81553cb360a77e2	inlined	screenshot::TScreenshotManager::handleGameAction
@@ -9264,6 +9293,7 @@ sub_af512d5039f9	af512d5039f99850	skip	data: static initializer (inbox filter na
 sub_af56beb0dce6	af56beb0dce6733d	ported	gamewindow/edittextcontroller.cpp:itemTextDescription
 sub_af79bb4903b6	af79bb4903b64249	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResulMessage
 sub_af97f2ef08db	af97f2ef08db481b	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::compareGroups
+sub_af9b92b04386	af9b92b04386a2d7	tested	worldmap/coordinates.h:TWorldMapCuboid::translated	test=tests/client/worldmapcuboid_test.cpp
 sub_af9f9e7e885c	af9f9e7e885c11d5	skip	generated: compiler-generated destructor pair
 sub_afa33c2521d6	afa33c2521d6f85e	skip	generated: std::vector reserve / grow / record move (library, compiler-generated)
 sub_afa69ca9610a	afa69ca9610a6a2f	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
@@ -10149,6 +10179,7 @@ sub_c8ea23f4c6fc#2	c8ea23f4c6fcd538	skip	library: std container template code
 sub_c8f57f51754c	c8f57f51754c901f	ported	gamewindow/chatcontroller.cpp:TChatController::sendChatMessage
 sub_c8fb41f42995	c8fb41f42995c3c2	skip	library: std::sort instantiation (library)
 sub_c8ffecd1e5b1	c8ffecd1e5b122ae	skip	library: std vector internals (push_back/realloc/assign/clear)
+sub_c90809f41a03	c90809f41a030116	tested	worldmap/coordinates.h:TWorldMapSubfieldCoordinate::toFieldCoordinate	test=tests/client/worldmapcuboid_test.cpp
 sub_c9118863cb14	c9118863cb14fa14	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_c928a651c1e6	c928a651c1e6ca29	ported	market/marketstorage.cpp:maximumAmountByFee
 sub_c93e0412d36f	c93e0412d36f5381	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters
@@ -10518,6 +10549,7 @@ sub_d71125a04a1d	d71125a04a1de54f	ported	gamewindow/mousecursorcontroller.cpp:TM
 sub_d71399962a05	d71399962a050ebf	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::canTrackAdditionalItems
 sub_d7157c3308f8	d7157c3308f8e250	tested	shared/src/jsonhelper.cpp:jsonDateTime	test=tests/client/sharednet_test.cpp
 sub_d716829c8031	d716829c80318ae1	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::setSpell
+sub_d71d10c72c45	d71d10c72c452fec	tested	worldmap/coordinates.h:TWorldMapCoordinate::shearedToFloor	test=tests/client/worldmapcuboid_test.cpp
 sub_d728525366d2	d728525366d206f3	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::togglePartyBattleList
 sub_d729f2d80e9d	d729f2d80e9de06b	skip	generated: compiler-generated destructor pair
 sub_d740153312b4	d740153312b47892	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestToggleBestiaryTracking
@@ -10946,6 +10978,7 @@ sub_dfc4cc2bb9ca#12	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTra
 sub_dfc4cc2bb9ca#14	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_dfc4cc2bb9ca#16	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_dfce5ce5b4a4	dfce5ce5b4a404f6	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
+sub_dfce8c44cfcf	dfce8c44cfcfc6a3	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_dfcf2d8e1999	dfcf2d8e1999fdf5	skip	data: static initializer of shared header constants
 sub_dfe3bd7173c2	dfe3bd7173c2a3c7	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::addSeparator
 sub_dfe64f000cce	dfe64f000cce68d3	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
@@ -11089,6 +11122,7 @@ sub_e5343690d538#8	e5343690d5384db6	inlined	gamewindow/spelllistwidgetcontroller
 sub_e5343690d538#9	e5343690d5384db6	inlined	gamewindow/spelllistwidgetcontroller.cpp:TSpellListWidgetController::onShowContextMenu
 sub_e560cc3f0d19	e560cc3f0d194b34	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_e584fdeb2dd1	e584fdeb2dd11c4b	skip	generated: moc signal emission
+sub_e5a7d8d6fb57	e5a7d8d6fb5785a3	skip	generated: copy constructors of a coordinate / cuboid and of structs holding one (map area data variant, minimap marker, set of ids)
 sub_e5a902ba74a8	e5a902ba74a81add	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::~TRewardWallDialogController
 sub_e5a9b46e66a6	e5a9b46e66a6141d	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::sendHighscoresRequest
 sub_e5b0fe3de805	e5b0fe3de8056741	ported	news/eventsuploader.cpp:tibia::news::parseEventSchedule
@@ -11836,8 +11870,8 @@ worldmap::TLightMap::v6	933d86c380b01241	tested	worldmap/lightmap.cpp:TLightMap:
 worldmap::TLightMap::v7	d9e0d26da781bf6b	tested	worldmap/lightmap.cpp:TLightMap::lightnessAt	test=tests/client/lightmap_test.cpp
 worldmap::TLightMap::v8	cb11dfd12f91d5c3	tested	worldmap/lightmap.cpp:TLightMap::colorAt	test=tests/client/lightmap_test.cpp
 worldmap::TLightMap::v9	1a727e4d08863ab4	tested	worldmap/lightmap.cpp:TLightMap::setColorAt	test=tests/client/lightmap_test.cpp
-worldmap::TWorldMapCoordinate::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
-worldmap::TWorldMapCoordinate::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
+worldmap::TWorldMapCoordinate::v0	872d4faac408f6d5	skip	generated: destructor variants
+worldmap::TWorldMapCoordinate::v1	e9caf669ab302182	skip	generated: destructor variants
 worldmap::TWorldMapExtent::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair
 worldmap::TWorldMapExtent::v1	e9caf669ab302182	skip	generated: same code as the skipped family: compiler-generated destructor pair
 worldmap::TWorldMapField::v12	05c9b46a10fa2b28	ported	worldmap/worldmapfield.h:TWorldMapField::isEmpty

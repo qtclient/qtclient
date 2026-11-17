@@ -793,7 +793,7 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
     }
 
     // The visible area starts a field off the stored one: its edge repeats its neighbour.
-    const worldmap::TWorldMapCoordinate stored = storage->storedVolume().topLeft;
+    const worldmap::TWorldMapCoordinate stored = storage->storedVolume().origin;
     const int storedX = stored.x - (m_camera.z - stored.z);
     const int storedY = stored.y - (m_camera.z - stored.z);
     if (origin.x != storedX)

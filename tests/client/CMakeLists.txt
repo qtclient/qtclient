@@ -223,3 +223,6 @@ qtclient_add_port_test(client_spritesheetmanager_tests
 )
 target_link_libraries(client_spritesheetmanager_tests PRIVATE qtclient_shared Qt6::Gui)
 set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)
+
+# CIP worldmap coordinate helpers and cuboids.
+qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp)

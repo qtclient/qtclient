@@ -26,9 +26,9 @@ int TCacheForWorldmapStorageLookupMembers::indexOf(const TWorldMapCoordinate& co
 {
     // Slide the field along the floors' shear onto the volume's floor, then
     // count it in the box of width x height x floors.
-    const int plane = m_volume.topLeft.z;
-    const int dx = coordinate.x + coordinate.z - plane - m_volume.topLeft.x;
-    const int dy = coordinate.y + coordinate.z - plane - m_volume.topLeft.y;
+    const int plane = m_volume.origin.z;
+    const int dx = coordinate.x + coordinate.z - plane - m_volume.origin.x;
+    const int dy = coordinate.y + coordinate.z - plane - m_volume.origin.y;
     return (coordinate.z * m_volume.extent.height + dy) * m_volume.extent.width + dx;
 }
 
@@ -48,7 +48,7 @@ void TCacheForWorldmapStorageLookupMembers::storedVolumeHasChanged(const TSheare
         m_values.assign(size, false);
         m_valid.assign(size, false);
         // The offsets as bit distances from the volume's first field.
-        const TWorldMapCoordinate origin(volume.topLeft.x, volume.topLeft.y, volume.topLeft.z);
+        const TWorldMapCoordinate origin(volume.origin.x, volume.origin.y, volume.origin.z);
         const int base = indexOf(origin);
         m_offsets.clear();
         for (const TWorldMapExtent& extent : m_extents) {
