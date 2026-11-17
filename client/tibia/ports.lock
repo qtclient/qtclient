@@ -138,6 +138,8 @@ authentication::TAuthenticationJsonDocumentHelper::v6	1fa8d30e10741fdd	tested	au
 authentication::TAuthenticationJsonDocumentHelper::v7	c1ec40f17827eaeb	ported	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseSurveyData
 authentication::TAuthenticationJsonDocumentHelper::v8	c0739d6f04dcb1b2	tested	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseReturnerNotification	test=tests/client/authenticationjsondocumenthelper_test.cpp
 authentication::TAuthenticationJsonDocumentHelper::v9	0034f68c51827842	tested	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::parseShowResendButton	test=tests/client/authenticationjsondocumenthelper_test.cpp
+authentication::TLoginProtocolMessageHandler::~TLoginProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (same code as creatures::TVipGameActionHandler::~TVipGameActionHandler)
+authentication::TLoginProtocolMessageHandler::~TLoginProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (same code as creatures::TVipGameActionHandler::~TVipGameActionHandler_deleting)
 authentication::TLoginRequestUploader::onCloudflareMitigated	980522376ff9b0ae	ported	authentication/loginrequestuploader.cpp:TLoginRequestUploader::onCloudflareMitigated
 authentication::TLoginRequestUploader::onFinished	4789e201dd75eb60	ported	authentication/loginrequestuploader.cpp:TLoginRequestUploader::onFinished
 bossbestiary::TBossBestiaryProtocolMessageHandler::~TBossBestiaryProtocolMessageHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair
@@ -317,6 +319,7 @@ chat::TWhiteBlacklist::v35	c4b9cb7606f42c46	ported	chat/chatprotocolmessagehandl
 chat::TWhiteBlacklist::v36	25b376f4a419dc71	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setAllowVips
 chat::TWhiteBlacklist::~TWhiteBlacklist	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TWhiteBlacklist::~TWhiteBlacklist_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+client::TPreventCloseEventFilter::~TPreventCloseEventFilter_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 config::TActionBarsQMLOptionsPage::v12	1724f65c9b23046a	ported	config/optionspages.cpp:actionBarsBindings
 config::TActionBarsQMLOptionsPage::v13	5f670e5dfb6d75d1	ported	config/optionspages.cpp:actionBarsBindings
 config::TActionBarsQMLOptionsPage::~TActionBarsQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
@@ -1098,6 +1101,7 @@ friends::TFriendsStorage::~TFriendsStorage_deleting	79674512666b34e2	skip	genera
 game::FPSDropsLogger::onDialogVisibleChanged	3e767d05d9f100dc	ported	game/gameciptypes.cpp:FPSDropsLogger::onDialogVisibleChanged
 game::FPSDropsLogger::~FPSDropsLogger	097457dc45e86dd8	skip	generated: compiler-generated destructor
 game::FPSDropsLogger::~FPSDropsLogger_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
+game::TBlessingsProtocolMessageHandler::~TBlessingsProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage	b7b3a9369c554bec	ported	game/gameciptypes.cpp:TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage
 game::TBossDifficultySelectionProtocolMessageHandler::~TBossDifficultySelectionProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 game::TBossDifficultySelectionProtocolMessageHandler::~TBossDifficultySelectionProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
@@ -1119,6 +1123,7 @@ game::TCooldownStorage::~TCooldownStorage	e6f0a4ec21953056	skip	generated: compi
 game::TCooldownStorage::~TCooldownStorage_deleting	a9556962533a8460	skip	generated: compiler-generated destructor pair
 game::TExperienceCalculator::v0	c911d3895fc8193d	skip	generated: destructor variants (complete, deleting, duplicate copy)
 game::TExperienceCalculator::v1	2f79addd892c3e37	skip	generated: destructor variants (complete, deleting, duplicate copy)
+game::TGameEventProtocolMessageHandler::~TGameEventProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TGameSessionBase::v25	ea9461ede806184d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapViewport
 game::TGameSessionBase::v28	e9d87c96dd8d9443	ported	game/gamesessionbase.h:TGameSessionBase::worldMapStorage
 game::TGameSessionBase::v29	e306596705eadfac	ported	game/gamesessionbase.h:TGameSessionBase::ambientLightStorage
@@ -1127,6 +1132,7 @@ game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGame
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
+game::TPassiveAbilityInfoStorage::~TPassiveAbilityInfoStorage_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TPlayerData::v0@10	0978ed1c9e66b4ba	skip	generated: compiler-generated destructor pair
 game::TPlayerData::v100	b01a1349361fa47c	ported	game/playerdata.h:TPlayerData::harmony
 game::TPlayerData::v101	8a5c37db3657ce73	ported	game/playerdata.cpp:TPlayerData::setHarmony
@@ -1254,6 +1260,8 @@ game::TPremiumTimeStorage::v1@10	bb0b22e4c3a09d3d	skip	generated: compiler-gener
 game::TPremiumTimeStorage::v2@10	764fbf3ff55bb667	ported	game/gameciptypes.h:TPremiumTimeStorage::isPremium
 game::TPremiumTimeStorage::~TPremiumTimeStorage	26240549e81b8e53	skip	generated: compiler-generated destructor pair
 game::TPremiumTimeStorage::~TPremiumTimeStorage_deleting	2c4344eb18338214	skip	generated: compiler-generated destructor pair
+game::TQmlBlessingWithCharges::~TQmlBlessingWithCharges_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
+game::TServerModalDialogProtocolMessageHandler::~TServerModalDialogProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (same code as chat::TChatModeManager::~TChatModeManager_deleting)
 game::TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage	bf561cd53f762c74	ported	game/gameciptypes.cpp:TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage
 game::TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 game::TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
@@ -3911,6 +3919,7 @@ sub_060bbfd8acce#4	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTran
 sub_060bbfd8acce#5	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v139
 sub_060bbfd8acce#6	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_060bbfd8acce#7	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_060e17cee79b#3	060e17cee79b0309	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia (same code as sub_060e17cee79b#4)
 sub_060e17cee79b#4	060e17cee79b0309	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
 sub_0613a1653dbc	0613a1653dbc5318	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::bosses
 sub_0623c08fc50a	0623c08fc50a1ce3	ported	cyclopedia/combatstatsqmldata.cpp:TMiscStatsQmlData::currentBlessings
@@ -4057,7 +4066,9 @@ sub_097457dc45e8#992	097457dc45e86dd8	skip	generated: compiler-generated destruc
 sub_0981ac7a5eb7	0981ac7a5eb7faf7	inlined	exaltation/exaltationstorage.cpp:TExaltationStorage::setFusionGroups
 sub_098423be88b7	098423be88b7f30d	skip	library: std container template code
 sub_099957617f05	099957617f0518b5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopedia
+sub_09ae5eb1e2bd	09ae5eb1e2bd6be7	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_09cb619886e1	09cb619886e11a18	skip	library: std container internals (map/vector/set)
+sub_09d2985fb206	09d2985fb2065395	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_09ec8503407f	09ec8503407fe355	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onEditMemberStatusClicked
 sub_0a0f83d45a61	0a0f83d45a61cc2e	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::removeFromSkill
 sub_0a1c63a4a1ff	0a1c63a4a1ffec18	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::categoryIndex
@@ -4364,12 +4375,14 @@ sub_132fbd28b58f	132fbd28b58f07cb	skip	library: std::vector/shared_ptr template 
 sub_133616f7d2ed	133616f7d2ed0280	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::operatingSystemName
 sub_1356d493bddf	1356d493bddfeaf9	skip	data: translation-unit static initializer (misattributed)
 sub_13760f6d2af0	13760f6d2af0dc2a	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
+sub_137733722d87	137733722d87ea80	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_137894f43f9a#2	137894f43f9afea3	skip	generated: moc signal emitter
 sub_137907c94e49	137907c94e49ed38	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_1389c02db19d	1389c02db19d49f1	ported	imbuing/imbuingstorage.cpp:TImbuingStorage::setImbuingData
 sub_1393f853c0ec	1393f853c0ec0e6b	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_139a2a2ed37d	139a2a2ed37d5c13	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMoveObject
 sub_139beb33bb65#3	139beb33bb655100	skip	library: std container template instance
+sub_139f4f2ee387	139f4f2ee387d3eb	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_13a7f0c40b4b	13a7f0c40b4bfc9b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseDepotSearch
 sub_13abcd95cf9e	13abcd95cf9e7c95	ported	gamewindow/marketcontroller.cpp:TMarketController::reselect
 sub_13c753a6e7c4	13c753a6e7c4842e	ported	analysers/itempricestorage.cpp:TItemPriceStorage::TItemPriceStorage
@@ -4404,6 +4417,7 @@ sub_14507da24656	14507da246563d57	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_149c4970915f	149c4970915f1bb7	skip	library: std container template code
 sub_14a46b90b801	14a46b90b8016385	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
 sub_14bcf95e1273	14bcf95e12734d85	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::resetAllOptionsToDefault
+sub_14c50d7ab213	14c50d7ab21350ed	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_14cbcc518dbd	14cbcc518dbd00b3	skip	library: nlohmann::json from_json number/string conversion (third-party template)
 sub_14d7288839b4	14d7288839b4134c	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
 sub_14dc32602937	14dc326029375ffd	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
@@ -4451,6 +4465,9 @@ sub_1740ce3929e1	1740ce3929e1b473	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_1741163c3178#10	1741163c3178205b	ported	input/genericgameactionhandler.h:sendQuitGame
 sub_1741163c3178#11	1741163c3178205b	skip	generated: moc-generated signal emitter
 sub_1741163c3178#4	1741163c3178205b	skip	generated: moc-generated signal
+sub_1741163c3178#5	1741163c3178205b	skip	generated: moc-generated signal emitter (same code as sub_1741163c3178#11)
+sub_1741163c3178#6	1741163c3178205b	skip	generated: moc-generated signal emitter (same code as sub_1741163c3178#11)
+sub_1741163c3178#7	1741163c3178205b	skip	generated: moc-generated signal emitter (same code as sub_1741163c3178#11)
 sub_17449ee924c0	17449ee924c0fae7	inlined	cyclopedia/housesstorage.cpp:THousesStorage::setTransferPending
 sub_17515663c9f0	17515663c9f03937	skip	library: std::vector<shared::THint> growth/destructor template
 sub_175a61769301	175a617693012dda	skip	library: std::sort instantiation over trade goods (library)
@@ -4538,8 +4555,13 @@ sub_1a3e2e348475#175	1a3e2e348475d66b	skip	generated: Qt slot-object impl (templ
 sub_1a3e2e348475#176	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
 sub_1a3e2e348475#193	1a3e2e348475d66b	skip	generated: Qt slot-object thunk for a member-function connection (library)
 sub_1a3e2e348475#194	1a3e2e348475d66b	skip	generated: Qt slot-object thunk for a member-function connection (library)
+sub_1a3e2e348475#20	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
+sub_1a3e2e348475#21	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
 sub_1a3e2e348475#237	1a3e2e348475d66b	skip	generated: compiler-generated Qt slot-object thunk
 sub_1a3e2e348475#242	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
+sub_1a3e2e348475#244	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
+sub_1a3e2e348475#245	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
+sub_1a3e2e348475#246	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
 sub_1a3e2e348475#247	1a3e2e348475d66b	skip	generated: library template instantiation (unique_ptr reset, std::function swap, QSlotObject impl)
 sub_1a3e2e348475#248	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#251	1a3e2e348475d66b	skip	generated: Qt slot object impl (compiler-generated)
@@ -4550,14 +4572,19 @@ sub_1a3e2e348475#263	1a3e2e348475d66b	skip	generated: Qt slot-object impl (templ
 sub_1a3e2e348475#264	1a3e2e348475d66b	inlined	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
 sub_1a3e2e348475#31	1a3e2e348475d66b	skip	generated: Qt slot-object impl (QtPrivate::QSlotObject)
 sub_1a3e2e348475#33	1a3e2e348475d66b	skip	generated: Qt slot-object impl (QtPrivate::QSlotObject)
+sub_1a3e2e348475#39	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
+sub_1a3e2e348475#41	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
+sub_1a3e2e348475#43	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
 sub_1a3e2e348475#47	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#52	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#58	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
 sub_1a3e2e348475#63	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
+sub_1a3e2e348475#7	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
 sub_1a3e2e348475#76	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#77	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#78	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#79	1a3e2e348475d66b	skip	generated: QtPrivate slot-object impl (Qt template)
+sub_1a3e2e348475#8	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated) (same code as sub_1a3e2e348475#106)
 sub_1a3e2e348475#82	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
 sub_1a3e2e348475#85	1a3e2e348475d66b	skip	generated: Qt slot-object impl (template-generated)
 sub_1a3e2e348475#87	1a3e2e348475d66b	skip	generated: Qt-generated slot object impl
@@ -4706,6 +4733,248 @@ sub_200d74ec427d	200d74ec427df956	ported	gamewindow/highscoresdialogcontroller.c
 sub_20140a16439a	20140a16439a1bf3	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::setUseMainBackpackAsFallback
 sub_202ae800ab57	202ae800ab577d98	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferCreate
 sub_203e44bf5aa5	203e44bf5aa51007	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
+sub_204013620a4f#10	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#11	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#12	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#246	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#247	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#252	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#253	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#254	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#255	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#256	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#257	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#258	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#259	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#260	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#261	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#262	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#263	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#264	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#265	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#266	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#267	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#268	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#269	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#270	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#271	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#272	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#273	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#274	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#275	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#276	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#277	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#278	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#279	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#280	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#281	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#282	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#283	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#284	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#285	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#286	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#287	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#288	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#289	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#290	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#291	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#292	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#293	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#294	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#295	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#296	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#297	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#298	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#299	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#300	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#301	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#302	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#303	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#304	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#305	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#306	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#307	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#308	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#309	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#310	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#311	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#312	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#313	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#314	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#315	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#316	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#317	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#318	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#319	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#320	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#321	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#322	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#323	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#324	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#325	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#326	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#327	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#328	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#329	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#330	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#331	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#332	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#333	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#334	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#335	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#336	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#337	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#338	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#339	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#340	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#341	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#342	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#343	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#344	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#345	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#346	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#347	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#348	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#349	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#350	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#351	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#352	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#353	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#354	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#355	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#356	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#357	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#358	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#359	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#360	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#361	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#362	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#363	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#364	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#365	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#366	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#367	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#368	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#369	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#370	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#371	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#372	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#373	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#374	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#375	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#376	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#377	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#378	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#379	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#380	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#381	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#382	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#383	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#384	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#385	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#386	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#387	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#388	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#389	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#390	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#391	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#392	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#393	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#394	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#395	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#396	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#397	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#398	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#399	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#400	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#401	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#402	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#403	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#404	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#405	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#406	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#407	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#408	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#409	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#410	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#411	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#412	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#413	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#414	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#415	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#416	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#417	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#418	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#419	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#420	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#421	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#422	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#423	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#424	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#425	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#426	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#427	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#428	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#429	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#430	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#431	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#432	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#433	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#434	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#435	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#436	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#437	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#438	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#439	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#440	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#441	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#442	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#443	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#444	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#445	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#446	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#447	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#448	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#449	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#450	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#451	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#452	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#453	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#454	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#455	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#456	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#457	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#458	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#459	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#460	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#461	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#462	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#463	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#464	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#465	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#466	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#467	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#468	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#469	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#470	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#471	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#472	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#473	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#474	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#475	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#476	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#477	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#478	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#479	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#480	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#481	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#482	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#483	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#484	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#485	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#486	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#487	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#488	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
 sub_204013620a4f#503	204013620a4fb213	skip	generated: Qt-generated slot object impl
 sub_204013620a4f#510	204013620a4fb213	skip	generated: Qt slot-object impl (template-generated)
 sub_204013620a4f#511	204013620a4fb213	skip	generated: Qt slot-object impl (template-generated)
@@ -4721,6 +4990,14 @@ sub_204013620a4f#544	204013620a4fb213	skip	generated: shared_ptr / Qt slot-objec
 sub_204013620a4f#548	204013620a4fb213	skip	generated: Qt-generated slot object impl
 sub_204013620a4f#558	204013620a4fb213	skip	generated: compiler-generated Qt slot-object thunk
 sub_204013620a4f#559	204013620a4fb213	skip	generated: compiler-generated Qt slot-object thunk
+sub_204013620a4f#567	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#568	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#7	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#75	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#76	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#77	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#8	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
+sub_204013620a4f#9	204013620a4fb213	skip	generated: Qt-generated slot object impl (same code as sub_204013620a4f#503)
 sub_204c2b471496	204c2b4714965737	inlined	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::TRewardWallDialogController
 sub_20558d253176	20558d253176c161	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::setShowFilter
 sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamesessionstate.cpp:TGameSessionState::createMovementIntent
@@ -4875,6 +5152,7 @@ sub_24fb03474b93	24fb03474b93046b	ported	analysers/impactwidgets.cpp:TImpactWidg
 sub_24fd8c09fa4c	24fd8c09fa4cc8f8	tested	shared/src/extent.h:TExtent::operator-	test=tests/client/sharednet_test.cpp
 sub_24fd8c09fa4c#2	24fd8c09fa4cc8f8	tested	shared/src/extent.h:TExtent::operator-	test=tests/client/sharednet_test.cpp
 sub_24fe4880d680	24fe4880d680a94a	ported	gamewindow/dialogmanager.cpp:TDialog::create
+sub_250b3cac69a6	250b3cac69a66077	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_25107c13b8d5	25107c13b8d5fdc1	ported	gamewindow/reportviolationcontroller.cpp:TReportViolationController::TReportViolationController
 sub_25167152d90f#5	25167152d90fb3f2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresData::THighscoresData
 sub_25167152d90f#6	25167152d90fb3f2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresData::THighscoresData
@@ -5063,6 +5341,7 @@ sub_2bf47e29c3cd	2bf47e29c3cd6174	ported	renderer/spritetexturecache.cpp:TSprite
 sub_2bf9c5055ea1	2bf9c5055ea1bb93	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::TMouseCursorController
 sub_2c0057ef46a9	2c0057ef46a90ad3	skip	library: std::sort instantiation over party members (library)
 sub_2c039e757d1a	2c039e757d1a9172	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_2c117864edcd#5	2c117864edcd3d71	skip	library: std container template code (same code as sub_2c117864edcd#6)
 sub_2c117864edcd#6	2c117864edcd3d71	skip	library: std container template code
 sub_2c1fe34d2594	2c1fe34d25945e92	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::isDailyRewardLocked
 sub_2c25a8a4d67b	2c25a8a4d67bef82	inlined	chat/chatchannel.cpp:TChatChannelStorage::openServerChannel
@@ -5139,6 +5418,7 @@ sub_3043211b38f3	3043211b38f32a75	inlined	analysers/analyserwidgets.cpp:THunting
 sub_30458964ddfd	30458964ddfdf43e	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCreatureTargetSelected
 sub_3065a93422da	3065a93422daa1ef	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_3065a93422da#2	3065a93422daa1ef	skip	library: libc++ std::vector instantiation
+sub_306d1ba5475c	306d1ba5475c61d0	skip	generated: moc-generated signal (same code as sub_306d1ba5475c#12)
 sub_306d1ba5475c#10	306d1ba5475c61d0	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureUpdated
 sub_306d1ba5475c#12	306d1ba5475c61d0	skip	generated: moc-generated signal
 sub_306d1ba5475c#14	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
@@ -5546,6 +5826,8 @@ sub_4137ab833001	4137ab8330012cc4	inlined	appearances/appearanceinstance.cpp:TAp
 sub_41391af49fbd	41391af49fbdfc5d	ported	config/sidebaroptions.cpp:parseBossTracker
 sub_4160a4af3917#10	4160a4af3917f73f	skip	generated: moc-generated signal
 sub_4160a4af3917#11	4160a4af3917f73f	skip	generated: moc-generated signal emitter
+sub_4160a4af3917#15	4160a4af3917f73f	skip	generated: moc-generated signal (same code as sub_4160a4af3917#10)
+sub_4160a4af3917#16	4160a4af3917f73f	skip	generated: moc-generated signal (same code as sub_4160a4af3917#10)
 sub_4160a4af3917#18	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#2	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#23	4160a4af3917f73f	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
@@ -5811,6 +6093,7 @@ sub_4c803c205e0d#2	4c803c205e0d81bb	ported	gamewindow/createaccountdialogcontrol
 sub_4c9e81f0fdec	4c9e81f0fdec8bce	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::showContextMenuForTextInputQmlItem
 sub_4ca3c6ebe6f9	4ca3c6ebe6f936f2	ported	shared/src/jsondocumentuploaderbase.cpp:TJsonDocumentUploaderBase::errorCode
 sub_4caa0728f441	4caa0728f44130a9	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::stop	test=tests/client/sharednet_test.cpp
+sub_4cb3233caacc	4cb3233caacc1428	skip	generated: moc-generated signal emitter (same code as sub_4cb3233caacc#28)
 sub_4cb3233caacc#19	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#20	4cb3233caacc1428	skip	generated: moc-generated signal emitter
 sub_4cb3233caacc#24	4cb3233caacc1428	skip	generated: moc-generated signal emitter
@@ -5839,6 +6122,7 @@ sub_4d6020971bc4	4d6020971bc4c628	skip	generated: moc property getter (generated
 sub_4d6020971bc4#3	4d6020971bc4c628	skip	generated: generated property getter (cip_gen)
 sub_4d60a8ff3de1	4d60a8ff3de13e9c	ported	gamewindow/characterinfomodels.cpp:lootValueImage
 sub_4d7e3db39675#11	4d7e3db39675f970	skip	generated: compiler-generated destructor
+sub_4d7e3db39675#2	4d7e3db39675f970	skip	generated: compiler-generated destructor (same code as sub_4d7e3db39675#11)
 sub_4d7e3db39675#7	4d7e3db39675f970	skip	library: std container / struct destructor
 sub_4da25f5da2a7	4da25f5da2a799cf	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setHighlight
 sub_4da4407b66c2	4da4407b66c2c2f9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::showDialog
@@ -5980,6 +6264,7 @@ sub_53a11b4f2f64	53a11b4f2f64d411	ported	teamfinder/teamfinderciptypes.cpp:TTeam
 sub_53a596ab5569	53a596ab5569ee17	ported	proficiency/proficiencystorage.cpp:parsePerk
 sub_53b02155a60e	53b02155a60e3ee1	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::findEntry
 sub_53b02155a60e#2	53b02155a60e3ee1	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::findEntry
+sub_53bdefebcb02	53bdefebcb02a450	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_53c1c4919b85#2	53c1c4919b8576d5	inlined	trade/tradeciptypes.cpp:TNPCTradeProtocolMessageHandler::handleNPCOfferMessage
 sub_53d9694e6662#14	53d9694e6662b92f	inlined	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::info
 sub_53d9694e6662#15	53d9694e6662b92f	inlined	sessiondump/sessiondumppacketreader.cpp:TSessiondumpPacketReader::info
@@ -6218,6 +6503,7 @@ sub_55dbb591035f	55dbb591035f2f31	ported	analysers/impactwidgets.cpp:TDamageInpu
 sub_561e11fed76f	561e11fed76fd709	skip	generated: compiler-generated destructor pair
 sub_562e15740b51	562e15740b51e68d	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestBonusReroll
 sub_5633a9892868	5633a98928681894	ported	config/optionspages.cpp:percentOf
+sub_5639997ee325	5639997ee325bcca	skip	library: Qt/std container template code (same code as sub_5639997ee325#14)
 sub_5639997ee325#14	5639997ee325bcca	skip	library: Qt/std container template code
 sub_5639997ee325#21	5639997ee325bcca	skip	library: std::vector reserve/realloc (library)
 sub_5639997ee325#5	5639997ee325bcca	skip	library: std::vector<std::shared_ptr> grow (library)
@@ -6234,6 +6520,8 @@ sub_56e1f32d4b77	56e1f32d4b77db00	ported	gamewindow/sidebarwidgetsmanager.h:TSid
 sub_56e401e5eeea#10	56e401e5eeea0e45	skip	generated: moc-generated signal emitter
 sub_56e401e5eeea#16	56e401e5eeea0e45	skip	generated: moc-generated signal emitter
 sub_56e401e5eeea#6	56e401e5eeea0e45	skip	generated: moc-generated signal
+sub_56e401e5eeea#7	56e401e5eeea0e45	skip	generated: moc-generated signal emitter (same code as sub_56e401e5eeea#16)
+sub_56e401e5eeea#8	56e401e5eeea0e45	skip	generated: moc-generated signal emitter (same code as sub_56e401e5eeea#16)
 sub_56ef08335b32	56ef08335b321dca	inlined	gamewindow/sidebarwidgetcontrollerbase.cpp:TSidebarWidget::createItemFromUrl
 sub_57260bf76336	57260bf7633649f6	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
 sub_572ea5534fb3#2	572ea5534fb3e524	ported	container/qmlitemslotdata.h:TQMLItemSlotData::displayTypeID
@@ -6414,6 +6702,7 @@ sub_5e9636ad4c12	5e9636ad4c123d4c	skip	generated: compiler-generated destructor 
 sub_5e9650e2edc2	5e9650e2edc27401	ported	shared/src/rpcserviceserver.cpp:TRPCServiceServer::onConnectionDisconnected
 sub_5e9aafb7bdc1	5e9aafb7bdc10cfd	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSlotClicked
 sub_5ea6d31f53d2#2	5ea6d31f53d28b8e	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
+sub_5ee0f7516590	5ee0f75165907013	skip	generated: Qt slot-object impl (template-generated) (same code as sub_5ee0f7516590#3)
 sub_5ee0f7516590#3	5ee0f75165907013	skip	generated: Qt slot-object impl (template-generated)
 sub_5ee245e67469	5ee245e67469bd18	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::setGameSessionActive
 sub_5eef91a11682	5eef91a11682c63b	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
@@ -6442,6 +6731,7 @@ sub_5ff783944d43	5ff783944d43ebcd	skip	library: std::sort instantiation
 sub_6008af61bf20	6008af61bf2047d6	ported	skillwheel/skillwheeldata.cpp:mediumPerkCount
 sub_601027581393	601027581393e22c	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::toMapPixel
 sub_60108709fdb6	60108709fdb6b236	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
+sub_6020c54d07d6	6020c54d07d6c52c	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_60339bc87903	60339bc879032747	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::maximumPhaseDuration	test=tests/client/creaturemovement_test.cpp
 sub_60339bc87903#4	60339bc879032747	skip	generated: moc property getter (generated in cip_gen)
 sub_60339bc87903#5	60339bc879032747	skip	generated: moc property getter, provided by the generated cip base
@@ -6501,6 +6791,9 @@ sub_625b0785c125#2	625b0785c12500c5	skip	data: translation-unit static initializ
 sub_625b0785c125#3	625b0785c12500c5	skip	data: translation-unit static initializer (misattributed)
 sub_626db2cbf1ff	626db2cbf1ff37ce	skip	generated: compiler-generated destructor pair
 sub_62871225bbad#11	62871225bbad5568	skip	library: std::shared_ptr control block
+sub_62871225bbad#21	62871225bbad5568	skip	library: std::shared_ptr control block (same code as sub_62871225bbad#11)
+sub_62871225bbad#24	62871225bbad5568	skip	library: std::shared_ptr control block (same code as sub_62871225bbad#11)
+sub_62871225bbad#3	62871225bbad5568	skip	library: std::shared_ptr control block (same code as sub_62871225bbad#11)
 sub_628ab99dd394	628ab99dd394ef09	ported	config/sidebaroptions.cpp:serializeBattleList
 sub_62aae2b67310#2	62aae2b673103642	skip	generated: moc signal emitter
 sub_62b2dd1966cf	62b2dd1966cf3883	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::showDialog
@@ -6511,6 +6804,7 @@ sub_62d0a8b31888	62d0a8b31888d5fb	ported	gamewindow/uifocusmanager.cpp:TUiFocusM
 sub_62d233338640	62d233338640a55a	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::onKeySequenceEntered
 sub_62d98f7bcf7a	62d98f7bcf7add56	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showUnfriendConfirmation
 sub_62decbd69c43	62decbd69c43c59a	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_62f26fa57fe2	62f26fa57fe2ddd9	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_62f7a7394f7a	62f7a7394f7a72d9	inlined	protocol::TProtobufServerMessageTranslator::v2
 sub_6303bdfa89d3#10	6303bdfa89d3eaee	inlined	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::onRegisteredWidgetClosed
 sub_6303bdfa89d3#11	6303bdfa89d3eaee	inlined	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::onRegisteredWidgetClosed
@@ -6577,6 +6871,7 @@ sub_63e222f42025#3	63e222f42025abee	inlined	friends/friendsciptypes.cpp:TFriends
 sub_63e222f42025#4	63e222f42025abee	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::gameActions
 sub_64129f8994b6	64129f8994b6172d	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetTactics
 sub_6424b88073b8	6424b88073b8b065	skip	library: miniaudio library
+sub_64306aacad14	64306aacad14181a	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_643b7400e1be	643b7400e1be702b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_647825f15a2e#21	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 sub_647825f15a2e#26	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleGameAction
@@ -6665,6 +6960,7 @@ sub_6889594085e7#5	6889594085e7bbb6	skip	library: std container / struct destruc
 sub_689a838fafc7	689a838fafc7d074	ported	shared/src/randomhints.cpp:styleHintLinks
 sub_68aebfdc2c91	68aebfdc2c91bdaa	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::showGameActions
 sub_68b3f61d4831	68b3f61d4831bf0d	ported	config/optionspages.cpp:percentOf
+sub_68c0cd797e69	68c0cd797e697365	skip	generated: library template instantiation (unique_ptr reset, std::function swap, QSlotObje (same code as sub_68c0cd797e69#3)
 sub_68c0cd797e69#3	68c0cd797e697365	skip	generated: library template instantiation (unique_ptr reset, std::function swap, QSlotObject impl)
 sub_68c4da126f01	68c4da126f01c0ee	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGuildMessage
 sub_68ce48843f4d	68ce48843f4d570a	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
@@ -6693,6 +6989,7 @@ sub_697079c2d97e#12	697079c2d97e2d6b	inlined	gamewindow/marketcontroller.cpp:det
 sub_697079c2d97e#14	697079c2d97e2d6b	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
 sub_697079c2d97e#4	697079c2d97e2d6b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_697d4be3e2f8#2	697d4be3e2f8b5b1	skip	generated: moc-generated signal emitter
+sub_697d4be3e2f8#3	697d4be3e2f8b5b1	skip	generated: moc-generated signal emitter (same code as sub_697d4be3e2f8#2)
 sub_6980e1b13f51	6980e1b13f513c24	ported	chat/chatchannel.h:TChatChannelIdentifier::isPrivateChannelId
 sub_699797d1c544	699797d1c5446f74	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::array	test=tests/client/jsonvalidator_test.cpp
 sub_699d675bf4da	699d675bf4dac1b6	skip	library: SFML/miniaudio library helper, only called from library code
@@ -7003,6 +7300,7 @@ sub_79954c12a522	79954c12a5226eff	inlined	gamewindow/characterinfomodels.cpp:TAc
 sub_79980e988d93	79980e988d9359f1	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendApplyClearingCharm
 sub_79a9ac2a2204	79a9ac2a22043fe2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::selectedVocationId
 sub_79b9fca30aa8	79b9fca30aa82ac3	skip	library: libc++ std::vector/std::unordered_map instantiation
+sub_79c3dbb6d7d3	79c3dbb6d7d3f0dd	skip	library: boost::bimap / std::map template instantiation (same code as sub_79c3dbb6d7d3#3)
 sub_79c3dbb6d7d3#3	79c3dbb6d7d3f0dd	skip	library: boost::bimap / std::map template instantiation
 sub_79c7590e07cf	79c7590e07cf5b92	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::secondsUntilStreakEnd
 sub_79cea62647d8	79cea62647d8b49e	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
@@ -7347,6 +7645,7 @@ sub_86a311ec612f	86a311ec612fc728	ported	gamewindow/playerinventoryandstatuscont
 sub_86d6d83812d1	86d6d83812d1d279	ported	gamewindow/assignactiondialogs.h:TRecordKeyboardShortcutDialogController::selectedKeySequence
 sub_86e3b7160acf	86e3b7160acf7634	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_86ea1229680a	86ea1229680a20f2	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setTriggers
+sub_86f51082f880	86f51082f8801541	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_86f9562eb3ba	86f9562eb3badcde	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_870645981933	8706459819338b52	ported	skillwheel/skillwheeldata.cpp:mitigationValue
 sub_8721425c106e	8721425c106e647d	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -7557,8 +7856,11 @@ sub_8bdbd57bf834	8bdbd57bf834a1bd	ported	chat/chatchannel.h:TChatChannelIdentifi
 sub_8beedc78a96d	8beedc78a96d753b	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::setResult
 sub_8bf1155b59ab#25	8bf1155b59abd4ec	skip	library: boost::bimap / std::map template instantiation
 sub_8bf1155b59ab#26	8bf1155b59abd4ec	skip	library: std::deque / std::variant library code
+sub_8bf1155b59ab#27	8bf1155b59abd4ec	skip	library: boost::bimap / std::map template instantiation (same code as sub_8bf1155b59ab#25)
 sub_8bf1155b59ab#28	8bf1155b59abd4ec	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8bf1155b59ab#29	8bf1155b59abd4ec	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
+sub_8bf1155b59ab#35	8bf1155b59abd4ec	skip	library: boost::bimap / std::map template instantiation (same code as sub_8bf1155b59ab#25)
+sub_8bf1155b59ab#36	8bf1155b59abd4ec	skip	library: boost::bimap / std::map template instantiation (same code as sub_8bf1155b59ab#25)
 sub_8bf1155b59ab#4	8bf1155b59abd4ec	skip	library: std::deque internals (library)
 sub_8bf1155b59ab#6	8bf1155b59abd4ec	skip	library: libc++ vector/deque internals (library)
 sub_8bf4da250be0	8bf4da250be0b795	skip	library: libc++ std::vector growth / destroy (library)
@@ -7707,6 +8009,7 @@ sub_8df0e071c723	8df0e071c7232e61	ported	gamewindow/gamewindowcontroller.cpp:TGa
 sub_8df8e8457715	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
 sub_8df8e8457715#2	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
 sub_8e1421a88061	8e1421a880613cf7	ported	skillwheel/skillwheeldata.cpp:formatValue
+sub_8e3b35af5159	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor) (same code as sub_8e3b35af5159#2)
 sub_8e3b35af5159#2	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8e3b35af5159#3	8e3b35af51596407	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_8e3cca519cd1	8e3cca519cd1550c	tested	tutorial/sessiondumphintbase.cpp:TSessiondumpHintBase::TSessiondumpHintBase	test=tests/client/sessiondumphints_test.cpp
@@ -7741,6 +8044,7 @@ sub_8f2b36852cc6	8f2b36852cc69beb	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_8f340fd7e9db	8f340fd7e9db50c6	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_8f4d7a249555	8f4d7a249555a7d3	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::reset
 sub_8fad20d88fb4	8fad20d88fb4f9ee	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::addRewardStreakBonus
+sub_8fba2b61f08f	8fba2b61f08f8129	skip	generated: QMetaType registration (moc) (same code as sub_68deb2d5bab1)
 sub_8fbb15eda14b	8fbb15eda14bb973	ported	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_8fc86143d9fd	8fc86143d9fd3d24	skip	library: libc++ vector/deque internals (library)
 sub_8fd93e9aaa3f#14	8fd93e9aaa3ff7fd	inlined	protocol::TProtobufServerMessageTranslator::v15
@@ -8027,7 +8331,11 @@ sub_97780ee1a962#6	97780ee1a96291bd	skip	generated: moc-generated signal emitter
 sub_978e1e82f261#14	978e1e82f261a6f0	skip	generated: Qt slot-object impl (template-generated)
 sub_978e1e82f261#20	978e1e82f261a6f0	skip	generated: Qt slot-object template instantiation
 sub_978e1e82f261#22	978e1e82f261a6f0	skip	generated: shared_ptr / Qt slot-object template code
+sub_978e1e82f261#24	978e1e82f261a6f0	skip	generated: Qt slot-object impl (template-generated) (same code as sub_978e1e82f261#14)
 sub_978e1e82f261#25	978e1e82f261a6f0	skip	generated: Qt slot object impl (compiler-generated)
+sub_978e1e82f261#6	978e1e82f261a6f0	skip	generated: Qt slot-object impl (template-generated) (same code as sub_978e1e82f261#14)
+sub_978e1e82f261#8	978e1e82f261a6f0	skip	generated: Qt slot-object impl (template-generated) (same code as sub_978e1e82f261#14)
+sub_978e1e82f261#9	978e1e82f261a6f0	skip	generated: Qt slot-object impl (template-generated) (same code as sub_978e1e82f261#14)
 sub_97a8a70831e9	97a8a70831e9158c	skip	library: std::vector<TKey>::insert (libc++)
 sub_97ad7b4f4822	97ad7b4f48220a8f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenRewardWall
 sub_97c0d09fa5d3	97c0d09fa5d35c53	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::preselectedClassificationIndex
@@ -8076,12 +8384,14 @@ sub_99891c277f3a#2	99891c277f3a1ece	ported	gamewindow/rewardwalldialogcontroller
 sub_99927b60fbc1	99927b60fbc1b76b	inlined	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showDialogTab
 sub_99a40f5e3fcb#11	99a40f5e3fcbf761	skip	generated: moc-generated signal
 sub_99a40f5e3fcb#13	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
+sub_99a40f5e3fcb#16	99a40f5e3fcbf761	skip	generated: moc-generated signal (same code as sub_99a40f5e3fcb#11)
 sub_99a40f5e3fcb#2	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
 sub_99a40f5e3fcb#23	99a40f5e3fcbf761	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
 sub_99a40f5e3fcb#24	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
 sub_99a40f5e3fcb#25	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
 sub_99a40f5e3fcb#30	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
 sub_99a40f5e3fcb#31	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
+sub_99a40f5e3fcb#4	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter (same code as sub_99a40f5e3fcb#25)
 sub_99a40f5e3fcb#9	99a40f5e3fcbf761	skip	generated: moc-generated signal emitter
 sub_99bba1064baf	99bba1064bafc103	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::requestCheckConfiguration
 sub_99be056ebdb6#3	99be056ebdb6789e	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestTradeCharacter
@@ -8171,6 +8481,7 @@ sub_9c7085172050#3	9c7085172050a603	skip	generated: moc signal emitter
 sub_9c73cdc7cbd0	9c73cdc7cbd01faa	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::requestExportPresetClicked
 sub_9c83b6c9bc81#2	9c83b6c9bc819eda	skip	generated: Qt slot-object impl (template-generated)
 sub_9c8c98404197	9c8c98404197e484	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
+sub_9c8da3d7b49d	9c8da3d7b49dc2a6	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_9c8da507707b#2	9c8da507707bf3d6	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_9c8ff2919db2	9c8ff2919db2cdab	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumMessageRenewPremium::setDaysLeft
 sub_9c9beee4da81	9c9beee4da812f43	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::forgotEMailAddressOrPasswordPressed
@@ -8210,6 +8521,7 @@ sub_9eaaf4968330	9eaaf49683307eeb	inlined	shared/sortedvectorlistmodel.h:TSorted
 sub_9eb62e72ec3e	9eb62e72ec3ec99a	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::resetCurrentPageToDefault
 sub_9ec96efb44d1	9ec96efb44d1c1e1	ported	skillwheel/skillwheeldata.cpp:basicStatDamageTypeName
 sub_9ecea53a01b7	9ecea53a01b7ea6a	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onAccountCreationStatus
+sub_9f0085eadb01	9f0085eadb01cf23	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_9f310677261e	9f310677261e7bb0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::donateMoneyForArea
 sub_9f3aa773c506	9f3aa773c5060dad	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_9f3c8e62110f	9f3c8e62110f8c75	ported	config/optionspages.cpp:THotkeysOptionsPage::requestEnterNewHotkeyForAction
@@ -8327,6 +8639,7 @@ sub_a4c536d9b56e#3	a4c536d9b56ec668	ported	gamewindow/cyclopediadialogcontroller
 sub_a4c536d9b56e#4	a4c536d9b56ec668	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::unlockedMinorCharmEchoesString
 sub_a4c6630aba30	a4c6630aba30b56b	ported	chat/chatgameactionhandler.cpp:TChatGameActionProvider::gameActions
 sub_a4c7011af262	a4c7011af262d16f	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_a4d760741cfd	a4d760741cfd2a2b	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_a4de7f54691a	a4de7f54691a23cb	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openBlessingsDialog
 sub_a4e1e48d67a8	a4e1e48d67a8743a	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
 sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTranslator::v195
@@ -8591,6 +8904,7 @@ sub_b00e40775276	b00e40775276bc16	ported	shared/src/crashreportdata.cpp:TCrashRe
 sub_b017d843f8a1	b017d843f8a143f0	skip	library: Qt/std container template code
 sub_b02e349a7c61	b02e349a7c618aff	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_b03c4a8dd3ff	b03c4a8dd3ff1b68	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
+sub_b04136b88d3f	b04136b88d3f7214	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_b04d1d01a854	b04d1d01a854773a	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
 sub_b056b10043a9	b056b10043a9b083	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::updateMiscStats
 sub_b05aa98b7c2d	b05aa98b7c2d35dd	ported	gamewindow/chatcontroller.cpp:TChatController::parseInput
@@ -8649,6 +8963,7 @@ sub_b2d317684246#2	b2d31768424668ba	skip	generated: compiler-generated destructo
 sub_b2dc59c40ca4	b2dc59c40ca4b12c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::toJson	test=tests/client/hotkeyoptions_test.cpp
 sub_b2fe1e0fa049	b2fe1e0fa0499590	inlined	gamewindow/actionbuttoncontroller.h:TActionButtonController::multiAction
 sub_b312685ccc3f#2	b312685ccc3f2b52	inlined	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::currentFilter
+sub_b3143290d997	b3143290d997bcef	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_b31736ca24ac	b31736ca24ac3ce3	ported	gamewindow/chatcontroller.cpp:isVip
 sub_b32bd5339c99	b32bd5339c9929e4	skip	generated: Qt slot-object impl (template-generated)
 sub_b33fd2efb094	b33fd2efb094231b	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
@@ -9079,6 +9394,8 @@ sub_ba885ba28104#8	ba885ba28104ff7a	skip	generated: protobuf-generated arena con
 sub_ba92b02e2399	ba92b02e2399f3b8	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotTargetSelected
 sub_ba9c0c0823d1	ba9c0c0823d1bb7c	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestTransferCredits
 sub_baa38a23d359	baa38a23d359d845	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardNumbersText
+sub_baa9831a19d4#10	baa9831a19d43716	skip	library: std container template code (same code as sub_baa9831a19d4#7)
+sub_baa9831a19d4#6	baa9831a19d43716	skip	library: std container template code (same code as sub_baa9831a19d4#7)
 sub_baa9831a19d4#7	baa9831a19d43716	skip	library: std container template code
 sub_baad05550d9c	baad05550d9cb8ed	skip	library: std::sort instantiation over achievements (library)
 sub_babdd5a9a5b3	babdd5a9a5b36770	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
@@ -9416,6 +9733,7 @@ sub_c97321260f49#2	c97321260f49bc7c	inlined	gamewindow/iteminfodialogcontroller.
 sub_c9941de82721	c9941de827215fe2	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::restingBonusHoverText
 sub_c9965e0829b9#2	c9965e0829b9dc9b	skip	generated: compiler-generated destructor pair
 sub_c999655a4abc#4	c999655a4abc5858	skip	generated: moc-generated signal
+sub_c999655a4abc#6	c999655a4abc5858	skip	generated: moc-generated signal (same code as sub_c999655a4abc#4)
 sub_c99eca0c25e6	c99eca0c25e6c065	inlined	creatures/creaturestorage.cpp:TCreature::showStaticSquare
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
 sub_c9b9ce7c19a7	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
@@ -9450,6 +9768,7 @@ sub_cb3d0e5bfe14	cb3d0e5bfe141df7	ported	gamewindow/stashdialogcontroller.cpp:TS
 sub_cb43ebfb78cb	cb43ebfb78cb9d4e	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenParentContainer
 sub_cb505fde827c	cb505fde827c043d	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::buyOffer
 sub_cb588e2fa6d0	cb588e2fa6d09f71	skip	library: libc++ std::vector/std::unordered_map instantiation
+sub_cb5cabaf4f17#4	cb5cabaf4f174094	skip	generated: Qt slot-object impl (template-generated) (same code as sub_cb5cabaf4f17#5)
 sub_cb5cabaf4f17#5	cb5cabaf4f174094	skip	generated: Qt slot-object impl (template-generated)
 sub_cb6334b3fe7a	cb6334b3fe7a5519	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::selectedItemText
 sub_cb8460cdbe76	cb8460cdbe76c9e0	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::TQMLItemSlotData
@@ -9520,6 +9839,7 @@ sub_ce35d433dbf0	ce35d433dbf033ca	ported	gamewindow/characterinfomodels.cpp:TCha
 sub_ce3738259089	ce37382590893419	skip	generated: compiler-generated destructor / move-assignment of store records
 sub_ce48893adc8e	ce48893adc8e4ec1	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setSortOrder
 sub_ce5c04cfb965	ce5c04cfb9651c87	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::openAddGroupDialog
+sub_ce653534cde6	ce653534cde6694f	skip	library: std::map pair-table constructor (template) for a misattributed static enum-table (same code as sub_ce653534cde6#10)
 sub_ce653534cde6#10	ce653534cde6694f	skip	library: std::map pair-table constructor (template) for a misattributed static enum-table initializer
 sub_ce653534cde6#11	ce653534cde6694f	skip	library: std::map pair-table constructor (template) for a misattributed static enum-table initializer
 sub_ce653534cde6#12	ce653534cde6694f	skip	library: std::map pair-table constructor (template) for a misattributed static enum-table initializer
@@ -9652,6 +9972,7 @@ sub_d209eea12e5f	d209eea12e5ff2d3	skip	library: SFML/miniaudio library helper, o
 sub_d2330eb395f3	d2330eb395f338d5	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::grabScreenshot
 sub_d2342c5dae7a	d2342c5dae7aecc4	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::TPremiumPanelController
 sub_d2350e02f41d	d2350e02f41dda82	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoWest
+sub_d23831de0bd1	d23831de0bd1e5d4	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_d268cc983dfc	d268cc983dfc12ba	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_d268cc983dfc#2	d268cc983dfc12ba	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_d26a7877ad78#2	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v118
@@ -9660,7 +9981,9 @@ sub_d26efff74c39	d26efff74c391fbc	skip	library: std::vector copy / growth of sto
 sub_d282a3586d0b	d282a3586d0b9a10	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_d2ae978b071a	d2ae978b071aa38a	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_d2c47e0c91f4	d2c47e0c91f464bc	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::sendSelection
+sub_d2cdb6947ae2#12	d2cdb6947ae25aa4	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia (same code as sub_d2cdb6947ae2#19)
 sub_d2cdb6947ae2#19	d2cdb6947ae25aa4	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
+sub_d2cdb6947ae2#2	d2cdb6947ae25aa4	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia (same code as sub_d2cdb6947ae2#19)
 sub_d2cdb6947ae2#24	d2cdb6947ae25aa4	skip	generated: moc-generated signal emitter
 sub_d2cdb6947ae2#25	d2cdb6947ae25aa4	skip	generated: moc-generated signal emitter
 sub_d2cdb6947ae2#8	d2cdb6947ae25aa4	skip	generated: moc-generated signal
@@ -9751,12 +10074,16 @@ sub_d7a43e15cf23#2	d7a43e15cf234193	skip	library: boost::bimap / std::map templa
 sub_d7a700555660#11	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#12	d7a700555660c3f0	skip	generated: moc-generated signal
 sub_d7a700555660#15	d7a700555660c3f0	skip	generated: moc-generated signal emitter
+sub_d7a700555660#18	d7a700555660c3f0	skip	generated: moc-generated signal emitter (same code as sub_d7a700555660#11)
+sub_d7a700555660#19	d7a700555660c3f0	skip	generated: moc-generated signal emitter (same code as sub_d7a700555660#11)
+sub_d7a700555660#20	d7a700555660c3f0	skip	generated: moc-generated signal emitter (same code as sub_d7a700555660#11)
 sub_d7a700555660#3	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#32	d7a700555660c3f0	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
 sub_d7a700555660#34	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#36	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#37	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#4	d7a700555660c3f0	skip	generated: moc-generated signal emitter
+sub_d7a700555660#43	d7a700555660c3f0	skip	generated: moc-generated signal emitter (same code as sub_d7a700555660#11)
 sub_d7a700555660#52	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#53	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a7a0f965b9#4	d7a7a0f965b9294c	skip	generated: compiler-generated Qt slot-object thunk
@@ -10263,6 +10590,7 @@ sub_e4b3e0f02f66	e4b3e0f02f66c814	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_e4ba7e01b69d	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e4ba7e01b69d#2	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e4ba7e01b69d#3	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e4d07b9a9d88	e4d07b9a9d886186	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_e4eb97571195	e4eb9757119559ad	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_e4f1687e00b7#2	e4f1687e00b75d84	skip	generated: moc property getter (generated in cip_gen)
 sub_e4f1687e00b7#7	e4f1687e00b75d84	inlined	gamewindow/marketcontroller.cpp:detailsText
@@ -10409,6 +10737,7 @@ sub_ea40db17ce27	ea40db17ce27c123	inlined	worldmap/worldmapfield.cpp:isClip
 sub_ea44fac36211	ea44fac362117433	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::insert
 sub_ea5651483124	ea56514831249493	ported	config/optionspages.cpp:percentOf
 sub_ea6ca3c9c7b5	ea6ca3c9c7b5127e	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
+sub_ea84634f38cd	ea84634f38cdd7b0	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_ea86edb7e646	ea86edb7e6464b07	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::applyButtonClicked
 sub_ea9169787e20	ea9169787e2045be	ported	config/optionspages.cpp:applyBindings
 sub_ea9b1c4ce8d8#10	ea9b1c4ce8d82000	inlined	protocol::TProtobufServerMessageTranslator::v199
@@ -10479,6 +10808,8 @@ sub_edec52f5db44#16	edec52f5db4466ec	skip	generated: Qt slot-object impl (templa
 sub_edec52f5db44#17	edec52f5db4466ec	skip	generated: compiler-generated Qt slot-object thunk
 sub_edec52f5db44#18	edec52f5db4466ec	skip	generated: Qt slot-object impl (template-generated)
 sub_edec52f5db44#19	edec52f5db4466ec	skip	generated: Qt-generated slot object impl
+sub_edec52f5db44#3	edec52f5db4466ec	skip	generated: Qt-generated slot object impl (same code as sub_edec52f5db44#19)
+sub_edec52f5db44#5	edec52f5db4466ec	skip	generated: Qt-generated slot object impl (same code as sub_edec52f5db44#19)
 sub_edec52f5db44#9	edec52f5db4466ec	skip	generated: Qt-generated slot object impl
 sub_edf31144e5e3	edf31144e5e3ae78	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
 sub_ee03e23c5732#3	ee03e23c57323228	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::showCharacterInfo
@@ -10647,6 +10978,7 @@ sub_f487a675f527#2	f487a675f5270cf1	skip	generated: moc-generated signal emitter
 sub_f49c21ec846f#2	f49c21ec846f1a93	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
 sub_f4a4ae25aa93	f4a4ae25aa93270c	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onProficiencyDataChanged
 sub_f4bc13d8b90d	f4bc13d8b90dbb2e	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::addEntry
+sub_f4c39118ecc5	f4c39118ecc5fa8f	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_f4d2f95c4378	f4d2f95c43784281	ported	questlog/questlogciptypes.cpp:TQuestFlag::TQuestFlag
 sub_f4d2f95c4378#2	f4d2f95c43784281	ported	questlog/questlogciptypes.cpp:TQuestFlag::TQuestFlag
 sub_f4d768abf0ad	f4d768abf0ad4fcb	skip	library: std::map pair-table constructor (template) for a misattributed static enum-table initializer
@@ -10681,8 +11013,10 @@ sub_f732fe1f7ae4	f732fe1f7ae47917	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_f738befdb20a	f738befdb20aed13	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_f7442f91aefd#22	f7442f91aefd2ca1	skip	library: boost::bimap / std::map template instantiation
 sub_f7442f91aefd#23	f7442f91aefd2ca1	skip	library: std::deque / std::variant library code
+sub_f7442f91aefd#24	f7442f91aefd2ca1	skip	library: boost::bimap / std::map template instantiation (same code as sub_f7442f91aefd#22)
 sub_f7442f91aefd#25	f7442f91aefd2ca1	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_f7442f91aefd#26	f7442f91aefd2ca1	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
+sub_f7442f91aefd#32	f7442f91aefd2ca1	skip	library: boost::bimap / std::map template instantiation (same code as sub_f7442f91aefd#22)
 sub_f7442f91aefd#4	f7442f91aefd2ca1	skip	library: std::deque internals (library)
 sub_f7442f91aefd#6	f7442f91aefd2ca1	skip	library: libc++ vector/deque internals (library)
 sub_f7452b50af70	f7452b50af702d26	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::updateEvents
@@ -10758,6 +11092,7 @@ sub_fa8aceb6ca8a	fa8aceb6ca8a7e74	ported	gamewindow/calendardialogcontroller.cpp
 sub_fa8c6052719d	fa8c6052719dd2f9	tested	game/experiencecalculator.cpp:TExperienceCalculator::TExperienceCalculator	test=tests/client/experiencecalculator_test.cpp
 sub_fa922098505c	fa922098505c7b68	ported	gamewindow/appearancetypelistmodel.h:TAppearanceTypeListModelSortFilterProxy::filter
 sub_faa2b478c21a	faa2b478c21a051d	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::sendOfferViewedEvents
+sub_faaadfc7d891	faaadfc7d8913d91	skip	generated: Qt slot-object impl (template-generated) (same code as sub_faaadfc7d891#4)
 sub_faaadfc7d891#4	faaadfc7d8913d91	skip	generated: Qt slot-object impl (template-generated)
 sub_faaadfc7d891#6	faaadfc7d8913d91	skip	generated: Qt slot-object impl (template-generated)
 sub_fae2bd72e52a	fae2bd72e52a4ed7	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage
@@ -10829,6 +11164,7 @@ sub_fecd546d6821	fecd546d682193cc	ported	gamewindow/battlelistcontroller.cpp:TBa
 sub_fee153f80f69	fee153f80f69c508	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setFilter
 sub_fefa1cf921f3	fefa1cf921f3dc7a	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
 sub_fefa1cf921f3#2	fefa1cf921f3dc7a	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
+sub_ff02967f37b4	ff02967f37b4d456	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_ff0393536c90	ff0393536c908929	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_ff144ff8f6b6	ff144ff8f6b69c36	inlined	chat/chatchannel.cpp:TChatChannelIdentifier::sameChannel
 sub_ff198b033e35	ff198b033e35dd95	inlined	protocol::TProtobufClientMessageTranslator::v3
