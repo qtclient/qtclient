@@ -232,3 +232,29 @@ if(TARGET qtclient_shared)
     include(GoogleTest)
     gtest_discover_tests(client_sharednet_tests)
 endif()
+
+# CIP sound players (TSoundPlayer, TSoundPlayerManager, TActiveSoundPlayer,
+# TPlayableSound) over a silent audio source.
+if(Qt6_FOUND AND TARGET tibia)
+    set(_snd ${CMAKE_SOURCE_DIR}/client/tibia/sound)
+    add_executable(client_soundplayer_tests
+        soundplayer_test.cpp
+        ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_07.h
+        ${_snd}/audiobackend.h
+        ${_snd}/soundmetadatamanager.h
+        ${_snd}/sounddecompressorthreadpool.h
+        ${_snd}/soundmanager.cpp ${_snd}/soundmanager.h
+        ${_snd}/soundplayer.cpp ${_snd}/soundplayer.h
+        ${_snd}/soundplayermanager.cpp ${_snd}/soundplayermanager.h
+        ${_snd}/activesoundplayer.cpp ${_snd}/activesoundplayer.h)
+    set_target_properties(client_soundplayer_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_include_directories(client_soundplayer_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>)
+    target_link_libraries(client_soundplayer_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui)
+    target_compile_definitions(client_soundplayer_tests PRIVATE $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>)
+    add_dependencies(client_soundplayer_tests cip_codegen_tibia)
+    gtest_discover_tests(client_soundplayer_tests)
+endif()
