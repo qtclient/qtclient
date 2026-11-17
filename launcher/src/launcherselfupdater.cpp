@@ -59,7 +59,18 @@ bool TLauncherSelfUpdater::isUpToDate(const TPackage* launcherPackage) const
     // Without a published version the launcher counts as up to date.
     if (!configuration)
         return true;
-    return configuration->packageVersion() == launcherVersion();
+    if (configuration->packageVersion() == launcherVersion())
+        return true;
+    // Host: CipSoft stamps the binary with its package version; our package
+    // version is the release stamp, set after the build. The launcher package
+    // directory is this launcher's own directory, so its complete marker
+    // (package.json.version, written when the package finished installing)
+    // names the version running now. The partial marker does not count: an
+    // interrupted update leaves it at the target version.
+    QFile marker(TLauncherFilesystemHelper::packageDirectory(*launcherPackage).filePath(
+        TLauncherFilesystemHelper::packageMarkerFileName()));
+    return marker.open(QIODevice::ReadOnly)
+           && QString::fromUtf8(marker.readAll()).trimmed() == configuration->packageVersion();
 }
 
 void TLauncherSelfUpdater::update(const std::shared_ptr<TPackage>& launcherPackage)

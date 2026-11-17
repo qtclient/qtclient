@@ -22,11 +22,11 @@ Binary users: download a release tarball, run `./launcher` with a demo tip or `.
 ## Toolchain
 
 **Prerequisites:** `VCPKG_ROOT`, CMake, Ninja, and Qt from `make qt` (add
-`WASM=1` for the browser OS). That builds CipSoft’s public
-[Qt5](https://github.com/CipSoft-Tibia/Qt5) tree (`third_party/qt5-cip`) or
-pulls a warm prefix from `ghcr.io/qtclient/qt`
-(needs [oras](https://oras.land) for pulls). First local build without an
-artifact compiles Qt (large/slow).
+`WASM=1` for the browser OS). That pulls the prebuilt kits of
+[qtclient/Qt5](https://github.com/qtclient/Qt5) (our fork of CipSoft’s
+[Qt5](https://github.com/CipSoft-Tibia/Qt5), `third_party/qt5-cip`) from
+`ghcr.io/qtclient/qt5` (needs [oras](https://oras.land)) or its releases. Qt is
+never compiled here; qtclient/Qt5 builds a kit set for each of its commits.
 
 C++ libraries come from the vcpkg manifest (`vcpkg.json`, Crystal-aligned
 baseline). Qt is never a vcpkg port. LegacyControls QML is carved by

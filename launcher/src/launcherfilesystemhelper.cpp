@@ -112,6 +112,11 @@ QJsonObject hostSettingsDefaults()
         urls.insert(QStringLiteral("releaseManifest"), cdn + QStringLiteral("/latest/release.json"));
     if (hostUseContentStore(cdn) && !urls.contains(QStringLiteral("contentStore")))
         urls.insert(QStringLiteral("contentStore"), cdn + QStringLiteral("/content"));
+    // The browser host pins the hardware survey to the page origin (a stamped
+    // site on another host is cross-origin there), as it does for login.
+    const QString survey = qEnvironmentVariable("QTCLIENT_SYSTEM_SURVEY_URL");
+    if (!survey.isEmpty())
+        urls.insert(QStringLiteral("systemSurvey"), survey);
     defaults.insert(kGroupUrls, urls);
     return defaults;
 }
@@ -255,7 +260,7 @@ void TLauncherFilesystemHelper::repairMacFrameworkVersions(const QDir& bundle)
 #ifdef Q_OS_MACOS
     // Packages ship file lists without symlinks: Qt frameworks need
     // Versions/Current plus the top-level Resources / Headers / binary links.
-    // The package directory is the bundle, or holds it (IdleOT.app/qtclient.app).
+    // The package directory is the bundle (CipSoft: packages/Tibia.app).
     for (const QFileInfo& nested : bundle.entryInfoList({QStringLiteral("*.app")}, QDir::Dirs | QDir::NoDotAndDotDot))
         repairMacFrameworkVersions(QDir(nested.absoluteFilePath()));
     const QDir frameworks(bundle.filePath(QStringLiteral("Contents/Frameworks")));

@@ -365,7 +365,7 @@ std::vector<TGpuInformation> TSystemSurveyValueRetriever::parseDisplaysDataType(
 std::vector<TGpuInformation> TSystemSurveyValueRetriever::getGpuInformation() const
 {
     QByteArray output;
-#if QT_CONFIG(process)
+#if QT_CONFIG(process) // Host: no processes on the web.
     QProcess process;
     process.start(QStringLiteral("system_profiler"),
                   {QStringLiteral("SPDisplaysDataType"), QStringLiteral("-xml")}, QIODevice::ReadWrite);

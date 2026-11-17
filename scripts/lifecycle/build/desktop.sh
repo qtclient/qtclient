@@ -159,11 +159,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   esac
 
   BUILD_DIR="$OTC/build/tibia-wasm"
-  # Fixed heap (no growth). 1536MB: tip appearances+RCC+ThingTypes+login QML
-  # (1024MB still OOB'd under IdleOT pack + login-mask traffic).
-  WASM_INITIAL_MEMORY="${WASM_INITIAL_MEMORY:-1610612736}"
   echo "[tibia] wasm qt=$QT_WASM emsdk=$EMSDK_DIR type=$BUILD_TYPE vcpkg=$VCPKG_ROOT"
-  echo "[tibia] INITIAL_MEMORY=$WASM_INITIAL_MEMORY"
 
   mkdir -p "$BUILD_DIR"
 
@@ -201,7 +197,6 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DCMAKE_CXX_STANDARD=20
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
     -DTIBIA_WASM_GRAPHICS_RCC="$RCC"
-    -DWASM_INITIAL_MEMORY="$WASM_INITIAL_MEMORY"
     -DWASM_USE_WASM_EXCEPTIONS=ON
     -DOPTIONS_ENABLE_CCACHE=ON
     "$_mods_cmake"
@@ -297,7 +292,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   NOTES="$BUILD_DIR/tibia-wasm-size.txt"
   {
     echo "tibia wasm artifact sizes ($(date -u +%Y-%m-%dT%H:%MZ))"
-    echo "BUILD_TYPE=$BUILD_TYPE INITIAL_MEMORY=$WASM_INITIAL_MEMORY"
+    echo "BUILD_TYPE=$BUILD_TYPE (heap: client/tibia QT_WASM_INITIAL_MEMORY)"
     echo "EXCEPTIONS=wasm-EH+JSPI (Qt -feature-wasm-exceptions -feature-wasm-jspi)"
     echo "VCPKG_BASELINE=$(python3 -c 'import json;print(json.load(open("'"$OTC"'/vcpkg.json")).get("builtin-baseline","")[:12])' 2>/dev/null || echo unknown)"
     for f in tibia.html tibia.js tibia.wasm tibia.data qtloader.js; do

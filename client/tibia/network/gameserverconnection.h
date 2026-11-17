@@ -13,7 +13,8 @@
 #include <unordered_set>
 
 #if defined(Q_OS_WASM)
-#include <emscripten/websocket.h>
+#include <QUrl>
+#include <QWebSocket>
 #else
 #include <QTcpSocket>
 #include <QThread>
@@ -56,6 +57,12 @@ bool decryptGameXtea1405(const std::array<uint32_t, 4>& key, QByteArray& body);
 /// Secondary socket hands an already-decrypted precursor (post-XTEA, pre-inflate)
 /// to the primary connection so both sockets share one parser.
 void deliverSecondaryDecrypted(uint32_t sequenceWord, QByteArray precursor);
+
+#if defined(Q_OS_WASM)
+/// The game server's WebSocket URL: ws:// for loopback / LAN hosts, else wss://
+/// when the page is https (or the port is 443 / a Cloudflare tunnel).
+QUrl gameWebSocketUrl(const QString& host, uint16_t port);
+#endif
 
 /// Installs the login RSA key (Crystal's modulus) into loginRsaHelper().
 void installGameServerConnection();
@@ -129,8 +136,8 @@ private:
 
 #if defined(Q_OS_WASM)
     void openWebSocket();
-    QString webSocketUrl() const;
-    EMSCRIPTEN_WEBSOCKET_T m_websocket = 0;
+    void closeWebSocket();
+    QWebSocket* m_websocket = nullptr;
     bool m_wsConnected = false;
 #else
     QThread* m_thread = nullptr;

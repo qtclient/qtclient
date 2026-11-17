@@ -49,10 +49,11 @@ QString cipResourcesDir();
 
 /// CIP assets directory (contains catalog-content.json).
 ///
-/// Single layout for desktop + wasm: resolve Cip Resources
-/// (`applicationDirPath()/../Resources`, AppData qtclient
-/// `packages/<TIBIA_CLIENT_PACKAGE_DIR>/Contents/Resources`, or monorepo
-/// `workDir/data`), register it as the search root, return short name `assets/`.
+/// CipSoft's rule on every platform: Resources = applicationDirPath/.. plus
+/// `Resources` when it exists (macOS `Contents/Resources`, Linux/Windows//play
+/// the package root next to `bin/`), or the monorepo `workDir/data` when the
+/// build runs outside a package. Registers it as the search root and returns
+/// the short name `assets/`.
 std::string assetsRoot(int version);
 
 /// CIP sounds directory — sibling `sounds/` under the same Resources search root.

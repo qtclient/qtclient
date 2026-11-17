@@ -1,8 +1,7 @@
 #if defined(__EMSCRIPTEN__)
 
-// WasmFS backend: /home/web_user is the origin's OPFS, served by the portal's
-// qtclient-fs Worker (qtc-aac apps/web/src/routes/play/qtclient-fs-worker).
-// The Worker is the only OPFS client; the portal reaches it via qtclient-fs/bridge.ts.
+// WasmFS backend: /home/web_user is the origin's OPFS, served by the engine's
+// own qtclient-fs Worker (browser/qtclient-fs.js, started at mount).
 //
 // Every native file API (QFile, QSaveFile, QSettings, QLockFile, fopen,
 // std::filesystem) reaches OPFS through plain POSIX calls, exactly as on
@@ -17,19 +16,20 @@
 // (FileSystemHandle lookups, createSyncAccessHandle, removeEntry, move, …).
 //
 // Transport: a request block in this module's (shared) heap. Each calling
-// thread owns one slot: it writes op + args, sets state=1 and rings the bell;
-// the Worker sets state=3 with the results, then wakes the caller (futex
-// notify for a pthread, a `main-done` message for the main thread). Wake-ups
-// to and from the main thread are messages: Safari does not run an
-// Atomics.waitAsync resolution until some other task arrives.
+// thread owns one slot: it writes op + args, sets state=1 and rings the
+// Worker (a `ring` message from the main thread, a BroadcastChannel message
+// from a pthread); the Worker sets state=3 with the results, then wakes the
+// caller (a `main-done` message for the main thread, a futex notify for a
+// pthread). Every wake-up of an event loop is a message: Safari does not run
+// an Atomics.waitAsync resolution until some other task arrives.
 //  - sync ops (I/O on an open access handle, bookkeeping) never need the main
 //    thread: the main thread spins on them (bounded) before suspending.
 //  - async ops (lookups, create, list, remove, move, open) need a free main
 //    thread in Safari: the main thread suspends (JSPI) until they finish.
 //  Pthreads block in futex_wait either way.
-// Contract with browser/jspi-runtime.js: the main thread only suspends inside
-// its own activation; a file op from a raw JS→wasm re-entry while main is
-// suspended aborts with both stacks.
+// The main thread only suspends inside its own activation: every browser event
+// reaches wasm through Qt's QWasmSuspendResumeControl (network and WebSockets
+// included, in the qtclient/Qt5 fork), never as a raw JS-to-wasm call.
 
 #include "qtclient_opfs_backend.h"
 
@@ -61,8 +61,6 @@ extern "C" int wasmfs_create_directory(const char* path, mode_t mode, backend_t 
 
 namespace {
 
-// Must match the Worker's PROTOCOL and bridge.ts QTCLIENT_FS_PROTOCOL.
-constexpr int32_t kProtocol = 5;
 constexpr int kSlots = 64;
 // Longest a main-thread sync op spins before it suspends instead. Sync ops
 // complete in microseconds unless the Worker is mid-way through other work.
@@ -113,7 +111,8 @@ struct alignas(8) Slot {
 };
 
 struct alignas(8) Control {
-    std::atomic<int32_t> bell;
+    // Ring channel id (BroadcastChannel `qtclient-fs-<id>`), set at start.
+    int32_t channel;
     Slot slots[kSlots];
 };
 
@@ -157,29 +156,17 @@ int slotForThisThread()
     }
 }
 
-EM_JS(void, qtclientFsRequireMainActivation, (int op), {
-    var jspi = Module.qtclientJspi;
-    if (!jspi)
-        abort('qtclient-fs: browser/jspi-runtime.js post-js is not linked');
-    if (jspi.parked > 0) {
-        var msg = 'qtclient-fs op ' + op +
-                  ' called from a JS→wasm re-entry while main is suspended. ' +
-                  'Route that callback through the Qt event loop (browser/jspi-runtime.js).';
-        err(msg + '\n' + new Error().stack);
-        abort(msg);
-    }
-});
-
-// Ring the Worker's bell. The Worker sleeps in Atomics.waitAsync on it, but
-// Safari leaves a waitAsync resolution queued until some other task wakes the
-// Worker's event loop (seconds when /play is otherwise idle). So the main
-// thread also posts a `ring` message — a task, served at once. A pthread
-// cannot reach the Worker object; Atomics.notify is its ring.
-EM_JS(void, qtclientFsRing, (int32_t* bell, int fromMain), {
-    Atomics.add(HEAP32, bell >> 2, 1);
-    Atomics.notify(HEAP32, bell >> 2);
-    if (fromMain)
+// Wake the Worker for a posted request. The main thread holds the Worker
+// object; a pthread cannot reach it, so it rings the Worker's BroadcastChannel
+// (opened once per thread).
+EM_JS(void, qtclientFsRing, (const int32_t* channel, int fromMain), {
+    if (fromMain) {
         Module.qtclientFs.ring();
+        return;
+    }
+    if (!globalThis.qtclientFsRingChannel)
+        globalThis.qtclientFsRingChannel = new BroadcastChannel('qtclient-fs-' + HEAP32[channel >> 2]);
+    globalThis.qtclientFsRingChannel.postMessage(0);
 });
 
 // Main thread: wait without blocking the browser's event loop. The worker
@@ -205,8 +192,6 @@ uint32_t g_mainCalls;
 Result call(Op op, std::initializer_list<double> args)
 {
     const bool main = emscripten_is_main_browser_thread();
-    if (main)
-        qtclientFsRequireMainActivation(op);
     const double started = main ? emscripten_get_now() : 0;
     Slot& slot = g_control.slots[slotForThisThread()];
     slot.op = op;
@@ -214,7 +199,7 @@ Result call(Op op, std::initializer_list<double> args)
     for (double a : args)
         slot.args[i++] = a;
     slot.state.store(Posted);
-    qtclientFsRing(reinterpret_cast<int32_t*>(&g_control.bell), main);
+    qtclientFsRing(&g_control.channel, main);
 
     if (!main) {
         for (int32_t s; (s = slot.state.load()) != Done;)
@@ -454,38 +439,34 @@ public:
     std::shared_ptr<Symlink> createSymlink(std::string) override { return nullptr; }
 };
 
-// Layout + errno table for the Worker, in this order (see attach below).
-int32_t g_attachInfo[] = {
+// Layout + errno table for the Worker, in this order (see qtclientFsStart).
+int32_t g_startInfo[] = {
     // layout (byte offsets)
-    0, 0, sizeof(Slot), kSlots,
+    0, sizeof(Slot), kSlots,
     offsetof(Slot, state), offsetof(Slot, op), offsetof(Slot, args), offsetof(Slot, r0), offsetof(Slot, r1),
     // errno (Emscripten / WASI numbering)
     ENOENT, EIO, EBADF, EACCES, EBUSY, EEXIST, ENOTDIR, EISDIR, EINVAL, ENOSPC, ERANGE, ENOTEMPTY, ENOSYS,
+    EMFILE,
 };
 
-// 0 = ok; otherwise a message has been logged.
-EM_ASYNC_JS(int, qtclientFsAttach, (const int32_t* info), {
-    var fs = Module.qtclientFs;
-    if (!fs || typeof fs.attachWasm !== 'function') {
-        err('qtclient-fs: Module.qtclientFs is missing — the portal must provide it before callMain');
-        return 1;
-    }
-    if (fs.protocol !== 5) {
-        err('qtclient-fs: portal protocol ' + fs.protocol + ' != wasm 5 — portal and engine tip are out of sync');
-        return 1;
-    }
+// Start the engine's qtclient-fs Worker (browser/qtclient-fs.js) on this
+// module's memory. 0 = ok; otherwise a message has been logged.
+EM_ASYNC_JS(int, qtclientFsStart, (const int32_t* info, int32_t* channel), {
     var v = function (k) { return HEAP32[(info >> 2) + k]; };
     var layout = {
-        bell: v(0), slots: v(1), stride: v(2), count: v(3),
-        state: v(4), op: v(5), args: v(6), r0: v(7), r1: v(8),
+        slots: v(0), stride: v(1), count: v(2),
+        state: v(3), op: v(4), args: v(5), r0: v(6), r1: v(7),
     };
-    var names = ['NOENT', 'IO', 'BADF', 'ACCES', 'BUSY', 'EXIST', 'NOTDIR', 'ISDIR', 'INVAL', 'NOSPC', 'RANGE', 'NOTEMPTY', 'NOSYS'];
+    var names = ['NOENT', 'IO', 'BADF', 'ACCES', 'BUSY', 'EXIST', 'NOTDIR', 'ISDIR', 'INVAL', 'NOSPC', 'RANGE', 'NOTEMPTY', 'NOSYS', 'MFILE'];
     var errno = {};
-    names.forEach(function (n, k) { errno[n] = v(9 + k); });
+    names.forEach(function (n, k) { errno[n] = v(8 + k); });
+    // Per-mount ring channel name, readable by pthreads from the request block.
+    var id = (Math.random() * 0x7fffffff) | 0;
+    HEAP32[channel >> 2] = id;
     try {
-        await fs.attachWasm(wasmMemory, layout, errno);
+        await Module.qtclientFs.start(layout, errno, 'qtclient-fs-' + id);
     } catch (e) {
-        err('qtclient-fs: attach failed: ' + (e && e.message || e));
+        err('qtclient-fs: ' + (e && e.message || e));
         return 1;
     }
     return 0;
@@ -515,11 +496,10 @@ extern "C" EMSCRIPTEN_KEEPALIVE void qtclient_fs_stats_publish()
 bool qtclientMountOpfs()
 {
     static_assert(sizeof(Control) % 8 == 0);
-    g_attachInfo[0] = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&g_control.bell));
-    g_attachInfo[1] = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&g_control.slots[0]));
-    // The Worker reads state/bell through an Int32Array view.
+    g_startInfo[0] = static_cast<int32_t>(reinterpret_cast<uintptr_t>(&g_control.slots[0]));
+    // The Worker reads slot states through an Int32Array view.
     static_assert(sizeof(std::atomic<int32_t>) == 4);
-    if (qtclientFsAttach(g_attachInfo) != 0)
+    if (qtclientFsStart(g_startInfo, &g_control.channel) != 0)
         return false;
 
     const backend_t backend = wasmFS.addBackend(std::make_unique<OpfsBackend>());
@@ -527,13 +507,6 @@ bool qtclientMountOpfs()
         return false;
     if (wasmfs_create_directory("/home/web_user", 0777, backend) != 0) {
         emscripten_console_errorf("qtclient-fs: mounting /home/web_user failed: %s", strerror(errno));
-        return false;
-    }
-    // Tip packs live at OPFS mods/ (next to the binary's dir "/" on desktop).
-    if (!mkdirIfMissing("/home/web_user/mods"))
-        return false;
-    if (symlink("/home/web_user/mods", "/mods") != 0) {
-        emscripten_console_errorf("qtclient-fs: linking /mods failed: %s", strerror(errno));
         return false;
     }
     EM_ASM({ Module.qtclientFsMounted = 1; });

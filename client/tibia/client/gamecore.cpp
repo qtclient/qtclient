@@ -21,17 +21,12 @@
 #include <QJsonDocument>
 #include <QMetaObject>
 #include <QObject>
-#include <QStandardPaths>
 
 #include <csignal>
 #include <map>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/gameservergamesession.h>
 #include <tibia/game/tgamenotify.h>
-
-#ifndef TIBIA_CLIENT_PACKAGE_DIR
-#define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
-#endif
 
 namespace tibia::client::gamecore {
 
@@ -188,69 +183,36 @@ void setClientVersion(const int version)
 
 namespace {
 
-/// CipSoft `TTibiaFileSystemHelper` / :
-/// QDir(applicationDirPath); cdUp; cd("./Resources");
-/// Same as `applicationDirPath../Resources`. Package trees use
-/// `Contents/Resources` (macOS) or `Resources` (win/linux) under the install root.
+/// CipSoft `TTibiaFileSystemHelper` resources directory: QDir(applicationDirPath);
+/// cdUp; cd("./Resources"). QDir::cd leaves the directory unchanged when there is
+/// no Resources, so the same rule gives `Contents/Resources` on macOS
+/// (`Contents/MacOS/..`) and the package root on Linux, Windows and /play
+/// (`bin/..`). See docs/reverse-engineering/cip-package-layout.md.
+QString cipResourcesDirectory()
+{
+    QDir directory(QCoreApplication::applicationDirPath());
+    directory.cdUp();
+    directory.cd(QStringLiteral("./Resources"));
+    return directory.absolutePath();
+}
+
 bool catalogAt(const QString& assetsDir)
 {
     return QFileInfo::exists(QDir(assetsDir).filePath(QStringLiteral("catalog-content.json")));
 }
 
-bool resourcesDirUsable(const QString& cand)
-{
-    if (cand.isEmpty())
-        return false;
-    // Catalog only — never accept a bare existing dir (an empty
-    // `applicationDirPath../Resources` must not win over the AppData package).
-    return catalogAt(QDir(cand).filePath(QStringLiteral("assets")));
-}
-
-bool tryPackageResources(const QString& appData, QString* out)
-{
-    if (appData.isEmpty() || !out)
-        return false;
-    // Stock host compiles TIBIA_CLIENT_PACKAGE_DIR=Tibia.app; IdleOT qtclient
-    // directoryname is IdleOT.app (portal PACKAGE_CLIENT). Probe both.
-    const char* packageNames[] = {
-        TIBIA_CLIENT_PACKAGE_DIR,
-        "IdleOT.app",
-    };
-    for (const char* packageName : packageNames) {
-        const QString packageResources = QDir(appData).filePath(
-            QLatin1String("packages/") + QLatin1String(packageName)
-            + QLatin1String("/Contents/Resources"));
-        if (resourcesDirUsable(packageResources)) {
-            *out = QDir(packageResources).absolutePath();
-            return true;
-        }
-    }
-    return false;
-}
-
 QString resolveCipResourcesDir()
 {
-    // One Cip Resources layout everywhere — only the install root differs:
-    // bundled app, AppData qtclient package, or monorepo extract (`data/` == Resources).
-    const QString appDir = QCoreApplication::applicationDirPath();
-    if (!appDir.isEmpty()) {
-        const QString viaApp = QDir(QDir(appDir).absoluteFilePath(QStringLiteral("..")))
-                                   .filePath(QStringLiteral("Resources"));
-        if (resourcesDirUsable(viaApp))
-            return QDir(viaApp).absolutePath();
-    }
+    const QString resources = cipResourcesDirectory();
+    if (catalogAt(QDir(resources).filePath(QStringLiteral("assets"))))
+        return resources;
 
-    QString found;
-    const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (tryPackageResources(appData, &found))
-        return found;
-
+    // Host: a monorepo build runs outside any package; apps/qtclient/data is the
+    // CipSoft Resources tree there (`make extract`: assets/ + sounds/).
     QString work = QString::fromStdString(tibia::files::data().getWorkDir());
     while (work.endsWith(QLatin1Char('/')) || work.endsWith(QLatin1Char('\\')))
         work.chop(1);
     if (!work.isEmpty()) {
-        // Monorepo local: apps/qtclient/data is the CipSoft Resources tree
-        // (assets/ + sounds/ siblings) when the app-bundle symlink is missing.
         const QString dataResources = QDir(work).filePath(QStringLiteral("data"));
         if (catalogAt(QDir(dataResources).filePath(QStringLiteral("assets"))))
             return QDir(dataResources).absolutePath();

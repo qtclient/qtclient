@@ -67,7 +67,7 @@ ln -s ~/my-mod client/mods/my_mod
 
 ## CI artifacts
 
-- **CIP Qt prefixes:** `ghcr.io/qtclient/qt:<sha12>-<kit>`
+- **CIP Qt prefixes:** `ghcr.io/qtclient/qt5:<sha12>-<kit>`
 - **ccache** from stock (`QTCLIENT_ENABLE_MODS=OFF`) builds
 - **launcher + client + qtclient-fetch-assets** tarballs (no CIP asset blobs)
 
@@ -80,6 +80,6 @@ ln -s ~/my-mod client/mods/my_mod
 | [../mods.md](../mods.md) | Overrides + mods |
 | [AGENTS.md](AGENTS.md) | CIP-as-upstream rules |
 
-C++ deps: **vcpkg**. Qt: [CipSoft-Tibia/Qt5](https://github.com/CipSoft-Tibia/Qt5) via `make qt`.
+C++ deps: **vcpkg**. Qt: [qtclient/Qt5](https://github.com/qtclient/Qt5) (fork of CipSoft-Tibia/Qt5) kits via `make qt`.
 LegacyControls QML: `make sync` from the install plugin. C++:
 [Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5LegacyControls).

@@ -26,6 +26,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QSettings>
 #include <QGuiApplication>
 #include <QSettings>
 #include <QStandardPaths>
@@ -178,41 +179,28 @@ void saveClientWindowGeometry(QQuickWindow* window)
 
 QStringList dataDirs(const QString& explicitDir)
 {
-#ifndef TIBIA_CLIENT_PACKAGE_DIR
-#define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
-#endif
+    // CipSoft ships graphics_resources.rcc next to the executable (bin/,
+    // Contents/MacOS/) and the assets under Resources (applicationDirPath/..,
+    // plus Resources when it exists): fonts in assets/fonts.
     const QString appDir = QCoreApplication::applicationDirPath();
-    QStringList dirs{
+    QDir resources(appDir);
+    resources.cdUp();
+    resources.cd(QStringLiteral("./Resources"));
+    return {
         explicitDir,
         qEnvironmentVariable("QTCLIENT_DATA_DIR"),
+        appDir,
+        resources.absolutePath(),
+        // Host: monorepo builds run outside a package (`make extract` → data/).
         QDir::current().filePath(QStringLiteral("data")),
-        appDir + QStringLiteral("/../Resources/data"),
-        appDir + QStringLiteral("/data"),
+#ifdef __EMSCRIPTEN__
+        // Host: local wasm builds may preload the RCC (WASM_PRELOAD_GRAPHICS_RCC=1).
         QStringLiteral("/data"),
+#endif
 #ifdef TIBIA_SOURCE_DATA_DIR
         QStringLiteral(TIBIA_SOURCE_DATA_DIR),
 #endif
     };
-    // Tip package (portal OPFS / desktop AppData): RCC + fonts live under
-    // Contents/Resources/assets, not ./data. Stock host looks for Tibia.app;
-    // IdleOT qtclient directoryname is IdleOT.app — probe both (same as gamecore).
-    auto appendPackageDirs = [&dirs](const QString& appData) {
-        if (appData.isEmpty())
-            return;
-        const char* packageNames[] = {
-            TIBIA_CLIENT_PACKAGE_DIR,
-            "IdleOT.app",
-        };
-        for (const char* packageName : packageNames) {
-            const QString pkg = QDir(appData).filePath(
-                QLatin1String("packages/") + QLatin1String(packageName));
-            dirs << pkg;
-            dirs << QDir(pkg).filePath(QStringLiteral("Contents/Resources"));
-            dirs << QDir(pkg).filePath(QStringLiteral("Contents/Resources/assets"));
-        }
-    };
-    appendPackageDirs(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-    return dirs;
 }
 
 /// Compiles every CIP QML file (and override) the app ships; the count of
@@ -296,6 +284,9 @@ int main(int argc, char** argv)
     // served by the portal's qtclient-fs Worker. Mount before anything opens a file.
     if (!qtclientMountOpfs())
         qFatal("tibia.wasm: could not mount OPFS at /home/web_user (see the console)");
+    // QSettings on wasm defaults to localStorage; keep settings as ini files in
+    // OPFS (~/.config/<org>/<app>.ini), as Linux desktop does.
+    QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
     // QTCLIENT_TEST_PATHS=1 (render check, smoke runs): settings and data go to
     // Qt's test locations (~/.qttest), never the user's Application Support or

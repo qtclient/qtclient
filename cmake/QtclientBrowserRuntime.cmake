@@ -8,9 +8,11 @@
 # Safari, do not use it.
 #
 # Main-thread Qt + JSPI (no PROXY_TO_PTHREAD: it broke Emval DOM). Async OPFS
-# work suspends main; Emscripten async callbacks run on main's activation
-# through Qt's event queue. Contract: browser/jspi-runtime.js. Requires wasm
-# EH (the Qt kit's -feature-wasm-exceptions), set by each target.
+# work suspends main. Every browser event reaches wasm through Qt's
+# QWasmSuspendResumeControl — including network replies and WebSockets, which
+# the qtclient/Qt5 fork implements on fetch() / WebSocket for that — so no
+# Emscripten callback runs on the stack of a suspended main. Requires wasm EH
+# (the Qt kit's -feature-wasm-exceptions), set by each target.
 
 set(_QTCLIENT_BROWSER_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 
@@ -19,24 +21,20 @@ function(qtclient_browser_runtime target)
   target_sources(${target} PRIVATE
     "${_dir}/qtclient_opfs_backend.cpp"
     "${_dir}/qtclient_opfs_backend.h"
-    "${_dir}/jspi_main_calls.cpp"
     "${_dir}/wasm_heap_stats.cpp")
   # The WasmFS backend API (backend.h / file.h) is internal to Emscripten.
   get_filename_component(_emscripten_root "${CMAKE_C_COMPILER}" DIRECTORY)
   target_include_directories(${target} PRIVATE "${_emscripten_root}/system/lib/wasmfs")
-  target_link_libraries(${target} PRIVATE Qt6::CorePrivate)
   target_link_options(${target} PRIVATE
     "SHELL:-sWASMFS"
     # Qt qwasmsocket needs classic SOCKFS callbacks (not pulled in by WasmFS).
     "SHELL:-lsockfs.js"
     # The Qt kit with -feature-wasm-jspi adds it too; the duplicate is harmless.
     "SHELL:-sJSPI"
-    "SHELL:--post-js=${_QTCLIENT_BROWSER_ROOT}/browser/jspi-runtime.js"
+    # The engine's own OPFS Worker (started by qtclientMountOpfs).
+    "SHELL:--post-js=${_QTCLIENT_BROWSER_ROOT}/browser/qtclient-fs.js"
     # Function names for /play crash stacks (<target>.js.symbols, not published).
-    "SHELL:--emit-symbol-map"
-    # QNetworkAccessManager uses emscripten_fetch without its IndexedDB cache;
-    # opening that DB is a runDependency that can block instantiation.
-    "SHELL:-sFETCH_SUPPORT_INDEXEDDB=0")
+    "SHELL:--emit-symbol-map")
   # ENV: the portal passes QTCLIENT_* through qtLoad's environment (qtloader
   # throws when ENV is used but not exported). Pool of 1: createWasm
   # Atomics.waits on every pre-spawned Worker's script fetch, which stalls

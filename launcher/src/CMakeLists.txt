@@ -1,7 +1,4 @@
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
-if(EMSCRIPTEN)
-  find_package(Qt6 REQUIRED COMPONENTS CorePrivate)
-endif()
 
 # Launcher is added before client/tibia (which sets CMAKE_AUTOMOC for tibia).
 set(CMAKE_AUTOMOC ON)
@@ -15,38 +12,31 @@ set(TIBIA_PRODUCT_ORG "CipSoft")
 set(TIBIA_PRODUCT_BUNDLE_ID "com.tibia.launcher")
 set(TIBIA_PRODUCT_URL "https://www.tibia.com/")
 set(TIBIA_DEFAULT_CDN "")
-set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
+# CipSoft directoryname: bare; the launcher adds ".app" on macOS only.
+set(TIBIA_CLIENT_PACKAGE_DIR "Tibia")
 
-if(EMSCRIPTEN)
-  # Browser /play runs the web launcher (wasm/) until the CipSoft classes
-  # below run under WASM.
-  set(_launcher_sources
-    brand.cpp brand.h
-    wasm/main.cpp
-    wasm/legacylauncherwindow.cpp wasm/legacylauncherwindow.h
-    wasm/packageclient.cpp wasm/packageclient.h
-    unpack.cpp unpack.h)
-else()
-  set(_launcher_sources
-    brand.cpp brand.h
-    main.cpp
-    clientpackagelayoutitem.cpp clientpackagelayoutitem.h
-    cloudflarecdntrace.cpp cloudflarecdntrace.h
-    installationmanager.cpp installationmanager.h
-    launcherapplication.cpp launcherapplication.h
-    launcherconfigurationhandler.cpp launcherconfigurationhandler.h
-    launcherfilesystemhelper.cpp launcherfilesystemhelper.h
-    launchermainwindow.cpp launchermainwindow.h
-    launcherselfupdater.cpp launcherselfupdater.h
-    package.cpp package.h
-    packagefiledownloader.cpp packagefiledownloader.h
-    packageinstallation.cpp packageinstallation.h
-    systemsurvey/systemsurveyasjsondocumentcreator.cpp systemsurvey/systemsurveyasjsondocumentcreator.h
-    systemsurvey/systemsurveycreator.cpp systemsurvey/systemsurveycreator.h
-    systemsurvey/systemsurveytojsonconverter.cpp systemsurvey/systemsurveytojsonconverter.h
-    systemsurvey/systemsurveyuploader.cpp systemsurvey/systemsurveyuploader.h
-    unpack.cpp unpack.h)
-endif()
+# CipSoft's launcher classes on every platform, the browser included (/play):
+# hostprocess.cpp is the one platform seam (starting a program).
+set(_launcher_sources
+  brand.cpp brand.h
+  main.cpp
+  clientpackagelayoutitem.cpp clientpackagelayoutitem.h
+  cloudflarecdntrace.cpp cloudflarecdntrace.h
+  hostprocess.cpp hostprocess.h
+  installationmanager.cpp installationmanager.h
+  launcherapplication.cpp launcherapplication.h
+  launcherconfigurationhandler.cpp launcherconfigurationhandler.h
+  launcherfilesystemhelper.cpp launcherfilesystemhelper.h
+  launchermainwindow.cpp launchermainwindow.h
+  launcherselfupdater.cpp launcherselfupdater.h
+  package.cpp package.h
+  packagefiledownloader.cpp packagefiledownloader.h
+  packageinstallation.cpp packageinstallation.h
+  systemsurvey/systemsurveyasjsondocumentcreator.cpp systemsurvey/systemsurveyasjsondocumentcreator.h
+  systemsurvey/systemsurveycreator.cpp systemsurvey/systemsurveycreator.h
+  systemsurvey/systemsurveytojsonconverter.cpp systemsurvey/systemsurveytojsonconverter.h
+  systemsurvey/systemsurveyuploader.cpp systemsurvey/systemsurveyuploader.h
+  unpack.cpp unpack.h)
 
 qt_add_executable(launcher
   ${_launcher_sources}
@@ -92,7 +82,6 @@ endif()
 
 target_include_directories(launcher PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/wasm"
   "${CMAKE_CURRENT_SOURCE_DIR}/systemsurvey"
   "${TIBIA_ROOT}/shared/src/lzma"
   "${TIBIA_ROOT}/client/tibia"

@@ -11,7 +11,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QStandardPaths>
 
 namespace tibia::spells {
 
@@ -113,8 +112,7 @@ TSpellInfoStorage* TSpellInfoStorage::instance()
 
 /// CIP ships ``:/spells/<file>`` in the client binary. Our qtclient / local extract
 /// places the same files next to CIP assets (`data/assets/…` or
-/// ``Resources/assets/…``). Browser /play hydrates qtclient AppData
-/// ``packages/<IdleOT|Tibia>.app/Contents/Resources/assets/``.
+/// ``Resources/assets/…``), as CipSoft's package Resources does.
 QString spellsAssetPath(const QString& fileName)
 {
     const QString embedded = QStringLiteral(":/spells/") + fileName;
@@ -137,15 +135,6 @@ QString spellsAssetPath(const QString& fileName)
     const QString resources = tibia::client::gamecore::cipResourcesDir();
     if (!resources.isEmpty())
         dirs.prepend(QDir(resources).filePath(QStringLiteral("assets")));
-    // Fallback when identity/AppData differs from resolveCipResourcesDir probes.
-    const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (!appData.isEmpty()) {
-        for (const char* packageName : { "IdleOT.app", "Tibia.app" }) {
-            dirs.append(QDir(appData).filePath(
-                QLatin1String("packages/") + QLatin1String(packageName)
-                + QLatin1String("/Contents/Resources/assets")));
-        }
-    }
     for (const QString& dir : dirs) {
         if (dir.isEmpty())
             continue;

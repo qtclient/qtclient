@@ -1,52 +1,19 @@
-# Pinned Qt for the tibia app: CipSoft-Tibia/Qt5 (third_party/qt5-cip) built from
+# Pinned Qt for the tibia app: qtclient/Qt5 (fork of CipSoft-Tibia/Qt5, third_party/qt5-cip) built from
 # source. Identity is the submodule commit SHA; human label stays 6.10.3.
 #
 #   QT_ROOT          install root (default ~/Qt)
 #   QT_CIP_SHA       override submodule SHA (CI / testing)
 #   QT_EMSDK_VERSION emsdk for wasm kits (must match CIP / prior aqt pin)
-#   QT_GHCR_IMAGE    GHCR repository for warm prefixes (default ghcr.io/qtclient/qt)
+#   QT_GHCR_IMAGE    GHCR repository for warm prefixes (default ghcr.io/qtclient/qt5)
 QT_VERSION_LABEL="${QT_VERSION_LABEL:-6.10.3}"
 # Back-compat for scripts that still expand $QT_VERSION in paths/logs.
 QT_VERSION="${QT_VERSION:-$QT_VERSION_LABEL}"
 QT_EMSDK_VERSION="${QT_EMSDK_VERSION:-4.0.7}"
-QT_GHCR_IMAGE="${QT_GHCR_IMAGE:-ghcr.io/qtclient/qt}"
-
-# Modules passed to configure -skip (everything else we do not need for tibia).
-# Keep in sync with find_package(Qt6 …) in client/tibia/CMakeLists.txt.
-# Skip qtmultimedia: tibia does not link it, and a host FFmpeg (often x86_64
-# under /usr/local on Apple Silicon) breaks the arm64 link of libffmpegmediaplugin.
-QT_SKIP_MODULES="${QT_SKIP_MODULES:-qtwebengine qtwebview qtmultimedia qt3d qtcharts qtdatavis3d qtgraphs qtquick3d qtquick3dphysics qtquickeffectmaker qtquicktimeline qtlottie qtlocation qtpositioning qtsensors qtconnectivity qtserialbus qtserialport qtcoap qtmqtt qtopcua qtgrpc qthttpserver qtremoteobjects qtscxml qtspeech qtvirtualkeyboard qtwayland qtactiveqt qttools qtdoc qttranslations qtqa qtrepotools}"
-
-# Worktree dirs kept via sparse-checkout (inverse of QT_SKIP_MODULES + cmake/coin).
-# Without this, a full qt5-cip checkout is multi-GB and IDE git status times out
-# ("too many active changes") once skipped module trees are deleted.
-QT_SPARSE_MODULES="${QT_SPARSE_MODULES:-cmake coin qtbase qtsvg qtdeclarative qtimageformats qtshadertools qt5compat qtnetworkauth qtwebsockets qtwebchannel qtlanguageserver}"
+QT_GHCR_IMAGE="${QT_GHCR_IMAGE:-ghcr.io/qtclient/qt5}"
 
 _qt_here="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 _qt_otc="$(cd "$_qt_here/../.." && pwd)"
 QT_CIP_SRC="${QT_CIP_SRC:-$_qt_otc/third_party/qt5-cip}"
-
-# Cone sparse-checkout so skipped modules never populate the worktree.
-qt_cip_sparse_checkout() {
-  local src="${1:-$QT_CIP_SRC}"
-  [[ -d "$src" ]] || return 0
-  if [[ ! -d "$src/.git" && ! -f "$src/.git" ]]; then
-    return 0
-  fi
-  # Already matching — avoid rewriting sparse-checkout on every make qt.
-  if git -C "$src" sparse-checkout list >/dev/null 2>&1; then
-    local cur want
-    cur="$(git -C "$src" sparse-checkout list 2>/dev/null | tr '\n' ' ' | xargs)"
-    want="$(echo $QT_SPARSE_MODULES | tr ' ' '\n' | sort | tr '\n' ' ' | xargs)"
-    cur="$(echo "$cur" | tr ' ' '\n' | sort | tr '\n' ' ' | xargs)"
-    [[ "$cur" == "$want" ]] && return 0
-  fi
-  echo "[qt] sparse-checkout qt5-cip → $QT_SPARSE_MODULES" >&2
-  git -C "$src" sparse-checkout init --cone
-  # Word-split intentionally (module list).
-  # shellcheck disable=SC2086
-  git -C "$src" sparse-checkout set $QT_SPARSE_MODULES
-}
 
 qt_cip_sha() {
   qt_resolve_cip_sha

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Pull / push CIP Qt install prefixes as OCI artifacts on GHCR.
+# Pull the qtclient Qt kits (published by qtclient/Qt5 for each commit).
 #
-#   tools/qt/ghcr-qt.sh pull <kit-slug>   # unpack into $QT_ROOT/cip-<sha>/<dir>
-#   tools/qt/ghcr-qt.sh push <kit-slug>   # pack local prefix → ghcr.io/qtclient/qt:<sha>-<kit>
+#   tools/qt/ghcr-qt.sh pull <kit-slug>           # ghcr.io/qtclient/qt5:<sha12>-<kit>
+#   tools/qt/ghcr-qt.sh pull-release <kit-slug>   # qtclient/Qt5 release qt-<sha12>
 #
-# Requires: oras (https://oras.land). Auth: docker/oras login to ghcr.io
-# (GITHUB_TOKEN with read:packages / write:packages in CI).
-# Push requires zstd (kits are always .tar.zst).
+# Both unpack into $QT_ROOT/cip-<sha12>/<dir>. GHCR needs oras
+# (https://oras.land); kits are .tar.zst (zstd).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -17,7 +16,7 @@ QT_ROOT="$(qt_unix_path "${QT_ROOT:-$HOME/Qt}")"
 CMD="${1:-}"
 KIT="${2:-}"
 [[ -n "$CMD" && -n "$KIT" ]] || {
-  echo "usage: $0 pull|push|pull-release <kit-slug>" >&2
+  echo "usage: $0 pull|pull-release <kit-slug>" >&2
   exit 2
 }
 
@@ -36,7 +35,7 @@ need_oras() {
   }
 }
 
-# Prefer flat qt-prefix.tar.zst (current push); accept legacy nested paths.
+# Prefer flat qt-prefix.tar.zst; accept legacy nested paths.
 _find_archive() {
   local root="$1" flat
   flat="$(find "$root" -maxdepth 1 -type f \( -name 'qt-prefix.tar.zst' -o -name 'qt-prefix.tar.gz' \) | head -1)"
@@ -82,33 +81,6 @@ do_pull() {
   echo "[qt-ghcr] installed $PREFIX"
 }
 
-do_push() {
-  need_oras
-  if ! qt_prefix_has_qt6 "$PREFIX"; then
-    echo "[qt-ghcr] nothing to push at $PREFIX" >&2
-    exit 1
-  fi
-  command -v zstd >/dev/null || {
-    echo "[qt-ghcr] zstd required to push CIP Qt kits (.tar.zst only)" >&2
-    exit 1
-  }
-  local tmp archive layer_type base
-  tmp=".qt-ghcr-push-$$"
-  rm -rf "$tmp"
-  mkdir -p "$tmp"
-  archive="$tmp/qt-prefix.tar.zst"
-  echo "[qt-ghcr] packing $PREFIX"
-  tar -C "$PREFIX" -cf - . | zstd -T0 -3 -o "$archive"
-  layer_type=application/vnd.oci.image.layer.v1.tar+zstd
-  echo "[qt-ghcr] pushing $REF"
-  base="$(basename "$archive")"
-  (cd "$tmp" && oras push "$REF" \
-    --artifact-type application/vnd.qtclient.qt.prefix.v1+tar \
-    "${base}:${layer_type}")
-  rm -rf "$tmp"
-  echo "[qt-ghcr] published $REF"
-}
-
 do_pull_release() {
   local rel="qt-$SHORT" asset url tmp
   if qt_prefix_has_qt6 "$PREFIX"; then
@@ -116,14 +88,14 @@ do_pull_release() {
     return 0
   fi
   asset="qt-${TAG}.tar.zst"
-  url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
+  url="https://github.com/qtclient/Qt5/releases/download/${rel}/${asset}"
   echo "[qt-ghcr] pulling release $url"
   tmp=".qt-ghcr-rel-$$"
   rm -rf "$tmp"
   mkdir -p "$tmp"
   if ! curl -fsSL "$url" -o "$tmp/$asset"; then
     asset="qt-${TAG}.tar.gz"
-    url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
+    url="https://github.com/qtclient/Qt5/releases/download/${rel}/${asset}"
     curl -fsSL "$url" -o "$tmp/$asset" || {
       echo "[qt-ghcr] release miss: $url (published non-draft qt-* required)"
       rm -rf "$tmp"
@@ -144,7 +116,6 @@ do_pull_release() {
 
 case "$CMD" in
   pull) do_pull ;;
-  push) do_push ;;
   pull-release) do_pull_release ;;
-  *) echo "usage: $0 pull|push|pull-release <kit-slug>" >&2; exit 2 ;;
+  *) echo "usage: $0 pull|pull-release <kit-slug>" >&2; exit 2 ;;
 esac

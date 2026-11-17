@@ -13,9 +13,6 @@
 
 #include <tibia/game/gamenotify.h>
 
-#if defined(Q_OS_WASM)
-#include <emscripten.h>
-#endif
 
 Q_LOGGING_CATEGORY(lcDualConn, "tibia.dualconnection")
 
@@ -62,26 +59,6 @@ QByteArray frameModern(const QByteArray& payload, const quint32 checksum)
     return out;
 }
 
-#if defined(Q_OS_WASM)
-bool isLoopbackOrLan(const QString& host)
-{
-    if (host == QLatin1String("localhost") || host == QLatin1String("127.0.0.1")
-        || host == QLatin1String("::1") || host == QLatin1String("0.0.0.0"))
-        return true;
-    if (host.startsWith(QLatin1String("192.168.")) || host.startsWith(QLatin1String("10.")))
-        return true;
-    if (host.startsWith(QLatin1String("172."))) {
-        const QStringList parts = host.split(QLatin1Char('.'));
-        if (parts.size() >= 2) {
-            bool ok = false;
-            const int oct = parts[1].toInt(&ok);
-            if (ok && oct >= 16 && oct <= 31)
-                return true;
-        }
-    }
-    return false;
-}
-#endif
 
 }
 
@@ -157,29 +134,35 @@ void TGameserverDualConnection::checkForStateChange()
 
 bool TGameserverDualConnection::transportConnected() const
 {
-#if defined(Q_OS_WASM)
-    return m_websocket > 0 && m_wsConnected;
-#else
     return m_socket && m_socket->state() == QAbstractSocket::ConnectedState;
-#endif
 }
 
 void TGameserverDualConnection::openSecondaryIfNeeded()
 {
-#if defined(Q_OS_WASM)
-    if (m_websocket > 0)
-        return;
-#else
     if (m_socket && m_socket->state() != QAbstractSocket::UnconnectedState)
         return;
-#endif
 
     m_challengeSeen = false;
     m_xteaEnabled = false;
     m_recvBuffer.clear();
 
+    const auto onDisconnected = [this] {
+        m_pingTimer.stop();
+        m_challengeSeen = false;
+        m_xteaEnabled = false;
+        m_recvBuffer.clear();
+        Q_EMIT disconnected();
+    };
 #if defined(Q_OS_WASM)
-    openWebSocket();
+    // Browsers have no TCP: the same peer over the game WebSocket port.
+    m_socket = std::make_unique<QWebSocket>(QString(), QWebSocketProtocol::VersionLatest);
+    connect(m_socket.get(), &QWebSocket::binaryMessageReceived, this,
+            [this](const QByteArray& chunk) { onTransportBytes(chunk); });
+    connect(m_socket.get(), &QWebSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
+        Q_EMIT error(tr("secondary WebSocket error"));
+    });
+    connect(m_socket.get(), &QWebSocket::disconnected, this, onDisconnected);
+    m_socket->open(gameWebSocketUrl(m_host, static_cast<uint16_t>(m_port)));
 #else
     m_socket = std::make_unique<QTcpSocket>();
     connect(m_socket.get(), &QTcpSocket::readyRead, this, [this] {
@@ -190,104 +173,10 @@ void TGameserverDualConnection::openSecondaryIfNeeded()
     connect(m_socket.get(), &QTcpSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
         Q_EMIT error(m_socket ? m_socket->errorString() : tr("secondary connection error"));
     });
-    connect(m_socket.get(), &QTcpSocket::disconnected, this, [this] {
-        m_pingTimer.stop();
-        m_challengeSeen = false;
-        m_xteaEnabled = false;
-        m_recvBuffer.clear();
-        Q_EMIT disconnected();
-    });
-
+    connect(m_socket.get(), &QTcpSocket::disconnected, this, onDisconnected);
     m_socket->connectToHost(m_host, static_cast<quint16>(m_port));
 #endif
 }
-
-#if defined(Q_OS_WASM)
-QString TGameserverDualConnection::webSocketUrl() const
-{
-    // Match WebConnection: loopback/LAN → ws; else page https / :443 / CF tunnel → wss.
-    QString prefix = QStringLiteral("ws://");
-    if (!isLoopbackOrLan(m_host)) {
-        const bool forceWss = m_port == 443
-            || m_host.contains(QLatin1String("trycloudflare.com"))
-            || m_host.contains(QLatin1String("cfargotunnel.com"));
-        const int pageIsHttps = EM_ASM_INT({
-            try {
-                return (typeof location !== 'undefined' && location.protocol === 'https:') ? 1 : 0;
-            } catch (e) {
-                return 0;
-            }
-        });
-        if (forceWss || pageIsHttps)
-            prefix = QStringLiteral("wss://");
-    }
-    return prefix + m_host + QLatin1Char(':') + QString::number(m_port);
-}
-
-void TGameserverDualConnection::openWebSocket()
-{
-    const QByteArray urlUtf8 = webSocketUrl().toUtf8();
-    // Crystal does not echo Sec-WebSocket-Protocol — omit subprotocol (same as WebConnection).
-    EmscriptenWebSocketCreateAttributes attributes = {
-        urlUtf8.constData(),
-        nullptr,
-        EM_FALSE,
-    };
-    m_websocket = emscripten_websocket_new(&attributes);
-    m_wsConnected = false;
-    if (m_websocket < 1) {
-        m_websocket = 0;
-        Q_EMIT error(tr("secondary WebSocket create failed"));
-        return;
-    }
-
-    emscripten_websocket_set_onopen_callback(m_websocket, this, [](int, const EmscriptenWebSocketOpenEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverDualConnection*>(userData);
-        QMetaObject::invokeMethod(self, [self] {
-            self->m_wsConnected = true;
-        }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-
-    emscripten_websocket_set_onmessage_callback(m_websocket, this, [](int, const EmscriptenWebSocketMessageEvent* event, void* userData) -> EM_BOOL {
-        if (!event || event->numBytes <= 0 || event->isText)
-            return EM_TRUE;
-        auto* self = static_cast<TGameserverDualConnection*>(userData);
-        const QByteArray chunk(reinterpret_cast<const char*>(event->data), int(event->numBytes));
-        QMetaObject::invokeMethod(self, [self, chunk] { self->onTransportBytes(chunk); }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-
-    emscripten_websocket_set_onerror_callback(m_websocket, this, [](int, const EmscriptenWebSocketErrorEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverDualConnection*>(userData);
-        QMetaObject::invokeMethod(self, [self] {
-            Q_EMIT self->error(tr("secondary WebSocket error"));
-        }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-
-    emscripten_websocket_set_onclose_callback(m_websocket, this, [](int, const EmscriptenWebSocketCloseEvent*, void* userData) -> EM_BOOL {
-        auto* self = static_cast<TGameserverDualConnection*>(userData);
-        // DynCall runs on the browser main thread (JSPI game Module) — never
-        // call emscripten_websocket_* here; defer like WebConnection::reportError.
-        QMetaObject::invokeMethod(self, [self] {
-            self->m_pingTimer.stop();
-            self->m_challengeSeen = false;
-            self->m_xteaEnabled = false;
-            self->m_recvBuffer.clear();
-            self->m_wsConnected = false;
-            const EMSCRIPTEN_WEBSOCKET_T sock = self->m_websocket;
-            self->m_websocket = 0;
-            if (sock > 0) {
-                emscripten_websocket_close(sock, 1000, "secondary peer close");
-                emscripten_websocket_delete(sock);
-            }
-            Q_EMIT self->disconnected();
-        }, Qt::QueuedConnection);
-        return EM_TRUE;
-    });
-}
-#endif
 
 void TGameserverDualConnection::closeSecondary()
 {
@@ -295,20 +184,16 @@ void TGameserverDualConnection::closeSecondary()
     m_challengeSeen = false;
     m_xteaEnabled = false;
     m_recvBuffer.clear();
-#if defined(Q_OS_WASM)
-    m_wsConnected = false;
-    const EMSCRIPTEN_WEBSOCKET_T sock = m_websocket;
-    m_websocket = 0;
-    if (sock > 0) {
-        emscripten_websocket_close(sock, 1000, "secondary close");
-        emscripten_websocket_delete(sock);
-    }
-#else
     if (!m_socket)
         return;
+    // Signals off first: closing reports disconnected() synchronously.
+    m_socket->disconnect(this);
+#if defined(Q_OS_WASM)
+    m_socket->close();
+#else
     m_socket->disconnectFromHost();
-    m_socket.reset();
 #endif
+    m_socket.reset();
 }
 
 void TGameserverDualConnection::writeRaw(const QByteArray& payload)
@@ -316,7 +201,7 @@ void TGameserverDualConnection::writeRaw(const QByteArray& payload)
     if (!transportConnected() || payload.isEmpty())
         return;
 #if defined(Q_OS_WASM)
-    emscripten_websocket_send_binary(m_websocket, const_cast<char*>(payload.constData()), payload.size());
+    m_socket->sendBinaryMessage(payload);
 #else
     m_socket->write(payload);
 #endif
