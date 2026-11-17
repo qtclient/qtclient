@@ -331,9 +331,9 @@ bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
         return true;
     // An action button carries whether the key repeats (CIP +0x14).
     if (const auto* trigger = gameActionAs<TGameActionActionButtonTriggered>(bound); trigger && key->isAutoRepeat())
-        publish(std::make_shared<TGameActionActionButtonTriggered>(trigger->actionBarId(), trigger->actionButtonId(), true));
+        Q_EMIT publishGameAction(std::make_shared<TGameActionActionButtonTriggered>(trigger->actionBarId(), trigger->actionButtonId(), true));
     else
-        publish(bound);
+        Q_EMIT publishGameAction(bound);
     return true;
 }
 

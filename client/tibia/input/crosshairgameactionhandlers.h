@@ -18,8 +18,8 @@ namespace input {
 /// mouse tile or attack target (needDirection on the server). Else plain talk.
 void say(tibia::client::MessageMode mode, const QString& text, int spellCastType);
 
-/// CIP's TUseWithGameActionHandler (: USE_WITH, TARGET_SELECTED,
-/// CANCEL_USE_WITH) plus USE_ON_* from TCreaturesGameActionHandler.
+/// CIP input::TUseWithGameActionHandler (USE_WITH, TARGET_SELECTED) plus
+/// USE_ON_* from TCreaturesGameActionHandler; a router slot of the game window.
 class TUseWithGameActionHandler final : public cip::tibia::input::TUseWithGameActionHandler
 {
     Q_OBJECT
@@ -28,10 +28,16 @@ public:
     ~TUseWithGameActionHandler() override;
     TUseWithGameActionHandler(const TUseWithGameActionHandler&) = delete;
     TUseWithGameActionHandler& operator=(const TUseWithGameActionHandler&) = delete;
+
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
+public Q_SLOTS:
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
-/// CIP's TCrossHairSpellGameActionHandler (: CROSSHAIR_SPELL,
-/// TARGET_SELECTED, CANCEL_CROSSHAIR_SPELL).
+/// CIP input::TCrossHairSpellGameActionHandler (CROSSHAIR_SPELL); a router slot
+/// of the game window.
 class TCrossHairSpellGameActionHandler final : public cip::tibia::input::TCrossHairSpellGameActionHandler
 {
     Q_OBJECT
@@ -40,20 +46,12 @@ public:
     ~TCrossHairSpellGameActionHandler() override;
     TCrossHairSpellGameActionHandler(const TCrossHairSpellGameActionHandler&) = delete;
     TCrossHairSpellGameActionHandler& operator=(const TCrossHairSpellGameActionHandler&) = delete;
-};
 
-/// Owns CIP's use-with and crosshair-spell handlers for the action-bar lifetime.
-class TCrossHairGameActionHandlers : public ::tibia::CipTyped
-{
-public:
-    TCrossHairGameActionHandlers();
-    ~TCrossHairGameActionHandlers() = default;
-    TCrossHairGameActionHandlers(const TCrossHairGameActionHandlers&) = delete;
-    TCrossHairGameActionHandlers& operator=(const TCrossHairGameActionHandlers&) = delete;
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
 
-private:
-    TUseWithGameActionHandler m_useWith;
-    TCrossHairSpellGameActionHandler m_crossHairSpell;
+public Q_SLOTS:
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
 }

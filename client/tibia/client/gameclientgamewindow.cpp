@@ -79,6 +79,7 @@
 #include "gamewindow/tutorialhintdialogcontroller.h"
 #include "gamewindow/unjustifiedpointswidgetcontroller.h"
 #include "gamewindow/vipwidgetcontroller.h"
+#include "input/crosshairgameactionhandlers.h"
 #include "input/domainhandlers.h"
 #include "input/eventfilters.h"
 #include "input/gameactionhandlers.h"
@@ -240,6 +241,8 @@ struct TGameClient::TGameWindow
     std::unique_ptr<input::TPlayerMovementInputInterpreter> playerMovement;
     std::unique_ptr<input::TPlayerMovementGameActionHandler> playerMovementActions;
     std::unique_ptr<input::TClipboardGameActionHandler> clipboardActions;
+    std::unique_ptr<input::TUseWithGameActionHandler> useWithActions;
+    std::unique_ptr<input::TCrossHairSpellGameActionHandler> crossHairSpellActions;
     std::unique_ptr<input::TGenericGameActionHandler> genericActions;
     std::unique_ptr<input::TGatherAllGameActionHandler> gatherAllActions;
     std::unique_ptr<input::TGatherAllProtocolMessageHandler> gatherAllProtocol;
@@ -715,6 +718,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.keyboardShortcuts = std::make_unique<input::TKeyboardShortcutHandler>(window, chatItem, [chat] { return chat->chatMode(); });
     g.playerMovement = std::make_unique<input::TPlayerMovementInputInterpreter>(window, chatItem, [chat] { return chat->chatMode(); });
     g.playerMovementActions = std::make_unique<input::TPlayerMovementGameActionHandler>();
+    connect(g.keyboardShortcuts.get(), &input::TKeyboardShortcutHandler::publishGameAction, gameActionRouter()->internalRouter(),
+            &game::TInternalGameActionRouter::handleGameActionInternal);
+    connect(g.playerMovement.get(), &input::TPlayerMovementInputInterpreter::publishGameAction, gameActionRouter()->internalRouter(),
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     g.clipboardActions = std::make_unique<input::TClipboardGameActionHandler>();
     g.genericActions = std::make_unique<input::TGenericGameActionHandler>();
     input::TGenericGameActionHandler* genericActions = g.genericActions.get();
@@ -725,9 +732,21 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.playerMovementActions.get(),
             &input::TPlayerMovementGameActionHandler::handleGameAction);
+    connect(g.playerMovementActions.get(), &input::TPlayerMovementGameActionHandler::publishGameAction, router,
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.clipboardActions.get(),
             &input::TClipboardGameActionHandler::handleGameAction);
     connect(g.clipboardActions.get(), &input::TClipboardGameActionHandler::publishGameAction, router,
+            &game::TInternalGameActionRouter::handleGameActionInternal);
+    g.useWithActions = std::make_unique<input::TUseWithGameActionHandler>();
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.useWithActions.get(),
+            &input::TUseWithGameActionHandler::handleGameAction);
+    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::publishGameAction, router,
+            &game::TInternalGameActionRouter::handleGameActionInternal);
+    g.crossHairSpellActions = std::make_unique<input::TCrossHairSpellGameActionHandler>();
+    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.crossHairSpellActions.get(),
+            &input::TCrossHairSpellGameActionHandler::handleGameAction);
+    connect(g.crossHairSpellActions.get(), &input::TCrossHairSpellGameActionHandler::publishGameAction, router,
             &game::TInternalGameActionRouter::handleGameActionInternal);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);

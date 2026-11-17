@@ -278,8 +278,8 @@ void TPlayerMovementInputInterpreter::update()
     switch (intent.kind) {
     case EIntentKind::Walk:
         (void)TPlayerMovementIntent::direction(TMovementIntentDirection(static_cast<int>(intent.direction)).direction());
-        publish(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
-        publish(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
+        Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
+        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
         tibia::game::localPlayerHoldDirection(intent.direction);
         break;
     case EIntentKind::Rotate:

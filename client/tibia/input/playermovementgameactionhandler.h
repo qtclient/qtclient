@@ -22,6 +22,9 @@ public:
     TPlayerMovementGameActionHandler(const TPlayerMovementGameActionHandler&) = delete;
     TPlayerMovementGameActionHandler& operator=(const TPlayerMovementGameActionHandler&) = delete;
 
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
 public Q_SLOTS:
     /// SET_PLAYER_MOVEMENT_INTENT walks; attacking, following, using or opening
     /// an object on the map drops the walk goal. Connected to the router's

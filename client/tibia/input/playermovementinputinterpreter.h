@@ -5,6 +5,7 @@
 #include <client/const.h>
 
 #include "input/eventfilters.h"
+#include "input/gameaction.h"
 
 #include <QPointer>
 
@@ -40,6 +41,11 @@ namespace input {
 class TPlayerMovementInputInterpreter final : public cip::tibia::input::TPlayerMovementInputInterpreter
 {
     Q_OBJECT
+
+Q_SIGNALS:
+    /// CIP publishGameAction; connected to the game action router in createGameWindow.
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
 public:
     /// `chatMode`: tibia::chat::EChatMode (0 off). `chatItem`: the chat whose
     /// text input does not block walking.

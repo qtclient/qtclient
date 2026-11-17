@@ -29,6 +29,11 @@ namespace input {
 class TKeyboardShortcutHandler final : public cip::tibia::input::TKeyboardShortcutHandler
 {
     Q_OBJECT
+
+Q_SIGNALS:
+    /// CIP publishGameAction; connected to the game action router in createGameWindow.
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
 public:
     /// `chatMode`: tibia::chat::EChatMode (0 off). `chatItem`: the chat
     /// whose input still gets the hotkeys while focused.

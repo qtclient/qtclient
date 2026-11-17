@@ -109,7 +109,6 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
     /// CIP's use-with / crosshair-spell handlers and target selection, which
     /// the bars' object and spell actions run through.
-    std::unique_ptr<input::TCrossHairGameActionHandlers> m_crossHair;
     /// CIP TActionButtonGameActionHandler .
     std::unique_ptr<input::TActionButtonGameActionHandler> m_actionButtonHandler;
     QPointer<TTargetSelectionController> m_targetSelection;
