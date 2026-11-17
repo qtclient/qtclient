@@ -41,6 +41,18 @@ uint8_t protocolFromLookDirection(const LookDir direction)
     }
 }
 
+/// The outfit's look: the creature look type, or the object of an object outfit.
+int lookOf(const Outfit& outfit)
+{
+    return outfit.getId() != 0 ? outfit.getId() : outfit.getAuxId();
+}
+
+bool sameOutfit(const Outfit& a, const Outfit& b)
+{
+    return lookOf(a) == lookOf(b) && a.getHead() == b.getHead() && a.getBody() == b.getBody() && a.getLegs() == b.getLegs()
+           && a.getFeet() == b.getFeet() && a.getAddons() == b.getAddons() && (a.getId() == 0) == (b.getId() == 0);
+}
+
 TBossSkinModel::Entry entryFromRace(const uint16_t raceId, const std::string& name, const Outfit& outfit)
 {
     TBossSkinModel::Entry entry;
@@ -178,105 +190,78 @@ TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogControll
     m_showOutfit = true;
     m_showSocket = true;
     m_direction = LookDir::SOUTH;
+    m_selectedIndex = -1;
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         dialog()->destroy();
     });
 }
 
-void TConfigureCreaturePodiumDialogController::open(const Outfit& selected, const bool bossPodium,
+void TConfigureCreaturePodiumDialogController::open(const Outfit& selected, const uint16_t selectedRace, const bool bossPodium,
                                                     const std::vector<RaceRow>& races, const Position& pos,
                                                     const uint16_t itemId, const uint8_t stackpos,
                                                     const bool podiumVisible, const bool monsterVisible,
                                                     const uint8_t direction)
 {
     Q_UNUSED(bossPodium);
+    m_selected = selected;
     m_position = pos;
     m_stackpos = stackpos;
-    m_socketTypeID = itemId;
+    // A podium without a creature shows the creature view.
+    m_showOutfit = lookOf(selected) == 0 ? true : monsterVisible;
     m_showSocket = podiumVisible;
-    m_showOutfit = monsterVisible;
-    m_showFloor = true;
     m_direction = lookDirectionFromProtocol(direction);
+    m_socketTypeID = itemId;
 
     QList<TBossSkinModel::Entry> entries;
     entries.reserve(static_cast<qsizetype>(races.size()));
     for (const auto& [raceId, name, outfit] : races)
         entries.append(entryFromRace(raceId, name, outfit));
-    m_skins.setEntries(std::move(entries));
-    m_proxy.resetFilter();
+    setPreset(selected);
 
-    int selectedRow = -1;
-    const int selectedLook = selected.getId() != 0 ? selected.getId() : selected.getAuxId();
-    if (selectedLook != 0) {
-        for (int i = 0; i < m_skins.entries().size(); ++i) {
-            const Outfit& outfit = m_skins.entries()[i].outfit;
-            const int look = outfit.getId() != 0 ? outfit.getId() : outfit.getAuxId();
-            if (look == selectedLook) {
-                selectedRow = i;
-                break;
-            }
+    // The selected skin is the one with the podium's outfit and race.
+    m_selectedIndex = -1;
+    for (qsizetype i = 0; i < entries.size(); ++i) {
+        if (sameOutfit(entries[i].outfit, selected) && entries[i].raceId == selectedRace) {
+            m_selectedIndex = int(i);
+            break;
         }
     }
-    if (selectedRow < 0 && !m_skins.entries().isEmpty() && monsterVisible)
-        selectedRow = 0;
-
-    if (selectedRow >= 0) {
-        const TBossSkinModel::Entry* entry = m_skins.entryAt(selectedRow);
-        m_selectedIndex = selectedRow;
-        if (entry)
-            applyEntry(*entry);
-    } else {
-        clearSelection();
-    }
-
-    Q_EMIT showChanged();
     Q_EMIT selectedIndexChanged();
+    if (m_chosenRace != selectedRace) {
+        m_chosenRace = selectedRace;
+        Q_EMIT chosenRaceChanged();
+        Q_EMIT chosenOutfitChanged();
+    }
+    m_skins.setEntries(std::move(entries));
+    m_proxy.resetFilter();
+    m_proxy.invalidate();
+    Q_EMIT showChanged();
     dialog()->show();
 }
 
-void TConfigureCreaturePodiumDialogController::applyEntry(const TBossSkinModel::Entry& entry)
+int TConfigureCreaturePodiumDialogController::chosenOutfit() const
 {
-    const Outfit& outfit = entry.outfit;
-    const bool objectOutfit = outfit.getCategory() == ThingCategoryItem || outfit.getId() == 0;
-    const int outfitId = objectOutfit ? outfit.getAuxId() : outfit.getId();
-    m_chosenRace = entry.raceId;
-    if (m_chosenOutfit != outfitId) {
-        m_chosenOutfit = outfitId;
-        Q_EMIT chosenOutfitChanged();
+    for (const TBossSkinModel::Entry& entry : m_skins.entries()) {
+        if (entry.raceId == m_chosenRace)
+            return lookOf(entry.outfit);
     }
-    Q_EMIT chosenRaceChanged();
-
-    m_preset->setName(entry.name);
-    m_preset->setIsObjectOutfit(objectOutfit);
-    m_preset->setOutfitID(outfitId);
-    m_preset->setOutfitFirstAddOn((outfit.getAddons() & 1) != 0);
-    m_preset->setOutfitSecondAddOn((outfit.getAddons() & 2) != 0);
-    m_preset->setMountID(0);
-    m_preset->setSummonID(0);
-    qmlcomponents::TOutfitColorQmlType colors(outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet());
-    m_preset->outfitColor()->copyFrom(&colors);
-    Q_EMIT selectedBossOutfitChanged();
+    return 0;
 }
 
-void TConfigureCreaturePodiumDialogController::clearSelection()
+void TConfigureCreaturePodiumDialogController::setPreset(const Outfit& outfit)
 {
-    m_selectedIndex = -1;
-    m_chosenRace = 0;
-    if (m_chosenOutfit != 0) {
-        m_chosenOutfit = 0;
-        Q_EMIT chosenOutfitChanged();
-    }
-    Q_EMIT chosenRaceChanged();
+    // A fresh preset: the outfit's look, colours and addons, no mount or summon.
+    const bool objectOutfit = outfit.getCategory() == ThingCategoryItem || (outfit.getId() == 0 && outfit.getAuxId() != 0);
     m_preset->setName({});
-    m_preset->setIsObjectOutfit(false);
-    m_preset->setOutfitID(0);
-    m_preset->setOutfitFirstAddOn(false);
-    m_preset->setOutfitSecondAddOn(false);
+    m_preset->setOutfitID(lookOf(outfit));
+    qmlcomponents::TOutfitColorQmlType colors(outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet());
+    m_preset->outfitColor()->copyFrom(&colors);
+    m_preset->setOutfitFirstAddOn((outfit.getAddons() & 1) != 0);
+    m_preset->setOutfitSecondAddOn((outfit.getAddons() & 2) != 0);
+    m_preset->setIsObjectOutfit(objectOutfit);
     m_preset->setMountID(0);
     m_preset->setSummonID(0);
-    qmlcomponents::TOutfitColorQmlType colors;
-    m_preset->outfitColor()->copyFrom(&colors);
     Q_EMIT selectedBossOutfitChanged();
 }
 
@@ -284,24 +269,25 @@ void TConfigureCreaturePodiumDialogController::onIndexChanged(const int Selected
 {
     m_selectedIndex = SelectedIndex;
     Q_EMIT selectedIndexChanged();
-
-    if (SelectedIndex < 0) {
-        clearSelection();
-        return;
+    if (m_chosenRace != ChosenRace) {
+        m_chosenRace = ChosenRace;
+        Q_EMIT chosenRaceChanged();
+        Q_EMIT chosenOutfitChanged();
     }
-
-    const QModelIndex proxyIndex = m_proxy.index(SelectedIndex, 0);
-    const QModelIndex sourceIndex = m_proxy.mapToSource(proxyIndex);
-    if (const TBossSkinModel::Entry* entry = m_skins.entryAt(sourceIndex.row())) {
-        applyEntry(*entry);
-        if (ChosenRace != 0 && ChosenRace != m_chosenRace) {
-            m_chosenRace = ChosenRace;
-            Q_EMIT chosenRaceChanged();
+    // The preview shows the skin of the chosen race; without one it is empty
+    // and no race is chosen.
+    for (const TBossSkinModel::Entry& entry : m_skins.entries()) {
+        if (entry.raceId == m_chosenRace) {
+            setPreset(entry.outfit);
+            return;
         }
-        return;
     }
-    m_chosenRace = ChosenRace;
-    Q_EMIT chosenRaceChanged();
+    setPreset(Outfit{});
+    if (m_chosenRace != 0) {
+        m_chosenRace = 0;
+        Q_EMIT chosenRaceChanged();
+        Q_EMIT chosenOutfitChanged();
+    }
 }
 
 void TConfigureCreaturePodiumDialogController::onCancelClicked()
@@ -311,18 +297,23 @@ void TConfigureCreaturePodiumDialogController::onCancelClicked()
 
 void TConfigureCreaturePodiumDialogController::onOkClicked()
 {
-    if (tibia::game::isOnline()) {
-        const bool showCreature = m_showOutfit && m_chosenRace != 0;
-        auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_CREATURE_PODIUM_CONFIGURATION));
-        action->creatureId = showCreature ? static_cast<uint32_t>(m_chosenRace) : 0;
-        action->position = m_position;
-        action->parameter = m_socketTypeID;
-        action->stackPosition = m_stackpos;
-        action->lookDirection = protocolFromLookDirection(m_direction);
-        action->enable = m_showSocket;
-        action->showSocket = showCreature;
-        input::publish(action);
+    // Without the podium shown, OK needs a chosen race and the creature shown;
+    // otherwise the dialog stays open.
+    bool showCreature = m_showOutfit;
+    if (!m_showSocket) {
+        if (m_chosenRace == 0 || !m_showOutfit)
+            return;
+        showCreature = true;
     }
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_CREATURE_PODIUM_CONFIGURATION));
+    action->creatureId = static_cast<uint32_t>(m_chosenRace);
+    action->position = m_position;
+    action->parameter = m_socketTypeID;
+    action->stackPosition = m_stackpos;
+    action->lookDirection = protocolFromLookDirection(m_direction);
+    action->enable = m_showSocket;
+    action->showSocket = showCreature;
+    input::publish(action);
     dialog()->close();
 }
 

@@ -189,7 +189,7 @@ void TInformationDialogs::hookCreaturePodium()
         const bool bossPodium = client::gamecore::argInt(args, 1) != 0;
         const auto* races = arg<RaceRows>(args, 2);
         const Position pos = arg<Position>(args, 3) ? *arg<Position>(args, 3) : Position{};
-        m_podiumDialog->open(selected, bossPodium, races ? *races : emptyRaces, pos,
+        m_podiumDialog->open(selected, static_cast<uint16_t>(client::gamecore::argInt(args, 9)), bossPodium, races ? *races : emptyRaces, pos,
                              static_cast<uint16_t>(client::gamecore::argInt(args, 4)),
                              static_cast<uint8_t>(client::gamecore::argInt(args, 5)),
                              client::gamecore::argInt(args, 6) != 0, client::gamecore::argInt(args, 7) != 0,

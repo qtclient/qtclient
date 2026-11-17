@@ -1796,6 +1796,9 @@ gamewindow::TCinematicSessiondumpPlayerController::~TCinematicSessiondumpPlayerC
 gamewindow::TConfigureCreaturePodiumDialogController::chosenOutfitChanged	d39cd1f13b11189b	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TConfigureCreaturePodiumDialogController::chosenRaceChanged	1e623603abe28653	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TConfigureCreaturePodiumDialogController::onCancelClicked	21e4e90e3f186cdf	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::onCancelClicked
+gamewindow::TConfigureCreaturePodiumDialogController::onIndexChanged	f7e8fdd5f6c2b230	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::onIndexChanged
+gamewindow::TConfigureCreaturePodiumDialogController::onOkClicked	48307788e64b48d4	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::onOkClicked
+gamewindow::TConfigureCreaturePodiumDialogController::v27	b4f5dc891ce2cbfe	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::open
 gamewindow::TConfigureCreaturePodiumDialogController::~TConfigureCreaturePodiumDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TConfigureCreaturePodiumDialogController::~TConfigureCreaturePodiumDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TConfirmMoveObjectToStashDialogController::onNoClicked	21e4e90e3f186cdf	ported	gamewindow/remainingdialogs.cpp:TConfirmMoveObjectToStashDialogController::onNoClicked
@@ -4397,6 +4400,7 @@ sub_07cb77371704	07cb773717048400	ported	animation/phaseanimator.h:TAnimator::is
 sub_07d054adc91f	07d054adc91f9071	ported	cyclopedia/bosstiarystorage.cpp:TBosstiaryStorage::filteredEntryCount
 sub_07d58ad08bd1	07d58ad08bd1fea6	ported	gamewindow/socialdialogcontroller.cpp:TSocialDialogController::setTab
 sub_07e2e4d3e92f	07e2e4d3e92fbfc2	ported	config/clientoptions.cpp:pinnedCharactersFromJson
+sub_07ec86095059	07ec86095059eb83	skip	generated: destructor body: member teardown only
 sub_0804d4ee175b	0804d4ee175b4a02	inlined	chat::TChatProtocolMessageHandler::handleMessageMessage
 sub_0826ed7ce5f4	0826ed7ce5f4709e	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::handleGameAction
 sub_082ee4aaccf6	082ee4aaccf6dd5a	skip	library: std container template instance
@@ -5700,6 +5704,7 @@ sub_29bb994743e3#7	29bb994743e38ff0	ported	input/domainhandlers.cpp:TOpenWebsite
 sub_29bb994743e3#8	29bb994743e38ff0	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::configuredUrl
 sub_29bb994743e3#9	29bb994743e38ff0	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::configuredUrl
 sub_29def5d04d9c	29def5d04d9c681e	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::localDiffersFromServer
+sub_29edded13b19	29edded13b190de9	skip	generated: moc property getter/setter, provided by the generated cip base
 sub_29f5343478d2	29f5343478d24af3	skip	generated: compiler-generated copy/move constructor
 sub_2a2013f71974	2a2013f719743327	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::hasEnoughDust
 sub_2a21e8bb50e7	2a21e8bb50e77396	ported	gamewindow/edittextcontroller.cpp:TEditTextController::TEditTextController
@@ -7338,6 +7343,7 @@ sub_5e0df0cb67d9#2	5e0df0cb67d937e7	ported	input/gameaction.h:TGameActionMountPl
 sub_5e159aa6c3ed	5e159aa6c3ede5bb	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::requestDynamicDataForTown
 sub_5e1a061278c9	5e1a061278c9c1d1	ported	gamewindow/cooldownbarcontroller.cpp:spellGroupName
 sub_5e1e1eca3c45#2	5e1e1eca3c45dc7d	skip	library: libc++ vector insert/assign/erase/resize, nth_element and partial_sort_copy instantiations over the damage-input source rows and element pairs (callers read)
+sub_5e46072a57fa	5e46072a57fa54a0	inlined	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::open
 sub_5e5173af64c8	5e5173af64c8c6d8	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTalkMessage
 sub_5e5192a6129e	5e5192a6129e2413	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_5e6c020885da	5e6c020885daea4b	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::showDialog
@@ -7582,6 +7588,7 @@ sub_657e5f8f7e6a	657e5f8f7e6aade6	ported	gamewindow/housesinfodialogcontroller.c
 sub_658d24410a9f	658d24410a9fe517	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowAttackSpellGroup
 sub_65bbeaf0f754	65bbeaf0f754d6a6	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoSouth
 sub_65c2a6b635b1	65c2a6b635b12dcc	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
+sub_65d2653b9a79	65d2653b9a790d23	skip	generated: moc property getter/setter, provided by the generated cip base
 sub_65e75980f925	65e75980f92508a2	tested	animation/durationtween.h:TDurationTween::progress	test=tests/client/durationtween_test.cpp
 sub_65e7eaa956e2	65e7eaa956e27d7e	ported	gamewindow/hitpointmanabarcontroller.cpp:THitpointManabarController::setVisible
 sub_65f673cd8b83	65f673cd8b83274d	ported	questlog/questlogciptypes.cpp:TQuestLogStorage::dropUnknownPinnedQuestLines
@@ -8888,6 +8895,7 @@ sub_8f2b36852cc6	8f2b36852cc69beb	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_8f340fd7e9db	8f340fd7e9db50c6	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_8f4d7a249555	8f4d7a249555a7d3	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::reset
 sub_8f55fa6c9be1#2	8f55fa6c9be1e5cf	ported	trade/tradeciptypes.cpp:TPlayerTradeProtocolMessageHandler::lookTrade
+sub_8faa5d880c8e	8faa5d880c8e2367	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::chosenOutfit
 sub_8fad20d88fb4	8fad20d88fb4f9ee	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::addRewardStreakBonus
 sub_8fb6b4bbe6d9	8fb6b4bbe6d96b02	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::percentUnlockedImprovedRespawn
 sub_8fbb15eda14b	8fbb15eda14bb973	ported	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
@@ -9462,6 +9470,7 @@ sub_a05546bf7658#2	a05546bf7658b2ea	skip	generated: protobuf message code (const
 sub_a0575407b833	a0575407b833471f	skip	library: std::vector growth / split buffer (library)
 sub_a05cde3b59e0	a05cde3b59e02968	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_a084458ec3af	a084458ec3af43b8	skip	library: std::sort instantiation (library)
+sub_a087f96f5613	a087f96f5613de8c	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogController
 sub_a0a0de3359ae	a0a0de3359ae4652	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusIcon
 sub_a0b270078c24#2	a0b270078c243b48	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_a0ba4ad7221a	a0ba4ad7221a4048	inlined	config/optionspages.cpp:THotkeysOptionsPage::onTextAssignedToHotkeyAction
@@ -9982,6 +9991,7 @@ sub_b4437ee9632a#3	b4437ee9632ac845	skip	generated: Qt slot-object impl for a me
 sub_b450833caef1	b450833caef163f4	skip	generated: compiler-generated destructor pair
 sub_b451f16898e2	b451f16898e29566	skip	library: std::sort instantiation over party members (library)
 sub_b457e2c7f31d	b457e2c7f31d7fd6	skip	library: std::map<QString,QString> insert (library template)
+sub_b47aeca01631	b47aeca01631f4dd	skip	generated: moc property getter/setter, provided by the generated cip base
 sub_b4823e34d8f8	b4823e34d8f83755	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
 sub_b4851c4277cb	b4851c4277cb1047	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::startContainerPick
 sub_b48852921f3d	b48852921f3d1a92	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage
@@ -10852,6 +10862,7 @@ sub_ca3658472a8c#2	ca3658472a8c2935	skip	generated: compiler-generated destructo
 sub_ca3658472a8c#3	ca3658472a8c2935	skip	library: std container template instance
 sub_ca3bd3e3e3a0	ca3bd3e3e3a0d977	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_ca4d66a57a02	ca4d66a57a02e81f	skip	library: QMap/QList template instantiations
+sub_ca58ad0859d2	ca58ad0859d26029	inlined	gamewindow/configurecreaturepodiumdialogcontroller.cpp:sameOutfit
 sub_ca5963e3f559	ca5963e3f559b46b	skip	generated: moc property getter, provided by the generated cip base
 sub_ca7b31c94985	ca7b31c94985fbb5	ported	trade/tradeciptypes.cpp:TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler
 sub_ca7b31c94985#2	ca7b31c94985fbb5	ported	trade/tradeciptypes.cpp:TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler
@@ -11503,6 +11514,7 @@ sub_dc02358054aa	dc02358054aafeac	inlined	gamewindow/housesinfodialogcontroller.
 sub_dc301b10302d	dc301b10302d0caa	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_dc35668832a8#2	dc35668832a8039c	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::requestWidgetConfigurationMenu
 sub_dc45cf7cbc27	dc45cf7cbc277fed	tested	animation/phaseanimator.cpp:TAnimator::TAnimator	test=tests/client/phaseanimator_test.cpp
+sub_dc535dcbeb73	dc535dcbeb73ebeb	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::setPreset
 sub_dc59b1477668	dc59b1477668bc5d	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
 sub_dc5a306f64e3	dc5a306f64e34dfe	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_dc623873b7f6	dc623873b7f61d39	inlined	worldmap/worldmapfield.cpp:TWorldMapField::hasTranslucent
@@ -11769,6 +11781,7 @@ sub_e3146914ac09	e3146914ac09ef94	skip	generated: compiler-generated destructor
 sub_e3244afad659	e3244afad6591f98	ported	chat/chatchannel.cpp:formatEntry
 sub_e327e63641d3	e327e63641d3c1ec	skip	library: libc++ std::vector/std::map instantiation
 sub_e3568bc3e686#2	e3568bc3e68695b4	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
+sub_e366200829a4	e366200829a4f026	ported	gamewindow/configurecreaturepodiumdialogcontroller.cpp:TConfigureCreaturePodiumDialogController::onIndexChanged
 sub_e37316bb4d3f	e37316bb4d3fcfd3	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::totalGoldBalanceString
 sub_e37804b3b64b	e37804b3b64bba5a	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchType
 sub_e39cd39c49ab	e39cd39c49ab08f5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBrowseField
