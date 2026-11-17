@@ -1,5 +1,7 @@
 #include "monsterbonuseffectsdialogcontroller.h"
 
+#include <utility>
+
 #include "cyclopedia/bestiarystorage.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -132,7 +134,13 @@ TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBest
     });
 }
 
-TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController() = default;
+TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController()
+{
+    // CIP: without its session the bonus effect list is rebuilt empty.
+    QList<QObject*> previous = std::exchange(m_monsterBonusEffects, {});
+    Q_EMIT qmlMonsterBonusEffectsChanged();
+    deleteAll(previous);
+}
 
 TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogController::captureContext() const
 {
