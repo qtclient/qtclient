@@ -536,15 +536,6 @@ const std::vector<QRect>& TAppearanceType::getBoundingBoxes() const
     return m_frameGroups.empty() ? none : m_frameGroups.begin()->second.boundingBoxes();
 }
 
-uint32_t TAppearanceType::firstSpriteId() const
-{
-    for (const auto& [group, info] : m_frameGroups) {
-        if (!info.spriteIds().empty())
-            return info.spriteIds().front();
-    }
-    return 0;
-}
-
 void TAppearanceType::updateDerivedSize()
 {
     m_size = QSize(1, 1);

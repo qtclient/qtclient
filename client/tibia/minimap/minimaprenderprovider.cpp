@@ -24,11 +24,7 @@ std::vector<TMinimapRenderProvider::TileRenderInfo> TMinimapRenderProvider::rend
     for (const auto& [key, tile] : m_storage->tiles()) {
         if (!m_area->intersectsTile(tile->id()))
             continue;
-        // CIP sprites::TMinimapTileSpritesheetIdentifier — tile keyed by packed sector id.
-        const Position& id = tile->id();
-        const uint32_t packed = (static_cast<uint32_t>(id.x) << 16) | (static_cast<uint32_t>(id.y) & 0xffffu);
-        (void)sprites::TMinimapTileSpritesheetIdentifier(packed);
-        infos.push_back({ id, tile->colorImage() });
+        infos.push_back({ tile->id(), tile->colorImage() });
     }
     return infos;
 }

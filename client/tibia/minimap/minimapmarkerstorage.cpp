@@ -148,9 +148,6 @@ void TMinimapMarkerStorage::bindActions()
     }
     input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameAction& action) {
         const auto icon = static_cast<uint8_t>(std::clamp(action.parameter, 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
-        // CIP sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier — icon resource path.
-        const std::string symbolPath = "qrc:/images/game/minimap/marker" + std::to_string(static_cast<int>(icon)) + ".png";
-        (void)sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier(symbolPath);
         addMarker(TMinimapMarker(TWorldMapCoordinate(action.position), icon, action.text, QDateTime::currentDateTimeUtc()));
         return true;
     });

@@ -22,8 +22,7 @@ void TContentCatalog::addSpritesheet(const QString& file, const QJsonObject& jso
     if (!type.isDouble() || !first.isDouble() || !last.isDouble())
         return;
     int lastSpriteId = last.toInt();
-    const tibia::sprites::TAssetSpritesheetIdentifier sheetId(file.toStdString());
-    auto sheet = std::make_shared<SpriteSheet>(first.toInt(), lastSpriteId, static_cast<SpriteLayout>(type.toInt()), sheetId.file());
+    auto sheet = std::make_shared<SpriteSheet>(first.toInt(), lastSpriteId, static_cast<SpriteLayout>(type.toInt()), file.toStdString());
     const int maxSpriteId = sheet->firstId + sheet->getSpritesPerSheet() - 1;
     if (lastSpriteId > maxSpriteId) {
         lastSpriteId = maxSpriteId;

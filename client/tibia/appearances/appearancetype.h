@@ -284,8 +284,6 @@ public:
     std::optional<uint32_t> spriteIdAt(int layer, int x, int y, int z, int phase) const;
     /// The bounding boxes of the first frame group.
     const std::vector<QRect>& getBoundingBoxes() const;
-    /// The first sprite id of the first frame group, 0 without one.
-    uint32_t firstSpriteId() const;
     /// The frame size in fields (of 32 px).
     const QSize& getSize() const { return m_size; }
     int getWidth() const { return m_size.width(); }

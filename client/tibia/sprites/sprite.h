@@ -61,108 +61,10 @@ public:
     TSpriteInSpritesheet resolve(uint32_t spriteId, bool load = true);
 };
 
-/// CIP sprites::TQtTextureAtlasTextureCreator — atlas insert path for TSpriteTextureCache.
-class TQtTextureAtlasTextureCreator final : public ::tibia::CipTyped
-{
-public:
-    explicit TQtTextureAtlasTextureCreator(bool allowEvict = true);
-
-    bool allowEvict() const { return m_allowEvict; }
-
-private:
-    bool m_allowEvict = true;
-};
-
-/// Sheet / resource identifiers used by catalog + minimap + effects wrappers.
-class TAppearanceTypeSpritesheetMapping final : public ::tibia::CipTyped
-{
-public:
-    TAppearanceTypeSpritesheetMapping(uint16_t appearanceId, uint32_t firstSpriteId);
-
-    uint16_t appearanceId() const { return m_appearanceId; }
-    uint32_t firstSpriteId() const { return m_firstSpriteId; }
-
-private:
-    uint16_t m_appearanceId = 0;
-    uint32_t m_firstSpriteId = 0;
-};
-
-class TAssetSpritesheetIdentifier final : public ::tibia::CipTyped
-{
-public:
-    explicit TAssetSpritesheetIdentifier(std::string file);
-
-    const std::string& file() const { return m_file; }
-
-private:
-    std::string m_file;
-};
-
-class TEffectWrapperSpritesheetIdentifier final : public ::tibia::CipTyped
-{
-public:
-    explicit TEffectWrapperSpritesheetIdentifier(uint32_t effectSpriteId);
-
-    uint32_t effectSpriteId() const { return m_effectSpriteId; }
-
-private:
-    uint32_t m_effectSpriteId = 0;
-};
-
-class TImageResourceSpriteIdentifier final : public ::tibia::CipTyped
-{
-public:
-    explicit TImageResourceSpriteIdentifier(std::string resourcePath);
-
-    const std::string& resourcePath() const { return m_resourcePath; }
-
-private:
-    std::string m_resourcePath;
-};
-
-class TMinimapTileSpritesheetIdentifier final : public ::tibia::CipTyped
-{
-public:
-    explicit TMinimapTileSpritesheetIdentifier(uint32_t tileSpriteId);
-
-    uint32_t tileSpriteId() const { return m_tileSpriteId; }
-
-private:
-    uint32_t m_tileSpriteId = 0;
-};
-
-class TStaticMinimapMarkerSymbolResourceSpriteIdentifier final : public ::tibia::CipTyped
-{
-public:
-    explicit TStaticMinimapMarkerSymbolResourceSpriteIdentifier(std::string resourcePath);
-
-    const std::string& resourcePath() const { return m_resourcePath; }
-
-private:
-    std::string m_resourcePath;
-};
-
-class TSpritesheetsMetadataManager final : public ::tibia::CipTyped
-{
-public:
-    static TSpritesheetsMetadataManager& instance();
-};
-
 class TSpritesheetDecompressorSynchronous final : public ::tibia::CipTyped
 {
 public:
     bool decompress(SpriteSheet* sheet) const;
-};
-
-class TSpritesheetDecompressorConcurrentException final : public ::tibia::CipTyped
-{
-public:
-    explicit TSpritesheetDecompressorConcurrentException(std::string message);
-
-    const std::string& message() const { return m_message; }
-
-private:
-    std::string m_message;
 };
 
 /// Promoted cip:: moc managers.

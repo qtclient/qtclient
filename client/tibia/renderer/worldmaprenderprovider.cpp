@@ -1456,8 +1456,6 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppear
     if (!effect->getFieldDrawFrame(phase, xPattern, yPattern))
         return;
     TAppearanceType* type = appearance->thingType();
-    if (const uint32_t first = type ? type->firstSpriteId() : 0)
-        (void)sprites::TEffectWrapperSpritesheetIdentifier(first);
     uint8_t tint = 0;
     if (const auto hook = tibia::mods::effectVariantTintHook())
         tint = hook(effect->variantId());

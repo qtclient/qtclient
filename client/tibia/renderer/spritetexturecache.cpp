@@ -127,7 +127,7 @@ bool sheetReady(const uint32_t spriteId)
 
 TSpriteTextureCache::TSpriteTextureCache(QQuickWindow* window, const bool allowEvict)
     : m_window(window)
-    , m_allowEvict(sprites::TQtTextureAtlasTextureCreator(allowEvict).allowEvict())
+    , m_allowEvict(allowEvict)
 {
 }
 

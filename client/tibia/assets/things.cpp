@@ -265,11 +265,6 @@ void TAppearancesManager::postprocessAppearances()
     for (const uint16_t coin : { special.goldCoin, special.platinumCoin, special.crystalCoin })
         objects[coin].setMarketCategory(30);
 
-    forEachAppearanceType([](const TAppearanceType& type) {
-        if (const uint32_t sprite = type.firstSpriteId())
-            (void)tibia::sprites::TAppearanceTypeSpritesheetMapping(type.getId(), sprite);
-        return true;
-    });
 }
 
 bool TAppearancesManager::loadAppearances(const std::string& directory)
