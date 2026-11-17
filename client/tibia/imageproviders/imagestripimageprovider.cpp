@@ -165,7 +165,6 @@ void registerImageProviders(QQmlEngine* engine)
         { "purchasecomplete-pressed-animation", ":/animations/animation-purchasecomplete-pressed.png", 108 },
         { "dragonheader-animation", ":/animations/animation-dragonheader.png", 192 },
         { "fire-bowl-animation", ":/animations/animation-fire-bowl.png", 32 },
-        { "resting-area-bonuses-levels", ":/images/dailyreward/icon-restingareabonuseslevels.png", 0 },
         { "monster-bonus-effects", ":/images/monster-bonus-effects.png", 0 },
         { "monster-classifications", ":/images/monster-classifications.png", 0 },
         { "map-layers", ":/images/automap-indicator-maplayers.png", 14 },

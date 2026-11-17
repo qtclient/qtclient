@@ -34,6 +34,7 @@
 
 #include <protocol.pb.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -887,11 +888,29 @@ void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
     tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
 }
 
+std::optional<uint8_t> TPremiumProtocolMessageHandler::premiumFeature(const uint32_t trigger)
+{
+    // The protocol's feature ids skip 3, 34, 35 and 37.
+    static constexpr int8_t kFeatures[40] = { 0,  1,  2,  -1, 3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                                              27, 28, 29, 30, 31, 32, -1, -1, 33, -1, 34, 35 };
+    if (trigger >= std::size(kFeatures) || kFeatures[trigger] < 0)
+        return std::nullopt;
+    return static_cast<uint8_t>(kFeatures[trigger]);
+}
+
 void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const GameserverMessagePremiumTrigger& m)
 {
     std::vector<uint8_t> triggers;
-    for (const uint32_t trigger : m.triggers())
-        triggers.push_back(static_cast<uint8_t>(trigger));
+    for (const uint32_t trigger : m.triggers()) {
+        const std::optional<uint8_t> feature = premiumFeature(trigger);
+        // A feature the client does not know drops the whole message.
+        if (!feature) {
+            qWarning("EPremiumFeature %u couldn't be converted", trigger);
+            return;
+        }
+        triggers.push_back(*feature);
+    }
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 

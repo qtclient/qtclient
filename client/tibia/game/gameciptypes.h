@@ -12,6 +12,7 @@
 #include <QObject>
 
 #include <array>
+#include <optional>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -335,6 +336,8 @@ public:
 
     /// The premium features the server wants advertised.
     static void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
+    /// The client's premium feature for a protocol feature id, none for an unknown one.
+    static std::optional<uint8_t> premiumFeature(uint32_t trigger);
     /// Hands the premium flag and its end to the premium time storage.
     static void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
 };
