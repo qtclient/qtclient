@@ -5225,6 +5225,7 @@ sub_27826b207c43	27826b207c43eaa9	inlined	animation/phaseanimator.cpp:TAnimator:
 sub_27827f980c62	27827f980c6242f4	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::optionsPressed
 sub_27879c73c61a	27879c73c61ac21b	ported	gamewindow/monsterdialogcontroller.cpp:TQmlPreviewCharm::TQmlPreviewCharm
 sub_2787dff660d0	2787dff660d09064	skip	generated: moc signal emitter
+sub_2788acd9d8bb	2788acd9d8bb7f60	inlined	gamewindow/outfitdialogcontroller.cpp:outfitGender
 sub_278b7d888bb2#3	278b7d888bb22348	skip	generated: compiler-generated destructor (member shared_ptr release)
 sub_27a0e3d67c7c	27a0e3d67c7c7c1b	inlined	gamewindow/dialogmanager.cpp:TDialog::show
 sub_27af30ca2cb9	27af30ca2cb91213	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::setShowTrade
@@ -7064,6 +7065,7 @@ sub_69d9694aa491	69d9694aa4913131	inlined	shared::TTibiaFileSystemHelper::v61
 sub_69de9258ee77	69de9258ee775365	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_69f10198a817	69f10198a8172f9e	inlined	creatures/creaturestorage.cpp:TCreature::addTimedSquare
 sub_6a484b5dc447	6a484b5dc447667e	skip	generated: moc property getter, provided by the generated cip base
+sub_6a49270f4f89	6a49270f4f898bda	skip	library: std::vector<QJsonObject> destructor
 sub_6a529ceb3a4b#2	6a529ceb3a4becda	skip	generated: compiler-generated destructor of the dialog update data
 sub_6a54d912339a	6a54d912339acdc5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenChannel
 sub_6a5a383d6f97	6a5a383d6f975230	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy
@@ -8697,6 +8699,7 @@ sub_a28c512eac20	a28c512eac200d79	ported	gamewindow/createcharacterdialogcontrol
 sub_a294ae11554c	a294ae11554c28dc	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_a2a4d79c9619	a2a4d79c96195812	ported	gamewindow/housesinfodialogcontroller.cpp:shortStatus
 sub_a2a64f37ce4e	a2a64f37ce4e54fa	skip	library: std::sort instantiation for the category list
+sub_a2ade1db114d	a2ade1db114d1be3	ported	gamewindow/outfitdialogcontroller.cpp:otherGenderOutfit
 sub_a2bd929f23a2	a2bd929f23a203c3	skip	generated: compiler-generated destructor pair
 sub_a2c6d3abce3e	a2c6d3abce3eee41	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterListChanged
 sub_a2fc0c207b95	a2fc0c207b95555e	ported	gamewindow/marketcontroller.cpp:TMarketController::getPriceOrProfitMultistring
@@ -10610,6 +10613,7 @@ sub_deef7f7cf8f7	deef7f7cf8f70cbc	inlined	gamewindow/depotsearchwidgetcontroller
 sub_defbe93572c4	defbe93572c4d5fb	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::setCategory
 sub_df012cbd2550	df012cbd2550775a	ported	gamewindow/actionbarcontroller.cpp:TActionBarGroup::TActionBarGroup
 sub_df04791f4f76	df04791f4f76d7c9	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::addLoot
+sub_df2484479ab9	df2484479ab916c5	inlined	gamewindow/outfitdialogcontroller.cpp:outfitGender
 sub_df2ccaa35f0e#2	df2ccaa35f0eccf5	skip	generated: moc signal emitter
 sub_df2ccaa35f0e#5	df2ccaa35f0eccf5	skip	generated: moc-generated signal emitter
 sub_df399805b1c3	df399805b1c39d30	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::setIndexOfSelectedClassification

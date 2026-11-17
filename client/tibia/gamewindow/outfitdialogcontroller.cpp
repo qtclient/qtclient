@@ -317,9 +317,12 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
         entry.otherGenderId = otherGenderOutfit(pairs, entry.id);
         entry.gender = entry.otherGenderId != 0 ? outfitGender(pairs, entry.id) : int(Gender::OutfitGenderUnknown);
     }
+    // Mounts and summons have no gender twin.
     for (Entries* list : { &mounts, &summons })
-        for (auto& entry : *list)
-            entry.otherGenderId = entry.id;
+        for (auto& entry : *list) {
+            entry.otherGenderId = 0;
+            entry.gender = Gender::OutfitGenderUnknown;
+        }
     applyOffers(outfits, m_windowOptions.outfitOffers);
     applyOffers(mounts, m_windowOptions.mountOffers);
     applyOffers(summons, m_windowOptions.summonOffers);
@@ -477,6 +480,9 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
             // Preview-only: Character Info never applies an outfit from this dialog.
         } else if (m_dialogMode == ConfigureShowOffSocket) {
             auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION));
+            // The socket shows a mount only when the character is mounted.
+            if (!MountCharacter)
+                outfit.setMount(0);
             action->outfit = outfit;
             action->position = m_windowOptions.podiumPosition;
             action->parameter = m_windowOptions.podiumItemId;
