@@ -12,7 +12,8 @@ set(TIBIA_PRODUCT_ORG "CipSoft")
 set(TIBIA_PRODUCT_BUNDLE_ID "com.tibia.launcher")
 set(TIBIA_PRODUCT_URL "https://www.tibia.com/")
 set(TIBIA_DEFAULT_CDN "")
-set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
+# CipSoft directoryname: bare; the launcher adds ".app" on macOS only.
+set(TIBIA_CLIENT_PACKAGE_DIR "Tibia")
 
 # CipSoft's launcher classes on every platform, the browser included (/play):
 # hostprocess.cpp is the one platform seam (starting a program).

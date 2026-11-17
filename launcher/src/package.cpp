@@ -277,10 +277,9 @@ TPackage::TPackage(int type, const QJsonObject& package, const QUrl& baseUrl)
             m_builds.push_back(std::make_unique<TPackageBuild>(this, build.toObject(), baseUrl));
     }
 #ifdef Q_OS_MACOS
-    // Client packages are application bundles on macOS. Product tips already
-    // name the bundle ("IdleOT.app"); only bare names get the suffix.
-    if (!m_directoryName.endsWith(QLatin1String(".app")))
-        m_directoryName.append(QLatin1String(".app"));
+    // Client packages are application bundles on macOS: directoryname "Tibia"
+    // installs as packages/Tibia.app (packages/Tibia on Linux and Windows).
+    m_directoryName.append(QLatin1String(".app"));
 #endif
 }
 

@@ -435,11 +435,15 @@ def write_tibia_engine_files(out: Path, platform: str, revision: str, engine: st
             raise SystemExit(
                 "[desktop] --engine-app must be QtClient.app with Contents/MacOS/client (CipSoft Play basename)"
             )
-        files = content_store.tree_entries(store, engine_dir, f"{APP_NAME}.app", skip_symlinks=True)
-        entry_point = f"/{APP_NAME}.app/Contents/MacOS/{GAME_EXE}"
-    else:
+        # CipSoft macOS: the package directory is the bundle (packages/Tibia.app),
+        # so the list starts inside it: Contents/MacOS/client.
         files = content_store.tree_entries(store, engine_dir, skip_symlinks=True)
-        entry_point = f"/{GAME_EXE}.exe" if platform == "windows-x64" else f"/{GAME_EXE}"
+        entry_point = f"/Contents/MacOS/{GAME_EXE}"
+    else:
+        # CipSoft Linux/Windows: the engine and its runtime under bin/ (bin/client),
+        # assets/ and sounds/ beside it at the package root.
+        files = content_store.tree_entries(store, engine_dir, "bin", skip_symlinks=True)
+        entry_point = f"/bin/{GAME_EXE}.exe" if platform == "windows-x64" else f"/bin/{GAME_EXE}"
     content_store.write_list(
         out, f"engine-{platform}", revision, engine, files, entry_point,
         dest=out / STORE_META / "v3" / f"engine-{platform}.json",

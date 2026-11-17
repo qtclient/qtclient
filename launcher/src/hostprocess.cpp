@@ -17,12 +17,13 @@ namespace launcher::host {
 namespace {
 
 // /play's handoff (qtc-aac tibia-browser.ts PLAY_HANDOFF_KEY): "tibia.play"
-// boots the client engine next, without it the launcher boots. Canvases and
-// the Module are dropped before the reload so the next engine has the memory.
-EM_JS(void, qtclientReloadInto, (int client), {
+// holds the client program to start (argv[0]); without it the launcher boots.
+// Canvases and the Module are dropped before the reload so the next engine has
+// the memory.
+EM_JS(void, qtclientReloadInto, (const char* clientProgram), {
     try {
-        if (client)
-            sessionStorage.setItem("tibia.play", "1");
+        if (clientProgram)
+            sessionStorage.setItem("tibia.play", UTF8ToString(clientProgram));
         sessionStorage.setItem("tibia.play.transition", "1");
     } catch (e) {}
     try {
@@ -51,7 +52,8 @@ bool startDetached(const QString& program, const QStringList& arguments, const Q
         return false;
     }
     qInfo().noquote() << "web: reloading into" << program;
-    qtclientReloadInto(client ? 1 : 0);
+    const QByteArray path = QFileInfo(program).absoluteFilePath().toUtf8();
+    qtclientReloadInto(client ? path.constData() : nullptr);
     return true;
 }
 

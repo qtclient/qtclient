@@ -118,7 +118,6 @@
 #include <QSaveFile>
 #include <QSettings>
 #include <QGuiApplication>
-#include <QStandardPaths>
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -297,41 +296,24 @@ void saveClientWindowGeometry(QQuickWindow* window)
 
 QStringList dataDirs(const QString& explicitDir)
 {
-#ifndef TIBIA_CLIENT_PACKAGE_DIR
-#define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
-#endif
+    // CipSoft ships graphics_resources.rcc next to the executable (bin/,
+    // Contents/MacOS/) and the assets under Resources (applicationDirPath/..,
+    // plus Resources when it exists): fonts in assets/fonts.
     const QString appDir = QCoreApplication::applicationDirPath();
-    QStringList dirs{
+    QDir resources(appDir);
+    resources.cdUp();
+    resources.cd(QStringLiteral("./Resources"));
+    return {
         explicitDir,
         qEnvironmentVariable("QTCLIENT_DATA_DIR"),
+        appDir,
+        resources.absolutePath(),
+        // Host: monorepo builds run outside a package (`make extract` → data/).
         QDir::current().filePath(QStringLiteral("data")),
-        appDir + QStringLiteral("/../Resources/data"),
-        appDir + QStringLiteral("/data"),
-        QStringLiteral("/data"),
 #ifdef TIBIA_SOURCE_DATA_DIR
         QStringLiteral(TIBIA_SOURCE_DATA_DIR),
 #endif
     };
-    // Tip package (portal OPFS / desktop AppData): RCC + fonts live under
-    // Contents/Resources/assets, not ./data. Stock host looks for Tibia.app;
-    // IdleOT qtclient directoryname is IdleOT.app — probe both (same as gamecore).
-    auto appendPackageDirs = [&dirs](const QString& appData) {
-        if (appData.isEmpty())
-            return;
-        const char* packageNames[] = {
-            TIBIA_CLIENT_PACKAGE_DIR,
-            "IdleOT.app",
-        };
-        for (const char* packageName : packageNames) {
-            const QString pkg = QDir(appData).filePath(
-                QLatin1String("packages/") + QLatin1String(packageName));
-            dirs << pkg;
-            dirs << QDir(pkg).filePath(QStringLiteral("Contents/Resources"));
-            dirs << QDir(pkg).filePath(QStringLiteral("Contents/Resources/assets"));
-        }
-    };
-    appendPackageDirs(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-    return dirs;
 }
 
 /// Compiles every CIP QML file (and override) the app ships; the count of
