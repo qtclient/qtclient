@@ -143,6 +143,12 @@ void TGameSessionBase::activate()
     TGameNotify::instance()->emitGameSessionChanged();
 }
 
+void TGameSessionBase::relinkProtocolMessageHandlers()
+{
+    if (isActive())
+        install(true);
+}
+
 void TGameSessionBase::install(const bool installed)
 {
     worldmap::TWorldMapStorage::setInstance(installed ? m_worldMapStorage.get() : nullptr);

@@ -74,6 +74,9 @@ public:
     /// instance(), and gameSessionChanged announces it.
     void activate();
     bool isActive() const { return active() == this; }
+    /// Re-links the protocol queue to the handlers that exist now. The game
+    /// window creates most handlers after the session is activated.
+    void relinkProtocolMessageHandlers();
 
     const std::shared_ptr<worldmap::TWorldMapViewport>& worldMapViewport() const { return m_worldMapViewport; }
     const std::shared_ptr<creatures::TCreatureMovementSpeedCalculator>& creatureMovementSpeedCalculator() const

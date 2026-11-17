@@ -4,6 +4,7 @@
 // timer and keeps them as its members).
 #include "client/gameclient.h"
 #include "game/gameactionrouter.h"
+#include "game/gamesessionbase.h"
 
 #include "analysers/analyserstorages.h"
 #include "analysers/analyserwidgets.h"
@@ -1078,6 +1079,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         g.informationDialogs->setMinimapTileStorage(nullptr);
         shutdown();
     });
+    // start() activated the session before the controllers above created their
+    // protocol message handlers (chat, store, market, trades, ...): link them now.
+    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
+        session->relinkProtocolMessageHandlers();
     return true;
 }
 
