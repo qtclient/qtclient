@@ -70,6 +70,15 @@
 #include "network/extendedopcoderouter.h"
 #include "network/gameserverdualconnection.h"
 #include "sound/soundprotocolmessagehandler.h"
+#include "config/clientoptions.h"
+#include "sound/gamesessionsoundprovider.h"
+#include "sound/objectsoundcontroller.h"
+#include "sound/soundconfiguration.h"
+#include "sound/soundcontroller.h"
+#include "sound/soundengine.h"
+#include "sound/soundmanager.h"
+#include "sound/soundmetadatamanager.h"
+#include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
 #include "renderer/nextframeupdater.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -256,6 +265,7 @@ TGameClient::TGameClient(QObject* parent)
             &TGameClient::sendCrashReport);
     // Each game session brings its own storages, view and handlers.
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
+    initializeSound();
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
@@ -614,6 +624,15 @@ void TGameClient::bindActiveSession()
     m_messageHandler.reset();
     game::TGameSessionBase* session = activeSession();
     m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (m_soundController) {
+        disconnect(m_objectSoundConnection);
+        m_soundController->setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
+        if (session && session->objectSoundController())
+            m_objectSoundConnection = connect(session->objectSoundController().get(),
+                                              &sound::TObjectSoundController::ambienceObjectStreamCountChanged,
+                                              m_soundController.get(),
+                                              &sound::TSoundController::onAmbienceObjectStreamCountChanged);
+    }
     if (m_minimap)
         m_minimap->setProtocolHandler(worldmapProtocol());
     if (!session)
@@ -969,6 +988,9 @@ void TGameClient::onWorldEntered()
     const QString character = m_session ? m_session->characterName()
                                         : (m_sessiondump ? m_sessiondump->characterName() : QString());
     qCInfo(lcGameClient).noquote() << "in world" << world << "as" << character;
+    // A game runs: the world's looping sounds resume (CIP sound trigger).
+    if (m_soundController)
+        m_soundController->handleSoundTrigger(false);
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
     // A new game session: no own team or listed teams, the team finder pages start over.
@@ -1070,6 +1092,8 @@ void TGameClient::onWorldLeft()
         texts->clear();
     if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())
         numerical->clear();
+    if (m_soundController)
+        m_soundController->handleSoundTrigger(true);
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
@@ -1152,6 +1176,31 @@ void TGameClient::setWindow(QQuickWindow* window)
     }, Qt::DirectConnection);
 }
 
+void TGameClient::initializeSound()
+{
+    const sound::TSoundSettings settings;
+    m_soundConfiguration = std::make_shared<sound::TSoundConfiguration>(settings, config::TClientOptions::instance());
+    if (!settings.noSound)
+        sound::TSoundEngine::instance().initialize(m_soundConfiguration);
+    if (!sound::TSoundEngine::instance().isInitialized())
+        return;
+    m_soundMetadataManager = std::make_shared<sound::TSoundMetadataManager>(nullptr, settings.ambienceDelayFactor);
+    m_soundManager = std::make_shared<sound::TSoundManager>(m_soundMetadataManager, "sounds/", settings.soundCacheSeconds);
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_soundManager.get(),
+            &sound::TSoundManager::onSoundMetadataChanged);
+    m_soundPlayerManager = std::make_shared<sound::TSoundPlayerManager>(settings.soundPlayerCount);
+    m_soundController = std::make_shared<sound::TSoundController>(m_soundMetadataManager, m_soundManager,
+                                                                  m_soundPlayerManager, m_soundConfiguration);
+    sound::TSoundController::setInstance(m_soundController.get());
+    connect(m_soundManager.get(), &sound::TSoundManager::playableSoundsChanged, m_soundPlayerManager.get(),
+            &sound::TSoundPlayerManager::onSoundManagerPlayableSoundsChanged);
+    // Out of the game the title music plays once the sound bank is known.
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
+        if (!tibia::game::isOnline())
+            m_soundController->handleSoundTrigger(true);
+    });
+}
+
 void TGameClient::tick()
 {
     // notifyCameraMove / QML during tween advance must not re-enter NFU: a nested
@@ -1162,8 +1211,18 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
-        session->soundStorage()->poll();
+    if (m_soundController) {
+        // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
+        const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
+        if (game::TGameSessionBase* session = game::TGameSessionBase::active()) {
+            session->soundStorage()->update(now);
+            if (session->objectSoundController())
+                session->objectSoundController()->updateObjectCounts(
+                    tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
+        }
+        m_soundController->update(now);
+        m_soundManager->updateWithTimestamp(now);
+    }
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;

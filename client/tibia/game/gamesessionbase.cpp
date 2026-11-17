@@ -39,6 +39,9 @@
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 #include "sound/soundprotocolmessagehandler.h"
+#include "sound/gamesessionsoundprovider.h"
+#include "sound/objectsoundcontroller.h"
+#include "sound/soundcontroller.h"
 #include "sound/soundstorage.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/numericaleffectstorage.h"
@@ -79,7 +82,13 @@ void TGameSessionBase::createStorages()
     m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
     m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
     m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
-    m_soundStorage = std::make_shared<sound::TSoundStorage>();
+    m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
+    // CIP: the client's sound reaches the session through its provider and
+    // its object sound counts.
+    if (sound::TSoundController* controller = sound::TSoundController::instance()) {
+        m_objectSoundController = std::make_shared<sound::TObjectSoundController>(controller->metadata());
+        m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
+    }
     m_textStorage = std::make_shared<chat::TTextStorage>();
     m_numericalEffectStorage = std::make_shared<worldmap::TNumericalEffectStorage>();
     // Numerical effects count against the effect limit.
@@ -334,6 +343,8 @@ void TGameSessionBase::releaseStorages()
     m_inventoryContainer.reset();
     m_containerStorage.reset();
     m_soundProtocolMessageHandler.reset();
+    m_gameSessionSoundProvider.reset();
+    m_objectSoundController.reset();
     m_soundStorage.reset();
     m_gameActionRouter.reset();
     m_outfitDialogStorage.reset();

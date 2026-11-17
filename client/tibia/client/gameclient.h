@@ -63,8 +63,11 @@ class TGameserverDualConnection;
 }
 namespace tibia {
 namespace sound {
-class TSoundProtocolMessageHandler;
-class TSoundStorage;
+class TSoundConfiguration;
+class TSoundController;
+class TSoundManager;
+class TSoundMetadataManager;
+class TSoundPlayerManager;
 }
 }
 namespace tibia {
@@ -258,6 +261,8 @@ public Q_SLOTS:
     void onFpsTrackingActiveChanged(bool FpsTrackingActive);
 
 private:
+    /// CIP TGameClientBase: the sound configuration, engine, players and controllers.
+    void initializeSound();
     /// CIP: (re)arms the FPS sample and upload timers for the current history.
     void startFpsHistoryTimers(qint64 sampleRateMsec, qint64 uploadRateSec);
     /// CIP: posts the pending crash report to the configured crashReportUrl
@@ -320,6 +325,13 @@ private:
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
+    // CIP TGameClientBase's sound (initializeSound).
+    std::shared_ptr<sound::TSoundConfiguration> m_soundConfiguration;
+    std::shared_ptr<sound::TSoundMetadataManager> m_soundMetadataManager;
+    std::shared_ptr<sound::TSoundManager> m_soundManager;
+    std::shared_ptr<sound::TSoundPlayerManager> m_soundPlayerManager;
+    std::shared_ptr<sound::TSoundController> m_soundController;
+    QMetaObject::Connection m_objectSoundConnection;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
     std::optional<game::GameserverCredentials> m_pendingLiveCredentials;

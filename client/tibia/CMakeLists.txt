@@ -464,6 +464,10 @@ if(TIBIA_WITH_GAMECORE)
     sound/soundcontrollerambiencestream.cpp sound/soundcontrollerambiencestream.h
     sound/soundcontrollerambienceobjectsound.cpp sound/soundcontrollerambienceobjectsound.h
     sound/soundcontrollercombatsound.cpp sound/soundcontrollercombatsound.h
+    sound/soundcontroller.cpp sound/soundcontroller.h
+    sound/gamesessionsoundprovider.cpp sound/gamesessionsoundprovider.h
+    sound/objectsoundcontroller.cpp sound/objectsoundcontroller.h
+    sound/weatheraudio.cpp sound/weatheraudio.h
     sound/miniaudio_impl.cpp
     game/playerstates.cpp game/playerstates.h
     game/playerstatestracker.cpp game/playerstatestracker.h

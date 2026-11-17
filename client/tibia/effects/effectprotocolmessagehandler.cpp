@@ -5,7 +5,8 @@
 #include "effects/effectstorage.h"
 #include "clockservice.h"
 #include "protocol/protocolciptypes.h"
-#include "sound/soundplayback.h"
+#include "game/gamesessionbase.h"
+#include "sound/soundstorage.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <tibia/game/thingsession_forward.h>
@@ -52,6 +53,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
 {
     const qint64 now = static_cast<qint64>(tibia::shared::TClockService::frameMillis());
     worldmap::TWorldMapStorage* map = worldmap::TWorldMapStorage::ensureStorage();
+    std::vector<sound::TSoundToPlay> sounds;
     for (const auto& entry : message.entries()) {
         const Position at = positionOf(entry.coordinate());
         switch (entry.kind()) {
@@ -81,15 +83,17 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
             break;
         }
         case 2:
-            sound::playProtocolSoundMain(static_cast<uint8_t>(entry.sound_source()), static_cast<uint16_t>(entry.sound_id()), at);
-            break;
         case 3:
-            sound::playProtocolSoundSecondary(static_cast<uint8_t>(entry.sound_enum()), static_cast<uint8_t>(entry.sound_source()),
-                                              static_cast<uint16_t>(entry.sound_id()), at);
+            sounds.push_back({ static_cast<uint16_t>(entry.sound_id()), at, static_cast<int>(entry.sound_source()), now });
             break;
         default:
             break;
         }
+    }
+    // The message's sound effects play together (CIP: TSoundStorage).
+    if (!sounds.empty()) {
+        if (game::TGameSessionBase* session = game::TGameSessionBase::active(); session && session->soundStorage())
+            session->soundStorage()->setSoundsToPlay(std::move(sounds), now);
     }
 }
 

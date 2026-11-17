@@ -41,6 +41,8 @@ class TEffectStorage;
 namespace sound {
 class TSoundProtocolMessageHandler;
 class TSoundStorage;
+class TGameSessionSoundProvider;
+class TObjectSoundController;
 }
 namespace worldmap {
 class TAmbientLightStorage;
@@ -99,6 +101,11 @@ public:
         return m_depotSearchDetailListStorage;
     }
     const std::shared_ptr<sound::TSoundStorage>& soundStorage() const { return m_soundStorage; }
+    const std::shared_ptr<sound::TGameSessionSoundProvider>& gameSessionSoundProvider() const
+    {
+        return m_gameSessionSoundProvider;
+    }
+    const std::shared_ptr<sound::TObjectSoundController>& objectSoundController() const { return m_objectSoundController; }
     const std::shared_ptr<sound::TSoundProtocolMessageHandler>& soundProtocolMessageHandler() const
     {
         return m_soundProtocolMessageHandler;
@@ -141,6 +148,8 @@ private:
     std::shared_ptr<container::TDepotSearchDetailListStorage> m_depotSearchDetailListStorage;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
+    std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
+    std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
     std::shared_ptr<chat::TTextStorage> m_textStorage;
     std::shared_ptr<worldmap::TNumericalEffectStorage> m_numericalEffectStorage;
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;

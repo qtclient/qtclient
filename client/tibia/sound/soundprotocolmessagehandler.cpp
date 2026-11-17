@@ -3,7 +3,8 @@
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolciptypes.h"
 
-#include "sound/soundstorage.h"
+#include "sound/soundcontroller.h"
+#include "sound/weatheraudio.h"
 
 #include <client/gamecore.h>
 
@@ -22,24 +23,28 @@ TSoundProtocolMessageHandler::TSoundProtocolMessageHandler(QObject* parent)
 
 void TSoundProtocolMessageHandler::handleSoundTriggerMessage(const int type, const int soundId)
 {
-    // Volumes are applied on option changes and when entering the world.
-    // Re-applying here stops the music channel before an ambience-only trigger.
-    auto* storage = TSoundStorage::instance();
-    if (!storage)
+    TSoundController* controller = TSoundController::instance();
+    if (!controller)
         return;
     switch (type) {
-        case 0:
-            storage->playAmbience(static_cast<uint16_t>(soundId));
-            break;
-        case 1:
-            storage->playMusic(static_cast<uint16_t>(soundId));
-            break;
-        case 2:
-            // Same one-shot path as a SOUND_TRIGGER game action.
-            storage->playUiEffect(static_cast<uint16_t>(soundId));
-            break;
-        default:
-            break;
+    case 2: {
+        TSoundEffectRequest request;
+        request.effectId = static_cast<TSoundEffectID>(soundId);
+        const TSoundEffectParameters parameters = controller->effectParameters(request);
+        if (std::optional<TSoundPlayerToken> token = controller->playSingleShot(parameters))
+            controller->keepSingleShot(std::move(*token));
+        break;
+    }
+    case 1:
+        controller->setMusicTemplate(static_cast<uint16_t>(soundId));
+        break;
+    case 0:
+        // Host: a pack weather bed may hold the ambience channel.
+        if (!TWeatherAudio::instance().deferAmbienceStream(static_cast<uint16_t>(soundId)))
+            controller->setAmbienceStream(static_cast<uint16_t>(soundId));
+        break;
+    default:
+        break;
     }
 }
 
