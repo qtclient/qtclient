@@ -236,7 +236,8 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
             if (!container)
                 use = openInNewWindow;
         }
-        push(A::OPEN_MANAGE_LOOT_CONTAINER);
+        // CIP: a TGameActionSimple; the dialog takes no object context.
+        actions.push_back(makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
     }
     if (id == tibia::game::standardRewardChestId())
         push(A::GATHER_ALL);
