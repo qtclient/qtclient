@@ -19,8 +19,12 @@
 
 #include "news/eventqmlentry.h"
 #include "news/eventsuploader.h"
+#include "news/newsdiskio.h"
 #include "news/newsrequestuploader.h"
 #include "news/newsstorage.h"
+#include "clockservice.h"
+#include "jsondocumenthttppostsender.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -138,17 +142,25 @@ void TGameWindowController::setShowEmailAsPlainText(const bool v)
 TGameWindowController::TGameWindowController(QQuickItem* container, QObject* parent)
     : cip::tibia::gamewindow::TGameWindowController(parent)
     , m_container(container)
-    , m_newsStorage(std::make_unique<news::TNewsStorage>())
+    , m_fileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
+    , m_clientServicesSender(std::make_shared<shared::TJsonDocumentHttpPostSender>())
+    , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
+    , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
+    , m_eventsStorage(std::make_unique<news::TEventsStorage>())
     , m_boostedUploader(std::make_unique<game::TBoostedCreatureRequestUploader>())
     , m_liveInfoUploader(std::make_unique<game::TLiveInformationRequestUploader>())
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
-    , m_eventsUploader(std::make_unique<news::TEventsUploader>())
-    , m_newsUploader(std::make_unique<news::TNewsRequestUploader>(m_newsStorage.get()))
     , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
     , m_newsButton(std::make_unique<TNewsButtonController>())
     , m_calendarDialog(std::make_unique<TCalendarDialogController>())
 {
-    m_newsDialog->setNewsUploader(m_newsUploader.get());
+    // CIP (TGameClient): the storage saves through the disk cache and starts
+    // from what it holds.
+    connect(m_newsStorage.get(), &news::TNewsStorage::startSavingNewsDataToDisk, m_newsDiskIO.get(),
+            &news::TNewsDiskIO::saveNewsDataToDisk);
+    connect(m_newsDiskIO.get(), &news::TNewsDiskIO::loadingNewsDataSucceeded, m_newsStorage.get(),
+            &news::TNewsStorage::loadFromDisk);
+    m_newsDiskIO->loadNewsDataFromDiskIfPossible();
     // CIP launcher authenticates before the game window; local client-start
     // shows the login mask until setAuthenticated(true).
     m_isAuthenticated = false;
@@ -194,14 +206,11 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             &TGameWindowController::onLiveInformationReceived);
     connect(m_showOffUploader.get(), &game::TShowOffRequestUploader::showOffReceived, this,
             &TGameWindowController::onShowOffReceived);
-    connect(m_eventsUploader.get(), &news::TEventsUploader::scheduleUpdated, this, &TGameWindowController::onEventScheduleUpdated);
     // qtclient: CIP's interval is not recoverable; once a minute catches the server save.
     m_eventsSchedulePreviewTimer.setInterval(60 * 1000);
     connect(&m_eventsSchedulePreviewTimer, &QTimer::timeout, this,
             &TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout);
     m_eventsSchedulePreviewTimer.start();
-    connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
-            &TNewsDialogController::onNewsQueryFailed);
 
     for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
         input::setActionHandler(type, [this](const input::TGameAction& action) {
@@ -285,10 +294,18 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
     m_liveInfoUploader->setClientRevision(clientRevision);
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
-    m_eventsUploader->setServiceUrl(service);
-    m_eventsUploader->setClientRevision(clientRevision);
-    m_newsUploader->setServiceUrl(service);
-    m_newsUploader->setClientRevision(clientRevision);
+    // CIP builds the client services uploaders with their URL.
+    m_eventsUploader = std::make_unique<news::TEventsUploader>(service, m_clientServicesSender, m_fileSystemHelper,
+                                                               shared::TClockService::process());
+    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
+            &news::TEventsStorage::onEventsUpdated);
+    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, &TGameWindowController::onEventScheduleUpdated);
+    m_newsUploader = std::make_unique<news::TNewsRequestUploader>(service, m_newsStorage, m_clientServicesSender,
+                                                                  m_fileSystemHelper, shared::TClockService::process());
+    connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
+            &TNewsDialogController::onNewsQueryFailed);
+    m_newsViewsUploader = std::make_unique<news::TNewsViewsUploader>(service, m_clientServicesSender);
+    m_newsDialog->setNewsUploaders(m_newsUploader.get(), m_newsViewsUploader.get());
     requestStartScreenServices();
 }
 
@@ -302,8 +319,10 @@ void TGameWindowController::requestStartScreenServices()
     // a fresh Module. Defer multiplex until account login (setAuthenticated).
 #else
     m_liveInfoUploader->requestUpdate();
-    m_eventsUploader->requestUpdate();
-    m_newsUploader->requestUpdate();
+    if (m_eventsUploader)
+        m_eventsUploader->requestUpdate();
+    if (m_newsUploader)
+        m_newsUploader->requestUpdate();
     m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 #endif
@@ -312,8 +331,10 @@ void TGameWindowController::requestStartScreenServices()
 void TGameWindowController::requestDeferredStartScreenServices()
 {
     m_liveInfoUploader->requestUpdate();
-    m_eventsUploader->requestUpdate();
-    m_newsUploader->requestUpdate();
+    if (m_eventsUploader)
+        m_eventsUploader->requestUpdate();
+    if (m_newsUploader)
+        m_newsUploader->requestUpdate();
     m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 }
@@ -450,11 +471,11 @@ void TGameWindowController::clearEventModels()
     qDeleteAll(upcoming);
 }
 
-void TGameWindowController::onEventScheduleUpdated()
+void TGameWindowController::onEventScheduleUpdated(const std::vector<news::TEventInformation>& events)
 {
-    updateEventsSchedulePreview(m_eventsUploader->events());
+    updateEventsSchedulePreview(events);
     if (m_calendarDialog)
-        m_calendarDialog->setEvents(m_eventsUploader->eventList());
+        m_calendarDialog->setEvents(m_eventsStorage->events());
 }
 
 void TGameWindowController::updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events)

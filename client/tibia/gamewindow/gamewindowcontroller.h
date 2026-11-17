@@ -29,8 +29,14 @@ class TShowOffRequestUploader;
 namespace tibia {
 namespace news {
 class TEventsUploader;
+class TNewsDiskIO;
 class TNewsRequestUploader;
 class TNewsStorage;
+class TNewsViewsUploader;
+}
+namespace shared {
+class TJsonDocumentHttpPostSender;
+class TTibiaFileSystemHelper;
 }
 }
 
@@ -178,7 +184,7 @@ private:
     void onBoostedCreatureReceived();
     void onLiveInformationReceived();
     void onShowOffReceived();
-    void onEventScheduleUpdated();
+    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void clearEventModels();
     /// CIP: today's events and the next starting ones, with their tooltips.
     void updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events);
@@ -196,12 +202,17 @@ private:
     bool m_beforeServerSave = true;
     bool m_allowWindowClose = false;
     class TMessageDialogController* m_quitDialog = nullptr;
-    std::unique_ptr<news::TNewsStorage> m_newsStorage;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::TJsonDocumentHttpPostSender> m_clientServicesSender;
+    std::shared_ptr<news::TNewsStorage> m_newsStorage;
+    std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;
+    std::unique_ptr<news::TEventsStorage> m_eventsStorage;
     std::unique_ptr<game::TBoostedCreatureRequestUploader> m_boostedUploader;
     std::unique_ptr<game::TLiveInformationRequestUploader> m_liveInfoUploader;
     std::unique_ptr<game::TShowOffRequestUploader> m_showOffUploader;
     std::unique_ptr<news::TEventsUploader> m_eventsUploader;
     std::unique_ptr<news::TNewsRequestUploader> m_newsUploader;
+    std::unique_ptr<news::TNewsViewsUploader> m_newsViewsUploader;
     std::unique_ptr<TNewsDialogController> m_newsDialog;
     std::unique_ptr<TNewsButtonController> m_newsButton;
     std::unique_ptr<TCalendarDialogController> m_calendarDialog;

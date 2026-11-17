@@ -13,7 +13,9 @@
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
 #include "prey/preyciptypes.h"
-#include "news/newsciptypes.h"
+#include "news/newsstorage.h"
+
+#include <algorithm>
 #include "network/networkciptypes.h"
 #include "market/marketciptypes.h"
 #include "imbuing/imbuingciptypes.h"
@@ -273,7 +275,6 @@ TGameClient::TGameClient(QObject* parent)
     imbuing::ownProductSurface(this);
     market::ownProductSurface(this);
     network::ownProductSurface(this);
-    news::ownProductSurface(this);
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
     protocol::ownProductSurface(this);
@@ -751,6 +752,15 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
         entries.push_back(e);
     }
     qCInfo(lcGameClient) << "account has" << entries.size() << "characters on" << result.worlds.size() << "worlds";
+    // CIP (TAuthenticationProcessController): the news learn the account's
+    // returner state and unlock against its highest character level.
+    if (news::TNewsStorage* news = news::TNewsStorage::current()) {
+        news->setReturnerInformation(result.session.isReturner, result.session.showRewardNews);
+        int highestLevel = 0;
+        for (const auto& c : result.characters)
+            highestLevel = std::max(highestLevel, c.level);
+        news->raiseAccountLevel(static_cast<ushort>(highestLevel));
+    }
     m_characterSelection->setAccount(premiumStatus(result.session), result.session.isPremium, entries, lastSelected);
 
     if (!m_options.autoCharacter.isEmpty()) {

@@ -102,6 +102,7 @@ qt_add_executable(tibia
   news/eventsuploader.cpp news/eventsuploader.h
   news/newsrequestuploader.cpp news/newsrequestuploader.h
   news/newsstorage.cpp news/newsstorage.h
+  news/newsdiskio.cpp news/newsdiskio.h
   news/newsentrymodels.cpp news/newsentrymodels.h
   controllers/characterselectioncontroller.cpp controllers/characterselectioncontroller.h
   gamewindow/gamewindowcontroller.cpp gamewindow/gamewindowcontroller.h
