@@ -3,6 +3,7 @@
 #include "analysers/itempricestorage.h"
 
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "quickloot/quicklootciptypes.h"
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "input/gameactionhandlers.h"
@@ -584,9 +585,7 @@ void TItemInfoStorage::saveLootList() const
 
 void TItemInfoStorage::sendLootList() const
 {
-    const std::set<uint16_t>& list = m_lootLists[m_lootListType];
-    const std::vector<uint16_t> items(list.begin(), list.end());
-    tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(m_lootListType), static_cast<uint16_t>(items.size()), items);
+    quickloot::TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist(m_lootListType, m_lootLists[m_lootListType]);
 }
 
 }

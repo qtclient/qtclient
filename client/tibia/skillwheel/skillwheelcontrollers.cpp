@@ -1,4 +1,5 @@
 #include "skillwheelcontrollers.h"
+#include "skillwheel/skillwheelciptypes.h"
 
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
@@ -1023,11 +1024,6 @@ int TGemAtelierPageController::unrevealedLesserGemAppearanceType() const { retur
 int TGemAtelierPageController::unrevealedRegularGemAppearanceType() const { return unrevealedGemTypeId(m_storage->vocationIndex(), 1); }
 int TGemAtelierPageController::unrevealedGreaterGemAppearanceType() const { return unrevealedGemTypeId(m_storage->vocationIndex(), 2); }
 
-void TGemAtelierPageController::gemAction(const int type, const int param, const int pos)
-{
-    tibia::game::gemAction(static_cast<uint8_t>(type), static_cast<uint16_t>(param), static_cast<uint8_t>(pos));
-}
-
 /// Vessels are part of the edited wheel: socketing changes the current wheel,
 /// Apply sends it.
 void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int VesselIndex)
@@ -1050,10 +1046,10 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
     m_storage->setCurrentWheel(wheel);
 }
 
-void TGemAtelierPageController::dismantleGem(const int GemId) { gemAction(0, GemId); }
-void TGemAtelierPageController::revealGem(const int GemQuality) { gemAction(1, GemQuality); }
-void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { gemAction(2, GemId, ModIdx); }
-void TGemAtelierPageController::toggleGemLock(const int GemId) { gemAction(3, GemId); }
+void TGemAtelierPageController::dismantleGem(const int GemId) { TSkillWheelProtocolMessageHandler::dismantleGem(GemId); }
+void TGemAtelierPageController::revealGem(const int GemQuality) { TSkillWheelProtocolMessageHandler::revealGem(GemQuality); }
+void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { TSkillWheelProtocolMessageHandler::reshapeGem(GemId, ModIdx); }
+void TGemAtelierPageController::toggleGemLock(const int GemId) { TSkillWheelProtocolMessageHandler::toggleGemLock(GemId); }
 void TGemAtelierPageController::selectVessel(const int Index)
 {
     if (Index >= VesselCount || Index == m_selectedVesselIndex)
@@ -1226,7 +1222,7 @@ void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, con
         return;
     m_pendingBasic = isBasicMod;
     m_pendingMod = ModID;
-    tibia::game::gemAction(4, isBasicMod ? 0 : 1, static_cast<uint8_t>(ModID));
+    TSkillWheelProtocolMessageHandler::enhanceModGrade(isBasicMod ? 0 : 1, ModID);
 }
 
 // ---------------------------------------------------------------------------

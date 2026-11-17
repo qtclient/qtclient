@@ -1,4 +1,5 @@
 #include "trade/tradeciptypes.h"
+#include <stdexcept>
 #include <tuple>
 #include <client/outfit.h>
 #include "creatures/creatureprotocolapply.h"
@@ -352,6 +353,8 @@ void TPlayerTradeProtocolMessageHandler::rejectTrade()
 
 void TPlayerTradeProtocolMessageHandler::lookTrade(const int index, const int side)
 {
+    if (static_cast<unsigned>(side) >= 2)
+        throw std::runtime_error("unhandled enum value");
     tibia::game::inspectTrade(side != 0, static_cast<uint8_t>(index));
 }
 

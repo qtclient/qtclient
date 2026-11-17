@@ -6,6 +6,7 @@
 #include "gamewindow/highscoresdialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/preydialogcontroller.h"
+#include "prey/preyciptypes.h"
 #include "gamewindow/questlogcontroller.h"
 #include "questlog/questlogciptypes.h"
 #include "gamewindow/remainingdialogs.h"
@@ -341,18 +342,20 @@ void TInformationDialogs::hookPrey()
     // CIP TPreyGameActionHandler: the PreyAction message (0 list reroll,
     // 1 bonus reroll, 2 list choice, 3 bestiary list, 4 bestiary choice,
     // 5 automatic extension).
-    const auto preyAction = [](const A type, const uint8_t actionType) {
-        input::setActionHandler(type, [actionType](const input::TGameAction& action) {
-            tibia::game::preyAction(static_cast<uint8_t>(action.instance), actionType, static_cast<uint16_t>(action.parameter));
+    using PreyMessages = prey::TPreyProtocolMessageHandler;
+    const auto preyAction = [](const A type, void (*send)(int, int)) {
+        input::setActionHandler(type, [send](const input::TGameAction& action) {
+            send(static_cast<int>(action.instance), static_cast<int>(action.parameter));
             return true;
         });
     };
-    preyAction(A::PREY_REQUEST_LIST_REROLL, 0);
-    preyAction(A::PREY_REQUEST_BONUS_REROLL, 1);
-    preyAction(A::PREY_SELECT_MONSTER_FROM_LIST, 2);
-    preyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS, 3);
-    preyAction(A::PREY_SELECT_MONSTER_FROM_BESTIARY, 4);
-    preyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, 5);
+    preyAction(A::PREY_REQUEST_LIST_REROLL, [](const int preyId, int) { PreyMessages::requestListReroll(preyId); });
+    preyAction(A::PREY_REQUEST_BONUS_REROLL, [](const int preyId, int) { PreyMessages::requestBonusReroll(preyId); });
+    preyAction(A::PREY_SELECT_MONSTER_FROM_LIST, &PreyMessages::selectMonsterFromList);
+    preyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS,
+               [](const int preyId, int) { PreyMessages::requestFreezeAndShowBestiaryMonsters(preyId); });
+    preyAction(A::PREY_SELECT_MONSTER_FROM_BESTIARY, &PreyMessages::selectMonsterFromBestiary);
+    preyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, &PreyMessages::setAutomaticExtendType);
 
     // Every slot state ends with the free list reroll (seconds from now) and
     // the automatic extension option (CIP's "wildcards" outside the

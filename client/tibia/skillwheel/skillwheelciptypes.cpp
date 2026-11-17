@@ -8,6 +8,9 @@
 #include <tibia/game/gamenotify.h>
 
 #include <protocol.pb.h>
+#include <tibia/game/gamesession_forward.h>
+
+#include <stdexcept>
 
 namespace tibia::skillwheel {
 
@@ -17,6 +20,33 @@ TSkillWheelProtocolMessageHandler* g_liveSkillWheelProtocolHandler = nullptr;
 using ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed;
 using ::tibia::protobuf::protocol::GameserverMessageSkillWheel;
 } // namespace
+
+void TSkillWheelProtocolMessageHandler::dismantleGem(const int gemId)
+{
+    tibia::game::gemAction(0, static_cast<uint16_t>(gemId), 0);
+}
+
+void TSkillWheelProtocolMessageHandler::revealGem(const int quality)
+{
+    if (static_cast<unsigned>(quality) >= 3)
+        throw std::runtime_error("unhandled enum value");
+    tibia::game::gemAction(1, static_cast<uint16_t>(quality), 0);
+}
+
+void TSkillWheelProtocolMessageHandler::reshapeGem(const int gemId, const int modIndex)
+{
+    tibia::game::gemAction(2, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
+}
+
+void TSkillWheelProtocolMessageHandler::toggleGemLock(const int gemId)
+{
+    tibia::game::gemAction(3, static_cast<uint16_t>(gemId), 0);
+}
+
+void TSkillWheelProtocolMessageHandler::enhanceModGrade(const int modType, const int modId)
+{
+    tibia::game::gemAction(4, static_cast<uint16_t>(static_cast<uint8_t>(modType)), static_cast<uint8_t>(modId));
+}
 
 TSkillWheelProtocolMessageHandler::TSkillWheelProtocolMessageHandler(QObject* parent)
     : cip::tibia::skillwheel::TSkillWheelProtocolMessageHandler(parent)

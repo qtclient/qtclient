@@ -3,6 +3,8 @@
 #include <protocol.pb.h>
 
 #include <algorithm>
+#include <vector>
+#include <stdexcept>
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolciptypes.h"
 
@@ -41,6 +43,14 @@ void TManagedContainersProtocolMessageHandler::quickLoot(const Position& positio
     // Looting a corpse on the map loots every corpse around it when the option asks for it.
     const bool onMap = position.x != 0xFFFF;
     tibia::game::sendQuickLootAt(onMap && allCorpsesInArea ? 1 : 0, position, objectId, stackPosition);
+}
+
+void TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist(const int listType, const std::set<uint16_t>& objectTypeIds)
+{
+    if (static_cast<unsigned>(listType) >= 2)
+        throw std::runtime_error("unhandled enum value");
+    const std::vector<uint16_t> items(objectTypeIds.begin(), objectTypeIds.end());
+    tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(listType), static_cast<uint16_t>(items.size()), items);
 }
 
 void TManagedContainersProtocolMessageHandler::quickLootAreaAtPlayer() { tibia::game::sendQuickLootAt(2, Position(0, 0, 0), 0, 0); }
