@@ -1,14 +1,18 @@
 #include "appearances/appearanceinstance.h"
+#include "appearances/appearanceinstancetracker.h"
+#include "protocol/objectdata.h"
 #include "config/clientsettings.h"
 
 #include "tibia/assets/things.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/client/outfit.h"
 #include "creatures/creaturestorage.h"
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
 #include "tibia/runtime/host.h"
 #include "animation/animator.h"
+
+#include <map>
 #include <client/const.h>
 
 #include <client/const.h>
@@ -27,7 +31,7 @@ namespace tibia::appearances {
 namespace {
 
 /// The appearance has more than one pattern in some direction.
-bool hasPatterns(const ThingType& type)
+bool hasPatterns(const TAppearanceType& type)
 {
     return type.getNumPatternX() > 1 || type.getNumPatternY() > 1 || type.getNumPatternZ() > 1;
 }
@@ -74,7 +78,7 @@ int hookPattern(const uint8_t hookState, const uint8_t width)
     return last < hookState ? last : hookState;
 }
 
-void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
+void objectPatternsFor(TAppearanceType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
 {
     patternX = patternY = patternZ = 0;
     if (!type || type->isNull())
@@ -93,9 +97,27 @@ void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX,
 }
 
 
-TAppearanceInstance::TAppearanceInstance(ThingType* type)
+TAppearanceInstance::TAppearanceInstance(TAppearanceType* type)
     : m_type(type)
 {
+    // The instance draws its type's initial frame group, an outfit's idle one
+    // when it has none (CIP: the type's sprites info of frame group 0).
+    if (!type)
+        return;
+    const EFixedFrameGroup group =
+        type->hasFrameGroup(EFixedFrameGroup::ObjectInitial) ? EFixedFrameGroup::ObjectInitial : EFixedFrameGroup::OutfitIdle;
+    if (!type->hasFrameGroup(group))
+        return;
+    // The types live as long as the appearances: the sequence refers to the group.
+    const std::shared_ptr<const TAppearanceTypeSpriteInfo> spritesInfo(std::shared_ptr<void>(), &type->frameGroup(group));
+    m_spriteSequence = std::make_shared<TAppearanceInstanceSpriteSequence>(spritesInfo, false);
+    m_spriteSequence->setPattern({}, m_animationStartMs);
+}
+
+void TAppearanceInstance::setSpritePattern(const TAppearancePattern& pattern)
+{
+    if (m_spriteSequence)
+        m_spriteSequence->setPattern(pattern, m_animationStartMs);
 }
 
 uint16_t TAppearanceInstance::id() const
@@ -133,13 +155,159 @@ void applyProtocolObjectState(const TAppearanceInstancePtr& instance, const uint
 
 } // namespace
 
-void TOutfitAppearanceInstance::setOutfitLook(const Outfit& outfit, const uint8_t direction)
+namespace {
+
+/// The frame group `group` of `type`, held as long as the appearances live; null
+/// when the type has none.
+std::shared_ptr<const TAppearanceTypeSpriteInfo> typeSpritesInfo(const TAppearanceType* type, const EFixedFrameGroup group)
 {
-    m_outfit = outfit;
-    m_direction = direction;
+    if (!type || !type->hasFrameGroup(group))
+        return nullptr;
+    return std::shared_ptr<const TAppearanceTypeSpriteInfo>(std::shared_ptr<void>(), &type->frameGroup(group));
 }
 
-TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(ThingType* type, const uint16_t count)
+} // namespace
+
+TOutfitAppearanceInstance::TOutfitAppearanceInstance(TAppearanceType* type)
+    : TAppearanceInstance(type)
+{
+}
+
+TOutfitAppearanceInstance::TOutfitAppearanceInstance(TAppearanceType* type, const uint8_t direction)
+    : TAppearanceInstance(type)
+{
+    buildSequences<TAppearanceInstanceSpriteSequence>();
+    updatePreviewSpriteInfo();
+    setPatterns(direction, direction, 0, true);
+}
+
+template <class Sequence>
+void TOutfitAppearanceInstance::buildSequences()
+{
+    // The moving sequence's phases follow the creature's steps.
+    if (auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle))
+        m_idleSequence = std::make_shared<Sequence>(std::move(idle), false);
+    else
+        m_idleSequence.reset();
+    if (auto moving = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitMoving))
+        m_movingSequence = std::make_shared<Sequence>(std::move(moving), true);
+    else
+        m_movingSequence.reset();
+    m_spriteSequence = m_idleSequence;
+}
+
+TReverseAddons TOutfitAppearanceInstance::reverseAddonsOf(const TAppearanceType* type)
+{
+    if (!type)
+        return {};
+    return TReverseAddons{ .east = type->reverseAddonsEast(),
+                           .west = type->reverseAddonsWest(),
+                           .north = type->reverseAddonsNorth(),
+                           .south = type->reverseAddonsSouth() };
+}
+
+void TOutfitAppearanceInstance::setPatterns(const uint8_t direction, const uint8_t movingDirection, const uint8_t z,
+                                            const bool force)
+{
+    if (!force && m_direction == direction && m_movingDirection == movingDirection && m_patternZ == z)
+        return;
+    m_patternZ = z;
+    m_direction = direction;
+    m_movingDirection = movingDirection;
+    const TReverseAddons reverse = reverseAddonsOf(m_type);
+    if (m_idleSequence)
+        m_idleSequence->setPattern(TAppearancePattern{ direction, 0, z }, 0, reverse);
+    if (m_movingSequence)
+        m_movingSequence->setPattern(TAppearancePattern{ movingDirection, 0, z }, 0, reverse);
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TOutfitAppearanceInstance::idleSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_idleSequence ? m_idleSequence->currentSpriteInfo() : none;
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TOutfitAppearanceInstance::movingSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_movingSequence ? m_movingSequence->currentSpriteInfo() : none;
+}
+
+bool TOutfitAppearanceInstance::updateSequences(const qint64 nowMs, const bool idle, const bool moving)
+{
+    bool changed = idle && m_idleSequence && m_idleSequence->update(nowMs);
+    if (moving && m_movingSequence)
+        changed = m_movingSequence->update(nowMs) || changed;
+    return changed;
+}
+
+TAppearanceInstanceSpriteInfoPtr TOutfitAppearanceInstance::spriteInfoAtPhase(const int phase) const
+{
+    if (phase < 0)
+        return nullptr;
+    const auto idle = m_idleSequence ? m_idleSequence->spriteInfos() : std::vector<TAppearanceInstanceSpriteInfoPtr>{};
+    if (static_cast<size_t>(phase) < idle.size())
+        return idle[static_cast<size_t>(phase)];
+    const auto moving = m_movingSequence ? m_movingSequence->spriteInfos() : std::vector<TAppearanceInstanceSpriteInfoPtr>{};
+    const size_t index = static_cast<size_t>(phase) - idle.size();
+    return index < moving.size() ? moving[index] : nullptr;
+}
+
+void TOutfitAppearanceInstance::updatePreviewSpriteInfo()
+{
+    m_previewSpriteInfo.reset();
+    auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle);
+    if (!idle)
+        return;
+    TAppearanceInstanceSpriteSequence preview(std::move(idle), false);
+    preview.setPattern(TAppearancePattern{ 2, 0, 0 }, 0, reverseAddonsOf(m_type));
+    m_previewSpriteInfo = preview.firstSpriteInfo();
+}
+
+TCustomizableOutfitAppearanceInstance::TCustomizableOutfitAppearanceInstance(TAppearanceType* type, const uint8_t direction,
+                                                                             const TOutfitCustomization& customization)
+    : TOutfitAppearanceInstance(type, direction)
+    , m_customization(customization)
+{
+    buildSequences<TCustomizableOutfitAppearanceInstanceSpriteSequence>();
+    setPatterns(direction, direction, 0, true);
+}
+
+void TCustomizableOutfitAppearanceInstance::setPatterns(const uint8_t direction, const uint8_t movingDirection,
+                                                        const uint8_t z, const bool force)
+{
+    auto* idle = dynamic_cast<TCustomizableOutfitAppearanceInstanceSpriteSequence*>(m_idleSequence.get());
+    auto* moving = dynamic_cast<TCustomizableOutfitAppearanceInstanceSpriteSequence*>(m_movingSequence.get());
+    if (force || m_direction != direction || m_movingDirection != movingDirection || m_patternZ != z) {
+        m_patternZ = z;
+        m_direction = direction;
+        m_movingDirection = movingDirection;
+        if (idle)
+            idle->setCustomization(m_customization);
+        if (moving)
+            moving->setCustomization(m_customization);
+        const TReverseAddons reverse = reverseAddonsOf(m_type);
+        if (m_idleSequence)
+            m_idleSequence->setPattern(TAppearancePattern{ direction, 0, z }, 0, reverse);
+        if (m_movingSequence)
+            m_movingSequence->setPattern(TAppearancePattern{ movingDirection, 0, z }, 0, reverse);
+    }
+    updatePreviewSpriteInfo();
+}
+
+void TCustomizableOutfitAppearanceInstance::updatePreviewSpriteInfo()
+{
+    m_previewSpriteInfo.reset();
+    auto idle = typeSpritesInfo(m_type, EFixedFrameGroup::OutfitIdle);
+    if (!idle)
+        return;
+    TCustomizableOutfitAppearanceInstanceSpriteSequence preview(std::move(idle), false);
+    preview.setCustomization(m_customization);
+    preview.setPattern(TAppearancePattern{ 2, 0, 0 }, 0, reverseAddonsOf(m_type));
+    m_previewSpriteInfo = preview.currentSpriteInfo();
+}
+
+TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(TAppearanceType* type, const uint16_t count)
     : TObjectAppearanceInstance(type)
 {
     m_count = count;
@@ -169,7 +337,7 @@ void TCumulativeObjectAppearanceInstance::pilePattern(int& patternX, int& patter
     cumulativePilePattern(pile, patternX, patternY);
 }
 
-THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(ThingType* type)
+THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(TAppearanceType* type)
     : TObjectAppearanceInstance(type)
 {
     updateHookPattern();
@@ -187,7 +355,7 @@ void THangableObjectAppearanceInstance::updateHookPattern()
     setDrawPatterns(static_cast<uint8_t>(hookPattern(m_hangSide, width)), 0, 0);
 }
 
-TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(ThingType* type, const uint32_t liquidType)
+TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(TAppearanceType* type, const uint32_t liquidType)
     : TObjectAppearanceInstance(type)
     , m_fluid(liquidType)
 {
@@ -201,7 +369,7 @@ TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(ThingType* type
 
 void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& pos)
 {
-    ThingType* type = thingType();
+    TAppearanceType* type = thingType();
     if (!type)
         return;
     const auto width = static_cast<uint32_t>(std::max(1, type->getNumPatternX()));
@@ -252,36 +420,47 @@ void TEffectInstance::start(const Position& field, const qint64 nowMs, const qin
     m_startMs = nowMs;
     m_nowMs = nowMs;
     m_delayMs = std::max<qint64>(0, delayMs);
-    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
-        m_animator.emplace(*info, nowMs);
-    // The pattern follows the field's coordinate.
+    // The pattern follows the field's coordinate; the sequence's animation
+    // starts now.
     if (m_type) {
         m_patternX = static_cast<int>(static_cast<uint32_t>(field.x) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternX())));
         m_patternY = static_cast<int>(static_cast<uint32_t>(field.y) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternY())));
     }
+    m_animationStartMs = nowMs;
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
 }
 
 void TEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
-    if (!m_animator)
-        return;
     if (m_delayMs == 0)
-        m_animator->update(nowMs);
+        updateAnimation(nowMs);
     else if (m_startMs + m_delayMs < nowMs)
-        m_animator->update(nowMs - m_delayMs);
+        updateAnimation(nowMs - m_delayMs);
+}
+
+const animation::TAnimator* TEffectInstance::animator() const
+{
+    return m_spriteSequence ? m_spriteSequence->animator().get() : nullptr;
+}
+
+int TEffectInstance::phase() const
+{
+    const animation::TAnimator* running = animator();
+    return running ? running->phase() : 0;
 }
 
 bool TEffectInstance::isFinished() const
 {
-    return !m_animator || m_animator->isFinished();
+    const animation::TAnimator* running = animator();
+    return !running || running->isFinished();
 }
 
 bool TEffectInstance::getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const
 {
     if (!m_type || m_type->isNull() || !isShown() || isFinished())
         return false;
-    animationPhase = m_animator->phase();
+    animationPhase = phase();
     xPattern = m_patternX;
     yPattern = m_patternY;
     return true;
@@ -292,14 +471,6 @@ bool TEffectInstance::isTopEffectType() const
     return m_type && m_type->isTopEffect();
 }
 
-void TFieldEffectInstance::setDrawState(const int animationPhase, const int patternX, const int patternY, const float opacity)
-{
-    m_animationPhase = animationPhase;
-    m_patternX = patternX;
-    m_patternY = patternY;
-    m_opacity = opacity;
-}
-
 float TMissileEffectInstance::setPath(const Position& from, const Position& to, const qint64 nowMs)
 {
     m_pathFrom = from;
@@ -307,8 +478,6 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_fieldPosition = from;
     m_startMs = nowMs;
     m_nowMs = nowMs;
-    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
-        m_animator.emplace(*info, nowMs);
     m_delta = QPoint(to.x - from.x, to.y - from.y);
     // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
     static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
@@ -316,14 +485,15 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
     directionPattern(fieldDirection(m_delta.x(), m_delta.y()), m_patternX, m_patternY);
     m_delta *= tibia::config::spriteSize();
+    m_animationStartMs = nowMs;
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
     return m_flightDuration;
 }
 
 void TMissileEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
-    if (m_animator)
-        m_animator->update(nowMs);
+    updateAnimation(nowMs);
 }
 
 QPoint TMissileEffectInstance::flightOffset() const
@@ -372,89 +542,258 @@ void TDirectionalFieldEffectInstance::start(const Position& field, const qint64 
 {
     TEffectInstance::start(field, nowMs);
     directionPattern(direction, m_patternX, m_patternY);
+    setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
 }
 
-TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::vector<uint32_t> spriteIds)
-    : m_spriteIds(std::move(spriteIds))
+template <class T, class... Args>
+std::shared_ptr<T> TAppearanceInstanceFactory::makeTracked(TAppearanceType* type, Args&&... args)
 {
+    // The tracker counts the instance until its last owner lets it go.
+    const std::shared_ptr<TAppearanceInstanceTracker> tracker = instanceTracker();
+    T* instance = new T(type, std::forward<Args>(args)...);
+    if (!type)
+        return std::shared_ptr<T>(instance);
+    tracker->instanceCreated(*type);
+    // The type may be gone when the last owner lets go at exit: the key is kept.
+    return std::shared_ptr<T>(instance, [tracker, category = type->category(), id = type->getId()](T* created) {
+        tracker->instanceDestroyed(category, id);
+        delete created;
+    });
 }
 
 namespace {
 
-/// An object of `type`. The protocol does not say which kind of object it
-/// sends, so the type's flags pick it, in the order CipSoft tests the kinds of
-/// a protocol object: liquid, cumulative, container, show-off socket,
-/// upgradeable, wearout, expire, deco item kit, then a plain object.
-TAppearanceInstancePtr createItem(ThingType* type, const uint16_t count, const uint32_t liquidType)
+/// An object of `type` read from an inventory item: the protocol's object
+/// kinds are exclusive and the first one the object belongs to decides
+/// (liquid, cumulative, container, show-off socket, upgradeable, wearout,
+/// expire, deco item kit, then a plain object).
+TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, const uint32_t liquidType, const uint8_t tier)
 {
-    if (type->isFluidContainer() || type->isSplash())
-        return std::make_shared<TLiquidObjectAppearanceInstance>(type, liquidType);
-    if (type->isStackable())
-        return std::make_shared<TCumulativeObjectAppearanceInstance>(type, count);
-    if (type->isContainer())
-        return std::make_shared<TContainerObjectAppearanceInstance>(type);
-    if (type->isPodium())
-        return std::make_shared<TShowOffSocketAppearanceInstance>(type);
-    if (type->getClassification() > 0)
-        return std::make_shared<TUpgradeableObjectAppearanceInstance>(type);
-    if (type->hasWearOut())
-        return std::make_shared<TWearoutObjectAppearanceInstance>(type);
-    if (type->hasExpire() || type->hasClockExpire())
-        return std::make_shared<TExpireObjectAppearanceInstance>(type);
-    if (type->isDecoKit())
-        return std::make_shared<TDecoItemKitAppearanceInstance>(type);
+    const uint16_t id = type->getId();
+    const auto& special = TAppearancesManager::instance().specialAppearancesForProtocolParsing();
+    if (special.isLiquid(id))
+        return TAppearanceInstanceFactory::createLiquidObject(id, liquidType);
+    if (special.isCumulative(id))
+        return TAppearanceInstanceFactory::createCumulativeObject(id, static_cast<uint8_t>(count));
+    if (special.isContainer(id))
+        return TAppearanceInstanceFactory::makeTracked<TContainerObjectAppearanceInstance>(type);
+    if (special.isShowOffSocket(id))
+        return TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance>(type);
+    if (special.isUpgradeable(id))
+        return TAppearanceInstanceFactory::createUpgradeableObject(id, tier);
+    if (special.isWearOut(id))
+        return TAppearanceInstanceFactory::createWearoutObject(type, 0, false);
+    if (special.isExpire(id) || special.isExpireStop(id))
+        return TAppearanceInstanceFactory::createExpireObject(type, 0, false, false);
+    if (special.isDecoKit(id))
+        return TAppearanceInstanceFactory::createDecoItemKitObject(id, 0);
     return TAppearanceInstanceFactory::createObject(type);
 }
 
 } // namespace
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type)
+TAppearanceType* TAppearanceInstanceFactory::dummyAppearanceType(const ThingCategory category)
+{
+    // One dummy per category: a type without flags whose only frame group is an
+    // empty initial one.
+    static std::map<ThingCategory, TAppearanceType> dummies = [] {
+        std::map<ThingCategory, TAppearanceType> types;
+        for (const ThingCategory key : { ThingCategoryItem, ThingCategoryCreature, ThingCategoryEffect, ThingCategoryMissile }) {
+            TAppearanceType dummy;
+            dummy.addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
+            types.emplace(key, std::move(dummy));
+        }
+        return types;
+    }();
+    return &dummies.at(category);
+}
+
+TAppearanceType* TAppearanceInstanceFactory::appearanceType(const ThingCategory category, const uint16_t id)
+{
+    if (TAppearanceType* type = TAppearancesManager::instance().getRawThingType(id, category))
+        return type;
+    return dummyAppearanceType(category);
+}
+
+bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category, const uint16_t id)
+{
+    return TAppearancesManager::instance().hasAppearanceType(category, id);
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
 {
     if (!type || type->isNull())
-        return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
 
     switch (type->getCategory()) {
         case ThingCategoryCreature:
             return createOutfit(type, Outfit(), 2);
         case ThingCategoryEffect:
-            return std::make_shared<TFieldEffectInstance>(type);
+            return makeTracked<TFieldEffectInstance>(type);
         case ThingCategoryMissile:
-            return std::make_shared<TMissileEffectInstance>(type);
+            return makeTracked<TMissileEffectInstance>(type);
         case ThingCategoryItem:
-            return createItem(type, 0, 0);
+            return createItem(type, 0, 0, 0);
         default:
-            return std::make_shared<TWorldMapAppearanceInstance>(type);
+            return makeTracked<TWorldMapAppearanceInstance>(type);
     }
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(ThingType* type)
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const uint16_t id)
 {
-    if (type && type->isHangable())
-        return std::make_shared<THangableObjectAppearanceInstance>(type);
-    return std::make_shared<TPatternObjectAppearanceInstance>(type);
+    return createObject(appearanceType(ThingCategoryItem, id));
 }
 
-std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(ThingType* type, const Outfit& outfit,
+std::shared_ptr<TCumulativeObjectAppearanceInstance> TAppearanceInstanceFactory::createCumulativeObject(const uint16_t id,
+                                                                                                      const uint8_t count)
+{
+    return makeTracked<TCumulativeObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), count);
+}
+
+std::shared_ptr<TLiquidObjectAppearanceInstance> TAppearanceInstanceFactory::createLiquidObject(const uint16_t id,
+                                                                                              const uint32_t liquidType)
+{
+    return makeTracked<TLiquidObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), liquidType);
+}
+
+std::shared_ptr<TDecoItemKitAppearanceInstance> TAppearanceInstanceFactory::createDecoItemKitObject(const uint16_t id,
+                                                                                                  const uint16_t decoItemId)
+{
+    return makeTracked<TDecoItemKitAppearanceInstance>(appearanceType(ThingCategoryItem, id), decoItemId);
+}
+
+std::shared_ptr<TUpgradeableObjectAppearanceInstance> TAppearanceInstanceFactory::createUpgradeableObject(const uint16_t id,
+                                                                                                        const uint8_t tier)
+{
+    return makeTracked<TUpgradeableObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), tier);
+}
+
+std::shared_ptr<TWearoutObjectAppearanceInstance> TAppearanceInstanceFactory::createWearoutObject(TAppearanceType* type,
+                                                                                                const uint32_t charges,
+                                                                                                const bool brandNew)
+{
+    return makeTracked<TWearoutObjectAppearanceInstance>(type, charges, brandNew);
+}
+
+std::shared_ptr<TExpireObjectAppearanceInstance>
+TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int64_t remainingMilliseconds,
+                                               const bool brandNew, const bool stopped)
+{
+    return makeTracked<TExpireObjectAppearanceInstance>(type, remainingMilliseconds, brandNew, stopped,
+                                                        static_cast<int64_t>(tibia::shared::TClockService::frameMillis()));
+}
+
+std::shared_ptr<TFieldEffectInstance> TAppearanceInstanceFactory::createFieldEffect(const uint16_t id, const Position& field,
+                                                                                   const uint8_t source, const qint64 nowMs,
+                                                                                   const qint64 delayMs)
+{
+    auto effect = makeTracked<TFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
+    effect->setSource(static_cast<tibia::client::MagicEffectSources>(source));
+    effect->start(field, nowMs, delayMs);
+    return effect;
+}
+
+std::shared_ptr<TDirectionalFieldEffectInstance>
+TAppearanceInstanceFactory::createDirectionalFieldEffect(const uint16_t id, const Position& field, const int direction,
+                                                         const qint64 nowMs)
+{
+    auto effect = makeTracked<TDirectionalFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
+    effect->start(field, nowMs, direction);
+    return effect;
+}
+
+std::shared_ptr<TMissileEffectInstance> TAppearanceInstanceFactory::createMissile(const uint16_t id, const Position& from,
+                                                                                const Position& to, const uint8_t source,
+                                                                                const qint64 nowMs)
+{
+    auto missile = makeTracked<TMissileEffectInstance>(appearanceType(ThingCategoryMissile, id));
+    missile->setSource(static_cast<tibia::client::MagicEffectSources>(source));
+    missile->setPath(from, to, nowMs);
+    return missile;
+}
+
+std::shared_ptr<TObjectOutfitAppearanceInstance> TAppearanceInstanceFactory::createObjectOutfit(const uint16_t id)
+{
+    return makeTracked<TObjectOutfitAppearanceInstance>(appearanceType(ThingCategoryItem, id));
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::protocol::TObjectData& object)
+{
+    if (object.isCumulative())
+        return createCumulativeObject(object.id, object.count);
+    if (object.isLiquid())
+        return createLiquidObject(object.id, object.liquidType);
+    if (object.isUpgradeable())
+        return createUpgradeableObject(object.id, object.upgradeClassification);
+    if (object.isDecoItemKit())
+        return createDecoItemKitObject(object.id, object.decoItemId);
+    TAppearanceInstancePtr instance = createObject(object.id);
+    if (object.isHangable()) {
+        if (const auto hangable = std::dynamic_pointer_cast<THangableObjectAppearanceInstance>(instance))
+            hangable->setHangSide(static_cast<uint8_t>(object.hookState));
+    }
+    return instance;
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type)
+{
+    if (type && type->isHangable())
+        return makeTracked<THangableObjectAppearanceInstance>(type);
+    return makeTracked<TPatternObjectAppearanceInstance>(type);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(TAppearanceType* type, const Outfit& outfit,
                                                                                     const uint8_t direction)
 {
     const bool customizable =
         type && (type->getLayers() > 1 || (type->getNumPatternY() > 1 && (outfit.getAddons() & 3) != 0));
     std::shared_ptr<TOutfitAppearanceInstance> instance;
-    if (customizable)
-        instance = std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
-    else
-        instance = std::make_shared<TOutfitAppearanceInstance>(type);
-    instance->setOutfitLook(outfit, direction);
+    if (customizable) {
+        const TOutfitCustomization customization{ .head = outfit.getHead(),
+                                                  .body = outfit.getBody(),
+                                                  .legs = outfit.getLegs(),
+                                                  .feet = outfit.getFeet(),
+                                                  .firstAddon = (outfit.getAddons() & 1) != 0,
+                                                  .secondAddon = (outfit.getAddons() & 2) != 0 };
+        instance = createCustomizableOutfit(type, direction, customization);
+    } else {
+        instance = createPlainOutfit(type, direction);
+    }
+    instance->setOutfit(outfit);
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(ThingType* type, const uint16_t count,
+std::shared_ptr<TCustomizableOutfitAppearanceInstance>
+TAppearanceInstanceFactory::createCustomizableOutfit(TAppearanceType* type, const uint8_t direction,
+                                                     const TOutfitCustomization& customization)
+{
+    return makeTracked<TCustomizableOutfitAppearanceInstance>(type, direction, customization);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createPlainOutfit(TAppearanceType* type,
+                                                                                         const uint8_t direction)
+{
+    return makeTracked<TOutfitAppearanceInstance>(type, direction);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createPlainOutfit(const uint16_t id,
+                                                                                         const uint8_t direction)
+{
+    return createPlainOutfit(appearanceType(ThingCategoryCreature, id), direction);
+}
+
+std::shared_ptr<TAppearanceInstanceTracker> TAppearanceInstanceFactory::instanceTracker()
+{
+    return TAppearancesManager::instance().sharedTracker();
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanceType* type, const uint16_t count,
                                                                       const uint8_t subType, const uint8_t tier,
                                                                       const uint8_t fluid, const uint8_t hangSide)
 {
     if (!type || type->isNull() || type->getCategory() != ThingCategoryItem)
         return fromThingType(type);
-    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType);
+    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType, tier);
     applyProtocolObjectState(instance, count, subType, tier, hangSide);
     return instance;
 }
@@ -463,24 +802,35 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
 {
     if (stored.outfitAppearance())
         return stored.outfitAppearance();
-    ThingType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
+    TAppearanceType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
     auto instance = fromOutfit(stored.outfit(), type);
+    if (instance)
+        instance->linkCreature(stored.creatureId());
     if (const auto outfitInstance = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(instance))
         // CIP outfit patternX is the collapsed cardinal (N/E/S/W), not raw diagonal dirs.
-        outfitInstance->setOutfitLook(stored.outfit(), stored.patternX());
+        outfitInstance->setPatterns(stored.patternX(), stored.drawnPatternX(), stored.patternZ(), false);
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, ThingType* type)
+std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
+                                                                                                    const Position& field)
+{
+    TAppearanceType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
+    auto effect = makeTracked<TTutorialFieldEffectInstance>(type);
+    effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+    return effect;
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outfit, TAppearanceType* type)
 {
     if (!type)
         type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
     if (outfit.isItem())
-        return std::make_shared<TObjectOutfitAppearanceInstance>(type);
+        return makeTracked<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())
-        return std::make_shared<TEffectInstance>(type);
+        return makeTracked<TEffectInstance>(type);
     if (!type || type->isNull())
-        return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
     return createOutfit(type, outfit, 2);
 }
 
@@ -524,7 +874,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     };
 
     if (m_outfit.isCreature()) {
-        ThingType* type = tibia::game::rawThingType(m_outfit.getId(), ThingCategoryCreature);
+        TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), ThingCategoryCreature);
         if (!type)
             return layers;
 
@@ -532,7 +882,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
         int dy = 0;
         const bool mounted = m_outfit.hasMount();
         if (mounted) {
-            if (ThingType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
+            if (TAppearanceType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
                 dx -= mount->getDisplacement().x();
                 dy -= mount->getDisplacement().y();
                 int mountPhase = 0;
@@ -559,7 +909,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     if (!m_outfit.isItem())
         return layers;
 
-    ThingType* type = tibia::game::rawThingType(m_outfit.getAuxId(), ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(m_outfit.getAuxId(), ThingCategoryItem);
     if (!type)
         return layers;
 
@@ -572,6 +922,20 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     }
     layers.push_back(FigureLayer{ type, -type->getDisplacement().x(), -type->getDisplacement().y(), 0, 0, 0, phase, false, 0 });
     return layers;
+}
+
+}
+
+namespace tibia::appearances {
+
+bool TExpireObjectAppearanceInstance::updateRemainingTime(const int64_t nowMilliseconds)
+{
+    const int64_t passed = nowMilliseconds - m_lastUpdateMilliseconds;
+    if (m_stopped || passed < 1000 || m_remainingMilliseconds <= 0)
+        return false;
+    m_remainingMilliseconds = std::max<int64_t>(m_remainingMilliseconds - passed, 0);
+    m_lastUpdateMilliseconds = nowMilliseconds;
+    return true;
 }
 
 }

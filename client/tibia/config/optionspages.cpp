@@ -15,7 +15,7 @@
 
 #include <tibia/game/thingsession_forward.h>
 
-#include "sound/soundstorage.h"
+#include "sound/soundengine.h"
 
 #include <QColor>
 #include <QHash>
@@ -974,10 +974,10 @@ void TSoundOptionsPage::refreshSoundDevices()
 {
     const QString autoLabel = qtTrId("optionsmenu_sound_used_sound_device_auto");
     QStringList model{ autoLabel };
-    if (auto* storage = sound::TSoundStorage::instance()) {
-        m_soundEngineInitialized = storage->isEngineReady();
-        model += storage->playbackDeviceNames();
-    }
+    sound::TSoundEngine& engine = sound::TSoundEngine::instance();
+    engine.updateAvailableDevices();
+    m_soundEngineInitialized = engine.isInitialized();
+    model += engine.availableSoundDevices();
     if (m_soundDeviceListModel != model)
         m_soundDeviceListModel = std::move(model);
     if (!m_soundDevice.isEmpty() && !m_soundDeviceListModel.contains(m_soundDevice))
@@ -1101,7 +1101,7 @@ QColor hotkeyActionSettingDescriptionColor(const TActionSetting& setting)
 /// tier, else the plain type.
 appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting& setting)
 {
-    ThingType* type = setting.objectId > 0 ? tibia::game::rawThingType(static_cast<uint16_t>(setting.objectId), ThingCategoryItem)
+    TAppearanceType* type = setting.objectId > 0 ? tibia::game::rawThingType(static_cast<uint16_t>(setting.objectId), ThingCategoryItem)
                                            : nullptr;
     if (!type)
         return nullptr;
@@ -1456,9 +1456,7 @@ void THotkeysOptionsPage::requestRemoveCurrentPreset()
 {
     auto* message = new gamewindow::TMessageDialogController(this);
     message->setCloseOnButtonClicked(true);
-    using Button = gamewindow::TMessageDialogController::Button;
-    message->setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
-                          new gamewindow::TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) });
+    message->setButtons(gamewindow::okCancelDialogButtons());
     connect(message, &gamewindow::TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
     message->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
 }

@@ -13,6 +13,9 @@
 class QQuickItem;
 
 namespace tibia {
+namespace store {
+struct TStoreOpenParameters;
+}
 namespace gamewindow {
 
 /// One premium feature line (CIP: game::TPremiumMessage, ctor):
@@ -72,6 +75,10 @@ public:
     /// arrives after the game start.
     void onSessionStarted(bool premium, qint64 premiumUntil);
 
+    /// The store button deep link: a link to anything but the home page or
+    /// the XP boost (detail 1) highlights the maximize button for 10 minutes.
+    void onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink);
+
     Q_INVOKABLE void maximizePanel() override;
     Q_INVOKABLE void minimizePanel() override;
 
@@ -82,10 +89,6 @@ private:
     bool canTogglePanel() const;
     /// CIP : the triggered features become the messages.
     void setTriggers(const std::vector<uint8_t>& features);
-    /// CIP , the store's SetStoreButtonDeeplink (0xA8): a deep
-    /// link to anything but the home page or the XP boost (detail 1)
-    /// highlights the maximize button for 10 minutes.
-    void onStoreDeeplinkChanged(int openAction, int detail);
     /// CIP .
     void setMaximized(bool maximized);
     /// CIP : highlights unless maximized or already highlighted

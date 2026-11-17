@@ -26,20 +26,21 @@ using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 /// TibiaStyle.dragKeyMoveTibiaObject, the drop areas' key.
 const QString MoveObjectMimeType = QStringLiteral("application/x-move-tibia-object");
 
-/// The icon sits below and right of the mouse.
-constexpr QPointF IconOffset(10, 10);
-
 QPointer<TDragAndDropController> s_instance;
 
-bool acceptsMoveObject(const QQuickItem* area)
+/// Whether a drop area's `keys` take one of `keys`; an area without keys
+/// takes everything.
+bool acceptsKeys(const QQuickItem* area, const QStringList& keys)
 {
-    const QStringList keys = area->property("keys").toStringList();
-    return keys.isEmpty() || keys.contains(MoveObjectMimeType);
+    const QStringList areaKeys = area->property("keys").toStringList();
+    return areaKeys.isEmpty() || std::ranges::any_of(keys, [&areaKeys](const QString& key) { return areaKeys.contains(key); });
 }
 
-/// CIP : the topmost visible, enabled DropArea at the point, taking
-/// higher z first and not looking outside clipping items.
-QQuickItem* dropAreaAt(const QList<QQuickItem*>& items, const QPointF& scenePosition)
+/// Searches `items` from the highest z down: a visible, enabled item whose
+/// clip does not exclude the point is searched below first (a result there
+/// counts only when it accepts `keys`), then is itself the result when it
+/// contains the point and is a `className`.
+QQuickItem* findDropAreaIn(const QList<QQuickItem*>& items, const QPointF& scenePosition, const char* className, const QStringList& keys)
 {
     QList<QQuickItem*> sorted = items;
     std::stable_sort(sorted.begin(), sorted.end(), [](const QQuickItem* a, const QQuickItem* b) { return a->z() < b->z(); });
@@ -47,14 +48,13 @@ QQuickItem* dropAreaAt(const QList<QQuickItem*>& items, const QPointF& scenePosi
         QQuickItem* item = *it;
         if (!item->isVisible() || !item->isEnabled())
             continue;
-        const QPointF local = item->mapFromScene(scenePosition);
-        if (item->clip() && !item->boundingRect().contains(local))
+        if (item->clip() && !item->boundingRect().contains(item->mapFromScene(scenePosition)))
             continue;
-        if (const QList<QQuickItem*> children = item->childItems(); !children.isEmpty()) {
-            if (QQuickItem* found = dropAreaAt(children, scenePosition); found && acceptsMoveObject(found))
+        if (!item->childItems().isEmpty()) {
+            if (QQuickItem* found = findDropAreaIn(item->childItems(), scenePosition, className, keys); found && acceptsKeys(found, keys))
                 return found;
         }
-        if (item->contains(local) && item->inherits("QQuickDropArea") && acceptsMoveObject(item))
+        if (item->contains(item->mapFromScene(scenePosition)) && item->inherits(className))
             return item;
     }
     return nullptr;
@@ -75,75 +75,74 @@ TDragAndDropControllerEventFilter::~TDragAndDropControllerEventFilter()
     delete m_mimeData;
 }
 
-void TDragAndDropControllerEventFilter::leaveTarget()
+QQuickItem* TDragAndDropControllerEventFilter::findDropArea(const QPointF& scenePosition, QQuickItem* root, const QStringList& keys)
 {
-    if (m_target)
-        QCoreApplication::postEvent(m_target, new QDragLeaveEvent);
-    m_target = nullptr;
+    return root ? findDropAreaIn(root->childItems(), scenePosition, "QQuickDropArea", keys) : nullptr;
 }
 
-void TDragAndDropControllerEventFilter::moveTo(const QPointF& scenePosition, const Qt::KeyboardModifiers modifiers, const bool drop)
+void TDragAndDropControllerEventFilter::onLastFoundDropAreaDestroyed() { m_lastFoundDropArea = nullptr; }
+
+void TDragAndDropControllerEventFilter::forgetLastFoundDropArea()
 {
-    QQuickItem* area = m_root ? dropAreaAt(m_root->childItems(), scenePosition) : nullptr;
-    if (m_target && m_target != area)
-        leaveTarget();
-    if (!area)
+    if (!m_lastFoundDropArea)
         return;
-
-    const QPoint local = area->mapFromScene(scenePosition).toPoint();
-    if (m_target == area)
-        QCoreApplication::postEvent(area, new QDragMoveEvent(local, Qt::MoveAction, m_mimeData, Qt::LeftButton, modifiers));
-    else
-        QCoreApplication::postEvent(area, new QDragEnterEvent(local, Qt::MoveAction, m_mimeData, Qt::LeftButton, modifiers));
-    m_target = area;
-
-    if (drop) {
-        Q_EMIT dragAndDropConfirmed(modifiers);
-        QCoreApplication::postEvent(area, new QDropEvent(QPointF(local), Qt::MoveAction, m_mimeData, Qt::LeftButton, modifiers));
-        m_target = nullptr;
-    }
+    disconnect(m_lastFoundDropArea, &QObject::destroyed, this, &TDragAndDropControllerEventFilter::onLastFoundDropAreaDestroyed);
+    m_lastFoundDropArea = nullptr;
 }
 
-bool TDragAndDropControllerEventFilter::eventFilter(QObject* watched, QEvent* event)
+void TDragAndDropControllerEventFilter::leaveLastFoundDropArea()
 {
-    // Mouse and key events reach the window first, then its items; only the
-    // window's copy counts.
-    if (event->type() == QEvent::ApplicationStateChange) {
-        leaveTarget();
-        Q_EMIT dragAndDropEventFilterFinished();
-        return false;
-    }
-    if (!qobject_cast<QQuickWindow*>(watched))
-        return false;
+    if (!m_lastFoundDropArea)
+        return;
+    QCoreApplication::postEvent(m_lastFoundDropArea, new QDragLeaveEvent);
+    forgetLastFoundDropArea();
+}
 
+bool TDragAndDropControllerEventFilter::eventFilter(QObject* /*watched*/, QEvent* event)
+{
     Q_EMIT dragAndDropMouseCursorPositionChanged();
     switch (event->type()) {
+    case QEvent::MouseButtonPress:
+        break;
+    case QEvent::MouseButtonRelease:
     case QEvent::MouseMove: {
         const auto* mouse = static_cast<QMouseEvent*>(event);
-        moveTo(mouse->scenePosition(), mouse->modifiers(), false);
-        break;
-    }
-    case QEvent::MouseButtonRelease: {
-        const auto* mouse = static_cast<QMouseEvent*>(event);
-        if (mouse->button() == Qt::LeftButton)
-            moveTo(mouse->scenePosition(), mouse->modifiers(), true);
-        leaveTarget();
-        Q_EMIT dragAndDropEventFilterFinished();
-        break;
-    }
-    case QEvent::MouseButtonPress:
-        leaveTarget();
-        Q_EMIT dragAndDropEventFilterFinished();
-        break;
-    case QEvent::KeyPress:
-        if (static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
-            leaveTarget();
-            Q_EMIT dragAndDropEventFilterFinished();
+        const bool release = event->type() == QEvent::MouseButtonRelease;
+        if (release && mouse->button() != Qt::LeftButton)
+            break;
+        QQuickItem* area = findDropArea(mouse->scenePosition(), m_root, { MoveObjectMimeType });
+        if (m_lastFoundDropArea && m_lastFoundDropArea != area)
+            leaveLastFoundDropArea();
+        if (area) {
+            const QPointF mapped = area->mapFromScene(mouse->scenePosition());
+            const QPoint local(int(mapped.x()), int(mapped.y()));
+            QEvent* drag = m_lastFoundDropArea == area
+                               ? static_cast<QEvent*>(new QDragMoveEvent(local, Qt::MoveAction, m_mimeData, Qt::LeftButton, mouse->modifiers()))
+                               : new QDragEnterEvent(local, Qt::MoveAction, m_mimeData, Qt::LeftButton, mouse->modifiers());
+            QCoreApplication::postEvent(area, drag);
+            m_lastFoundDropArea = area;
+            connect(area, &QObject::destroyed, this, &TDragAndDropControllerEventFilter::onLastFoundDropAreaDestroyed);
+            if (release) {
+                Q_EMIT dragAndDropConfirmed(mouse->modifiers());
+                QCoreApplication::postEvent(area, new QDropEvent(QPointF(local), Qt::MoveAction, m_mimeData, Qt::LeftButton, mouse->modifiers()));
+                forgetLastFoundDropArea();
+            }
         }
+        if (!release)
+            return false;
+        break;
+    }
+    case QEvent::KeyPress:
+        if (static_cast<QKeyEvent*>(event)->key() != Qt::Key_Escape)
+            return false;
+        break;
+    case QEvent::ApplicationStateChange:
         break;
     default:
-        break;
+        return false;
     }
+    leaveLastFoundDropArea();
+    Q_EMIT dragAndDropEventFilterFinished();
     return false;
 }
 
@@ -154,12 +153,11 @@ TDragAndDropController::TDragAndDropController(QQuickItem* root, QQuickItem* ico
     , m_filter(new TDragAndDropControllerEventFilter(root, this))
 {
     s_instance = this;
-    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropEventFilterFinished, this, &TDragAndDropController::finish);
-    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropConfirmed, this,
-            [this](const Qt::KeyboardModifiers modifiers) { m_modifiers = modifiers; });
-    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropMouseCursorPositionChanged, this, &TDragAndDropController::moveIcon);
-    if (m_icon)
-        m_icon->setVisible(false);
+    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropEventFilterFinished, this,
+            &TDragAndDropController::onDragAndDropEventFilterFinished);
+    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropConfirmed, this, &TDragAndDropController::onDragAndDropConfirmed);
+    connect(m_filter, &TDragAndDropControllerEventFilter::dragAndDropMouseCursorPositionChanged, this,
+            &TDragAndDropController::onDragAndDropMousePositionChanged);
 }
 
 TDragAndDropController::~TDragAndDropController()
@@ -189,7 +187,7 @@ void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObj
     const bool creatureDrag = creatureId != 0;
     if (m_icon)
         m_icon->setVisible(!creatureDrag);
-    moveIcon();
+    onDragAndDropMousePositionChanged();
     QCoreApplication::instance()->installEventFilter(m_filter);
     m_filterInstalled = true;
     // A drag shows the target-selection crosshair until it finishes.
@@ -208,7 +206,9 @@ input::TMoveObjectPtr TDragAndDropController::takeAction()
     return action;
 }
 
-void TDragAndDropController::finish()
+void TDragAndDropController::onDragAndDropConfirmed(const Qt::KeyboardModifiers KeyboardModifiers) { m_modifiers = KeyboardModifiers; }
+
+void TDragAndDropController::onDragAndDropEventFilterFinished()
 {
     QCoreApplication::instance()->removeEventFilter(m_filter);
     m_filterInstalled = false;
@@ -223,13 +223,11 @@ void TDragAndDropController::finish()
         m_icon->setVisible(false);
 }
 
-void TDragAndDropController::moveIcon()
+void TDragAndDropController::onDragAndDropMousePositionChanged()
 {
     if (!m_icon || !m_icon->window())
         return;
-    const QPointF scene = QPointF(m_icon->window()->mapFromGlobal(QCursor::pos())) + IconOffset;
-    QQuickItem* parent = m_icon->parentItem();
-    m_icon->setPosition(parent ? parent->mapFromScene(scene) : scene);
+    m_icon->setPosition(m_icon->window()->mapFromGlobal(QCursor::pos()));
 }
 
 void TDragAndDropController::updateIcon(const uint16_t objectClientId, const Position& position,

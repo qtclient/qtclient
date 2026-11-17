@@ -180,7 +180,7 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
 void TAnalyticsSelectorWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, SelectorOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TAnalyticsSelectorWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -228,7 +228,8 @@ void TAnalyticsSelectorWidgetController::onWidgetVisible(const int WidgetType) {
 
 void TAnalyticsSelectorWidgetController::onWidgetHidden(const int WidgetType) { onWidgetVisibility(WidgetType, false); }
 
-void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, SelectorOptionsKey); }
 
 void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType, const bool visible)
 {
@@ -336,7 +337,7 @@ THuntingSessionWidgetController::THuntingSessionWidgetController(TAnalyserStorag
 void THuntingSessionWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, HuntingOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* THuntingSessionWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -367,7 +368,8 @@ void THuntingSessionWidgetController::onWidgetQuickItemDestroyed() {}
 
 void THuntingSessionWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, HuntingOptionsKey); }
 
-void THuntingSessionWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void THuntingSessionWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, HuntingOptionsKey); }
 
 bool THuntingSessionWidgetController::showBaseXp() const { return m_storages->huntingSession()->showBaseXp(); }
 
@@ -579,6 +581,11 @@ TProgressWidgetController::TProgressWidgetController(TProgressStorage* storage, 
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_storage(storage)
 {
+    m_targetDialog = new gamewindow::TGenericEnterTextDialogController(qtTrId("progress_gaugetarget_caption"),
+                                                                       qtTrId("progress_gaugetarget_description"), 9);
+    m_targetDialog->setIntOnly(true);
+    connect(m_targetDialog, &gamewindow::TGenericEnterTextDialogController::textEntered, this,
+            &TProgressWidgetController::onXPGaugeTargetValueSelected);
     m_xpHistory = emptyHistory();
     m_xpGraphMaxY = 1.0;
     connect(m_storage, &TProgressStorage::dataChanged, this, &TProgressWidgetController::onExperienceInProgressStorageChanged);
@@ -608,7 +615,7 @@ TProgressWidgetController::~TProgressWidgetController() { delete m_targetDialog;
 void TProgressWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, ProgressOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TProgressWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -639,7 +646,14 @@ void TProgressWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TProgressWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, ProgressOptionsKey); }
 
-void TProgressWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied, the options and the
+/// experience data announced again.
+void TProgressWidgetController::onWidgetOptionsChanged()
+{
+    applyContentHeight(widget(), m_options, ProgressOptionsKey);
+    Q_EMIT optionsChanged();
+    onExperienceInProgressStorageChanged();
+}
 
 void TProgressWidgetController::onExperienceInProgressStorageChanged()
 {
@@ -771,24 +785,20 @@ void TProgressWidgetController::appendXPGaugeContextMenuEntries()
     auto* menu = gamewindow::TContextMenuController::instance();
     const bool premium = isPremiumPlayer();
     if (premium) {
-        connect(menu->addCustomEntry(qtTrId("progress_set_gauge_target")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
-            if (!m_targetDialog) {
-                m_targetDialog = new gamewindow::TGenericEnterTextDialogController();
-                m_targetDialog->setCaption(qtTrId("progress_gaugetarget_caption"));
-                m_targetDialog->setDescription(qtTrId("progress_gaugetarget_description"));
-                m_targetDialog->setMaxInputLength(9);
-                connect(m_targetDialog, &gamewindow::TGenericEnterTextDialogController::textEntered, this,
-                        &TProgressWidgetController::onXPGaugeTargetValueSelected);
-            }
-            m_targetDialog->setText(QString::number(static_cast<qint64>(xpGaugeTargetValue())));
-            m_targetDialog->dialog()->show();
-        });
+        connect(menu->addCustomEntry(qtTrId("progress_set_gauge_target")), &gamewindow::TContextMenuEntryItem::triggered, this,
+                [this] { m_targetDialog->showWithText(QString::number(m_storage->gaugeTarget() * 3600.0, 'g')); });
     }
     gamewindow::TContextMenuEntryItem* gauge =
         menu->addCustomEntry(qtTrId("progress_show_gauge"), premium ? QString() : qtTrId("context_premium_feature"));
     gauge->setCheckable(true);
     gauge->setChecked(m_storage->gaugeVisible() && premium);
-    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setGaugeVisible(checked); });
+    // A free account gets the store's premium page instead.
+    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) {
+        if (isPremiumPlayer())
+            m_storage->setGaugeVisible(checked);
+        else
+            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+    });
 }
 
 /// CIP .
@@ -800,7 +810,12 @@ void TProgressWidgetController::appendXPGraphContextMenuEntries()
         menu->addCustomEntry(qtTrId("progress_show_graph"), premium ? QString() : qtTrId("context_premium_feature"));
     graph->setCheckable(true);
     graph->setChecked(m_storage->graphVisible() && premium);
-    connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setGraphVisible(checked); });
+    connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) {
+        if (isPremiumPlayer())
+            m_storage->setGraphVisible(checked);
+        else
+            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
+    });
 }
 
 /// The entered XP per hour; the storage keeps it per second.
@@ -917,7 +932,7 @@ TLootAndWasteWidgetController::~TLootAndWasteWidgetController() { delete m_targe
 void TLootAndWasteWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, lootWasteOptionsKey(m_side));
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TLootAndWasteWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -973,7 +988,8 @@ void TLootAndWasteWidgetController::onGaugeTargetValueChanged(const QString& Tar
         m_storage->setGaugeTarget(m_side, value);
 }
 
-void TLootAndWasteWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TLootAndWasteWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, lootWasteOptionsKey(m_side)); }
 
 void TLootAndWasteWidgetController::onCharacterBasedLootWasteOptionsChanged() { Q_EMIT characterBasedWidgetOptionsChanged(); }
 

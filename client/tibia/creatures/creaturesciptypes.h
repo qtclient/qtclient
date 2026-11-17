@@ -33,13 +33,8 @@ public:
 
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 
-/// CIP `creatures::TCreatureProtocolMessageHandler` — qtclient Q→H for filled creature
-/// attribute opcodes + MoveCreature (109). CIP contract has queue
-/// `receivedCreature*Message` / `receivedMoveCreatureMessage` only (no
-/// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — each
-/// message applies its fields to the stored creature (`applyProtocolCreature`
-/// for a whole creature) or `Map::applyCreatureMove` in
-/// `onServerMessageEnqueued`; do not invent handle* names.
+/// Applies the creature messages to the session's creature storage: moves,
+/// whole creatures and single attributes, marks and the player's id.
 class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCreatureProtocolMessageHandler
 {
     Q_OBJECT
@@ -49,14 +44,29 @@ public:
     static TCreatureProtocolMessageHandler* liveInstance();
     static void setLiveInstance(TCreatureProtocolMessageHandler* handler);
 
-    /// Tip Q→H wire: peel structured creature-attribute opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    void handleMoveCreatureMessage(const ::tibia::protobuf::protocol::GameserverMessageMoveCreature& message);
+    void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
+    void handleSessionDumpStartMessage(const ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart& message);
+    void handleCreatureUpdateMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureUpdate& message);
+    void handleCreatureOutfitMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureOutfit& message);
+    void handleCreatureHealthMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureHealth& message);
+    void handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& message);
+    void handleCreatureSkullMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSkull& message);
+    void handleCreaturePartyMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureParty& message);
+    void handleInspectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionState& message);
+    void handleCreatureUnpassMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureUnpass& message);
+    void handleCreatureMarksMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureMarks& message);
+    void handleCreatureDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureData& message);
+    void handleCreatureLightMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureLight& message);
+    void handleUpdateTargetMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message);
+    /// Product server: a creature's type and master.
+    void handleCreatureTypeMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureType& message);
 
 private:
     /// A creature mark: timed or static square, or the attack animation.
-    void handleCreatureMarksMessage(uint32_t creatureId, uint32_t kind, uint32_t value);
+    void applyCreatureMarks(uint32_t creatureId, uint32_t kind, uint32_t value);
     /// The server changed the attack or follow target the sequence names.
-    void handleUpdateTargetMessage(uint32_t sequence, uint32_t target);
+    void applyUpdateTarget(uint32_t sequence, uint32_t target);
 
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };

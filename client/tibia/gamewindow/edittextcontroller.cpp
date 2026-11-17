@@ -3,7 +3,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
@@ -59,7 +59,7 @@ void TEditTextController::showItemText(const uint32_t id, const uint itemId, con
     bool editable = false;
     bool reportable = false;
     if (tibia::game::isValidDatId(itemId, ThingCategoryItem)) {
-        const ThingTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
+        const TAppearanceTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
         editable = type->isWritable() || (type->isWritableOnce() && text.isEmpty());
         reportable = type->isReportable();
     }

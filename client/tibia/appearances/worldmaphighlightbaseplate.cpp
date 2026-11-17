@@ -1,6 +1,5 @@
 #include "appearances/worldmaphighlightbaseplate.h"
 
-#include "sprites/sprite.h"
 
 #include <QFile>
 #include <QImage>
@@ -10,14 +9,14 @@
 
 namespace tibia::appearances {
 
-SpriteKey TWorldmapHighlightBaseplateSpriteInfo::key() const
+std::shared_ptr<TAppearanceInstanceSpriteInfo> TWorldmapHighlightBaseplateSpriteInfo::clone() const
 {
-    return SpriteKey{ .highlightBaseplate = static_cast<int8_t>(m_frame) };
+    return std::make_shared<TWorldmapHighlightBaseplateSpriteInfo>(m_frame);
 }
 
-QImage TWorldmapHighlightBaseplateSpriteInfo::raster() const
+bool TWorldmapHighlightBaseplateSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
-    return imageForFrame(m_frame);
+    return m_frame == static_cast<const TWorldmapHighlightBaseplateSpriteInfo&>(other).m_frame;
 }
 
 uint8_t TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(const qint64 millis)
@@ -33,9 +32,7 @@ uint8_t TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(const qint64 millis
 QImage TWorldmapHighlightBaseplateSpriteInfo::imageForFrame(const uint8_t frame)
 {
     static const QImage strip = [] {
-        const sprites::TImageResourceSpriteIdentifier id(
-            std::string(":/cursors/highlight-baseplate.png"));
-        QFile file(QString::fromStdString(id.resourcePath()));
+        QFile file(QStringLiteral(":/cursors/highlight-baseplate.png"));
         if (!file.open(QIODevice::ReadOnly))
             return QImage();
         QImage image;

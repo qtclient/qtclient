@@ -1,13 +1,19 @@
 #include "sessiondumpgamesession.h"
 
 #include "game/sessiondumpdmpd.h"
+#include "sessiondump/sessiondumpasyncloader.h"
+#include "sessiondump/sessiondumpplayer.h"
+#include "sessiondump/sessiondumpprogressclockservice.h"
 #include "tutorial/sessiondumphintsprocessor.h"
 
 #include "game/tgamenotify.h"
 
 #include <tibia/game/gamenotify.h>
 
+#include <protocol.pb.h>
+
 #include <QFile>
+#include <QUrl>
 #include <QLoggingCategory>
 
 #include <filesystem>
@@ -93,42 +99,51 @@ void TSessiondumpGameSession::replay(const QString& file)
 
 void TSessiondumpGameSession::replayDmpd(const QString& file)
 {
-    try {
-        const auto dump = parseSessiondumpDmpdFile(file);
-        if (!dump) {
-            Q_EMIT connectionError(tr("Failed to parse dmpd session dump: %1").arg(file));
-            return;
-        }
-        if (!dump->header.sessionKey.isEmpty())
-            Q_EMIT sessionDumpStart(QString::fromLatin1(dump->header.sessionKey));
-
-        int mapped = 0;
-        int skipped = 0;
-        auto packets = dmpdToClassicPackets(*dump, &mapped, &skipped);
-        if (packets.empty()) {
-            Q_EMIT connectionError(tr("dmpd dump produced no mappable classic packets: %1").arg(file));
-            return;
-        }
-
-        qCInfo(lcSessiondump).noquote()
-            << "replaying dmpd" << file << "mapped" << mapped << "skipped" << skipped
-            << "character" << dump->header.characterName;
-
-        std::vector<ReplayBody> bodies;
-        bodies.reserve(packets.size());
-        for (const auto& packet : packets) {
-            if (!packet.second || packet.second->empty())
-                continue;
-            bodies.push_back(ReplayBody{
-                packet.first,
-                QByteArray(reinterpret_cast<const char*>(packet.second->data()), int(packet.second->size())),
+    // Host wiring of CipSoft's v158: a loader for the file, a progress clock and
+    // a player whose published messages reach the replay bridge.
+    m_sessiondumpLoader = std::make_shared<sessiondump::TSessiondumpAsyncLoader>(QUrl::fromLocalFile(file));
+    m_sessiondumpProgressClock = std::make_shared<sessiondump::TSessiondumpProgressClockService>();
+    m_sessiondumpPlayer = std::make_shared<sessiondump::TSessiondumpPlayer>(m_sessiondumpLoader, m_sessiondumpProgressClock);
+    auto converter = std::make_shared<TDmpdClassicConverter>(QByteArray());
+    sessiondump::TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
+    connect(player, &sessiondump::TSessiondumpPlayer::gameserverMessageAvailable, this,
+            [converter](const sessiondump::TGameserverMessagePointer& message) {
+                const std::string bytes = message->SerializeAsString();
+                for (const auto& packet : converter->convert(QByteArray::fromStdString(bytes)))
+                    tibia::game::deliverReplayPacket(packet->data(), packet->size());
             });
-        }
-        startReplay(std::move(bodies));
-        startHintsForDump(file);
-    } catch (const std::exception& e) {
-        Q_EMIT connectionError(QString::fromUtf8(e.what()));
-    }
+    connect(m_sessiondumpLoader.get(), &sessiondump::TSessiondumpAsyncLoader::sessiondumpMetadataLoaded, this,
+            [this, converter] {
+                const auto& metadata = m_sessiondumpLoader->metadata();
+                *converter = TDmpdClassicConverter(metadata.characterName.toUtf8());
+                if (!metadata.sessionKey.isEmpty())
+                    Q_EMIT sessionDumpStart(metadata.sessionKey);
+                qCInfo(lcSessiondump).noquote() << "replaying dmpd" << metadata.characterName << metadata.worldName;
+            });
+    connect(player, &sessiondump::TSessiondumpPlayer::requestResetOfStorages, this,
+            &TSessiondumpGameSession::onRequestResetOfStorages);
+    connect(player, &sessiondump::TSessiondumpPlayer::finished, this, [this] {
+        stopDmpd();
+        tibia::game::finishDecodedReplay();
+        onSessiondumpFinished();
+    });
+    connect(player, &sessiondump::TSessiondumpPlayer::sessiondumpLoadingError, this,
+            [this](const QString& message) { Q_EMIT connectionError(message); });
+    m_sessiondumpTimer.setParent(this);
+    m_sessiondumpTimer.setInterval(16);
+    connect(&m_sessiondumpTimer, &QTimer::timeout, player, &sessiondump::TSessiondumpPlayer::processSessiondump,
+            Qt::UniqueConnection);
+    tibia::game::startDecodedReplay();
+    player->start();
+    m_sessiondumpTimer.start();
+    startHintsForDump(file);
+}
+
+void TSessiondumpGameSession::stopDmpd()
+{
+    m_sessiondumpTimer.stop();
+    if (m_sessiondumpPlayer)
+        m_sessiondumpPlayer->disconnect(this);
 }
 
 void TSessiondumpGameSession::replayHexDump(const QString& file)
@@ -217,6 +232,10 @@ void TSessiondumpGameSession::pumpReplay()
 
 void TSessiondumpGameSession::stopReplay()
 {
+    stopDmpd();
+    m_sessiondumpPlayer.reset();
+    m_sessiondumpLoader.reset();
+    m_sessiondumpProgressClock.reset();
     m_replaying = false;
     m_replayTimer.stop();
     m_replayPackets.clear();

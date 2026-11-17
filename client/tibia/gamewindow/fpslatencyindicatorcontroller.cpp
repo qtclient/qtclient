@@ -1,5 +1,7 @@
 #include "fpslatencyindicatorcontroller.h"
 
+#include <QQuickItem>
+
 #include "app/clientoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -19,13 +21,13 @@ constexpr auto StabilityOption = QLatin1String("connectionStabilityOptimizationE
 
 /// The latency band QML colours the ping by: "measuring" until a ping
 /// is known, then low below 200 ms, medium below 500 ms, else high.
-QString latencyStateFor(const int pingMs)
+QString latencyStateFor(const qint64 latencyMs, const bool measured)
 {
-    if (pingMs < 0)
+    if (!measured)
         return QStringLiteral("measuring");
-    if (pingMs < 200)
+    if (latencyMs < 200)
         return QStringLiteral("low");
-    if (pingMs < 500)
+    if (latencyMs < 500)
         return QStringLiteral("medium");
     return QStringLiteral("high");
 }
@@ -54,7 +56,7 @@ TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(QObject* parent)
 {
     m_currentFrameRate = QStringLiteral("0");
     m_currentFrameCount = QStringLiteral("0");
-    m_currentLatencyState = QStringLiteral("measuring");
+    m_currentLatencyState = QStringLiteral("low");
     m_visible = app::ClientOptions::load().options().value(ShowFpsOption).toBool(false);
     syncOptimizedConnectionStability();
 
@@ -123,48 +125,71 @@ void TFPSLatencyIndicatorController::applyVisible(const bool on)
 
 void TFPSLatencyIndicatorController::tick()
 {
-    // CipSoft : currentFrameRate is the ring-derived double, not frameSwapped.
+    // The game client's frame values; the rate is the ring-derived double.
     (void)m_frames.exchange(0);
     const double fps = effectiveFpsFromRing(m_frameDurations);
-    const QString fpsText = formatFps(fps);
-    if (fpsText != m_currentFrameRate) {
-        m_currentFrameRate = fpsText;
-        Q_EMIT currentFrameRateChanged();
-    }
-    const QString frameCount = QString::number(static_cast<qint64>(fps + 0.5));
-    if (frameCount != m_currentFrameCount) {
-        m_currentFrameCount = frameCount;
-        Q_EMIT currentFrameCountChanged();
-    }
+    const int ping = tibia::game::isOnline() ? tibia::game::getPing() : -1;
+    update(fps, ping, ping >= 0, m_stabilityOption, static_cast<int>(fps + 0.5));
     const QString buildUs = QString::number(m_provider ? m_provider->buildNs() / 1000 : 0);
     if (buildUs != m_worldmapBuildUs) {
         m_worldmapBuildUs = buildUs;
         Q_EMIT worldmapBuildUsChanged();
     }
-    syncLatency();
 }
 
-void TFPSLatencyIndicatorController::syncLatency()
+void TFPSLatencyIndicatorController::update(const double frameRate, const qint64 latencyMs, const bool latencyMeasured,
+                                            const bool optimizedConnectionStability, const int frameCount)
 {
-    const int ping = tibia::game::isOnline() ? tibia::game::getPing() : -1;
-    if (ping != m_currentLatency) {
-        m_currentLatency = ping;
+    m_currentFrameCount = QString::number(frameCount);
+    if (m_frameRate != frameRate) {
+        m_frameRate = frameRate;
+        m_currentFrameRate = formatFps(frameRate);
+        Q_EMIT currentFrameRateChanged();
+    }
+    if (m_currentLatency != latencyMs) {
+        m_currentLatency = static_cast<int>(latencyMs);
         Q_EMIT currentLatencyChanged();
     }
-    const QString state = latencyStateFor(ping);
+    m_latencyMeasured = latencyMeasured;
+    const QString state = latencyStateFor(latencyMs, latencyMeasured);
     if (state != m_currentLatencyState) {
         m_currentLatencyState = state;
         Q_EMIT currentLatencyStateChanged();
+    }
+    if (m_optimizedConnectionStability != optimizedConnectionStability) {
+        m_optimizedConnectionStability = optimizedConnectionStability;
+        Q_EMIT optimizedConnectionStabilityChanged();
     }
 }
 
 void TFPSLatencyIndicatorController::syncOptimizedConnectionStability()
 {
-    const bool on = app::ClientOptions::load().options().value(StabilityOption).toBool(true);
-    if (on == m_optimizedConnectionStability)
+    m_stabilityOption = app::ClientOptions::load().options().value(StabilityOption).toBool(true);
+    update(m_frameRate, m_currentLatency, m_latencyMeasured, m_stabilityOption, m_currentFrameCount.toInt());
+}
+
+void TFPSLatencyIndicatorController::setWidgetItem(QQuickItem* item)
+{
+    detachWidgetItem();
+    m_widgetItem = item;
+    if (!item)
         return;
-    m_optimizedConnectionStability = on;
-    Q_EMIT optimizedConnectionStabilityChanged();
+    item->setProperty("controller", QVariant::fromValue<QObject*>(this));
+    connect(item, &QObject::destroyed, this, &TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed);
+}
+
+void TFPSLatencyIndicatorController::detachWidgetItem()
+{
+    if (!m_widgetItem)
+        return;
+    disconnect(m_widgetItem, &QObject::destroyed, this, &TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed);
+    m_widgetItem->setProperty("controller", QVariant::fromValue<QObject*>(nullptr));
+    m_widgetItem = nullptr;
+}
+
+void TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed()
+{
+    m_widgetItem = nullptr;
 }
 
 }

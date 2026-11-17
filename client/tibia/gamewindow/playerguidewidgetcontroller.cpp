@@ -239,18 +239,18 @@ void TPlayerGuideWidgetController::refreshPlayerGuideEntries()
 {
     // Unlocked player guide news the character's level reached, highest
     // unlock level first, then by headline.
-    std::vector<const news::NewsItem*> items;
+    std::vector<const news::TNewsEntry*> items;
     if (m_newsStorage) {
-        for (const news::NewsItem& item : m_newsStorage->items()) {
-            if (item.unlocked && item.unlockLevel <= m_newsStorage->characterLevel() && item.typeId() != -1
-                && item.categoryId() == news::NewsItem::PlayerGuide)
+        for (const auto& [id, item] : m_newsStorage->entries()) {
+            if (item.isUnlocked() && item.unlockLevel() <= m_newsStorage->characterLevel()
+                && item.type() != news::NEWS_TYPE_GROUP_HEADER && item.category() == news::NEWS_CATEGORY_PLAYER_GUIDE)
                 items.push_back(&item);
         }
     }
-    std::sort(items.begin(), items.end(), [](const news::NewsItem* a, const news::NewsItem* b) {
-        if (a->unlockLevel != b->unlockLevel)
-            return b->unlockLevel < a->unlockLevel;
-        return QString::compare(a->headline, b->headline, Qt::CaseSensitive) < 0;
+    std::sort(items.begin(), items.end(), [](const news::TNewsEntry* a, const news::TNewsEntry* b) {
+        if (a->unlockLevel() != b->unlockLevel())
+            return b->unlockLevel() < a->unlockLevel();
+        return QString::compare(a->headline(), b->headline(), Qt::CaseSensitive) < 0;
     });
     if (items.size() > MaxPlayerGuideEntries)
         items.resize(MaxPlayerGuideEntries);
@@ -260,10 +260,10 @@ void TPlayerGuideWidgetController::refreshPlayerGuideEntries()
         m_latestUnlockedNewsEntryId = 0;
         setFlag(m_hasLatestUnlockedPlayerGuideEntry, false, &TPlayerGuideWidgetController::playerGuideEntriesChanged);
     } else {
-        m_latestUnlockedPlayerGuideEntry = items.front()->headline;
-        m_latestUnlockedNewsEntryId = items.front()->id;
+        m_latestUnlockedPlayerGuideEntry = items.front()->headline();
+        m_latestUnlockedNewsEntryId = static_cast<int>(items.front()->id());
         for (auto it = items.begin() + 1; it != items.end(); ++it)
-            previous.push_back({ (*it)->headline, (*it)->id });
+            previous.push_back({ (*it)->headline(), static_cast<int>((*it)->id()) });
         setFlag(m_hasLatestUnlockedPlayerGuideEntry, true, &TPlayerGuideWidgetController::playerGuideEntriesChanged);
     }
     const bool hasPrevious = !previous.empty();
@@ -425,7 +425,7 @@ void TPlayerGuideWidgetManager::onGameStarted()
     connect(player, &game::TPlayerData::playerLevelUp, this, &TPlayerGuideWidgetManager::onPlayerLevelUp, Qt::UniqueConnection);
     // The news entries unlock against the character's level.
     if (news::TNewsStorage* storage = news::TNewsStorage::current())
-        storage->setCharacterLevel(player->level());
+        storage->raiseCharacterLevel(static_cast<ushort>(player->level()));
 }
 
 void TPlayerGuideWidgetManager::onPlayerLevelUp()
@@ -435,7 +435,7 @@ void TPlayerGuideWidgetManager::onPlayerLevelUp()
         return;
     TPlayerGuideWidgetController::queueLevelSpecialPopup(int(player->level()), m_options);
     if (news::TNewsStorage* storage = news::TNewsStorage::current())
-        storage->setCharacterLevel(player->level());
+        storage->raiseCharacterLevel(static_cast<ushort>(player->level()));
 }
 
 TSidebarWidget* TPlayerGuideWidgetManager::open(config::TSidebarOptions* options)

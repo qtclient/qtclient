@@ -1,10 +1,11 @@
 #include "imbuingdialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -274,13 +275,13 @@ bool localPlayerPremium()
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
 }
 
 uint32_t imbuementSlotCount(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? type->getImbueSlots() : 0;
 }
 
@@ -291,6 +292,8 @@ void publishOpenPremiumStore()
 }
 
 }
+
+bool TImbuingDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ImbuingDialog.qml"), parent)
@@ -303,7 +306,6 @@ TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* sto
 {
     m_availableImbuements = m_available;
     m_imbuementSlots = m_slotsModel;
-    m_clientSettingSmoothFiltering = true;
     m_resultMessage->setCloseOnButtonClicked(true);
     m_imbueConfirm->setCloseOnButtonClicked(true);
     m_clearConfirm->setCloseOnButtonClicked(true);

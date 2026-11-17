@@ -107,7 +107,7 @@ TEST(SessiondumpReader, ReadsTheMetadata)
     EXPECT_EQ(metadata.sessionKey, QStringLiteral("KEY"));
     EXPECT_EQ(metadata.creationTime.toSecsSinceEpoch(), 1758867836);
     EXPECT_EQ(metadata.characterName, QStringLiteral("Knight"));
-    EXPECT_EQ(metadata.worldId, 1002u);
+    EXPECT_EQ(metadata.playerId, 1002u);
     EXPECT_EQ(metadata.worldName, QStringLiteral("Antica"));
     EXPECT_EQ(metadata.extraValue2, 894);
     EXPECT_EQ(reader->metadataReader()->metadataEnd(), uint64_t(metadata.size) + 5);

@@ -11,13 +11,12 @@
 #include <client/declarations.h>
 #include <client/position.h>
 
-#include <QHash>
-
-#include "worldmap/tileblock.h"
 #include "worldmap/worldmapsessionstate.h"
 
 #include <functional>
-#include <unordered_map>
+#include <map>
+#include <memory>
+#include <utility>
 #include <vector>
 
 namespace tibia {
@@ -46,11 +45,14 @@ public:
     /// Process fallback when no GameClient storage is installed (editor/tests).
     static TWorldMapStorage* ensureStorage();
 
+    /// Drops the field at `position` (no notification).
     void removeField(const Position& position);
-    /// Drop hash + spatial slots on world leave / session `clean` (QObject fields stay until storage dtor).
+    /// Drops every field (world leave / session clean).
     void clearAllFields();
-    void clearSpatialIndex();
-    WorldMapFieldList spatialFieldList(int8_t floor = -1);
+    /// The fields of one floor (every floor for -1), in coordinate order.
+    WorldMapFieldList fieldList(int8_t floor = -1) const;
+    /// The field at `coordinate`, shared.
+    std::shared_ptr<TWorldMapField> field(const TWorldMapCoordinate& coordinate) const;
 
     TWorldMapField* fieldAt(const TWorldMapCoordinate& coordinate);
     TWorldMapField* fieldAt(const Position& position);
@@ -62,23 +64,52 @@ public:
     bool hasBankAt(const TWorldMapCoordinate& coordinate);
     /// The field at `coordinate` holds a translucent object; false without a field.
     bool hasTranslucentAt(const TWorldMapCoordinate& coordinate);
-    /// Sole field create path — owns `m_fields` and spatial `tileBlocks`.
+    /// Nothing opaque covers the field from above: it lies on or above the highest
+    /// floor of its column that holds an opaque field. A sight-blocking field looks
+    /// at the column one field down-right. Underground fields never are.
+    bool isUnderOpenSkyAt(const TWorldMapCoordinate& coordinate);
+    /// The highest floor (1..6) of the column at (x, y) holding an opaque field, 7 when
+    /// none does, and 0 when floor 0 is opaque itself.
+    int highestOpaqueFloorAt(int x, int y);
+    /// The field at `position`, created when the position lies in the stored
+    /// volume (null outside it). A new field announces its coordinate.
     TWorldMapField* getOrCreateField(const Position& position);
-    /// Spatial block slot only; does not read `m_fields`.
-    TWorldMapField* fieldInSpatialIndex(const Position& position);
-    void bindFieldToSpatialIndex(const Position& position, TWorldMapField* field);
-    void removeFieldFromSpatialIndex(const Position& position);
-    /// Drop blocks outside `isAware`; `onRemoved` runs after block slot is cleared (Map notifies).
-    void pruneUnawareSpatialFields(const std::function<bool(const Position&)>& isAware,
-                                   const std::function<void(const Position&)>& onRemoved);
+    /// Every stored field with its coordinate, in coordinate order (CIP v17).
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> fields() const;
+    /// The stored fields inside `cuboid` (CIP v18).
+    std::vector<std::pair<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>>> fieldsIn(const TShearedWorldMapCuboid& cuboid) const;
+    /// The creatures standing on the fields inside `cuboid` (CIP v19).
+    std::vector<std::shared_ptr<creatures::TCreature>> creaturesIn(const TShearedWorldMapCuboid& cuboid) const;
+    /// Stores `field` at `coordinate` (null drops the stored field) when the
+    /// coordinate is inside the stored volume, and reports the coordinate (CIP v21).
+    void setField(const TWorldMapCoordinate& coordinate, std::shared_ptr<TWorldMapField> field);
+    /// Drops every field outside the stored volume; `onRemoved` runs for each
+    /// coordinate after its field left, before the change is announced.
+    void removeFieldsOutsideStoredVolume(const std::function<bool(const Position&)>& isStored,
+                                         const std::function<void(const Position&)>& onRemoved);
 
     creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return *m_speedCalculator; }
     /// Speed of the field's ground; 255 where there is no ground.
     int groundSpeedAt(const Position& position);
     /// Accumulated elevation of the field's items; 0 where there is no field.
+    /// The pixels the objects of a field lift a creature by; 0 without the field (CIP v26).
     int elevationAt(const Position& position);
+    /// Advances the animations of every stored field to `nowMs` (CIP v36).
+    void updateAnimations(qint64 nowMs);
     /// Animate `creature` stepping from `from` to `to`. Anything other than a
     /// single step drops its motion instead.
+    /// The appearance instance at `stackPos` of the field at `coordinate`; null
+    /// without the field or the position.
+    appearances::TAppearanceInstancePtr appearanceInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);
+    /// The creature instance at `stackPos`; throws std::runtime_error with the
+    /// field's stack when another instance or none is there.
+    appearances::TAppearanceInstancePtr creatureInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);
+    /// Puts a creature's instance on the field at `target` and the creature there;
+    /// throws std::runtime_error without the field or a linked creature.
+    void placeCreatureInstance(const appearances::TAppearanceInstancePtr& instance, const TWorldMapCoordinate& target);
+    /// Moves the creature at `stackPos` of `from` to `target`: it turns towards
+    /// the step and starts walking it. False when no creature is there.
+    bool moveCreatureInstance(const TWorldMapCoordinate& from, int stackPos, const TWorldMapCoordinate& target);
     void moveCreature(creatures::TCreature& creature, const Position& from, const Position& to, int elevationFrom,
                       int elevationTo);
 
@@ -117,16 +148,13 @@ Q_SIGNALS:
     void storedVolumeHasChanged(TShearedWorldMapCuboid newStoredVolume);
 
 private:
-    void ensureSpatialFloorsSized();
-    static uint16_t blockIndex(const Position& pos);
+    /// A field's objects changed: its coordinate's information did.
+    void fieldAppearanceInstancesChanged(const TWorldMapField* field);
 
-    QHash<quint64, TWorldMapField*> m_fields;
-    std::vector<std::unordered_map<uint32_t, TileBlock>> m_spatialFloors;
+    std::map<TWorldMapCoordinate, std::shared_ptr<TWorldMapField>> m_fields;
     TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
-
-    static quint64 key(const Position& pos);
 };
 
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).

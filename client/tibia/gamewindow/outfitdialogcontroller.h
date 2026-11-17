@@ -30,9 +30,9 @@ public:
         OutfitIDRole = Qt::UserRole + 1,
         OutfitNameRole,
         OutfitSourceRole,
+        OutfitTypeRole,
         FirstAddOnRole,
         SecondAddOnRole,
-        OutfitTypeRole,
         CanBeColorizedRole,
         OfferIDRole,
         OutfitGenderRole,
@@ -69,6 +69,9 @@ public:
 private:
     QList<Entry> m_entries;
 };
+
+/// An outfit or mount appearance with colour layers.
+bool outfitCanBeColorized(int lookType);
 
 /// CIP: TCustomizeCharacterSortProxyModel (filterAcceptsRow).
 class TCustomizeCharacterSortProxyModel final : public cip::TCustomizeCharacterSortProxyModel
@@ -146,7 +149,10 @@ public:
     void open(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits, QList<TCustomiseCharacterModel::Entry> mounts,
               QList<TCustomiseCharacterModel::Entry> summons);
     /// Character-info outfit/mount/summon tile (CIP EDialogMode::CharacterInfoShowSelection).
-    void openCharacterInfoSelection(int outfitId, bool isOutfit, bool isMount, bool isSummonSkin);
+    /// The shown character's lists, `current` selecting the clicked appearance.
+    void openCharacterInfoSelection(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits,
+                                    QList<TCustomiseCharacterModel::Entry> mounts, QList<TCustomiseCharacterModel::Entry> summons,
+                                    bool isOutfit, bool isMount, bool isSummonSkin);
 
     void onCancelClicked() override;
     void onClickedOpenStoreOffer(int offerID) override;
@@ -160,8 +166,19 @@ public:
     void outfitPresetsRenameIndex(int Index) override;
     void copyToClipboard(QObject* pData) override;
     QObject* createFromClipboard() override;
+    void onPresetNameEntered(const QString& PlayerName);
+    bool showOutfit() const override;
+    bool showSocket() const override;
+    cip::tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::ECreatureLookDirection direction() const override;
+    bool isMounted() const override;
+    QVariantMap initialDialogProperties() const override;
 
 private:
+    /// The presets the dialog mode edits, null when it edits none.
+    QJsonArray* presetList();
+    const QJsonArray* presetList() const;
+    /// The character configuration storage announces the edited presets.
+    void savePresets();
 
     TCustomiseCharacterModel m_outfits;
     TCustomiseCharacterModel m_mounts;
@@ -173,9 +190,6 @@ private:
     tibia::qmlcomponents::TOutfitPresetQmlType* m_preset;
     TGenericEnterTextDialogController* m_renameDialog = nullptr;
     int m_renameIndex = -1;
-    /// The game client's outfit presets (empty without a game client).
-    const QJsonArray& presets() const;
-    void setPresets(QJsonArray presets);
     WindowOptions m_windowOptions;
 };
 

@@ -338,7 +338,8 @@ void TVipWidgetController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TVipWidgetController::onLevelUpClicked() {}
 void TVipWidgetController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TVipWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
-void TVipWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TVipWidgetController::onWidgetOptionsChanged() { readOptions(); }
 void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TVipWidgetController::handleGameAction()
@@ -349,7 +350,7 @@ void TVipWidgetController::handleGameAction()
 void TVipWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    readOptions();
+    onWidgetOptionsChanged();
 }
 
 void TVipWidgetController::readOptions()
@@ -449,8 +450,7 @@ void TVipWidgetController::openAddGroupDialog()
         return;
     }
     m_messageDialog->setCloseOnButtonClicked(true);
-    m_messageDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                           QKeySequence(QStringLiteral("Return"))) });
+    m_messageDialog->setButtons(okDialogButtons());
     m_messageDialog->showMessage(qtTrId("no_more_userdefined_groups_caption"), qtTrId("no_more_userdefined_groups_text"));
 }
 

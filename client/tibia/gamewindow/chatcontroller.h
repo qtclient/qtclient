@@ -4,6 +4,8 @@
 #include "chat/chatgameactionhandler.h"
 #include "chat/chatmodemanager.h"
 #include "chat/chatprotocolmessagehandler.h"
+#include "gamewindow/chatchannelfiltercontroller.h"
+#include "gamewindow/chatchanneltabrenderinfo.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
@@ -68,6 +70,8 @@ public:
     /// The selected text, oldest line first.
     QString selectedText() const;
     bool hasSelection() const;
+    /// Publishes the selected text for the clipboard.
+    void copySelectionToClipboard();
 
     int rowCount(const QModelIndex& parent = {}) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
@@ -162,14 +166,11 @@ class TChatChannelTabController final : public cip::tibia::gamewindow::TChatChan
 {
     Q_OBJECT
 public:
-    /// gamewindow::EChatChannelTabHighlight.
-    enum EHighlight : uint
-    {
-        NONE = 0,
-        CURRENT = 1,
-        FLASH_NEW_ENTRY = 2,
-        NEW_ENTRY = 3,
-    };
+    using EHighlight = TChatChannelTabRenderInfo::EHighlight;
+    static constexpr uint NONE = TChatChannelTabRenderInfo::NONE;
+    static constexpr uint CURRENT = TChatChannelTabRenderInfo::CURRENT;
+    static constexpr uint FLASH_NEW_ENTRY = TChatChannelTabRenderInfo::FLASH_NEW_ENTRY;
+    static constexpr uint NEW_ENTRY = TChatChannelTabRenderInfo::NEW_ENTRY;
 
     explicit TChatChannelTabController(chat::TChatChannelStorage& storage, QObject* parent = nullptr);
 
@@ -199,6 +200,11 @@ private:
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
     void onChannelRemoved(chat::TChatChannel* channel);
     void onEntryAdded(chat::TChatChannel* channel, bool fromOthers);
+    /// A tab's highlight changed: its row and the scroll buttons repaint.
+    void onTabHighlightChanged(chat::TChatChannel* channel);
+    /// The tab's render info, made when the tab is added.
+    void addRenderInfo(chat::TChatChannel* channel);
+    TChatChannelTabRenderInfo* renderInfo(const chat::TChatChannel* channel) const;
     void setCurrentRow(int row);
     int rowOf(const chat::TChatChannel* channel) const;
     uint highlightOf(int row) const;
@@ -206,8 +212,7 @@ private:
 
     chat::TChatChannelStorage& m_storage;
     std::vector<chat::TChatChannel*> m_rows;
-    std::unordered_map<const chat::TChatChannel*, uint> m_highlights;
-    std::unordered_map<const chat::TChatChannel*, TChatChannelTabRenderInfo*> m_flashInfos;
+    std::unordered_map<const chat::TChatChannel*, std::unique_ptr<TChatChannelTabRenderInfo>> m_renderInfos;
     uint m_hiddenLeft = 0;
     uint m_hiddenRight = 0;
 };
@@ -220,6 +225,8 @@ class TOpenChatChannelDialogController final : public TDialogController<cip::tib
     Q_OBJECT
 public:
     explicit TOpenChatChannelDialogController(QObject* parent = nullptr);
+    /// CIP v27: the dialog's item goes.
+    void destroyDialog() { dialog()->destroy(); }
 
     void open(const std::vector<chat::TChatChannelIdentifier>& channels);
 
@@ -263,6 +270,8 @@ public:
     chat::TChatChannelStorage& storage() { return m_storage; }
     /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
+    chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
+    chat::TChatStorage& chatStorage() { return m_chatStorage; }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
@@ -301,6 +310,12 @@ public Q_SLOTS:
     void onSelectTabAsSecondaryChannel(int rowId) override;
 
 private:
+    /// GET_CHAT_CHANNEL_LIST: asks the server; its answer opens the channel dialog.
+    void requestChannelListFromServer();
+    /// The console buttons stop flashing 1000 ms after the last trigger.
+    void onIgnoredFlashTimeout();
+    void onExivaSuppressedFlashTimeout();
+    void onChatChannelRemoved(chat::TChatChannel* channel);
     /// What a typed line asks for ('s return value).
     enum class EInput
     {
@@ -324,7 +339,7 @@ private:
     void reloadOptions();
     void onOptionChanged(const QString& name);
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
-    void onChannelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
+    void onChannelListReceived(const std::vector<chat::TChatChannelIdentifier>& channels);
     void storeOpenChannels() const;
 
     bool handleAction(const input::IGameAction& action);
@@ -341,6 +356,12 @@ private:
     void sendPrivate(const QString& recipient, const QString& text, bool gamemaster);
 
     void showEntryMenu(TChatChannelController* model, int row, int button, int modifiers);
+    /// REQUEST_SELECT_ALL_TEXT: with the chat input holding the keyboard, an
+    /// empty input selects the primary channel, otherwise the input's text.
+    void selectAllText();
+    /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection first,
+    /// then the primary channel's, then the secondary one's.
+    void copySelectedText();
     void showTabMenu(chat::TChatChannel* channel, int button, int modifiers);
     void showMenu(const input::TGameActionList& candidates, std::span<const input::EGameAction> order, int context, int button,
                   int modifiers, TChatChannelController* model, chat::TChatChannel* channel);
@@ -387,6 +408,7 @@ private:
     QPointer<TNpcDialogController> m_npcDialog;
     /// Cmd/Ctrl+C while chat output has a selection (CipSoft).
     int m_copySelectionListenerId = 0;
+    int m_selectAllListenerId = 0;
 };
 
 }

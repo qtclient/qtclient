@@ -32,6 +32,17 @@ class TQMLProficiencyPerk final : public cip::tibia::gamewindow::TQMLProficiency
 {
 public:
     TQMLProficiencyPerk(int index, const TProficiencyPerk& perk, bool picked, bool shaped, uint rank, QObject* parent);
+
+    QString perkDescription() const override;
+    QString perkName() const override;
+    QUrl imageSource() const override;
+    bool hasAugmentEffect() const override;
+    QUrl augmentEffectImageSource() const override;
+    /// The shaped rank, 0 when the perk is not shaped.
+    uint perkRank() const override;
+
+private:
+    TProficiencyPerk m_perk;
 };
 
 /// One level column of the dialog (CIP: TQMLProficiencyLevelInformation,

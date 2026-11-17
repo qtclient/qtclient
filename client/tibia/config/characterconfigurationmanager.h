@@ -19,6 +19,7 @@ class THuntingSessionStorage;
 }
 namespace cyclopedia {
 class TItemTrackingStorage;
+class TCyclopediaMapCharacterConfigurationStorage;
 }
 namespace questlog {
 class TQuestLogStorage;
@@ -53,9 +54,7 @@ public:
         cip::tibia::config::ICharacterConfigurationBase* object = nullptr;
     };
 
-    /// The session's character configuration storages; a null one is left out. CIP's
-    /// cyclopedia map character configuration (the slot between the statusbar and the
-    /// outfit dialog) has no qtclient storage.
+    /// The session's character configuration storages; a null one is left out.
     struct TStorages
     {
         analysers::TItemPriceStorage* itemPrice = nullptr;
@@ -70,6 +69,7 @@ public:
         TSidebarOptions* sidebar = nullptr;
         TActionBarOptions* actionBar = nullptr;
         game::TStatusbarStorage* statusbar = nullptr;
+        cyclopedia::TCyclopediaMapCharacterConfigurationStorage* cyclopediaMap = nullptr;
         game::TOutfitDialogStorage* outfitDialog = nullptr;
         skillwheel::TSkillWheelStorage* skillWheel = nullptr;
     };
@@ -96,6 +96,10 @@ public:
     TSidebarOptions* sidebarOptions() const { return m_storages.sidebar; }
     TActionBarOptions* actionBarOptions() const { return m_storages.actionBar; }
     game::TStatusbarStorage* statusbarStorage() const { return m_storages.statusbar; }
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* cyclopediaMapCharacterConfigurationStorage() const
+    {
+        return m_storages.cyclopediaMap;
+    }
     skillwheel::TSkillWheelStorage* skillWheelStorage() const { return m_storages.skillWheel; }
 
 public Q_SLOTS:

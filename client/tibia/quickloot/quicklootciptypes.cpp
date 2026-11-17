@@ -3,13 +3,17 @@
 #include <protocol.pb.h>
 
 #include <algorithm>
+#include <vector>
+#include <stdexcept>
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolciptypes.h"
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "config/clientoptions.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "config/optionspages.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "input/gameactionhandlers.h"
 
 namespace tibia::quickloot {
@@ -43,6 +47,14 @@ void TManagedContainersProtocolMessageHandler::quickLoot(const Position& positio
     tibia::game::sendQuickLootAt(onMap && allCorpsesInArea ? 1 : 0, position, objectId, stackPosition);
 }
 
+void TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist(const int listType, const std::set<uint16_t>& objectTypeIds)
+{
+    if (static_cast<unsigned>(listType) >= 2)
+        throw std::runtime_error("unhandled enum value");
+    const std::vector<uint16_t> items(objectTypeIds.begin(), objectTypeIds.end());
+    tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(listType), static_cast<uint16_t>(items.size()), items);
+}
+
 void TManagedContainersProtocolMessageHandler::quickLootAreaAtPlayer() { tibia::game::sendQuickLootAt(2, Position(0, 0, 0), 0, 0); }
 
 void TManagedContainersProtocolMessageHandler::sendManagedContainer(const EManagedContainerAction action, const int category,
@@ -59,6 +71,12 @@ namespace {
 
 using A = input::EGameAction;
 using P = TManagedContainersProtocolMessageHandler;
+
+TQuickLootBlackWhitelistStorage* lootBlackWhitelist()
+{
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    return storages ? storages->lootBlackWhitelist() : nullptr;
+}
 
 constexpr A QuickLootActions[] = { A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER, A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR,
                                    A::LOOT_CONTAINER_OPEN, A::OBTAIN_CONTAINER_SELECT, A::OBTAIN_CONTAINER_CLEAR, A::OBTAIN_CONTAINER_OPEN,
@@ -126,8 +144,8 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
             handleAddToBlackWhitelistStatusAction(listStatus->typeId());
         return true;
     case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        if (cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance(); storage && listStatus)
-            storage->setLootListed(listStatus->typeId(), false);
+        if (TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist(); storage && listStatus)
+            storage->setListed(listStatus->typeId(), false);
         return true;
     default:
         return false;
@@ -136,11 +154,11 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
 
 void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const uint16_t objectId)
 {
-    cyclopedia::TItemInfoStorage* storage = cyclopedia::TItemInfoStorage::instance();
+    TQuickLootBlackWhitelistStorage* storage = lootBlackWhitelist();
     if (!storage)
         return;
-    if (!storage->isLootListFull()) {
-        storage->setLootListed(objectId, true);
+    if (!storage->isListFull()) {
+        storage->setListed(objectId, true);
         return;
     }
     auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("iteminfo_maximum_number_of_blacklisted_items"), chat::systemWhite());

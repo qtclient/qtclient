@@ -1,5 +1,7 @@
 #pragma once
 
+class QQuickItem;
+
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -34,6 +36,8 @@ class TFPSLatencyIndicatorController final : public cip::tibia::gamewindow::TFPS
     Q_OBJECT
     Q_PROPERTY(QString worldmapBuildUs READ worldmapBuildUs NOTIFY worldmapBuildUsChanged FINAL)
 public:
+    /// CIP: the indicator item shows this controller; a destroyed item lets go of it.
+    void setWidgetItem(QQuickItem* item);
     explicit TFPSLatencyIndicatorController(QObject* parent = nullptr);
     ~TFPSLatencyIndicatorController() override;
 
@@ -44,14 +48,21 @@ public:
     QString worldmapBuildUs() const { return m_worldmapBuildUs; }
     void toggle();
     void setVisibleFromOptions(bool on);
+    /// CIP: the game client's values before a frame renders; each property
+    /// signals when it changed (the frame count silently).
+    void update(double frameRate, qint64 latencyMs, bool latencyMeasured, bool optimizedConnectionStability, int frameCount);
 
 Q_SIGNALS:
     void worldmapBuildUsChanged();
 
 private:
+    /// CIP: the item lets go of this controller.
+    void detachWidgetItem();
+    /// CIP: the destroyed item is forgotten.
+    void onWidgetQuickItemDestroyed();
+    QPointer<QQuickItem> m_widgetItem;
     void applyVisible(bool on);
     void tick();
-    void syncLatency();
     void syncOptimizedConnectionStability();
 
     QPointer<QQuickWindow> m_window;
@@ -61,6 +72,9 @@ private:
     QTimer m_timer;
     std::atomic<int> m_frames { 0 };
     QString m_worldmapBuildUs { QStringLiteral("0") };
+    double m_frameRate = 0.0;
+    bool m_stabilityOption = false;
+    bool m_latencyMeasured = true;
 };
 
 }

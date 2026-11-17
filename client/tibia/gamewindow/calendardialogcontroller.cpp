@@ -14,14 +14,6 @@ namespace {
 
 using A = input::EGameAction;
 
-QColor parseColor(const QJsonObject& e, const char* key)
-{
-    const QString raw = e.value(QLatin1String(key)).toString();
-    return QColor(raw.startsWith(QLatin1Char('#')) ? raw : QLatin1Char('#') + raw);
-}
-
-bool parseBool(const QJsonValue& v) { return v.isBool() ? v.toBool() : v.toInt() != 0; }
-
 const QTimeZone& serverTimeZone()
 {
     static const QTimeZone zone = [] {
@@ -65,20 +57,19 @@ TCalendarDialogController::~TCalendarDialogController()
     clearEvents();
 }
 
-void TCalendarDialogController::setEvents(const QJsonArray& events)
+void TCalendarDialogController::setEvents(const std::vector<news::TEventInformation>& events)
 {
     m_events.clear();
-    for (const auto& value : events) {
-        const QJsonObject e = value.toObject();
+    for (const news::TEventInformation& e : events) {
         TEventInformation event;
-        event.startDate = QDateTime::fromSecsSinceEpoch(e.value(QStringLiteral("startdate")).toInteger()).date();
-        event.endDate = QDateTime::fromSecsSinceEpoch(e.value(QStringLiteral("enddate")).toInteger()).date();
-        event.name = e.value(QStringLiteral("name")).toString();
-        event.description = e.value(QStringLiteral("description")).toString();
-        event.colorLight = parseColor(e, "colorlight");
-        event.colorDark = parseColor(e, "colordark");
-        event.displayPriority = static_cast<uint>(e.value(QStringLiteral("displaypriority")).toInteger());
-        event.isSeasonal = parseBool(e.value(QStringLiteral("isseasonal")));
+        event.startDate = e.startDate;
+        event.endDate = e.endDate;
+        event.name = e.name;
+        event.description = e.description;
+        event.colorLight = e.colorLight;
+        event.colorDark = e.colorDark;
+        event.displayPriority = static_cast<uint>(e.displayPriority);
+        event.isSeasonal = e.isSeasonal;
         m_events.push_back(std::move(event));
     }
 }

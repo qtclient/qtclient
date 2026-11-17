@@ -19,11 +19,5 @@ public:
     using cip::tibia::appearances::TAppearanceInstanceGenericStoragesManager::TAppearanceInstanceGenericStoragesManager;
 };
 
-class TAppearanceInstanceTracker final : public cip::tibia::appearances::TAppearanceInstanceTracker
-{
-public:
-    using cip::tibia::appearances::TAppearanceInstanceTracker::TAppearanceInstanceTracker;
-};
-
 }
 }

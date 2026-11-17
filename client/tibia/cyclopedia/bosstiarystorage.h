@@ -61,6 +61,22 @@ struct TBossSlotsData
     std::vector<TAssignableBoss> assignable;
 };
 
+/// What the bosstiary page lists: a name search and the eight rarity / kill
+/// stage switches.
+struct TBosstiaryFilter
+{
+    QString search;
+    bool showBane = true;
+    bool showArchfoe = true;
+    bool showNemesis = true;
+    bool showNoKill = true;
+    bool showFewKills = true;
+    bool showProwess = true;
+    bool showExpertise = true;
+    bool showMastery = true;
+    bool operator==(const TBosstiaryFilter&) const = default;
+};
+
 /// CIP: every word of `name` with its first letter upper-cased; empty words dropped.
 QString capitalizeWords(const QString& name);
 /// CIP: the static race name, each word capitalised.
@@ -86,6 +102,13 @@ public:
     QString rarityTooltip(int category) const;
 
     const std::vector<TBosstiaryEntry>& entries() const { return m_entries; }
+    /// The bosses the filter lets through.
+    std::vector<TBosstiaryEntry> filteredEntries() const;
+    int filteredEntryCount() const;
+
+    const TBosstiaryFilter& filter() const { return m_filter; }
+    /// Takes a different filter and tells the page.
+    void setFilter(const TBosstiaryFilter& filter);
     /// CIP (part): the list is requested again on every show.
     void clearEntries();
 
@@ -98,14 +121,18 @@ Q_SIGNALS:
     void killStagesChanged();
     void pointsChanged();
     void entriesChanged();
+    void filterChanged();
     void slotsChanged();
     void trackerChanged();
 
 private:
+    bool accepts(const TBosstiaryEntry& entry) const;
+
     std::vector<client::gamecore::Hook> m_hooks;
     int m_killsForStage[3][3] = {};
     int m_pointsForStage[3][3] = {};
     std::vector<TBosstiaryEntry> m_entries;
+    TBosstiaryFilter m_filter;
     TBossSlotsData m_slots;
     QSet<int> m_trackedBosses;
 };

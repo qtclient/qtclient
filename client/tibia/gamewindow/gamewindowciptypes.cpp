@@ -1,17 +1,25 @@
 #include "gamewindowciptypes.h"
+#include "game/worldtype.h"
+#include "colorhelper.h"
 
+#include <QWheelEvent>
+
+#include "config/clientoptions.h"
+#include "gamewindow/smoothfiltering.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/outfit.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <QColor>
 #include <QGuiApplication>
-#include <QClipboard>
+#include <QQmlContext>
+#include <QQmlEngine>
 #include <QKeyEvent>
 #include <QMetaObject>
 #include <QMouseEvent>
@@ -56,21 +64,12 @@ TPreventAutoCloseEventFilter::TPreventAutoCloseEventFilter(QObject* parent)
 
 bool TPreventAutoCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
-    // CIP : any mouse or key input keeps the dialog open.
-    switch (event->type()) {
-    case QEvent::MouseButtonPress:
-    case QEvent::MouseButtonRelease:
-    case QEvent::MouseMove:
-    case QEvent::MouseButtonDblClick:
-    case QEvent::KeyPress:
-    case QEvent::KeyRelease:
-    case QEvent::Wheel:
-        Q_EMIT preventAutoClose();
-        break;
-    default:
-        break;
-    }
+    // CIP: key and wheel events and mouse presses and releases keep the dialog open.
     Q_UNUSED(watched);
+    if (event
+        && (dynamic_cast<QKeyEvent*>(event) || dynamic_cast<QWheelEvent*>(event) || event->type() == QEvent::MouseButtonPress
+            || event->type() == QEvent::MouseButtonRelease))
+        Q_EMIT preventAutoClose();
     return false;
 }
 
@@ -185,39 +184,35 @@ TWhiteBlacklistQmlEntry::TWhiteBlacklistQmlEntry(QString name, const bool perman
     setPermanently(permanently);
 }
 
-TTextCopyController::TTextCopyController(QObject* parent)
-    : cip::tibia::gamewindow::TTextCopyController(parent)
-{}
+/// Registers itself in the engine's root context.
+TTextCopyController::TTextCopyController(QQmlEngine* engine)
+    : cip::tibia::gamewindow::TTextCopyController(engine)
+{
+    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), this);
+}
 
+/// Cuts the selection of a QML text input with normal echo that is not read
+/// only: removes it, deselects and copies it through the clipboard action.
 void TTextCopyController::cutFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, true);
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0
+        || pTextInput->property("readOnly").toBool())
+        return;
+    const QString text = pTextInput->property("selectedText").toString();
+    const int selectionStart = pTextInput->property("selectionStart").toInt();
+    const int selectionEnd = pTextInput->property("selectionEnd").toInt();
+    QMetaObject::invokeMethod(pTextInput, "remove", Q_ARG(int, selectionStart), Q_ARG(int, selectionEnd));
+    QMetaObject::invokeMethod(pTextInput, "deselect");
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
 }
 
+/// Copies the selection of a QML text input with normal echo through the
+/// clipboard action.
 void TTextCopyController::copyFromTextInputQmlItemIfPossible(QObject* pTextInput)
 {
-    copyOrCut(pTextInput, false);
-}
-
-void TTextCopyController::copyOrCut(QObject* textInput, const bool cut)
-{
-    if (!textInput)
+    if (!pTextInput->property("hasSelection").toBool() || pTextInput->property("echoMode").toInt() != 0)
         return;
-    QString selected;
-    QMetaObject::invokeMethod(textInput, "selectedText", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    if (selected.isEmpty()) {
-        QMetaObject::invokeMethod(textInput, "text", Qt::DirectConnection, Q_RETURN_ARG(QString, selected));
-    }
-    if (selected.isEmpty())
-        return;
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        clip->setText(selected);
-    if (cut)
-        QMetaObject::invokeMethod(textInput, "remove", Qt::DirectConnection);
-    if (cut)
-        input::publish(input::makeGameAction(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD));
-    else
-        input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(selected));
+    input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(pTextInput->property("selectedText").toString()));
 }
 
 TSpritesheetDataObject::TSpritesheetDataObject(QString id, QObject* parent)
@@ -296,14 +291,25 @@ TQmlPossibleMainChar::TQmlPossibleMainChar(QString name, QString world, QString 
     m_level = level;
 }
 
-TQmlTargetWorld::TQmlTargetWorld(QString worldName, QString detailedWorldName, const bool premiumOnly, const bool lockedForTransfer,
-                                 QObject* parent)
+TQmlTargetWorld::TQmlTargetWorld(QString worldName, const bool premiumOnly, const bool lockedForTransfer, const int pvpType, QObject* parent)
     : cip::tibia::gamewindow::TQmlTargetWorld(parent)
+    , m_pvpType(pvpType)
 {
     m_worldName = std::move(worldName);
-    m_detailedWorldName = std::move(detailedWorldName);
     m_premiumOnly = premiumOnly;
     m_lockedForTransfer = lockedForTransfer;
+}
+
+QString TQmlTargetWorld::detailedWorldName() const
+{
+    if (!m_premiumOnly && !m_lockedForTransfer)
+        return qtTrId("characterworldtransfer_world_name").arg(m_worldName).arg(::tibia::game::worldTypeName(m_pvpType));
+    const QString detail = qtTrId("characterworldtransfer_world_name_detail").arg(m_worldName).arg(::tibia::game::worldTypeName(m_pvpType));
+    if (!m_premiumOnly)
+        return detail.arg(qtTrId("characterworldtransfer_world_locked"));
+    if (!m_lockedForTransfer)
+        return detail.arg(qtTrId("characterworldtransfer_world_premium"));
+    return detail.arg(qtTrId("characterworldtransfer_world_premium_and_locked"));
 }
 
 TQmlWorldTransferCondition::TQmlWorldTransferCondition(const bool meets, QString text, QObject* parent)
@@ -403,7 +409,11 @@ void TPassiveAbilityListDataModel::setEntries(std::vector<Entry> entries)
 
 TPassiveAbilityListDataModelSortFilterProxy::TPassiveAbilityListDataModelSortFilterProxy(QObject* parent)
     : cip::tibia::gamewindow::TPassiveAbilityListDataModelSortFilterProxy(parent)
-{}
+{
+    // CIP: kept sorted by name.
+    setDynamicSortFilter(true);
+    sort(0);
+}
 
 QVariant TPassiveAbilityListDataModelSortFilterProxy::getDataWithRoleName(const int RowIndex, const QByteArray& RoleName)
 {
@@ -427,6 +437,14 @@ void TPassiveAbilityListDataModelSortFilterProxy::setNameFilter(const QString& f
     m_nameFilter = filter;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     Q_EMIT configChanged();
+}
+
+/// CIP: by the lower-cased names.
+bool TPassiveAbilityListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
+{
+    const QString ln = left.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
+    const QString rn = right.data(TPassiveAbilityListDataModel::NameRole).toString().toLower();
+    return QString::compare(ln, rn, Qt::CaseSensitive) < 0;
 }
 
 bool TPassiveAbilityListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -459,9 +477,13 @@ QVariant TSimpleNameAndCountModel::data(const QModelIndex& index, const int role
     return {};
 }
 
+/// The default roles with "name" and "count".
 QHash<int, QByteArray> TSimpleNameAndCountModel::roleNames() const
 {
-    return { { NameRole, "name" }, { CountRole, "count" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[NameRole] = "name";
+    roles[CountRole] = "count";
+    return roles;
 }
 
 void TSimpleNameAndCountModel::setEntries(std::vector<Entry> entries)
@@ -519,12 +541,23 @@ TPartyHuntMembersListModelSortFilterProxy::TPartyHuntMembersListModelSortFilterP
     setDynamicSortFilter(true);
 }
 
+/// CIP: every member row with a valid index.
+bool TPartyHuntMembersListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
+{
+    if (!sourceModel())
+        return false;
+    return sourceModel()->index(sourceRow, 0, sourceParent).isValid();
+}
+
 bool TPartyHuntMembersListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    // The member model's name role (characterID is Qt::UserRole + 1).
-    const QString ln = sourceModel()->data(left, Qt::UserRole + 2).toString();
-    const QString rn = sourceModel()->data(right, Qt::UserRole + 2).toString();
-    return QString::localeAwareCompare(ln, rn) < 0;
+    // By the member model's name role (characterID is Qt::UserRole + 1),
+    // ignoring case.
+    if (!sourceModel())
+        return false;
+    const QString ln = left.data(Qt::UserRole + 2).toString();
+    const QString rn = right.data(Qt::UserRole + 2).toString();
+    return QString::compare(ln, rn, Qt::CaseInsensitive) < 0;
 }
 
 TBattleListGameActionHandler::TBattleListGameActionHandler(TBattleListControllerStorage* storage, QObject* parent)
@@ -591,26 +624,6 @@ void TAssignActionDialogControllerBase::onCloseClicked()
 TDialogControllerBase::TDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TDialogControllerBase(parent)
 {}
-
-TDialogControllerWithFocusHandlingBase::TDialogControllerWithFocusHandlingBase(QObject* parent)
-    : cip::tibia::gamewindow::TDialogControllerWithFocusHandlingBase(parent)
-{}
-
-void TDialogControllerWithFocusHandlingBase::takeFocus()
-{
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
-}
-
-void TDialogControllerWithFocusHandlingBase::releaseFocus()
-{
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
-}
 
 TSidebarPanelControllerBase::TSidebarPanelControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TSidebarPanelControllerBase(parent)
@@ -759,7 +772,7 @@ const char* const InspectSlotBackgrounds[] = {
 
 QColor inspectOutfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -864,6 +877,28 @@ void clearInspectList(Controller& controller, QList<QObject*>& list)
 
 TInspectObjectDialogController* TInspectObjectDialogController::s_instance = nullptr;
 
+TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const int torso, const int legs, const int detail,
+                                             const int addons, QObject* parent)
+    : cip::tibia::gamewindow::TOutfitQMLInformation(parent)
+{
+    const auto color = [](const int index) {
+        const QColor c = tibia::shared::outfitColor(index);
+        return QColor(c.red(), c.green(), c.blue());
+    };
+    m_id = id;
+    m_headColor = color(head);
+    m_torsoColor = color(torso);
+    m_legsColor = color(legs);
+    m_detailColor = color(detail);
+    m_firstAddOn = (addons & 1) != 0;
+    m_secondAddOn = (addons & 2) != 0;
+}
+
+bool smoothFilteringEnabled() { return config::TClientOptions::instance()->antialiasingMode() == 1; }
+
+bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+bool TInspectPlayerDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
 TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)
 {
@@ -932,8 +967,7 @@ TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), parent)
 {
     s_instance = this;
-    // CipSoft Character Info keeps onParseCyclopediaCharacterInspection; look/inspect
-    // packets publish onParseCharacterInspection (and dual-emit the Cyclopedia name).
+    // Look/inspect packets publish onParseCharacterInspection.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCharacterInspection", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterInspection>(&args[0]);
         if (data)
@@ -969,7 +1003,7 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
             rightHandEmpty = false;
         if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
             leftHandTypeId = entry.typeId;
-            if (ThingType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
+            if (TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
                 leftHandDualWield = type->isDualWield();
         }
     }
@@ -1020,57 +1054,6 @@ void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const ui
 {
     auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<uint16_t>(AppearanceTypeID)));
     input::publish(action);
-}
-
-TChatChannelFilterController::TChatChannelFilterController(QObject* parent)
-    : cip::tibia::gamewindow::TChatChannelFilterController(parent)
-{}
-
-void TChatChannelFilterController::setChannelModel(QAbstractItemModel* source)
-{
-    setSourceModel(source);
-}
-
-void TChatChannelFilterController::syncFromChannel(const bool canSubscribe, const bool subscribed, const bool writesLocal, const bool canClose,
-                                                   const QString& name)
-{
-    m_canSubscribeToServerLog = canSubscribe;
-    m_isSubscribedToServerLog = subscribed;
-    m_writesToLocalChat = writesLocal;
-    m_canBeClosed = canClose;
-    m_channelName = name;
-    Q_EMIT chatChannelPropertyChanged();
-    Q_EMIT chatChannelChanged();
-}
-
-bool TChatChannelFilterController::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
-{
-    Q_UNUSED(sourceRow);
-    Q_UNUSED(sourceParent);
-    // CIP : currently accepts every channel entry row.
-    return true;
-}
-
-TChatChannelTabRenderInfo::TChatChannelTabRenderInfo(QObject* parent)
-    : cip::tibia::gamewindow::TChatChannelTabRenderInfo(parent)
-{
-    m_timer.setSingleShot(true);
-    connect(&m_timer, &QTimer::timeout, this, &TChatChannelTabRenderInfo::onFlashTimerTimeout);
-}
-
-void TChatChannelTabRenderInfo::startFlash(const int milliseconds)
-{
-    m_timer.start(milliseconds);
-}
-
-void TChatChannelTabRenderInfo::stopFlash()
-{
-    m_timer.stop();
-}
-
-void TChatChannelTabRenderInfo::onFlashTimerTimeout()
-{
-    Q_EMIT flashFinished();
 }
 
 TChatTutorialMarkerRenderInfo::TChatTutorialMarkerRenderInfo(const int markerId, const int startIndex, const int length, QObject* parent)

@@ -237,20 +237,19 @@ int checkQml(QQmlEngine& engine)
     return failed;
 }
 
-QList<gamewindow::CharacterEntry> previewCharacters()
+authentication::TCharacterList previewCharacters()
 {
-    const auto entry = [](const char* name, int level, const char* vocation, int outfit, bool main = false) {
-        gamewindow::CharacterEntry c;
+    const auto entry = [](const char* name, int level, const char* vocation, uint16_t outfit, bool main = false) {
+        authentication::TCharacter c;
         c.name = QString::fromLatin1(name);
+        c.worldId = 1;
         c.level = level;
         c.vocation = QString::fromLatin1(vocation);
-        c.world = QCoreApplication::applicationName();
-        c.worldRules = QStringLiteral("Optional PvP");
         c.outfitId = outfit;
-        c.headColor = QColor(0x9a, 0x7d, 0x5a);
-        c.torsoColor = QColor(0x3e, 0x5e, 0x9a);
-        c.legsColor = QColor(0x6a, 0x4a, 0x2a);
-        c.detailColor = QColor(0x9a, 0x2a, 0x2a);
+        c.headColor = 78;
+        c.torsoColor = 69;
+        c.legsColor = 58;
+        c.detailColor = 76;
         c.isMainCharacter = main;
         return c;
     };
@@ -261,6 +260,15 @@ QList<gamewindow::CharacterEntry> previewCharacters()
         entry("Dorn Mossbeard", 42, "Elder Druid", 144),
         entry("Eli Ashwalker", 8, "None", 128),
     };
+}
+
+authentication::TWorldList previewWorlds()
+{
+    authentication::TWorld world;
+    world.id = 1;
+    world.name = QCoreApplication::applicationName();
+    world.pvpType = 1;
+    return { { world.id, world } };
 }
 
 }
@@ -451,12 +459,14 @@ int main(int argc, char** argv)
     const bool preview = parser.isSet(QStringLiteral("preview"));
     gamewindow::TCharacterSelectionController previewController;
     gamewindow::TCharacterSelectionController* controller = &previewController;
-    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::characterChosen, [](const gamewindow::CharacterEntry& c) {
-        qInfo().noquote() << "character selected:" << c.name << c.world;
-    });
-    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::cancelled, &application, &QCoreApplication::quit);
-    if (preview)
-        previewController.setAccount(QStringLiteral("Premium Account (365 days left)"), true, previewCharacters(), 0);
+    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::requestCharacterLogin,
+                     [](const gamewindow::TCharacterLoginData& c) { qInfo().noquote() << "character selected:" << c.characterName << c.worldName; });
+    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::abort, &application, &QCoreApplication::quit);
+    if (preview) {
+        previewController.setPremium(1, 365);
+        previewController.setCharacters(previewCharacters(), previewWorlds());
+        previewController.setLastSelectedCharacterName(QStringLiteral("Aria Stormblade"));
+    }
 
 #ifdef TIBIA_WITH_GAMECORE
     client::TGameClient gameClient;

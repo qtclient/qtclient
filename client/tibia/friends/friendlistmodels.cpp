@@ -1,4 +1,5 @@
 #include "friends/friendlistmodels.h"
+#include "colorhelper.h"
 
 #include "client/outfit.h"
 
@@ -11,7 +12,7 @@ namespace {
 
 QColor outfitColor(const uint8_t index)
 {
-    const QColor color = Outfit::getColor(index);
+    const QColor color = tibia::shared::outfitColor(index);
     return QColor(color.red(), color.green(), color.blue());
 }
 

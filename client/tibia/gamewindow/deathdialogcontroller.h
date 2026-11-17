@@ -31,7 +31,10 @@ public Q_SLOTS:
     void showDeadMessage(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
     /// CIP onRequestOpenDeathDialog — forwards to showDeadMessage.
     void onRequestOpenDeathDialog(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
+    /// OK (and the store button): QUIT_GAME, logging the character out.
     void onLogoutRequested() override;
+    /// The store button logs out too and opens the store (useful thing 11) when the
+    /// next character enters the world.
     void onButtonClicked(
         cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
 
@@ -40,11 +43,15 @@ public Q_SLOTS:
     Q_INVOKABLE void onDialogEscapeKeyPressed() override;
     Q_INVOKABLE void onDialogKeyPressed(int Key, int Modifiers) override;
 
+    /// A world was entered: the store opens if the store button was used.
+    void onWorldEntered();
+
 private:
     void closeBox();
 
     TDeathMessageDialog* m_box = nullptr;
     bool m_finishing = false;
+    bool m_openStoreOnWorldEntered = false;
 };
 
 }

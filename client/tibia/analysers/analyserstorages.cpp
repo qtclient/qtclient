@@ -1,5 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include <client/staticdata.h>
 
@@ -196,8 +198,14 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
     , m_gainWaste(TItemPriceStorage::instance())
     , m_huntingSession(&m_progress)
+    , m_itemTracking(std::make_unique<cyclopedia::TItemTrackingStorage>(TItemPriceStorage::instance()))
+    , m_lootBlackWhitelist(std::make_unique<quickloot::TQuickLootBlackWhitelistStorage>())
 {
     s_instance = this;
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        Q_EMIT premiumTimeChanged();
+        return std::any{};
+    });
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         resetAll();
@@ -206,6 +214,8 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_timer.stop();
+        m_hasCharacter = false;
+        Q_EMIT configurationLoadedForCharacter();
     });
     // CIP XpChanged handler : (raw, final).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateExperience", [this](GameObject*, const Args& args) {
@@ -237,12 +247,7 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         else if (type == AnalyzerDamageDealt)
             m_impact.addDamage(amount, argInt(args, 4), element, nowMs());
         else if (type == AnalyzerDamageReceived)
-            m_damageInput.addDamage(amount, element, argString(args, 3), nowMs());
-        return std::any{};
-    });
-    // CIP KillTracking handler .
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onKillTracker", [this](GameObject*, const Args& args) {
-        m_huntingSession.addKill(argString(args, 0));
+            m_damageInput.addHit({ static_cast<int>(amount), element, argString(args, 3), nowMs() });
         return std::any{};
     });
     m_timer.setInterval(TickIntervalMs);
@@ -273,7 +278,14 @@ void TAnalyserStorages::tick()
     m_progress.tick(now);
     m_gainWaste.tick(now);
     m_impact.tick(now);
-    m_damageInput.tick(now);
+    m_damageInput.update(now);
+    m_itemTracking->update(now);
+}
+
+void TAnalyserStorages::onCharacterConfigurationLoaded()
+{
+    m_hasCharacter = true;
+    Q_EMIT configurationLoadedForCharacter();
 }
 
 void TAnalyserStorages::resetAll()

@@ -1,18 +1,7 @@
 #include "minimapmarkerstorage.h"
 
 #include "input/gameactionhandlers.h"
-#include "minimap/minimapmanager.h"
 #include "qmlcomponents/minimaprendererquickitem.h"
-#include "sprites/sprite.h"
-
-#include <QDir>
-#include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QLoggingCategory>
-#include <QSet>
-#include <QTimer>
 
 #include <algorithm>
 #include <any>
@@ -24,9 +13,8 @@ namespace tibia::minimap {
 
 namespace {
 
-Q_LOGGING_CATEGORY(lcMarkers, "tibia.minimap.markers")
-
 using A = input::EGameAction;
+using worldmap::TWorldMapCoordinate;
 
 constexpr A HandledActions[] = {
     A::SHOW_DIALOG_CREATE_MINIMAP_MARKER,
@@ -36,11 +24,6 @@ constexpr A HandledActions[] = {
     A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION,
 };
 
-QString keyOf(const Position& pos)
-{
-    return QStringLiteral("%1,%2,%3").arg(pos.x).arg(pos.y).arg(pos.z);
-}
-
 TMinimapMarkerStorage* g_activeMarkers = nullptr;
 
 }
@@ -49,249 +32,107 @@ TMinimapMarkerStorage* TMinimapMarkerStorage::active() { return g_activeMarkers;
 
 void TMinimapMarkerStorage::setActive(TMinimapMarkerStorage* storage) { g_activeMarkers = storage; }
 
-TMinimapMarkerStorage::TMinimapMarkerStorage(const QString& bundledMarkersJson, QObject* parent)
+TMinimapMarkerStorage::TMinimapMarkerStorage(QObject* parent)
     : cip::tibia::minimap::TMinimapMarkerStorage(parent)
-    , m_bundledMarkersJson(bundledMarkersJson)
     , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this, this))
-    , m_markers(MINIMAP_MARKER_FLOORS)
 {
+    // A change asks for a later callback, which writes the markers.
+    connect(this, &TMinimapMarkerStorage::requestDelayedCallback, this, &TMinimapMarkerStorage::onDelayedCallback,
+            Qt::QueuedConnection);
     using Args = std::vector<std::any>;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onAddAutomapFlag", [this](GameObject*, const Args& args) {
         const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]);
         if (!pos)
             return std::any{};
         const auto icon = static_cast<uint8_t>(client::gamecore::argInt(args, 1));
-        createOrUpdate(*pos, icon, client::gamecore::argString(args, 2));
+        addMarker(TMinimapMarker(TWorldMapCoordinate(*pos), icon,
+                                 client::gamecore::argString(args, 2),
+                                 QDateTime::currentDateTimeUtc()));
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onRemoveAutomapFlag", [this](GameObject*, const Args& args) {
-        const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]);
-        if (pos)
-            remove(*pos);
+        if (const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]))
+            removeMarker(TWorldMapCoordinate(*pos));
         return std::any{};
     });
     bindActions();
-    load();
 }
 
 TMinimapMarkerStorage::~TMinimapMarkerStorage()
 {
     if (g_activeMarkers == this)
         g_activeMarkers = nullptr;
-    if (m_savePending)
-        saveUserMarkers();
     unbindActions();
 }
 
-QString TMinimapMarkerStorage::userMarkersPath()
+TMinimapMarkerPtr TMinimapMarkerStorage::markerAt(const TWorldMapCoordinate& coordinate) const
 {
-    return TMinimapManager::minimapDir() + QStringLiteral("/user-markers.json");
+    const auto it = m_markers.find(coordinate);
+    return it != m_markers.end() ? it->second : nullptr;
 }
 
-void TMinimapMarkerStorage::clearMarkers()
+void TMinimapMarkerStorage::addMarker(const TMinimapMarker& marker)
 {
-    for (auto& floor : m_markers)
-        floor.clear();
+    m_markers[marker.coordinate] = std::make_shared<TMinimapMarker>(marker);
+    changed();
 }
 
-bool TMinimapMarkerStorage::addMarker(const Position& pos, const uint8_t icon, const std::string& description)
+void TMinimapMarkerStorage::removeMarker(const TWorldMapCoordinate& coordinate)
 {
-    if (!pos.isValid() || pos.x < 0 || pos.x > UINT16_MAX || pos.y < 0 || pos.y > UINT16_MAX
-        || pos.z >= static_cast<int>(m_markers.size()) || icon >= MINIMAP_MARKER_ICONS)
-        return false;
-
-    m_markers[pos.z].push_back({ static_cast<uint16_t>(pos.x), static_cast<uint16_t>(pos.y), icon, description });
-    return true;
+    m_markers.erase(coordinate);
+    changed();
 }
 
-bool TMinimapMarkerStorage::removeMarker(const Position& pos)
+void TMinimapMarkerStorage::changed()
 {
-    if (!pos.isValid() || pos.z >= static_cast<int>(m_markers.size()))
-        return false;
-    auto& floor = m_markers[pos.z];
-    const auto it = std::find_if(floor.begin(), floor.end(), [&](const MinimapMarker& marker) {
-        return marker.x == pos.x && marker.y == pos.y;
-    });
-    if (it == floor.end())
-        return false;
-    floor.erase(it);
-    return true;
-}
-
-bool TMinimapMarkerStorage::updateMarker(const Position& pos, const uint8_t icon, const std::string& description)
-{
-    if (!pos.isValid() || pos.z >= static_cast<int>(m_markers.size()) || icon >= MINIMAP_MARKER_ICONS)
-        return false;
-    auto& floor = m_markers[pos.z];
-    for (MinimapMarker& marker : floor) {
-        if (marker.x == pos.x && marker.y == pos.y) {
-            marker.icon = icon;
-            marker.description = description;
-            return true;
-        }
-    }
-    return addMarker(pos, icon, description);
-}
-
-bool TMinimapMarkerStorage::findMarker(const Position& pos, MinimapMarker& out) const
-{
-    if (!pos.isValid() || pos.z >= static_cast<int>(m_markers.size()))
-        return false;
-    for (const MinimapMarker& marker : m_markers[pos.z]) {
-        if (marker.x == pos.x && marker.y == pos.y) {
-            out = marker;
-            return true;
-        }
-    }
-    return false;
-}
-
-const std::vector<MinimapMarker>& TMinimapMarkerStorage::floorMarkers(const uint8_t z) const
-{
-    static const std::vector<MinimapMarker> empty;
-    return z < m_markers.size() ? m_markers[z] : empty;
-}
-
-void TMinimapMarkerStorage::load()
-{
-    clearMarkers();
-    m_userOwned.clear();
-    m_deleted.clear();
-    if (!m_bundledMarkersJson.isEmpty())
-        loadJsonFile(m_bundledMarkersJson, /*userOwned=*/false);
-    loadJsonFile(userMarkersPath(), /*userOwned=*/true);
+    m_dirty = true;
+    Q_EMIT requestDelayedCallback();
     Q_EMIT markersChanged();
     qmlcomponents::TMinimapRendererQuickItem::notifyMarkersChanged();
 }
 
-void TMinimapMarkerStorage::loadJsonFile(const QString& path, const bool userOwned)
+std::vector<TMinimapMarkerPtr> TMinimapMarkerStorage::markers(
+    const std::function<bool(const TWorldMapCoordinate&)>& accept) const
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        if (userOwned)
-            qCDebug(lcMarkers) << "no user markers at" << path;
-        else
-            qCInfo(lcMarkers) << "bundled markers missing:" << path;
-        return;
+    std::vector<TMinimapMarkerPtr> result;
+    for (const auto& [coordinate, marker] : m_markers) {
+        if (accept(coordinate))
+            result.push_back(marker);
     }
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    const QJsonObject root = doc.object();
-    const QJsonArray markers = doc.isObject() ? root.value(QStringLiteral("markers")).toArray()
-                                              : (doc.isArray() ? doc.array() : QJsonArray{});
-    size_t loaded = 0;
-    for (const QJsonValue& value : markers) {
-        const QJsonArray row = value.toArray();
-        if (row.size() < 4)
-            continue;
-        const Position pos(row.at(0).toInt(), row.at(1).toInt(), static_cast<uint8_t>(row.at(2).toInt()));
-        const auto icon = static_cast<uint8_t>(row.at(3).toInt());
-        const QString description = row.size() >= 5 ? row.at(4).toString() : QString();
-        if (userOwned) {
-            if (updateMarker(pos, icon, description.toStdString())) {
-                m_userOwned.insert(keyOf(pos));
-                ++loaded;
-            }
-        } else if (addMarker(pos, icon, description.toStdString())) {
-            ++loaded;
-        }
-    }
-    if (userOwned) {
-        for (const QJsonValue& value : root.value(QStringLiteral("deleted")).toArray()) {
-            const QJsonArray row = value.toArray();
-            if (row.size() < 3)
-                continue;
-            const Position pos(row.at(0).toInt(), row.at(1).toInt(), static_cast<uint8_t>(row.at(2).toInt()));
-            removeMarker(pos);
-            m_deleted.insert(keyOf(pos));
-            m_userOwned.remove(keyOf(pos));
-        }
-    }
-    qCInfo(lcMarkers) << "loaded" << loaded << "markers from" << path;
+    return result;
 }
 
-void TMinimapMarkerStorage::saveUserMarkers() const
+std::vector<TMinimapMarkerPtr> TMinimapMarkerStorage::markers() const
 {
-    QDir().mkpath(TMinimapManager::minimapDir());
-    QJsonArray markers;
-    for (const QString& key : m_userOwned) {
-        const QStringList parts = key.split(QLatin1Char(','));
-        if (parts.size() != 3)
-            continue;
-        const Position pos(parts[0].toInt(), parts[1].toInt(), static_cast<uint8_t>(parts[2].toInt()));
-        MinimapMarker marker;
-        if (!findMarker(pos, marker))
-            continue;
-        markers.append(QJsonArray{ marker.x, marker.y, pos.z, marker.icon,
-                                   QString::fromStdString(marker.description) });
-    }
-    QJsonArray deleted;
-    for (const QString& key : m_deleted) {
-        const QStringList parts = key.split(QLatin1Char(','));
-        if (parts.size() != 3)
-            continue;
-        deleted.append(QJsonArray{ parts[0].toInt(), parts[1].toInt(), parts[2].toInt() });
-    }
-    QJsonObject root;
-    root.insert(QStringLiteral("markers"), markers);
-    root.insert(QStringLiteral("deleted"), deleted);
-    const QString path = userMarkersPath();
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qCWarning(lcMarkers) << "failed to write" << path << file.errorString();
-        return;
-    }
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
-    qCDebug(lcMarkers) << "saved" << markers.size() << "user markers to" << path;
+    std::vector<TMinimapMarkerPtr> result;
+    result.reserve(m_markers.size());
+    for (const auto& [coordinate, marker] : m_markers)
+        result.push_back(marker);
+    return result;
 }
 
-void TMinimapMarkerStorage::scheduleSave()
+void TMinimapMarkerStorage::saveMarkers()
 {
-    m_savePending = true;
-    Q_EMIT requestDelayedCallback();
-    QTimer::singleShot(0, this, &TMinimapMarkerStorage::onDelayedCallback);
+    std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> content = fileContentFromMarkers(m_markers);
+    m_dirty = false;
+    Q_EMIT startSavingMinimapMarkerFileContentToDisk(content);
 }
 
 void TMinimapMarkerStorage::onDelayedCallback()
 {
-    if (!m_savePending)
-        return;
-    m_savePending = false;
-    saveUserMarkers();
+    if (m_dirty)
+        saveMarkers();
 }
 
-std::optional<MinimapMarker> TMinimapMarkerStorage::markerAt(const Position& pos) const
+void TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile(const tibia::protobuf::minimap::MinimapMarkerFileContent& fileContent)
 {
-    MinimapMarker marker;
-    if (!findMarker(pos, marker))
-        return std::nullopt;
-    return marker;
-}
-
-bool TMinimapMarkerStorage::createOrUpdate(const Position& pos, const uint8_t icon, const QString& description)
-{
-    // CIP sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier — icon resource path.
-    const std::string symbolPath = "qrc:/images/game/minimap/marker" + std::to_string(static_cast<int>(icon)) + ".png";
-    (void)sprites::TStaticMinimapMarkerSymbolResourceSpriteIdentifier(symbolPath);
-    if (!updateMarker(pos, icon, description.toStdString()))
-        return false;
-    m_userOwned.insert(keyOf(pos));
-    m_deleted.remove(keyOf(pos));
-    scheduleSave();
+    m_markers.clear();
+    for (auto& [coordinate, marker] : markersFromFileContent(fileContent)) {
+        if (!isObsoleteMarker(*marker))
+            m_markers[coordinate] = std::move(marker);
+    }
     Q_EMIT markersChanged();
     qmlcomponents::TMinimapRendererQuickItem::notifyMarkersChanged();
-    return true;
-}
-
-bool TMinimapMarkerStorage::remove(const Position& pos)
-{
-    if (!removeMarker(pos))
-        return false;
-    m_userOwned.remove(keyOf(pos));
-    m_deleted.insert(keyOf(pos));
-    scheduleSave();
-    Q_EMIT markersChanged();
-    qmlcomponents::TMinimapRendererQuickItem::notifyMarkersChanged();
-    return true;
 }
 
 void TMinimapMarkerStorage::bindActions()
@@ -307,10 +148,12 @@ void TMinimapMarkerStorage::bindActions()
     input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameActionUpdateMinimapMarker& action) {
         const input::TMinimapMarkerData& marker = action.marker();
         const auto icon = static_cast<uint8_t>(std::clamp(int(marker.icon), 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
-        return createOrUpdate(marker.coordinate, icon, marker.description);
+        addMarker(TMinimapMarker(TWorldMapCoordinate(marker.coordinate), icon, marker.description, QDateTime::currentDateTimeUtc()));
+        return true;
     });
     input::setActionHandler(A::DELETE_MINIMAP_MARKER, [this](const input::TGameActionDeleteMinimapMarker& action) {
-        return remove(action.coordinate());
+        removeMarker(TWorldMapCoordinate(action.coordinate()));
+        return true;
     });
 }
 

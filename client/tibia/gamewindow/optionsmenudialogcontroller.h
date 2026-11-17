@@ -6,6 +6,7 @@
 #include "config/configciptypes.h"
 #include "config/optionspages.h"
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -50,6 +51,9 @@ public:
     /// `category` (: 0 general, 1 hotkeys, 2 button bar), every
     /// page loaded from the options , then shown.
     void open(int category);
+    /// CIP handleGameAction: OPEN_OPTIONS_MENU_DIALOG opens the page of its parameter;
+    /// TARGET_SELECTION_FINISHED shows the dialog again when a hotkey's target selection hid it.
+    bool handleGameAction(const input::IGameAction& action);
     /// The game session (CIP +0xc08) began or ended.
     void setInGame(bool inGame);
     /// The window whose frames currentFrameRate counts (CipSoft +0xbe0).
@@ -106,6 +110,8 @@ public:
     /// CIP : "Restart" publishes OPEN_LAUNCHER.
     void onResartMessageControllerClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
 
+    QString currentFrameRate() const override;
+
     void afterShow() override;
     void afterHide() override;
 
@@ -135,6 +141,13 @@ private:
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
     /// CIP : GameclientMessageSetClientOptions with alwaysTurnTowardsMoveDirection.
     void sendTurnTowardsMoveDirection(bool enabled);
+    /// CIP: a hotkey page action; START_TARGET_SELECTION hides the dialog until the selection ends.
+    bool onHotkeyPageGameAction(const input::IGameAction& action);
+    /// CIP v14: closing the dialog closes its message dialogs and the about dialog.
+    void closeSubDialogs();
+    /// CIP: the shown frame rate from the frame timing, set when it changed.
+    void onBeforeRenderFrame();
+    void setFrameRate(double frameRate);
 
     /// CIP config surfaces owned for the options dialog lifetime.
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
@@ -149,6 +162,9 @@ private:
     TAboutDialogController* m_about;
     /// CIP +0xbf0.
     QString m_importFile;
+    /// CIP +0xbe8: hidden for a hotkey's target selection.
+    bool m_hiddenForTargetSelection = false;
+    std::vector<int> m_actionListeners;
     client::TGameClient* m_gameClient = nullptr;
 
     QPointer<QQuickWindow> m_window;
@@ -156,6 +172,8 @@ private:
     QMetaObject::Connection m_frameConnection;
     std::atomic<int> m_frames { 0 };
     QTimer m_frameRateTimer;
+    /// CIP +0xbe0.
+    double m_frameRate = 0.0;
 };
 
 }

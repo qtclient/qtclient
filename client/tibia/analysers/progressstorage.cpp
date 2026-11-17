@@ -54,9 +54,8 @@ bool TExperienceChangeTracker::tick(const qint64 nowMs)
     const qint64 shift = second - m_second;
     m_second = second;
     if (shift >= BinCount) {
-        const bool changed = std::any_of(m_bins.begin(), m_bins.end(), [](double v) { return v != 0.0; });
         std::fill(m_bins.begin(), m_bins.end(), 0.0);
-        return changed;
+        return true;
     }
     std::move(m_bins.begin() + shift, m_bins.end(), m_bins.begin());
     std::fill(m_bins.end() - shift, m_bins.end(), 0.0);
@@ -141,8 +140,7 @@ void TProgressStorage::reset()
 
 void TProgressStorage::onExperienceGained(const qint64 raw, const qint64 final, const qint64 nowMs)
 {
-    m_final.tick(nowMs);
-    m_base.tick(nowMs);
+    tick(nowMs);
     m_base.add(raw);
     m_final.add(final);
     Q_EMIT dataChanged();
@@ -160,10 +158,9 @@ void TProgressStorage::setGaugeVisible(const bool visible)
 
 void TProgressStorage::setGaugeTarget(const double target)
 {
-    const double clamped = std::clamp(target, MinGaugeTarget, MaxGaugeTarget);
-    if (m_gaugeTarget == clamped)
+    if (m_gaugeTarget == target)
         return;
-    m_gaugeTarget = clamped;
+    m_gaugeTarget = target;
     Q_EMIT optionsChanged();
     Q_EMIT configurationChangedFromUserInput();
 }

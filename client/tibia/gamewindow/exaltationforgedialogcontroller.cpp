@@ -1,12 +1,12 @@
 #include "exaltationforgedialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
-#include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QColor>
@@ -29,7 +29,7 @@ std::optional<int> classificationOf(const uint16_t typeId)
 {
     if (typeId == 0)
         return std::nullopt;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getClassification() == 0)
         return std::nullopt;
     return type->getClassification();
@@ -184,14 +184,6 @@ using ObjectKey = std::pair<uint16_t, uint8_t>;
 void publish(const A type)
 {
     input::publish(input::makeGameAction(type));
-}
-
-/// Option antialiasingMode is AntialiasingModeAntialiasing (CIP ,
-/// ).
-bool smoothTextureFilteringOption()
-{
-    return app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
-           == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing);
 }
 
 }
@@ -490,7 +482,7 @@ uint TExaltationForgeTransferPageController::sourceObjectCount() const
 QString TExaltationForgeTransferPageController::sourceObjectName() const
 {
     if (m_sourceObjectTypeId != 0) {
-        if (const ThingTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
+        if (const TAppearanceTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
             return QString::fromStdString(type->getName());
     }
     return qtTrId("dummy_unknown");
@@ -765,8 +757,9 @@ TExaltationResultDialogController::TExaltationResultDialogController(exaltation:
     : TDialogController(QStringLiteral("ExaltationResultDialog.qml"), parent)
     , m_storage(storage)
 {
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
 }
+
+bool TExaltationResultDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
 
 uchar TExaltationResultDialogController::dustCost() const
 {
@@ -819,6 +812,8 @@ void TExaltationResultDialogController::requestClose()
 // ---------------------------------------------------------------------------
 // Forge dialog
 
+bool TExaltationForgeDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
+
 TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::TExaltationStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), parent)
     , m_storage(storage)
@@ -831,7 +826,6 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     m_transferController = transfer;
     m_conversionController = new TExaltationForgeConversionPageController(storage, this);
     m_historyController = new TExaltationForgeHistoryPageController(storage, this);
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
     m_readOnlyMode = true;
     m_errorDialog->setCloseOnButtonClicked(true);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, fusion, &TExaltationForgeFusionPageController::prepareOpenDialog);

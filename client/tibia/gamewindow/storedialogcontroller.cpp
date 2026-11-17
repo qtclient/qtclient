@@ -271,6 +271,9 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     connect(&m_confirmationDialog, &TStorePurchaseConfirmationDialogController::confirmPurchase, this,
             &TStoreDialogController::onPurchaseConfirmed);
     connect(&m_viewEventTimer, &QTimer::timeout, this, &TStoreDialogController::onViewEventTimeoutElapsed);
+    if (m_storage)
+        connect(m_storage, &store::TStoreStorage::transactionDetailsLoaded, m_transactionDetailsDialog,
+                [this] { m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails()); });
     connect(m_extraConfirmationDialog, &TMessageDialogController::acceptClicked, this, &TStoreDialogController::onExtraConfirmDialogClickedOK);
     connect(m_extraConfirmationDialog, &TMessageDialogController::discardClicked, this,
             &TStoreDialogController::onExtraConfirmDialogClickedNotOK);
@@ -572,6 +575,28 @@ void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
     m_newName = name;
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(m_offerIdForNameChange)))
         m_confirmationDialog.showDialog(m_offerIdForNameChange, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                        m_buyWithCosmeticTokens);
+}
+
+void TStoreDialogController::onCharacterWorldTransferWorldEntered(const int offerId, const QString& worldName)
+{
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_NEW_WORLD;
+    m_newWorldName = worldName;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                        m_buyWithCosmeticTokens);
+}
+
+void TStoreDialogController::onMainCharChangeConfigurationFinished(const int offerId, const QString& characterName)
+{
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_NEW_MAIN_CHARACTER;
+    m_newMainCharacter = characterName;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
                                         m_buyWithCosmeticTokens);
 }
 
@@ -1073,33 +1098,38 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
                 &TStoreButtonController::onStoreButtonIndicatorsChanged);
         connect(dialog->messages(), &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this,
                 &TStoreButtonController::onRequestOpenStoreDialog);
+        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, this,
+                &TStoreButtonController::onStoreDeeplinkChanged);
     }
 
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const std::vector<std::any>& args) {
-        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)), static_cast<int>(client::gamecore::argInt(args, 1)));
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { clearDeeplink(); });
 }
 
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplinkAction, m_deeplinkDetail);
+    // The open action carries the link's detail, or its category / search
+    // text.
+    int detail = m_deeplink.premiumDetail;
+    switch (m_deeplink.openAction) {
+        case store::OPEN_USEFUL_THING: detail = m_deeplink.usefulThing; break;
+        case store::OPEN_OFFER: detail = static_cast<int>(m_deeplink.offerId); break;
+        default: break;
+    }
+    auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplink.openAction, detail, m_deeplink.category);
     input::publish(action);
     onRequestOpenStoreDialog();
 }
 
-void TStoreButtonController::onStoreDeeplinkChanged(const int openAction, const int detail)
+void TStoreButtonController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)
 {
-    if (openAction == 0) {
+    m_deeplink = StoreDeeplink;
+    if (m_deeplink.openAction == 0) {
         clearDeeplink();
         return;
     }
-    m_deeplinkAction = openAction;
-    m_deeplinkDetail = detail;
     m_highlightTimer.start();
     Q_EMIT changed();
 }
@@ -1112,8 +1142,7 @@ void TStoreButtonController::onHighlightStoreButtonEnds(bool)
 void TStoreButtonController::clearDeeplink()
 {
     m_highlightTimer.stop();
-    m_deeplinkAction = 0;
-    m_deeplinkDetail = -1;
+    m_deeplink = {};
     Q_EMIT changed();
 }
 

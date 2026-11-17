@@ -377,8 +377,6 @@ IGameActionPtr makeGameAction(const EGameAction type)
         return std::make_shared<TGameActionToggleMounted>();
     case EGameAction::GET_CHAT_CHANNEL_LIST:
         return std::make_shared<TGameActionGetChatChannelList>();
-    case EGameAction::SAVE_SKILL_WHEEL:
-        return std::make_shared<gameactions::TGameActionSaveSkillWheel>();
     case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
         return std::make_shared<TGameActionShowExaltationResultDialog>();
     case EGameAction::ATTACK_FIRST_TARGET:

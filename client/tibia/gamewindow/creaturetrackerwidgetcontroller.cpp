@@ -229,6 +229,11 @@ void TCreatureTrackerWidgetController::setSidebarOptions(config::TSidebarOptions
     if (!m_options)
         return;
     const QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
+    // The saved sort of the list (by name / percentage / remaining, ascending / descending).
+    if (json.contains(QLatin1String("sortType")))
+        m_model->setSortType(static_cast<decltype(m_model->sortType())>(json.value(QLatin1String("sortType")).toInt()));
+    if (json.contains(QLatin1String("sortOrder")))
+        m_model->setSortOrder(static_cast<decltype(m_model->sortOrder())>(json.value(QLatin1String("sortOrder")).toInt()));
     if (json.contains(QLatin1String("contentHeight")))
         widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
@@ -245,6 +250,8 @@ void TCreatureTrackerWidgetController::persistOptions()
     QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
     json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
     json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
+    json.insert(QStringLiteral("sortType"), static_cast<int>(m_model->sortType()));
+    json.insert(QStringLiteral("sortOrder"), static_cast<int>(m_model->sortOrder()));
     m_options->setSection(QLatin1String(optionsKey(m_mode)), json);
 }
 

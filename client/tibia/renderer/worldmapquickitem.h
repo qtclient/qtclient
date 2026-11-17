@@ -17,6 +17,7 @@ class QSGTexture;
 namespace tibia {
 namespace renderer {
 class TChildrenScenegraphNode;
+class TScenegraphNodeProvider;
 class THighlightedSpriteScenegraphNode;
 class TSpriteTextureProvider;
 }
@@ -65,14 +66,11 @@ private:
         bool smooth = false;
     };
     std::vector<HighlightBinding> m_highlights;
-    std::vector<renderer::TChildrenScenegraphNode*> m_marks;
-    /// Nodes taken off the tree (a tile slide, an opacity group, an HD flip) before `new`.
-    std::vector<renderer::TChildrenScenegraphNode*> m_opacityPool;
-    std::vector<QSGImageNode*> m_imagePool;
-    std::vector<renderer::THighlightedSpriteScenegraphNode*> m_highlightPool;
+    /// Nodes taken off the tree (a tile slide, an opacity group, an HD flip) are reused.
+    std::unique_ptr<renderer::TScenegraphNodeProvider> m_nodes;
+    /// Gives `node` and its subtree back to the node provider.
     void recycleNode(QSGNode* node);
     void harvestNodes(QSGNode* node);
-    void clearNodePools();
 
 Q_SIGNALS:
     /// The sprite list or camera changed, so the map pane can refresh its FBO.

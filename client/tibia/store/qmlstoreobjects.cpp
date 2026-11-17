@@ -1,4 +1,5 @@
 #include "qmlstoreobjects.h"
+#include "colorhelper.h"
 
 #include "store/storeciptypes.h"
 
@@ -22,7 +23,7 @@ QString englishNumber(const qint64 value)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -351,7 +352,7 @@ TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManage
         }
     }
     if (descriptionManager)
-        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::onOfferDescriptionLoaded);
+        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::descriptionChanged);
 }
 
 QString TQmlStoreOffer::name() const
@@ -425,11 +426,6 @@ bool TQmlStoreOffer::hasQuantity(const int offerId) const
     return m_offer.hasQuantity(static_cast<TOfferID>(offerId));
 }
 
-void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
-{
-    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
-        Q_EMIT descriptionChanged();
-}
 
 TQmlTransactionHistoryEntry::TQmlTransactionHistoryEntry(const TStoreTransactionHistoryEntry& entry, QObject* parent)
     : cip::tibia::store::TQmlTransactionHistoryEntry(parent)

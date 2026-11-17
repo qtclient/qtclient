@@ -50,6 +50,7 @@ public:
     TPreyDialogController* prey() const { return m_prey; }
     TQuestLogController* questLog() const { return m_questLog; }
     TCyclopediaButtonController* cyclopediaButton() const { return m_cyclopediaButton; }
+    TCyclopediaDialogController* cyclopedia() const { return m_cyclopedia; }
     TBosstiaryButtonController* bosstiaryButton() const { return m_bosstiaryButton; }
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// The local minimap the Cyclopedia map's LocalMinimap mode draws.

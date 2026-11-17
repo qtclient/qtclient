@@ -66,6 +66,9 @@ struct LauncherEnv
     QUrl createAccountUrl() const;
     /// Where shared::TCrashReportSender posts; empty when not configured.
     QUrl crashReportUrl() const;
+    /// CIP `[URLS] fpsHistoryRecipient`: the qtc-aac hardware receiver
+    /// (/clientservices/hardwarereceiver.php, QTCLIENT_FPS_HISTORY_PATH overrides).
+    QUrl fpsHistoryRecipientUrl() const;
 
     /// Override string for an OPEN_URL_* action env key, or empty.
     QString urlOverride(const char* envKey) const;

@@ -4,7 +4,9 @@
 #include "analysers/itempricestorage.h"
 #include "config/actionbaroptions.h"
 #include "config/sidebaroptions.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "game/gameciptypes.h"
 #include "game/statusbarstorage.h"
 #include "questlog/questlogciptypes.h"
@@ -53,7 +55,7 @@ TCharacterConfigurationManager::TCharacterConfigurationManager(const TStorages& 
                         configuration(storages.progress),      configuration(storages.huntingSession),
                         configuration(storages.quickLootBlackWhitelist), configuration(storages.sidebar),
                         configuration(storages.actionBar),     configuration(storages.statusbar),
-                        TConfiguration{},                      configuration(storages.outfitDialog),
+                        configuration(storages.cyclopediaMap), configuration(storages.outfitDialog),
                         configuration(storages.skillWheel) }
 {
     // Every storage but the hunting session marks the configuration dirty (CIP connects the

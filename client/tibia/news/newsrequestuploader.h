@@ -1,47 +1,95 @@
 #pragma once
 
-#include <cip_gen.h>
+#include "jsondocumentuploaderbase.h"
 
-#include <QJsonObject>
-#include <QPointer>
+#include <QJsonDocument>
 #include <QString>
 #include <QUrl>
 
-class QNetworkAccessManager;
+#include <map>
+#include <memory>
+#include <tuple>
+
+namespace tibia::shared {
+class IClockService;
+class TTibiaFileSystemHelper;
+}
 
 namespace tibia {
 namespace news {
 
 class TNewsStorage;
 
-/// POSTs `{type:"news"}` to the portal clientservices multiplex
-/// (CIP: TNewsRequestUploader). Parses CIP `{gamenews:[…]}` into TNewsStorage.
-class TNewsRequestUploader final : public cip::tibia::news::TNewsRequestUploader
+/// The parameters of a news query; queries with the same parameters share a
+/// retry count.
+struct TNewsQueryParameters
+{
+    bool returner = false;
+    bool highPotential = false;
+    uint maxKnownEditDate = 0;
+
+    bool operator<(const TNewsQueryParameters& other) const
+    {
+        return std::tie(returner, highPotential, maxKnownEditDate)
+            < std::tie(other.returner, other.highPotential, other.maxKnownEditDate);
+    }
+};
+
+/// CIP news::TNewsRequestUploader: queries `{type:"news"}` from the client
+/// services and merges the answer into the news storage.
+class TNewsRequestUploader final : public shared::TJsonDocumentUploaderBase
 {
     Q_OBJECT
 public:
-    explicit TNewsRequestUploader(TNewsStorage* storage, QObject* parent = nullptr);
+    TNewsRequestUploader(const QUrl& url, std::shared_ptr<TNewsStorage> storage,
+                         std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                         std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                         std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
+    ~TNewsRequestUploader() override;
 
-    void setServiceUrl(const QUrl& url) { m_url = url; }
-    void setClientRevision(const QString& revision) { m_revision = revision; }
-
-    QJsonObject reply() const { return m_reply; }
-    TNewsStorage* storage() const { return m_storage; }
-
-    /// CIP has no generated `requestUpdate` on this class; product uses the same shape.
+    /// Queries the news, at most three times per parameters unless forced (a
+    /// forced query asks for every entry).
+    void requestNews(const TNewsQueryParameters& parameters, bool force);
+    /// Queries the news with the storage's parameters once the cache is stale.
     void requestUpdate();
-    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD) override;
 
 Q_SIGNALS:
-    void newsReceived();
+    void newsQueryFailed(const QString& ErrorMessage);
+
+public Q_SLOTS:
+    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD);
 
 private:
-    QNetworkAccessManager* m_network;
-    QPointer<TNewsStorage> m_storage;
+    TNewsQueryParameters storageParameters() const;
+
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::IClockService> m_clock;
     QUrl m_url;
-    QString m_revision;
-    QJsonObject m_reply;
+    std::shared_ptr<TNewsStorage> m_storage;
+    std::map<TNewsQueryParameters, uint> m_retries;
 };
+
+/// The query document of a news request.
+QJsonDocument newsQueryDocument(const TNewsQueryParameters& parameters);
+
+/// CIP news::TNewsViewsUploader: reports `{type:"newsviewed", viewedid}` when a
+/// news entry is opened.
+class TNewsViewsUploader final : public shared::TJsonDocumentUploaderBase
+{
+    Q_OBJECT
+public:
+    TNewsViewsUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                       QObject* parent = nullptr);
+    ~TNewsViewsUploader() override;
+
+    void reportNewsViewed(uint id);
+
+private:
+    QUrl m_url;
+};
+
+/// The document of a news view report.
+QJsonDocument newsViewedDocument(uint id);
 
 }
 }

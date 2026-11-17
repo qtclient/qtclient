@@ -31,12 +31,14 @@ class TBossTrackerListModel final : public cip::TBossTrackerModel
 {
     Q_OBJECT
 public:
+    /// CIP's role ids (0x101..0x106).
     enum Role {
-        BossRaceIdRole = Qt::UserRole + 1,
-        NameRole,
+        NameRole = Qt::UserRole + 1,
+        BossRaceIdRole,
+        OutfitRole,
         HasCooldownRole,
         CooldownEndStringRole,
-        OutfitRole
+        CooldownEndRole
     };
 
     struct Row {
@@ -55,6 +57,8 @@ public:
     enum ESortMode { SortByRemainingCooldown = 0, SortByName = 1 };
 
     void setRows(std::vector<Row> rows);
+    /// CIP: a new second updates the time and the texts of the running cooldowns.
+    void setCurrentTime(qint64 currentTimeMs);
     void setNameFilter(const QString& filter);
     QString nameFilter() const { return m_filter; }
     int sortMode() const { return m_sortMode; }
@@ -71,6 +75,8 @@ private:
 
     std::vector<Row> m_all;
     std::vector<int> m_visible;
+    /// CIP: the time (ms since the epoch) the cooldowns are measured against.
+    qint64 m_currentTimeMs = 0;
     QString m_filter;
     int m_sortMode = SortByRemainingCooldown;
 };

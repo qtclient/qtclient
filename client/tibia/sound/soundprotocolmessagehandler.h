@@ -2,9 +2,9 @@
 
 #include <cip_gen.h>
 
-#include <QByteArray>
-
-#include <tibia/game/tgamenotify.h>
+namespace tibia::protobuf::protocol {
+class GameserverMessageSoundTrigger;
+}
 
 namespace tibia {
 namespace sound {
@@ -16,18 +16,11 @@ class TSoundProtocolMessageHandler final : public cip::tibia::sound::TSoundProto
 {
     Q_OBJECT
 public:
-    explicit TSoundProtocolMessageHandler(QObject* parent = nullptr);
-    ~TSoundProtocolMessageHandler() override = default;
+    using cip::tibia::sound::TSoundProtocolMessageHandler::TSoundProtocolMessageHandler;
 
     /// type 0: ambience stream id, 1: music id (0 stops either), 2: plays the
-    /// numeric sound effect `soundId` once. Other types are ignored.
-    void handleSoundTriggerMessage(int type, int soundId);
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
-
-private:
-    tibia::game::SoftHook m_hook;
+    /// numeric sound effect once. Other types are ignored.
+    void handleSoundTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessageSoundTrigger& message);
 };
 
 }

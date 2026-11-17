@@ -146,4 +146,20 @@ TChatEntry TClientChatEntryFactory::advertisingChannelIntroductionEntry()
     return systemEntry(systemWhite(), qtTrId("chat_advertising_channel_introduction"));
 }
 
+void TChatStorage::setNpcTalkPartners(const std::vector<uint32_t>& npcIds)
+{
+    if (m_npcTalkPartners == npcIds)
+        return;
+    m_npcTalkPartners = npcIds;
+    Q_EMIT npcTalkPartnersChanged();
+}
+
+void TChatStorage::setKeywordButtons(const std::vector<TKeywordButton>& buttons)
+{
+    if (m_keywordButtons == buttons)
+        return;
+    m_keywordButtons = buttons;
+    Q_EMIT keywordButtonsChanged();
+}
+
 } // namespace tibia::chat

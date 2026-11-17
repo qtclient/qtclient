@@ -13,7 +13,7 @@
 class QNetworkAccessManager;
 class QSplashScreen;
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 class TSystemSurveyUploader;
 }
 
@@ -90,7 +90,7 @@ private:
     std::unique_ptr<TLauncherSelfUpdater> m_selfUpdater;
     std::unique_ptr<TInstallationManager> m_installationManager;
     std::unique_ptr<TLauncherMainWindow> m_mainWindow;
-    std::unique_ptr<systemsurvey::TSystemSurveyUploader> m_systemSurveyUploader;
+    std::unique_ptr<tibia::systemsurvey::TSystemSurveyUploader> m_systemSurveyUploader;
     std::unique_ptr<QSplashScreen> m_splash;
     std::unique_ptr<TApplicationLock> m_lock;
     QCommandLineParser m_parser;

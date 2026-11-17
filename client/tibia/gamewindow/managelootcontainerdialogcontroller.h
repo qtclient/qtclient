@@ -13,8 +13,11 @@
 #include <vector>
 
 namespace tibia {
-namespace cyclopedia {
-class TItemInfoStorage;
+namespace analysers {
+class TAnalyserStorages;
+}
+namespace quickloot {
+class TQuickLootBlackWhitelistStorage;
 }
 }
 
@@ -114,7 +117,7 @@ private:
     void cancelPick();
     void onClearConfirmed();
 
-    cyclopedia::TItemInfoStorage* m_itemInfo = nullptr;
+    quickloot::TQuickLootBlackWhitelistStorage* m_lootBlackWhitelist = nullptr;
     quickloot::TManagedContainerStorage* m_containers = nullptr;
     TAppearanceTypeListModel m_listModel;
     TAppearanceTypeListModelSortFilterProxy m_listProxy;

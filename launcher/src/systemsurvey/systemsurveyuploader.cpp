@@ -3,7 +3,7 @@
 #include "jsondocumenthttppostsender.h"
 #include "systemsurveyasjsondocumentcreator.h"
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 TSystemSurveyUploader::TSystemSurveyUploader(const QUrl& url,
                                              std::shared_ptr<TSystemSurveyAsJsonDocumentCreator> documentCreator,
@@ -22,4 +22,4 @@ void TSystemSurveyUploader::uploadSystemSurvey()
     upload(m_url, m_documentCreator->createJsonDocument());
 }
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

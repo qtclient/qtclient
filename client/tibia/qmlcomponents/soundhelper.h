@@ -6,7 +6,7 @@ namespace tibia {
 namespace qmlcomponents {
 
 /// QML singleton SoundHelper (CIP: TSoundHelperService, playSound).
-/// Publishes SOUND_TRIGGER with the ESound id; the action handler plays via TSoundStorage.
+/// Publishes SOUND_TRIGGER with the ESound id; TSoundController plays it.
 class TSoundHelperService final : public cip::tibia::qmlcomponents::TSoundHelperService
 {
     Q_OBJECT
@@ -18,7 +18,7 @@ public:
 
 /// Installs the SOUND_TRIGGER game-action handler (CIP parameter = effect id).
 void installSoundActionHandler();
-/// Re-apply ClientOptions volumes to TSoundStorage (and the login anthem).
+/// Option change: the pack weather audio follows the ambience volume.
 void applyOptionVolumes();
 
 }

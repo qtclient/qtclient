@@ -135,6 +135,18 @@ void TDialogStackController::setCharacterListOpen(const bool open)
     update();
 }
 
+bool TDialogStackController::closeTopShieldedDialog()
+{
+    for (auto it = m_dialogs.rbegin(); it != m_dialogs.rend(); ++it) {
+        TDialog* dialog = *it;
+        if (dialog && dialog->hooks()->hasPersonalMouseShield() && dialog->isShown()) {
+            dialog->close();
+            return true;
+        }
+    }
+    return false;
+}
+
 void TDialogStackController::hideAll()
 {
     while (!m_dialogs.empty())
@@ -192,8 +204,10 @@ void TDialog::create()
         }
     }
     m_item = createItem(stack->engine(), m_qmlFile, parentItem, this, properties);
-    if (m_item)
+    if (m_item) {
         m_item->setVisible(false);
+        m_hooks->afterCreate();
+    }
 }
 
 void TDialog::show()
@@ -226,8 +240,10 @@ void TDialog::close()
 
 void TDialog::destroy()
 {
-    if (m_item)
+    if (m_item) {
+        m_hooks->beforeDestroy();
         hide();
+    }
     deleteItem(m_item);
     deleteItem(m_shield);
 }

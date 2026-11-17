@@ -1,5 +1,6 @@
 #include "keyboardshortcuthandlereventfilter.h"
 
+#include "gamewindow/dialogmanager.h"
 #include "input/keyboardshortcuthandler.h"
 
 #include <QKeyEvent>
@@ -21,8 +22,12 @@ bool TKeyboardShortcutHandlerEventFilter::eventFilter(QObject* watched, QEvent* 
     if (key >= Qt::Key_Shift && key <= Qt::Key_Alt)
         return QObject::eventFilter(watched, event);
     const QKeySequence keys(keyEvent->modifiers().toInt() | key);
-    // CipSoft first lets Escape close the top dialog of the focus stack; the
-    // dialog focus stack is not ported, so Escape reaches its binding.
+    // Escape first closes the topmost shielded dialog of the dialog stack.
+    if (key == Qt::Key_Escape) {
+        if (gamewindow::TDialogStackController* stack = gamewindow::TDialogStackController::instance();
+            stack && stack->closeTopShieldedDialog())
+            return true;
+    }
     if (m_keySequences.count(keys) == 0 || !m_keyboardShortcutHandler)
         return QObject::eventFilter(watched, event);
     return m_keyboardShortcutHandler->keyPressed(keys, keyEvent->isAutoRepeat());

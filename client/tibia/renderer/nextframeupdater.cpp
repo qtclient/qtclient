@@ -6,16 +6,13 @@
 #include "renderer/worldmaprenderprovider.h"
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/game/gamesession.h>
-#include "worldmap/numericaleffectstorage.h"
 #include "effects/effectstorage.h"
 
 namespace tibia::renderer {
 
-TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts,
-                                     worldmap::TNumericalEffectStorage& numericalEffects)
+TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts)
     : m_provider(provider)
     , m_texts(texts)
-    , m_numericalEffects(numericalEffects)
 {}
 
 void TNextFrameUpdater::v2(const qint64 timestampMs)
@@ -28,7 +25,6 @@ void TNextFrameUpdater::v2(const qint64 timestampMs)
     // the cooldown storage's own clock.
     if (game::TCooldownStorage* cooldowns = game::TCooldownStorage::instance())
         cooldowns->expireCooldowns(game::TCooldownStorage::now());
-    m_numericalEffects.update(timestampMs);
     effects::TEffectStorage::instance().update(timestampMs);
     m_provider.advance();
     tibia::creatures::resumeMovementClock();

@@ -7,61 +7,67 @@ namespace tibia::gamewindow {
 TWaitDialogController::TWaitDialogController(QObject* parent)
     : TDialogController(QStringLiteral("WaitDialog.qml"), parent)
 {
-    m_fillPercentage = 0.0;
-    m_tick.setInterval(200);
-    connect(&m_tick, &QTimer::timeout, this, &TWaitDialogController::tick);
+    m_timer.setInterval(100);
+    m_timer.setSingleShot(true);
+    connect(&m_timer, &QTimer::timeout, this, &TWaitDialogController::reduceRemainingWaitDurationByOneSecond);
 }
 
-void TWaitDialogController::showCharacterList()
+void TWaitDialogController::startWait(const QString& caption, const QString& text, const qint64 seconds, const QString& waitTextFormat)
 {
-    present("loginwait_caption", "loginwait_text", Phase::CharacterList);
-}
-
-void TWaitDialogController::showGameWorld()
-{
-    present("connecting_caption", "connecting_description", Phase::GameWorld);
-}
-
-void TWaitDialogController::present(const char* captionId, const char* textId, const Phase phase)
-{
-    // close() destroys the QML item, so the next show() reads these again.
-    m_phase = phase;
-    m_dialogCaption = qtTrId(captionId);
-    m_dialogText = qtTrId(textId);
-    m_elapsed = 0;
-    m_fillPercentage = 0.05;
-    m_waitTextWithRemainingDuration = qtTrId("please_wait");
-    Q_EMIT remainingWaitDurationChanged();
-    if (!dialog()->isInStack())
-        dialog()->show();
-    m_tick.start();
+    m_dialogCaption = caption;
+    m_dialogText = text;
+    m_remainingWaitDuration = seconds * 1000;
+    m_totalWaitDuration = seconds * 1000;
+    m_waitTextFormat = waitTextFormat;
+    dialog()->create();
+    dialog()->show();
+    m_timer.start();
 }
 
 void TWaitDialogController::close()
 {
-    m_tick.stop();
-    m_phase = Phase::None;
-    if (dialog()->isInStack())
-        dialog()->close();
+    dialog()->close();
+    m_timer.stop();
+}
+
+double TWaitDialogController::fillPercentage() const
+{
+    if (m_totalWaitDuration == 0)
+        return 0.0;
+    return static_cast<double>(m_totalWaitDuration - m_remainingWaitDuration) / static_cast<double>(m_totalWaitDuration);
+}
+
+QString TWaitDialogController::waitTextWithRemainingDuration() const
+{
+    return m_waitTextFormat.arg(formatRemainingTime(m_remainingWaitDuration));
 }
 
 void TWaitDialogController::abortWait()
 {
-    m_abortedPhase = m_phase;
-    m_tick.stop();
-    m_phase = Phase::None;
-    if (dialog()->isInStack())
-        dialog()->close();
+    m_timer.stop();
+    close();
     Q_EMIT waitAborted();
-    Q_EMIT aborted();
 }
 
-void TWaitDialogController::tick()
+void TWaitDialogController::reduceRemainingWaitDurationByOneSecond()
 {
-    // Indeterminate pulse while the login HTTP request is in flight.
-    ++m_elapsed;
-    m_fillPercentage = 0.05 + 0.9 * (0.5 + 0.5 * std::sin(m_elapsed * 0.35));
-    Q_EMIT remainingWaitDurationChanged();
+    if (m_remainingWaitDuration > 0)
+        m_remainingWaitDuration -= m_timer.interval();
+    if (m_remainingWaitDuration != 0) {
+        m_timer.start();
+        Q_EMIT remainingWaitDurationChanged();
+        return;
+    }
+    close();
+    Q_EMIT waitTimeElapsed();
+}
+
+QString formatRemainingTime(const qint64 milliseconds)
+{
+    const auto seconds = static_cast<uint>(static_cast<qint64>(std::ceil(static_cast<double>(milliseconds) / 1000.0)));
+    if (seconds < 61)
+        return qtTrId(seconds == 1 ? "time_second" : "time_seconds_plural").arg(seconds);
+    return qtTrId("time_minutes").arg(static_cast<int>(std::ceil(seconds / 60.0)));
 }
 
 }

@@ -1,7 +1,7 @@
 #include "analysers/itempricestorage.h"
 
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QCoreApplication>
@@ -32,16 +32,16 @@ constexpr uint16_t CrystalCoin = 3043;
 
 QPointer<TItemPriceStorage> s_instance;
 
-const std::vector<NPCData>* npcOffers(const uint16_t typeId)
+const std::vector<tibia::appearances::TNpcTradeData>* npcOffers(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type ? &type->getNpcSaleData() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type ? &type->npcTradeData() : nullptr;
 }
 
 /// Offers paid in another currency than gold do not count.
-bool paidInOtherCurrency(const NPCData& offer)
+bool paidInOtherCurrency(const tibia::appearances::TNpcTradeData& offer)
 {
-    return offer.currencyObjectTypeId != 0 || !offer.currencyQuestFlagDisplayName.empty();
+    return offer.currency.has_value();
 }
 
 }
@@ -152,11 +152,11 @@ quint32 TItemPriceStorage::npcBuyPrice(const uint16_t typeId) const
         return 100;
     if (typeId == CrystalCoin)
         return 10000;
-    const std::vector<NPCData>* offers = npcOffers(typeId);
+    const auto* offers = npcOffers(typeId);
     if (!offers)
         return 0;
     quint32 best = 0;
-    for (const NPCData& offer : *offers) {
+    for (const auto& offer : *offers) {
         if (!paidInOtherCurrency(offer) && best <= offer.buyPrice)
             best = offer.buyPrice;
     }
@@ -165,11 +165,11 @@ quint32 TItemPriceStorage::npcBuyPrice(const uint16_t typeId) const
 
 quint32 TItemPriceStorage::npcSalePrice(const uint16_t typeId) const
 {
-    const std::vector<NPCData>* offers = npcOffers(typeId);
+    const auto* offers = npcOffers(typeId);
     if (!offers)
         return 0;
     quint32 best = 0;
-    for (const NPCData& offer : *offers) {
+    for (const auto& offer : *offers) {
         if (!paidInOtherCurrency(offer) && best <= offer.salePrice)
             best = offer.salePrice;
     }

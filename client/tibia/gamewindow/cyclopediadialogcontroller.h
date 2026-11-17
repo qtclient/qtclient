@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
+#include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/housesinfodialogcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
@@ -33,7 +34,6 @@ class InstanceBackend;
 namespace tibia {
 namespace gamewindow {
 
-class TCharacterInfoDialogController;
 class TCyclopediaMapDialogController;
 class TMagicalArchiveDialogController;
 
@@ -47,6 +47,8 @@ class TCyclopediaDialogController final : public TDialogController<cip::tibia::g
 public:
     explicit TCyclopediaDialogController(QObject* parent = nullptr);
     ~TCyclopediaDialogController() override;
+
+    TCyclopediaMapDialogController* mapDialog() const { return m_map; }
 
     /// The local player's gold; "unknown" (charms: "0") outside the game.
     QString bankGoldBalanceString() const override;
@@ -82,12 +84,13 @@ private:
     struct Context
     {
         DialogTab tab = NoTabInitialState;
-        int characterInfoDataType = 0;
+        TCharacterInfoDialogController::Context characterInfo;
         TItemInfoDialogController::Context itemInfo;
         TMonsterDialogController::Context monsters;
         TMonsterBonusEffectsDialogController::Context bonusEffects;
         TBosstiaryDialogController::Context bosstiary;
         THousesInfoDialogController::Context houses;
+        int magicalArchiveSpellId = 0;
         bool operator==(const Context&) const = default;
     };
 

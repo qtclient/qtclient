@@ -6,7 +6,6 @@
 #include "gameaction.h"
 #include "worldmap/worldmappicker.h"
 
-class ThingType;
 
 namespace tibia {
 namespace creatures {
@@ -38,7 +37,7 @@ public:
     static TGameActionList objectActions(const TGameActionContextPtr& location, const container::TInventorySlot& slot);
     /// v7: the object context of an object: a fluid container's liquid, a
     /// classified object's tier, a decoration kit's item, else the type alone.
-    static TGameActionContextPtr objectContext(const ThingType* type, uint16_t appearanceTypeId, uint32_t liquidType,
+    static TGameActionContextPtr objectContext(const TAppearanceType* type, uint16_t appearanceTypeId, uint32_t liquidType,
                                                uint8_t tier, uint16_t decoItemId);
     /// OPEN_CYCLOPEDIA's items tab on an object type: its Cyclopedia type.
     static IGameActionPtr openCyclopediaAction(uint16_t clientId);

@@ -5,7 +5,7 @@
 #include <client/position.h>
 #include <cip_gen.h>
 
-#include <QHash>
+#include <map>
 #include <QPointer>
 
 class QQuickItem;
@@ -38,24 +38,22 @@ public:
 
 public Q_SLOTS:
     void update() override;
+    void handleGameAction(const input::IGameActionPtr& action);
 
-    /// qtclient entry from TTutorialShell ADD_GUI / REMOVE_ALL.
+    /// ADD_GUI_TUTORIAL_MARKER: the marker stays on the field it was added to.
     void addGuiMarker(const input::TGameActionAddGUITutorialMarker& action);
+    /// REMOVE_ALL_TUTORIAL_MARKERS.
     void removeAllMarkers();
 
 private:
-    struct MarkerRecord {
-        QPointer<qmlcomponents::TTutorialMarkerQuickItem> item;
-        Position field;
-        uint32_t creatureId = 0;
-    };
-
-    void ensureMarker(int markerId, const Position& field, uint32_t creatureId);
     QPoint overlayPosFor(const Position& field) const;
 
     QPointer<QQuickItem> m_overlay;
     QPointer<qmlcomponents::TWorldMapRenderProvider> m_provider;
-    QHash<int, MarkerRecord> m_markers;
+    /// The field of each marker by marker id.
+    std::map<int, Position> m_markerFields;
+    /// The shown marker items by marker id.
+    std::map<int, QPointer<qmlcomponents::TTutorialMarkerQuickItem>> m_markerItems;
 
     static TWorldMapTutorialMarkerOverlayController* s_instance;
 };

@@ -30,6 +30,9 @@ namespace tibia {
 namespace config {
 class TSidebarOptions;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 }
 
 namespace tibia {
@@ -160,9 +163,12 @@ public:
 
     int battleListId() const { return m_id; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
-    /// The list's options (name, filters, sort order, view) and size.
-    void applyOptions(const BattleListOptions& options);
-    void setPremium(bool premium);
+    /// The list follows its entry in `options`: it reads it now and on every
+    /// change of its id (nullptr detaches).
+    void attachSidebarOptions(config::TSidebarOptions* options);
+    /// The list's premium state follows `storage` (premiumTimeChanged on
+    /// every change and once now).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR, forwarded by the storage:
     /// the hovered entry's TARGET_SELECTED creature takes the object
     /// (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
@@ -258,6 +264,9 @@ private:
     uint32_t m_hoveredCreature = 0;
     uint32_t m_lockedCreature = 0;
     QMetaObject::Connection m_contextMenuClosed;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
+    QPointer<config::TSidebarOptions> m_sidebarOptions;
+    QMetaObject::Connection m_sidebarOptionsChanged;
 };
 
 /// The open battle lists (CIP: TBattleListControllerStorage). Battle list ids
@@ -310,6 +319,9 @@ public:
     /// The list's options from the sidebar options (defaults when it has none).
     BattleListOptions options(int battleListId) const;
     void setOptions(int battleListId, const BattleListOptions& options);
+    /// Whether the sidebar options hold an entry for the list.
+    bool hasOptions(int battleListId) const;
+    config::TSidebarOptions* sidebarOptions() const;
     void removeOptions(int battleListId);
     /// CIP: the list becomes the primary list in the sidebar options.
     void makePrimary(uint8_t battleListId);

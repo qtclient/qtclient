@@ -17,9 +17,11 @@ namespace tibia {
 namespace chat {
 class TTextStorage;
 }
+namespace effects {
+class TEffectStorage;
+}
 namespace worldmap {
 class TCreatureHUDController;
-class TNumericalEffectStorage;
 class TWorldMapGameActionHandler;
 class TWorldMapGameActionProvider;
 class TWorldMapTutorialMarkerOverlayController;
@@ -62,7 +64,7 @@ public:
     void setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider);
     /// The game session's texts, numerical effects and view; the first call
     /// binds the pane's items to the provider.
-    void bindSession(const chat::TTextStorage* texts, const worldmap::TNumericalEffectStorage* numericalEffects);
+    void bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects);
     /// Unsets the provider everywhere; call before the provider goes away.
     void unbind();
     /// False when the pane lacks the world map.

@@ -6,10 +6,18 @@ syntax = "proto2";
 package tibia.protobuf.protocol;
 option optimize_for = LITE_RUNTIME;
 
+// What the network layer adds to a received message (CIP GameserverMessageMetaData).
+message GameserverMessageMetaData {
+  optional int64 timestamp = 1;
+  optional uint32 packet_number = 2;
+  optional int32 value3 = 3;
+}
+
 // Wrapper: classic opcode in `type`; payload is extension N==opcode.
 message GameserverMessage {
   optional int32 type = 1;
-  extensions 2 to max;
+  extensions 2 to 999;
+  optional GameserverMessageMetaData meta_data = 1000;
 }
 
 message GameclientMessage {
@@ -1485,7 +1493,7 @@ message GameserverMessageLoginWait {
 }
 
 // server opcode 0x17 (23) — LoginSuccess
-// classic: u32 playerId; u16 beat; [GameNewSpeedLaw] 3× double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]
+// classic: u32 playerId; u16 beat; [GameNewSpeedLaw] 3× double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]; u8 daily reward streak length
 // CIP RE via dmpd mapLoginSuccess (fields 1–5,8–10,12). Fields 6–7 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates.
 message GameserverMessageLoginSuccess {
   optional uint32 player_id = 1;
@@ -1499,6 +1507,7 @@ message GameserverMessageLoginSuccess {
   optional string store_url = 9;
   optional uint32 coins_packet_size = 10;
   optional uint32 exiva_options = 12;
+  optional uint32 daily_reward_streak_length = 13;
   extend GameserverMessage {
     optional GameserverMessageLoginSuccess gameserver_message_login_success = 23;
   }
@@ -3963,11 +3972,18 @@ message GameclientMessageSetClientOptions {
 }
 
 // client opcode 0x5F (95) — Taskboard
-// CIP TProtobufClientMessageTranslator::v118.
+// CIP TProtobufClientMessageTranslator::v118. u8 option; 2: u8 difficulty, bool elite; 5/7/8/9: u8 index or difficulty; 11: u16 offer; 13/14: u16 slot; 15/16: u16 slot, u16 race.
 message GameclientMessageTaskboard {
   optional uint32 option = 1;
-  optional uint32 small_value = 2;
-  optional uint32 value = 3;
+  optional uint32 bounty_difficulty = 2;
+  optional uint32 task_index = 3;
+  optional uint32 talisman_index = 4;
+  optional uint32 delivery_task_index = 5;
+  optional uint32 weekly_difficulty = 6;
+  optional uint32 offer_index = 7;
+  optional uint32 slot_index = 8;
+  optional uint32 race_id = 9;
+  optional bool elite = 10;
   extend GameclientMessage {
     optional GameclientMessageTaskboard gameclient_message_taskboard = 95;
   }

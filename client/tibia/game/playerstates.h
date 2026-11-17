@@ -19,7 +19,6 @@ struct PlayerStatesInput
     /// Bakragore's taint, 0 none.
     quint8 rottenBlood = 0;
     bool inRestingArea = false;
-    bool restingAreaBonus = false;
     QString restingAreaText;
     /// EPlayerKillerFlag (the creature's skull), 0 none.
     quint8 playerKillerFlag = 0;
@@ -37,7 +36,7 @@ struct PlayerStateDisplayInfo
     bool operator==(const PlayerStateDisplayInfo&) const = default;
 };
 
-/// The icons for `input`, sorted by the options' order (CIP:).
+/// The icons for `input` that the options show for `filter`, sorted by the options' order.
 QList<PlayerStateDisplayInfo> buildPlayerStates(const PlayerStatesInput& input, const config::SpecialConditionsOptions& options,
                                                 config::SpecialConditionsFilter filter);
 

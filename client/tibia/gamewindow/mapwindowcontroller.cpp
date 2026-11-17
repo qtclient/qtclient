@@ -20,7 +20,7 @@
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 #include "worldmap/worldmapviewport.h"
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include <QCursor>
 #include <QGuiApplication>
 #include <QHoverEvent>
@@ -130,7 +130,7 @@ void TMapWindowController::applyTargetHighlightOption()
                                           || options.value(QLatin1String("gameWindowShowTargetHighlight")).toBool(true));
 }
 
-void TMapWindowController::bindSession(const chat::TTextStorage* texts, const worldmap::TNumericalEffectStorage* numericalEffects)
+void TMapWindowController::bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects)
 {
     if (!m_provider)
         return;
@@ -173,7 +173,7 @@ void TMapWindowController::bindSession(const chat::TTextStorage* texts, const wo
     if (m_speechBubbles)
         m_speechBubbles->setSources(texts ? m_provider : nullptr, texts);
     if (m_numericalEffects)
-        m_numericalEffects->setSources(numericalEffects ? m_provider : nullptr, numericalEffects);
+        m_numericalEffects->setSources(effects ? m_provider : nullptr, effects);
 }
 
 void TMapWindowController::updateTrackedUseAtMouseCursor()

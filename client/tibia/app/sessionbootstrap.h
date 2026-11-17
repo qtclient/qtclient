@@ -17,12 +17,12 @@ class TCreateAccountDialogController;
 class TCreateCharacterDialogController;
 class TGameWindowController;
 class TMessageDialogController;
-class TWaitDialogController;
 }
 }
 
 namespace tibia {
 namespace app {
+class TLoginWaitDialogController;
 
 /// CIP start-screen session chrome around TGameClient (stock qtclient host):
 /// - login / game errors → MessageDialog (showErrorAsPopupAndCriticalLog);
@@ -64,10 +64,9 @@ private:
     QUrl m_createAccountService;
     gamewindow::TCreateCharacterDialogController* m_createCharacter = nullptr;
     gamewindow::TCreateAccountDialogController* m_createAccount = nullptr;
-    gamewindow::TWaitDialogController* m_loginWait = nullptr;
+    TLoginWaitDialogController* m_loginWait = nullptr;
     gamewindow::TMessageDialogController* m_error = nullptr;
     gamewindow::TMessageDialogController* m_keepRenderer = nullptr;
-    QMetaObject::Connection m_createCharacterRequested;
     QMetaObject::Connection m_createCharacterIfEmpty;
     QMetaObject::Connection m_characterCreated;
 };

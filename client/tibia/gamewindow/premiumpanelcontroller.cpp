@@ -1,5 +1,7 @@
 #include "premiumpanelcontroller.h"
 
+#include "store/storestorage.h"
+
 #include "input/gameactionhandlers.h"
 
 
@@ -90,11 +92,6 @@ TPremiumPanelController::TPremiumPanelController()
         const auto* expiration = args.size() < 2 ? nullptr : std::any_cast<uint32_t>(&args[1]);
         if (premium && expiration)
             setPremiumTime(*premium, *expiration);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const Args& args) {
-        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)),
-                               static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
@@ -234,9 +231,9 @@ void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
     startHighlight(RetriggerMs);
 }
 
-void TPremiumPanelController::onStoreDeeplinkChanged(const int openAction, const int detail)
+void TPremiumPanelController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)
 {
-    if (openAction == 0 || detail == 1)
+    if (StoreDeeplink.openAction == 0 || StoreDeeplink.premiumDetail == 1)
         return;
     startHighlight(HighlightMs);
 }

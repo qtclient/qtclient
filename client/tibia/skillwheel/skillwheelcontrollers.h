@@ -64,23 +64,26 @@ public:
     int specialSkillPoints() const override { return m_storage->extraPoints(); }
     int modGradesSkillPoints() const override { return m_storage->modGradesPoints(); }
     int totalModGradesSkillPoints() const override;
-    int spentSkillPoints() const override { return m_storage->spentPoints(); }
+    int spentSkillPoints() const override;
     int huntingTaskSkillPoints() const override { return m_storage->huntingTaskPoints(); }
     QString bonusPointItemNames() const override;
     bool hasShrinesOfInsightBonusPoints() const override { return m_storage->hasShrinesOfInsightPoints(); }
     cip::tibia::qmlcomponents::enums::EVocation vocation() const override;
-    bool isWheelDirty() const override { return !m_storage->isPreview() && m_storage->isWheelDirty(); }
+    bool isWheelDirty() const override { return m_storage->isCurrentSkillWheelChanged(); }
     bool canBeDecreased() const override { return m_storage->changeState() == 1; }
     bool canBeIncreased() const override { return m_storage->changeState() == 1 || m_storage->changeState() == 2; }
-    bool isLocalPlayer() const override { return m_storage->isLocalPlayer(); }
-    bool isPreview() const override { return m_storage->isPreview(); }
+    bool isLocalPlayer() const override { return m_storage->isOwnCharacter(); }
+    /// A wheel without any points (the preview of the own vocation).
+    bool isPreview() const override { return totalSkillPoints() == 0; }
     QString playerName() const override { return m_storage->playerName(); }
-    bool canManagePresets() const override { return m_storage->canManagePresets(); }
-    bool isPresetDirty() const override { return m_storage->canManagePresets() && m_storage->isPresetDirty(); }
+    bool canManagePresets() const override;
+    bool isPresetDirty() const override;
     QString currentPresetName() const override;
     bool morePresetsPossible() const override { return m_storage->presets().size() < MaxPresets; }
     bool deletePresetsPossible() const override { return m_storage->presets().size() > 1; }
 
+    void showDialogTab() override;
+    void hideDialogTab() override;
     void requestClose() override;
     void requestSaveCurrentPreset() override;
     void onGridTileRightClicked(int GridTileQML, int KeyboardModifiers) override;
@@ -101,6 +104,7 @@ public:
     void requestImportPresetClicked() override;
     void requestExportPresetClicked() override;
     void setShowFullSummary(bool Show) override;
+    bool rendererSupportsGraphicEffects() const override;
     void useServerSkillWheelAsCurrent() override;
     void clearSelection() override;
     void onNewPresetName(const QString& PresetName) override;
@@ -115,7 +119,6 @@ public:
     /// CIP: saves the preset and sends the wheel when it changed.
     void apply();
     /// The close prompt (CIP mode 1); false when nothing to ask.
-    bool askToSaveBeforeClose();
     void closeMessages();
     /// Domain/gem for the selected vessel tile when opening the gem atelier.
     int gemAtelierDomain() const;
@@ -127,10 +130,18 @@ Q_SIGNALS:
 
 private:
     /// What the page's message box asks (CIP: the box's mode).
-    enum EMessageMode { NoMessage = 0, CloseMessage = 1, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
+    enum EMessageMode { NoMessage = 0, CloseMessage = 1, PresetsAdjustedMessage = 2, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
 
     void onWheelChanged();
-    void onInitialData();
+    /// The own character with points and a current wheel (the preset handling needs them).
+    bool hasOwnWheel() const;
+    void setCurrentPresetName(const QString& name);
+    void validatePresets();
+    void updatePresetsInfoModel();
+    void ensureDefaultPreset();
+    void selectMatchingPreset();
+    void selectPendingPreset();
+    void showPresetsAdjustedMessage();
     void updateParameters();
     void showMessage(EMessageMode mode, const QString& caption, const QString& text);
     void deleteCurrentPreset();
@@ -145,11 +156,11 @@ private:
     static int stepSize(int modifiers);
 
     TSkillWheelStorage* m_storage;
-    TSummaryModel* m_small;
-    TSummaryModel* m_large;
-    TSummaryModel* m_medium;
-    TSummaryModel* m_vessels;
-    TSummaryModel* m_full;
+    TPerkInfoModel* m_small;
+    TPerkInfoModel* m_large;
+    TPerkInfoModel* m_medium;
+    TPerkInfoModel* m_vessels;
+    TPerkInfoModel* m_full;
     TPresetInfoModel* m_presets;
     cip::tibia::gamewindow::TTileInformation* m_selectedTile;
     cip::tibia::gamewindow::TTileInformation* m_hoveredTile;
@@ -161,9 +172,13 @@ private:
     int m_hoveredLargeDomain = -1;
     gamewindow::TMessageDialogController* m_message;
     gamewindow::TMessageDialogController* m_export;
-    gamewindow::TMessageDialogController* m_info;
     EMessageMode m_messageMode = NoMessage;
+    /// The next showDialogTab keeps the presets as they are.
+    bool m_skipNextShowUpdate = false;
     QString m_pendingPreset;
+    /// The selected preset and its wheel when it was selected.
+    QString m_currentPresetName;
+    std::optional<TWheel> m_presetWheel;
     /// CIP: the planner page the export code is appended to.
     QString m_plannerUrl;
 };
@@ -177,7 +192,7 @@ public:
 
     int totalVesselCount() const override { return VesselCount; }
     int activeVesselCount() const override;
-    int gemsInInventory() const override { return static_cast<int>(m_storage->gems().size()); }
+    int gemsInInventory() const override { return static_cast<int>(m_storage->gemInventory().size()); }
     int unrevealedLesserGems() const override { return m_storage->unrevealedGems(0); }
     int unrevealedRegularGems() const override { return m_storage->unrevealedGems(1); }
     int unrevealedGreaterGems() const override { return m_storage->unrevealedGems(2); }
@@ -192,6 +207,8 @@ public:
 
     void socketOrUnsocketGem(int GemId, int VesselIndex) override;
     void dismantleGem(int GemId) override;
+    /// CIP: closes the dismantle question (the skill wheel dialog closing).
+    void closeMessageDialog();
     void revealGem(int GemQuality) override;
     void reshapeGem(int GemId, int ModIdx) override;
     void selectGem(int GemId, bool NarrowDownFilters) override;
@@ -217,8 +234,10 @@ Q_SIGNALS:
     void requestWorkshopMod(bool isBasic, int modId);
 
 private:
+    /// CIP: Yes/No before a gem is dismantled.
+    gamewindow::TMessageDialogController* m_dismantleConfirm;
+    int m_dismantleGemId = 0;
     void updateSockets();
-    void gemAction(int type, int param, int pos = 0);
 
     TSkillWheelStorage* m_storage;
     TInventoryGemListModel* m_list;
@@ -266,7 +285,8 @@ class TSkillWheelPresetManagmentDialogController final
 {
     Q_OBJECT
 public:
-    TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, EManageMode mode, QObject* parent = nullptr);
+    TSkillWheelPresetManagmentDialogController(TSkillWheelStorage* storage, EManageMode mode, const QString& currentPresetName,
+                                               QObject* parent = nullptr);
 
     void onOkClicked(EManageMode ManageMod) override;
     void onCloseClicked() override;
@@ -305,6 +325,7 @@ public:
     void requestSkillWheelPreview() override;
 
     void showMessage(const QString& caption, const QString& text, bool offerPreview);
+    void openDialogTab(EDialogTab tab);
     void openGemAtelier(int domain, int gemId);
     void openWorkshopMod(bool isBasic, int modId);
     void onPremiumChanged() { Q_EMIT premiumStatusChanged(); }

@@ -2639,16 +2639,6 @@ public:
     int profession() const { return m_value; }
 };
 
-/// CIP input::gameactions::TGameActionSaveSkillWheel (SAVE_SKILL_WHEEL).
-class TGameActionSaveSkillWheel final : public TGameActionSimple
-{
-public:
-    TGameActionSaveSkillWheel()
-        : TGameActionSimple(EGameAction::SAVE_SKILL_WHEEL)
-    {
-    }
-};
-
 /// CIP input::gameactions::TSelectAtelierGemGameAction (GEM_ATELIER_SELECT_GEM).
 class TSelectAtelierGemGameAction final : public TGameActionWithValue<EGameAction::GEM_ATELIER_SELECT_GEM, int>
 {
@@ -2673,6 +2663,16 @@ public:
 private:
     bool m_supremeMod;
     int m_modId;
+};
+
+/// SHOW_BOSSTIARY_FREEPODIUM_DIALOG: the free podium message's text (CIP: a
+/// string action, its text at +0x10).
+class TGameActionShowBosstiaryFreePodiumDialog final
+    : public TGameActionWithValue<EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, QString>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    const QString& text() const { return m_value; }
 };
 
 /// CIP input::gameactions::TGameActionShowCreateCharacterDialog (SHOW_CREATE_CHARACTER_DIALOG).

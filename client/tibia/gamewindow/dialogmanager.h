@@ -46,6 +46,9 @@ public:
     bool isEmpty() const { return m_dialogs.empty(); }
     /// Hides every dialog (leaving the world).
     void hideAll();
+    /// Escape: closes the topmost shown dialog with a personal mouse shield;
+    /// false when there is none.
+    bool closeTopShieldedDialog();
     /// The top dialog's element asks for the focus or lets go
     /// (TEventFilterManager::requestFocus / releaseFocus); only for the top dialog.
     void dialogTookFocus(const TDialog* dialog);
@@ -80,6 +83,9 @@ public:
     virtual void beforeHide() {}
     virtual void afterShow() {}
     virtual void afterHide() {}
+    /// v19 / v20 (CIP): after the item is made, before it is destroyed.
+    virtual void afterCreate() {}
+    virtual void beforeDestroy() {}
 };
 
 /// What CIP's TDialogControllerBase (ctor) does for a dialog

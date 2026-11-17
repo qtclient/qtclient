@@ -1,6 +1,11 @@
 #include "sound/soundmetadatamanager.h"
 
+#include "shared/tibiafilesystemhelper.h"
+
 #include <QDebug>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <stdexcept>
 
@@ -27,6 +32,38 @@ QString fromStd(const std::string& value)
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
 }
 
+}
+
+bool TSoundMetadataManager::loadBank(const std::string& directory)
+{
+    const auto read = [](const std::string& path) -> std::optional<std::string> {
+        try {
+            return tibia::files::data().readFileContents(path);
+        } catch (...) {
+            return std::nullopt;
+        }
+    };
+    const auto catalog = read(tibia::files::data().guessFilePath(directory + "catalog-sound", "json"));
+    if (!catalog)
+        return false;
+    const QJsonDocument document = QJsonDocument::fromJson(QByteArray::fromStdString(*catalog));
+    for (const QJsonValue& value : document.array()) {
+        const QJsonObject entry = value.toObject();
+        if (entry.value(QLatin1String("type")).toString() != QLatin1String("sounds"))
+            continue;
+        const std::string file = entry.value(QLatin1String("file")).toString().toStdString();
+        const auto bank = file.empty() ? std::nullopt : read(directory + file);
+        if (!bank)
+            return false;
+        try {
+            initialize(QByteArray::fromStdString(*bank));
+        } catch (const std::exception& e) {
+            qWarning() << "sound bank" << QString::fromStdString(file) << "is invalid:" << e.what();
+            return false;
+        }
+        return !m_sounds.empty();
+    }
+    return false;
 }
 
 TSoundMetadataManager::TSoundMetadataManager(QObject* parent, const float delayFactor)

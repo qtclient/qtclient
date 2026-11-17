@@ -5,11 +5,11 @@
 
 #include "config/actionbaroptions.h"
 #include "config/characterconfigurationmanager.h"
+#include "colorhelper.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
-#include "systemsurvey/systemsurveyciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "skillwheel/skillwheelciptypes.h"
 #include "screenshot/screenshotciptypes.h"
@@ -19,7 +19,9 @@
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
 #include "prey/preyciptypes.h"
-#include "news/newsciptypes.h"
+#include "news/newsstorage.h"
+
+#include <algorithm>
 #include "network/networkciptypes.h"
 #include "market/marketciptypes.h"
 #include "imbuing/imbuingciptypes.h"
@@ -46,6 +48,7 @@
 #include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
+#include "app/bootstrap.h"
 #include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
@@ -54,7 +57,17 @@
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
+#include "config/clientsettings.h"
 #include "config/sidebaroptions.h"
+#include "clockservice.h"
+#include "downloadpool.h"
+#include "jsondocumenthttppostsender.h"
+#include "qnetworkaccessmanagerwrapper.h"
+#include "systemsurvey/fpscounter.h"
+#include "systemsurvey/fpshistory.h"
+#include "systemsurvey/fpshistorycontroller.h"
+#include "systemsurvey/fpshistorytojsonconverter.h"
+#include "systemsurvey/fpshistoryuploader.h"
 #include "controllers/characterselectioncontroller.h"
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
@@ -66,6 +79,15 @@
 #include "network/extendedopcoderouter.h"
 #include "network/gameserverdualconnection.h"
 #include "sound/soundprotocolmessagehandler.h"
+#include "config/clientoptions.h"
+#include "sound/gamesessionsoundprovider.h"
+#include "sound/objectsoundcontroller.h"
+#include "sound/soundconfiguration.h"
+#include "sound/soundcontroller.h"
+#include "sound/soundengine.h"
+#include "sound/soundmanager.h"
+#include "sound/soundmetadatamanager.h"
+#include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
 #include "renderer/nextframeupdater.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -74,7 +96,6 @@
 #include "effects/effectprotocolmessagehandler.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
-#include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturesciptypes.h"
@@ -109,34 +130,14 @@ namespace tibia::client {
 
 namespace {
 
-QColor outfitColor(int index)
+/// The account's premium type (0 free, 1 premium, 2 free premium: premium
+/// without an end date, the product's free-premium worlds) and days left.
+std::pair<int, quint16> premiumTypeAndDays(const authentication::TPlaySessionData& session)
 {
-    const QColor c = Outfit::getColor(index);
-    return QColor(c.red(), c.green(), c.blue());
-}
-
-/// CIP's world type names, by the login service's pvptype.
-QString worldRules(int pvpType)
-{
-    switch (pvpType) {
-        case 0: return QStringLiteral("Open PvP");
-        case 1: return QStringLiteral("Optional PvP");
-        case 2: return QStringLiteral("Hardcore PvP");
-        case 3: return QStringLiteral("Retro Open PvP");
-        case 4: return QStringLiteral("Retro Hardcore PvP");
-        default: return {};
-    }
-}
-
-QString premiumStatus(const authentication::TPlaySessionData& session)
-{
-    // CIP's premium type: 0 free, 1 premium, 2 free premium (premium without
-    // an end date: the product's free-premium worlds).
     const qint64 seconds = session.premiumUntil - QDateTime::currentSecsSinceEpoch();
     const int premiumType = !session.isPremium ? 0 : seconds <= 0 ? 2 : 1;
-    const int days = premiumType == 1 ? static_cast<int>((seconds + 86399) / 86400) : 0;
-    return gamewindow::TCharacterSelectionController::accountStatusText(static_cast<int>(session.status), premiumType,
-                                                                        days);
+    const quint16 days = premiumType == 1 ? static_cast<quint16>((seconds + 86399) / 86400) : 0;
+    return { premiumType, days };
 }
 
 /// Pack façade: composition under TGameClient (CIP base is already QObject).
@@ -246,11 +247,10 @@ TGameClient::TGameClient(QObject* parent)
     , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
-    , m_sessiondumpRecorder(this)
-    , m_sessiondumpAsyncLoader(this)
-    , m_sessiondumpCatalogLoader(this)
-    , m_sessiondumpPlayer(this)
+    , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
+          1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
 {
+    game::TOutfitDialogStorage::setInstance(m_outfitDialogStorage.get());
     m_pGameActionRouter = std::make_shared<game::TGameActionRouter>();
     // qtclient: actions published through input::publish and the handlers not
     // connected to the router yet.
@@ -262,6 +262,7 @@ TGameClient::TGameClient(QObject* parent)
             &TGameClient::sendCrashReport);
     // Each game session brings its own storages, view and handlers.
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
+    initializeSound();
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
@@ -286,7 +287,6 @@ TGameClient::TGameClient(QObject* parent)
     imbuing::ownProductSurface(this);
     market::ownProductSurface(this);
     network::ownProductSurface(this);
-    news::ownProductSurface(this);
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
     protocol::ownProductSurface(this);
@@ -297,7 +297,6 @@ TGameClient::TGameClient(QObject* parent)
     screenshot::ownProductSurface(this);
     skillwheel::ownProductSurface(this);
     spells::ownProductSurface(this);
-    systemsurvey::ownProductSurface(this);
     taskboard::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
     trade::ownProductSurface(this);
@@ -311,6 +310,8 @@ TGameClient::TGameClient(QObject* parent)
     m_idleTick.setSingleShot(true);
     connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
 
+    m_authentication = std::make_unique<authentication::TAuthenticationProcessController>();
+    m_authentication->bindLoginUploader(m_login.get());
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
@@ -330,10 +331,12 @@ TGameClient::TGameClient(QObject* parent)
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
                     [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
                         m_login->applyClearance(info);
+                        m_authentication->onCloudflareSolverSuccess(info);
                         login();
                     });
             connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
                     [this](authentication::TCloudflareChallengeError error) {
+                        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CloudflareSolveFailed);
                         switch (error) {
                         case authentication::TCloudflareChallengeError::Timeout:
                             fail(qtTrId("cloudflare_challenge_error_timeout"));
@@ -354,8 +357,10 @@ TGameClient::TGameClient(QObject* parent)
         m_cloudflareChallenge->startChallenge(challengeUrl);
     });
 
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::characterChosen, this, &TGameClient::onCharacterChosen);
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::cancelled, this, [this] {
+    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
+            [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
+    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
+        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::DialogAborted);
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
@@ -409,47 +414,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
     m_dualConnection = std::make_unique<network::TGameserverDualConnection>();
-    // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
-    // The active game session connects its own map and effect handlers.
-    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        if (auto* gameHandler = game::TGameProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
-                    &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
-        }
-        if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
-                    &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* containerHandler = container::TContainerProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, containerHandler,
-                    &container::TContainerProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* creatureHandler = creatures::TCreatureProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, creatureHandler,
-                    &creatures::TCreatureProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        // Static ingresses take the client as context: drop the previous
-        // session's connections before connecting the queue again.
-        using StaticIngress = void (*)(int);
-        static constexpr StaticIngress kStaticIngresses[] = {
-            &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
-            &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
-            &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &market::TMarketProtocolMessageHandler::onServerMessageEnqueued,
-        };
-        for (const QMetaObject::Connection& connection : m_staticIngressConnections)
-            disconnect(connection);
-        m_staticIngressConnections.clear();
-        for (const StaticIngress ingress : kStaticIngresses)
-            m_staticIngressConnections.push_back(
-                connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, this, ingress));
-    }
     const QJsonObject clientOptions = app::ClientOptions::load().options();
     m_frameRateLimitEnabled = clientOptions.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
     m_frameRateLimit = std::clamp(clientOptions.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);
@@ -607,11 +571,6 @@ chat::TTextStorage* TGameClient::textStorage() const
     return activeSession() ? activeSession()->textStorage().get() : nullptr;
 }
 
-worldmap::TNumericalEffectStorage* TGameClient::numericalEffects() const
-{
-    return activeSession() ? activeSession()->numericalEffectStorage().get() : nullptr;
-}
-
 effects::TEffectStorage* TGameClient::effectStorage() const
 {
     return activeSession() ? activeSession()->effectStorage().get() : nullptr;
@@ -624,22 +583,41 @@ void TGameClient::bindActiveSession()
     m_messageHandler.reset();
     game::TGameSessionBase* session = activeSession();
     m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (m_soundController) {
+        disconnect(m_objectSoundConnection);
+        m_soundController->setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
+        if (session && session->objectSoundController())
+            m_objectSoundConnection = connect(session->objectSoundController().get(),
+                                              &sound::TObjectSoundController::ambienceObjectStreamCountChanged,
+                                              m_soundController.get(),
+                                              &sound::TSoundController::onAmbienceObjectStreamCountChanged);
+    }
+    if (m_chatProtocol) {
+        m_chatProtocol->setTextStorage(session ? session->textStorage().get() : nullptr);
+        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
+    }
     if (m_minimap)
         m_minimap->setProtocolHandler(worldmapProtocol());
     if (!session)
         return;
-    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage(), *session->numericalEffectStorage());
+    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
     m_messageHandler->setOptions(app::ClientOptions::load().options());
-    m_messageHandler->setIgnoreList(m_messageIgnoreList);
-    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage(),
-                                                              *session->numericalEffectStorage());
+    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
+}
+
+void TGameClient::setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler)
+{
+    m_chatProtocol = handler;
+    if (m_chatProtocol) {
+        m_chatProtocol->setTextStorage(textStorage());
+        game::TGameSessionBase* session = activeSession();
+        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
+    }
 }
 
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
 {
     m_messageIgnoreList = list;
-    if (m_messageHandler)
-        m_messageHandler->setIgnoreList(list);
     if (auto* teamFinder = teamfinder::TTeamFinderProtocolMessageHandler::instance())
         teamFinder->setIgnoreList(list);
 }
@@ -681,6 +659,9 @@ void TGameClient::login()
     request.email = m_options.account;
     request.password = m_options.password;
     request.stayLoggedIn = true;
+    using EState = authentication::TAuthenticationProcessController::EState;
+    if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowLoginWaitingDialog)
+        m_authentication->start();
     m_login->login(env.loginUrl(), request, env.revision);
 }
 
@@ -725,44 +706,25 @@ void TGameClient::refreshAccount(const QJsonObject& reply)
 void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
 {
     m_account = result;
+    onFpsTrackingActiveChanged(result.session.fpsTracking);
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
-    QList<gamewindow::CharacterEntry> entries;
-    entries.reserve(result.characters.size());
-    // CIP: no saved selection yet, so prefer ismaincharacter. -1 lets the
-    // sorted list highlight its first visible row instead of players.id order.
-    int lastSelected = -1;
-    for (const auto& c : result.characters) {
-        const auto* world = result.world(c.worldId);
-        gamewindow::CharacterEntry e;
-        e.name = c.name;
-        e.level = c.level;
-        e.vocation = c.vocation;
-        e.world = world ? world->name : QString();
-        e.worldRules = world ? worldRules(world->pvpType) : QString();
-        e.outfitId = c.outfitId;
-        e.headColor = outfitColor(c.headColor);
-        e.torsoColor = outfitColor(c.torsoColor);
-        e.legsColor = outfitColor(c.legsColor);
-        e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.firstAddOn;
-        e.secondAddOn = c.secondAddOn;
-        e.isMainCharacter = c.isMainCharacter;
-        e.isHidden = c.isHidden;
-        e.isOnline = c.isOnline;
-        e.tutorial = c.tutorial;
-        if (c.isMainCharacter)
-            lastSelected = int(entries.size());
-        entries.push_back(e);
+    qCInfo(lcGameClient) << "account has" << result.characters.size() << "characters on" << result.worlds.size() << "worlds";
+    // CIP (TAuthenticationProcessController): the news learn the account's
+    // returner state and unlock against its highest character level.
+    if (news::TNewsStorage* news = news::TNewsStorage::current()) {
+        news->setReturnerInformation(result.session.isReturner, result.session.showRewardNews);
+        int highestLevel = 0;
+        for (const auto& c : result.characters)
+            highestLevel = std::max(highestLevel, c.level);
+        news->raiseAccountLevel(static_cast<ushort>(highestLevel));
     }
-    qCInfo(lcGameClient) << "account has" << entries.size() << "characters on" << result.worlds.size() << "worlds";
-    m_characterSelection->setAccount(premiumStatus(result.session), result.session.isPremium, entries, lastSelected);
-
+    showAccount(result.characters);
     if (!m_options.autoCharacter.isEmpty()) {
-        for (const auto& e : entries) {
-            if (e.name.compare(m_options.autoCharacter, Qt::CaseInsensitive) == 0) {
-                onCharacterChosen(e);
+        for (const auto& c : result.characters) {
+            if (c.name.compare(m_options.autoCharacter, Qt::CaseInsensitive) == 0) {
+                onCharacterChosen(c.name);
                 return;
             }
         }
@@ -772,50 +734,11 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
     Q_EMIT characterSelectionRequested();
 }
 
-void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
+void TGameClient::openCharacterSelectionForSwitch()
 {
     if (m_account.characters.empty())
         return;
-    QHash<QString, bool> onlineByName;
-    for (const QJsonValue& v : alts) {
-        const QJsonObject alt = v.toObject();
-        const QString name = alt.value(QLatin1String("name")).toString();
-        if (name.isEmpty())
-            continue;
-        const bool online = alt.value(QLatin1String("playing")).toBool()
-            || alt.value(QLatin1String("online")).toBool()
-            || name.compare(QString::fromStdString(tibia::game::characterName()), Qt::CaseInsensitive) == 0;
-        onlineByName.insert(name.toLower(), online);
-    }
-    QList<gamewindow::CharacterEntry> entries;
-    entries.reserve(m_account.characters.size());
-    // CIP Change Character: keep last confirmed selection (controller), fall back to
-    // ismaincharacter, else first visible row — do not force the currently playing char.
-    int preferred = -1;
-    for (const auto& c : m_account.characters) {
-        const auto* world = m_account.world(c.worldId);
-        gamewindow::CharacterEntry e;
-        e.name = c.name;
-        e.level = c.level;
-        e.vocation = c.vocation;
-        e.world = world ? world->name : QString();
-        e.worldRules = world ? worldRules(world->pvpType) : QString();
-        e.outfitId = c.outfitId;
-        e.headColor = outfitColor(c.headColor);
-        e.torsoColor = outfitColor(c.torsoColor);
-        e.legsColor = outfitColor(c.legsColor);
-        e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.firstAddOn;
-        e.secondAddOn = c.secondAddOn;
-        e.isMainCharacter = c.isMainCharacter;
-        e.isHidden = c.isHidden;
-        e.isOnline = onlineByName.value(c.name.toLower(), c.isOnline);
-        e.tutorial = c.tutorial;
-        if (c.isMainCharacter && preferred < 0)
-            preferred = int(entries.size());
-        entries.push_back(e);
-    }
-    m_characterSelection->setAccount(premiumStatus(m_account.session), m_account.session.isPremium, entries, preferred);
+    showAccount(m_account.characters);
     Q_EMIT characterSelectionRequested();
 }
 
@@ -863,31 +786,52 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
     return true;
 }
 
-void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
+void TGameClient::showAccount(const authentication::TCharacterList& characters)
 {
+    const auto [premiumType, premiumDays] = premiumTypeAndDays(m_account.session);
+    m_characterSelection->setAccountState(static_cast<int>(m_account.session.status));
+    m_characterSelection->setPremium(premiumType, premiumDays);
+    m_characterSelection->setRecoverySetupComplete(m_account.session.recoverySetupComplete);
+    m_characterSelection->setCharacters(characters, m_account.worlds);
+    // Until a character logged in, the table preselects the main character.
+    if (m_characterSelection->lastSelectedCharacterName().isEmpty()) {
+        for (const authentication::TCharacter& c : characters) {
+            if (c.isMainCharacter)
+                m_characterSelection->setLastSelectedCharacterName(c.name);
+        }
+    }
+}
+
+void TGameClient::onCharacterChosen(const QString& characterName)
+{
+    m_characterSelection->setLastSelectedCharacterName(characterName);
+    // A character switch from a running session starts at the character selection.
+    if (!m_authentication->isRunning())
+        m_authentication->start(true);
+    m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CharacterLoginRequested);
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
         if (m_sameSocketCharacterSwitch) {
-            if (!requestCharacterSwitch(character.name))
-                fail(tr("Could not switch to %1.").arg(character.name));
+            if (!requestCharacterSwitch(characterName))
+                fail(tr("Could not switch to %1.").arg(characterName));
             return;
         }
         // CIP: log this character out; the chosen one logs in once it left the world.
-        m_pendingCharacter = character.name;
+        m_pendingCharacter = characterName;
         tibia::game::safeLogout();
         return;
     }
 
     const authentication::TCharacter* chosen = nullptr;
     for (const auto& c : m_account.characters) {
-        if (c.name == character.name) {
+        if (c.name == characterName) {
             chosen = &c;
             break;
         }
     }
     const auto* world = chosen ? m_account.world(chosen->worldId) : nullptr;
     if (!world) {
-        fail(tr("The world of %1 is not in the world list.").arg(character.name));
+        fail(tr("The world of %1 is not in the world list.").arg(characterName));
         return;
     }
     Q_EMIT characterSelectionClosed();
@@ -992,10 +936,8 @@ void TGameClient::onWorldEntered()
     std::string defaultMinimapPath = tibia::files::data().getRealPath("minimap");
     if (defaultMinimapPath.empty())
         defaultMinimapPath = tibia::files::data().getRealPath(assets + "minimap");
-    const std::string markersPath = tibia::files::data().getRealPath(assets + "minimap-markers.json");
     m_minimap = std::make_unique<minimap::TMinimapManager>(
-        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
-        markersPath.empty() ? QString() : QString::fromStdString(markersPath));
+        defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath));
     // The map handler keeps the minimap's floor and fields current.
     m_minimap->setProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
@@ -1084,14 +1026,13 @@ void TGameClient::onWorldLeft()
         m_characterConfigurationManager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
-    if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())
-        numerical->clear();
+    if (m_soundController)
+        m_soundController->handleSoundTrigger(true);
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
     if (m_pendingCharacter) {
-        gamewindow::CharacterEntry next;
-        next.name = *m_pendingCharacter;
+        const QString next = *m_pendingCharacter;
         m_pendingCharacter.reset();
         QTimer::singleShot(0, this, [this, next] { onCharacterChosen(next); });
     }
@@ -1115,6 +1056,11 @@ void TGameClient::setWindow(QQuickWindow* window)
     // CIP: .
     connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
     connect(window, &QQuickWindow::frameSwapped, this, [ring = m_frameDurations.get()] { ring->finish(); }, Qt::DirectConnection);
+    // CIP onRenderThreadFrameSwapped: every swapped frame starts a frame of the FPS counter.
+    connect(window, &QQuickWindow::frameSwapped, this, [this] {
+        if (m_fpsHistory)
+            m_fpsHistory->fpsCounter()->startNewFrame();
+    }, Qt::DirectConnection);
 
     // Render-thread cost per frame, sync and render, against the plan's budgets.
     if (!lcFrameCost().isDebugEnabled())
@@ -1163,6 +1109,31 @@ void TGameClient::setWindow(QQuickWindow* window)
     }, Qt::DirectConnection);
 }
 
+void TGameClient::initializeSound()
+{
+    const sound::TSoundSettings settings;
+    m_soundConfiguration = std::make_shared<sound::TSoundConfiguration>(settings, config::TClientOptions::instance());
+    if (!settings.noSound)
+        sound::TSoundEngine::instance().initialize(m_soundConfiguration);
+    if (!sound::TSoundEngine::instance().isInitialized())
+        return;
+    m_soundMetadataManager = std::make_shared<sound::TSoundMetadataManager>(nullptr, settings.ambienceDelayFactor);
+    m_soundManager = std::make_shared<sound::TSoundManager>(m_soundMetadataManager, "sounds/", settings.soundCacheSeconds);
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_soundManager.get(),
+            &sound::TSoundManager::onSoundMetadataChanged);
+    m_soundPlayerManager = std::make_shared<sound::TSoundPlayerManager>(settings.soundPlayerCount);
+    m_soundController = std::make_shared<sound::TSoundController>(m_soundMetadataManager, m_soundManager,
+                                                                  m_soundPlayerManager, m_soundConfiguration);
+    sound::TSoundController::setInstance(m_soundController.get());
+    connect(m_soundManager.get(), &sound::TSoundManager::playableSoundsChanged, m_soundPlayerManager.get(),
+            &sound::TSoundPlayerManager::onSoundManagerPlayableSoundsChanged);
+    // Out of the game the title music plays once the sound bank is known.
+    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
+        if (!tibia::game::isOnline())
+            m_soundController->handleSoundTrigger(true);
+    });
+}
+
 void TGameClient::tick()
 {
     // notifyCameraMove / QML during tween advance must not re-enter NFU: a nested
@@ -1173,8 +1144,18 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
-        session->soundStorage()->poll();
+    if (m_soundController) {
+        // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
+        const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
+        if (game::TGameSessionBase* session = game::TGameSessionBase::active()) {
+            session->soundStorage()->update(now);
+            if (session->objectSoundController())
+                session->objectSoundController()->updateObjectCounts(
+                    tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
+        }
+        m_soundController->update(now);
+        m_soundManager->updateWithTimestamp(now);
+    }
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;
@@ -1243,6 +1224,51 @@ void TGameClient::checkForCrashDump()
         fileSystem.getFilePath(shared::TTibiaFileSystemHelper::DIRECTORY_CRASHDUMP, sessiondumpFileName);
     m_crashReportSender = std::make_shared<shared::TCrashReportSender>(crashDumpFilePath, sessiondumpFilePath, crashReportData);
     m_crashReportDialog->showDialog(crashReportData);
+}
+
+void TGameClient::onFpsTrackingActiveChanged(const bool FpsTrackingActive)
+{
+    if (!FpsTrackingActive) {
+        m_fpsHistory.reset();
+        m_fpsHistoryController.reset();
+        m_fpsSampleTimer.stop();
+        m_fpsUploadTimer.stop();
+        return;
+    }
+    auto clockService = shared::TClockService::process();
+    m_fpsHistory = std::make_shared<systemsurvey::TFPSHistory>(
+        std::make_shared<systemsurvey::TFPSCounter>(clockService), clockService);
+    // Host: CipSoft posts to [URLS] fpsHistoryRecipient; qtclient posts to the
+    // qtc-aac hardware receiver.
+    auto uploader = std::make_shared<systemsurvey::TFPSHistoryUploader>(
+        app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl(),
+        std::make_shared<systemsurvey::TFPSHistoryToJsonConverter>(),
+        std::make_shared<shared::TJsonDocumentHttpPostSender>());
+    const int renderer = app::rendererIndexForGraphicsApi(QQuickWindow::graphicsApi());
+    m_fpsHistoryController = std::make_shared<systemsurvey::TFPSHistoryController>(uploader, m_fpsHistory, renderer);
+    const QString group = QStringLiteral("FPSHISTORY");
+    startFpsHistoryTimers(config::clientSettingAtLeast(group, QStringLiteral("sampleRateMsec"), 1000, 100),
+                          config::clientSettingAtLeast(group, QStringLiteral("uploadRateSec"), 60, 1));
+}
+
+void TGameClient::startFpsHistoryTimers(const qint64 sampleRateMsec, const qint64 uploadRateSec)
+{
+    if (m_fpsHistory) {
+        m_fpsSampleTimer.setInterval(int(sampleRateMsec));
+        connect(&m_fpsSampleTimer, &QTimer::timeout, m_fpsHistory.get(),
+                &systemsurvey::TFPSHistory::sampleCurrentFPSInformationAndClearFPSCounter);
+        m_fpsSampleTimer.start();
+    }
+    if (m_fpsHistoryController) {
+        auto* controller = m_fpsHistoryController.get();
+        m_fpsUploadTimer.setInterval(int(uploadRateSec * 1000));
+        connect(&m_fpsUploadTimer, &QTimer::timeout, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::worldLeft, controller, &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        connect(this, &TGameClient::clientReadyToClose, controller,
+                &systemsurvey::TFPSHistoryController::uploadHistoryAndClearIt);
+        m_fpsUploadTimer.start();
+    }
 }
 
 void TGameClient::sendCrashReport(const bool SendFullReport)

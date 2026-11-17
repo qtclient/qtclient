@@ -16,7 +16,7 @@
 
 #include <creatures/creaturestorage.h>
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <client/outfit.h>
 
 #include <QClipboard>
@@ -96,7 +96,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
                             dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get())) {
-                        if (ThingType* type = object->thingType(); type && type->isStackable())
+                        if (TAppearanceType* type = object->thingType(); type && type->isStackable())
                             return std::max<int>(1, object->count());
                     }
                 }
@@ -270,31 +270,15 @@ uint8_t inspectPlayerAction(const EGameAction type)
     case A::ALLOW_ALL_TO_INSPECT_PLAYER:
     case A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER:
         return 0;
-    case A::INVITE_TO_INSPECT_PLAYER:
-        return 1;
-    case A::ALLOW_INSPECT_PLAYER:
-        return 2;
-    case A::ASK_TO_INSPECT_PLAYER:
-        return 3;
-    case A::REVOKE_INSPECT_PLAYER:
-        return 4;
-    case A::INSPECT_PLAYER:
     default:
-        return 5;
+        break;
     }
-}
-
-void setLenshelp(const bool enabled)
-{
-    if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-        cursor->setLenshelp(enabled);
-    if (gamewindow::TLenshelpController* lenshelp = gamewindow::TLenshelpController::instance()) {
-        if (enabled)
-            lenshelp->showHelp(QCoreApplication::translate("cip", "Lenshelp"),
-                               QCoreApplication::translate("cip", "Click an object for more information."));
-        else
-            lenshelp->hideHelp();
-    }
+    // CIP creatures::TCreaturesGameActionHandler: INVITE_TO_INSPECT_PLAYER (15) ..
+    // REVOKE_INSPECT_PLAYER (19) send their offset from 14, anything else 4.
+    const int value = int(type);
+    if (unsigned(value - int(A::INVITE_TO_INSPECT_PLAYER)) < 5u)
+        return uint8_t(value - (int(A::INVITE_TO_INSPECT_PLAYER) - 1));
+    return 4;
 }
 
 void clearSpriteCaches()
@@ -305,7 +289,7 @@ void clearSpriteCaches()
     const QWindowList windows = QGuiApplication::allWindows();
     for (QWindow* window : windows) {
         if (auto* quick = qobject_cast<QQuickWindow*>(window))
-            renderer::TSpriteTextureProviderManager::sharedCache(quick).clear();
+            renderer::TSpriteTextureProviderManager::sharedProvider(quick).cache().clear();
     }
 }
 
@@ -367,17 +351,14 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         return;
     if (const auto it = actionHandlers().find(type); it != actionHandlers().end() && it->second(*pGameAction))
         return;
-    if (type == A::LENSHELP_SHOW) {
-        setLenshelp(true);
-        return;
-    }
     // The object the action is on (CIP: its location and object contexts).
     const TObjectGameActionContext object = objectContextOf(*pGameAction).value_or(TObjectGameActionContext{});
     const uint32_t creatureId = creatureIdOf(*pGameAction);
     switch (type) {
     case A::LOOK_AT_CREATURE:
+        // CIP creatures::TCreaturesGameActionHandler sends LookAtCreature for the creature id.
         if (creatureId)
-            tibia::game::lookCreature(creatureId);
+            tibia::game::lookCreature(creatureId, true);
         break;
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(object); typeId != 0) {
@@ -557,14 +538,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             tibia::game::requestTransactionDetails(static_cast<uint32_t>(details->transactionId()));
         break;
     case A::OPEN_TRADE_CHARACTER_DIALOG:
-        // CIP → TCharacterTradeDialogController (CharacterTradeDialog.qml); action 0 = conditions.
-        if (gamewindow::TCharacterTradeDialogController* trade =
-                gamewindow::TCharacterTradeDialogController::instance()) {
-            tibia::game::requestCharacterTradeConfiguration(0);
+        if (gamewindow::TCharacterTradeDialogController* trade = gamewindow::TCharacterTradeDialogController::instance())
             trade->showDialog();
-        } else {
-            tibia::game::requestCharacterTradeConfiguration(0);
-        }
         break;
     case A::MINIMAP_ONE_FLOOR_UP:
     case A::MINIMAP_ONE_FLOOR_DOWN:
@@ -587,16 +562,10 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         if (const auto& listener = targetSelectionListener())
             listener(false);
         break;
-    case A::LENSHELP_HIDE:
-        setLenshelp(false);
-        break;
     case A::REQUEST_SELECT_ALL_TEXT:
-        // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.
-        if (QObject* field = focusedTextField()) {
-            if (QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection))
-                break;
-        }
-        publish(makeGameAction(A::CHAT_CHANNEL_SELECT_ALL));
+        // The chat controller handles its own input and output (it listens too).
+        if (QObject* field = focusedTextField())
+            QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection);
         break;
     case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
         // qtclient: the focused text field's selection (CIP's text input handler is not ported).
@@ -616,7 +585,7 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     case A::RESOLVE_SPRITE:
         // CIP resolves a sprite id into the texture atlas. Without a window-bound
-        // SpriteKey here we acknowledge the action; sheets load on next draw.
+        // sprite identifier here we acknowledge the action; sheets load on next draw.
         if (const auto* sprite = gameActionAs<TGameActionSprite>(pGameAction))
             qCInfo(lcGameActions) << "RESOLVE_SPRITE" << sprite->spriteId();
         break;

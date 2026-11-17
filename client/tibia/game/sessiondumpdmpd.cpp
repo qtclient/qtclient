@@ -611,62 +611,6 @@ std::optional<std::vector<uint8_t>> mapSimpleOpcode(uint8_t opcode, const QByteA
     }
 }
 
-std::optional<TSessiondumpDmpdFile> readDump(const std::shared_ptr<QIODevice>& device, const bool withMessages)
-{
-    // CIP reads dumps through a TSessiondumpReader on a little-endian TIODeviceReader.
-    const auto ioReader = std::make_shared<shared::TIODeviceReader>(device, QDataStream::LittleEndian);
-    const auto factory = std::make_shared<sessiondump::TSessiondumpFactory>();
-    const auto reader = factory->createReader(ioReader);
-    TSessiondumpDmpdFile dump;
-    try {
-        const sessiondump::TSessiondumpMetadata metadata = reader->metadata();
-        if (!metadata.read)
-            return std::nullopt;
-        dump.header.version = metadata.version;
-        dump.header.headerBytes = 5;
-        dump.header.sessionKey = metadata.sessionKey.toLatin1();
-        dump.header.characterName = metadata.characterName;
-        dump.header.worldName = metadata.worldName;
-        dump.header.streamOffset = qsizetype(reader->metadataReader()->metadataEnd());
-        if (!withMessages)
-            return dump;
-
-        auto collect = [&dump](const sessiondump::TSessiondumpPacketInfo& packet, const sessiondump::TSessiondumpMessageInfo& info,
-                               const std::function<QByteArray()>& body) {
-            if (!info.isServerMessage())
-                return;
-            TSessiondumpDmpdMessage message;
-            message.timestampMs = qint64(packet.timestamp);
-            message.flag = uint8_t(packet.type);
-            message.protobuf = body();
-            if (const auto opcode = protobufOpcode(message.protobuf))
-                message.opcode = *opcode;
-            dump.messages.push_back(std::move(message));
-        };
-        const auto messageProcessor = std::make_shared<sessiondump::TLightweightSessiondumpMessageProcessor>(
-            factory->createMessageReader(ioReader), collect);
-        const auto packetProcessor = factory->createPacketProcessor(factory->createPacketReader(ioReader), messageProcessor);
-        sessiondump::TSessiondumpProcessor processor(reader, packetProcessor);
-        processor.start();
-        while (processor.hasNextPacket())
-            processor.processNextPacket();
-    } catch (const std::exception& e) {
-        qCWarning(lcDmpd) << "dmpd read stopped:" << e.what();
-        if (dump.header.streamOffset == 0)
-            return std::nullopt;
-    }
-    qCInfo(lcDmpd) << "parsed dmpd version" << dump.header.version << "sessionKey len" << dump.header.sessionKey.size()
-                   << "messages" << dump.messages.size() << "character" << dump.header.characterName;
-    return dump;
-}
-
-std::shared_ptr<QIODevice> bufferOf(const QByteArray& bytes)
-{
-    auto buffer = std::make_shared<QBuffer>();
-    buffer->setData(bytes);
-    return buffer;
-}
-
 }
 
 bool isSessiondumpDmpd(const QByteArray& bytes)
@@ -682,80 +626,43 @@ bool isSessiondumpDmpdFile(const QString& path)
     return isSessiondumpDmpd(file.read(3));
 }
 
-std::optional<TSessiondumpDmpdHeader> parseSessiondumpDmpdHeader(const QByteArray& bytes)
+TDmpdClassicConverter::TDmpdClassicConverter(QByteArray characterName)
+    : m_characterName(std::move(characterName))
 {
-    const auto dump = readDump(bufferOf(bytes), false);
-    return dump ? std::optional(dump->header) : std::nullopt;
 }
 
-std::optional<TSessiondumpDmpdHeader> parseSessiondumpDmpdHeaderFile(const QString& path)
+std::vector<std::shared_ptr<std::vector<uint8_t>>> TDmpdClassicConverter::convert(const QByteArray& protobuf)
 {
-    const auto dump = readDump(std::make_shared<QFile>(path), false);
-    return dump ? std::optional(dump->header) : std::nullopt;
-}
-
-std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpd(const QByteArray& bytes) { return readDump(bufferOf(bytes), true); }
-
-std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpdFile(const QString& path)
-{
-    return readDump(std::make_shared<QFile>(path), true);
-}
-
-std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& dump, int* mappedOut, int* skippedOut)
-{
-    std::deque<DmpdClassicPacket> out;
-    int mapped = 0;
-    int skipped = 0;
-    // Ensure PendingGame before first EnterGame when dump starts mid-login.
-    bool sawPending = false;
-    bool sawEnter = false;
-    uint32_t playerId = 0;
-    bool emittedFullMap = false;
-    const QByteArray characterName = dump.header.characterName.toUtf8();
-
-    for (const auto& msg : dump.messages) {
-        // Phase 6.0-E primary: Parse GameserverMessage, enqueue on CIP queue,
-        // inverse to classic when structured. Fallback: legacy mapSimpleOpcode.
-        std::optional<std::vector<uint8_t>> classic;
-        // Translated only: the replay applies the classic packet at its timestamp.
-        const QByteArray structured = tibia::protocol::serverProtobufToClassic(msg.protobuf);
-        if (!structured.isEmpty()) {
-            classic = std::vector<uint8_t>(structured.begin(), structured.end());
-            if (msg.opcode == 0x17 && classic->size() >= 5) {
-                playerId = uint32_t((*classic)[1]) | (uint32_t((*classic)[2]) << 8)
-                    | (uint32_t((*classic)[3]) << 16) | (uint32_t((*classic)[4]) << 24);
-            }
-        } else {
-            const auto nested = protobufExtensionPayload(msg.protobuf, msg.opcode);
-            classic = mapSimpleOpcode(msg.opcode, nested, &playerId, characterName, &emittedFullMap);
+    std::vector<std::shared_ptr<std::vector<uint8_t>>> out;
+    const auto opcode = protobufOpcode(protobuf);
+    if (!opcode)
+        return out;
+    // The structured translation first; the hand-written mapping is the fallback.
+    std::optional<std::vector<uint8_t>> classic;
+    const QByteArray structured = tibia::protocol::serverProtobufToClassic(protobuf);
+    if (!structured.isEmpty()) {
+        classic = std::vector<uint8_t>(structured.begin(), structured.end());
+        if (*opcode == 0x17 && classic->size() >= 5) {
+            m_playerId = uint32_t((*classic)[1]) | (uint32_t((*classic)[2]) << 8) | (uint32_t((*classic)[3]) << 16)
+                | (uint32_t((*classic)[4]) << 24);
         }
-        if (!classic) {
-            ++skipped;
-            qCInfo(lcDmpd) << "skip protobuf GameserverMessage opcode" << Qt::hex << msg.opcode
-                           << "ts" << Qt::dec << msg.timestampMs << "bytes" << msg.protobuf.size();
-            continue;
-        }
-        if (msg.opcode == 0x0A)
-            sawPending = true;
-        if (msg.opcode == 0x0F)
-            sawEnter = true;
-        out.emplace_back(msg.timestampMs, makePacket(std::move(*classic)));
-        ++mapped;
+    } else {
+        const auto nested = protobufExtensionPayload(protobuf, *opcode);
+        classic = mapSimpleOpcode(*opcode, nested, &m_playerId, m_characterName, &m_emittedFullMap);
     }
-
-    if (sawEnter && !sawPending) {
-        // OTC expects PendingGame before EnterGame on modern clients.
-        auto pending = makePacket({0x0A});
-        out.emplace_front(0, pending);
-        ++mapped;
+    if (!classic) {
+        qCInfo(lcDmpd) << "skip protobuf GameserverMessage opcode" << Qt::hex << *opcode << "bytes" << Qt::dec
+                       << protobuf.size();
+        return out;
     }
-
-    if (mappedOut)
-        *mappedOut = mapped;
-    if (skippedOut)
-        *skippedOut = skipped;
-    qCInfo(lcDmpd) << "mapped" << mapped << "classic packets; skipped" << skipped
-                    << "playerId" << playerId << "syntheticFullMap" << emittedFullMap;
+    if (*opcode == 0x0A)
+        m_sawPending = true;
+    // The game expects PendingGame before EnterGame.
+    if (*opcode == 0x0F && !m_sawPending) {
+        m_sawPending = true;
+        out.push_back(makePacket({ 0x0A }));
+    }
+    out.push_back(makePacket(std::move(*classic)));
     return out;
 }
 

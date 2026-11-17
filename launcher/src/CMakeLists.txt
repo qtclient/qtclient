@@ -41,12 +41,10 @@ else()
     package.cpp package.h
     packagefiledownloader.cpp packagefiledownloader.h
     packageinstallation.cpp packageinstallation.h
-    systemsurvey/systemsurvey.h
     systemsurvey/systemsurveyasjsondocumentcreator.cpp systemsurvey/systemsurveyasjsondocumentcreator.h
     systemsurvey/systemsurveycreator.cpp systemsurvey/systemsurveycreator.h
     systemsurvey/systemsurveytojsonconverter.cpp systemsurvey/systemsurveytojsonconverter.h
     systemsurvey/systemsurveyuploader.cpp systemsurvey/systemsurveyuploader.h
-    systemsurvey/systemsurveyvalueretriever.cpp systemsurvey/systemsurveyvalueretriever.h
     unpack.cpp unpack.h)
 endif()
 
@@ -100,10 +98,6 @@ target_include_directories(launcher PRIVATE
   "${TIBIA_ROOT}/client/tibia"
   "${TIBIA_ROOT}/shared/src")
 target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent qtclient_shared)
-if(APPLE AND NOT EMSCRIPTEN)
-  # System survey: screen modes (CoreGraphics).
-  target_link_libraries(launcher PRIVATE "-framework ApplicationServices")
-endif()
 # QStringLiteral(TIBIA_LAUNCHER_VERSION) in main.cpp / window.cpp (wasm + desktop).
 set(_launcher_version "dev")
 execute_process(

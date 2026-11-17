@@ -86,6 +86,16 @@ QSGRendererInterface::GraphicsApi graphicsApiForRenderer(const int rendererIndex
     return QSGRendererInterface::Unknown;
 }
 
+int rendererIndexForGraphicsApi(const QSGRendererInterface::GraphicsApi api)
+{
+    // CipSoft maps the window's graphics API back through the same table; APIs it has
+    // no renderer for (OpenVG, Null) report 0.
+    for (const auto& r : Renderers)
+        if (r.api == api)
+            return r.index;
+    return 0;
+}
+
 int parseRendererIndex(const QString& value, const int fallback)
 {
     bool ok = false;
@@ -377,8 +387,7 @@ std::unique_ptr<QQmlEngine> createEngine()
 
     auto* cursor = new gamewindow::TMouseCursorController(ClientOptions::load().options(), engine.get());
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaMouseCursorController"), cursor);
-    auto* textCopy = new gamewindow::TTextCopyController(engine.get());
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaTextCopyController"), textCopy);
+    new gamewindow::TTextCopyController(engine.get());
     // Root context objects CIP's components test for null before use.
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaContextMenuController"),
                                               QVariant::fromValue<QObject*>(nullptr));

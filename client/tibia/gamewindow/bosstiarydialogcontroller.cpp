@@ -1,6 +1,9 @@
 #include "bosstiarydialogcontroller.h"
 
 #include "cyclopedia/bestiarystorage.h"
+#include "gamewindow/messagedialogcontroller.h"
+
+#include <QKeySequence>
 
 #include <tibia/game/gamesession.h>
 #include <tibia/assets/things.h>
@@ -23,11 +26,6 @@ constexpr int BossesPerPage = 8;
 
 int pageCount(const int bosses) { return std::max(1, (bosses - 1) / BossesPerPage + 1); }
 
-}
-
-bool TBosstiaryDialogController::Context::operator==(const Context& other) const
-{
-    return search == other.search && std::equal(std::begin(filters), std::end(filters), std::begin(other.filters)) && page == other.page;
 }
 
 TBosstiaryBossModel::TBosstiaryBossModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent)
@@ -98,57 +96,71 @@ void TBosstiaryBossModel::refreshAll()
         Q_EMIT dataChanged(index(0), index(rowCount() - 1));
 }
 
+void TBosstiaryBossModel::refreshRoles(const QList<int>& roles)
+{
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), roles);
+}
+
 TBosstiaryDialogController::TBosstiaryDialogController(cyclopedia::TBosstiaryStorage& storage, QObject* parent)
     : cip::tibia::gamewindow::TBosstiaryDialogController(parent)
+    , m_message(new TMessageDialogController(this))
     , m_storage(storage)
     , m_model(new TBosstiaryBossModel(storage, this))
 {
     m_bosses = m_model;
     m_currentPage = 1;
-    m_numberOfPages = 1;
-    applyContext({});
-    // CIP : the storage's list / static data / tracker signals.
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::entriesChanged, this, &TBosstiaryDialogController::rebuild);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::killStagesChanged, m_model, &TBosstiaryBossModel::refreshAll);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, m_model, &TBosstiaryBossModel::refreshAll);
+    m_message->setCloseOnButtonClicked(true);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::filterChanged, this, &TBosstiaryDialogController::onListChanged);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::entriesChanged, this, &TBosstiaryDialogController::onListChanged);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::killStagesChanged, this, &TBosstiaryDialogController::onKillStagesChanged);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBosstiaryDialogController::onPointsChanged);
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::trackerChanged, this,
             &TBosstiaryDialogController::canTrackMoreBossesChanged);
+    onKillStagesChanged();
+    onPointsChanged();
+    onListChanged();
 }
 
 TBosstiaryDialogController::~TBosstiaryDialogController() = default;
 
 TBosstiaryDialogController::Context TBosstiaryDialogController::captureContext() const
 {
-    Context context;
-    context.search = m_searchString;
-    const bool filters[8] = { m_showBaneBosses,     m_showArchfoeBosses,  m_showNemesisBosses,   m_showNoKillBosses,
-                              m_showFewKillsBosses, m_showProwessBosses, m_showExpertiseBosses, m_showMasteryBosses };
-    std::copy(std::begin(filters), std::end(filters), std::begin(context.filters));
-    context.page = m_currentPage;
-    return context;
+    return { m_storage.filter(), m_currentPage };
 }
 
-void TBosstiaryDialogController::applyContext(const Context& context)
+void TBosstiaryDialogController::onListChanged()
 {
-    m_searchString = context.search;
-    m_showBaneBosses = context.filters[0];
-    m_showArchfoeBosses = context.filters[1];
-    m_showNemesisBosses = context.filters[2];
-    m_showNoKillBosses = context.filters[3];
-    m_showFewKillsBosses = context.filters[4];
-    m_showProwessBosses = context.filters[5];
-    m_showExpertiseBosses = context.filters[6];
-    m_showMasteryBosses = context.filters[7];
-    m_currentPage = std::max(1, context.page);
-    Q_EMIT filterChanged();
+    if (m_restoring)
+        return;
+    const Context context = captureContext();
+    rebuild();
+    restoreContext(context);
 }
+
+void TBosstiaryDialogController::onKillStagesChanged()
+{
+    m_model->refreshRoles({ TBosstiaryBossModel::KillsForProwess, TBosstiaryBossModel::KillsForExpertise,
+                            TBosstiaryBossModel::KillsForMastery });
+}
+
+void TBosstiaryDialogController::onPointsChanged() { m_model->refreshRoles({ TBosstiaryBossModel::BossRarityTooltip }); }
 
 void TBosstiaryDialogController::showRace(const int raceId)
 {
-    Context context;
-    context.search = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
-    applyContext(context);
-    rebuild();
+    cyclopedia::TBosstiaryFilter filter;
+    filter.search = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
+    m_storage.setFilter(filter);
+}
+
+void TBosstiaryDialogController::handleGameAction(const input::IGameAction& action)
+{
+    const auto* podium = input::gameActionAs<input::gameactions::TGameActionShowBosstiaryFreePodiumDialog>(&action);
+    if (!podium)
+        return;
+    m_message->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
+                                                     QKeySequence(QStringLiteral("Return"))) });
+    m_message->showMessage(qtTrId("bosstiary_free_podium_received"), podium->text());
 }
 
 QString TBosstiaryDialogController::baneTooltip() const { return m_storage.rarityTooltip(0); }
@@ -156,26 +168,35 @@ QString TBosstiaryDialogController::archfoeTooltip() const { return m_storage.ra
 QString TBosstiaryDialogController::nemesisTooltip() const { return m_storage.rarityTooltip(2); }
 bool TBosstiaryDialogController::canTrackMoreBosses() const { return m_storage.canTrackMoreBosses(); }
 
-#define BOSSTIARY_FILTER_SETTER(setter, member, type)                                                                  \
-    void TBosstiaryDialogController::setter(type v)                                                                    \
-    {                                                                                                                  \
-        if (member == v)                                                                                               \
-            return;                                                                                                    \
-        cip::tibia::gamewindow::TBosstiaryDialogController::setter(v);                                                 \
-        rebuild();                                                                                                     \
-    }
+int TBosstiaryDialogController::numberOfPages() const { return pageCount(m_storage.filteredEntryCount()); }
 
-BOSSTIARY_FILTER_SETTER(setSearchString, m_searchString, const QString&)
-BOSSTIARY_FILTER_SETTER(setShowBaneBosses, m_showBaneBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowArchfoeBosses, m_showArchfoeBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowNemesisBosses, m_showNemesisBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowNoKillBosses, m_showNoKillBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowFewKillsBosses, m_showFewKillsBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowProwessBosses, m_showProwessBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowExpertiseBosses, m_showExpertiseBosses, bool)
-BOSSTIARY_FILTER_SETTER(setShowMasteryBosses, m_showMasteryBosses, bool)
+QString TBosstiaryDialogController::searchString() const { return m_storage.filter().search; }
+bool TBosstiaryDialogController::showBaneBosses() const { return m_storage.filter().showBane; }
+bool TBosstiaryDialogController::showArchfoeBosses() const { return m_storage.filter().showArchfoe; }
+bool TBosstiaryDialogController::showNemesisBosses() const { return m_storage.filter().showNemesis; }
+bool TBosstiaryDialogController::showNoKillBosses() const { return m_storage.filter().showNoKill; }
+bool TBosstiaryDialogController::showFewKillsBosses() const { return m_storage.filter().showFewKills; }
+bool TBosstiaryDialogController::showProwessBosses() const { return m_storage.filter().showProwess; }
+bool TBosstiaryDialogController::showExpertiseBosses() const { return m_storage.filter().showExpertise; }
+bool TBosstiaryDialogController::showMasteryBosses() const { return m_storage.filter().showMastery; }
 
-#undef BOSSTIARY_FILTER_SETTER
+/// The storage's filter with one field changed.
+void TBosstiaryDialogController::changeFilter(const std::function<void(cyclopedia::TBosstiaryFilter&)>& change)
+{
+    cyclopedia::TBosstiaryFilter filter = m_storage.filter();
+    change(filter);
+    m_storage.setFilter(filter);
+}
+
+void TBosstiaryDialogController::setSearchString(const QString& v) { changeFilter([&](auto& f) { f.search = v; }); }
+void TBosstiaryDialogController::setShowBaneBosses(const bool v) { changeFilter([&](auto& f) { f.showBane = v; }); }
+void TBosstiaryDialogController::setShowArchfoeBosses(const bool v) { changeFilter([&](auto& f) { f.showArchfoe = v; }); }
+void TBosstiaryDialogController::setShowNemesisBosses(const bool v) { changeFilter([&](auto& f) { f.showNemesis = v; }); }
+void TBosstiaryDialogController::setShowNoKillBosses(const bool v) { changeFilter([&](auto& f) { f.showNoKill = v; }); }
+void TBosstiaryDialogController::setShowFewKillsBosses(const bool v) { changeFilter([&](auto& f) { f.showFewKills = v; }); }
+void TBosstiaryDialogController::setShowProwessBosses(const bool v) { changeFilter([&](auto& f) { f.showProwess = v; }); }
+void TBosstiaryDialogController::setShowExpertiseBosses(const bool v) { changeFilter([&](auto& f) { f.showExpertise = v; }); }
+void TBosstiaryDialogController::setShowMasteryBosses(const bool v) { changeFilter([&](auto& f) { f.showMastery = v; }); }
 
 /// Asks the server for the bosstiary; its answer rebuilds the page.
 void TBosstiaryDialogController::showDialogTab()
@@ -183,51 +204,36 @@ void TBosstiaryDialogController::showDialogTab()
     tibia::game::requestBosstiaryInfo();
 }
 
+/// Takes the filter and page back without the list change rebuilding first.
 void TBosstiaryDialogController::restoreContext(const Context& context)
 {
-    applyContext(context);
+    m_restoring = true;
+    m_storage.setFilter(context.filter);
+    m_currentPage = std::max(1, context.page);
     rebuild();
+    Q_EMIT pagesChanged();
+    Q_EMIT filterChanged();
+    m_restoring = false;
 }
 
 void TBosstiaryDialogController::hideDialogTab()
 {
     // Page 1, empty model, default filter, no list.
     m_model->setEntries({});
-    applyContext({});
+    m_restoring = true;
+    m_storage.setFilter({});
+    m_currentPage = 1;
     m_storage.clearEntries();
-}
-
-bool TBosstiaryDialogController::accepts(const cyclopedia::TBosstiaryEntry& entry) const
-{
-    const qint64 kills = entry.kills;
-    if (!m_searchString.isEmpty() && (kills == 0 || !entry.name.contains(m_searchString, Qt::CaseInsensitive)))
-        return false;
-    if ((!m_showBaneBosses && entry.category == 0) || (!m_showArchfoeBosses && entry.category == 1)
-        || (!m_showNemesisBosses && entry.category == 2) || (!m_showNoKillBosses && kills == 0))
-        return false;
-    const int prowess = m_storage.killsForStage(entry.category, 1);
-    const int expertise = m_storage.killsForStage(entry.category, 2);
-    const int mastery = m_storage.killsForStage(entry.category, 3);
-    if (!m_showFewKillsBosses && kills >= 1 && kills < prowess)
-        return false;
-    if (!m_showProwessBosses && kills >= prowess && kills < expertise)
-        return false;
-    if (!m_showExpertiseBosses && kills >= expertise && kills < mastery)
-        return false;
-    return m_showMasteryBosses || kills < mastery;
+    m_restoring = false;
+    Q_EMIT filterChanged();
 }
 
 void TBosstiaryDialogController::rebuild()
 {
-    std::vector<cyclopedia::TBosstiaryEntry> filtered;
-    for (const cyclopedia::TBosstiaryEntry& entry : m_storage.entries()) {
-        if (accepts(entry))
-            filtered.push_back(entry);
-    }
+    const std::vector<cyclopedia::TBosstiaryEntry> filtered = m_storage.filteredEntries();
     const int pages = pageCount(static_cast<int>(filtered.size()));
     if (m_currentPage > pages)
         m_currentPage = 1;
-    m_numberOfPages = pages;
     const size_t first = static_cast<size_t>(m_currentPage - 1) * BossesPerPage;
     std::vector<cyclopedia::TBosstiaryEntry> page;
     for (size_t i = first; i < filtered.size() && i < first + BossesPerPage; ++i)
@@ -290,14 +296,14 @@ TBossSlotsDialogController::TBossSlotsDialogController(cyclopedia::TBosstiarySto
     m_secondSlotBossList = m_secondList;
     // CIP : slot data, boss points per stage and the gold balance.
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::slotsChanged, this, &TBossSlotsDialogController::update);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBossSlotsDialogController::update);
-    connect(&m_storage, &cyclopedia::TBosstiaryStorage::killStagesChanged, this, &TBossSlotsDialogController::update);
+    connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBossSlotsDialogController::onBossPointsChanged);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
         if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT goldBalanceChanged();
     });
     update();
+    onBossPointsChanged();
 }
 
 TBossSlotsDialogController::~TBossSlotsDialogController() = default;
@@ -323,6 +329,14 @@ void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int
 {
     tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
+}
+
+void TBossSlotsDialogController::onBossPointsChanged()
+{
+    // Only the boss lists' rarity tooltips follow the new points; the slots
+    // keep theirs until their next update.
+    m_firstList->source()->refreshRarityTooltips();
+    m_secondList->source()->refreshRarityTooltips();
 }
 
 void TBossSlotsDialogController::update()

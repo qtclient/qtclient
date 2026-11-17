@@ -12,11 +12,14 @@ using config::SpecialConditionsOptions;
 
 QString image(const char* provider, const int index) { return QStringLiteral("image://%1/%2").arg(QLatin1StringView(provider)).arg(index); }
 
-/// CIP .
+/// Tooltip lines for Bakragore's taint `state`, joined with "<br>\n".
 QString rottenBloodTooltip(const int state)
 {
+    // States 1..4 are the taint levels; 5..9 the final taint at levels 0..4.
+    if (state < 1 || state > 9)
+        return {};
     const bool finalTaint = state >= 5;
-    const int level = finalTaint ? state - 4 : state;
+    const int level = finalTaint ? state - 5 : state;
     QStringList lines{ qtTrId("playerstatus_rotten_blood_intro") };
     if (finalTaint)
         lines << qtTrId("playerstatus_rotten_blood_intro_final_taint");
@@ -31,7 +34,7 @@ QString rottenBloodTooltip(const int state)
     return lines.join(QStringLiteral("<br>\n"));
 }
 
-/// CIP .
+/// Tooltip for EPlayerStateFlag `bit`; empty for unknown bits.
 QString stateTooltip(const int bit)
 {
     switch (bit) {
@@ -83,7 +86,7 @@ QString stateTooltip(const int bit)
     }
 }
 
-/// CIP .
+/// Tooltip for EPlayerKillerFlag `flag`.
 QString playerKillerTooltip(const int flag)
 {
     switch (flag) {
@@ -114,8 +117,7 @@ QList<PlayerStateDisplayInfo> buildPlayerStates(const PlayerStatesInput& input, 
             rottenBloodTooltip(input.rottenBlood));
 
     if (input.inRestingArea)
-        add({ SpecialCondition::Generic, SpecialCondition::RestingArea }, image("playerstate-flags-client", input.restingAreaBonus ? 1 : 0),
-            input.restingAreaText);
+        add({ SpecialCondition::Generic, SpecialCondition::RestingArea }, image("playerstate-flags-client", 0), input.restingAreaText);
 
     const quint32 states = input.states & 0x3fffffffu;
     for (int bit = 0; bit < 30; ++bit) {
@@ -138,7 +140,7 @@ QList<PlayerStateDisplayInfo> buildPlayerStates(const PlayerStatesInput& input, 
         add({ SpecialCondition::Generic, SpecialCondition::GuildWar }, image("playerstate-guildwar-flag", 0), qtTrId("playerstatus_guildwar"));
 
     if (input.hungry)
-        add({ SpecialCondition::PlayerStateClient, SpecialCondition::Hungry }, image("playerstate-flags-client", 2), qtTrId("playerstatus_hungry"));
+        add({ SpecialCondition::PlayerStateClient, SpecialCondition::Hungry }, image("playerstate-flags-client", 1), qtTrId("playerstatus_hungry"));
 
     std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a.sortOrder < b.sortOrder; });
     return entries;

@@ -1,7 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -36,12 +36,13 @@ double readTarget(const QJsonObject& json, const char* key)
 
 QString itemName(const uint16_t itemId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!type)
         return {};
     if (!type->getName().empty())
         return QString::fromStdString(type->getName());
-    return QString::fromStdString(type->getMarketData().name);
+    const auto* market = type->marketProperties();
+    return market ? market->name : QString();
 }
 
 }

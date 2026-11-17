@@ -9,7 +9,10 @@
 #include <QElapsedTimer>
 #include <QPointer>
 
-class ThingType;
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 namespace tibia {
 namespace qmlcomponents {
@@ -29,7 +32,7 @@ public:
     void setLiquidType(ELiquidType v) override;
     void setHookDirection(EHookDirection v) override;
 
-    ThingType* type() const;
+    TAppearanceType* type() const;
 };
 
 /// A creature outfit placed in an AppearanceInstanceRenderer (QML OutfitAppearanceInstance;
@@ -43,7 +46,7 @@ public:
     void setTypeid(int v) override;
     void setPosition(const QPoint& v) override;
 
-    ThingType* type() const;
+    TAppearanceType* type() const;
     /// The palette indices of the colours, as the sprite cache takes them.
     uint32_t colors() const;
 };
@@ -51,7 +54,7 @@ public:
 /// Draws a list of appearance instances placed in world pixels (QML
 /// AppearanceInstanceRenderer; CIP: TAppearanceInstanceRenderer, layout v54).
 /// An instance's position is the top-left of its field; sprites end at the field's
-/// bottom-right (CIP UI / SingleObject — no ThingType displacement here; callers such
+/// bottom-right (CIP UI / SingleObject — no TAppearanceType displacement here; callers such
 /// as OutfitPreviewPanel bake shift into position). cameraPosition is the world pixel
 /// at the item's top-left; with center / shrinkToFit the opaque protobuf bounding
 /// boxes (else the sprite union) are centered / scaled down (never past scaleFactor).
@@ -91,7 +94,7 @@ protected:
 private:
     struct Sprite
     {
-        SpriteKey key;
+        SpriteIdentifier sprite;
         /// Bottom-right corner in world pixels.
         QPoint anchor;
         QSize size;
@@ -102,7 +105,7 @@ private:
     {
         enum class Kind { Field, Missile };
         Kind kind{ Kind::Field };
-        ThingType* type{ nullptr };
+        TAppearanceType* type{ nullptr };
         QPoint fieldTopLeft;
         QPoint missileFrom;
         QPoint missileTo;
@@ -118,12 +121,13 @@ private:
     static void clear(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list);
 
     void watchFrames();
-    void addSprites(ThingType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase, bool colorize, uint32_t colors);
+    /// The sprite of `type`'s pattern and phase (objects and effects).
+    void addSprites(TAppearanceType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase);
     void addOutfit(const TOutfitAppearanceInstanceQmlType& instance);
     void addObject(const TObjectAppearanceInstanceInfoQmlType& instance);
     void addTransientEffects();
     void purgeExpiredEffects();
-    int outfitPhase(ThingType* type, bool moving, int millisecondsPerField) const;
+    int outfitPhase(TAppearanceType* type, bool moving, int millisecondsPerField) const;
     static void missilePatterns(const QPoint& from, const QPoint& to, int& patternX, int& patternY);
 
     QList<Sprite> m_sprites;

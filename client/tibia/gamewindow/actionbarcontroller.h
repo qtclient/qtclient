@@ -20,6 +20,11 @@ namespace gamewindow {
 
 class TActionBarManager;
 class TActionButtonController;
+class TAssignObjectActionDialogController;
+class TAssignPassiveAbilityActionDialogController;
+class TAssignSpellActionDialogController;
+class TAssignTextActionDialogController;
+class TRecordKeyboardShortcutDialogController;
 
 using EActionBarPosition = cip::tibia::qmlcomponents::enums::EActionBarPosition;
 
@@ -35,16 +40,9 @@ public:
     /// CIP's bars have 50 buttons.
     static constexpr int ButtonCount = 50;
 
-    enum EAssignKind
-    {
-        ASSIGN_SPELL,
-        ASSIGN_OBJECT,
-        ASSIGN_TEXT,
-        ASSIGN_PASSIVE_ABILITY,
-    };
-
     TActionBarController(TActionBarManager* manager, int actionBarId, EActionBarPosition position, QObject* buttonsDisplayOptions,
                          QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* parent = nullptr);
+    ~TActionBarController() override;
 
     TActionBarManager* manager() const { return m_manager; }
     /// 1-based, as CIP's button ids.
@@ -69,7 +67,8 @@ public:
     /// Writes a setting to the current hotkey set (CIP: the storage's
     /// setMapping, then onHotkeyOptionsChanged).
     void assign(int buttonId, int multiActionIndex, const config::TActionSetting& setting);
-    void openAssignDialog(EAssignKind kind, int buttonId, int multiActionIndex);
+    /// The spell dialog for a button, opened with `spellId` and no parameters.
+    void openSpellDialog(int buttonId, int multiActionIndex, int spellId);
     /// CIP insertSpell : puts the spell on the first empty
     /// button scrolled into view and starts its insert animation. Returns
     /// whether a button took it.
@@ -112,6 +111,16 @@ public Q_SLOTS:
     void onSpellIconDropped(uint ButtonId, int SpellEnumId, int MultiActionIndex) override;
     void onSpellIconDropped(uint ButtonId, int SpellEnumId) override;
     void closeOpenMultiActionButtons() override { closeOpenMultiActionButtons(0, 0); }
+    /// The assign dialogs' requests: the button's mapping in the hotkey options.
+    void onRequestAssignSpell(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, int CastType);
+    void onRequestAssignObject(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, int LiquidType,
+                               tibia::config::EUseType UseType, bool UseEquipSmartMode);
+    void onRequestAssignText(uint ButtonId, int MultiActionIndex, const QString& Text, bool SendAutomatically);
+    void onRequestAssignPassiveAbility(uint ButtonId, int PassiveAbility);
+    /// The key recorder's key becomes the hotkey of the button it was opened for.
+    void onAssignSelectedKeySequenceToActionButton(const QKeySequence& NewKeySequence);
+    /// Closes the four assign dialogs and the key recorder.
+    void closeAllDialogs();
     /// CIP .
     void setNumVisibleSlots(int Amount) override;
 
@@ -120,6 +129,15 @@ private:
     void applySetting(TActionButtonController* button, const config::TActionSetting& setting);
 
     TActionBarManager* m_manager;
+    /// The bar's assign dialogs and key recorder (CIP +0xf0, +0x220, +0x2a8,
+    /// +0x310, +0x3d8).
+    std::unique_ptr<TAssignSpellActionDialogController> m_spellDialog;
+    std::unique_ptr<TAssignObjectActionDialogController> m_objectDialog;
+    std::unique_ptr<TAssignTextActionDialogController> m_textDialog;
+    std::unique_ptr<TAssignPassiveAbilityActionDialogController> m_passiveAbilityDialog;
+    std::unique_ptr<TRecordKeyboardShortcutDialogController> m_hotkeyDialog;
+    /// The button the key recorder was opened for (CIP +0x4a0).
+    int m_hotkeyButtonId = 0;
     std::vector<TActionButtonController*> m_buttons;
     QPointer<QQuickItem> m_item;
     int m_numVisibleSlots = 0;

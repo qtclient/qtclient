@@ -6,8 +6,19 @@
 #include "gamewindow/taskboardshopcontroller.h"
 #include "gamewindow/weeklytaskscontroller.h"
 #include "input/gameactionhandlers.h"
+#include "taskboard/taskboardbountytasksstorage.h"
+#include "taskboard/taskboardshopstorage.h"
+#include "taskboard/taskboardweeklytasksstorage.h"
+
+#include <client/const.h>
+#include <client/staticdata.h>
+#include <tibia/game/thingsession_forward.h>
 
 #include <QLocale>
+
+#include <algorithm>
+#include <ctime>
+#include <limits>
 
 #include <any>
 #include <map>
@@ -38,11 +49,233 @@ QString formatBalance(const uint64_t value)
     return QLocale(QLocale::English).toString(static_cast<qulonglong>(value));
 }
 
-template <typename T>
-const T* arg(const Args& args, const size_t index)
+
+
+constexpr uint8_t TASK_BOARD_WEEKLY_BASE_SLOTS = 6;
+constexpr uint8_t TASK_BOARD_WEEKLY_EXPANDED_SLOTS = 9;
+constexpr uint32_t TASK_BOARD_SECONDS_PER_DAY = 24 * 60 * 60;
+
+uint8_t talismanMaxLevel(const uint8_t pathIndex)
 {
-    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
+    return pathIndex == 3 ? 180 : 166;
 }
+
+uint16_t talismanBonusHundredths(const uint8_t level, const uint8_t pathIndex)
+{
+    if (level == 0)
+        return 0;
+    switch (pathIndex) {
+    case 0:
+    case 1:
+    case 2:
+        if (level <= 26)
+            return static_cast<uint16_t>(250 + (static_cast<uint32_t>(level) - 1U) * 50U);
+        return static_cast<uint16_t>(std::min<uint32_t>(1500U + (static_cast<uint32_t>(level) - 26U) * 25U, 5000U));
+    case 3:
+        if (level <= 20)
+            return static_cast<uint16_t>(static_cast<uint32_t>(level) * 100U);
+        return static_cast<uint16_t>(std::min<uint32_t>(2000U + (static_cast<uint32_t>(level) - 20U) * 50U, 10000U));
+    default:
+        return 0;
+    }
+}
+
+uint8_t remainingDaysUntil(const uint32_t unixTimestamp)
+{
+    if (unixTimestamp == 0)
+        return 0;
+    const auto now = static_cast<uint32_t>(std::time(nullptr));
+    if (unixTimestamp <= now)
+        return 0;
+    const auto rawDays = (unixTimestamp - now + TASK_BOARD_SECONDS_PER_DAY - 1) / TASK_BOARD_SECONDS_PER_DAY;
+    return static_cast<uint8_t>(std::min<uint32_t>(rawDays, 255));
+}
+
+std::vector<uint16_t> allMonsterRaceIds()
+{
+    const auto& races = tibia::game::getAllRaces();
+    std::vector<uint16_t> raceIds;
+    raceIds.reserve(races.size());
+    for (const auto& race : races) {
+        if (race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
+            continue;
+        raceIds.emplace_back(static_cast<uint16_t>(race.raceId));
+    }
+    std::sort(raceIds.begin(), raceIds.end());
+    raceIds.erase(std::unique(raceIds.begin(), raceIds.end()), raceIds.end());
+    return raceIds;
+}
+
+U32Map bountyHeader(const taskboard::TBountyTaskData& data)
+{
+    return {
+        { "rerollPoints", static_cast<uint32_t>(tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BOUNTY_TASK_REROLL_TOKENS)) },
+        { "claimDaily", 0 },
+        { "difficulty", static_cast<uint32_t>(data.difficulty) + 1 },
+        { "eliteEnabled", data.elite ? 1u : 0u },
+    };
+}
+
+U32MapList bountyTalismans(const taskboard::TBountyTaskData& data)
+{
+    U32MapList rows;
+    for (size_t i = 0; i < data.talismans.size(); ++i) {
+        const auto& talisman = data.talismans[i];
+        const auto path = static_cast<uint8_t>(i);
+        const auto level = static_cast<uint8_t>(std::min<uint32_t>(talisman.level, 255));
+        const uint32_t current = talismanBonusHundredths(level, path);
+        const uint32_t next = level >= talismanMaxLevel(path) || talisman.upgradeCost == 0
+            ? 0
+            : talismanBonusHundredths(static_cast<uint8_t>(level + 1), path);
+        rows.push_back({ { "currentValue", current },
+                         { "nextValue", next },
+                         { "upgradeCost", talisman.upgradeCost },
+                         { "isActiveUpgrade", talisman.upgradable ? 1u : 0u } });
+    }
+    return rows;
+}
+
+U32MapList bountyPreferredSlots(const taskboard::TBountyTaskData& data)
+{
+    U32MapList rows;
+    for (const auto& slot : data.preferredMonsterSlots)
+        rows.push_back({ { "slot", static_cast<uint32_t>(slot.index + 1) },
+                         { "locked", slot.unlocked ? 0u : 1u },
+                         { "preferred", slot.preferredRaceId },
+                         { "unwanted", slot.avoidedRaceId },
+                         { "price", 0 } });
+    return rows;
+}
+
+U32Map weeklyHeader(const taskboard::TWeeklyTaskData& w)
+{
+    const bool hasGeneratedTasks = w.anyCreatureRequiredKills > 0 || w.anyCreatureCurrentKills > 0 || !w.killTasks.empty()
+        || !w.deliveryTasks.empty() || w.progressFinished != 0;
+    return {
+        { "difficulty", hasGeneratedTasks ? static_cast<uint32_t>(w.difficulty) + 1 : 0 },
+        { "currentPlayerLevel", tibia::game::localPlayerLevel() },
+        { "remainingDays", remainingDaysUntil(w.resetTime) },
+        { "totalTaskSlots", w.permanentExpansion ? TASK_BOARD_WEEKLY_EXPANDED_SLOTS : TASK_BOARD_WEEKLY_BASE_SLOTS },
+        { "maxExperience", w.rewardExperiencePerKillTask },
+        { "maxDeliveryExperience", w.rewardExperiencePerDeliveryTask },
+        { "completedKillTasks", w.completedKillTasks },
+        { "completedDeliveryTasks", w.completedDeliveryTasks },
+        { "pointsEarned", w.rewardHuntingTaskPoints },
+        { "soulsealsEarned", w.rewardSoulSeals },
+        { "extraSlot", w.permanentExpansion ? 1u : 0u },
+        { "unlockedDifficulty", static_cast<uint32_t>(w.maxUnlockedDifficulty) + 1 },
+        { "weeklyProgressFinished", static_cast<uint32_t>(w.progressFinished) },
+    };
+}
+
+U32MapList weeklyItems(const taskboard::TWeeklyTaskData& w)
+{
+    U32MapList rows;
+    for (const auto& d : w.deliveryTasks) {
+        const uint32_t claimed = d.state != 0 ? 1u : 0u;
+        const bool done = claimed != 0 || (d.requiredAmount > 0 && d.availableAmount >= d.requiredAmount);
+        rows.push_back({ { "slotIndex", d.slotIndex },
+                         { "itemId", d.objectTypeId },
+                         { "current", d.availableAmount },
+                         { "total", d.requiredAmount },
+                         { "claimed", claimed },
+                         { "state", done ? 1u : 0u } });
+    }
+    return rows;
+}
+
+StrMapList shopOffers(const std::vector<taskboard::TShopRewardData>& rewards)
+{
+    using taskboard::EShopRewardStatus;
+    using taskboard::EShopRewardType;
+    StrMapList rows;
+    uint32_t index = 0;
+    for (const auto& reward : rewards) {
+        TaskBoardShopItemData item;
+        item.id = static_cast<uint8_t>(index++);
+        item.offerType = static_cast<uint8_t>(reward.type);
+        if (reward.type == EShopRewardType::PromotionPoint) {
+            item.nextCost = reward.price;
+            item.price = item.nextCost;
+            item.currentPurchases = reward.purchaseCount > 0 ? reward.purchaseCount - 1 : 0;
+            item.bought = (reward.status == EShopRewardStatus::Bought || item.nextCost == 0) ? 1 : 0;
+        } else {
+            item.title = reward.name.toStdString();
+            item.description = reward.description.toStdString();
+            item.price = reward.price;
+            if (reward.type == EShopRewardType::TwoObjects)
+                item.optionalItemId = reward.secondObjectTypeId;
+            if (reward.type == EShopRewardType::Outfit) {
+                item.lookType = reward.appearanceId;
+                item.lookAddons = static_cast<uint8_t>((reward.firstAddon ? 1 : 0) | (reward.secondAddon ? 2 : 0));
+            } else if (reward.type == EShopRewardType::Mount) {
+                item.lookType = reward.appearanceId;
+            } else {
+                item.itemId = reward.appearanceId;
+            }
+            item.bought = reward.status == EShopRewardStatus::Bought ? 1 : 0;
+        }
+        rows.push_back({ { "id", std::to_string(item.id) },
+                         { "offerType", std::to_string(item.offerType) },
+                         { "title", item.title },
+                         { "description", item.description },
+                         { "price", std::to_string(item.price) },
+                         { "bought", std::to_string(item.bought) },
+                         { "lookType", std::to_string(item.lookType) },
+                         { "lookAddons", std::to_string(item.lookAddons) },
+                         { "itemId", std::to_string(item.itemId) },
+                         { "optionalItemId", std::to_string(item.optionalItemId) },
+                         { "maxPurchases", std::to_string(item.maxPurchases) },
+                         { "currentPurchases", std::to_string(item.currentPurchases) },
+                         { "nextCost", std::to_string(item.nextCost) } });
+    }
+    return rows;
+}
+
+}
+
+std::vector<std::map<std::string, uint32_t>> taskboardBountyMonsterRows(const taskboard::TBountyTaskData& data)
+{
+    U32MapList rows;
+    for (const auto& t : data.tasks) {
+        const bool active = t.claimState == taskboard::EBountyTaskClaimState::Active
+            || t.claimState == taskboard::EBountyTaskClaimState::Claimable;
+        rows.push_back({ { "taskIndex", t.index },
+                         { "raceId", t.raceId },
+                         { "currentKills", t.currentKills },
+                         { "totalKills", t.requiredKills },
+                         { "rewardXp", t.rewardExperience },
+                         { "rewardPoints", t.rewardBountyPoints },
+                         { "rewardReroll", 1 },
+                         { "rewardDust", t.rewardDust },
+                         { "rarity", t.grade },
+                         { "isActive", active ? 1u : 0u },
+                         { "isCompleted", 0 },
+                         { "isElite", t.elite ? 1u : 0u } });
+    }
+    return rows;
+}
+
+std::vector<std::map<std::string, uint32_t>> taskboardWeeklyMonsterRows(const taskboard::TWeeklyTaskData& w)
+{
+    U32MapList rows;
+    const uint32_t anyTotal = w.anyCreatureRequiredKills;
+    const uint32_t anyCurrent = w.anyCreatureCurrentKills;
+    if (anyTotal > 0 || anyCurrent > 0)
+        rows.push_back({ { "raceId", 0 }, { "current", anyCurrent }, { "total", anyTotal },
+                         { "state", anyTotal > 0 && anyCurrent >= anyTotal ? 1u : 0u } });
+    for (const auto& k : w.killTasks)
+        rows.push_back({ { "raceId", k.raceId }, { "current", k.currentKills }, { "total", k.requiredKills },
+                         { "state", k.requiredKills > 0 && k.currentKills >= k.requiredKills ? 1u : 0u } });
+    return rows;
+}
+
+bool taskboardWeeklyActive(const taskboard::TWeeklyTaskData& w)
+{
+    return w.progressFinished == 0;
+}
+
+namespace {
 
 }
 
@@ -59,37 +292,20 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
     new TSoulSealsDialogController(this);
     new TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(this);
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyTaskData", [this](GameObject*, const Args& args) {
-        const auto* header = arg<U32Map>(args, 0);
-        const auto* monsters = arg<U32MapList>(args, 1);
-        const auto* talismans = arg<U32MapList>(args, 2);
-        if (header && monsters && talismans)
-            m_bounty->applyBountyData(*header, *monsters, *talismans);
+    connect(taskboard::TTaskboardBountyTasksStorage::instance(), &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged,
+            this, [this](const taskboard::TBountyTaskData& data) {
+                m_bounty->applyBountyData(bountyHeader(data), taskboardBountyMonsterRows(data), bountyTalismans(data));
+                refreshCurrencies();
+                m_bounty->applyPreferredData(bountyPreferredSlots(data), allMonsterRaceIds());
+            });
+    connect(taskboard::TTaskboardWeeklyTasksStorage::instance(), &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged,
+            this, [this](const taskboard::TWeeklyTaskData& data) {
+                m_weekly->applyWeeklyData(weeklyHeader(data), taskboardWeeklyMonsterRows(data), weeklyItems(data));
+                refreshCurrencies();
+            });
+    connect(taskboard::TTaskboardShopStorage::instance(), &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this, [this]() {
+        m_shop->applyShopData(shopOffers(taskboard::TTaskboardShopStorage::instance()->shopRewardData()));
         refreshCurrencies();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyPreferredData", [this](GameObject*, const Args& args) {
-        const auto* preferred = arg<U32MapList>(args, 0);
-        const auto* raceIds = arg<std::vector<uint16_t>>(args, 2);
-        if (preferred)
-            m_bounty->applyPreferredData(*preferred, raceIds ? *raceIds : std::vector<uint16_t>{});
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeeklyTaskData", [this](GameObject*, const Args& args) {
-        const auto* header = arg<U32Map>(args, 0);
-        const auto* monsters = arg<U32MapList>(args, 1);
-        const auto* items = arg<U32MapList>(args, 2);
-        if (header && monsters && items)
-            m_weekly->applyWeeklyData(*header, *monsters, *items);
-        refreshCurrencies();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTaskHuntingShopData", [this](GameObject*, const Args& args) {
-        const auto* offers = arg<StrMapList>(args, 0);
-        if (offers)
-            m_shop->applyShopData(*offers);
-        refreshCurrencies();
-        return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this]() { refreshFromResourceBalance(); });

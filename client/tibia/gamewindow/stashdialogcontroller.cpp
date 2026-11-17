@@ -8,7 +8,7 @@
 #include "input/gameactionhandlers.h"
 #include "input/genericobjectgameactionprovider.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -52,24 +52,24 @@ QString categoryText(const int category)
     return QStringLiteral("%1 %2").arg(qtTrId("show"), TQmlObjectCategory::translate(category));
 }
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
-QString typeName(ThingType* type)
+QString typeName(TAppearanceType* type)
 {
-    const MarketData& market = type->getMarketData();
-    return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
+    const auto* market = type->marketProperties();
+    return market && !market->name.isEmpty() ? market->name : type->name();
 }
 
 
 /// What the NPCs pay for one, the best offer (CIP: the sell value).
-uint32_t sellValue(ThingType* type)
+uint32_t sellValue(TAppearanceType* type)
 {
     uint32_t best = 0;
-    for (const NPCData& npc : type->getNpcSaleData())
+    for (const auto& npc : type->npcTradeData())
         best = std::max(best, npc.buyPrice);
     return best;
 }
@@ -79,11 +79,13 @@ uint32_t sellValue(ThingType* type)
 /// The NPCs the stash and depot search trader filters offer.
 std::set<QString> traderNames()
 {
-    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
+    std::set<QString> names = tibia::appearances::TAppearancesManager::instance().creatureProductBuyerNames();
+    names.insert({ QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
              QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
              QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
              QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
-             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
+             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") });
+    return names;
 }
 
 TStashProxyModel::TStashProxyModel(TAppearanceTypeListModel* model, std::function<int(uint16_t)> counts, QObject* parent)
@@ -149,12 +151,11 @@ bool TStashProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&)
         && !(m_category == Proxy::AllWeaponsCategory && Proxy::isHandWeaponCategory(entry.marketCategory)))
         return false;
     if (!m_trader.isEmpty()) {
-        ThingType* type = typeOf(entry.typeId);
+        TAppearanceType* type = typeOf(entry.typeId);
         if (!type)
             return false;
-        const std::string trader = m_trader.toStdString();
-        const auto& npcs = type->getNpcSaleData();
-        if (std::ranges::none_of(npcs, [&trader](const NPCData& npc) { return npc.buyPrice > 0 && npc.name == trader; }))
+        const auto& npcs = type->npcTradeData();
+        if (std::ranges::none_of(npcs, [this](const auto& npc) { return npc.buyPrice > 0 && npc.name == m_trader; }))
             return false;
     }
     return true;
@@ -171,7 +172,7 @@ bool TStashProxyModel::lessThan(const QModelIndex& left, const QModelIndex& righ
         return byName < 0;
     };
     const auto sell = [](const TAppearanceTypeEntry& entry) -> uint64_t {
-        ThingType* type = typeOf(entry.typeId);
+        TAppearanceType* type = typeOf(entry.typeId);
         return type ? sellValue(type) : 0;
     };
     const auto total = [&](const TAppearanceTypeEntry& entry) { return sell(entry) * static_cast<uint64_t>(m_counts(entry.typeId)); };
@@ -335,12 +336,12 @@ void TStashDialogController::onStashContentChanged()
     std::vector<TAppearanceTypeEntry> entries;
     entries.reserve(m_content.size());
     for (const auto& [typeId, amount] : m_content) {
-        ThingType* type = typeOf(typeId);
+        TAppearanceType* type = typeOf(typeId);
         TAppearanceTypeEntry entry;
         entry.typeId = typeId;
         if (type) {
             entry.name = typeName(type);
-            entry.marketCategory = static_cast<int>(type->getMarketData().category);
+            entry.marketCategory = type->marketCategory();
         }
         categories.insert(entry.marketCategory);
         entries.push_back(std::move(entry));
@@ -496,7 +497,7 @@ void TStashDialogController::closeButtonClicked()
 input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId) const
 {
     input::TGameActionList actions;
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     const auto stored = m_content.find(typeId);
     if (!type || stored == m_content.end())
         return actions;

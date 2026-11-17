@@ -7,7 +7,7 @@
 
 namespace tibia::minimap {
 
-TMinimapManager::TMinimapManager(const QString& defaultTilesDir, const QString& bundledMarkersJson, QObject* parent)
+TMinimapManager::TMinimapManager(const QString& defaultTilesDir, QObject* parent)
     : cip::tibia::minimap::TMinimapManager(parent)
     , m_defaultTilesDir(defaultTilesDir)
     , m_diskIO(minimapDir())
@@ -29,8 +29,13 @@ TMinimapManager::TMinimapManager(const QString& defaultTilesDir, const QString& 
 
     // Field data / isKnown / areaOn only; the map handler drives the updates.
     m_worldFeed = std::make_unique<TMinimapWorldFeed>(m_storage);
-    m_markers = std::make_unique<TMinimapMarkerStorage>(bundledMarkersJson, this);
+    m_markers = std::make_unique<TMinimapMarkerStorage>(this);
     TMinimapMarkerStorage::setActive(m_markers.get());
+    connect(&m_diskIO, &TMinimapDiskIOAsync::loadingMinimapMarkersSucceeded, m_markers.get(),
+            &TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile);
+    connect(m_markers.get(), &TMinimapMarkerStorage::startSavingMinimapMarkerFileContentToDisk, &m_diskIO,
+            &TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk);
+    m_diskIO.loadMinimapMarkerFileContentFromDiskIfPossible();
 }
 
 void TMinimapManager::setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* handler)
@@ -59,6 +64,8 @@ TMinimapManager::~TMinimapManager()
     setProtocolHandler(nullptr);
     m_worldFeed.reset();
     TMinimapMarkerStorage::setActive(nullptr);
+    if (m_markers)
+        m_markers->onDelayedCallback();
     m_markers.reset();
     m_storage.saveAllTilesToDisk();
     m_diskIO.waitForDone();
@@ -67,7 +74,7 @@ TMinimapManager::~TMinimapManager()
 void TMinimapManager::flushToDisk()
 {
     if (m_markers)
-        m_markers->saveUserMarkers();
+        m_markers->onDelayedCallback();
     m_storage.saveAllTilesToDisk();
     m_diskIO.waitForDone();
 }

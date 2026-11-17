@@ -1,13 +1,20 @@
 #include "remainingdialogs.h"
+#include "colorhelper.h"
+
+#include "shared/simplevectorabstractlistmodel.h"
 
 #include <QDateTime>
+#include <QLocale>
+#include <QFile>
 #include <QJsonArray>
+#include <QLocale>
 #include <QJsonDocument>
 #include <QJsonObject>
 
 #include <set>
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "game/gameciptypes.h"
 #include "game/offlineskilltrainingdata.h"
 #include "game/tgamenotify.h"
@@ -15,16 +22,20 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "taskboard/taskboardciptypes.h"
 
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
 
 #include <QColor>
 
 #include <algorithm>
+#include <limits>
 #include <tuple>
+#include <unordered_set>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -36,47 +47,44 @@ using Args = std::vector<std::any>;
 using client::gamecore::argString;
 constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
-QColor outfitColor(const int index)
+
+QString itemNameOf(const uint16_t typeId)
 {
-    const QColor c = Outfit::getColor(index);
-    return QColor(c.red(), c.green(), c.blue());
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    if (!type || type->getId() == 0)
+        return QString::number(typeId);
+    const auto* market = type->marketProperties();
+    return market && !market->name.isEmpty() ? market->name : type->name();
 }
 
-QString vocationName(const uint8_t clientId)
+QString categoryIconFor(const int category)
 {
-    switch (clientId % 10) {
-        case 1: return QStringLiteral("Knight");
-        case 2: return QStringLiteral("Paladin");
-        case 3: return QStringLiteral("Sorcerer");
-        case 4: return QStringLiteral("Druid");
-        case 5: return QStringLiteral("Monk");
-        default: return QStringLiteral("None");
+    switch (category) {
+        case 1: return QStringLiteral("/images/icon-yes.png");
+        case 2: return QStringLiteral("/images/icon-exclamationmark.png");
+        default: return QStringLiteral("/images/icon-no.png");
     }
 }
 
-QString worldTypeName(const uint8_t worldType)
+std::vector<trade::TCharacterTradeItemEntry> itemEntries(const std::vector<trade::TCharacterTradeItem>& items)
 {
-    switch (worldType) {
-        case 0: return QStringLiteral("Open PvP");
-        case 1: return QStringLiteral("Optional PvP");
-        case 2: return QStringLiteral("Hardcore PvP");
-        case 3: return QStringLiteral("Retro Open PvP");
-        case 4: return QStringLiteral("Retro Hardcore PvP");
-        default: return {};
+    std::vector<trade::TCharacterTradeItemEntry> rows;
+    rows.reserve(items.size());
+    for (const trade::TCharacterTradeItem& item : items) {
+        trade::TCharacterTradeItemEntry entry;
+        entry.id = item.objectId;
+        entry.upgradeTier = item.tier;
+        entry.amount = static_cast<int>(item.count);
+        entry.name = itemNameOf(item.objectId);
+        rows.push_back(std::move(entry));
     }
+    return rows;
 }
 
 QObject* tradeOutfitConfiguration(const Outfit& outfit, QObject* parent)
 {
-    auto* config = new QObject(parent);
-    config->setProperty("id", static_cast<int>(outfit.getId()));
-    config->setProperty("headColor", outfitColor(outfit.getHead()));
-    config->setProperty("torsoColor", outfitColor(outfit.getBody()));
-    config->setProperty("legsColor", outfitColor(outfit.getLegs()));
-    config->setProperty("detailColor", outfitColor(outfit.getFeet()));
-    config->setProperty("firstAddOn", (outfit.getAddons() & 1) != 0);
-    config->setProperty("secondAddOn", (outfit.getAddons() & 2) != 0);
-    return config;
+    return new TOutfitQMLInformation(static_cast<int>(outfit.getId()), outfit.getHead(), outfit.getBody(), outfit.getLegs(),
+                                     outfit.getFeet(), outfit.getAddons(), parent);
 }
 
 } // namespace
@@ -144,32 +152,72 @@ const TSoulSealsMonsterListModel::Entry* TSoulSealsMonsterListModel::entryForRac
 TCharacterAuctionConfiguration::TCharacterAuctionConfiguration(QObject* parent)
     : cip::tibia::gamewindow::TCharacterAuctionConfiguration(parent)
 {
-    m_minimumMinimumBid = 50;
-    m_minimumAuctionEndTimestamp = 0;
-    m_maximumAuctionEndTimestamp = 0;
 }
 
-void TCharacterAuctionConfiguration::setSelectedHighlightCount(const int count)
+void TCharacterAuctionConfiguration::addHighlight(const int highlightId)
 {
-    if (m_selectedHighlightCount == count)
-        return;
-    m_selectedHighlightCount = count;
+    m_highlights.insert(highlightId);
     Q_EMIT selectedHighlightsChanged();
 }
 
-void TCharacterAuctionConfiguration::setSelectedItemCount(const int count)
+void TCharacterAuctionConfiguration::removeHighlight(const int highlightId)
 {
-    if (m_selectedItemCount == count)
-        return;
-    m_selectedItemCount = count;
+    m_highlights.remove(highlightId);
+    Q_EMIT selectedHighlightsChanged();
+}
+
+void TCharacterAuctionConfiguration::clearHighlights()
+{
+    m_highlights.clear();
+    Q_EMIT selectedHighlightsChanged();
+}
+
+void TCharacterAuctionConfiguration::addItem(const int itemId, const int upgradeTier)
+{
+    m_items.insert({ itemId, upgradeTier });
     Q_EMIT selectedItemsChanged();
 }
 
+void TCharacterAuctionConfiguration::removeItem(const int itemId, const int upgradeTier)
+{
+    m_items.remove({ itemId, upgradeTier });
+    Q_EMIT selectedItemsChanged();
+}
+
+void TCharacterAuctionConfiguration::clearItems()
+{
+    m_items.clear();
+    Q_EMIT selectedItemsChanged();
+}
+
+/// The server's minimum bid and auction end window; a bid below the minimum
+/// or an end outside the window moves to the bound.
 void TCharacterAuctionConfiguration::setAuctionBounds(const int minimumBid, const int minEnd, const int maxEnd)
 {
-    m_minimumMinimumBid = minimumBid;
     m_minimumAuctionEndTimestamp = minEnd;
     m_maximumAuctionEndTimestamp = maxEnd;
+    Q_EMIT configurationChanged();
+    if (m_auctionEndTimestamp != maxEnd && (maxEnd < m_auctionEndTimestamp || m_auctionEndTimestamp < minEnd)) {
+        m_auctionEndTimestamp = maxEnd;
+        Q_EMIT configurationChanged();
+    }
+    m_minimumMinimumBid = minimumBid;
+    Q_EMIT configurationChanged();
+    if (m_minimumBid < minimumBid) {
+        m_minimumBid = minimumBid;
+        Q_EMIT configurationChanged();
+    }
+}
+
+void TCharacterAuctionConfiguration::reset()
+{
+    m_minimumBid = 0;
+    m_minimumMinimumBid = 0;
+    m_auctionEndTimestamp = 0;
+    m_minimumAuctionEndTimestamp = 0;
+    m_maximumAuctionEndTimestamp = 0;
+    clearHighlights();
+    clearItems();
     Q_EMIT configurationChanged();
 }
 
@@ -255,10 +303,20 @@ QObject* TCharacterTradeDialogController::characterOverviewItemsModel() const
     return m_characterOverviewItemsModel;
 }
 
+/// Opens on a fresh configuration: the conditions are asked for, the previous
+/// setup is cancelled and nothing is selected until the answers arrive.
 void TCharacterTradeDialogController::showDialog()
 {
     dialog()->create();
     dialog()->show();
+    tibia::game::requestCharacterTradeConfiguration(0);
+    tibia::game::requestCharacterTradeConfiguration(1);
+    m_hasUnfulfilledConditions = true;
+    m_hasConfirmationError = true;
+    m_auction->reset();
+    refreshOverviewModels();
+    Q_EMIT hasUnfulfilledConditionsChanged();
+    Q_EMIT hasConfirmationErrorChanged();
 }
 
 void TCharacterTradeDialogController::closeDialog()
@@ -279,42 +337,42 @@ void TCharacterTradeDialogController::requestClose()
 
 void TCharacterTradeDialogController::addHighlight(const int HighlightID)
 {
-    m_selectedHighlightIds.insert(HighlightID);
+    m_auction->addHighlight(HighlightID);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::removeHighlight(const int HighlightID)
 {
-    m_selectedHighlightIds.remove(HighlightID);
+    m_auction->removeHighlight(HighlightID);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::addItem(const int ItemID, const int UpgradeTier)
 {
-    m_selectedItems.insert({ ItemID, UpgradeTier });
+    m_auction->addItem(ItemID, UpgradeTier);
     refreshOverviewModels();
 }
 
 void TCharacterTradeDialogController::removeItem(const int ItemID, const int UpgradeTier)
 {
-    m_selectedItems.remove({ ItemID, UpgradeTier });
+    m_auction->removeItem(ItemID, UpgradeTier);
     refreshOverviewModels();
 }
 
 TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController::configuration() const
 {
     TConfiguration configuration;
-    configuration.minimumBid = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->minimumBid())) : 0;
-    configuration.auctionEnd = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->auctionEndTimestamp())) : 0;
+    configuration.minimumBid = static_cast<uint32_t>(std::max(0, m_auction->minimumBid()));
+    configuration.auctionEnd = static_cast<uint32_t>(std::max(0, m_auction->auctionEndTimestamp()));
     // Highlight ids past 0xffff are store items (store item id + 0xffff).
-    for (const int id : m_selectedHighlightIds) {
+    for (const int id : m_auction->highlights()) {
         const auto value = static_cast<uint32_t>(id);
         if (value < 0x10000)
             configuration.highlights.push_back(static_cast<uint16_t>(value));
         else
             configuration.storeItems.emplace_back(static_cast<uint16_t>((value + 1) & 0xffff), 0);
     }
-    for (const QPair<int, int>& item : m_selectedItems)
+    for (const QPair<int, int>& item : m_auction->items())
         configuration.items.emplace_back(static_cast<uint16_t>(item.first), static_cast<uint8_t>(item.second));
     return configuration;
 }
@@ -350,34 +408,75 @@ void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTr
 
     switch (dataType) {
         case trade::TCharacterTradeStorage::Conditions: {
+            const trade::TCharacterTradeBasicData& data = storage->basicData();
             auto* character = static_cast<TQMLCharacterData*>(m_characterData);
-            character->setCharacter(storage->characterName(), vocationName(storage->vocationClientId()), storage->characterLevel(),
-                                    worldTypeName(storage->worldType()), tradeOutfitConfiguration(storage->outfit(), character));
-            m_auction->setAuctionBounds(storage->minimumBid(), static_cast<int>(storage->startTimestamp()),
-                                        static_cast<int>(storage->endTimestamp()));
-            m_conditions->setEntries(storage->conditions());
-            const bool unfulfilled = storage->hasUnfulfilledConditions();
-            if (m_hasUnfulfilledConditions != unfulfilled) {
-                m_hasUnfulfilledConditions = unfulfilled;
-                Q_EMIT hasUnfulfilledConditionsChanged();
+            character->setCharacter(data.name, data.vocation, data.level, data.worldType, tradeOutfitConfiguration(data.outfit, character));
+            std::vector<trade::TCharacterTradeConditionEntry> conditions;
+            m_hasUnfulfilledConditions = false;
+            for (const trade::TCharacterTradeCondition& condition : data.conditions) {
+                // TibiaEnums.EYesNoWarning: Yes=0 No=1.
+                conditions.push_back({ condition.text, condition.fulfilled ? 0 : 1 });
+                if (!condition.fulfilled)
+                    m_hasUnfulfilledConditions = true;
             }
-            showDialog();
+            m_conditions->setEntries(std::move(conditions));
+            Q_EMIT hasUnfulfilledConditionsChanged();
+            m_auction->setAuctionBounds(static_cast<int>(data.minimumBid), static_cast<int>(data.startTime), static_cast<int>(data.endTime));
             break;
         }
-        case trade::TCharacterTradeStorage::Items:
+        case trade::TCharacterTradeStorage::Items: {
+            std::vector<trade::TCharacterTradeItemEntry> items = itemEntries(storage->items());
+            m_items->source()->setEntries(items);
+            m_overviewItems->setEntries({});
+            m_auction->clearItems();
+            break;
+        }
         case trade::TCharacterTradeStorage::StoreItems:
-            m_items->source()->setEntries(storage->items());
-            break;
-        case trade::TCharacterTradeStorage::Highlights:
-            m_highlights->source()->setEntries(storage->highlights());
-            break;
-        case trade::TCharacterTradeStorage::Summary: {
-            m_confirmations->setEntries(storage->confirmations());
-            const bool err = storage->hasConfirmationError();
-            if (m_hasConfirmationError != err) {
-                m_hasConfirmationError = err;
-                Q_EMIT hasConfirmationErrorChanged();
+        case trade::TCharacterTradeStorage::Highlights: {
+            // The store items are highlights too, their id past the highlight ids.
+            std::vector<trade::TCharacterTradeHighlightEntry> highlights;
+            for (const trade::TCharacterTradeHighlightGroup& group : storage->highlights()) {
+                for (const trade::TCharacterTradeHighlightGroup::Entry& highlight : group.entries)
+                    highlights.push_back({ highlight.id, highlight.text, group.name, categoryIconFor(group.category) });
             }
+            const QString storeCategory = qtTrId("charactertrade_store_items_category");
+            for (const trade::TCharacterTradeItem& item : storage->storeItems()) {
+                QString name = itemNameOf(item.objectId);
+                if (name.isEmpty())
+                    name = qtTrId("dummy_unknown");
+                const QString text = qtTrId("charactertrade_store_items_template")
+                                         .arg(QLocale(QLocale::English).toString(static_cast<qulonglong>(item.count)), name);
+                highlights.push_back({ item.objectId + 0xffff, text, storeCategory, categoryIconFor(4) });
+            }
+            m_highlights->source()->setEntries(std::move(highlights));
+            m_overviewHighlights->setEntries({});
+            m_auction->clearHighlights();
+            break;
+        }
+        case trade::TCharacterTradeStorage::Summary: {
+            // A fee means the server accepted the setup: its problems, then
+            // what the auction will be.
+            if (storage->fee() == 0)
+                break;
+            std::vector<trade::TCharacterTradeConditionEntry> confirmations;
+            m_hasConfirmationError = false;
+            for (const QString& problem : storage->problems()) {
+                confirmations.push_back({ problem, 1 });
+                m_hasConfirmationError = true;
+            }
+            const auto* character = static_cast<TQMLCharacterData*>(m_characterData);
+            confirmations.push_back(
+                { qtTrId("charactertrade_confirmation_minimum_bid").arg(character->characterName()).arg(m_auction->minimumBid()), 0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_auction_end")
+                                          .arg(QDateTime::fromSecsSinceEpoch(m_auction->auctionEndTimestamp())
+                                                   .toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"))),
+                                      0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_auction_fee").arg(storage->fee()), 0 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_insecure_coins"), 2 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_no_refund"), 2 });
+            confirmations.push_back({ qtTrId("charactertrade_confirmation_privacy_warning"), 2 });
+            m_confirmations->setEntries(std::move(confirmations));
+            Q_EMIT hasConfirmationErrorChanged();
             break;
         }
     }
@@ -387,32 +486,71 @@ void TCharacterTradeDialogController::refreshOverviewModels()
 {
     std::vector<trade::TCharacterTradeHighlightEntry> highlights;
     for (const trade::TCharacterTradeHighlightEntry& entry : m_highlights->source()->entries()) {
-        if (m_selectedHighlightIds.contains(entry.highlightId))
+        if (m_auction->highlights().contains(entry.highlightId))
             highlights.push_back(entry);
     }
     m_overviewHighlights->setEntries(std::move(highlights));
-    if (m_auction)
-        m_auction->setSelectedHighlightCount(m_selectedHighlightIds.size());
 
     std::vector<trade::TCharacterTradeItemEntry> items;
     for (const trade::TCharacterTradeItemEntry& entry : m_items->source()->entries()) {
-        if (m_selectedItems.contains({ entry.id, entry.upgradeTier }))
+        if (m_auction->items().contains({ entry.id, entry.upgradeTier }))
             items.push_back(entry);
     }
     m_overviewItems->setEntries(std::move(items));
-    if (m_auction)
-        m_auction->setSelectedItemCount(m_selectedItems.size());
+}
+
+namespace {
+
+/// The due payments of the character trade: the character, the amount and the due date.
+class TDuePaymentModel final : public shared::TSimpleVectorAbstractListModel<authentication::TCharacterTradePayment, cip::TDuePaymentModel>
+{
+public:
+    enum ERole { CharacterName = Qt::UserRole + 1, DueAmountString, DueDateString };
+
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
+
+    QHash<int, QByteArray> roleNames() const override
+    {
+        return { { CharacterName, "characterName" }, { DueAmountString, "dueAmountString" }, { DueDateString, "dueDateString" } };
+    }
+
+protected:
+    QVariant itemData(const authentication::TCharacterTradePayment& item, const int role) const override
+    {
+        switch (role) {
+        case CharacterName: return item.name;
+        case DueAmountString: return QLocale(QLocale::English).toString(item.dueAmount);
+        case DueDateString:
+            return QDateTime::fromSecsSinceEpoch(item.dueTimestamp).toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
+        default: return qtTrId("dummy_unknown");
+        }
+    }
+};
+
 }
 
 TCharacterTradeDuePaymentDialogController::TCharacterTradeDuePaymentDialogController(QObject* parent)
     : TDialogController(QStringLiteral("charactertrade/CharacterTradeDuePaymentDialog.qml"), parent)
 {
-    m_duePayments = new QObject(this);
+    m_duePayments = new TDuePaymentModel(this);
+}
+
+bool TCharacterTradeDuePaymentDialogController::showDuePayments(const std::vector<authentication::TCharacterTradePayment>& payments)
+{
+    static_cast<TDuePaymentModel*>(m_duePayments)->setItems(payments);
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    const qint64 remindAgain = config::TClientOptions::instance()->intOption(config::EClientOption::charTradePaymentRemindAgain);
+    if (remindAgain >= now)
+        return false;
+    dialog()->create();
+    dialog()->show();
+    return true;
 }
 
 void TCharacterTradeDuePaymentDialogController::onClosePressed(const bool DoNotShowAgain)
 {
-    Q_UNUSED(DoNotShowAgain);
+    const int remindAgain = DoNotShowAgain ? static_cast<int>(QDateTime::currentSecsSinceEpoch()) + 86400 : 0;
+    config::TClientOptions::instance()->setIntOption(config::EClientOption::charTradePaymentRemindAgain, remindAgain);
     dialog()->close();
     Q_EMIT dialogClosed();
 }
@@ -421,20 +559,53 @@ TCharacterWorldTransferDialogController::TCharacterWorldTransferDialogController
     : TDialogController(QStringLiteral("CharacterWorldTransferDialog.qml"), parent)
 {}
 
-void TCharacterWorldTransferDialogController::setTransfer(const QString& characterName, const bool express,
-                                                          QList<QObject*> conditions, QList<QObject*> worlds,
-                                                          const bool canTransfer)
+bool TCharacterWorldTransferDialogController::canTransfer() const
 {
-    m_characterName = characterName;
-    m_isExpressWorldTransfer = express;
-    m_conditions = std::move(conditions);
-    m_worlds = std::move(worlds);
-    m_canTransfer = canTransfer;
+    return std::none_of(std::begin(m_info.flags), std::end(m_info.flags), [](const bool flag) { return flag; });
+}
+
+void TCharacterWorldTransferDialogController::showDialog(const int OfferIDForWorldChange, const QString& CharacterName,
+                                                         const tibia::store::TWorldTransferInformation& WorldTransferInfo)
+{
+    closeDialog();
+    m_offerId = OfferIDForWorldChange;
+    m_info = WorldTransferInfo;
+    m_isExpressWorldTransfer = WorldTransferInfo.flag;
+    m_characterName = CharacterName;
+    m_canTransfer = canTransfer();
+    createConditions();
+    createWorlds();
+    dialog()->show();
+}
+
+void TCharacterWorldTransferDialogController::createConditions()
+{
+    static constexpr std::pair<const char*, const char*> Texts[] = {
+        { "characterworldtransfer_redskull", "characterworldtransfer_no_redskull" },
+        { "characterworldtransfer_blackskull", "characterworldtransfer_no_blackskull" },
+        { "characterworldtransfer_guild_leader", "characterworldtransfer_not_guild_leader" },
+        { "characterworldtransfer_house_owner", "characterworldtransfer_not_house_owner" },
+        { "characterworldtransfer_coin_offers", "characterworldtransfer_no_coin_offers" },
+    };
+    for (size_t i = 0; i < std::size(Texts); ++i) {
+        const bool affected = m_info.flags[i];
+        m_conditions.append(new TQmlWorldTransferCondition(!affected, qtTrId(affected ? Texts[i].first : Texts[i].second)));
+    }
+}
+
+void TCharacterWorldTransferDialogController::createWorlds()
+{
+    for (const tibia::store::TTransferWorld& world : m_info.worlds)
+        m_worlds.append(new TQmlTargetWorld(world.name, world.firstFlag, world.secondFlag, world.pvpType));
 }
 
 void TCharacterWorldTransferDialogController::closeDialog()
 {
     dialog()->close();
+    qDeleteAll(m_conditions);
+    m_conditions.clear();
+    qDeleteAll(m_worlds);
+    m_worlds.clear();
     Q_EMIT dialogClosed();
 }
 
@@ -445,7 +616,9 @@ void TCharacterWorldTransferDialogController::requestClose()
 
 void TCharacterWorldTransferDialogController::requestWorldTransfer(const QString& TargetWorld)
 {
-    Q_EMIT worldTransferRequested(TargetWorld, m_isExpressWorldTransfer);
+    if (TargetWorld.isEmpty())
+        return;
+    Q_EMIT targetWorldConfirmed(m_offerId, TargetWorld);
     closeDialog();
 }
 
@@ -455,7 +628,8 @@ TCinematicSessiondumpPlayerController::TCinematicSessiondumpPlayerController(QOb
 
 void TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed()
 {
-    // CIP empty moc slot: benchmark UI closed; sessiondump player stays owned by information hub.
+    // The benchmark window closing ends the cinematic player.
+    Q_EMIT cinematicSessiondumpPlayerClosed();
 }
 
 TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(QObject* parent)
@@ -561,20 +735,27 @@ TEmergencyDialogController::TEmergencyDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ImportantBalancingMessageDialog.qml"), parent)
 {
     m_showAgain = true;
+    QString data;
+    QFile file(QStringLiteral(":/data/ImportantBalancingMessageData.json"));
+    if (file.open(QIODevice::ReadOnly))
+        data = QString::fromUtf8(file.readAll());
+    file.close();
+    m_data = QJsonDocument::fromJson(data.toUtf8());
+    m_id = m_data.object().value(QStringLiteral("id")).toInt();
 }
 
-void TEmergencyDialogController::showEmergency(const QVariant& data)
+QVariant TEmergencyDialogController::dialogData() const
 {
-    m_dialogData = data;
-    Q_EMIT dialogDataChanged();
-    dialog()->create();
-    dialog()->show();
+    return QVariant(m_data.object());
 }
 
+/// CIP: the dialog closes; with "show again" cleared the message id is
+/// stored before dialogClosed goes out.
 void TEmergencyDialogController::onOKClicked()
 {
+    if (!m_showAgain)
+        config::TClientOptions::instance()->setIntOption(config::EClientOption::emergencyDialogVersion, m_id);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController(QObject* parent)
@@ -597,18 +778,14 @@ TGenericConfirmWithDontShowAgainDialogController::TGenericConfirmWithDontShowAga
     m_showThisDialogAgain = true;
 }
 
-void TGenericConfirmWithDontShowAgainDialogController::configure(const QString& caption, const QString& content,
-                                                                 const QString& dontShowAgain, const bool showAgain)
+TGenericConfirmWithDontShowAgainDialogController::TGenericConfirmWithDontShowAgainDialogController(
+    const QString& caption, const QString& content, const QString& dontShowAgain, const bool showAgain, QObject* parent)
+    : TDialogController(QStringLiteral("GenericConfirmWithDontShowAgainDialog.qml"), parent)
 {
     m_captionText = caption;
     m_contentText = content;
     m_dontShowAgainText = dontShowAgain;
     m_showThisDialogAgain = showAgain;
-}
-
-void TGenericConfirmWithDontShowAgainDialogController::setConfirmHandler(std::function<void(bool)> onYes)
-{
-    m_onYes = std::move(onYes);
 }
 
 void TGenericConfirmWithDontShowAgainDialogController::showDialog()
@@ -619,16 +796,14 @@ void TGenericConfirmWithDontShowAgainDialogController::showDialog()
 
 void TGenericConfirmWithDontShowAgainDialogController::onYesClicked(const bool ShowDialogAgain)
 {
-    if (m_onYes)
-        m_onYes(ShowDialogAgain);
+    Q_EMIT yesClicked(ShowDialogAgain);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 void TGenericConfirmWithDontShowAgainDialogController::onNoClicked()
 {
+    Q_EMIT noClicked();
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 THirelingNameChangeController* THirelingNameChangeController::s_instance = nullptr;
@@ -667,38 +842,6 @@ void TInfoBannerController::clearQueue()
     Q_EMIT clearInfoBannerQueue();
 }
 
-TLenshelpController* TLenshelpController::s_instance = nullptr;
-
-TLenshelpController::TLenshelpController(QObject* parent)
-    : cip::tibia::gamewindow::TLenshelpController(parent)
-{
-    s_instance = this;
-}
-
-TLenshelpController* TLenshelpController::instance()
-{
-    return s_instance;
-}
-
-void TLenshelpController::showHelp(const QString& caption, const QString& content)
-{
-    m_caption = caption;
-    m_content = content;
-    Q_EMIT contentChanged();
-    if (!m_lenshelpVisible) {
-        m_lenshelpVisible = true;
-        Q_EMIT lenshelpVisibleChanged();
-    }
-}
-
-void TLenshelpController::hideHelp()
-{
-    if (!m_lenshelpVisible)
-        return;
-    m_lenshelpVisible = false;
-    Q_EMIT lenshelpVisibleChanged();
-}
-
 TLinkCopyWarningDialogController::TLinkCopyWarningDialogController(QObject* parent)
     : cip::tibia::gamewindow::TLinkCopyWarningDialogController(parent)
 {}
@@ -728,6 +871,13 @@ TLoginConfirmationCodeEnterTextDialogController::TLoginConfirmationCodeEnterText
 {}
 
 /// CIP: the code is dropped, the information line cleared and the dialog aborted.
+void TLoginConfirmationCodeEnterTextDialogController::showDialog()
+{
+    m_enteredText.clear();
+    dialog()->create();
+    dialog()->show();
+}
+
 void TLoginConfirmationCodeEnterTextDialogController::onCancelClicked()
 {
     m_enteredText.clear();
@@ -809,10 +959,35 @@ TMainCharacterChangeDialogController::TMainCharacterChangeDialogController(QObje
     : TDialogController(QStringLiteral("MainCharacterChangeDialog.qml"), parent)
 {}
 
+TMainCharacterChangeDialogController::~TMainCharacterChangeDialogController()
+{
+    closeDialog();
+}
+
+void TMainCharacterChangeDialogController::showDialog(const uint32_t OfferIDForMainCharChange,
+                                                      std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo)
+{
+    closeDialog();
+    m_offerId = OfferIDForMainCharChange;
+    m_possibleMainChars = std::move(PossibleMainCharInfo);
+    createMainCharInfos();
+    if (dialog()->item())
+        return;
+    dialog()->create();
+    dialog()->show();
+}
+
+void TMainCharacterChangeDialogController::createMainCharInfos()
+{
+    for (const TPossibleMainCharacterInformation& info : m_possibleMainChars)
+        m_mainCharInfos.append(new TQmlPossibleMainChar(info.characterName, info.worldName, info.vocation, info.level));
+}
+
 void TMainCharacterChangeDialogController::closeDialog()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
+    qDeleteAll(m_mainCharInfos);
+    m_mainCharInfos.clear();
 }
 
 void TMainCharacterChangeDialogController::requestClose()
@@ -822,13 +997,40 @@ void TMainCharacterChangeDialogController::requestClose()
 
 void TMainCharacterChangeDialogController::requestMainCharChange(const QString& ChosenCharacter)
 {
-    Q_EMIT mainCharacterChangeRequested(ChosenCharacter);
+    if (ChosenCharacter.isEmpty())
+        return;
+    Q_EMIT mainCharChangeConfirmed(m_offerId, ChosenCharacter);
     closeDialog();
 }
 
 TMarketCoinTransactionDetailsDialogController::TMarketCoinTransactionDetailsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("MarketCoinTransactionDetails.qml"), parent)
 {}
+
+void TMarketCoinTransactionDetailsDialogController::setTransactionDetails(const store::TTransactionDetails& details)
+{
+    const auto date = [](const uint32_t secs) {
+        return QLocale().toString(QDateTime::fromSecsSinceEpoch(secs), QLocale::ShortFormat);
+    };
+    m_transactionType = details.type == store::TTransactionDetails::TYPE_MULTI ? MultiTransaction : SingleTransaction;
+    m_singleTransactionDate = date(details.single.date);
+    m_singleTransactionDescription = details.single.description;
+    m_singleTransactionCharacterName = details.single.characterName;
+    m_singleTransactionCoinBalanceChange = details.single.coinBalanceChange;
+    m_singleTransactionPiecePrice = static_cast<qlonglong>(details.single.piecePrice);
+    m_singleTransactionGoldBalanceChange = details.single.goldBalanceChange;
+    m_multiTransactionCharacterName = details.multi.characterName;
+    m_multiTransactionTotalCoins = static_cast<int>(details.multi.totalCoins);
+    m_multiTransactionSoldCoins = static_cast<int>(details.multi.soldCoins);
+    m_multiTransactionCoinsReainingInMarket = static_cast<int>(details.multi.coinsRemainingInMarket);
+    m_multiTransactionPiecePrice = static_cast<qlonglong>(details.multi.piecePrice);
+    m_multiTransactionReceivedGold = static_cast<qlonglong>(details.multi.receivedGold);
+    Q_EMIT dataChanged();
+    if (!m_transactionLoaded) {
+        m_transactionLoaded = true;
+        Q_EMIT transactionLoadedChanged();
+    }
+}
 
 void TMarketCoinTransactionDetailsDialogController::showDialog()
 {
@@ -853,14 +1055,14 @@ namespace {
 
 using OfflineTrainingSkill = cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType;
 
-/// CIP MultiOfflineTrainingDialog skill list order (Sword..Fist, Magic).
+/// CIP: the skill rows in the dialog's order.
 constexpr OfflineTrainingSkill kOfflineTrainingSkills[] = {
-    OfflineTrainingSkill::OfflineTrainingSkillTypeSword,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeAxe,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeClub,
-    OfflineTrainingSkill::OfflineTrainingSkillTypeDistance,
     OfflineTrainingSkill::OfflineTrainingSkillTypeMagic,
     OfflineTrainingSkill::OfflineTrainingSkillTypeFist,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeClub,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeSword,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeAxe,
+    OfflineTrainingSkill::OfflineTrainingSkillTypeDistance,
 };
 
 }
@@ -869,11 +1071,17 @@ TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QOb
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), parent)
 {
     s_instance = this;
-    rebuildSkillsModel();
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiOfflineTrainingDialog", [this](GameObject*, const Args&) {
         showSkillsDialog();
         return std::any{};
     });
+}
+
+TMultiOfflineTrainingDialogController::~TMultiOfflineTrainingDialogController()
+{
+    clearSkillsModel();
+    if (s_instance == this)
+        s_instance = nullptr;
 }
 
 TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::instance()
@@ -883,36 +1091,55 @@ TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::in
 
 QList<QObject*> TMultiOfflineTrainingDialogController::skillsModel() const { return m_skillsModel; }
 
+void TMultiOfflineTrainingDialogController::clearSkillsModel()
+{
+    const QList<QObject*> old = std::exchange(m_skillsModel, {});
+    Q_EMIT skillsModelChanged();
+    qDeleteAll(old);
+}
+
 void TMultiOfflineTrainingDialogController::rebuildSkillsModel()
 {
-    qDeleteAll(m_skillsModel);
-    m_skillsModel.clear();
+    const QList<QObject*> old = std::exchange(m_skillsModel, {});
     for (const OfflineTrainingSkill skill : kOfflineTrainingSkills) {
         auto* data = new game::TOfflineSkillTrainingData(skill, this);
         data->assign(game::buildOfflineTrainingEntry(skill));
         m_skillsModel.append(data);
     }
     Q_EMIT skillsModelChanged();
+    qDeleteAll(old);
+}
+
+void TMultiOfflineTrainingDialogController::handleGameAction(const input::IGameAction& action)
+{
+    if (action.gameActionType() == input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS)
+        showSkillsDialog();
 }
 
 void TMultiOfflineTrainingDialogController::showSkillsDialog()
 {
+    closeDialog();
     rebuildSkillsModel();
     dialog()->create();
     dialog()->show();
 }
 
-void TMultiOfflineTrainingDialogController::requestClose()
+void TMultiOfflineTrainingDialogController::closeDialog()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
+    clearSkillsModel();
+}
+
+void TMultiOfflineTrainingDialogController::requestClose()
+{
+    closeDialog();
 }
 
 void TMultiOfflineTrainingDialogController::startOfflineTraining(
     const cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType Skill)
 {
     tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(Skill));
-    requestClose();
+    closeDialog();
 }
 
 TOutfitMemorialDialogController* TOutfitMemorialDialogController::s_instance = nullptr;
@@ -935,6 +1162,7 @@ TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
 
 void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& data)
 {
+    dialog()->close();
     const auto toList = [](const std::vector<std::string>& names) {
         QStringList list;
         list.reserve(int(names.size()));
@@ -967,19 +1195,13 @@ void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& dat
 void TOutfitMemorialDialogController::requestClose()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 TReturnerRewardDialogController::TReturnerRewardDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ReturnerRewardNotificationDialog.qml"), parent)
 {}
 
-void TReturnerRewardDialogController::showReward(const QString& text)
-{
-    m_dialogText = text;
-    dialog()->create();
-    dialog()->show();
-}
+QString TReturnerRewardDialogController::dialogText() const { return qtTrId("returner_reward_notification_text"); }
 
 void TReturnerRewardDialogController::onContinueClicked()
 {
@@ -1113,6 +1335,43 @@ void TShowSpellBookDialogController::openCyclopedia()
 
 void TShowSpellBookDialogController::requestClose() { dialog()->close(); }
 
+namespace {
+
+/// Every race with a soul pit category, marked done when its animus mastery is
+/// complete; mastered races without a category are appended.
+std::vector<TSoulSealsMonsterListModel::Entry> soulSealsMonsterEntries(const std::vector<uint16_t>& animusMasteryRaceIds)
+{
+    std::unordered_set<uint16_t> mastered;
+    for (const uint16_t raceId : animusMasteryRaceIds) {
+        if (raceId != 0)
+            mastered.insert(raceId);
+    }
+    const auto entryFor = [](const uint16_t raceId, const RaceType& race, const bool done) {
+        TSoulSealsMonsterListModel::Entry entry;
+        entry.raceId = static_cast<int>(raceId);
+        entry.name = race.name.empty() ? QString::number(raceId) : QString::fromStdString(race.name);
+        entry.animusMasteryCompleted = done;
+        const uint32_t category = race.hasCategory ? race.category : 0;
+        entry.soulPitFightPrice = race.hasCategory
+            ? static_cast<int>(std::min<uint32_t>((category + 1U) * 10U, std::numeric_limits<uint16_t>::max()))
+            : 0;
+        entry.category = static_cast<int>(std::min<uint32_t>(category, std::numeric_limits<uint8_t>::max()));
+        return entry;
+    };
+    std::vector<TSoulSealsMonsterListModel::Entry> entries;
+    for (const auto& race : tibia::game::getAllRaces()) {
+        if (!race.hasCategory || race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
+            continue;
+        const auto raceId = static_cast<uint16_t>(race.raceId);
+        entries.push_back(entryFor(raceId, race, mastered.erase(raceId) > 0));
+    }
+    for (const uint16_t raceId : mastered)
+        entries.push_back(entryFor(raceId, tibia::game::raceData(raceId), true));
+    return entries;
+}
+
+}
+
 TSoulSealsDialogController* TSoulSealsDialogController::s_instance = nullptr;
 
 TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
@@ -1126,31 +1385,12 @@ TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
                                                   QStringLiteral("Hard"), QStringLiteral("Expert") };
     m_indexOfSelectedDifficulty = 0;
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulsealsData", [this](GameObject*, const Args& args) {
-        std::vector<TSoulSealsMonsterListModel::Entry> entries;
-        if (const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<TaskBoardSoulsealEntryData>>(&args[0])) {
-            entries.reserve(list->size());
-            for (const TaskBoardSoulsealEntryData& row : *list) {
-                TSoulSealsMonsterListModel::Entry entry;
-                entry.raceId = static_cast<int>(row.raceId);
-                entry.name = QString::fromStdString(row.name);
-                if (entry.name.isEmpty()) {
-                    const RaceType& race = tibia::game::raceData(row.raceId);
-                    entry.name = QString::fromStdString(race.name);
-                    if (!entry.name.isEmpty())
-                        entry.name[0] = entry.name[0].toUpper();
-                }
-                entry.animusMasteryCompleted = row.done != 0;
-                entry.soulPitFightPrice = static_cast<int>(row.soulsealPoints);
-                entry.category = static_cast<int>(row.category);
-                entries.push_back(std::move(entry));
-            }
-        }
-        applyEntries(std::move(entries));
-        dialog()->create();
-        dialog()->show();
-        return std::any{};
-    });
+    connect(taskboard::TTaskboardProtocolMessageHandler::instance(), &taskboard::TTaskboardProtocolMessageHandler::openSoulSealsDialog,
+            this, [this](const std::vector<uint16_t>& animusMasteryRaceIds) {
+                applyEntries(soulSealsMonsterEntries(animusMasteryRaceIds));
+                dialog()->create();
+                dialog()->show();
+            });
 }
 
 TSoulSealsDialogController* TSoulSealsDialogController::instance()

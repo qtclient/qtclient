@@ -1,5 +1,9 @@
 #include "characterinfodialogcontroller.h"
+#include "colorhelper.h"
 
+#include "skillwheel/skillwheelciptypes.h"
+
+#include "cyclopedia/characterinfostorage.h"
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
 #include "cyclopedia/playerdefencestatsprovider.h"
@@ -7,6 +11,7 @@
 #include "game/skillswidgetentrydata.h"
 #include "gamewindow/characterinfomodels.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/smoothfiltering.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
@@ -14,7 +19,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "game/playerskillstats.h"
 
@@ -35,17 +40,11 @@ using A = input::EGameAction;
 using Category = cip::tibia::gamewindow::TCharacterInfoDialogController::EDialogCategory;
 using game::SkillType;
 
-template <class T>
-const T* arg(const std::vector<std::any>& args, const size_t index)
-{
-    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
-}
-
 QString qstr(const std::string& text) { return QString::fromStdString(text); }
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -98,26 +97,22 @@ constexpr SkillType SecondBlock[] = { SkillType::MagicLevel, SkillType::Fist,   
 class TCharacterBaseQmlInfo final : public cip::tibia::gamewindow::TCharacterBaseQmlInfo
 {
 public:
-    TCharacterBaseQmlInfo(const std::vector<std::any>& args, QObject* parent)
+    TCharacterBaseQmlInfo(const cyclopedia::TCharacterBaseInformation& information, QObject* parent)
         : cip::tibia::gamewindow::TCharacterBaseQmlInfo(parent)
     {
-        using client::gamecore::argBool;
-        using client::gamecore::argInt;
-        using client::gamecore::argString;
-        m_name = argString(args, 0);
-        m_vocation = argString(args, 1);
-        m_level = static_cast<int>(argInt(args, 2));
-        if (const auto* outfit = arg<Outfit>(args, 3)) {
-            m_outfitID = outfit->getId();
-            m_headColor = outfitColor(outfit->getHead());
-            m_torsoColor = outfitColor(outfit->getBody());
-            m_legsColor = outfitColor(outfit->getLegs());
-            m_detailColor = outfitColor(outfit->getFeet());
-            m_firstAddon = (outfit->getAddons() & 1) != 0;
-            m_secondAddon = (outfit->getAddons() & 2) != 0;
-        }
-        m_isOwnCharacter = argBool(args, 4);
-        m_title = argString(args, 5);
+        m_name = information.name;
+        m_vocation = information.vocation;
+        m_level = information.level;
+        const Outfit& outfit = information.outfit;
+        m_outfitID = outfit.getId();
+        m_headColor = outfitColor(outfit.getHead());
+        m_torsoColor = outfitColor(outfit.getBody());
+        m_legsColor = outfitColor(outfit.getLegs());
+        m_detailColor = outfitColor(outfit.getFeet());
+        m_firstAddon = (outfit.getAddons() & 1) != 0;
+        m_secondAddon = (outfit.getAddons() & 2) != 0;
+        m_isOwnCharacter = information.ownCharacter;
+        m_title = information.title;
     }
 };
 
@@ -125,21 +120,17 @@ public:
 class TAccountInfoQmlData final : public cip::tibia::gamewindow::TAccountInfoQmlData
 {
 public:
-    TAccountInfoQmlData(const std::vector<std::any>& args, QObject* parent)
+    TAccountInfoQmlData(const cyclopedia::TAccountInfos& infos, QObject* parent)
         : cip::tibia::gamewindow::TAccountInfoQmlData(parent)
     {
-        using client::gamecore::argInt;
-        using Wire = std::vector<std::tuple<uint32_t, std::string>>;
-        m_canShowAccountInfos = argInt(args, 0) != 0;
-        m_isOnline = argInt(args, 1) != 0;
-        m_isPremium = argInt(args, 2) != 0;
-        m_loyaltyTitle = client::gamecore::argString(args, 3);
+        m_canShowAccountInfos = infos.canShowAccountInfos;
+        m_isOnline = infos.online;
+        m_isPremium = infos.premium;
+        m_loyaltyTitle = infos.loyaltyTitle;
         std::vector<AccountBadgeEntry> badges;
-        if (const auto* wire = args.size() > 4 ? std::any_cast<Wire>(&args[4]) : nullptr) {
-            badges.reserve(wire->size());
-            for (const auto& [id, name] : *wire)
-                badges.push_back({ id, QString::fromStdString(name) });
-        }
+        badges.reserve(infos.badges.size());
+        for (const friends::TAccountBadge& badge : infos.badges)
+            badges.push_back({ badge.id, badge.name });
         m_accountBadges = new TAccountBadgesModel(std::move(badges), this);
     }
 };
@@ -210,53 +201,35 @@ QString formatXpBoostTime(const uint32_t seconds)
     return QStringLiteral("%1:%2").arg(seconds / 3600, 2, 10, QLatin1Char('0')).arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'));
 }
 
-/// CIP : the hireling job names by job id.
-QString hirelingJobName(const int job)
-{
-    switch (job) {
-        case 0: return qtTrId("charinfo_hireling_job_banker");
-        case 1: return qtTrId("charinfo_hireling_job_cook");
-        case 2: return qtTrId("charinfo_hireling_job_steward");
-        case 3: return qtTrId("charinfo_hireling_job_trader");
-        default: return {};
-    }
-}
-
 /// CIP: TStorePurchasesQmlData over the 0xDA store summary
 /// (CIP reader case 8).
 class TStorePurchasesQmlData final : public cip::tibia::gamewindow::TStorePurchasesQmlData
 {
 public:
-    TStorePurchasesQmlData(const std::vector<std::any>& args, QObject* parent)
+    TStorePurchasesQmlData(const cyclopedia::TStoreSummary& summary, QObject* parent)
         : cip::tibia::gamewindow::TStorePurchasesQmlData(parent)
     {
-        using client::gamecore::argBool;
-        using client::gamecore::argInt;
-        m_remainingStoreXpBoost = formatXpBoostTime(static_cast<uint32_t>(argInt(args, 0)));
-        m_remainingDailyRewardXpBoost = formatXpBoostTime(static_cast<uint32_t>(argInt(args, 1)));
+        m_remainingStoreXpBoost = formatXpBoostTime(summary.storeXpBoostTime);
+        m_remainingDailyRewardXpBoost = formatXpBoostTime(summary.dailyRewardXpBoostTime);
         QList<QVariantList> blessings;
-        if (const auto* list = arg<std::vector<std::tuple<std::string, uint8_t>>>(args, 2))
-            for (const auto& [name, count] : *list)
-                blessings.append({ qstr(name), static_cast<int>(count) });
+        for (const auto& [name, count] : summary.blessings)
+            blessings.append({ name, count });
         m_storeBlessings = new TStoreSummaryListModel({ "name", "count" }, std::move(blessings), this);
-        m_preySlots = static_cast<int>(argInt(args, 3));
-        m_preyWildcards = static_cast<int>(argInt(args, 4));
-        m_purchasedPermanentWeeklyTaskExpansion = argBool(args, 5);
-        m_collectionTokens = static_cast<int>(argInt(args, 6));
-        m_hasCharmExpansion = argBool(args, 7);
-        m_hirelings = static_cast<int>(argInt(args, 8));
-        if (const auto* jobs = arg<std::vector<uint16_t>>(args, 9))
-            for (const uint16_t job : *jobs)
-                m_hirelingJobs.append(hirelingJobName(job));
+        m_preySlots = summary.preySlots;
+        m_preyWildcards = summary.preyWildcards;
+        m_purchasedPermanentWeeklyTaskExpansion = summary.permanentWeeklyTaskExpansion;
+        m_collectionTokens = summary.instantRewardAccesses;
+        m_hasCharmExpansion = summary.charmExpansion;
+        m_hirelings = summary.hirelings;
+        for (const QString& job : summary.hirelingJobs)
+            m_hirelingJobs.append(job);
         QList<QVariantList> hirelingOutfits;
-        if (const auto* list = arg<std::vector<std::tuple<std::string, uint8_t>>>(args, 11))
-            for (const auto& [name, count] : *list)
-                hirelingOutfits.append({ qstr(name), static_cast<int>(count) });
+        for (const auto& [name, count] : summary.hirelingOutfits)
+            hirelingOutfits.append({ name, count });
         m_hirelingOutfits = new TStoreSummaryListModel({ "name", "count" }, std::move(hirelingOutfits), this);
         QList<QVariantList> houseItems;
-        if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t>>>(args, 10))
-            for (const auto& [id, name, count] : *list)
-                houseItems.append({ static_cast<int>(id), qstr(name), static_cast<int>(count) });
+        for (const auto& [id, name, count] : summary.houseItems)
+            houseItems.append({ static_cast<int>(id), name, count });
         m_houseItems = new TStoreSummaryListModel({ "appearanceTypeID", "name", "count" }, std::move(houseItems), this);
     }
 };
@@ -319,6 +292,14 @@ public:
             m_imbumentIcons << QStringLiteral("image://%1/%2").arg(QStringLiteral("imbuement-icons")).arg(icon);
     }
 
+    /// No object in the slot.
+    bool isEmpty() const { return m_appearanceID == 0; }
+    bool isDualWield() const
+    {
+        TAppearanceType* type = tibia::game::rawThingType(static_cast<uint16_t>(m_appearanceID), ThingCategoryItem);
+        return type && type->isDualWield();
+    }
+
     void setPlayer(const CyclopediaCharacterInspection& data)
     {
         setDetails(qstr(data.playerName), data.playerDescriptions);
@@ -354,35 +335,11 @@ private:
     }
 };
 
-/// The offence half of the older combined combat-stats record.
-cyclopedia::CombatStats combinedOffence(const CyclopediaCharacterCombatStats& data)
-{
-    cyclopedia::CombatStats offence;
-    offence.attackDamageType = data.weaponElement;
-    offence.convertedDamage = data.weaponElementDamage / 100.0;
-    offence.convertedDamageType = data.weaponElementType;
-    offence.attackValue = data.weaponMaxHitChance;
-    return offence;
-}
-
-/// The defence half of the older combined combat-stats record (mitigation
-/// as its second argument).
-cyclopedia::CombatStats combinedDefence(const CyclopediaCharacterCombatStats& data, const std::vector<std::any>& args)
-{
-    cyclopedia::CombatStats defence;
-    defence.defence = data.defense;
-    defence.armor = data.armor;
-    if (const auto* mitigation = args.size() > 1 ? std::any_cast<double>(&args[1]) : nullptr)
-        defence.mitigation = *mitigation;
-    else
-        defence.mitigation = static_cast<double>(client::gamecore::argInt(args, 1));
-    if (const game::TPlayerSkillStats* skillStats = game::TPlayerSkillStats::liveInstance())
-        defence.mantra = skillStats->combatStats().mantra;
-    return defence;
-}
 
 
 }
+
+bool TCharacterInfoDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCharacterInfoDialogController(parent)
@@ -396,11 +353,10 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TAccountCharactersModel(this);
     new TQmlChildTransaction({}, {}, TQmlChildTransaction::TibiaCoins, 0, this);
     new TQmlPossibleMainChar({}, {}, {}, 0, this);
-    new TQmlTargetWorld({}, {}, false, false, this);
+    new TQmlTargetWorld({}, false, false, 0, this);
     new TQmlWorldTransferCondition(false, {}, this);
     new TSpritesheetDataObject({}, this);
     new TSimpleNameAndCountModel(this);
-    new TDialogControllerWithFocusHandlingBase(this);
     new TCharacterTradeDialogController(this);
     new TCharacterTradeDuePaymentDialogController(this);
     new TCharacterWorldTransferDialogController(this);
@@ -419,7 +375,7 @@ TCharacterInfoDialogController::EDialogCategory TCharacterInfoDialogController::
     return Category::GeneralStats;
 }
 
-bool TCharacterInfoDialogController::dataIsLoading() const { return !m_data.contains(m_dataType); }
+bool TCharacterInfoDialogController::dataIsLoading() const { return !cyclopedia::TCharacterInfoStorage::instance()->hasInfo(m_dataType); }
 
 void TCharacterInfoDialogController::showDialogTab()
 {
@@ -433,7 +389,7 @@ void TCharacterInfoDialogController::showDialogTab(const int dataType)
     // The records are fetched anew each time the page opens, the base
     // information first.
     m_shown = true;
-    m_data.clear();
+    cyclopedia::TCharacterInfoStorage::instance()->clearAll();
     tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
     request(dataType, true);
 }
@@ -441,7 +397,7 @@ void TCharacterInfoDialogController::showDialogTab(const int dataType)
 void TCharacterInfoDialogController::hideDialogTab()
 {
     m_shown = false;
-    m_data.clear();
+    cyclopedia::TCharacterInfoStorage::instance()->clearAll();
     if (m_outfitDialog) {
         m_outfitDialog->deleteLater();
         m_outfitDialog = nullptr;
@@ -465,20 +421,27 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
     if (!force && dataType == m_dataType)
         return;
     m_dataType = dataType;
-    if (m_data.contains(dataType)) {
+    if (cyclopedia::TCharacterInfoStorage::instance()->hasInfo(dataType)) {
         onCharacterInfoUpdated(dataType);
     } else {
-        if (dataType == RecentDeaths || dataType == RecentKills)
-            m_page[dataType - RecentDeaths] = 1;
         sendRequest(dataType, 1);
         // The general stats show the account infos of the badges answer.
-        if (dataType == GeneralStats) {
-            m_data.erase(Badges);
+        if (dataType == GeneralStats)
             tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES);
-        }
     }
     Q_EMIT dialogCategoryChanged();
     Q_EMIT dataIsLoadingChanged();
+}
+
+TCharacterInfoDialogController::Context TCharacterInfoDialogController::captureContext() const
+{
+    return { m_dataType, cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType) };
+}
+
+void TCharacterInfoDialogController::restoreContext(const Context& context)
+{
+    request(context.dataType, false);
+    sendRequest(context.dataType, static_cast<int>(context.page));
 }
 
 void TCharacterInfoDialogController::sendRequest(const int dataType, const int page)
@@ -487,23 +450,11 @@ void TCharacterInfoDialogController::sendRequest(const int dataType, const int p
     tibia::game::requestSendCharacterInfo(m_characterId, protocolType(dataType), 23, static_cast<uint16_t>(page));
 }
 
-void TCharacterInfoDialogController::store(const int dataType, const Args& args)
-{
-    if (!m_shown)
-        return;
-    m_data[dataType] = args;
-    onCharacterInfoUpdated(dataType);
-}
-
 void TCharacterInfoDialogController::onCharacterInfoUpdated(const int dataType)
 {
     Q_EMIT dataIsLoadingChanged();
-    const auto it = m_data.find(dataType);
-    if (it == m_data.end())
-        return;
-    const Args args = it->second;
     if (dataType == BaseInformation) {
-        updateBaseInfo(args);
+        updateBaseInfo();
         if (m_dataType != BaseInformation)
             return;
     } else {
@@ -516,17 +467,17 @@ void TCharacterInfoDialogController::onCharacterInfoUpdated(const int dataType)
             rebuildStatsBlocks();
             updateAccountInfos();
             break;
-        case OffenceStats: updateOffenceStats(args); break;
-        case DefenceStats: updateDefenceStats(args); break;
-        case MiscStats: updateMiscStats(args); break;
-        case RecentDeaths: updateDeaths(args); break;
-        case RecentKills: updateKills(args); break;
-        case Achievements: updateAchievements(args); break;
-        case ItemSummary: updateItemSummary(args); break;
-        case OutfitsMounts: updateOutfitsMounts(args); break;
-        case StoreSummary: updateStorePurchases(args); break;
-        case Inspection: updateInspection(args); break;
-        case Titles: updateTitles(args); break;
+        case OffenceStats: updateOffenceStats(); break;
+        case DefenceStats: updateDefenceStats(); break;
+        case MiscStats: updateMiscStats(); break;
+        case RecentDeaths: updateDeaths(); break;
+        case RecentKills: updateKills(); break;
+        case Achievements: updateAchievements(); break;
+        case ItemSummary: updateItemSummary(); break;
+        case OutfitsMounts: updateOutfitsMounts(); break;
+        case StoreSummary: updateStorePurchases(); break;
+        case Inspection: updateInspection(); break;
+        case Titles: updateTitles(); break;
         default: break;
     }
 }
@@ -566,9 +517,12 @@ void TCharacterInfoDialogController::clearAllModels()
                   OutfitsMounts, StoreSummary, Inspection });
 }
 
-void TCharacterInfoDialogController::onErrorReceived(const int errorCode)
+/// Explains a failed request; a missing character or one the player may not
+/// view also tells the dialog.
+void TCharacterInfoDialogController::onErrorReceived(int /*dataType*/, const int errorCode)
 {
-    // CIP .
+    if (!m_shown)
+        return;
     const char* text = nullptr;
     switch (errorCode) {
         case 1: text = "charinfo_error_no_data"; break;
@@ -579,12 +533,20 @@ void TCharacterInfoDialogController::onErrorReceived(const int errorCode)
     m_errorMessage->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                           QKeySequence(QStringLiteral("Return"))) });
     m_errorMessage->showMessage(qtTrId("error"), qtTrId(text));
-    if (errorCode == 1)
-        Q_EMIT errorLoadingCharacter();
-    else if (errorCode == 2)
+    if (errorCode == 2)
         Q_EMIT noPermissionsToViewCharacter();
-    else
-        Q_EMIT noPermissionsToInspectCharacter();
+    else if (errorCode == 1)
+        Q_EMIT errorLoadingCharacter();
+}
+
+int TCharacterInfoDialogController::currentPage() const
+{
+    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType));
+}
+
+int TCharacterInfoDialogController::numberOfPages() const
+{
+    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->pageCount(m_dataType));
 }
 
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
@@ -605,24 +567,17 @@ void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 
 void TCharacterInfoDialogController::previousPaginatedPage()
 {
-    if (m_dataType != RecentDeaths && m_dataType != RecentKills)
-        return;
-    const int index = m_dataType - RecentDeaths;
-    if (m_page[index] > 1) {
-        --m_page[index];
-        sendRequest(m_dataType, m_page[index]);
-    }
+    const qint64 page = cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType);
+    if (page > 1)
+        sendRequest(m_dataType, static_cast<int>(page - 1));
 }
 
 void TCharacterInfoDialogController::nextPaginatedPage()
 {
-    if (m_dataType != RecentDeaths && m_dataType != RecentKills)
-        return;
-    const int index = m_dataType - RecentDeaths;
-    if (m_page[index] < m_pages[index]) {
-        ++m_page[index];
-        sendRequest(m_dataType, m_page[index]);
-    }
+    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
+    const qint64 page = storage->currentPage(m_dataType);
+    if (page < storage->pageCount(m_dataType))
+        sendRequest(m_dataType, static_cast<int>(page + 1));
 }
 
 void TCharacterInfoDialogController::openSkillWheelDialog()
@@ -631,7 +586,7 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
     uint32_t characterId = m_characterId;
     if (characterId == 0)
         characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
-    input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, characterId));
+    skillwheel::TSkillWheelProtocolMessageHandler::requestCharacterSkillWheel(characterId);
 }
 
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)
@@ -640,12 +595,63 @@ void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint Appe
     input::publish(action);
 }
 
+/// Opens the outfit dialog in its character info mode over every outfit,
+/// mount and summon skin of the shown character: the clicked one is selected,
+/// the other kinds start on the first of their list (an outfit with its
+/// add-ons), coloured like the appearances page.
 void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const bool IsOutfit, const bool IsMount,
                                                       const bool IsSummonSkin)
 {
+    if (!tibia::game::isOnline())
+        return;
+    Outfit current;
+    current.setCategory(ThingCategoryCreature);
+    if (IsOutfit)
+        current.setId(static_cast<uint16_t>(OutfitID));
+    else if (IsMount)
+        current.setMount(static_cast<uint16_t>(OutfitID));
+    else if (IsSummonSkin)
+        current.setFamiliar(static_cast<uint16_t>(OutfitID));
+    else
+        return;
+    if (const auto* model = dynamic_cast<TOutfitMountSummonSkinsListDataModelSortFilterProxy*>(m_outfitMountModel)) {
+        const auto& colors = model->colors();
+        current.setHead(colors[0]);
+        current.setBody(colors[1]);
+        current.setLegs(colors[2]);
+        current.setFeet(colors[3]);
+        current.setMountColors(colors[4], colors[5], colors[6], colors[7]);
+    }
+
+    using Entry = TCustomiseCharacterModel::Entry;
+    QList<Entry> outfits;
+    QList<Entry> mounts;
+    QList<Entry> summons;
+    if (const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins()) {
+        for (const auto& outfit : appearances->outfits) {
+            if (IsOutfit && outfit.lookType == OutfitID)
+                current.setAddons(static_cast<uint8_t>(outfit.addons));
+            outfits.append({ .id = outfit.lookType, .name = outfit.name, .firstAddOn = (outfit.addons & 1) != 0,
+                             .secondAddOn = (outfit.addons & 2) != 0, .type = static_cast<int>(outfit.source) });
+        }
+        for (const auto& mount : appearances->mounts)
+            mounts.append({ .id = mount.lookType, .name = mount.name, .type = static_cast<int>(mount.source) });
+        for (const auto& summon : appearances->summonSkins)
+            summons.append({ .id = summon.lookType, .name = summon.name, .type = static_cast<int>(summon.source) });
+    }
+    if (!IsOutfit && !outfits.isEmpty()) {
+        current.setId(static_cast<uint16_t>(outfits.first().id));
+        current.setAddons(static_cast<uint8_t>((outfits.first().firstAddOn ? 1 : 0) | (outfits.first().secondAddOn ? 2 : 0)));
+    }
+    if (!IsMount && !mounts.isEmpty())
+        current.setMount(static_cast<uint16_t>(mounts.first().id));
+    if (!IsSummonSkin && !summons.isEmpty())
+        current.setFamiliar(static_cast<uint16_t>(summons.first().id));
+
     if (!m_outfitDialog)
         m_outfitDialog = new TSelectOutfitDialogController(this);
-    m_outfitDialog->openCharacterInfoSelection(OutfitID, IsOutfit, IsMount, IsSummonSkin);
+    m_outfitDialog->openCharacterInfoSelection(current, std::move(outfits), std::move(mounts), std::move(summons), IsOutfit, IsMount,
+                                               IsSummonSkin);
 }
 
 void TCharacterInfoDialogController::rebuildStatsBlocks()
@@ -691,171 +697,134 @@ void TCharacterInfoDialogController::replace(QList<QObject*>& member, QList<QObj
 }
 
 /// CIP: the base information object (name, vocation, level, outfit, title).
-void TCharacterInfoDialogController::updateBaseInfo(const Args& args)
+void TCharacterInfoDialogController::updateBaseInfo()
 {
-    replace(m_characterBaseInfo, static_cast<QObject*>(new TCharacterBaseQmlInfo(args, this)));
+    const cyclopedia::TCharacterBaseInformation information = cyclopedia::TCharacterInfoStorage::instance()->baseInformation();
+    replace(m_characterBaseInfo, static_cast<QObject*>(new TCharacterBaseQmlInfo(information, this)));
     Q_EMIT dataModelChanged();
 }
 
-/// CIP: the offence stats object from the received record.
-void TCharacterInfoDialogController::updateOffenceStats(const Args& args)
+/// CIP: the offence stats object over the storage's provider.
+void TCharacterInfoDialogController::updateOffenceStats()
 {
-    if (const auto* data = arg<CyclopediaCharacterOffenceStats>(args, 0))
-        replace(m_offenceStats, static_cast<QObject*>(new cyclopedia::TOffenceStatsQmlData(std::make_shared<cyclopedia::TPlayerOffenceStatsProvider>(*data), this)));
-    else if (const auto* combined = arg<CyclopediaCharacterCombatStats>(args, 0))
-        replace(m_offenceStats, static_cast<QObject*>(new cyclopedia::TOffenceStatsQmlData(combinedOffence(*combined), this)));
+    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->offenceStats())
+        replace(m_offenceStats, static_cast<QObject*>(new cyclopedia::TOffenceStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
 
-/// CIP: the defence stats object from the received record.
-void TCharacterInfoDialogController::updateDefenceStats(const Args& args)
+/// CIP: the defence stats object over the storage's provider.
+void TCharacterInfoDialogController::updateDefenceStats()
 {
-    if (const auto* data = arg<CyclopediaCharacterDefenceStats>(args, 0))
-        replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(std::make_shared<cyclopedia::TPlayerDefenceStatsProvider>(*data), this)));
-    else if (const auto* combined = arg<CyclopediaCharacterCombatStats>(args, 0))
-        replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(combinedDefence(*combined, args), this)));
+    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->defenceStats())
+        replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
 
-/// CIP: the misc stats object from the record and the live skill stats.
-void TCharacterInfoDialogController::updateMiscStats(const Args& args)
+/// CIP: the misc stats object over the storage's provider and the live skill stats.
+void TCharacterInfoDialogController::updateMiscStats()
 {
-    if (const auto* data = arg<CyclopediaCharacterMiscStats>(args, 0))
-        replace(m_miscStats, static_cast<QObject*>(new cyclopedia::TMiscStatsQmlData(std::make_shared<cyclopedia::TPlayerMiscStatsProvider>(*data), this)));
+    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->miscStats())
+        replace(m_miscStats, static_cast<QObject*>(new cyclopedia::TMiscStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: one death object per entry.
-void TCharacterInfoDialogController::updateDeaths(const Args& args)
+void TCharacterInfoDialogController::updateDeaths()
 {
     QList<QObject*> deaths;
-    if (const auto* data = arg<CyclopediaCharacterRecentDeaths>(args, 0)) {
-        for (const RecentDeathEntry& entry : data->entries)
-            deaths.append(new TDeathQmlData(entry, this));
-    }
+    for (const RecentDeathEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentDeaths())
+        deaths.append(new TDeathQmlData(entry, this));
     replace(m_characterDeaths, std::move(deaths));
-    m_currentPage = m_page[0];
-    m_numberOfPages = m_pages[0];
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: one kill object per entry.
-void TCharacterInfoDialogController::updateKills(const Args& args)
+void TCharacterInfoDialogController::updateKills()
 {
     QList<QObject*> kills;
-    if (const auto* data = arg<CyclopediaCharacterRecentPvPKills>(args, 0)) {
-        for (const RecentPvPKillEntry& entry : data->entries)
-            kills.append(new TKillQmlData(entry, this));
-    }
+    for (const RecentPvPKillEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentPvpKills())
+        kills.append(new TKillQmlData(entry, this));
     replace(m_characterKills, std::move(kills));
-    m_currentPage = m_page[1];
-    m_numberOfPages = m_pages[1];
     Q_EMIT dataModelChanged();
 }
 
 /// CIP: the store purchases object, built from the summary as it is.
-void TCharacterInfoDialogController::updateStorePurchases(const Args& args)
+void TCharacterInfoDialogController::updateStorePurchases()
 {
-    replace(m_storePurchases, static_cast<QObject*>(new TStorePurchasesQmlData(args, this)));
+    if (const auto summary = cyclopedia::TCharacterInfoStorage::instance()->storeSummary())
+        replace(m_storePurchases, static_cast<QObject*>(new TStorePurchasesQmlData(*summary, this)));
     Q_EMIT dataModelChanged();
 }
 
 /// The general stats page's account infos, from the badges record.
 void TCharacterInfoDialogController::updateAccountInfos()
 {
-    if (const auto it = m_data.find(Badges); it != m_data.end())
-        replace(m_accountInfos, static_cast<QObject*>(new TAccountInfoQmlData(it->second, this)));
+    if (const auto infos = cyclopedia::TCharacterInfoStorage::instance()->accountInfos())
+        replace(m_accountInfos, static_cast<QObject*>(new TAccountInfoQmlData(*infos, this)));
     Q_EMIT dataModelChanged();
 }
 
-/// Slots 1..10 then the player (99), filled from the entries.
-void TCharacterInfoDialogController::updateInspection(const Args& args)
+/// The ten equipment slots and the inspected character (slot 99), built only
+/// when the storage holds an inspection.
+void TCharacterInfoDialogController::updateInspection()
 {
-    const auto* data = arg<CyclopediaCharacterInspection>(args, 0);
-    if (!data)
+    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
+    if (!storage->hasInfo(Inspection))
         return;
+    const CyclopediaCharacterInspection inspection = storage->inspection();
     QList<QObject*> objects;
     for (int slot = 1; slot <= InspectSlots; ++slot)
         objects.append(new TInspectObjectQmlData(slot, this));
     auto* player = new TInspectObjectQmlData(InspectPlayerSlot, this);
     objects.append(player);
-    bool rightHandEmpty = true;
-    uint16_t leftHandTypeId = 0;
-    bool leftHandDualWield = false;
-    for (const InspectionInventoryItem& entry : data->inventoryItems) {
-        if (entry.slot < 1 || entry.slot > InspectSlots)
-            continue;
-        static_cast<TInspectObjectQmlData*>(objects[entry.slot - 1])->setItem(entry);
-        if (entry.slot == InspectRightHandSlot && entry.typeId != 0)
-            rightHandEmpty = false;
-        if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
-            leftHandTypeId = entry.typeId;
-            if (ThingType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
-                leftHandDualWield = type->isDualWield();
-        }
+    for (const InspectionInventoryItem& entry : inspection.inventoryItems) {
+        if (entry.slot >= 1 && entry.slot <= InspectSlots)
+            static_cast<TInspectObjectQmlData*>(objects[entry.slot - 1])->setItem(entry);
     }
-    player->setPlayer(*data);
-    m_hasDualWielding = leftHandDualWield && rightHandEmpty;
-    m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
+    player->setPlayer(inspection);
     replace(m_inspectPlayerList, std::move(objects));
     Q_EMIT dataModelChanged();
 }
 
+/// A dual-wield weapon in the left hand with the right hand empty.
+bool TCharacterInfoDialogController::hasDualWielding() const
+{
+    bool leftHandDualWield = false;
+    bool rightHandEmpty = false;
+    for (QObject* object : m_inspectPlayerList) {
+        const auto* data = static_cast<const TInspectObjectQmlData*>(object);
+        if (data->slotID() == InspectLeftHandSlot && !data->isEmpty() && data->isDualWield())
+            leftHandDualWield = true;
+        if (data->slotID() == InspectRightHandSlot && data->isEmpty())
+            rightHandEmpty = true;
+    }
+    return leftHandDualWield && rightHandEmpty;
+}
+
+/// The left hand's dual-wield weapon, 0 without one.
+int TCharacterInfoDialogController::dualWieldingObjectID() const
+{
+    for (QObject* object : m_inspectPlayerList) {
+        const auto* data = static_cast<const TInspectObjectQmlData*>(object);
+        if (data->slotID() == InspectLeftHandSlot && !data->isEmpty() && data->isDualWield())
+            return static_cast<int>(data->appearanceID());
+    }
+    return 0;
+}
+
 void TCharacterInfoDialogController::hookEvents()
 {
-    using client::gamecore::argInt;
-    hookModelEvents();
-    const auto storeAs = [this](const int dataType) {
-        return [this, dataType](GameObject*, const Args& args) {
-            store(dataType, args);
-            return std::any{};
-        };
-    };
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInspectionState", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInspectionState", [this](GameObject*, const std::vector<std::any>& args) {
         m_inspectionState = client::gamecore::argInt(args, 1);
         Q_EMIT inspectionStateChanged();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterBaseInformation", storeAs(BaseInformation));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterGeneralStats", storeAs(GeneralStats));
-    // The badges answer only feeds the general stats page's account infos.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterBadges", [this](GameObject*, const Args& args) {
-        if (!m_shown)
-            return std::any{};
-        m_data[Badges] = args;
-        if (m_dataType == GeneralStats)
-            updateAccountInfos();
-        return std::any{};
+    cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
+    connect(storage, &cyclopedia::TCharacterInfoStorage::infoUpdated, this, [this](const int dataType) {
+        if (m_shown)
+            onCharacterInfoUpdated(dataType);
     });
-    // The older combined combat-stats record fills both the offence and the
-    // defence page.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterCombatStats", [this](GameObject*, const Args& args) {
-        store(OffenceStats, args);
-        store(DefenceStats, args);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterOffenceStats", storeAs(OffenceStats));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterDefenceStats", storeAs(DefenceStats));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterMiscStats", storeAs(MiscStats));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterPagination", [this](GameObject*, const Args& args) {
-        const int type = static_cast<int>(argInt(args, 0));
-        const int index = type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS ? 0 : type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS ? 1 : -1;
-        if (index < 0)
-            return std::any{};
-        m_page[index] = std::max<int>(1, static_cast<int>(argInt(args, 1)));
-        m_pages[index] = std::max<int>(1, static_cast<int>(argInt(args, 2)));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterRecentDeaths", storeAs(RecentDeaths));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterRecentKills", storeAs(RecentKills));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaStoreSummary", storeAs(StoreSummary));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterInspection", storeAs(Inspection));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterInfoError", [this](GameObject*, const Args& args) {
-        if (m_shown && static_cast<int>(argInt(args, 0)) == protocolType(m_dataType))
-            onErrorReceived(static_cast<int>(argInt(args, 1)));
-        return std::any{};
-    });
+    connect(storage, &cyclopedia::TCharacterInfoStorage::errorReceived, this, &TCharacterInfoDialogController::onErrorReceived);
 }
 
 }

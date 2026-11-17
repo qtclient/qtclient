@@ -13,9 +13,9 @@ input::TMinimapMarkerData markerData(const Position& coord)
 {
     input::TMinimapMarkerData data{ coord, 0, {} };
     if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active()) {
-        if (const std::optional<MinimapMarker> marker = markers->markerAt(coord)) {
+        if (const TMinimapMarkerPtr marker = markers->markerAt(worldmap::TWorldMapCoordinate(coord))) {
             data.icon = marker->icon;
-            data.description = QString::fromStdString(marker->description);
+            data.description = marker->description;
         }
     }
     return data;
@@ -25,7 +25,7 @@ input::TMinimapMarkerData markerData(const Position& coord)
 
 input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coord) const
 {
-    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active(); markers && markers->markerAt(coord))
+    if (TMinimapMarkerStorage* markers = TMinimapMarkerStorage::active(); markers && markers->markerAt(worldmap::TWorldMapCoordinate(coord)))
         return markerActions(coord);
     return fieldActions(coord);
 }

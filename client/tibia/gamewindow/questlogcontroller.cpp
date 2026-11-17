@@ -98,7 +98,6 @@ QVariant TQuestLinesModel::data(const QModelIndex& index, const int role) const
         return {};
     const Line& line = m_lines[index.row()];
     switch (role) {
-        case Qt::DisplayRole:
         case NameRole: return line.name;
         case IdRole: return line.id;
         case IsCompletedRole: return line.completed;
@@ -234,9 +233,8 @@ QVariant TQuestLinePartsModel::data(const QModelIndex& index, const int role) co
         return {};
     const Part& part = m_parts[index.row()];
     switch (role) {
-        case Qt::DisplayRole:
         case NameRole: return part.name;
-        case IdRole: return part.id;
+        case IdRole: return static_cast<uint>(part.id);
         case DescriptionRole: return part.description;
         case IsCompletedRole: return part.completed;
         default: return {};

@@ -9,7 +9,9 @@
 #include <QObject>
 #include <QString>
 
+#include <cstdint>
 #include <functional>
+#include <vector>
 
 namespace tibia {
 namespace chat {
@@ -28,14 +30,34 @@ public:
     using cip::tibia::chat::TChatGameActionHandler::TChatGameActionHandler;
 };
 
-/// CIP chat::TChatStorage — keywordButtons / npcTalkPartners signals (contract).
-/// NPC keyword UI lives on TNpcDialogController; this is the CIP storage
-/// surface owned by TChatController for that session lifetime.
+/// An NPC keyword button: the KEYWORDBUTTONICON_* value and the keyword it says.
+struct TKeywordButton
+{
+    int icon = 0;
+    QString keyword;
+
+    bool operator==(const TKeywordButton&) const = default;
+};
+
+/// The NPC conversation's partners and keyword buttons (CIP: chat::TChatStorage).
 class TChatStorage final : public cip::tibia::chat::TChatStorage
 {
     Q_OBJECT
 public:
     using cip::tibia::chat::TChatStorage::TChatStorage;
+
+    /// v12: npcTalkPartnersChanged when they differ.
+    void setNpcTalkPartners(const std::vector<uint32_t>& npcIds);
+    /// v13.
+    std::vector<uint32_t> npcTalkPartners() const { return m_npcTalkPartners; }
+    /// v14: keywordButtonsChanged when they differ.
+    void setKeywordButtons(const std::vector<TKeywordButton>& buttons);
+    /// v15.
+    std::vector<TKeywordButton> keywordButtons() const { return m_keywordButtons; }
+
+private:
+    std::vector<uint32_t> m_npcTalkPartners;
+    std::vector<TKeywordButton> m_keywordButtons;
 };
 
 /// The chat's game action candidates (CIP: chat::TChatGameActionProvider):
