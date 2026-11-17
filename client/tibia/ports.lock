@@ -32,6 +32,7 @@
 (anonymous namespace)::TFriendListModel::v53	79e772f811f2a1ec	ported	friends/friendlistmodels.cpp:TFriendListModel::itemData
 (anonymous namespace)::TGainWasteModel::v44	37a6c3368afa4d2d	ported	analysers/analyserwidgets.cpp:TGainWasteModel::roleNames
 (anonymous namespace)::TImbuedObjectsModel::v44	2f3d2a0baedd9bf7	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuedObjectsModel::roleNames
+(anonymous namespace)::TImbuedObjectsModel::v53	94a8dfdc4811f05d	ported	gamewindow/imbuementtrackerwidgetcontroller.cpp:TImbuedObjectsModel::data
 (anonymous namespace)::TInviteListModel::v44	243742c00af7dea3	ported	friends/friendlistmodels.cpp:TInviteListModel::roleNames
 (anonymous namespace)::TInviteListModel::v53	3a841869c5303801	ported	friends/friendlistmodels.cpp:TInviteListModel::itemData
 (anonymous namespace)::TItemHighlightsAbstractListModel::v44	4276ddfc163b16b3	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::roleNames
@@ -9261,6 +9262,7 @@ sub_68c0cd797e69#3	68c0cd797e697365	skip	generated: library template instantiati
 sub_68c4da126f01	68c4da126f01c0ee	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGuildMessage
 sub_68ce48843f4d	68ce48843f4d570a	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_68d931bb1f8c	68d931bb1f8c74c7	inlined	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
+sub_68da4b7ec3fa	68da4b7ec3fa7118	ported	gamewindow/appearanceinstanceroledata.cpp:appearanceInstanceRoleData
 sub_68dd97f15170	68dd97f15170526f	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::hour
 sub_68deb2d5bab1	68deb2d5bab16c0d	skip	generated: QMetaType registration (moc)
 sub_68e16ea374f9	68e16ea374f9b376	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOwnOffersOpened
@@ -11368,6 +11370,7 @@ sub_9f4653c2aa31	9f4653c2aa318d9a	skip	library: QList<QKeySequence> instantiatio
 sub_9f50bb9e1673#5	9f50bb9e1673a30a	ported	friends/friendlistmodels.cpp:TFriendListModel::TFriendListModel
 sub_9f50bb9e1673#6	9f50bb9e1673a30a	ported	friends/friendlistmodels.cpp:TInviteListModel::TInviteListModel
 sub_9f53ff3eca53	9f53ff3eca530bf3	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::onOkButtonClicked
+sub_9f5b78926ae7	9f5b78926ae7532b	ported	container/containerslotinformation.cpp:ammoText
 sub_9f74913c004a	9f74913c004a29b2	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 sub_9f77eee726a4	9f77eee726a4a016	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::stepDuration	test=tests/client/creaturemovement_test.cpp
 sub_9f8f4c9ee659	9f8f4c9ee659abab	skip	generated: compiler-generated destructor body (vtable install + member destruction only, read)

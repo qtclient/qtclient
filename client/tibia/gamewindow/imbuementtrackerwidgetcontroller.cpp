@@ -1,5 +1,7 @@
 #include "imbuementtrackerwidgetcontroller.h"
 
+#include "gamewindow/appearanceinstanceroledata.h"
+
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "qmlcomponents/texthelper.h"
@@ -60,6 +62,16 @@ int TImbuedObjectsModel::rowCount(const QModelIndex& parent) const
     return parent.isValid() ? 0 : int(m_rows.size());
 }
 
+namespace {
+
+/// The object roles without options or prices, the count in its short form.
+QVariant objectData(const TImbuedObjectsModel::Row& row, const EAppearanceInstanceRole role)
+{
+    return appearanceInstanceRoleData(row.object, role, TAppearanceInstanceRoleSources{}, true);
+}
+
+}
+
 QVariant TImbuedObjectsModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= int(m_rows.size()))
@@ -85,23 +97,17 @@ QVariant TImbuedObjectsModel::data(const QModelIndex& index, const int role) con
         return row.inventoryPosition;
     case SlotCountRole:
         return row.slotCount;
-    case TypeIdRole:
-        return row.typeId;
-    case CumulativeCountRole:
-        return row.cumulativeCount;
-    case LiquidTypeRole:
-        return row.liquidType;
-    case HookDirectionRole:
-        return row.hookDirection;
-    case UpgradeTierRole:
-        return row.upgradeTier;
-    case TypeCountRole:
-    case CountStringRole:
-    case AlternativeSlotStringRole:
-    case LootValueImageSourceUnderItemRole:
-    case LootValueImageSourceOverItemRole:
-    case ManagedContainerTooltipRole:
-        return QString{};
+    case TypeIdRole: return objectData(row, EAppearanceInstanceRole::TypeId);
+    case CumulativeCountRole: return objectData(row, EAppearanceInstanceRole::CumulativeCount);
+    case TypeCountRole: return objectData(row, EAppearanceInstanceRole::TypeCount);
+    case CountStringRole: return objectData(row, EAppearanceInstanceRole::CountString);
+    case AlternativeSlotStringRole: return objectData(row, EAppearanceInstanceRole::AlternativeSlotString);
+    case LiquidTypeRole: return objectData(row, EAppearanceInstanceRole::LiquidType);
+    case HookDirectionRole: return objectData(row, EAppearanceInstanceRole::HookDirection);
+    case LootValueImageSourceUnderItemRole: return objectData(row, EAppearanceInstanceRole::LootValueImageSourceUnderItem);
+    case LootValueImageSourceOverItemRole: return objectData(row, EAppearanceInstanceRole::LootValueImageSourceOverItem);
+    case ManagedContainerTooltipRole: return objectData(row, EAppearanceInstanceRole::ManagedContainerTooltip);
+    case UpgradeTierRole: return objectData(row, EAppearanceInstanceRole::UpgradeTier);
     default:
         return {};
     }
@@ -150,10 +156,7 @@ void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
         Row row;
         row.inventoryPosition = item.slot;
         row.slotCount = item.totalSlots;
-        row.typeId = item.typeId;
-        row.upgradeTier = item.tier;
-        row.cumulativeCount = item.count;
-        row.liquidType = item.fluidOrSubtype;
+        row.object = container::TInventorySlot::fromTypeId(item.typeId, item.count > 0 ? item.count : item.fluidOrSubtype, item.tier);
         for (const auto& [slotIndex, slot] : item.slots) {
             if (slotIndex >= 3)
                 continue;

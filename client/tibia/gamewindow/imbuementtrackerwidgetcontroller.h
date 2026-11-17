@@ -3,6 +3,8 @@
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
+#include "container/containerciptypes.h"
+
 #include <cip_gen.h>
 
 #include <QJsonObject>
@@ -67,23 +69,19 @@ public:
 
     void setItems(std::vector<ImbuementTrackerItem> items);
 
-private:
-    friend class TImbuedObjectsSortFilterProxyModel;
-
     struct Row
     {
         int inventoryPosition = 0;
-        quint16 typeId = 0;
-        int upgradeTier = 0;
-        int cumulativeCount = 0;
-        int liquidType = 0;
-        int hookDirection = 0;
+        container::TInventorySlot object;
         int slotCount = 0;
         int iconId[3] = {};
         QString name[3];
         qint64 remainingMs[3] = {};
         int filledSlots = 0;
     };
+
+private:
+    friend class TImbuedObjectsSortFilterProxyModel;
 
     std::vector<Row> m_rows;
 };

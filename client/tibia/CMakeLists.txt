@@ -473,6 +473,7 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/playermiscstatsprovider.cpp cyclopedia/playermiscstatsprovider.h
     game/miscstatsprovider.h
     game/statusbarstorage.cpp game/statusbarstorage.h
+    gamewindow/appearanceinstanceroledata.cpp gamewindow/appearanceinstanceroledata.h
     gamewindow/appearanceinstancelistmodel.cpp gamewindow/appearanceinstancelistmodel.h
     gamewindow/battlelistcontroller.cpp gamewindow/battlelistcontroller.h
     gamewindow/buttonbarcontroller.cpp gamewindow/buttonbarcontroller.h
