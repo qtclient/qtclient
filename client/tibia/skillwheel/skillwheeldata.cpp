@@ -1311,6 +1311,8 @@ bool hasBasicMod(const int mod) { return mod >= 0 && mod < BasicModCount && Basi
 
 bool isAugmentationMod(const int mod) { return mod >= 0 && mod < SupremeModCount && SupremeCategories[mod] == 4; }
 
+int supremeModCategory(const int mod) { return mod >= 0 && mod < SupremeModCount ? SupremeCategories[mod] : -1; }
+
 bool supremeModForVocation(const int mod, const int vocationIndex)
 {
     if ((mod >= 0 && mod <= 3) || mod == 5)

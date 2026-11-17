@@ -987,14 +987,13 @@ bool TSkillWheelPageController::askToSaveBeforeClose()
 TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TGemAtelierPageController(parent)
     , m_storage(storage)
-    , m_list(new TInventoryGemListModel(storage, this))
-    , m_filter(new TInventoryGemSortFilterProxyModel(storage, this))
+    , m_list(new TInventoryGemListModel(this))
+    , m_filter(new TInventoryGemSortFilterProxyModel(m_list, this))
     , m_pages(new TPaginationProxyModel(15, this))
     , m_dismantleConfirm(new gamewindow::TMessageDialogController(this))
 {
     m_dismantleConfirm->setCloseOnButtonClicked(true);
     connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { TSkillWheelProtocolMessageHandler::dismantleGem(m_dismantleGemId); });
-    m_filter->setSourceModel(m_list);
     m_pages->setSourceModel(m_filter);
     m_gemInventory = m_pages;
     m_maxRevealedGems = MaxRevealedGems;
@@ -1011,6 +1010,7 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     });
     connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onGemsChanged);
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged);
+    connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TGemAtelierPageController::onWheelChanged);
     for (const auto signal : { &TSkillWheelStorage::unrevealedGemsChanged, &TSkillWheelStorage::lesserFragmentsChanged,
                                &TSkillWheelStorage::greaterFragmentsChanged })
         connect(m_storage, signal, this, &TGemAtelierPageController::onResourcesChanged);
@@ -1019,12 +1019,17 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
         if (type == tibia::client::RESOURCE_BANK_BALANCE || type == tibia::client::RESOURCE_GOLD_EQUIPPED)
             onResourcesChanged();
     });
+    m_list->setGems(m_storage->gemInventory());
+    m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
+                             m_storage->supremeGrades());
     updateSockets();
 }
 
 void TGemAtelierPageController::onGemsChanged()
 {
-    m_list->reset();
+    m_list->setGems(m_storage->gemInventory());
+    m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
+                             m_storage->supremeGrades());
     updateSockets();
     Q_EMIT gemInventoryChanged();
     Q_EMIT unrevealedGemsChanged();
@@ -1034,7 +1039,8 @@ void TGemAtelierPageController::onGemsChanged()
 
 void TGemAtelierPageController::onWheelChanged()
 {
-    m_list->refresh();
+    m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
+                             m_storage->supremeGrades());
     updateSockets();
 }
 
@@ -1174,7 +1180,6 @@ void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDown
         m_filter->setFilterModName(QString());
         m_filter->setFilterGemQuality(-1);
         m_filter->setShowLockedOnly(false);
-        m_filter->setFilterDomainAffinity(-1);
     }
     const int row = m_list->rowOfGem(GemId);
     const QModelIndex filtered = row < 0 ? QModelIndex() : m_filter->mapFromSource(m_list->index(row, 0));
@@ -1209,7 +1214,7 @@ void TGemAtelierPageController::selectModInFragmentWorkshop(const int ModId, con
 TFragmentWorkshopPageController::TFragmentWorkshopPageController(TSkillWheelStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TFragmentWorkshopPageController(parent)
     , m_storage(storage)
-    , m_list(new TModListModel(storage, this))
+    , m_list(new TModListModel(this))
     , m_filter(new TModListSortFilterProxyModel(m_list, this))
     , m_pages(new TPaginationProxyModel(30, this))
 {
@@ -1255,14 +1260,16 @@ void TFragmentWorkshopPageController::setFilterMods(const int v)
 void TFragmentWorkshopPageController::onModsChanged()
 {
     const QModelIndex current = m_selectedModIndex;
-    const TModEntry* selected = nullptr;
+    const TModListEntry* selected = nullptr;
     if (current.isValid()) {
         const QModelIndex source = m_filter->mapToSource(m_pages->mapToSource(current));
         selected = m_list->entry(source.row());
     }
-    const bool basic = selected ? selected->isBasic : m_pendingBasic;
-    const int mod = selected ? selected->modId : m_pendingMod;
-    m_list->reset();
+    const bool basic = selected ? selected->basic : m_pendingBasic;
+    const int mod = selected ? selected->mod : m_pendingMod;
+    m_list->setMods(m_storage->modList());
+    if (const auto configuration = m_storage->currentSkillWheel())
+        m_list->setConfiguration(*configuration, m_storage->basicGrades(), m_storage->supremeGrades());
     Q_EMIT modGradesChanged();
     if (mod >= 0)
         selectMod(basic, mod);

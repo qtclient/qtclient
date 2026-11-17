@@ -273,6 +273,8 @@ int supremeModCount();
 bool hasBasicMod(int mod);
 /// CIP : the supreme mod is a spell augmentation.
 bool isAugmentationMod(int mod);
+/// The supreme mod's kind (4 augmentation, 5 revelation mastery, …); -1 for an unknown mod.
+int supremeModCategory(int mod);
 /// CIP mod list (0x101122xxx): supreme mods 0..3 and 5 suit every vocation, the rest one vocation index.
 bool supremeModForVocation(int mod, int vocationIndex);
 /// CIP : the grade points a vocation can earn (23 supreme + the basic mods).

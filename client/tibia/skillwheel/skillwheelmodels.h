@@ -23,44 +23,56 @@ public:
     QModelIndex showSourceRow(int sourceRow);
 };
 
-/// The revealed gems of the atelier (CIP roles 0x101..0x11a,
-/// data).
+/// The revealed gems of the atelier (CIP: tibia::skillwheel::TInventoryGemListModel):
+/// the inventory, and the configurations and mod grades the texts are computed with.
 class TInventoryGemListModel final : public cip::tibia::skillwheel::TInventoryGemListModel
 {
     Q_OBJECT
 public:
     enum ERole {
-        GemImageSource = 0x101, DomainAffinitySource, GemName,
-        Mod1Id, Mod1ImageSource, Mod1EffectString, Mod1Active, Mod1Grade, Mod1PotentialGrade,
-        Mod2Id, Mod2ImageSource, Mod2EffectString, Mod2Active, Mod2Grade, Mod2PotentialGrade,
-        Mod3Id, Mod3ImageSource, Mod3EffectString, Mod3Active, Mod3Grade, Mod3PotentialGrade,
-        IsSocketed, GemId, CanBeDismantled, IsLastOfDomainAffinity, IsLocked,
+        GemImageSource = 0x101, GemName, Quality,
+        Mod1Id, Mod1ImageSource, Mod1EffectString, Mod1Grade,
+        Mod2Id, Mod2ImageSource, Mod2EffectString, Mod2Grade,
+        Mod3Id, Mod3ImageSource, Mod3EffectString, Mod3Grade,
+        IsSocketed, GemId, CanBeDismantled, IsLocked,
     };
 
-    explicit TInventoryGemListModel(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    explicit TInventoryGemListModel(QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void reset();
-    void refresh();
+    void setGems(const std::vector<TGem>& gems);
+    /// `configuration` is the shown wheel (texts, socketed gems); a gem in `serverConfiguration`
+    /// cannot be dismantled.
+    void setConfiguration(const std::optional<TWheel>& configuration, const std::optional<TWheel>& serverConfiguration,
+                          const TGrades& basicGrades, const TGrades& supremeGrades);
+    const TGem* gem(int row) const;
     int rowOfGem(int gemId) const;
+    bool hasConfiguration() const { return m_configuration.has_value(); }
+    /// The configuration's vocation index, 0 without one.
+    int vocationIndex() const;
+    int basicGrade(int mod) const;
+    int supremeGrade(int mod) const;
 
 private:
-    TSkillWheelStorage* m_storage;
+    std::vector<TGem> m_gems;
+    std::optional<TWheel> m_configuration;
+    std::optional<TWheel> m_serverConfiguration;
+    TGrades m_basicGrades;
+    TGrades m_supremeGrades;
 };
 
-/// CIP : the mod text, domain, quality and locked filters.
+/// CIP : the mod text, quality and locked filters.
 class TInventoryGemSortFilterProxyModel final : public cip::tibia::skillwheel::TInventoryGemSortFilterProxyModel
 {
     Q_OBJECT
 
 public:
-    TInventoryGemSortFilterProxyModel(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    explicit TInventoryGemSortFilterProxyModel(TInventoryGemListModel* source, QObject* parent = nullptr);
 
     void setFilterModName(const QString& v) override;
-    void setFilterDomainAffinity(int v);
     void setFilterGemQuality(int v) override;
     void setShowLockedOnly(bool v) override;
     bool accepts(const TGem& gem) const;
@@ -72,22 +84,11 @@ protected:
 private:
     void refilter();
 
-    TSkillWheelStorage* m_storage;
-    int m_filterDomainAffinity = -1;
+    TInventoryGemListModel* m_source;
 };
 
-/// One mod of the fragment workshop.
-struct TModEntry
-{
-    bool isBasic = true;
-    bool isSocketed = false;
-    int modId = 0;
-    int amount = 0;
-    int grade = 0;
-};
-
-/// The fragment workshop mods: the vocation's supreme mods, then the basic ones.
-/// CIP: tibia::skillwheel::TModListModel (rowData invokable).
+/// The fragment workshop mods (CIP: tibia::skillwheel::TModListModel): the storage's
+/// mod list, and the configuration and mod grades the texts are computed with.
 class TModListModel final : public cip::tibia::skillwheel::TModListModel
 {
     Q_OBJECT
@@ -97,27 +98,31 @@ public:
         Grade1Bonus, Grade2Bonus, Grade3Bonus, Grade4Bonus,
     };
 
-    explicit TModListModel(TSkillWheelStorage* storage, QObject* parent = nullptr);
+    explicit TModListModel(QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
 
-    void reset();
-    const TModEntry* entry(int row) const;
+    void setMods(const std::vector<TModListEntry>& mods);
+    void setConfiguration(const TWheel& configuration, const TGrades& basicGrades, const TGrades& supremeGrades);
+    const TModListEntry* entry(int row) const;
     int rowOfMod(bool isBasic, int modId) const;
-    QString modName(const TModEntry& entry) const;
-    int vocationIndex() const { return m_storage->vocationIndex(); }
+    /// The configuration's vocation index, 0 without one.
+    int vocationIndex() const;
+    int basicGrade(int mod) const;
+    int supremeGrade(int mod) const;
 
 private:
-    TSkillWheelStorage* m_storage;
-    QList<TModEntry> m_entries;
+    std::vector<TModListEntry> m_mods;
+    std::optional<TWheel> m_configuration;
+    TGrades m_basicGrades;
+    TGrades m_supremeGrades;
 };
 
-/// CIP: tibia::skillwheel::TModListSortFilterProxyModel (filterChanged / filterModName).
-/// Tip also shadows FragmentWorkshop `filterMods` (0 all, 1 basic, 2 supreme,
-/// 3 in a vessel, 4..7 grade I..IV).
+/// CIP: tibia::skillwheel::TModListSortFilterProxyModel: the mod name filter and the
+/// workshop's mod filter (0 all, 1 basic, 2 supreme, 3 in a vessel, 4..7 grade I..IV).
 class TModListSortFilterProxyModel final : public cip::tibia::skillwheel::TModListSortFilterProxyModel
 {
     Q_OBJECT
