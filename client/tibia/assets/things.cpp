@@ -18,7 +18,7 @@
 
 #include <appearances.pb.h>
 #include <staticdata.pb.h>
-#include "assets/assetcatalog.h"
+#include "assets/contentcatalog.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -440,6 +440,13 @@ std::string catalogFile(const tibia::assets::TAssetCatalog& catalog, const tibia
     return catalog.fileOf(type).toStdString();
 }
 
+std::string proficienciesFileOf(const std::string& directory)
+{
+    tibia::assets::TAssetCatalog catalog;
+    catalog.load(catalogDocument(directory));
+    return catalogFile(catalog, tibia::assets::TAsset::Proficiencies);
+}
+
 }
 
 namespace tibia::appearances {
@@ -513,31 +520,10 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         }
 
         tibia::assets::sprites().clear();
-        const QJsonDocument catalogJson = catalogDocument(directory);
-        const tibia::assets::TAssetCatalog catalog(catalogJson);
+        tibia::assets::TContentCatalog catalog;
+        catalog.load(catalogDocument(directory));
         const std::string appearancesFile = catalogFile(catalog, tibia::assets::TAsset::Appearances);
-        int spritesCount = 0;
-        for (const auto& entryValue : catalogJson.array()) {
-            const auto entry = entryValue.toObject();
-            const auto type = entry.value("type").toString().toStdString();
-            if (type == "sprite") {
-                int lastSpriteId = entry.value("lastspriteid").toInt(0);
-                const std::string file = entry.value("file").toString().toStdString();
-                // CIP sprites::TAssetSpritesheetIdentifier / TSpritesheetsMetadataManager.
-                const tibia::sprites::TAssetSpritesheetIdentifier sheetId(file);
-                auto sheet = std::make_shared<SpriteSheet>(entry.value("firstspriteid").toInt(0), lastSpriteId,
-                                                           static_cast<SpriteLayout>(entry.value("spritetype").toInt(0)),
-                                                           sheetId.file());
-                const int maxSpriteId = sheet->firstId + sheet->getSpritesPerSheet() - 1;
-                if (lastSpriteId > maxSpriteId) {
-                    lastSpriteId = maxSpriteId;
-                    sheet->lastId = maxSpriteId;
-                }
-                tibia::assets::sprites().addSheet(sheet);
-                spritesCount = std::max(spritesCount, lastSpriteId);
-            }
-        }
-        tibia::assets::sprites().setSpritesCount(spritesCount + 1);
+        tibia::assets::sprites().setSpritesCount(catalog.lastSpriteId() + 1);
         tibia::assets::sprites().setPath(directory);
         if (appearancesFile.empty())
             throw std::runtime_error("catalog has no appearances file");
@@ -624,7 +610,8 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
 bool TAppearancesManager::loadStaticData(const std::string& directory)
 {
     try {
-        const tibia::assets::TAssetCatalog catalog(catalogDocument(directory));
+        tibia::assets::TAssetCatalog catalog;
+        catalog.load(catalogDocument(directory));
         const auto fileName = catalogFile(catalog, tibia::assets::TAsset::StaticData);
         if (fileName.empty())
             throw std::runtime_error("catalog has no staticdata file");
@@ -726,7 +713,7 @@ bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
 {
     m_proficienciesFile.clear();
     try {
-        const auto fileName = catalogFile(tibia::assets::TAssetCatalog(catalogDocument(directory)), tibia::assets::TAsset::Proficiencies);
+        const auto fileName = proficienciesFileOf(directory);
         if (fileName.empty())
             return false;
         const auto path = directory + fileName;

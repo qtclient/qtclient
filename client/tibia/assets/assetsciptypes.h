@@ -45,8 +45,6 @@ public:
     using cip::tibia::assets::TAssetManager::TAssetManager;
 };
 
-class TContentCatalog final : public ::tibia::CipTyped {};
-
 class TSoundCatalog final : public ::tibia::CipTyped {};
 
 }

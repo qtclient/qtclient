@@ -13,8 +13,11 @@ namespace assets {
 class TAssetCatalog
 {
 public:
-    explicit TAssetCatalog(const QJsonDocument& document);
+    TAssetCatalog() = default;
     virtual ~TAssetCatalog() = default;
+
+    /// Reads a catalog document; isValid tells whether every entry was valid.
+    void load(const QJsonDocument& document);
 
     /// Every entry read as a valid asset.
     bool isValid() const { return m_valid; }

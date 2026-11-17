@@ -6,7 +6,7 @@
 
 namespace tibia::assets {
 
-TAssetCatalog::TAssetCatalog(const QJsonDocument& document)
+void TAssetCatalog::load(const QJsonDocument& document)
 {
     m_valid = read(document);
 }

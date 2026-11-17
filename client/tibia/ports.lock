@@ -165,6 +165,9 @@ assets::TAssetHandler::~TAssetHandler	097457dc45e86dd8	skip	generated: destructo
 assets::TAssetHandler::~TAssetHandler_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 assets::TAssetManager::~TAssetManager	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 assets::TAssetManager::~TAssetManager_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
+assets::TContentCatalog::v0	9428887d8845dcdc	skip	generated: destructor variants
+assets::TContentCatalog::v1	8852b0938bb0fb1b	skip	generated: destructor variants
+assets::TContentCatalog::v2	a89061194d293a2f	ported	assets/contentcatalog.cpp:TContentCatalog::assetRead
 assets::TSoundCatalog::v0	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 assets::TSoundCatalog::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 authentication::TAuthenticationJsonDocumentHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
@@ -4720,7 +4723,7 @@ sub_16d62d6ddd73	16d62d6ddd737659	skip	data: static initialiser
 sub_16e5d81adbc1	16e5d81adbc129d4	inlined	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::filterAcceptsRow
 sub_16e6202bdc1f	16e6202bdc1fc7a1	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onBackButtonPressed
 sub_1702afcf89da	1702afcf89da26f2	ported	config/clientoptionsmigration.cpp:migrateFromVersion8
-sub_170f26fe9a94	170f26fe9a9441fb	ported	assets/assetcatalog.cpp:TAssetCatalog::TAssetCatalog
+sub_170f26fe9a94	170f26fe9a9441fb	ported	assets/assetcatalog.cpp:TAssetCatalog::load
 sub_17111cca5013	17111cca501396b4	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::updateIndexOfSelectedBattlEyeType
 sub_171c3bdcaa2e#2	171c3bdcaa2e53e7	inlined	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::showDialog
 sub_17318e817591	17318e81759111eb	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::THuntingSessionWidgetController
@@ -6628,6 +6631,8 @@ sub_57d614aec5a3#2	57d614aec5a30a31	ported	input/gameaction.h:TGameActionSelectA
 sub_57e8c9f0f2e4	57e8c9f0f2e4a9f9	ported	skillwheel/skillwheeldata.cpp:mediumPerkDescriptions
 sub_57ee035fce8a	57ee035fce8a31b4	ported	friends/friendsciptypes.cpp:TFriendsInviteStorage::setBlacklist
 sub_5801047d27c5	5801047d27c53871	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::levelSpecialPopupLevel
+sub_581473ab0464	581473ab0464def0	ported	assets/assetcatalog.h:TAssetCatalog::TAssetCatalog
+sub_581473ab0464#2	581473ab0464def0	ported	assets/assetcatalog.h:TAssetCatalog::TAssetCatalog
 sub_5814e6293e39	5814e6293e39c8d3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendAnswerModalDialog
 sub_581632105d73	581632105d73c018	skip	library: Qt6 QHash instantiation: QHashPrivate::Data ctor/rehash/findOrInsert, Span::addStorage, detach-and-emplace
 sub_581c5b4eec3a	581c5b4eec3aa9c9	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProviderManager::sharedCache
@@ -8973,6 +8978,7 @@ sub_aaad830785f7	aaad830785f70c11	inlined	analysers/impactwidgets.cpp:TDamageInp
 sub_aab976edddf6	aab976edddf6c4d6	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeVisible
 sub_aae8e0f69017	aae8e0f6901764cc	inlined	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSetOnBlacklist
 sub_aaeedcbad801	aaeedcbad8010acd	skip	data: static initializer of unrelated globals
+sub_ab08ac0f6c9f	ab08ac0f6c9f14ab	ported	assets/contentcatalog.cpp:TContentCatalog::addSpritesheet
 sub_ab383375865e	ab383375865eae56	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleItemLootedMessage
 sub_ab5263fd9824	ab5263fd98241cae	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onConfirmDialogAccepted
 sub_ab60df88179a	ab60df88179a530a	ported	analysers/analyserstorages.h:kills
@@ -9309,6 +9315,8 @@ sub_b8249c9e3366#145	b8249c9e33663f7b	skip	generated: std::shared_ptr release (c
 sub_b8249c9e3366#146	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#147	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#148	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#212	b8249c9e33663f7b	skip	library: std::shared_ptr release
+sub_b8249c9e3366#213	b8249c9e33663f7b	skip	library: std::shared_ptr release
 sub_b8249c9e3366#218	b8249c9e33663f7b	skip	generated: compiler-generated destructor
 sub_b8249c9e3366#236	b8249c9e33663f7b	skip	library: std::shared_ptr release (library)
 sub_b8249c9e3366#239	b8249c9e33663f7b	skip	library: std::shared_ptr release (library)
