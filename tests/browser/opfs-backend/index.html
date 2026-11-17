@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>qtclient-fs contract</title></head>
+<body>
+<pre id="out">running…</pre>
+<script>
+  var Module = {
+    print: function (t) { document.getElementById('out').textContent += '\n' + t; },
+    printErr: function (t) { document.getElementById('out').textContent += '\n[err] ' + t; },
+    onAbort: function (r) { globalThis.qtclientFsContract = { failures: 1, log: 'abort: ' + r }; },
+  };
+</script>
+<script src="contract.js"></script>
+</body>
+</html>

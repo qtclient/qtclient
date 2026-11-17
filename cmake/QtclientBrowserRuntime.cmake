@@ -32,6 +32,8 @@ function(qtclient_browser_runtime target)
     # The Qt kit with -feature-wasm-jspi adds it too; the duplicate is harmless.
     "SHELL:-sJSPI"
     "SHELL:--post-js=${_QTCLIENT_BROWSER_ROOT}/browser/jspi-runtime.js"
+    # The engine's own OPFS Worker (started by qtclientMountOpfs).
+    "SHELL:--post-js=${_QTCLIENT_BROWSER_ROOT}/browser/qtclient-fs.js"
     # Function names for /play crash stacks (<target>.js.symbols, not published).
     "SHELL:--emit-symbol-map"
     # QNetworkAccessManager uses emscripten_fetch without its IndexedDB cache;

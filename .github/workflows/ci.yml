@@ -25,3 +25,45 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/reusable-checks.yml
     secrets: inherit
+
+  fs-contract:
+    name: /play file system contract
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Emscripten version (Qt kit pin)
+        id: emsdk
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source tools/qt/qt-version.sh
+          echo "version=$QT_EMSDK_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ steps.emsdk.outputs.version }}
+          actions-cache-folder: emsdk-cache
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the contract test
+        run: bash tests/browser/opfs-backend/build.sh
+
+      - name: Run it in headless Chromium
+        working-directory: tests/browser/opfs-backend
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-package-lock playwright@1.64.1
+          npx playwright install --with-deps chromium
+          node run.mjs out
