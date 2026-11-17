@@ -27,6 +27,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QGuiApplication>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QPointer>
 #include <QQmlComponent>
@@ -288,6 +289,15 @@ int main(int argc, char** argv)
     if (!qtclientMountOpfs())
         qFatal("tibia.wasm: could not mount OPFS at /home/web_user (see the console)");
 #endif
+    // QTCLIENT_TEST_PATHS=1 (render check, smoke runs): settings and data go to
+    // Qt's test locations (~/.qttest), never the user's Application Support or
+    // Preferences.
+    if (qEnvironmentVariableIntValue("QTCLIENT_TEST_PATHS") == 1) {
+        QStandardPaths::setTestModeEnabled(true);
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+                           QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation));
+    }
     tibia::app::installCrashLog();
 
     // --no-mods → CipSoft; else all qtclient mods/<id>.
