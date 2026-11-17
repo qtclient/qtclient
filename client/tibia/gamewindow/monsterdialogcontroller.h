@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "cyclopedia/bestiarystorage.h"
 
 #include <cip_gen.h>
 #include <client/staticdata.h>
@@ -12,43 +13,83 @@
 #include <vector>
 
 namespace tibia {
-namespace cyclopedia {
-class TBestiaryStorage;
-}
-}
-
-namespace tibia {
 namespace gamewindow {
 
 class TMessageDialogController;
 
-/// One bestiary race (CIP: TQmlMonsterRace, ctor , metacall
-/// ): a race summary tile, or the single monster page when its
-/// details arrived.
+/// One bestiary race: a race summary tile, or the single monster page when
+/// its details arrived. The properties are read from the race's data; the
+/// details' parts unlock with the race's progress.
 class TQmlMonsterRace final : public cip::tibia::gamewindow::TQmlMonsterRace
 {
     Q_OBJECT
 public:
+    /// `charms` are the unlocked charms (none for a summary tile).
     TQmlMonsterRace(int raceId, int progress, double animusMasteryBonus, int animusMasteryPoints,
-                    const BestiaryMonsterData* details, const cyclopedia::TBestiaryStorage& storage,
-                    QObject* parent = nullptr);
+                    const BestiaryMonsterData* details, QList<cyclopedia::TCharm> charms, QObject* parent = nullptr);
+    ~TQmlMonsterRace() override;
 
-    /// CIP (+ the controller's onSelectedCharmChanged).
+    QString name() const override;
+    bool hasAppearanceInstance() const override;
+    bool graphicEffectsSupported() const override;
+    QString unlockState() const override;
+    bool isUnknown() const override;
+    bool hasDetails1() const override;
+    bool isFullyUnlocked() const override;
+    bool isAnimusMasteryUnlocked() const override;
+    QString animusMasteryTooltip() const override;
+    QString leaderKilledTooltip() const override;
+    uint totalKills() const override;
+    uint details1Kills() const override;
+    uint details2Kills() const override;
+    uint details3Kills() const override;
+    bool isLeaderKilled() const override;
+    int monsterDifficulty() const override;
+    QString monsterDifficultyString() const override;
+    int monsterRarity() const override;
+    QString monsterRarityString() const override;
+    bool isVeryRare() const override;
+    bool isMeleeAttacker() const override;
+    bool isRangedAttacker() const override;
+    bool isSpellcaster() const override;
+    bool doesNotAttack() const override;
+    QString hitpointsString() const override;
+    QString experienceString() const override;
+    QString speedString() const override;
+    QString armorString() const override;
+    QString mitigationString() const override;
+    QString bonusPointsOnUnlockString() const override;
+    QString monsterLocations() const override;
+    uint creatureOutfitId() const override;
+    QColor creatureHeadColor() const override;
+    QColor creatureTorsoColor() const override;
+    QColor creatureLegsColor() const override;
+    QColor creatureDetailColor() const override;
+    bool creatureFirstAddOn() const override;
+    bool creatureSecondAddOn() const override;
+    QString unassignCostString() const override;
+
     void setSelectedCharmID(int v) override;
-    /// CIP .
     void setIndexOfSelectedCharmInCombobox(int v) override;
-    /// CIP : also rebuilds the combo box .
+    /// Also rebuilds the combo box.
     void setSelectedCharmSlot(int v) override;
 
-    /// CIP : whether the gold pays the selected charm's removal.
+    /// Whether the gold pays the selected charm's removal.
     void updateCanAfford();
 
 private:
     void rebuildCombobox();
-    void updateUnassignCost();
+    /// The details' parts: difficulty and loot from the first stage, the
+    /// stats from the second, sensitivities and locations from the third.
+    const BestiaryMonsterData* difficultyData() const;
+    const BestiaryMonsterData* statsData() const;
+    const BestiaryMonsterData* sensitivityData() const;
 
-    const cyclopedia::TBestiaryStorage& m_storage;
     int m_progress = 0;
+    double m_animusMasteryBonus = 0.0;
+    int m_animusMasteryPoints = 0;
+    std::optional<BestiaryMonsterData> m_details;
+    QList<cyclopedia::TCharm> m_charms;
 };
 
 /// The Cyclopedia's bestiary page, MonstersDialog.qml (CIP:

@@ -34,6 +34,10 @@ constexpr int MaxPresets = 10;
 /// CIP (action 307/308): the level the wheel needs.
 constexpr int RequiredLevel = 51;
 
+/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
+/// values when `plus`.
+QString percentNumberTrimmed(double value, int minDecimals, int maxDecimals, bool plus);
+
 /// Small (dedication) perk types: life, mana, life and mana, capacity, mitigation.
 enum class ESmallPerk { Life = 0, Mana = 1, LifeAndMana = 2, Capacity = 3, Mitigation = 4 };
 /// Gem quality: the number of mods (lesser 1, regular 2, greater 3).

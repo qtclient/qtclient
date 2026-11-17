@@ -318,13 +318,6 @@ QString boundedDecimals(const double value, const int minDecimals, const int max
     return text + QString(minimum - decimals, u'0');
 }
 
-/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
-/// values when `plus`.
-QString percentNumberTrimmed(const double value, const int minDecimals, const int maxDecimals, const bool plus)
-{
-    return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + boundedDecimals(value * 100.0, minDecimals, maxDecimals);
-}
-
 /// CIP : minutes as "1h 30min".
 QString compactMinutes(const int minutes)
 {
@@ -367,6 +360,14 @@ bool connected(const int a, const int b)
 }
 
 }
+
+/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
+/// values when `plus`.
+QString percentNumberTrimmed(const double value, const int minDecimals, const int maxDecimals, const bool plus)
+{
+    return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + boundedDecimals(value * 100.0, minDecimals, maxDecimals);
+}
+
 
 int maxPoints(const int slot) { return slot >= 0 && slot < SlotCount ? MaxPoints[slot] : 0; }
 
