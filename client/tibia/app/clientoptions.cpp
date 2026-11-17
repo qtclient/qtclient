@@ -120,6 +120,30 @@ void ClientOptions::storeAll(const QJsonObject& changes)
         Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }
 
+void ClientOptions::storeChanged(const config::TClientOptions& pending)
+{
+    const QJsonObject current = config::TClientOptions::instance()->toJson().object();
+    const QJsonObject next = pending.toJson().object();
+    QJsonObject changes;
+    for (auto section = next.begin(); section != next.end(); ++section) {
+        if (section.key() != QLatin1String("options")) {
+            if (current.value(section.key()) != *section)
+                changes.insert(section.key(), *section);
+            continue;
+        }
+        const QJsonObject before = current.value(section.key()).toObject();
+        const QJsonObject after = section->toObject();
+        QJsonObject options;
+        for (auto it = after.begin(); it != after.end(); ++it) {
+            if (before.value(it.key()) != *it)
+                options.insert(it.key(), *it);
+        }
+        if (!options.isEmpty())
+            changes.insert(section.key(), options);
+    }
+    storeAll(changes);
+}
+
 ClientOptionsNotifier::ClientOptionsNotifier()
 {
     config::TClientOptions* options = config::TClientOptions::instance();

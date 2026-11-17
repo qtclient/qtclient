@@ -2,6 +2,7 @@
 #include "game/gamesessionbase.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbuttoncontroller.h"
@@ -208,7 +209,7 @@ bool TActionBarManager::chatOn() const
 
 void TActionBarManager::loadDisplayOptions()
 {
-    m_displayOptions.load(app::ClientOptions::load().root());
+    m_displayOptions.load(*config::TClientOptions::instance());
 }
 
 void TActionBarManager::applyMappings()

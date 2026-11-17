@@ -91,6 +91,10 @@ class TClientOptions final : public cip::tibia::config::TClientOptions
 {
     Q_OBJECT
 public:
+    /// Options without values (a working copy takes them with assignFrom,
+    /// defaults with setDefaults). The client's options are instance().
+    TClientOptions();
+
     static TClientOptions* instance();
 
     /// optionChanged(id) for every bool, int, float, string and date option.
@@ -167,6 +171,15 @@ public:
     void assignOptionValues(const TClientOptions& other);
     /// Whether the bool, int, float and string options equal `other`'s.
     bool optionValuesEqual(const TClientOptions& other) const;
+    /// Every option, section and host value of `other`, without signals and
+    /// without the options mode (the options dialog's working copy).
+    void assignFrom(const TClientOptions& other);
+    /// Whether an option of any type has a value (the tutorial's options
+    /// lack the sound options).
+    bool hasOption(EClientOption id) const;
+    /// `other`'s value of one option, through its typed setter; nothing when
+    /// `other` has none.
+    void assignOption(EClientOption id, const TClientOptions& other);
 
     /// The options as compact JSON, zlib-compressed (level 6), in base64.
     QString exportToBase64String() const;
@@ -224,8 +237,6 @@ Q_SIGNALS:
     void optionChanged(tibia::config::EClientOption id);
 
 private:
-    TClientOptions();
-
     void readBoolOptions(const QJsonObject& options);
     void readIntOptions(const QJsonObject& options);
     void readFloatOptions(const QJsonObject& options);

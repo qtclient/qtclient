@@ -25,6 +25,8 @@
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QUrl>
+
+#include <memory>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -36,14 +38,29 @@ using O = cip::EClientOption;
 using EGameAction = input::EGameAction;
 using Button = TMessageDialogController::Button;
 
-constexpr auto ClientWindowSection = "clientWindowOptions";
-constexpr auto BorderlessKey = "clientWindowIsBorderless";
-
-/// The settings CIP's default TClientOptions holds .
-QJsonObject defaultSettings()
+/// CIP's default TClientOptions.
+std::unique_ptr<config::TClientOptions> defaultOptions()
 {
-    return { { QStringLiteral("options"), config::defaultClientOptions() } };
+    auto options = std::make_unique<config::TClientOptions>();
+    options->setDefaults();
+    return options;
 }
+
+/// The renderer, vsync and font renderer options (a change asks for a restart).
+struct TRendererOptions
+{
+    int renderer = 0;
+    bool vSync = false;
+    bool freetype = false;
+
+    explicit TRendererOptions(const config::TClientOptions& options)
+        : renderer(options.intOption(O::rendererIndex))
+        , vSync(options.boolOption(O::vSyncEnabled))
+        , freetype(options.boolOption(O::useFreetypeRenderer))
+    {}
+
+    bool operator==(const TRendererOptions&) const = default;
+};
 
 /// : "OK" (Return) and "Cancel" (Escape).
 QList<TMessageDialogButton*> okCancelButtons()
@@ -158,7 +175,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
 
     // (connected when the game connection is set): the current value at login.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
-        sendTurnTowardsMoveDirection(config::optionValue(app::ClientOptions::load().root(), O::alwaysTurnTowardsMoveDirection).toBool());
+        sendTurnTowardsMoveDirection(config::TClientOptions::instance()->boolOption(O::alwaysTurnTowardsMoveDirection));
     });
 
 
@@ -215,9 +232,9 @@ void TOptionsMenuDialogController::open(const int category)
     }
     setDialogCategory(target);
 
-    const QJsonObject settings = app::ClientOptions::load().root();
+    const config::TClientOptions& options = *config::TClientOptions::instance();
     for (const Page& page : m_pages)
-        page.page->load(settings);
+        page.page->load(options);
     dialog()->show();
 }
 
@@ -306,21 +323,21 @@ void TOptionsMenuDialogController::cancelButtonClicked()
     dialog()->close();
 }
 
-QJsonObject TOptionsMenuDialogController::pendingSettings() const
+std::unique_ptr<config::TClientOptions> TOptionsMenuDialogController::pendingOptions() const
 {
-    QJsonObject settings = app::ClientOptions::load().root();
+    auto options = std::make_unique<config::TClientOptions>();
+    options->assignFrom(*config::TClientOptions::instance());
     for (const Page& page : m_pages)
-        page.page->apply(settings);
-    return settings;
+        page.page->apply(*options);
+    return options;
 }
 
 void TOptionsMenuDialogController::applyButtonClicked()
 {
-    const QJsonObject current = app::ClientOptions::load().root();
-    const auto currentOption = [&current](const O option) { return config::optionValue(current, option); };
+    const config::TClientOptions& current = *config::TClientOptions::instance();
 
     // 
-    if (m_gameplay->allowAllToInspectPlayer() != currentOption(O::inspectPlayerAllowAllEnabled).toBool())
+    if (m_gameplay->allowAllToInspectPlayer() != current.boolOption(O::inspectPlayerAllowAllEnabled))
         publish(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER);
 
     // 
@@ -329,28 +346,22 @@ void TOptionsMenuDialogController::applyButtonClicked()
         m_infoMessage->showMessage(qtTrId("warning"), qtTrId("optionsmenu_keys_for_rotation_no_key_warning"));
     }
 
-    QJsonObject changes;
-    for (const Page& page : m_pages)
-        page.page->apply(changes);
+    const std::unique_ptr<config::TClientOptions> pending = pendingOptions();
 
-    // 
-    const bool restartNeeded = config::optionValue(changes, O::rendererIndex) != currentOption(O::rendererIndex)
-                            || config::optionValue(changes, O::vSyncEnabled) != currentOption(O::vSyncEnabled)
-                            || config::optionValue(changes, O::useFreetypeRenderer) != currentOption(O::useFreetypeRenderer);
+    const TRendererOptions currentRenderer(current);
+    const bool restartNeeded = TRendererOptions(*pending) != currentRenderer;
 
     // : the server learns the option when it changes.
-    const QJsonValue turnTowards = config::optionValue(changes, O::alwaysTurnTowardsMoveDirection);
-    if (!turnTowards.isUndefined() && turnTowards != currentOption(O::alwaysTurnTowardsMoveDirection))
-        sendTurnTowardsMoveDirection(turnTowards.toBool());
+    const bool turnTowards = pending->boolOption(O::alwaysTurnTowardsMoveDirection);
+    if (turnTowards != current.boolOption(O::alwaysTurnTowardsMoveDirection))
+        sendTurnTowardsMoveDirection(turnTowards);
 
     if (restartNeeded) {
         // Keep the previous graphics trio so keep_renderer_after_restart can revert.
-        app::graphicsrestart::markPendingConfirm(currentOption(O::rendererIndex).toInt(0),
-                                                 currentOption(O::vSyncEnabled).toBool(true),
-                                                 currentOption(O::useFreetypeRenderer).toBool(false));
+        app::graphicsrestart::markPendingConfirm(currentRenderer.renderer, currentRenderer.vSync, currentRenderer.freetype);
     }
 
-    app::ClientOptions::storeAll(changes);
+    app::ClientOptions::storeChanged(*pending);
 
     if (restartNeeded) {
         // Restart (Return) quits into the new engine; Cancel (Esc) keeps the new
@@ -472,7 +483,7 @@ void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFil
 void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
-    const QJsonObject before = app::ClientOptions::load().root();
+    const TRendererOptions before(*config::TClientOptions::instance());
     bool optionsImported = false;
     for (const config::TArchiveEntry& entry : config::optionsarchive::read(localFile(m_importFile))) {
         const QString name = QDir::cleanPath(entry.name);
@@ -497,12 +508,10 @@ void TOptionsMenuDialogController::importArchive()
     if (!optionsImported)
         return;
 
-    const QJsonObject after = app::ClientOptions::load().root();
+    const config::TClientOptions& after = *config::TClientOptions::instance();
     for (const Page& page : m_pages)
         page.page->load(after);
-    const bool same = config::optionValue(before, O::rendererIndex) == config::optionValue(after, O::rendererIndex)
-                   && config::optionValue(before, O::vSyncEnabled) == config::optionValue(after, O::vSyncEnabled)
-                   && config::optionValue(before, O::useFreetypeRenderer) == config::optionValue(after, O::useFreetypeRenderer);
+    const bool same = TRendererOptions(after) == before;
     m_infoMessage->setButtons(okButton());
     if (same)
         m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_success_caption"), qtTrId("optionsmenu_file_import_success_text"));
@@ -542,7 +551,7 @@ void TOptionsMenuDialogController::resetPageToDefault(const EDialogCategories ca
         break;
     }
     if (config::TOptionsPage* page = pageOf(category))
-        page->load(defaultSettings());
+        page->load(*defaultOptions());
 }
 
 void TOptionsMenuDialogController::resetBasicPage()
@@ -556,25 +565,25 @@ void TOptionsMenuDialogController::resetBasicPage()
         O::actionBarShowRight1, O::actionBarShowRight2, O::actionBarShowRight3, O::actionBarsShowRight,
         O::antialiasingMode, O::soundMasterVolume,
     };
-    QJsonObject settings = pendingSettings();
-    const QJsonObject defaults = defaultSettings();
+    const std::unique_ptr<config::TClientOptions> settings = pendingOptions();
+    const std::unique_ptr<config::TClientOptions> defaults = defaultOptions();
     for (const O option : BasicOptions)
-        config::setOptionValue(settings, option, config::optionValue(defaults, option));
-    QJsonObject window = settings.value(QLatin1String(ClientWindowSection)).toObject();
-    window.insert(QLatin1String(BorderlessKey), false);
-    settings.insert(QLatin1String(ClientWindowSection), window);
+        settings->assignOption(option, *defaults);
+    config::TClientWindowOptions window = settings->clientWindowOptions();
+    window.borderless = false;
+    settings->setClientWindowOptions(window);
     for (const EDialogCategories category : { Controls, Gameplay, HUD, ActionBars, Graphics, Sound })
-        pageOf(category)->load(settings);
+        pageOf(category)->load(*settings);
 }
 
 void TOptionsMenuDialogController::resetAllOptionsToDefault()
 {
     // CIP leaves the hotkey and sound pages as they are.
-    const QJsonObject defaults = defaultSettings();
+    const std::unique_ptr<config::TClientOptions> defaults = defaultOptions();
     for (const EDialogCategories category :
          { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics, Effects, Misc, Gameplay, Screenshots }) {
         if (config::TOptionsPage* page = pageOf(category))
-            page->load(defaults);
+            page->load(*defaults);
     }
 }
 

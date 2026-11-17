@@ -666,6 +666,53 @@ bool TClientOptions::optionValuesEqual(const TClientOptions& other) const
            && m_strings == other.m_strings;
 }
 
+void TClientOptions::assignFrom(const TClientOptions& other)
+{
+    if (this == &other)
+        return;
+    m_bools = other.m_bools;
+    m_ints = other.m_ints;
+    m_floats = other.m_floats;
+    m_strings = other.m_strings;
+    m_dates = other.m_dates;
+    m_rendererChangeConfirmationRequired = other.m_rendererChangeConfirmationRequired;
+    m_clientWindow = other.m_clientWindow;
+    m_npcDialog = other.m_npcDialog;
+    m_controlButtons = other.m_controlButtons;
+    m_deviceCookies = other.m_deviceCookies;
+    m_hotkeyOptions = other.m_hotkeyOptions;
+    m_chat = other.m_chat;
+    m_whiteBlacklist = other.m_whiteBlacklist;
+    m_survey = other.m_survey;
+    m_newsMaxUnlockLevel = other.m_newsMaxUnlockLevel;
+    m_specialConditions = other.m_specialConditions;
+    m_pinnedCharacters = other.m_pinnedCharacters;
+    m_extraOptions = other.m_extraOptions;
+    m_extraSections = other.m_extraSections;
+    m_hasStartupNotice = other.m_hasStartupNotice;
+    m_startupNotice = other.m_startupNotice;
+}
+
+bool TClientOptions::hasOption(const EClientOption id) const
+{
+    return m_bools.contains(id) || m_ints.contains(id) || m_floats.contains(id) || m_strings.contains(id)
+           || m_dates.contains(id);
+}
+
+void TClientOptions::assignOption(const EClientOption id, const TClientOptions& other)
+{
+    if (const auto it = other.m_bools.find(id); it != other.m_bools.end() && m_bools.contains(id))
+        setBoolOption(id, it->second);
+    else if (const auto it = other.m_ints.find(id); it != other.m_ints.end() && m_ints.contains(id))
+        setIntOption(id, it->second);
+    else if (const auto it = other.m_floats.find(id); it != other.m_floats.end() && m_floats.contains(id))
+        setFloatOption(id, it->second);
+    else if (const auto it = other.m_strings.find(id); it != other.m_strings.end() && m_strings.contains(id))
+        setStringOption(id, it->second);
+    else if (const auto it = other.m_dates.find(id); it != other.m_dates.end() && m_dates.contains(id))
+        setDateOption(id, it->second);
+}
+
 QString TClientOptions::exportToBase64String() const
 {
     // qCompress prefixes the zlib stream with its 4-byte length.

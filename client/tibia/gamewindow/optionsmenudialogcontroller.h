@@ -15,6 +15,7 @@
 #include <QUrl>
 
 #include <atomic>
+#include <memory>
 #include <vector>
 
 class QQuickWindow;
@@ -126,8 +127,8 @@ private:
     void resetPageToDefault(EDialogCategories category);
     /// CIP : the Basic page's options from the defaults.
     void resetBasicPage();
-    /// The options as the pages would write them.
-    QJsonObject pendingSettings() const;
+    /// A copy of the client's options with every page's pending values.
+    std::unique_ptr<config::TClientOptions> pendingOptions() const;
     TMessageDialogController* makeMessageDialog();
     /// CIP : conf, characterdata and minimap files from the archive.
     void importArchive();

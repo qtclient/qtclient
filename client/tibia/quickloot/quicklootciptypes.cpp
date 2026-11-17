@@ -8,7 +8,7 @@
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
-#include "config/optionspages.h"
+#include "config/clientoptions.h"
 #include "cyclopedia/iteminfostorage.h"
 #include "input/gameactionhandlers.h"
 
@@ -66,7 +66,7 @@ constexpr A QuickLootActions[] = { A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER, 
 
 bool quickLootAllCorpsesInArea()
 {
-    return config::optionValue(app::ClientOptions::load().root(), cip::EClientOption::quickLootAllCorpsesInAreaEnabled).toBool(true);
+    return config::TClientOptions::instance()->boolOption(cip::EClientOption::quickLootAllCorpsesInAreaEnabled);
 }
 
 }

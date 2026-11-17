@@ -32,12 +32,6 @@ namespace {
 using O = cip::EClientOption;
 using B = TOptionBinding;
 
-QString optionName(const O option)
-{
-    const std::string_view name = cip::ClientOptionNames[static_cast<size_t>(option)];
-    return QString::fromLatin1(name.data(), static_cast<qsizetype>(name.size()));
-}
-
 constexpr int SoftwareRenderer = 3;
 constexpr int MetalRenderer = 9;
 
@@ -91,8 +85,26 @@ QString rendererName(const int renderer)
     }
 }
 
-/// The renderers in CIP's list order (,).
+/// The renderers in the list order.
 constexpr int RendererOrder[] = { 0, 6, 10, 7, 9, 8, SoftwareRenderer };
+/// The highest renderer id a name is matched against.
+constexpr int MaxRenderer = 10;
+
+constexpr int AntialiasingModeCount = 3;
+
+QString antialiasingModeName(const int mode)
+{
+    switch (mode) {
+    case 0:
+        return qtTrId("antialiasingmode_none");
+    case 1:
+        return qtTrId("antialiasingmode_antialiasing");
+    case 2:
+        return qtTrId("antialiasingmode_retro");
+    default:
+        return qtTrId("dummy_unknown");
+    }
+}
 
 /// EButtonBarButton names and labels (, table).
 /// Id order must match defaultControlButtonIds.
@@ -172,9 +184,10 @@ constexpr B ActionBarsBindings[] = {
     { "showRightActionBar2", O::actionBarShowRight2, B::Bool },
     { "showRightActionBar3", O::actionBarShowRight3, B::Bool },
     { "showRightActionBars", O::actionBarsShowRight, B::Bool },
-    { "actionBarBottomLocked", O::actionBarBottomLocked, B::Carried },
-    { "actionBarLeftLocked", O::actionBarLeftLocked, B::Carried },
-    { "actionBarRightLocked", O::actionBarRightLocked, B::Carried },
+    // The locks have no page property; the page keeps them as dynamic ones.
+    { "actionBarBottomLocked", O::actionBarBottomLocked, B::Bool },
+    { "actionBarLeftLocked", O::actionBarLeftLocked, B::Bool },
+    { "actionBarRightLocked", O::actionBarRightLocked, B::Bool },
     { "showHotkey", O::actionButtonShowHotkey, B::Bool },
     { "showAmount", O::actionButtonShowAmount, B::Bool },
     { "showSpellParameters", O::actionButtonShowSpellParameters, B::Bool },
@@ -269,14 +282,6 @@ constexpr B GameplayBindings[] = {
     { "quickLootAllCorpsesInArea", O::quickLootAllCorpsesInAreaEnabled, B::Bool },
 };
 
-constexpr B GraphicsBindings[] = {
-    { "scaleOnlyByEvenMultiples", O::gameWindowScaleOnlyByEvenMultiples, B::Bool },
-    { "antialiasingModeIndex", O::antialiasingMode, B::Int },
-    { "vSync", O::vSyncEnabled, B::Bool },
-    { "noFpsLimitEnabled", O::frameRateLimitEnabled, B::InvertedBool },
-    { "fpsLimit", O::frameRateLimit, B::Int },
-};
-
 constexpr B EffectsBindings[] = {
     { "lightEffects", O::lightEffectsEnabled, B::Bool },
     { "ambientLightLevel", O::lightAmbientLevel, B::Percent },
@@ -286,18 +291,6 @@ constexpr B EffectsBindings[] = {
     { "otherPlayersEffectsOpacity", O::otherPlayersEffectsOpacity, B::Percent },
     { "monsterEffectsOpacity", O::monsterEffectsOpacity, B::Percent },
     { "monsterBossAreaEffectsOpacity", O::monsterBossAreaEffectsOpacity, B::Percent },
-};
-
-constexpr B ControlsBindings[] = {
-    { "controlSchemeIndex", O::controlSchemeIndex, B::Int },
-    { "lootSchemeIndex", O::lootSchemeIndex, B::Int },
-    { "useDefaultKeyboardDelay", O::keyboardDelayUseDefault, B::Bool },
-    { "keyboardDelayMillis", O::keyboardDelayMs, B::Int },
-    { "rotateWithAlt", O::rotateWithAlt, B::Bool },
-    { "rotateWithShift", O::rotateWithShift, B::Bool },
-    { "rotateWithCtrl", O::rotateWithCtrl, B::Bool },
-    { "alwaysTurnTowardsMoveDirection", O::alwaysTurnTowardsMoveDirection, B::Bool },
-    { "ctrlToDragStacks", O::dragAndDropDefaultActionIsMoveAll, B::InvertedBool },
 };
 
 constexpr B ScreenshotsBindings[] = {
@@ -390,95 +383,65 @@ uint cloudsIndexOf(const float value)
     return static_cast<uint>(static_cast<long>((1.0f - value) / 0.005f));
 }
 
-constexpr auto SpecialConditionsSection = "specialConditionsOptions";
-constexpr auto ControlButtonsSection = "controlButtonsOptions";
-constexpr auto ClientWindowSection = "clientWindowOptions";
-constexpr auto BorderlessKey = "clientWindowIsBorderless";
-
 }
 
-QJsonValue optionValue(const QJsonObject& settings, const cip::EClientOption option)
+void loadBindings(QObject* page, const std::span<const TOptionBinding> bindings, const TClientOptions& options)
 {
-    return settings.value(QLatin1String("options")).toObject().value(optionName(option));
-}
-
-void setOptionValue(QJsonObject& settings, const cip::EClientOption option, const QJsonValue& value)
-{
-    QJsonObject options = settings.value(QLatin1String("options")).toObject();
-    options.insert(optionName(option), value);
-    settings.insert(QLatin1String("options"), options);
-}
-
-void loadBindings(QObject* page, const std::span<const TOptionBinding> bindings, const QJsonObject& settings)
-{
-    const QJsonObject options = settings.value(QLatin1String("options")).toObject();
     for (const TOptionBinding& binding : bindings) {
-        const QJsonValue value = options.value(optionName(binding.option));
-        if (value.isUndefined())
+        if (!options.hasOption(binding.option))
             continue;
         QVariant property;
         switch (binding.kind) {
         case B::Bool:
-            property = value.toBool();
+            property = options.boolOption(binding.option);
             break;
         case B::InvertedBool:
-            property = !value.toBool();
+            property = !options.boolOption(binding.option);
             break;
         case B::Int:
-            property = static_cast<uint>(std::max(0, value.toInt()));
+            property = static_cast<uint>(std::max(0, options.intOption(binding.option)));
             break;
         case B::Real:
-            // The option is a float.
-            property = static_cast<double>(static_cast<float>(value.toDouble()));
+            property = static_cast<double>(options.floatOption(binding.option));
             break;
         case B::Percent:
-            property = percentOf(static_cast<float>(value.toDouble()));
+            property = percentOf(options.floatOption(binding.option));
             break;
         case B::CloudsIndex:
-            property = cloudsIndexOf(static_cast<float>(value.toDouble()));
-            break;
-        case B::Carried:
-            property = value.toVariant();
+            property = cloudsIndexOf(options.floatOption(binding.option));
             break;
         }
         page->setProperty(binding.property, property);
     }
 }
 
-void applyBindings(const QObject* page, const std::span<const TOptionBinding> bindings, QJsonObject& settings)
+void applyBindings(const QObject* page, const std::span<const TOptionBinding> bindings, TClientOptions& options)
 {
-    QJsonObject options = settings.value(QLatin1String("options")).toObject();
     for (const TOptionBinding& binding : bindings) {
+        if (!options.hasOption(binding.option))
+            continue;
         const QVariant property = page->property(binding.property);
-        QJsonValue value;
         switch (binding.kind) {
         case B::Bool:
-            value = property.toBool();
+            options.setBoolOption(binding.option, property.toBool());
             break;
         case B::InvertedBool:
-            value = !property.toBool();
+            options.setBoolOption(binding.option, !property.toBool());
             break;
         case B::Int:
-            value = static_cast<int>(property.toUInt());
+            options.setIntOption(binding.option, static_cast<int>(property.toUInt()));
             break;
         case B::Real:
-            value = static_cast<double>(static_cast<float>(property.toDouble()));
+            options.setFloatOption(binding.option, static_cast<float>(property.toDouble()));
             break;
         case B::Percent:
-            value = static_cast<double>(fractionOf(property.toUInt()));
+            options.setFloatOption(binding.option, fractionOf(property.toUInt()));
             break;
         case B::CloudsIndex:
-            value = static_cast<double>(static_cast<float>(property.toUInt()) * -0.005f + 1.0f);
-            break;
-        case B::Carried:
-            if (!property.isValid())
-                continue;
-            value = QJsonValue::fromVariant(property);
+            options.setFloatOption(binding.option, static_cast<float>(property.toUInt()) * -0.005f + 1.0f);
             break;
         }
-        options.insert(optionName(binding.option), value);
     }
-    settings.insert(QLatin1String("options"), options);
 }
 
 TInterfaceOptionsPage::TInterfaceOptionsPage(QObject* parent)
@@ -506,24 +469,24 @@ THudOptionsPage::THudOptionsPage(QObject* parent)
 {
 }
 
-void THudOptionsPage::load(const QJsonObject& settings)
+void THudOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    const QJsonValue section = settings.value(QLatin1String(SpecialConditionsSection));
-    m_specialConditions = section.isObject() ? SpecialConditionsOptions::fromJson(section.toObject()) : SpecialConditionsOptions::defaults();
+    TBoundOptionsPage::load(options);
+    const QJsonObject& section = options.specialConditionsOptions();
+    m_specialConditions = !section.isEmpty() ? SpecialConditionsOptions::fromJson(section) : SpecialConditionsOptions::defaults();
     m_specialConditionsShowInHUDEnabled = m_specialConditions.showInHUD;
     m_specialConditionsShowInBarEnabled = m_specialConditions.showInBar;
     Q_EMIT changed();
     rebuildSpecialConditionsModel();
 }
 
-void THudOptionsPage::apply(QJsonObject& settings) const
+void THudOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
+    TBoundOptionsPage::apply(options);
     SpecialConditionsOptions conditions = m_specialConditions;
     conditions.showInHUD = m_specialConditionsShowInHUDEnabled;
     conditions.showInBar = m_specialConditionsShowInBarEnabled;
-    settings.insert(QLatin1String(SpecialConditionsSection), conditions.toJson());
+    options.setSpecialConditionsOptions(conditions.toJson());
 }
 
 void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialConditionIndex, const bool Enabled)
@@ -582,78 +545,155 @@ void THudOptionsPage::rebuildSpecialConditionsModel()
 }
 
 TGraphicsOptionsPage::TGraphicsOptionsPage(QObject* parent)
-    : TBoundOptionsPage(GraphicsBindings, parent)
+    : TGraphicsQMLOptionsPage(parent)
 {
-    for (const int renderer : RendererOrder) {
-        if (!app::isRendererSupported(renderer))
-            continue;
-        m_rendererIds << renderer;
-        m_rendererListModel << rendererName(renderer);
-    }
-    for (int mode = 0; mode < 3; ++mode)
-        m_antialiasingModeListModel << qtTrId(mode == 0 ? "antialiasingmode_none" : mode == 1 ? "antialiasingmode_antialiasing" : "antialiasingmode_retro");
-    m_rendererLimitationsActive = rendererLimitationsActive();
-    m_isMetal = activeRenderer() == MetalRenderer;
     // product: allow toggling the CIP "no FPS limit" checkbox (was hard-disabled).
-    m_canChangeFpsLimitCheckbox = !rendererLimitationsActive();
+    m_canChangeFpsLimitCheckbox = !config::rendererLimitationsActive();
 }
 
-void TGraphicsOptionsPage::load(const QJsonObject& settings)
+void TGraphicsOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    m_borderlessWindow = settings.value(QLatin1String(ClientWindowSection)).toObject().value(QLatin1String(BorderlessKey)).toBool(false);
-    m_rendererId = optionValue(settings, O::rendererIndex).toInt(0);
-    m_vSync = optionValue(settings, O::vSyncEnabled).toBool(m_vSync);
-
-    QString tooltip;
-    if (m_rendererId != activeRenderer())
-        tooltip += qtTrId("optionsmenu_engine_tooltip_auto").arg(rendererName(activeRenderer()));
-    tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_help");
-    QString disabled;
-    for (const int renderer : RendererOrder)
-        if (renderer != SoftwareRenderer && !app::isRendererSupported(renderer))
-            disabled += QLatin1Char('\n') + rendererName(renderer);
-    if (!disabled.isEmpty())
-        tooltip += QStringLiteral("\n\n") + qtTrId("optionsmenu_engine_tooltip_disabled") + QLatin1Char('\n') + disabled;
-    m_tooltipTextDisabledRenderers = tooltip;
+    m_borderlessWindow = options.clientWindowOptions().borderless;
+    m_scaleOnlyByEvenMultiples = options.boolOption(O::gameWindowScaleOnlyByEvenMultiples);
+    m_vSync = options.boolOption(O::vSyncEnabled);
+    m_frameRateLimitEnabled = options.boolOption(O::frameRateLimitEnabled);
+    m_frameRateLimit = options.intOption(O::frameRateLimit);
+    m_renderer = options.intOption(O::rendererIndex);
+    m_antialiasingMode = options.antialiasingMode();
     Q_EMIT changed();
 }
 
-void TGraphicsOptionsPage::apply(QJsonObject& settings) const
+void TGraphicsOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    setOptionValue(settings, O::rendererIndex, m_rendererId);
-    setOptionValue(settings, O::vSyncEnabled, m_vSync);
-    QJsonObject window = settings.value(QLatin1String(ClientWindowSection)).toObject();
-    window.insert(QLatin1String(BorderlessKey), m_borderlessWindow);
-    settings.insert(QLatin1String(ClientWindowSection), window);
+    TClientWindowOptions window = options.clientWindowOptions();
+    window.borderless = m_borderlessWindow;
+    options.setClientWindowOptions(window);
+    options.setBoolOption(O::gameWindowScaleOnlyByEvenMultiples, m_scaleOnlyByEvenMultiples);
+    options.setIntOption(O::antialiasingMode, m_antialiasingMode);
+    options.setBoolOption(O::vSyncEnabled, m_vSync);
+    options.setBoolOption(O::frameRateLimitEnabled, m_frameRateLimitEnabled);
+    options.setIntOption(O::frameRateLimit, m_frameRateLimit);
+    options.setRendererIndex(m_renderer);
+    options.setAntialiasingMode(m_antialiasingMode);
 }
 
-uint TGraphicsOptionsPage::rendererIndex() const
+uint TGraphicsOptionsPage::antialiasingModeIndex() const
 {
-    return static_cast<uint>(std::max<qsizetype>(0, m_rendererIds.indexOf(m_rendererId)));
+    const qsizetype index = antialiasingModeListModel().indexOf(antialiasingModeName(m_antialiasingMode));
+    return index < 0 ? 0u : static_cast<uint>(index);
 }
 
-void TGraphicsOptionsPage::setRendererIndex(const uint index)
+void TGraphicsOptionsPage::setAntialiasingModeIndex(const uint index)
 {
-    const int renderer = index < static_cast<uint>(m_rendererIds.size()) ? m_rendererIds.at(index) : 0;
-    if (m_rendererId == renderer)
-        return;
-    m_rendererId = renderer;
-    Q_EMIT changed();
+    const QStringList modes = antialiasingModeListModel();
+    if (index < static_cast<uint>(modes.size())) {
+        for (int mode = 0; mode < AntialiasingModeCount; ++mode) {
+            if (modes.at(index) != antialiasingModeName(mode))
+                continue;
+            if (m_antialiasingMode != mode) {
+                m_antialiasingMode = mode;
+                Q_EMIT changed();
+            }
+            return;
+        }
+    }
+    if (m_renderer != 0) {
+        m_renderer = 0;
+        Q_EMIT changed();
+    }
+}
+
+QStringList TGraphicsOptionsPage::antialiasingModeListModel() const
+{
+    QStringList modes;
+    for (int mode = 0; mode < AntialiasingModeCount; ++mode)
+        modes << antialiasingModeName(mode);
+    return modes;
 }
 
 bool TGraphicsOptionsPage::vSync() const
 {
-    return m_vSync && !rendererLimitationsActive();
+    return m_vSync && !config::rendererLimitationsActive();
 }
 
 void TGraphicsOptionsPage::setVSync(const bool enabled)
 {
-    if (m_vSync == enabled || rendererLimitationsActive())
+    if (m_vSync == enabled || config::rendererLimitationsActive())
         return;
     m_vSync = enabled;
     Q_EMIT changed();
+}
+
+bool TGraphicsOptionsPage::noFpsLimitEnabled() const
+{
+    return !m_frameRateLimitEnabled;
+}
+
+void TGraphicsOptionsPage::setNoFpsLimitEnabled(const bool enabled)
+{
+    if (m_frameRateLimitEnabled == !enabled)
+        return;
+    m_frameRateLimitEnabled = !enabled;
+    Q_EMIT changed();
+}
+
+uint TGraphicsOptionsPage::rendererIndex() const
+{
+    const qsizetype index = rendererListModel().indexOf(rendererName(m_renderer));
+    return index < 0 ? 0u : static_cast<uint>(index);
+}
+
+void TGraphicsOptionsPage::setRendererIndex(const uint index)
+{
+    const QStringList renderers = rendererListModel();
+    int renderer = 0;
+    if (index < static_cast<uint>(renderers.size())) {
+        for (int id = 0; id <= MaxRenderer; ++id) {
+            if (renderers.at(index) == rendererName(id)) {
+                renderer = id;
+                break;
+            }
+        }
+    }
+    if (m_renderer == renderer)
+        return;
+    m_renderer = renderer;
+    Q_EMIT changed();
+}
+
+QStringList TGraphicsOptionsPage::rendererListModel() const
+{
+    QStringList renderers;
+    for (const int renderer : RendererOrder)
+        if (app::isRendererSupported(renderer))
+            renderers << rendererName(renderer);
+    return renderers;
+}
+
+QString TGraphicsOptionsPage::tooltipTextDisabledRenderers() const
+{
+    QString disabled;
+    for (const int renderer : RendererOrder)
+        if (renderer != SoftwareRenderer && !app::isRendererSupported(renderer))
+            disabled += QLatin1Char('\n') + rendererName(renderer);
+    QString tooltip;
+    if (m_renderer != activeRenderer())
+        tooltip += qtTrId("optionsmenu_engine_tooltip_auto").arg(rendererName(activeRenderer()));
+    tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_help");
+    if (!disabled.isEmpty())
+        tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_disabled")
+                   + QLatin1Char('\n') + disabled;
+    return tooltip;
+}
+
+bool TGraphicsOptionsPage::rendererLimitationsActive() const
+{
+    return config::rendererLimitationsActive();
+}
+
+bool TGraphicsOptionsPage::isMetal() const
+{
+    return activeRenderer() == MetalRenderer;
 }
 
 TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
@@ -662,17 +702,17 @@ TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
     m_rendererLimitationsActive = rendererLimitationsActive();
 }
 
-void TEffectsOptionsPage::load(const QJsonObject& settings)
+void TEffectsOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    m_lightEffects = optionValue(settings, O::lightEffectsEnabled).toBool(m_lightEffects);
+    TBoundOptionsPage::load(options);
+    m_lightEffects = options.boolOption(O::lightEffectsEnabled);
     Q_EMIT changed();
 }
 
-void TEffectsOptionsPage::apply(QJsonObject& settings) const
+void TEffectsOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    setOptionValue(settings, O::lightEffectsEnabled, m_lightEffects);
+    TBoundOptionsPage::apply(options);
+    options.setBoolOption(O::lightEffectsEnabled, m_lightEffects);
 }
 
 bool TEffectsOptionsPage::lightEffects() const
@@ -689,12 +729,79 @@ void TEffectsOptionsPage::setLightEffects(const bool enabled)
 }
 
 TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
-    : TBoundOptionsPage(ControlsBindings, parent)
+    : TControlsQMLOptionsPage(parent)
 {
     m_controlSchemeListModel = controlSchemeListModel();
     m_lootSchemeListModel = lootSchemeListModel();
-    // CIP returns DAT_1022bdb0c.
     m_defaultKeyboardDelayMillis = 250;
+}
+
+void TControlsOptionsPage::load(const TClientOptions& options)
+{
+    m_controlScheme = options.controlScheme();
+    m_lootScheme = options.lootScheme();
+    m_useDefaultKeyboardDelay = options.boolOption(O::keyboardDelayUseDefault);
+    m_keyboardDelayMillis = static_cast<uint>(options.intOption(O::keyboardDelayMs));
+    m_rotateWithAlt = options.boolOption(O::rotateWithAlt);
+    m_rotateWithShift = options.boolOption(O::rotateWithShift);
+    m_rotateWithCtrl = options.boolOption(O::rotateWithCtrl);
+    m_dragAndDropDefaultActionIsMoveAll = options.boolOption(O::dragAndDropDefaultActionIsMoveAll);
+    m_alwaysTurnTowardsMoveDirection = options.boolOption(O::alwaysTurnTowardsMoveDirection);
+    Q_EMIT changed();
+}
+
+void TControlsOptionsPage::apply(TClientOptions& options) const
+{
+    options.setControlScheme(m_controlScheme);
+    options.setLootScheme(m_lootScheme);
+    options.setBoolOption(O::keyboardDelayUseDefault, m_useDefaultKeyboardDelay);
+    options.setIntOption(O::keyboardDelayMs, static_cast<int>(m_keyboardDelayMillis));
+    options.setBoolOption(O::rotateWithAlt, m_rotateWithAlt);
+    options.setBoolOption(O::rotateWithShift, m_rotateWithShift);
+    options.setBoolOption(O::rotateWithCtrl, m_rotateWithCtrl);
+    options.setBoolOption(O::alwaysTurnTowardsMoveDirection, m_alwaysTurnTowardsMoveDirection);
+    options.setBoolOption(O::dragAndDropDefaultActionIsMoveAll, m_dragAndDropDefaultActionIsMoveAll);
+}
+
+uint TControlsOptionsPage::controlSchemeIndex() const
+{
+    return static_cast<uint>(controlSchemeListModelIndex(m_controlScheme));
+}
+
+void TControlsOptionsPage::setControlSchemeIndex(const uint index)
+{
+    const int scheme = controlSchemeForListModelIndex(static_cast<int>(index));
+    if (m_controlScheme == scheme)
+        return;
+    m_controlScheme = scheme;
+    Q_EMIT changed();
+}
+
+uint TControlsOptionsPage::lootSchemeIndex() const
+{
+    return static_cast<uint>(lootSchemeListModelIndex(m_lootScheme));
+}
+
+void TControlsOptionsPage::setLootSchemeIndex(const uint index)
+{
+    const int scheme = lootSchemeForListModelIndex(static_cast<int>(index));
+    if (m_lootScheme == scheme)
+        return;
+    m_lootScheme = scheme;
+    Q_EMIT changed();
+}
+
+bool TControlsOptionsPage::ctrlToDragStacks() const
+{
+    return !m_dragAndDropDefaultActionIsMoveAll;
+}
+
+void TControlsOptionsPage::setCtrlToDragStacks(const bool enabled)
+{
+    if (m_dragAndDropDefaultActionIsMoveAll == !enabled)
+        return;
+    m_dragAndDropDefaultActionIsMoveAll = !enabled;
+    Q_EMIT changed();
 }
 
 TButtonBarOptionsPage::TButtonBarOptionsPage(QObject* parent)
@@ -702,10 +809,10 @@ TButtonBarOptionsPage::TButtonBarOptionsPage(QObject* parent)
 {
 }
 
-void TButtonBarOptionsPage::load(const QJsonObject& settings)
+void TButtonBarOptionsPage::load(const TClientOptions& options)
 {
-    const QJsonValue section = settings.value(QLatin1String(ControlButtonsSection));
-    if (section.isObject()) {
+    const QJsonObject& section = options.controlButtonsOptions();
+    if (!section.isEmpty()) {
         m_enabled = stringList(section[QLatin1String("enabledButtons")]);
         m_disabled = stringList(section[QLatin1String("disabledButtons")]);
     } else {
@@ -730,12 +837,12 @@ void TButtonBarOptionsPage::load(const QJsonObject& settings)
     Q_EMIT changed();
 }
 
-void TButtonBarOptionsPage::apply(QJsonObject& settings) const
+void TButtonBarOptionsPage::apply(TClientOptions& options) const
 {
-    QJsonObject section = settings.value(QLatin1String(ControlButtonsSection)).toObject();
+    QJsonObject section = options.controlButtonsOptions();
     section.insert(QLatin1String("enabledButtons"), QJsonArray::fromStringList(m_enabled));
     section.insert(QLatin1String("disabledButtons"), QJsonArray::fromStringList(m_disabled));
-    settings.insert(QLatin1String(ControlButtonsSection), section);
+    options.setControlButtonsOptions(section);
 }
 
 QStringList TButtonBarOptionsPage::enabledButtons() const
@@ -817,10 +924,10 @@ TSoundOptionsPage::TSoundOptionsPage(QObject* parent)
     refreshSoundDevices();
 }
 
-void TSoundOptionsPage::load(const QJsonObject& settings)
+void TSoundOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    const QString device = optionValue(settings, O::usedSoundDevice).toString();
+    TBoundOptionsPage::load(options);
+    const QString device = options.hasOption(O::usedSoundDevice) ? options.stringOption(O::usedSoundDevice) : QString();
     m_soundDevice = device.isEmpty() || device.compare(QLatin1String("auto"), Qt::CaseInsensitive) == 0
         ? qtTrId("optionsmenu_sound_used_sound_device_auto")
         : device;
@@ -828,13 +935,14 @@ void TSoundOptionsPage::load(const QJsonObject& settings)
     Q_EMIT changed();
 }
 
-void TSoundOptionsPage::apply(QJsonObject& settings) const
+void TSoundOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    if (m_masterVolume != 0)
-        setOptionValue(settings, O::soundMasterVolumeOld, static_cast<int>(m_masterVolume));
+    TBoundOptionsPage::apply(options);
+    if (m_masterVolume != 0 && options.hasOption(O::soundMasterVolumeOld))
+        options.setIntOption(O::soundMasterVolumeOld, static_cast<int>(m_masterVolume));
     const bool automatic = m_soundDevice.isEmpty() || m_soundDevice == qtTrId("optionsmenu_sound_used_sound_device_auto");
-    setOptionValue(settings, O::usedSoundDevice, automatic ? QStringLiteral("auto") : m_soundDevice);
+    if (options.hasOption(O::usedSoundDevice))
+        options.setStringOption(O::usedSoundDevice, automatic ? QStringLiteral("auto") : m_soundDevice);
 }
 
 bool TSoundOptionsPage::soundEnabled() const
@@ -967,9 +1075,9 @@ void THotkeysOptionsPage::refreshSetNames()
     m_hotkeySetNamesIndex = std::max(0, int(m_hotkeySetNamesModel.indexOf(currentSetName())));
 }
 
-void THotkeysOptionsPage::load(const QJsonObject& settings)
+void THotkeysOptionsPage::load(const TClientOptions& options)
 {
-    QJsonObject section = settings.value(QLatin1String("hotkeyOptions")).toObject();
+    QJsonObject section = options.hotkeyOptions();
     if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty()) {
         section = THotkeyOptions::builtInSection();
         if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty())
@@ -984,12 +1092,12 @@ void THotkeysOptionsPage::load(const QJsonObject& settings)
     rebuildModel();
 }
 
-void THotkeysOptionsPage::apply(QJsonObject& settings) const
+void THotkeysOptionsPage::apply(TClientOptions& options) const
 {
     auto* self = const_cast<THotkeysOptionsPage*>(this);
     self->commitRows(false);
     const QJsonObject section = m_options.toJson();
-    settings.insert(QStringLiteral("hotkeyOptions"), section);
+    options.setHotkeyOptions(section);
     // The live hotkeys follow (CIP hands the options to TClientOptions).
     THotkeyOptions::instance()->replaceAll(section);
     self->rebuildModel();
