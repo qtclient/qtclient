@@ -106,7 +106,6 @@ public:
     /// ignore look.
     bool isPickable() const;
 
-    int getDrawElevation() const { return m_drawElevation; }
     const std::vector<uint32_t>& walkingCreatureIds() const { return m_walkingCreatureIds; }
     /// CipSoft field stack (items/effects + creature outfit appearances; gameplay items/creatures resolved on demand).
     const std::vector<appearances::TAppearanceInstancePtr>& appearances() const { return m_stack; }
@@ -262,7 +261,6 @@ private:
     mutable Position m_positionCache;
 
 
-    uint8_t m_drawElevation{ 0 };
     uint8_t m_minimapColor{ 0 };
     uint8_t m_elevation{ 0 };
     bool m_opaque{ false };

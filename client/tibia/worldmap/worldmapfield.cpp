@@ -67,7 +67,6 @@ void TWorldMapField::recalculateThingFlag()
 {
     m_thingTypeFlag = 0;
     m_elevation = 0;
-    m_drawElevation = 0;
     rebuildCreatureRange();
     for (const auto& entry : m_stack)
         setStackEntryFlag(entry);

@@ -65,10 +65,14 @@ appearances::TAppearanceInstanceFactory::v11	5c0209e62f82662b	ported	appearances
 appearances::TAppearanceInstanceFactory::v12	18c69d4b2ce586ef	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createExpireObject
 appearances::TAppearanceInstanceFactory::v13	efa37e563d7d20b4	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createObject
 appearances::TAppearanceInstanceFactory::v14	5853906c26f37574	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
+appearances::TAppearanceInstanceFactory::v15	b37fb108989bae7e	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createCustomizableOutfit
+appearances::TAppearanceInstanceFactory::v16	b37fb108989bae7e	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createPlainOutfit
+appearances::TAppearanceInstanceFactory::v17	8010b1d8c62bbd32	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createPlainOutfit
 appearances::TAppearanceInstanceFactory::v18	526407d7e56f861d	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createObjectOutfit
 appearances::TAppearanceInstanceFactory::v2	ecaff8f9d277e7d6	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createObject
 appearances::TAppearanceInstanceFactory::v21	986f1c2797659be3	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::appearanceType
 appearances::TAppearanceInstanceFactory::v22	a06869b428dc7f86	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::hasAppearanceType
+appearances::TAppearanceInstanceFactory::v23	0d6620628f241c78	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::instanceTracker
 appearances::TAppearanceInstanceFactory::v24	fbb038851d5aaed3	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createTutorialFieldEffect
 appearances::TAppearanceInstanceFactory::v3	b171dac6a3779a65	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createCumulativeObject
 appearances::TAppearanceInstanceFactory::v4	e68ad7dad3e3c935	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createLiquidObject
@@ -4208,6 +4212,7 @@ sub_0419695c817a	0419695c817a48c5	skip	library: std container template instance
 sub_04277f0752dd	04277f0752dd95ba	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setUnspentPerk
 sub_044413eab2ad	044413eab2ad3308	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_0450018d4877	0450018d487766a9	ported	gamewindow/minimapcontroller.cpp:TMinimapController::dispatchClick
+sub_047273194bc3	047273194bc3e605	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createCustomizableOutfit
 sub_048417ba91c9	048417ba91c997aa	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketHistoryOpened
 sub_0499962a6cf9	0499962a6cf96644	inlined	config/sidebaroptions.cpp:TSidebarOptions::reset
 sub_04c78b35980a	04c78b35980aa09f	tested	sessiondump/sessiondumpmetadatareader.cpp:TSessiondumpMetadataReader::readFields	test=tests/client/sessiondumpreader_test.cpp
@@ -4829,6 +4834,7 @@ sub_1438e1b1f77f	1438e1b1f77f352a	inlined	market/marketciptypes.cpp:TMarketProto
 sub_143c5d000727	143c5d00072758cf	ported	news/newsstorage.cpp:NewsItem::typeId
 sub_1447683f7d26	1447683f7d26cdbd	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_14507da24656	14507da246563d57	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStop
+sub_14807affbe6c	14807affbe6c2325	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createPlainOutfit
 sub_148d5557dd74	148d5557dd7456de	ported	effects/numericaleffect.cpp:TNumericalEffect::TNumericalEffect
 sub_148d5557dd74#2	148d5557dd7456de	ported	effects/numericaleffect.cpp:TNumericalEffect::TNumericalEffect
 sub_148dc304f4ee	148dc304f4eedbc1	ported	assets/specialappearances.h:TSpecialAppearancesForProtocolParsing::isDecoKit

@@ -549,7 +549,7 @@ template <class T, class... Args>
 std::shared_ptr<T> TAppearanceInstanceFactory::makeTracked(TAppearanceType* type, Args&&... args)
 {
     // The tracker counts the instance until its last owner lets it go.
-    const std::shared_ptr<TAppearanceInstanceTracker> tracker = TAppearancesManager::instance().sharedTracker();
+    const std::shared_ptr<TAppearanceInstanceTracker> tracker = instanceTracker();
     T* instance = new T(type, std::forward<Args>(args)...);
     if (!type)
         return std::shared_ptr<T>(instance);
@@ -755,12 +755,36 @@ std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOut
                                                   .feet = outfit.getFeet(),
                                                   .firstAddon = (outfit.getAddons() & 1) != 0,
                                                   .secondAddon = (outfit.getAddons() & 2) != 0 };
-        instance = makeTracked<TCustomizableOutfitAppearanceInstance>(type, direction, customization);
+        instance = createCustomizableOutfit(type, direction, customization);
     } else {
-        instance = makeTracked<TOutfitAppearanceInstance>(type, direction);
+        instance = createPlainOutfit(type, direction);
     }
     instance->setOutfit(outfit);
     return instance;
+}
+
+std::shared_ptr<TCustomizableOutfitAppearanceInstance>
+TAppearanceInstanceFactory::createCustomizableOutfit(TAppearanceType* type, const uint8_t direction,
+                                                     const TOutfitCustomization& customization)
+{
+    return makeTracked<TCustomizableOutfitAppearanceInstance>(type, direction, customization);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createPlainOutfit(TAppearanceType* type,
+                                                                                         const uint8_t direction)
+{
+    return makeTracked<TOutfitAppearanceInstance>(type, direction);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createPlainOutfit(const uint16_t id,
+                                                                                         const uint8_t direction)
+{
+    return createPlainOutfit(appearanceType(ThingCategoryCreature, id), direction);
+}
+
+std::shared_ptr<TAppearanceInstanceTracker> TAppearanceInstanceFactory::instanceTracker()
+{
+    return TAppearancesManager::instance().sharedTracker();
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanceType* type, const uint16_t count,

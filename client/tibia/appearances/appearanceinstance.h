@@ -20,6 +20,7 @@
 
 namespace tibia::appearances {
 class TAppearanceType;
+class TAppearanceInstanceTracker;
 }
 namespace tibia::protocol {
 struct TObjectData;
@@ -563,6 +564,15 @@ public:
     /// with addon patterns while an addon is worn, are customizable.
     static std::shared_ptr<TOutfitAppearanceInstance> createOutfit(TAppearanceType* type, const Outfit& outfit,
                                                                    uint8_t direction);
+    /// CIP v15: a customizable outfit.
+    static std::shared_ptr<TCustomizableOutfitAppearanceInstance>
+    createCustomizableOutfit(TAppearanceType* type, uint8_t direction, const TOutfitCustomization& customization);
+    /// CIP v16: an outfit without colours or addons.
+    static std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(TAppearanceType* type, uint8_t direction);
+    /// CIP v17: the plain outfit `id` (or the outfit category's dummy).
+    static std::shared_ptr<TOutfitAppearanceInstance> createPlainOutfit(uint16_t id, uint8_t direction);
+    /// CIP v23: the tracker counting every instance the factory makes.
+    static std::shared_ptr<TAppearanceInstanceTracker> instanceTracker();
     static TAppearanceInstancePtr fromProtocolObject(TAppearanceType* type, uint16_t count = 0, uint8_t subType = 0,
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
     static TAppearanceInstancePtr fromStoredCreature(tibia::creatures::TCreature& stored);
