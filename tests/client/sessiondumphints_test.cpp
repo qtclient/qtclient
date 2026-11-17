@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "chat/chatchannel.h"
 #include "tutorial/sessiondumphintpublishgameaction.h"
 #include "tutorial/sessiondumphints.h"
 
@@ -12,13 +13,11 @@ using namespace tibia::tutorial;
 using tibia::input::EGameAction;
 
 // The test builds the hints without input/gameaction.cpp; this is its constructor.
-tibia::input::TGameActionChatChannel::TGameActionChatChannel(const EGameAction actionType, const int channelType,
-                                                             const int channelId, QString name)
+tibia::input::TGameActionChatChannel::TGameActionChatChannel(const EGameAction type,
+                                                             std::shared_ptr<const tibia::chat::TChatChannelIdentifier> identifier)
+    : TGameActionSimple(type)
+    , m_identifier(std::move(identifier))
 {
-    type = actionType;
-    chatChannelType = channelType;
-    chatChannelId = channelId;
-    text = std::move(name);
 }
 
 namespace {
@@ -55,22 +54,23 @@ TEST(SessiondumpHints, ParsesOutfitsAndSortsHintsByTimestamp)
     EXPECT_EQ(all[2]->type(), TSessiondumpHintBase::SwitchChannel);
     EXPECT_EQ(all[3]->type(), TSessiondumpHintBase::ClearOldestMessage);
 
-    const auto fields = [](const tibia::input::IGameActionPtr& action) {
-        return std::dynamic_pointer_cast<const tibia::input::TGameAction>(action);
-    };
+    using tibia::input::gameActionAs;
     const auto progress = all[0]->execute();
     ASSERT_EQ(progress.size(), 1u);
     EXPECT_EQ(progress[0]->gameActionType(), EGameAction::TUTORIAL_PROGRESS);
-    ASSERT_TRUE(fields(progress[0]));
-    EXPECT_EQ(fields(progress[0])->text, QStringLiteral("TutorialStart"));
+    const auto* tutorial = gameActionAs<tibia::input::TGameActionTutorialProgress>(progress[0]);
+    ASSERT_TRUE(tutorial);
+    EXPECT_EQ(tutorial->tutorialProgress(), QStringLiteral("TutorialStart"));
     EXPECT_TRUE(all[0]->isDone());
-    const auto skip = fields(all[1]->execute()[0]);
+    const auto skipActions = all[1]->execute();
+    const auto* skip = gameActionAs<tibia::input::TGameActionSessiondumpSkipTo>(skipActions[0]);
     ASSERT_TRUE(skip);
-    EXPECT_EQ(skip->parameter, 12);
-    const auto channel = fields(all[2]->execute()[0]);
+    EXPECT_EQ(skip->timestamp(), 12);
+    const auto channelActions = all[2]->execute();
+    const auto* channel = gameActionAs<tibia::input::TGameActionChatChannel>(channelActions[0]);
     ASSERT_TRUE(channel);
-    EXPECT_EQ(channel->type, EGameAction::OPEN_CHAT_CHANNEL);
-    EXPECT_EQ(channel->chatChannelType, 1); // the server log
+    EXPECT_EQ(channel->gameActionType(), EGameAction::OPEN_CHAT_CHANNEL);
+    EXPECT_EQ(channel->chatChannelIdentifier().type, tibia::chat::TChatChannelIdentifier::ServerLog);
 
     EXPECT_EQ(hints.firstUnfinishedHint(), all[3]);
 }
