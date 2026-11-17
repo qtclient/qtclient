@@ -2,6 +2,7 @@
 
 #include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/actionbarmanager.h"
@@ -680,7 +681,6 @@ TAssignObjectActionDialogController::TAssignObjectActionDialogController(TAction
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
     connect(this, &cip::tibia::gamewindow::TAssignObjectActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    m_clientSettingSmoothFiltering = true;
     const Setting setting = m_assign.current();
     if (setting.kind == Setting::OBJECT) {
         setObject(setting.objectId, setting.upgradeTier.value_or(0));
@@ -705,7 +705,7 @@ bool TAssignObjectActionDialogController::canBeEquiped() const { return m_canBeE
 bool TAssignObjectActionDialogController::canBeMultiUsed() const { return m_canBeMultiUsed; }
 bool TAssignObjectActionDialogController::canHaveSmartMode() const { return m_canHaveSmartMode; }
 bool TAssignObjectActionDialogController::smartModeEnabled() const { return m_smartModeEnabled; }
-bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return m_clientSettingSmoothFiltering; }
+bool TAssignObjectActionDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 void TAssignObjectActionDialogController::setObject(const int objectId, const int upgradeTier)
 {
@@ -719,7 +719,6 @@ void TAssignObjectActionDialogController::setObject(const int objectId, const in
     m_canBeEquiped = isEquipable(type);
     m_canHaveSmartMode = m_canBeEquiped;
     m_useObjectType = uint(TActionBarManager::defaultUseType(objectId));
-    m_clientSettingSmoothFiltering = true;
     Q_EMIT objectAppearanceChanged();
     Q_EMIT changed();
 }

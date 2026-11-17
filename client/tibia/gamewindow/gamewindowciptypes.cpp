@@ -2,6 +2,8 @@
 
 #include <QWheelEvent>
 
+#include "config/clientoptions.h"
+#include "gamewindow/smoothfiltering.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
@@ -876,6 +878,11 @@ void clearInspectList(Controller& controller, QList<QObject*>& list)
 } // namespace
 
 TInspectObjectDialogController* TInspectObjectDialogController::s_instance = nullptr;
+
+bool smoothFilteringEnabled() { return config::TClientOptions::instance()->antialiasingMode() == 1; }
+
+bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+bool TInspectPlayerDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)

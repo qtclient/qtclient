@@ -283,7 +283,7 @@ public:
     bool bonusRerollTooExpensive() const override;
     QString choosePreyPrice() const override;
     bool choosePreyTooExpensive() const override;
-    bool clientSettingSmoothFiltering() const override { return true; }
+    bool clientSettingSmoothFiltering() const override;
 
     /// CIP .
     void showDialogTab() override;

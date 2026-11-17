@@ -191,7 +191,7 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
 void TAnalyticsSelectorWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, SelectorOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TAnalyticsSelectorWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -239,7 +239,8 @@ void TAnalyticsSelectorWidgetController::onWidgetVisible(const int WidgetType) {
 
 void TAnalyticsSelectorWidgetController::onWidgetHidden(const int WidgetType) { onWidgetVisibility(WidgetType, false); }
 
-void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, SelectorOptionsKey); }
 
 void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType, const bool visible)
 {
@@ -348,7 +349,7 @@ THuntingSessionWidgetController::THuntingSessionWidgetController(TAnalyserStorag
 void THuntingSessionWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, HuntingOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* THuntingSessionWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -379,7 +380,8 @@ void THuntingSessionWidgetController::onWidgetQuickItemDestroyed() {}
 
 void THuntingSessionWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, HuntingOptionsKey); }
 
-void THuntingSessionWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void THuntingSessionWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, HuntingOptionsKey); }
 
 bool THuntingSessionWidgetController::showBaseXp() const { return m_storages->huntingSession()->showBaseXp(); }
 
@@ -948,7 +950,7 @@ TLootAndWasteWidgetController::~TLootAndWasteWidgetController() { delete m_targe
 void TLootAndWasteWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, lootWasteOptionsKey(m_side));
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TLootAndWasteWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -1004,7 +1006,8 @@ void TLootAndWasteWidgetController::onGaugeTargetValueChanged(const QString& Tar
         m_storage->setGaugeTarget(m_side, value);
 }
 
-void TLootAndWasteWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TLootAndWasteWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, lootWasteOptionsKey(m_side)); }
 
 void TLootAndWasteWidgetController::onCharacterBasedLootWasteOptionsChanged() { Q_EMIT characterBasedWidgetOptionsChanged(); }
 

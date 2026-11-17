@@ -1,4 +1,5 @@
 #include "preydialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "qmlcomponents/texthelper.h"
 
@@ -652,6 +653,8 @@ void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter)
         m_bestiaryProxy.setNameFilter(m_monsterRacesFilter);
 }
 
+bool TPreyPreyPageController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
 TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TPreyPreyPageController(parent)
     , m_storage(storage)
@@ -661,7 +664,6 @@ TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QO
     , m_autoReroll(new TMessageDialogController(this))
     , m_lockPrey(new TMessageDialogController(this))
 {
-    m_clientSettingSmoothFiltering = true;
     for (TMessageDialogController* box : { m_bonusReroll, m_listReroll, m_choosePrey, m_autoReroll, m_lockPrey })
         box->setCloseOnButtonClicked(true);
     connect(m_bonusReroll, &TMessageDialogController::acceptClicked, this, &TPreyPreyPageController::onConfirmBonusReroll);

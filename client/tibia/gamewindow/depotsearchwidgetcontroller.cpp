@@ -229,7 +229,7 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
 void TDepotSearchWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyWidgetOptions();
+    onWidgetOptionsChanged();
 }
 
 void TDepotSearchWidgetController::applyWidgetOptions()
@@ -251,7 +251,8 @@ void TDepotSearchWidgetController::saveWidgetOptions()
     m_options->setDepotSearchWidgetOptions(options);
 }
 
-void TDepotSearchWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TDepotSearchWidgetController::onWidgetOptionsChanged() { applyWidgetOptions(); }
 
 void TDepotSearchWidgetController::onDetailListChanged()
 {

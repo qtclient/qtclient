@@ -435,6 +435,7 @@ class TInspectObjectDialogController final : public TDialogController<cip::tibia
 public:
     explicit TInspectObjectDialogController(QObject* parent = nullptr);
     static TInspectObjectDialogController* instance();
+    bool clientSettingSmoothFiltering() const override;
 
 public Q_SLOTS:
     void closeDialog() override;
@@ -454,6 +455,7 @@ class TInspectPlayerDialogController final : public TDialogController<cip::tibia
 public:
     explicit TInspectPlayerDialogController(QObject* parent = nullptr);
     static TInspectPlayerDialogController* instance();
+    bool clientSettingSmoothFiltering() const override;
 
 public Q_SLOTS:
     /// Also drops the pointing hand and the rows.

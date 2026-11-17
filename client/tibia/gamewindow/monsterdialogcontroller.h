@@ -69,6 +69,7 @@ public:
 
     TMonsterDialogController(cyclopedia::TBestiaryStorage& storage, QObject* parent = nullptr);
     ~TMonsterDialogController() override;
+    bool clientSettingSmoothFiltering() const override;
 
     Context captureContext() const;
     void restoreContext(const Context& context) { m_pendingContext = context; }

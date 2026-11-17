@@ -144,6 +144,8 @@ TGameWindowController::~TGameWindowController()
     input::setActionHandler(A::OPEN_NEWS_DIALOG, nullptr);
     input::setActionHandler(A::OPEN_NEWS_CATEGORY, nullptr);
     input::setActionHandler(A::REFRESH_COMPENDIUM_NEWS, nullptr);
+    // CIP also releases its native window helper and the keep-renderer prompt here; qtclient's
+    // prompt lives in app/sessionbootstrap and has no native helper.
     clearEventModels();
 }
 

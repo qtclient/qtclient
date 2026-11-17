@@ -1,4 +1,5 @@
 #include "monsterdialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "cyclopedia/bestiarystorage.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -428,7 +429,16 @@ TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QO
     hookEvents();
 }
 
-TMonsterDialogController::~TMonsterDialogController() = default;
+bool TMonsterDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
+TMonsterDialogController::~TMonsterDialogController()
+{
+    // CIP: the session goes first, then the classification, race and single-monster views are emptied.
+    m_hooks.clear();
+    m_classifications.clear();
+    m_races.clear();
+    m_details.reset();
+}
 
 TQmlMonsterRace* TMonsterDialogController::singleRace() const { return qobject_cast<TQmlMonsterRace*>(m_singleMonster); }
 

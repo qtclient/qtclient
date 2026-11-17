@@ -1,4 +1,5 @@
 #include "imbuingdialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -293,6 +294,8 @@ void publishOpenPremiumStore()
 
 }
 
+bool TImbuingDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
 TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ImbuingDialog.qml"), parent)
     , m_storage(storage)
@@ -304,7 +307,6 @@ TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* sto
 {
     m_availableImbuements = m_available;
     m_imbuementSlots = m_slotsModel;
-    m_clientSettingSmoothFiltering = true;
     m_resultMessage->setCloseOnButtonClicked(true);
     m_imbueConfirm->setCloseOnButtonClicked(true);
     m_clearConfirm->setCloseOnButtonClicked(true);
