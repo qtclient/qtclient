@@ -353,6 +353,8 @@ if(TIBIA_WITH_GAMECORE)
     chat/textstorage.cpp chat/textstorage.h
     shared/tibiaurltools.cpp shared/tibiaurltools.h
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
+    gamewindow/chatchanneltabrenderinfo.cpp gamewindow/chatchanneltabrenderinfo.h
+    gamewindow/chatchannelfiltercontroller.cpp gamewindow/chatchannelfiltercontroller.h
     creatures/attachedeffect.cpp creatures/attachedeffect.h
     creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
     creatures/movementtweens.cpp creatures/movementtweens.h

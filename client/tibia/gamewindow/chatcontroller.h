@@ -4,6 +4,8 @@
 #include "chat/chatgameactionhandler.h"
 #include "chat/chatmodemanager.h"
 #include "chat/chatprotocolmessagehandler.h"
+#include "gamewindow/chatchannelfiltercontroller.h"
+#include "gamewindow/chatchanneltabrenderinfo.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
@@ -162,14 +164,11 @@ class TChatChannelTabController final : public cip::tibia::gamewindow::TChatChan
 {
     Q_OBJECT
 public:
-    /// gamewindow::EChatChannelTabHighlight.
-    enum EHighlight : uint
-    {
-        NONE = 0,
-        CURRENT = 1,
-        FLASH_NEW_ENTRY = 2,
-        NEW_ENTRY = 3,
-    };
+    using EHighlight = TChatChannelTabRenderInfo::EHighlight;
+    static constexpr uint NONE = TChatChannelTabRenderInfo::NONE;
+    static constexpr uint CURRENT = TChatChannelTabRenderInfo::CURRENT;
+    static constexpr uint FLASH_NEW_ENTRY = TChatChannelTabRenderInfo::FLASH_NEW_ENTRY;
+    static constexpr uint NEW_ENTRY = TChatChannelTabRenderInfo::NEW_ENTRY;
 
     explicit TChatChannelTabController(chat::TChatChannelStorage& storage, QObject* parent = nullptr);
 
@@ -199,6 +198,11 @@ private:
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
     void onChannelRemoved(chat::TChatChannel* channel);
     void onEntryAdded(chat::TChatChannel* channel, bool fromOthers);
+    /// A tab's highlight changed: its row and the scroll buttons repaint.
+    void onTabHighlightChanged(chat::TChatChannel* channel);
+    /// The tab's render info, made when the tab is added.
+    void addRenderInfo(chat::TChatChannel* channel);
+    TChatChannelTabRenderInfo* renderInfo(const chat::TChatChannel* channel) const;
     void setCurrentRow(int row);
     int rowOf(const chat::TChatChannel* channel) const;
     uint highlightOf(int row) const;
@@ -206,8 +210,7 @@ private:
 
     chat::TChatChannelStorage& m_storage;
     std::vector<chat::TChatChannel*> m_rows;
-    std::unordered_map<const chat::TChatChannel*, uint> m_highlights;
-    std::unordered_map<const chat::TChatChannel*, TChatChannelTabRenderInfo*> m_flashInfos;
+    std::unordered_map<const chat::TChatChannel*, std::unique_ptr<TChatChannelTabRenderInfo>> m_renderInfos;
     uint m_hiddenLeft = 0;
     uint m_hiddenRight = 0;
 };

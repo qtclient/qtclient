@@ -473,39 +473,6 @@ private:
 
 // CipSoft DepotSearchWidget lives in depotsearchwidgetcontroller.h.cpp
 
-class TChatChannelFilterController final : public cip::tibia::gamewindow::TChatChannelFilterController
-{
-    Q_OBJECT
-public:
-    explicit TChatChannelFilterController(QObject* parent = nullptr);
-
-    void setChannelModel(QAbstractItemModel* source);
-    void syncFromChannel(bool canSubscribe, bool subscribed, bool writesLocal, bool canClose, const QString& name);
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-};
-
-class TChatChannelTabRenderInfo final : public cip::tibia::gamewindow::TChatChannelTabRenderInfo
-{
-    Q_OBJECT
-public:
-    explicit TChatChannelTabRenderInfo(QObject* parent = nullptr);
-
-    void startFlash(int milliseconds = 1000);
-    void stopFlash();
-    bool flashing() const { return m_timer.isActive(); }
-
-public Q_SLOTS:
-    void onFlashTimerTimeout();
-
-Q_SIGNALS:
-    void flashFinished();
-
-private:
-    QTimer m_timer;
-};
-
 class TChatTutorialMarkerRenderInfo final : public cip::tibia::gamewindow::TChatTutorialMarkerRenderInfo
 {
     Q_OBJECT
