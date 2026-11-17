@@ -19,6 +19,7 @@ class GameserverMessageRequestPurchaseData;
 class GameserverMessageCreditBalance;
 class GameserverMessageUpdatingShopBalance;
 class GameserverMessageTransactionHistory;
+class GameserverMessageTransactionDetails;
 class GameserverMessageStoreSuccess;
 class GameserverMessageStoreError;
 class GameserverMessageStoreButtonIndicators;
@@ -209,6 +210,55 @@ struct TPossibleMainCharacterInformation
     int level = 0;
 };
 
+/// CIP store::TChildTransactionDetails: one sale of a coin offer sold in parts.
+struct TChildTransactionDetails
+{
+    uint32_t date = 0;
+    QString description;
+    /// 0 or 1 (CIP's child transaction kinds).
+    int type = 0;
+    qint64 balanceChange = 0;
+};
+
+/// CIP store::TTransactionDetails: the details the transaction history opens,
+/// a single transaction (type 0) or one sold in parts (type 1).
+struct TTransactionDetails
+{
+    enum EType
+    {
+        TYPE_SINGLE = 0,
+        TYPE_MULTI = 1,
+    };
+
+    struct TSingle
+    {
+        uint32_t date = 0;
+        QString description;
+        QString characterName;
+        qint64 coinBalanceChange = 0;
+        quint64 piecePrice = 0;
+        qint64 goldBalanceChange = 0;
+    };
+
+    struct TMulti
+    {
+        QString characterName;
+        uint32_t totalCoins = 0;
+        uint32_t soldCoins = 0;
+        uint32_t coinsRemainingInMarket = 0;
+        quint64 piecePrice = 0;
+        quint64 receivedGold = 0;
+        std::vector<TChildTransactionDetails> childTransactions;
+    };
+
+    TTransactionDetails(uint32_t transactionId = 0, int type = TYPE_SINGLE);
+
+    uint32_t transactionId = 0;
+    int type = TYPE_SINGLE;
+    TSingle single;
+    TMulti multi;
+};
+
 /// One line of the transaction history.
 struct TStoreTransactionHistoryEntry
 {
@@ -302,10 +352,9 @@ public:
     int pageType() const { return m_pageType; }
     const std::vector<TStoreOffer>& offers() const { return m_offers; }
 
-    /// Host: transaction details by transaction id, from the transaction
-    /// details message.
-    const QString& transactionDetails() const { return m_transactionDetails; }
-    void setTransactionDetails(QString details);
+    /// The details of the last transaction the history opened.
+    const TTransactionDetails& transactionDetails() const { return m_transactionDetails; }
+    void setTransactionDetails(TTransactionDetails details);
 
 Q_SIGNALS:
     void offersChanged(int PreselectedOfferID);
@@ -329,7 +378,7 @@ private:
     TStoreTransactionHistory m_transactionHistory;
     qint64 m_creditPacketSize = 1;
     TStoreCategory* m_currentCategory = nullptr;
-    QString m_transactionDetails;
+    TTransactionDetails m_transactionDetails;
     QTimer m_categoriesTimer;
 };
 
@@ -382,6 +431,7 @@ public:
     void handleCreditBalanceMessage(const tibia::protobuf::protocol::GameserverMessageCreditBalance& message);
     void handleUpdatingShopBalanceMessage(const tibia::protobuf::protocol::GameserverMessageUpdatingShopBalance& message);
     void handleTransactionHistoryMessage(const tibia::protobuf::protocol::GameserverMessageTransactionHistory& message);
+    void handleTransactionDetailsMessage(const tibia::protobuf::protocol::GameserverMessageTransactionDetails& message);
     void handleStoreSuccessMessage(const tibia::protobuf::protocol::GameserverMessageStoreSuccess& message);
     void handleStoreErrorMessage(const tibia::protobuf::protocol::GameserverMessageStoreError& message);
     void handleSetStoreButtonDeeplinkMessage(const tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink& message);

@@ -416,7 +416,12 @@ const TStoreCategory* TStoreStorage::currentCategory() const
     return m_currentCategory;
 }
 
-void TStoreStorage::setTransactionDetails(QString details)
+TTransactionDetails::TTransactionDetails(const uint32_t transactionId, const int type)
+    : transactionId(transactionId)
+    , type(type)
+{}
+
+void TStoreStorage::setTransactionDetails(TTransactionDetails details)
 {
     m_transactionDetails = std::move(details);
     Q_EMIT transactionDetailsLoaded();
@@ -870,6 +875,39 @@ void TStoreProtocolMessageHandler::handleTransactionHistoryMessage(const Gameser
         m_storage->setTransactionHistory(history);
 }
 
+void TStoreProtocolMessageHandler::handleTransactionDetailsMessage(const GameserverMessageTransactionDetails& message)
+{
+    const int type = protocolEnum(message.detail_type(), 0, 2);
+    TTransactionDetails details(message.transaction_id(), type);
+    if (type == TTransactionDetails::TYPE_MULTI) {
+        const ProtocolTransactionPurchase& multi = message.purchase();
+        details.multi.characterName = toQString(multi.text());
+        for (const ProtocolTransactionItem& child : multi.items()) {
+            TChildTransactionDetails entry;
+            entry.date = child.first_value();
+            entry.description = toQString(child.text());
+            entry.type = protocolEnum(child.second_value(), 0, 2);
+            entry.balanceChange = child.amount();
+            details.multi.childTransactions.push_back(std::move(entry));
+        }
+        details.multi.totalCoins = multi.first_value();
+        details.multi.soldCoins = multi.second_value();
+        details.multi.coinsRemainingInMarket = multi.third_value();
+        details.multi.piecePrice = multi.fourth_value();
+        details.multi.receivedGold = multi.fifth_value();
+    } else if (type == TTransactionDetails::TYPE_SINGLE) {
+        const ProtocolTransactionTransfer& single = message.transfer();
+        details.single.description = toQString(single.first_text());
+        details.single.characterName = toQString(single.second_text());
+        details.single.date = single.first_value();
+        details.single.coinBalanceChange = single.second_value();
+        details.single.piecePrice = single.third_value();
+        details.single.goldBalanceChange = single.fourth_value();
+    }
+    if (m_storage)
+        m_storage->setTransactionDetails(std::move(details));
+}
+
 void TStoreProtocolMessageHandler::handleStoreSuccessMessage(const GameserverMessageStoreSuccess& message)
 {
     const QString text = toQString(message.message());
@@ -965,17 +1003,9 @@ void TStoreProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
                 shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink));
         break;
     case 203:
-        if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details)) {
-            const auto& m = shadow->GetExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details);
-            // Host: the detail text of the record the server sent.
-            std::string details;
-            if (m.has_purchase())
-                details = m.purchase().text();
-            else if (m.has_transfer())
-                details = m.transfer().first_text();
-            if (handler->m_storage)
-                handler->m_storage->setTransactionDetails(toQString(details));
-        }
+        if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details))
+            handler->handleTransactionDetailsMessage(
+                shadow->GetExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details));
         break;
     case 225:
         if (shadow->HasExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data))

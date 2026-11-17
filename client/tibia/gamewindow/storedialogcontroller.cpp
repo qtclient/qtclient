@@ -273,6 +273,9 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     connect(&m_confirmationDialog, &TStorePurchaseConfirmationDialogController::confirmPurchase, this,
             &TStoreDialogController::onPurchaseConfirmed);
     connect(&m_viewEventTimer, &QTimer::timeout, this, &TStoreDialogController::onViewEventTimeoutElapsed);
+    if (m_storage)
+        connect(m_storage, &store::TStoreStorage::transactionDetailsLoaded, m_transactionDetailsDialog,
+                [this] { m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails()); });
     connect(m_extraConfirmationDialog, &TMessageDialogController::acceptClicked, this, &TStoreDialogController::onExtraConfirmDialogClickedOK);
     connect(m_extraConfirmationDialog, &TMessageDialogController::discardClicked, this,
             &TStoreDialogController::onExtraConfirmDialogClickedNotOK);

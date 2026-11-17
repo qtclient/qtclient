@@ -5155,6 +5155,8 @@ sub_13d08a5407ce#40	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:T
 sub_13d08a5407ce#42	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage
 sub_13d08a5407ce#48	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage
 sub_13d08a5407ce#49	13d08a5407ce57fa	ported	quickloot/quicklootciptypes.cpp:TManagedContainersProtocolMessageHandler::sendQuickLootBlackWhitelist
+sub_13d08a5407ce#55	13d08a5407ce57fa	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleTransactionDetailsMessage
+sub_13d08a5407ce#56	13d08a5407ce57fa	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleTransactionDetailsMessage
 sub_13d08a5407ce#57	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
 sub_13d08a5407ce#58	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
 sub_13d08a5407ce#60	13d08a5407ce57fa	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
@@ -5567,6 +5569,7 @@ sub_1eb7b796d7ff	1eb7b796d7ffd120	ported	input/gameactionmapper.cpp:TGameActionM
 sub_1ed0acb918e9#2	1ed0acb918e94d2a	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage
 sub_1ed8eef79b6b	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
 sub_1ed8eef79b6b#2	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
+sub_1edaf853f0da	1edaf853f0da96dd	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleTransactionDetailsMessage
 sub_1ee2e483813c#3	1ee2e483813c051b	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::captureContext
 sub_1ee96ff14e71	1ee96ff14e71aaf1	tested	tutorial/sessiondumphints.cpp:TSessiondumpHints::createTutorialProgressHint	test=tests/client/sessiondumphints_test.cpp
 sub_1eebfc07644d	1eebfc07644da716	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -7994,7 +7997,7 @@ sub_66d875eb1148	66d875eb11485cd8	ported	gamewindow/naggingmessagedialogcontroll
 sub_66ee754aa8ce	66ee754aa8ced9a4	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onToggleLootAnalyserWidget
 sub_66efffa1ca22	66efffa1ca22f525	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_66efffa1ca22#2	66efffa1ca22f525	inlined	config/sidebaroptions.cpp:parseImbuementTracker
-sub_66f1e508d343	66f1e508d34357c1	skip	generated: compiler-generated destructor / move-assignment of store records
+sub_66f1e508d343	66f1e508d34357c1	skip	generated: TTransactionDetails move assignment (member swaps/copies only)
 sub_66f7c5f08fb4	66f7c5f08fb46e66	skip	library: miniaudio library
 sub_67075aefd67d	67075aefd67d09dd	ported	shared/src/downloadpool.cpp:TDownloadPool::onDownloadFinished
 sub_6732541ae546	6732541ae54646f3	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::history
@@ -9873,6 +9876,7 @@ sub_9d40c8933f6e	9d40c8933f6e2375	inlined	news/newsentrymodels.cpp:TNewsEntryMod
 sub_9d443d25e7fa	9d443d25e7fa7846	inlined	gamewindow/marketcontroller.cpp:statisticsText
 sub_9d89de35b921	9d89de35b921f72c	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::refresh
 sub_9d9ac654d495	9d9ac654d4955e52	ported	skillwheel/skillwheeldata.cpp:augmentationDescription
+sub_9d9c6d8b8adc	9d9c6d8b8adc36db	ported	store/storestorage.cpp:TTransactionDetails::TTransactionDetails
 sub_9da9109951bd	9da9109951bd8fb4	skip	library: SFML audio library (miniaudio backend)
 sub_9daff4ec827a	9daff4ec827a9cf4	ported	config/clientoptionsmigration.cpp:moveBoolOptions
 sub_9dc80440c2b8	9dc80440c2b896a2	ported	taskboard/taskboardbountytasksstorage.cpp:TTaskboardBountyTasksStorage::TTaskboardBountyTasksStorage
@@ -12662,7 +12666,7 @@ sub_ee2f5fc042f3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (m
 sub_ee2f5fc042f3#2	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee2f5fc042f3#3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee2f5fc042f3#4	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
-sub_ee33436e3075	ee33436e30759a75	skip	library: libc++ std::vector push_back reallocation / split-buffer helpers for the store message structs
+sub_ee33436e3075	ee33436e30759a75	skip	library: libc++ std::vector<TChildTransactionDetails> push_back slow path (size/capacity arithmetic, relocate)
 sub_ee5079f06811	ee5079f068112c4e	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout
 sub_ee568eb1527e	ee568eb1527e029f	tested	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender	test=tests/client/sharednet_test.cpp
 sub_ee686499304a	ee686499304acb0b	inlined	gamewindow/containercontroller.cpp:TContainerController::onSlotDragDropped

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "store/storestorage.h"
+
 #include "crashreportdata.h"
 
 #include "client/gamecore.h"
@@ -405,6 +407,9 @@ class TMarketCoinTransactionDetailsDialogController final
     Q_OBJECT
 public:
     explicit TMarketCoinTransactionDetailsDialogController(QObject* parent = nullptr);
+
+    /// Host bridge (until gw ports CIP's data getters): the storage's details.
+    void setTransactionDetails(const store::TTransactionDetails& details);
 
 public Q_SLOTS:
     void showDialog() override;
