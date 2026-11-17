@@ -964,8 +964,7 @@ void TStoreDialogController::requestTransactionDetailsAndShowPage(const int Tran
 {
     m_transactionDetailsDialog->showDialog();
     m_transactionDetailsId = TransactionID;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_TRANSACTION_DETAILS));
-    action->instance = TransactionID;
+    auto action = std::make_shared<input::TGameActionRequestTransactionDetailsFromServer>(TransactionID);
     input::publish(action);
 }
 

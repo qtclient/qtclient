@@ -42,7 +42,7 @@ public:
     void handleQuitGameAction();
     void handleChangeCharacterAction();
     void handleRequestResourceBalanceAction(const TGameActionRequestResourceBalance& action);
-    void handleTeleportToCoordinateAction(const TGameAction& action);
+    void handleTeleportToCoordinateAction(const TGameActionTeleportToCoordinate& action);
     void handleSaveTextToFile(const TGameActionSaveTextToFile& action);
     void handleSaveJsonDocumentToFile(const TGameActionSaveJsonDocumentToFile& action);
 

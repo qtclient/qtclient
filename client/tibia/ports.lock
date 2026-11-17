@@ -4321,6 +4321,8 @@ sub_060bbfd8acce#5	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTran
 sub_060bbfd8acce#6	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_060bbfd8acce#7	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_060e17cee79b#4	060e17cee79b0309	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
+sub_060e59eaffbb	060e59eaffbb7fdd	ported	input/gameaction.h:TGameActionRequestSearchTypeInDepot::TGameActionRequestSearchTypeInDepot
+sub_060e59eaffbb#2	060e59eaffbb7fdd	ported	input/gameaction.h:TGameActionRequestSearchTypeInDepot::TGameActionRequestSearchTypeInDepot
 sub_0613a1653dbc	0613a1653dbc5318	ported	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::bosses
 sub_0623c08fc50a	0623c08fc50a1ce3	ported	cyclopedia/combatstatsqmldata.cpp:TMiscStatsQmlData::currentBlessings
 sub_06348cf838e0	06348cf838e0fb1f	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::TProtocolMessageQueue
@@ -5194,6 +5196,8 @@ sub_1e068594336b	1e068594336b02b1	ported	config/clientoptions.cpp:controlSchemeF
 sub_1e0eac1d0fc6	1e0eac1d0fc6472c	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::requestScreenshot
 sub_1e107f6deb97	1e107f6deb97a81b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_1e163f4399a8	1e163f4399a89b22	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::offerFrom
+sub_1e1ce6aa7e71	1e1ce6aa7e71af25	ported	input/gameaction.h:TGameActionRequestTransactionDetailsFromServer::TGameActionRequestTransactionDetailsFromServer
+sub_1e1ce6aa7e71#2	1e1ce6aa7e71af25	ported	input/gameaction.h:TGameActionRequestTransactionDetailsFromServer::TGameActionRequestTransactionDetailsFromServer
 sub_1e2a28907cbf	1e2a28907cbf87df	ported	gamewindow/dialogmanager.cpp:TDialogStackController::show
 sub_1e4cef7e82d4#4	1e4cef7e82d4326e	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::requestQuestLineDetails
 sub_1e623603abe2	1e623603abe28653	skip	generated: moc property getter (generated in cip_gen)
@@ -6537,6 +6541,8 @@ sub_4e7d66dc9277	4e7d66dc92777012	skip	library: nlohmann::json from_json number/
 sub_4e92c14fdd3c	4e92c14fdd3c6a5a	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_4e9622e703f9	4e9622e703f95c33	ported	gamewindow/housesinfodialogcontroller.h:THousesModel::setLimits
 sub_4ea6be3da4b8#2	4ea6be3da4b82c6e	skip	generated: moc signal emitter
+sub_4ea6f03c9bd2	4ea6f03c9bd2c71b	ported	input/gameaction.h:TGameActionTeleportToCoordinate::TGameActionTeleportToCoordinate
+sub_4ea6f03c9bd2#2	4ea6f03c9bd2c71b	ported	input/gameaction.h:TGameActionTeleportToCoordinate::TGameActionTeleportToCoordinate
 sub_4ea7f7d1e9d8	4ea7f7d1e9d86bb0	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCancel
 sub_4ecb244c924e	4ecb244c924e2655	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardGameActionHandler::TDailyRewardGameActionHandler
 sub_4ecb244c924e#2	4ecb244c924e2655	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardGameActionHandler::TDailyRewardGameActionHandler
@@ -8556,6 +8562,8 @@ sub_8d64c2976730	8d64c2976730ad8b	ported	proficiency/weaponproficiencydialogcont
 sub_8d80c76f3a94	8d80c76f3a948e25	skip	library: miniaudio library
 sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 sub_8db954679786	8db954679786c36a	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
+sub_8dd10015ed02	8dd10015ed021b7f	ported	input/gameaction.h:TGameActionChangeQuesttrackerOptions::TGameActionChangeQuesttrackerOptions
+sub_8dd10015ed02#2	8dd10015ed021b7f	ported	input/gameaction.h:TGameActionChangeQuesttrackerOptions::TGameActionChangeQuesttrackerOptions
 sub_8dd8e811d4bf	8dd8e811d4bf6f46	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_8deb34499902	8deb34499902d9e7	skip	generated: moc property getter, provided by the generated cip base
 sub_8df0e071c723	8df0e071c7232e61	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::updateHint
@@ -9091,6 +9099,8 @@ sub_9d443d25e7fa	9d443d25e7fa7846	inlined	gamewindow/marketcontroller.cpp:statis
 sub_9d6940699d21	9d6940699d21dc38	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_9d89de35b921	9d89de35b921f72c	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::refresh
 sub_9d9ac654d495	9d9ac654d4955e52	ported	skillwheel/skillwheeldata.cpp:augmentationDescription
+sub_9da159d4447b	9da159d4447b7e86	ported	input/gameaction.h:TGameActionRequestSearchTypeInDepot::TGameActionRequestSearchTypeInDepot
+sub_9da159d4447b#2	9da159d4447b7e86	ported	input/gameaction.h:TGameActionRequestSearchTypeInDepot::TGameActionRequestSearchTypeInDepot
 sub_9da9109951bd	9da9109951bd8fb4	skip	library: SFML audio library (miniaudio backend)
 sub_9daff4ec827a	9daff4ec827a9cf4	ported	config/clientoptionsmigration.cpp:moveBoolOptions
 sub_9dfa3830971e	9dfa3830971e9d58	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
@@ -10462,6 +10472,8 @@ sub_ca4d66a57a02	ca4d66a57a02e81f	skip	library: QMap/QList template instantiatio
 sub_ca7b31c94985	ca7b31c94985fbb5	ported	trade/tradeciptypes.cpp:TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler
 sub_ca7b31c94985#2	ca7b31c94985fbb5	ported	trade/tradeciptypes.cpp:TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler
 sub_ca8d87ffb26d	ca8d87ffb26dccdb	inlined	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleChannelEventMessage
+sub_ca95229d372c	ca95229d372cc678	ported	input/gameaction.h:TGameActionRequestTransactionDetailsFromServer::TGameActionRequestTransactionDetailsFromServer
+sub_ca95229d372c#2	ca95229d372cc678	ported	input/gameaction.h:TGameActionRequestTransactionDetailsFromServer::TGameActionRequestTransactionDetailsFromServer
 sub_ca9dac2964a0	ca9dac2964a0294a	inlined	config/specialconditionsoptions.cpp:SpecialConditionsOptions::defaults
 sub_caac07301faa	caac07301faa9d57	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::count	test=tests/client/sharednet_test.cpp
 sub_caba4c2f9982	caba4c2f9982403e	ported	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
@@ -11030,6 +11042,8 @@ sub_da049d8fc060	da049d8fc060f4d0	ported	gamewindow/playerguidewidgetcontroller.
 sub_da0e4308ca31	da0e4308ca31f67f	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::setUrl
 sub_da1a83bfa741	da1a83bfa74106e7	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_da1b9a1daa02	da1b9a1daa021637	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::makeElementalPierce
+sub_da281a529da3	da281a529da38641	ported	input/gameaction.h:TGameActionDepotSearchRetrieve::TGameActionDepotSearchRetrieve
+sub_da281a529da3#2	da281a529da38641	ported	input/gameaction.h:TGameActionDepotSearchRetrieve::TGameActionDepotSearchRetrieve
 sub_da364dbf2739#10	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsAccountSearchStorage::result
 sub_da364dbf2739#11	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsInviteStorage::inviteList
 sub_da364dbf2739#25	da364dbf273981b3	inlined	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::updateEvents
@@ -11604,6 +11618,8 @@ sub_ed74621b5f58	ed74621b5f58481c	ported	gamewindow/calendardialogcontroller.cpp
 sub_ed7a5bc8259e	ed7a5bc8259e379e	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_ed98d49c7ad1	ed98d49c7ad1c912	skip	library: std::sort instantiation over team members / member indices (library)
 sub_ed99167baad9	ed99167baad92d7f	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onPasswordChecked
+sub_edac98d24bd0	edac98d24bd06153	ported	input/gameaction.h:TGameActionAssignSpellToActionButton::TGameActionAssignSpellToActionButton
+sub_edac98d24bd0#2	edac98d24bd06153	ported	input/gameaction.h:TGameActionAssignSpellToActionButton::TGameActionAssignSpellToActionButton
 sub_edae9633507a#2	edae9633507aab0d	skip	library: Qt/std container template code
 sub_edbc5fdeb346	edbc5fdeb3465331	ported	gamewindow/preydialogcontroller.cpp:TPreyData::TPreyData
 sub_edbc5fdeb346#2	edbc5fdeb3465331	ported	gamewindow/preydialogcontroller.cpp:TPreyData::TPreyData

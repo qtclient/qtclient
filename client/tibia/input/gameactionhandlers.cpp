@@ -452,14 +452,13 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         tibia::game::closeDepotSearchRequest();
         break;
     case A::REQUEST_SEARCH_TYPE_IN_DEPOT:
-        if (const uint16_t typeId = wireTypeId(*action); typeId != 0)
-            tibia::game::requestDepotSearchItem(typeId, static_cast<uint8_t>(std::max(0, action->parameter)));
-        else if (action->parameter > 0)
-            tibia::game::requestDepotSearchItem(static_cast<uint16_t>(action->parameter), 0);
+        if (const auto* search = gameActionAs<TGameActionRequestSearchTypeInDepot>(pGameAction); search && search->typeId() != 0)
+            tibia::game::requestDepotSearchItem(search->typeId(), static_cast<uint8_t>(search->tier()));
         break;
     case A::DEPOT_SERACH_RETRIEVE:
-        tibia::game::retrieveDepotSearch(static_cast<uint16_t>(action->exaltationTypeId ? action->exaltationTypeId : action->parameter),
-                                   action->exaltationTier, static_cast<uint8_t>(action->category >= 0 ? action->category : 0));
+        if (const auto* retrieve = gameActionAs<TGameActionDepotSearchRetrieve>(pGameAction))
+            tibia::game::retrieveDepotSearch(retrieve->typeId(), static_cast<uint8_t>(retrieve->tier()),
+                                             static_cast<uint8_t>(std::max(retrieve->location(), 0)));
         break;
     case A::CANCEL_USE_WITH:
     case A::CANCEL_CROSSHAIR_SPELL:
@@ -552,7 +551,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             tibia::game::joinAggression(creatureId);
         break;
     case A::REQUEST_TRANSACTION_DETAILS:
-        tibia::game::requestTransactionDetails(static_cast<uint32_t>(action->instance));
+        if (const auto* details = gameActionAs<TGameActionRequestTransactionDetailsFromServer>(pGameAction))
+            tibia::game::requestTransactionDetails(static_cast<uint32_t>(details->transactionId()));
         break;
     case A::OPEN_TRADE_CHARACTER_DIALOG:
         // CIP → TCharacterTradeDialogController (CharacterTradeDialog.qml); action 0 = conditions.
@@ -615,17 +615,19 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
     case A::RESOLVE_SPRITE:
         // CIP resolves a sprite id into the texture atlas. Without a window-bound
         // SpriteKey here we acknowledge the action; sheets load on next draw.
-        qCInfo(lcGameActions) << "RESOLVE_SPRITE" << action->parameter;
+        if (const auto* sprite = gameActionAs<TGameActionSprite>(pGameAction))
+            qCInfo(lcGameActions) << "RESOLVE_SPRITE" << sprite->spriteId();
         break;
     case A::SPRITE_RESOLVED:
-        qCInfo(lcGameActions) << "SPRITE_RESOLVED" << action->parameter;
+        if (const auto* sprite = gameActionAs<TGameActionSprite>(pGameAction))
+            qCInfo(lcGameActions) << "SPRITE_RESOLVED" << sprite->spriteId();
         break;
     case A::OPEN_SHOW_IMAGE_DIALOG:
-        if (gamewindow::TShowImageDialogController* images = gamewindow::TShowImageDialogController::instance()) {
-            const QString path = action->text;
-            images->showImages(path.isEmpty() ? QStringList{} : QStringList{ path }, path);
-        } else {
-            qCInfo(lcGameActions) << "OPEN_SHOW_IMAGE_DIALOG" << action->text << action->parameter;
+        if (const auto* show = gameActionAs<TGameActionOpenShowImageDialog>(pGameAction)) {
+            if (gamewindow::TShowImageDialogController* images = gamewindow::TShowImageDialogController::instance()) {
+                const QString& path = show->imagePath();
+                images->showImages(path.isEmpty() ? QStringList{} : QStringList{ path }, path);
+            }
         }
         break;
     case A::SHOW_TUTORIAL_HINT:

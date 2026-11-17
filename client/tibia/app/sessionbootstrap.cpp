@@ -142,10 +142,10 @@ void TSessionBootstrap::wireCreateCharacter()
                 });
     // CIP : SHOW_CREATE_CHARACTER_DIALOG (parameter: account has no characters).
     input::setActionHandler(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
-                            [self = QPointer<TSessionBootstrap>(this)](const input::TGameAction& action) {
+                            [self = QPointer<TSessionBootstrap>(this)](const input::gameactions::TGameActionShowCreateCharacterDialog& action) {
                                 if (!self)
                                     return true;
-                                self->openCreateCharacter(action.parameter != 0 || action.enable);
+                                self->openCreateCharacter(action.accountIsEmpty());
                                 return true;
                             });
 }

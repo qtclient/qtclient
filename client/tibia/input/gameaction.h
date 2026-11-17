@@ -2373,6 +2373,299 @@ private:
     int m_extendType;
 };
 
+
+// ---------------------------------------------------------------------------
+// Quests, sprites, depot search, store details, spells, teleport, dialogs
+
+/// CIP input::TGameActionChangeQuesttrackerOptions (CHANGE_QUESTTRACKER_OPTIONS).
+class TGameActionChangeQuesttrackerOptions final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionChangeQuesttrackerOptions(int option, bool enabled)
+        : TGameActionSimple(EGameAction::CHANGE_QUESTTRACKER_OPTIONS)
+        , m_option(option)
+        , m_enabled(enabled)
+    {
+    }
+    int option() const { return m_option; }
+    bool enabled() const { return m_enabled; }
+
+private:
+    int m_option;
+    bool m_enabled;
+};
+
+/// CIP input::TGameActionChangeTrackedQuestFlags (CHANGE_TRACKED_QUESTFLAGS): quest
+/// ids (+0x10) and whether they are tracked (+0x28).
+class TGameActionChangeTrackedQuestFlags final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionChangeTrackedQuestFlags(std::vector<int> questIds, bool track)
+        : TGameActionSimple(EGameAction::CHANGE_TRACKED_QUESTFLAGS)
+        , m_questIds(std::move(questIds))
+        , m_track(track)
+    {
+    }
+    const std::vector<int>& questIds() const { return m_questIds; }
+    bool track() const { return m_track; }
+
+private:
+    std::vector<int> m_questIds;
+    bool m_track;
+};
+
+/// CIP input::TGameActionRemoveSpriteIdentifierFromCache / TGameActionResolveSprite /
+/// TGameActionSpriteResolved: an action on one sprite. qtclient carries the sprite
+/// id (CIP: a shared TSpriteIdentifier).
+class TGameActionSprite final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSprite(EGameAction type, uint32_t spriteId)
+        : TGameActionSimple(type)
+        , m_spriteId(spriteId)
+    {
+    }
+    uint32_t spriteId() const { return m_spriteId; }
+
+private:
+    uint32_t m_spriteId;
+};
+
+/// CIP input::TGameActionCyclopediaMapSelectionItem (CYCLOPEDIA_MAP_SELECT_ITEM).
+/// qtclient carries the subarea (CIP: two coordinates and an extent).
+class TGameActionCyclopediaMapSelectionItem final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionCyclopediaMapSelectionItem(int subareaId)
+        : TGameActionSimple(EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM)
+        , m_subareaId(subareaId)
+    {
+    }
+    int subareaId() const { return m_subareaId; }
+
+private:
+    int m_subareaId;
+};
+
+/// CIP input::TGameActionRequestTransactionDetailsFromServer (REQUEST_TRANSACTION_DETAILS).
+class TGameActionRequestTransactionDetailsFromServer final
+    : public TGameActionWithValue<EGameAction::REQUEST_TRANSACTION_DETAILS, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    TGameActionRequestTransactionDetailsFromServer()
+        : TGameActionWithValue(0)
+    {
+    }
+    int transactionId() const { return m_value; }
+};
+
+/// CIP input::TGameActionRequestSearchTypeInDepot (REQUEST_SEARCH_TYPE_IN_DEPOT).
+class TGameActionRequestSearchTypeInDepot final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionRequestSearchTypeInDepot(uint16_t typeId, uint16_t tier = 0)
+        : TGameActionSimple(EGameAction::REQUEST_SEARCH_TYPE_IN_DEPOT)
+        , m_typeId(typeId)
+        , m_tier(tier)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    uint16_t tier() const { return m_tier; }
+
+private:
+    uint16_t m_typeId;
+    uint16_t m_tier;
+};
+
+/// CIP input::TGameActionDepotSearchRetrieve (DEPOT_SERACH_RETRIEVE): the type,
+/// tier and where it is taken from.
+class TGameActionDepotSearchRetrieve final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionDepotSearchRetrieve(uint16_t typeId, uint16_t tier, int location)
+        : TGameActionSimple(EGameAction::DEPOT_SERACH_RETRIEVE)
+        , m_typeId(typeId)
+        , m_tier(tier)
+        , m_location(location)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    uint16_t tier() const { return m_tier; }
+    int location() const { return m_location; }
+
+private:
+    uint16_t m_typeId;
+    uint16_t m_tier;
+    int m_location;
+};
+
+/// CIP input::TGameActionAssignSpellToActionButton (ASSIGN_SPELL_TO_ACTION_BUTTON):
+/// bar (+0xc), button (+0x10), multi action (+0x14), spell (+0x18). qtclient also
+/// sends REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON with it (CIP: a TGameActionSimple).
+class TGameActionAssignSpellToActionButton final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionAssignSpellToActionButton(uint8_t actionBarId, int actionButtonId, int multiActionIndex, uint16_t spellId,
+                                         EGameAction type = EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON)
+        : TGameActionSimple(type)
+        , m_actionBarId(actionBarId)
+        , m_actionButtonId(actionButtonId)
+        , m_multiActionIndex(multiActionIndex)
+        , m_spellId(spellId)
+    {
+    }
+    uint8_t actionBarId() const { return m_actionBarId; }
+    int actionButtonId() const { return m_actionButtonId; }
+    int multiActionIndex() const { return m_multiActionIndex; }
+    uint16_t spellId() const { return m_spellId; }
+
+private:
+    uint8_t m_actionBarId;
+    int m_actionButtonId;
+    int m_multiActionIndex;
+    uint16_t m_spellId;
+};
+
+/// CIP input::TGameActionTeleportToCoordinate (GOD_TELEPORT).
+class TGameActionTeleportToCoordinate final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionTeleportToCoordinate(const Position& coordinate)
+        : TGameActionSimple(EGameAction::GOD_TELEPORT)
+        , m_coordinate(coordinate)
+    {
+    }
+    const Position& coordinate() const { return m_coordinate; }
+
+private:
+    Position m_coordinate;
+};
+
+/// CIP input::TGameActionOpenShowImageDialog (OPEN_SHOW_IMAGE_DIALOG): the image.
+class TGameActionOpenShowImageDialog final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionOpenShowImageDialog(QString imagePath)
+        : TGameActionSimple(EGameAction::OPEN_SHOW_IMAGE_DIALOG)
+        , m_imagePath(std::move(imagePath))
+    {
+    }
+    const QString& imagePath() const { return m_imagePath; }
+
+private:
+    QString m_imagePath;
+};
+
+namespace gameactions {
+/// CIP input::gameactions::TGameActionOpenTaskboardDialog (OPEN_TASKBOARD_DIALOG): the tab
+/// (0 bounty tasks, 1 weekly tasks).
+class TGameActionOpenTaskboardDialog final : public TGameActionWithValue<EGameAction::OPEN_TASKBOARD_DIALOG, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int tab() const { return m_value; }
+};
+
+/// CIP input::gameactions::TGameActionOpenWeaponProficiencyDialog (OPEN_WEAPON_PROFICIENCY_DIALOG).
+class TGameActionOpenWeaponProficiencyDialog final
+    : public TGameActionWithValue<EGameAction::OPEN_WEAPON_PROFICIENCY_DIALOG, uint16_t>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    uint16_t typeId() const { return m_value; }
+};
+
+/// CIP input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog
+/// (OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG): the weapon, perk level and perk.
+class TGameActionOpenWeaponProficiencyShapeDialog final : public TGameActionSimple
+{
+public:
+    TGameActionOpenWeaponProficiencyShapeDialog(uint16_t typeId, uint8_t level, uint8_t perk, bool fromPerkTree)
+        : TGameActionSimple(EGameAction::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG)
+        , m_typeId(typeId)
+        , m_level(level)
+        , m_perk(perk)
+        , m_fromPerkTree(fromPerkTree)
+    {
+    }
+    uint16_t typeId() const { return m_typeId; }
+    uint8_t level() const { return m_level; }
+    uint8_t perk() const { return m_perk; }
+    bool fromPerkTree() const { return m_fromPerkTree; }
+
+private:
+    uint16_t m_typeId;
+    uint8_t m_level;
+    uint8_t m_perk;
+    bool m_fromPerkTree;
+};
+
+/// CIP input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog
+/// (OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG): the profession.
+class TGameActionOpenWeaponProficiencyShapeOptionsDialog final
+    : public TGameActionWithValue<EGameAction::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int profession() const { return m_value; }
+};
+
+/// CIP input::gameactions::TGameActionSaveSkillWheel (SAVE_SKILL_WHEEL).
+class TGameActionSaveSkillWheel final : public TGameActionSimple
+{
+public:
+    TGameActionSaveSkillWheel()
+        : TGameActionSimple(EGameAction::SAVE_SKILL_WHEEL)
+    {
+    }
+};
+
+/// CIP input::gameactions::TSelectAtelierGemGameAction (GEM_ATELIER_SELECT_GEM).
+class TSelectAtelierGemGameAction final : public TGameActionWithValue<EGameAction::GEM_ATELIER_SELECT_GEM, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int gemId() const { return m_value; }
+};
+
+/// CIP input::gameactions::TSelectFragmentWorkshopModGameAction (FRAGMENT_WORKSHOP_SELECT_MOD).
+class TSelectFragmentWorkshopModGameAction final : public TGameActionSimple
+{
+public:
+    TSelectFragmentWorkshopModGameAction(bool supremeMod, int modId)
+        : TGameActionSimple(EGameAction::FRAGMENT_WORKSHOP_SELECT_MOD)
+        , m_supremeMod(supremeMod)
+        , m_modId(modId)
+    {
+    }
+    bool supremeMod() const { return m_supremeMod; }
+    int modId() const { return m_modId; }
+
+private:
+    bool m_supremeMod;
+    int m_modId;
+};
+
+/// CIP input::gameactions::TGameActionShowCreateCharacterDialog (SHOW_CREATE_CHARACTER_DIALOG).
+class TGameActionShowCreateCharacterDialog final
+    : public TGameActionWithValue<EGameAction::SHOW_CREATE_CHARACTER_DIALOG, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    /// The account has no characters yet.
+    bool accountIsEmpty() const { return m_value; }
+};
+
+/// CIP input::gameactions::TGameActionGameEvent (GAME_EVENT).
+class TGameActionGameEvent final : public TGameActionWithValue<EGameAction::GAME_EVENT, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int gameEvent() const { return m_value; }
+};
+}
+
 struct TGameAction;
 class IGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
@@ -2602,50 +2895,14 @@ public:
 };
 
 
-/// CIP input::TGameActionAssignSpellToActionButton .
-class TGameActionAssignSpellToActionButton final : public TGameAction
-{
-public:
-    TGameActionAssignSpellToActionButton() { type = EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON; }
-};
 
 
 
 
 
 
-/// CIP input::TGameActionChangeQuesttrackerOptions .
-class TGameActionChangeQuesttrackerOptions final : public TGameAction
-{
-public:
-    TGameActionChangeQuesttrackerOptions() { type = EGameAction::CHANGE_QUESTTRACKER_OPTIONS; }
-};
-
-/// CIP input::TGameActionChangeTrackedQuestFlags .
-class TGameActionChangeTrackedQuestFlags final : public TGameAction
-{
-public:
-    TGameActionChangeTrackedQuestFlags() { type = EGameAction::CHANGE_TRACKED_QUESTFLAGS; }
-};
 
 
-
-
-
-/// CIP input::TGameActionCyclopediaMapSelectionItem .
-class TGameActionCyclopediaMapSelectionItem final : public TGameAction
-{
-public:
-    TGameActionCyclopediaMapSelectionItem() { type = EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM; }
-    explicit TGameActionCyclopediaMapSelectionItem(int subareaId);
-};
-
-/// CIP input::TGameActionDepotSearchRetrieve (→ DEPOT_SERACH_RETRIEVE).
-class TGameActionDepotSearchRetrieve final : public TGameAction
-{
-public:
-    TGameActionDepotSearchRetrieve() { type = EGameAction::DEPOT_SERACH_RETRIEVE; }
-};
 
 
 
@@ -2699,42 +2956,9 @@ public:
 };
 
 
-/// CIP input::TGameActionOpenShowImageDialog .
-class TGameActionOpenShowImageDialog final : public TGameAction
-{
-public:
-    TGameActionOpenShowImageDialog() { type = EGameAction::OPEN_SHOW_IMAGE_DIALOG; }
-    explicit TGameActionOpenShowImageDialog(QString text);
-};
 
 
 
-/// CIP input::TGameActionRemoveSpriteIdentifierFromCache .
-class TGameActionRemoveSpriteIdentifierFromCache final : public TGameAction
-{
-public:
-    TGameActionRemoveSpriteIdentifierFromCache() { type = EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE; }
-};
-
-
-/// CIP input::TGameActionRequestSearchTypeInDepot .
-class TGameActionRequestSearchTypeInDepot final : public TGameAction
-{
-public:
-    TGameActionRequestSearchTypeInDepot() { type = EGameAction::REQUEST_SEARCH_TYPE_IN_DEPOT; }
-};
-/// CIP input::TGameActionRequestTransactionDetailsFromServer .
-class TGameActionRequestTransactionDetailsFromServer final : public TGameAction
-{
-public:
-    TGameActionRequestTransactionDetailsFromServer() { type = EGameAction::REQUEST_TRANSACTION_DETAILS; }
-};
-/// CIP input::TGameActionResolveSprite .
-class TGameActionResolveSprite final : public TGameAction
-{
-public:
-    TGameActionResolveSprite() { type = EGameAction::RESOLVE_SPRITE; }
-};
 /// CIP input::TGameActionShowConfirmMoveObjectToStashDialog .
 class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
 {
@@ -2748,12 +2972,6 @@ class TGameActionShowSplitStackDialog final : public TGameAction
 public:
     TGameActionShowSplitStackDialog() { type = EGameAction::SHOW_SPLIT_STACK_DIALOG; }
     TGameActionShowSplitStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionSpriteResolved .
-class TGameActionSpriteResolved final : public TGameAction
-{
-public:
-    TGameActionSpriteResolved() { type = EGameAction::SPRITE_RESOLVED; }
 };
 /// CIP input::TGameActionStashOpenRetrieveDialog .
 class TGameActionStashOpenRetrieveDialog final : public TGameAction
@@ -2801,12 +3019,6 @@ public:
     TGameActionTargetSelected() { type = EGameAction::TARGET_SELECTED; }
     explicit TGameActionTargetSelected(uint32_t creatureId);
 };
-/// CIP input::TGameActionTeleportToCoordinate .
-class TGameActionTeleportToCoordinate final : public TGameAction
-{
-public:
-    TGameActionTeleportToCoordinate() { type = EGameAction::GOD_TELEPORT; }
-};
 /// CIP input::TGameActionTryToEquip .
 class TGameActionTryToEquip final : public TGameAction
 {
@@ -2845,65 +3057,11 @@ public:
     TGameActionGatherAll(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
-/// CIP input::gameactions::TGameActionGameEvent .
-class TGameActionGameEvent final : public TGameAction
-{
-public:
-    TGameActionGameEvent() { type = EGameAction::GAME_EVENT; }
-};
 /// CIP input::gameactions::TGameActionMarketBrowse .
 class TGameActionMarketBrowse final : public TGameAction
 {
 public:
     TGameActionMarketBrowse() { type = EGameAction::MARKET_BROWSE; }
-};
-/// CIP input::gameactions::TGameActionOpenTaskboardDialog .
-class TGameActionOpenTaskboardDialog final : public TGameAction
-{
-public:
-    TGameActionOpenTaskboardDialog() { type = EGameAction::OPEN_TASKBOARD_DIALOG; }
-};
-/// CIP input::gameactions::TGameActionOpenWeaponProficiencyDialog .
-class TGameActionOpenWeaponProficiencyDialog final : public TGameAction
-{
-public:
-    TGameActionOpenWeaponProficiencyDialog() { type = EGameAction::OPEN_WEAPON_PROFICIENCY_DIALOG; }
-};
-/// CIP input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog .
-class TGameActionOpenWeaponProficiencyShapeDialog final : public TGameAction
-{
-public:
-    TGameActionOpenWeaponProficiencyShapeDialog() { type = EGameAction::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG; }
-};
-/// CIP input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog .
-class TGameActionOpenWeaponProficiencyShapeOptionsDialog final : public TGameAction
-{
-public:
-    TGameActionOpenWeaponProficiencyShapeOptionsDialog() { type = EGameAction::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG; }
-};
-/// CIP input::gameactions::TGameActionSaveSkillWheel .
-class TGameActionSaveSkillWheel final : public TGameAction
-{
-public:
-    TGameActionSaveSkillWheel() { type = EGameAction::SAVE_SKILL_WHEEL; }
-};
-/// CIP input::gameactions::TGameActionShowCreateCharacterDialog .
-class TGameActionShowCreateCharacterDialog final : public TGameAction
-{
-public:
-    TGameActionShowCreateCharacterDialog() { type = EGameAction::SHOW_CREATE_CHARACTER_DIALOG; }
-};
-/// CIP input::gameactions::TSelectAtelierGemGameAction .
-class TSelectAtelierGemGameAction final : public TGameAction
-{
-public:
-    TSelectAtelierGemGameAction() { type = EGameAction::GEM_ATELIER_SELECT_GEM; }
-};
-/// CIP input::gameactions::TSelectFragmentWorkshopModGameAction .
-class TSelectFragmentWorkshopModGameAction final : public TGameAction
-{
-public:
-    TSelectFragmentWorkshopModGameAction() { type = EGameAction::FRAGMENT_WORKSHOP_SELECT_MOD; }
 };
 }
 

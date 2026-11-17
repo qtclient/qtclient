@@ -578,8 +578,7 @@ void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()
 {
     if (m_typeId == 0)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-    action->instance = m_typeId;
+    auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(m_typeId));
     input::publish(action);
 }
 

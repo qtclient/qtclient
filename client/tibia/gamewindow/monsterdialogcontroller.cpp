@@ -567,8 +567,7 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
         type && type->getProficiencyId() != 0) {
         connect(menu->addCustomEntry(qtTrId("inspect_open_weapon_proficiency_dialog")), &TContextMenuEntryItem::triggered, this,
                 [AppearanceTypeID] {
-                    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-                    action->instance = AppearanceTypeID;
+                    auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(AppearanceTypeID));
                     input::publish(action);
                 });
     }

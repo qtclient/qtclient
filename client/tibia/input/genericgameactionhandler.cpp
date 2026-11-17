@@ -96,8 +96,7 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
         handleConfigureShowOffSocketAction(static_cast<const TGameActionConfigureShowOffSocket&>(action));
         break;
     case A::GOD_TELEPORT:
-        if (fields)
-            handleTeleportToCoordinateAction(*fields);
+        handleTeleportToCoordinateAction(static_cast<const TGameActionTeleportToCoordinate&>(action));
         break;
     case A::BROWSE_FIELD:
         handleBrowseFieldAction(static_cast<const TGameActionBrowseField&>(action));
@@ -224,9 +223,9 @@ void TGenericGameActionHandler::handleRequestResourceBalanceAction(const TGameAc
     tibia::game::requestResourceBalance(static_cast<uint8_t>(action.resourceType()));
 }
 
-void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameAction& action)
+void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameActionTeleportToCoordinate& action)
 {
-    tibia::game::sendTeleport(action.position);
+    tibia::game::sendTeleport(action.coordinate());
 }
 
 void TGenericGameActionHandler::handleResetHuntingSessionAction()

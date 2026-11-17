@@ -36,7 +36,7 @@ input::TGameActionList TMinimapGameActionProvider::fieldActions(const Position& 
     return {
         movement,
         input::makeSmartClick(movement),
-        input::makeObjectAction(A::GOD_TELEPORT, coord, -1),
+        std::make_shared<input::TGameActionTeleportToCoordinate>(coord),
         input::makeAction(A::CONTEXT_MENU),
         std::make_shared<input::TGameActionShowDialogCreateMinimapMarker>(coord),
     };
@@ -48,7 +48,7 @@ input::TGameActionList TMinimapGameActionProvider::markerActions(const Position&
     return {
         movement,
         input::makeSmartClick(movement),
-        input::makeObjectAction(A::GOD_TELEPORT, coord, -1),
+        std::make_shared<input::TGameActionTeleportToCoordinate>(coord),
         input::makeAction(A::CONTEXT_MENU),
         std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(markerData(coord)),
         std::make_shared<input::TGameActionDeleteMinimapMarker>(coord),

@@ -556,9 +556,7 @@ void TDepotSearchWidgetController::publishSearchTypeRequest()
 {
     if (m_selectedTypeId == 0)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::REQUEST_SEARCH_TYPE_IN_DEPOT));
-    action->objectClientId = m_selectedTypeId;
-    action->parameter = m_selectedTier.value_or(0);
+    auto action = std::make_shared<input::TGameActionRequestSearchTypeInDepot>(static_cast<uint16_t>(m_selectedTypeId), static_cast<uint16_t>(m_selectedTier.value_or(0)));
     input::publish(action);
 }
 
@@ -634,10 +632,7 @@ void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int Stora
 {
     if (StorageLocation < Depot || StorageLocation > Inbox || !m_session || !m_detailList)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::DEPOT_SERACH_RETRIEVE));
-    action->exaltationTypeId = m_detailList->typeId();
-    action->exaltationTier = m_detailList->tier().value_or(0);
-    action->category = StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot;
+    auto action = std::make_shared<input::TGameActionDepotSearchRetrieve>(static_cast<uint16_t>(m_detailList->typeId()), static_cast<uint16_t>(m_detailList->tier().value_or(0)), StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot);
     input::publish(action);
 }
 

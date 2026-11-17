@@ -146,27 +146,25 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
                     bar->closeOpenMultiActionButtons(action.actionBarId(), action.actionButtonId());
         return true;
     });
-    input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
-        (void)input::TLocationActionButtonGameActionContext(action.actionBarId, action.actionButtonId);
-        TActionBarController* target = bar(action.actionBarId > 0 ? action.actionBarId : 1);
+    input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+        TActionBarController* target = bar(action.actionBarId() > 0 ? action.actionBarId() : 1);
         if (!target)
             return true;
-        openSpellDialogFor(target, action.actionButtonId, action.multiActionIndex, action.parameter);
+        openSpellDialogFor(target, action.actionButtonId(), action.multiActionIndex(), action.spellId());
         return true;
     });
-    input::setActionHandler(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
-        TActionBarController* target = bar(action.actionBarId);
-        if (!target || action.parameter <= 0)
+    input::setActionHandler(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+        TActionBarController* target = bar(action.actionBarId());
+        if (!target || action.spellId() == 0)
             return true;
-        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(action.parameter);
+        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(action.spellId());
         if (!spell)
             return true;
         Setting setting;
         setting.kind = Setting::TEXT;
-        setting.text = action.text.isEmpty() ? spell->words : action.text;
+        setting.text = spell->words;
         setting.sendAutomatically = true;
-        setting.spellCastType = action.spellCastType;
-        target->assign(action.actionButtonId, action.multiActionIndex, setting);
+        target->assign(action.actionButtonId(), action.multiActionIndex(), setting);
         return true;
     });
     input::setActionHandler(A::ASSIGN_HOTKEY_TO_GAME_ACTION, [](const input::TGameAction& action) {

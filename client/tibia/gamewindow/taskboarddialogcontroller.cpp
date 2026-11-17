@@ -99,10 +99,10 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
 
     m_notOnMain->setCloseOnButtonClicked(true);
     // The action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
-    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::TGameAction& action) {
-        if (action.parameter == 0)
+    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::gameactions::TGameActionOpenTaskboardDialog& action) {
+        if (action.tab() == 0)
             showDialog(BountyTasks);
-        else if (action.parameter == 1)
+        else if (action.tab() == 1)
             showDialog(WeeklyTasks);
         return true;
     });

@@ -925,7 +925,7 @@ void TSkillWheelPageController::apply()
         return;
     Q_EMIT preapareToSkipNextOpenForOwnPlayer();
     m_storage->saveCurrentPreset();
-    publish(A::SAVE_SKILL_WHEEL);
+    input::publish(std::make_shared<input::gameactions::TGameActionSaveSkillWheel>());
 }
 
 bool TSkillWheelPageController::askToSaveBeforeClose()

@@ -68,18 +68,18 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         requestOwnWheel();
         return true;
     });
-    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::TGameAction&) {
+    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::IGameAction&) {
         saveWheel();
         return true;
     });
-    input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::TGameAction& action) {
+    input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::gameactions::TSelectAtelierGemGameAction& action) {
         m_dialog->showDialog();
-        m_dialog->openGemAtelier(0, action.parameter);
+        m_dialog->openGemAtelier(0, action.gemId());
         return true;
     });
-    input::setActionHandler(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::TGameAction& action) {
+    input::setActionHandler(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::gameactions::TSelectFragmentWorkshopModGameAction& action) {
         m_dialog->showDialog();
-        m_dialog->openWorkshopMod(action.instance != 0, action.parameter);
+        m_dialog->openWorkshopMod(action.supremeMod(), action.modId());
         return true;
     });
 

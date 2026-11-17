@@ -305,15 +305,13 @@ TQuestLogController::TQuestLogController(QObject* parent)
     connect(&m_storage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
     onFilterOptionChanged();
 
-    input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameAction& action) {
-        m_tracker.setOption(action.parameter, action.enable);
+    input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameActionChangeQuesttrackerOptions& action) {
+        m_tracker.setOption(action.option(), action.enabled());
         return true;
     });
-    input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, [this](const input::TGameAction& action) {
-        const int id = action.parameter > 0 ? action.parameter : static_cast<int>(action.instance);
-        // enable: track; !enable: untrack (CIP TGameActionChangeTrackedQuestFlags).
-        if (id > 0)
-            m_tracker.changeTrackedQuestFlags({ id }, !action.enable);
+    input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, [this](const input::TGameActionChangeTrackedQuestFlags& action) {
+        if (!action.questIds().empty())
+            m_tracker.changeTrackedQuestFlags(QList<int>(action.questIds().begin(), action.questIds().end()), !action.track());
         return true;
     });
 }

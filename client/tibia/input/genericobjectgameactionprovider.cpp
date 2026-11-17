@@ -228,7 +228,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     if (has(&ThingType::hasCyclopediaItem))
         actions.push_back(TGenericObjectGameActionProvider::openCyclopediaAction(clientId));
     if (flags && flags->getProficiencyId() != 0)
-        push(A::OPEN_WEAPON_PROFICIENCY_DIALOG);
+        actions.push_back(std::make_shared<gameactions::TGameActionOpenWeaponProficiencyDialog>(clientId));
     // qtclient loot black/whitelist: menus filter these; handler is ManageLoot.
     if (take && id != 0) {
         if (cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance()) {

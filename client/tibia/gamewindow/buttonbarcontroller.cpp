@@ -454,17 +454,15 @@ void TButtonBarController::onSkillWheelDialogButtonClicked() { publish(A::REQUES
 void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::ImbuementTracker); }
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
+    uint16_t typeId = 0;
     if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
         const container::TInventorySlot& left = inventory->slotAt(tibia::client::InventorySlotLeft);
-        if (!left.empty()) {
-            action->objectClientId = left.typeId;
-            action->instance = left.typeId;
-        }
+        if (!left.empty())
+            typeId = static_cast<uint16_t>(left.typeId);
     }
-    input::publish(action);
+    input::publish(std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(typeId));
 }
-void TButtonBarController::onTaskboardDialogButtonClicked() { publish(A::OPEN_TASKBOARD_DIALOG); }
+void TButtonBarController::onTaskboardDialogButtonClicked() { input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); }
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
 void TButtonBarController::onManageShortcutsClicked() { input::publish(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
 

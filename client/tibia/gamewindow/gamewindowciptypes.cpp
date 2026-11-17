@@ -921,8 +921,7 @@ void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
     if (m_inspectObjectList.isEmpty())
         return;
     if (const auto* row = qobject_cast<cip::tibia::gamewindow::TInspectObjectQMLData*>(m_inspectObjectList.front())) {
-        auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-        action->instance = static_cast<uint16_t>(row->appearanceID());
+        auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<uint16_t>(row->appearanceID())));
         input::publish(action);
     }
 }
@@ -1019,8 +1018,7 @@ void TInspectPlayerDialogController::openSkillWheelDialog()
 
 void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const uint AppearanceTypeID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-    action->instance = static_cast<uint16_t>(AppearanceTypeID);
+    auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<uint16_t>(AppearanceTypeID)));
     input::publish(action);
 }
 

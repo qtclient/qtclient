@@ -100,9 +100,9 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     // set m_selectionType on the cip::ICyclopediaMapSelectionInfo base.
     (void)tipICyclopediaMapSelectionInfo();
 
-    input::setActionHandler(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameAction& action) {
-        if (action.instance > 0)
-            select(action.instance, false);
+    input::setActionHandler(A::CYCLOPEDIA_MAP_SELECT_ITEM, [this](const input::TGameActionCyclopediaMapSelectionItem& action) {
+        if (action.subareaId() > 0)
+            select(action.subareaId(), false);
         return true;
     });
 
@@ -261,7 +261,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     // Cyclopedia Shift+click: pathfinder fog (0xfe) is passable — longer-range than minimap pathfinder.
     candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia, false));
     // CIP: GOD_TELEPORT is a mapper candidate (Shift+Ctrl); qtclient menus omit it.
-    candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, position, -1));
+    candidates.push_back(std::make_shared<input::TGameActionTeleportToCoordinate>(position));
     candidates.push_back(input::makeGameAction(A::CONTEXT_MENU));
 
     const input::IGameActionPtr action = m_mapper.map(candidates, 9, static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
@@ -274,9 +274,8 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
         }
         return;
     }
-    if (const input::TGameActionPtr selection = input::unportedGameAction(action);
-        selection && selection->type == A::CYCLOPEDIA_MAP_SELECT_ITEM) {
-        select(selection->instance, false);
+    if (const auto* selection = input::gameActionAs<input::TGameActionCyclopediaMapSelectionItem>(action)) {
+        select(selection->subareaId(), false);
         return;
     }
     input::publish(action);

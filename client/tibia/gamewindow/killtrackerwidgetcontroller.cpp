@@ -224,16 +224,12 @@ void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(inpu
 
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = 0; // the bounty tasks tab
-    input::publish(action);
+    input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); // the bounty tasks tab
 }
 
 void TKillTrackerWidgetController::requestOpenWeeklyTasksDialog()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = 1; // the weekly tasks tab
-    input::publish(action);
+    input::publish(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(1)); // the weekly tasks tab
 }
 
 void TKillTrackerWidgetController::saveWidgetOptions()

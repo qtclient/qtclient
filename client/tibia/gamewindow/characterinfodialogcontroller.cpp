@@ -636,8 +636,7 @@ void TCharacterInfoDialogController::openSkillWheelDialog()
 
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-    action->instance = static_cast<int>(AppearanceTypeID);
+    auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(static_cast<uint16_t>(static_cast<int>(AppearanceTypeID)));
     input::publish(action);
 }
 

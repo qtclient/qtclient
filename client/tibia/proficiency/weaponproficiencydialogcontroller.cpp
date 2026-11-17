@@ -379,11 +379,8 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
 
     // CIP : the character info dialog passes the type, the button
     // bar and the context menus the object.
-    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_DIALOG, [this](const input::TGameAction& action) {
-        uint16_t typeId = static_cast<uint16_t>(action.instance);
-        if (typeId == 0)
-            typeId = action.objectClientId;
-        showDialog(typeId);
+    input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyDialog& action) {
+        showDialog(action.typeId());
         return true;
     });
 }
@@ -727,11 +724,7 @@ void TWeaponProficiencyDialogController::onModifyShapeClicked()
         return;
     }
     // OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG {typeId, level, perk, from the perk tree}.
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG));
-    action->instance = typeId;
-    action->parameter = level;
-    action->category = perk;
-    action->enable = true;
+    auto action = std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog>(static_cast<uint16_t>(typeId), static_cast<uint8_t>(level), static_cast<uint8_t>(perk), true);
     input::publish(action);
 }
 
