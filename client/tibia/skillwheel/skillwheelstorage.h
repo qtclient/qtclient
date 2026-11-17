@@ -1,32 +1,38 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "analysers/analyserstorages.h"
 #include "skillwheel/skillwheeldata.h"
 
 #include <cip_gen.h>
 
-#include <QList>
+#include <QJsonObject>
 #include <QString>
 
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <vector>
 
 namespace tibia {
 namespace skillwheel {
 
-/// A wheel preset of the own character.
-struct TPreset
+/// One row of the fragment workshop's mod list: a supreme (0) or basic (1) mod, whether a
+/// socketed gem of the current wheel has it, how many gems of the inventory have it and its grade.
+struct TModListEntry
 {
-    QString name;
-    TWheel wheel;
+    bool basic = false;
+    bool active = false;
+    int mod = 0;
+    int gemCount = 0;
+    int grade = 0;
+
+    bool operator==(const TModListEntry&) const = default;
 };
 
-/// The Wheel of Destiny data of the shown player (CIP: TSkillWheelStorage):
-/// the server's wheel (onDestinyWheel), the edited current wheel, the revealed
-/// gems and mod grades, the gem and fragment balances, and the own presets
-/// (<app data>/characterdata/<player id>/skillWheel.json).
-class TSkillWheelStorage final : public cip::tibia::skillwheel::TSkillWheelStorage
+/// The Wheel of Destiny data of the shown character: the presets (the character configuration
+/// "wheelOfDestiny"), the edited current wheel, the server's wheel with its points, the gem
+/// inventory, the mod grades, the unrevealed gems and the fragments.
+class TSkillWheelStorage final : public cip::tibia::skillwheel::TSkillWheelStorage, public analysers::TCharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -35,102 +41,116 @@ public:
     explicit TSkillWheelStorage(QObject* parent = nullptr);
     ~TSkillWheelStorage() override;
 
-    bool hasData() const { return m_hasData; }
-    uint32_t playerId() const { return m_playerId; }
-    bool isLocalPlayer() const { return m_isLocal; }
-    bool isPreview() const { return m_isPreview; }
-    QString playerName() const { return m_playerName; }
+    /// The storage of the running client (the skill wheel manager's).
+    static TSkillWheelStorage* liveInstance();
+
+    QString configurationName() const override;
+    QJsonObject toJson() const override;
+    void fromJson(const QJsonObject& json) override;
+
+    int unspentSkillPoints() const { return m_unspentSkillPoints; }
+    void setUnspentSkillPoints(int points);
+
+    /// The presets by name; a change emits configurationChangedFromUserInput.
+    void setPresets(const std::map<QString, TWheel>& presets);
+    std::map<QString, TWheel> presets() const { return m_presets; }
+    void addOrReplacePreset(const QString& name, const TWheel& wheel);
+    std::optional<TWheel> preset(const QString& name) const;
+    void removePreset(const QString& name);
+    bool hasPreset(const QString& name) const;
+    /// False when there is no preset `oldName`.
+    bool renamePreset(const QString& oldName, const QString& newName);
+
+    void setCurrentSkillWheel(const TWheel& wheel);
+    void setCurrentSkillWheel(const std::optional<TWheel>& wheel);
+    void resetCurrentSkillWheel();
+    std::optional<TWheel> currentSkillWheel() const { return m_currentSkillWheel; }
+    /// The current wheel differs from the server's.
+    bool isCurrentSkillWheelChanged() const;
+
     /// 0 view only, 1 increase and decrease (temple), 2 increase only.
     int changeState() const { return m_changeState; }
-    /// EVocation: 1 knight .. 5 monk.
-    int vocation() const { return m_vocation; }
-    int vocationIndex() const { return transformCreatureToSkillWheelVocation(m_vocation); }
-    int regularPoints() const { return m_points; }
+    QString playerName() const { return m_playerName; }
+    bool isOwnCharacter() const { return m_ownCharacter; }
+    int regularPoints() const { return m_regularPoints; }
     int extraPoints() const { return m_extraPoints; }
-    int huntingTaskPoints() const { return m_huntingTaskPoints; }
-    bool hasShrinesOfInsightPoints() const { return m_hasMonkQuest; }
     /// The consumed promotion scroll objects and their points.
-    const std::vector<std::pair<int, int>>& promotionScrolls() const { return m_scrolls; }
+    std::vector<std::pair<int, int>> promotionScrolls() const { return m_promotionScrolls; }
+    bool hasShrinesOfInsightPoints() const { return m_shrinesOfInsightPoints; }
+    std::optional<TWheel> serverSkillWheel() const { return m_serverSkillWheel; }
+    int huntingTaskPoints() const { return m_huntingTaskPoints; }
+    void setServerData(int changeState, const QString& playerName, bool ownCharacter, int regularPoints, int extraPoints,
+                       const std::vector<std::pair<int, int>>& promotionScrolls, bool shrinesOfInsightPoints, int huntingTaskPoints,
+                       const TWheel& wheel);
+    /// The server data of an empty wheel of the own character with `vocation` (no points, view only).
+    void setPreview(const QString& playerName, int vocation);
+    void clearServerData();
 
-    const TWheel& serverWheel() const { return m_serverWheel; }
-    const TWheel& currentWheel() const { return m_currentWheel; }
-    void setCurrentWheel(const TWheel& wheel);
-    void useServerWheelAsCurrent() { setCurrentWheel(m_serverWheel); }
+    const std::vector<TGem>& gemInventory() const { return m_gemInventory; }
+    /// A gem of the current wheel whose id comes back with other mods leaves its vessel.
+    void setGemInventory(std::vector<TGem> gems);
+    std::optional<TGem> gem(int id) const;
+    /// The inventory gem with the id and mods of `gem`, else the first with its mods.
+    std::optional<TGem> findGem(const TGem& gem) const;
+    /// How many inventory gems have the basic (or supreme) mod; the mod of a socketed gem is active.
+    int basicModGemCount(int mod) const;
+    int supremeModGemCount(int mod) const;
+    bool isBasicModActive(int mod) const;
+    bool isSupremeModActive(int mod) const;
 
-    const std::vector<TGem>& gems() const { return m_gems; }
-    const TGem* gem(int id) const;
+    void setModGrades(TGrades basicGrades, TGrades supremeGrades);
     const TGrades& basicGrades() const { return m_basicGrades; }
     const TGrades& supremeGrades() const { return m_supremeGrades; }
 
+    void setUnrevealedGems(int quality, int count);
+    int unrevealedGems(int quality) const;
+
+    const std::vector<TModListEntry>& modList() const { return m_modList; }
+    void setModList(const std::vector<TModListEntry>& modList);
+    /// The mod list from the supreme mods of the current wheel's vocation and the basic mods.
+    void updateModList();
+
+    int lesserFragments() const { return m_lesserFragments; }
+    int greaterFragments() const { return m_greaterFragments; }
+    void setLesserFragments(int fragments);
+    void setGreaterFragments(int fragments);
+
+    /// There is a server wheel.
+    bool hasData() const { return m_serverSkillWheel.has_value(); }
+    /// The vocation of the server wheel (1 knight .. 5 monk).
+    int vocation() const;
+    int vocationIndex() const { return transformCreatureToSkillWheelVocation(vocation()); }
+    /// The current wheel, else an empty wheel of the vocation.
+    TWheel currentWheel() const;
+
     int modGradesPoints() const;
+    /// Regular, extra and mod grade points.
     int totalPoints() const;
     int spentPoints() const;
     int freePoints() const { return totalPoints() - spentPoints(); }
-
-    /// Unrevealed gems by quality and the lesser / greater fragments (resource balances 81..85).
-    int unrevealedGems(int quality) const;
-    int lesserFragments() const;
-    int greaterFragments() const;
+    /// Bank balance and carried gold.
     uint64_t gold() const;
 
-    /// CIP (action 308, OK): an empty, view-only wheel of the own vocation.
-    void setPreview(const QString& name, int vocation);
-    void clear();
-
-    const QList<TPreset>& presets() const { return m_presets; }
-    QString currentPresetName() const { return m_currentPreset; }
-    const TPreset* preset(const QString& name) const;
-    bool canManagePresets() const;
-    bool isPresetDirty() const;
-    bool isWheelDirty() const { return !(m_currentWheel == m_serverWheel); }
-    /// Activates a preset; returns false when the preset had to be adjusted
-    /// (unknown gems, an invalid grid or more points than available).
-    bool selectPreset(const QString& name);
-    void saveCurrentPreset();
-    bool addPreset(const QString& name, const TWheel& wheel);
-    bool renameCurrentPreset(const QString& name);
-    bool deleteCurrentPreset();
-
-Q_SIGNALS:
-    /// New server data (onDestinyWheel); `canView` false: the player has no wheel.
-    void serverDataReceived(bool canView);
-    /// Tip alias of CIP currentSkillWheelChanged.
-    void currentWheelChanged();
-    /// Tip alias bundling CIP unrevealedGems / lesserFragments / greaterFragments.
-    void resourcesChanged();
-    void presetsChanged();
-
 private:
-    void onDestinyWheel(const std::vector<std::any>& args);
-    void onGemAtelierGemRevealed(const std::vector<std::any>& args);
-    void emitResourceSignals();
-    void loadPresets();
-    void savePresets() const;
-    QString presetsPath() const;
-    TWheel sanitized(const TWheel& wheel, bool* adjusted) const;
-
-    std::vector<client::gamecore::Hook> m_hooks;
-    bool m_hasData = false;
-    uint32_t m_playerId = 0;
-    bool m_isLocal = false;
-    bool m_isPreview = false;
-    QString m_playerName;
+    int m_unspentSkillPoints = 0;
+    std::map<int, int> m_unrevealedGems;
+    std::map<QString, TWheel> m_presets;
+    std::optional<TWheel> m_currentSkillWheel;
     int m_changeState = 0;
-    int m_vocation = 1;
-    int m_points = 0;
+    QString m_playerName;
+    bool m_ownCharacter = false;
+    int m_regularPoints = 0;
     int m_extraPoints = 0;
+    std::vector<std::pair<int, int>> m_promotionScrolls;
+    bool m_shrinesOfInsightPoints = false;
     int m_huntingTaskPoints = 0;
-    bool m_hasMonkQuest = false;
-    std::vector<std::pair<int, int>> m_scrolls;
-    TWheel m_serverWheel;
-    TWheel m_currentWheel;
-    std::vector<TGem> m_gems;
+    std::optional<TWheel> m_serverSkillWheel;
+    std::vector<TGem> m_gemInventory;
     TGrades m_basicGrades;
     TGrades m_supremeGrades;
-
-    uint32_t m_presetsOwner = 0;
-    QList<TPreset> m_presets;
-    QString m_currentPreset;
+    std::vector<TModListEntry> m_modList;
+    int m_lesserFragments = 0;
+    int m_greaterFragments = 0;
 };
 
 }

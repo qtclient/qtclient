@@ -34,7 +34,6 @@
 #include "worldmap/mapobserver.h"
 #include <tibia/schedule/schedule.h>
 #include "worldmap/pathfindtypes.h"
-#include "worldmap/tileblock.h"
 
 namespace tibia {
 namespace minimap {
@@ -101,12 +100,10 @@ public:
     /// Prefer `tibia::worldmap::fieldAt` at call sites (storage hash, then spatial fallback).
     tibia::worldmap::TWorldMapField* getTile(const Position& pos);
     /// Spatial index slot only — does not consult `TWorldMapStorage::m_fields`.
-    tibia::worldmap::TWorldMapField* fieldInBlock(const Position& pos);
     /// Legacy Map naming — delegates to `TWorldMapStorage` (not `getTile`).
     tibia::worldmap::TWorldMapField* fieldAt(const Position& pos);
     tibia::worldmap::TWorldMapField* getOrCreateField(const Position& pos);
     WorldMapFieldList getTiles(int8_t floor = -1);
-    void setFieldInBlock(const Position& pos, tibia::worldmap::TWorldMapField* field);
     void cleanTile(const Position& pos);
     /// CIP-shaped map item scan hit (appearance/typeId + stack index — no ItemPtr).
     struct TItemHit

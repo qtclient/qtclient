@@ -1,10 +1,12 @@
 #include "game/gamesessionbase.h"
 #include "container/containerciptypes.h"
+
+#include <cmath>
 #include "game/gamesessionstate.h"
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "tibia/client/outfit.h"
 #include "tibia/game/gamenotify.h"
@@ -22,7 +24,6 @@
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
 #include <client/staticdata.h>
-#include "cyclopedia/iteminfostorage.h"
 
 #include <limits>
 #include <map>
@@ -244,7 +245,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             return;
         const auto& m = shadow->GetExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list);
         const auto typeId = static_cast<uint16_t>(m.object().object_id());
-        const ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         const std::optional<uint8_t> tier =
             type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(m.object().tier())) : std::nullopt;
         std::vector<TInventorySlot> depotObjects;
@@ -276,10 +277,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         std::vector<std::tuple<uint16_t, std::string>> objects;
         for (const auto& o : shadow->GetExtension(GameserverMessageObjectInfo::gameserver_message_object_info).objects())
             objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
-        if (auto* storage = tibia::cyclopedia::TItemInfoStorage::instance())
-            storage->applyItemInfo(objects);
-        else
-            tibia::game::notify("onItemInfo", objects);
+        tibia::game::notify("onItemInfo", objects);
         break;
     }
     case 148: {
@@ -303,7 +301,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
         for (const auto& e : shadow->GetExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory).entries()) {
             const auto id = static_cast<uint16_t>(e.object_id());
-            const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+            const TAppearanceType* type = tibia::game::rawThingType(id, ThingCategoryItem);
             const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
             auto& entry = counts[{ id, tier }];
             entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
@@ -353,7 +351,7 @@ int64_t TInventorySlot::durationRemainingMilliseconds() const
     return int64_t(durationSeconds) * 1000;
 }
 
-TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_t countOrSubType, const uint8_t tier,
+TInventorySlot TInventorySlot::fromProtocolObject(TAppearanceType* type, const uint16_t countOrSubType, const uint8_t tier,
                                                   const uint8_t hangSide)
 {
     TInventorySlot slot;
@@ -367,7 +365,7 @@ TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_
     slot.fluid = slot.fluidOrSplash ? static_cast<uint8_t>(std::clamp<uint16_t>(countOrSubType, 0, 255)) : 0;
     slot.tier = tier;
     slot.hasWearOut = type->hasWearOut();
-    slot.hasClock = type->hasClockExpire() || type->hasExpire() || type->hasExpireStop();
+    slot.hasClock = type->hasExpire() || type->hasExpireStop();
     slot.dualWield = type->isDualWield();
 
     const uint16_t count = slot.stackable ? slot.count : 0;
@@ -385,7 +383,7 @@ TInventorySlot TInventorySlot::fromTypeId(const uint16_t typeId, const uint16_t 
 TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventoryItem& item)
 {
     const uint16_t typeId = static_cast<uint16_t>(item.item_id());
-    ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return {};
 
@@ -550,7 +548,7 @@ std::optional<TContainerProperties> TContainerRenderProvider::containerPropertie
         properties.currentPage = row->firstIndex / capacity + 1;
     }
     properties.numberOfContainerSlots = capacity;
-    properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->items.size());
+    properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->itemCount());
     properties.levelUpButtonVisible = row->hasParent;
     properties.searchButtonVisible = row->showSearch;
     properties.isUpdatable = row->unlocked;
@@ -651,88 +649,83 @@ void TContainerStorage::closeContainer(const TContainerID id)
     Q_EMIT containerRemoved(id);
 }
 
+TInventorySlot TContainer::itemAt(const uint32_t slot) const
+{
+    const size_t index = slotIndex(slot);
+    return index < items.size() ? items[index] : TInventorySlot{};
+}
+
+void TContainer::setItem(const uint32_t slot, const TInventorySlot& item)
+{
+    const size_t index = slotIndex(slot);
+    if (index < items.size())
+        items[index] = item;
+}
+
+void TContainer::removeItem(const uint32_t slot)
+{
+    if (firstIndex <= slot && slot < static_cast<uint32_t>(firstIndex) + capacity) {
+        const size_t index = slotIndex(slot);
+        if (index < items.size())
+            items.erase(items.begin() + static_cast<std::ptrdiff_t>(index));
+    }
+    decreaseSize();
+}
+
+void TContainer::insertItem(const uint32_t slot, const TInventorySlot& item)
+{
+    const size_t index = std::min(slotIndex(slot), items.size());
+    items.insert(items.begin() + static_cast<std::ptrdiff_t>(index), item);
+    while (items.size() > capacity)
+        items.pop_back();
+    increaseSize();
+}
+
+uint32_t TContainer::pageCount() const
+{
+    if (!hasPages || capacity == 0)
+        return 1;
+    return std::max<uint32_t>(1, static_cast<uint32_t>(std::ceil(static_cast<float>(size) / static_cast<float>(capacity))));
+}
+
+uint32_t TContainer::currentPage() const
+{
+    if (!hasPages || capacity == 0)
+        return 1;
+    return firstIndex / capacity + 1;
+}
+
 void TContainerStorage::applyAddItem(const TContainerID id, const TInventorySlot& item, const uint16_t slot)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-
-    int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-
-    // Item landed on a later page: size only.
-    if (row->hasPages && pageSlot > static_cast<int>(row->capacity)) {
-        ++row->size;
-        emitUpdated(id, false);
-        return;
-    }
-
-    if (static_cast<int>(row->items.size()) == static_cast<int>(row->capacity)) {
-        applyRemoveItem(id, static_cast<uint16_t>(row->firstIndex + row->capacity - 1), {});
-        row = mutableAt(id);
-        if (!row)
-            return;
-        ++row->size;
-        pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-    }
-
-    if (pageSlot < 0 || pageSlot > static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container add slot out of range").c_str());
-        return;
-    }
-
-    row->items.insert(row->items.begin() + pageSlot, item);
-    ++row->size;
+    // Without the object it landed on another page: only the total grows.
+    if (item.empty())
+        container->increaseSize();
+    else
+        container->insertItem(slot, item);
     emitUpdated(id, false);
 }
 
 void TContainerStorage::applyUpdateItem(const TContainerID id, const uint16_t slot, const TInventorySlot& item)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-    const int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-    if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container update slot not found").c_str());
-        return;
-    }
-    row->items[static_cast<size_t>(pageSlot)] = item;
+    container->setItem(slot, item);
     emitUpdated(id, false);
 }
 
 void TContainerStorage::applyRemoveItem(const TContainerID id, const uint16_t slot, const TInventorySlot& lastItem)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-
-    int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-
-    // Deleted from a later page: size only.
-    if (row->hasPages && pageSlot >= static_cast<int>(row->items.size())) {
-        if (row->size > 0)
-            --row->size;
-        emitUpdated(id, false);
-        return;
-    }
-
-    if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container remove slot not found").c_str());
-        return;
-    }
-
-    row->items.erase(row->items.begin() + pageSlot);
-
-    if (!lastItem.empty()) {
-        applyAddItem(id, lastItem, static_cast<uint16_t>(row->firstIndex + row->capacity - 1));
-        row = mutableAt(id);
-        if (!row)
-            return;
-        if (row->size > 0)
-            --row->size;
-    }
-
-    if (row->size > 0)
-        --row->size;
+    container->removeItem(slot);
+    // The object that moves up into the page's last slot.
+    if (!lastItem.empty())
+        container->appendItem(lastItem);
     emitUpdated(id, false);
 }
 
@@ -744,13 +737,10 @@ const TStoredContainer* TContainerStorage::containerAt(const TContainerID id) co
 
 TInventorySlot TContainerStorage::slotAt(const TContainerID id, const int slotId) const
 {
-    const TStoredContainer* row = containerAt(id);
-    if (!row)
+    const TContainer* container = containerAt(id);
+    if (!container || slotId < 0)
         return {};
-    const int index = slotId - static_cast<int>(row->firstIndex);
-    if (index < 0 || index >= static_cast<int>(row->items.size()))
-        return {};
-    return row->items[static_cast<size_t>(index)];
+    return container->itemAt(static_cast<uint32_t>(slotId));
 }
 
 QList<TContainerID> TContainerStorage::openIds() const
@@ -804,7 +794,11 @@ void TInventoryContainer::setSlot(const int slotId, const TInventorySlot& slot)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    m_slots[static_cast<size_t>(slotId)] = slot;
+    TInventorySlot& stored = m_slots[static_cast<size_t>(slotId)];
+    // The same object again changes nothing.
+    if (stored.appearance == slot.appearance && stored.typeId == slot.typeId)
+        return;
+    stored = slot;
     Q_EMIT inventoryChanged();
     Q_EMIT inventorySlotChanged(slotId);
 }

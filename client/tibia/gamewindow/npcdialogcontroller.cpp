@@ -1,5 +1,9 @@
 #include "npcdialogcontroller.h"
 
+#include "chat/chatgameactionhandler.h"
+#include "input/gameactionhandlers.h"
+#include "config/clientoptions.h"
+
 #include "trade/tradeciptypes.h"
 
 #include "chat/chatchannel.h"
@@ -67,7 +71,7 @@ void TNpcDialogOutfit::setOutfit(const Outfit& outfit)
 }
 
 TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QObject* parent)
-    : TDialogController(QStringLiteral("NpcDialog.qml"), parent)
+    : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), parent)
     , m_storage(storage)
     , m_trade(storage)
 {
@@ -75,6 +79,10 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     m_npcOutfit = &m_outfit;
     m_keywordButtonsModel = &m_keywordButtons;
     m_positionAndSize = QRect(-1, -1, 0, 0);
+    connect(config::TClientOptions::instance(), &config::TClientOptions::npcDialogOptionsChanged, this,
+            &TNpcDialogController::onDialogOptionsChanged);
+    if (config::TClientOptions::instance()->npcDialogOptions().isValid())
+        onDialogOptionsChanged();
     if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance()) {
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
@@ -83,31 +91,15 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     m_tradeFocus.setActive(false);
     connect(&m_tradeFocus, &TUiFocusManager::focusChanged, this, [this] {
         m_tradeHasFocus = m_tradeFocus.hasFocus();
-        if (TDialogStackController* stack = TDialogStackController::instance()) {
-            if (m_tradeHasFocus)
-                stack->dialogReleasedFocus(dialog());
-            else if (m_hasFocus)
-                stack->dialogTookFocus(dialog());
-        }
+        setFocusAllowed(!m_tradeHasFocus);
         Q_EMIT tradeFocusChanged();
     });
+    connect(this, &cip::tibia::gamewindow::TDialogControllerWithFocusHandlingBase::focusChanged, this,
+            &TNpcDialogController::onFocusChanged);
+    for (const input::EGameAction type : { input::EGameAction::CHAT_CHANNEL_SELECT_ALL, input::EGameAction::REQUEST_SELECT_ALL_TEXT,
+                                           input::EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD })
+        m_actionListeners.push_back(input::addActionListener(type, [this](const input::TGameAction& action) { return handleGameAction(action); }));
 
-    using Args = std::vector<std::any>;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindow", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<NpcChatWindowData>(&args[0]);
-        if (!data)
-            return std::any{};
-        std::vector<TNpcKeywordButtonModel::Button> buttons;
-        buttons.reserve(data->buttons.size());
-        for (const NpcButton& button : data->buttons)
-            buttons.push_back({ button.id, QString::fromStdString(button.text) });
-        onNpcChatWindow(data->npcIds, std::move(buttons));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindowClose", [this](GameObject*, const Args&) {
-        onNpcChatWindow({}, {});
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_talkPartners.clear();
     });
@@ -143,11 +135,24 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
             m_outfit.setOutfit(row->outfit());
     }
     setTalkPartnerNames(partnerNamesOf(npcIds));
+    postTalkingTo(m_talkPartnerNames);
     dialog()->show();
+}
+
+void TNpcDialogController::postTalkingTo(const QString& names)
+{
+    // CIP: a system line in the NPCs channel (opened if needed) names the talk partners.
+    if (!m_chatStorage || names.isEmpty())
+        return;
+    if (chat::TChatChannel* channel = m_chatStorage->open({ chat::TChatChannelIdentifier::Npc }, false, false))
+        channel->addEntry(chat::TClientChatEntryFactory::systemEntry(QColor(240, 240, 240), qtTrId("npc_dialog_talking_to").arg(names)));
 }
 
 TNpcDialogController::~TNpcDialogController()
 {
+    for (const int listener : m_actionListeners)
+        input::removeActionListener(listener);
+    resetConversation();
     qApp->removeEventFilter(this);
     if (m_chatControl)
         m_chatControl->setNpcDialog(nullptr);
@@ -164,6 +169,93 @@ void TNpcDialogController::closeButtonPressed()
     }
     m_trade.onRequestCloseNpcTrade();
     dialog()->close();
+    resetConversation();
+}
+
+void TNpcDialogController::resetConversation()
+{
+    setShowTrade(false);
+    m_outfit.setOutfit(Outfit());
+    m_keywordButtons.setItems({});
+}
+
+void TNpcDialogController::onFocusChanged()
+{
+    if (!hasFocus()) {
+        auto action = input::mutableClone(*input::makeAction(input::EGameAction::SWITCH_CHAT_MODE));
+        action->parameter = m_savedChatMode;
+        input::publish(action);
+    } else if (m_chatControl) {
+        m_savedChatMode = m_chatControl->chatMode();
+    }
+}
+
+bool TNpcDialogController::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+    case input::EGameAction::PRESS_ENTER_IN_CHAT:
+        if (!hasFocus())
+            return false;
+        pressEnter();
+        return true;
+    case input::EGameAction::CHAT_CHANNEL_SELECT_ALL:
+        // The NPCs channel's select-all marks the conversation.
+        if (!dialog()->isShown() || action.chatChannelType != chat::TChatChannelIdentifier::Npc || !m_chat)
+            return false;
+        m_chat->selectAll();
+        return true;
+    case input::EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT:
+        if (!dialog()->isShown())
+            return false;
+        setInputText(action.text, action.enable, action.isSpell, action.spellCastType);
+        return true;
+    case input::EGameAction::REQUEST_SELECT_ALL_TEXT:
+        if (!hasFocus())
+            return false;
+        selectAllText();
+        return true;
+    case input::EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
+        if (!hasFocus())
+            return false;
+        copySelectedText();
+        return true;
+    default:
+        return false;
+    }
+}
+
+void TNpcDialogController::selectAllText()
+{
+    QQuickItem* item = dialog()->item();
+    if (!item)
+        return;
+    if (item->property("currentChatInput").toString().isEmpty()) {
+        if (m_chat)
+            m_chat->selectAll();
+        return;
+    }
+    if (m_chat)
+        m_chat->startNewSelection(0, 0);
+    QMetaObject::invokeMethod(item, "selectAllChatInput");
+}
+
+void TNpcDialogController::copySelectedText()
+{
+    QQuickItem* item = dialog()->item();
+    if (!item)
+        return;
+    const QString selected = item->property("currentChatInputSelectedText").toString();
+    if (selected.isEmpty()) {
+        if (m_chat && m_chat->hasSelection()) {
+            auto copy = std::make_shared<input::TGameActionCopyTextToClipboard>();
+            copy->text = m_chat->selectedText();
+            input::publish(copy);
+        }
+        return;
+    }
+    auto copy = std::make_shared<input::TGameActionCopyTextToClipboard>();
+    copy->text = selected;
+    input::publish(copy);
 }
 
 QString TNpcDialogController::sendChatMessage(const QString& Message, const bool EnforceWritesToLocalChat)
@@ -256,6 +348,10 @@ void TNpcDialogController::setChatController(TChatController* controller)
     controller->setNpcDialog(this);
     chat::TChatChannelStorage* storage = &controller->storage();
     m_chatStorage = storage;
+    chat::TChatStorage* talk = &controller->chatStorage();
+    connect(talk, &chat::TChatStorage::npcTalkPartnersChanged, this,
+            [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); });
+    connect(talk, &chat::TChatStorage::keywordButtonsChanged, this, [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); });
     m_chat = new TChatChannelController(this);
     m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
     connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel);
@@ -309,12 +405,30 @@ void TNpcDialogController::setShowTrade(const bool show)
 
 void TNpcDialogController::onPositionChanged(const int x, const int y)
 {
-    m_positionAndSize.moveTo(x, y);
+    // CIP: the client options keep the dialog's rectangle.
+    config::TClientOptions* options = config::TClientOptions::instance();
+    QRect rect = options->npcDialogOptions();
+    rect.moveTo(x, y);
+    options->setNpcDialogOptions(rect);
+}
+
+void TNpcDialogController::onDialogOptionsChanged()
+{
+    const QRect rect = config::TClientOptions::instance()->npcDialogOptions();
+    if (rect == m_positionAndSize)
+        return;
+    m_positionAndSize = rect;
+    Q_EMIT dialogOptionsChanged();
 }
 
 void TNpcDialogController::onSizeChanged(const int NewDialogWidth, const int NewContentHeight)
 {
-    m_positionAndSize.setSize(QSize(NewDialogWidth, NewContentHeight));
+    if (!dialog()->item())
+        return;
+    config::TClientOptions* options = config::TClientOptions::instance();
+    QRect rect = options->npcDialogOptions();
+    rect.setSize(QSize(NewDialogWidth, NewContentHeight));
+    options->setNpcDialogOptions(rect);
 }
 
 void TNpcDialogController::onTradeRequestTakeFocus()
@@ -327,33 +441,32 @@ void TNpcDialogController::onTradeRequestReleaseFocus()
     m_tradeFocus.releaseFocus();
 }
 
-void TNpcDialogController::takeFocus()
+void TNpcDialogController::afterCreate()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    if (TDialogStackController* stack = TDialogStackController::instance())
-        stack->dialogTookFocus(dialog());
-    Q_EMIT focusChanged();
+    TDialogControllerWithFocusHandlingBase::afterCreate();
+    // CIP: the trade pane is the trade focus's click area.
+    if (QQuickItem* item = dialog()->item())
+        m_tradeFocus.setClickArea(item->findChild<QQuickItem*>(QStringLiteral("npcTrade")));
 }
 
-void TNpcDialogController::releaseFocus()
+void TNpcDialogController::beforeDestroy()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    if (TDialogStackController* stack = TDialogStackController::instance())
-        stack->dialogReleasedFocus(dialog());
-    Q_EMIT focusChanged();
+    TDialogControllerWithFocusHandlingBase::beforeDestroy();
+    m_tradeFocus.setClickArea(nullptr);
+}
+
+void TNpcDialogController::beforeHide()
+{
+    m_tradeFocus.releaseFocus();
+    m_tradeFocus.setActive(false);
+    TDialogControllerWithFocusHandlingBase::beforeHide();
 }
 
 void TNpcDialogController::afterShow()
 {
+    // product remote sessions: Escape closes (eventFilter).
     qApp->installEventFilter(this);
-    takeFocus();
-    // CIP / : the trade pane is the trade focus's click area.
     if (QQuickItem* item = dialog()->item()) {
-        m_tradeFocus.setClickArea(item->findChild<QQuickItem*>(QStringLiteral("npcTrade")));
         // product: ChatFab owns chat on/off — hide CIP mode button in the NPC input.
         for (QQuickItem* child : item->findChildren<QQuickItem*>(Qt::FindChildrenRecursively)) {
             if (child->property("showChatModeButton").isValid())
@@ -367,9 +480,6 @@ void TNpcDialogController::afterShow()
 void TNpcDialogController::afterHide()
 {
     qApp->removeEventFilter(this);
-    // CIP .
-    m_tradeFocus.setActive(false);
-    releaseFocus();
     Q_EMIT shownChanged(false);
 }
 
@@ -384,16 +494,7 @@ bool TNpcDialogController::eventFilter(QObject* watched, QEvent* event)
             return true;
         }
     }
-    if (event->type() == QEvent::MouseButtonPress && qobject_cast<QQuickWindow*>(watched)) {
-        if (QQuickItem* item = dialog()->item()) {
-            const auto* press = static_cast<QMouseEvent*>(event);
-            if (item->contains(item->mapFromScene(press->scenePosition())))
-                takeFocus();
-            else
-                releaseFocus();
-        }
-    }
-    return TDialogController::eventFilter(watched, event);
+    return TDialogControllerWithFocusHandlingBase::eventFilter(watched, event);
 }
 
 }

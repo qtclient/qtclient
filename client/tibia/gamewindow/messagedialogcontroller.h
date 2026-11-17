@@ -7,25 +7,38 @@
 #include <QKeySequence>
 #include <QList>
 
+#include <vector>
+
 namespace tibia {
 namespace gamewindow {
 
-/// One button of TibiaMessageDialog.qml (CIP: TMessageDialogButton, built by
-/// , vtable).
+/// One button of TibiaMessageDialog.qml (CIP: TMessageDialogButton): an
+/// identifier, a label and the key sequences that press it.
 class TMessageDialogButton final : public cip::tibia::gamewindow::TMessageDialogButton
 {
     Q_OBJECT
 public:
-    /// Which keys press the button: Return (and Enter), Escape.
-    enum EKeys { ReturnKey = 1, EscapeKey = 2 };
+    /// Default keys of a button (CIP flags): Return and Enter, Esc.
+    enum EDefaultKeys : uint
+    {
+        NO_KEYS = 0,
+        RETURN_KEYS = 1,
+        ESCAPE_KEY = 2,
+    };
 
-    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent = nullptr);
-    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, int keys, QObject* parent = nullptr);
+    TMessageDialogButton(EMessageDialogButtonIdentifier identifier, const QString& label, uint defaultKeys, QObject* parent = nullptr);
+    TMessageDialogButton(EMessageDialogButtonIdentifier identifier, const QString& label, const QKeySequence& key, QObject* parent = nullptr);
+    TMessageDialogButton(const QString& label, EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent = nullptr)
+        : TMessageDialogButton(identifier, label, key, parent)
+    {}
+    /// CIP: a copy of `other` with the same parent.
+    explicit TMessageDialogButton(const TMessageDialogButton& other);
 
-    bool hasKey(const QKeySequence& key) const { return m_keys.contains(key); }
+    const std::vector<QKeySequence>& keySequences() const { return m_keySequences; }
+    bool hasKey(const QKeySequence& key) const;
 
 private:
-    QList<QKeySequence> m_keys;
+    std::vector<QKeySequence> m_keySequences;
 };
 
 /// "OK" pressed by Return or Escape.

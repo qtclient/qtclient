@@ -2,6 +2,7 @@
 
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
+#include "news/eventsuploader.h"
 
 #include <cip_gen.h>
 
@@ -43,7 +44,7 @@ public:
     ~TCalendarDialogController() override;
 
     /// The events storage's schedule, from the portal reply's `eventlist`.
-    void setEvents(const QJsonArray& events);
+    void setEvents(const std::vector<news::TEventInformation>& events);
     /// The game server's clock (CIP: the time provider passed at creation).
     void setServerClock(std::function<QDateTime()> clock) { m_serverClock = std::move(clock); }
 

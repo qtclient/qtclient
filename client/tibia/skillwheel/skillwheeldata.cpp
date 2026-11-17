@@ -10,9 +10,10 @@
 #include <zlib.h>
 
 #include <algorithm>
+#include <string>
+#include <stdexcept>
 #include <cmath>
 #include <optional>
-#include <stdexcept>
 
 namespace tibia::skillwheel {
 
@@ -319,13 +320,6 @@ QString boundedDecimals(const double value, const int minDecimals, const int max
     return text + QString(minimum - decimals, u'0');
 }
 
-/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
-/// values when `plus`.
-QString percentNumberTrimmed(const double value, const int minDecimals, const int maxDecimals, const bool plus)
-{
-    return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + boundedDecimals(value * 100.0, minDecimals, maxDecimals);
-}
-
 /// CIP : minutes as "1h 30min".
 QString compactMinutes(const int minutes)
 {
@@ -359,15 +353,147 @@ QString stagePercents(const int stage1, const int stage2, const int stage3, cons
 /// CIP QString::number(v, <invalid format>, 0): decimal without decimals.
 QString wholeNumber(const double value) { return QString::number(value, 'f', 0); }
 
-bool connected(const int a, const int b)
+/// CIP: the tiles next to each tile: up, right, down and left on the 6x6 grid, then the links across
+/// the domain borders.
+const std::array<std::vector<int>, SlotCount>& neighbours()
 {
-    const int ra = a / 6, ca = a % 6, rb = b / 6, cb = b % 6;
-    if ((ra == rb && std::abs(ca - cb) == 1) || (ca == cb && std::abs(ra - rb) == 1))
-        return true;
-    return std::find(std::begin(ExtraLinks), std::end(ExtraLinks), std::pair{ a, b }) != std::end(ExtraLinks);
+    static const std::array<std::vector<int>, SlotCount> table = [] {
+        std::array<std::vector<int>, SlotCount> t;
+        for (int tile = 0; tile < SlotCount; ++tile) {
+            if (tile > 5)
+                t[tile].push_back(tile - 6);
+            if (tile % 6 < 5)
+                t[tile].push_back(tile + 1);
+            if (tile < 30)
+                t[tile].push_back(tile + 6);
+            if (tile % 6 > 0)
+                t[tile].push_back(tile - 1);
+        }
+        for (const auto& [from, to] : ExtraLinks)
+            t[from].push_back(to);
+        return t;
+    }();
+    return table;
 }
 
+/// CIP's grid path solver: a tile with points is connected when a path of full tiles leads from it
+/// to a centre tile (or to a tile already known to be connected).
+class TGridPathSolver
+{
+public:
+    explicit TGridPathSolver(const std::array<int, SlotCount>& points) : m_points(points) {}
+
+    /// Every tile is a start; the tiles of a connected path are marked connected.
+    void solve()
+    {
+        clearFlags(Visited | Connected | HasPoints);
+        clearFlags(NotFull);
+        for (int tile = 0; tile < SlotCount; ++tile)
+            if (!isFull(tile))
+                m_flags[tile] |= NotFull;
+        for (int tile = 0; tile < SlotCount; ++tile) {
+            m_visited.fill(0);
+            TPath path;
+            path.tiles.push_back(tile);
+            follow(path);
+            if (path.connected)
+                for (const int t : path.tiles)
+                    m_flags[t] |= Connected;
+        }
+    }
+
+    /// A tile with points that no path connects.
+    bool hasUnconnectedTile() const
+    {
+        for (int tile = 0; tile < SlotCount; ++tile)
+            if ((m_flags[tile] & HasPoints) && !(m_flags[tile] & Connected))
+                return true;
+        return false;
+    }
+
+private:
+    enum : unsigned { Visited = 1, NotFull = 2, Connected = 4, HasPoints = 8 };
+
+    struct TPath
+    {
+        bool finished = false;
+        bool connected = false;
+        std::vector<int> tiles;
+    };
+
+    static int checkedTile(const int tile)
+    {
+        if (tile < 0 || tile >= SlotCount)
+            throw std::runtime_error("Tile index " + std::to_string(tile) + " is out of bounds!");
+        return tile;
+    }
+    bool hasPoints(const int tile) const { return m_points[checkedTile(tile)] > 0; }
+    bool isFull(const int tile) const { return m_points[checkedTile(tile)] == maxPoints(checkedTile(tile)); }
+
+    void clearFlags(const unsigned mask)
+    {
+        for (unsigned& flags : m_flags)
+            flags &= ~mask;
+    }
+
+    void follow(TPath& path)
+    {
+        if (path.tiles.empty())
+            throw std::runtime_error("Invalid grid path solver call with empty pathData");
+        const int tile = path.tiles.back();
+        if (m_visited[tile] & Visited)
+            throw std::runtime_error("Invalid recursive grid path solver call for an already visited tile: " + std::to_string(tile));
+        if (path.finished)
+            throw std::runtime_error("Invalid recursive grid path solver call for an already finished path.");
+        if (hasPoints(tile))
+            m_flags[tile] |= HasPoints;
+        m_visited[tile] |= Visited;
+        if (m_flags[tile] & HasPoints) {
+            if (std::ranges::find(centreSlots(), tile) != centreSlots().end() || (m_flags[tile] & Connected)) {
+                path.finished = path.connected = true;
+                return;
+            }
+            for (const int next : neighbours()[tile]) {
+                if (m_flags[next] & NotFull)
+                    continue;
+                if (m_flags[next] & Connected) {
+                    path.finished = path.connected = true;
+                    return;
+                }
+                if (m_visited[next] & Visited)
+                    continue;
+                path.tiles.push_back(next);
+                follow(path);
+                if (path.finished)
+                    return;
+            }
+            if (path.finished)
+                return;
+            if (path.tiles.size() > 1) {
+                path.tiles.pop_back();
+                return;
+            }
+        } else if (path.tiles.size() != 1) {
+            return;
+        }
+        path.finished = true;
+        path.connected = false;
+    }
+
+    const std::array<int, SlotCount>& m_points;
+    std::array<unsigned, SlotCount> m_flags{};
+    std::array<unsigned, SlotCount> m_visited{};
+};
+
 }
+
+/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
+/// values when `plus`.
+QString percentNumberTrimmed(const double value, const int minDecimals, const int maxDecimals, const bool plus)
+{
+    return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + boundedDecimals(value * 100.0, minDecimals, maxDecimals);
+}
+
 
 int maxPoints(const int slot) { return slot >= 0 && slot < SlotCount ? MaxPoints[slot] : 0; }
 
@@ -417,30 +543,17 @@ int largePerk(const int domain, const int vocationIndex)
     return LargePerks[domain][vocationIndex];
 }
 
+const std::array<int, 4>& centreSlots() { return CentreSlots; }
+
+/// CIP: no tile above its maximum, and every tile with points connected to the centre.
 bool isValid(const std::array<int, SlotCount>& points)
 {
-    std::array<bool, SlotCount> reached{};
-    std::vector<int> open;
-    for (const int c : CentreSlots)
-        if (points[c] > 0) {
-            reached[c] = true;
-            open.push_back(c);
-        }
-    while (!open.empty()) {
-        const int slot = open.back();
-        open.pop_back();
-        if (points[slot] < MaxPoints[slot])
-            continue;
-        for (int next = 0; next < SlotCount; ++next)
-            if (!reached[next] && points[next] > 0 && connected(slot, next)) {
-                reached[next] = true;
-                open.push_back(next);
-            }
-    }
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (points[slot] > MaxPoints[slot] || (points[slot] > 0 && !reached[slot]))
+        if (points[slot] > MaxPoints[slot])
             return false;
-    return true;
+    TGridPathSolver solver(points);
+    solver.solve();
+    return !solver.hasUnconnectedTile();
 }
 
 bool isUnlocked(const std::array<int, SlotCount>& points, const int slot)
@@ -467,7 +580,7 @@ int resonance(const std::array<int, SlotCount>& /*points*/, const int /*domain*/
     return 0;
 }
 
-int revelationPoints(const TWheel& wheel, const std::vector<TGem>& gems, const TGrades& supremeGrades, const int domain, const int vocationIndex)
+int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, const int domain, const int vocationIndex)
 {
     int total = 0;
     for (const int slot : domainSlots(domain)) {
@@ -479,12 +592,10 @@ int revelationPoints(const TWheel& wheel, const std::vector<TGem>& gems, const T
     const int perk = largePerk(domain, vocationIndex);
     const int unlocked = unlockedVesselCount(wheel.points, vocationIndex);
     for (int v = 0; v < unlocked; ++v) {
-        if (wheel.gems[v] == NoGem)
+        const std::optional<TGem>& gem = wheel.vessels[v];
+        if (!gem || gem->quality != vesselQualityAt(v) || !hasSupreme(*gem) || revelationMasteryPerk(gem->supreme) != perk)
             continue;
-        const auto it = std::ranges::find_if(gems, [&](const TGem& g) { return g.id == wheel.gems[v]; });
-        if (it == gems.end() || it->quality != vesselQualityAt(v) || it->quality < 2 || revelationMasteryPerk(it->supreme) != perk)
-            continue;
-        const auto grade = supremeGrades.find(it->supreme);
+        const auto grade = supremeGrades.find(gem->supreme);
         total += revelationMasteryBonus(grade != supremeGrades.end() ? grade->second : 0);
     }
     return std::clamp(total, 0, 1000);
@@ -1007,30 +1118,37 @@ double gemBasicStat(const TGem& gem, const TGrades& basicGrades, const TGrades& 
 
 }
 
-TActiveMods activeMods(const TWheel& wheel, const std::vector<TGem>& gems, const TGrades& basicGrades, const TGrades& supremeGrades,
-                       const int vocationIndex)
+TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TGrades& supremeGrades)
 {
-    std::array<const TGem*, VesselCount> socketed{};
-    for (int v = 0; v < VesselCount; ++v) {
-        if (wheel.gems[v] == NoGem)
-            continue;
-        const auto it = std::ranges::find_if(gems, [&](const TGem& g) { return g.id == wheel.gems[v]; });
-        socketed[v] = it != gems.end() ? &*it : nullptr;
+    const int vocationIndex = wheel.vocation - 1;
+    const int unlocked = unlockedVesselCount(wheel.points, vocationIndex);
+    // The gems that count: in an unlocked vessel of their quality.
+    std::array<const TGem*, VesselCount> active{};
+    for (int v = 0; v < unlocked && v < VesselCount; ++v) {
+        const std::optional<TGem>& gem = wheel.vessels[v];
+        if (gem && gem->quality == vesselQualityAt(v))
+            active[v] = &*gem;
     }
-    const auto greater = [&](const int v) {
-        return socketed[v] && socketed[v]->quality >= static_cast<int>(EGemQuality::Greater);
+    // Spell augmentations and revelation masteries come from the unlocked greater vessels.
+    std::array<const TGem*, VesselCount> greater{};
+    for (int v = 0; v < unlocked && v < VesselCount; ++v) {
+        const std::optional<TGem>& gem = wheel.vessels[v];
+        if (vesselQualityAt(v) == static_cast<int>(EGemQuality::Greater) && gem && hasSupreme(*gem))
+            greater[v] = &*gem;
+    }
+    const auto supremeGrade = [&](const int mod) {
+        const auto it = supremeGrades.find(mod);
+        return it != supremeGrades.end() ? it->second : 0;
     };
 
     TActiveMods mods;
 
-    // VesselNode perks: +1 damage/healing each (wiki / CipSoft).
-    mods.damageHealing = unlockedVesselCount(wheel.points, vocationIndex);
-
+    // The stats of every socketed gem's basic mods, summed over the active gems.
     std::vector<int> stats;
-    for (const TGem* gem : socketed) {
+    for (const std::optional<TGem>& gem : wheel.vessels) {
         if (!gem)
             continue;
-        for (const int mod : { gem->basic1, gem->quality >= 1 ? gem->basic2 : -1 })
+        for (const int mod : { gem->basic1, hasBasic2(*gem) ? gem->basic2 : -1 })
             if (mod >= 0 && mod < BasicModCount)
                 for (int i = 0; i < BasicMods[mod].count; ++i)
                     stats.push_back(BasicMods[mod].effects[i].stat);
@@ -1039,26 +1157,26 @@ TActiveMods activeMods(const TWheel& wheel, const std::vector<TGem>& gems, const
     stats.erase(std::unique(stats.begin(), stats.end()), stats.end());
     for (const int stat : stats) {
         double value = 0.0;
-        for (int v = 0; v < VesselCount; ++v)
-            if (socketed[v])
-                value += gemBasicStat(*socketed[v], basicGrades, supremeGrades, stat, vocationIndex);
+        for (const TGem* gem : active)
+            if (gem)
+                value += gemBasicStat(*gem, basicGrades, supremeGrades, stat, vocationIndex);
         if (std::fabs(value) > 1e-5)
             mods.basicStats.emplace_back(stat, value);
     }
 
     for (int mod = 0; mod < 4; ++mod) {
         double value = 0.0;
-        for (int v = 0; v < VesselCount; ++v)
-            if (greater(v) && socketed[v]->supreme == mod)
-                value += supremeStatValue(mod, effectiveGrade(*socketed[v], basicGrades, supremeGrades, 2));
+        for (const TGem* gem : active)
+            if (gem && hasSupreme(*gem) && gem->supreme == mod)
+                value += supremeStatValue(mod, supremeGrade(mod));
         if (value != 0.0)
             mods.supremeStats.emplace_back(mod, value);
     }
 
-    for (int v = 0; v < VesselCount; ++v) {
-        if (!greater(v))
+    for (const TGem* gem : greater) {
+        if (!gem)
             continue;
-        const int mod = socketed[v]->supreme;
+        const int mod = gem->supreme;
         if (mod < 0 || mod >= SupremeModCount || !SupremeAugmentations[mod].valid)
             continue;
         const TSupremeAugmentation& aug = SupremeAugmentations[mod];
@@ -1066,29 +1184,31 @@ TActiveMods activeMods(const TWheel& wheel, const std::vector<TGem>& gems, const
         if (it == mods.augmentations.end())
             it = mods.augmentations.insert(std::ranges::upper_bound(mods.augmentations, mod, {}, &TActiveMods::TAugmentation::mod),
                                            { mod, aug.spellId, aug.augType, 0.0, 0 });
-        it->value += aug.values[std::clamp(effectiveGrade(*socketed[v], basicGrades, supremeGrades, 2), 0, 3)];
+        it->value += aug.values[std::clamp(supremeGrade(mod), 0, 3)];
         ++it->count;
     }
 
-    for (int v = 0; v < VesselCount; ++v) {
-        if (!greater(v))
+    for (const TGem* gem : greater) {
+        if (!gem)
             continue;
-        const int perk = revelationMasteryPerk(socketed[v]->supreme);
+        const int perk = revelationMasteryPerk(gem->supreme);
         if (perk < 0 || std::ranges::find(mods.revelations, perk, &TActiveMods::TRevelation::perk) != mods.revelations.end())
             continue;
         int bonus = 0;
-        for (int other = 0; other < VesselCount; ++other)
-            if (greater(other) && revelationMasteryPerk(socketed[other]->supreme) == perk)
-                bonus += revelationMasteryBonus(effectiveGrade(*socketed[other], basicGrades, supremeGrades, 2));
-        mods.revelations.push_back({ perk, bonus, socketed[v]->supreme });
+        for (const TGem* other : active)
+            if (other && hasSupreme(*other) && revelationMasteryPerk(other->supreme) == perk)
+                bonus += revelationMasteryBonus(supremeGrade(other->supreme));
+        mods.revelations.push_back({ perk, bonus, gem->supreme });
     }
 
-    for (int v = 0; v < VesselCount; ++v) {
-        if (!greater(v))
+    mods.damageHealing = unlocked;
+
+    for (const TGem* gem : active) {
+        if (!gem || !hasSupreme(*gem))
             continue;
-        const int mod = socketed[v]->supreme;
+        const int mod = gem->supreme;
         if (supremeModForVocation(mod, vocationIndex) && std::ranges::find(MomentumMods, mod) != std::end(MomentumMods))
-            mods.momentum += MomentumByGrade[std::clamp(effectiveGrade(*socketed[v], basicGrades, supremeGrades, 2), 0, 3)];
+            mods.momentum += MomentumByGrade[std::clamp(supremeGrade(mod), 0, 3)];
     }
     return mods;
 }
@@ -1309,6 +1429,8 @@ bool hasBasicMod(const int mod) { return mod >= 0 && mod < BasicModCount && Basi
 
 bool isAugmentationMod(const int mod) { return mod >= 0 && mod < SupremeModCount && SupremeCategories[mod] == 4; }
 
+int supremeModCategory(const int mod) { return mod >= 0 && mod < SupremeModCount ? SupremeCategories[mod] : -1; }
+
 bool supremeModForVocation(const int mod, const int vocationIndex)
 {
     if ((mod >= 0 && mod <= 3) || mod == 5)
@@ -1390,7 +1512,7 @@ constexpr uint8_t CodeNone = 0xff;
 /// Basic mods below 49, supreme mods below 114.
 constexpr int CodeBasicLimit = 0x31;
 constexpr int CodeSupremeLimit = 0x72;
-/// Export code letters and legacy prefixes, by vocation index.
+/// CIP (export) and (import), by vocation index.
 constexpr char CodeLetters[VocationCount] = { 'K', 'P', 'S', 'D', 'M' };
 constexpr const char* LegacyCodePrefixes[VocationCount] = { "EK", "RP", "MS", "ED", "EM" };
 
@@ -1408,8 +1530,54 @@ std::optional<QByteArray> fromCodeBase64(QByteArray text)
 
 }
 
-QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, const int vocationIndex)
+bool sameMods(const TGem& a, const TGem& b)
 {
+    if (a.basic1 != b.basic1 || hasBasic2(a) != hasBasic2(b) || hasSupreme(a) != hasSupreme(b))
+        return false;
+    return (!hasBasic2(a) || a.basic2 == b.basic2) && (!hasSupreme(a) || a.supreme == b.supreme);
+}
+
+bool sameGem(const TGem& a, const TGem& b)
+{
+    return static_cast<uint16_t>(a.id) == static_cast<uint16_t>(b.id) && static_cast<uint8_t>(a.domain) == static_cast<uint8_t>(b.domain);
+}
+
+bool TWheel::operator==(const TWheel& other) const
+{
+    if (vocation != other.vocation || points != other.points)
+        return false;
+    for (int v = 0; v < VesselCount; ++v) {
+        const std::optional<TGem>& a = vessels[v];
+        const std::optional<TGem>& b = other.vessels[v];
+        if (a.has_value() != b.has_value() || (a && !sameGem(*a, *b)))
+            return false;
+    }
+    return true;
+}
+
+bool socketGem(TWheel& wheel, const TGem& gem, const int vessel)
+{
+    if (gem.quality != vesselQualityAt(vessel))
+        return false;
+    if (const std::optional<int> previous = vesselOfGem(wheel, gem.id))
+        wheel.vessels[*previous].reset();
+    wheel.vessels[vessel] = gem;
+    return true;
+}
+
+void unsocketGem(TWheel& wheel, const int vessel) { wheel.vessels[vessel].reset(); }
+
+std::optional<int> vesselOfGem(const TWheel& wheel, const int gemId)
+{
+    for (int v = 0; v < VesselCount; ++v)
+        if (wheel.vessels[v] && static_cast<uint16_t>(wheel.vessels[v]->id) == static_cast<uint16_t>(gemId))
+            return v;
+    return std::nullopt;
+}
+
+QString encodeWheelCode(const TWheel& wheel)
+{
+    const int vocationIndex = wheel.vocation - 1;
     if (vocationIndex < 0 || vocationIndex >= VocationCount)
         return {};
     std::array<uint8_t, CodeSize> raw{};
@@ -1418,14 +1586,14 @@ QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, cons
     for (int v = 0; v < VesselCount; ++v) {
         uint8_t* bytes = raw.data() + SlotCount + v * 3;
         bytes[0] = bytes[1] = bytes[2] = CodeNone;
-        const auto it = std::ranges::find_if(gems, [&](const TGem& g) { return g.id == wheel.gems[v]; });
-        if (wheel.gems[v] == NoGem || it == gems.end())
+        const std::optional<TGem>& gem = wheel.vessels[v];
+        if (!gem)
             continue;
-        bytes[0] = static_cast<uint8_t>(it->basic1);
-        if (it->quality >= static_cast<int>(EGemQuality::Regular))
-            bytes[1] = static_cast<uint8_t>(it->basic2);
-        if (it->quality >= static_cast<int>(EGemQuality::Greater))
-            bytes[2] = static_cast<uint8_t>(it->supreme);
+        bytes[0] = static_cast<uint8_t>(gem->basic1);
+        if (hasBasic2(*gem))
+            bytes[1] = static_cast<uint8_t>(gem->basic2);
+        if (hasSupreme(*gem))
+            bytes[2] = static_cast<uint8_t>(gem->supreme);
     }
 
     z_stream stream{};
@@ -1441,15 +1609,14 @@ QString encodeWheelCode(const TWheel& wheel, const std::vector<TGem>& gems, cons
     deflateEnd(&stream);
     if (result != Z_STREAM_END)
         return {};
-    // Version 1: the slice points and the vessel gems.
     return QString(QChar(CodeLetters[vocationIndex])) + QLatin1Char('1')
         + QString::fromLatin1(packed.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
 }
 
-std::optional<TWheelCode> decodeWheelCode(const QString& code)
+std::optional<TWheel> decodeWheelCode(const QString& code)
 {
     const QByteArray text = code.toLatin1();
-    TWheelCode result;
+    TWheel result;
     for (int v = 0; v < VocationCount; ++v) {
         if (!text.startsWith(LegacyCodePrefixes[v]))
             continue;
@@ -1458,13 +1625,12 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
         const auto points = fromCodeBase64(text.mid(2).replace('\n', QByteArray()));
         if (!points)
             return std::nullopt;
-        result.vocationIndex = v;
+        result.vocation = v + 1;
         for (qsizetype s = 0; s < points->size() && s < SlotCount; ++s)
             result.points[s] = static_cast<uint8_t>(points->at(s));
         return result;
     }
 
-    // Version 0 carries the slice points only, version 1 also the vessel gems.
     if (text.size() < 2 || (text.at(1) != '0' && text.at(1) != '1'))
         return std::nullopt;
     const bool withGems = text.at(1) == '1';
@@ -1488,7 +1654,7 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
     if ((inflated != Z_STREAM_END && inflated != Z_DATA_ERROR) || unread != 0)
         return std::nullopt;
 
-    result.vocationIndex = static_cast<int>(letter - std::begin(CodeLetters));
+    result.vocation = static_cast<int>(letter - std::begin(CodeLetters)) + 1;
     for (int s = 0; s < SlotCount; ++s)
         result.points[s] = raw[s];
     for (int v = 0; withGems && v < VesselCount; ++v) {
@@ -1496,21 +1662,18 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code)
         if (bytes[0] >= CodeBasicLimit || (bytes[1] != CodeNone && bytes[1] >= CodeBasicLimit)
             || (bytes[2] != CodeNone && (bytes[2] >= CodeSupremeLimit || bytes[1] == CodeNone)))
             continue;
-        result.gems[v] = { bytes[0], bytes[1] == CodeNone ? -1 : bytes[1], bytes[2] == CodeNone ? -1 : bytes[2] };
+        TGem gem;
+        gem.id = v;
+        gem.basic1 = bytes[0];
+        gem.basic2 = bytes[1] == CodeNone ? 0 : bytes[1];
+        gem.supreme = bytes[2] == CodeNone ? 0 : bytes[2];
+        gem.quality = bytes[2] != CodeNone ? 2 : bytes[1] != CodeNone ? 1 : 0;
+        socketGem(result, gem, v);
     }
     return result;
 }
 
-bool isValidWheelCode(const TWheelCode& code) { return isValid(code.points); }
-
-std::optional<int> vesselOfGem(const TWheel& wheel, const int gemId)
-{
-    for (int v = 0; v < VesselCount; ++v) {
-        if (wheel.gems[v] != NoGem && wheel.gems[v] == gemId)
-            return v;
-    }
-    return std::nullopt;
-}
+bool isValidWheelCode(const TWheel& wheel) { return isValid(wheel.points); }
 
 int transformCreatureToSkillWheelVocation(const int vocation)
 {

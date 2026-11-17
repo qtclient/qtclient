@@ -2,44 +2,64 @@
 
 #include <QQuickItem>
 
+#include <algorithm>
+
 namespace tibia::gamewindow {
 
-TMessageDialogButton::TMessageDialogButton(const QString& label, const EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent)
+TMessageDialogButton::TMessageDialogButton(const EMessageDialogButtonIdentifier identifier, const QString& label,
+                                           const uint defaultKeys, QObject* parent)
     : cip::tibia::gamewindow::TMessageDialogButton(parent)
-    , m_keys{ key }
 {
-    m_label = label;
     m_identifier = identifier;
+    m_label = label;
+    if (defaultKeys & RETURN_KEYS) {
+        m_keySequences.emplace_back(QStringLiteral("Return"));
+        m_keySequences.emplace_back(QStringLiteral("Enter"));
+    }
+    if (defaultKeys & ESCAPE_KEY)
+        m_keySequences.emplace_back(QStringLiteral("Esc"));
 }
 
-TMessageDialogButton::TMessageDialogButton(const QString& label, const EMessageDialogButtonIdentifier identifier, const int keys, QObject* parent)
+TMessageDialogButton::TMessageDialogButton(const EMessageDialogButtonIdentifier identifier, const QString& label,
+                                           const QKeySequence& key, QObject* parent)
     : cip::tibia::gamewindow::TMessageDialogButton(parent)
+    , m_keySequences{ key }
 {
-    m_label = label;
     m_identifier = identifier;
-    if (keys & ReturnKey)
-        m_keys << QKeySequence(QStringLiteral("Return")) << QKeySequence(QStringLiteral("Enter"));
-    if (keys & EscapeKey)
-        m_keys << QKeySequence(QStringLiteral("Esc"));
+    m_label = label;
+}
+
+TMessageDialogButton::TMessageDialogButton(const TMessageDialogButton& other)
+    : cip::tibia::gamewindow::TMessageDialogButton(other.parent())
+    , m_keySequences(other.m_keySequences)
+{
+    m_identifier = other.m_identifier;
+    m_label = other.m_label;
+}
+
+bool TMessageDialogButton::hasKey(const QKeySequence& key) const
+{
+    return std::find(m_keySequences.begin(), m_keySequences.end(), key) != m_keySequences.end();
 }
 
 QList<TMessageDialogButton*> okDialogButtons()
 {
-    return { new TMessageDialogButton(qtTrId("ok"), TMessageDialogButton::EMessageDialogButtonIdentifier::OK,
-                                      TMessageDialogButton::ReturnKey | TMessageDialogButton::EscapeKey) };
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::OK, qtTrId("ok"),
+                                      TMessageDialogButton::RETURN_KEYS | TMessageDialogButton::ESCAPE_KEY) };
 }
 
 QList<TMessageDialogButton*> cancelDialogButtons()
 {
-    return { new TMessageDialogButton(qtTrId("cancel"), TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL,
-                                      TMessageDialogButton::ReturnKey | TMessageDialogButton::EscapeKey) };
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL, qtTrId("cancel"),
+                                      TMessageDialogButton::RETURN_KEYS | TMessageDialogButton::ESCAPE_KEY) };
 }
 
 QList<TMessageDialogButton*> okCancelDialogButtons()
 {
-    return { new TMessageDialogButton(qtTrId("ok"), TMessageDialogButton::EMessageDialogButtonIdentifier::OK, TMessageDialogButton::ReturnKey),
-             new TMessageDialogButton(qtTrId("cancel"), TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL,
-                                      TMessageDialogButton::EscapeKey) };
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::OK, qtTrId("ok"),
+                                      TMessageDialogButton::RETURN_KEYS),
+             new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL, qtTrId("cancel"),
+                                      TMessageDialogButton::ESCAPE_KEY) };
 }
 
 TMessageDialogController::TMessageDialogController(QObject* parent)

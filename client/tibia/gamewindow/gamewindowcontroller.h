@@ -15,6 +15,7 @@
 #include <vector>
 
 class QEvent;
+class QQmlEngine;
 class QObject;
 class QQuickItem;
 
@@ -28,8 +29,14 @@ class TShowOffRequestUploader;
 namespace tibia {
 namespace news {
 class TEventsUploader;
+class TNewsDiskIO;
 class TNewsRequestUploader;
 class TNewsStorage;
+class TNewsViewsUploader;
+}
+namespace shared {
+class TJsonDocumentHttpPostSender;
+class TTibiaFileSystemHelper;
 }
 }
 
@@ -59,6 +66,13 @@ public:
     /// gamewindow.qml's item, once it is shown: applies the option-driven game
     /// window state now and again on every option change.
     void setGameWindowItem(QQuickItem* gameWindowItem);
+    /// CIP: gamewindow.qml made in the container with this controller, the background art on, the
+    /// chat-input focus signals wired to the item's functions. The caller keeps the item alive
+    /// (null and the QML error logged when it fails).
+    std::unique_ptr<QObject> createGameWindow(QQmlEngine* engine);
+    /// CIP: gamewindow.qml's item named `name` (dialogPlaceholder, mapWindowPane, the sidebar
+    /// placeholders and managers, the action bars, cooldownBar, ...); null before the item is set.
+    QQuickItem* gameWindowChild(const QString& name) const;
     /// The container's backgroundImageSmooth (option antialiasingMode is
     /// antialiasing), the cooldown bar's visibility (option cooldownBarEnabled)
     /// and the pane layout (options gameWindowUpperPaneHeight,
@@ -92,6 +106,17 @@ public:
     void setResizingMode(cip::tibia::qmlcomponents::enums::EGameWindowResizingMode mode) override;
 
     void setRememberEmail(bool v) override;
+    /// CIP: the static race name of the boosted creature / boss, each word capitalised (the
+    /// service's name when the race is not in the static data).
+    QString boostedCreatureName() const override;
+    QString boostedBossName() const override;
+    /// CIP: OPEN_URL of a link in the hint area.
+    void linkClicked(const QString& Url) override;
+    /// CIP: the pointing hand over a hint-area link.
+    void linkHoverChanged(bool IsOverLink) override;
+    /// CIP: option showEMailAsPlainText.
+    bool showEmailAsPlainText() const override;
+    void setShowEmailAsPlainText(bool v) override;
     void loginPressed(const QString& EMailAddress, const QString& Password) override;
     void forgotEMailAddressOrPasswordPressed() override;
     void handleCreateNewAccount() override;
@@ -133,16 +158,16 @@ public:
     void setAllowWindowClose(bool allow) { m_allowWindowClose = allow; }
     /// Graphics-engine restart and other intentional process exits. The window
     /// close that follows must not ask Exit / Logout / Cancel.
+    /// The gameExitRequested receiver: Exit / Logout / Cancel while a character
+    /// is in the world, otherwise the client exits (quitGameExitRequested).
+    void handleGameExitRequest();
+
     static void allowProcessExit();
     static bool processExitAllowed();
 
 Q_SIGNALS:
     /// The options dialog should open on `category` (OPEN_OPTIONS_MENU_DIALOG's).
     void optionsMenuRequested(int category);
-    /// Start-screen Login button (email + password).
-    void accountLoginRequested(const QString& email, const QString& password);
-    /// Create Account on the CIP login mask (CreateAccountDialog.qml).
-    void createAccountDialogRequested();
     /// Quit-game dialog: Exit (close client).
     void quitGameExitRequested();
     /// Quit-game dialog: Logout (leave character / return to login).
@@ -159,11 +184,10 @@ private:
     void onBoostedCreatureReceived();
     void onLiveInformationReceived();
     void onShowOffReceived();
-    void onEventScheduleUpdated();
+    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void clearEventModels();
     /// CIP: today's events and the next starting ones, with their tooltips.
     void updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events);
-    void showQuitGameDialog();
     void syncAnthemButton();
 
     QPointer<QQuickItem> m_container;
@@ -178,12 +202,17 @@ private:
     bool m_beforeServerSave = true;
     bool m_allowWindowClose = false;
     class TMessageDialogController* m_quitDialog = nullptr;
-    std::unique_ptr<news::TNewsStorage> m_newsStorage;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::TJsonDocumentHttpPostSender> m_clientServicesSender;
+    std::shared_ptr<news::TNewsStorage> m_newsStorage;
+    std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;
+    std::unique_ptr<news::TEventsStorage> m_eventsStorage;
     std::unique_ptr<game::TBoostedCreatureRequestUploader> m_boostedUploader;
     std::unique_ptr<game::TLiveInformationRequestUploader> m_liveInfoUploader;
     std::unique_ptr<game::TShowOffRequestUploader> m_showOffUploader;
     std::unique_ptr<news::TEventsUploader> m_eventsUploader;
     std::unique_ptr<news::TNewsRequestUploader> m_newsUploader;
+    std::unique_ptr<news::TNewsViewsUploader> m_newsViewsUploader;
     std::unique_ptr<TNewsDialogController> m_newsDialog;
     std::unique_ptr<TNewsButtonController> m_newsButton;
     std::unique_ptr<TCalendarDialogController> m_calendarDialog;

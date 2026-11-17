@@ -1,18 +1,22 @@
 #pragma once
 
-#include <cip_gen.h>
+#include "jsondocumentuploaderbase.h"
+#include "news/newsstorage.h"
 
 #include <QColor>
 #include <QDate>
-#include <QJsonArray>
-#include <QJsonObject>
+#include <QJsonDocument>
 #include <QString>
 #include <QTimeZone>
 #include <QUrl>
 
+#include <memory>
 #include <vector>
 
-class QNetworkAccessManager;
+namespace tibia::shared {
+class IClockService;
+class TTibiaFileSystemHelper;
+}
 
 namespace tibia {
 namespace news {
@@ -31,42 +35,51 @@ struct TEventInformation
     bool isSeasonal = false;
 };
 
-/// The server's time zone (CIP: Europe/Berlin).
-QTimeZone serverTimeZone();
-
 /// CIP: the `eventlist` of an eventschedule reply; malformed entries are skipped.
 std::vector<TEventInformation> parseEventSchedule(const QJsonDocument& reply);
 
-/// POSTs `{type:"eventschedule"}` to the portal clientservices multiplex
-/// (CIP: TEventsUploader). The CIP `updated(std::vector<TEventInformation>)`
-/// signal is not generated yet; callers read `eventList()` after `finished`.
-class TEventsUploader final : public cip::tibia::news::TEventsUploader
+/// CIP news::TEventsUploader: the event schedule from the disk cache
+/// (eventschedule.json) while it is fresh, else from the client services.
+class TEventsUploader final : public shared::TJsonDocumentUploaderBase
 {
     Q_OBJECT
 public:
-    explicit TEventsUploader(QObject* parent = nullptr);
+    TEventsUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                    std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                    std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
+    ~TEventsUploader() override;
 
-    void setServiceUrl(const QUrl& url) { m_url = url; }
-    void setClientRevision(const QString& revision) { m_revision = revision; }
-
-    QJsonArray eventList() const { return m_eventList; }
-    const std::vector<TEventInformation>& events() const { return m_events; }
-    qint64 lastUpdateTimestamp() const { return m_lastUpdateTimestamp; }
-
-    void requestUpdate() override;
-    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD) override;
+    /// Queries `{type:"eventschedule"}`.
+    void requestEventSchedule();
 
 Q_SIGNALS:
-    /// Scaffolding stand-in for CIP `updated(std::vector<TEventInformation>)`.
-    void scheduleUpdated();
+    void updated(const std::vector<tibia::news::TEventInformation>& EventList);
+
+public Q_SLOTS:
+    void requestUpdate();
+    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD);
 
 private:
-    QNetworkAccessManager* m_network;
     QUrl m_url;
-    QString m_revision;
-    QJsonArray m_eventList;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::IClockService> m_clock;
     std::vector<TEventInformation> m_events;
-    qint64 m_lastUpdateTimestamp = 0;
+};
+
+/// CIP news::TEventsStorage: the last event schedule.
+class TEventsStorage final : public QObject
+{
+    Q_OBJECT
+public:
+    using QObject::QObject;
+
+    const std::vector<TEventInformation>& events() const { return m_events; }
+
+public Q_SLOTS:
+    void onEventsUpdated(const std::vector<tibia::news::TEventInformation>& StortedEventList);
+
+private:
+    std::vector<TEventInformation> m_events;
 };
 
 }

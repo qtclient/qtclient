@@ -8,7 +8,7 @@
 #include "worldmap/worldmapstorage.h"
 
 #include "creatures/creaturestorage.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
 #include <QCoreApplication>
 
@@ -51,7 +51,7 @@ int defaultActionOf(const TFieldObject& object, const TWorldMapField* field)
         return 0;
     const appearances::TAppearanceInstancePtr appearance =
         field && object.stackPosition >= 0 ? field->appearanceAt(object.stackPosition) : object.appearance;
-    ThingType* type = appearance ? appearance->thingType() : nullptr;
+    TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
     return type && type->hasAction() ? type->getDefaultAction() : 0;
 }
 

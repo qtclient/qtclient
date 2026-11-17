@@ -6,10 +6,11 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QJsonArray>
@@ -144,7 +145,7 @@ TGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32
 namespace {
 
 TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TObjectAppearanceInstance* fieldObject,
-                                  ThingType* flags, const Position& position, const int stackPosition,
+                                  TAppearanceType* flags, const Position& position, const int stackPosition,
                                   const int stackCountOverride = -1)
 {
     TGameActionList actions;
@@ -160,11 +161,11 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         return action;
     };
 
-    const auto has = [flags](bool (ThingType::*flag)() const) { return flags && (flags->*flag)(); };
+    const auto has = [flags](bool (TAppearanceType::*flag)() const) { return flags && (flags->*flag)(); };
     const bool isContainer = flags && flags->isContainer();
-    const bool take = has(&ThingType::isPickupable);
-    const bool unmove = has(&ThingType::isNotMoveable);
-    const bool podium = has(&ThingType::isPodium);
+    const bool take = has(&TAppearanceType::isPickupable);
+    const bool unmove = has(&TAppearanceType::isNotMoveable);
+    const bool podium = has(&TAppearanceType::isPodium);
     const uint8_t fieldTier = fieldObject ? fieldObject->tier() : 0;
     // Inventory/container slots own the authoritative count; appearance instances can
     // retain a stale shared count and open the split dialog for the wrong total.
@@ -173,12 +174,12 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
                                     : (fieldObject ? fieldObject->count() : 0);
 
     const TGameActionPtr look = push(A::LOOK);
-    if (take && !has(&ThingType::isIgnoreLook))
+    if (take && !has(&TAppearanceType::isIgnoreLook))
         push(A::INSPECT_OBJECT);
 
     TGameActionPtr use;
     if (!isContainer) {
-        use = push(has(&ThingType::isMultiUse) ? A::USE_WITH : A::USE);
+        use = push(has(&TAppearanceType::isMultiUse) ? A::USE_WITH : A::USE);
     } else {
         use = push(A::OPEN);
         if (id != tibia::game::supplyStashId()) {
@@ -193,20 +194,20 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
     }
     if (id && id == tibia::game::standardRewardChestId())
         push(A::GATHER_ALL);
-    if (has(&ThingType::isWrapable))
+    if (has(&TAppearanceType::isWrapable))
         push(A::WRAP);
-    else if (has(&ThingType::isUnwrapable))
+    else if (has(&TAppearanceType::isUnwrapable))
         push(A::UNWRAP);
     if (podium)
         push(A::CONFIGURE_SHOW_OFF_SOCKET);
-    if (has(&ThingType::isRotateable) || podium)
+    if (has(&TAppearanceType::isRotateable) || podium)
         push(A::ROTATE_OBJECT);
-    if (has(&ThingType::isReportable))
+    if (has(&TAppearanceType::isReportable))
         push(A::GET_TEXT_FOR_REPORT);
     if (take && !unmove)
         push(A::TRADE_ITEM);
     if (tibia::game::localPlayerIsSupplyStashAvailable()) {
-        if (has(&ThingType::isMarketable) && (has(&ThingType::isStackable) || fieldTier == 0)) {
+        if (has(&TAppearanceType::isMarketable) && (has(&TAppearanceType::isStackable) || fieldTier == 0)) {
             push(A::STASH_STOW_TYPE);
             auto stow = mutableClone(*make(A::STASH_STOW_STACK));
             stow->amount = static_cast<int>(fieldCount);
@@ -217,18 +218,19 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         if (isContainer && id != tibia::game::supplyStashId())
             push(A::STASH_STOW_CONTAINER_CONTENT);
     }
-    if (tibia::game::localPlayerIsMarketAvailable() && has(&ThingType::isMarketable))
+    if (tibia::game::localPlayerIsMarketAvailable() && has(&TAppearanceType::isMarketable))
         push(A::MARKET_BROWSE);
-    if (has(&ThingType::hasCyclopediaItem))
+    if (has(&TAppearanceType::hasCyclopediaItem))
         push(A::OPEN_CYCLOPEDIA);
     if (flags && flags->getProficiencyId() != 0)
         push(A::OPEN_WEAPON_PROFICIENCY_DIALOG);
     // qtclient loot black/whitelist: menus filter these; handler is ManageLoot.
     if (take && id != 0) {
-        if (cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance()) {
-            if (loot->isLootListed(static_cast<uint16_t>(id)))
+        analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+        if (quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr) {
+            if (loot->isListed(static_cast<uint16_t>(id)))
                 push(A::LOOT_REMOVE_FROM_BLACKWHITELIST);
-            else if (!loot->isLootListFull())
+            else if (!loot->isListFull())
                 push(A::LOOT_ADD_TO_BLACKWHITELIST);
         }
     }
@@ -236,7 +238,7 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         // Map stacks carry count on the appearance; inventory/container paths
         // resolve count at drop via storageSlotCount. Without amount here,
         // finalizeDrop / Shift-move-all / Ctrl-split treat every map stack as 1.
-        if (fieldCount > 1 && has(&ThingType::isStackable)) {
+        if (fieldCount > 1 && has(&TAppearanceType::isStackable)) {
             auto move = mutableClone(*make(A::MOVE_OBJECT));
             move->amount = static_cast<int>(fieldCount);
             actions.push_back(move);
@@ -256,12 +258,12 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         actions.push_back(help);
     }
 
-    if (isContainer && has(&ThingType::isCorpse) && !has(&ThingType::isPlayerCorpse))
+    if (isContainer && has(&TAppearanceType::isCorpse) && !has(&TAppearanceType::isPlayerCorpse))
         push(A::QUICK_LOOT);
 
     TGameActionPtr inner;
-    if (!has(&ThingType::hasAction)) {
-        inner = has(&ThingType::isUsable) ? use : look;
+    if (!has(&TAppearanceType::hasAction)) {
+        inner = has(&TAppearanceType::isUsable) ? use : look;
     } else {
         const auto defaultAction = flags->getDefaultAction();
         if (defaultAction == PLAYER_ACTION_AUTOWALK_HIGHLIGHT)
@@ -296,7 +298,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::
     }
     uint16_t clientId = 0;
     const appearances::TObjectAppearanceInstance* objectInst = nullptr;
-    ThingType* type = nullptr;
+    TAppearanceType* type = nullptr;
     if (object.appearance) {
         clientId = object.appearance->id();
         type = object.appearance->thingType();
@@ -310,7 +312,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const container:
 {
     if (slot.empty())
         return {};
-    ThingType* type = slot.appearance ? slot.appearance->thingType() : nullptr;
+    TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : nullptr;
     if (!type)
         type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
     const appearances::TObjectAppearanceInstance* objectInst =

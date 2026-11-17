@@ -1,0 +1,108 @@
+// Tip-owned reconstruction of CipSoft's tibia.protobuf.staticdata schema: the
+// client binary does not embed its descriptor. Message names come from the
+// binary's RTTI; field numbers and types from the asset files and from how the
+// client reads each message (TAssetHandler's static data / static map data parse).
+// Outfit, OutfitColor, Coordinate, Extent and MapArea are CipSoft's
+// tibia.protobuf.protocol messages, copied here wire-compatible because the
+// tip's protocol.proto is a different (classic wire) scaffold.
+syntax = "proto2";
+package tibia.protobuf.staticdata;
+option optimize_for = LITE_RUNTIME;
+
+message Coordinate {
+  optional uint32 x = 1;
+  optional uint32 y = 2;
+  optional uint32 z = 3;
+}
+
+message Extent {
+  optional uint32 width = 1;
+  optional uint32 height = 2;
+  optional uint32 depth = 3;
+}
+
+message OutfitColor {
+  optional uint32 head = 1;
+  optional uint32 body = 2;
+  optional uint32 legs = 3;
+  optional uint32 feet = 4;
+}
+
+message Outfit {
+  optional uint32 look_type = 1;
+  optional OutfitColor colors = 2;
+  optional uint32 addons = 3;
+  optional uint32 look_type_ex = 4;
+}
+
+message Monster {
+  optional uint32 race_id = 1;
+  optional string name = 2;
+  optional Outfit outfit = 3;
+  optional uint32 difficulty = 4;
+  optional uint32 occurrence = 5;
+  optional bool flag6 = 6;
+  optional bool flag7 = 7;
+}
+
+message MonsterClass {
+  optional uint32 id = 1;
+  optional string name = 2;
+}
+
+message Achievement {
+  optional uint32 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional uint32 grade = 4;
+}
+
+message House {
+  optional uint32 house_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional uint32 rent = 4;
+  optional uint32 beds = 5;
+  optional Coordinate position = 6;
+  optional uint32 size = 7;
+  optional bool guildhall = 8;
+  optional string city = 9;
+  optional bool shop = 10;
+}
+
+message BossMonster {
+  optional uint32 race_id = 1;
+  optional string name = 2;
+  optional Outfit outfit = 3;
+  optional bool flag4 = 4;
+}
+
+message Quest {
+  optional uint32 id = 1;
+  optional string name = 2;
+}
+
+message StaticData {
+  repeated Monster monster = 1;
+  repeated MonsterClass monster_class = 2;
+  repeated Achievement achievement = 3;
+  repeated House house = 4;
+  repeated BossMonster boss = 5;
+  repeated Quest quest = 6;
+}
+
+message MapArea {
+  optional Coordinate top_left = 1;
+  optional Extent extent = 2;
+  // CipSoft's MapFields message; the client keeps it serialized.
+  optional bytes fields = 3;
+}
+
+message HouseMapArea {
+  optional uint32 house_id = 1;
+  optional MapArea area = 2;
+}
+
+message StaticMapData {
+  repeated HouseMapArea house_map_area = 1;
+}

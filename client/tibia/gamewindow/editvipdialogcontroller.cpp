@@ -48,7 +48,11 @@ void TEditVipDialogController::open(const creatures::TVipStorage::Vip& vip, cons
     dialog()->show();
 }
 
-void TEditVipDialogController::onCancelClicked() { dialog()->close(); }
+void TEditVipDialogController::onCancelClicked()
+{
+    dialog()->close();
+    Q_EMIT abort();
+}
 
 void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& Description, const bool Notify)
 {
@@ -58,8 +62,10 @@ void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& D
         if (info->selected())
             groups.push_back(static_cast<uint8_t>(info->groupID()));
     }
-    if (m_vip.iconId == static_cast<uint8_t>(VipIconId) && m_vip.description == Description && m_vip.notifyLogin == Notify && m_vip.groups == groups)
+    if (m_vip.iconId == static_cast<uint8_t>(VipIconId) && m_vip.description == Description && m_vip.notifyLogin == Notify && m_vip.groups == groups) {
+        Q_EMIT abort();
         return;
+    }
     creatures::TVipStorage::Vip edited = m_vip;
     edited.iconId = static_cast<uint8_t>(VipIconId);
     edited.description = Description;
@@ -69,6 +75,8 @@ void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& D
 }
 
 void TEditVipDialogController::onControllerFinished() { dialog()->close(); }
+
+void TEditVipDialogController::destroyDialog() { dialog()->destroy(); }
 
 void TEditVipDialogController::clearGroupInfos()
 {

@@ -16,6 +16,7 @@
 namespace tibia {
 namespace cyclopedia {
 class TCyclopediaMapStorage;
+class TCyclopediaMapCharacterConfigurationStorage;
 }
 }
 
@@ -42,25 +43,47 @@ namespace gamewindow {
 
 class TMessageDialogController;
 
-/// The area values both selection kinds show (CIP).
+/// What the map knows of an area (CIP cyclopedia::TAreaData, the fields the
+/// selection shows).
 struct TCyclopediaMapAreaValues
 {
+    quint16 id = 0;
     QString name;
-    int id = 0;
-    double percentExplored = 0;
-    QString donation;
-    QString threshold;
+    float percentExplored = 0;
+    quint64 donated = 0;
     QString donationsTooltip;
-    double percentUnlockedImprovedRespawn = 0;
+    quint64 donationGoal = 0;
     bool rejectDonations = false;
 };
 
-/// The selected area (CIP: TCyclopediaMapSelectionInfoArea).
+/// The selected area: its data, and the texts and ratios the info panel shows.
 class TCyclopediaMapSelectionInfoArea final : public cip::tibia::gamewindow::TCyclopediaMapSelectionInfoArea
 {
     Q_OBJECT
 public:
     TCyclopediaMapSelectionInfoArea(const TCyclopediaMapAreaValues& values, QObject* parent);
+
+    const TCyclopediaMapAreaValues& areaData() const { return m_data; }
+    void setAreaData(const TCyclopediaMapAreaValues& values);
+
+    cip::tibia::qmlcomponents::enums::ECyclopediaMapSelectionType selectionType() const override
+    {
+        return cip::tibia::qmlcomponents::enums::ECyclopediaMapSelectionType::SelectionTypeArea;
+    }
+    QString areaName() const override { return m_data.name; }
+    int areaID() const override { return m_data.id; }
+    double percentExplored() const override { return m_data.percentExplored; }
+    /// The gold donated, English digit grouping.
+    QString areaDonationString() const override;
+    /// The gold the improved respawn needs, English digit grouping.
+    QString areaDonationThreshold() const override;
+    QString areaDonationsTooltip() const override { return m_data.donationsTooltip; }
+    /// Donated over the goal, at most 1; 0 without a goal.
+    double percentUnlockedImprovedRespawn() const override;
+    bool rejectDonations() const override { return m_data.rejectDonations; }
+
+private:
+    TCyclopediaMapAreaValues m_data;
 };
 
 /// The selected subarea and its area (CIP: TCyclopediaMapSelectionInfoSubArea).
@@ -102,6 +125,10 @@ public:
 
     void showDialogTab() override;
     void hideDialogTab() override;
+    /// The panel states are the character's cyclopedia map configuration.
+    void setShowNavigationPanel(bool v) override;
+    void setShowAreaAndSubAreaInfoPanel(bool v) override;
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration; }
     /// CIP .
     void onSelectedItemChanged() override;
     /// CIP .
@@ -123,6 +150,10 @@ public:
     void onMouseExited() override;
 
 private:
+    /// The configuration joins the analyser storages' per-character files once they exist.
+    void registerCharacterConfiguration();
+    /// A loaded configuration sets the panels.
+    void applyCharacterConfiguration();
     /// CIP confirm for reset (dialog result type 0 at +0x58).
     void confirmResetViewpoints(int subAreaId);
     /// CIP: sends the confirmed viewpoint reset or donation.
@@ -141,6 +172,8 @@ private:
     void setTooltip(const QString& tooltip);
     void updateMouseCursor(int x, int y);
 
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* m_configuration;
+    bool m_configurationRegistered = false;
     cyclopedia::TCyclopediaMapStorage* m_storage;
     TMessageDialogController* m_confirmDialog;
     int m_donationAreaId = 0;

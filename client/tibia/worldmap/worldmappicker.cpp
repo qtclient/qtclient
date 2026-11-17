@@ -86,11 +86,11 @@ uint32_t TWorldMapPicker::creatureAt(const qmlcomponents::TWorldMapRenderProvide
     const TShearedWorldMapCuboid area = viewport.visibleArea();
     for (int dx = 0; dx < area.extent.width; ++dx) {
         for (int dy = 0; dy < area.extent.height; ++dy) {
-            const int x = area.topLeft.x + dx;
-            const int y = area.topLeft.y + dy;
-            if (x < 0 || y < 0 || area.topLeft.z < 0)
+            const int x = area.origin.x + dx;
+            const int y = area.origin.y + dy;
+            if (x < 0 || y < 0 || area.origin.z < 0)
                 continue;
-            TWorldMapField* field = storage->fieldAt(TWorldMapCoordinate(x, y, area.topLeft.z).toPosition());
+            TWorldMapField* field = storage->fieldAt(TWorldMapCoordinate(x, y, area.origin.z).toPosition());
             if (!field)
                 continue;
             const TFieldObject found = field->topCreature();

@@ -1,6 +1,7 @@
 #include "skillwheelmodels.h"
 
-#include <tibia/assets/thingtype.h>
+#include <numeric>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -16,15 +17,34 @@ QString itemName(const int typeId)
 {
     if (typeId <= 0)
         return {};
-    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
-/// CIP role 0x112: augmentations show their name above the effect.
-QString supremeEffectText(const int mod, const int grade)
+/// A supreme mod's effect; augmentations and revelation masteries show their name above it.
+QString supremeModText(const int mod, const int grade)
 {
     const QString effect = supremeModEffect(mod, grade);
-    return isAugmentationMod(mod) ? supremeModName(mod, false, false) + u'\n' + effect : effect;
+    if ((supremeModCategory(mod) & ~1) == 4)
+        return supremeModName(mod, false, false) + u'\n' + effect;
+    return effect;
+}
+
+int gradeOf(const TGrades& grades, const int mod)
+{
+    const auto it = grades.find(mod);
+    return it != grades.end() ? it->second : 0;
+}
+
+/// The revealed gem object type of `quality` for the vocation (1 knight .. 5 monk); 0 for none.
+TAppearanceTypePtr gemObjectType(const int quality, const int vocation)
+{
+    for (const auto& type : tibia::appearances::TAppearancesManager::instance().getSkillWheelGemObjectTypes()) {
+        if (type && static_cast<int>(type->getSkillWheelGemQualityId()) == quality
+            && static_cast<int>(type->getSkillWheelGemVocationId()) == vocation)
+            return type;
+    }
+    return nullptr;
 }
 
 }
@@ -43,99 +63,112 @@ QModelIndex TPaginationProxyModel::showSourceRow(const int sourceRow)
     return mapFromSource(sourceModel()->index(sourceRow, 0));
 }
 
-TInventoryGemListModel::TInventoryGemListModel(TSkillWheelStorage* storage, QObject* parent)
+TInventoryGemListModel::TInventoryGemListModel(QObject* parent)
     : cip::tibia::skillwheel::TInventoryGemListModel(parent)
-    , m_storage(storage)
 {}
 
-int TInventoryGemListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_storage->gems().size()); }
+int TInventoryGemListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_gems.size()); }
 
 QHash<int, QByteArray> TInventoryGemListModel::roleNames() const
 {
     return {
-        { GemImageSource, "gemImageSource" },       { DomainAffinitySource, "domainAffinitySource" },
-        { GemName, "gemName" },                     { Mod1Id, "mod1Id" },
-        { Mod1ImageSource, "mod1ImageSource" },     { Mod1EffectString, "mod1EffectString" },
-        { Mod1Active, "mod1Active" },               { Mod1Grade, "mod1Grade" },
-        { Mod1PotentialGrade, "mod1PotentialGrade" }, { Mod2Id, "mod2Id" },
-        { Mod2ImageSource, "mod2ImageSource" },     { Mod2EffectString, "mod2EffectString" },
-        { Mod2Active, "mod2Active" },               { Mod2Grade, "mod2Grade" },
-        { Mod2PotentialGrade, "mod2PotentialGrade" }, { Mod3Id, "mod3Id" },
-        { Mod3ImageSource, "mod3ImageSource" },     { Mod3EffectString, "mod3EffectString" },
-        { Mod3Active, "mod3Active" },               { Mod3Grade, "mod3Grade" },
-        { Mod3PotentialGrade, "mod3PotentialGrade" }, { IsSocketed, "isSocketed" },
-        { GemId, "gemId" },                         { CanBeDismantled, "canBeDismantled" },
-        { IsLastOfDomainAffinity, "isLastOfDomainAffinity" }, { IsLocked, "isLocked" },
+        { GemImageSource, "gemImageSource" },     { GemName, "gemName" },
+        { Quality, "quality" },                   { Mod1Id, "mod1Id" },
+        { Mod1ImageSource, "mod1ImageSource" },   { Mod1EffectString, "mod1EffectString" },
+        { Mod1Grade, "mod1Grade" },               { Mod2Id, "mod2Id" },
+        { Mod2ImageSource, "mod2ImageSource" },   { Mod2EffectString, "mod2EffectString" },
+        { Mod2Grade, "mod2Grade" },               { Mod3Id, "mod3Id" },
+        { Mod3ImageSource, "mod3ImageSource" },   { Mod3EffectString, "mod3EffectString" },
+        { Mod3Grade, "mod3Grade" },               { IsSocketed, "isSocketed" },
+        { GemId, "gemId" },                       { CanBeDismantled, "canBeDismantled" },
+        { IsLocked, "isLocked" },
     };
 }
 
-QVariant TInventoryGemListModel::data(const QModelIndex& index, const int role) const
-{
-    if (!index.isValid() || index.row() >= rowCount())
-        return {};
-    const TGem& gem = m_storage->gems()[index.row()];
-    const int voc = m_storage->vocationIndex();
-    const TGrades& basic = m_storage->basicGrades();
-    const TGrades& supreme = m_storage->supremeGrades();
-    const int count = modCount(gem);
-    const int res = resonance(m_storage->currentWheel().points, gem.domain);
-    switch (role) {
-        case GemImageSource: return gemImage(gem, voc);
-        case DomainAffinitySource: return domainAffinityImage(gem.domain);
-        case GemName: return itemName(unrevealedGemTypeId(voc, gem.quality));
-        case Mod1Id: return gem.basic1;
-        case Mod1ImageSource: return basicModImage(gem.basic1);
-        case Mod1EffectString: return basicModEffect(gem.basic1, voc, effectiveGrade(gem, basic, supreme, 0));
-        case Mod1Active: return res > 0;
-        case Mod1Grade:
-        case Mod1PotentialGrade: return effectiveGrade(gem, basic, supreme, 0);
-        case Mod2Id: return count > 1 ? gem.basic2 : 0;
-        case Mod2ImageSource: return count > 1 ? basicModImage(gem.basic2) : QUrl();
-        case Mod2EffectString: return count > 1 ? basicModEffect(gem.basic2, voc, effectiveGrade(gem, basic, supreme, 1)) : QString();
-        case Mod2Active: return res > 1;
-        case Mod2Grade: return count > 1 ? effectiveGrade(gem, basic, supreme, 1) : 0;
-        case Mod2PotentialGrade: return count > 1 ? gemGrade(gem, basic, supreme, 1) : 0;
-        case Mod3Id: return count > 2 ? gem.supreme : 0;
-        case Mod3ImageSource: return count > 2 ? supremeModImage(gem.supreme) : QUrl();
-        case Mod3EffectString: return count > 2 ? supremeEffectText(gem.supreme, effectiveGrade(gem, basic, supreme, 2)) : QString();
-        case Mod3Active: return res > 2;
-        case Mod3Grade: return count > 2 ? effectiveGrade(gem, basic, supreme, 2) : 0;
-        case Mod3PotentialGrade: return count > 2 ? gemGrade(gem, basic, supreme, 2) : 0;
-        case IsSocketed: return socketedIn(m_storage->currentWheel(), gem.id);
-        case GemId: return gem.id;
-        case CanBeDismantled: return !socketedIn(m_storage->serverWheel(), gem.id);
-        case IsLastOfDomainAffinity:
-            return std::ranges::count_if(m_storage->gems(), [&](const TGem& g) { return g.domain == gem.domain; }) <= 1;
-        case IsLocked: return gem.locked;
-        default: return {};
-    }
-}
-
-void TInventoryGemListModel::reset()
+void TInventoryGemListModel::setGems(const std::vector<TGem>& gems)
 {
     beginResetModel();
+    m_gems = gems;
     endResetModel();
 }
 
-void TInventoryGemListModel::refresh()
+void TInventoryGemListModel::setConfiguration(const std::optional<TWheel>& configuration, const std::optional<TWheel>& serverConfiguration,
+                                              const TGrades& basicGrades, const TGrades& supremeGrades)
 {
+    m_configuration = configuration;
+    m_serverConfiguration = serverConfiguration;
+    m_basicGrades = basicGrades;
+    m_supremeGrades = supremeGrades;
     if (rowCount() > 0)
         Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0));
 }
 
-int TInventoryGemListModel::rowOfGem(const int gemId) const
+int TInventoryGemListModel::vocationIndex() const { return m_configuration ? m_configuration->vocation - 1 : 0; }
+int TInventoryGemListModel::basicGrade(const int mod) const { return gradeOf(m_basicGrades, mod); }
+int TInventoryGemListModel::supremeGrade(const int mod) const { return gradeOf(m_supremeGrades, mod); }
+
+QVariant TInventoryGemListModel::data(const QModelIndex& index, const int role) const
 {
-    const auto& gems = m_storage->gems();
-    const auto it = std::ranges::find_if(gems, [gemId](const TGem& g) { return g.id == gemId; });
-    return it != gems.end() ? static_cast<int>(it - gems.begin()) : -1;
+    // Nothing is shown without a configuration.
+    const TGem* g = gem(index.row());
+    if (!index.isValid() || !g || !m_configuration || role < GemImageSource || role > IsLocked)
+        return {};
+    const bool secondMod = g->quality >= 1;
+    const bool supremeMod = g->quality >= 2;
+    const int quality = secondMod ? (supremeMod ? 2 : 1) : 0;
+    const int voc = vocationIndex();
+    switch (role) {
+        case GemImageSource: {
+            const TAppearanceTypePtr type = gemObjectType(quality, m_configuration->vocation);
+            return static_cast<uint>(type ? type->getId() : 0);
+        }
+        case GemName: {
+            const TAppearanceTypePtr type = gemObjectType(quality, m_configuration->vocation);
+            return type ? QString::fromStdString(type->getName()) : QString();
+        }
+        case Quality: return quality;
+        case Mod1Id: return g->basic1;
+        case Mod1ImageSource: return basicModImage(g->basic1);
+        case Mod1EffectString: return basicModEffect(g->basic1, voc, basicGrade(g->basic1));
+        case Mod1Grade: return basicGrade(g->basic1);
+        case Mod2Id: return secondMod ? g->basic2 : 0;
+        case Mod2ImageSource: return secondMod ? basicModImage(g->basic2) : QUrl();
+        case Mod2EffectString: return secondMod ? basicModEffect(g->basic2, voc, basicGrade(g->basic2)) : QString();
+        case Mod2Grade: return secondMod ? basicGrade(g->basic2) : 0;
+        case Mod3Id: return supremeMod ? g->supreme : 0;
+        case Mod3ImageSource: return supremeMod ? supremeModImage(g->supreme) : QUrl();
+        case Mod3EffectString: return supremeMod ? supremeModText(g->supreme, supremeGrade(g->supreme)) : QString();
+        case Mod3Grade: return supremeMod ? supremeGrade(g->supreme) : 0;
+        case IsSocketed: return socketedIn(*m_configuration, g->id);
+        case GemId: return g->id;
+        case CanBeDismantled: return !(m_serverConfiguration && socketedIn(*m_serverConfiguration, g->id));
+        case IsLocked: return g->locked;
+        default: return {};
+    }
 }
 
-TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TSkillWheelStorage* storage, QObject* parent)
-    : cip::tibia::skillwheel::TInventoryGemSortFilterProxyModel(parent)
-    , m_storage(storage)
+const TGem* TInventoryGemListModel::gem(const int row) const
 {
-    m_filterDomainAffinity = -1;
+    return row >= 0 && row < static_cast<int>(m_gems.size()) ? &m_gems[static_cast<size_t>(row)] : nullptr;
+}
+
+int TInventoryGemListModel::rowOfGem(const int gemId) const
+{
+    const auto it = std::ranges::find_if(m_gems, [gemId](const TGem& g) { return g.id == gemId; });
+    return it != m_gems.end() ? static_cast<int>(it - m_gems.begin()) : -1;
+}
+
+TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryGemListModel* source, QObject* parent)
+    : cip::tibia::skillwheel::TInventoryGemSortFilterProxyModel(parent)
+    , m_source(source)
+{
+    beginFilterChange();
+    m_filterModName = QString();
     m_filterGemQuality = -1;
+    m_showLockedOnly = false;
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    Q_EMIT filterChanged();
+    setSourceModel(source);
 }
 
 void TInventoryGemSortFilterProxyModel::refilter()
@@ -150,14 +183,6 @@ void TInventoryGemSortFilterProxyModel::setFilterModName(const QString& v)
     if (v == m_filterModName)
         return;
     m_filterModName = v;
-    refilter();
-}
-
-void TInventoryGemSortFilterProxyModel::setFilterDomainAffinity(const int v)
-{
-    if (v == m_filterDomainAffinity)
-        return;
-    m_filterDomainAffinity = v;
     refilter();
 }
 
@@ -179,17 +204,18 @@ void TInventoryGemSortFilterProxyModel::setShowLockedOnly(const bool v)
 
 bool TInventoryGemSortFilterProxyModel::accepts(const TGem& gem) const
 {
+    const bool secondMod = gem.quality >= 1;
+    const bool supremeMod = gem.quality >= 2;
     if (!m_filterModName.isEmpty()) {
-        const int voc = m_storage->vocationIndex();
-        const TGrades& basic = m_storage->basicGrades();
-        const TGrades& supreme = m_storage->supremeGrades();
-        QStringList texts{ basicModEffect(gem.basic1, voc, effectiveGrade(gem, basic, supreme, 0)) };
-        if (gem.quality >= 1)
-            texts << basicModEffect(gem.basic2, voc, effectiveGrade(gem, basic, supreme, 1));
-        if (gem.quality >= 2) {
+        // The gem's mod texts at the configuration's grades, joined on one line.
+        const int voc = m_source->vocationIndex();
+        QStringList texts{ basicModEffect(gem.basic1, voc, m_source->basicGrade(gem.basic1)) };
+        if (secondMod)
+            texts << basicModEffect(gem.basic2, voc, m_source->basicGrade(gem.basic2));
+        if (supremeMod) {
             if (const QString name = supremeModName(gem.supreme, false, false); !name.isEmpty())
                 texts << name;
-            texts << supremeModEffect(gem.supreme, effectiveGrade(gem, basic, supreme, 2));
+            texts << supremeModEffect(gem.supreme, m_source->supremeGrade(gem.supreme));
         }
         const QString joined = texts.join(u' ').replace(u'\n', u' ');
         const bool matches = joined.contains(m_filterModName, Qt::CaseInsensitive)
@@ -197,17 +223,15 @@ bool TInventoryGemSortFilterProxyModel::accepts(const TGem& gem) const
         if (!matches)
             return false;
     }
-    if (m_filterDomainAffinity != -1 && gem.domain != m_filterDomainAffinity)
-        return false;
-    if (m_filterGemQuality != -1 && gem.quality != m_filterGemQuality)
+    if (m_filterGemQuality != -1 && m_filterGemQuality != (secondMod ? (supremeMod ? 2 : 1) : 0))
         return false;
     return gem.locked || !m_showLockedOnly;
 }
 
 bool TInventoryGemSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    const auto& gems = m_storage->gems();
-    return sourceRow >= 0 && sourceRow < static_cast<int>(gems.size()) && accepts(gems[sourceRow]);
+    const TGem* gem = m_source->gem(sourceRow);
+    return gem && accepts(*gem);
 }
 
 QVariantMap TInventoryGemSortFilterProxyModel::rowData(const QModelIndex& Index)
@@ -221,13 +245,12 @@ QVariantMap TInventoryGemSortFilterProxyModel::rowData(const QModelIndex& Index)
     return row;
 }
 
-TModListModel::TModListModel(TSkillWheelStorage* storage, QObject* parent)
+TModListModel::TModListModel(QObject* parent)
     : cip::tibia::skillwheel::TModListModel(parent)
-    , m_storage(storage)
 {
 }
 
-int TModListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_entries.size()); }
+int TModListModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_mods.size()); }
 
 QHash<int, QByteArray> TModListModel::roleNames() const
 {
@@ -238,32 +261,60 @@ QHash<int, QByteArray> TModListModel::roleNames() const
     };
 }
 
-QString TModListModel::modName(const TModEntry& entry) const
+void TModListModel::setMods(const std::vector<TModListEntry>& mods)
 {
-    if (entry.isBasic)
-        return basicModEffect(entry.modId, m_storage->vocationIndex(), entry.grade);
-    if (isAugmentationMod(entry.modId) || revelationMasteryPerk(entry.modId) >= 0)
-        return supremeModName(entry.modId, false, false) + u'\n' + supremeModEffect(entry.modId, entry.grade);
-    return supremeModEffect(entry.modId, entry.grade);
+    beginResetModel();
+    m_mods = mods;
+    endResetModel();
+}
+
+void TModListModel::setConfiguration(const TWheel& configuration, const TGrades& basicGrades, const TGrades& supremeGrades)
+{
+    m_configuration = configuration;
+    m_basicGrades = basicGrades;
+    m_supremeGrades = supremeGrades;
+}
+
+int TModListModel::vocationIndex() const { return m_configuration ? m_configuration->vocation - 1 : 0; }
+
+int TModListModel::basicGrade(const int mod) const
+{
+    const auto it = m_basicGrades.find(mod);
+    return it != m_basicGrades.end() ? it->second : 0;
+}
+
+int TModListModel::supremeGrade(const int mod) const
+{
+    const auto it = m_supremeGrades.find(mod);
+    return it != m_supremeGrades.end() ? it->second : 0;
 }
 
 QVariant TModListModel::data(const QModelIndex& index, const int role) const
 {
-    const TModEntry* e = entry(index.row());
+    const TModListEntry* e = entry(index.row());
     if (!index.isValid() || !e)
         return {};
+    // Basic mods read their values for the configuration's vocation; supreme mods name
+    // themselves only when their kind (augmentations, revelation masteries) needs it.
     const auto bonus = [&](const int grade) {
-        return e->isBasic ? basicModEffect(e->modId, m_storage->vocationIndex(), grade) : supremeModEffect(e->modId, grade);
+        return e->basic ? basicModEffect(e->mod, vocationIndex(), grade) : supremeModEffect(e->mod, grade);
     };
     switch (role) {
-        case ModImageSource: return e->isBasic ? basicModImage(e->modId) : supremeModImage(e->modId);
-        case ModId: return e->modId;
-        case IsBasicMod: return e->isBasic;
-        case IsSocketed: return e->isSocketed;
+        case ModImageSource: return e->basic ? basicModImage(e->mod) : supremeModImage(e->mod);
+        case ModId: return e->mod;
+        case IsBasicMod: return e->basic;
+        case IsSocketed: return e->active;
         case Grade: return e->grade;
-        case AmountOnGemsInAtelier: return e->amount;
-        case ModName: return modName(*e);
-        case AugmentName: return e->isBasic ? QString() : supremeModName(e->modId, false, false);
+        case AmountOnGemsInAtelier: return e->gemCount;
+        case ModName: {
+            if (e->basic)
+                return basicModEffect(e->mod, vocationIndex(), e->grade);
+            const QString effect = supremeModEffect(e->mod, e->grade);
+            if ((supremeModCategory(e->mod) & ~1) == 4)
+                return supremeModName(e->mod, false, false) + u'\n' + effect;
+            return effect;
+        }
+        case AugmentName: return e->basic ? QString() : supremeModName(e->mod, false, false);
         case Grade1Bonus: return bonus(0);
         case Grade2Bonus: return bonus(1);
         case Grade3Bonus: return bonus(2);
@@ -272,7 +323,10 @@ QVariant TModListModel::data(const QModelIndex& index, const int role) const
     }
 }
 
-const TModEntry* TModListModel::entry(const int row) const { return row >= 0 && row < m_entries.size() ? &m_entries[row] : nullptr; }
+const TModListEntry* TModListModel::entry(const int row) const
+{
+    return row >= 0 && row < static_cast<int>(m_mods.size()) ? &m_mods[static_cast<size_t>(row)] : nullptr;
+}
 
 QVariantMap TModListModel::rowData(const QModelIndex& Index)
 {
@@ -285,56 +339,36 @@ QVariantMap TModListModel::rowData(const QModelIndex& Index)
     return row;
 }
 
-int TModListModel::rowOfMod(const bool isBasic, const int modId) const
+
+QModelIndex TModListSortFilterProxyModel::indexOfSupremeMod(const int modId) const
 {
-    for (int row = 0; row < m_entries.size(); ++row)
-        if (m_entries[row].isBasic == isBasic && m_entries[row].modId == modId)
-            return row;
-    return -1;
+    for (int row = 0; row < rowCount(); ++row) {
+        const QModelIndex index = this->index(row, 0);
+        if (data(index, TModListModel::ModId) == QVariant(modId) && !data(index, TModListModel::IsBasicMod).toBool())
+            return index;
+    }
+    return {};
 }
 
-/// CIP mod list build: the vocation's supreme mods (0..93), then the basic
-/// mods; the count on revealed gems and whether a socketed gem has the mod.
-void TModListModel::reset()
+QModelIndex TModListSortFilterProxyModel::indexOfBasicMod(const int modId) const
 {
-    beginResetModel();
-    m_entries.clear();
-    const int voc = m_storage->vocationIndex();
-    const auto& gems = m_storage->gems();
-    const TWheel& wheel = m_storage->currentWheel();
-    const auto grade = [](const TGrades& grades, const int mod) {
-        const auto it = grades.find(mod);
-        return it != grades.end() ? it->second : 0;
-    };
-    for (int mod = 0; mod < supremeModCount(); ++mod) {
-        if (m_storage->hasData() && !supremeModForVocation(mod, voc))
-            continue;
-        TModEntry e{ false, false, mod, 0, grade(m_storage->supremeGrades(), mod) };
-        for (const TGem& g : gems)
-            if (g.quality >= 2 && g.supreme == mod) {
-                ++e.amount;
-                e.isSocketed = e.isSocketed || socketedIn(wheel, g.id);
-            }
-        m_entries.append(e);
+    for (int row = 0; row < rowCount(); ++row) {
+        const QModelIndex index = this->index(row, 0);
+        if (data(index, TModListModel::ModId) == QVariant(modId) && data(index, TModListModel::IsBasicMod).toBool())
+            return index;
     }
-    for (int mod = 0; mod < basicModCount(); ++mod) {
-        if (!hasBasicMod(mod))
-            continue;
-        TModEntry e{ true, false, mod, 0, grade(m_storage->basicGrades(), mod) };
-        for (const TGem& g : gems) {
-            const int hits = (g.basic1 == mod ? 1 : 0) + (g.quality >= 1 && g.basic2 == mod ? 1 : 0);
-            e.amount += hits;
-            e.isSocketed = e.isSocketed || (hits > 0 && socketedIn(wheel, g.id));
-        }
-        m_entries.append(e);
-    }
-    endResetModel();
+    return {};
 }
 
 TModListSortFilterProxyModel::TModListSortFilterProxyModel(TModListModel* source, QObject* parent)
     : cip::tibia::skillwheel::TModListSortFilterProxyModel(parent)
     , m_source(source)
 {
+    beginFilterChange();
+    m_filterModName = QString();
+    m_filterMods = 0;
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    Q_EMIT filterChanged();
     setSourceModel(source);
 }
 
@@ -371,94 +405,72 @@ QVariantMap TModListSortFilterProxyModel::rowData(const QModelIndex& Index)
 
 bool TModListSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    const TModEntry* e = m_source->entry(sourceRow);
+    const TModListEntry* e = m_source->entry(sourceRow);
     if (!e)
         return false;
     if (!m_filterModName.isEmpty()) {
+        // The mod's texts at the configuration's grade, joined on one line.
         QStringList texts;
-        if (e->isBasic)
-            texts << basicModEffect(e->modId, m_source->vocationIndex(), e->grade);
-        else
-            texts << supremeModName(e->modId, false, false) << supremeModEffect(e->modId, e->grade);
+        if (e->basic) {
+            texts << basicModEffect(e->mod, m_source->vocationIndex(), m_source->basicGrade(e->mod));
+        } else {
+            if (const QString name = supremeModName(e->mod, false, false); !name.isEmpty())
+                texts << name;
+            texts << supremeModEffect(e->mod, m_source->supremeGrade(e->mod));
+        }
         const QString joined = texts.join(u' ').replace(u'\n', u' ');
         if (!joined.contains(m_filterModName, Qt::CaseInsensitive)
             && !std::ranges::any_of(texts, [&](const QString& t) { return t.contains(m_filterModName, Qt::CaseInsensitive); }))
             return false;
     }
-    switch (m_filterMods) {
-        case 1: return e->isBasic;
-        case 2: return !e->isBasic;
-        case 3: return e->isSocketed;
-        case 4:
-        case 5:
-        case 6:
-        case 7: return e->grade == m_filterMods - 4;
-        default: return true;
-    }
+    if (m_filterMods >= 4 && m_filterMods <= 7 && e->grade != m_filterMods - 4)
+        return false;
+    if (m_filterMods == 1 && !e->basic)
+        return false;
+    if (m_filterMods == 2 && e->basic)
+        return false;
+    return e->active || m_filterMods != 3;
 }
 
-int TSummaryModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_entries.size()); }
-
-QHash<int, QByteArray> TSummaryModel::roleNames() const
+QHash<int, QByteArray> TPerkInfoModel::roleNames() const
 {
-    // CIP QML (External) binds model.label; older qtclient used the misspelled "lable".
-    return { { Label, "label" }, { Effect, "effekt" }, { AdditionalInfo, "additionalInfo" }, { ImageSource, "imageSource" }, { IsSeparator, "isSeparator" } };
+    return { { Label, "label" }, { Effect, "effekt" }, { AdditionalInfo, "additionalInfo" }, { IsSeparator, "isSeparator" }, { ImageSource, "imageSource" } };
 }
 
-QVariant TSummaryModel::data(const QModelIndex& index, const int role) const
+QVariant TPerkInfoModel::itemData(const TPerkInfo& item, const int role) const
 {
-    if (!index.isValid() || index.row() >= m_entries.size())
-        return {};
-    const TSummaryEntry& e = m_entries[index.row()];
     switch (role) {
-        case Label: return e.label;
-        case Effect: return e.effect;
-        case AdditionalInfo: return e.additionalInfo;
-        case ImageSource: return e.image;
-        case IsSeparator: return e.separator;
+        case Label: return item.label;
+        case Effect: return item.effect;
+        case AdditionalInfo: return item.additionalInfo;
+        case IsSeparator: return item.isSeparator;
+        case ImageSource: return item.imageSource;
         default: return {};
     }
 }
 
-void TSummaryModel::setEntries(QList<TSummaryEntry> entries)
-{
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
-}
-
-TPresetInfoModel::TPresetInfoModel(TSkillWheelStorage* storage, QObject* parent) : cip::TPresetInfoModel(parent), m_storage(storage)
-{
-    m_nameEnumValue = Name;
-}
+TPresetInfoModel::TPresetInfoModel(QObject* parent) : TSimpleVectorAbstractListModel(parent) { m_nameEnumValue = Name; }
 
 int TPresetInfoModel::nameEnumValue() const { return m_nameEnumValue; }
 
-int TPresetInfoModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_storage->presets().size()); }
-
 QHash<int, QByteArray> TPresetInfoModel::roleNames() const { return { { Name, "name" }, { AvailablePoints, "availablePoints" } }; }
 
-QVariant TPresetInfoModel::data(const QModelIndex& index, const int role) const
+void TPresetInfoModel::setTotalPoints(const int points)
 {
-    if (!index.isValid() || index.row() >= rowCount())
-        return {};
-    const TPreset& preset = m_storage->presets()[index.row()];
-    switch (role) {
-        case Name: return preset.name;
-        case AvailablePoints: {
-            int spent = 0;
-            for (const int p : preset.wheel.points)
-                spent += p;
-            return m_storage->totalPoints() - spent;
-        }
-        default: return {};
-    }
+    if (m_totalPoints == points)
+        return;
+    m_totalPoints = points;
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0));
 }
 
-void TPresetInfoModel::reset()
+QVariant TPresetInfoModel::itemData(const TPresetInfo& item, const int role) const
 {
-    beginResetModel();
-    endResetModel();
+    if (role == AvailablePoints)
+        return m_totalPoints - std::accumulate(item.wheel.points.begin(), item.wheel.points.end(), 0);
+    if (role == Name)
+        return item.name;
+    return {};
 }
 
 }

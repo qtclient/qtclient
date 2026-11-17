@@ -40,17 +40,23 @@ const QString& contentStyle()
 TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("NewsDialog.qml"), parent)
     , m_storage(storage)
-    , m_model(this)
+    , m_entries(0, false)
 {
-    m_entryModel = &m_model;
+    m_entryModel = &m_entries;
     if (m_storage)
         connect(m_storage, &news::TNewsStorage::contentsChanged, this, &TNewsDialogController::onNewsStorageContentsChanged);
     onNewsStorageContentsChanged();
 }
 
-void TNewsDialogController::setNewsUploader(news::TNewsRequestUploader* uploader)
+TNewsDialogController::~TNewsDialogController()
+{
+    setEntries({});
+}
+
+void TNewsDialogController::setNewsUploaders(news::TNewsRequestUploader* uploader, news::TNewsViewsUploader* viewsUploader)
 {
     m_uploader = uploader;
+    m_viewsUploader = viewsUploader;
 }
 
 EDialogTab TNewsDialogController::dialogTab() const
@@ -60,22 +66,25 @@ EDialogTab TNewsDialogController::dialogTab() const
 
 QString TNewsDialogController::headline() const
 {
-    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
-    return entry ? entry->headline : qtTrId("dummy_unknown");
+    const std::optional<news::TNewsEntry> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+    return entry ? entry->headline() : qtTrId("dummy_unknown");
 }
 
 QString TNewsDialogController::contentText() const
 {
-    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
-    return entry ? contentStyle() + entry->message : qtTrId("dummy_unknown");
+    const std::optional<news::TNewsEntry> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+    return entry ? contentStyle() + entry->message() : qtTrId("dummy_unknown");
 }
 
 void TNewsDialogController::handleGameAction(const input::TGameAction& action)
 {
     switch (action.type) {
         case A::REFRESH_COMPENDIUM_NEWS:
-            if (m_uploader)
-                m_uploader->requestUpdate();
+            // CIP: with the storage's parameters; a non-zero parameter forces it.
+            if (m_uploader && m_storage)
+                m_uploader->requestNews({ m_storage->isReturner(), m_storage->showRewardNews(),
+                                          static_cast<uint>(m_storage->version()) },
+                                        action.parameter != 0);
             return;
         case A::OPEN_NEWS_CATEGORY:
             showDialog();
@@ -98,11 +107,11 @@ void TNewsDialogController::handleGameAction(const input::TGameAction& action)
 
 bool TNewsDialogController::selectEntryForOpening(const uint entryId)
 {
-    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(entryId) : std::nullopt;
+    const std::optional<news::TNewsEntry> entry = m_storage ? m_storage->entry(entryId) : std::nullopt;
     if (!entry)
         return false;
-    m_category = entry->categoryId();
-    m_pendingEntry = static_cast<uint>(entry->id);
+    m_category = entry->category();
+    m_pendingEntry = entry->id();
     return true;
 }
 
@@ -127,7 +136,7 @@ void TNewsDialogController::showDialog()
 
 void TNewsDialogController::resetCategoryAndSelection()
 {
-    m_category = news::NewsItem::UsefulInfo;
+    m_category = news::NEWS_CATEGORY_USEFUL_INFO;
     m_dialogCategory = 0;
     m_pendingEntry = 0;
     setEntries({});
@@ -154,6 +163,12 @@ void TNewsDialogController::onNewsStorageContentsChanged()
         }
     }
     refresh();
+    // CIP: with the dialog not open, an unread unlocked entry highlights the
+    // news button.
+    if (m_storage && m_storage->hasUnreadUnlockedEntry() && !dialog()->item()) {
+        if (TNewsButtonController* button = TNewsButtonController::instance())
+            button->highlight();
+    }
 }
 
 void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()
@@ -180,52 +195,51 @@ void TNewsDialogController::setCategory(const int category)
 void TNewsDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
     const uint category = static_cast<uint>(NewTab) - 1u;
-    setCategory(category < 5 ? static_cast<int>(category) : news::NewsItem::UsefulInfo);
+    setCategory(category < 5 ? static_cast<int>(category) : news::NEWS_CATEGORY_USEFUL_INFO);
 }
 
 void TNewsDialogController::refresh()
 {
-    setEntries(m_storage ? m_storage->entriesOfCategory(m_category) : QVector<news::NewsItem>{});
+    setEntries(m_storage ? m_storage->entriesOfCategory(m_category) : std::vector<news::TNewsEntry>{});
 }
 
-void TNewsDialogController::setEntries(const QVector<news::NewsItem>& entries)
+void TNewsDialogController::setEntries(const std::vector<news::TNewsEntry>& entries)
 {
-    // Group headers are rows of their own; an entry of a header in the list
-    // becomes its sub row.
-    QVector<news::NewsItem> roots;
-    QVector<QVector<news::NewsItem>> children;
-    QHash<int, int> headerRow;
-    for (const news::NewsItem& item : entries) {
-        if (item.isGroupHeader()) {
-            headerRow.insert(item.id, static_cast<int>(roots.size()));
-            roots.push_back(item);
-            children.push_back({});
-        }
+    std::vector<TAbstractNewsEntry> rows;
+    rows.reserve(entries.size());
+    for (const news::TNewsEntry& item : entries) {
+        TAbstractNewsEntry row;
+        row.categoryId = item.id();
+        row.headline = item.headline();
+        row.displayFrom = item.publishDate();
+        row.unlockLevel = item.unlockLevel();
+        row.isUnlocked = item.isUnlocked();
+        row.isRead = item.isRead();
+        row.groupHeaderID = item.groupHeaderId().value_or(0);
+        row.isGroupHeader = item.type() == news::NEWS_TYPE_GROUP_HEADER;
+        // A group header lists its entries from the same model.
+        if (row.isGroupHeader)
+            row.subEntryModel = std::make_shared<TNewsEntrySortProxyModel>(row.categoryId, true);
+        rows.push_back(std::move(row));
     }
-    for (const news::NewsItem& item : entries) {
-        if (item.isGroupHeader())
-            continue;
-        if (item.groupHeaderId > 0 && headerRow.contains(item.groupHeaderId)) {
-            children[headerRow.value(item.groupHeaderId)].push_back(item);
-            continue;
-        }
-        roots.push_back(item);
-        children.push_back({});
-    }
-    m_model.setRoots(roots, children);
+    // CIP: the player guide tab shows the newest entries first.
+    m_entries.setNewestFirst(dialogTab() == EDialogTab::PlayerGuide);
+    TNewsEntryModel& model = TNewsEntryModel::instance();
+    model.setEntries(std::move(rows));
+    Q_EMIT model.listUpdated();
 
     uint selected = 0;
-    if (const std::optional<news::NewsItem> current = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
-        current && current->categoryId() == m_category)
+    if (const std::optional<news::TNewsEntry> current = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+        current && current->category() == m_category)
         selected = m_dialogCategory;
-    if (!entries.isEmpty()) {
+    if (!entries.empty()) {
         if (m_pendingEntry != 0
-            && std::any_of(entries.begin(), entries.end(), [this](const news::NewsItem& item) { return uint(item.id) == m_pendingEntry; })) {
+            && std::any_of(entries.begin(), entries.end(), [this](const news::TNewsEntry& item) { return item.id() == m_pendingEntry; })) {
             selected = m_pendingEntry;
             m_pendingEntry = 0;
         }
-        if (selected == 0 && m_model.rowCount() > 0)
-            selected = m_model.data(m_model.index(0), TNewsEntryModel::CategoryIdRole).toUInt();
+        if (selected == 0)
+            selected = m_entries.rowCount() == 0 ? 0u : m_entries.index(0, 0).data(TNewsEntryModel::CategoryIdRole).toUInt();
     }
     setDialogCategory(selected);
 }
@@ -234,19 +248,19 @@ void TNewsDialogController::setDialogCategory(const uint ID)
 {
     if (m_dialogCategory == ID)
         return;
-    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(ID) : std::nullopt;
+    const std::optional<news::TNewsEntry> entry = m_storage ? m_storage->entry(ID) : std::nullopt;
     if (!entry)
         return;
     // A group header without text shows its first entry.
-    if (entry->typeId() == -1 && entry->message.isEmpty()) {
+    if (entry->type() == news::NEWS_TYPE_GROUP_HEADER && entry->message().isEmpty()) {
         uint first = 0;
-        for (int row = 0; row < m_model.rowCount(); ++row) {
-            const QModelIndex index = m_model.index(row);
-            if (m_model.data(index, TNewsEntryModel::CategoryIdRole).toUInt() != ID)
+        for (int row = 0; row < m_entries.rowCount(); ++row) {
+            const QModelIndex index = m_entries.index(row, 0);
+            if (index.data(TNewsEntryModel::CategoryIdRole).toUInt() != ID)
                 continue;
-            if (auto* sub = qobject_cast<QAbstractItemModel*>(m_model.data(index, TNewsEntryModel::SubEntryModelRole).value<QObject*>());
+            if (auto* sub = qobject_cast<QAbstractItemModel*>(index.data(TNewsEntryModel::SubEntryModelRole).value<QObject*>());
                 sub && sub->rowCount() > 0)
-                first = sub->data(sub->index(0, 0), TNewsEntrySortProxyModel::CategoryIdRole).toUInt();
+                first = sub->index(0, 0).data(TNewsEntryModel::CategoryIdRole).toUInt();
             break;
         }
         setDialogCategory(first);
@@ -255,7 +269,9 @@ void TNewsDialogController::setDialogCategory(const uint ID)
     m_userChoseCategory = true;
     m_dialogCategory = ID;
     Q_EMIT selectedEntryChanged();
-    m_storage->setEntryRead(static_cast<uint>(entry->id), true);
+    if (m_viewsUploader)
+        m_viewsUploader->reportNewsViewed(entry->id());
+    m_storage->setEntryRead(entry->id(), true);
 }
 
 void TNewsDialogController::linkClicked(const QString& Url)

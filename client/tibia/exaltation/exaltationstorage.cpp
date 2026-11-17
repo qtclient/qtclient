@@ -1,3 +1,4 @@
+#include "exaltation/exaltationciptypes.h"
 #include "exaltationstorage.h"
 
 #include "input/gameactionhandlers.h"
@@ -213,7 +214,7 @@ bool TExaltationStorage::handleGameAction(const input::TGameAction& action)
     case A::EXALTATION_FORGE_FUSION: handleExaltationForgeFusionGameAction(action); break;
     case A::EXALTATION_FORGE_CONVERGENCE_FUSION: handleExaltationForgeConvergenceFusionGameAction(action); break;
     case A::EXALTATION_FORGE_TRANSFER: handleExaltationForgeTransferGameAction(action); break;
-    case A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE: tibia::game::sendForgeBrowseHistoryRequest(0); break;
+    case A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE: TExaltationProtocolMessageHandler::requestHistoryPage(0); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE: handleExaltationForgeHistoryNextPageGameAction(); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE: handleExaltationForgeHistoryPreviousPageGameAction(); break;
     default: return false;
@@ -248,13 +249,13 @@ void TExaltationStorage::handleExaltationForgeHistoryNextPageGameAction()
 {
     const uint16_t next = static_cast<uint16_t>(m_currentPage + 1);
     if (next < m_numberOfPages)
-        tibia::game::sendForgeBrowseHistoryRequest(next);
+        TExaltationProtocolMessageHandler::requestHistoryPage(next);
 }
 
 void TExaltationStorage::handleExaltationForgeHistoryPreviousPageGameAction()
 {
     if (m_currentPage != 0)
-        tibia::game::sendForgeBrowseHistoryRequest(static_cast<uint16_t>(m_currentPage - 1));
+        TExaltationProtocolMessageHandler::requestHistoryPage(m_currentPage - 1);
 }
 
 void TExaltationStorage::setBaseData(const TExaltationBaseData& data)

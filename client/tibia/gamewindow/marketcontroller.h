@@ -9,7 +9,6 @@
 
 #include <QPointer>
 
-#include <functional>
 #include <vector>
 
 namespace tibia {
@@ -17,19 +16,26 @@ namespace gamewindow {
 
 class TMessageDialogController;
 
-/// One row of an offer list (CIP: TDisplayMarketOffer, getters ..).
+/// One row of an offer list (CIP: TDisplayMarketOffer). The controller
+/// fills the raw fields; the texts are computed by the getters.
 class TDisplayMarketOffer final : public cip::tibia::market::TDisplayMarketOffer
 {
     Q_OBJECT
 public:
-    TDisplayMarketOffer(const market::TMarketOffer& offer, const QString& itemName, uint64_t gold, int depotCount,
-                        const market::TMarketItemDetails& details, QObject* parent = nullptr);
+    explicit TDisplayMarketOffer(QObject* parent = nullptr);
 
-    /// CIP .
+    QString itemNameWithTier() const override;
+    QString amountText() const override;
+    QString totalPriceText() const override;
+    QString piecePriceText() const override;
     Q_INVOKABLE QString formatTotalValue(int Amount) override;
 
 private:
-    uint64_t m_price = 0;
+    friend class TMarketController;
+
+    int m_amount = 0;
+    uint64_t m_piecePrice = 0;
+    int m_tier = 0;
 };
 
 /// A market category (CIP: TQmlObjectCategory, the 27 made by).
@@ -55,8 +61,15 @@ public:
     TMarketController(market::TMarketStorage* storage, market::TMarketProtocolMessageHandler* messages, QObject* parent = nullptr);
     ~TMarketController() override;
 
-    /// Unused: the store deeplink publishes OPEN_STORE (kept for the host's call).
-    void setOpenStore(std::function<void()> openStore) { m_openStore = std::move(openStore); }
+    QString selectedCategoryName() const override;
+    bool showStoreDeeplink() const override;
+    bool showLockerOnly() const override;
+    QStringList availableTiers() const override;
+    QStringList availableClassifications() const override;
+    /// CIP's setters emit on every call.
+    void setEnableTierSelection(bool v) override;
+    void setIndexOfSelectedTier(int v) override;
+    void setIndexOfSelectedClassification(int v) override;
 
 public Q_SLOTS:
     /// CIP .
@@ -84,7 +97,7 @@ public Q_SLOTS:
     void onMarketOwnOffersOpened() override;
     /// CIP .
     void onMarketRefreshOffers() override;
-    /// CIP (v14,).
+    /// CIP: closes like v14.
     void onCloseButtonPressed() override;
     /// CIP .
     void onGetCoinsButtonClicked() override;
@@ -96,39 +109,52 @@ public Q_SLOTS:
     QString getTotalPriceOrProfitMultistring(const QString& OfferTypeString, int Amount, qlonglong PiecePrice) override;
     /// CIP .
     void showDialog() override;
-    /// Closing on the server's request, without leaving again.
+    /// CIP: closes like v14 (the leave is sent again).
     void closeDialog() override;
     /// CIP .
     void showMarketMessage(const QString& Message) override;
 
 private:
-    /// CIP : no offers or details shown.
+    /// CIP: no offers or details shown.
     void clearDetails();
-    /// CIP : re-filters and selects the current type again.
+    /// CIP: re-filters and selects the current type again.
     void reselect();
-    /// CIP (v14).
-    void close(bool leave);
-    /// CIP .
+    /// CIP v14: leaves the market, destroys the dialog and resets the filter buttons.
+    void close();
+    /// CIP v19: creates the item and shows whether new offers can be made.
+    void createDialog();
+    /// CIP v20: clears the lists, resets the filters and the storage and destroys the item.
+    void destroyDialog();
+    /// CIP.
     void onItemDetailsChanged();
-    /// CIP /.
-    void onOffersChanged();
-    void onHistoryChanged();
-    void onOwnOffersChanged();
-    /// CIP .
-    void onActiveOfferCountChanged();
-    /// CIP : the marketable types, one per upgrade tier.
+    /// CIP.
+    void onOffersChanged(const market::TMarketOfferList& NewOffers);
+    void onHistoryChanged(const market::TMarketOfferList& NewOffers);
+    void onOwnOffersChanged(const market::TMarketOfferList& NewOffers);
+    /// CIP: canCreateNewOffer below 100 active offers.
+    void onActiveOfferCountChanged(uint16_t NewOfferCount);
+    /// CIP: the option changed elsewhere.
+    void onMarketOptionsChanged();
+    /// CIP: the list's locker button changed the option.
+    void onShowLockerOnlyChanged();
+    /// CIP: the message dialog's OK.
+    void onMessageDialogOkay();
+    /// The marketable types, one per upgrade tier.
     void rebuildEntries();
-    /// CIP.
+    /// CIP: the filter of the classification and tier buttons.
     TAppearanceTypeFilter currentFilter() const;
-    /// CIP.
-    void updateFilterLists();
-    /// CIP : some type of the category has an upgrade classification.
-    bool categorySupportsTiers(int category) const;
-    void setEnableTierAndClassificationSelection(bool enable);
+    /// The category (or the name, when one is typed) with the current buttons.
+    void applyFilter(const QString& nameFilter, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand,
+                     bool showLockerOnly);
+    /// CIP: the category, selectedCategoryChanged when it changes.
     void setSelectedCategory(int category);
+    /// Some type of the category has an upgrade classification.
+    bool categorySupportsTiers(int category) const;
     void setItemProperty(const char* name, const QVariant& value);
+    /// CIP: the display rows of the offers, replacing `owned`.
+    QList<QObject*> displayOffers(const std::vector<market::TMarketOffer>& offers, std::vector<QObject*>& owned);
     void setOfferLists(const char* buyProperty, const char* sellProperty, const market::TMarketOfferList& offers,
-                       std::vector<QObject*>& owned);
+                       std::vector<QObject*>& ownedBuy, std::vector<QObject*>& ownedSell);
     uint8_t selectedTier() const { return m_hasSelectedTier ? m_selectedTier : 0; }
 
     QPointer<market::TMarketStorage> m_storage;
@@ -139,12 +165,13 @@ private:
     uint16_t m_selectedType = 0;
     uint8_t m_selectedTier = 0;
     bool m_hasSelectedTier = false;
-    bool m_entriesBuilt = false;
-    std::vector<QObject*> m_offerObjects;
-    std::vector<QObject*> m_historyObjects;
-    std::vector<QObject*> m_ownOfferObjects;
-    std::function<void()> m_openStore;
-    QPointer<TMessageDialogController> m_message;
+    std::vector<QObject*> m_buyOffers;
+    std::vector<QObject*> m_sellOffers;
+    std::vector<QObject*> m_historicBuyOffers;
+    std::vector<QObject*> m_historicSellOffers;
+    std::vector<QObject*> m_ownBuyOffers;
+    std::vector<QObject*> m_ownSellOffers;
+    TMessageDialogController* m_message;
 };
 
 }

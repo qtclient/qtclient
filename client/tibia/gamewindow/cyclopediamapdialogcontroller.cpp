@@ -1,6 +1,9 @@
 #include "cyclopediamapdialogcontroller.h"
 
+#include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
+
 #include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "cyclopedia/cyclopediainterfaces.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -40,6 +43,16 @@ constexpr int TooltipDelayMs = 500;
 
 QString englishNumber(const qulonglong value) { return QLocale(QLocale::English).toString(value); }
 
+/// The subarea under a field of `layer`: the masks lie on the ground layer, a field
+/// above it is projected isometrically onto it. 0 below the ground or for none.
+int subAreaAtField(const QPoint& field, const int layer)
+{
+    if (layer > GroundLayer)
+        return 0;
+    return cyclopedia::TCyclopediaMapStaticDataStorage::instance().subAreaAt(
+        worldmap::TWorldMapCoordinate(field.x() + layer - GroundLayer, field.y() + layer - GroundLayer, GroundLayer));
+}
+
 qulonglong balance(const tibia::client::ResourceTypes_t type)
 {
     return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
@@ -55,16 +68,26 @@ constexpr A CyclopediaMapOrder[] = {
 
 TCyclopediaMapSelectionInfoArea::TCyclopediaMapSelectionInfoArea(const TCyclopediaMapAreaValues& values, QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapSelectionInfoArea(parent)
+    , m_data(values)
 {
     m_selectionType = SelectionType::SelectionTypeArea;
-    m_areaName = values.name;
-    m_areaID = values.id;
-    m_percentExplored = values.percentExplored;
-    m_areaDonationString = values.donation;
-    m_areaDonationThreshold = values.threshold;
-    m_areaDonationsTooltip = values.donationsTooltip;
-    m_percentUnlockedImprovedRespawn = values.percentUnlockedImprovedRespawn;
-    m_rejectDonations = values.rejectDonations;
+}
+
+void TCyclopediaMapSelectionInfoArea::setAreaData(const TCyclopediaMapAreaValues& values)
+{
+    m_data = values;
+    Q_EMIT infoChanged();
+}
+
+QString TCyclopediaMapSelectionInfoArea::areaDonationString() const { return englishNumber(m_data.donated); }
+
+QString TCyclopediaMapSelectionInfoArea::areaDonationThreshold() const { return englishNumber(m_data.donationGoal); }
+
+double TCyclopediaMapSelectionInfoArea::percentUnlockedImprovedRespawn() const
+{
+    if (m_data.donationGoal == 0)
+        return 0.0;
+    return std::min(1.0, double(m_data.donated) / double(m_data.donationGoal));
 }
 
 TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCyclopediaMapAreaValues& area, const Values& values, QObject* parent)
@@ -74,10 +97,11 @@ TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCy
     m_areaName = area.name;
     m_areaID = area.id;
     m_percentExplored = area.percentExplored;
-    m_areaDonationString = area.donation;
-    m_areaDonationThreshold = area.threshold;
+    m_areaDonationString = englishNumber(area.donated);
+    m_areaDonationThreshold = englishNumber(area.donationGoal);
     m_areaDonationsTooltip = area.donationsTooltip;
-    m_percentUnlockedImprovedRespawn = area.percentUnlockedImprovedRespawn;
+    m_percentUnlockedImprovedRespawn =
+        area.donationGoal ? std::min(1.0, double(area.donated) / double(area.donationGoal)) : 0.0;
     m_rejectDonations = area.rejectDonations;
     m_subAreaName = values.name;
     m_subAreaID = values.id;
@@ -93,6 +117,7 @@ TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCy
 
 TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapDialogController(parent)
+    , m_configuration(new cyclopedia::TCyclopediaMapCharacterConfigurationStorage(this))
     , m_storage(new cyclopedia::TCyclopediaMapStorage(this))
     , m_confirmDialog(new TMessageDialogController(this))
 {
@@ -120,8 +145,8 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     // (cip_gen bools default false). Without this the Navigation controls
     // (zoom / layer / rose) stay in a collapsed contentLoader.
     setShowMapMarkerPanel(true);
-    setShowNavigationPanel(true);
-    setShowAreaAndSubAreaInfoPanel(true);
+    applyCharacterConfiguration();
+    registerCharacterConfiguration();
 
     // CIP / / : viewpoint, area and
     // donation changes rebuild the selection's info.
@@ -168,15 +193,48 @@ void TCyclopediaMapDialogController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
+void TCyclopediaMapDialogController::registerCharacterConfiguration()
+{
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (m_configurationRegistered || !storages)
+        return;
+    m_configurationRegistered = true;
+    storages->addCharacterConfiguration(m_configuration);
+    connect(m_configuration, &cyclopedia::TCyclopediaMapCharacterConfigurationStorage::configurationChangedFromUserInput, storages,
+            &analysers::TAnalyserStorages::onConfigurationChanged);
+    connect(storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this,
+            &TCyclopediaMapDialogController::applyCharacterConfiguration);
+    applyCharacterConfiguration();
+}
+
+void TCyclopediaMapDialogController::applyCharacterConfiguration()
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowNavigationPanel(m_configuration->showNavigation());
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(m_configuration->showAreaAndSubAreaInfo());
+}
+
+void TCyclopediaMapDialogController::setShowNavigationPanel(const bool v)
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowNavigationPanel(v);
+    m_configuration->setShowNavigation(v);
+}
+
+void TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(const bool v)
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(v);
+    m_configuration->setShowAreaAndSubAreaInfo(v);
+}
+
 void TCyclopediaMapDialogController::showDialogTab()
 {
+    registerCharacterConfiguration();
     m_totalGoldBalance = static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
     Q_EMIT goldBalanceChanged();
     updateTimeDisplay();
     updatePlayerArea();
     if (m_selectedId == 0 && m_instance) {
         const int subareaId = m_instance->subareaId();
-        if (subareaId > 0 && cyclopedia::TCyclopediaMapStaticData::instance().area(subareaId))
+        if (subareaId > 0 && cyclopedia::TCyclopediaMapStaticDataStorage::instance().hasSubArea(static_cast<quint16>(subareaId)))
             select(subareaId, false);
     }
 }
@@ -199,7 +257,7 @@ void TCyclopediaMapDialogController::onSelectedItemChanged()
     if (m_selectedId > 0) {
         if (!m_selectedIsArea) {
             highlighted.insert(m_selectedId);
-        } else if (const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(m_selectedId)) {
+        } else if (const auto* area = cyclopedia::TCyclopediaMapStaticDataStorage::instance().area(static_cast<quint16>(m_selectedId))) {
             highlighted.insert(area->subareaIds.begin(), area->subareaIds.end());
         }
     }
@@ -252,7 +310,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     const QPoint field = camera->fieldAt(QPointF(x, y));
     const int layer = camera->layer();
     const Position position(field.x(), field.y(), static_cast<uint8_t>(layer));
-    const int subareaId = layer <= GroundLayer ? cyclopedia::TCyclopediaMapStaticData::instance().subareaAt(field.x(), field.y(), layer) : 0;
+    const int subareaId = subAreaAtField(field, layer);
 
     input::TGameActionList candidates;
     if (subareaId > 0) {
@@ -307,7 +365,7 @@ void TCyclopediaMapDialogController::centerAt(const Position& position, const fl
 
 void TCyclopediaMapDialogController::donateMoneyForArea(const int AreaID, const int Value)
 {
-    const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(AreaID);
+    const auto* area = cyclopedia::TCyclopediaMapStaticDataStorage::instance().area(static_cast<quint16>(AreaID));
     if (!area)
         return;
     m_resetSubAreaId = 0;
@@ -333,7 +391,7 @@ void TCyclopediaMapDialogController::onConfirmDialogAccepted()
 
 void TCyclopediaMapDialogController::confirmResetViewpoints(const int subAreaId)
 {
-    const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(subAreaId);
+    const auto* area = cyclopedia::TCyclopediaMapStaticDataStorage::instance().subArea(static_cast<quint16>(subAreaId));
     if (!area)
         return;
     m_donationAreaId = 0;
@@ -383,13 +441,15 @@ void TCyclopediaMapDialogController::select(const int id, const bool isArea)
 
 void TCyclopediaMapDialogController::rebuildSelection()
 {
-    auto& data = cyclopedia::TCyclopediaMapStaticData::instance();
+    const auto& data = cyclopedia::TCyclopediaMapStaticDataStorage::instance();
     cip::tibia::gamewindow::ICyclopediaMapSelectionInfo* previous = m_selectedItem;
     m_selectedItem = nullptr;
-    if (const auto* selected = m_selectedId > 0 ? data.area(m_selectedId) : nullptr) {
-        if (m_selectedIsArea || !selected->isSubarea) {
-            m_selectedItem = new TCyclopediaMapSelectionInfoArea(areaValues(selected->id), this);
-        } else if (selected->name.contains(QLatin1String("Passage"), Qt::CaseInsensitive)) {
+    const auto selectedId = static_cast<quint16>(m_selectedId);
+    const auto* selected = m_selectedId > 0 && !m_selectedIsArea ? data.subArea(selectedId) : nullptr;
+    if (m_selectedId > 0 && !selected && data.hasArea(selectedId)) {
+        m_selectedItem = new TCyclopediaMapSelectionInfoArea(areaValues(m_selectedId), this);
+    } else if (selected) {
+        if (selected->name.contains(QLatin1String("Passage"), Qt::CaseInsensitive)) {
             auto* passage = new TCyclopediaMapSelectionInfoPassage(this);
             passage->setReachableCreatureOccurrences({});
             m_selectedItem = passage;
@@ -399,7 +459,7 @@ void TCyclopediaMapDialogController::rebuildSelection()
             values.id = selected->id;
             values.unlocked = m_storage->isDiscovered(selected->id);
             values.unlockable = m_storage->isDiscoverable(selected->id);
-            if (values.unlocked || m_storage->isAreaCompleted(selected->parentId)) {
+            if (values.unlocked || m_storage->isAreaCompleted(selected->areaId)) {
                 // CIP completed subarea: full set found (poiTarget defaults to 7).
                 const int target = m_storage->poiTarget() > 0 ? m_storage->poiTarget() : 7;
                 values.viewpointsCount = target;
@@ -415,7 +475,7 @@ void TCyclopediaMapDialogController::rebuildSelection()
             } else {
                 values.viewpointInfoDelayed = true;
             }
-            m_selectedItem = new TCyclopediaMapSelectionInfoSubArea(areaValues(selected->parentId), values, this);
+            m_selectedItem = new TCyclopediaMapSelectionInfoSubArea(areaValues(selected->areaId), values, this);
         }
     }
     onSelectedItemChanged();
@@ -429,30 +489,24 @@ void TCyclopediaMapDialogController::rebuildSelection()
 TCyclopediaMapAreaValues TCyclopediaMapDialogController::areaValues(const int areaId) const
 {
     TCyclopediaMapAreaValues values;
-    const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(areaId);
+    const auto* area = cyclopedia::TCyclopediaMapStaticDataStorage::instance().area(static_cast<quint16>(areaId));
     if (!area)
         return values;
     values.name = area->name;
-    values.id = area->id;
+    values.id = quint16(area->id);
     const auto* mainArea = m_storage->mainArea(areaId);
     values.percentExplored = mainArea ? mainArea->progress : 0;
-    const quint64 donated = m_storage->donated(areaId);
-    const quint64 goal = m_storage->donationGoal();
-    values.donation = englishNumber(donated);
-    values.threshold = englishNumber(goal);
+    values.donated = m_storage->donated(areaId);
+    values.donationGoal = m_storage->donationGoal();
     values.donationsTooltip = donationsTooltip();
-    values.percentUnlockedImprovedRespawn = goal ? std::min(static_cast<double>(donated) / static_cast<double>(goal), 1.0) : 0.0;
     values.rejectDonations = area->rejectDonations;
     return values;
 }
 
 QString TCyclopediaMapDialogController::donationsTooltip() const
 {
-    auto& data = cyclopedia::TCyclopediaMapStaticData::instance();
     std::vector<std::pair<quint64, QString>> rows;
-    for (const auto& area : data.areas()) {
-        if (area.isSubarea)
-            continue;
+    for (const auto& [areaId, area] : cyclopedia::TCyclopediaMapStaticDataStorage::instance().areas()) {
         if (const quint64 donated = m_storage->donated(area.id); donated > 0)
             rows.emplace_back(donated, area.name);
     }
@@ -469,8 +523,7 @@ QString TCyclopediaMapDialogController::donationsTooltip() const
 void TCyclopediaMapDialogController::updatePlayerArea()
 {
     const int areaId = m_storage->currentArea();
-    const auto* area = areaId > 0 ? cyclopedia::TCyclopediaMapStaticData::instance().area(areaId) : nullptr;
-    const QString name = area ? area->name : QString();
+    const QString name = areaId > 0 ? cyclopedia::TCyclopediaMapStaticDataStorage::instance().areaName(static_cast<quint16>(areaId)) : QString();
     if (m_currentPlayerArea != areaId || m_currentPlayerAreaName != name) {
         m_currentPlayerArea = areaId;
         m_currentPlayerAreaName = name;
@@ -495,7 +548,7 @@ void TCyclopediaMapDialogController::updateMouseCursor(const int x, const int y)
     const QPoint field = camera->fieldAt(QPointF(x, y));
     const int layer = camera->layer();
     const Position position(field.x(), field.y(), static_cast<uint8_t>(layer));
-    const int subareaId = layer <= GroundLayer ? cyclopedia::TCyclopediaMapStaticData::instance().subareaAt(field.x(), field.y(), layer) : 0;
+    const int subareaId = subAreaAtField(field, layer);
 
     input::TGameActionList candidates;
     if (subareaId > 0)

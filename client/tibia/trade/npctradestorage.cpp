@@ -2,7 +2,7 @@
 
 #include "trade/tradeciptypes.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -25,7 +25,7 @@ int amountLimit(const TNPCTradeGood& good)
     return good.isStackable() ? MaxStackableAmount : MaxAmount;
 }
 
-ThingType* thingTypeOf(const TNPCTradeGood& good)
+TAppearanceType* thingTypeOf(const TNPCTradeGood& good)
 {
     return good.typeId() ? tibia::game::rawThingType(good.typeId(), ThingCategoryItem) : nullptr;
 }
@@ -34,7 +34,7 @@ ThingType* thingTypeOf(const TNPCTradeGood& good)
 
 uint8_t TNPCTradeGood::hookDirection() const
 {
-    ThingType* type = thingTypeOf(*this);
+    TAppearanceType* type = thingTypeOf(*this);
     if (!type)
         return 0;
     if (type->isHookSouth())
@@ -44,7 +44,7 @@ uint8_t TNPCTradeGood::hookDirection() const
 
 bool TNPCTradeGood::isPickupable() const
 {
-    ThingType* type = thingTypeOf(*this);
+    TAppearanceType* type = thingTypeOf(*this);
     return type && type->isPickupable();
 }
 

@@ -125,6 +125,8 @@ class TQmlWeaponTypes final : public cip::tibia::gamewindow::TQmlWeaponTypes
 public:
     TQmlWeaponTypes(const QString& text, std::set<int> types, QObject* parent);
     const std::set<int>& types() const { return m_types; }
+    /// The first weapon type, 0 without any.
+    int anyWeaponIdentifier() const override;
 
 private:
     std::set<int> m_types;
@@ -137,6 +139,8 @@ class TWeaponProficiencyDialogController final
 {
     Q_OBJECT
 public:
+    /// The levels of a weapon's proficiency table.
+    int maxProficiencyLevels() const override;
     explicit TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent = nullptr);
     ~TWeaponProficiencyDialogController() override;
 

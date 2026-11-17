@@ -2,7 +2,7 @@
 
 #include <client/const.h>
 #include <client/staticdata.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -139,7 +139,7 @@ uint32_t TMarketStorage::maximumObjectsPerOffer(const uint16_t typeId) const
 {
     if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type && type->isStackable() ? 64000 : 2000;
 }
 

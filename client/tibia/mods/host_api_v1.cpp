@@ -169,7 +169,7 @@ QtClientImageView imageViewFromQImage(QImage& img)
     QtClientImageView v{};
     if (img.isNull())
         return v;
-    // Lighting grids are authored as ARGB32_Premultiplied (toLightImage). The pack ABI
+    // Lighting grids are authored as ARGB32_Premultiplied (TLightMap::toImage). The pack ABI
     // documents RGBA8888 bytes — always convert so R/B are not swapped on little-endian.
     if (img.format() != QImage::Format_RGBA8888)
         img = img.convertToFormat(QImage::Format_RGBA8888);
