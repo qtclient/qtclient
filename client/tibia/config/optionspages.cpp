@@ -1016,20 +1016,54 @@ bool TSoundOptionsPage::soundEnabled() const
 
 namespace {
 
-QString actionDescription(const QString& action)
+/// CIP: a setting's text in the hotkeys page. A chat text shows itself; an
+/// empty setting "hotkey_empty"; a static action its translated identifier
+/// (its name when untranslated), an action button its bar's side, bar and
+/// button; an object its use type. qtclient: a pack action its description.
+QString hotkeyActionSettingDescription(const TActionSetting& setting)
 {
-    if (action.startsWith(QLatin1String("TriggerActionButton_"))) {
-        const auto parts = action.mid(QStringLiteral("TriggerActionButton_").size()).split(QLatin1Char('.'));
-        if (parts.size() == 2)
-            return qtTrId("actionbar_button_identifier").arg(parts[0]).arg(parts[1]);
+    if (!setting.text.isEmpty())
+        return setting.text;
+    if (setting.action.isEmpty() && setting.objectId == 0) {
+        if (setting.kind == TActionSetting::PASSIVE_ABILITY || !setting.multiActions.empty())
+            return {};
+        return qtTrId("hotkey_empty");
     }
-    for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
-        if (product.name == action)
-            return product.description.isEmpty() ? QStringLiteral("Misc.: %1").arg(action) : product.description;
+    if (setting.objectId == 0) {
+        for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
+            if (product.name == setting.action)
+                return product.description.isEmpty() ? setting.action : product.description;
+        }
+        const QString id = QStringLiteral("label_gameactionidentifier_") + setting.action;
+        const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(setting.action);
+        if (!action)
+            throw std::out_of_range("map::at:  key not found");
+        QString text;
+        if (const auto* button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action)) {
+            QString side;
+            switch (gamewindow::TActionBarGroup::positionOfBar(button->actionBarId())) {
+            case gamewindow::EActionBarPosition::ActionBarPositionBottom: side = qtTrId("bottom"); break;
+            case gamewindow::EActionBarPosition::ActionBarPositionLeft: side = qtTrId("left"); break;
+            case gamewindow::EActionBarPosition::ActionBarPositionRight: side = qtTrId("right"); break;
+            }
+            text = side + QLatin1Char(' ') + qtTrId("actionbar") + QStringLiteral(": ")
+                 + qtTrId("actionbar_button_identifier")
+                       .arg(button->actionBarId())
+                       .arg(button->actionButtonId(), 2, 10, QLatin1Char('0'));
+        } else {
+            text = qtTrId(id.toLocal8Bit().constData());
+        }
+        return text == id ? setting.action : text;
     }
-    const QString id = QStringLiteral("label_gameactionidentifier_%1").arg(action);
-    const QString translated = qtTrId(id.toUtf8().constData());
-    return translated == id ? QStringLiteral("Misc.: %1").arg(action) : translated;
+    switch (setting.useType) {
+    case EUseType::Use: return qtTrId("hotkey_use_object");
+    case EUseType::UseOnYourself: return qtTrId("hotkey_use_object_on_yourself");
+    case EUseType::UseOnTarget: return qtTrId("hotkey_use_object_on_target");
+    case EUseType::SelectUseTarget: return qtTrId("hotkey_use_object_with_crosshair");
+    case EUseType::Equip: return qtTrId("hotkey_equip_object");
+    case EUseType::UseAtMouseCursor: return qtTrId("hotkey_use_object_at_mousecursor");
+    }
+    return QStringLiteral("invalid use object type");
 }
 
 /// CIP TTibiaHotkeyActionSettingQmlWrapper row for OptionsPageHotkeys.qml.
@@ -1066,14 +1100,7 @@ public:
         m_useObjectType = int(setting.useType);
         m_smartModeEnabled = setting.useEquipSmartMode;
         m_canHaveSmartMode = setting.useType == EUseType::Equip;
-        if (setting.kind == TActionSetting::ACTION)
-            m_descriptionText = actionDescription(setting.action);
-        else if (setting.kind == TActionSetting::TEXT)
-            m_descriptionText = setting.text;
-        else if (setting.kind == TActionSetting::OBJECT)
-            m_descriptionText = QStringLiteral("Object %1").arg(setting.objectId);
-        else
-            m_descriptionText = actionDescription(setting.action);
+        m_descriptionText = hotkeyActionSettingDescription(setting);
         Q_EMIT changed();
     }
 };
@@ -1184,6 +1211,47 @@ void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
     }
 }
 
+namespace {
+
+/// CIP's hotkeys page sort (sub_86af86e21bc5): custom settings first, by first
+/// then second key (rows without keys last), then the action buttons, then the
+/// other static actions, both by description.
+bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
+{
+    const auto isButton = [](const THotkeyActionRow* row) {
+        return row->setting.kind == TActionSetting::ACTION
+            && input::gameActionAs<input::TGameActionActionButtonTriggered>(input::TKeyboardShortcutHandler::staticAction(row->setting.action));
+    };
+    const bool aStatic = a->setting.kind == TActionSetting::ACTION;
+    const bool bStatic = b->setting.kind == TActionSetting::ACTION;
+    const bool aButton = aStatic && isButton(a);
+    const bool bButton = bStatic && isButton(b);
+    const bool aPlain = aStatic && !aButton;
+    const bool bPlain = bStatic && !bButton;
+    if ((!aButton || !bButton) == (aPlain && bPlain))
+        return QString::compare(a->descriptionText(), b->descriptionText(), Qt::CaseSensitive) < 0;
+    if (aPlain && (!bPlain || bButton))
+        return false;
+    if ((!aPlain || aButton) && bPlain)
+        return true;
+    if (!(bStatic || bButton || !aButton))
+        return false;
+    if (!(aStatic || aButton || !bButton))
+        return true;
+    if (a->first == b->first)
+        return a->second < b->second;
+    if (a->first.isEmpty())
+        return false;
+    if (b->first.isEmpty())
+        return true;
+    return a->first < b->first;
+}
+
+}
+
+/// CIP sub_b4d112292d2a / sub_4ca9c7597cbe: a row per static action (its first
+/// two keys of the current set and chat mode), then a row per other setting
+/// (a second binding of the same setting gives it its second key), sorted.
 void THotkeysOptionsPage::rebuildModel()
 {
     m_hotkeyModel.clear();
@@ -1191,72 +1259,66 @@ void THotkeysOptionsPage::rebuildModel()
     m_rows.clear();
     m_editRow = nullptr;
 
-    // The keys of each action, two per row; a custom setting's keys by setting.
-    QHash<QString, QList<QKeySequence>> keysByAction;
-    QStringList actionOrder;
-    std::vector<std::pair<TActionSetting, QList<QKeySequence>>> customs;
-    if (const THotkeySet* set = m_options.set(currentSetName())) {
-        for (const THotkeyBinding& binding : m_chatModeOn ? set->chatOn : set->chatOff) {
-            if (binding.setting.kind == TActionSetting::ACTION) {
-                if (!keysByAction.contains(binding.setting.action))
-                    actionOrder << binding.setting.action;
-                if (!binding.keys.isEmpty())
-                    keysByAction[binding.setting.action] << binding.keys;
-                continue;
-            }
-            auto it = std::find_if(customs.begin(), customs.end(), [&](const auto& entry) { return entry.first == binding.setting; });
-            if (it == customs.end())
-                it = customs.insert(customs.end(), { binding.setting, {} });
-            if (!binding.keys.isEmpty())
-                it->second << binding.keys;
-        }
-    }
+    static const std::vector<THotkeyBinding> NoBindings;
+    const THotkeySet* set = m_options.set(currentSetName());
+    const std::vector<THotkeyBinding>& bindings = set ? (m_chatModeOn ? set->chatOn : set->chatOff) : NoBindings;
 
-    const auto addRow = [this](const EHotkeyMode mode, const TActionSetting& setting, const QList<QKeySequence>& keys) {
+    std::vector<THotkeyActionRow*> rows;
+    const auto addRow = [this, &rows](const EHotkeyMode mode, const TActionSetting& setting) {
         auto* row = new THotkeyActionRow(this);
         row->mode = mode;
         row->setting = setting;
-        if (!keys.isEmpty())
-            row->first = keys.at(0);
-        if (keys.size() > 1)
-            row->second = keys.at(1);
-        row->sync();
-        m_rows.append(row);
-    };
-    const auto actionSetting = [](const QString& name) {
-        TActionSetting setting;
-        setting.kind = TActionSetting::ACTION;
-        setting.action = name;
-        return setting;
+        rows.push_back(row);
+        return row;
     };
 
+    // qtclient: the pack's product actions are static actions too.
     QStringList names = input::TKeyboardShortcutHandler::staticActionNames();
+    for (int bar = 1; bar <= 9; ++bar)
+        for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button)
+            names << THotkeyOptions::triggerActionButtonName(bar, button);
     for (const auto& product : input::TKeyboardShortcutHandler::productActions())
         if (!names.contains(product.name))
             names << product.name;
-    names.sort(Qt::CaseInsensitive);
-    for (const QString& name : names) {
-        QList<QKeySequence> keys = keysByAction.take(name);
-        if (keys.isEmpty()) {
-            for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
+    for (const QString& name : std::as_const(names)) {
+        TActionSetting setting;
+        setting.kind = TActionSetting::ACTION;
+        setting.action = name;
+        const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(name);
+        const bool button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action) != nullptr;
+        THotkeyActionRow* row = addRow(button ? ActionButtons : DefaultHotkeys, setting);
+        for (const THotkeyBinding& binding : bindings) {
+            if (!(binding.setting == setting))
+                continue;
+            if (row->first.isEmpty())
+                row->first = binding.keys;
+            else if (row->second.isEmpty())
+                row->second = binding.keys;
+        }
+        // qtclient: an unbound pack action shows its default keys.
+        if (row->first.isEmpty()) {
+            for (const auto& product : input::TKeyboardShortcutHandler::productActions())
                 if (product.name == name && !product.defaultKeys.isEmpty())
-                    keys << product.defaultKeys;
-            }
-        }
-        addRow(DefaultHotkeys, actionSetting(name), keys);
-    }
-    for (int bar = 1; bar <= 9; ++bar) {
-        for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button) {
-            const QString name = THotkeyOptions::triggerActionButtonName(bar, button);
-            addRow(ActionButtons, actionSetting(name), keysByAction.take(name));
+                    row->first = product.defaultKeys;
         }
     }
-    for (const QString& name : std::as_const(actionOrder)) {
-        if (keysByAction.contains(name))
-            addRow(CustomHotkeys, actionSetting(name), keysByAction.take(name));
+    const size_t staticRows = rows.size();
+    for (const THotkeyBinding& binding : bindings) {
+        if (binding.setting.kind == TActionSetting::ACTION)
+            continue;
+        const auto existing = std::find_if(rows.begin() + static_cast<std::ptrdiff_t>(staticRows), rows.end(),
+                                           [&](const THotkeyActionRow* row) { return row->setting == binding.setting; });
+        if (existing != rows.end()) {
+            (*existing)->second = binding.keys;
+            continue;
+        }
+        addRow(CustomHotkeys, binding.setting)->first = binding.keys;
     }
-    for (const auto& [setting, keys] : customs)
-        addRow(CustomHotkeys, setting, keys);
+    for (THotkeyActionRow* row : rows)
+        row->sync();
+    std::sort(rows.begin(), rows.end(), hotkeyRowLess);
+    for (THotkeyActionRow* row : rows)
+        m_rows.append(row);
 
     updateHotkeyListModel();
 }
