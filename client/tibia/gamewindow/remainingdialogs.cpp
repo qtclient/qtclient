@@ -1,5 +1,7 @@
 #include "remainingdialogs.h"
 
+#include "shared/simplevectorabstractlistmodel.h"
+
 #include <QDateTime>
 #include <QLocale>
 #include <QFile>
@@ -424,15 +426,58 @@ void TCharacterTradeDialogController::refreshOverviewModels()
         m_auction->setSelectedItemCount(m_selectedItems.size());
 }
 
+namespace {
+
+/// The due payments of the character trade: the character, the amount and the due date.
+class TDuePaymentModel final : public shared::TSimpleVectorAbstractListModel<authentication::TCharacterTradePayment, cip::TDuePaymentModel>
+{
+public:
+    enum ERole { CharacterName = Qt::UserRole + 1, DueAmountString, DueDateString };
+
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
+
+    QHash<int, QByteArray> roleNames() const override
+    {
+        return { { CharacterName, "characterName" }, { DueAmountString, "dueAmountString" }, { DueDateString, "dueDateString" } };
+    }
+
+protected:
+    QVariant itemData(const authentication::TCharacterTradePayment& item, const int role) const override
+    {
+        switch (role) {
+        case CharacterName: return item.name;
+        case DueAmountString: return QLocale(QLocale::English).toString(item.dueAmount);
+        case DueDateString:
+            return QDateTime::fromSecsSinceEpoch(item.dueTimestamp).toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
+        default: return qtTrId("dummy_unknown");
+        }
+    }
+};
+
+}
+
 TCharacterTradeDuePaymentDialogController::TCharacterTradeDuePaymentDialogController(QObject* parent)
     : TDialogController(QStringLiteral("charactertrade/CharacterTradeDuePaymentDialog.qml"), parent)
 {
-    m_duePayments = new QObject(this);
+    m_duePayments = new TDuePaymentModel(this);
+}
+
+bool TCharacterTradeDuePaymentDialogController::showDuePayments(const std::vector<authentication::TCharacterTradePayment>& payments)
+{
+    static_cast<TDuePaymentModel*>(m_duePayments)->setItems(payments);
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    const qint64 remindAgain = config::TClientOptions::instance()->intOption(config::EClientOption::charTradePaymentRemindAgain);
+    if (remindAgain >= now)
+        return false;
+    dialog()->create();
+    dialog()->show();
+    return true;
 }
 
 void TCharacterTradeDuePaymentDialogController::onClosePressed(const bool DoNotShowAgain)
 {
-    Q_UNUSED(DoNotShowAgain);
+    const int remindAgain = DoNotShowAgain ? static_cast<int>(QDateTime::currentSecsSinceEpoch()) + 86400 : 0;
+    config::TClientOptions::instance()->setIntOption(config::EClientOption::charTradePaymentRemindAgain, remindAgain);
     dialog()->close();
     Q_EMIT dialogClosed();
 }

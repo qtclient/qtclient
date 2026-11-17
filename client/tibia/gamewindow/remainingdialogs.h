@@ -4,6 +4,7 @@
 
 #include "crashreportdata.h"
 
+#include "authentication/authenticationjsondocumenthelper.h"
 #include "client/gamecore.h"
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
@@ -144,7 +145,12 @@ class TCharacterTradeDuePaymentDialogController final
 public:
     explicit TCharacterTradeDuePaymentDialogController(QObject* parent = nullptr);
 
+    /// The login's due payments go to the list; the dialog opens unless the player chose not to be
+    /// reminded until later. True when it opened.
+    bool showDuePayments(const std::vector<authentication::TCharacterTradePayment>& payments);
+
 public Q_SLOTS:
+    /// "Do not show again" postpones the reminder by a day.
     void onClosePressed(bool DoNotShowAgain) override;
 };
 

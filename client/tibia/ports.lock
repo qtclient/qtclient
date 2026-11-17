@@ -26,6 +26,8 @@
 (anonymous namespace)::TDamageSourceModel::v53	717163932068e05f	ported	analysers/impactwidgets.cpp:TDamageSourceModel::data
 (anonymous namespace)::TDamageTypedModel::v44	690965de02a42f0a	ported	analysers/impactwidgets.cpp:TDamageTypedModel::roleNames
 (anonymous namespace)::TDamageTypedModel::v53	2354b477e0a880f0	ported	analysers/impactwidgets.cpp:TDamageTypedModel::data
+(anonymous namespace)::TDuePaymentModel::v44	4a19b72296107e7a	ported	gamewindow/remainingdialogs.cpp:roleNames
+(anonymous namespace)::TDuePaymentModel::v53	bae49f6893d55b59	ported	gamewindow/remainingdialogs.cpp:itemData
 (anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v44	e60a5d6f9e610761	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::roleNames
 (anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v53	f4b416bd143078d9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 (anonymous namespace)::TFriendListModel::v44	f0334aaf3bf0d7db	ported	friends/friendlistmodels.cpp:TFriendListModel::roleNames
@@ -1822,6 +1824,7 @@ gamewindow::TCharacterTradeDialogController::requestClose	89e763668208d2fc	porte
 gamewindow::TCharacterTradeDialogController::showDialog	42129e9d4083fa76	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::itemsModel
 gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor
 gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
+gamewindow::TCharacterTradeDuePaymentDialogController::onClosePressed	378c2dacd3321ba3	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::onClosePressed
 gamewindow::TChatChannelController::chatChannelChanged	9bb6e87f77565599	ported	gamewindow/chatcontroller.cpp:TChatChannelController::writesToLocalChat
 gamewindow::TChatChannelController::chatChannelPropertyChanged	98a8e6a6ba4ae569	ported	gamewindow/chatcontroller.cpp:TChatChannelController::isSubscribedToServerLog
 gamewindow::TChatChannelController::flags	0cf4b4a7cdbaf53f	ported	gamewindow/chatcontroller.cpp:TChatChannelController::flags
@@ -5005,6 +5008,7 @@ sub_0216c6f63734	0216c6f63734a970	inlined	spells/spellinfostorage.cpp:TSpellInfo
 sub_022953d0e2d2	022953d0e2d2e8af	ported	cyclopedia/staticcontentinformation.cpp:monsterClassificationName
 sub_02419ba2e8bf	02419ba2e8bfd453	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onAnalyticsSelectorWidgetClosed
 sub_0241bd1bdd47	0241bd1bdd475e3d	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::~TQmlMonsterRace
+sub_0251ef6a7f28	0251ef6a7f286bb9	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::TCharacterTradeDuePaymentDialogController
 sub_026201c1b95c	026201c1b95cab31	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetClientOptions
 sub_02a10e27c66d	02a10e27c66df86b	skip	data: static QString initialiser
 sub_02a9124d5b33	02a9124d5b3300f5	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketCategorySelected
@@ -8266,6 +8270,7 @@ sub_52ca29368333	52ca29368333687d	ported	cyclopedia/cyclopediaciptypes.cpp:TCycl
 sub_52cc4c6ee0c0	52cc4c6ee0c0fda1	ported	gamewindow/chatcontroller.cpp:TChatController::getOlderChatInputHistoryEntry
 sub_52d01c3e2474	52d01c3e2474b2bc	skip	data: translation-unit static initializer (store inbox filter name strings)
 sub_52d0bf485022	52d0bf485022c4f3	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onDamageInputAnalyserWidgetClosed
+sub_52e2c5a5ec33#12	52e2c5a5ec3332ce	inlined	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::TCharacterTradeDuePaymentDialogController
 sub_52e2c5a5ec33#19	52e2c5a5ec3332ce	skip	generated: QMetaType glue (static metaobject accessor, default construct, destruct) for TGainWasteModel
 sub_52fb468d111b	52fb468d111b87c9	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::showForCurrentPosition
 sub_531153c3de20	531153c3de2023a0	tested	skillwheel/skillwheeldata.cpp:decodeWheelCode	test=tests/client/skillwheeldata_test.cpp
@@ -9953,6 +9958,7 @@ sub_7d5886fe115a	7d5886fe115ab3d0	inlined	gamewindow/spelllistwidgetcontroller.c
 sub_7d6153881875	7d61538818757fec	tested	appearances/appearancetype.cpp:fixedFrameGroupFromProtobuf	test=tests/client/appearancetype_test.cpp
 sub_7d629c70a579	7d629c70a5790550	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
 sub_7d62e51a091b	7d62e51a091b6e7b	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onChaseModeChangeRequested
+sub_7d6e3744a3cf	7d6e3744a3cf6a8c	ported	qmlcomponents/texthelper.cpp:TTextHelperQmlService::formatDateTime
 sub_7d7d602d33de	7d7d602d33deb806	ported	gamewindow/chatcontroller.cpp:TChatChannelController::removeOldestRow
 sub_7d7f1e2107a0	7d7f1e2107a0df86	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::TNewsDialogController
 sub_7d86d4a20216	7d86d4a20216ed0c	ported	skillwheel/skillwheeldata.cpp:TWheel::operator==
@@ -12707,6 +12713,7 @@ sub_c04ebd1cee38	c04ebd1cee3845c8	inlined	gamewindow/optionsmenudialogcontroller
 sub_c05c5fdf39eb	c05c5fdf39ebdefb	tested	shared/src/qtconnectionwrapper.cpp:TQtConnectionWrapper::disconnectAll	test=tests/client/sharednet_test.cpp
 sub_c0662658ad58	c0662658ad58dbb3	skip	library: SFML audio library (miniaudio backend)
 sub_c06a006d60e6	c06a006d60e6f4db	skip	generated: compiler-generated destructor pair
+sub_c08b7f8c14ba	c08b7f8c14ba310d	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDuePaymentDialogController::showDuePayments
 sub_c091745b5ba8	c091745b5ba8ef7f	ported	store/qmlstoreobjects.cpp:TQmlStoreOffer::oneOrMoreQuantitiesDisabled
 sub_c0bcabb3b899	c0bcabb3b8999b83	skip	library: protobuf runtime: ExtensionSet merge/flat storage, arena allocation and absl check logging reached from message copies
 sub_c0dd6ae68ae0	c0dd6ae68ae0b3d5	skip	generated: Qt slot-object impl (template-generated)
