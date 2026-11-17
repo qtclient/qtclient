@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -70,6 +72,8 @@ class TTaskboardBountyTasksStorage final : public cip::tibia::taskboard::TTaskbo
 public:
     explicit TTaskboardBountyTasksStorage(QObject* parent = nullptr);
 
+    /// qtclient host: the storage the taskboard handler and the dialogs share.
+    static const std::shared_ptr<TTaskboardBountyTasksStorage>& shared();
     static TTaskboardBountyTasksStorage* instance();
 
     void setBountyTaskData(TBountyTaskData data);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -14,6 +16,8 @@ class TTaskboardCurrenciesStorage final : public cip::tibia::taskboard::TTaskboa
 public:
     explicit TTaskboardCurrenciesStorage(QObject* parent = nullptr);
 
+    /// qtclient host: the storage the taskboard handler and the dialogs share.
+    static const std::shared_ptr<TTaskboardCurrenciesStorage>& shared();
     static TTaskboardCurrenciesStorage* instance();
 
     void setBountyPoints(int value);

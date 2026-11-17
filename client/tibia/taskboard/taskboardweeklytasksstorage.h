@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -55,6 +57,8 @@ class TTaskboardWeeklyTasksStorage final : public cip::tibia::taskboard::TTaskbo
 public:
     explicit TTaskboardWeeklyTasksStorage(QObject* parent = nullptr);
 
+    /// qtclient host: the storage the taskboard handler and the dialogs share.
+    static const std::shared_ptr<TTaskboardWeeklyTasksStorage>& shared();
     static TTaskboardWeeklyTasksStorage* instance();
 
     void setWeeklyTaskData(TWeeklyTaskData data);

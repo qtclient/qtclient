@@ -309,9 +309,10 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedResourceBalanceMessage, this, &TProficiencyProtocolMessageHandler::handleResourceBalanceMessage);
 
     using taskboard::TTaskboardProtocolMessageHandler;
-    link(&Queue::receivedTaskboardMessage, this, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
-    link(&Queue::receivedSoulSealsDialogMessage, this, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
-    link(&Queue::receivedResourceBalanceMessage, this, &TTaskboardProtocolMessageHandler::handleResourceBalanceMessage);
+    auto* taskboardHandler = TTaskboardProtocolMessageHandler::instance();
+    link(&Queue::receivedTaskboardMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
+    link(&Queue::receivedSoulSealsDialogMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
+    link(&Queue::receivedResourceBalanceMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleResourceBalanceMessage);
 
     link(&Queue::receivedBossDifficultySelectionMessage, this,
          &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);

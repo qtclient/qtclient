@@ -8845,6 +8845,8 @@ sub_842be1cde65d	842be1cde65d79df	inlined	gamewindow/playerinventoryandstatuscon
 sub_844e3ac11fd2	844e3ac11fd2bfc0	skip	generated: compiler-generated destructor pair
 sub_844e6c4200be#2	844e6c4200be9a48	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_84570bcb878c	84570bcb878c932d	skip	generated: std::vector reserve / grow / record move (library, compiler-generated)
+sub_8465ef8bacc5#3	8465ef8bacc583df	ported	taskboard/taskboardciptypes.cpp:TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler
+sub_8465ef8bacc5#4	8465ef8bacc583df	ported	taskboard/taskboardciptypes.cpp:TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler
 sub_8469c36c3c53	8469c36c3c5378fc	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_84954c63562b	84954c63562b33de	inlined	analysers/impactwidgets.cpp:TImpactWidgetController::onDpsTargetValueSelected
 sub_84a747e7799e	84a747e7799e4c1b	skip	library: std::vector<TStoreOffer> teardown (library)

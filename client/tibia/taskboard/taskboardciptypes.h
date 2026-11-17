@@ -5,6 +5,7 @@
 #include <QObject>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tibia::protobuf::protocol {
@@ -21,18 +22,27 @@ void ownProductSurface(QObject* parent);
 
 /// Fills the task board storages from the board, resource balance and soul
 /// seal messages, and builds the task board commands.
+class TTaskboardBountyTasksStorage;
+class TTaskboardCurrenciesStorage;
+class TTaskboardShopStorage;
+class TTaskboardWeeklyTasksStorage;
+
 class TTaskboardProtocolMessageHandler final : public cip::tibia::taskboard::TTaskboardProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::taskboard::TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler;
+    TTaskboardProtocolMessageHandler(std::shared_ptr<TTaskboardCurrenciesStorage> currencies,
+                                     std::shared_ptr<TTaskboardWeeklyTasksStorage> weeklyTasks,
+                                     std::shared_ptr<TTaskboardBountyTasksStorage> bountyTasks,
+                                     std::shared_ptr<TTaskboardShopStorage> shop);
 
+    /// qtclient host: the handler over the shared storages.
     static TTaskboardProtocolMessageHandler* instance();
 
     /// Board type 2 replaces the shop offers, 1 the weekly tasks, 0 the bounty tasks.
-    static void handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage);
-    static void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& ResourceBalanceMessage);
-    static void handleSoulSealsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageSoulSealsDialog& SoulSealsMessage);
+    void handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage);
+    void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& ResourceBalanceMessage);
+    void handleSoulSealsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageSoulSealsDialog& SoulSealsMessage);
 
     static void requestBountyTasks();
     static void requestWeeklyTasks();
@@ -54,6 +64,12 @@ public:
 
 Q_SIGNALS:
     void openSoulSealsDialog(const std::vector<uint16_t>& AnimusMasteryRaceIds);
+
+private:
+    std::shared_ptr<TTaskboardCurrenciesStorage> m_currencies;
+    std::shared_ptr<TTaskboardWeeklyTasksStorage> m_weeklyTasks;
+    std::shared_ptr<TTaskboardBountyTasksStorage> m_bountyTasks;
+    std::shared_ptr<TTaskboardShopStorage> m_shop;
 };
 
 }

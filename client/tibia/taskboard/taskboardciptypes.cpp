@@ -144,9 +144,25 @@ TBountyTaskData bountyTaskData(const ProtocolTaskboardBounty& bounty)
 
 } // namespace
 
+TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler(std::shared_ptr<TTaskboardCurrenciesStorage> currencies,
+                                                                   std::shared_ptr<TTaskboardWeeklyTasksStorage> weeklyTasks,
+                                                                   std::shared_ptr<TTaskboardBountyTasksStorage> bountyTasks,
+                                                                   std::shared_ptr<TTaskboardShopStorage> shop)
+    : cip::tibia::taskboard::TTaskboardProtocolMessageHandler(nullptr)
+    , m_currencies(std::move(currencies))
+    , m_weeklyTasks(std::move(weeklyTasks))
+    , m_bountyTasks(std::move(bountyTasks))
+    , m_shop(std::move(shop))
+{}
+
 TTaskboardProtocolMessageHandler* TTaskboardProtocolMessageHandler::instance()
 {
-    static TTaskboardProtocolMessageHandler* s_instance = new TTaskboardProtocolMessageHandler(QCoreApplication::instance());
+    static TTaskboardProtocolMessageHandler* s_instance = [] {
+        auto* handler = new TTaskboardProtocolMessageHandler(TTaskboardCurrenciesStorage::shared(), TTaskboardWeeklyTasksStorage::shared(),
+                                                             TTaskboardBountyTasksStorage::shared(), TTaskboardShopStorage::shared());
+        handler->setParent(QCoreApplication::instance());
+        return handler;
+    }();
     return s_instance;
 }
 
@@ -157,18 +173,18 @@ void TTaskboardProtocolMessageHandler::handleTaskboardMessage(const ::tibia::pro
         std::vector<TShopRewardData> rewards;
         for (const auto& offer : TaskboardMessage.offers())
             rewards.push_back(shopReward(offer));
-        TTaskboardShopStorage::instance()->setShopRewardData(rewards);
+        m_shop->setShopRewardData(rewards);
     } else if (boardType == 1) {
-        TTaskboardWeeklyTasksStorage::instance()->setWeeklyTaskData(weeklyTaskData(TaskboardMessage.weekly()));
+        m_weeklyTasks->setWeeklyTaskData(weeklyTaskData(TaskboardMessage.weekly()));
     } else {
-        TTaskboardBountyTasksStorage::instance()->setBountyTaskData(bountyTaskData(TaskboardMessage.bounty()));
+        m_bountyTasks->setBountyTaskData(bountyTaskData(TaskboardMessage.bounty()));
     }
 }
 
 void TTaskboardProtocolMessageHandler::handleResourceBalanceMessage(
     const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& ResourceBalanceMessage)
 {
-    TTaskboardCurrenciesStorage* const currencies = TTaskboardCurrenciesStorage::instance();
+    TTaskboardCurrenciesStorage* const currencies = m_currencies.get();
     switch (ResourceBalanceMessage.resource_type()) {
     case tibia::client::RESOURCE_TASK_HUNTING:
         currencies->setPreyHuntingTaskTokensAmount(static_cast<int>(ResourceBalanceMessage.value()));
@@ -194,7 +210,7 @@ void TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage(
     raceIds.reserve(static_cast<size_t>(SoulSealsMessage.race_ids_size()));
     for (const uint32_t raceId : SoulSealsMessage.race_ids())
         raceIds.push_back(static_cast<uint16_t>(raceId));
-    Q_EMIT instance()->openSoulSealsDialog(raceIds);
+    Q_EMIT openSoulSealsDialog(raceIds);
 }
 
 void TTaskboardProtocolMessageHandler::requestBountyTasks() { sendOption(0); }

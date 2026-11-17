@@ -9,11 +9,13 @@ TTaskboardBountyTasksStorage::TTaskboardBountyTasksStorage(QObject* parent)
 {
 }
 
-TTaskboardBountyTasksStorage* TTaskboardBountyTasksStorage::instance()
+const std::shared_ptr<TTaskboardBountyTasksStorage>& TTaskboardBountyTasksStorage::shared()
 {
-    static TTaskboardBountyTasksStorage* s_instance = new TTaskboardBountyTasksStorage(QCoreApplication::instance());
+    static const std::shared_ptr<TTaskboardBountyTasksStorage> s_instance = std::make_shared<TTaskboardBountyTasksStorage>();
     return s_instance;
 }
+
+TTaskboardBountyTasksStorage* TTaskboardBountyTasksStorage::instance() { return shared().get(); }
 
 void TTaskboardBountyTasksStorage::setBountyTaskData(TBountyTaskData data)
 {
