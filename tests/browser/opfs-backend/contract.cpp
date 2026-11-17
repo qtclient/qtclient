@@ -164,6 +164,36 @@ void testDirectories()
     CHECK(readFile(path("moved/b"), got), "file under renamed dir");
 }
 
+void testUnlinkOpen()
+{
+    // POSIX: unlinking an open file removes the name at once; open descriptors
+    // keep working and the data goes with the last close (QLockFile, QSaveFile).
+    const std::string file = path("open-unlinked");
+    const int fd = open(file.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
+    CHECK(fd >= 0, "create open-unlinked");
+    CHECK(write(fd, "1234", 4) == 4, "write before unlink");
+    CHECK(unlink(file.c_str()) == 0, "unlink an open file");
+    struct stat st {};
+    CHECK(stat(file.c_str(), &st) != 0 && errno == ENOENT, "unlinked name is gone");
+    bool listed = false;
+    if (DIR* d = opendir(g_base.c_str())) {
+        while (dirent* e = readdir(d))
+            listed = listed || std::string(e->d_name) == "open-unlinked";
+        closedir(d);
+    }
+    CHECK(!listed, "unlinked name is not listed");
+    char got[4] = {};
+    CHECK(pwrite(fd, "5678", 4, 4) == 4 && pread(fd, got, 4, 0) == 4 && std::memcmp(got, "1234", 4) == 0,
+          "open descriptor still reads and writes");
+    CHECK(close(fd) == 0, "close the unlinked file");
+    const int again = open(file.c_str(), O_CREAT | O_RDWR | O_EXCL, 0644);
+    CHECK(again >= 0, "the name can be created again after the last close");
+    if (again >= 0) {
+        CHECK(fstat(again, &st) == 0 && st.st_size == 0, "recreated file is new and empty");
+        close(again);
+    }
+}
+
 void testManyOpen()
 {
     // Handles are capped like a process fd limit: past it, EMFILE (never a
@@ -237,6 +267,7 @@ int main()
     testOffsets();
     testSaveFile();
     testDirectories();
+    testUnlinkOpen();
     testManyOpen();
     testPthread();
 
