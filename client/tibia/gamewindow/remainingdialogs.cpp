@@ -519,20 +519,53 @@ TCharacterWorldTransferDialogController::TCharacterWorldTransferDialogController
     : TDialogController(QStringLiteral("CharacterWorldTransferDialog.qml"), parent)
 {}
 
-void TCharacterWorldTransferDialogController::setTransfer(const QString& characterName, const bool express,
-                                                          QList<QObject*> conditions, QList<QObject*> worlds,
-                                                          const bool canTransfer)
+bool TCharacterWorldTransferDialogController::canTransfer() const
 {
-    m_characterName = characterName;
-    m_isExpressWorldTransfer = express;
-    m_conditions = std::move(conditions);
-    m_worlds = std::move(worlds);
-    m_canTransfer = canTransfer;
+    return std::none_of(std::begin(m_info.flags), std::end(m_info.flags), [](const bool flag) { return flag; });
+}
+
+void TCharacterWorldTransferDialogController::showDialog(const int OfferIDForWorldChange, const QString& CharacterName,
+                                                         const tibia::store::TWorldTransferInformation& WorldTransferInfo)
+{
+    closeDialog();
+    m_offerId = OfferIDForWorldChange;
+    m_info = WorldTransferInfo;
+    m_isExpressWorldTransfer = WorldTransferInfo.flag;
+    m_characterName = CharacterName;
+    m_canTransfer = canTransfer();
+    createConditions();
+    createWorlds();
+    dialog()->show();
+}
+
+void TCharacterWorldTransferDialogController::createConditions()
+{
+    static constexpr std::pair<const char*, const char*> Texts[] = {
+        { "characterworldtransfer_redskull", "characterworldtransfer_no_redskull" },
+        { "characterworldtransfer_blackskull", "characterworldtransfer_no_blackskull" },
+        { "characterworldtransfer_guild_leader", "characterworldtransfer_not_guild_leader" },
+        { "characterworldtransfer_house_owner", "characterworldtransfer_not_house_owner" },
+        { "characterworldtransfer_coin_offers", "characterworldtransfer_no_coin_offers" },
+    };
+    for (size_t i = 0; i < std::size(Texts); ++i) {
+        const bool affected = m_info.flags[i];
+        m_conditions.append(new TQmlWorldTransferCondition(!affected, qtTrId(affected ? Texts[i].first : Texts[i].second)));
+    }
+}
+
+void TCharacterWorldTransferDialogController::createWorlds()
+{
+    for (const tibia::store::TTransferWorld& world : m_info.worlds)
+        m_worlds.append(new TQmlTargetWorld(world.name, QString(), world.firstFlag, world.secondFlag));
 }
 
 void TCharacterWorldTransferDialogController::closeDialog()
 {
     dialog()->close();
+    qDeleteAll(m_conditions);
+    m_conditions.clear();
+    qDeleteAll(m_worlds);
+    m_worlds.clear();
     Q_EMIT dialogClosed();
 }
 
@@ -543,7 +576,9 @@ void TCharacterWorldTransferDialogController::requestClose()
 
 void TCharacterWorldTransferDialogController::requestWorldTransfer(const QString& TargetWorld)
 {
-    Q_EMIT worldTransferRequested(TargetWorld, m_isExpressWorldTransfer);
+    if (TargetWorld.isEmpty())
+        return;
+    Q_EMIT targetWorldConfirmed(m_offerId, TargetWorld);
     closeDialog();
 }
 

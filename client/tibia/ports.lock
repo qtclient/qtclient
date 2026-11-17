@@ -1736,6 +1736,8 @@ gamewindow::TCharacterTradeDialogController::~TCharacterTradeDialogController_de
 gamewindow::TCharacterTradeDuePaymentDialogController::~TCharacterTradeDuePaymentDialogController	ecf0cb5883ee6595	skip	generated: compiler-generated destructor (member teardown only)
 gamewindow::TCharacterTradeDuePaymentDialogController::~TCharacterTradeDuePaymentDialogController_deleting	b07e18a8f2a2d2a3	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCharacterWorldTransferDialogController::requestClose	21e4e90e3f186cdf	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::requestClose
+gamewindow::TCharacterWorldTransferDialogController::requestWorldTransfer	da14eec297efaf69	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::requestWorldTransfer
+gamewindow::TCharacterWorldTransferDialogController::v14	e84a8832c4f99cd9	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::closeDialog
 gamewindow::TCharacterWorldTransferDialogController::~TCharacterWorldTransferDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCharacterWorldTransferDialogController::~TCharacterWorldTransferDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TChatChannelController::chatChannelChanged	9bb6e87f77565599	ported	gamewindow/chatcontroller.cpp:TChatChannelController::writesToLocalChat
@@ -4673,6 +4675,7 @@ sub_0dbd5fbd2ef5	0dbd5fbd2ef54382	ported	gamewindow/bosstrackerwidgetcontroller.
 sub_0dbe628bd7ce	0dbe628bd7cee5da	skip	data: translation-unit static initializer (misattributed)
 sub_0dc43822dcd0	0dc43822dcd00636	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onBossTrackerWidgetClosed
 sub_0ddea2b23f19	0ddea2b23f19a5cd	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::addHighlight
+sub_0deac1ba43c7	0deac1ba43c768a2	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::createWorlds
 sub_0deb613ee42b	0deb613ee42b4e36	ported	gamewindow/remainingdialogs.cpp:TShowImageDialogController::setData
 sub_0e01ce10f87a	0e01ce10f87a6a35	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::isRunning	test=tests/client/sharednet_test.cpp
 sub_0e132af83ef5	0e132af83ef5e4b1	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
@@ -6289,6 +6292,7 @@ sub_3eefd61396e4#3	3eefd61396e4e2a9	skip	generated: moc property getter, provide
 sub_3f1d55947661	3f1d5594766157ad	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_3f1d55947661#2	3f1d5594766157ad	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_3f1e58766c53	3f1e58766c53b3fe	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListSortProxyModel::resetFilters
+sub_3f40847c9747	3f40847c97473eb6	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::showDialog
 sub_3f459d34b8ad	3f459d34b8adb3c0	skip	generated: Qt slot-object impl for a member-function connection (call/compare/destroy)
 sub_3f56ed086f5b	3f56ed086f5b711a	skip	library: std::sort instantiation (introsort, sort3-5, partition, insertion and heap helpers) over the gain/waste rows
 sub_3f5ce7323e97	3f5ce7323e971bfb	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::minimum	test=tests/client/sharednet_test.cpp
@@ -7841,6 +7845,7 @@ sub_704bba5a1cac#2	704bba5a1cacbe95	ported	analysers/impactwidgets.cpp:TImpactWi
 sub_704ca61c0304	704ca61c0304cfac	ported	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::trackedItemLimit
 sub_707b4b0492d7	707b4b0492d786a1	tested	shared/src/crashreportdata.cpp:TCrashReportData::toJsonDocument	test=tests/client/sharednet_test.cpp
 sub_708e53defc6c	708e53defc6c2c4e	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::rewardStreakTimeLeftProgress
+sub_7097cad1924e	7097cad1924e47fd	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::TCharacterWorldTransferDialogController
 sub_70b261c3c5aa	70b261c3c5aaf2e0	tested	tutorial/sessiondumphintpublishgameaction.cpp:TSessiondumpHintSkipTo::TSessiondumpHintSkipTo	test=tests/client/sessiondumphints_test.cpp
 sub_70b261c3c5aa#2	70b261c3c5aaf2e0	tested	tutorial/sessiondumphintpublishgameaction.cpp:TSessiondumpHintSkipTo::TSessiondumpHintSkipTo	test=tests/client/sessiondumphints_test.cpp
 sub_70bab0999be5	70bab0999be55234	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onCreatureClicked
@@ -8422,6 +8427,7 @@ sub_84b95f937971#6	84b95f93797150d7	inlined	assets/spritesheet.cpp:SpriteStore::
 sub_84b95f937971#8	84b95f93797150d7	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::hookDirection
 sub_84c06a914b05	84c06a914b054cbd	skip	library: std::vector insert / growth of team members (library)
 sub_84ca133f1b85	84ca133f1b8568cc	ported	questlog/questlogciptypes.cpp:knownQuestLines
+sub_84ca723dc022	84ca723dc0220974	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::createConditions
 sub_84cb8a4e3533	84cb8a4e353301f7	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::requestImportAllOptions
 sub_84d6675522a5	84d6675522a5e203	tested	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems	test=tests/client/sortedvectorlistmodel_test.cpp
 sub_84f2967443bd	84f2967443bdd9d6	skip	generated: compiler-generated destructor
@@ -12053,6 +12059,7 @@ sub_ed32684669af	ed32684669afe9ae	ported	gamewindow/playerguidewidgetcontroller.
 sub_ed46866a784c	ed46866a784ca0b2	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::TItemInfoDialogController
 sub_ed57d2bb48f9#2	ed57d2bb48f96bae	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_ed587ca1d6a5	ed587ca1d6a5ef73	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_ed5d8c313360	ed5d8c313360a8d6	ported	gamewindow/remainingdialogs.cpp:TCharacterWorldTransferDialogController::canTransfer
 sub_ed689030d097	ed689030d0972821	skip	library: libc++ std::vector template instantiation (range construct, copy, assign, emplace slow path)
 sub_ed74621b5f58	ed74621b5f58481c	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::~TCalendarDialogController
 sub_ed98d49c7ad1	ed98d49c7ad1c912	skip	library: std::sort instantiation over team members / member indices (library)

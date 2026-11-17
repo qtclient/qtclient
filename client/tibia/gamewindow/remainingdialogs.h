@@ -5,6 +5,7 @@
 #include "client/gamecore.h"
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
+#include "store/storestorage.h"
 #include "trade/charactertrademodels.h"
 #include "trade/tradeciptypes.h"
 
@@ -157,7 +158,9 @@ public Q_SLOTS:
     void onClosePressed(bool DoNotShowAgain) override;
 };
 
-/// CIP TCharacterWorldTransferDialogController.
+/// CharacterWorldTransferDialog.qml (CIP: TCharacterWorldTransferDialogController):
+/// the store's world transfer offer for the character, the five transfer
+/// conditions and the target worlds.
 class TCharacterWorldTransferDialogController final
     : public TDialogController<cip::tibia::gamewindow::TCharacterWorldTransferDialogController>
 {
@@ -165,15 +168,28 @@ class TCharacterWorldTransferDialogController final
 public:
     explicit TCharacterWorldTransferDialogController(QObject* parent = nullptr);
 
-    void setTransfer(const QString& characterName, bool express, QList<QObject*> conditions, QList<QObject*> worlds, bool canTransfer);
+    /// Every condition is met.
+    bool canTransfer() const override;
 
 public Q_SLOTS:
+    /// The dialog shows the offer's transfer information for the character.
+    void showDialog(int OfferIDForWorldChange, const QString& CharacterName, const tibia::store::TWorldTransferInformation& WorldTransferInfo);
     void closeDialog() override;
     void requestClose() override;
+    /// A chosen world confirms the offer and closes the dialog.
     void requestWorldTransfer(const QString& TargetWorld) override;
 
 Q_SIGNALS:
-    void worldTransferRequested(const QString& targetWorld, bool express);
+    void targetWorldConfirmed(int OfferIDForWorldChange, const QString& WorldName);
+
+private:
+    /// Red skull, black skull, guild leader, house owner, coin offers: each
+    /// condition is met when the character is not affected.
+    void createConditions();
+    void createWorlds();
+
+    int m_offerId = 0;
+    tibia::store::TWorldTransferInformation m_info;
 };
 
 /// CIP TCinematicSessiondumpPlayerController .
