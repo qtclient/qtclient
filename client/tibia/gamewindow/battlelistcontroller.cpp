@@ -4,6 +4,7 @@
 #include "config/sidebaroptions.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/creaturesciptypes.h"
+#include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
@@ -434,10 +435,7 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TBattleListController::onNewNameEntered);
     m_proxy->setSourceModel(model);
     m_battleListModel = QVariant::fromValue<QObject*>(m_proxy);
-    m_options = storage->options(battleListId);
-    m_proxy->setOptions(m_options);
-    m_hasPremiumStatus = storage->hasPremium();
-    widget()->setInitialContentHeightAndMaximized(m_options.contentHeight, m_options.contentMaximized);
+    attachSidebarOptions(storage->sidebarOptions());
 
     widget()->createItem(QStringLiteral("battlelist.qml"));
     QQuickItem* item = quickItem();
@@ -481,31 +479,34 @@ bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
         input::publish(use);
         return true;
     }
+    // The spell is aimed (mode 2) at the creature's field, or at the action's
+    // own location when the creature is gone.
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
     const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId) : nullptr;
-    if (!creature || action.text.isEmpty())
-        return false;
-    tibia::game::setNextTalkAim(creature->position());
+    tibia::game::setNextTalkAim(creature ? creature->position() : action.position);
     tibia::game::setNextTalkAimMode(2);
     tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
     return true;
 }
 
-void TBattleListController::applyOptions(const BattleListOptions& options)
+void TBattleListController::attachSidebarOptions(config::TSidebarOptions* options)
 {
-    const bool changed = !(options == m_options);
-    m_options = options;
-    if (m_proxy)
-        m_proxy->setOptions(options);
-    if (changed)
-        Q_EMIT optionsChanged();
+    QObject::disconnect(m_sidebarOptionsChanged);
+    m_sidebarOptions = options;
+    if (!options)
+        return;
+    m_sidebarOptionsChanged = connect(options, &config::TSidebarOptions::battleListWidgetOptionsChanged, this,
+                                      &TBattleListController::onThisWidgetOptionsChanged);
+    onThisWidgetOptionsChanged(m_id);
 }
 
-void TBattleListController::setPremium(const bool premium)
+void TBattleListController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage)
 {
-    if (premium == m_hasPremiumStatus)
-        return;
-    m_hasPremiumStatus = premium;
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TBattleListController::premiumTimeChanged);
+    m_premiumTimeStorage = storage;
+    if (storage)
+        connect(storage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TBattleListController::premiumTimeChanged);
     Q_EMIT premiumTimeChanged();
 }
 
@@ -609,16 +610,33 @@ void TBattleListController::requestMakePrimary()
 
 void TBattleListController::removeThisBattleListOptionsIfNotSpecialBattleList()
 {
-    if (!m_options.isPrimary && !m_options.isPartyView)
-        m_storage->removeOptions(m_id);
+    // The options leave the list's id; the primary and the party list keep
+    // theirs under the ids reserved for them.
+    if (!m_sidebarOptions)
+        return;
+    m_storage->removeOptions(m_id);
+    if (m_options.isPrimary)
+        m_storage->setOptions(config::TSidebarOptions::PrimaryBattleListId, m_options);
+    else if (m_options.isPartyView)
+        m_storage->setOptions(config::TSidebarOptions::PartyBattleListId, m_options);
 }
 
-void TBattleListController::onWidgetOptionsChanged() { applyOptions(m_storage->options(m_id)); }
+void TBattleListController::onWidgetOptionsChanged() { onThisWidgetOptionsChanged(m_id); }
 
 void TBattleListController::onThisWidgetOptionsChanged(const int BattleListID)
 {
-    if (BattleListID == m_id)
-        onWidgetOptionsChanged();
+    if (!m_sidebarOptions || BattleListID != m_id)
+        return;
+    if (m_storage->hasOptions(m_id)) {
+        m_options = m_storage->options(m_id);
+    } else {
+        // A list without options starts from the defaults and saves them.
+        m_options = BattleListOptions{};
+        saveWidgetOptions();
+    }
+    widget()->setInitialContentHeightAndMaximized(m_options.contentHeight, m_options.contentMaximized);
+    m_proxy->setOptions(m_options);
+    Q_EMIT optionsChanged();
 }
 
 void TBattleListController::onWidgetQuickItemDestroyed() {}
@@ -845,21 +863,14 @@ TBattleListControllerStorage* TBattleListControllerStorage::instance()
 
 void TBattleListControllerStorage::setSidebarOptions(config::TSidebarOptions* options)
 {
-    if (m_sidebarOptions)
-        disconnect(m_sidebarOptions, nullptr, this, nullptr);
     m_sidebarOptions = options;
-    if (!options) {
+    if (!options)
         m_loginRampUpFinished = false;
-        return;
+    // Each list follows its own entry and the session's premium time.
+    for (const auto& [id, controller] : m_controllers) {
+        controller->attachSidebarOptions(options);
+        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
     }
-    // A list follows its options (CIP: each list listens to its id).
-    connect(options, &config::TSidebarOptions::battleListWidgetOptionsChanged, this, [this](const int battleListId) {
-        if (const auto it = m_controllers.find(static_cast<uint8_t>(battleListId));
-            battleListId >= 0 && battleListId < MaxBattleLists && it != m_controllers.end())
-            it->second->applyOptions(this->options(battleListId));
-    });
-    for (const auto& [id, controller] : m_controllers)
-        controller->applyOptions(this->options(id));
 }
 
 void TBattleListControllerStorage::setControlScheme(const int controlScheme)
@@ -883,6 +894,11 @@ void TBattleListControllerStorage::setOptions(const int battleListId, const Batt
 {
     if (m_sidebarOptions)
         m_sidebarOptions->setBattleListOptions(battleListId, toSidebarOptions(options));
+}
+
+bool TBattleListControllerStorage::hasOptions(const int battleListId) const
+{
+    return m_sidebarOptions && m_sidebarOptions->battleListsOptions().contains(battleListId);
 }
 
 void TBattleListControllerStorage::removeOptions(const int battleListId)
@@ -946,6 +962,7 @@ void TBattleListControllerStorage::openBattleList(const uint8_t sidebarId, const
 
     auto* controller = new TBattleListController(battleListId, this, &m_dataModel, m_gameWindowItem, m_engine);
     controller->setControlScheme(m_controlScheme);
+    controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
     connect(controller, &TBattleListController::battleListClosed, this, &TBattleListControllerStorage::onBattleListClosed,
             Qt::QueuedConnection);
     maximizeIfLoggedIn(controller);
@@ -1224,13 +1241,7 @@ void TBattleListControllerStorage::triggerUpdate()
     m_dataModel.setEntries(std::move(entries));
 }
 
-void TBattleListControllerStorage::onUpdateTimer()
-{
-    triggerUpdate();
-    const bool premium = hasPremium();
-    for (const auto& [id, controller] : m_controllers)
-        controller->setPremium(premium);
-}
+void TBattleListControllerStorage::onUpdateTimer() { triggerUpdate(); }
 
 bool TBattleListControllerStorage::attackFirstTarget()
 {

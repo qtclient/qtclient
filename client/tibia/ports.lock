@@ -1568,7 +1568,11 @@ gamewindow::TBattleListController::premiumTimeChanged	a4213fda7f4c7cce	ported	ga
 gamewindow::TBattleListController::requestEditName	0bd27737b668459b	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::requestEditName
 gamewindow::TBattleListController::requestOpenSecondaryBattleList	de45464cc3810ffd	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::requestOpenSecondaryBattleList
 gamewindow::TBattleListController::toggleFilter	843cc64021f087dd	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::toggleFilter
+gamewindow::TBattleListController::v12	8d7a92161455506d	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::attachSidebarOptions
+gamewindow::TBattleListController::v32	7c1a3b20c4444510	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onRequestClose
 gamewindow::TBattleListController::v37	e2a56b3985c1f682	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::saveWidgetOptions
+gamewindow::TBattleListController::v38	ce61d4a55c65bdb1	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onWidgetOptionsChanged
+gamewindow::TBattleListController::v39	919a4c64b6ca6ad6	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onAtMouseCursor
 gamewindow::TBattleListController::~TBattleListController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TBattleListController::~TBattleListController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TBattleListControllerStorage::handleGameAction	e68ce597f83c96da	ported	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::handleGameAction
@@ -4933,6 +4937,7 @@ sub_13d08a5407ce#65	13d08a5407ce57fa	inlined	trade/tradeciptypes.cpp:TCharacterT
 sub_13d08a5407ce#72	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_13d08a5407ce#74	13d08a5407ce57fa	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_13d08a5407ce#79	13d08a5407ce57fa	ported	skillwheel/skillwheelciptypes.cpp:TSkillWheelProtocolMessageHandler::revealGem
+sub_13e4b9473f17	13e4b9473f17035d	skip	generated: destructor body: member teardown only
 sub_13e7c452d6b9	13e7c452d6b96d92	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_13faedd3a833	13faedd3a8339286	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::unlistTeam
 sub_1402b68994c8	1402b68994c8448f	skip	library: libc++ list clear / unordered_map destroy / vector copy and assign instantiations
@@ -5196,6 +5201,7 @@ sub_1ad3f9780c1a	1ad3f9780c1a945f	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyc
 sub_1ada54b598a1	1ada54b598a10024	skip	data: translation-unit static initializer (misattributed)
 sub_1adb38db9343	1adb38db9343e2a6	skip	library: std::sort / std::stable_sort instantiation (library)
 sub_1ae0b3594ca6	1ae0b3594ca689bc	skip	generated: compiler-generated destructor (QString path, QByteArray data)
+sub_1ae43e798107	1ae43e79810721d5	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::TBattleListController
 sub_1af7d312df28	1af7d312df28ef35	skip	library: std container template code
 sub_1afa2a76c6e8#2	1afa2a76c6e8f882	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_1afc8ddeef07	1afc8ddeef07bff0	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setSelection
@@ -5383,6 +5389,7 @@ sub_2123f5eb86de#2	2123f5eb86de9177	skip	generated: QtPrivate slot object impls 
 sub_212a7090190b	212a7090190b257b	skip	generated: compiler-generated draw command copy / std::vector growth
 sub_2161103255a8	2161103255a8d609	skip	generated: compiler-generated destructor pair
 sub_217af12bafc6	217af12bafc6f79b	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_2182f9538364	2182f9538364fd9e	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::setPremiumTimeStorage
 sub_2192fbbe6656	2192fbbe66560055	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendHighscoresMessage
 sub_219b96dce82c	219b96dce82c30b7	skip	library: QMap/QVariant template instantiation
 sub_21a4ae297399	21a4ae2973998c45	ported	analysers/progressstorage.cpp:linearWeights
@@ -9780,6 +9787,7 @@ sub_ad1bdf42a6c1#5	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cp
 sub_ad1bdf42a6c1#6	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::TPlayerMiscStatsProvider
 sub_ad296ce9235f	ad296ce9235f1e34	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_ad4ac51f780d	ad4ac51f780d55a7	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditBuddy
+sub_ad51ccdcaca0	ad51ccdcaca0a61c	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onAtMouseCursor
 sub_ad51e332020a	ad51e332020ad517	inlined	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::info
 sub_ad64f08e7b10	ad64f08e7b106f40	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onConfirmedPartialCollect
 sub_ad64f08e7b10#2	ad64f08e7b106f40	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onConfirmedPartialCollect
@@ -10607,6 +10615,7 @@ sub_c24aae6d0a0f	c24aae6d0a0f0fef	ported	gamewindow/containercontroller.cpp:TCon
 sub_c24aae6d0a0f#2	c24aae6d0a0f0fef	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::requestSearch
 sub_c25a6598f69d	c25a6598f69d2481	skip	generated: moc property getter, provided by the generated cip base
 sub_c27b4c341ee5	c27b4c341ee58263	ported	gamewindow/draganddropcontroller.cpp:TDragAndDropController::TDragAndDropController
+sub_c27bb56e1810	c27bb56e18102c11	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::removeThisBattleListOptionsIfNotSpecialBattleList
 sub_c28525fb3de5	c28525fb3de5463f	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::openUrlLater
 sub_c2913bfd0c29	c2913bfd0c29227d	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerWidgetController::widgetMode
 sub_c2ab97cd567f	c2ab97cd567f1be7	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::isLootBlackWhitelisted
@@ -10832,6 +10841,7 @@ sub_caba4c2f9982	caba4c2f9982403e	ported	gamewindow/battlelistcontroller.cpp:Bat
 sub_cad4980c9397	cad4980c939781cb	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::clear
 sub_cadb14b1715e	cadb14b1715e0b49	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::runeSpellInfo
 sub_cadd1b9d95e2	cadd1b9d95e260c6	inlined	exaltation/exaltationstorage.cpp:TExaltationStorage::setTransferGroups
+sub_cae46d7c2e3f	cae46d7c2e3f979d	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onThisWidgetOptionsChanged
 sub_cb07846a90f4	cb07846a90f43e3e	skip	library: QList template instantiation (reserve/insert/detach of QList<shared_ptr<TChatChannelTabRenderInfo>>)
 sub_cb07846a90f4#2	cb07846a90f43e3e	skip	library: QList template instantiation (reserve/insert/detach)
 sub_cb137f72f569#2	cb137f72f56943e2	inlined	protocol::TProtobufServerMessageTranslator::v74
