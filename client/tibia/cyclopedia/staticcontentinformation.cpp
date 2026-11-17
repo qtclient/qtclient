@@ -11,12 +11,37 @@ namespace tibia::cyclopedia {
 
 namespace {
 
+std::vector<RaceType> s_monsterRaces;
+std::vector<RaceType> s_bossRaces;
 std::vector<TStaticMonsterClassification> s_monsterClassifications;
 QHash<quint8, TStaticMonsterClassification> s_monsterClassificationsById;
 QHash<QString, TStaticMonsterClassification> s_monsterClassificationsByName;
 std::vector<TStaticAchievement> s_achievements;
 std::vector<TStaticHouse> s_houses;
 QHash<int, QString> s_questNames;
+
+bool raceIdLess(const RaceType& a, const RaceType& b) { return a.raceId < b.raceId; }
+
+void setMonsterRaces(std::vector<RaceType> races)
+{
+    s_monsterRaces = std::move(races);
+    std::sort(s_monsterRaces.begin(), s_monsterRaces.end(), raceIdLess);
+}
+
+void setBossRaces(std::vector<RaceType> races)
+{
+    s_bossRaces = std::move(races);
+    std::sort(s_bossRaces.begin(), s_bossRaces.end(), raceIdLess);
+}
+
+/// The race with the id in races sorted by id, or null.
+const RaceType* findRace(const quint16 raceId, const std::vector<RaceType>& races)
+{
+    RaceType key;
+    key.raceId = raceId;
+    const auto it = std::lower_bound(races.begin(), races.end(), key, raceIdLess);
+    return it != races.end() && it->raceId == raceId ? &*it : nullptr;
+}
 
 void setMonsterClassifications(std::vector<TStaticMonsterClassification> classifications)
 {
@@ -70,14 +95,21 @@ TStaticHouse TStaticHouse::unknown(const quint32 id)
 
 void setStaticContentInformation(TStaticContentInformation information)
 {
-    std::vector<RaceType> races = std::move(information.monsters);
-    races.insert(races.end(), std::make_move_iterator(information.bosses.begin()), std::make_move_iterator(information.bosses.end()));
+    setMonsterRaces(std::move(information.monsters));
+    setBossRaces(std::move(information.bosses));
+    // Host: the appearances manager lists every race for the name searches.
+    std::vector<RaceType> races = s_monsterRaces;
+    races.insert(races.end(), s_bossRaces.begin(), s_bossRaces.end());
     appearances::TAppearancesManager::instance().setRaces(std::move(races));
     setMonsterClassifications(std::move(information.monsterClassifications));
     setAchievements(std::move(information.achievements));
     setHouses(std::move(information.houses));
     addQuests(information.quests);
 }
+
+const RaceType* staticMonster(const quint16 raceId) { return findRace(raceId, s_monsterRaces); }
+
+const RaceType* staticBoss(const quint16 raceId) { return findRace(raceId, s_bossRaces); }
 
 const std::vector<TStaticMonsterClassification>& monsterClassifications() { return s_monsterClassifications; }
 

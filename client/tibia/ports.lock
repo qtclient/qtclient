@@ -5162,6 +5162,7 @@ sub_1393f853c0ec	1393f853c0ec0e6b	inlined	gamewindow/iteminfodialogcontroller.cp
 sub_139a2a2ed37d	139a2a2ed37d5c13	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMoveObject
 sub_139beb33bb65	139beb33bb655100	skip	library: libc++ std::vector/std::map instantiations (reserve, push_back realloc, copy, destroy, vector ==/!=) for exaltation data
 sub_139beb33bb65#3	139beb33bb655100	skip	library: std container template instance
+sub_13a13ca8a905	13a13ca8a9059a12	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_13a7f0c40b4b	13a7f0c40b4bfc9b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseDepotSearch
 sub_13abcd95cf9e	13abcd95cf9e7c95	ported	gamewindow/marketcontroller.cpp:TMarketController::reselect
 sub_13c753a6e7c4	13c753a6e7c4842e	ported	analysers/itempricestorage.cpp:TItemPriceStorage::TItemPriceStorage
@@ -5261,6 +5262,7 @@ sub_1631c5a17946#2	1631c5a179463db9	skip	generated: moc-generated signal emitter
 sub_1643f470cb7b	1643f470cb7b3f9d	inlined	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::trackItem
 sub_1643f470cb7b#2	1643f470cb7b3f9d	inlined	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::trackItem
 sub_16615275f635	16615275f6355ed0	skip	library: libc++ std::deque<TTrackedItem> destructor (read: block walk, shared_ptr releases, map free)
+sub_16617a910f80	16617a910f800f31	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_167ce5911e9c	167ce5911e9c1e31	skip	library: std::vector<TTaskMonster> destructor
 sub_168ccacde199#2	168ccacde19922ce	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleTransactionHistoryMessage
 sub_168ccacde199#3	168ccacde19922ce	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleTransactionHistoryMessage
@@ -5915,6 +5917,7 @@ sub_26d205c0900e#2	26d205c0900e0268	ported	gamewindow/gamewindowcontroller.cpp:T
 sub_26d7097a0e6d	26d7097a0e6db85a	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_26e3b8f4b44a	26e3b8f4b44a839f	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_26fc70013984#2	26fc70013984c0f9	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
+sub_271221032e60	271221032e60b29e	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_271b6271bb85#2	271b6271bb859d99	skip	library: SFML/miniaudio library helper, only called from library code
 sub_272febd892d6	272febd892d6a69e	skip	library: std::set / std::vector assignment, copy and destruction (library)
 sub_274ee2f54087	274ee2f540870bf1	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendJoinParty
@@ -6922,6 +6925,7 @@ sub_47a2d6406de4	47a2d6406de4efca	ported	proficiency/proficiencystorage.cpp:TPro
 sub_47adfb400916	47adfb4009162b74	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::smoothTextureFiltering
 sub_47c42c7c0521	47c42c7c0521af63	skip	generated: compiler-generated struct ctor/dtor and std vector internals
 sub_47e5b436fafa	47e5b436fafa3b93	skip	library: libc++ shared_ptr vector destroy / optional release / make_shared<TChatChannel> instantiations
+sub_47ea00e9439a	47ea00e9439ae910	ported	cyclopedia/staticcontentinformation.cpp:findRace
 sub_47fc97e153a9	47fc97e153a9424e	skip	generated: compiler-generated destructor pair
 sub_480dcc731438	480dcc73143814aa	ported	shared/src/downloadpool.cpp:TDownloadPool::createRequest
 sub_480fb4292f1a	480fb4292f1a4fb4	skip	library: std::vector growth / std::make_shared (library)
@@ -7232,6 +7236,8 @@ sub_535f1156a9e2	535f1156a9e2b4a2	skip	generated: compiler-generated chat entry 
 sub_536154213a1b	536154213a1b37a5	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_537a89f51688	537a89f51688c1f3	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::showContextMenuForTextInputQmlItem
 sub_537c3749525f	537c3749525fc70e	skip	data: translation-unit static initializer (misattributed)
+sub_537c700358f1	537c700358f15157	ported	cyclopedia/staticcontentinformation.cpp:setMonsterRaces
+sub_537c700358f1#2	537c700358f15157	ported	cyclopedia/staticcontentinformation.cpp:setBossRaces
 sub_538ca5c40fa0	538ca5c40fa06d89	ported	shared/src/singlethreadedlowpriorityexecutor.cpp:TSingleThreadedLowPriorityExecutor::~TSingleThreadedLowPriorityExecutor
 sub_539f52746fd2	539f52746fd241fa	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onNewCharacterNameEntered
 sub_53a11b4f2f64	53a11b4f2f64d411	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::toParameters
@@ -8042,6 +8048,7 @@ sub_66efffa1ca22#2	66efffa1ca22f525	inlined	config/sidebaroptions.cpp:parseImbue
 sub_66f1e508d343	66f1e508d34357c1	skip	generated: TTransactionDetails move assignment (member swaps/copies only)
 sub_66f7c5f08fb4	66f7c5f08fb46e66	skip	library: miniaudio library
 sub_67075aefd67d	67075aefd67d09dd	ported	shared/src/downloadpool.cpp:TDownloadPool::onDownloadFinished
+sub_6722aee39940	6722aee399403d13	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_6732541ae546	6732541ae54646f3	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::history
 sub_673f32d2e8b2#4	673f32d2e8b29202	ported	taskboard/taskboardcurrenciesstorage.cpp:TTaskboardCurrenciesStorage::setSoulSealsAmount
 sub_6748e0511a26	6748e0511a263a10	skip	library: std::vector / QList template code
@@ -8371,6 +8378,7 @@ sub_7320595dd15f	7320595dd15fd6b7	ported	gamewindow/whiteblacklistdialogcontroll
 sub_73211d931e4c	73211d931e4c789a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::suggestCharacterName
 sub_73211d931e4c#2	73211d931e4c789a	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::suggestCharacterName
 sub_732bb1073e82	732bb1073e821b52	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
+sub_732c8bed7393	732c8bed7393b8f8	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_734588a7d170	734588a7d1702b2e	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_7350d7e961ec	7350d7e961ec23ad	inlined	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapMouseMoved
 sub_735a7f39f4b1	735a7f39f4b1c7f5	ported	sound/soundmetadatamanager.cpp:TSoundMetadataManager::setMemoryPriority
@@ -8905,6 +8913,7 @@ sub_84b95f937971	84b95f93797150d7	inlined	animation/phaseanimator.cpp:TAnimator:
 sub_84b95f937971#6	84b95f93797150d7	inlined	assets/spritesheet.cpp:SpriteStore::addSheet
 sub_84b95f937971#8	84b95f93797150d7	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::hookDirection
 sub_84c06a914b05	84c06a914b054cbd	skip	library: std::vector insert / growth of team members (library)
+sub_84c85171ff6f	84c85171ff6f5580	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_84ca133f1b85	84ca133f1b8568cc	ported	questlog/questlogciptypes.cpp:knownQuestLines
 sub_84cb8a4e3533	84cb8a4e353301f7	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::requestImportAllOptions
 sub_84d6675522a5	84d6675522a5e203	tested	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems	test=tests/client/sortedvectorlistmodel_test.cpp
@@ -10125,6 +10134,7 @@ sub_a593f44564e6	a593f44564e61554	skip	generated: moc property getter, provided 
 sub_a593f44564e6#2	a593f44564e61554	ported	gamewindow/battlelistcontroller.h:TBattleListController::battleListId
 sub_a597f21d78f8	a597f21d78f8a71b	ported	teamfinder/teamfinderciptypes.cpp:localDateString
 sub_a5acf26df076	a5acf26df076de99	ported	gamewindow/preydialogcontroller.cpp:TPreyDialogController::requestTabSwitch
+sub_a5b6efb891ee	a5b6efb891ee3fa8	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_a5c9a995a89c#117	a5c9a995a89cc48d	ported	input/genericgameactionhandler.h:publishGameAction
 sub_a5c9a995a89c#12	a5c9a995a89cc48d	inlined	creatures/creaturestorage.cpp:TCreature::setPosition
 sub_a5c9a995a89c#123	a5c9a995a89cc48d	skip	generated: moc-generated signal emitter
@@ -12422,6 +12432,7 @@ sub_e3f0e6e4362c	e3f0e6e4362cafd3	ported	gamewindow/actionbuttoncontroller.cpp:T
 sub_e3fa6e729d6b	e3fa6e729d6b4074	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::TBugReportDialogController
 sub_e3fd6e2a1390	e3fd6e2a139027ce	ported	config/sidebaroptions.cpp:parsePanels
 sub_e40187c3e279	e40187c3e279deea	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e4038a3d03f4	e4038a3d03f47502	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_e411b2ec6711	e411b2ec67112e33	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::effectiveSpeed	test=tests/client/creaturemovement_test.cpp
 sub_e420266dedfd	e420266dedfd3ce6	inlined	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::showDialogTab
 sub_e42506b3299f	e42506b3299f9263	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setInactive
@@ -12705,6 +12716,7 @@ sub_ed32684669af	ed32684669afe9ae	ported	gamewindow/playerguidewidgetcontroller.
 sub_ed3bbb8ae554	ed3bbb8ae55418fc	ported	gamewindow/remainingdialogs.cpp:TMainCharacterChangeDialogController::createMainCharInfos
 sub_ed46866a784c	ed46866a784ca0b2	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::TItemInfoDialogController
 sub_ed4ace081076	ed4ace0810763b7d	skip	generated: Qt slot-object impl (template-generated)
+sub_ed5098406487	ed5098406487b43d	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_ed57d2bb48f9#2	ed57d2bb48f96bae	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_ed587ca1d6a5	ed587ca1d6a5ef73	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
 sub_ed587f1518ae	ed587f1518ae7a7f	ported	gamewindow/monsterbonuseffectsdialogcontroller.h:TMonsterBonusEffectsDialogController::isMinorCharmTabActive
@@ -12879,6 +12891,7 @@ sub_f23eb3024ce5#98	f23eb3024ce596b3	skip	generated: moc-generated signal emitte
 sub_f23eb3024ce5#99	f23eb3024ce596b3	skip	generated: moc-generated signal emitter (lenshelpVisibleChanged, contentChanged)
 sub_f23f843f387e	f23f843f387e2735	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::localTimeString
 sub_f23f843f387e#2	f23f843f387e2735	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::serverTimeString
+sub_f24250b0aef4	f24250b0aef45457	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_f247e6dd9d02	f247e6dd9d0228e3	ported	input/gameaction.h:TGameActionUnmountPlayer::TGameActionUnmountPlayer
 sub_f247e6dd9d02#2	f247e6dd9d0228e3	ported	input/gameaction.h:TGameActionUnmountPlayer::TGameActionUnmountPlayer
 sub_f249f6a6e353	f249f6a6e3534c36	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController
@@ -13066,6 +13079,7 @@ sub_f98ceae25008	f98ceae25008c033	tested	shared/src/xteahelper.cpp:TXteaHelper::
 sub_f98eb3aa1b73	f98eb3aa1b73e53d	tested	sessiondump/sessiondumpprocessor.cpp:TSessiondumpProcessor::TSessiondumpProcessor	test=tests/client/sessiondumpreader_test.cpp
 sub_f9a0a702deba#5	f9a0a702deba7f63	inlined	quickloot/managedcontainerstorage.h:TManagedContainerStorage::managedContainers
 sub_f9a50c2bdd79	f9a50c2bdd796f99	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedSortOrderIndex
+sub_f9bd8d03015f	f9bd8d03015f1b2e	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_f9cb681b5d0d#2	f9cb681b5d0dc995	skip	library: SFML/miniaudio library helper, only called from library code
 sub_f9d4d52b5316	f9d4d52b53169402	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestChoosePrey
 sub_f9e930b88611	f9e930b88611d754	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
@@ -13184,6 +13198,7 @@ sub_ff71f16a14d7	ff71f16a14d734fa	skip	generated: moc property getter, provided 
 sub_ff810966fd5f	ff810966fd5f0b40	ported	gamewindow/chatcontroller.cpp:TChatChannelController::resetChannel
 sub_ff86900336b9	ff86900336b9ebf6	inlined	analysers/analyserwidgets.cpp:TProgressWidgetController::onShowContextMenu
 sub_ffb3972cef69	ffb3972cef69e6f1	inlined	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::onMonsterRaceDetailsChanged
+sub_ffc0b8305f05	ffc0b8305f05b773	skip	library: libc++ std::sort instantiation over the 56-byte race records (introsort, insertion sorts, sort3-5, heap select/sift; read: only the record comparator and moves)
 sub_ffcb550e4d4c	ffcb550e4d4c246b	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferAccept
 sub_ffd47c9e6a6a	ffd47c9e6a6abf99	skip	generated: compiler-generated destructor of the optional picked field
 sub_ffe5eed6b9da	ffe5eed6b9da6931	skip	data: translation-unit static initializer (misattributed)

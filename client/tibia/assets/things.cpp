@@ -854,9 +854,12 @@ const ThingTypeList& TAppearancesManager::getThingTypes(const ThingCategory cate
 
 const RaceType& TAppearancesManager::getRaceData(const uint32_t raceId)
 {
-    for (const auto& race : m_monsterRaces)
-        if (race.raceId == raceId)
-            return race;
+    if (raceId > UINT16_MAX)
+        return kEmptyRace;
+    if (const RaceType* race = cyclopedia::staticMonster(static_cast<uint16_t>(raceId)))
+        return *race;
+    if (const RaceType* race = cyclopedia::staticBoss(static_cast<uint16_t>(raceId)))
+        return *race;
     return kEmptyRace;
 }
 
