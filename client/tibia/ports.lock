@@ -3303,6 +3303,7 @@ protocol::TProtocolMessageQueue::v12	94550ba8400e4d6a	ported	protocol/protocolme
 protocol::TProtocolMessageQueue::v13	2b77591ec98092f2	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::enqueueGameclientMessage
 protocol::TProtocolMessageQueue::~TProtocolMessageQueue	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 protocol::TProtocolMessageQueue::~TProtocolMessageQueue_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+qmlcomponents::TOutfitPresetQmlType::fromJsonObject	55a4e9d69b5c7f23	ported	qmlcomponents/outfittypes.cpp:TOutfitPresetQmlType::fromJsonObject
 qmlcomponents::TSoundHelperService::playSound	097457dc45e86dd8	ported	qmlcomponents/soundhelper.cpp:TSoundHelperService::playSound
 questlog::TQuestLogProtocolMessageHandler::v12	6638ed072796b0f1	ported	questlog/questlogciptypes.cpp:TQuestLogProtocolMessageHandler::handleQuestLogMessage
 questlog::TQuestLogProtocolMessageHandler::v13	d6d40943267ee939	ported	questlog/questlogciptypes.cpp:TQuestLogProtocolMessageHandler::handleQuestLineMessage

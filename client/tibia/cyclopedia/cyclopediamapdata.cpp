@@ -7,6 +7,7 @@
 #include "creatures/creaturestorage.h"
 
 #include "shared/tibiafilesystemhelper.h"
+#include "assets/assetcatalog.h"
 #include "assets/cipbmpimage.h"
 
 #include <QJsonArray>
@@ -113,12 +114,10 @@ void TCyclopediaMapStaticData::ensureLoaded()
     std::string mapData;
     try {
         m_directory = client::gamecore::assetsRoot(client::TGameClient::ClientVersion);
-        const QJsonDocument catalog = QJsonDocument::fromJson(QByteArray::fromStdString(tibia::files::data().readFileContents(m_directory + "catalog-content.json")));
-        QString file;
-        for (const QJsonValue entry : catalog.array()) {
-            if (entry.toObject().value(QStringLiteral("type")).toString() == QStringLiteral("map"))
-                file = entry.toObject().value(QStringLiteral("file")).toString();
-        }
+        tibia::assets::TAssetCatalog catalog;
+        catalog.load(QJsonDocument::fromJson(
+            QByteArray::fromStdString(tibia::files::data().readFileContents(m_directory + "catalog-content.json"))));
+        const QString file = catalog.fileOf(tibia::assets::TAsset::Map);
         if (file.isEmpty())
             return;
         mapData = tibia::files::data().readFileContents(m_directory + file.toStdString());
