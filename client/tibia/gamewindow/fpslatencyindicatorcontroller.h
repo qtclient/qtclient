@@ -1,5 +1,7 @@
 #pragma once
 
+class QQuickItem;
+
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -34,6 +36,8 @@ class TFPSLatencyIndicatorController final : public cip::tibia::gamewindow::TFPS
     Q_OBJECT
     Q_PROPERTY(QString worldmapBuildUs READ worldmapBuildUs NOTIFY worldmapBuildUsChanged FINAL)
 public:
+    /// CIP: the indicator item shows this controller; a destroyed item lets go of it.
+    void setWidgetItem(QQuickItem* item);
     explicit TFPSLatencyIndicatorController(QObject* parent = nullptr);
     ~TFPSLatencyIndicatorController() override;
 
@@ -52,6 +56,11 @@ Q_SIGNALS:
     void worldmapBuildUsChanged();
 
 private:
+    /// CIP: the item lets go of this controller.
+    void detachWidgetItem();
+    /// CIP: the destroyed item is forgotten.
+    void onWidgetQuickItemDestroyed();
+    QPointer<QQuickItem> m_widgetItem;
     void applyVisible(bool on);
     void tick();
     void syncOptimizedConnectionStability();

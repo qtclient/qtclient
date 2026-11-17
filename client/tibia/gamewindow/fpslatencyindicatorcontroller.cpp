@@ -1,5 +1,7 @@
 #include "fpslatencyindicatorcontroller.h"
 
+#include <QQuickItem>
+
 #include "app/clientoptions.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -169,6 +171,30 @@ void TFPSLatencyIndicatorController::syncOptimizedConnectionStability()
 {
     m_stabilityOption = app::ClientOptions::load().options().value(StabilityOption).toBool(true);
     update(m_frameRate, m_currentLatency, m_latencyMeasured, m_stabilityOption, m_currentFrameCount.toInt());
+}
+
+void TFPSLatencyIndicatorController::setWidgetItem(QQuickItem* item)
+{
+    detachWidgetItem();
+    m_widgetItem = item;
+    if (!item)
+        return;
+    item->setProperty("controller", QVariant::fromValue<QObject*>(this));
+    connect(item, &QObject::destroyed, this, &TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed);
+}
+
+void TFPSLatencyIndicatorController::detachWidgetItem()
+{
+    if (!m_widgetItem)
+        return;
+    disconnect(m_widgetItem, &QObject::destroyed, this, &TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed);
+    m_widgetItem->setProperty("controller", QVariant::fromValue<QObject*>(nullptr));
+    m_widgetItem = nullptr;
+}
+
+void TFPSLatencyIndicatorController::onWidgetQuickItemDestroyed()
+{
+    m_widgetItem = nullptr;
 }
 
 }

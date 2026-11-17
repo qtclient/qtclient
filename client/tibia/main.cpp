@@ -1004,8 +1004,7 @@ int main(int argc, char** argv)
     fpsLatency.setWindow(window);
     fpsLatency.setFrameDurations(gameClient.frameDurations());
     fpsLatency.setRenderProvider(gameClient.worldMapRenderProvider());
-    if (QQuickItem* fpsItem = gameWindowController.gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")))
-        fpsItem->setProperty("controller", QVariant::fromValue<QObject*>(&fpsLatency));
+    fpsLatency.setWidgetItem(gameWindowController.gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")));
 
     qInfo("tibia.boot: before ChatController");
     gamewindow::TChatController chat(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), gameClient);
