@@ -3,6 +3,7 @@
 #include "sessiondump/sessiondumpciptypes.h"
 
 #include "app/launcherenv.h"
+#include "authentication/authenticationprocesscontroller.h"
 #include "authentication/loginrequestuploader.h"
 #include "game/gameservergamesession.h"
 #include "runtime/gamehost.h"
@@ -285,6 +286,9 @@ private:
     qint64 m_frameInterval = 0;
     std::unique_ptr<authentication::TLoginRequestUploader> m_login;
     std::unique_ptr<authentication::TCloudflareChallengeController> m_cloudflareChallenge;
+    /// The account login's state machine; the game client still performs the
+    /// login steps it enters.
+    std::unique_ptr<authentication::TAuthenticationProcessController> m_authentication;
     bool m_suppressConnectError = false;
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
@@ -296,8 +300,6 @@ private:
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
-    /// Queue connections of the static protocol ingresses (reconnected per session).
-    std::vector<QMetaObject::Connection> m_staticIngressConnections;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
     chat::TChatProtocolMessageHandler* m_chatProtocol = nullptr;

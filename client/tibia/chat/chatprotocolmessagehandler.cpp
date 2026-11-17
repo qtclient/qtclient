@@ -643,6 +643,9 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
     }
     if (log && !consoleFilters(mode))
         m_storage.addServerLogEntry(consoleColor(mode), text);
+    // IdleOT host extension: packs observe the server's text messages.
+    tibia::game::notify("onServerTextMessage", Proto::translateMessageModeFromServer(static_cast<uint8_t>(MessageMessage.mode())),
+                        MessageMessage.text());
 }
 
 void TChatProtocolMessageHandler::handleLootMessageForChannelAndStatusMessage(const QString& text)
@@ -758,88 +761,9 @@ void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::pro
     m_chatStorage.setKeywordButtons(buttons);
 }
 
-namespace {
-
-}
-
-void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+TChatProtocolMessageHandler* TChatProtocolMessageHandler::liveInstance()
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 28:
-        if (shadow->HasExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters)) {
-            if (s_console)
-                s_console->handleNpcTalkPartersMessage(
-                    shadow->GetExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters));
-        }
-        break;
-    case 170:
-        if (shadow->HasExtension(GameserverMessageTalk::gameserver_message_talk) && s_console)
-            s_console->handleTalkMessage(shadow->GetExtension(GameserverMessageTalk::gameserver_message_talk));
-        break;
-    case 171:
-        if (shadow->HasExtension(GameserverMessageChannels::gameserver_message_channels)) {
-            if (s_console)
-                s_console->handleChannelsMessage(shadow->GetExtension(GameserverMessageChannels::gameserver_message_channels));
-        }
-        break;
-    case 172:
-        if (shadow->HasExtension(GameserverMessageOpenChannel::gameserver_message_open_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOpenChannel::gameserver_message_open_channel);
-            if (s_console)
-                s_console->handleOpenChannelMessage(m);
-        }
-        break;
-    case 173:
-        if (shadow->HasExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel);
-            if (s_console)
-                s_console->handlePrivateChannelMessage(m);
-        }
-        break;
-    case 174:
-        if (shadow->HasExtension(GameserverMessageEditGuildMessage::gameserver_message_edit_guild_message))
-            tibia::game::notify("onEditGuildMessage",
-                                shadow->GetExtension(GameserverMessageEditGuildMessage::gameserver_message_edit_guild_message).text());
-        break;
-    case 178:
-        if (shadow->HasExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel);
-            if (s_console)
-                s_console->handleOpenOwnChannelMessage(m);
-        }
-        break;
-    case 179:
-        if (shadow->HasExtension(GameserverMessageCloseChannel::gameserver_message_close_channel)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCloseChannel::gameserver_message_close_channel);
-            if (s_console)
-                s_console->handleCloseChannelMessage(m);
-        }
-        break;
-    case 180:
-        if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
-        {
-            const auto& m = shadow->GetExtension(GameserverMessageMessage::gameserver_message_message);
-            if (s_console)
-                s_console->handleMessageMessage(m);
-            // IdleOT host extension: packs observe the server's text messages.
-            tibia::game::notify("onServerTextMessage",
-                                Proto::translateMessageModeFromServer(static_cast<uint8_t>(m.mode())), m.text());
-        }
-        break;
-    case 243:
-        if (shadow->HasExtension(GameserverMessageChannelEvent::gameserver_message_channel_event)) {
-            const auto& m = shadow->GetExtension(GameserverMessageChannelEvent::gameserver_message_channel_event);
-            if (s_console)
-                s_console->handleChannelEventMessage(m);
-        }
-        break;
-    default:
-        break;
-    }
+    return s_console;
 }
 
 bool TChatProtocolMessageHandler::isOwnName(const QString& name) const

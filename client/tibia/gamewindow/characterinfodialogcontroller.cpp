@@ -635,12 +635,12 @@ void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const 
             if (IsOutfit && outfit.lookType == OutfitID)
                 current.setAddons(static_cast<uint8_t>(outfit.addons));
             outfits.append({ .id = outfit.lookType, .name = outfit.name, .firstAddOn = (outfit.addons & 1) != 0,
-                             .secondAddOn = (outfit.addons & 2) != 0, .type = outfit.source });
+                             .secondAddOn = (outfit.addons & 2) != 0, .type = static_cast<int>(outfit.source) });
         }
         for (const auto& mount : appearances->mounts)
-            mounts.append({ .id = mount.lookType, .name = mount.name, .type = mount.source });
+            mounts.append({ .id = mount.lookType, .name = mount.name, .type = static_cast<int>(mount.source) });
         for (const auto& summon : appearances->summonSkins)
-            summons.append({ .id = summon.lookType, .name = summon.name, .type = summon.source });
+            summons.append({ .id = summon.lookType, .name = summon.name, .type = static_cast<int>(summon.source) });
     }
     if (!IsOutfit && !outfits.isEmpty()) {
         current.setId(static_cast<uint16_t>(outfits.first().id));

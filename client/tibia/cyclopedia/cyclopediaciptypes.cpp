@@ -214,7 +214,7 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage
     tibia::game::notify("onBestiaryEntryChanged", static_cast<uint16_t>(message.race_id()));
 }
 
-void TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResulMessage(
+void TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message)
 {
     // requestHouseActionResultDialog
@@ -711,199 +711,131 @@ void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
     }
 }
 
-void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 175:
-        if (shadow->HasExtension(GameserverMessageXpChanged::gameserver_message_xp_changed))
-            handleXpChangedMessage(shadow->GetExtension(GameserverMessageXpChanged::gameserver_message_xp_changed));
-        break;
-    case 206:
-        if (shadow->HasExtension(GameserverMessageItemWasted::gameserver_message_item_wasted))
-            handleItemWastedMessage(shadow->GetExtension(GameserverMessageItemWasted::gameserver_message_item_wasted));
-        break;
-    case 216:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects)) {
-            const auto& m = shadow->GetExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects);
-            BestiaryCharmsData data{};
-            data.resetAllCharmsCost = m.reset_all_charms_cost();
-            data.availableCharmSlots = m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : 0xff;
-            for (const auto& c : m.charms()) {
-                CharmData charm{};
-                charm.id = static_cast<uint8_t>(c.charm_id());
-                charm.tier = static_cast<uint8_t>(c.tier());
-                charm.asignedStatus = c.assigned();
-                charm.unlocked = c.assigned() || c.tier() > 0;
-                charm.raceId = static_cast<uint16_t>(c.race_id());
-                charm.removeRuneCost = c.remove_cost();
-                data.charms.push_back(std::move(charm));
-            }
-            for (const auto& f : m.finished_races())
-                data.finishedMonsters.push_back(static_cast<uint16_t>(f.race_id()));
-            tibia::game::processUpdateBestiaryCharmsData(data);
-        }
-        break;
-    case 217:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details))
-            handleMonsterCyclopediaNewDetailsMessage(
-                shadow->GetExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details));
-        break;
-    case 238:
-        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance)) {
-            const auto& m = shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance);
-            if (m.resource_type() >= tibia::client::RESOURCE_CHARM && m.resource_type() <= tibia::client::RESOURCE_MAX_MINOR_CHARM) {
-                handleResourceBalanceMessage(m);
-            } else {
-                // The other balances belong to the game session's handlers.
-                const auto type = static_cast<tibia::client::ResourceTypes_t>(m.resource_type());
-                tibia::game::localPlayerSetResourceBalance(
-                    type, m.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(m.small_value())) : m.value());
-            }
-        }
-        break;
-    case 195:
-        if (shadow->HasExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result))
-            handleCyclopediaHouseActionResulMessage(
-                shadow->GetExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result));
-        break;
-    case 199:
-        if (shadow->HasExtension(GameserverMessageCyclopediaCurrentHouseData::gameserver_message_cyclopedia_current_house_data)) {
-            std::vector<CyclopediaHouseEntry> houses;
-            for (const auto& h : shadow->GetExtension(GameserverMessageCyclopediaCurrentHouseData::gameserver_message_cyclopedia_current_house_data).houses()) {
-                CyclopediaHouseEntry& house = houses.emplace_back();
-                house.houseId = h.house_id();
-                house.isRentable = h.rentable();
-                house.state = static_cast<uint8_t>(h.state());
-                house.bidderName = h.bidder_name();
-                house.isBidder = h.is_bidder();
-                house.bidDisableReason = static_cast<uint8_t>(h.bid_disable_reason());
-                house.bidEnd = h.bid_end();
-                house.highestBid = h.highest_bid();
-                house.bidLimit = h.bid_limit();
-                house.ownerName = h.owner_name();
-                house.paidUntil = h.paid_until();
-                house.isOwner = h.is_owner();
-                house.moveOutDisableReason = static_cast<uint8_t>(h.move_out_disable_reason());
-                house.transferDisableReason = static_cast<uint8_t>(h.transfer_disable_reason());
-                house.transferDate = h.transfer_date();
-                house.newOwnerName = h.new_owner_name();
-                house.newOwnerAccepted = h.new_owner_accepted();
-                house.transferPrice = h.transfer_price();
-                house.isNewOwner = h.is_new_owner();
-                house.acceptTransferDisableReason = static_cast<uint8_t>(h.accept_transfer_disable_reason());
-                house.rejectTransferDisableReason = static_cast<uint8_t>(h.reject_transfer_disable_reason());
-                house.cancelTransferDisableReason = static_cast<uint8_t>(h.cancel_transfer_disable_reason());
-                house.moveOutDate = h.move_out_date();
-                house.cancelMoveOutDisableReason = static_cast<uint8_t>(h.cancel_move_out_disable_reason());
-            }
-            tibia::game::notify("onCyclopediaHouseList", houses);
-        }
-        break;
-    case 43:
-        if (shadow->HasExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser))
-            handlePartyHuntAnalyserMessage(shadow->GetExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser));
-        break;
-    case 198:
-        if (shadow->HasExtension(GameserverMessageCyclopediaStaticHouseData::gameserver_message_cyclopedia_static_house_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCyclopediaStaticHouseData::gameserver_message_cyclopedia_static_house_data);
-            const std::vector<uint8_t> counts{ static_cast<uint8_t>(m.first_count()),  static_cast<uint8_t>(m.second_count()),
-                                               static_cast<uint8_t>(m.third_count()),  static_cast<uint8_t>(m.fourth_count()),
-                                               static_cast<uint8_t>(m.fifth_count()),  static_cast<uint8_t>(m.sixth_count()) };
-            const std::vector<uint32_t> shown(m.shown_houses().begin(), m.shown_houses().end());
-            const std::vector<uint32_t> others(m.other_houses().begin(), m.other_houses().end());
-            tibia::game::notify("onCyclopediaHousesInfo", m.excluded_until(), counts, shown, others);
-        }
-        break;
-    case 215:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race))
-            handleMonsterCyclopediaRaceMessage(shadow->GetExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race));
-        break;
-    case 221:
-        if (shadow->HasExtension(GameserverMessageCyclopediaMapData::gameserver_message_cyclopedia_map_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCyclopediaMapData::gameserver_message_cyclopedia_map_data);
-            const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()), static_cast<short>(m.position().z()));
-            switch (m.data_type()) {
-            case 0:
-                tibia::game::processAddAutomapFlag(pos, static_cast<uint8_t>(m.icon()), m.text());
-                break;
-            case 1: {
-                std::vector<std::vector<int>> mains;
-                for (const auto& a : m.main_areas())
-                    mains.push_back({ static_cast<int>(a.area_id()), static_cast<int>(a.status()), static_cast<int>(a.progress()) });
-                const std::vector<int> discovered(m.discovered_areas().begin(), m.discovered_areas().end());
-                const std::vector<int> discoverable(m.discoverable_areas().begin(), m.discoverable_areas().end());
-                tibia::game::notify("onCyclopediaMapDiscoveryData", mains, discovered, discoverable);
-                break;
-            }
-            case 2:
-                tibia::game::notify("onCyclopediaMapRaid", static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z));
-                break;
-            case 5: {
-                std::vector<std::vector<int>> points;
-                for (const auto& p : m.points())
-                    points.push_back({ static_cast<int>(p.position().x()), static_cast<int>(p.position().y()), static_cast<int>(p.position().z()),
-                                       static_cast<int>(p.state()) });
-                tibia::game::notify("onCyclopediaMapDiscoveryArea", static_cast<int>(m.area_id()), static_cast<int>(m.flag() ? 1 : 0),
-                                    static_cast<int>(m.target()), points);
-                break;
-            }
-            case 6: {
-                std::vector<int> passage{ static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z), m.race_ids_size() };
-                for (const uint32_t race : m.race_ids())
-                    passage.push_back(static_cast<int>(race));
-                tibia::game::notify("onCyclopediaMapPassage", passage);
-                break;
-            }
-            case 9: {
-                std::vector<std::vector<double>> areas;
-                for (const auto& d : m.donations())
-                    areas.push_back({ static_cast<double>(d.area_id()), d.improved_respawn() ? 1.0 : 0.0, static_cast<double>(d.donated()) });
-                tibia::game::notify("onCyclopediaMapDonations", m.donation_goal(), areas);
-                break;
-            }
-            case 10:
-                tibia::game::notify("onCyclopediaMapCurrentArea", static_cast<int>(m.area_id()));
-                break;
-            case 11:
-                tibia::game::notify("onCyclopediaMapExploringArea", static_cast<int>(m.area_id()));
-                break;
-            default: // imminent raids, sub area monsters, monster bestiary: no consumer yet
-                break;
-            }
-        }
-        break;
-    case 214:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters))
-            handleMonsterCyclopediaMonstersMessage(
-                shadow->GetExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters));
-        break;
-    case 213:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia))
-            handleMonsterCyclopediaMessage(shadow->GetExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia));
-        break;
-    case 204:
-        if (shadow->HasExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking))
-            handleImpactTrackingMessage(shadow->GetExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking));
-        break;
-    case 205:
-        if (shadow->HasExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics))
-            handleMarketStatisticsMessage(shadow->GetExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics));
-        break;
-    case 207:
-        if (shadow->HasExtension(GameserverMessageItemLooted::gameserver_message_item_looted))
-            handleItemLootedMessage(shadow->GetExtension(GameserverMessageItemLooted::gameserver_message_item_looted));
-        break;
-    case 209:
-        if (shadow->HasExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking))
-            handleKillTrackingMessage(shadow->GetExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking));
-        break;
-    default:
-        break;
+    const auto& m = MonsterCyclopediaBonusEffectsMessage;
+    BestiaryCharmsData data{};
+    data.resetAllCharmsCost = m.reset_all_charms_cost();
+    data.availableCharmSlots = m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : 0xff;
+    for (const auto& c : m.charms()) {
+        CharmData charm{};
+        charm.id = static_cast<uint8_t>(c.charm_id());
+        charm.tier = static_cast<uint8_t>(c.tier());
+        charm.asignedStatus = c.assigned();
+        charm.unlocked = c.assigned() || c.tier() > 0;
+        charm.raceId = static_cast<uint16_t>(c.race_id());
+        charm.removeRuneCost = c.remove_cost();
+        data.charms.push_back(std::move(charm));
     }
+    for (const auto& f : m.finished_races())
+        data.finishedMonsters.push_back(static_cast<uint16_t>(f.race_id()));
+    tibia::game::processUpdateBestiaryCharmsData(data);
+
+}
+
+void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+    std::vector<CyclopediaHouseEntry> houses;
+    for (const auto& h : CyclopediaCurrentHouseDataMessage.houses()) {
+        CyclopediaHouseEntry& house = houses.emplace_back();
+        house.houseId = h.house_id();
+        house.isRentable = h.rentable();
+        house.state = static_cast<uint8_t>(h.state());
+        house.bidderName = h.bidder_name();
+        house.isBidder = h.is_bidder();
+        house.bidDisableReason = static_cast<uint8_t>(h.bid_disable_reason());
+        house.bidEnd = h.bid_end();
+        house.highestBid = h.highest_bid();
+        house.bidLimit = h.bid_limit();
+        house.ownerName = h.owner_name();
+        house.paidUntil = h.paid_until();
+        house.isOwner = h.is_owner();
+        house.moveOutDisableReason = static_cast<uint8_t>(h.move_out_disable_reason());
+        house.transferDisableReason = static_cast<uint8_t>(h.transfer_disable_reason());
+        house.transferDate = h.transfer_date();
+        house.newOwnerName = h.new_owner_name();
+        house.newOwnerAccepted = h.new_owner_accepted();
+        house.transferPrice = h.transfer_price();
+        house.isNewOwner = h.is_new_owner();
+        house.acceptTransferDisableReason = static_cast<uint8_t>(h.accept_transfer_disable_reason());
+        house.rejectTransferDisableReason = static_cast<uint8_t>(h.reject_transfer_disable_reason());
+        house.cancelTransferDisableReason = static_cast<uint8_t>(h.cancel_transfer_disable_reason());
+        house.moveOutDate = h.move_out_date();
+        house.cancelMoveOutDisableReason = static_cast<uint8_t>(h.cancel_move_out_disable_reason());
+    }
+    tibia::game::notify("onCyclopediaHouseList", houses);
+
+}
+
+void TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto& m = CyclopediaStaticHouseDataMessage;
+    const std::vector<uint8_t> counts{ static_cast<uint8_t>(m.first_count()),  static_cast<uint8_t>(m.second_count()),
+                                       static_cast<uint8_t>(m.third_count()),  static_cast<uint8_t>(m.fourth_count()),
+                                       static_cast<uint8_t>(m.fifth_count()),  static_cast<uint8_t>(m.sixth_count()) };
+    const std::vector<uint32_t> shown(m.shown_houses().begin(), m.shown_houses().end());
+    const std::vector<uint32_t> others(m.other_houses().begin(), m.other_houses().end());
+    tibia::game::notify("onCyclopediaHousesInfo", m.excluded_until(), counts, shown, others);
+
+}
+
+void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaMapData& CyclopediaMapDataMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto& m = CyclopediaMapDataMessage;
+    const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()), static_cast<short>(m.position().z()));
+    switch (m.data_type()) {
+    case 0:
+        tibia::game::processAddAutomapFlag(pos, static_cast<uint8_t>(m.icon()), m.text());
+        return;
+    case 1: {
+        std::vector<std::vector<int>> mains;
+        for (const auto& a : m.main_areas())
+            mains.push_back({ static_cast<int>(a.area_id()), static_cast<int>(a.status()), static_cast<int>(a.progress()) });
+        const std::vector<int> discovered(m.discovered_areas().begin(), m.discovered_areas().end());
+        const std::vector<int> discoverable(m.discoverable_areas().begin(), m.discoverable_areas().end());
+        tibia::game::notify("onCyclopediaMapDiscoveryData", mains, discovered, discoverable);
+        return;
+    }
+    case 2:
+        tibia::game::notify("onCyclopediaMapRaid", static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z));
+        return;
+    case 5: {
+        std::vector<std::vector<int>> points;
+        for (const auto& p : m.points())
+            points.push_back({ static_cast<int>(p.position().x()), static_cast<int>(p.position().y()), static_cast<int>(p.position().z()),
+                               static_cast<int>(p.state()) });
+        tibia::game::notify("onCyclopediaMapDiscoveryArea", static_cast<int>(m.area_id()), static_cast<int>(m.flag() ? 1 : 0),
+                            static_cast<int>(m.target()), points);
+        return;
+    }
+    case 6: {
+        std::vector<int> passage{ static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z), m.race_ids_size() };
+        for (const uint32_t race : m.race_ids())
+            passage.push_back(static_cast<int>(race));
+        tibia::game::notify("onCyclopediaMapPassage", passage);
+        return;
+    }
+    case 9: {
+        std::vector<std::vector<double>> areas;
+        for (const auto& d : m.donations())
+            areas.push_back({ static_cast<double>(d.area_id()), d.improved_respawn() ? 1.0 : 0.0, static_cast<double>(d.donated()) });
+        tibia::game::notify("onCyclopediaMapDonations", m.donation_goal(), areas);
+        return;
+    }
+    case 10:
+        tibia::game::notify("onCyclopediaMapCurrentArea", static_cast<int>(m.area_id()));
+        return;
+    case 11:
+        tibia::game::notify("onCyclopediaMapExploringArea", static_cast<int>(m.area_id()));
+        return;
+    default: // imminent raids, sub area monsters, monster bestiary: no consumer yet
+        return;
+    }
+
 }
 
 namespace {

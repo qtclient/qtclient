@@ -32,6 +32,19 @@ qtclient_add_port_test(client_creaturemovement_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementtween.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
 )
+# CIP TAuthenticationProcessController: the login state machine against a fake login connection.
+find_package(Qt6 REQUIRED COMPONENTS Network Test)
+qtclient_add_port_test(client_authenticationprocesscontroller_tests
+    authenticationprocesscontroller_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.h
+)
+set_target_properties(client_authenticationprocesscontroller_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_authenticationprocesscontroller_tests PRIVATE Qt6::Network Qt6::Test)
+qtclient_add_port_test(client_experiencecalculator_tests
+    experiencecalculator_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/experiencecalculator.cpp
+)
 qtclient_add_port_test(client_phaseanimator_tests
     phaseanimator_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp

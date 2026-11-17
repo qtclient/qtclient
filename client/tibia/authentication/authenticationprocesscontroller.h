@@ -1,11 +1,14 @@
 #pragma once
 
 #include "authentication/cloudflarechallengetypes.h"
-#include "authentication/loginrequestuploader.h"
 
 #include <QObject>
-#include <QPointer>
 #include <QString>
+
+#include <deque>
+#include <functional>
+#include <optional>
+#include <vector>
 
 namespace tibia {
 namespace authentication {
@@ -18,21 +21,110 @@ enum ELoginConfirmationMethod : int
     LoginConfirmationMethodApp = 2,
 };
 
-/// Account-login state machine surface (CIP: TAuthenticationProcessController,
-/// contract superclass QStateMachine — qtclient Qt build has no StateMachine module,
-/// so the moc API lives on QObject). Live account login stays on
-/// client::TGameClient + TLoginRequestUploader; bindLoginUploader() overlays
-/// CIP slot names onto that uploader without replacing its GameClient sinks.
+/// The account login as a state machine (CIP: TAuthenticationProcessController,
+/// a QStateMachine). The Qt build has no StateMachine module, so the states and
+/// transitions are a table here with QStateMachine's semantics: a transition
+/// leaves the active state (its exited slot), then enters the target (its
+/// entered slot); triggers raised while a transition runs are queued and
+/// handled after it; a final top-level state stops the machine.
 class TAuthenticationProcessController final : public QObject
 {
     Q_OBJECT
 public:
-    explicit TAuthenticationProcessController(QObject* parent = nullptr);
+    enum class EState
+    {
+        Start,
+        ShowLoginWaitingDialog,
+        /// Compound: the dialogs after a successful login, one after another.
+        PostLoginDialogs,
+        ShowReturnerReward,
+        ShowEmergencyDialog,
+        ShowCharacterTradeDuePayment,
+        ShowSurveyInvitation,
+        PostLoginDialogsFinished,
+        LoginFailed,
+        ShowTwoFactorTokenInput,
+        ShowDeviceVerificationCodeInput,
+        ShowTwoFactorEMailInput,
+        ShowLoginConfirmationInput,
+        SolveCloudflareChallenge,
+        ShowCloudflareChallengeFailed,
+        ShowCharacterSelection,
+        StartGameServerLogin,
+        WaitForAssetsCompletion,
+        ShowClientOutOfDate,
+        BeginPatchClient,
+        LoginFinishedSuccessfully,
+        LoginAborted,
+    };
 
-    /// Optional overlay: CIP abort / 2FA / out-of-date slots onto an existing
-    /// TLoginRequestUploader (the GameClient-owned one when wired later).
-    void bindLoginUploader(TLoginRequestUploader* uploader);
-    TLoginRequestUploader* loginUploader() const { return m_login.data(); }
+    /// The signals that move the machine: its own advance signals, the login
+    /// uploaders', the dialogs' and the asset manager's.
+    enum class ETrigger
+    {
+        AdvanceStateMachine,
+        AdvanceToLoginUpload,
+        AdvanceDirectlyToCharacterSelection,
+        AdvanceToWaitForAssetCompletion,
+        LoginSuccessful,
+        LoginFailed,
+        LoginFailedDueToInvalidServerResponse,
+        LoginFailedDueToMissingTwoFactorToken,
+        LoginFailedDueToInvalidDeviceCookie,
+        LoginFailedClientOutOfDate,
+        LoginFailedDueToMissingEMailLoginCode,
+        LoginFailedDueToMissingLoginConfirmation,
+        LoginFailedDueToCloudflareMitigation,
+        InvalidLoginConfirmationToken,
+        CloudflareSolveFailed,
+        MessageDialogAccepted,
+        MessageDialogDiscarded,
+        ReturnerRewardDialogClosed,
+        EmergencyDialogClosed,
+        CharacterTradeDuePaymentDialogClosed,
+        SurveyInvitationDialogClosed,
+        TwoFactorCodeEntered,
+        DeviceVerificationCodeEntered,
+        LoginConfirmationCodeEntered,
+        DialogAborted,
+        CharacterLoginRequested,
+        AssetsComplete,
+    };
+
+    /// What the host provides: the login request's abort and Cloudflare
+    /// clearance, and the post-login dialogs (each shows its dialog and answers
+    /// whether it did; unset means the dialog is not shown).
+    struct THost
+    {
+        std::function<void()> abortLogin;
+        std::function<void(const TCloudflareChallengeClearanceInfo&)> applyClearance;
+        std::function<bool()> showReturnerRewardDialog;
+        std::function<bool()> showEmergencyDialog;
+        std::function<bool()> showCharacterTradeDuePaymentDialog;
+        std::function<bool()> showSurveyInvitationDialog;
+        /// Whether the assets are loaded, so the game server login can start.
+        std::function<bool()> assetsComplete;
+    };
+
+    explicit TAuthenticationProcessController(QObject* parent = nullptr);
+    ~TAuthenticationProcessController() override;
+
+    void setHost(THost host) { m_host = std::move(host); }
+
+    /// Connects a login uploader's results (anything with
+    /// TLoginRequestUploader's signals) to the machine.
+    template<typename Uploader>
+    void bindLoginUploader(Uploader* uploader);
+
+    /// Starts the machine (again, when it runs); with `shortcutToCharacterSelection`
+    /// it goes straight to the character selection (a running session's character switch).
+    void start(bool shortcutToCharacterSelection = false);
+    bool isRunning() const { return m_running; }
+    EState state() const { return m_state; }
+    /// The active child of PostLoginDialogs, when that state is active.
+    std::optional<EState> postLoginDialogState() const { return m_child; }
+    /// Raises a trigger; ignored unless the active state has a transition for it.
+    void trigger(ETrigger trigger);
 
     bool authenticated() const { return m_authenticated; }
     bool fpsTrackingActive() const { return m_fpsTrackingActive; }
@@ -84,7 +176,6 @@ public Q_SLOTS:
     void onLoginFailedDueToMissingLoginConfirmation(QString ConfirmationToken, bool HasPendingCode);
     void onPlayerLevelUp();
     void onPlayerDataChanged();
-    /// CIP Cloudflare challenge state-machine slots (live solve is on TGameClient).
     void onSolveCloudflareChallengeStateEntered();
     void onShowCloudflareChallengeFailedStateEntered();
     void onCloudflareSolverSuccess(tibia::authentication::TCloudflareChallengeClearanceInfo CloudflareClearanceInfo);
@@ -104,13 +195,42 @@ Q_SIGNALS:
     void fpsTrackingActiveChanged(bool FpsTrackingActive);
     void optionsTrackingActiveChanged(bool OptionsTrackingActive);
     void quitAndPatchClient();
+    /// The machine entered `state` (after its entered slot ran).
+    void stateEntered(tibia::authentication::TAuthenticationProcessController::EState state);
+    /// The machine reached a final top-level state and stopped.
+    void finished();
 
 private:
+    struct TTransition
+    {
+        EState from;
+        ETrigger trigger;
+        EState to;
+    };
+
+    /// CIP's states, their entered/exited slots and transitions.
+    void buildStateMachine();
+    void process(ETrigger trigger);
+    void enter(EState state);
+    void exit(EState state);
+    void stop();
+    static bool isPostLoginDialog(EState state);
+
     void setAuthenticated(bool value);
     void setFpsTrackingActive(bool value);
     void setOptionsTrackingActive(bool value);
 
-    QPointer<TLoginRequestUploader> m_login;
+    THost m_host;
+    std::vector<TTransition> m_transitions;
+    std::vector<std::pair<EState, void (TAuthenticationProcessController::*)()>> m_entered;
+    std::vector<std::pair<EState, void (TAuthenticationProcessController::*)()>> m_exited;
+    EState m_state = EState::Start;
+    std::optional<EState> m_child;
+    bool m_running = false;
+    bool m_processing = false;
+    std::deque<ETrigger> m_queue;
+    std::optional<TCloudflareChallengeClearanceInfo> m_cloudflareClearance;
+
     bool m_authenticated = false;
     bool m_fpsTrackingActive = false;
     bool m_optionsTrackingActive = false;
@@ -121,6 +241,26 @@ private:
     bool m_hasPendingConfirmationCode = false;
     ELoginConfirmationMethod m_pendingConfirmationMethod = LoginConfirmationMethodUnknown;
 };
+
+template<typename Uploader>
+void TAuthenticationProcessController::bindLoginUploader(Uploader* uploader)
+{
+    using T = ETrigger;
+    const auto on = [this, uploader](auto signal, const T trigger) {
+        connect(uploader, signal, this, [this, trigger] { this->trigger(trigger); });
+    };
+    on(&Uploader::loginSuccessful, T::LoginSuccessful);
+    on(&Uploader::loginFailed, T::LoginFailed);
+    on(&Uploader::loginFailedDueToInvalidServerResponse, T::LoginFailedDueToInvalidServerResponse);
+    on(&Uploader::loginFailedDueToMissingTwoFactorToken, T::LoginFailedDueToMissingTwoFactorToken);
+    on(&Uploader::loginFailedDueToInvalidDeviceCookie, T::LoginFailedDueToInvalidDeviceCookie);
+    on(&Uploader::loginFailedClientOutOfDate, T::LoginFailedClientOutOfDate);
+    on(&Uploader::loginFailedDueToMissingEMailLoginCode, T::LoginFailedDueToMissingEMailLoginCode);
+    on(&Uploader::loginFailedDueToCloudflareMitigation, T::LoginFailedDueToCloudflareMitigation);
+    connect(uploader, &Uploader::loginFailedDueToMissingLoginConfirmation, this,
+            &TAuthenticationProcessController::onLoginFailedDueToMissingLoginConfirmation);
+    on(&Uploader::loginFailedDueToMissingLoginConfirmation, T::LoginFailedDueToMissingLoginConfirmation);
+}
 
 }
 }
