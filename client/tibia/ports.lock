@@ -2909,8 +2909,8 @@ minimap::TMinimapTileStorage::v18	11d534a32f85c5be	inlined	game/gamesessionstate
 minimap::TMinimapTileStorage::v21	4ed6b78ca2f0a0b1	ported	game/gamesessionstate.cpp:avoidedFieldsInView
 minimap::TMinimapTileStorage::v23	374ec4aaa298858d	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::unloadOutside
 minimap::TMinimapTileStorage::v24	b415366a756e2732	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::setVisibleArea
-minimap::TMinimapTileStorage::v27	24f15a3e5645d5df	inlined	minimap/minimaptilestorage.cpp:TMinimapTileStorage::unloadOutside
 minimap::TMinimapTileStorage::v29	cea4139c75e7a0fc	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::onLoadingSucceeded
+minimap::TMinimapTileStorage::v30	4d3b7a3aa73fb785	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::onLoadingFailed
 minimap::TMinimapTileStorage::v31	27de474e5f894cbf	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::saveAllTilesToDisk
 minimap::TMinimapTileStorage::~TMinimapTileStorage	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 minimap::TMinimapTileStorage::~TMinimapTileStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
