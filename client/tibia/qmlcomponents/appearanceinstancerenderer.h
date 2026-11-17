@@ -121,7 +121,8 @@ private:
     static void clear(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list);
 
     void watchFrames();
-    void addSprites(TAppearanceType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase, bool colorize, uint32_t colors);
+    /// The sprite of `type`'s pattern and phase (objects and effects).
+    void addSprites(TAppearanceType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase);
     void addOutfit(const TOutfitAppearanceInstanceQmlType& instance);
     void addObject(const TObjectAppearanceInstanceInfoQmlType& instance);
     void addTransientEffects();

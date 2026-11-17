@@ -306,9 +306,8 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         // The texture holds the sprite's part `sprite.rect` (HD textures hold more
         // texels per pixel; they are drawn at the part's size).
         const QRectF source(QPointF(), texture->textureSize());
-        const QPoint topLeft = record.anchor - QPoint(record.sprite.info->spriteSize().width(),
-                                                      record.sprite.info->spriteSize().height())
-            + sprite.rect.topLeft();
+        const QSize spriteSize = spriteSizeOf(record.sprite);
+        const QPoint topLeft = record.anchor - QPoint(spriteSize.width(), spriteSize.height()) + sprite.rect.topLeft();
         const QRectF rect(topLeft, sprite.rect.size());
 
         if (record.highlight != SpriteRecord::NoHighlight && !bakeHighlight) {

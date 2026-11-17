@@ -106,12 +106,87 @@ QImage TSpriteResolver::composed(const QImage& bottom, const QImage& top)
     return result;
 }
 
-std::shared_ptr<TSprite> TSpriteResolver::resolveSpriteIdentifier(const appearances::TAppearanceInstanceSpriteInfo& info) const
+std::shared_ptr<TSprite> TSpriteResolver::resolve(const ISpriteIdentifier& identifier) const
 {
-    std::shared_ptr<TSprite> sprite = resolveSpriteInfo(info);
-    if (sprite)
-        sprite->setFromResource(true);
+    switch (identifier.identifierKind()) {
+    case ISpriteIdentifier::SpriteInfoIdentifier: {
+        std::shared_ptr<TSprite> sprite =
+            resolveSpriteInfo(static_cast<const appearances::TAppearanceInstanceSpriteInfo&>(identifier));
+        if (sprite)
+            sprite->setFromResource(true);
+        return sprite;
+    }
+    case ISpriteIdentifier::AssetSpritesheetIdentifier: {
+        const auto& asset = static_cast<const TAssetSpritesheetIdentifier&>(identifier);
+        return resolveAssetSpritesheet(asset.spritesheetId(), asset.scale());
+    }
+    case ISpriteIdentifier::EffectWrapperIdentifier:
+        return resolveEffectWrapper(static_cast<const TEffectWrapperSpritesheetIdentifier&>(identifier));
+    default:
+        return nullptr;
+    }
+}
+
+std::shared_ptr<TSprite> TSpriteResolver::resolveEffectWrapper(const TEffectWrapperSpritesheetIdentifier& identifier) const
+{
+    if (!identifier.wrapped())
+        return nullptr;
+    const std::shared_ptr<TSprite> wrapped = resolve(*identifier.wrapped());
+    if (!wrapped)
+        return nullptr;
+    QImage image = wrapped->getImage();
+    switch (identifier.effect()) {
+    case TEffectWrapperSpritesheetIdentifier::EEffect::Blend:
+        image = blended(image, identifier.color());
+        break;
+    case TEffectWrapperSpritesheetIdentifier::EEffect::Highlight:
+        image = highlighted(image, identifier.color());
+        break;
+    }
+    auto sprite = std::make_shared<TSingleSprite>(wrapped->getScale(), image);
+    sprite->setCacheable(wrapped->isCacheable());
+    sprite->setHighlighted(wrapped->isHighlighted());
+    sprite->setFromResource(wrapped->isFromResource());
     return sprite;
+}
+
+QImage TSpriteResolver::blended(const QImage& image, const QColor& color)
+{
+    QImage result = image.copy();
+    const int red = color.red();
+    const int green = color.green();
+    const int blue = color.blue();
+    const auto alpha = static_cast<float>(color.alphaF());
+    for (int y = 0; y < result.height(); ++y) {
+        auto* line = reinterpret_cast<uint32_t*>(result.scanLine(y));
+        for (int x = 0; x < result.width(); ++x) {
+            const uint32_t pixel = line[x];
+            const auto a = static_cast<int>(alpha * static_cast<float>(pixel >> 24));
+            if (a < 1) {
+                line[x] = 0;
+                continue;
+            }
+            const uint32_t r = static_cast<uint32_t>((red + static_cast<int>(pixel >> 16 & 0xff)) * 0x7f / 0xff);
+            const uint32_t g = static_cast<uint32_t>((green + static_cast<int>(pixel >> 8 & 0xff)) * 0x7f / 0xff);
+            const uint32_t b = static_cast<uint32_t>((blue + static_cast<int>(pixel & 0xff)) * 0x7f / 0xff);
+            line[x] = static_cast<uint32_t>(a) << 24 | r << 16 | g << 8 | b;
+        }
+    }
+    return result;
+}
+
+QImage TSpriteResolver::highlighted(const QImage& image, const QColor& color)
+{
+    QImage result = image.copy().convertToFormat(QImage::Format_ARGB32);
+    const float alpha = static_cast<float>(color.alphaF());
+    for (int y = 0; y < result.height(); ++y) {
+        auto* line = reinterpret_cast<uint32_t*>(result.scanLine(y));
+        for (int x = 0; x < result.width(); ++x) {
+            const auto a = static_cast<int>((static_cast<float>(line[x] >> 24) / 255.0f) * alpha * 255.0f);
+            line[x] = QColor(color.red(), color.green(), color.blue(), a).rgba();
+        }
+    }
+    return result.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 }
 
 std::shared_ptr<TSprite> TSpriteResolver::resolveSpriteInfo(const appearances::TAppearanceInstanceSpriteInfo& info) const

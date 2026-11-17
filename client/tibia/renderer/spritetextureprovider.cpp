@@ -30,9 +30,11 @@ SharedProviders& sharedProviders()
     return state;
 }
 
+bool spritesExist(const sprites::ISpriteIdentifier& identifier);
+
 /// Host: the spritesheets `info` draws from exist (a resolved null sprite then
 /// means a spritesheet is still loading).
-bool spritesExist(const appearances::TAppearanceInstanceSpriteInfo& info)
+bool spriteInfoSpritesExist(const appearances::TAppearanceInstanceSpriteInfo& info)
 {
     using EKind = appearances::TAppearanceInstanceSpriteInfo::EKind;
     const auto exists = [](const std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>& sprite) {
@@ -47,12 +49,27 @@ bool spritesExist(const appearances::TAppearanceInstanceSpriteInfo& info)
     }
     case EKind::Layered:
         for (const auto& layer : static_cast<const appearances::TLayeredAppearanceInstanceSpriteInfo&>(info).layers()) {
-            if (!layer || !spritesExist(*layer))
+            if (!layer || !spriteInfoSpritesExist(*layer))
                 return false;
         }
         return true;
     case EKind::Dummy:
         return false;
+    default:
+        return true;
+    }
+}
+
+/// Host: the spritesheets `identifier` draws from exist.
+bool spritesExist(const sprites::ISpriteIdentifier& identifier)
+{
+    switch (identifier.identifierKind()) {
+    case sprites::ISpriteIdentifier::SpriteInfoIdentifier:
+        return spriteInfoSpritesExist(static_cast<const appearances::TAppearanceInstanceSpriteInfo&>(identifier));
+    case sprites::ISpriteIdentifier::EffectWrapperIdentifier: {
+        const auto& wrapped = static_cast<const sprites::TEffectWrapperSpritesheetIdentifier&>(identifier).wrapped();
+        return wrapped && spritesExist(*wrapped);
+    }
     default:
         return true;
     }
@@ -116,17 +133,20 @@ QImage TSpriteTextureProvider::resolvedImage(const SpriteIdentifier& identifier,
 {
     loading = false;
     cacheable = true;
-    if (!identifier.info)
+    if (!identifier.identifier)
         return {};
-    const std::shared_ptr<sprites::TSprite> sprite =
-        sprites::TSpriteSystem::instance().resolver().resolveSpriteIdentifier(*identifier.info);
+    const sprites::ISpriteIdentifier& resolved = *identifier.identifier;
+    const std::shared_ptr<sprites::TSprite> sprite = sprites::TSpriteSystem::instance().resolver().resolve(resolved);
     if (!sprite) {
-        loading = spritesExist(*identifier.info);
+        loading = spritesExist(resolved);
         return {};
     }
+    const auto* info = resolved.identifierKind() == sprites::ISpriteIdentifier::SpriteInfoIdentifier
+        ? static_cast<const appearances::TAppearanceInstanceSpriteInfo*>(&resolved)
+        : nullptr;
     rect = QRect(QPoint(0, 0), sprite->getSize());
-    if (identifier.info->identifierKind() == 2)
-        rect = identifier.info->boundingBox();
+    if (info)
+        rect = info->boundingBox();
     QImage image = textureImage(*sprite, rect, scale, mode);
     cacheable = sprite->isCacheable() && !sprite->isHighlighted();
     if (image.isNull())
@@ -140,9 +160,8 @@ QImage TSpriteTextureProvider::resolvedImage(const SpriteIdentifier& identifier,
         }
     }
     using EKind = appearances::TAppearanceInstanceSpriteInfo::EKind;
-    const EKind kind = identifier.info->kind();
-    if (m_cache->hdMode() && kind != EKind::CreatureMark && kind != EKind::HighlightBaseplate
-        && tibia::sprites::hdFactor() > 1) {
+    const bool native = info && (info->kind() == EKind::CreatureMark || info->kind() == EKind::HighlightBaseplate);
+    if (m_cache->hdMode() && !native && tibia::sprites::hdFactor() > 1) {
         if (QImage scaled = tibia::sprites::scaleHd(image); !scaled.isNull())
             image = std::move(scaled);
     }
@@ -181,13 +200,12 @@ TSpriteTexture TSpriteTextureProvider::texture(const SpriteIdentifier& identifie
 
 QSGTexture* TSpriteTextureProvider::highlightedTexture(const SpriteIdentifier& identifier, const QColor& color)
 {
-    if (QSGTexture* baked = m_cache->bakedHighlight(identifier, color.rgba()))
-        return baked;
-    QRect rect;
-    bool loading = false;
-    bool cacheable = true;
-    QImage image = resolvedImage(identifier, 1, Qt::FastTransformation, rect, loading, cacheable);
-    return m_cache->bakeHighlight(identifier, color, std::move(image));
+    // CIP's OpenGL path: the sprite wrapped in a highlight effect.
+    const SpriteIdentifier highlighted{ std::make_shared<sprites::TEffectWrapperSpritesheetIdentifier>(
+                                            identifier.identifier,
+                                            sprites::TEffectWrapperSpritesheetIdentifier::EEffect::Highlight, color),
+                                        0 };
+    return texture(highlighted).texture;
 }
 
 void TSpriteTextureProvider::onBeforeRenderNewFrame()

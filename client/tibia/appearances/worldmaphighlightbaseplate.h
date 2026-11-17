@@ -26,7 +26,7 @@ public:
     /// CIP v9 (v5 hashes it).
     uint8_t frame() const { return m_frame; }
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override { return m_frame; }
     EKind kind() const override { return EKind::HighlightBaseplate; }
     QRect boundingBox() const override { return QRect(QPoint(0, 0), spriteSize()); }

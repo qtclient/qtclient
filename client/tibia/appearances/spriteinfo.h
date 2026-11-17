@@ -3,6 +3,7 @@
 #include "shared/cip_typed.h"
 
 #include "sprites/spritefromspritesheetinfo.h"
+#include "sprites/spriteidentifier.h"
 
 #include <QColor>
 #include <QRect>
@@ -20,7 +21,7 @@ namespace appearances {
 /// What an instance draws for one animation phase (CIP
 /// appearances::IAppearanceInstanceSpriteInfo). Texture providers are asked
 /// for the sprite an info describes and cache it by hash() and equals().
-class TAppearanceInstanceSpriteInfo : public ::tibia::CipTyped
+class TAppearanceInstanceSpriteInfo : public ::tibia::CipTyped, public sprites::ISpriteIdentifier
 {
 public:
     /// CIP v6: what kind of sprite info this is.
@@ -36,15 +37,14 @@ public:
     };
 
     virtual ~TAppearanceInstanceSpriteInfo() = default;
-    /// CIP v2: the sprite identifier kind of every sprite info (2; resource
-    /// identifiers are 1, the others 3 to 5).
-    int identifierKind() const { return 2; }
+    /// CIP v2: every sprite info is identifier kind 2.
+    int identifierKind() const override { return SpriteInfoIdentifier; }
     /// CIP v3.
     virtual std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const { return nullptr; }
     /// CIP v4: callers compare only infos of the same dynamic type.
-    virtual bool equals(const TAppearanceInstanceSpriteInfo& other) const { return this == &other; }
+    bool equals(const sprites::ISpriteIdentifier& other) const override { return this == &other; }
     /// CIP v5.
-    virtual size_t hash() const { return 0; }
+    size_t hash() const override { return 0; }
     /// CIP v6.
     virtual EKind kind() const { return EKind::Other; }
     /// CIP v7: the drawn part of the sprite.
@@ -87,7 +87,7 @@ public:
     explicit TCreatureMarkAppearanceInstanceSpriteInfo(std::vector<QColor> colors);
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::CreatureMark; }
     QRect boundingBox() const override;
@@ -114,7 +114,7 @@ public:
     explicit TSpritesheetAppearanceInstanceSpriteInfo(uint32_t spriteId);
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override { return spriteId(); }
     EKind kind() const override { return EKind::Spritesheet; }
     QRect boundingBox() const override { return m_boundingBox; }
@@ -143,7 +143,7 @@ public:
     TMaskedAppearanceInstanceSpriteInfo(uint32_t spriteId, uint32_t maskId, const TOutfitColors& colors);
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::Masked; }
     QRect boundingBox() const override { return m_boundingBox; }
@@ -168,7 +168,7 @@ public:
     TLayeredAppearanceInstanceSpriteInfo(std::vector<TAppearanceInstanceSpriteInfoPtr> layers, const QRect& boundingBox);
 
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo& other) const override;
+    bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::Layered; }
     QRect boundingBox() const override { return m_boundingBox; }
@@ -187,7 +187,7 @@ class TDummyAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSprit
 {
 public:
     std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
-    bool equals(const TAppearanceInstanceSpriteInfo&) const override { return true; }
+    bool equals(const sprites::ISpriteIdentifier&) const override { return true; }
     size_t hash() const override { return 0; }
     EKind kind() const override { return EKind::Dummy; }
     QRect boundingBox() const override { return QRect(); }

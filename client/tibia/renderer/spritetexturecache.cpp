@@ -17,12 +17,23 @@ namespace tibia::qmlcomponents {
 
 bool SpriteIdentifier::operator==(const SpriteIdentifier& other) const
 {
-    return tint == other.tint && appearances::sameSpriteInfo(info, other.info);
+    if (tint != other.tint)
+        return false;
+    if (!identifier || !other.identifier)
+        return !identifier && !other.identifier;
+    return sprites::sameSpriteIdentifier(*identifier, *other.identifier);
 }
 
 size_t qHash(const SpriteIdentifier& identifier, const size_t seed) noexcept
 {
-    return qHashMulti(seed, identifier.info ? identifier.info->hash() : 0, identifier.tint);
+    return qHashMulti(seed, identifier.identifier ? identifier.identifier->hash() : 0, identifier.tint);
+}
+
+QSize spriteSizeOf(const SpriteIdentifier& identifier)
+{
+    if (!identifier.identifier || identifier.identifier->identifierKind() != sprites::ISpriteIdentifier::SpriteInfoIdentifier)
+        return {};
+    return static_cast<const appearances::TAppearanceInstanceSpriteInfo&>(*identifier.identifier).spriteSize();
 }
 
 TSpriteTextureCache::TSpriteTextureCache(QQuickWindow* window, const bool allowEvict)
@@ -104,9 +115,6 @@ void TSpriteTextureCache::flushRetired()
 
 void TSpriteTextureCache::clear()
 {
-    for (QSGTexture* texture : std::as_const(m_baked))
-        retire(texture);
-    m_baked.clear();
     for (Entry& entry : m_textures) {
         retire(entry.texture);
         entry.texture = nullptr;
@@ -212,35 +220,6 @@ void TSpriteTextureCache::beginFrame()
 {
     ++m_frame;
     m_evicted = false;
-}
-
-QSGTexture* TSpriteTextureCache::bakedHighlight(const SpriteIdentifier& identifier, const QRgb color) const
-{
-    return m_baked.value(BakedKey{ identifier, color }, nullptr);
-}
-
-QSGTexture* TSpriteTextureCache::bakeHighlight(const SpriteIdentifier& identifier, const QColor& color, QImage image)
-{
-    if (image.isNull())
-        return nullptr;
-    // CIP solid highlight: every texel becomes the highlight colour, its alpha the
-    // sprite alpha scaled by the colour's alpha. Sprite images are RGBA8888.
-    if (image.format() != QImage::Format_RGBA8888)
-        image = image.convertToFormat(QImage::Format_RGBA8888);
-    const float alpha = static_cast<float>(color.alphaF());
-    for (int y = 0; y < image.height(); ++y) {
-        uchar* px = image.scanLine(y);
-        for (int x = 0; x < image.width(); ++x, px += 4) {
-            const auto a = static_cast<int>((static_cast<float>(px[3]) / 255.0f) * alpha * 255.0f);
-            px[0] = static_cast<uchar>(color.red());
-            px[1] = static_cast<uchar>(color.green());
-            px[2] = static_cast<uchar>(color.blue());
-            px[3] = static_cast<uchar>(a);
-        }
-    }
-    QSGTexture* texture = m_window->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas);
-    m_baked.insert(BakedKey{ identifier, color.rgba() }, texture);
-    return texture;
 }
 
 void TSpriteTextureCache::endFrame()

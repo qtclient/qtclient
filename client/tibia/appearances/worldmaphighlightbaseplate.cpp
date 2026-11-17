@@ -14,7 +14,7 @@ std::shared_ptr<TAppearanceInstanceSpriteInfo> TWorldmapHighlightBaseplateSprite
     return std::make_shared<TWorldmapHighlightBaseplateSpriteInfo>(m_frame);
 }
 
-bool TWorldmapHighlightBaseplateSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+bool TWorldmapHighlightBaseplateSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
     return m_frame == static_cast<const TWorldmapHighlightBaseplateSpriteInfo&>(other).m_frame;
 }

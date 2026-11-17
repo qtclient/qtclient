@@ -929,9 +929,8 @@ void TWorldMapRenderProvider::updateHighlightBaseplate()
     const auto info = std::make_shared<appearances::TWorldmapHighlightBaseplateSpriteInfo>(
         appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(tibia::shared::TClockService::frameMillis()));
     for (SpriteRecord& sprite : m_frame.sprites) {
-        if (sprite.sprite.info
-            && sprite.sprite.info->kind() == appearances::TAppearanceInstanceSpriteInfo::EKind::HighlightBaseplate)
-            sprite.sprite.info = info;
+        if (dynamic_cast<const appearances::TWorldmapHighlightBaseplateSpriteInfo*>(sprite.sprite.identifier.get()))
+            sprite.sprite.identifier = info;
     }
 }
 

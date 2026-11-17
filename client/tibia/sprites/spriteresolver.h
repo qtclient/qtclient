@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sprites/spritefromspritesheetinfo.h"
+#include "sprites/spriteidentifier.h"
 #include "sprites/spritesheetcache.h"
 
 #include <QObject>
@@ -34,9 +35,14 @@ public:
     /// A whole asset spritesheet as one sprite drawn at `scale`, not cached; null
     /// while it is not decompressed yet.
     virtual std::shared_ptr<TSprite> resolveAssetSpritesheet(const TSpritesheetID& spritesheetId, float scale) const;
-    /// CIP v12 for sprite infos (identifier kind 2): resolveSpriteInfo, marked as
-    /// a sprite of a resource. Null while a spritesheet is not decompressed yet.
-    std::shared_ptr<TSprite> resolveSpriteIdentifier(const appearances::TAppearanceInstanceSpriteInfo& info) const;
+    /// CIP v12: the sprite of an identifier by its kind: sprite infos (marked as
+    /// sprites of a resource), asset spritesheets and effect wrappers; resource
+    /// and minimap tile identifiers are not resolved (none are made yet). Null
+    /// while a spritesheet is not decompressed yet.
+    std::shared_ptr<TSprite> resolve(const ISpriteIdentifier& identifier) const;
+    /// CIP v22: the wrapped identifier's sprite with its effect applied, keeping
+    /// its scale and flags.
+    std::shared_ptr<TSprite> resolveEffectWrapper(const TEffectWrapperSpritesheetIdentifier& identifier) const;
     /// CIP v13: the sprite an instance's sprite info draws, by its kind
     /// (spritesheet, masked, layered); null for other kinds and while a
     /// spritesheet is not decompressed yet.
@@ -56,6 +62,11 @@ public:
     static QImage colorizedOutfit(const QImage& sprite, const QImage& mask, const appearances::TOutfitColors& colors);
     /// `top` drawn over `bottom`.
     static QImage composed(const QImage& bottom, const QImage& top);
+    /// Each colour channel half way to `color`, alpha scaled by its alpha (pixels
+    /// that end up fully transparent are cleared).
+    static QImage blended(const QImage& image, const QColor& color);
+    /// Every pixel `color`, its alpha the pixel's alpha scaled by the colour's.
+    static QImage highlighted(const QImage& image, const QColor& color);
 
 private:
     std::shared_ptr<TSpritesheetManager> m_spritesheets;

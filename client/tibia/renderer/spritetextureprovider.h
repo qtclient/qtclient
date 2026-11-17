@@ -40,8 +40,8 @@ public:
     {
         return texture(identifier, 1, Qt::FastTransformation, false);
     }
-    /// Software-renderer highlight bake of `identifier`'s texture in `color`
-    /// (host; null until the sprite is resolved).
+    /// The texture of `identifier` with every pixel in `color` (software renderer
+    /// highlight); null until the sprite is resolved.
     QSGTexture* highlightedTexture(const SpriteIdentifier& identifier, const QColor& color);
 
     /// The image a texture is made of (CIP: the provider's image helper): the

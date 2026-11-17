@@ -624,6 +624,7 @@ if(TIBIA_WITH_GAMECORE)
     sprites/spritesheetdecompressorthreadpool.cpp sprites/spritesheetdecompressorthreadpool.h
     sprites/spritesheetmanager.cpp sprites/spritesheetmanager.h
     sprites/spriteresolver.cpp sprites/spriteresolver.h
+    sprites/spriteidentifier.cpp sprites/spriteidentifier.h
     sprites/spritesystem.cpp sprites/spritesystem.h
     shared/cip_typed.h
     cip_ports/all_ports.cpp

@@ -11,14 +11,7 @@ namespace tibia::appearances {
 
 namespace {
 
-/// boost::hash_combine (64 bit): mixes `value` into `seed`.
-size_t hashCombine(const size_t seed, const size_t value)
-{
-    uint64_t x = seed + 0x9e3779b9 + value;
-    x = (x >> 32 ^ x) * 0xe9846af9b1a615dULL;
-    x = (x >> 32 ^ x) * 0xe9846af9b1a615dULL;
-    return x >> 28 ^ x;
-}
+using sprites::hashCombine;
 
 uint32_t spriteIdOf(const std::shared_ptr<const sprites::TSpriteFromSpritesheetInfo>& sprite)
 {
@@ -43,7 +36,7 @@ std::shared_ptr<TAppearanceInstanceSpriteInfo> TCreatureMarkAppearanceInstanceSp
     return std::make_shared<TCreatureMarkAppearanceInstanceSpriteInfo>(m_colors);
 }
 
-bool TCreatureMarkAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+bool TCreatureMarkAppearanceInstanceSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
     return m_colors == static_cast<const TCreatureMarkAppearanceInstanceSpriteInfo&>(other).colors();
 }
@@ -116,7 +109,7 @@ std::shared_ptr<TAppearanceInstanceSpriteInfo> TSpritesheetAppearanceInstanceSpr
     return std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(m_sprite, m_boundingBox);
 }
 
-bool TSpritesheetAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+bool TSpritesheetAppearanceInstanceSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
     return hasSameSprite(static_cast<const TSpritesheetAppearanceInstanceSpriteInfo&>(other));
 }
@@ -130,7 +123,7 @@ bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearance
 {
     if (!a || !b)
         return !a && !b;
-    return typeid(*a) == typeid(*b) && a->equals(*b);
+    return sprites::sameSpriteIdentifier(*a, *b);
 }
 
 TOutfitColors::TOutfitColors(const uint8_t head, const uint8_t body, const uint8_t legs, const uint8_t feet)
@@ -168,7 +161,7 @@ std::shared_ptr<TAppearanceInstanceSpriteInfo> TMaskedAppearanceInstanceSpriteIn
     return std::make_shared<TMaskedAppearanceInstanceSpriteInfo>(m_sprite, m_mask, m_colors, m_boundingBox);
 }
 
-bool TMaskedAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+bool TMaskedAppearanceInstanceSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
     const auto& masked = static_cast<const TMaskedAppearanceInstanceSpriteInfo&>(other);
     return m_colors == masked.m_colors && spriteIdOf(m_sprite) == spriteIdOf(masked.m_sprite)
@@ -194,7 +187,7 @@ std::shared_ptr<TAppearanceInstanceSpriteInfo> TLayeredAppearanceInstanceSpriteI
     return std::make_shared<TLayeredAppearanceInstanceSpriteInfo>(m_layers, m_boundingBox);
 }
 
-bool TLayeredAppearanceInstanceSpriteInfo::equals(const TAppearanceInstanceSpriteInfo& other) const
+bool TLayeredAppearanceInstanceSpriteInfo::equals(const sprites::ISpriteIdentifier& other) const
 {
     const auto& layered = static_cast<const TLayeredAppearanceInstanceSpriteInfo&>(other);
     if (layered.m_layers.size() != m_layers.size())

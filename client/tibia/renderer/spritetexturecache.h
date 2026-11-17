@@ -15,17 +15,17 @@ class QQuickWindow;
 class QSGTexture;
 
 namespace tibia {
-namespace appearances {
-class TAppearanceInstanceSpriteInfo;
+namespace sprites {
+class ISpriteIdentifier;
 }
 namespace qmlcomponents {
 
 /// What a sprite texture is asked for (CIP: the sprite identifier handed to
-/// TSpriteTextureProvider; the world and UI hand it an appearance instance's
-/// sprite info, identifier kind 2), with the host's mod tint.
+/// TSpriteTextureProvider; the world and UI hand it appearance instances' sprite
+/// infos, identifier kind 2), with the host's mod tint.
 struct SpriteIdentifier
 {
-    std::shared_ptr<appearances::TAppearanceInstanceSpriteInfo> info;
+    std::shared_ptr<const sprites::ISpriteIdentifier> identifier;
     /// Product colour map (mods effect tint) applied to the sprite; 0 draws it as is.
     uint8_t tint = 0;
 
@@ -33,6 +33,9 @@ struct SpriteIdentifier
 };
 
 size_t qHash(const SpriteIdentifier& identifier, size_t seed = 0) noexcept;
+
+/// The size of the sprite a sprite info identifier draws; empty for other identifiers.
+QSize spriteSizeOf(const SpriteIdentifier& identifier);
 
 /// A sprite's texture and the part of the sprite it holds (CIP:
 /// renderer::TSpriteTexture: the texture and its rectangle in sprite pixels,
@@ -73,11 +76,6 @@ public:
     void insert(const SpriteIdentifier& identifier, const TSpriteTexture& texture);
     /// True once a texture of this identifier is stored, including a sprite that does not exist.
     bool contains(const SpriteIdentifier& identifier) const { return m_textures.contains(identifier); }
-    /// Software-renderer highlight bake (CIP OpenGL TEffectWrapper path; unused
-    /// when worldmap-highlight runs): the stored baked texture, null when none.
-    QSGTexture* bakedHighlight(const SpriteIdentifier& identifier, QRgb color) const;
-    /// Bakes `image` with every texel's RGB replaced by `color` and stores it.
-    QSGTexture* bakeHighlight(const SpriteIdentifier& identifier, const QColor& color, QImage image);
     /// HD mode toggled since the last call: every texture was dropped.
     bool syncHdMode(bool hd);
     bool hdMode() const { return m_hdMode; }
@@ -117,18 +115,7 @@ private:
     void markSceneDirty() const;
 
     QQuickWindow* m_window;
-    struct BakedKey
-    {
-        SpriteIdentifier sprite;
-        QRgb color = 0;
-        bool operator==(const BakedKey&) const = default;
-    };
-    friend size_t qHash(const BakedKey& key, size_t seed) noexcept
-    {
-        return qHash(key.sprite, seed ^ (static_cast<size_t>(key.color) * 0x9e3779b97f4a7c15ull));
-    }
     QHash<SpriteIdentifier, Entry> m_textures;
-    QHash<BakedKey, QSGTexture*> m_baked;
     QVector<QSGTexture*> m_retired;
     QVector<QSGTexture*> m_graveyard;
     uint32_t m_frame = 0;

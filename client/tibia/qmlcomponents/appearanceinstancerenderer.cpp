@@ -470,7 +470,7 @@ void TAppearanceInstanceRenderer::addTransientEffects()
             const auto* missile = static_cast<const tibia::appearances::TMissileEffectInstance*>(effect.instance.get());
             const QPoint offset = missile->flightOffset();
             addSprites(effect.type, effect.missileFrom + QPoint(offset.x(), offset.y()), effect.patternX, effect.patternY, 0,
-                       m_animated ? missile->phase() : 0, false, 0);
+                       m_animated ? missile->phase() : 0);
             continue;
         }
         int phase = 0;
@@ -478,7 +478,7 @@ void TAppearanceInstanceRenderer::addTransientEffects()
         int yPattern = 0;
         if (!effect.instance->getFieldDrawFrame(phase, xPattern, yPattern))
             continue;
-        addSprites(effect.type, effect.fieldTopLeft, xPattern, yPattern, 0, m_animated ? phase : 0, false, 0);
+        addSprites(effect.type, effect.fieldTopLeft, xPattern, yPattern, 0, m_animated ? phase : 0);
     }
 }
 
@@ -495,8 +495,9 @@ int TAppearanceInstanceRenderer::outfitPhase(TAppearanceType* type, const bool m
             walk->phaseCount(), walk->loopType == animation::TAnimationInfo::ELoopType::PingPong);
         animator.setKey(millisecondsPerField > 0 ? millisecondsPerField : animation::TMovingOutfitAnimator::kMaximumCycleMs, 0);
         animator.update(tibia::shared::TClockService::frameMillis());
-        // Sprite phase 0 is idle; walk art is 1..walkPhases.
-        return 1 + static_cast<int>(animator.phase()) % std::max(1, phases - 1);
+        // Phases count the standing frame group's first, then the walking ones.
+        const int idle = type->getIdleAnimationPhases();
+        return idle + static_cast<int>(animator.phase()) % std::max(1, phases - idle);
     }
     if (type->idleAnimation())
         return m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
@@ -507,7 +508,7 @@ int TAppearanceInstanceRenderer::outfitPhase(TAppearanceType* type, const bool m
 }
 
 void TAppearanceInstanceRenderer::addSprites(TAppearanceType* type, const QPoint& fieldTopLeft, const int xPattern, const int yPattern,
-                                             const int zPattern, const int phase, const bool colorize, const uint32_t colors)
+                                             const int zPattern, const int phase)
 {
     // CIP UI renderer (and SingleObjectAppearanceInstanceRenderer): sprite ends at
     // the field's bottom-right. Do not subtract TAppearanceType displacement here —
@@ -518,14 +519,8 @@ void TAppearanceInstanceRenderer::addSprites(TAppearanceType* type, const QPoint
     const std::optional<uint32_t> sprite = type->spriteIdAt(0, xPattern, yPattern, zPattern, phase);
     if (!sprite)
         return;
-    appearances::TAppearanceInstanceSpriteInfoPtr info;
-    const std::optional<uint32_t> mask = colorize ? type->spriteIdAt(1, xPattern, yPattern, zPattern, phase) : std::nullopt;
-    if (mask)
-        info = std::make_shared<appearances::TMaskedAppearanceInstanceSpriteInfo>(*sprite, *mask,
-                                                                                 appearances::TOutfitColors::fromPacked(colors));
-    else
-        info = std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite);
-    m_sprites.push_back({ { std::move(info) }, anchor, spriteSizeOf(type) });
+    m_sprites.push_back(
+        { { std::make_shared<appearances::TSpritesheetAppearanceInstanceSpriteInfo>(*sprite) }, anchor, spriteSizeOf(type) });
 }
 
 /// As the world map draws a creature: the mount first, then the outfit and its addons
@@ -541,19 +536,22 @@ void TAppearanceInstanceRenderer::addOutfit(const TOutfitAppearanceInstanceQmlTy
         type = appearance->thingType();
     if (!type)
         return;
-    const int direction = static_cast<int>(instance.lookDirection());
-    const int xPattern = type->getNumPatternX() >= 4 ? direction : 0;
-    const int zPattern = instance.mounted() && type->getNumPatternZ() > 1 ? 1 : 0;
+    const auto direction = static_cast<uint8_t>(instance.lookDirection());
+    const uint8_t zPattern = instance.mounted() && type->getNumPatternZ() > 1 ? 1 : 0;
     const int phase = outfitPhase(type, instance.moving(), instance.movementSpeedInMillisecondsPerField());
-    const bool colorize = type->getLayers() > 1;
-    const uint32_t colors = colorize ? instance.colors() : 0;
-    for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-        if (addon == 1 && !instance.firstAddOn())
-            continue;
-        if (addon == 2 && !instance.secondAddOn())
-            continue;
-        addSprites(type, instance.position(), xPattern, addon, zPattern, phase, colorize, colors);
-    }
+    // The outfit's sequences hold its sprites (masked with the colours, the worn
+    // addons layered over it), as the world map draws creatures.
+    const uint32_t colors = instance.colors();
+    const appearances::TOutfitCustomization customization{ static_cast<uint8_t>(colors), static_cast<uint8_t>(colors >> 8),
+                                                           static_cast<uint8_t>(colors >> 16),
+                                                           static_cast<uint8_t>(colors >> 24), instance.firstAddOn(),
+                                                           instance.secondAddOn() };
+    const auto outfit = appearances::TAppearanceInstanceFactory::createCustomizableOutfit(type, direction, customization);
+    if (!outfit)
+        return;
+    outfit->setPatterns(direction, direction, zPattern, true);
+    if (appearances::TAppearanceInstanceSpriteInfoPtr info = outfit->spriteInfoAtPhase(phase))
+        m_sprites.push_back({ { std::move(info) }, instance.position() + QPoint(FieldSize, FieldSize), spriteSizeOf(type) });
 }
 
 void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQmlType& instance)
@@ -592,7 +590,7 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
             phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);
         }
     }
-    addSprites(type, instance.position(), xPattern, yPattern, zPattern, phase, false, 0);
+    addSprites(type, instance.position(), xPattern, yPattern, zPattern, phase);
 }
 
 /// CIP v54 : draw commands of every instance, their union as
@@ -686,7 +684,7 @@ QSGNode* TAppearanceInstanceRenderer::updatePaintNode(QSGNode* oldNode, UpdatePa
         }
         const QSizeF textureSize = texture->textureSize();
         // The texture holds the part drawn.rect of the sprite (HD textures more texels).
-        const QSize spriteSize = sprite.sprite.info->spriteSize();
+        const QSize spriteSize = spriteSizeOf(sprite.sprite);
         const QPointF topLeft = (QPointF(sprite.anchor) - QPointF(spriteSize.width(), spriteSize.height())
                                  + QPointF(drawn.rect.topLeft()) - m_origin)
             * m_scale;
