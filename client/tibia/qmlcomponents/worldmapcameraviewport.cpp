@@ -30,9 +30,11 @@ void TWorldMapCameraViewport::setScaleFactor(const float v)
 
 void TWorldMapCameraViewport::setSize(const QSize& v)
 {
-    if (m_size == v)
+    // CIP: a size without area is 0x0.
+    const QSize size = v.width() < 1 || v.height() < 1 ? QSize(0, 0) : v;
+    if (m_size == size)
         return;
-    m_size = v;
+    m_size = size;
     rebuildCorners();
     Q_EMIT viewportChanged();
 }
