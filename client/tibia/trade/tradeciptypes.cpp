@@ -1,4 +1,5 @@
 #include "trade/tradeciptypes.h"
+#include "game/worldtype.h"
 #include <stdexcept>
 #include <tuple>
 #include <client/outfit.h>
@@ -33,13 +34,6 @@ QString vocationName(const int vocation, const bool promoted)
     if (vocation < 1 || vocation > 5)
         return qtTrId("none");
     return qtTrId(promoted ? Promoted[vocation - 1] : Base[vocation - 1]);
-}
-
-QString worldTypeName(const int worldType)
-{
-    static constexpr const char* Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
-                                             "world_pvp_retro_hardcore" };
-    return worldType >= 0 && worldType < 5 ? qtTrId(Names[worldType]) : qtTrId("dummy_unknown");
 }
 
 } // namespace
@@ -288,7 +282,7 @@ void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMes
         data.level = static_cast<quint16>(m.level());
         // Promoted vocations come as the base vocation plus ten.
         data.vocation = vocationName(static_cast<int>(m.vocation() % 10), m.vocation() >= 10);
-        data.worldType = worldTypeName(static_cast<int>(m.world_type()));
+        data.worldType = game::worldTypeName(static_cast<int>(m.world_type()));
         data.startTime = m.start_time();
         data.endTime = m.end_time();
         data.minimumBid = m.minimum_bid();

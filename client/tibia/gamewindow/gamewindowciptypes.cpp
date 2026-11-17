@@ -1,4 +1,5 @@
 #include "gamewindowciptypes.h"
+#include "game/worldtype.h"
 
 #include <QWheelEvent>
 
@@ -298,23 +299,11 @@ TQmlTargetWorld::TQmlTargetWorld(QString worldName, const bool premiumOnly, cons
     m_lockedForTransfer = lockedForTransfer;
 }
 
-namespace {
-
-/// The PvP type's name, unknown outside 0..4.
-QString pvpTypeName(const int pvpType)
-{
-    static const char* const Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
-                                         "world_pvp_retro_hardcore" };
-    return pvpType >= 0 && pvpType < 5 ? qtTrId(Names[pvpType]) : qtTrId("dummy_unknown");
-}
-
-}
-
 QString TQmlTargetWorld::detailedWorldName() const
 {
     if (!m_premiumOnly && !m_lockedForTransfer)
-        return qtTrId("characterworldtransfer_world_name").arg(m_worldName).arg(pvpTypeName(m_pvpType));
-    const QString detail = qtTrId("characterworldtransfer_world_name_detail").arg(m_worldName).arg(pvpTypeName(m_pvpType));
+        return qtTrId("characterworldtransfer_world_name").arg(m_worldName).arg(::tibia::game::worldTypeName(m_pvpType));
+    const QString detail = qtTrId("characterworldtransfer_world_name_detail").arg(m_worldName).arg(::tibia::game::worldTypeName(m_pvpType));
     if (!m_premiumOnly)
         return detail.arg(qtTrId("characterworldtransfer_world_locked"));
     if (!m_lockedForTransfer)

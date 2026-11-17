@@ -1,5 +1,7 @@
 #include "characterselectioncontroller.h"
 #include "gamewindow/smoothfiltering.h"
+#include "game/serversave.h"
+#include "game/worldtype.h"
 
 #include "config/clientoptions.h"
 #include "input/gameaction.h"
@@ -24,14 +26,6 @@ config::TClientOptions* options() { return config::TClientOptions::instance(); }
 
 QByteArray pinHash(const QString& name) { return shared::THashHelper().getSha256Hash(name.toLocal8Bit()); }
 
-/// The name of a world's PvP type.
-QString worldTypeName(const int pvpType)
-{
-    static constexpr const char* Names[] = { "world_pvp_open", "world_pvp_optional", "world_pvp_hardcore", "world_pvp_retro_open",
-                                             "world_pvp_retro_hardcore" };
-    return qtTrId(uint(pvpType) < 5 ? Names[pvpType] : "dummy_unknown");
-}
-
 /// The world column: its name, and "experimental" for a preview world.
 QString worldColumn(const authentication::TWorld& world)
 {
@@ -41,34 +35,13 @@ QString worldColumn(const authentication::TWorld& world)
     return parts.join(QStringLiteral(", "));
 }
 
-QString worldRulesColumn(const authentication::TWorld& world) { return QStringList{ worldTypeName(world.pvpType) }.join(QStringLiteral(", ")); }
+QString worldRulesColumn(const authentication::TWorld& world) { return QStringList{ game::worldTypeName(world.pvpType) }.join(QStringLiteral(", ")); }
 
 /// Daily reward states in the order the column sorts them.
 int dailyRewardRank(const int state)
 {
     static constexpr int Ranks[] = { 1, 0, 2, -1 };
     return uint(state) < 4 ? Ranks[state] : -1;
-}
-
-/// 10:00 Berlin time on `date`: the server save.
-QDateTime serverSave(const QDate& date)
-{
-#if QT_CONFIG(timezone)
-    return QDateTime(date, QTime(10, 0), QTimeZone("Europe/Berlin"));
-#else
-    const QDate lastMarch(date.year(), 3, 31);
-    const QDate lastOctober(date.year(), 10, 31);
-    const bool summer = date >= lastMarch.addDays(-(lastMarch.dayOfWeek() % 7)) && date < lastOctober.addDays(-(lastOctober.dayOfWeek() % 7));
-    return QDateTime(date, QTime(10, 0), QTimeZone::fromSecondsAheadOfUtc(summer ? 7200 : 3600));
-#endif
-}
-
-/// Today's server save, or yesterday's before it.
-QDateTime lastServerSave()
-{
-    const QDateTime now = QDateTime::currentDateTime();
-    const QDateTime today = serverSave(now.date());
-    return now < today ? today.addDays(-1) : today;
 }
 
 }
@@ -403,7 +376,7 @@ void TCharacterSelectionController::onMorePremiumFeaturesClicked()
 void TCharacterSelectionController::checkServerSave()
 {
     const uint now = uint(QDateTime::currentSecsSinceEpoch());
-    if (m_lastServerSaveCheck < uint(lastServerSave().toSecsSinceEpoch())) {
+    if (m_lastServerSaveCheck < uint(game::lastServerSave().toSecsSinceEpoch())) {
         for (authentication::TCharacter& character : m_characters) {
             if (character.dailyRewardState == 0)
                 character.dailyRewardState = 1;

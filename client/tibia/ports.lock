@@ -17544,6 +17544,7 @@ sub_e08984ede033#2	e08984ede033e388	skip	generated: inherited constructor of the
 sub_e08faa8f5a71	e08faa8f5a716eb4	tested	tutorial/sessiondumphintpublishgameaction.cpp:TSessiondumpHintClearOldestMessage::TSessiondumpHintClearOldestMessage	test=tests/client/sessiondumphints_test.cpp
 sub_e08faa8f5a71#2	e08faa8f5a716eb4	tested	tutorial/sessiondumphintpublishgameaction.cpp:TSessiondumpHintClearOldestMessage::TSessiondumpHintClearOldestMessage	test=tests/client/sessiondumphints_test.cpp
 sub_e0978a8754d0#2	e0978a8754d0ef8b	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
+sub_e09cc8db032c	e09cc8db032cc183	ported	game/worldtype.h:worldTypeName
 sub_e0a3352b78d7	e0a3352b78d7c15e	inlined	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::refreshTactics
 sub_e0a6eb1afde2	e0a6eb1afde255f6	ported	gamewindow/marketcontroller.cpp:TDisplayMarketOffer::itemNameWithTier
 sub_e0b073441789	e0b073441789e6e5	ported	config/sidebaroptions.cpp:serializeBaseOnly
@@ -18822,6 +18823,7 @@ sub_fb5ceecc4405	fb5ceecc4405ad2e	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_fb5eb2fea4bf	fb5eb2fea4bf98c6	inlined	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::showDialogTab
 sub_fb5eb712f38b	fb5eb712f38b9884	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_fb6f242cc816	fb6f242cc816ee2e	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
+sub_fb72001e46a2	fb72001e46a210ea	ported	game/serversave.h:lastServerSave
 sub_fb8077bdf225	fb8077bdf225db4c	skip	library: std::sort instantiation (introsort, sort3-5, partition, insertion and heap helpers) over the gain/waste rows
 sub_fb84eca1e7c4#7	fb84eca1e7c45345	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_fb862e242e86	fb862e242e86532e	ported	config/optionspages.cpp:percentOf

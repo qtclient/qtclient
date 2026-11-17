@@ -1,4 +1,5 @@
 #include "housesinfodialogcontroller.h"
+#include "game/serversave.h"
 
 #include "qmlcomponents/worldmapcameraviewport.h"
 
@@ -65,27 +66,6 @@ QString dateMulti(const qint64 secs)
 {
     qmlcomponents::TTextHelperQmlService helper;
     return helper.createQmlMultiString(dateBerlin(secs), shortDateBerlin(secs));
-}
-
-/// 10:00 Berlin time on `date`: the server save.
-QDateTime serverSave(const QDate& date)
-{
-#if QT_CONFIG(timezone)
-    return QDateTime(date, QTime(10, 0), QTimeZone("Europe/Berlin"));
-#else
-    const QDate lastMarch(date.year(), 3, 31);
-    const QDate lastOctober(date.year(), 10, 31);
-    const bool summer = date >= lastMarch.addDays(-(lastMarch.dayOfWeek() % 7)) && date < lastOctober.addDays(-(lastOctober.dayOfWeek() % 7));
-    return QDateTime(date, QTime(10, 0), QTimeZone::fromSecondsAheadOfUtc(summer ? 7200 : 3600));
-#endif
-}
-
-/// Today's server save, or yesterday's before it.
-QDateTime lastServerSaveTime()
-{
-    const QDateTime now = QDateTime::currentDateTime();
-    const QDateTime today = serverSave(now.date());
-    return now < today ? today.addDays(-1) : today;
 }
 
 /// The rent with thousands shortcuts.
@@ -603,9 +583,9 @@ uint THousesInfoDialogController::currentHouseId() const
     return m_proxy->rowCount() > 0 ? m_currentHouseId : 0;
 }
 
-QDateTime THousesInfoDialogController::lastServerSave() const { return lastServerSaveTime(); }
+QDateTime THousesInfoDialogController::lastServerSave() const { return game::lastServerSave(); }
 
-QDateTime THousesInfoDialogController::in30DaysServerSave() const { return lastServerSaveTime().addDays(30); }
+QDateTime THousesInfoDialogController::in30DaysServerSave() const { return game::lastServerSave().addDays(30); }
 
 /// CIP is empty; product selects a town/house so the 3D preview has a row.
 void THousesInfoDialogController::showDialogTab()
@@ -779,7 +759,7 @@ void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
-    m_pendingTimestamp = static_cast<quint32>(serverSave(Date).toSecsSinceEpoch());
+    m_pendingTimestamp = static_cast<quint32>(game::serverSave(Date).toSecsSinceEpoch());
     confirmAction(2, qtTrId("houses_action_confirm_move_out_message").arg(house->name, dateBerlin(m_pendingTimestamp)));
 }
 
@@ -789,7 +769,7 @@ void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, con
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
-    m_pendingTimestamp = static_cast<quint32>(serverSave(Date).toSecsSinceEpoch());
+    m_pendingTimestamp = static_cast<quint32>(game::serverSave(Date).toSecsSinceEpoch());
     m_pendingName = NewOwner;
     m_pendingAmount = Price;
     confirmAction(3, qtTrId("houses_action_confirm_transfer_message")
