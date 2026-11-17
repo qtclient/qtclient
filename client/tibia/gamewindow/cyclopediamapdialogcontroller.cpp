@@ -1,5 +1,7 @@
 #include "cyclopediamapdialogcontroller.h"
 
+#include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
+
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "cyclopedia/cyclopediainterfaces.h"
@@ -104,6 +106,7 @@ TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const TCy
 
 TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapDialogController(parent)
+    , m_configuration(new cyclopedia::TCyclopediaMapCharacterConfigurationStorage(this))
     , m_storage(new cyclopedia::TCyclopediaMapStorage(this))
     , m_confirmDialog(new TMessageDialogController(this))
 {
@@ -131,8 +134,8 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     // (cip_gen bools default false). Without this the Navigation controls
     // (zoom / layer / rose) stay in a collapsed contentLoader.
     setShowMapMarkerPanel(true);
-    setShowNavigationPanel(true);
-    setShowAreaAndSubAreaInfoPanel(true);
+    applyCharacterConfiguration();
+    registerCharacterConfiguration();
 
     // CIP / / : viewpoint, area and
     // donation changes rebuild the selection's info.
@@ -179,8 +182,41 @@ void TCyclopediaMapDialogController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
+void TCyclopediaMapDialogController::registerCharacterConfiguration()
+{
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (m_configurationRegistered || !storages)
+        return;
+    m_configurationRegistered = true;
+    storages->addCharacterConfiguration(m_configuration);
+    connect(m_configuration, &cyclopedia::TCyclopediaMapCharacterConfigurationStorage::configurationChangedFromUserInput, storages,
+            &analysers::TAnalyserStorages::onConfigurationChanged);
+    connect(storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this,
+            &TCyclopediaMapDialogController::applyCharacterConfiguration);
+    applyCharacterConfiguration();
+}
+
+void TCyclopediaMapDialogController::applyCharacterConfiguration()
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowNavigationPanel(m_configuration->showNavigation());
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(m_configuration->showAreaAndSubAreaInfo());
+}
+
+void TCyclopediaMapDialogController::setShowNavigationPanel(const bool v)
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowNavigationPanel(v);
+    m_configuration->setShowNavigation(v);
+}
+
+void TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(const bool v)
+{
+    cip::tibia::gamewindow::TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(v);
+    m_configuration->setShowAreaAndSubAreaInfo(v);
+}
+
 void TCyclopediaMapDialogController::showDialogTab()
 {
+    registerCharacterConfiguration();
     m_totalGoldBalance = static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
     Q_EMIT goldBalanceChanged();
     updateTimeDisplay();

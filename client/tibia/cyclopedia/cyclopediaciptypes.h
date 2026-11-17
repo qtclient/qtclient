@@ -58,12 +58,7 @@ public:
 
 // TCreatureTrackerStorage — real implementation in creaturetrackerstorage.h.
 
-class TCyclopediaMapCharacterConfigurationStorage final : public cip::tibia::cyclopedia::TCyclopediaMapCharacterConfigurationStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TCyclopediaMapCharacterConfigurationStorage::TCyclopediaMapCharacterConfigurationStorage;
-};
+// TCyclopediaMapCharacterConfigurationStorage — real implementation in cyclopediamapcharacterconfigurationstorage.h.
 
 class TCyclopediaMapGameActionProvider final : public ::tibia::CipTyped {};
 

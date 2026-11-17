@@ -560,6 +560,7 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/cyclopediamapdata.cpp cyclopedia/cyclopediamapdata.h
     cyclopedia/cyclopediamapstaticdatastorage.cpp cyclopedia/cyclopediamapstaticdatastorage.h
     cyclopedia/cyclopediamapstaticdatastoragehost.cpp
+    cyclopedia/cyclopediamapcharacterconfigurationstorage.cpp cyclopedia/cyclopediamapcharacterconfigurationstorage.h
     gamewindow/cyclopediamapdialogcontroller.cpp gamewindow/cyclopediamapdialogcontroller.h
     gamewindow/magicalarchivedialogcontroller.cpp gamewindow/magicalarchivedialogcontroller.h
     qmlcomponents/worldmapcameraviewport.cpp qmlcomponents/worldmapcameraviewport.h
