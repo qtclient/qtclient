@@ -18,6 +18,11 @@ namespace tibia::appearances {
 
 class TAppearanceInstanceTracker;
 class TAppearanceInstanceGenericStoragesManager;
+}
+namespace tibia::sprites {
+class TAppearanceTypeSpritesheetMapping;
+}
+namespace tibia::appearances {
 class TAppearanceInstanceGenericStorage;
 
 /// CIP appearances::TAppearancesManager: the appearance catalog (objects,
@@ -28,7 +33,11 @@ class TAppearancesManager
 public:
     static TAppearancesManager& instance();
 
+    /// Counts the live appearance instances (created with the appearances).
     TAppearanceInstanceTracker& tracker();
+    const std::shared_ptr<TAppearanceInstanceTracker>& sharedTracker();
+    /// The spritesheets of each appearance type, filled by postprocessAppearances.
+    const std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping>& spritesheetMapping() const { return m_spritesheetMapping; }
     TAppearanceInstanceGenericStoragesManager& storages();
     TAppearanceInstanceGenericStorage& genericStorage();
 
@@ -139,7 +148,8 @@ private:
     /// Pairs each changed-to-expire object with the object it expires from.
     void linkExpireCounterparts();
 
-    std::unique_ptr<TAppearanceInstanceTracker> m_tracker;
+    std::shared_ptr<sprites::TAppearanceTypeSpritesheetMapping> m_spritesheetMapping;
+    std::shared_ptr<TAppearanceInstanceTracker> m_tracker;
     std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
     std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
 

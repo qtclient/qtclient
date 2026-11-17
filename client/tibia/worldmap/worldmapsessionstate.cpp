@@ -521,29 +521,31 @@ bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const P
 
     // The position form names the field and slot the creature leaves; the id
     // form moves it from where it stands.
-    const Position from = byId ? row->position() : oldPos;
-    int elevationFrom = 0;
-    int elevationTo = 0;
+    const bool isLocal = creatureId == tibia::game::localPlayerId();
     if (byId) {
+        const Position from = row->position();
         placeCreatureId(creatureId, newPos, -1);
-        elevationFrom = map->elevationAt(from);
-        elevationTo = map->elevationAt(newPos);
-    } else {
-        tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos);
-        if (!fromTile || fromTile->stackCreatureId(oldStack) != creatureId)
-            return false;
-        elevationFrom = map->elevationAt(oldPos);
-        elevationTo = map->elevationAt(newPos);
-        fromTile->removeThingAtStackPos(oldStack);
-        notificateTileUpdate(oldPos, creatureId == tibia::game::localPlayerId(), tibia::client::OPERATION_REMOVE);
-        placeCreatureId(creatureId, newPos, -1);
-        const auto look = tibia::creatures::lookDirectionAfter(
-            static_cast<tibia::creatures::ECreatureLookDirection>(row->patternX()),
-            tibia::creatures::directionBetween(tibia::worldmap::TWorldMapCoordinate(from),
-                                               tibia::worldmap::TWorldMapCoordinate(newPos)));
-        row->setDirection(static_cast<uint8_t>(look));
+        map->moveCreature(*row, from, newPos, map->elevationAt(from), map->elevationAt(newPos));
+        return true;
     }
-    map->moveCreature(*row, from, newPos, elevationFrom, elevationTo);
+    tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos);
+    if (!fromTile || fromTile->stackCreatureId(oldStack) != creatureId)
+        return false;
+    if (!getOrCreateTile(newPos)) {
+        // A step out of the known area only leaves the field.
+        fromTile->removeThingAtStackPos(oldStack);
+        notificateTileUpdate(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+        return true;
+    }
+    if (!map->moveCreatureInstance(tibia::worldmap::TWorldMapCoordinate(oldPos), oldStack,
+                                   tibia::worldmap::TWorldMapCoordinate(newPos)))
+        return false;
+    notificateTileUpdate(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+    if (isLocal) {
+        setLocalPlayerPosition(newPos);
+        localPlayerAppeared();
+    }
+    notificateTileUpdate(newPos, isLocal, tibia::client::OPERATION_ADD);
     return true;
 }
 

@@ -593,11 +593,13 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapworldfeed.cpp minimap/minimapworldfeed.h
     minimap/waypointcosts.cpp minimap/waypointcosts.h
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
+    protocol/objectdata.cpp protocol/objectdata.h
     network/gameserverconnection.cpp network/gameserverconnection.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
     appearances/genericstorage.h
+    appearances/appearanceinstancetracker.cpp appearances/appearanceinstancetracker.h
     appearances/spriteinfo.cpp appearances/spriteinfo.h
     appearances/worldmaphighlightbaseplate.cpp appearances/worldmaphighlightbaseplate.h
     animation/animator.cpp animation/animator.h
@@ -614,6 +616,7 @@ if(TIBIA_WITH_GAMECORE)
     sprites/spriteinspritesheet.cpp sprites/spriteinspritesheet.h
     sprites/spritefromspritesheetinfo.cpp sprites/spritefromspritesheetinfo.h
     sprites/spritesheetsmetadatamanager.cpp sprites/spritesheetsmetadatamanager.h
+    sprites/appearancetypespritesheetmapping.cpp sprites/appearancetypespritesheetmapping.h
     sprites/spritesheetcache.cpp sprites/spritesheetcache.h
     sprites/spritesheetdecompressor.cpp sprites/spritesheetdecompressor.h
     sprites/spritesheetdecompressorsynchronous.cpp sprites/spritesheetdecompressorsynchronous.h

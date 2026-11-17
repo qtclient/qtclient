@@ -1,4 +1,6 @@
 #include "appearances/appearanceinstance.h"
+#include "appearances/appearanceinstancetracker.h"
+#include "protocol/objectdata.h"
 #include "config/clientsettings.h"
 
 #include "tibia/assets/things.h"
@@ -381,30 +383,48 @@ TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::vector
 {
 }
 
+template <class T, class... Args>
+std::shared_ptr<T> TAppearanceInstanceFactory::makeTracked(TAppearanceType* type, Args&&... args)
+{
+    // The tracker counts the instance until its last owner lets it go.
+    const std::shared_ptr<TAppearanceInstanceTracker> tracker = TAppearancesManager::instance().sharedTracker();
+    T* instance = new T(type, std::forward<Args>(args)...);
+    if (!type)
+        return std::shared_ptr<T>(instance);
+    tracker->instanceCreated(*type);
+    // The type may be gone when the last owner lets go at exit: the key is kept.
+    return std::shared_ptr<T>(instance, [tracker, category = type->category(), id = type->getId()](T* created) {
+        tracker->instanceDestroyed(category, id);
+        delete created;
+    });
+}
+
 namespace {
 
-/// An object of `type`. The protocol does not say which kind of object it
-/// sends, so the type's flags pick it, in the order CipSoft tests the kinds of
-/// a protocol object: liquid, cumulative, container, show-off socket,
-/// upgradeable, wearout, expire, deco item kit, then a plain object.
-TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, const uint32_t liquidType)
+/// An object of `type` read from an inventory item: the protocol's object
+/// kinds are exclusive and the first one the object belongs to decides
+/// (liquid, cumulative, container, show-off socket, upgradeable, wearout,
+/// expire, deco item kit, then a plain object).
+TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, const uint32_t liquidType, const uint8_t tier)
 {
-    if (type->isFluidContainer() || type->isSplash())
-        return std::make_shared<TLiquidObjectAppearanceInstance>(type, liquidType);
-    if (type->isStackable())
-        return std::make_shared<TCumulativeObjectAppearanceInstance>(type, count);
-    if (type->isContainer())
-        return std::make_shared<TContainerObjectAppearanceInstance>(type);
-    if (type->isPodium())
-        return std::make_shared<TShowOffSocketAppearanceInstance>(type);
-    if (type->getClassification() > 0)
-        return std::make_shared<TUpgradeableObjectAppearanceInstance>(type);
-    if (type->hasWearOut())
-        return std::make_shared<TWearoutObjectAppearanceInstance>(type);
-    if (type->hasExpire())
-        return std::make_shared<TExpireObjectAppearanceInstance>(type);
-    if (type->isDecoKit())
-        return std::make_shared<TDecoItemKitAppearanceInstance>(type);
+    const uint16_t id = type->getId();
+    const auto& special = TAppearancesManager::instance().specialAppearancesForProtocolParsing();
+    if (special.isLiquid(id))
+        return TAppearanceInstanceFactory::createLiquidObject(id, liquidType);
+    if (special.isCumulative(id))
+        return TAppearanceInstanceFactory::createCumulativeObject(id, static_cast<uint8_t>(count));
+    if (special.isContainer(id))
+        return TAppearanceInstanceFactory::makeTracked<TContainerObjectAppearanceInstance>(type);
+    if (special.isShowOffSocket(id))
+        return TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance>(type);
+    if (special.isUpgradeable(id))
+        return TAppearanceInstanceFactory::createUpgradeableObject(id, tier);
+    if (special.isWearOut(id))
+        return TAppearanceInstanceFactory::createWearoutObject(type, 0, false);
+    if (special.isExpire(id) || special.isExpireStop(id))
+        return TAppearanceInstanceFactory::createExpireObject(type, 0, false, false);
+    if (special.isDecoKit(id))
+        return TAppearanceInstanceFactory::createDecoItemKitObject(id, 0);
     return TAppearanceInstanceFactory::createObject(type);
 }
 
@@ -441,27 +461,94 @@ bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category,
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
 {
     if (!type || type->isNull())
-        return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
 
     switch (type->getCategory()) {
         case ThingCategoryCreature:
             return createOutfit(type, Outfit(), 2);
         case ThingCategoryEffect:
-            return std::make_shared<TFieldEffectInstance>(type);
+            return makeTracked<TFieldEffectInstance>(type);
         case ThingCategoryMissile:
-            return std::make_shared<TMissileEffectInstance>(type);
+            return makeTracked<TMissileEffectInstance>(type);
         case ThingCategoryItem:
-            return createItem(type, 0, 0);
+            return createItem(type, 0, 0, 0);
         default:
-            return std::make_shared<TWorldMapAppearanceInstance>(type);
+            return makeTracked<TWorldMapAppearanceInstance>(type);
     }
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const uint16_t id)
+{
+    return createObject(appearanceType(ThingCategoryItem, id));
+}
+
+std::shared_ptr<TCumulativeObjectAppearanceInstance> TAppearanceInstanceFactory::createCumulativeObject(const uint16_t id,
+                                                                                                      const uint8_t count)
+{
+    return makeTracked<TCumulativeObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), count);
+}
+
+std::shared_ptr<TLiquidObjectAppearanceInstance> TAppearanceInstanceFactory::createLiquidObject(const uint16_t id,
+                                                                                              const uint32_t liquidType)
+{
+    return makeTracked<TLiquidObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), liquidType);
+}
+
+std::shared_ptr<TDecoItemKitAppearanceInstance> TAppearanceInstanceFactory::createDecoItemKitObject(const uint16_t id,
+                                                                                                  const uint16_t decoItemId)
+{
+    return makeTracked<TDecoItemKitAppearanceInstance>(appearanceType(ThingCategoryItem, id), decoItemId);
+}
+
+std::shared_ptr<TUpgradeableObjectAppearanceInstance> TAppearanceInstanceFactory::createUpgradeableObject(const uint16_t id,
+                                                                                                        const uint8_t tier)
+{
+    return makeTracked<TUpgradeableObjectAppearanceInstance>(appearanceType(ThingCategoryItem, id), tier);
+}
+
+std::shared_ptr<TWearoutObjectAppearanceInstance> TAppearanceInstanceFactory::createWearoutObject(TAppearanceType* type,
+                                                                                                const uint32_t charges,
+                                                                                                const bool brandNew)
+{
+    return makeTracked<TWearoutObjectAppearanceInstance>(type, charges, brandNew);
+}
+
+std::shared_ptr<TExpireObjectAppearanceInstance>
+TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int64_t remainingMilliseconds,
+                                               const bool brandNew, const bool stopped)
+{
+    return makeTracked<TExpireObjectAppearanceInstance>(type, remainingMilliseconds, brandNew, stopped,
+                                                        static_cast<int64_t>(tibia::shared::TClockService::frameMillis()));
+}
+
+std::shared_ptr<TObjectOutfitAppearanceInstance> TAppearanceInstanceFactory::createObjectOutfit(const uint16_t id)
+{
+    return makeTracked<TObjectOutfitAppearanceInstance>(appearanceType(ThingCategoryItem, id));
+}
+
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::protocol::TObjectData& object)
+{
+    if (object.isCumulative())
+        return createCumulativeObject(object.id, object.count);
+    if (object.isLiquid())
+        return createLiquidObject(object.id, object.liquidType);
+    if (object.isUpgradeable())
+        return createUpgradeableObject(object.id, object.upgradeClassification);
+    if (object.isDecoItemKit())
+        return createDecoItemKitObject(object.id, object.decoItemId);
+    TAppearanceInstancePtr instance = createObject(object.id);
+    if (object.isHangable()) {
+        if (const auto hangable = std::dynamic_pointer_cast<THangableObjectAppearanceInstance>(instance))
+            hangable->setHangSide(static_cast<uint8_t>(object.hookState));
+    }
+    return instance;
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(TAppearanceType* type)
 {
     if (type && type->isHangable())
-        return std::make_shared<THangableObjectAppearanceInstance>(type);
-    return std::make_shared<TPatternObjectAppearanceInstance>(type);
+        return makeTracked<THangableObjectAppearanceInstance>(type);
+    return makeTracked<TPatternObjectAppearanceInstance>(type);
 }
 
 std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(TAppearanceType* type, const Outfit& outfit,
@@ -471,9 +558,9 @@ std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOut
         type && (type->getLayers() > 1 || (type->getNumPatternY() > 1 && (outfit.getAddons() & 3) != 0));
     std::shared_ptr<TOutfitAppearanceInstance> instance;
     if (customizable)
-        instance = std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
+        instance = makeTracked<TCustomizableOutfitAppearanceInstance>(type);
     else
-        instance = std::make_shared<TOutfitAppearanceInstance>(type);
+        instance = makeTracked<TOutfitAppearanceInstance>(type);
     instance->setOutfitLook(outfit, direction);
     return instance;
 }
@@ -484,7 +571,7 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanc
 {
     if (!type || type->isNull() || type->getCategory() != ThingCategoryItem)
         return fromThingType(type);
-    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType);
+    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType, tier);
     applyProtocolObjectState(instance, count, subType, tier, hangSide);
     return instance;
 }
@@ -495,6 +582,8 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::cre
         return stored.outfitAppearance();
     TAppearanceType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
     auto instance = fromOutfit(stored.outfit(), type);
+    if (instance)
+        instance->linkCreature(stored.creatureId());
     if (const auto outfitInstance = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(instance))
         // CIP outfit patternX is the collapsed cardinal (N/E/S/W), not raw diagonal dirs.
         outfitInstance->setOutfitLook(stored.outfit(), stored.patternX());
@@ -505,7 +594,7 @@ std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::create
                                                                                                     const Position& field)
 {
     TAppearanceType* type = tibia::game::rawThingType(kind == 1 ? 57 : 56, ThingCategoryEffect);
-    auto effect = std::make_shared<TTutorialFieldEffectInstance>(type);
+    auto effect = makeTracked<TTutorialFieldEffectInstance>(type);
     effect->start(field, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     return effect;
 }
@@ -515,11 +604,11 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outf
     if (!type)
         type = tibia::game::rawThingType(outfit.getId(), outfit.getCategory());
     if (outfit.isItem())
-        return std::make_shared<TObjectOutfitAppearanceInstance>(type);
+        return makeTracked<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())
-        return std::make_shared<TEffectInstance>(type);
+        return makeTracked<TEffectInstance>(type);
     if (!type || type->isNull())
-        return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
     return createOutfit(type, outfit, 2);
 }
 
@@ -611,6 +700,20 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
     }
     layers.push_back(FigureLayer{ type, -type->getDisplacement().x(), -type->getDisplacement().y(), 0, 0, 0, phase, false, 0 });
     return layers;
+}
+
+}
+
+namespace tibia::appearances {
+
+bool TExpireObjectAppearanceInstance::updateRemainingTime(const int64_t nowMilliseconds)
+{
+    const int64_t passed = nowMilliseconds - m_lastUpdateMilliseconds;
+    if (m_stopped || passed < 1000 || m_remainingMilliseconds <= 0)
+        return false;
+    m_remainingMilliseconds = std::max<int64_t>(m_remainingMilliseconds - passed, 0);
+    m_lastUpdateMilliseconds = nowMilliseconds;
+    return true;
 }
 
 }

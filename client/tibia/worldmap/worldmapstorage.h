@@ -86,6 +86,18 @@ public:
     int elevationAt(const Position& position);
     /// Animate `creature` stepping from `from` to `to`. Anything other than a
     /// single step drops its motion instead.
+    /// The appearance instance at `stackPos` of the field at `coordinate`; null
+    /// without the field or the position.
+    appearances::TAppearanceInstancePtr appearanceInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);
+    /// The creature instance at `stackPos`; throws std::runtime_error with the
+    /// field's stack when another instance or none is there.
+    appearances::TAppearanceInstancePtr creatureInstanceAt(const TWorldMapCoordinate& coordinate, int stackPos);
+    /// Puts a creature's instance on the field at `target` and the creature there;
+    /// throws std::runtime_error without the field or a linked creature.
+    void placeCreatureInstance(const appearances::TAppearanceInstancePtr& instance, const TWorldMapCoordinate& target);
+    /// Moves the creature at `stackPos` of `from` to `target`: it turns towards
+    /// the step and starts walking it. False when no creature is there.
+    bool moveCreatureInstance(const TWorldMapCoordinate& from, int stackPos, const TWorldMapCoordinate& target);
     void moveCreature(creatures::TCreature& creature, const Position& from, const Position& to, int elevationFrom,
                       int elevationTo);
 

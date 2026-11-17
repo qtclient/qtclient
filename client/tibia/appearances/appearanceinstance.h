@@ -20,6 +20,9 @@
 namespace tibia::appearances {
 class TAppearanceType;
 }
+namespace tibia::protocol {
+struct TObjectData;
+}
 using TAppearanceType = tibia::appearances::TAppearanceType;
 class Item;
 
@@ -64,10 +67,14 @@ public:
     /// The pixels the object is lifted by the objects below it on its field.
     uint8_t elevation() const { return m_elevation; }
     void setElevation(uint8_t elevation) { m_elevation = elevation; }
+    /// The creature this instance draws on a field (0 for objects and effects).
+    tibia::creatures::TCreatureID creatureId() const { return m_creatureId; }
+    void linkCreature(tibia::creatures::TCreatureID creatureId) { m_creatureId = creatureId; }
 
 protected:
     TAppearanceType* m_type = nullptr;
     uint8_t m_elevation = 0;
+    tibia::creatures::TCreatureID m_creatureId = 0;
 };
 
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
@@ -177,22 +184,64 @@ public:
     void applyWorldMapCoordinate(const Position& pos);
 };
 
+/// An object with charges.
 class TWearoutObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit TWearoutObjectAppearanceInstance(TAppearanceType* type, uint32_t charges = 0, bool brandNew = false)
+        : TObjectAppearanceInstance(type), m_charges(charges), m_brandNew(brandNew)
+    {
+    }
+
+    uint32_t charges() const { return m_charges; }
+    bool isBrandNew() const { return m_brandNew; }
+
+private:
+    uint32_t m_charges = 0;
+    bool m_brandNew = false;
 };
 
+/// An object that expires: its remaining time counts down while it is not stopped.
 class TExpireObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit TExpireObjectAppearanceInstance(TAppearanceType* type, int64_t remainingMilliseconds = 0,
+                                             bool brandNew = false, bool stopped = false, int64_t nowMilliseconds = 0)
+        : TObjectAppearanceInstance(type)
+        , m_lastUpdateMilliseconds(nowMilliseconds)
+        , m_remainingMilliseconds(remainingMilliseconds)
+        , m_brandNew(brandNew)
+        , m_stopped(stopped)
+    {
+    }
+
+    /// Counts the remaining time down by the time passed since the last count,
+    /// once a second has passed; true when it counted.
+    bool updateRemainingTime(int64_t nowMilliseconds);
+    int64_t remainingMilliseconds() const { return m_remainingMilliseconds; }
+    bool isBrandNew() const { return m_brandNew; }
+    bool isStopped() const { return m_stopped; }
+
+private:
+    int64_t m_lastUpdateMilliseconds = 0;
+    int64_t m_remainingMilliseconds = 0;
+    bool m_brandNew = false;
+    bool m_stopped = false;
 };
 
+/// A deco item kit: the kit of the object it unpacks to.
 class TDecoItemKitAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit TDecoItemKitAppearanceInstance(TAppearanceType* type, uint16_t decoItemId = 0)
+        : TObjectAppearanceInstance(type), m_decoItemId(decoItemId)
+    {
+    }
+
+    uint16_t decoItemId() const { return m_decoItemId; }
+
+private:
+    uint16_t m_decoItemId = 0;
 };
 
 /// CIP show-off socket (house podium). Owns pedestal visibility + figure look
@@ -235,10 +284,14 @@ private:
     bool m_hasLook = false;
 };
 
+/// An object of an upgrade classification, drawn with its tier.
 class TUpgradeableObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit TUpgradeableObjectAppearanceInstance(TAppearanceType* type, uint8_t tier = 0) : TObjectAppearanceInstance(type)
+    {
+        m_tier = tier;
+    }
 };
 
 class TOutfitAppearanceInstance : public TAppearanceInstance
@@ -428,6 +481,27 @@ public:
     /// An object with no state of its own: hangable objects hang, every other
     /// one follows its field's pattern.
     static TAppearanceInstancePtr createObject(TAppearanceType* type);
+    /// The object `id` with no state of its own (createObject of its type).
+    static TAppearanceInstancePtr createObject(uint16_t id);
+    static std::shared_ptr<TCumulativeObjectAppearanceInstance> createCumulativeObject(uint16_t id, uint8_t count);
+    static std::shared_ptr<TLiquidObjectAppearanceInstance> createLiquidObject(uint16_t id, uint32_t liquidType);
+    static std::shared_ptr<TDecoItemKitAppearanceInstance> createDecoItemKitObject(uint16_t id, uint16_t decoItemId);
+    static std::shared_ptr<TUpgradeableObjectAppearanceInstance> createUpgradeableObject(uint16_t id, uint8_t tier);
+    static std::shared_ptr<TWearoutObjectAppearanceInstance> createWearoutObject(TAppearanceType* type, uint32_t charges,
+                                                                                bool brandNew);
+    static std::shared_ptr<TExpireObjectAppearanceInstance> createExpireObject(TAppearanceType* type,
+                                                                              int64_t remainingMilliseconds,
+                                                                              bool brandNew, bool stopped);
+    /// The instance of a protocol object, by its kind: liquid, cumulative,
+    /// upgradeable, deco item kit, else a plain object (a hangable one takes
+    /// the hook state of a hangable kind).
+    static TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
+    /// An object drawn as an outfit (an outfit look of an object id).
+    static std::shared_ptr<TObjectOutfitAppearanceInstance> createObjectOutfit(uint16_t id);
+    /// Creates `T` the way every factory instance is made: the appearance
+    /// instance tracker counts it while it lives.
+    template <class T, class... Args>
+    static std::shared_ptr<T> makeTracked(TAppearanceType* type, Args&&... args);
     /// An outfit looking towards `direction`: outfits with colour layers, or
     /// with addon patterns while an addon is worn, are customizable.
     static std::shared_ptr<TOutfitAppearanceInstance> createOutfit(TAppearanceType* type, const Outfit& outfit,

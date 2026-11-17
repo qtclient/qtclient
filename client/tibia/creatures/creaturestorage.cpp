@@ -318,6 +318,8 @@ void TCreature::rebuildOutfitAppearance()
 {
     TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
     m_outfitAppearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
+    if (m_outfitAppearance)
+        m_outfitAppearance->linkCreature(m_creatureId);
     if (const auto outfitInstance =
             std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
         outfitInstance->setOutfitLook(m_outfit, m_patternX);
