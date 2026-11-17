@@ -317,6 +317,7 @@ chat::TWhiteBlacklist::v35	c4b9cb7606f42c46	ported	chat/chatprotocolmessagehandl
 chat::TWhiteBlacklist::v36	25b376f4a419dc71	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setAllowVips
 chat::TWhiteBlacklist::~TWhiteBlacklist	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TWhiteBlacklist::~TWhiteBlacklist_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+config::ICharacterConfigurationBase::~ICharacterConfigurationBase	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 config::TActionBarOptions::v12	b29a409affcd1b81	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationName
 config::TActionBarOptions::v13	cdf123a95bb58257	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationToJson
 config::TActionBarOptions::v14	89e7aa59c6087f15	ported	config/actionbaroptions.cpp:TActionBarOptions::configurationFromJson
@@ -440,6 +441,8 @@ config::TClientOptionsModeSwitcher::connectToGameSession	a4802afeaf3b8a4b	ported
 config::TClientOptionsModeSwitcher::handleGameAction	57495c3fbd804a5a	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::handleGameAction
 config::TClientOptionsModeSwitcher::~TClientOptionsModeSwitcher	508e49d0a7ab754c	skip	generated: compiler-generated destructor pair
 config::TClientOptionsModeSwitcher::~TClientOptionsModeSwitcher_deleting	83ab64973aaeb98d	skip	generated: compiler-generated destructor pair
+config::TConfigBackupReader::TConfigBackupException::v0	b3f40dd4fff3f23d	skip	generated: compiler-generated destructor pair (runtime_error) (identical body)
+config::TConfigBackupReader::TConfigBackupException::v1	ab6f53b036dbb081	skip	generated: compiler-generated destructor pair (runtime_error) (identical body)
 config::TConsoleQMLOptionsPage::v12	d9cacfaa4afa0a55	ported	config/optionspages.cpp:consoleBindings
 config::TConsoleQMLOptionsPage::v13	9f5572d835ff9f42	ported	config/optionspages.cpp:consoleBindings
 config::TConsoleQMLOptionsPage::~TConsoleQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
@@ -494,6 +497,7 @@ config::TMiscQMLOptionsPage::v12	c7bbf66e918e8e6a	ported	config/optionspages.cpp
 config::TMiscQMLOptionsPage::v13	36dee30e68a0fdab	ported	config/optionspages.cpp:miscBindings
 config::TMiscQMLOptionsPage::~TMiscQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 config::TMiscQMLOptionsPage::~TMiscQMLOptionsPage_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
+config::TOptionPageQMLWrapperBase::~TOptionPageQMLWrapperBase	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 config::TScreenshotsQMLOptionsPage::v12	379b1559d8b08f15	ported	config/optionspages.cpp:screenshotsBindings
 config::TScreenshotsQMLOptionsPage::v13	c2e7cfc58b1834a7	ported	config/optionspages.cpp:screenshotsBindings
 config::TScreenshotsQMLOptionsPage::~TScreenshotsQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
@@ -568,6 +572,7 @@ config::TSoundQMLOptionsPage::v12	fbcb98550036c9b2	ported	config/optionspages.cp
 config::TSoundQMLOptionsPage::v13	efb0af7ab7b9d081	ported	config/optionspages.cpp:TSoundOptionsPage::apply
 config::TSoundQMLOptionsPage::~TSoundQMLOptionsPage	605853d068776e13	skip	generated: compiler-generated destructor pair
 config::TSoundQMLOptionsPage::~TSoundQMLOptionsPage_deleting	2dc568916cb583c4	skip	generated: compiler-generated destructor pair
+config::TTibiaHotkeyActionSettingQmlWrapper::~TTibiaHotkeyActionSettingQmlWrapper_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
 config::TUISoundsQMLOptionsPage::v12	0b6f519609a09c85	ported	config/optionspages.cpp:uiSoundsBindings
 config::TUISoundsQMLOptionsPage::v13	e11f8939d26b65ce	ported	config/optionspages.cpp:uiSoundsBindings
 config::TUISoundsQMLOptionsPage::~TUISoundsQMLOptionsPage	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
@@ -2459,6 +2464,12 @@ imbuing::TQmlImbuementData::~TQmlImbuementData	097457dc45e86dd8	skip	generated: 
 imbuing::TQmlImbuementData::~TQmlImbuementData_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 input::TActionButtonGameActionHandler::~TActionButtonGameActionHandler	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 input::TActionButtonGameActionHandler::~TActionButtonGameActionHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+input::TClickAreaEventFilter::~TClickAreaEventFilter	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (identical body)
+input::TClickAreaEventFilter::~TClickAreaEventFilter_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (identical body)
+input::TClipboardGameActionHandler::~TClipboardGameActionHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (identical body)
+input::TClipboardGameActionHandler::~TClipboardGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (identical body)
+input::TCrossHairSpellGameActionHandler::~TCrossHairSpellGameActionHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (identical body)
+input::TCrossHairSpellGameActionHandler::~TCrossHairSpellGameActionHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (identical body)
 input::TDecoItemKitObjectApperanceTypeGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TDecoItemKitObjectApperanceTypeGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter	7966ba543eec5ba6	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter
@@ -2470,6 +2481,7 @@ input::TDiscardMouseWheelEventFilter::~TDiscardMouseWheelEventFilter_deleting	ca
 input::TDiscardUnhandledMouseButtonsEventFilter::eventFilter	8d71ea523c5d5616	ported	input/eventfilters.cpp:TDiscardUnhandledMouseButtonsEventFilter::eventFilter
 input::TDiscardUnhandledMouseButtonsEventFilter::~TDiscardUnhandledMouseButtonsEventFilter	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair
 input::TDiscardUnhandledMouseButtonsEventFilter::~TDiscardUnhandledMouseButtonsEventFilter_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair
+input::TEventFilterManager::~TEventFilterManager_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
 input::TGameActionActionButtonTriggered::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionActionButtonTriggered::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionAddGUITutorialMarker::v1	612787a6fd4ae975	skip	generated: compiler-generated destructor pair
@@ -2510,6 +2522,7 @@ input::TGameActionChangeTutorialModeEnabled::v1	872d4faac408f6d5	skip	generated:
 input::TGameActionChangeTutorialModeEnabled::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionChatChannel::v1	c7a9c19976bbb6f9	skip	generated: compiler-generated destructor pair
 input::TGameActionChatChannel::v2	eac6933d2c141a1b	skip	generated: compiler-generated destructor pair
+input::TGameActionChatChannelModeration::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 input::TGameActionClearLootContainer::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionClearLootContainer::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionClearObtainContainer::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -2861,6 +2874,12 @@ input::TGameActionVisibleChatChannel::v1	872d4faac408f6d5	skip	generated: compil
 input::TGameActionVisibleChatChannel::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionWrap::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionWrap::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGatherAllGameActionHandler::~TGatherAllGameActionHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (identical body)
+input::TGatherAllGameActionHandler::~TGatherAllGameActionHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (identical body)
+input::TGatherAllProtocolMessageHandler::~TGatherAllProtocolMessageHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (identical body)
+input::TGatherAllProtocolMessageHandler::~TGatherAllProtocolMessageHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (identical body)
+input::TGenericChatGameActionProvider::v0	e2248d53c68a8d98	skip	generated: destructor pair (shared_ptr member releases)
+input::TGenericChatGameActionProvider::v1	1f927c9ff7cb8bec	skip	generated: destructor pair (shared_ptr member releases)
 input::TGenericGameActionHandler::v12	542f99698c7e3e3f	ported	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleGameAction
 input::TGenericGameActionHandler::v13	a90ca6396d61ba68	ported	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleLookAction
 input::TGenericGameActionHandler::v14	68126df1e73ba06b	ported	input/genericgameactionhandler.cpp:TGenericGameActionHandler::handleUseAction
@@ -2886,12 +2905,17 @@ input::TGenericObjectGameActionProvider::v1	79674512666b34e2	skip	generated: des
 input::TGenericObjectGameActionProvider::v4	3b481aaa442b29b0	ported	input/genericobjectgameactionprovider.cpp:TGenericObjectGameActionProvider::creatureActions
 input::TGenericObjectGameActionProvider::v5	bae9237d25f9b999	ported	input/genericobjectgameactionprovider.cpp:TGenericObjectGameActionProvider::creatureSmartClick
 input::TKeyEventHandler::eventFilter	65b06017c9a4fb75	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
+input::TKeyEventHandler::~TKeyEventHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (identical body)
+input::TKeyEventHandler::~TKeyEventHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (identical body)
 input::TKeyboardInputToGameActionConverter::v12	3359b9f739b1d763	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TKeyboardInputToGameActionConverter::v14	7457ae645e3c027b	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
+input::TKeyboardInputToGameActionConverter::~TKeyboardInputToGameActionConverter	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (identical body)
+input::TKeyboardInputToGameActionConverter::~TKeyboardInputToGameActionConverter_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (identical body)
 input::TKeyboardShortcutHandler::v12	efed428578933324	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::handleGameAction
 input::TKeyboardShortcutHandler::v13	d20c224241c0c46b	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::tryToSwitchHotkeySet
 input::TKeyboardShortcutHandler::v14	d66e14bd83733da8	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::switchToNextHotkeySet
 input::TKeyboardShortcutHandler::v15	11347c4d11890b70	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::switchToPreviousHotkeySet
+input::TKeyboardShortcutHandler::~TKeyboardShortcutHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
 input::TKeyboardStatusStorage::onApplicationStateChanged	a34cb872119a335a	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onApplicationStateChanged
 input::TKeyboardStatusStorage::v12	37c8257daa7c4aaf	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::statusHolds
 input::TKeyboardStatusStorage::v13	7d0a4f17f2e88718	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
@@ -2907,10 +2931,13 @@ input::TLocationContainerWithSlotGameActionContext::v0	872d4faac408f6d5	skip	gen
 input::TLocationContainerWithSlotGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TLocationDepotSearchDepotItemGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TLocationDepotSearchDepotItemGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TLocationDepotSearchGameActionContext::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
+input::TLocationDepotSearchGameActionContext::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 input::TLocationDepotSearchInboxItemGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TLocationDepotSearchInboxItemGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TLocationInventoryGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TLocationInventoryGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TLocationNpcTradeGameActionContext::v0	5f3d3948d1681070	skip	generated: compiler-generated destructor pair (identical body)
 input::TLocationPlayerTradeGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TLocationPlayerTradeGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TLocationTutorialHintDialogGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -2944,10 +2971,14 @@ input::TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction	9bf0ec4e
 input::TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction	89b9969afc2fe8db	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 input::TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair
 input::TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair
+input::TPathPlanningFailedException::v0	b3f40dd4fff3f23d	skip	generated: compiler-generated destructor pair (runtime_error) (identical body)
+input::TPathPlanningFailedException::v1	ab6f53b036dbb081	skip	generated: compiler-generated destructor pair (runtime_error) (identical body)
 input::TPlayerMovementGameActionHandler::v12	89f581898392f0cd	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v13	2d6620e05b2525b1	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v14	4724b908512397e8	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v15	ff663f2a0c476155	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
+input::TPlayerMovementGameActionHandler::~TPlayerMovementGameActionHandler	b8fa1735222f472e	skip	generated: compiler-generated destructor pair (identical body)
+input::TPlayerMovementGameActionHandler::~TPlayerMovementGameActionHandler_deleting	6e02f94259d3246a	skip	generated: compiler-generated destructor pair (identical body)
 input::TPlayerMovementInputInterpreter::onHotkeyOptionsChanged	75a00857f361b765	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onHotkeyOptionsChanged
 input::TPlayerMovementInputInterpreter::v13	76a27aa244c258e8	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TPlayerMovementInputInterpreter::v14	2fc8976752643716	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
@@ -2961,6 +2992,8 @@ input::TPlayerMovementInputInterpreter::v21	9cf4f7f539d49b0e	ported	input/player
 input::TPlayerMovementInputInterpreter::v22	699259e1b2d09a65	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TPlayerMovementInputInterpreter::v23	c55dd23fac8b183e	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TPlayerMovementInputInterpreter::v24	5fe569af395635fa	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
+input::TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
+input::TPlayerMovementIntent::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 input::TPlayerMovementIntentHandler::v14	097457dc45e86dd8	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::tick
 input::TPlayerMovementIntentHandler::v15	ced70d9414b8f476	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::onPositionChanged
 input::TPlayerMovementIntentHandler::v17	99ba17c070236ea8	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::onCancelWalk
@@ -2979,8 +3012,13 @@ input::TPlayerMovementIntentHandler::v33	c3b9824f41c30757	ported	input/playermov
 input::TPlayerMovementIntentHandler::v35	70febbde78725599	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::predictNextStep
 input::TPlayerMovementIntentHandler::v36	b71945d38186ad1a	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::resetAfterRejectedStep
 input::TPlayerMovementIntentHandler::v37	ae72ddd2d26a6c3c	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::goToAndSend
+input::TPlayerMovementIntentHandler::~TPlayerMovementIntentHandler_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (identical body)
+input::TRecordKeyboardShortcutHandler::~TRecordKeyboardShortcutHandler	4a00f6b18d7ba357	skip	generated: compiler-generated destructor pair (identical body)
+input::TRecordKeyboardShortcutHandler::~TRecordKeyboardShortcutHandler_deleting	ca1ae45f16270212	skip	generated: compiler-generated destructor pair (identical body)
 input::TUpgradeableObjectApperanceTypeGameActionContext::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TUpgradeableObjectApperanceTypeGameActionContext::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TUseWithGameActionHandler::~TUseWithGameActionHandler	234d7c603a625d96	skip	generated: compiler-generated destructor pair (identical body)
+input::TUseWithGameActionHandler::~TUseWithGameActionHandler_deleting	3e8b297b99dd7b51	skip	generated: compiler-generated destructor pair (identical body)
 input::TWindowFocusEventFilter::v0@10	3a20e7dbbd783506	skip	generated: compiler-generated destructor pair
 input::TWindowFocusEventFilter::v12	bcccd51b8b153f85	ported	input/eventfilters.cpp:TWindowFocusEventFilter::nativeEventFilter
 input::TWindowFocusEventFilter::v1@10	60d66566c76dbfb6	skip	generated: compiler-generated destructor pair
@@ -3010,6 +3048,8 @@ input::gameactions::TGameActionSoundTrigger::v2	850b5c4907d06cb0	skip	generated:
 input::gameactions::TGameActionSoundTrigger::v40	effdaac214d4e219	skip	generated: std::variant alternative destructor visitor (compiler-generated)
 input::gameactions::TGameActionSoundTrigger::v41	effdaac214d4e219	skip	generated: std::variant alternative destructor visitor (compiler-generated)
 input::gameactions::TGameActionSoundTrigger::v45	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
+input::gameactions::TSelectAtelierGemGameAction::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair (identical body)
+input::gameactions::TSelectFragmentWorkshopModGameAction::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair (identical body)
 market::TMarketProtocolMessageHandler::v12	745a8a4cc31903d0	ported	market/marketciptypes.cpp:TMarketProtocolMessageHandler::sendBrowseItem
 market::TMarketProtocolMessageHandler::v13	7861f0dc4ecd8950	ported	market/marketciptypes.cpp:TMarketProtocolMessageHandler::sendBrowseOwnOffers
 market::TMarketProtocolMessageHandler::v14	248fa8ad18853f32	ported	market/marketciptypes.cpp:TMarketProtocolMessageHandler::sendBrowseHistory
@@ -6029,6 +6069,7 @@ sub_4160a4af3917#11	4160a4af3917f73f	skip	generated: moc-generated signal emitte
 sub_4160a4af3917#18	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#2	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#23	4160a4af3917f73f	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
+sub_4160a4af3917#24	4160a4af3917f73f	skip	generated: moc-generated signal (identical body)
 sub_4160a4af3917#25	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#26	4160a4af3917f73f	skip	generated: moc-generated signal emitter
 sub_4160a4af3917#3	4160a4af3917f73f	skip	generated: moc-generated signal emitter
@@ -7058,6 +7099,7 @@ sub_625b0785c125#2	625b0785c12500c5	skip	data: translation-unit static initializ
 sub_625b0785c125#3	625b0785c12500c5	skip	data: translation-unit static initializer (misattributed)
 sub_626db2cbf1ff	626db2cbf1ff37ce	skip	generated: compiler-generated destructor pair
 sub_62871225bbad#11	62871225bbad5568	skip	library: std::shared_ptr control block
+sub_62871225bbad#22	62871225bbad5568	skip	library: std::shared_ptr control block (identical body)
 sub_628ab99dd394	628ab99dd394ef09	ported	config/sidebaroptions.cpp:serializeBattleList
 sub_62aae2b67310#2	62aae2b673103642	skip	generated: moc signal emitter
 sub_62b2dd1966cf	62b2dd1966cf3883	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::showDialog
@@ -8583,6 +8625,7 @@ sub_93c91c1f5768#29	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy 
 sub_93c91c1f5768#30	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library)
 sub_93c91c1f5768#31	93c91c1f57686cf1	skip	library: std::map node teardown (library)
 sub_93c91c1f5768#34	93c91c1f57686cf1	skip	library: QMap/QList template instantiations
+sub_93c91c1f5768#47	93c91c1f57686cf1	skip	library: libc++ std::map tree destroy (library) (identical body)
 sub_93c91c1f5768#56	93c91c1f57686cf1	skip	library: std::map / unordered_map template instantiation
 sub_93c91c1f5768#57	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
 sub_93c91c1f5768#58	93c91c1f57686cf1	skip	library: std library template (map tree destroy, vector length error)
@@ -9465,6 +9508,7 @@ sub_b76031ae9572#3	b76031ae95727cee	skip	generated: moc signal emitter
 sub_b76031ae9572#33	b76031ae95727cee	skip	generated: moc-generated signal emitter
 sub_b76031ae9572#35	b76031ae95727cee	skip	generated: moc-generated signal emitter
 sub_b76031ae9572#7	b76031ae95727cee	skip	generated: moc-generated signal emitter
+sub_b76dd0177e5b	b76dd0177e5be690	skip	generated: compiler-generated destructor pair (identical body)
 sub_b77e55e4508a	b77e55e4508ae7d9	tested	shared/src/coordinate.h:TCoordinate::minimum	test=tests/client/coordinate_test.cpp
 sub_b7826a2f3ced#2	b7826a2f3ced661d	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::linkClicked
 sub_b79a2ea5a2b7	b79a2ea5a2b76654	skip	generated: compiler-generated destructor
@@ -9675,10 +9719,16 @@ sub_b8249c9e3366#713	b8249c9e33663f7b	skip	generated: std::shared_ptr release (c
 sub_b8249c9e3366#714	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#715	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#716	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#717	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#718	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#719	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#72	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#720	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#721	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#722	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#723	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#724	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#725	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#73	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#739	b8249c9e33663f7b	skip	library: std::shared_ptr release (library)
 sub_b8249c9e3366#74	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
@@ -10168,6 +10218,7 @@ sub_c97308a7fb45	c97308a7fb45a36b	inlined	gamewindow/imbuingdialogcontroller.cpp
 sub_c97321260f49#2	c97321260f49bc7c	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::captureContext
 sub_c9941de82721	c9941de827215fe2	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::restingBonusHoverText
 sub_c9965e0829b9#2	c9965e0829b9dc9b	skip	generated: compiler-generated destructor pair
+sub_c999655a4abc#11	c999655a4abc5858	skip	generated: moc-generated signal (identical body)
 sub_c999655a4abc#4	c999655a4abc5858	skip	generated: moc-generated signal
 sub_c99eca0c25e6	c99eca0c25e6c065	inlined	creatures/creaturestorage.cpp:TCreature::showStaticSquare
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
@@ -10538,7 +10589,9 @@ sub_d7a700555660#11	d7a700555660c3f0	skip	generated: moc-generated signal emitte
 sub_d7a700555660#12	d7a700555660c3f0	skip	generated: moc-generated signal
 sub_d7a700555660#15	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#3	d7a700555660c3f0	skip	generated: moc-generated signal emitter
+sub_d7a700555660#30	d7a700555660c3f0	skip	generated: moc-generated signal emitter (identical body)
 sub_d7a700555660#32	d7a700555660c3f0	skip	generated: moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
+sub_d7a700555660#33	d7a700555660c3f0	skip	generated: moc-generated signal emitter (identical body)
 sub_d7a700555660#34	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#36	d7a700555660c3f0	skip	generated: moc-generated signal emitter
 sub_d7a700555660#37	d7a700555660c3f0	skip	generated: moc-generated signal emitter
