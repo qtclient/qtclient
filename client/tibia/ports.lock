@@ -5923,6 +5923,7 @@ sub_32d19b3aa3f8	32d19b3aa3f80171	ported	gamewindow/chatcontroller.cpp:TChatChan
 sub_32d81f4dc03d	32d81f4dc03d2fd6	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfo
 sub_32de808c7d27#2	32de808c7d27ff77	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_32dea18f0cc3	32dea18f0cc31471	skip	data: translation-unit static initializer (misattributed)
+sub_32dea18f0cc3#2	32dea18f0cc31471	skip	data: translation-unit static initializer (constant std::set of ints, atexit)
 sub_32ee31bbb220	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
 sub_32ee31bbb220#2	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
 sub_32f22415c290	32f22415c2902dcf	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
