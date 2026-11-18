@@ -16,10 +16,18 @@
   pre { background:var(--box); padding:8px; border-radius:6px; overflow:auto; max-height:260px; white-space:pre-wrap; word-break:break-word; margin:6px 0; font-size:12px; }
   .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
   .status { font-family:ui-monospace, monospace; font-size:12px; }
+  .copybar { position:sticky; top:0; z-index:10; background:var(--bg); padding:8px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .copybar button { font-weight:600; }
+  #reportBox { width:100%; height:200px; font:12px ui-monospace, monospace; margin-top:6px; }
 </style>
 </head>
 <body>
 <h1>Safari /play POC</h1>
+<div class="copybar">
+  <button id="copyReport">Copy report</button>
+  <span id="copyStatus" class="status">Run the tests, then copy the report and paste it in chat.</span>
+</div>
+<textarea id="reportBox" hidden readonly></textarea>
 <p>Reproduces, without Qt, the browser behaviour behind the /play fixes. Each "Qt window" below is the same DOM shape Qt wasm builds: a shadow root holding a window <code>div</code>, a <code>canvas</code>, a contenteditable focus helper and a hidden IME <code>input</code>. "Late" means handled from a queue after dispatch finished, which is what Qt's JSPI suspend/resume control does when the instance is suspended outside <code>processEvents()</code>. "Microtask" is its resume path.</p>
 <pre id="env"></pre>
 
@@ -61,12 +69,19 @@
   </select></label>
   <button id="blurC">Blur</button>
 </div>
+<div class="row">
+  After a tap, the keyboard:
+  <button data-kb="stayed open">stayed open</button>
+  <button data-kb="opened, then closed">opened, then closed</button>
+  <button data-kb="never opened">never opened</button>
+</div>
 <div class="stage" id="stageC"></div>
 <pre id="logC"></pre>
 
 <h2>D. OPFS from a Worker vs the main thread</h2>
 <p>Claims: (1) a Worker's async OPFS calls (lookups, <code>getFile()</code>) only settle in Safari while the page's main thread is free, so they stall while it is blocked; (2) SyncAccessHandle reads in a Worker do not need the main thread; (3) every async OPFS call made from the main thread is an await, i.e. a JSPI suspension in /play, and with it a window in which Qt queues events. Needs a secure context (https or <code>localhost</code>).</p>
 <div class="row">
+  <button id="dAll"><b>Run all D tests</b></button>
   <button id="d1">1. Worker async ops, main idle</button>
   <button id="d2">2. Worker async ops, main blocked 2 s</button>
   <button id="d3">3. Worker sync reads, main blocked 2 s</button>
@@ -84,9 +99,14 @@
 <script>
 'use strict';
 const now = () => performance.timeOrigin + performance.now();
+const REPORT = [];
+const plain = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
 function logger(id) {
   const el = document.getElementById(id);
-  return (html) => { el.innerHTML = html + '\n' + el.innerHTML; };
+  return (html) => {
+    REPORT.push({ section: id.replace('log', ''), t: performance.now(), text: plain(html) });
+    el.innerHTML = html + '\n' + el.innerHTML;
+  };
 }
 const fmtT = (t) => t ? (t.className || t.tagName || String(t)) : '<span class="bad">null</span>';
 const fmtP = (n) => n ? String(n) : '<span class="bad">0</span>';
@@ -208,7 +228,10 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
   const fMode = document.getElementById('focusModeC');
   const pMode = document.getElementById('pdModeC');
   const t0 = () => (performance.now() / 1000).toFixed(2) + 's';
-  document.getElementById('blurC').onclick = () => s.input.blur();
+  document.getElementById('blurC').onclick = () => { log(`${t0()} Blur pressed`); s.input.blur(); };
+  document.querySelectorAll('[data-kb]').forEach((b) => {
+    b.onclick = () => log(`${t0()} KEYBOARD ${b.dataset.kb.toUpperCase()} (focus=${fMode.value}, preventDefault=${pMode.value})`);
+  });
   s.input.addEventListener('focus', () => log(`${t0()} input focus`));
   s.input.addEventListener('blur', (e) => log(`${t0()} input <span class="bad">blur</span> → ${e.relatedTarget ? (e.relatedTarget.className || e.relatedTarget.tagName) : 'null'}`));
   s.win.addEventListener('pointerdown', (e) => {
@@ -331,6 +354,15 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
     log(`5. spin ${slice} ms between yields: 200 async ops in ${ms(total)} (${yields} yields) → ${total < 2000 ? '<span class="ok">the wait no longer starves OPFS</span>' : '<span class="bad">still slow</span>'} (compare with 1)`);
   });
 
+  document.getElementById('dAll').onclick = async () => {
+    if (!isSecureContext || !navigator.storage?.getDirectory) { log('<span class="bad">OPFS unavailable here (needs https or localhost): D skipped</span>'); return; }
+    const click = (id) => document.getElementById(id).onclick();
+    for (const id of ['d1', 'd2', 'd3', 'd4']) await click(id);
+    const sel = document.getElementById('d5slice');
+    for (const v of ['1', '0.25', '0.1', '0']) { sel.value = v; await click('d5'); }
+    log('Run all D tests: done');
+  };
+
   document.getElementById('d4').onclick = guard(async () => {
     const root = await navigator.storage.getDirectory();
     const dir = await root.getDirectoryHandle('safari-poc', { create: true });
@@ -344,6 +376,39 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
     log(`4. main thread: 500 file-size lookups awaited ${ms(total)} (${(total / 500).toFixed(2)} ms each). In /play each is a JSPI suspension of main; the login screen did ~180/s (SIZE_FILE in play.diag).`);
   });
 }
+
+// ---- report -------------------------------------------------------------------
+document.getElementById('copyReport').onclick = async () => {
+  const sections = { A: 'A. Event target', B: 'B. Focus and keys', C: 'C. Mobile keyboard', D: 'D. OPFS' };
+  const lines = ['Safari /play POC report', document.getElementById('env').textContent,
+    'B status now: ' + document.getElementById('statusB').textContent];
+  for (const [key, title] of Object.entries(sections)) {
+    lines.push('', '--- ' + title + ' ---');
+    const rows = REPORT.filter((r) => r.section === key);
+    if (!rows.length) lines.push('(not run)');
+    rows.forEach((r) => lines.push(r.text));
+  }
+  const text = lines.join('\n');
+  console.log(text);
+  const status = document.getElementById('copyStatus');
+  const box = document.getElementById('reportBox');
+  try {
+    await navigator.clipboard.writeText(text);
+    status.innerHTML = '<span class="ok">Copied — paste it in chat.</span>';
+    box.hidden = true;
+    return;
+  } catch (e) { /* insecure context (iPhone over http) or denied: fall back */ }
+  box.value = text;
+  box.hidden = false;
+  box.focus();
+  box.select();
+  box.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  status.innerHTML = ok
+    ? '<span class="ok">Copied — paste it in chat.</span>'
+    : '<span class="bad">Could not copy automatically: the report is selected in the box below — copy it from there.</span>';
+};
 </script>
 </body>
 </html>
