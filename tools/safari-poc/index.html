@@ -18,6 +18,10 @@
   .status { font-family:ui-monospace, monospace; font-size:12px; }
   .copybar { position:sticky; top:0; z-index:10; background:var(--bg); padding:8px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .copybar button { font-weight:600; }
+  .wizard { border:2px solid var(--ok); border-radius:8px; padding:10px 12px; margin:8px 0; }
+  .wizard .step { font-weight:600; margin-bottom:8px; color:var(--fg); }
+  .wizard button { margin-right:6px; }
+  details summary { cursor:pointer; color:var(--mute); }
   #reportBox { width:100%; height:200px; font:12px ui-monospace, monospace; margin-top:6px; }
 </style>
 </head>
@@ -37,7 +41,9 @@
 <pre id="logA"></pre>
 
 <h2>B. Focus and keys (right-click / dead keys / macOS accent popup)</h2>
-<p>1. Press <b>Focus helper</b> (what Qt's <code>focus()</code> does). 2. Type: the counter is "keys reaching Qt". 3. Click or right-click the grey box with each pointerdown mode, then type again. 4. Hold <b>a</b> with each keydown mode to see the press-and-hold accent popup.</p>
+<p>Desktop. Follow the green box step by step; it sets the modes itself.</p>
+<div class="wizard" id="wizB"></div>
+<details><summary>Manual controls</summary>
 <div class="row">
   <button id="focusB">Focus helper</button>
   <label>pointerdown: <select id="pdModeB">
@@ -50,12 +56,16 @@
     <option value="late">preventDefault late (queued)</option>
   </select></label>
 </div>
+</details>
+<div class="row"><button id="focusB2">Focus helper</button></div>
 <div class="stage" id="stageB"></div>
 <div class="status" id="statusB"></div>
 <pre id="logB"></pre>
 
 <h2>C. Mobile keyboard (tap a text field)</h2>
-<p>On a phone: tap the grey box ("a Qt text field"). Qt focuses its hidden input in the pointer handler and cancels the pointerdown default. Try each combination and watch whether the keyboard stays, closes again, or never opens; the log shows input focus/blur.</p>
+<p>Phone. Follow the green box step by step; it sets the combination itself.</p>
+<div class="wizard" id="wizC"></div>
+<details><summary>Manual controls</summary>
 <div class="row">
   <label>focus(): <select id="focusModeC">
     <option value="sync">in dispatch</option>
@@ -75,6 +85,7 @@
   <button data-kb="opened, then closed">opened, then closed</button>
   <button data-kb="never opened">never opened</button>
 </div>
+</details>
 <div class="stage" id="stageC"></div>
 <pre id="logC"></pre>
 
@@ -145,6 +156,34 @@ function qtStage(mountId, label) {
 }
 const late = (fn) => setTimeout(fn, 0);           // Qt's queued path (handled after dispatch)
 const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI resumes in a microtask)
+
+/** Step-by-step box: each step sets its modes on enter and logs on answer. */
+function wizard(boxId, steps, finishText) {
+  const box = document.getElementById(boxId);
+  let i = 0;
+  const show = () => {
+    box.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'step';
+    if (i >= steps.length) {
+      head.innerHTML = finishText + ' <button>Start over</button>';
+      head.querySelector('button').onclick = () => { i = 0; show(); };
+      box.appendChild(head);
+      return;
+    }
+    const step = steps[i];
+    head.textContent = `Step ${i + 1} of ${steps.length}: ${step.text}`;
+    box.appendChild(head);
+    (step.answers || ['Next']).forEach((answer) => {
+      const b = document.createElement('button');
+      b.textContent = answer;
+      b.onclick = () => { step.done(answer); i++; show(); };
+      box.appendChild(b);
+    });
+    step.enter && step.enter();
+  };
+  show();
+}
 
 // ---- A ------------------------------------------------------------------------
 {
@@ -219,6 +258,38 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
   setInterval(() => {
     document.getElementById('statusB').innerHTML = `focus: ${focusName()} · keys reaching Qt: ${keys} · last: ${last || '-'}`;
   }, 150);
+
+  document.getElementById('focusB2').onclick = () => document.getElementById('focusB').onclick();
+  // Per step: keys typed since the step began / since its last click, focus after that click.
+  let stepKeys = 0, click = null;
+  s.win.addEventListener('pointerdown', (e) => {
+    const at = keys;
+    setTimeout(() => { click = { button: e.button, keysAt: at, focus: plain(focusName()) }; }, 100);
+  });
+  const begin = (pd, kd) => () => { pdMode.value = pd; kdMode.value = kd; stepKeys = keys; click = null; };
+  const typed = () => (click ? keys - click.keysAt : keys - stepKeys);
+  const clickStep = (n, pd, label) => ({
+    text: `Press "Focus helper" (below), RIGHT-click the grey box once, then type a few letters. Then press Next.`,
+    enter: begin(pd, 'sync'),
+    done: () => log(`B${n} right-click, ${label}: ` + (click
+      ? `focus after the click: ${click.focus} · keys reaching Qt after it: ${typed()}`
+      : `no click on the box recorded (keys: ${typed()})`)),
+  });
+  const accentStep = (n, kd, label) => ({
+    text: `Press "Focus helper" (below), then HOLD the A key for 2 seconds. Did an accent popup (à á â …) appear?`,
+    answers: ['Yes, popup appeared', 'No popup'],
+    enter: begin('sync', kd),
+    done: (answer) => log(`B${n} hold A, keydown ${label}: ${answer} (A keydowns reaching Qt: ${typed()})`),
+  });
+  wizard('wizB', [
+    { text: 'Press "Focus helper" (below), then type a few letters. Then press Next.', enter: begin('none', 'sync'),
+      done: () => log(`B1 baseline: keys reaching Qt: ${typed()} · focus: ${plain(focusName())}`) },
+    clickStep(2, 'none', 'no preventDefault (Qt today, unaccepted press)'),
+    clickStep(3, 'sync', 'preventDefault in dispatch (the Qt fix)'),
+    clickStep(4, 'late', 'preventDefault late (queued event)'),
+    accentStep(5, 'late', 'preventDefault late (queued event)'),
+    accentStep(6, 'sync', 'preventDefault in dispatch'),
+  ], 'B done. Press "Copy report" at the top.');
 }
 
 // ---- C ------------------------------------------------------------------------
@@ -234,6 +305,19 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
   });
   s.input.addEventListener('focus', () => log(`${t0()} input focus`));
   s.input.addEventListener('blur', (e) => log(`${t0()} input <span class="bad">blur</span> → ${e.relatedTarget ? (e.relatedTarget.className || e.relatedTarget.tagName) : 'null'}`));
+  const combos = [
+    ['sync', 'sync', 'focus in dispatch, preventDefault in dispatch (Qt on time)'],
+    ['sync', 'late', 'focus in dispatch, preventDefault late'],
+    ['sync', 'none', 'focus in dispatch, no preventDefault'],
+    ['late', 'sync', 'focus late, preventDefault in dispatch'],
+    ['late', 'late', 'focus late, preventDefault late (Qt queued)'],
+  ];
+  wizard('wizC', combos.map(([f, p, label], n) => ({
+    text: 'Tap the grey box once and wait 2 seconds. What did the keyboard do?',
+    answers: ['Stayed open', 'Opened, then closed', 'Never opened'],
+    enter: () => { fMode.value = f; pMode.value = p; s.input.blur(); },
+    done: (answer) => log(`${t0()} C${n + 1} ${label}: KEYBOARD ${answer.toUpperCase()}`),
+  })), 'C done. Press "Copy report" at the top.');
   s.win.addEventListener('pointerdown', (e) => {
     const f = fMode.value, p = pMode.value;
     log(`${t0()} pointerdown focus=${f} preventDefault=${p}`);
