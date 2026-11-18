@@ -144,7 +144,6 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     : cip::tibia::gamewindow::TGameWindowController(parent)
     , m_container(container)
     , m_fileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
-    , m_clientServicesSender(std::make_shared<shared::TJsonDocumentHttpPostSender>())
     , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
     , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
     , m_eventsStorage(std::make_unique<news::TEventsStorage>())
@@ -295,16 +294,22 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
     // CIP builds the client services uploaders with their URL.
-    m_eventsUploader = std::make_unique<news::TEventsUploader>(service, m_clientServicesSender, m_fileSystemHelper,
-                                                               shared::TClockService::process());
+    // One sender per uploader. Sharing a single TJsonDocumentHttpPostSender
+    // fans every reply to every uploader (news saw newsviewed failures as its
+    // own; a throw in any onFinished killed application.exec on WASM).
+    m_eventsUploader = std::make_unique<news::TEventsUploader>(
+        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
+        shared::TClockService::process());
     connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
             &news::TEventsStorage::onEventsUpdated);
     connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, &TGameWindowController::onEventScheduleUpdated);
-    m_newsUploader = std::make_unique<news::TNewsRequestUploader>(service, m_newsStorage, m_clientServicesSender,
-                                                                  m_fileSystemHelper, shared::TClockService::process());
+    m_newsUploader = std::make_unique<news::TNewsRequestUploader>(
+        service, m_newsStorage, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
+        shared::TClockService::process());
     connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
             &TNewsDialogController::onNewsQueryFailed);
-    m_newsViewsUploader = std::make_unique<news::TNewsViewsUploader>(service, m_clientServicesSender);
+    m_newsViewsUploader = std::make_unique<news::TNewsViewsUploader>(
+        service, std::make_shared<shared::TJsonDocumentHttpPostSender>());
     m_newsDialog->setNewsUploaders(m_newsUploader.get(), m_newsViewsUploader.get());
     requestStartScreenServices();
 }

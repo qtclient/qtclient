@@ -45,9 +45,10 @@ int newsTypeFromName(const QString& name, int fallback);
 /// The server's time zone (CIP: Europe/Berlin).
 QTimeZone serverTimeZone();
 
-/// The `category` name of a category; throws std::logic_error for others.
+/// The `category` name of a category; unknown values log and return USEFUL INFO
+/// (CIP throws — that freezes WASM /play when it escapes the event loop).
 QString newsCategoryName(int category);
-/// The `type` name of a type; throws std::logic_error for others.
+/// The `type` name of a type; unknown values log and return REGULAR.
 QString newsTypeName(int type);
 
 /// CIP news::TNewsEntry: one `gamenews` row. A group header never needs a
