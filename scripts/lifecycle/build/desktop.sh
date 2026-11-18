@@ -274,7 +274,14 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
       ln -s "${rel_out}/$f" "$BUILD_DIR/$f"
     done
   fi
-  LAUNCHER_HTML="$(find "$BUILD_DIR" -name 'launcher.html' -type f 2>/dev/null | head -1 || true)"
+  # The launcher target writes next to tibia (OUT_DIR, linked above). Only
+  # search the tree when it does not: an old build dir still holds outputs
+  # under launcher/src/ (its CMake binary dir) from before that move, and
+  # linking those shipped a stale launcher.wasm to /play.
+  LAUNCHER_HTML=""
+  if [[ ! -f "$OUT_DIR/launcher.html" ]]; then
+    LAUNCHER_HTML="$(find "$BUILD_DIR" -name 'launcher.html' -type f 2>/dev/null | head -1 || true)"
+  fi
   if [[ -n "$LAUNCHER_HTML" ]]; then
     launcher_dir="$(dirname "$LAUNCHER_HTML")"
     rel_launcher="$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$launcher_dir" "$BUILD_DIR")"
