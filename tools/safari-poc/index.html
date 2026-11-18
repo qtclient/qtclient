@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safari /play POC</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#1b1b1b; --mute:#666; --line:#ddd; --ok:#1a7f37; --bad:#c62828; --box:#f4f4f4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --fg:#e8e8e8; --mute:#9a9a9a; --line:#333; --ok:#4caf50; --bad:#ef5350; --box:#1e1e1e; } }
+  body { background:var(--bg); color:var(--fg); font:14px/1.45 -apple-system, system-ui, sans-serif; margin:0; padding:16px; max-width:900px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:28px 0 6px; border-top:1px solid var(--line); padding-top:16px; }
+  p, li { color:var(--mute); } code { background:var(--box); padding:1px 4px; border-radius:3px; }
+  .stage { margin:8px 0; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0; }
+  button, select { font:inherit; padding:6px 10px; }
+  pre { background:var(--box); padding:8px; border-radius:6px; overflow:auto; max-height:260px; white-space:pre-wrap; word-break:break-word; margin:6px 0; font-size:12px; }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  .status { font-family:ui-monospace, monospace; font-size:12px; }
+</style>
+</head>
+<body>
+<h1>Safari /play POC</h1>
+<p>Reproduces, without Qt, the browser behaviour behind the /play fixes. Each "Qt window" below is the same DOM shape Qt wasm builds: a shadow root holding a window <code>div</code>, a <code>canvas</code>, a contenteditable focus helper and a hidden IME <code>input</code>. "Late" means handled from a queue after dispatch finished, which is what Qt's JSPI suspend/resume control does when the instance is suspended outside <code>processEvents()</code>. "Microtask" is its resume path.</p>
+<pre id="env"></pre>
+
+<h2>A. Event target after dispatch (desktop crash)</h2>
+<p>Move the mouse into and out of the grey box, then click or right-click it. Claim: read late, <code>composedPath()</code> is empty for every event; <code>target</code> becomes the shadow host for composed events (click) but <span class="bad">null</span> for non-composed ones (<code>pointerenter</code>/<code>pointerleave</code>), which is the desktop crash. Pinning them at dispatch keeps them.</p>
+<div class="stage" id="stageA"></div>
+<pre id="logA"></pre>
+
+<h2>B. Focus and keys (right-click / dead keys / macOS accent popup)</h2>
+<p>1. Press <b>Focus helper</b> (what Qt's <code>focus()</code> does). 2. Type: the counter is "keys reaching Qt". 3. Click or right-click the grey box with each pointerdown mode, then type again. 4. Hold <b>a</b> with each keydown mode to see the press-and-hold accent popup.</p>
+<div class="row">
+  <button id="focusB">Focus helper</button>
+  <label>pointerdown: <select id="pdModeB">
+    <option value="none">no preventDefault (Qt: press not accepted, e.g. right click)</option>
+    <option value="sync">preventDefault in dispatch</option>
+    <option value="late">preventDefault late (queued)</option>
+  </select></label>
+  <label>keydown: <select id="kdModeB">
+    <option value="sync">preventDefault in dispatch</option>
+    <option value="late">preventDefault late (queued)</option>
+  </select></label>
+</div>
+<div class="stage" id="stageB"></div>
+<div class="status" id="statusB"></div>
+<pre id="logB"></pre>
+
+<h2>C. Mobile keyboard (tap a text field)</h2>
+<p>On a phone: tap the grey box ("a Qt text field"). Qt focuses its hidden input in the pointer handler and cancels the pointerdown default. Try each combination and watch whether the keyboard stays, closes again, or never opens; the log shows input focus/blur.</p>
+<div class="row">
+  <label>focus(): <select id="focusModeC">
+    <option value="sync">in dispatch</option>
+    <option value="micro">microtask</option>
+    <option value="late">late (queued)</option>
+  </select></label>
+  <label>pointerdown preventDefault: <select id="pdModeC">
+    <option value="sync">in dispatch</option>
+    <option value="late">late (queued)</option>
+    <option value="none">none</option>
+  </select></label>
+  <button id="blurC">Blur</button>
+</div>
+<div class="stage" id="stageC"></div>
+<pre id="logC"></pre>
+
+<h2>D. OPFS from a Worker vs the main thread</h2>
+<p>Claims: (1) a Worker's async OPFS calls (lookups, <code>getFile()</code>) only settle in Safari while the page's main thread is free, so they stall while it is blocked; (2) SyncAccessHandle reads in a Worker do not need the main thread; (3) every async OPFS call made from the main thread is an await, i.e. a JSPI suspension in /play, and with it a window in which Qt queues events. Needs a secure context (https or <code>localhost</code>).</p>
+<div class="row">
+  <button id="d1">1. Worker async ops, main idle</button>
+  <button id="d2">2. Worker async ops, main blocked 2 s</button>
+  <button id="d3">3. Worker sync reads, main blocked 2 s</button>
+  <button id="d4">4. Main thread: 500 file-size lookups</button>
+  <button id="d5">5. Main waits for the Worker, yielding (the fix)</button>
+</div>
+<pre id="logD"></pre>
+
+<script>
+'use strict';
+const now = () => performance.timeOrigin + performance.now();
+function logger(id) {
+  const el = document.getElementById(id);
+  return (html) => { el.innerHTML = html + '\n' + el.innerHTML; };
+}
+const fmtT = (t) => t ? (t.className || t.tagName || String(t)) : '<span class="bad">null</span>';
+const fmtP = (n) => n ? String(n) : '<span class="bad">0</span>';
+
+document.getElementById('env').textContent = [
+  'UA: ' + navigator.userAgent,
+  'secureContext=' + isSecureContext + ' crossOriginIsolated=' + self.crossOriginIsolated +
+  ' OPFS=' + !!(navigator.storage && navigator.storage.getDirectory),
+].join('\n');
+
+/** The DOM shape of a Qt wasm screen + window (qwasmscreen.cpp / qwasmwindow.cpp). */
+function qtStage(mountId, label) {
+  const host = document.createElement('div');
+  document.getElementById(mountId).appendChild(host);
+  const root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = `
+    <style>
+      .qt-window { position:relative; width:100%; max-width:520px; height:140px; user-select:none; -webkit-user-select:none; touch-action:none; }
+      .qt-window-canvas { width:100%; height:100%; background:#8888; border-radius:6px; display:block; }
+      .qt-window-focus-helper, .qt-window-input-element { position:absolute; left:0; top:0; width:1px; height:1px; opacity:0; z-index:-2; }
+      .label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; font:13px system-ui; color:#fff; text-shadow:0 1px 2px #000; }
+    </style>
+    <div class="qt-window">
+      <div class="qt-window-focus-helper" contenteditable="true" inputmode="none"></div>
+      <input class="qt-window-input-element" type="text">
+      <canvas class="qt-window-canvas"></canvas>
+      <div class="label">${label}</div>
+    </div>`;
+  return {
+    host, root,
+    win: root.querySelector('.qt-window'),
+    canvas: root.querySelector('.qt-window-canvas'),
+    helper: root.querySelector('.qt-window-focus-helper'),
+    input: root.querySelector('.qt-window-input-element'),
+  };
+}
+const late = (fn) => setTimeout(fn, 0);           // Qt's queued path (handled after dispatch)
+const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI resumes in a microtask)
+
+// ---- A ------------------------------------------------------------------------
+{
+  const s = qtStage('stageA', 'click / right-click');
+  const log = logger('logA');
+  const pin = (e) => {
+    const t = e.target, p = e.composedPath();
+    Object.defineProperty(e, 'target', { value: t, configurable: true });
+    Object.defineProperty(e, 'composedPath', { value: () => p, configurable: true });
+  };
+  s.win.addEventListener('pointerdown', (e) => {
+    const r = { sync: [e.target, e.composedPath().length] };
+    micro(() => { r.micro = [e.target, e.composedPath().length]; });
+    late(() => {
+      r.late = [e.target, e.composedPath().length];
+      log(`pointerdown (button ${e.button}): sync ${fmtT(r.sync[0])}/${r.sync[1]} · microtask ${fmtT(r.micro[0])}/${fmtP(r.micro[1])} · late ${fmtT(r.late[0])}/${fmtP(r.late[1])}`);
+    });
+  });
+  s.win.addEventListener('pointerup', (e) => {
+    pin(e);
+    late(() => log(`pointerup, pinned at dispatch: late ${fmtT(e.target)}/${fmtP(e.composedPath().length)}`));
+  });
+  s.win.addEventListener('contextmenu', (e) => e.preventDefault());
+  // pointerenter/pointerleave are not composed: they stop at the shadow root, so
+  // DOM "clear targets" nulls target after dispatch (Qt reads it on enter, for
+  // mouse/pen only — hence desktop-only crashes).
+  s.win.addEventListener('pointerenter', (e) => {
+    const r = { sync: [e.target, e.composedPath().length] };
+    micro(() => { r.micro = [e.target, e.composedPath().length]; });
+    late(() => {
+      r.late = [e.target, e.composedPath().length];
+      log(`pointerenter (${e.pointerType}, composed=${e.composed}): sync ${fmtT(r.sync[0])}/${r.sync[1]} · microtask ${fmtT(r.micro[0])}/${fmtP(r.micro[1])} · late ${fmtT(r.late[0])}/${fmtP(r.late[1])}`);
+    });
+  });
+  s.win.addEventListener('pointerleave', (e) => {
+    pin(e);
+    late(() => log(`pointerleave, pinned at dispatch: late ${fmtT(e.target)}/${fmtP(e.composedPath().length)}`));
+  });
+}
+
+// ---- B ------------------------------------------------------------------------
+{
+  const s = qtStage('stageB', 'click / right-click here, then type');
+  const log = logger('logB');
+  const pdMode = document.getElementById('pdModeB');
+  const kdMode = document.getElementById('kdModeB');
+  let keys = 0, last = '';
+  document.getElementById('focusB').onclick = () => s.helper.focus();
+  s.win.addEventListener('pointerdown', (e) => {
+    const m = pdMode.value;
+    if (m === 'sync') e.preventDefault();
+    if (m === 'late') late(() => e.preventDefault());
+    late(() => log(`pointerdown button ${e.button} mode=${m} → focus now: ${focusName()}`));
+  });
+  s.win.addEventListener('contextmenu', (e) => {
+    if (pdMode.value === 'late') late(() => e.preventDefault()); else e.preventDefault();
+  });
+  s.win.addEventListener('keydown', (e) => {
+    keys++; last = e.key + (e.repeat ? ' (repeat)' : '');
+    if (kdMode.value === 'sync') e.preventDefault(); else late(() => e.preventDefault());
+  });
+  s.root.addEventListener('focusout', (e) => log(`focusout from ${e.target.className} → relatedTarget ${e.relatedTarget ? (e.relatedTarget.className || e.relatedTarget.tagName) : 'null (left Qt)'}`));
+  function focusName() {
+    const a = s.root.activeElement;
+    if (a) return `<span class="ok">${a.className}</span>`;
+    const d = document.activeElement;
+    return `<span class="bad">${d ? d.tagName : 'none'} (outside Qt)</span>`;
+  }
+  setInterval(() => {
+    document.getElementById('statusB').innerHTML = `focus: ${focusName()} · keys reaching Qt: ${keys} · last: ${last || '-'}`;
+  }, 150);
+}
+
+// ---- C ------------------------------------------------------------------------
+{
+  const s = qtStage('stageC', 'tap: a Qt text field');
+  const log = logger('logC');
+  const fMode = document.getElementById('focusModeC');
+  const pMode = document.getElementById('pdModeC');
+  const t0 = () => (performance.now() / 1000).toFixed(2) + 's';
+  document.getElementById('blurC').onclick = () => s.input.blur();
+  s.input.addEventListener('focus', () => log(`${t0()} input focus`));
+  s.input.addEventListener('blur', (e) => log(`${t0()} input <span class="bad">blur</span> → ${e.relatedTarget ? (e.relatedTarget.className || e.relatedTarget.tagName) : 'null'}`));
+  s.win.addEventListener('pointerdown', (e) => {
+    const f = fMode.value, p = pMode.value;
+    log(`${t0()} pointerdown focus=${f} preventDefault=${p}`);
+    const doFocus = () => s.input.focus();
+    if (f === 'sync') doFocus(); else if (f === 'micro') micro(doFocus); else late(doFocus);
+    if (p === 'sync') e.preventDefault(); else if (p === 'late') late(() => e.preventDefault());
+  });
+}
+
+// ---- D ------------------------------------------------------------------------
+{
+  const log = logger('logD');
+  const workerSrc = `
+    const now = () => performance.timeOrigin + performance.now();
+    let dir, fh;
+    async function setup() {
+      if (dir) return;
+      const root = await navigator.storage.getDirectory();
+      dir = await root.getDirectoryHandle('safari-poc', { create: true });
+      fh = await dir.getFileHandle('f.bin', { create: true });
+      const sah = await fh.createSyncAccessHandle();
+      if (sah.getSize() < 65536) { sah.write(new Uint8Array(65536), { at: 0 }); sah.flush(); }
+      sah.close();
+    }
+    onmessage = async (ev) => {
+      const m = ev.data;
+      try {
+        await setup();
+        if (m.cmd === 'ready') { postMessage({ id: m.id, ok: true }); return; }
+        if (m.cmd === 'async') {
+          const started = now(), times = [];
+          for (let i = 0; i < m.n; i++) {
+            const h = await dir.getFileHandle('f.bin');
+            (await h.getFile()).size;
+            times.push(now());
+          }
+          postMessage({ id: m.id, started, times });
+        } else if (m.cmd === 'sync') {
+          const sah = await fh.createSyncAccessHandle();
+          const buf = new Uint8Array(4096), started = now(), times = [];
+          while (now() - started < m.ms) { sah.read(buf, { at: 0 }); times.push(now()); }
+          sah.close();
+          postMessage({ id: m.id, started, times });
+        }
+      } catch (e) { postMessage({ id: m.id, error: e.name + ': ' + e.message }); }
+    };`;
+  let worker = null, nextId = 1;
+  const waiters = new Map();
+  function ask(msg) {
+    if (!worker) {
+      worker = new Worker(URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' })));
+      worker.onmessage = (ev) => { const w = waiters.get(ev.data.id); waiters.delete(ev.data.id); w && w(ev.data); };
+    }
+    const id = nextId++;
+    return new Promise((resolve) => { waiters.set(id, resolve); worker.postMessage({ ...msg, id }); });
+  }
+  const busy = (ms) => { const end = now() + ms; while (now() < end) {} };
+  const guard = (fn) => async () => {
+    if (!isSecureContext || !navigator.storage?.getDirectory) { log('<span class="bad">OPFS unavailable here (needs https or localhost)</span>'); return; }
+    try { await fn(); } catch (e) { log(`<span class="bad">${e.name}: ${e.message}</span>`); }
+  };
+  const ms = (x) => x.toFixed(0) + ' ms';
+
+  document.getElementById('d1').onclick = guard(async () => {
+    await ask({ cmd: 'ready' });
+    const r = await ask({ cmd: 'async', n: 200 });
+    if (r.error) throw new Error(r.error);
+    const total = r.times[r.times.length - 1] - r.started;
+    log(`1. main idle: 200 async ops in ${ms(total)} (${(total / 200).toFixed(2)} ms/op)`);
+  });
+
+  document.getElementById('d2').onclick = guard(async () => {
+    await ask({ cmd: 'ready' });
+    const p = ask({ cmd: 'async', n: 200 });
+    const b0 = now(); busy(2000); const b1 = now();   // main thread blocked, like a futex busy-wait
+    const r = await p;
+    if (r.error) throw new Error(r.error);
+    const during = r.times.filter((t) => t < b1).length;
+    const first = r.times[0] - b0;
+    const verdict = during < 5
+      ? '<span class="bad">stalled while main was blocked</span>'
+      : '<span class="ok">progressed while main was blocked</span>';
+    log(`2. main blocked ${ms(b1 - b0)}: ${during}/200 async ops completed during the block, first after ${ms(first)} → ${verdict}`);
+  });
+
+  document.getElementById('d3').onclick = guard(async () => {
+    await ask({ cmd: 'ready' });
+    const p = ask({ cmd: 'sync', ms: 2500 });
+    await new Promise((r) => setTimeout(r, 100));
+    const b0 = now(); busy(2000); const b1 = now();
+    const r = await p;
+    if (r.error) throw new Error(r.error);
+    const during = r.times.filter((t) => t > b0 && t < b1).length;
+    const verdict = during > 100
+      ? '<span class="ok">sync reads ran while main was blocked</span>'
+      : '<span class="bad">sync reads stalled too</span>';
+    log(`3. main blocked ${ms(b1 - b0)}: ${during} SyncAccessHandle reads during the block (${r.times.length} total) → ${verdict}`);
+  });
+
+  // What browser/main_thread_wait.cpp does in a long main-thread futex wait:
+  // spin 1 ms, then give the browser one task (MessageChannel), until done.
+  const yieldTask = () => new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = () => r(); c.port2.postMessage(0); });
+  document.getElementById('d5').onclick = guard(async () => {
+    await ask({ cmd: 'ready' });
+    let done = null;
+    ask({ cmd: 'async', n: 200 }).then((r) => { done = r; });
+    const t0 = now();
+    let yields = 0;
+    while (!done && now() - t0 < 10000) {
+      busy(1);
+      await yieldTask();
+      yields++;
+    }
+    if (!done) { log('5. <span class="bad">Worker did not finish within 10 s while main yielded</span>'); return; }
+    if (done.error) throw new Error(done.error);
+    const total = done.times[done.times.length - 1] - done.started;
+    log(`5. main waiting with yields: 200 async ops in ${ms(total)} (${yields} yields) → ${total < 2000 ? '<span class="ok">the wait no longer starves OPFS</span>' : '<span class="bad">still slow</span>'} (compare with 1)`);
+  });
+
+  document.getElementById('d4').onclick = guard(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dir = await root.getDirectoryHandle('safari-poc', { create: true });
+    await dir.getFileHandle('f.bin', { create: true });
+    const t0 = now();
+    for (let i = 0; i < 500; i++) {
+      const h = await dir.getFileHandle('f.bin');
+      (await h.getFile()).size;
+    }
+    const total = now() - t0;
+    log(`4. main thread: 500 file-size lookups awaited ${ms(total)} (${(total / 500).toFixed(2)} ms each). In /play each is a JSPI suspension of main; the login screen did ~180/s (SIZE_FILE in play.diag).`);
+  });
+}
+</script>
+</body>
+</html>
