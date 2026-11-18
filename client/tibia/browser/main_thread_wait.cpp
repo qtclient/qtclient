@@ -34,8 +34,10 @@ namespace {
 
 // Spin this long before the first yield: lock hand-offs finish well within it.
 constexpr double kSpinBeforeYieldMs = 10;
-// Spin slice between two yields (also serves calls proxied to main meanwhile).
-constexpr double kSpinSliceMs = 1;
+// Between two yields there is no spin, only a re-check: measured in Safari
+// (tools/safari-poc D5), any spin slice costs ~1 ms per yield (coarse timers)
+// and slows the Worker's OPFS work 4-5x; yield-only waits finish in ~1.5x
+// the idle time.
 
 } // namespace
 
@@ -71,24 +73,23 @@ extern "C" int __wrap_emscripten_futex_wait(volatile void* addr, uint32_t val, d
         return __real_emscripten_futex_wait(addr, val, maxWaitMs);
 
     const double end = std::isinf(maxWaitMs) ? INFINITY : emscripten_get_now() + maxWaitMs;
-    int r = __real_emscripten_futex_wait(addr, val, std::min(maxWaitMs, kSpinBeforeYieldMs));
+    const int r = __real_emscripten_futex_wait(addr, val, std::min(maxWaitMs, kSpinBeforeYieldMs));
+    if (r != -ETIMEDOUT)
+        return r;
     for (;;) {
-        if (r != -ETIMEDOUT)
-            return r;
         const double now = emscripten_get_now();
         if (now >= end)
             return -ETIMEDOUT;
         if (!qtclientMainCanSuspend())
             return __real_emscripten_futex_wait(addr, val, end - now);
         qtclientMainYieldTask();
-        // Woken meanwhile (or the value changed): callers re-check their
-        // condition after any return, like after a spurious futex wake-up.
+        // What Emscripten's main-thread spin does each pass: run calls that
+        // pthreads proxied to main, then re-check the value. A changed value
+        // is a wake-up; callers re-check their condition after any return,
+        // like after a spurious futex wake-up.
+        emscripten_main_thread_process_queued_calls();
         if (__atomic_load_n(static_cast<volatile uint32_t*>(addr), __ATOMIC_SEQ_CST) != val)
             return 0;
-        const double left = end - emscripten_get_now();
-        if (left <= 0)
-            return -ETIMEDOUT;
-        r = __real_emscripten_futex_wait(addr, val, std::min(left, kSpinSliceMs));
     }
 }
 
