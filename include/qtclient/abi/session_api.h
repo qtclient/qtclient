@@ -249,6 +249,9 @@ typedef struct QtClientSessionApiV1 {
     /** Show / hide a registered attached effect on a creature (product transport). */
     void (*attach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
     void (*detach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
+
+    /** QTCLIENT_DIRECTION_* the local player faces, or QTCLIENT_DIRECTION_INVALID offline. */
+    int (*local_player_direction)(void);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

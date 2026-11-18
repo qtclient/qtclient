@@ -94,3 +94,48 @@ TEST(GameActionMapper, ClassicMenuRequiresCtrlOrMeta)
         mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::MetaModifier);
     EXPECT_TRUE(hasType(metaRight, A::CONTEXT_MENU));
 }
+
+// CIP Loot: Right — Shift+Right uses/opens the field object (no attack), so a
+// ladder under a creature climbs instead of attacking.
+TEST(GameActionMapper, ClassicLootRightShiftRightIsForceUse)
+{
+    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/0);
+    const std::vector<A> types =
+        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
+    ASSERT_FALSE(types.empty());
+    EXPECT_EQ(types.front(), A::USE);
+    EXPECT_TRUE(hasType(types, A::USE_ON_CREATURE));
+    EXPECT_TRUE(hasType(types, A::USE_WITH));
+    EXPECT_TRUE(hasType(types, A::OPEN));
+    EXPECT_TRUE(hasType(types, A::OPEN_IN_NEW_WINDOW));
+    EXPECT_FALSE(hasType(types, A::ATTACK_CREATURE));
+    EXPECT_FALSE(hasType(types, A::QUICK_LOOT));
+}
+
+TEST(GameActionMapper, ClassicLootShiftRightKeepsQuickLootOnShiftRight)
+{
+    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/1);
+    const std::vector<A> types =
+        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
+    ASSERT_FALSE(types.empty());
+    EXPECT_EQ(types.front(), A::QUICK_LOOT);
+    EXPECT_FALSE(hasType(types, A::USE));
+}
+
+TEST(GameActionMapper, ClassicLootLeftClearsShiftRight)
+{
+    const TGameActionMapper mapper(/*controlScheme=*/0, /*lootScheme=*/2);
+    const std::vector<A> types =
+        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
+    EXPECT_TRUE(types.empty());
+}
+
+TEST(GameActionMapper, LegacyLootRightShiftRightIsForceUse)
+{
+    const TGameActionMapper mapper(/*controlScheme=*/1, /*lootScheme=*/0);
+    const std::vector<A> types =
+        mapper.ruleTypes(TGameActionMapper::WorldMapContext, Qt::RightButton, Qt::ShiftModifier);
+    ASSERT_FALSE(types.empty());
+    EXPECT_EQ(types.front(), A::USE);
+    EXPECT_FALSE(hasType(types, A::ATTACK_CREATURE));
+}
