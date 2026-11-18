@@ -21,6 +21,7 @@ function(qtclient_browser_runtime target)
   target_sources(${target} PRIVATE
     "${_dir}/qtclient_opfs_backend.cpp"
     "${_dir}/qtclient_opfs_backend.h"
+    "${_dir}/main_thread_wait.cpp"
     "${_dir}/wasm_heap_stats.cpp")
   # The WasmFS backend API (backend.h / file.h) is internal to Emscripten.
   get_filename_component(_emscripten_root "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -31,6 +32,10 @@ function(qtclient_browser_runtime target)
     "SHELL:-lsockfs.js"
     # The Qt kit with -feature-wasm-jspi adds it too; the duplicate is harmless.
     "SHELL:-sJSPI"
+    # Long main-thread futex waits yield to the browser, so a GUI thread
+    # waiting on a pool doing OPFS I/O cannot starve Safari
+    # (browser/main_thread_wait.cpp).
+    "SHELL:-Wl,--wrap=emscripten_futex_wait"
     # The engine's own OPFS Worker (started by qtclientMountOpfs).
     "SHELL:--post-js=${_QTCLIENT_BROWSER_ROOT}/browser/qtclient-fs.js"
     # Function names for /play crash stacks (<target>.js.symbols, not published).

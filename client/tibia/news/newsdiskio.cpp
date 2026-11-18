@@ -46,24 +46,15 @@ void TNewsDiskIOAsync::loadNewsDataFromDiskIfPossible()
         if (data)
             Q_EMIT loadingNewsDataSucceeded(*data);
     };
-#if defined(__EMSCRIPTEN__)
-    // qtclient: QThreadPool workers deadlock wasm; read on the GUI thread, report queued.
-    QMetaObject::invokeMethod(this, [finish, data = loadNewsData()] { finish(data); }, Qt::QueuedConnection);
-#else
     m_threadPool->start([this, finish] {
         std::optional<TNewsData> data = loadNewsData();
         QMetaObject::invokeMethod(this, [finish, data = std::move(data)] { finish(data); }, Qt::QueuedConnection);
     });
-#endif
 }
 
 void TNewsDiskIOAsync::saveNewsDataToDisk(const TNewsData& data)
 {
-#if defined(__EMSCRIPTEN__)
-    saveNewsData(data);
-#else
     m_threadPool->start([this, data] { saveNewsData(data); });
-#endif
 }
 
 void TNewsDiskIOAsync::waitForFinished() { m_threadPool->waitForDone(); }

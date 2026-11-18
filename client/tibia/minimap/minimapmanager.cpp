@@ -83,13 +83,10 @@ void TMinimapManager::loadDefaultTilesFromResources()
 {
     if (m_defaultTilesDir.isEmpty())
         return;
-    // CipSoft: bulk-copy Resources/minimap → AppData/minimap when empty.
-    // Desktop waits so first reads see defaults. Wasm must not waitForDone()
-    // (QThreadPool deadlock); pre-Play JS seed usually fills the dir first.
+    // CipSoft: bulk-copy Resources/minimap → AppData/minimap when empty, and
+    // wait so first reads see defaults.
     m_diskIO.importDefaultTiles(m_defaultTilesDir);
-#if !defined(__EMSCRIPTEN__)
     m_diskIO.waitForDone();
-#endif
 }
 
 QString TMinimapManager::minimapDir()

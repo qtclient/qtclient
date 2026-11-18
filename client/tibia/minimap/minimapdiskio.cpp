@@ -65,16 +65,10 @@ void TMinimapDiskIOAsync::loadTile(const Position& id)
             return nullptr;
         return readTilePair(QDir(m_defaultTilesDir), id);
     };
-#if defined(__EMSCRIPTEN__)
-    // Same as sprite sheets: QThreadPool workers + waitForDone deadlock wasm.
-    TMinimapTilePtr tile = load();
-    QMetaObject::invokeMethod(this, [finish, tile] { finish(tile); }, Qt::QueuedConnection);
-#else
     m_pool.start([this, load, finish] {
         TMinimapTilePtr tile = load();
         QMetaObject::invokeMethod(this, [finish, tile] { finish(tile); }, Qt::QueuedConnection);
     });
-#endif
 }
 
 void TMinimapDiskIOAsync::saveTile(const TMinimapTilePtr& tile)
@@ -92,9 +86,7 @@ void TMinimapDiskIOAsync::saveTile(const TMinimapTilePtr& tile)
 void TMinimapDiskIOAsync::importDefaultTiles(const QString& sourceDir)
 {
     setDefaultTilesDir(sourceDir);
-    // CipSoft bulk copy into user AppData/minimap when empty. On wasm, pre-Play JS
-    // usually seeds first (so this early-outs); never call waitForDone() on the
-    // main thread after queueing this (see TMinimapManager).
+    // CipSoft bulk copy into user AppData/minimap when empty.
     auto copy = [dir = QDir::cleanPath(m_dir), source = QDir::cleanPath(sourceDir)] {
         const QStringList pattern{ QStringLiteral("Minimap_*.png") };
         if (!QDir(dir).entryList(pattern, QDir::Files).isEmpty())
@@ -108,11 +100,7 @@ void TMinimapDiskIOAsync::importDefaultTiles(const QString& sourceDir)
         for (const QString& name : files)
             QFile::copy(sourceDir.filePath(name), out.filePath(name));
     };
-#if defined(__EMSCRIPTEN__)
-    copy();
-#else
     m_pool.start(copy);
-#endif
 }
 
 void TMinimapDiskIOAsync::waitForDone()
@@ -165,15 +153,10 @@ void TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible()
         if (content)
             Q_EMIT loadingMinimapMarkersSucceeded(*content);
     };
-#if defined(__EMSCRIPTEN__)
-    const auto content = load();
-    QMetaObject::invokeMethod(this, [finish, content] { finish(content); }, Qt::QueuedConnection);
-#else
     m_pool.start([this, load, finish] {
         const auto content = load();
         QMetaObject::invokeMethod(this, [finish, content] { finish(content); }, Qt::QueuedConnection);
     });
-#endif
 }
 
 void TMinimapDiskIOAsync::saveMinimapMarkerFileContentToDisk(

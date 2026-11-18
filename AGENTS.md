@@ -30,6 +30,12 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
   symbol. Edit them only with the umbrella's `tools/re/port.py`; never lock a
   function you did not compare with its unit.
 - No addresses, `sub_…`/`FUN_…` ids or build shas in comments or names.
+- Ported code stays platform-neutral, like CipSoft's: no `#if __EMSCRIPTEN__`
+  workarounds for the web (thread pools, `waitForDone`, file I/O on the GUI
+  thread). Browser and Safari compatibility belongs below it: the Qt fork
+  (`qtclient/Qt5`) or the browser runtime (`client/tibia/browser/`,
+  `browser/qtclient-fs.js`; e.g. `main_thread_wait.cpp` keeps main-thread
+  waits Safari-safe). Reproduce browser claims first with `tools/safari-poc`.
 
 ## Do not
 

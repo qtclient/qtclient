@@ -55,6 +55,9 @@
 
 using namespace wasmfs;
 
+// Set once main() runs in the JSPI activation (main_thread_wait.cpp).
+extern bool qtclientMainWaitMayYield;
+
 // From <emscripten/wasmfs.h>, which cannot be included next to the internal
 // headers (it declares its own global Backend / backend_t).
 extern "C" int wasmfs_create_directory(const char* path, mode_t mode, backend_t backend);
@@ -175,8 +178,14 @@ EM_JS(void, qtclientFsRing, (const int32_t* channel, int fromMain), {
 // until some unrelated task wakes the loop (seconds while the page is idle).
 EM_ASYNC_JS(void, qtclientFsAwaitMain, (int32_t* state), {
     var i = state >> 2;
-    while (Atomics.load(HEAP32, i) !== 3)
-        await Module.qtclientFs.mainDone();
+    // Nested wasm calls meanwhile must not suspend (main_thread_wait.cpp).
+    Module.qtclientMainSuspended = (Module.qtclientMainSuspended | 0) + 1;
+    try {
+        while (Atomics.load(HEAP32, i) !== 3)
+            await Module.qtclientFs.mainDone();
+    } finally {
+        Module.qtclientMainSuspended--;
+    }
 });
 
 struct Result {
@@ -501,6 +510,9 @@ bool qtclientMountOpfs()
     static_assert(sizeof(std::atomic<int32_t>) == 4);
     if (qtclientFsStart(g_startInfo, &g_control.channel) != 0)
         return false;
+    // From here main() runs in the JSPI activation: long main-thread waits
+    // may yield to the browser (main_thread_wait.cpp).
+    qtclientMainWaitMayYield = true;
 
     const backend_t backend = wasmFS.addBackend(std::make_unique<OpfsBackend>());
     if (!mkdirIfMissing("/home"))
