@@ -265,10 +265,19 @@ public:
     int nodeId() const { return m_node; }
 
 private:
+    // stat() of a file nobody has open is OpSizeFile, an async op that
+    // suspends the main thread (JSPI); Qt queues DOM events meanwhile. Every
+    // change to this node's size in this tab goes through this object, so a
+    // size once known stays right; an open file asks its access handle (sync).
+    // (Another /play tab writing the file is only seen once it is reopened.)
     off_t getSize() override
     {
+        if (m_access <= 0 && m_size >= 0)
+            return m_size;
         const Result r = m_access > 0 ? call(OpSizeAccess, {double(m_access)})
                                       : call(OpSizeFile, {double(m_node)});
+        if (r.r0 >= 0)
+            m_size = static_cast<off_t>(r.r0);
         return static_cast<off_t>(r.r0);
     }
 
@@ -276,6 +285,7 @@ private:
     {
         const Result r = m_access > 0 ? call(OpTruncAccess, {double(m_access), double(size)})
                                       : call(OpTruncFile, {double(m_node), double(size)});
+        m_size = r.r0 >= 0 ? size : -1;
         return asErr(r.r0);
     }
 
@@ -312,6 +322,10 @@ private:
     ssize_t write(const uint8_t* buf, size_t len, off_t offset) override
     {
         const Result r = call(OpWrite, {double(m_access), ptrArg(buf), double(len), double(offset)});
+        if (r.r0 < 0)
+            m_size = -1;
+        else if (m_size >= 0 && offset + static_cast<off_t>(r.r0) > m_size)
+            m_size = offset + static_cast<off_t>(r.r0);
         return static_cast<ssize_t>(r.r0);
     }
 
@@ -325,6 +339,7 @@ private:
     int m_preopened = 0;
     int m_access = 0;
     size_t m_opens = 0;
+    off_t m_size = -1; // last known size, -1 = ask the Worker
 };
 
 class OpfsDirectory final : public Directory {
@@ -332,8 +347,8 @@ public:
     /// `createdHere`: this process made the directory, so WasmFS's dcache
     /// holds every child (all later changes go through WasmFS too). A lookup
     /// that misses the dcache is then a miss — answered without the Worker.
-    /// (Another /play tab writing into it would not be seen; OPFS access
-    /// handles already make two tabs on one profile fail loudly.)
+    /// (A file another /play tab adds to a directory this tab created is not
+    /// seen here until reload; tabs share installed trees, which they read.)
     OpfsDirectory(mode_t mode, backend_t backend, int nodeId, bool createdHere = false)
         : Directory(mode, backend)
         , m_node(nodeId)

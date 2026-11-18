@@ -355,6 +355,20 @@
       o.calls++;
       o.ms += ms;
     }
+    // Async ops per path (each one suspends a main-thread caller): which file a
+    // poller hammers. Bounded so a tree walk cannot grow it without limit.
+    var hot = new Map();
+    var HOT_MAX = 4096;
+    function countPathOp(op, path) {
+      var key = op + ' ' + path;
+      var n = hot.get(key);
+      if (n !== undefined) hot.set(key, n + 1);
+      else if (hot.size < HOT_MAX) hot.set(key, 1);
+    }
+    function hotPaths(limit) {
+      return Array.from(hot.entries()).sort(function (a, b) { return b[1] - a[1]; })
+        .slice(0, limit).map(function (e) { return { key: e[0], calls: e[1] }; });
+    }
 
     function runSync(op, s) {
       switch (op) {
@@ -382,6 +396,7 @@
       switch (op) {
       case OP.CHILD: {
         var dir = node(arg(s, 0)), name = readName(s, 1, 2), path = join(dir.path, name);
+        countPathOp('CHILD', path);
         if (unlinked.has(path)) throw fsError('NOENT', path + ' is unlinked');
         await removalsSettled();
         try {
@@ -484,10 +499,12 @@
       }
       case OP.OPEN: {
         var file = node(arg(s, 0));
+        countPathOp('OPEN', file.path);
         return [(await openAccess(file.path, file.handle)).id];
       }
       case OP.SIZE_FILE: {
         var sfile = node(arg(s, 0)), open = accessByPath.get(sfile.path);
+        countPathOp('SIZE_FILE', sfile.path);
         if (open) return [open.sah.getSize()];
         return [(await sfile.handle.getFile()).size];
       }
@@ -565,7 +582,7 @@
       }
       if (m.type === 'stats') {
         self.postMessage({ type: 'stats', id: m.id, stats: stats, openHandles: accessByPath.size,
-          idleHandles: idle.length, nodes: nodes.size });
+          idleHandles: idle.length, nodes: nodes.size, hotPaths: hotPaths(8) });
       }
     };
   }
