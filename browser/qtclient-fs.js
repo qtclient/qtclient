@@ -288,6 +288,22 @@
     function isLockConflict(e) {
       return e && (e.name === 'NoModificationAllowedError' || e.name === 'InvalidStateError');
     }
+    // Several /play tabs share one OPFS install. An access handle is exclusive,
+    // and each Worker keeps idle handles open for cheap reopens, so on a lock
+    // conflict ask the other tabs' Workers to close that path if it is idle
+    // there. A file open in two tabs at once still waits, then fails BUSY.
+    var peers = null;
+    try {
+      peers = new BroadcastChannel('qtclient-fs');
+      peers.onmessage = function (ev) {
+        var m = ev.data;
+        if (!m || m.type !== 'release' || typeof m.path !== 'string') return;
+        var rec = accessByPath.get(m.path);
+        if (rec && rec.refs === 0) closeRec(rec);
+      };
+    } catch (e) {
+      peers = null;
+    }
     async function createAccessHandle(path, fileHandle) {
       var t0 = performance.now();
       for (var delay = 10;; delay = Math.min(delay * 2, 250)) {
@@ -295,6 +311,7 @@
           return await fileHandle.createSyncAccessHandle();
         } catch (e) {
           if (!isLockConflict(e)) throw e;
+          if (peers) peers.postMessage({ type: 'release', path: path });
           if (performance.now() - t0 > LOCK_WAIT_MS) {
             throw fsError('BUSY', path + ' is locked by another /play tab or window (' + e.name + ')');
           }
