@@ -183,6 +183,14 @@ std::vector<EGameAction> TGameActionMapper::ruleTypes(const int context, const Q
     } else if (!types.empty()) {
         types.erase(std::remove(types.begin(), types.end(), A::QUICK_LOOT), types.end());
     }
+    // CIP lootScheme overlay (Loot: Right): world-map Shift+Right is the use/open
+    // list without attack — a ladder under a creature is usable. Hard-coded tables
+    // only store QUICK_LOOT there; Loot: Shift+Right keeps that, Loot: Left clears it.
+    if (m_lootScheme == 0 && cipButton == 2 && cipMods == static_cast<int>(Shift)
+        && match && match->context == WorldMapContext
+        && (m_controlScheme == 0 || m_controlScheme == 1)) {
+        types = { A::USE, A::USE_ON_CREATURE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW };
+    }
     return types;
 }
 

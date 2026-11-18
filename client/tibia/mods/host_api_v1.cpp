@@ -1,4 +1,5 @@
 #include "qtclient/abi/host_api_v1.h"
+#include "qtclient/abi/const.h"
 
 #include "mods/attention_backend.h"
 #include "mods/instance_backend.h"
@@ -1030,6 +1031,11 @@ void sessRegAttachedByThing(uint16_t id, const char* note_utf8, uint16_t base_id
 void sessRemoveAttached(uint16_t id) { tibia::game::removeAttachedEffect(id); }
 void sessAttachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::attachCreatureEffect(creature_id, effect_id); }
 void sessDetachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::detachCreatureEffect(creature_id, effect_id); }
+int sessLpDirection()
+{
+    return tibia::game::hasLocalPlayer() ? static_cast<int>(tibia::game::localPlayerDirection())
+                                         : QTCLIENT_DIRECTION_INVALID;
+}
 
 int sessCreatureTypeIsSummon(uint8_t t) { return tibia::game::creatureTypeIsSummon(t) ? 1 : 0; }
 
@@ -1166,6 +1172,7 @@ const QtClientSessionApiV1 g_sessionApi = {
     .clear_path_avoids = &sessClearPathAvoids,
     .attach_creature_effect = &sessAttachCreatureEffect,
     .detach_creature_effect = &sessDetachCreatureEffect,
+    .local_player_direction = &sessLpDirection,
 };
 
 // --- Notify nested API ---

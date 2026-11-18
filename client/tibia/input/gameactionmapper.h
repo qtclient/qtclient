@@ -12,7 +12,9 @@ namespace input {
 /// Picks the action a mouse click runs from the candidates under the mouse
 /// (CIP: TGameActionMapper,). Rules come from the control scheme
 /// (option controlSchemeIndex: 0 classic, 1 legacy, 2 smart) and loot scheme
-/// (option lootSchemeIndex: 0 right, 1 shift+right, 2 left).
+/// (option lootSchemeIndex: 0 right, 1 shift+right, 2 left). With Loot: Right,
+/// Classic/Legacy Shift+Right is use/open (no attack) so a ladder under a
+/// creature is usable.
 class TGameActionMapper : public ::tibia::CipTyped
 {
 public:
