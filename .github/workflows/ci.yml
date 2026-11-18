@@ -67,3 +67,10 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.64.1
           npx playwright install --with-deps chromium
           node run.mjs out
+
+      - name: Run it in headless WebKit (Safari's engine)
+        working-directory: tests/browser/opfs-backend
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps webkit
+          node run.mjs out webkit

@@ -55,8 +55,9 @@
 
 using namespace wasmfs;
 
-// Set once main() runs in the JSPI activation (main_thread_wait.cpp).
-extern bool qtclientMainWaitMayYield;
+// Set once main() runs in the JSPI activation; read by the futex-wait wrapper
+// (main_thread_wait.cpp), which links only with --wrap=emscripten_futex_wait.
+bool qtclientMainWaitMayYield = false;
 
 // From <emscripten/wasmfs.h>, which cannot be included next to the internal
 // headers (it declares its own global Backend / backend_t).

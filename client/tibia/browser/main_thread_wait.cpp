@@ -13,7 +13,8 @@
 // (QtclientBrowserRuntime.cmake, --wrap) and a long main-thread wait yields one
 // browser task at a time (a JSPI suspension) until it is woken.
 //
-// Short waits (lock hand-offs) spin exactly as before. A wait never suspends
+// Short waits (lock hand-offs) spin exactly as before; the threshold counts a
+// whole streak of re-waits on one address (pthread_join re-waits every 1 ms). A wait never suspends
 // where JSPI cannot: before main() (static constructors), on pthreads, or in a
 // wasm call nested in a main-thread suspension (an OPFS await, Qt waiting for
 // events in processEvents(), or this yield itself) — those keep spinning.
@@ -28,12 +29,23 @@
 #include <cmath>
 #include <cstdint>
 
-bool qtclientMainWaitMayYield = false;
+// Set by qtclientMountOpfs() once main() runs in the JSPI activation.
+extern bool qtclientMainWaitMayYield;
 
 namespace {
 
 // Spin this long before the first yield: lock hand-offs finish well within it.
+// Counted over a streak of waits on one address, not per call: Emscripten's
+// pthread_join (and other wait loops) re-wait with 1 ms timeouts.
 constexpr double kSpinBeforeYieldMs = 10;
+// A wait on the same address that starts within this of the previous one's
+// return continues its streak.
+constexpr double kStreakGapMs = 2;
+
+// Main-thread only (see the wrapper): the current wait streak.
+const volatile void* g_streakAddr = nullptr;
+double g_streakStart = 0;
+double g_lastReturn = 0;
 // Between two yields there is no spin, only a re-check: measured in Safari
 // (tools/safari-poc D5), any spin slice costs ~1 ms per yield (coarse timers)
 // and slows the Worker's OPFS work 4-5x; yield-only waits finish in ~1.5x
@@ -72,25 +84,44 @@ extern "C" int __wrap_emscripten_futex_wait(volatile void* addr, uint32_t val, d
     if (!qtclientMainWaitMayYield || !emscripten_is_main_browser_thread())
         return __real_emscripten_futex_wait(addr, val, maxWaitMs);
 
-    const double end = std::isinf(maxWaitMs) ? INFINITY : emscripten_get_now() + maxWaitMs;
-    const int r = __real_emscripten_futex_wait(addr, val, std::min(maxWaitMs, kSpinBeforeYieldMs));
-    if (r != -ETIMEDOUT)
-        return r;
-    for (;;) {
-        const double now = emscripten_get_now();
-        if (now >= end)
-            return -ETIMEDOUT;
-        if (!qtclientMainCanSuspend())
-            return __real_emscripten_futex_wait(addr, val, end - now);
-        qtclientMainYieldTask();
-        // What Emscripten's main-thread spin does each pass: run calls that
-        // pthreads proxied to main, then re-check the value. A changed value
-        // is a wake-up; callers re-check their condition after any return,
-        // like after a spurious futex wake-up.
-        emscripten_main_thread_process_queued_calls();
-        if (__atomic_load_n(static_cast<volatile uint32_t*>(addr), __ATOMIC_SEQ_CST) != val)
-            return 0;
+    double now = emscripten_get_now();
+    if (addr != g_streakAddr || now - g_lastReturn > kStreakGapMs) {
+        g_streakAddr = addr;
+        g_streakStart = now;
     }
+    const double end = std::isinf(maxWaitMs) ? INFINITY : now + maxWaitMs;
+    int r;
+    for (;;) {
+        const double spun = now - g_streakStart;
+        if (spun < kSpinBeforeYieldMs) {
+            r = __real_emscripten_futex_wait(addr, val, std::min(end - now, kSpinBeforeYieldMs - spun));
+            if (r != -ETIMEDOUT)
+                break;
+        } else if (!qtclientMainCanSuspend()) {
+            r = __real_emscripten_futex_wait(addr, val, end - now);
+            break;
+        } else {
+            qtclientMainYieldTask();
+            // What Emscripten's main-thread spin does each pass: run calls that
+            // pthreads proxied to main, then re-check the value. A changed value
+            // is a wake-up; callers re-check their condition after any return,
+            // like after a spurious futex wake-up.
+            emscripten_main_thread_process_queued_calls();
+            if (__atomic_load_n(static_cast<volatile uint32_t*>(addr), __ATOMIC_SEQ_CST) != val) {
+                r = 0;
+                break;
+            }
+        }
+        now = emscripten_get_now();
+        if (now >= end) {
+            r = -ETIMEDOUT;
+            break;
+        }
+    }
+    g_lastReturn = emscripten_get_now();
+    if (r != -ETIMEDOUT)
+        g_streakAddr = nullptr; // woken: the next wait starts a new streak
+    return r;
 }
 
 #endif // __EMSCRIPTEN__

@@ -1,10 +1,14 @@
 // Serve the built contract test with cross-origin isolation (pthreads need
-// SharedArrayBuffer), open it in headless Chromium and report the result.
-// Usage: node run.mjs [outDir]   (needs the `playwright` package + Chromium)
+// SharedArrayBuffer), open it in a headless browser and report the result.
+// Usage: node run.mjs [outDir] [chromium|webkit]
+//   (needs the `playwright` package + that browser). WebKit is Safari's engine:
+//   it settles a Worker's async OPFS requests only while the page's main thread
+//   is free, which the blocking-join test depends on.
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { extname, join, resolve } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 
 const dir = resolve(process.argv[2] ?? new URL('./out', import.meta.url).pathname);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm' };
@@ -26,11 +30,17 @@ const server = createServer(async (req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const url = `http://127.0.0.1:${server.address().port}/`;
 
+const engine = process.argv[3] ?? 'chromium';
 // JSPI is on by default from Chromium 137; the flag covers older builds.
-const browser = await chromium.launch({ args: ['--js-flags=--experimental-wasm-jspi'] });
+// WebKit's default ephemeral context has no OPFS: use a fresh persistent one.
+const browser =
+  engine === 'webkit'
+    ? await webkit.launchPersistentContext(await mkdtemp(join(tmpdir(), 'opfs-contract-')))
+    : await chromium.launch({ args: ['--js-flags=--experimental-wasm-jspi'] });
+console.log(`[opfs-contract] ${engine}`);
 let failures = 1;
 try {
-  const page = await browser.newPage();
+  const page = (engine === 'webkit' && browser.pages()[0]) || (await browser.newPage());
   page.on('console', (m) => console.log(`[page] ${m.text()}`));
   page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
   await page.goto(url);

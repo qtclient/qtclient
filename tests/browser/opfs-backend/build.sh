@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Build the /play file system contract test (no Qt): the WasmFS OPFS backend,
 # and the engine's Worker (browser/qtclient-fs.js), as the tibia / launcher
-# engines link them. Needs emcc (the Qt kit's emsdk pin).
+# engines link them, with the main-thread futex-wait wrapper
+# (browser/main_thread_wait.cpp: the pthread test joins on main). Needs emcc
+# (the Qt kit's emsdk pin).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
@@ -12,7 +14,9 @@ mkdir -p "$OUT"
 "$EMCC" -std=c++20 -O1 -fwasm-exceptions -pthread \
   -I"$ROOT/client/tibia" -I"$WASMFS_INCLUDE" \
   "$HERE/contract.cpp" "$ROOT/client/tibia/browser/qtclient_opfs_backend.cpp" \
+  "$ROOT/client/tibia/browser/main_thread_wait.cpp" \
   -sWASMFS -sJSPI -sPTHREAD_POOL_SIZE=2 -sINITIAL_MEMORY=64MB \
+  -Wl,--wrap=emscripten_futex_wait \
   -sENVIRONMENT=web,worker -sEXIT_RUNTIME=0 \
   --post-js "$ROOT/browser/qtclient-fs.js" \
   -o "$OUT/contract.js"

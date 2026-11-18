@@ -241,6 +241,28 @@ void testPthread()
     CHECK(threadFailures == 0, "pthread write/read/rename");
 }
 
+void testPthreadJoinBlocking()
+{
+    // CipSoft-style code blocks the GUI thread on a pool doing file I/O
+    // (QThreadPool::waitForDone). Safari settles the Worker's async OPFS
+    // requests only while main is free, so a plain spin in join() would hang
+    // here; main_thread_wait.cpp makes the long wait yield instead.
+    std::atomic<int> threadFailures{0};
+    std::thread worker([&] {
+        for (int i = 0; i < 20; ++i) {
+            const std::string file = path("joined" + std::to_string(i));
+            const auto bytes = pattern(500 + i, i);
+            std::vector<char> got;
+            if (!writeFile(file, bytes) || !readFile(file, got) || got != bytes)
+                ++threadFailures;
+            if (rename(file.c_str(), (file + ".done").c_str()) != 0)
+                ++threadFailures;
+        }
+    });
+    worker.join(); // blocks main at once, no emscripten_sleep loop
+    CHECK(threadFailures == 0, "pthread file I/O while main blocks in join()");
+}
+
 // One statement per field: a comma inside EM_ASM code splits macro arguments.
 void report(int failures, const std::string& log)
 {
@@ -270,6 +292,7 @@ int main()
     testUnlinkOpen();
     testManyOpen();
     testPthread();
+    testPthreadJoinBlocking();
 
     removeTree(g_base);
     struct stat st {};
