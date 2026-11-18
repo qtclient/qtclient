@@ -9,7 +9,6 @@
 #include <QTimeZone>
 
 #include <limits>
-#include <stdexcept>
 
 namespace tibia::news {
 
@@ -81,8 +80,9 @@ QString newsCategoryName(const int category)
         case NEWS_CATEGORY_SUPPORT:
             return QStringLiteral("SUPPORT");
         default:
-            throw std::logic_error(
-                QStringLiteral("getNewsCategoryName: Implement me: missing case statement! %1").arg(category).toStdString());
+            // CIP throws; on WASM that escapes application.exec and freezes /play.
+            qWarning("getNewsCategoryName: missing case statement! %d", category);
+            return QStringLiteral("USEFUL INFO");
     }
 }
 
@@ -96,8 +96,8 @@ QString newsTypeName(const int type)
         case NEWS_TYPE_REGULAR:
             return QStringLiteral("REGULAR");
         default:
-            throw std::logic_error(
-                QStringLiteral("getNewsTypeName: Implement me: missing case statement! %1").arg(type).toStdString());
+            qWarning("getNewsTypeName: missing case statement! %d", type);
+            return QStringLiteral("REGULAR");
     }
 }
 
@@ -328,7 +328,10 @@ bool TNewsStorage::hasUnreadUnlockedEntry() const
 
 void TNewsStorage::setEntryRead(const uint id, const bool read)
 {
-    TNewsEntry& entry = m_entries.at(id);
+    const auto it = m_entries.find(id);
+    if (it == m_entries.end())
+        return;
+    TNewsEntry& entry = it->second;
     if (entry.type() == NEWS_TYPE_GROUP_HEADER)
         return;
     if (!entry.setRead(read))

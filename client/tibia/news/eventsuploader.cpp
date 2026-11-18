@@ -5,11 +5,13 @@
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QDateTime>
+#include <QDebug>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
 
 #include <algorithm>
+#include <exception>
 #include <limits>
 
 namespace tibia::news {
@@ -96,14 +98,22 @@ void TEventsUploader::requestEventSchedule()
 
 void TEventsUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
-    if (UploadSuccessful) {
-        m_events = parseEventSchedule(ReplyFromServerJD);
-        // The cache remembers when it was fetched.
-        QJsonObject stamped = ReplyFromServerJD.object();
-        stamped.insert(QStringLiteral("lastupdatetimestamp"), m_clock->currentDateTime().toSecsSinceEpoch());
-        m_fileSystemHelper->writeEventSchedule(QJsonDocument(stamped));
+    try {
+        if (UploadSuccessful) {
+            // Ignore non-schedule replies if a shared sender ever returns.
+            if (!ReplyFromServerJD.object().contains(QStringLiteral("eventlist"))
+                && !ReplyFromServerJD.object().contains(QStringLiteral("lastupdatetimestamp")))
+                return;
+            m_events = parseEventSchedule(ReplyFromServerJD);
+            // The cache remembers when it was fetched.
+            QJsonObject stamped = ReplyFromServerJD.object();
+            stamped.insert(QStringLiteral("lastupdatetimestamp"), m_clock->currentDateTime().toSecsSinceEpoch());
+            m_fileSystemHelper->writeEventSchedule(QJsonDocument(stamped));
+        }
+        Q_EMIT updated(m_events);
+    } catch (const std::exception& e) {
+        qWarning() << "Event schedule update failed:" << e.what();
     }
-    Q_EMIT updated(m_events);
 }
 
 void TEventsStorage::onEventsUpdated(const std::vector<TEventInformation>& StortedEventList)

@@ -44,6 +44,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <string>
@@ -529,5 +530,38 @@ int main(int argc, char** argv)
         } catch (e) {}
     });
 #endif
-    return application.exec();
+    // An uncaught C++ exception leaving a Qt event handler unwinds
+    // QEventLoop::exec and leaves the WASM module frozen (Safari /play after
+    // world enter). Catch here so the console shows `what()` and play.diag can
+    // report it — never let the exception escape main.
+    try {
+        return application.exec();
+    } catch (const std::exception& e) {
+        qCritical("tibia.boot: exception escaped event loop: %s", e.what());
+#ifdef Q_OS_WASM
+        EM_ASM({
+            var msg = UTF8ToString($0);
+            try {
+                var d = window.__qtclientDiag;
+                if (d && typeof d.mark === 'function')
+                    d.mark('exception escaped event loop', { message: msg });
+            } catch (err) {}
+            console.error('tibia.boot: exception escaped event loop:', msg);
+        }, e.what());
+#endif
+        return 1;
+    } catch (...) {
+        qCritical("tibia.boot: unknown exception escaped event loop");
+#ifdef Q_OS_WASM
+        EM_ASM({
+            try {
+                var d = window.__qtclientDiag;
+                if (d && typeof d.mark === 'function')
+                    d.mark('unknown exception escaped event loop', {});
+            } catch (err) {}
+            console.error('tibia.boot: unknown exception escaped event loop');
+        });
+#endif
+        return 1;
+    }
 }

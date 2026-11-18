@@ -36,7 +36,6 @@ class TNewsStorage;
 class TNewsViewsUploader;
 }
 namespace shared {
-class TJsonDocumentHttpPostSender;
 class TTibiaFileSystemHelper;
 }
 }
@@ -204,7 +203,6 @@ private:
     bool m_allowWindowClose = false;
     class TMessageDialogController* m_quitDialog = nullptr;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
-    std::shared_ptr<shared::TJsonDocumentHttpPostSender> m_clientServicesSender;
     std::shared_ptr<news::TNewsStorage> m_newsStorage;
     std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;
     std::unique_ptr<news::TEventsStorage> m_eventsStorage;
