@@ -135,6 +135,16 @@ def assemble() -> int:
     dest = DIST / "cdn"
     nxt = DIST / "cdn.next"
     dest.mkdir(parents=True, exist_ok=True)
+    # assemble reuses launcher/assets-current when the assets revision is
+    # unchanged: cdn.next then holds only its lists (assets.json*), the packed
+    # files stay "on the host" — here, in dest. Keep that tree across the swap
+    # (taking the new lists), or every `make cdn` deletes the asset package.
+    kept_assets = None
+    cur_assets = dest / "launcher" / "assets-current"
+    if (nxt / ".idleot" / "reuse-assets").is_file() and cur_assets.is_dir():
+        kept_assets = DIST / "assets-current.keep"
+        shutil.rmtree(kept_assets, ignore_errors=True)
+        cur_assets.rename(kept_assets)
     # Clear dest children then move nxt children in (same dest inode).
     for child in list(dest.iterdir()):
         if child.is_dir() and not child.is_symlink():
@@ -149,6 +159,14 @@ def assemble() -> int:
             else:
                 target.unlink(missing_ok=True)
         child.rename(target)
+    if kept_assets is not None:
+        new_assets = dest / "launcher" / "assets-current"
+        if new_assets.is_dir():
+            for lst in new_assets.iterdir():
+                shutil.copy2(lst, kept_assets / lst.name)
+            shutil.rmtree(new_assets)
+        new_assets.parent.mkdir(parents=True, exist_ok=True)
+        kept_assets.rename(new_assets)
     shutil.rmtree(nxt, ignore_errors=True)
     print(f"[local-cdn] {dest} (served by the portal at /cdn; in-place tip)")
     return 0
