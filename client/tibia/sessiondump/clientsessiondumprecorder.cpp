@@ -18,15 +18,18 @@ constexpr uint32_t RecordedClientVersion = 0x604;
 constexpr uint32_t RecordedMode = 1;
 constexpr int LoginSuccessMessage = 23;
 
-/// The game world's time zone (Berlin). WASM CIP Qt has no IANA zone DB —
-/// fall back to a fixed UTC+1 offset so session dumps still compile/run.
+/// The game world's time zone (Berlin). Prefer IANA; fall back like newsstorage
+/// when the zone DB is missing (CIP WASM).
 const QTimeZone& serverTimeZone()
 {
-#if defined(Q_OS_WASM)
-    static const QTimeZone zone(3600);
-#else
-    static const QTimeZone zone(QByteArrayLiteral("Europe/Berlin"));
+    static const QTimeZone zone = [] {
+#if QT_CONFIG(timezone)
+        QTimeZone berlin(QByteArrayLiteral("Europe/Berlin"));
+        if (berlin.isValid())
+            return berlin;
 #endif
+        return QTimeZone::fromSecondsAheadOfUtc(3600);
+    }();
     return zone;
 }
 
