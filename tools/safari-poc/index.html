@@ -72,6 +72,12 @@
   <button id="d3">3. Worker sync reads, main blocked 2 s</button>
   <button id="d4">4. Main thread: 500 file-size lookups</button>
   <button id="d5">5. Main waits for the Worker, yielding (the fix)</button>
+  <label>spin between yields: <select id="d5slice">
+    <option value="1">1 ms</option>
+    <option value="0.25">0.25 ms</option>
+    <option value="0.1">0.1 ms</option>
+    <option value="0">0 (yield only)</option>
+  </select></label>
 </div>
 <pre id="logD"></pre>
 
@@ -166,7 +172,10 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
   const pdMode = document.getElementById('pdModeB');
   const kdMode = document.getElementById('kdModeB');
   let keys = 0, last = '';
-  document.getElementById('focusB').onclick = () => s.helper.focus();
+  document.getElementById('focusB').onclick = () => {
+    s.helper.focus();
+    log(`Focus helper pressed → focus now: ${focusName()}`);
+  };
   s.win.addEventListener('pointerdown', (e) => {
     const m = pdMode.value;
     if (m === 'sync') e.preventDefault();
@@ -307,18 +316,19 @@ const micro = (fn) => Promise.resolve().then(fn);  // Qt's resume path (JSPI res
   document.getElementById('d5').onclick = guard(async () => {
     await ask({ cmd: 'ready' });
     let done = null;
+    const slice = Number(document.getElementById('d5slice').value);
     ask({ cmd: 'async', n: 200 }).then((r) => { done = r; });
     const t0 = now();
     let yields = 0;
     while (!done && now() - t0 < 10000) {
-      busy(1);
+      if (slice > 0) busy(slice);
       await yieldTask();
       yields++;
     }
     if (!done) { log('5. <span class="bad">Worker did not finish within 10 s while main yielded</span>'); return; }
     if (done.error) throw new Error(done.error);
     const total = done.times[done.times.length - 1] - done.started;
-    log(`5. main waiting with yields: 200 async ops in ${ms(total)} (${yields} yields) → ${total < 2000 ? '<span class="ok">the wait no longer starves OPFS</span>' : '<span class="bad">still slow</span>'} (compare with 1)`);
+    log(`5. spin ${slice} ms between yields: 200 async ops in ${ms(total)} (${yields} yields) → ${total < 2000 ? '<span class="ok">the wait no longer starves OPFS</span>' : '<span class="bad">still slow</span>'} (compare with 1)`);
   });
 
   document.getElementById('d4').onclick = guard(async () => {
