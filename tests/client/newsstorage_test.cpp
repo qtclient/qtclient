@@ -28,7 +28,7 @@ private:
     QDateTime m_now;
 };
 
-const QDateTime Now = QDateTime(QDate(2026, 11, 17), QTime(12, 0), QTimeZone::utc());
+const QDateTime Now = QDateTime(QDate(2026, 11, 17), QTime(12, 0), Qt::UTC);
 
 QJsonObject entryJson(const int id, const char* category, const char* type, const QDateTime& published,
                       const int unlockLevel = 0, const int groupHeader = 0, const bool read = false)

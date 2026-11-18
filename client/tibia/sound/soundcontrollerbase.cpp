@@ -21,7 +21,10 @@ int64_t randomBetween(const int64_t min, const int64_t max)
 {
     if (max <= min)
         return min;
-    return QRandomGenerator::global()->bounded(min, max + 1);
+    // Cast both ends: on Linux int64_t is long and max+1 is long, which is
+    // ambiguous with QRandomGenerator::bounded(quint32, quint32) vs qint64.
+    return QRandomGenerator::global()->bounded(static_cast<qint64>(min),
+                                               static_cast<qint64>(max) + 1);
 }
 
 TSoundControllerBase::TSoundControllerBase(std::shared_ptr<TSoundMetadataManager> metadata,
