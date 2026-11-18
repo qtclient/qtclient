@@ -156,7 +156,8 @@ std::optional<TNewsEntry> parseNewsEntry(const QJsonObject& object)
     const int type = newsTypeFromName(object[QStringLiteral("type")].toString(), NEWS_TYPE_REGULAR);
     QString headline = shared::jsonString(object, QStringLiteral("headline"));
     QString message = shared::jsonString(object, QStringLiteral("message"));
-    QDateTime publishDate = QDateTime::fromSecsSinceEpoch(object[QStringLiteral("publishdate")].toInt(), QTimeZone::utc());
+    // Qt::UTC — CIP WASM Qt may lack QTimeZone::utc() (added later in Qt 6).
+    QDateTime publishDate = QDateTime::fromSecsSinceEpoch(object[QStringLiteral("publishdate")].toInt(), Qt::UTC);
     const int unlockLevel = shared::jsonInt(object, QStringLiteral("unlocklevel"), 0, IntMax, 0);
     const int campaignId = object[QStringLiteral("campaignid")].toInt();
     const bool read = shared::jsonBool(object, QStringLiteral("isread"), false);
