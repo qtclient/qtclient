@@ -67,12 +67,38 @@ bool init(const QString& argv0, const QString& workDir)
     std::vector<std::string> args{ argv0Bytes.toStdString() };
     tibia::files::data().init(argv0Bytes.constData());
 
+    // Work dir marker is CIP catalog-content.json (not OTC setup.otml — runtime
+    // knobs live in runtimegameconfig). Prefer the monorepo extract tree, then
+    // walk from the binary for CipSoft Resources (macOS .app cwd is often "/").
     const QString previousDir = QDir::currentPath();
     QDir::setCurrent(workDir);
-    const bool found = tibia::files::data().discoverWorkDir("data/setup.otml");
+    bool found = tibia::files::data().discoverWorkDir("data/assets/catalog-content.json");
     QDir::setCurrent(previousDir);
     if (!found) {
-        qCritical().noquote() << "engine: no data/setup.otml under" << workDir;
+        static const char* const kCatalogRels[] = {
+            "assets/catalog-content.json",
+            "Resources/assets/catalog-content.json",
+            "Contents/Resources/assets/catalog-content.json",
+        };
+        QDir directory(QCoreApplication::applicationDirPath());
+        for (int i = 0; i < 6 && !found; ++i) {
+            for (const char* rel : kCatalogRels) {
+                const QString catalog = directory.filePath(QString::fromUtf8(rel));
+                if (!QFileInfo::exists(catalog))
+                    continue;
+                // Search root = parent of assets/ (Resources or package root).
+                QDir resources(QFileInfo(catalog).absolutePath());
+                resources.cdUp();
+                found = tibia::files::data().addSearchPath(resources.absolutePath().toStdString(), true);
+                break;
+            }
+            if (!directory.cdUp())
+                break;
+        }
+    }
+    if (!found) {
+        qCritical().noquote() << "engine: no assets/catalog-content.json under" << workDir
+                              << "or CipSoft Resources next to" << QCoreApplication::applicationDirPath();
         return false;
     }
     // Virtual paths resolve under workDir. CIP assets use one Resources tree

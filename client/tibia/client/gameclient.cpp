@@ -461,7 +461,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
 {
     m_options = options;
     if (!gamecore::init(argv0, workDir)) {
-        fail(tr("Could not start the game engine (no data/setup.otml under %1).").arg(workDir));
+        fail(tr("Could not start the game engine (no assets/catalog-content.json under %1).").arg(workDir));
         return false;
     }
     m_started = true;

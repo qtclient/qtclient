@@ -17,7 +17,8 @@ namespace client {
 /// Lua. The app polls it; engine hooks arrive through TGameNotify / SoftHooks.
 namespace gamecore {
 
-/// Mounts `workDir` (the dir holding data/setup.otml) and starts the engine.
+/// Mounts `workDir` (monorepo: dir holding data/assets/; package: CipSoft
+/// Resources next to the binary) and starts the engine.
 bool init(const QString& argv0, const QString& workDir);
 void terminate();
 bool isRunning();

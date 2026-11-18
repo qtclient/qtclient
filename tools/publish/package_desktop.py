@@ -12,8 +12,8 @@ checks the current dir first) and TIBIA_LAUNCHER=1. Things come from the
 content-things list (publish_assets.sh).
 
 Ships the Qt/QML tibia app (client/tibia) under QtClient.app / client.exe / client.
-The engine carries the Qt runtime; content is data/setup.otml (+ typing icon),
-config.ini and release_env.lua. --bin is the build dir holding client.app /
+The engine carries the Qt runtime; content is config.ini and release_env.lua
+(CIP assets come from assets-current). --bin is the build dir holding client.app /
 client.exe / client; --engine-bundle DIR stages the deployed engine;
 --engine-dir DIR stores it. Qt from QT_PREFIX or tools/qt/qt-prefix.sh.
 
@@ -66,9 +66,9 @@ TIBIA_ENGINE_PATHS = (
     "src", "cmake", "CMakeLists.txt", "CMakePresets.json",
     "client/tibia", "client/upstream", "tools/qt/qt-version.sh",
 )
-# gamecore finds its work dir by data/setup.otml (whose typing-icon it loads) and reads
-# config.ini; things come from content-things.
-TIBIA_RUNTIME_FILES = ("data/setup.otml", "data/images/game/console/typing.webp", "config.ini")
+# Optional desktop extras next to the engine. CIP assets come from assets-current
+# (catalog-content.json); things come from content-things.
+TIBIA_RUNTIME_FILES = ("config.ini",)
 # qtclient: OUTPUT_NAME client → client.app / client.exe / client; brand to APP_NAME.app.
 # qtclient cmake OUTPUT_NAME under build/<preset>/bin (TOGGLE_BIN_FOLDER=ON).
 TIBIA_BUILD = {

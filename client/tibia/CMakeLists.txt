@@ -922,16 +922,10 @@ if(EMSCRIPTEN)
   if(TIBIA_WASM_GRAPHICS_RCC)
     target_link_options(tibia PRIVATE "SHELL:--preload-file ${TIBIA_WASM_GRAPHICS_RCC}@/data/graphics_resources.rcc")
   endif()
-  # Workdir via data/setup.otml (same files as desktop
-  # TIBIA_RUNTIME_FILES). Must live on the WasmFS memory backend at `/`.
-  foreach(_rel IN ITEMS
-      "data/setup.otml"
-      "data/images/game/console/typing.webp"
-      "config.ini")
+  # Optional desktop extras (CIP assets come from the tip / OPFS, not tibia.data).
+  foreach(_rel IN ITEMS "config.ini")
     if(EXISTS "${TIBIA_ROOT}/${_rel}")
       target_link_options(tibia PRIVATE "SHELL:--preload-file ${TIBIA_ROOT}/${_rel}@/${_rel}")
-    else()
-      message(WARNING "tibia wasm: missing runtime file ${TIBIA_ROOT}/${_rel}")
     endif()
   endforeach()
   # Match Qt wasm kit EH ABI (wasm-exceptions + SUPPORT_LONGJMP=wasm). The game
