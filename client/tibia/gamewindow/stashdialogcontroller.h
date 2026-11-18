@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
@@ -120,7 +121,7 @@ private:
     void setTraders(const std::set<QString>& traders);
     /// The market or loot container dialog closed after the stash made way for it.
     void reopenStash();
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     std::map<uint16_t, uint32_t> m_content;
     std::vector<int> m_categories;
@@ -131,11 +132,21 @@ private:
     TMessageDialogController* m_info;
     TConfirmMoveObjectToStashDialogController* m_confirmStow;
     input::TGameActionMapper m_mapper;
-    std::shared_ptr<input::TGameAction> m_pendingStow;
+    input::TMoveObjectPtr m_pendingStow;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<int> m_actionListeners;
     bool m_reopenAfterMarket = false;
     bool m_reopenAfterManageLoot = false;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

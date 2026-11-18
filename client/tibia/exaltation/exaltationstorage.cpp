@@ -1,3 +1,4 @@
+#include "exaltation/exaltationciptypes.h"
 #include "exaltationstorage.h"
 
 #include "input/gameactionhandlers.h"
@@ -53,10 +54,6 @@ std::vector<TTransferGroup> transferGroupsOf(const std::vector<ForgeTransferData
     return groups;
 }
 
-void publish(const A type)
-{
-    input::publish(input::makeAction(type));
-}
 
 }
 
@@ -120,7 +117,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         setTransferGroups(transferGroupsOf(data->transfers));
         setConvergenceTransferGroups(transferGroupsOf(data->convergenceTransfers));
         setDustLimitRaw(static_cast<uint8_t>(data->dustLevel));
-        publish(A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG);
+        Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG));
         return std::any{};
     });
     // CIP handleExaltationHistoryMessage: the action caption by type.
@@ -156,33 +153,29 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
             .bonusTypeId = static_cast<uint16_t>(client::gamecore::argInt(args, 1)),
             .bonusTier = static_cast<uint8_t>(client::gamecore::argInt(args, 2)),
         };
-        publish(A::SHOW_EXALTATION_RESULT_DIALOG);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowExaltationResultDialog>());
         return std::any{};
     });
     // CIP handleCloseExaltationDialogMessage.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseForgeCloseWindows", [](GameObject*, const Args&) {
-        publish(A::CLOSE_EXALTATION_FORGE_DIALOG);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseForgeCloseWindows", [this](GameObject*, const Args&) {
+        Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_EXALTATION_FORGE_DIALOG));
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
-            [](const int type, const QString& message) { handleShowMessageDialogMessage(type, message); });
+            [this](const int type, const QString& message) { handleShowMessageDialogMessage(type, message); });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](const qint64 balance, qint64, const int type) { handleResourceBalanceMessage(type, balance); });
 
     for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
                           A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
                           A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExaltationStorage::~TExaltationStorage()
 {
     if (s_instance == this)
         s_instance = nullptr;
-    for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
-                          A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
-                          A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Dust, slivers and cores (resource types 70 to 72), as 16 bits.
@@ -201,19 +194,23 @@ void TExaltationStorage::handleShowMessageDialogMessage(const int type, const QS
 {
     if (type != ExaltationErrorDialogType)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::SHOW_EXALTATION_ERROR_DIALOG));
-    action->text = message;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowMessageDialog>(A::SHOW_EXALTATION_ERROR_DIALOG, message));
 }
 
-bool TExaltationStorage::handleGameAction(const input::TGameAction& action)
+bool TExaltationStorage::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::EXALTATION_FORGE_DIALOG_CLOSED: handleExaltationForgeDialogClosedGameAction(); break;
-    case A::EXALTATION_FORGE_FUSION: handleExaltationForgeFusionGameAction(action); break;
-    case A::EXALTATION_FORGE_CONVERGENCE_FUSION: handleExaltationForgeConvergenceFusionGameAction(action); break;
-    case A::EXALTATION_FORGE_TRANSFER: handleExaltationForgeTransferGameAction(action); break;
-    case A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE: tibia::game::sendForgeBrowseHistoryRequest(0); break;
+    case A::EXALTATION_FORGE_FUSION:
+        handleExaltationForgeFusionGameAction(static_cast<const input::TGameActionExaltationForgeFusion&>(action));
+        break;
+    case A::EXALTATION_FORGE_CONVERGENCE_FUSION:
+        handleExaltationForgeConvergenceFusionGameAction(static_cast<const input::TGameActionExaltationForgeConvergenceFusion&>(action));
+        break;
+    case A::EXALTATION_FORGE_TRANSFER:
+        handleExaltationForgeTransferGameAction(static_cast<const input::TGameActionExaltationForgeTransfer&>(action));
+        break;
+    case A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE: TExaltationProtocolMessageHandler::requestHistoryPage(0); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE: handleExaltationForgeHistoryNextPageGameAction(); break;
     case A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE: handleExaltationForgeHistoryPreviousPageGameAction(); break;
     default: return false;
@@ -226,35 +223,34 @@ void TExaltationStorage::handleExaltationForgeDialogClosedGameAction()
     reset();
 }
 
-void TExaltationStorage::handleExaltationForgeFusionGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeFusionGameAction(const input::TGameActionExaltationForgeFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.exaltationTypeId, action.exaltationTier,
-                              action.exaltationSecondTypeId, action.exaltationSuccessIncreased, action.exaltationTierLossImproved);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.typeId(), action.tier(), action.resourceTypeId(),
+                              action.successRateIncreased(), action.tierLossReduced());
 }
 
-void TExaltationStorage::handleExaltationForgeConvergenceFusionGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeConvergenceFusionGameAction(const input::TGameActionExaltationForgeConvergenceFusion& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.exaltationTypeId, action.exaltationTier,
-                              action.exaltationSecondTypeId);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.typeId(), action.tier(), action.resourceTypeId());
 }
 
-void TExaltationStorage::handleExaltationForgeTransferGameAction(const input::TGameAction& action)
+void TExaltationStorage::handleExaltationForgeTransferGameAction(const input::TGameActionExaltationForgeTransfer& action)
 {
-    tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.exaltationConvergence, action.exaltationTypeId,
-                              action.exaltationTier, action.exaltationSecondTypeId);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.convergence(), action.sourceTypeId(), action.tier(),
+                              action.targetTypeId());
 }
 
 void TExaltationStorage::handleExaltationForgeHistoryNextPageGameAction()
 {
     const uint16_t next = static_cast<uint16_t>(m_currentPage + 1);
     if (next < m_numberOfPages)
-        tibia::game::sendForgeBrowseHistoryRequest(next);
+        TExaltationProtocolMessageHandler::requestHistoryPage(next);
 }
 
 void TExaltationStorage::handleExaltationForgeHistoryPreviousPageGameAction()
 {
     if (m_currentPage != 0)
-        tibia::game::sendForgeBrowseHistoryRequest(static_cast<uint16_t>(m_currentPage - 1));
+        TExaltationProtocolMessageHandler::requestHistoryPage(m_currentPage - 1);
 }
 
 void TExaltationStorage::setBaseData(const TExaltationBaseData& data)

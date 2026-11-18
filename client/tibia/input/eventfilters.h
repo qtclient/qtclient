@@ -59,26 +59,5 @@ public:
     bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;
 };
 
-/// CIP input::TEventFilterManager (block / unblock):
-/// dialog / UI-focus path that drops hotkeys and moves keyboard focus off or
-/// onto the chat input (releaseElementFocus / requestElementFocus).
-class TEventFilterManager final : public cip::tibia::input::TEventFilterManager
-{
-    Q_OBJECT
-public:
-    explicit TEventFilterManager(QObject* parent = nullptr);
-
-    /// CIP .
-    void block();
-    /// CIP .
-    void unblock();
-    bool isBlocked() const { return m_blocked; }
-
-    static TEventFilterManager* instance();
-
-private:
-    bool m_blocked = false;
-};
-
 }
 }

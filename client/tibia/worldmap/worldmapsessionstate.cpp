@@ -28,7 +28,7 @@
 #include "client/animatedtext.h"
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 #include "creatures/creaturestorage.h"
@@ -115,7 +115,7 @@ void TWorldMapSessionState::invalidateCoverCachesFrom(const Position& pos)
 
 void TWorldMapSessionState::invalidateAllCoverCaches()
 {
-    for (tibia::worldmap::TWorldMapField* tile : tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(-1)) {
+    for (tibia::worldmap::TWorldMapField* tile : tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldList(-1)) {
         if (tile)
             tile->invalidateCoverCache();
     }
@@ -230,10 +230,7 @@ void TWorldMapSessionState::clean()
 {
     cleanDynamicThings();
 
-    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance())
-        storage->clearAllFields();
-    else
-        tibia::worldmap::TWorldMapStorage::ensureStorage()->clearSpatialIndex();
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->clearAllFields();
 }
 
 void TWorldMapSessionState::cleanDynamicThings()
@@ -376,20 +373,11 @@ tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateTile(const Po
     return tibia::worldmap::TWorldMapStorage::ensureStorage()->getOrCreateField(pos);
 }
 
-tibia::worldmap::TWorldMapField* TWorldMapSessionState::fieldInBlock(const Position& pos)
-{
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldInSpatialIndex(pos);
-}
-
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::getTile(const Position& pos)
 {
     if (!pos.isMapPosition())
         return nullptr;
-    tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage();
-    if (tibia::worldmap::TWorldMapField* field = storage->fieldAt(pos))
-        return field;
-    // Orphan spatial slot (pre-rebind) — pathfind iterates storage spatial blocks.
-    return fieldInBlock(pos);
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldAt(pos);
 }
 
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::fieldAt(const Position& pos)
@@ -404,14 +392,9 @@ tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateField(const P
     return getOrCreateTile(pos);
 }
 
-void TWorldMapSessionState::setFieldInBlock(const Position& pos, tibia::worldmap::TWorldMapField* field)
-{
-    tibia::worldmap::TWorldMapStorage::ensureStorage()->bindFieldToSpatialIndex(pos, field);
-}
-
 WorldMapFieldList TWorldMapSessionState::getTiles(const int8_t floor/* = -1*/)
 {
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(floor);
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->fieldList(floor);
 }
 
 void TWorldMapSessionState::cleanTile(const Position& pos)
@@ -422,37 +405,14 @@ void TWorldMapSessionState::cleanTile(const Position& pos)
     if (!pos.isMapPosition())
         return;
 
-    // CIP has one field identity per coordinate. Unaware removal nulls the block
-    // slot but may leave the TWorldMapStorage entry — clearField must scrub that
-    // too or the next map description inserts onto the stale stack (duplicate
-    // tables/mailboxes after leave/reenter).
-    tibia::worldmap::TWorldMapField* storageField = nullptr;
-    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance())
-        storageField = storage->fieldAt(pos);
-
-    tibia::worldmap::TWorldMapField* blockField = fieldInBlock(pos);
-
-    tibia::worldmap::TWorldMapField* tile = blockField ? blockField : storageField;
-    if (tile) {
+    tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage();
+    if (tibia::worldmap::TWorldMapField* tile = storage->fieldAt(pos)) {
         tile->clean();
-        if (tile->canErase()) {
-            if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-                storage->removeFieldFromSpatialIndex(pos);
-                storage->removeField(pos);
-            } else {
-                tibia::worldmap::TWorldMapStorage::ensureStorage()->removeFieldFromSpatialIndex(pos);
-            }
-        } else if (!blockField && storageField) {
-            // Keep drawable field addressable via Map blocks after unaware scrub.
-            setFieldInBlock(pos, storageField);
-        }
-
+        if (tile->canErase())
+            storage->removeField(pos);
         notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN);
-    } else if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-        storage->notifyCoordinateChanged(pos);
     } else {
-        for (MapObserver* observer : m_observers)
-            observer->onTileChanged(pos);
+        storage->notifyCoordinateChanged(pos);
     }
 
     tibia::schedule::post([=, this] {
@@ -561,29 +521,31 @@ bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const P
 
     // The position form names the field and slot the creature leaves; the id
     // form moves it from where it stands.
-    const Position from = byId ? row->position() : oldPos;
-    int elevationFrom = 0;
-    int elevationTo = 0;
+    const bool isLocal = creatureId == tibia::game::localPlayerId();
     if (byId) {
+        const Position from = row->position();
         placeCreatureId(creatureId, newPos, -1);
-        elevationFrom = map->elevationAt(from);
-        elevationTo = map->elevationAt(newPos);
-    } else {
-        tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos);
-        if (!fromTile || fromTile->stackCreatureId(oldStack) != creatureId)
-            return false;
-        elevationFrom = map->elevationAt(oldPos);
-        elevationTo = map->elevationAt(newPos);
-        fromTile->removeThingAtStackPos(oldStack);
-        notificateTileUpdate(oldPos, creatureId == tibia::game::localPlayerId(), tibia::client::OPERATION_REMOVE);
-        placeCreatureId(creatureId, newPos, -1);
-        const auto look = tibia::creatures::lookDirectionAfter(
-            static_cast<tibia::creatures::ECreatureLookDirection>(row->patternX()),
-            tibia::creatures::directionBetween(tibia::worldmap::TWorldMapCoordinate(from),
-                                               tibia::worldmap::TWorldMapCoordinate(newPos)));
-        row->setDirection(static_cast<uint8_t>(look));
+        map->moveCreature(*row, from, newPos, map->elevationAt(from), map->elevationAt(newPos));
+        return true;
     }
-    map->moveCreature(*row, from, newPos, elevationFrom, elevationTo);
+    tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos);
+    if (!fromTile || fromTile->stackCreatureId(oldStack) != creatureId)
+        return false;
+    if (!getOrCreateTile(newPos)) {
+        // A step out of the known area only leaves the field.
+        fromTile->removeThingAtStackPos(oldStack);
+        notificateTileUpdate(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+        return true;
+    }
+    if (!map->moveCreatureInstance(tibia::worldmap::TWorldMapCoordinate(oldPos), oldStack,
+                                   tibia::worldmap::TWorldMapCoordinate(newPos)))
+        return false;
+    notificateTileUpdate(oldPos, isLocal, tibia::client::OPERATION_REMOVE);
+    if (isLocal) {
+        setLocalPlayerPosition(newPos);
+        localPlayerAppeared();
+    }
+    notificateTileUpdate(newPos, isLocal, tibia::client::OPERATION_ADD);
     return true;
 }
 
@@ -619,12 +581,9 @@ void TWorldMapSessionState::removeUnawareThings()
     m_removingUnawareThings = true;
     // Prefer instance — ensureStorage during storage construction re-enters ctor.
     if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::instance()) {
-        storage->pruneUnawareSpatialFields(
+        storage->removeFieldsOutsideStoredVolume(
             [&](const Position& pos) { return isAwareOfPosition(pos); },
-            [&](const Position& pos) {
-                notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN);
-                storage->notifyCoordinateChanged(pos);
-            });
+            [&](const Position& pos) { notificateTileUpdate(pos, false, tibia::client::OPERATION_CLEAN); });
     }
     m_removingUnawareThings = false;
 }

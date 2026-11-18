@@ -58,6 +58,7 @@ TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject
     , m_characterInfo(new TCharacterInfoDialogController(this))
 {
     m_characterInfoDialogController = m_characterInfo;
+    connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TFriendsAccountSearchPageController::publishGameAction);
     m_showEmptyTab = true;
     m_accountCharacterList = new TAccountCharacterList({}, this);
     m_accountBadgeList = new TAccountBadgeList({}, this);
@@ -285,13 +286,14 @@ void TFriendsAccountSearchPageController::refreshCurrentCharacterInfo()
     m_characterInfo->showDialogTab();
 }
 
-void TFriendsAccountSearchPageController::handleGameAction(const input::TGameAction& action)
+void TFriendsAccountSearchPageController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type != input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT)
+    const auto* search = input::gameActionAs<input::TGameActionFriendsDialogSearchAccount>(&action);
+    if (!search)
         return;
     showDialogTab();
     setShowLoadingComponent(true);
-    protocol::gameclient::sendFriendSystemSearch(action.text.toStdString());
+    protocol::gameclient::sendFriendSystemSearch(search->characterName().toStdString());
 }
 
 void TFriendsAccountSearchPageController::onClickedInviteAsFriend()

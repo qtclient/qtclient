@@ -61,15 +61,6 @@ int statusRank(const int state)
     return state >= 0 && state < 6 ? Rank[state] : 2;
 }
 
-input::TGameActionPtr makeNamed(const A type, const QString& text, const int instance = 0, const int parameter = 0)
-{
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->text = text;
-    action->instance = instance;
-    action->parameter = parameter;
-    return action;
-}
-
 }
 
 TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent)
@@ -347,18 +338,19 @@ void TVipWidgetController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TVipWidgetController::onLevelUpClicked() {}
 void TVipWidgetController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TVipWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
-void TVipWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TVipWidgetController::onWidgetOptionsChanged() { readOptions(); }
 void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TVipWidgetController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; qtclient routes via setActionHandler → handleAction.
+    // CIP moc shared_ptr dispatch; the manager's router slot hands the actions to handleAction.
 }
 
 void TVipWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    readOptions();
+    onWidgetOptionsChanged();
 }
 
 void TVipWidgetController::readOptions()
@@ -403,11 +395,11 @@ void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* e
 
 void TVipWidgetController::runClick(const input::TGameActionList& candidates, const int mouseButton, const int modifiers)
 {
-    const input::TGameActionPtr action = m_mapper.map(candidates, VipWidgetContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, VipWidgetContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -417,7 +409,7 @@ void TVipWidgetController::runClick(const input::TGameActionList& candidates, co
         menu->showGameActions(entries, VipWidgetContext, m_mapper);
 }
 
-void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::publish(makeNamed(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, VipName)); }
+void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenMessageToChatChannel>(VipName)); }
 
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
@@ -433,17 +425,18 @@ void TVipWidgetController::onWidgetClicked(const int MouseButtonRaw, const int K
 
 void TVipWidgetController::onPlayerNameToAddToVipListReceived(const QString& PlayerName)
 {
-    input::publish(makeNamed(A::ADD_NEW_VIP, PlayerName));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddNewVip>(PlayerName));
 }
 
 void TVipWidgetController::onGroupNameToAddToVipListReceived(const QString& GroupName)
 {
-    input::publish(makeNamed(A::ADD_NEW_VIP_GROUP, GroupName));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddNewVipGroup>(GroupName));
 }
 
 void TVipWidgetController::onGroupNameEditedReceived(const QString& GroupName)
 {
-    input::publish(makeNamed(A::REQUEST_VIP_GROUP_UPDATE, GroupName, 0, m_editedGroup.id));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestVipGroupUpdate>(
+        input::TGameActionRequestVipGroupUpdate::TVipGroup{ m_editedGroup.id, GroupName, m_editedGroup.editable }));
     m_editedGroup = {};
 }
 
@@ -457,8 +450,7 @@ void TVipWidgetController::openAddGroupDialog()
         return;
     }
     m_messageDialog->setCloseOnButtonClicked(true);
-    m_messageDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                           QKeySequence(QStringLiteral("Return"))) });
+    m_messageDialog->setButtons(okDialogButtons());
     m_messageDialog->showMessage(qtTrId("no_more_userdefined_groups_caption"), qtTrId("no_more_userdefined_groups_text"));
 }
 
@@ -480,13 +472,8 @@ void TVipWidgetController::openEditGroupDialog(const QString& groupName)
 
 void TVipWidgetController::onVipDataEdited(const creatures::TVipStorage::Vip& VipData)
 {
-    auto action = input::mutableClone(*input::makeAction(A::REQUST_VIP_DATA_UPDATE));
-    action->instance = static_cast<int>(VipData.id);
-    action->text = VipData.description;
-    action->parameter = VipData.iconId;
-    action->enable = VipData.notifyLogin;
-    action->vipGroups = VipData.groups;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestVipDataUpdate>(
+        VipData.id, VipData.description, static_cast<uint8_t>(VipData.iconId), VipData.notifyLogin, VipData.groups));
 }
 
 void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
@@ -494,26 +481,28 @@ void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
     using Sound = cip::tibia::qmlcomponents::TSoundHelperService;
     if (state != creatures::TVipStorage::LoggedIn && state != creatures::TVipStorage::LoggedOut)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::SOUND_TRIGGER));
-    action->parameter = state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT;
-    input::publish(action);
+    auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(
+        input::gameactions::TGameActionSoundTrigger::TSoundEffect{ state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT });
+    Q_EMIT publishGameAction(action);
 }
 
-bool TVipWidgetController::handleAction(const input::TGameAction& action)
+bool TVipWidgetController::handleAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
         case A::OPEN_ADD_VIP_DIALOG:
             m_addVipDialog->setText({});
             m_addVipDialog->dialog()->show();
             return true;
         case A::OPEN_EDIT_VIP_DIALOG:
-            openEditVipDialog(action.text);
+            if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+                openEditVipDialog(vip->vipName());
             return true;
         case A::OPEN_ADD_VIP_GROUP_DIALOG:
             openAddGroupDialog();
             return true;
         case A::OPEN_EDIT_VIP_GROUP_DIALOG:
-            openEditGroupDialog(action.text);
+            if (const auto* group = input::gameActionAs<input::TGameActionVipGroup>(&action))
+                openEditGroupDialog(group->groupName());
             return true;
         case A::SORT_VIPS_BY_NAME:
             m_proxy->sortBy(TVipWidgetDataModelSortFilterProxy::ByName);
@@ -548,14 +537,13 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     , m_storage(creatures::TVipStorage::instance())
     , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
+    connect(m_exivaOptions, &exivaoptions::TExivaOptionsStorage::publishGameAction, this, &TVipWidgetManager::publishGameAction);
     for (const A type : WidgetActions)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return m_controller && m_controller->handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
 }
 
 TVipWidgetManager::~TVipWidgetManager()
 {
-    for (const A type : WidgetActions)
-        input::setActionHandler(type, nullptr);
     delete m_controller;
 }
 
@@ -584,6 +572,7 @@ TSidebarWidget* TVipWidgetManager::open()
 {
     if (!m_controller) {
         m_controller = new TVipWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TVipWidgetController::publishGameAction, this, &TVipWidgetManager::publishGameAction);
         m_controller->setControlScheme(m_controlScheme);
         m_controller->setExivaOptions(m_exivaOptions, m_worldType);
         m_controller->setSidebarOptions(m_options);
@@ -602,5 +591,13 @@ void TVipWidgetManager::close(const bool saveWidgetOptions)
 }
 
 TSidebarWidget* TVipWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
+
+
+void TVipWidgetManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_exivaOptions)
+        m_exivaOptions->handleGameAction(pGameAction);
+}
 
 }

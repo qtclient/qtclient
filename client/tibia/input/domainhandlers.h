@@ -12,20 +12,30 @@
 namespace tibia {
 namespace input {
 
-/// CIP input::TActionButtonGameActionHandler : owns the
-/// ACTION_BUTTON_TRIGGERED registration for the action-bar lifetime.
+/// CIP input::TActionButtonGameActionHandler: ACTION_BUTTON_TRIGGERED goes to
+/// the action bars (`handler`).
 class TActionButtonGameActionHandler final : public cip::tibia::input::TActionButtonGameActionHandler
 {
     Q_OBJECT
 public:
-    explicit TActionButtonGameActionHandler(ActionHandler handler, QObject* parent = nullptr);
+    using Handler = std::function<void(const TGameActionActionButtonTriggered& action)>;
+    explicit TActionButtonGameActionHandler(Handler handler, QObject* parent = nullptr);
     ~TActionButtonGameActionHandler() override;
     TActionButtonGameActionHandler(const TActionButtonGameActionHandler&) = delete;
     TActionButtonGameActionHandler& operator=(const TActionButtonGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// Connected to the router's publishGameActionInternal.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    Handler m_handler;
 };
 
-/// CIP input::TClipboardGameActionHandler: COPY_* / REQUEST_COPY_* /
-/// REQUEST_CONFIRM clipboard actions.
+/// CIP input::TClipboardGameActionHandler: the copy actions. Text and chat
+/// entries ask first (REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD) when
+/// they hold a link and the link copy warning is on; creature names and the
+/// client's own texts are copied at once.
 class TClipboardGameActionHandler final : public cip::tibia::input::TClipboardGameActionHandler
 {
     Q_OBJECT
@@ -34,6 +44,17 @@ public:
     ~TClipboardGameActionHandler() override;
     TClipboardGameActionHandler(const TClipboardGameActionHandler&) = delete;
     TClipboardGameActionHandler& operator=(const TClipboardGameActionHandler&) = delete;
+
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
+public Q_SLOTS:
+    /// CIP handleGameAction: COPY_CHAT_ENTRY / COPY_TEXT go through
+    /// handleCopyTextToClipboardGameAction, COPY_CREATURE_NAME / COPY_TRUSTED_TEXT
+    /// to the clipboard; connected to the router's publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+    void handleCopyTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
+    void handleCopyTrustedTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
 };
 
 /// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
@@ -45,6 +66,11 @@ public:
     ~TGatherAllGameActionHandler() override;
     TGatherAllGameActionHandler(const TGatherAllGameActionHandler&) = delete;
     TGatherAllGameActionHandler& operator=(const TGatherAllGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// CIP handleGameAction: acts on the actions of its types; connected to the
+    /// router's publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 };
 
 /// CIP input::TGatherAllProtocolMessageHandler: ClientGatherAll (0xFF) send
@@ -70,12 +96,18 @@ public:
     TOpenWebsiteGameActionHandler(const TOpenWebsiteGameActionHandler&) = delete;
     TOpenWebsiteGameActionHandler& operator=(const TOpenWebsiteGameActionHandler&) = delete;
 
-    void handleGameAction(const TGameAction& action);
+public Q_SLOTS:
+    /// Opens the page of an OPEN_URL_* action; connected to the router's
+    /// publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+
+public:
+
     /// OPEN_URL_GET_PREMIUM: getPremiumUrl followed by the action's number (`parameter`).
-    void handleOpenGetPremiumUrlGameAction(const TGameAction& action);
+    void handleOpenGetPremiumUrlGameAction(const TGameActionOpenGetPremiumUrl& action);
     /// OPEN_URL_SURVEY: limesurveyUrl, the survey id (`parameter`), then
     /// "/lang-en?token=" and the invitation token (`text`).
-    void handleOpenSurveyUrlGameAction(const TGameAction& action);
+    void handleOpenSurveyUrlGameAction(const TGameActionOpenSurveyUrl& action);
 
 private:
     /// The [URLS] page for `action`, or `defaultUrl` when none is configured.

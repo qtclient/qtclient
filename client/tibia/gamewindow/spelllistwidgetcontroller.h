@@ -66,7 +66,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP class NOTIFY — qtclient already emits.
     void focusChanged();
     void requestWidgetControlToTakeFocus();
@@ -93,6 +92,11 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     QQuickItem* m_gameWindowItem;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/friendsaccountsearchpagecontroller.h"
 #include "gamewindow/friendsbadgespagecontroller.h"
@@ -16,7 +17,7 @@
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 
@@ -68,7 +69,7 @@ public:
     Q_INVOKABLE void onRefreshButtonClicked() override;
 
 private:
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
     /// Hides the shown page and shows the tab's page.
     void setTab(EDialogTab tab);
@@ -89,6 +90,17 @@ private:
     TTeamAssemblePageController* m_assemble = nullptr;
     TSocialButtonController* m_button = nullptr;
     TMessageDialogController* m_errorDialog = nullptr;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

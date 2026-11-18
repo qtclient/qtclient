@@ -1,5 +1,8 @@
 #include "deathdialogcontroller.h"
 
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+
 #include <QKeySequence>
 
 #include <tibia/game/gamesession.h>
@@ -20,10 +23,11 @@ TDeathDialogController::TDeathDialogController(QObject* parent)
     // CIP ctor : setCloseOnButtonClicked(1), setTextCentered(1).
     m_box->setCloseOnButtonClicked(true);
     m_box->setTextCentered(true);
-    // CIP routes MessageDialog buttonClicked → onButtonClicked → onLogoutRequested
-    // (OK/YES). Do not also hook acceptClicked or logout runs twice.
-    connect(m_box, &TDeathMessageDialog::buttonClicked, this,
-            [this](Button id, bool) { onButtonClicked(id); });
+    m_box->setMessageDialogTextFormat(TDeathMessageDialog::STYLED_TEXT);
+    connect(m_box, &TDeathMessageDialog::acceptClicked, this, &TDeathDialogController::onLogoutRequested);
+    connect(m_box, &TDeathMessageDialog::buttonClicked, this, [this](Button id, bool) { onButtonClicked(id); });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TDeathDialogController::onWorldEntered);
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::death, this,
             [this](int deathType, int penality) {
@@ -83,27 +87,29 @@ void TDeathDialogController::onLogoutRequested()
         return;
     m_finishing = true;
     closeBox();
+    // Host: the scene stays frozen while the death message shows.
     tibia::game::setSceneFrozen(false);
-    if (tibia::game::isOnline())
-        tibia::game::safeLogout();
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(true));
     m_finishing = false;
 }
 
 void TDeathDialogController::onButtonClicked(
     const cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)
 {
-    switch (ButtonIdentifier) {
-    case Button::OK:
-    case Button::YES:
-        onLogoutRequested();
-        break;
-    case Button::CANCEL:
-    case Button::NO:
-        closeBox();
-        break;
-    default:
-        break;
-    }
+    if (ButtonIdentifier != Button::USER_DEFINED)
+        return;
+    m_openStoreOnWorldEntered = true;
+    // The death message has no check box.
+    Q_EMIT m_box->acceptClicked(false);
+}
+
+void TDeathDialogController::onWorldEntered()
+{
+    if (!m_openStoreOnWorldEntered)
+        return;
+    m_openStoreOnWorldEntered = false;
+    // The store opened at useful thing 11 (the death hint points there).
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(3, 11));
 }
 
 void TDeathDialogController::onDialogButtonClicked(const QVariant& Identifier, const bool CheckBoxIsChecked)

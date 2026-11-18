@@ -7,16 +7,13 @@
 namespace tibia {
 namespace worldmap {
 
-/// Publishes world-map game actions (CIP: TWorldMapGameActionHandler::handleGameAction
-/// → input::publish; MOVE_OBJECT may emit sendMoveObject in full CIP).
+/// CIP: TWorldMapGameActionHandler (its game action handling is not ported;
+/// the map window controller publishes the map's actions itself).
 class TWorldMapGameActionHandler final : public cip::tibia::worldmap::TWorldMapGameActionHandler
 {
     Q_OBJECT
 public:
     explicit TWorldMapGameActionHandler(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void handleGameAction(const input::TGameActionPtr& action);
 };
 
 }

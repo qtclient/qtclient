@@ -47,6 +47,10 @@ struct PackHostWire {
     std::function<QObject*()> imbuingDialog;
     std::function<QObject*()> imbuingStorage;
     std::function<QObject*()> sessionBootstrap;
+    /// The game client's internal game action router (game::TInternalGameActionRouter,
+    /// <qtclient/game/gameactionrouter.h>; C ABI pack_host->game_action_router, host API v4+):
+    /// the pack's controllers connect their publishGameAction to its handleGameActionInternal.
+    std::function<QObject*()> gameActionRouter;
 
     std::function<QQuickItem*()> minimapPanelItem;
     std::function<QQuickItem*()> inventoryPanelItem;

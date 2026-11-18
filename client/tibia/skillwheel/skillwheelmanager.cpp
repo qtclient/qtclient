@@ -1,9 +1,11 @@
 #include "skillwheelmanager.h"
 
+#include "analysers/analyserstorages.h"
 #include "input/gameactionhandlers.h"
 
-#include <array>
-#include <limits>
+#include <creatures/creaturestorage.h>
+#include <tibia/game/gamesessionbase.h>
+
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -24,16 +26,6 @@ constexpr A Actions[] = { A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG,
                           A::GEM_ATELIER_SELECT_GEM,
                           A::FRAGMENT_WORKSHOP_SELECT_MOD };
 
-void publish(const A type) { input::publish(input::makeAction(type)); }
-
-bool hasVocation()
-{
-    if (!tibia::game::hasLocalPlayer())
-        return false;
-    const int profession = tibia::game::localPlayerVocation() % 10;
-    return profession >= 1 && profession <= VocationCount;
-}
-
 }
 
 TSkillWheelManager::TSkillWheelManager(QObject* parent)
@@ -41,45 +33,56 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
     , m_storage(new TSkillWheelStorage(this))
     , m_dialog(new TSkillWheelDialogController(m_storage, this))
 {
-    input::setActionHandler(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::TGameAction&) {
-        m_dialog->showDialog();
+    // The own wheel's answer to a save does not open the dialog again.
+    m_gameActions.on(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG, [this](const input::IGameAction&) {
+        if (m_storage->isOwnCharacter() && m_skipNextOwnOpen) {
+            clearSkipNextOwnOpen();
+            return true;
+        }
+        const auto tab = m_dialog->dialogTab();
+        m_dialog->openDialogTab(tab == TSkillWheelDialogController::NoTabInitialState ? TSkillWheelDialogController::Wheel : tab);
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::TGameAction&) {
+    m_gameActions.on(A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"), qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel), false);
         return true;
     });
-    input::setActionHandler(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::TGameAction&) {
+    m_gameActions.on(A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE, [this](const input::IGameAction&) {
         m_dialog->showMessage(qtTrId("info"),
                               qtTrId("skill_wheel_warning_no_skill_wheel").arg(RequiredLevel)
                                   + qtTrId("skill_wheel_warning_no_skill_wheel_show_preview_part").arg(qtTrId("ok")),
                               true);
         return true;
     });
-    input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        if (tibia::game::hasLocalPlayer() && action.creatureId == tibia::game::localPlayerId())
-            requestOwnWheel();
-        else if (action.creatureId != 0)
-            tibia::game::openWheel(action.creatureId);
+    m_gameActions.on(A::REQUEST_SKILL_WHEEL, [this](const input::IGameAction& action) {
+        m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {
+    m_gameActions.on(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::IGameAction& action) {
         clearSkipNextOwnOpen();
-        requestOwnWheel();
+        m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::SAVE_SKILL_WHEEL, [this](const input::TGameAction&) {
-        saveWheel();
+    m_gameActions.on(A::SAVE_SKILL_WHEEL, [this](const input::IGameAction& action) {
+        m_actions.handleGameAction(action);
         return true;
     });
-    input::setActionHandler(A::GEM_ATELIER_SELECT_GEM, [this](const input::TGameAction& action) {
-        m_dialog->showDialog();
-        m_dialog->openGemAtelier(0, action.parameter);
+    // CIP: the handler keeps the own player's creature id.
+    tibia::game::onEachGameSession(this, [this] {
+        if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
+            m_actions.onPlayerCreatureAddedToCreatureStorage(creatures->player());
+            connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
+                    [this](const std::weak_ptr<creatures::TCreature>& player) { m_actions.onPlayerCreatureAddedToCreatureStorage(player); });
+        }
+    });
+    m_gameActions.on(A::GEM_ATELIER_SELECT_GEM, [this](const input::gameactions::TSelectAtelierGemGameAction& action) {
+        m_dialog->openDialogTab(TSkillWheelDialogController::GemAtelier);
+        m_dialog->openGemAtelier(0, action.gemId());
         return true;
     });
-    input::setActionHandler(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::TGameAction& action) {
-        m_dialog->showDialog();
-        m_dialog->openWorkshopMod(action.instance != 0, action.parameter);
+    m_gameActions.on(A::FRAGMENT_WORKSHOP_SELECT_MOD, [this](const input::gameactions::TSelectFragmentWorkshopModGameAction& action) {
+        m_dialog->openDialogTab(TSkillWheelDialogController::FragmentWorkshop);
+        m_dialog->openWorkshopMod(action.supremeMod(), action.modId());
         return true;
     });
 
@@ -91,11 +94,27 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
             m_skipNextOwnOpen = true;
             m_skipNextOwnOpenTimer.start();
         });
-    connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TSkillWheelManager::onServerData);
+    if (TSkillWheelProtocolMessageHandler* handler = TSkillWheelProtocolMessageHandler::liveInstance())
+        handler->setSkillWheelStorage(m_storage);
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clearSkipNextOwnOpen();
         m_dialog->clear();
+        // CIP has one storage per game session.
+        m_storage->clearServerData();
+        m_storage->resetCurrentSkillWheel();
+        m_storage->setGemInventory({});
+        m_storage->setModGrades({}, {});
+    });
+    // SwitchPreset: the preset at the position (from 1) in name order.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreset", [this](GameObject*, const Args& args) {
+        const auto id = static_cast<size_t>(client::gamecore::argInt(args, 0));
+        const std::map<QString, TWheel> presets = m_storage->presets();
+        if (id == 0 || id > presets.size())
+            return std::any{};
+        if (auto* page = qobject_cast<TSkillWheelPageController*>(m_dialog->wheelPageController()))
+            page->selectPresetByName(std::next(presets.begin(), static_cast<std::ptrdiff_t>(id - 1))->first, false);
+        return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
         m_dialog->onPremiumChanged();
@@ -105,39 +124,8 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
 
 TSkillWheelManager::~TSkillWheelManager()
 {
-    for (const A type : Actions)
-        input::setActionHandler(type, nullptr);
-}
-
-/// CIP : from level 51 the server is asked when the player data
-/// says Premium or the login session does not; otherwise a vocation offers
-/// the preview (308), none only explains (307).
-void TSkillWheelManager::requestOwnWheel()
-{
-    if (!tibia::game::hasLocalPlayer() || tibia::game::localPlayerId() == 0)
-        return;
-    if (tibia::game::localPlayerLevel() >= RequiredLevel
-        && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
-        tibia::game::openWheel(tibia::game::localPlayerId());
-        return;
-    }
-    publish(hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
-                          : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
-}
-
-/// CIP : a wheel message without slices publishes 308 / 307.
-void TSkillWheelManager::onServerData(const bool canView)
-{
-    if (!canView) {
-        publish(tibia::game::hasLocalPlayer() && hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
-                                                            : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
-        return;
-    }
-    if (m_storage->isLocalPlayer() && m_skipNextOwnOpen) {
-        clearSkipNextOwnOpen();
-        return;
-    }
-    publish(A::OPEN_OR_UPDATE_SKILL_WHEEL_DIALOG);
+    if (TSkillWheelProtocolMessageHandler* handler = TSkillWheelProtocolMessageHandler::liveInstance())
+        handler->setSkillWheelStorage(nullptr);
 }
 
 void TSkillWheelManager::clearSkipNextOwnOpen()
@@ -146,17 +134,5 @@ void TSkillWheelManager::clearSkipNextOwnOpen()
     m_skipNextOwnOpen = false;
 }
 
-/// CIP SAVE_SKILL_WHEEL: the 36 slices and eight vessel gem ids (0xffff empty).
-void TSkillWheelManager::saveWheel()
-{
-    if (!m_storage->hasData() || !m_storage->isLocalPlayer() || m_storage->isPreview())
-        return;
-    const TWheel& wheel = m_storage->currentWheel();
-    std::vector<uint16_t> points(wheel.points.begin(), wheel.points.end());
-    std::array<uint16_t, VesselCount> gems{};
-    for (int v = 0; v < VesselCount; ++v)
-        gems[v] = wheel.gems[v] == NoGem ? std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(wheel.gems[v]);
-    tibia::game::sendApplyWheelPoints(points, gems);
-}
 
 }

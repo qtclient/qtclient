@@ -1,7 +1,9 @@
 #include "actionbarmanager.h"
 #include "game/gamesessionbase.h"
+#include "input/keyboardshortcuthandler.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbuttoncontroller.h"
@@ -12,7 +14,7 @@
 #include "input/keyboardshortcuthandler.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QQuickItem>
@@ -33,10 +35,10 @@ using P = EActionBarPosition;
 
 constexpr int CooldownTickMs = 100;
 
-constexpr std::array<A, 9> HandledActions{ A::TOGGLE_ACTION_BAR, A::TOGGLE_ACTION_BARS, A::TRY_TO_SWITCH_HOTKEYSET,
+constexpr std::array<A, 8> HandledActions{ A::TOGGLE_ACTION_BAR, A::TOGGLE_ACTION_BARS, A::TRY_TO_SWITCH_HOTKEYSET,
                                            A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET,
                                            A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON,
-                                           A::ASSIGN_SPELL_TO_ACTION_BUTTON, A::ASSIGN_HOTKEY_TO_GAME_ACTION };
+                                           A::ASSIGN_SPELL_TO_ACTION_BUTTON };
 
 /// Options 0x3-0xe, by bar id.
 bool isActionBarsOption(const QString& name)
@@ -44,12 +46,10 @@ bool isActionBarsOption(const QString& name)
     return name.startsWith(QLatin1String("actionBar")) || name.startsWith(QLatin1String("actionButton"));
 }
 
-void publishMessage(const QString& text)
+input::IGameActionPtr textMessageAction(const QString& text)
 {
-    auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE);
-    action->text = text;
-    action->color = Qt::white;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, text, Qt::white);
+    return action;
 }
 
 
@@ -64,11 +64,11 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     , m_chatMode(std::move(chatMode))
     , m_displayOptions(config::actionBarsBindings(), this)
     , m_cooldowns(this)
-    , m_crossHair(std::make_unique<input::TCrossHairGameActionHandlers>())
     , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(
-          [this](const input::TGameAction& action) { return onActionButtonTriggered(action); }))
+          [this](const input::TGameActionActionButtonTriggered& action) { onActionButtonTriggered(action); }))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
 {
+    connect(m_targetSelection, &TTargetSelectionController::publishGameAction, this, &TActionBarManager::publishGameAction);
     loadDisplayOptions();
     if (gameWindowItem) {
         const std::array<std::pair<P, const char*>, 3> containers{ { { P::ActionBarPositionBottom, "bottomActionBars" },
@@ -80,6 +80,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
                 qWarning("gamewindow.qml has no %s", containers[i].second);
             m_groups[i] = std::make_unique<TActionBarGroup>(this, containers[i].first, container, engine, gameWindowItem, mapWindowPane,
                                                            &m_displayOptions);
+            connect(m_groups[i].get(), &TActionBarGroup::publishGameAction, this, &TActionBarManager::publishGameAction);
         }
         for (const auto& group : m_groups)
             group->restoreLastAktionBarConfiguration();
@@ -133,61 +134,40 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         return std::any{};
     });
 
-    input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::TGameAction& action) { return toggleActionBar(action); });
-    input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::TGameAction& action) { return toggleActionBars(action); });
-    for (const A type : { A::TRY_TO_SWITCH_HOTKEYSET, A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET })
-        input::setActionHandler(type, [](const input::TGameAction& action) {
-            input::TKeyboardShortcutHandler::handleGameAction(action);
-            return true;
-        });
-    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameAction& action) {
+    m_gameActions.on(A::TOGGLE_ACTION_BAR, [this](const input::IGameAction& action) { return toggleActionBar(action); });
+    m_gameActions.on(A::TOGGLE_ACTION_BARS, [this](const input::IGameAction& action) { return toggleActionBars(action); });
+    m_gameActions.on(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameActionCloseAllMultiActionButtons& action) {
         for (const auto& group : m_groups)
             if (group)
                 for (TActionBarController* bar : group->bars())
-                    bar->closeOpenMultiActionButtons(action.actionBarId, action.actionButtonId);
+                    bar->closeOpenMultiActionButtons(action.actionBarId(), action.actionButtonId());
         return true;
     });
-    input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
-        (void)input::TLocationActionButtonGameActionContext(action.actionBarId, action.actionButtonId);
-        TActionBarController* target = bar(action.actionBarId > 0 ? action.actionBarId : 1);
+    m_gameActions.on(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+        TActionBarController* target = bar(action.actionBarId() > 0 ? action.actionBarId() : 1);
         if (!target)
             return true;
-        openSpellDialogFor(target, action.actionButtonId, action.multiActionIndex, action.parameter);
+        target->openSpellDialog(action.actionButtonId(), action.multiActionIndex(), action.spellId());
         return true;
     });
-    input::setActionHandler(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
-        TActionBarController* target = bar(action.actionBarId);
-        if (!target || action.parameter <= 0)
+    m_gameActions.on(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
+        TActionBarController* target = bar(action.actionBarId());
+        if (!target || action.spellId() == 0)
             return true;
-        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(action.parameter);
+        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(action.spellId());
         if (!spell)
             return true;
         Setting setting;
         setting.kind = Setting::TEXT;
-        setting.text = action.text.isEmpty() ? spell->words : action.text;
+        setting.text = spell->words;
         setting.sendAutomatically = true;
-        setting.spellCastType = action.spellCastType;
-        target->assign(action.actionButtonId, action.multiActionIndex, setting);
-        return true;
-    });
-    input::setActionHandler(A::ASSIGN_HOTKEY_TO_GAME_ACTION, [](const input::TGameAction& action) {
-        // CIP options-page / context: bind `text` (static action name) to the
-        // key sequence in `statement` for both chat modes.
-        if (action.text.isEmpty() || action.statement.isEmpty())
-            return true;
-        config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-        const QList<QKeySequence> keys{ QKeySequence(action.statement) };
-        hotkeys->setActionKeys(action.text, true, keys);
-        hotkeys->setActionKeys(action.text, false, keys);
-        hotkeys->save();
+        target->assign(action.actionButtonId(), action.multiActionIndex(), setting);
         return true;
     });
 }
 
 TActionBarManager::~TActionBarManager()
 {
-    for (const A type : HandledActions)
-        input::setActionHandler(type, nullptr);
     m_hooks.clear();
 }
 
@@ -208,7 +188,7 @@ bool TActionBarManager::chatOn() const
 
 void TActionBarManager::loadDisplayOptions()
 {
-    m_displayOptions.load(app::ClientOptions::load().root());
+    m_displayOptions.load(*config::TClientOptions::instance());
 }
 
 void TActionBarManager::applyMappings()
@@ -232,9 +212,8 @@ void TActionBarManager::onWorldEntered()
 {
     if (tibia::game::hasLocalPlayer()) {
         config::THotkeyOptions::instance()->onCharacterLoggedIn();        // CIP : TRY_TO_SWITCH_HOTKEYSET(character name, no status line).
-        auto action = input::mutableClone(*input::makeAction(A::TRY_TO_SWITCH_HOTKEYSET));
-        action->text = QString::fromStdString(tibia::game::characterName());
-        input::publish(action);
+        auto action = std::make_shared<input::TGameActionTryToSwitchHotkeySet>(QString::fromStdString(tibia::game::characterName()), false);
+        Q_EMIT publishGameAction(action);
     }
     applyMappings();
 }
@@ -270,6 +249,14 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
                     return;
         }
     }
+}
+
+void TActionBarManager::onCharacterConfigurationLoaded()
+{
+    for (const auto& group : m_groups)
+        if (group)
+            for (TActionBarController* bar : group->bars())
+                bar->onCharacterConfigurationLoaded();
 }
 
 void TActionBarManager::onWorldLeft()
@@ -308,40 +295,12 @@ void TActionBarManager::refreshCooldowns()
 
 void TActionBarManager::showMessage(const QString& text)
 {
-    publishMessage(text);
-}
-
-void TActionBarManager::openAssignDialog(TActionBarController* bar, const TActionBarController::EAssignKind kind, const int buttonId,
-                                         const int multiActionIndex)
-{
-    TDialog* dialog = nullptr;
-    switch (kind) {
-    case TActionBarController::ASSIGN_SPELL:
-        dialog = (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, 0, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_OBJECT:
-        dialog = (new TAssignObjectActionDialogController(bar, buttonId, multiActionIndex, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_TEXT:
-        dialog = (new TAssignTextActionDialogController(bar, buttonId, multiActionIndex, this))->dialog();
-        break;
-    case TActionBarController::ASSIGN_PASSIVE_ABILITY:
-        dialog = (new TAssignPassiveAbilityActionDialogController(bar, buttonId, this))->dialog();
-        break;
-    }
-    if (dialog)
-        dialog->show();
-}
-
-void TActionBarManager::editHotkey(TActionBarController* bar, const int buttonId)
-{
-    auto* controller = new TRecordKeyboardShortcutDialogController(bar->actionBarId(), buttonId, chatOn(), this);
-    controller->dialog()->show();
+    Q_EMIT publishGameAction(textMessageAction(text));
 }
 
 config::EUseType TActionBarManager::defaultUseType(const int objectId)
 {
-    const ThingTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
+    const TAppearanceTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
     if (!type)
         return config::EUseType::Use;
     if ((type->isCloth() || type->getClothSlot() > 0) && !type->isMultiUse())
@@ -349,109 +308,34 @@ config::EUseType TActionBarManager::defaultUseType(const int objectId)
     return type->isMultiUse() ? config::EUseType::SelectUseTarget : config::EUseType::Use;
 }
 
-void TActionBarManager::assignDroppedObject(TActionBarController* bar, const int buttonId, const int multiActionIndex,
-                                            const uint16_t typeId, const uint8_t tier, const bool alt)
+bool TActionBarManager::onActionButtonTriggered(const input::TGameActionActionButtonTriggered& action)
 {
-    if (typeId == 0)
-        return;
-    if (alt) {
-        auto* controller = new TAssignObjectActionDialogController(bar, buttonId, multiActionIndex, this);
-        controller->setObject(typeId, tier);
-        controller->dialog()->show();
-        return;
-    }
-    Setting setting;
-    setting.kind = Setting::OBJECT;
-    setting.objectId = typeId;
-    setting.useType = defaultUseType(typeId);
-    if (tier)
-        setting.upgradeTier = tier;
-    bar->assign(buttonId, multiActionIndex, setting);
-}
-
-void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int buttonId, const int multiActionIndex, const int spellId)
-{
-    (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, spellId, this))->dialog()->show();
-}
-
-bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action)
-{
-    TActionBarController* target = bar(action.actionBarId);
-    TActionButtonController* button = target ? target->button(action.actionButtonId) : nullptr;
+    TActionBarController* target = bar(action.actionBarId());
+    TActionButtonController* button = target ? target->button(action.actionButtonId()) : nullptr;
     if (button)
         button->setIsNewlyUnlocked(false);
     if (!button || !tibia::game::isOnline())
         return true;
-    Setting setting = target->settingAt(action.actionButtonId, -1);
+    Setting setting = target->settingAt(action.actionButtonId(), -1);
     if (setting.kind == Setting::MULTI_ACTION) {
         // A clicked slot runs itself, the button its current slot.
-        const TActionButtonController* slot = action.multiActionIndex >= 0 ? button->multiAction(action.multiActionIndex)
+        const TActionButtonController* slot = action.multiActionIndex() >= 0 ? button->multiAction(action.multiActionIndex())
                                                                              : button->currentMultiAction(game::TCooldownStorage::now());
-        setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
+        setting = slot ? target->settingAt(action.actionButtonId(), slot->multiActionIndex()) : Setting{};
     }
-    execute(setting, action.autoRepeat);
-    input::publish(input::makeAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
+    execute(setting);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     return true;
 }
 
-void TActionBarManager::execute(const Setting& setting, const bool autoRepeat)
+void TActionBarManager::execute(const Setting& setting)
 {
-    switch (setting.kind) {
-    case Setting::TEXT: {
-        auto text = input::mutableClone(*input::makeAction(A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT));
-        text->text = setting.text;
-        text->enable = setting.sendAutomatically;
-        text->autoRepeat = autoRepeat;
-        if (spells::TSpellInfoStorage::instance()->spellOfText(setting.text)) {
-            text->isSpell = true;
-            text->spellCastType = setting.spellCastType;
-        }
-        input::publish(text);
-        break;
-    }
-    case Setting::OBJECT:
-        useObject(setting);
-        break;
-    default:
-        break;
-    }
+    if (input::IGameActionPtr action = input::TKeyboardShortcutHandler::createGameAction(setting);
+        action && setting.kind != Setting::ACTION)
+        Q_EMIT publishGameAction(action);
 }
 
-void TActionBarManager::useObject(const Setting& setting)
-{
-    if (!tibia::game::hasLocalPlayer() || setting.objectId <= 0)
-        return;
-    const auto id = uint16_t(setting.objectId);
-    const auto tier = uint8_t(setting.upgradeTier.value_or(0));
-    switch (setting.useType) {
-    case config::EUseType::Use:
-        tibia::game::useInventoryItem(id);
-        break;
-    case config::EUseType::UseOnYourself:
-    case config::EUseType::UseOnTarget:
-    case config::EUseType::SelectUseTarget:
-    case config::EUseType::UseAtMouseCursor: {
-        // CIP cases 1, 2, 3, 5: USE_ON_YOURSELF / USE_ON_TARGET / USE_WITH (crosshair) /
-        // USE_AT_MOUSECURSOR on the object type.
-        A type = A::USE_AT_MOUSECURSOR;
-        switch (setting.useType) {
-        case config::EUseType::UseOnYourself: type = A::USE_ON_YOURSELF; break;
-        case config::EUseType::UseOnTarget: type = A::USE_ON_TARGET; break;
-        case config::EUseType::SelectUseTarget: type = A::USE_WITH; break;
-        default: break;
-        }
-        auto use = input::mutableClone(*input::makeObjectAction(type, {}, -1));
-        use->objectClientId = static_cast<uint16_t>(id);
-        input::publish(use);
-        break;
-    }
-    case config::EUseType::Equip:
-        tibia::game::equipItemId(id, tier);
-        break;
-    }
-}
-
-bool TActionBarManager::toggleActionBar(const input::TGameAction& action)
+bool TActionBarManager::toggleActionBar(const input::IGameAction& action)
 {
     for (const auto& group : m_groups)
         if (group)
@@ -459,7 +343,7 @@ bool TActionBarManager::toggleActionBar(const input::TGameAction& action)
     return true;
 }
 
-bool TActionBarManager::toggleActionBars(const input::TGameAction& action)
+bool TActionBarManager::toggleActionBars(const input::IGameAction& action)
 {
     for (const auto& group : m_groups)
         if (group)

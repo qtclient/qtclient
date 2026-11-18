@@ -9,6 +9,10 @@ namespace qmlcomponents {
 /// from 1,000 / 1,000,000 / 1,000,000,000 on, joined with U+009C; a "+" before
 /// positive numbers when `withPlus`.
 QString thousandShortcutsMultiString(qlonglong number, bool withPlus = false);
+/// CIP: minutes and seconds up to an hour (inclusive), else hours and minutes, days from a day on.
+QString shortDurationString(qint64 seconds);
+/// CIP: "10d" / "1d05" / "12h" / "1h05" / "12m" / "1m05" / "5s".
+QString ultraShortDurationString(qint64 seconds);
 
 /// QML singleton TextHelper (CIP: TTextHelperQmlService, metacall).
 /// Multi strings join their longest-to-shortest variants with U+009C so QML

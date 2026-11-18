@@ -78,6 +78,8 @@ class TKillTrackerWidgetController final : public TSidebarWidgetController<cip::
 
 public:
     TKillTrackerWidgetController(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CIP: clears the prey list first (clearPreyList).
+    ~TKillTrackerWidgetController() override;
 
     /// preyWidgetOptions: contentHeight, contentMaximized.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -118,7 +120,6 @@ Q_SIGNALS:
     void widgetClosed();
     /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
     /// CIP preyList NOTIFY — qtclient emits after slot render-info list is built.
@@ -133,6 +134,8 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
+    /// CIP: empties preyList, announces it, then deletes the old render infos.
+    void clearPreyList();
     void applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
     void applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
 
@@ -158,6 +161,11 @@ public:
     /// Saves its options and deletes it.
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     prey::TPreyStorage* m_storage;

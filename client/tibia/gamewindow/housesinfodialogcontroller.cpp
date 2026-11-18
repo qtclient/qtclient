@@ -1,4 +1,5 @@
 #include "housesinfodialogcontroller.h"
+#include "game/serversave.h"
 
 #include "qmlcomponents/worldmapcameraviewport.h"
 
@@ -11,6 +12,9 @@
 #include "worldmap/ambientlightstorage.h"
 
 #include "shared/tibiafilesystemhelper.h"
+#include "assets/things.h"
+
+#include <utility>
 
 #include <QColor>
 #include <QJsonArray>
@@ -28,7 +32,7 @@ namespace {
 using Button = TMessageDialogController::Button;
 using cyclopedia::THouseCharacterInfo;
 using cyclopedia::THouseLimits;
-using cyclopedia::THouseRecord;
+using cyclopedia::THouseInformation;
 
 constexpr int StateAuctioned = 0;
 constexpr int StateUnoccupied = 1;
@@ -62,27 +66,6 @@ QString dateMulti(const qint64 secs)
 {
     qmlcomponents::TTextHelperQmlService helper;
     return helper.createQmlMultiString(dateBerlin(secs), shortDateBerlin(secs));
-}
-
-/// 10:00 Berlin time on `date`: the server save.
-QDateTime serverSave(const QDate& date)
-{
-#if QT_CONFIG(timezone)
-    return QDateTime(date, QTime(10, 0), QTimeZone("Europe/Berlin"));
-#else
-    const QDate lastMarch(date.year(), 3, 31);
-    const QDate lastOctober(date.year(), 10, 31);
-    const bool summer = date >= lastMarch.addDays(-(lastMarch.dayOfWeek() % 7)) && date < lastOctober.addDays(-(lastOctober.dayOfWeek() % 7));
-    return QDateTime(date, QTime(10, 0), QTimeZone::fromSecondsAheadOfUtc(summer ? 7200 : 3600));
-#endif
-}
-
-/// Today's server save, or yesterday's before it.
-QDateTime lastServerSaveTime()
-{
-    const QDateTime now = QDateTime::currentDateTime();
-    const QDateTime today = serverSave(now.date());
-    return now < today ? today.addDays(-1) : today;
 }
 
 /// The rent with thousands shortcuts.
@@ -126,7 +109,7 @@ QString bidReason(const int error, const THouseCharacterInfo& info, const THouse
     }
 }
 
-QString shortStatus(const THouseRecord& house)
+QString shortStatus(const THouseInformation& house)
 {
     QStringList parts;
     if (!house.isRentable) {
@@ -150,7 +133,7 @@ QString shortStatus(const THouseRecord& house)
     return parts.join(QLatin1Char(' '));
 }
 
-bool isRented(const THouseRecord& house) { return house.state >= StateRented && house.state <= StateMoveOutPending; }
+bool isRented(const THouseInformation& house) { return house.state >= StateRented && house.state <= StateMoveOutPending; }
 
 /// The floors of each house: the staticmapdata MapFields extent (CIP
 /// per house id; z from the top-left, z + depth - 1).
@@ -160,93 +143,18 @@ struct THouseLayers
     int maximum = 0;
 };
 
-quint64 readVarint(const QByteArray& data, qsizetype& at)
-{
-    quint64 value = 0;
-    for (int shift = 0; at < data.size() && shift < 64; shift += 7) {
-        const auto byte = static_cast<quint8>(data.at(at++));
-        value |= quint64(byte & 0x7f) << shift;
-        if (!(byte & 0x80))
-            break;
-    }
-    return value;
-}
-
-/// The fields of one protobuf message: varints and length-delimited bodies.
-template <class F>
-void forEachField(const QByteArray& data, F&& visit)
-{
-    qsizetype at = 0;
-    while (at < data.size()) {
-        const quint64 key = readVarint(data, at);
-        const int field = static_cast<int>(key >> 3);
-        switch (key & 7) {
-            case 0: visit(field, readVarint(data, at), QByteArray()); break;
-            case 2: {
-                const auto length = static_cast<qsizetype>(readVarint(data, at));
-                visit(field, 0, data.mid(at, length));
-                at += length;
-                break;
-            }
-            case 1: at += 8; break;
-            case 5: at += 4; break;
-            default: return;
-        }
-    }
-}
-
-int coordinateZ(const QByteArray& coordinate)
-{
-    int z = 0;
-    forEachField(coordinate, [&z](const int field, const quint64 value, const QByteArray&) {
-        if (field == 3)
-            z = static_cast<int>(value);
-    });
-    return z;
-}
-
 const std::unordered_map<quint32, THouseLayers>& houseLayers()
 {
     static std::unordered_map<quint32, THouseLayers> layers;
     if (!layers.empty())
         return layers;
-    try {
-        const std::string dir = client::gamecore::assetsRoot(client::TGameClient::ClientVersion);
-        const QJsonDocument catalog = QJsonDocument::fromJson(QByteArray::fromStdString(tibia::files::data().readFileContents(dir + "catalog-content.json")));
-        QString file;
-        for (const QJsonValue entry : catalog.array()) {
-            if (entry.toObject().value(QStringLiteral("type")).toString() == QStringLiteral("staticmapdata"))
-                file = entry.toObject().value(QStringLiteral("file")).toString();
-        }
-        if (file.isEmpty())
-            return layers;
-        const QByteArray data = QByteArray::fromStdString(tibia::files::data().readFileContents(dir + file.toStdString()));
-        forEachField(data, [](const int field, quint64, const QByteArray& house) {
-            if (field != 1)
-                return;
-            quint32 id = 0;
-            THouseLayers houseLayers;
-            forEachField(house, [&](const int houseField, const quint64 value, const QByteArray& fields) {
-                if (houseField == 1)
-                    id = static_cast<quint32>(value);
-                if (houseField != 2)
-                    return;
-                int top = 0;
-                int depth = 0;
-                forEachField(fields, [&](const int mapField, quint64, const QByteArray& body) {
-                    if (mapField == 1)
-                        top = coordinateZ(body);
-                    if (mapField == 2)
-                        depth = coordinateZ(body);
-                });
-                if (depth > 0)
-                    houseLayers = { top, top + depth - 1 };
-            });
-            if (id)
-                layers.emplace(id, houseLayers);
-        });
-    } catch (const std::exception& e) {
-        qWarning("houses: no staticmapdata: %s", e.what());
+    for (const THouseMapArea& area : tibia::appearances::TAppearancesManager::instance().getHouseMapAreas()) {
+        if (area.houseId == 0)
+            continue;
+        THouseLayers houseLayers;
+        if (area.depth > 0)
+            houseLayers = { area.topLeft.z, static_cast<int>(area.topLeft.z + area.depth - 1) };
+        layers.emplace(area.houseId, houseLayers);
     }
     return layers;
 }
@@ -311,7 +219,7 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= rowCount())
         return {};
-    const THouseRecord& house = m_houses[static_cast<size_t>(index.row())];
+    const THouseInformation& house = m_houses[static_cast<size_t>(index.row())];
     const bool auctioned = house.state == StateAuctioned;
     const bool rented = isRented(house);
     const bool transfer = house.state == StateTransferPending;
@@ -365,7 +273,7 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
     }
 }
 
-void THousesModel::setHouses(std::vector<THouseRecord> houses)
+void THousesModel::setHouses(std::vector<THouseInformation> houses)
 {
     beginResetModel();
     m_houses = std::move(houses);
@@ -580,7 +488,20 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     onHouseInformationChanged();
 }
 
-THousesInfoDialogController::~THousesInfoDialogController() = default;
+THousesInfoDialogController::~THousesInfoDialogController()
+{
+    disconnect(m_storage, nullptr, this, nullptr);
+    clearFilterModels();
+}
+
+void THousesInfoDialogController::clearFilterModels()
+{
+    const QList<QObject*> states = std::exchange(m_statesFitlerModel, {});
+    const QList<QObject*> sortOrders = std::exchange(m_sortOrderModel, {});
+    Q_EMIT staticDataChanged();
+    qDeleteAll(states);
+    qDeleteAll(sortOrders);
+}
 
 void THousesInfoDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
 {
@@ -662,9 +583,9 @@ uint THousesInfoDialogController::currentHouseId() const
     return m_proxy->rowCount() > 0 ? m_currentHouseId : 0;
 }
 
-QDateTime THousesInfoDialogController::lastServerSave() const { return lastServerSaveTime(); }
+QDateTime THousesInfoDialogController::lastServerSave() const { return game::lastServerSave(); }
 
-QDateTime THousesInfoDialogController::in30DaysServerSave() const { return lastServerSaveTime().addDays(30); }
+QDateTime THousesInfoDialogController::in30DaysServerSave() const { return game::lastServerSave().addDays(30); }
 
 /// CIP is empty; product selects a town/house so the 3D preview has a row.
 void THousesInfoDialogController::showDialogTab()
@@ -751,13 +672,13 @@ void THousesInfoDialogController::updateHouseLayers(const uint houseId)
 /// CIP: OPEN_CYCLOPEDIA's map tab at the house.
 void THousesInfoDialogController::showOnCyclopediaMap()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 4;
-    action->position = Position(house->x, house->y, static_cast<uint8_t>(house->z));
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
+    action->setCoordinate(Position(house->x, house->y, static_cast<uint8_t>(house->z)));
+    action->setZoom(0.5f);
+    Q_EMIT publishGameAction(action);
 }
 
 void THousesInfoDialogController::ensureTownAndHouseSelection()
@@ -793,11 +714,13 @@ void THousesInfoDialogController::centerHouse() { centerHousePreview(); }
 
 void THousesInfoDialogController::centerHousePreview()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house || !m_houseCamera)
         return;
     if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
-        viewport->setTopAndBottomLayer(m_maximumHouseLayer, m_minimumHouseLayer);
+        // CIP: a house under ground shows layers 8..15, else 0..7.
+        const bool underground = house->z > 7;
+        viewport->setTopAndBottomLayer(underground ? 8 : 0, underground ? 15 : 7);
         viewport->centerAtField(house->x, house->y, house->z);
     } else {
         auto* center = m_houseCamera->centerSubfieldCoordinate();
@@ -821,7 +744,7 @@ void THousesInfoDialogController::confirmAction(const int action, const QString&
 
 void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -831,21 +754,21 @@ void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 
 void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
-    m_pendingTimestamp = static_cast<quint32>(serverSave(Date).toSecsSinceEpoch());
+    m_pendingTimestamp = static_cast<quint32>(game::serverSave(Date).toSecsSinceEpoch());
     confirmAction(2, qtTrId("houses_action_confirm_move_out_message").arg(house->name, dateBerlin(m_pendingTimestamp)));
 }
 
 void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, const QString& NewOwner, const qulonglong Price)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
-    m_pendingTimestamp = static_cast<quint32>(serverSave(Date).toSecsSinceEpoch());
+    m_pendingTimestamp = static_cast<quint32>(game::serverSave(Date).toSecsSinceEpoch());
     m_pendingName = NewOwner;
     m_pendingAmount = Price;
     confirmAction(3, qtTrId("houses_action_confirm_transfer_message")
@@ -854,7 +777,7 @@ void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, con
 
 void THousesInfoDialogController::onActionCancelMoveOutClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -863,7 +786,7 @@ void THousesInfoDialogController::onActionCancelMoveOutClicked()
 
 void THousesInfoDialogController::onActionCancelTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -873,7 +796,7 @@ void THousesInfoDialogController::onActionCancelTransferClicked()
 
 void THousesInfoDialogController::onActionAcceptTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -883,7 +806,7 @@ void THousesInfoDialogController::onActionAcceptTransferClicked()
 
 void THousesInfoDialogController::onActionRejectTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -931,7 +854,7 @@ void THousesInfoDialogController::onHouseActionResult(const quint32 houseId, con
         } else if (action == 6 || action == 7) {
             reason = incomingTransferReason(errorCode);
         } else if (action == 1) {
-            const THouseRecord* house = m_storage->house(houseId);
+            const THouseInformation* house = m_storage->house(houseId);
             reason = bidReason(errorCode, m_storage->characterInfo(), m_storage->limits(), house && house->isGuildHall);
         } else {
             reason = qtTrId("error_code_internal");

@@ -1,4 +1,5 @@
 #include "qmlstoreobjects.h"
+#include "colorhelper.h"
 
 #include "store/storeciptypes.h"
 
@@ -10,6 +11,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <utility>
 
 namespace tibia::store {
 
@@ -22,7 +24,7 @@ QString englishNumber(const qint64 value)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -169,6 +171,11 @@ TQmlStoreCategory::TQmlStoreCategory(const QString& name, const std::vector<QStr
     for (const QString& identifier : imageIdentifiers)
         m_imageIdentifiers.append(identifier);
     m_subcategoryList = subcategories;
+}
+
+TQmlStoreCategory::~TQmlStoreCategory()
+{
+    qDeleteAll(std::exchange(m_subcategoryList, {}));
 }
 
 TQmlStoreVisualisation::TQmlStoreVisualisation(const TStoreVisualisation& visualisation, QObject* parent)
@@ -354,6 +361,19 @@ TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManage
         connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::onOfferDescriptionLoaded);
 }
 
+TQmlStoreOffer::~TQmlStoreOffer()
+{
+    qDeleteAll(m_products);
+    qDeleteAll(m_quantities);
+    qDeleteAll(m_cosmeticTokenQuantities);
+}
+
+void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
+{
+    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
+        Q_EMIT descriptionChanged();
+}
+
 QString TQmlStoreOffer::name() const
 {
     return m_offer.name;
@@ -425,11 +445,6 @@ bool TQmlStoreOffer::hasQuantity(const int offerId) const
     return m_offer.hasQuantity(static_cast<TOfferID>(offerId));
 }
 
-void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
-{
-    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
-        Q_EMIT descriptionChanged();
-}
 
 TQmlTransactionHistoryEntry::TQmlTransactionHistoryEntry(const TStoreTransactionHistoryEntry& entry, QObject* parent)
     : cip::tibia::store::TQmlTransactionHistoryEntry(parent)
@@ -492,6 +507,11 @@ TQmlStoreTransactionHistoryPage::TQmlStoreTransactionHistoryPage(const TStoreTra
 {
     for (const TStoreTransactionHistoryEntry& entry : m_history.entries)
         m_transactionEntries.append(new TQmlTransactionHistoryEntry(entry, this));
+}
+
+TQmlStoreTransactionHistoryPage::~TQmlStoreTransactionHistoryPage()
+{
+    qDeleteAll(m_transactionEntries);
 }
 
 bool TQmlStoreTransactionHistoryPage::canLoadNextPage() const

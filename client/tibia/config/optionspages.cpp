@@ -2,6 +2,7 @@
 
 #include "app/bootstrap.h"
 #include "config/clientoptiondefaults.h"
+#include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionobject.h"
 #include "gamewindow/actionbarcontroller.h"
@@ -10,8 +11,11 @@
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
+#include "appearances/appearanceinstance.h"
 
-#include "sound/soundstorage.h"
+#include <tibia/game/thingsession_forward.h>
+
+#include "sound/soundengine.h"
 
 #include <QColor>
 #include <QHash>
@@ -22,6 +26,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <utility>
 
 namespace tibia::config {
@@ -30,12 +35,6 @@ namespace {
 
 using O = cip::EClientOption;
 using B = TOptionBinding;
-
-QString optionName(const O option)
-{
-    const std::string_view name = cip::ClientOptionNames[static_cast<size_t>(option)];
-    return QString::fromLatin1(name.data(), static_cast<qsizetype>(name.size()));
-}
 
 constexpr int SoftwareRenderer = 3;
 constexpr int MetalRenderer = 9;
@@ -90,8 +89,41 @@ QString rendererName(const int renderer)
     }
 }
 
-/// The renderers in CIP's list order (,).
+/// The renderers in the list order.
 constexpr int RendererOrder[] = { 0, 6, 10, 7, 9, 8, SoftwareRenderer };
+/// The highest renderer id a name is matched against.
+constexpr int MaxRenderer = 10;
+
+constexpr int AntialiasingModeCount = 3;
+constexpr int ColorizeLootStyleCount = 3;
+
+QString colorizeLootStyleName(const int style)
+{
+    switch (style) {
+    case 0:
+        return qtTrId("colorizelootstyle_none");
+    case 1:
+        return qtTrId("colorizelootstyle_normal");
+    case 2:
+        return qtTrId("colorizelootstyle_compact");
+    default:
+        return qtTrId("dummy_unknown");
+    }
+}
+
+QString antialiasingModeName(const int mode)
+{
+    switch (mode) {
+    case 0:
+        return qtTrId("antialiasingmode_none");
+    case 1:
+        return qtTrId("antialiasingmode_antialiasing");
+    case 2:
+        return qtTrId("antialiasingmode_retro");
+    default:
+        return qtTrId("dummy_unknown");
+    }
+}
 
 /// EButtonBarButton names and labels (, table).
 /// Id order must match defaultControlButtonIds.
@@ -171,9 +203,10 @@ constexpr B ActionBarsBindings[] = {
     { "showRightActionBar2", O::actionBarShowRight2, B::Bool },
     { "showRightActionBar3", O::actionBarShowRight3, B::Bool },
     { "showRightActionBars", O::actionBarsShowRight, B::Bool },
-    { "actionBarBottomLocked", O::actionBarBottomLocked, B::Carried },
-    { "actionBarLeftLocked", O::actionBarLeftLocked, B::Carried },
-    { "actionBarRightLocked", O::actionBarRightLocked, B::Carried },
+    // The locks have no page property; the page keeps them as dynamic ones.
+    { "actionBarBottomLocked", O::actionBarBottomLocked, B::Bool },
+    { "actionBarLeftLocked", O::actionBarLeftLocked, B::Bool },
+    { "actionBarRightLocked", O::actionBarRightLocked, B::Bool },
     { "showHotkey", O::actionButtonShowHotkey, B::Bool },
     { "showAmount", O::actionButtonShowAmount, B::Bool },
     { "showSpellParameters", O::actionButtonShowSpellParameters, B::Bool },
@@ -268,14 +301,6 @@ constexpr B GameplayBindings[] = {
     { "quickLootAllCorpsesInArea", O::quickLootAllCorpsesInAreaEnabled, B::Bool },
 };
 
-constexpr B GraphicsBindings[] = {
-    { "scaleOnlyByEvenMultiples", O::gameWindowScaleOnlyByEvenMultiples, B::Bool },
-    { "antialiasingModeIndex", O::antialiasingMode, B::Int },
-    { "vSync", O::vSyncEnabled, B::Bool },
-    { "noFpsLimitEnabled", O::frameRateLimitEnabled, B::InvertedBool },
-    { "fpsLimit", O::frameRateLimit, B::Int },
-};
-
 constexpr B EffectsBindings[] = {
     { "lightEffects", O::lightEffectsEnabled, B::Bool },
     { "ambientLightLevel", O::lightAmbientLevel, B::Percent },
@@ -285,18 +310,6 @@ constexpr B EffectsBindings[] = {
     { "otherPlayersEffectsOpacity", O::otherPlayersEffectsOpacity, B::Percent },
     { "monsterEffectsOpacity", O::monsterEffectsOpacity, B::Percent },
     { "monsterBossAreaEffectsOpacity", O::monsterBossAreaEffectsOpacity, B::Percent },
-};
-
-constexpr B ControlsBindings[] = {
-    { "controlSchemeIndex", O::controlSchemeIndex, B::Int },
-    { "lootSchemeIndex", O::lootSchemeIndex, B::Int },
-    { "useDefaultKeyboardDelay", O::keyboardDelayUseDefault, B::Bool },
-    { "keyboardDelayMillis", O::keyboardDelayMs, B::Int },
-    { "rotateWithAlt", O::rotateWithAlt, B::Bool },
-    { "rotateWithShift", O::rotateWithShift, B::Bool },
-    { "rotateWithCtrl", O::rotateWithCtrl, B::Bool },
-    { "alwaysTurnTowardsMoveDirection", O::alwaysTurnTowardsMoveDirection, B::Bool },
-    { "ctrlToDragStacks", O::dragAndDropDefaultActionIsMoveAll, B::InvertedBool },
 };
 
 constexpr B ScreenshotsBindings[] = {
@@ -389,101 +402,103 @@ uint cloudsIndexOf(const float value)
     return static_cast<uint>(static_cast<long>((1.0f - value) / 0.005f));
 }
 
-constexpr auto SpecialConditionsSection = "specialConditionsOptions";
-constexpr auto ControlButtonsSection = "controlButtonsOptions";
-constexpr auto ClientWindowSection = "clientWindowOptions";
-constexpr auto BorderlessKey = "clientWindowIsBorderless";
-
 }
 
-QJsonValue optionValue(const QJsonObject& settings, const cip::EClientOption option)
+void loadBindings(QObject* page, const std::span<const TOptionBinding> bindings, const TClientOptions& options)
 {
-    return settings.value(QLatin1String("options")).toObject().value(optionName(option));
-}
-
-void setOptionValue(QJsonObject& settings, const cip::EClientOption option, const QJsonValue& value)
-{
-    QJsonObject options = settings.value(QLatin1String("options")).toObject();
-    options.insert(optionName(option), value);
-    settings.insert(QLatin1String("options"), options);
-}
-
-void loadBindings(QObject* page, const std::span<const TOptionBinding> bindings, const QJsonObject& settings)
-{
-    const QJsonObject options = settings.value(QLatin1String("options")).toObject();
     for (const TOptionBinding& binding : bindings) {
-        const QJsonValue value = options.value(optionName(binding.option));
-        if (value.isUndefined())
+        if (!options.hasOption(binding.option))
             continue;
         QVariant property;
         switch (binding.kind) {
         case B::Bool:
-            property = value.toBool();
+            property = options.boolOption(binding.option);
             break;
         case B::InvertedBool:
-            property = !value.toBool();
+            property = !options.boolOption(binding.option);
             break;
         case B::Int:
-            property = static_cast<uint>(std::max(0, value.toInt()));
+            property = static_cast<uint>(std::max(0, options.intOption(binding.option)));
             break;
         case B::Real:
-            // The option is a float.
-            property = static_cast<double>(static_cast<float>(value.toDouble()));
+            property = static_cast<double>(options.floatOption(binding.option));
             break;
         case B::Percent:
-            property = percentOf(static_cast<float>(value.toDouble()));
+            property = percentOf(options.floatOption(binding.option));
             break;
         case B::CloudsIndex:
-            property = cloudsIndexOf(static_cast<float>(value.toDouble()));
-            break;
-        case B::Carried:
-            property = value.toVariant();
+            property = cloudsIndexOf(options.floatOption(binding.option));
             break;
         }
         page->setProperty(binding.property, property);
     }
 }
 
-void applyBindings(const QObject* page, const std::span<const TOptionBinding> bindings, QJsonObject& settings)
+void applyBindings(const QObject* page, const std::span<const TOptionBinding> bindings, TClientOptions& options)
 {
-    QJsonObject options = settings.value(QLatin1String("options")).toObject();
     for (const TOptionBinding& binding : bindings) {
+        if (!options.hasOption(binding.option))
+            continue;
         const QVariant property = page->property(binding.property);
-        QJsonValue value;
         switch (binding.kind) {
         case B::Bool:
-            value = property.toBool();
+            options.setBoolOption(binding.option, property.toBool());
             break;
         case B::InvertedBool:
-            value = !property.toBool();
+            options.setBoolOption(binding.option, !property.toBool());
             break;
         case B::Int:
-            value = static_cast<int>(property.toUInt());
+            options.setIntOption(binding.option, static_cast<int>(property.toUInt()));
             break;
         case B::Real:
-            value = static_cast<double>(static_cast<float>(property.toDouble()));
+            options.setFloatOption(binding.option, static_cast<float>(property.toDouble()));
             break;
         case B::Percent:
-            value = static_cast<double>(fractionOf(property.toUInt()));
+            options.setFloatOption(binding.option, fractionOf(property.toUInt()));
             break;
         case B::CloudsIndex:
-            value = static_cast<double>(static_cast<float>(property.toUInt()) * -0.005f + 1.0f);
-            break;
-        case B::Carried:
-            if (!property.isValid())
-                continue;
-            value = QJsonValue::fromVariant(property);
+            options.setFloatOption(binding.option, static_cast<float>(property.toUInt()) * -0.005f + 1.0f);
             break;
         }
-        options.insert(optionName(binding.option), value);
     }
-    settings.insert(QLatin1String("options"), options);
 }
 
 TInterfaceOptionsPage::TInterfaceOptionsPage(QObject* parent)
     : TBoundOptionsPage(InterfaceBindings, parent)
 {
-    m_colorizeLootStyleListModel = { qtTrId("colorizelootstyle_none"), qtTrId("colorizelootstyle_normal"), qtTrId("colorizelootstyle_compact") };
+}
+
+uint TInterfaceOptionsPage::colorizeLootStyleIndex() const
+{
+    // m_colorizeLootStyleIndex holds the style.
+    const qsizetype index = colorizeLootStyleListModel().indexOf(colorizeLootStyleName(static_cast<int>(m_colorizeLootStyleIndex)));
+    return index < 0 ? 0u : static_cast<uint>(index);
+}
+
+void TInterfaceOptionsPage::setColorizeLootStyleIndex(const uint index)
+{
+    const QStringList styles = colorizeLootStyleListModel();
+    uint style = 0;
+    if (index < static_cast<uint>(styles.size())) {
+        for (int candidate = 0; candidate < ColorizeLootStyleCount; ++candidate) {
+            if (styles.at(index) == colorizeLootStyleName(candidate)) {
+                style = static_cast<uint>(candidate);
+                break;
+            }
+        }
+    }
+    if (m_colorizeLootStyleIndex == style)
+        return;
+    m_colorizeLootStyleIndex = style;
+    Q_EMIT changed();
+}
+
+QStringList TInterfaceOptionsPage::colorizeLootStyleListModel() const
+{
+    QStringList styles;
+    for (int style = 0; style < ColorizeLootStyleCount; ++style)
+        styles << colorizeLootStyleName(style);
+    return styles;
 }
 
 TGameWindowOptionsPage::TGameWindowOptionsPage(QObject* parent)
@@ -505,30 +520,30 @@ THudOptionsPage::THudOptionsPage(QObject* parent)
 {
 }
 
-void THudOptionsPage::load(const QJsonObject& settings)
+void THudOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    const QJsonValue section = settings.value(QLatin1String(SpecialConditionsSection));
-    m_specialConditions = section.isObject() ? SpecialConditionsOptions::fromJson(section.toObject()) : SpecialConditionsOptions::defaults();
+    TBoundOptionsPage::load(options);
+    const QJsonObject& section = options.specialConditionsOptions();
+    m_specialConditions = !section.isEmpty() ? SpecialConditionsOptions::fromJson(section) : SpecialConditionsOptions::defaults();
     m_specialConditionsShowInHUDEnabled = m_specialConditions.showInHUD;
     m_specialConditionsShowInBarEnabled = m_specialConditions.showInBar;
     Q_EMIT changed();
     rebuildSpecialConditionsModel();
 }
 
-void THudOptionsPage::apply(QJsonObject& settings) const
+void THudOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
+    TBoundOptionsPage::apply(options);
     SpecialConditionsOptions conditions = m_specialConditions;
     conditions.showInHUD = m_specialConditionsShowInHUDEnabled;
     conditions.showInBar = m_specialConditionsShowInBarEnabled;
-    settings.insert(QLatin1String(SpecialConditionsSection), conditions.toJson());
+    options.setSpecialConditionsOptions(conditions.toJson());
 }
 
 void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialConditionIndex, const bool Enabled)
 {
     if (SpecialConditionIndex < 0 || SpecialConditionIndex >= m_specialConditions.specialConditionsOrder.size())
-        return;
+        throw std::out_of_range("vector");
     const SpecialCondition condition = m_specialConditions.specialConditionsOrder.at(SpecialConditionIndex);
     if (Enabled)
         m_specialConditions.visibleInHUD.insert(condition);
@@ -540,7 +555,7 @@ void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialCondi
 void THudOptionsPage::setSpecialConditionShowInBarEnabled(const int SpecialConditionIndex, const bool Enabled)
 {
     if (SpecialConditionIndex < 0 || SpecialConditionIndex >= m_specialConditions.specialConditionsOrder.size())
-        return;
+        throw std::out_of_range("vector");
     const SpecialCondition condition = m_specialConditions.specialConditionsOrder.at(SpecialConditionIndex);
     if (Enabled)
         m_specialConditions.visibleInBar.insert(condition);
@@ -581,78 +596,155 @@ void THudOptionsPage::rebuildSpecialConditionsModel()
 }
 
 TGraphicsOptionsPage::TGraphicsOptionsPage(QObject* parent)
-    : TBoundOptionsPage(GraphicsBindings, parent)
+    : TGraphicsQMLOptionsPage(parent)
 {
-    for (const int renderer : RendererOrder) {
-        if (!app::isRendererSupported(renderer))
-            continue;
-        m_rendererIds << renderer;
-        m_rendererListModel << rendererName(renderer);
-    }
-    for (int mode = 0; mode < 3; ++mode)
-        m_antialiasingModeListModel << qtTrId(mode == 0 ? "antialiasingmode_none" : mode == 1 ? "antialiasingmode_antialiasing" : "antialiasingmode_retro");
-    m_rendererLimitationsActive = rendererLimitationsActive();
-    m_isMetal = activeRenderer() == MetalRenderer;
     // product: allow toggling the CIP "no FPS limit" checkbox (was hard-disabled).
-    m_canChangeFpsLimitCheckbox = !rendererLimitationsActive();
+    m_canChangeFpsLimitCheckbox = !config::rendererLimitationsActive();
 }
 
-void TGraphicsOptionsPage::load(const QJsonObject& settings)
+void TGraphicsOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    m_borderlessWindow = settings.value(QLatin1String(ClientWindowSection)).toObject().value(QLatin1String(BorderlessKey)).toBool(false);
-    m_rendererId = optionValue(settings, O::rendererIndex).toInt(0);
-    m_vSync = optionValue(settings, O::vSyncEnabled).toBool(m_vSync);
-
-    QString tooltip;
-    if (m_rendererId != activeRenderer())
-        tooltip += qtTrId("optionsmenu_engine_tooltip_auto").arg(rendererName(activeRenderer()));
-    tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_help");
-    QString disabled;
-    for (const int renderer : RendererOrder)
-        if (renderer != SoftwareRenderer && !app::isRendererSupported(renderer))
-            disabled += QLatin1Char('\n') + rendererName(renderer);
-    if (!disabled.isEmpty())
-        tooltip += QStringLiteral("\n\n") + qtTrId("optionsmenu_engine_tooltip_disabled") + QLatin1Char('\n') + disabled;
-    m_tooltipTextDisabledRenderers = tooltip;
+    m_borderlessWindow = options.clientWindowOptions().borderless;
+    m_scaleOnlyByEvenMultiples = options.boolOption(O::gameWindowScaleOnlyByEvenMultiples);
+    m_vSync = options.boolOption(O::vSyncEnabled);
+    m_frameRateLimitEnabled = options.boolOption(O::frameRateLimitEnabled);
+    m_frameRateLimit = options.intOption(O::frameRateLimit);
+    m_renderer = options.intOption(O::rendererIndex);
+    m_antialiasingMode = options.antialiasingMode();
     Q_EMIT changed();
 }
 
-void TGraphicsOptionsPage::apply(QJsonObject& settings) const
+void TGraphicsOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    setOptionValue(settings, O::rendererIndex, m_rendererId);
-    setOptionValue(settings, O::vSyncEnabled, m_vSync);
-    QJsonObject window = settings.value(QLatin1String(ClientWindowSection)).toObject();
-    window.insert(QLatin1String(BorderlessKey), m_borderlessWindow);
-    settings.insert(QLatin1String(ClientWindowSection), window);
+    TClientWindowOptions window = options.clientWindowOptions();
+    window.borderless = m_borderlessWindow;
+    options.setClientWindowOptions(window);
+    options.setBoolOption(O::gameWindowScaleOnlyByEvenMultiples, m_scaleOnlyByEvenMultiples);
+    options.setIntOption(O::antialiasingMode, m_antialiasingMode);
+    options.setBoolOption(O::vSyncEnabled, m_vSync);
+    options.setBoolOption(O::frameRateLimitEnabled, m_frameRateLimitEnabled);
+    options.setIntOption(O::frameRateLimit, m_frameRateLimit);
+    options.setRendererIndex(m_renderer);
+    options.setAntialiasingMode(m_antialiasingMode);
 }
 
-uint TGraphicsOptionsPage::rendererIndex() const
+uint TGraphicsOptionsPage::antialiasingModeIndex() const
 {
-    return static_cast<uint>(std::max<qsizetype>(0, m_rendererIds.indexOf(m_rendererId)));
+    const qsizetype index = antialiasingModeListModel().indexOf(antialiasingModeName(m_antialiasingMode));
+    return index < 0 ? 0u : static_cast<uint>(index);
 }
 
-void TGraphicsOptionsPage::setRendererIndex(const uint index)
+void TGraphicsOptionsPage::setAntialiasingModeIndex(const uint index)
 {
-    const int renderer = index < static_cast<uint>(m_rendererIds.size()) ? m_rendererIds.at(index) : 0;
-    if (m_rendererId == renderer)
-        return;
-    m_rendererId = renderer;
-    Q_EMIT changed();
+    const QStringList modes = antialiasingModeListModel();
+    if (index < static_cast<uint>(modes.size())) {
+        for (int mode = 0; mode < AntialiasingModeCount; ++mode) {
+            if (modes.at(index) != antialiasingModeName(mode))
+                continue;
+            if (m_antialiasingMode != mode) {
+                m_antialiasingMode = mode;
+                Q_EMIT changed();
+            }
+            return;
+        }
+    }
+    if (m_renderer != 0) {
+        m_renderer = 0;
+        Q_EMIT changed();
+    }
+}
+
+QStringList TGraphicsOptionsPage::antialiasingModeListModel() const
+{
+    QStringList modes;
+    for (int mode = 0; mode < AntialiasingModeCount; ++mode)
+        modes << antialiasingModeName(mode);
+    return modes;
 }
 
 bool TGraphicsOptionsPage::vSync() const
 {
-    return m_vSync && !rendererLimitationsActive();
+    return m_vSync && !config::rendererLimitationsActive();
 }
 
 void TGraphicsOptionsPage::setVSync(const bool enabled)
 {
-    if (m_vSync == enabled || rendererLimitationsActive())
+    if (m_vSync == enabled || config::rendererLimitationsActive())
         return;
     m_vSync = enabled;
     Q_EMIT changed();
+}
+
+bool TGraphicsOptionsPage::noFpsLimitEnabled() const
+{
+    return !m_frameRateLimitEnabled;
+}
+
+void TGraphicsOptionsPage::setNoFpsLimitEnabled(const bool enabled)
+{
+    if (m_frameRateLimitEnabled == !enabled)
+        return;
+    m_frameRateLimitEnabled = !enabled;
+    Q_EMIT changed();
+}
+
+uint TGraphicsOptionsPage::rendererIndex() const
+{
+    const qsizetype index = rendererListModel().indexOf(rendererName(m_renderer));
+    return index < 0 ? 0u : static_cast<uint>(index);
+}
+
+void TGraphicsOptionsPage::setRendererIndex(const uint index)
+{
+    const QStringList renderers = rendererListModel();
+    int renderer = 0;
+    if (index < static_cast<uint>(renderers.size())) {
+        for (int id = 0; id <= MaxRenderer; ++id) {
+            if (renderers.at(index) == rendererName(id)) {
+                renderer = id;
+                break;
+            }
+        }
+    }
+    if (m_renderer == renderer)
+        return;
+    m_renderer = renderer;
+    Q_EMIT changed();
+}
+
+QStringList TGraphicsOptionsPage::rendererListModel() const
+{
+    QStringList renderers;
+    for (const int renderer : RendererOrder)
+        if (app::isRendererSupported(renderer))
+            renderers << rendererName(renderer);
+    return renderers;
+}
+
+QString TGraphicsOptionsPage::tooltipTextDisabledRenderers() const
+{
+    QString disabled;
+    for (const int renderer : RendererOrder)
+        if (renderer != SoftwareRenderer && !app::isRendererSupported(renderer))
+            disabled += QLatin1Char('\n') + rendererName(renderer);
+    QString tooltip;
+    if (m_renderer != activeRenderer())
+        tooltip += qtTrId("optionsmenu_engine_tooltip_auto").arg(rendererName(activeRenderer()));
+    tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_help");
+    if (!disabled.isEmpty())
+        tooltip += (tooltip.isEmpty() ? QString() : QStringLiteral("\n\n")) + qtTrId("optionsmenu_engine_tooltip_disabled")
+                   + QLatin1Char('\n') + disabled;
+    return tooltip;
+}
+
+bool TGraphicsOptionsPage::rendererLimitationsActive() const
+{
+    return config::rendererLimitationsActive();
+}
+
+bool TGraphicsOptionsPage::isMetal() const
+{
+    return activeRenderer() == MetalRenderer;
 }
 
 TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
@@ -661,17 +753,17 @@ TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
     m_rendererLimitationsActive = rendererLimitationsActive();
 }
 
-void TEffectsOptionsPage::load(const QJsonObject& settings)
+void TEffectsOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    m_lightEffects = optionValue(settings, O::lightEffectsEnabled).toBool(m_lightEffects);
+    TBoundOptionsPage::load(options);
+    m_lightEffects = options.boolOption(O::lightEffectsEnabled);
     Q_EMIT changed();
 }
 
-void TEffectsOptionsPage::apply(QJsonObject& settings) const
+void TEffectsOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    setOptionValue(settings, O::lightEffectsEnabled, m_lightEffects);
+    TBoundOptionsPage::apply(options);
+    options.setBoolOption(O::lightEffectsEnabled, m_lightEffects);
 }
 
 bool TEffectsOptionsPage::lightEffects() const
@@ -688,13 +780,80 @@ void TEffectsOptionsPage::setLightEffects(const bool enabled)
 }
 
 TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
-    : TBoundOptionsPage(ControlsBindings, parent)
+    : TControlsQMLOptionsPage(parent)
 {
-    m_controlSchemeListModel = { qtTrId("optionsmenu_controlscheme_classic"), qtTrId("optionsmenu_controlscheme_legacy"),
-                                 qtTrId("optionsmenu_controlscheme_leftsmartclick") };
-    m_lootSchemeListModel = { qtTrId("optionsmenu_lootscheme_right"), qtTrId("optionsmenu_lootscheme_shift_right"), qtTrId("optionsmenu_lootscheme_left") };
-    // CIP returns DAT_1022bdb0c.
+    // Qualified: inside the class these names are the generated getters.
+    m_controlSchemeListModel = config::controlSchemeListModel();
+    m_lootSchemeListModel = config::lootSchemeListModel();
     m_defaultKeyboardDelayMillis = 250;
+}
+
+void TControlsOptionsPage::load(const TClientOptions& options)
+{
+    m_controlScheme = options.controlScheme();
+    m_lootScheme = options.lootScheme();
+    m_useDefaultKeyboardDelay = options.boolOption(O::keyboardDelayUseDefault);
+    m_keyboardDelayMillis = static_cast<uint>(options.intOption(O::keyboardDelayMs));
+    m_rotateWithAlt = options.boolOption(O::rotateWithAlt);
+    m_rotateWithShift = options.boolOption(O::rotateWithShift);
+    m_rotateWithCtrl = options.boolOption(O::rotateWithCtrl);
+    m_dragAndDropDefaultActionIsMoveAll = options.boolOption(O::dragAndDropDefaultActionIsMoveAll);
+    m_alwaysTurnTowardsMoveDirection = options.boolOption(O::alwaysTurnTowardsMoveDirection);
+    Q_EMIT changed();
+}
+
+void TControlsOptionsPage::apply(TClientOptions& options) const
+{
+    options.setControlScheme(m_controlScheme);
+    options.setLootScheme(m_lootScheme);
+    options.setBoolOption(O::keyboardDelayUseDefault, m_useDefaultKeyboardDelay);
+    options.setIntOption(O::keyboardDelayMs, static_cast<int>(m_keyboardDelayMillis));
+    options.setBoolOption(O::rotateWithAlt, m_rotateWithAlt);
+    options.setBoolOption(O::rotateWithShift, m_rotateWithShift);
+    options.setBoolOption(O::rotateWithCtrl, m_rotateWithCtrl);
+    options.setBoolOption(O::alwaysTurnTowardsMoveDirection, m_alwaysTurnTowardsMoveDirection);
+    options.setBoolOption(O::dragAndDropDefaultActionIsMoveAll, m_dragAndDropDefaultActionIsMoveAll);
+}
+
+uint TControlsOptionsPage::controlSchemeIndex() const
+{
+    return static_cast<uint>(controlSchemeListModelIndex(m_controlScheme));
+}
+
+void TControlsOptionsPage::setControlSchemeIndex(const uint index)
+{
+    const int scheme = controlSchemeForListModelIndex(static_cast<int>(index));
+    if (m_controlScheme == scheme)
+        return;
+    m_controlScheme = scheme;
+    Q_EMIT changed();
+}
+
+uint TControlsOptionsPage::lootSchemeIndex() const
+{
+    return static_cast<uint>(lootSchemeListModelIndex(m_lootScheme));
+}
+
+void TControlsOptionsPage::setLootSchemeIndex(const uint index)
+{
+    const int scheme = lootSchemeForListModelIndex(static_cast<int>(index));
+    if (m_lootScheme == scheme)
+        return;
+    m_lootScheme = scheme;
+    Q_EMIT changed();
+}
+
+bool TControlsOptionsPage::ctrlToDragStacks() const
+{
+    return !m_dragAndDropDefaultActionIsMoveAll;
+}
+
+void TControlsOptionsPage::setCtrlToDragStacks(const bool enabled)
+{
+    if (m_dragAndDropDefaultActionIsMoveAll == !enabled)
+        return;
+    m_dragAndDropDefaultActionIsMoveAll = !enabled;
+    Q_EMIT changed();
 }
 
 TButtonBarOptionsPage::TButtonBarOptionsPage(QObject* parent)
@@ -702,10 +861,10 @@ TButtonBarOptionsPage::TButtonBarOptionsPage(QObject* parent)
 {
 }
 
-void TButtonBarOptionsPage::load(const QJsonObject& settings)
+void TButtonBarOptionsPage::load(const TClientOptions& options)
 {
-    const QJsonValue section = settings.value(QLatin1String(ControlButtonsSection));
-    if (section.isObject()) {
+    const QJsonObject& section = options.controlButtonsOptions();
+    if (!section.isEmpty()) {
         m_enabled = stringList(section[QLatin1String("enabledButtons")]);
         m_disabled = stringList(section[QLatin1String("disabledButtons")]);
     } else {
@@ -727,15 +886,30 @@ void TButtonBarOptionsPage::load(const QJsonObject& settings)
         if (!gamewindow::TButtonBarController::defaultEnabledProductShortcutIds().contains(id))
             m_disabled << id;
     }
+    sortDisabledButtons();
     Q_EMIT changed();
 }
 
-void TButtonBarOptionsPage::apply(QJsonObject& settings) const
+void TButtonBarOptionsPage::sortDisabledButtons()
 {
-    QJsonObject section = settings.value(QLatin1String(ControlButtonsSection)).toObject();
+    // Button type order; pack shortcuts (no type) after them, as they were.
+    const auto typeOf = [](const QString& id) {
+        for (size_t type = 0; type < std::size(ButtonBarButtons); ++type)
+            if (id == QLatin1String(ButtonBarButtons[type].id))
+                return static_cast<int>(type);
+        return static_cast<int>(std::size(ButtonBarButtons));
+    };
+    std::stable_sort(m_disabled.begin(), m_disabled.end(),
+                     [&typeOf](const QString& a, const QString& b) { return typeOf(a) < typeOf(b); });
+    m_disabled.erase(std::unique(m_disabled.begin(), m_disabled.end()), m_disabled.end());
+}
+
+void TButtonBarOptionsPage::apply(TClientOptions& options) const
+{
+    QJsonObject section = options.controlButtonsOptions();
     section.insert(QLatin1String("enabledButtons"), QJsonArray::fromStringList(m_enabled));
     section.insert(QLatin1String("disabledButtons"), QJsonArray::fromStringList(m_disabled));
-    settings.insert(QLatin1String(ControlButtonsSection), section);
+    options.setControlButtonsOptions(section);
 }
 
 QStringList TButtonBarOptionsPage::enabledButtons() const
@@ -771,6 +945,7 @@ void TButtonBarOptionsPage::disableButton(const QString& ButtonName)
     const QString id = buttonId(ButtonName);
     m_enabled.removeAll(id);
     m_disabled << id;
+    sortDisabledButtons();
     Q_EMIT changed();
 }
 
@@ -800,10 +975,10 @@ void TSoundOptionsPage::refreshSoundDevices()
 {
     const QString autoLabel = qtTrId("optionsmenu_sound_used_sound_device_auto");
     QStringList model{ autoLabel };
-    if (auto* storage = sound::TSoundStorage::instance()) {
-        m_soundEngineInitialized = storage->isEngineReady();
-        model += storage->playbackDeviceNames();
-    }
+    sound::TSoundEngine& engine = sound::TSoundEngine::instance();
+    engine.updateAvailableDevices();
+    m_soundEngineInitialized = engine.isInitialized();
+    model += engine.availableSoundDevices();
     if (m_soundDeviceListModel != model)
         m_soundDeviceListModel = std::move(model);
     if (!m_soundDevice.isEmpty() && !m_soundDeviceListModel.contains(m_soundDevice))
@@ -817,10 +992,10 @@ TSoundOptionsPage::TSoundOptionsPage(QObject* parent)
     refreshSoundDevices();
 }
 
-void TSoundOptionsPage::load(const QJsonObject& settings)
+void TSoundOptionsPage::load(const TClientOptions& options)
 {
-    TBoundOptionsPage::load(settings);
-    const QString device = optionValue(settings, O::usedSoundDevice).toString();
+    TBoundOptionsPage::load(options);
+    const QString device = options.hasOption(O::usedSoundDevice) ? options.stringOption(O::usedSoundDevice) : QString();
     m_soundDevice = device.isEmpty() || device.compare(QLatin1String("auto"), Qt::CaseInsensitive) == 0
         ? qtTrId("optionsmenu_sound_used_sound_device_auto")
         : device;
@@ -828,13 +1003,14 @@ void TSoundOptionsPage::load(const QJsonObject& settings)
     Q_EMIT changed();
 }
 
-void TSoundOptionsPage::apply(QJsonObject& settings) const
+void TSoundOptionsPage::apply(TClientOptions& options) const
 {
-    TBoundOptionsPage::apply(settings);
-    if (m_masterVolume != 0)
-        setOptionValue(settings, O::soundMasterVolumeOld, static_cast<int>(m_masterVolume));
+    TBoundOptionsPage::apply(options);
+    if (m_masterVolume != 0 && options.hasOption(O::soundMasterVolumeOld))
+        options.setIntOption(O::soundMasterVolumeOld, static_cast<int>(m_masterVolume));
     const bool automatic = m_soundDevice.isEmpty() || m_soundDevice == qtTrId("optionsmenu_sound_used_sound_device_auto");
-    setOptionValue(settings, O::usedSoundDevice, automatic ? QStringLiteral("auto") : m_soundDevice);
+    if (options.hasOption(O::usedSoundDevice))
+        options.setStringOption(O::usedSoundDevice, automatic ? QStringLiteral("auto") : m_soundDevice);
 }
 
 bool TSoundOptionsPage::soundEnabled() const
@@ -844,20 +1020,100 @@ bool TSoundOptionsPage::soundEnabled() const
 
 namespace {
 
-QString actionDescription(const QString& action)
+/// CIP: a setting's text in the hotkeys page. A chat text shows itself; an
+/// empty setting "hotkey_empty"; a static action its translated identifier
+/// (its name when untranslated), an action button its bar's side, bar and
+/// button; an object its use type. qtclient: a pack action its description.
+QString hotkeyActionSettingDescription(const TActionSetting& setting)
 {
-    if (action.startsWith(QLatin1String("TriggerActionButton_"))) {
-        const auto parts = action.mid(QStringLiteral("TriggerActionButton_").size()).split(QLatin1Char('.'));
-        if (parts.size() == 2)
-            return qtTrId("actionbar_button_identifier").arg(parts[0]).arg(parts[1]);
+    if (!setting.text.isEmpty())
+        return setting.text;
+    if (setting.action.isEmpty() && setting.objectId == 0 && setting.kind != TActionSetting::PASSIVE_ABILITY) {
+        if (!setting.multiActions.empty())
+            return {};
+        return qtTrId("hotkey_empty");
     }
-    for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
-        if (product.name == action)
-            return product.description.isEmpty() ? QStringLiteral("Misc.: %1").arg(action) : product.description;
+    if (setting.objectId == 0) {
+        // A passive ability has no text.
+        if (setting.action.isEmpty())
+            return {};
+        for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
+            if (product.name == setting.action)
+                return product.description.isEmpty() ? setting.action : product.description;
+        }
+        const QString id = QStringLiteral("label_gameactionidentifier_") + setting.action;
+        // CIP map::at throws only for an unknown key. Movement names (GoNorth, …)
+        // stay in the static table with a null action — the movement interpreter
+        // owns them — so a missing IGameAction still gets a translated label.
+        const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(setting.action);
+        QString text;
+        if (const auto* button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action)) {
+            QString side;
+            switch (gamewindow::TActionBarGroup::positionOfBar(button->actionBarId())) {
+            case gamewindow::EActionBarPosition::ActionBarPositionBottom: side = qtTrId("bottom"); break;
+            case gamewindow::EActionBarPosition::ActionBarPositionLeft: side = qtTrId("left"); break;
+            case gamewindow::EActionBarPosition::ActionBarPositionRight: side = qtTrId("right"); break;
+            }
+            text = side + QLatin1Char(' ') + qtTrId("actionbar") + QStringLiteral(": ")
+                 + qtTrId("actionbar_button_identifier")
+                       .arg(button->actionBarId())
+                       .arg(button->actionButtonId(), 2, 10, QLatin1Char('0'));
+        } else {
+            text = qtTrId(id.toLocal8Bit().constData());
+        }
+        return text == id ? setting.action : text;
     }
-    const QString id = QStringLiteral("label_gameactionidentifier_%1").arg(action);
-    const QString translated = qtTrId(id.toUtf8().constData());
-    return translated == id ? QStringLiteral("Misc.: %1").arg(action) : translated;
+    switch (setting.useType) {
+    case EUseType::Use: return qtTrId("hotkey_use_object");
+    case EUseType::UseOnYourself: return qtTrId("hotkey_use_object_on_yourself");
+    case EUseType::UseOnTarget: return qtTrId("hotkey_use_object_on_target");
+    case EUseType::SelectUseTarget: return qtTrId("hotkey_use_object_with_crosshair");
+    case EUseType::Equip: return qtTrId("hotkey_equip_object");
+    case EUseType::UseAtMouseCursor: return qtTrId("hotkey_use_object_at_mousecursor");
+    }
+    return QStringLiteral("invalid use object type");
+}
+
+/// CIP: the description colour of a setting in the hotkeys page: an empty
+/// setting red, a chat text white when sent automatically (else grey), an
+/// object by its use type, a static action light grey; none for any other.
+QColor hotkeyActionSettingDescriptionColor(const TActionSetting& setting)
+{
+    if (setting.isEmpty())
+        return QColor(0xff, 0x00, 0x00);
+    if (!setting.text.isEmpty())
+        return setting.sendAutomatically ? QColor(0xff, 0xff, 0xff) : QColor(0xaf, 0xaf, 0xaf);
+    if (setting.objectId != 0) {
+        switch (setting.useType) {
+        case EUseType::Use: return QColor(0xb0, 0xb0, 0xff);
+        case EUseType::UseOnYourself: return QColor(0xb0, 0xff, 0xb0);
+        case EUseType::UseOnTarget: return QColor(0xff, 0xb0, 0xb0);
+        case EUseType::SelectUseTarget:
+        case EUseType::UseAtMouseCursor: return QColor(0xc8, 0x7d, 0x7d);
+        case EUseType::Equip: return QColor(0xbf, 0xbf, 0x00);
+        }
+        return QColor(0xff, 0x00, 0x00);
+    }
+    if (!setting.action.isEmpty())
+        return QColor(0xc0, 0xc0, 0xc0);
+    return {};
+}
+
+/// CIP (row builder): the picture of an object setting: its liquid, else its
+/// tier, else the plain type.
+appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting& setting)
+{
+    TAppearanceType* type = setting.objectId > 0 ? tibia::game::rawThingType(static_cast<uint16_t>(setting.objectId), ThingCategoryItem)
+                                           : nullptr;
+    if (!type)
+        return nullptr;
+    if (setting.liquidType)
+        return std::make_shared<appearances::TLiquidObjectAppearanceInstance>(type, static_cast<uint32_t>(*setting.liquidType));
+    appearances::TAppearanceInstancePtr instance = appearances::TAppearanceInstanceFactory::fromThingType(type);
+    if (setting.upgradeTier)
+        if (auto* object = dynamic_cast<appearances::TObjectAppearanceInstance*>(instance.get()))
+            object->setTier(static_cast<uint8_t>(*setting.upgradeTier));
+    return instance;
 }
 
 /// CIP TTibiaHotkeyActionSettingQmlWrapper row for OptionsPageHotkeys.qml.
@@ -869,12 +1125,13 @@ public:
     QKeySequence first;
     QKeySequence second;
     bool matchesFilter = true;
+    /// +0x78: a custom object row's picture.
+    appearances::TAppearanceInstancePtr appearance;
 
     explicit THotkeyActionRow(QObject* parent = nullptr)
         : cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper(parent)
     {
         m_isStaticAction = true;
-        m_descriptionColor = QColor(QStringLiteral("#c0c0c0"));
     }
 
     void sync()
@@ -890,18 +1147,17 @@ public:
         m_isStaticAction = setting.kind == TActionSetting::ACTION || setting.kind == TActionSetting::NONE;
         m_chatText = setting.text;
         m_sendAutomatically = setting.sendAutomatically;
-        m_objectID = uint(setting.objectId);
+        // The picture's type, count and liquid (none without a picture).
+        m_objectID = appearance ? appearance->id() : 0;
+        const auto* cumulative = dynamic_cast<const appearances::TCumulativeObjectAppearanceInstance*>(appearance.get());
+        m_objectCount = cumulative ? cumulative->count() : 1;
+        const auto* liquid = dynamic_cast<const appearances::TLiquidObjectAppearanceInstance*>(appearance.get());
+        m_liquidType = static_cast<decltype(m_liquidType)>(liquid ? liquid->fluid() : 0);
         m_useObjectType = int(setting.useType);
         m_smartModeEnabled = setting.useEquipSmartMode;
         m_canHaveSmartMode = setting.useType == EUseType::Equip;
-        if (setting.kind == TActionSetting::ACTION)
-            m_descriptionText = actionDescription(setting.action);
-        else if (setting.kind == TActionSetting::TEXT)
-            m_descriptionText = setting.text;
-        else if (setting.kind == TActionSetting::OBJECT)
-            m_descriptionText = QStringLiteral("Object %1").arg(setting.objectId);
-        else
-            m_descriptionText = actionDescription(setting.action);
+        m_descriptionText = hotkeyActionSettingDescription(setting);
+        m_descriptionColor = hotkeyActionSettingDescriptionColor(setting);
         Q_EMIT changed();
     }
 };
@@ -967,9 +1223,9 @@ void THotkeysOptionsPage::refreshSetNames()
     m_hotkeySetNamesIndex = std::max(0, int(m_hotkeySetNamesModel.indexOf(currentSetName())));
 }
 
-void THotkeysOptionsPage::load(const QJsonObject& settings)
+void THotkeysOptionsPage::load(const TClientOptions& options)
 {
-    QJsonObject section = settings.value(QLatin1String("hotkeyOptions")).toObject();
+    QJsonObject section = options.hotkeyOptions();
     if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty()) {
         section = THotkeyOptions::builtInSection();
         if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty())
@@ -984,12 +1240,12 @@ void THotkeysOptionsPage::load(const QJsonObject& settings)
     rebuildModel();
 }
 
-void THotkeysOptionsPage::apply(QJsonObject& settings) const
+void THotkeysOptionsPage::apply(TClientOptions& options) const
 {
     auto* self = const_cast<THotkeysOptionsPage*>(this);
     self->commitRows(false);
     const QJsonObject section = m_options.toJson();
-    settings.insert(QStringLiteral("hotkeyOptions"), section);
+    options.setHotkeyOptions(section);
     // The live hotkeys follow (CIP hands the options to TClientOptions).
     THotkeyOptions::instance()->replaceAll(section);
     self->rebuildModel();
@@ -1012,6 +1268,47 @@ void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
     }
 }
 
+namespace {
+
+/// CIP's hotkeys page sort: custom settings first, by first
+/// then second key (rows without keys last), then the action buttons, then the
+/// other static actions, both by description.
+bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
+{
+    const auto isButton = [](const THotkeyActionRow* row) {
+        return row->setting.kind == TActionSetting::ACTION
+            && input::gameActionAs<input::TGameActionActionButtonTriggered>(input::TKeyboardShortcutHandler::staticAction(row->setting.action));
+    };
+    const bool aStatic = a->setting.kind == TActionSetting::ACTION;
+    const bool bStatic = b->setting.kind == TActionSetting::ACTION;
+    const bool aButton = aStatic && isButton(a);
+    const bool bButton = bStatic && isButton(b);
+    const bool aPlain = aStatic && !aButton;
+    const bool bPlain = bStatic && !bButton;
+    if ((!aButton || !bButton) == (aPlain && bPlain))
+        return QString::compare(a->descriptionText(), b->descriptionText(), Qt::CaseSensitive) < 0;
+    if (aPlain && (!bPlain || bButton))
+        return false;
+    if ((!aPlain || aButton) && bPlain)
+        return true;
+    if (!(bStatic || bButton || !aButton))
+        return false;
+    if (!(aStatic || aButton || !bButton))
+        return true;
+    if (a->first == b->first)
+        return a->second < b->second;
+    if (a->first.isEmpty())
+        return false;
+    if (b->first.isEmpty())
+        return true;
+    return a->first < b->first;
+}
+
+}
+
+/// CIP's row builder: a row per static action (its first
+/// two keys of the current set and chat mode), then a row per other setting
+/// (a second binding of the same setting gives it its second key), sorted.
 void THotkeysOptionsPage::rebuildModel()
 {
     m_hotkeyModel.clear();
@@ -1019,72 +1316,69 @@ void THotkeysOptionsPage::rebuildModel()
     m_rows.clear();
     m_editRow = nullptr;
 
-    // The keys of each action, two per row; a custom setting's keys by setting.
-    QHash<QString, QList<QKeySequence>> keysByAction;
-    QStringList actionOrder;
-    std::vector<std::pair<TActionSetting, QList<QKeySequence>>> customs;
-    if (const THotkeySet* set = m_options.set(currentSetName())) {
-        for (const THotkeyBinding& binding : m_chatModeOn ? set->chatOn : set->chatOff) {
-            if (binding.setting.kind == TActionSetting::ACTION) {
-                if (!keysByAction.contains(binding.setting.action))
-                    actionOrder << binding.setting.action;
-                if (!binding.keys.isEmpty())
-                    keysByAction[binding.setting.action] << binding.keys;
-                continue;
-            }
-            auto it = std::find_if(customs.begin(), customs.end(), [&](const auto& entry) { return entry.first == binding.setting; });
-            if (it == customs.end())
-                it = customs.insert(customs.end(), { binding.setting, {} });
-            if (!binding.keys.isEmpty())
-                it->second << binding.keys;
-        }
-    }
+    static const std::vector<THotkeyBinding> NoBindings;
+    const THotkeySet* set = m_options.set(currentSetName());
+    const std::vector<THotkeyBinding>& bindings = set ? (m_chatModeOn ? set->chatOn : set->chatOff) : NoBindings;
 
-    const auto addRow = [this](const EHotkeyMode mode, const TActionSetting& setting, const QList<QKeySequence>& keys) {
+    std::vector<THotkeyActionRow*> rows;
+    const auto addRow = [this, &rows](const EHotkeyMode mode, const TActionSetting& setting) {
         auto* row = new THotkeyActionRow(this);
         row->mode = mode;
         row->setting = setting;
-        if (!keys.isEmpty())
-            row->first = keys.at(0);
-        if (keys.size() > 1)
-            row->second = keys.at(1);
-        row->sync();
-        m_rows.append(row);
-    };
-    const auto actionSetting = [](const QString& name) {
-        TActionSetting setting;
-        setting.kind = TActionSetting::ACTION;
-        setting.action = name;
-        return setting;
+        rows.push_back(row);
+        return row;
     };
 
+    // qtclient: the pack's product actions are static actions too.
     QStringList names = input::TKeyboardShortcutHandler::staticActionNames();
+    for (int bar = 1; bar <= 9; ++bar)
+        for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button)
+            names << THotkeyOptions::triggerActionButtonName(bar, button);
     for (const auto& product : input::TKeyboardShortcutHandler::productActions())
         if (!names.contains(product.name))
             names << product.name;
-    names.sort(Qt::CaseInsensitive);
-    for (const QString& name : names) {
-        QList<QKeySequence> keys = keysByAction.take(name);
-        if (keys.isEmpty()) {
-            for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
+    for (const QString& name : std::as_const(names)) {
+        TActionSetting setting;
+        setting.kind = TActionSetting::ACTION;
+        setting.action = name;
+        const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(name);
+        const bool button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action) != nullptr;
+        THotkeyActionRow* row = addRow(button ? ActionButtons : DefaultHotkeys, setting);
+        for (const THotkeyBinding& binding : bindings) {
+            if (!(binding.setting == setting))
+                continue;
+            if (row->first.isEmpty())
+                row->first = binding.keys;
+            else if (row->second.isEmpty())
+                row->second = binding.keys;
+        }
+        // qtclient: an unbound pack action shows its default keys.
+        if (row->first.isEmpty()) {
+            for (const auto& product : input::TKeyboardShortcutHandler::productActions())
                 if (product.name == name && !product.defaultKeys.isEmpty())
-                    keys << product.defaultKeys;
-            }
-        }
-        addRow(DefaultHotkeys, actionSetting(name), keys);
-    }
-    for (int bar = 1; bar <= 9; ++bar) {
-        for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button) {
-            const QString name = THotkeyOptions::triggerActionButtonName(bar, button);
-            addRow(ActionButtons, actionSetting(name), keysByAction.take(name));
+                    row->first = product.defaultKeys;
         }
     }
-    for (const QString& name : std::as_const(actionOrder)) {
-        if (keysByAction.contains(name))
-            addRow(CustomHotkeys, actionSetting(name), keysByAction.take(name));
+    const size_t staticRows = rows.size();
+    for (const THotkeyBinding& binding : bindings) {
+        if (binding.setting.kind == TActionSetting::ACTION)
+            continue;
+        const auto existing = std::find_if(rows.begin() + static_cast<std::ptrdiff_t>(staticRows), rows.end(),
+                                           [&](const THotkeyActionRow* row) { return row->setting == binding.setting; });
+        if (existing != rows.end()) {
+            (*existing)->second = binding.keys;
+            continue;
+        }
+        THotkeyActionRow* row = addRow(CustomHotkeys, binding.setting);
+        row->first = binding.keys;
+        if (binding.setting.objectId != 0)
+            row->appearance = hotkeyObjectAppearance(binding.setting);
     }
-    for (const auto& [setting, keys] : customs)
-        addRow(CustomHotkeys, setting, keys);
+    for (THotkeyActionRow* row : rows)
+        row->sync();
+    std::sort(rows.begin(), rows.end(), hotkeyRowLess);
+    for (THotkeyActionRow* row : rows)
+        m_rows.append(row);
 
     updateHotkeyListModel();
 }
@@ -1164,9 +1458,7 @@ void THotkeysOptionsPage::requestRemoveCurrentPreset()
 {
     auto* message = new gamewindow::TMessageDialogController(this);
     message->setCloseOnButtonClicked(true);
-    using Button = gamewindow::TMessageDialogController::Button;
-    message->setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
-                          new gamewindow::TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) });
+    message->setButtons(gamewindow::okCancelDialogButtons());
     connect(message, &gamewindow::TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
     message->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
 }

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 
 namespace tibia::input {
 
@@ -72,36 +73,47 @@ TWorldMapCoordinate TPlayerMovementIntentHandler::predictedPosition() const
     return offsetBy(TWorldMapCoordinate(player->position()), m_pendingX, m_pendingY);
 }
 
-void TPlayerMovementIntentHandler::walkInDirection(const EMovementDirection direction)
+void TPlayerMovementIntentHandler::handleMovementIntent(const TMovementIntentPtr& intent)
 {
-    // Walking on after a turn continues the held direction the turn faced.
-    if (m_lastIntent == EIntent::Rotate)
-        m_heldDirection = directionOfLook(m_lastRotation);
+    if (!intent)
+        return;
+    const TMovementIntentPtr previous = std::exchange(m_intent, m_env.player() ? intent : std::make_shared<TMovementIntentStop>());
+    switch (intent->kind()) {
+    case TMovementIntentKind::Target: {
+        const auto& target = static_cast<const TMovementIntentTargetCoordinate&>(*intent);
+        goToAndSend(TWorldMapCoordinate(target.x(), target.y(), target.z()), target.enterUnwalkableGoal(), false);
+        break;
+    }
+    case TMovementIntentKind::Direction: {
+        // Walking on after a turn continues the direction the turn faced.
+        if (previous && previous->kind() == TMovementIntentKind::Rotate) {
+            const int look = static_cast<const TMovementIntentRotate&>(*previous).direction();
+            if (look >= 0 && look < 4)
+                m_heldDirection = directionOfLook(static_cast<creatures::ECreatureLookDirection>(look));
+        }
+        const EMovementDirection direction =
+            toMovementDirection(static_cast<tibia::client::Direction>(static_cast<const TMovementIntentDirection&>(*intent).direction()));
+        if (direction != EMovementDirection::None)
+            holdDirection(direction);
+        break;
+    }
+    case TMovementIntentKind::Rotate:
+        sendRotate(static_cast<creatures::ECreatureLookDirection>(static_cast<const TMovementIntentRotate&>(*intent).direction()));
+        m_heldDirection.reset();
+        break;
+    case TMovementIntentKind::Stop:
+        m_heldDirection.reset();
+        break;
+    }
+    noteIntent(intent->kind());
+}
+
+void TPlayerMovementIntentHandler::holdDirection(const EMovementDirection direction)
+{
     m_repeatTimer.restart();
     m_repeats = m_heldDirection == direction ? m_repeats + 1 : 0;
     m_heldDirection = direction;
     step(direction);
-    noteIntent(EIntent::Direction);
-}
-
-void TPlayerMovementIntentHandler::walkTo(const TWorldMapCoordinate& goal, const bool enterUnwalkableGoal)
-{
-    goToAndSend(goal, enterUnwalkableGoal, false);
-    noteIntent(EIntent::Target);
-}
-
-void TPlayerMovementIntentHandler::rotate(const creatures::ECreatureLookDirection direction)
-{
-    sendRotate(direction);
-    m_heldDirection.reset();
-    m_lastRotation = direction;
-    noteIntent(EIntent::Rotate);
-}
-
-void TPlayerMovementIntentHandler::stopIntent()
-{
-    m_heldDirection.reset();
-    noteIntent(EIntent::Stop);
 }
 
 void TPlayerMovementIntentHandler::stopWalking()
@@ -115,11 +127,10 @@ void TPlayerMovementIntentHandler::clearGoal()
     clearPath();
 }
 
-void TPlayerMovementIntentHandler::noteIntent(const EIntent intent)
+void TPlayerMovementIntentHandler::noteIntent(const TMovementIntentKind kind)
 {
-    m_lastIntent = intent;
     if (creatures::TCreature* player = m_env.player())
-        player->setHoldsMovementIntent(intent != EIntent::Stop);
+        player->setHoldsMovementIntent(kind != TMovementIntentKind::Stop);
 }
 
 EMovementDirection TPlayerMovementIntentHandler::directionOfLook(const creatures::ECreatureLookDirection look)

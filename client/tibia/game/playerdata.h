@@ -78,6 +78,8 @@ public:
     int maxHealth() const { return m_maxHealth; }
     void setMaxHealth(int maxHealth);
     int freeCapacity() const { return m_freeCapacity; }
+    /// The server's free capacity, in hundredths of an oz.
+    uint32_t freeCapacityHundredths() const { return m_freeCapacityHundredths; }
     void setFreeCapacity(int freeCapacity);
     int capacity() const { return m_capacity; }
     void setCapacity(int capacity);
@@ -219,7 +221,8 @@ public:
     void updateStamina(uint16_t stamina);
     void updateHarmony(uint8_t harmony);
     void updateSerene(bool serene);
-    void updateFreeCapacity(uint32_t freeCapacity);
+    /// `hundredths`: the server's free capacity in hundredths of an oz.
+    void updateFreeCapacity(uint32_t hundredths);
     void updateTotalCapacity(uint32_t totalCapacity);
     void updateBaseCapacity(uint32_t baseCapacity);
     void updateStoreExpBoostPurchasable(bool purchasable);
@@ -259,6 +262,7 @@ private:
     int m_health = 0;
     int m_maxHealth = 0;
     int m_freeCapacity = 0;
+    uint32_t m_freeCapacityHundredths = 0;
     int m_capacity = 0;
     int m_baseCapacity = 0;
     qint64 m_experience = 0;

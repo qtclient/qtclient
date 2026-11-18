@@ -6,8 +6,9 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
+#include "input/genericobjectgameactionprovider.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -51,24 +52,24 @@ QString categoryText(const int category)
     return QStringLiteral("%1 %2").arg(qtTrId("show"), TQmlObjectCategory::translate(category));
 }
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
-QString typeName(ThingType* type)
+QString typeName(TAppearanceType* type)
 {
-    const MarketData& market = type->getMarketData();
-    return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
+    const auto* market = type->marketProperties();
+    return market && !market->name.isEmpty() ? market->name : type->name();
 }
 
 
 /// What the NPCs pay for one, the best offer (CIP: the sell value).
-uint32_t sellValue(ThingType* type)
+uint32_t sellValue(TAppearanceType* type)
 {
     uint32_t best = 0;
-    for (const NPCData& npc : type->getNpcSaleData())
+    for (const auto& npc : type->npcTradeData())
         best = std::max(best, npc.buyPrice);
     return best;
 }
@@ -78,11 +79,13 @@ uint32_t sellValue(ThingType* type)
 /// The NPCs the stash and depot search trader filters offer.
 std::set<QString> traderNames()
 {
-    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
+    std::set<QString> names = tibia::appearances::TAppearancesManager::instance().creatureProductBuyerNames();
+    names.insert({ QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
              QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
              QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
              QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
-             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
+             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") });
+    return names;
 }
 
 TStashProxyModel::TStashProxyModel(TAppearanceTypeListModel* model, std::function<int(uint16_t)> counts, QObject* parent)
@@ -148,12 +151,11 @@ bool TStashProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&)
         && !(m_category == Proxy::AllWeaponsCategory && Proxy::isHandWeaponCategory(entry.marketCategory)))
         return false;
     if (!m_trader.isEmpty()) {
-        ThingType* type = typeOf(entry.typeId);
+        TAppearanceType* type = typeOf(entry.typeId);
         if (!type)
             return false;
-        const std::string trader = m_trader.toStdString();
-        const auto& npcs = type->getNpcSaleData();
-        if (std::ranges::none_of(npcs, [&trader](const NPCData& npc) { return npc.buyPrice > 0 && npc.name == trader; }))
+        const auto& npcs = type->npcTradeData();
+        if (std::ranges::none_of(npcs, [this](const auto& npc) { return npc.buyPrice > 0 && npc.name == m_trader; }))
             return false;
     }
     return true;
@@ -170,7 +172,7 @@ bool TStashProxyModel::lessThan(const QModelIndex& left, const QModelIndex& righ
         return byName < 0;
     };
     const auto sell = [](const TAppearanceTypeEntry& entry) -> uint64_t {
-        ThingType* type = typeOf(entry.typeId);
+        TAppearanceType* type = typeOf(entry.typeId);
         return type ? sellValue(type) : 0;
     };
     const auto total = [&](const TAppearanceTypeEntry& entry) { return sell(entry) * static_cast<uint64_t>(m_counts(entry.typeId)); };
@@ -215,15 +217,15 @@ TStashDialogController::TStashDialogController(QObject* parent)
         onStashOptionsChanged();
     });
 
-    input::setActionHandler(A::STASH_RETRIEVE, [](const input::TGameAction& action) {
-        if (action.parameter <= 0 || action.amount <= 0)
+    m_gameActions.on(A::STASH_RETRIEVE, [](const input::TGameActionStashRetrieve& action) {
+        if (action.typeId() == 0 || action.amount() <= 0)
             return false;
-        tibia::game::stashWithdraw(static_cast<uint16_t>(action.parameter), static_cast<uint32_t>(action.amount), 0);
+        tibia::game::stashWithdraw(action.typeId(), static_cast<uint32_t>(action.amount()), 0);
         return true;
     });
     // CIP STASH_REQUEST_REOPEN (275): market / manage-loot close republishes this
     // so the stash can reopen without a direct dialog↔dialog call.
-    input::setActionHandler(A::STASH_REQUEST_REOPEN, [this](const input::TGameAction&) {
+    m_gameActions.on(A::STASH_REQUEST_REOPEN, [this](const input::IGameAction&) {
         if (m_content.empty() || dialog()->isShown())
             return true;
         showDialog();
@@ -232,37 +234,36 @@ TStashDialogController::TStashDialogController(QObject* parent)
     // CIP / / : the object's field, type
     // and stack position; Crystal stows the whole type for STOW_STACK and
     // the given count for STOW_ITEM.
-    const auto stow = [](const input::TGameAction& action, const uint8_t mode, const uint32_t amount) {
-        const uint16_t typeId = action.objectClientId;
-        if (typeId == 0)
+    const auto stow = [](const input::TObjectGameActionContext& object, const uint8_t mode, const uint32_t amount) {
+        if (object.objectClientId() == 0)
             return false;
-        tibia::game::stashStowItem(action.position, typeId, amount,
-                             static_cast<uint8_t>(std::max(action.stackPosition, 0)), mode);
+        tibia::game::stashStowItem(object.position(), object.objectClientId(), amount,
+                                   static_cast<uint8_t>(std::max(object.stackPosition(), 0)), mode);
         return true;
     };
-    input::setActionHandler(A::STASH_STOW_TYPE, [stow](const input::TGameAction& action) {
-        return stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+    m_gameActions.on(A::STASH_STOW_TYPE, [stow](const input::TGameActionStashStowType& action) {
+        return stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
     });
-    input::setActionHandler(A::STASH_STOW_CONTAINER_CONTENT, [stow](const input::TGameAction& action) {
-        return stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_CONTAINER, 0);
+    m_gameActions.on(A::STASH_STOW_CONTAINER_CONTENT, [stow](const input::TGameActionStashStowContainerContent& action) {
+        return stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_CONTAINER, 0);
     });
-    input::setActionHandler(A::STASH_STOW_STACK, [stow](const input::TGameAction& action) {
-        return action.amount > 0 && stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_ITEM, static_cast<uint32_t>(action.amount));
+    m_gameActions.on(A::STASH_STOW_STACK, [stow](const input::TGameActionStashStowStack& action) {
+        return action.amount() > 0
+            && stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_ITEM, static_cast<uint32_t>(action.amount()));
     });
     // CIP SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG → TConfirmMoveObjectToStashDialogController .
     m_confirmStow->setConfirmHandler([this, stow](bool) {
         if (m_pendingStow)
-            stow(*m_pendingStow, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+            stow(m_pendingStow->context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
         m_pendingStow.reset();
     });
-    input::setActionHandler(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this, stow](const input::TGameAction& action) {
-        const uint16_t typeId = action.objectClientId;
-        if (typeId == 0)
+    m_gameActions.on(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this, stow](const input::TGameActionShowConfirmMoveObjectToStashDialog& action) {
+        if (!action.moveObject() || action.moveObject()->objectClientId() == 0)
             return true;
-        m_pendingStow = input::mutableClone(action);
+        m_pendingStow = action.moveObject();
         const bool ask = app::ClientOptions::load().options().value(QLatin1String("askBeforeStowContainerContent")).toBool(true);
         if (!ask) {
-            stow(*m_pendingStow, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+            stow(m_pendingStow->context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
             m_pendingStow.reset();
             return true;
         }
@@ -301,19 +302,11 @@ TStashDialogController::TStashDialogController(QObject* parent)
         setContent({});
         closeDialog();
     });
-    m_actionListeners.push_back(input::addActionListener(A::MARKET_BROWSE, [this](const input::TGameAction& action) {
-        handleGameAction(action);
-        return false;
-    }));
+    m_gameActions.on(A::MARKET_BROWSE, [this](const input::IGameAction& action) { handleGameAction(action); });
 }
 
 TStashDialogController::~TStashDialogController()
 {
-    for (const A type : { A::STASH_RETRIEVE, A::STASH_REQUEST_REOPEN, A::STASH_STOW_TYPE, A::STASH_STOW_CONTAINER_CONTENT,
-                          A::STASH_STOW_STACK, A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG })
-        input::setActionHandler(type, nullptr);
-    for (const int id : m_actionListeners)
-        input::removeActionListener(id);
 }
 
 int TStashDialogController::count(const uint16_t typeId) const
@@ -335,12 +328,12 @@ void TStashDialogController::onStashContentChanged()
     std::vector<TAppearanceTypeEntry> entries;
     entries.reserve(m_content.size());
     for (const auto& [typeId, amount] : m_content) {
-        ThingType* type = typeOf(typeId);
+        TAppearanceType* type = typeOf(typeId);
         TAppearanceTypeEntry entry;
         entry.typeId = typeId;
         if (type) {
             entry.name = typeName(type);
-            entry.marketCategory = static_cast<int>(type->getMarketData().category);
+            entry.marketCategory = type->marketCategory();
         }
         categories.insert(entry.marketCategory);
         entries.push_back(std::move(entry));
@@ -496,29 +489,23 @@ void TStashDialogController::closeButtonClicked()
 input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId) const
 {
     input::TGameActionList actions;
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     const auto stored = m_content.find(typeId);
     if (!type || stored == m_content.end())
         return actions;
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
-        auto cyclopedia = input::mutableClone(*input::makeObjectAction(A::OPEN_CYCLOPEDIA, {}, -1));
-        cyclopedia->objectClientId = typeId;
-        actions.push_back(cyclopedia);
+        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
 
-    auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));
-    retrieve->parameter = typeId;
     const uint32_t maximum = type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
-    retrieve->amount = static_cast<int>(std::min(stored->second, maximum));
-    auto retrieveDialog = input::mutableClone(*input::makeAction(A::STASH_OPEN_RETRIEVE_DIALOG));
-    retrieveDialog->inner = retrieve;
-    actions.push_back(retrieveDialog);
+    auto retrieve = std::make_shared<input::TGameActionStashRetrieve>(static_cast<uint16_t>(typeId),
+                                                                      static_cast<int>(std::min(stored->second, maximum)));
+    actions.push_back(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
 
     if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
-        auto market = input::mutableClone(*input::makeObjectAction(A::MARKET_BROWSE, {}, -1));
-        market->objectClientId = typeId;
-        actions.push_back(market);
+        actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
+            input::TObjectGameActionContext{ {}, -1, static_cast<uint16_t>(typeId) }));
     }
     return actions;
 }
@@ -526,11 +513,11 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(TypeID));
-    const input::TGameActionPtr action = m_mapper.map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, StashContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -546,13 +533,13 @@ void TStashDialogController::requestOpenManageLootContainerDialog()
         m_reopenAfterManageLoot = true;
         closeDialog();
     }
-    input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
 }
 
-void TStashDialogController::handleGameAction(const input::TGameAction& action)
+void TStashDialogController::handleGameAction(const input::IGameAction& action)
 {
     // The stash makes way for the market and comes back when it closes.
-    if (action.type == A::MARKET_BROWSE && dialog()->isInStack()) {
+    if (action.gameActionType() == A::MARKET_BROWSE && dialog()->isInStack()) {
         m_reopenAfterMarket = true;
         closeDialog();
     }
@@ -575,7 +562,7 @@ void TStashDialogController::reopenStash()
         return;
     m_reopenAfterMarket = false;
     m_reopenAfterManageLoot = false;
-    input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
+    Q_EMIT publishGameAction(input::makeGameAction(A::STASH_REQUEST_REOPEN));
 }
 
 void TStashDialogController::onMarketDialogDialogClosed()

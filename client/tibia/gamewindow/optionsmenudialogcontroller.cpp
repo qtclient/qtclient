@@ -1,5 +1,7 @@
 #include "optionsmenudialogcontroller.h"
 
+#include "config/clientoptions.h"
+
 #include "app/clientoptions.h"
 #include "app/graphicsrestart.h"
 #include "chat/chatchannel.h"
@@ -23,6 +25,8 @@
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QUrl>
+
+#include <memory>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -34,14 +38,29 @@ using O = cip::EClientOption;
 using EGameAction = input::EGameAction;
 using Button = TMessageDialogController::Button;
 
-constexpr auto ClientWindowSection = "clientWindowOptions";
-constexpr auto BorderlessKey = "clientWindowIsBorderless";
-
-/// The settings CIP's default TClientOptions holds .
-QJsonObject defaultSettings()
+/// CIP's default TClientOptions.
+std::unique_ptr<config::TClientOptions> defaultOptions()
 {
-    return { { QStringLiteral("options"), config::defaultClientOptions() } };
+    auto options = std::make_unique<config::TClientOptions>();
+    options->setDefaults();
+    return options;
 }
+
+/// The renderer, vsync and font renderer options (a change asks for a restart).
+struct TRendererOptions
+{
+    int renderer = 0;
+    bool vSync = false;
+    bool freetype = false;
+
+    explicit TRendererOptions(const config::TClientOptions& options)
+        : renderer(options.intOption(O::rendererIndex))
+        , vSync(options.boolOption(O::vSyncEnabled))
+        , freetype(options.boolOption(O::useFreetypeRenderer))
+    {}
+
+    bool operator==(const TRendererOptions&) const = default;
+};
 
 /// : "OK" (Return) and "Cancel" (Escape).
 QList<TMessageDialogButton*> okCancelButtons()
@@ -55,9 +74,9 @@ QList<TMessageDialogButton*> okButton()
     return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
 }
 
-void publish(const EGameAction type)
+input::IGameActionPtr simpleAction(const EGameAction type)
 {
-    input::publish(input::makeAction(type));
+    return input::makeGameAction(type);
 }
 
 /// CIP DAT_102793370 and the storage directories (,
@@ -84,9 +103,7 @@ QString localFile(const QString& url)
 
 TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
-    , m_actionBarOptions(this)
-    , m_characterConfigurationManager(this)
-    , m_clientOptionsModeSwitcher(this)
+    , m_clientOptionsModeSwitcher(config::TClientOptions::instance(), this)
     , m_optionPageQmlWrapperBase(this)
 {
     (void)m_configBackupException;
@@ -149,42 +166,94 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     m_infoMessage = makeMessageDialog();
     m_importMessage = makeMessageDialog();
     m_about = new TAboutDialogController(this);
+    connect(m_about, &TAboutDialogController::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     connect(m_importMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::importArchive);
     connect(m_resetPageMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetCurrentPageToDefault);
     connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
     connect(m_restartMessage, &TMessageDialogController::buttonClicked, this, &TOptionsMenuDialogController::onResartMessageControllerClicked);
+    connect(this, &cip::tibia::gamewindow::TOptionsMenuDialogController::dialogClosed, this, &TOptionsMenuDialogController::closeSubDialogs);
+    m_gameActions.on(EGameAction::START_TARGET_SELECTION, [this](const input::IGameAction& action) { onHotkeyPageGameAction(action); });
+    m_gameActions.on(EGameAction::TARGET_SELECTION_FINISHED, [this](const input::IGameAction& action) { handleGameAction(action); });
+    m_gameActions.on(EGameAction::OPEN_OPTIONS_MENU_DIALOG, [this](const input::IGameAction& action) { handleGameAction(action); });
 
     m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
 
     // (connected when the game connection is set): the current value at login.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
-        sendTurnTowardsMoveDirection(config::optionValue(app::ClientOptions::load().root(), O::alwaysTurnTowardsMoveDirection).toBool());
+        sendTurnTowardsMoveDirection(config::TClientOptions::instance()->boolOption(O::alwaysTurnTowardsMoveDirection));
     });
 
-    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::TGameAction&) {
-        setShowAdvancedOptions(!m_showAdvancedOptions);
-        return true;
-    });
 
     m_frameRateTimer.setInterval(1000);
-    connect(&m_frameRateTimer, &QTimer::timeout, this, [this] {
-        // CipSoft / : ring-derived double, QString::number(d, 'f', 2).
-        (void)m_frames.exchange(0);
-        double fps = 0.0;
-        if (m_frameDurations) {
-            const qint64 averageNs = m_frameDurations->averageNs();
-            if (averageNs > 0)
-                fps = 1'000'000'000.0 / static_cast<double>(averageNs);
-        }
-        m_currentFrameRate = QString::number(fps, 'f', 2);
-        Q_EMIT frameRateChanged();
-    });
+    connect(&m_frameRateTimer, &QTimer::timeout, this, &TOptionsMenuDialogController::onBeforeRenderFrame);
 }
+
+void TOptionsMenuDialogController::onBeforeRenderFrame()
+{
+    // CIP: the frame rate of the next-frame predictor (TGameClient::onBeforeRenderFrameMainThread);
+    // qtclient samples the frame-duration ring once a second while the dialog is shown.
+    (void)m_frames.exchange(0);
+    double fps = 0.0;
+    if (m_frameDurations) {
+        const qint64 averageNs = m_frameDurations->averageNs();
+        if (averageNs > 0)
+            fps = 1'000'000'000.0 / static_cast<double>(averageNs);
+    }
+    setFrameRate(fps);
+}
+
+void TOptionsMenuDialogController::setFrameRate(const double frameRate)
+{
+    if (m_frameRate == frameRate)
+        return;
+    m_frameRate = frameRate;
+    Q_EMIT frameRateChanged();
+}
+
+QString TOptionsMenuDialogController::currentFrameRate() const { return QString::number(m_frameRate, 'f', 2); }
 
 TOptionsMenuDialogController::~TOptionsMenuDialogController()
 {
-    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, nullptr);
     disconnect(m_frameConnection);
+}
+
+void TOptionsMenuDialogController::setGameClient(client::TGameClient* client)
+{
+    m_gameClient = client;
+    m_clientOptionsModeSwitcher.connectToGameSession([client] { return client ? client->sidebarOptions() : nullptr; });
+}
+
+bool TOptionsMenuDialogController::handleGameAction(const input::IGameAction& action)
+{
+    if (action.gameActionType() == EGameAction::TARGET_SELECTION_FINISHED) {
+        if (m_hiddenForTargetSelection && dialog()->item() && !dialog()->item()->isVisible()) {
+            dialog()->show();
+            m_hiddenForTargetSelection = false;
+        }
+    } else if (const auto* open = input::gameActionAs<input::TGameActionOpenOptionsMenuDialog>(&action)) {
+        this->open(open->page());
+        return true;
+    }
+    return false;
+}
+
+bool TOptionsMenuDialogController::onHotkeyPageGameAction(const input::IGameAction& action)
+{
+    // Only the options dialog's own pages start a target selection while it is shown.
+    if (action.gameActionType() == EGameAction::START_TARGET_SELECTION && dialog()->item() && dialog()->item()->isVisible()) {
+        dialog()->hide();
+        m_hiddenForTargetSelection = true;
+    }
+    return false;
+}
+
+void TOptionsMenuDialogController::closeSubDialogs()
+{
+    for (TMessageDialogController* message : { m_resetPageMessage, m_resetAllMessage, m_restartMessage, m_infoMessage, m_importMessage })
+        if (message->dialog()->item())
+            message->dialog()->close();
+    if (m_about->dialog()->item())
+        m_about->dialog()->close();
 }
 
 TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()
@@ -214,9 +283,9 @@ void TOptionsMenuDialogController::open(const int category)
     }
     setDialogCategory(target);
 
-    const QJsonObject settings = app::ClientOptions::load().root();
+    const config::TClientOptions& options = *config::TClientOptions::instance();
     for (const Page& page : m_pages)
-        page.page->load(settings);
+        page.page->load(options);
     dialog()->show();
 }
 
@@ -224,6 +293,9 @@ void TOptionsMenuDialogController::setInGame(const bool inGame)
 {
     if (m_isInGame == inGame)
         return;
+    // CIP: a new game session closes the dialog first.
+    if (dialog()->item())
+        dialog()->close();
     m_isInGame = inGame;
     Q_EMIT gameSessionChanged();
 }
@@ -305,22 +377,22 @@ void TOptionsMenuDialogController::cancelButtonClicked()
     dialog()->close();
 }
 
-QJsonObject TOptionsMenuDialogController::pendingSettings() const
+std::unique_ptr<config::TClientOptions> TOptionsMenuDialogController::pendingOptions() const
 {
-    QJsonObject settings = app::ClientOptions::load().root();
+    auto options = std::make_unique<config::TClientOptions>();
+    options->assignFrom(*config::TClientOptions::instance());
     for (const Page& page : m_pages)
-        page.page->apply(settings);
-    return settings;
+        page.page->apply(*options);
+    return options;
 }
 
 void TOptionsMenuDialogController::applyButtonClicked()
 {
-    const QJsonObject current = app::ClientOptions::load().root();
-    const auto currentOption = [&current](const O option) { return config::optionValue(current, option); };
+    const config::TClientOptions& current = *config::TClientOptions::instance();
 
     // 
-    if (m_gameplay->allowAllToInspectPlayer() != currentOption(O::inspectPlayerAllowAllEnabled).toBool())
-        publish(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER);
+    if (m_gameplay->allowAllToInspectPlayer() != current.boolOption(O::inspectPlayerAllowAllEnabled))
+        Q_EMIT publishGameAction(simpleAction(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
 
     // 
     if (!m_controls->rotateWithAlt() && !m_controls->rotateWithCtrl() && !m_controls->rotateWithShift()) {
@@ -328,37 +400,26 @@ void TOptionsMenuDialogController::applyButtonClicked()
         m_infoMessage->showMessage(qtTrId("warning"), qtTrId("optionsmenu_keys_for_rotation_no_key_warning"));
     }
 
-    QJsonObject changes;
-    for (const Page& page : m_pages)
-        page.page->apply(changes);
+    const std::unique_ptr<config::TClientOptions> pending = pendingOptions();
 
-    // 
-    const bool restartNeeded = config::optionValue(changes, O::rendererIndex) != currentOption(O::rendererIndex)
-                            || config::optionValue(changes, O::vSyncEnabled) != currentOption(O::vSyncEnabled)
-                            || config::optionValue(changes, O::useFreetypeRenderer) != currentOption(O::useFreetypeRenderer);
+    const TRendererOptions currentRenderer(current);
+    const bool restartNeeded = TRendererOptions(*pending) != currentRenderer;
 
     // : the server learns the option when it changes.
-    const QJsonValue turnTowards = config::optionValue(changes, O::alwaysTurnTowardsMoveDirection);
-    if (!turnTowards.isUndefined() && turnTowards != currentOption(O::alwaysTurnTowardsMoveDirection))
-        sendTurnTowardsMoveDirection(turnTowards.toBool());
+    const bool turnTowards = pending->boolOption(O::alwaysTurnTowardsMoveDirection);
+    if (turnTowards != current.boolOption(O::alwaysTurnTowardsMoveDirection))
+        sendTurnTowardsMoveDirection(turnTowards);
 
     if (restartNeeded) {
         // Keep the previous graphics trio so keep_renderer_after_restart can revert.
-        app::graphicsrestart::markPendingConfirm(currentOption(O::rendererIndex).toInt(0),
-                                                 currentOption(O::vSyncEnabled).toBool(true),
-                                                 currentOption(O::useFreetypeRenderer).toBool(false));
+        app::graphicsrestart::markPendingConfirm(currentRenderer.renderer, currentRenderer.vSync, currentRenderer.freetype);
     }
 
-    app::ClientOptions::storeAll(changes);
+    app::ClientOptions::storeChanged(*pending);
 
     if (restartNeeded) {
-        // Restart (Return) quits into the new engine; Cancel (Esc) keeps the new
-        // settings for the next manual restart — CIP builds Restart;
-        // Cancel matches the two-button UX (dismiss without quitting now).
-        m_restartMessage->setButtons({
-            new TMessageDialogButton(qtTrId("restart"), Button::USER_DEFINED, QKeySequence(QStringLiteral("Return"))),
-            new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))),
-        });
+        // CIP: one "Restart" button (USER_DEFINED, no keys).
+        m_restartMessage->setButtons({ new TMessageDialogButton(Button::USER_DEFINED, qtTrId("restart"), 0u) });
         m_restartMessage->showMessage(qtTrId("graphics_setting_requires_restart_caption"),
                                       qtTrId("graphics_setting_requires_restart_text"));
     }
@@ -379,7 +440,7 @@ void TOptionsMenuDialogController::activateLensehelp()
 {
     applyButtonClicked();
     dialog()->close();
-    publish(EGameAction::LENSHELP_ACTIVATE);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::LENSHELP_ACTIVATE));
 }
 
 void TOptionsMenuDialogController::showRuleViolationsText()
@@ -390,12 +451,12 @@ void TOptionsMenuDialogController::showRuleViolationsText()
 
 void TOptionsMenuDialogController::openManuelUrl()
 {
-    publish(EGameAction::OPEN_URL_MANUAL);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_URL_MANUAL));
 }
 
 void TOptionsMenuDialogController::openFaqUrl()
 {
-    publish(EGameAction::OPEN_URL_FAQ);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_URL_FAQ));
 }
 
 void TOptionsMenuDialogController::openScreenshotDirectory()
@@ -412,11 +473,9 @@ void TOptionsMenuDialogController::openHelpChannel()
     // (Ctrl+T default) uses the same make-current join path.
     applyButtonClicked();
     dialog()->close();
-    const chat::TChatChannelIdentifier help = chat::TChatChannelIdentifier::help();
-    auto action = input::mutableClone(*input::makeAction(EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT));
-    action->chatChannelType = help.type;
-    action->chatChannelId = help.id;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChatChannel>(
+        EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT,
+        std::make_shared<const chat::TChatChannelIdentifier>(chat::TChatChannelIdentifier::help())));
 }
 
 void TOptionsMenuDialogController::setPortalBase(const QUrl& loginBase)
@@ -432,7 +491,7 @@ void TOptionsMenuDialogController::showAboutDialog()
 
 void TOptionsMenuDialogController::showCompendium()
 {
-    publish(EGameAction::OPEN_NEWS_DIALOG);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
 }
 
 void TOptionsMenuDialogController::exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries)
@@ -471,7 +530,7 @@ void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFil
 void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
-    const QJsonObject before = app::ClientOptions::load().root();
+    const TRendererOptions before(*config::TClientOptions::instance());
     bool optionsImported = false;
     for (const config::TArchiveEntry& entry : config::optionsarchive::read(localFile(m_importFile))) {
         const QString name = QDir::cleanPath(entry.name);
@@ -496,12 +555,10 @@ void TOptionsMenuDialogController::importArchive()
     if (!optionsImported)
         return;
 
-    const QJsonObject after = app::ClientOptions::load().root();
+    const config::TClientOptions& after = *config::TClientOptions::instance();
     for (const Page& page : m_pages)
         page.page->load(after);
-    const bool same = config::optionValue(before, O::rendererIndex) == config::optionValue(after, O::rendererIndex)
-                   && config::optionValue(before, O::vSyncEnabled) == config::optionValue(after, O::vSyncEnabled)
-                   && config::optionValue(before, O::useFreetypeRenderer) == config::optionValue(after, O::useFreetypeRenderer);
+    const bool same = TRendererOptions(after) == before;
     m_infoMessage->setButtons(okButton());
     if (same)
         m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_success_caption"), qtTrId("optionsmenu_file_import_success_text"));
@@ -541,7 +598,7 @@ void TOptionsMenuDialogController::resetPageToDefault(const EDialogCategories ca
         break;
     }
     if (config::TOptionsPage* page = pageOf(category))
-        page->load(defaultSettings());
+        page->load(*defaultOptions());
 }
 
 void TOptionsMenuDialogController::resetBasicPage()
@@ -555,25 +612,25 @@ void TOptionsMenuDialogController::resetBasicPage()
         O::actionBarShowRight1, O::actionBarShowRight2, O::actionBarShowRight3, O::actionBarsShowRight,
         O::antialiasingMode, O::soundMasterVolume,
     };
-    QJsonObject settings = pendingSettings();
-    const QJsonObject defaults = defaultSettings();
+    const std::unique_ptr<config::TClientOptions> settings = pendingOptions();
+    const std::unique_ptr<config::TClientOptions> defaults = defaultOptions();
     for (const O option : BasicOptions)
-        config::setOptionValue(settings, option, config::optionValue(defaults, option));
-    QJsonObject window = settings.value(QLatin1String(ClientWindowSection)).toObject();
-    window.insert(QLatin1String(BorderlessKey), false);
-    settings.insert(QLatin1String(ClientWindowSection), window);
+        settings->assignOption(option, *defaults);
+    config::TClientWindowOptions window = settings->clientWindowOptions();
+    window.borderless = false;
+    settings->setClientWindowOptions(window);
     for (const EDialogCategories category : { Controls, Gameplay, HUD, ActionBars, Graphics, Sound })
-        pageOf(category)->load(settings);
+        pageOf(category)->load(*settings);
 }
 
 void TOptionsMenuDialogController::resetAllOptionsToDefault()
 {
     // CIP leaves the hotkey and sound pages as they are.
-    const QJsonObject defaults = defaultSettings();
+    const std::unique_ptr<config::TClientOptions> defaults = defaultOptions();
     for (const EDialogCategories category :
          { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics, Effects, Misc, Gameplay, Screenshots }) {
         if (config::TOptionsPage* page = pageOf(category))
-            page->load(defaults);
+            page->load(*defaults);
     }
 }
 
@@ -583,7 +640,7 @@ void TOptionsMenuDialogController::onResartMessageControllerClicked(const cip::t
     if (ButtonIdentifier != Button::USER_DEFINED)
         return;
     // OPEN_LAUNCHER starts this client again and quits without the exit prompt.
-    publish(EGameAction::OPEN_LAUNCHER);
+    Q_EMIT publishGameAction(simpleAction(EGameAction::OPEN_LAUNCHER));
 }
 
 }

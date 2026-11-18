@@ -4,7 +4,9 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
+#include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/soundhelper.h"
 
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -117,44 +119,33 @@ bool TDialogStackController::contains(const TDialog* dialog) const
 void TDialogStackController::dialogTookFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        Q_EMIT chatInputFocusChanged(false);
+        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+            eventFilters->requestFocus();
 }
 
 void TDialogStackController::dialogReleasedFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
-        Q_EMIT chatInputFocusChanged(true);
+        if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+            eventFilters->releaseFocus();
 }
 
 void TDialogStackController::setCharacterListOpen(const bool open)
 {
     m_characterListOpen = open;
-    if (open)
-        blockKeyboard();
-    else if (m_dialogs.empty() || m_dialogs.back()->hooks()->hasPersonalMouseShield())
-        unblockKeyboard();
-    else
-        m_hotkeysBlocked = true;
+    update();
 }
 
-void TDialogStackController::blockKeyboard()
+bool TDialogStackController::closeTopShieldedDialog()
 {
-    m_hotkeysBlocked = true;
-    if (m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = true;
-    m_eventFilters.block();
-    Q_EMIT chatInputFocusChanged(false);
-}
-
-void TDialogStackController::unblockKeyboard()
-{
-    m_hotkeysBlocked = m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield());
-    if (!m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = false;
-    m_eventFilters.unblock();
-    Q_EMIT chatInputFocusChanged(true);
+    for (auto it = m_dialogs.rbegin(); it != m_dialogs.rend(); ++it) {
+        TDialog* dialog = *it;
+        if (dialog && dialog->hooks()->hasPersonalMouseShield() && dialog->isShown()) {
+            dialog->close();
+            return true;
+        }
+    }
+    return false;
 }
 
 void TDialogStackController::hideAll()
@@ -165,10 +156,14 @@ void TDialogStackController::hideAll()
 
 void TDialogStackController::update()
 {
-    m_hotkeysBlocked = m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield());
-    // CIP's stack unblocks the TEventFilterManager when it doesn't block: a focused UI part lets go.
-    if (m_keyboardBlocked && !m_hotkeysBlocked)
-        unblockKeyboard();
+    // A top dialog without a personal mouse shield blocks the keyboard; an
+    // empty stack or a shielded top dialog unblocks it.
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance()) {
+        if (m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield()))
+            eventFilters->block();
+        else
+            eventFilters->unblock();
+    }
     for (TDialog* dialog : m_dialogs)
         dialog->setVisibleByStack(dialog == m_dialogs.back());
     Q_EMIT dialogVisible(!m_dialogs.empty());
@@ -210,8 +205,10 @@ void TDialog::create()
         }
     }
     m_item = createItem(stack->engine(), m_qmlFile, parentItem, this, properties);
-    if (m_item)
+    if (m_item) {
         m_item->setVisible(false);
+        m_hooks->afterCreate();
+    }
 }
 
 void TDialog::show()
@@ -221,9 +218,8 @@ void TDialog::show()
     create();
     if (TDialogStackController* stack = TDialogStackController::instance())
         stack->show(this);
-    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-    sound->parameter = cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET;
-    input::publish(sound);
+    if (qmlcomponents::TSoundHelperService* sound = qmlcomponents::TSoundHelperService::instance())
+        sound->playSound(qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET);
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setDefaultCursor();
 }
@@ -245,8 +241,10 @@ void TDialog::close()
 
 void TDialog::destroy()
 {
-    if (m_item)
+    if (m_item) {
+        m_hooks->beforeDestroy();
         hide();
+    }
     deleteItem(m_item);
     deleteItem(m_shield);
 }

@@ -16,6 +16,8 @@ class ClientOptions;
 /// CIP renderer index (option rendererIndex) to the Qt graphics API. Index 0
 /// and unknown indices are QSGRendererInterface::Unknown (Qt picks).
 QSGRendererInterface::GraphicsApi graphicsApiForRenderer(int rendererIndex);
+/// The CIP renderer index of a Qt graphics API (0 for APIs CIP has no renderer for).
+int rendererIndexForGraphicsApi(QSGRendererInterface::GraphicsApi api);
 /// Accepts the CIP index or a name: auto, software, d3d11, vulkan, opengl, metal, d3d12.
 int parseRendererIndex(const QString& value, int fallback);
 bool isRendererSupported(int rendererIndex);

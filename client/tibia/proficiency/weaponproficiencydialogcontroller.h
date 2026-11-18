@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "proficiency/proficiencystorage.h"
@@ -125,6 +126,8 @@ class TQmlWeaponTypes final : public cip::tibia::gamewindow::TQmlWeaponTypes
 public:
     TQmlWeaponTypes(const QString& text, std::set<int> types, QObject* parent);
     const std::set<int>& types() const { return m_types; }
+    /// The first weapon type, 0 without any.
+    int anyWeaponIdentifier() const override;
 
 private:
     std::set<int> m_types;
@@ -137,6 +140,8 @@ class TWeaponProficiencyDialogController final
 {
     Q_OBJECT
 public:
+    /// The levels of a weapon's proficiency table.
+    int maxProficiencyLevels() const override;
     explicit TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent = nullptr);
     ~TWeaponProficiencyDialogController() override;
 
@@ -202,6 +207,17 @@ private:
     std::function<void()> m_onAccept;
     std::function<void()> m_onDiscard;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

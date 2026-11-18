@@ -17,6 +17,8 @@
 namespace tibia {
 namespace config {
 
+class TClientOptions;
+
 /// A page property and the option it edits (CIP: the pairs each page's load
 /// reads and its apply writes).
 struct TOptionBinding
@@ -32,21 +34,12 @@ struct TOptionBinding
         Percent,
         /// lightAttenuationCloudsIndoor as a slider step: (1 - v) / 0.005, truncated.
         CloudsIndex,
-        /// An option the page has no property for: read on load and written
-        /// back unchanged on apply. `property` names the dynamic property
-        /// that holds it.
-        Carried,
     };
 
     const char* property;
     cip::EClientOption option;
     Kind kind;
 };
-
-/// Reads an option from clientoptions.json's root.
-QJsonValue optionValue(const QJsonObject& settings, cip::EClientOption option);
-/// Sets an option in a root-shaped object of changes.
-void setOptionValue(QJsonObject& settings, cip::EClientOption option, const QJsonValue& value);
 
 /// What the options dialog drives on each page (CIP: TOptionPageQMLWrapperBase,
 /// vtable slot 12 load(const TClientOptions&) and slot 13 apply(TClientOptions*)).
@@ -55,10 +48,10 @@ class TOptionsPage : public ::tibia::CipTyped
 {
 public:
     virtual ~TOptionsPage() = default;
-    /// Slot 12: the pending values from `settings` (clientoptions.json's root).
-    virtual void load(const QJsonObject& settings) = 0;
-    /// Slot 13: the pending values into `settings` (root-shaped changes).
-    virtual void apply(QJsonObject& settings) const = 0;
+    /// Slot 12: the pending values from `options`.
+    virtual void load(const TClientOptions& options) = 0;
+    /// Slot 13: the pending values into `options` (the dialog's working copy).
+    virtual void apply(TClientOptions& options) const = 0;
 };
 
 /// A generated page wrapper whose properties map straight to options.
@@ -71,26 +64,28 @@ public:
         , m_bindings(bindings)
     {}
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
 
 private:
     std::span<const TOptionBinding> m_bindings;
 };
 
-void loadBindings(QObject* page, std::span<const TOptionBinding> bindings, const QJsonObject& settings);
-void applyBindings(const QObject* page, std::span<const TOptionBinding> bindings, QJsonObject& settings);
+/// The bound properties from `options`; options without a value are skipped.
+void loadBindings(QObject* page, std::span<const TOptionBinding> bindings, const TClientOptions& options);
+/// The bound properties into `options`; options without a value are skipped.
+void applyBindings(const QObject* page, std::span<const TOptionBinding> bindings, TClientOptions& options);
 
 template <class Base>
-void TBoundOptionsPage<Base>::load(const QJsonObject& settings)
+void TBoundOptionsPage<Base>::load(const TClientOptions& options)
 {
-    loadBindings(this, m_bindings, settings);
+    loadBindings(this, m_bindings, options);
 }
 
 template <class Base>
-void TBoundOptionsPage<Base>::apply(QJsonObject& settings) const
+void TBoundOptionsPage<Base>::apply(TClientOptions& options) const
 {
-    applyBindings(this, m_bindings, settings);
+    applyBindings(this, m_bindings, options);
 }
 
 /// CIP. The clear-bar buttons belong to the action
@@ -124,6 +119,12 @@ class TInterfaceOptionsPage final : public TBoundOptionsPage<TInterfaceQMLOption
     Q_OBJECT
 public:
     explicit TInterfaceOptionsPage(QObject* parent = nullptr);
+
+    /// The index of the pending colorize loot style's name in the list model (0 when absent).
+    uint colorizeLootStyleIndex() const override;
+    /// The style whose name the list entry shows; none past the list.
+    void setColorizeLootStyleIndex(uint index) override;
+    QStringList colorizeLootStyleListModel() const override;
 };
 
 /// CIP.
@@ -145,8 +146,8 @@ class THudOptionsPage final : public TBoundOptionsPage<THudQMLOptionsPage>
 public:
     explicit THudOptionsPage(QObject* parent = nullptr);
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
 
     /// CIP.
     void setSpecialConditionShowInHUDEnabled(int SpecialConditionIndex, bool Enabled) override;
@@ -162,31 +163,47 @@ private:
     SpecialConditionsOptions m_specialConditions;
 };
 
-/// CIP.
-class TGraphicsOptionsPage final : public TBoundOptionsPage<TGraphicsQMLOptionsPage>
+/// OptionsPageGraphics.qml: the borderless window, scaling, antialiasing,
+/// vsync, frame-rate limit and renderer. The page keeps the options' values;
+/// the list indices, list models and tooltip are computed when read.
+class TGraphicsOptionsPage final : public TGraphicsQMLOptionsPage, public TOptionsPage
 {
     Q_OBJECT
 public:
     explicit TGraphicsOptionsPage(QObject* parent = nullptr);
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
 
-    /// The pending renderer (option 0x5c), not its list index.
-    int rendererId() const { return m_rendererId; }
-
-    /// CIP : the list index of the pending renderer.
-    uint rendererIndex() const override;
-    /// The renderer of that list entry.
-    void setRendererIndex(uint index) override;
-    /// CIP / : off and fixed while the software
-    /// renderer limits the options .
+    /// The index of the pending antialiasing mode's name in the list model (0 when absent).
+    uint antialiasingModeIndex() const override;
+    /// The mode whose name the list entry shows. An index past the list resets
+    /// the pending renderer to auto (CipSoft's code does so).
+    void setAntialiasingModeIndex(uint index) override;
+    QStringList antialiasingModeListModel() const override;
+    /// Off and fixed while the software renderer limits the options.
     bool vSync() const override;
     void setVSync(bool enabled) override;
+    /// The inverse of frameRateLimitEnabled.
+    bool noFpsLimitEnabled() const override;
+    void setNoFpsLimitEnabled(bool enabled) override;
+    /// The index of the pending renderer's name in the list model (0 when absent).
+    uint rendererIndex() const override;
+    /// The renderer whose name the list entry shows; auto past the list.
+    void setRendererIndex(uint index) override;
+    /// The supported renderers' names in the list order.
+    QStringList rendererListModel() const override;
+    /// Why the pending renderer is not the running one, the help text and the
+    /// unsupported renderers.
+    QString tooltipTextDisabledRenderers() const override;
+    bool rendererLimitationsActive() const override;
+    bool isMetal() const override;
 
 private:
-    QList<int> m_rendererIds;
-    int m_rendererId = 0;
+    int m_antialiasingMode = 0;
+    bool m_frameRateLimitEnabled = false;
+    int m_frameRateLimit = 0;
+    int m_renderer = 0;
 };
 
 /// CIP.
@@ -196,8 +213,8 @@ class TEffectsOptionsPage final : public TBoundOptionsPage<TEffectsQMLOptionsPag
 public:
     explicit TEffectsOptionsPage(QObject* parent = nullptr);
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
 
     /// Off while the software renderer limits the options.
     bool lightEffects() const override;
@@ -205,12 +222,29 @@ public:
     void setLightEffects(bool enabled) override;
 };
 
-/// CIP; lists.
-class TControlsOptionsPage final : public TBoundOptionsPage<TControlsQMLOptionsPage>
+/// OptionsPageControls.qml: the control and loot schemes (kept as schemes,
+/// shown as list indices), keyboard delay, rotation keys and drag-and-drop.
+class TControlsOptionsPage final : public TControlsQMLOptionsPage, public TOptionsPage
 {
     Q_OBJECT
 public:
     explicit TControlsOptionsPage(QObject* parent = nullptr);
+
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
+
+    uint controlSchemeIndex() const override;
+    void setControlSchemeIndex(uint index) override;
+    uint lootSchemeIndex() const override;
+    void setLootSchemeIndex(uint index) override;
+    /// Ctrl drags whole stacks: the inverse of dragAndDropDefaultActionIsMoveAll.
+    bool ctrlToDragStacks() const override;
+    void setCtrlToDragStacks(bool enabled) override;
+
+private:
+    int m_controlScheme = 0;
+    int m_lootScheme = 0;
+    bool m_dragAndDropDefaultActionIsMoveAll = false;
 };
 
 /// CIP / : controlButtonsOptions, shown by name
@@ -221,8 +255,8 @@ class TButtonBarOptionsPage final : public TBoundOptionsPage<TButtonBarQMLOption
 public:
     explicit TButtonBarOptionsPage(QObject* parent = nullptr);
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
 
     QStringList enabledButtons() const override;
     QStringList disabledButtons() const override;
@@ -233,6 +267,9 @@ public:
     Q_INVOKABLE void moveEnabledButtonDown(const QString& ButtonName) override;
 
 private:
+    /// The disabled buttons in button type order, without duplicates.
+    void sortDisabledButtons();
+
     QStringList m_enabled;
     QStringList m_disabled;
 };
@@ -245,8 +282,8 @@ class TSoundOptionsPage final : public TBoundOptionsPage<TSoundQMLOptionsPage>
 public:
     explicit TSoundOptionsPage(QObject* parent = nullptr);
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
     /// The sound pages are enabled while the sound engine runs and the master
     /// volume is above 0.
     bool soundEnabled() const override;
@@ -274,8 +311,8 @@ public:
     void setHotkeySetNamesIndex(int v) override;
     void setNameFilter(const QString& v) override;
 
-    void load(const QJsonObject& settings) override;
-    void apply(QJsonObject& settings) const override;
+    void load(const TClientOptions& options) override;
+    void apply(TClientOptions& options) const override;
     /// The current set's keys of the current chat mode back to the built-in
     /// ones of its vocation (GlobalShortcuts for other names).
     void resetToDefault();

@@ -33,7 +33,10 @@
 #include <tuple>
 #include <vector>
 
-class ThingType;
+namespace tibia::appearances {
+class TAppearanceType;
+}
+using TAppearanceType = tibia::appearances::TAppearanceType;
 
 namespace tibia {
 namespace creatures {
@@ -300,14 +303,16 @@ Q_SIGNALS:
 
 private:
     void rebuildOutfitAppearance();
+    /// The outfit instance draws the creature's direction, movement look and mount.
+    void updateOutfitPatterns();
     static QColor informationColorForHealthPercent(uint8_t healthPercent);
     void restartWalkAnimators();
     void refreshWalkAnimators();
     void updateCoveredField();
-    uint16_t animationPhaseFor(const ThingType* type, const std::optional<animation::TMovingOutfitAnimator>& walk,
+    uint16_t animationPhaseFor(const TAppearanceType* type, const std::optional<animation::TMovingOutfitAnimator>& walk,
                                const std::optional<animation::TAnimator>& idle) const;
-    ThingType* outfitThingType() const;
-    ThingType* mountThingType() const;
+    TAppearanceType* outfitThingType() const;
+    TAppearanceType* mountThingType() const;
 
     TCreatureMovementTween m_movementTween;
     std::optional<animation::TMovingOutfitAnimator> m_outfitWalkAnimator;

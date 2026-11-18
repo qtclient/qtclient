@@ -19,10 +19,14 @@ class GameserverMessageRequestPurchaseData;
 class GameserverMessageCreditBalance;
 class GameserverMessageUpdatingShopBalance;
 class GameserverMessageTransactionHistory;
+class GameserverMessageTransactionDetails;
 class GameserverMessageStoreSuccess;
 class GameserverMessageStoreError;
 class GameserverMessageStoreButtonIndicators;
+class GameserverMessageSetStoreButtonDeeplink;
 class GameserverMessageOfferDescription;
+class GameserverMessageSetStoreButtonDeeplink;
+class GameserverMessageTransactionDetails;
 class ProtocolStoreVisual;
 class ProtocolStoreOpenParameters;
 }
@@ -181,6 +185,82 @@ struct TStoreBanner
     TStoreOpenParameters parameters;
 };
 
+/// A world a character can transfer to.
+struct TTransferWorld
+{
+    QString name;
+    bool firstFlag = false;
+    bool secondFlag = false;
+    /// The world's PvP type (0 to 4).
+    int pvpType = 0;
+};
+
+/// What the world transfer dialog offers.
+struct TWorldTransferInformation
+{
+    bool flag = false;
+    bool flags[5] = {};
+    std::vector<TTransferWorld> worlds;
+};
+
+/// A character that can become the account's main character.
+struct TPossibleMainCharacterInformation
+{
+    QString name;
+    QString world;
+    QString vocation;
+    int level = 0;
+};
+
+/// CIP store::TChildTransactionDetails: one sale of a coin offer sold in parts.
+struct TChildTransactionDetails
+{
+    uint32_t date = 0;
+    QString description;
+    /// 0 or 1 (CIP's child transaction kinds).
+    int type = 0;
+    qint64 balanceChange = 0;
+};
+
+/// CIP store::TTransactionDetails: the details the transaction history opens,
+/// a single transaction (type 0) or one sold in parts (type 1).
+struct TTransactionDetails
+{
+    enum EType
+    {
+        TYPE_SINGLE = 0,
+        TYPE_MULTI = 1,
+    };
+
+    struct TSingle
+    {
+        uint32_t date = 0;
+        QString description;
+        QString characterName;
+        qint64 coinBalanceChange = 0;
+        quint64 piecePrice = 0;
+        qint64 goldBalanceChange = 0;
+    };
+
+    struct TMulti
+    {
+        QString characterName;
+        uint32_t totalCoins = 0;
+        uint32_t soldCoins = 0;
+        uint32_t coinsRemainingInMarket = 0;
+        quint64 piecePrice = 0;
+        quint64 receivedGold = 0;
+        std::vector<TChildTransactionDetails> childTransactions;
+    };
+
+    TTransactionDetails(uint32_t transactionId = 0, int type = TYPE_SINGLE);
+
+    uint32_t transactionId = 0;
+    int type = TYPE_SINGLE;
+    TSingle single;
+    TMulti multi;
+};
+
 /// One line of the transaction history.
 struct TStoreTransactionHistoryEntry
 {
@@ -274,10 +354,9 @@ public:
     int pageType() const { return m_pageType; }
     const std::vector<TStoreOffer>& offers() const { return m_offers; }
 
-    /// Host: transaction details by transaction id, from the transaction
-    /// details message.
-    const QString& transactionDetails() const { return m_transactionDetails; }
-    void setTransactionDetails(QString details);
+    /// The details of the last transaction the history opened.
+    const TTransactionDetails& transactionDetails() const { return m_transactionDetails; }
+    void setTransactionDetails(TTransactionDetails details);
 
 Q_SIGNALS:
     void offersChanged(int PreselectedOfferID);
@@ -301,7 +380,7 @@ private:
     TStoreTransactionHistory m_transactionHistory;
     qint64 m_creditPacketSize = 1;
     TStoreCategory* m_currentCategory = nullptr;
-    QString m_transactionDetails;
+    TTransactionDetails m_transactionDetails;
     QTimer m_categoriesTimer;
 };
 
@@ -323,6 +402,8 @@ public:
     /// The login message's coin packet size: coins transfer in multiples of it.
     qint64 creditPacketSize() const;
 
+    /// Drops the categories and asks the server for them again.
+    void requestStoreCategories();
     /// Asks for the categories when not loaded yet, then for the page.
     void openStore(const TStoreOpenParameters& parameters);
     void buyOffer(TOfferID offerId, bool buyWithCosmeticTokens);
@@ -352,10 +433,14 @@ public:
     void handleCreditBalanceMessage(const tibia::protobuf::protocol::GameserverMessageCreditBalance& message);
     void handleUpdatingShopBalanceMessage(const tibia::protobuf::protocol::GameserverMessageUpdatingShopBalance& message);
     void handleTransactionHistoryMessage(const tibia::protobuf::protocol::GameserverMessageTransactionHistory& message);
+    void handleTransactionDetailsMessage(const tibia::protobuf::protocol::GameserverMessageTransactionDetails& message);
     void handleStoreSuccessMessage(const tibia::protobuf::protocol::GameserverMessageStoreSuccess& message);
     void handleStoreErrorMessage(const tibia::protobuf::protocol::GameserverMessageStoreError& message);
+    void handleSetStoreButtonDeeplinkMessage(const tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink& message);
     void handleStoreButtonIndicatorsMessage(const tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators& message);
     void handleOfferDescriptionMessage(const tibia::protobuf::protocol::GameserverMessageOfferDescription& message);
+    /// The live handler.
+    static TStoreProtocolMessageHandler* instance();
 
     /// The protocol's visualisation and open parameters.
     static TStoreVisualisation visualisation(const tibia::protobuf::protocol::ProtocolStoreVisual& visual);
@@ -363,15 +448,18 @@ public:
 
 Q_SIGNALS:
     void requestCharacterNameChangeInputDialog(int OfferIDForCharacterNameChange, bool BuyWithCosmeticTokens);
+    void requestCharacterWorldChangeInputDialog(int OfferIDForWorldChange, const tibia::store::TWorldTransferInformation& WorldTransferInformation,
+                                                bool BuyWithCosmeticTokens);
+    void requestMainCharacterChangeInputDialog(int OfferIDForMainCharChange,
+                                               const std::vector<tibia::store::TPossibleMainCharacterInformation>& PossibleMainCharInfo,
+                                               bool BuyWithCosmeticTokens);
+    void storeButtonDeeplinkChanged(const tibia::store::TStoreOpenParameters& StoreDeeplink);
     void requestHirelingInputDialog(int OfferIDForHireling, bool BuyWithCosmeticTokens);
     void requestConfirmationDialog(int Offer, const QString& Message, bool BuyWithCosmeticTokens);
     void storeOfferDescriptionReceived(int OfferID, const QString& Description);
     /// Host: CIP HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
     void hirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
 
-public:
-    /// Host ingress: the protocol queue's server messages.
-    static void onServerMessageEnqueued(int opcode);
 
 private:
     /// After a purchase: asks for the offers shown again.

@@ -1,4 +1,10 @@
 #include "preydialogcontroller.h"
+#include "colorhelper.h"
+
+#include <utility>
+#include "gamewindow/smoothfiltering.h"
+
+#include "qmlcomponents/texthelper.h"
 
 #include "input/gameactionhandlers.h"
 
@@ -198,6 +204,80 @@ TPreyData* TPreyStorage::slot(const int preyId) const
 
 void TPreyStorage::markReceived(const int preyId) { m_pendingSlots.erase(preyId); }
 
+void TPreyStorage::setSlotNextFreeListReroll(const int preyId, const qint64 seconds)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setNextFreeListReroll(seconds);
+}
+
+void TPreyStorage::setSlotTimeLeft(const int preyId, const int seconds)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setTimeLeft(seconds);
+}
+
+void TPreyStorage::setSlotAutomaticExtendType(const int preyId, const int type)
+{
+    if (TPreyData* data = slot(preyId))
+        data->setAutomaticExtendType(type);
+}
+
+void TPreyStorage::setSlotLocked(const int preyId, const int unlockOption)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setLocked(unlockOption);
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotInactive(const int preyId)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setInactive();
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotActive(const int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, const int timeLeft)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setActive(bonus, monster, timeLeft);
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotSelection(const int preyId, QList<TPreyMonster> list)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setSelection(std::move(list));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotSelectionChangeMonster(const int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setSelectionChangeMonster(bonus, std::move(list));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotListSelection(const int preyId, QList<uint16_t> races)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setListSelection(std::move(races));
+        markReceived(preyId);
+    }
+}
+
+void TPreyStorage::setSlotWildcardSelection(const int preyId, const TPreyBonus& bonus, QList<uint16_t> races)
+{
+    if (TPreyData* data = slot(preyId)) {
+        data->setWildcardSelection(bonus, std::move(races));
+        markReceived(preyId);
+    }
+}
+
 void TPreyStorage::reset()
 {
     m_pendingSlots.clear();
@@ -269,20 +349,6 @@ const QChar MultiStringSeparator(0x9c);
 
 QString english(const qint64 value) { return QLocale(QLocale::English).toString(value); }
 
-/// CIP : the number and its " k"/"k", " kk"/"kk", ... forms as a
-/// multi string.
-QString numberVariants(const qint64 value)
-{
-    QStringList variants{ english(value) };
-    for (const auto& [divisor, unit] : { std::pair<qint64, const char*>{ 1000, "k" }, { 1000000, "kk" }, { 1000000000, "kkk" } }) {
-        if (value < divisor)
-            break;
-        const QString shortened = english(value / divisor);
-        variants << shortened + u' ' + QLatin1String(unit) << shortened + QLatin1String(unit);
-    }
-    return variants.join(MultiStringSeparator);
-}
-
 uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
     return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
@@ -294,7 +360,7 @@ int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(tibia
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -310,21 +376,15 @@ QList<TMessageDialogButton*> okButton()
     return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
 }
 
-void publishPreyAction(const A type, const uint preyId, const int parameter = 0)
+input::IGameActionPtr preyAction(const A type, const uint preyId)
 {
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->instance = static_cast<int>(preyId);
-    action->parameter = parameter;
-    input::publish(action);
+    return std::make_shared<input::TGameActionPreySystem>(static_cast<uint8_t>(preyId), type);
 }
 
 /// CIP store requests: open type 1 (premium) or 3 (an offer).
-void openStore(const int openType, const int offer)
+input::IGameActionPtr openStoreAction(const int openType, const int offer)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = openType;
-    action->instance = offer;
-    input::publish(action);
+    return std::make_shared<input::TGameActionOpenStore>(openType, offer);
 }
 
 /// CIP: "word word" -> "Word Word".
@@ -627,20 +687,20 @@ void TPreyRenderInfo::choosePreyClicked() { Q_EMIT requestChoosePrey(preyId()); 
 /// CIP .
 void TPreyRenderInfo::confirmGridPreyCreatureClicked(const int Index)
 {
-    publishPreyAction(A::PREY_SELECT_MONSTER_FROM_LIST, preyId(), static_cast<uint8_t>(Index));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectPreyMonsterFromList>(static_cast<uint8_t>(preyId()), static_cast<uint8_t>(Index)));
 }
 
 /// CIP .
 void TPreyRenderInfo::confirmBestiaryPreyCreatureClicked(const int MonsterRaceID)
 {
-    publishPreyAction(A::PREY_SELECT_MONSTER_FROM_BESTIARY, preyId(), static_cast<uint16_t>(MonsterRaceID));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSelectPreyMonsterFromBestiary>(static_cast<uint8_t>(preyId()), static_cast<uint16_t>(MonsterRaceID)));
 }
 
 /// CIP .
-void TPreyRenderInfo::unlockPermanentlyClicked() { openStore(3, 0); }
+void TPreyRenderInfo::unlockPermanentlyClicked() { Q_EMIT publishGameAction(openStoreAction(3, 0)); }
 
 /// CIP .
-void TPreyRenderInfo::unlockWithPermiumClicked() { openStore(1, 0); }
+void TPreyRenderInfo::unlockWithPermiumClicked() { Q_EMIT publishGameAction(openStoreAction(1, 0)); }
 
 /// CIP .
 void TPreyRenderInfo::autoExtendPreydClicked(const EExtendType QMLAutoExtendType)
@@ -664,6 +724,8 @@ void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter)
         m_bestiaryProxy.setNameFilter(m_monsterRacesFilter);
 }
 
+bool TPreyPreyPageController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+
 TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TPreyPreyPageController(parent)
     , m_storage(storage)
@@ -673,7 +735,6 @@ TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QO
     , m_autoReroll(new TMessageDialogController(this))
     , m_lockPrey(new TMessageDialogController(this))
 {
-    m_clientSettingSmoothFiltering = true;
     for (TMessageDialogController* box : { m_bonusReroll, m_listReroll, m_choosePrey, m_autoReroll, m_lockPrey })
         box->setCloseOnButtonClicked(true);
     connect(m_bonusReroll, &TMessageDialogController::acceptClicked, this, &TPreyPreyPageController::onConfirmBonusReroll);
@@ -702,7 +763,7 @@ TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QO
 }
 
 QString TPreyPreyPageController::preyWildcards() const { return english(m_storage->preyWildcards()); }
-QString TPreyPreyPageController::listRerollPrice() const { return numberVariants(m_storage->listRerollPrice()); }
+QString TPreyPreyPageController::listRerollPrice() const { return qmlcomponents::thousandShortcutsMultiString(m_storage->listRerollPrice()); }
 bool TPreyPreyPageController::listRerollTooExpensive() const { return totalGold() < static_cast<uint64_t>(m_storage->listRerollPrice()); }
 QString TPreyPreyPageController::bonusRerollPrice() const { return english(m_storage->bonusRerollPrice()); }
 bool TPreyPreyPageController::bonusRerollTooExpensive() const { return !m_storage->bonusRerollPossible(); }
@@ -737,6 +798,7 @@ void TPreyPreyPageController::showDialogTab()
     m_renderInfos.clear();
     for (prey::TPreyData* data : m_storage->slots()) {
         auto* info = new TPreyRenderInfo(data, this);
+        connect(info, &TPreyRenderInfo::publishGameAction, this, &TPreyPreyPageController::publishGameAction);
         connect(info, &TPreyRenderInfo::requestBonusReroll, this, &TPreyPreyPageController::onRequestBonusReroll);
         connect(info, &TPreyRenderInfo::requestListReroll, this, &TPreyPreyPageController::onRequestListReroll);
         connect(info, &TPreyRenderInfo::requestChoosePrey, this, &TPreyPreyPageController::onRequestChoosePrey);
@@ -753,7 +815,22 @@ void TPreyPreyPageController::showDialogTab()
         Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
 }
 
-void TPreyPreyPageController::hideDialogTab() { m_freeRerollTimer.stop(); }
+void TPreyPreyPageController::hideDialogTab()
+{
+    m_freeRerollTimer.stop();
+    // CIP: the slot render infos go and the list change is announced (deferred).
+    const QList<QObject*> old = std::exchange(m_renderInfos, {});
+    for (QObject* info : old)
+        info->deleteLater();
+    if (!m_preyListTimer.isActive())
+        m_preyListTimer.start(0);
+}
+
+TPreyPreyPageController::~TPreyPreyPageController()
+{
+    m_freeRerollTimer.stop();
+    qDeleteAll(std::exchange(m_renderInfos, {}));
+}
 
 /// Asks to pay `price` wildcards; when the storage says it cannot be paid,
 /// only Cancel.
@@ -824,23 +901,23 @@ void TPreyPreyPageController::onRequestChangeAutoExtendType(const uint preyId, c
         m_autoReroll->showMessage(caption, qtTrId("prey_confirm_enable_auto_prey_extension_description")
                                                .arg(qtTrId("prey_auto_reroll"), english(m_storage->bonusRerollPrice()), currency));
     } else {
-        publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, preyId, 0);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(preyId), 0));
     }
 }
 
-void TPreyPreyPageController::onConfirmBonusReroll() { publishPreyAction(A::PREY_REQUEST_BONUS_REROLL, m_pendingPreyId); }
-void TPreyPreyPageController::onConfirmListReroll() { publishPreyAction(A::PREY_REQUEST_LIST_REROLL, m_pendingPreyId); }
-void TPreyPreyPageController::onConfirmChoosePrey() { publishPreyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS, m_pendingPreyId); }
+void TPreyPreyPageController::onConfirmBonusReroll() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_BONUS_REROLL, m_pendingPreyId)); }
+void TPreyPreyPageController::onConfirmListReroll() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_LIST_REROLL, m_pendingPreyId)); }
+void TPreyPreyPageController::onConfirmChoosePrey() { Q_EMIT publishGameAction(preyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS, m_pendingPreyId)); }
 
 void TPreyPreyPageController::onConfirmEnableAutoRerollBonus()
 {
-    publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, m_pendingPreyId, 1);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 1));
 }
 
-void TPreyPreyPageController::onConfirmEnableLockPrey() { publishPreyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, m_pendingPreyId, 2); }
+void TPreyPreyPageController::onConfirmEnableLockPrey() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 2)); }
 
 /// CIP .
-void TPreyPreyPageController::getMorePreyWildcardsClicked() { openStore(3, 1); }
+void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
 
 TPreyDialogController::TPreyDialogController(QObject* parent)
     : TDialogController(QStringLiteral("prey/PreyDialog.qml"), parent)
@@ -850,6 +927,7 @@ TPreyDialogController::TPreyDialogController(QObject* parent)
     , m_info(new TMessageDialogController(this))
 {
     m_preyPageController = m_page;
+    connect(m_page, &TPreyPreyPageController::publishGameAction, this, &TPreyDialogController::publishGameAction);
     m_notOnMain->setCloseOnButtonClicked(true);
     m_info->setCloseOnButtonClicked(true);
     connect(m_storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyDialogController::preyWildcardAmountChanged);
@@ -883,18 +961,16 @@ void TPreyDialogController::showDialog()
         return;
     }
     if (!m_storage->allDataReceived()) {
-        auto action = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-        action->text = qtTrId("prey_information_not_available");
-        input::publish(action);
+        auto action = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("prey_information_not_available"));
+        Q_EMIT publishGameAction(action);
         return;
     }
     m_storage->setPreyWildcards(wildcardBalance());
     dialog()->show();
     requestTabSwitch(PreyCreatures);
     for (const int resource : { 0, 1, 10, 0x32 }) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
-        input::publish(action);
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
+        Q_EMIT publishGameAction(action);
     }
 }
 
@@ -910,14 +986,14 @@ void TPreyDialogController::closeDialog()
 void TPreyDialogController::closeButtonClicked() { closeDialog(); }
 
 /// CIP .
-void TPreyDialogController::getMorePreyWildcardsClicked() { openStore(3, 1); }
+void TPreyDialogController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
 
 void TPreyDialogController::requestClose() { closeDialog(); }
 
+/// CIP: the creatures tab's page is hidden and shown again even when the
+/// tab does not change.
 void TPreyDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
-    if (m_activeTab == NewTab)
-        return;
     if (m_activeTab == PreyCreatures)
         m_page->hideDialogTab();
     m_activeTab = NoTabInitialState;

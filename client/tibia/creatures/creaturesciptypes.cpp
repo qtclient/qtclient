@@ -40,6 +40,7 @@ CipTypedKeep& typedKeep()
 
 TCreatureProtocolMessageHandler* g_liveCreatureProtocolHandler = nullptr;
 
+using ::tibia::protobuf::protocol::GameserverMessageCreatureData;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureHealth;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureLight;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureMarks;
@@ -50,8 +51,10 @@ using ::tibia::protobuf::protocol::GameserverMessageCreatureParty;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureSkull;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureUnpass;
+using ::tibia::protobuf::protocol::GameserverMessageInspectionState;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
 using ::tibia::protobuf::protocol::GameserverMessageMoveCreature;
+using ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart;
 using ::tibia::protobuf::protocol::GameserverMessageUpdateTarget;
 
 Position positionFromPb(const ::tibia::protobuf::protocol::ProtocolCoordinate& c)
@@ -109,7 +112,7 @@ TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(QObject* parent
     });
 }
 
-void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t creatureId, const uint32_t kind,
+void TCreatureProtocolMessageHandler::applyCreatureMarks(const uint32_t creatureId, const uint32_t kind,
                                                                  const uint32_t value)
 {
     TCreatureStorage* storage = TCreatureStorage::instance();
@@ -138,9 +141,8 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
         const Position& from = player->position();
         const Position& at = creature->position();
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
-        auto effect = std::make_shared<appearances::TDirectionalFieldEffectInstance>(
-            tibia::game::rawThingType(effectId, ThingCategoryEffect));
-        effect->start(at, static_cast<qint64>(tibia::shared::TClockService::frameMillis()), direction);
+        const auto effect = appearances::TAppearanceInstanceFactory::createDirectionalFieldEffect(
+            effectId, at, direction, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         tibia::worldmap::TWorldMapStorage::ensureStorage()->addEffectAppearance(effect, at);
         break;
     }
@@ -149,7 +151,7 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
     }
 }
 
-void TCreatureProtocolMessageHandler::handleUpdateTargetMessage(const uint32_t sequence, const uint32_t target)
+void TCreatureProtocolMessageHandler::applyUpdateTarget(const uint32_t sequence, const uint32_t target)
 {
     // The server replaces the target the sequence names (the id the player
     // attacked or followed); 0 drops it.
@@ -172,217 +174,179 @@ void TCreatureProtocolMessageHandler::setLiveInstance(TCreatureProtocolMessageHa
     g_liveCreatureProtocolHandler = handler;
 }
 
-void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode)
+void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const GameserverMessageMoveCreature& message)
 {
-    // Every creature message applies to a stored creature (a new or known one
-    // on the map creates or finds it first) and then tells the views.
-
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
+    if (tibia::game::isSceneFrozen())
         return;
+    // A creature moves by its id, or by the stack position it held on the old field.
+    const bool byId = message.has_creature_id();
+    Position oldPos;
+    int oldStack = -1;
+    uint32_t creatureId = byId ? message.creature_id() : 0;
+    if (!byId) {
+        if (message.has_from_pos())
+            oldPos = positionFromPb(message.from_pos());
+        oldStack = static_cast<int>(message.stackpos());
+        if (!creatureId && oldPos.isValid()) {
+            if (const auto* tile = tibia::worldmap::fieldAt(oldPos))
+                creatureId = tile->stackCreatureId(oldStack);
+        }
+    }
+    if (!creatureId || !message.has_to_pos())
+        return;
+    const Position newPos = positionFromPb(message.to_pos());
+    tibia::worldmap::TWorldmapProtocolMessageHandler* const worldmapHandler =
+        tibia::worldmap::TWorldmapProtocolMessageHandler::liveInstance();
+    tibia::worldmap::TWorldMapStorage* const mapStorage =
+        worldmapHandler ? worldmapHandler->storage() : tibia::worldmap::TWorldMapStorage::ensureStorage();
+    (void)mapStorage->applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
+}
 
-    switch (opcode) {
-    case 23:
-        // The login names the own character.
-        if (shadow->HasExtension(GameserverMessageLoginSuccess::gameserver_message_login_success)) {
-            if (TCreatureStorage* storage = TCreatureStorage::instance())
-                storage->setPlayerID(
-                    shadow->GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success).player_id());
-        }
+void TCreatureProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
+{
+    // The login names the own character.
+    if (TCreatureStorage* storage = TCreatureStorage::instance())
+        storage->setPlayerID(message.player_id());
+}
+
+void TCreatureProtocolMessageHandler::handleSessionDumpStartMessage(const GameserverMessageSessionDumpStart& message)
+{
+    // A replay names the character it recorded.
+    if (TCreatureStorage* storage = TCreatureStorage::instance())
+        storage->setPlayerID(message.player_id());
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const GameserverMessageCreatureUpdate& message)
+{
+    const uint32_t id = message.creature_id();
+    switch (message.type()) {
+    case 0:
+    case 13:
+    case 14:
+    case 15:
+        // A creature on the map, or one field of a known creature.
+        if (message.has_creature())
+            applyProtocolCreature(message.creature());
         break;
-    case 163:
-        if (shadow->HasExtension(GameserverMessageUpdateTarget::gameserver_message_update_target)) {
-            const auto& m = shadow->GetExtension(GameserverMessageUpdateTarget::gameserver_message_update_target);
-            handleUpdateTargetMessage(m.sequence(), m.target());
-        }
+    case 11:
+        if (message.has_creature())
+            applyProtocolCreature(message.creature());
+        tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(message.creature().mana_percent()));
         break;
-    case 3:
-        if (shadow->HasExtension(::tibia::protobuf::protocol::GameserverMessageCreatureData::gameserver_message_creature_data))
-            applyProtocolCreature(
-                shadow->GetExtension(::tibia::protobuf::protocol::GameserverMessageCreatureData::gameserver_message_creature_data).creature());
+    case 12:
+        if (message.has_creature())
+            applyProtocolCreature(message.creature());
+        tibia::game::notify("onPartyMemberShowStatusChange", id, message.creature().show_status());
         break;
-    case 109: {
-        // CIP: receivedMoveCreatureMessage only — no handleMoveCreatureMessage.
-        if (!shadow->HasExtension(GameserverMessageMoveCreature::gameserver_message_move_creature))
-            return;
-        if (tibia::game::isSceneFrozen())
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageMoveCreature::gameserver_message_move_creature);
-        const bool byId = m.has_creature_id();
-        Position oldPos;
-        int oldStack = -1;
-        uint32_t creatureId = byId ? m.creature_id() : 0;
-        if (!byId) {
-            if (m.has_from_pos())
-                oldPos = positionFromPb(m.from_pos());
-            oldStack = static_cast<int>(m.stackpos());
-            if (!creatureId && oldPos.isValid()) {
-                if (const auto* tile = tibia::worldmap::fieldAt(oldPos))
-                    creatureId = tile->stackCreatureId(oldStack);
-            }
-        }
-        if (!creatureId || !m.has_to_pos())
-            return;
-        const Position newPos = positionFromPb(m.to_pos());
-        tibia::worldmap::TWorldmapProtocolMessageHandler* const worldmapHandler =
-            tibia::worldmap::TWorldmapProtocolMessageHandler::liveInstance();
-        tibia::worldmap::TWorldMapStorage* const mapStorage =
-            worldmapHandler ? worldmapHandler->storage() : tibia::worldmap::TWorldMapStorage::ensureStorage();
-        (void)mapStorage->applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
-        break;
-    }
-    case 139: {
-        if (!shadow->HasExtension(GameserverMessageCreatureUpdate::gameserver_message_creature_update))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureUpdate::gameserver_message_creature_update);
-        const uint32_t id = m.creature_id();
-        switch (m.type()) {
-        case 0:
-        case 13:
-        case 14:
-        case 15:
-            // A creature on the map, or one field of a known creature.
-            if (m.has_creature())
-                applyProtocolCreature(m.creature());
-            break;
-        case 11:
-            if (m.has_creature())
-                applyProtocolCreature(m.creature());
-            tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(m.creature().mana_percent()));
-            break;
-        case 12:
-            if (m.has_creature())
-                applyProtocolCreature(m.creature());
-            tibia::game::notify("onPartyMemberShowStatusChange", id, m.creature().show_status());
-            break;
-        // Product server party extensions.
-        case 16:
-            updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-                creature->setHealthPercent(static_cast<uint8_t>(m.health_percent()));
-            });
-            tibia::game::notify("onPartyMemberHealthChange", id, static_cast<uint8_t>(m.health_percent()), m.health(),
-                                m.max_health());
-            break;
-        case 17:
-            tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(m.mana_percent()), m.mana(),
-                                m.max_mana());
-            break;
-        case 18:
-            updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-                creature->setVocation(static_cast<uint8_t>(m.vocation()));
-            });
-            tibia::game::notify("onPartyMemberInfoChange", id, static_cast<uint8_t>(m.vocation()),
-                                static_cast<uint16_t>(m.level()));
-            break;
-        default:
-            break;
-        }
-        break;
-    }
-    case 142: {
-        if (!shadow->HasExtension(GameserverMessageCreatureOutfit::gameserver_message_creature_outfit))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureOutfit::gameserver_message_creature_outfit);
-        updateCreature(m.creature_id(), [&](TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature) {
-            creature->setOutfit(outfitFromProtocol(m.outfit(), m.has_mount() ? &m.mount() : nullptr));
-            storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Outfit);
-            if (m.has_mount()) {
-                // A mount without a look type dismounts.
-                creature->setMounted(m.mount().look_type() != 0);
-                storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
-            }
+    // Product server party extensions.
+    case 16:
+        updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
         });
-        syncFieldStackFor(m.creature_id());
+        tibia::game::notify("onPartyMemberHealthChange", id, static_cast<uint8_t>(message.health_percent()),
+                            message.health(), message.max_health());
         break;
-    }
-    case 147: {
-        if (!shadow->HasExtension(GameserverMessageCreatureMarks::gameserver_message_creature_marks))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureMarks::gameserver_message_creature_marks);
-        handleCreatureMarksMessage(m.creature_id(), m.kind(), m.value());
+    case 17:
+        tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(message.mana_percent()), message.mana(),
+                            message.max_mana());
         break;
-    }
-    case 149: {
-        if (!shadow->HasExtension(GameserverMessageCreatureType::gameserver_message_creature_type))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureType::gameserver_message_creature_type);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            // The type as sent: the views tell the player's own summons by
-            // their master.
-            creature->setCreatureType(static_cast<uint8_t>(m.type()));
-            if (m.has_master_id())
-                creature->setMasterId(m.master_id());
+    case 18:
+        updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setVocation(static_cast<uint8_t>(message.vocation()));
         });
+        tibia::game::notify("onPartyMemberInfoChange", id, static_cast<uint8_t>(message.vocation()),
+                            static_cast<uint16_t>(message.level()));
         break;
-    }
-    case 140: {
-        if (!shadow->HasExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setHealthPercent(static_cast<uint8_t>(m.health_percent()));
-        });
-        break;
-    }
-    case 141: {
-        if (!shadow->HasExtension(GameserverMessageCreatureLight::gameserver_message_creature_light))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureLight::gameserver_message_creature_light);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setLight(Light(static_cast<uint8_t>(m.intensity()), static_cast<uint8_t>(m.color())));
-        });
-        break;
-    }
-    case 143: {
-        if (!shadow->HasExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setSpeed(static_cast<uint16_t>(m.speed()));
-        });
-        break;
-    }
-    case 144: {
-        if (!shadow->HasExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setSkull(static_cast<uint8_t>(m.skull()));
-        });
-        break;
-    }
-    case 145: {
-        if (!shadow->HasExtension(GameserverMessageCreatureParty::gameserver_message_creature_party))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureParty::gameserver_message_creature_party);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setShield(static_cast<uint8_t>(m.party()));
-        });
-        break;
-    }
-    case 146: {
-        if (!shadow->HasExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass))
-            return;
-        const auto& m =
-            shadow->GetExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass);
-        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-            creature->setUnpassable(static_cast<bool>(m.unpass()));
-        });
-        break;
-    }
     default:
         break;
     }
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureOutfitMessage(const GameserverMessageCreatureOutfit& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature) {
+        creature->setOutfit(outfitFromProtocol(message.outfit(), message.has_mount() ? &message.mount() : nullptr));
+        storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Outfit);
+        if (message.has_mount()) {
+            // A mount without a look type dismounts.
+            creature->setMounted(message.mount().look_type() != 0);
+            storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
+        }
+    });
+    syncFieldStackFor(message.creature_id());
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureHealthMessage(const GameserverMessageCreatureHealth& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureSpeedMessage(const GameserverMessageCreatureSpeed& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setSpeed(static_cast<uint16_t>(message.speed()));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureSkullMessage(const GameserverMessageCreatureSkull& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setSkull(static_cast<uint8_t>(message.skull()));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleCreaturePartyMessage(const GameserverMessageCreatureParty& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setShield(static_cast<uint8_t>(message.party()));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleInspectionStateMessage(const GameserverMessageInspectionState& message)
+{
+    tibia::game::processInspectionState(message.creature_id(), static_cast<uint8_t>(message.state()));
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureUnpassMessage(const GameserverMessageCreatureUnpass& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setUnpassable(static_cast<bool>(message.unpass()));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const GameserverMessageCreatureMarks& message)
+{
+    applyCreatureMarks(message.creature_id(), message.kind(), message.value());
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureDataMessage(const GameserverMessageCreatureData& message)
+{
+    applyProtocolCreature(message.creature());
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureLightMessage(const GameserverMessageCreatureLight& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setLight(Light(static_cast<uint8_t>(message.intensity()), static_cast<uint8_t>(message.color())));
+    });
+}
+
+void TCreatureProtocolMessageHandler::handleUpdateTargetMessage(const GameserverMessageUpdateTarget& message)
+{
+    applyUpdateTarget(message.sequence(), message.target());
+}
+
+void TCreatureProtocolMessageHandler::handleCreatureTypeMessage(const GameserverMessageCreatureType& message)
+{
+    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        // The type as sent: the views tell the player's own summons by
+        // their master.
+        creature->setCreatureType(static_cast<uint8_t>(message.type()));
+        if (message.has_master_id())
+            creature->setMasterId(message.master_id());
+    });
 }
 
 void ownProductSurface(QObject* parent)
@@ -478,7 +442,7 @@ TVipGameActionHandler::TVipGameActionHandler(TVipStorage* storage, QObject* pare
     , m_storage(storage)
 {
     for (const VipAction type : VipGameActions) {
-        ::tibia::input::setActionHandler(type, [this](const ::tibia::input::TGameAction& action) {
+        m_gameActions.on(type, [this](const ::tibia::input::IGameAction& action) {
             handleGameAction(action);
             return true;
         });
@@ -487,96 +451,91 @@ TVipGameActionHandler::TVipGameActionHandler(TVipStorage* storage, QObject* pare
 
 TVipGameActionHandler::~TVipGameActionHandler()
 {
-    for (const VipAction type : VipGameActions)
-        ::tibia::input::setActionHandler(type, nullptr);
 }
 
-void TVipGameActionHandler::handleGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleGameAction(const ::tibia::input::IGameAction& action)
 {
-    switch (action.type) {
+    using namespace ::tibia::input;
+    switch (action.gameActionType()) {
     case VipAction::ADD_NEW_VIP:
-        handleAddNewVipGameAction(action);
+        if (const auto* vip = gameActionAs<TGameActionVip>(&action))
+            handleAddNewVipGameAction(*vip);
         break;
     case VipAction::REMOVE_VIP:
-        handleRemoveVipGameAction(action);
+        if (const auto* vip = gameActionAs<TGameActionVip>(&action))
+            handleRemoveVipGameAction(*vip);
         break;
     case VipAction::REQUST_VIP_DATA_UPDATE:
-        handleRequestVipDataUpdateGameAction(action);
+        if (const auto* update = gameActionAs<TGameActionRequestVipDataUpdate>(&action))
+            handleRequestVipDataUpdateGameAction(*update);
         break;
     case VipAction::ADD_NEW_VIP_GROUP:
-        handleAddNewVipGroupGameAction(action);
+        if (const auto* group = gameActionAs<TGameActionVipGroup>(&action))
+            handleAddNewVipGroupGameAction(*group);
         break;
     case VipAction::REMOVE_VIP_GROUP:
-        handleRemoveVipGroupGameAction(action);
+        if (const auto* group = gameActionAs<TGameActionVipGroup>(&action))
+            handleRemoveVipGroupGameAction(*group);
         break;
     case VipAction::REQUEST_VIP_GROUP_UPDATE:
-        handleRequestVipGroupUpdateGameAction(action);
+        if (const auto* update = gameActionAs<TGameActionRequestVipGroupUpdate>(&action))
+            handleRequestVipGroupUpdateGameAction(*update);
         break;
     default:
         break;
     }
 }
 
-void TVipGameActionHandler::handleAddNewVipGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleAddNewVipGameAction(const ::tibia::input::TGameActionVip& action)
 {
-    protocol::gameclient::sendAddVip(action.text.toStdString());
+    protocol::gameclient::sendAddVip(action.vipName().toStdString());
 }
 
-void TVipGameActionHandler::handleRemoveVipGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleRemoveVipGameAction(const ::tibia::input::TGameActionVip& action)
 {
-    const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(action.text);
+    const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(action.vipName());
     if (!vip)
         return;
     m_storage->removeVip(vip->id);
     protocol::gameclient::sendRemoveVip(vip->id);
 }
 
-void TVipGameActionHandler::handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameActionRequestVipDataUpdate& action)
 {
-    // The edit dialog's action: `instance` the VIP, `text` the description,
-    // `parameter` the icon, `enable` login notification, `vipGroups` the groups.
     // CIP's map::at throws for an unknown VIP; qtclient ignores the edit.
-    const std::optional<TVipStorage::Vip> stored = m_storage->vipById(static_cast<uint32_t>(action.instance));
+    const std::optional<TVipStorage::Vip> stored = m_storage->vipById(action.vipId());
     if (!stored)
         return;
     TVipStorage::Vip vip = *stored;
-    vip.description = action.text;
-    vip.iconId = action.parameter;
-    vip.notifyLogin = action.enable;
-    vip.groups = action.vipGroups;
+    vip.description = action.description();
+    vip.iconId = action.icon();
+    vip.notifyLogin = action.notifyOnLogin();
+    vip.groups = action.groupIds();
     m_storage->addOrUpdateVip(vip);
     protocol::gameclient::sendEditVip(vip.id, vip.description.toStdString(), static_cast<uint32_t>(vip.iconId), vip.notifyLogin, vip.groups);
 }
 
-void TVipGameActionHandler::handleAddNewVipGroupGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleAddNewVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action)
 {
-    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_ADD, 0, action.text.toStdString());
+    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_ADD, 0, action.groupName().toStdString());
 }
 
-void TVipGameActionHandler::handleRemoveVipGroupGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleRemoveVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action)
 {
     // An unknown name removes the default group (id 0), as CIP does.
-    const TVipStorage::Group group = m_storage->groupByName(action.text).value_or(TVipStorage::Group{});
+    const TVipStorage::Group group = m_storage->groupByName(action.groupName()).value_or(TVipStorage::Group{});
     protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_REMOVE, group.id, {});
 }
 
-void TVipGameActionHandler::handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameAction& action)
+void TVipGameActionHandler::handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameActionRequestVipGroupUpdate& action)
 {
-    // The edit-group dialog's action: `parameter` the group, `text` its new name.
-    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_EDIT, static_cast<uint8_t>(action.parameter), action.text.toStdString());
+    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_EDIT, action.vipGroup().id, action.vipGroup().name.toStdString());
 }
 
 namespace {
 
 /// The EWorldType whose VIP menu offers the exiva whitelist entries.
 constexpr int WorldTypeOptionalPvp = 1;
-
-::tibia::input::TGameActionPtr vipNamedAction(const VipAction type, const QString& name)
-{
-    auto action = ::tibia::input::mutableClone(*::tibia::input::makeAction(type));
-    action->text = name;
-    return action;
-}
 
 void appendActions(::tibia::input::TGameActionList& to, const ::tibia::input::TGameActionList& from)
 {
@@ -595,14 +554,15 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
 
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::widgetGameActions(const bool hideOffline, const bool groupsHidden) const
 {
-    using ::tibia::input::makeAction;
-    return { makeAction(VipAction::CONTEXT_MENU),
-             makeAction(VipAction::OPEN_ADD_VIP_DIALOG),
-             makeAction(VipAction::SORT_VIPS_BY_NAME),
-             makeAction(VipAction::SORT_VIPS_BY_ICON),
-             makeAction(VipAction::SORT_VIPS_BY_STATUS),
-             makeAction(hideOffline ? VipAction::SHOW_OFFLINE_VIPS : VipAction::HIDE_OFFLINE_VIPS),
-             makeAction(groupsHidden ? VipAction::SHOW_VIPS_GROUPS : VipAction::HIDE_VIPS_GROUPS) };
+    using ::tibia::input::makeGameAction;
+    using ::tibia::input::TGameActionSortFilterVipList;
+    return { makeGameAction(VipAction::CONTEXT_MENU),
+             makeGameAction(VipAction::OPEN_ADD_VIP_DIALOG),
+             std::make_shared<TGameActionSortFilterVipList>(VipAction::SORT_VIPS_BY_NAME),
+             std::make_shared<TGameActionSortFilterVipList>(VipAction::SORT_VIPS_BY_ICON),
+             std::make_shared<TGameActionSortFilterVipList>(VipAction::SORT_VIPS_BY_STATUS),
+             std::make_shared<TGameActionSortFilterVipList>(hideOffline ? VipAction::SHOW_OFFLINE_VIPS : VipAction::HIDE_OFFLINE_VIPS),
+             std::make_shared<TGameActionSortFilterVipList>(groupsHidden ? VipAction::SHOW_VIPS_GROUPS : VipAction::HIDE_VIPS_GROUPS) };
 }
 
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::gameActions(const QString& vipName, const QString& groupName,
@@ -612,18 +572,18 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
     appendActions(result, groupGameActions(groupName));
     if (vipName.isEmpty())
         return result;
-    result.push_back(vipNamedAction(VipAction::COPY_CREATURE_NAME_TO_CLIPBOARD, vipName));
-    result.push_back(vipNamedAction(VipAction::REMOVE_VIP, vipName));
-    result.push_back(vipNamedAction(VipAction::OPEN_EDIT_VIP_DIALOG, vipName));
+    result.push_back(std::make_shared<::tibia::input::TGameActionCopyCreatureNameToClipboard>(vipName));
+    result.push_back(std::make_shared<::tibia::input::TGameActionRemoveVip>(vipName));
+    result.push_back(std::make_shared<::tibia::input::TGameActionOpenEditVipDialog>(vipName));
     const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(vipName);
     const int state = vip ? vip->state : TVipStorage::Offline;
     if (state == TVipStorage::LoggedIn || state == TVipStorage::Online)
-        result.push_back(vipNamedAction(VipAction::OPEN_MESSAGE_TO_CHAT_CHANNEL, vipName));
-    result.push_back(vipNamedAction(VipAction::REPORT_NAME, vipName));
+        result.push_back(std::make_shared<::tibia::input::TGameActionOpenMessageToChatChannel>(vipName));
+    result.push_back(std::make_shared<::tibia::input::TGameActionReportCharacter>(VipAction::REPORT_NAME, vipName));
     if (m_worldType == WorldTypeOptionalPvp && m_exivaOptions) {
-        result.push_back(vipNamedAction(m_exivaOptions->isCharacterWhitelisted(vipName) ? VipAction::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST
-                                                                                       : VipAction::EXIVA_ADD_CHARACTER_TO_WHITELIST,
-                                        vipName));
+        result.push_back(std::make_shared<::tibia::input::TGameActionVip>(
+            vipName, m_exivaOptions->isCharacterWhitelisted(vipName) ? VipAction::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST
+                                                                     : VipAction::EXIVA_ADD_CHARACTER_TO_WHITELIST));
     }
     return result;
 }
@@ -633,12 +593,12 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
     ::tibia::input::TGameActionList result;
     if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerIsPremium())
         return result;
-    result.push_back(::tibia::input::makeAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
+    result.push_back(::tibia::input::makeGameAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
     if (groupName.isEmpty())
         return result;
     if (const std::optional<TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
-        result.push_back(vipNamedAction(VipAction::REMOVE_VIP_GROUP, groupName));
-        result.push_back(vipNamedAction(VipAction::OPEN_EDIT_VIP_GROUP_DIALOG, groupName));
+        result.push_back(std::make_shared<::tibia::input::TGameActionRemoveVipGroup>(groupName));
+        result.push_back(std::make_shared<::tibia::input::TGameActionOpenEditVipGroupDialog>(groupName));
     }
     return result;
 }

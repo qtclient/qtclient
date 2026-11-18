@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/icharacterconfiguration.h"
+
 #include <cip_gen.h>
 
 #include <QJsonObject>
@@ -12,7 +14,7 @@ namespace game {
 /// A character's status bar settings (CIP TStatusbarStorage), kept in
 /// <app data>/characterdata/<character id>/statusBarData.json and written
 /// when the session ends.
-class TStatusbarStorage final : public cip::tibia::game::TStatusbarStorage
+class TStatusbarStorage final : public cip::tibia::game::TStatusbarStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -27,7 +29,7 @@ public:
     explicit TStatusbarStorage(QObject* parent = nullptr);
 
     /// The configuration's file name in the character's data directory.
-    static QString configurationName();
+    QString configurationName() const override;
     /// position, style and the nine show* flags.
     QJsonObject toJson() const;
     /// Takes every key present with the right type (strings for position and
@@ -35,8 +37,10 @@ public:
     /// value. Each value taken notifies configurationChangedFromUserInput.
     void fromJson(const QJsonObject& json);
 
-    void loadForCharacter(quint32 characterId);
-    void save();
+    QJsonObject configurationToJson() const override { return toJson(); }
+    void configurationFromJson(const QJsonObject& json) override { fromJson(json); }
+    /// A new character starts from the defaults (CIP builds the storage per session).
+    void resetConfiguration() override;
 
     int position() const { return m_position; }
     void setPosition(int position);
@@ -50,14 +54,11 @@ Q_SIGNALS:
     void changed();
 
 private:
-    QString filePath() const;
     void modified();
 
-    quint32 m_characterId = 0;
     int m_position = Off;
     int m_style = Default;
     std::array<bool, EntryCount> m_shown{ true };
-    bool m_dirty = false;
 };
 
 }

@@ -1,6 +1,9 @@
 #include "contextmenucontroller.h"
 
+#include "chat/chatchannel.h"
+
 #include "gamewindow/sidebarmanager.h"
+#include "input/eventfiltermanager.h"
 #include "input/gameactionhandlers.h"
 #include "input/gameactionmapper.h"
 
@@ -22,15 +25,37 @@ using A = input::EGameAction;
 TContextMenuController* g_instance = nullptr;
 
 /// The name an action names: its creature's, else its text.
-QString nameOf(const input::TGameAction& action)
+QString nameOf(const input::IGameAction& action)
 {
-    if (action.creatureId) {
+    if (const uint32_t creatureId = input::creatureIdOf(action)) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId))
                 return row->name();
         }
     }
-    return action.text;
+    if (const auto* named = input::gameActionAs<input::TGameActionCreatureWithName>(&action))
+        return named->creatureName();
+    if (const auto* channel = input::gameActionAs<input::TGameActionChatChannel>(&action))
+        return channel->chatChannelIdentifier().type == chat::TChatChannelIdentifier::MessageTo
+                   ? channel->chatChannelIdentifier().name
+                   : channel->chatChannelIdentifier().displayName();
+    if (const auto* moderation = input::gameActionAs<input::TGameActionChatChannelModeration>(&action))
+        return moderation->playerName();
+    if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+        return vip->vipName();
+    if (const auto* group = input::gameActionAs<input::TGameActionVipGroup>(&action))
+        return group->groupName();
+    if (const auto* ignore = input::gameActionAs<input::TGameActionIgnoreName>(&action))
+        return ignore->name();
+    if (const auto* unignore = input::gameActionAs<input::TGameActionUnignoreName>(&action))
+        return unignore->name();
+    if (const auto* traded = input::gameActionAs<input::TGameActionRecentlyTraded>(&action))
+        return traded->name();
+    if (const auto* report = input::gameActionAs<input::TGameActionReportCharacter>(&action))
+        return report->characterName();
+    if (const auto* hireling = input::gameActionAs<input::TGameActionReportHireling>(&action))
+        return hireling->hirelingName();
+    return {};
 }
 
 const char* simpleLabel(const A type)
@@ -150,8 +175,8 @@ const char* namedLabel(const A type)
 A firstPresent(const std::vector<A>& types, const input::TGameActionList& actions)
 {
     for (const A type : types) {
-        for (const input::TGameActionPtr& action : actions) {
-            if (action->type == type)
+        for (const input::IGameActionPtr& action : actions) {
+            if (action->gameActionType() == type)
                 return type;
         }
     }
@@ -195,19 +220,15 @@ TContextMenuController::TContextMenuController(QQmlEngine* engine, QQuickItem* r
 
     m_showTimer.setSingleShot(true);
     connect(&m_showTimer, &QTimer::timeout, this, &TContextMenuController::onAsyncShow);
-    connect(&m_discardKeys, &input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::escapePressed, this,
-            &TContextMenuController::onRequestClose);
 
-    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameAction& action) {
-        setEnabled(action.enable);
+    m_gameActions.on(A::CHANGE_CONTEXT_MENU_ENABLED, [this](const input::TGameActionChangeContextMenuEnabled& action) {
+        setEnabled(action.enabled());
         return true;
     });
 }
 
 TContextMenuController::~TContextMenuController()
 {
-    setKeyboardBlocked(false);
-    input::setActionHandler(A::CHANGE_CONTEXT_MENU_ENABLED, nullptr);
     if (g_instance == this)
         g_instance = nullptr;
     delete m_menu;
@@ -220,20 +241,18 @@ TContextMenuController* TContextMenuController::instance()
     return g_instance;
 }
 
-QString TContextMenuController::labelOf(const input::TGameAction& action, QString& shortcut)
+QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, QString& shortcut)
 {
-    if (const char* id = simpleLabel(action.type)) {
-        if (action.type == A::BUY_HIRELING_NAME_OR_SEX_CHANGE)
+    if (const char* id = simpleLabel(pGameAction.gameActionType())) {
+        if (pGameAction.gameActionType() == A::BUY_HIRELING_NAME_OR_SEX_CHANGE)
             shortcut = qtTrId("context_store_dialog");
         return qtTrId(id);
     }
-    if (const char* id = namedLabel(action.type))
-        return qtTrId(id).arg(nameOf(action));
-    switch (action.type) {
-    case A::QUICK_LOOT:
-        return qtTrId(action.position.x != UINT16_MAX ? "context_loot_all" : "context_loot");
-    case A::SET_SHARED_EXPERIENCE:
-        return qtTrId(action.enable ? "context_shared_exp_on" : "context_shared_exp_off");
+    if (const char* id = namedLabel(pGameAction.gameActionType()))
+        return qtTrId(id).arg(nameOf(pGameAction));
+    if (const auto* shared = input::gameActionAs<input::TGameActionSetSharedExperience>(&pGameAction))
+        return qtTrId(shared->enable() ? "context_shared_exp_on" : "context_shared_exp_off");
+    switch (pGameAction.gameActionType()) {
     case A::SET_PLAYER_MOVEMENT_INTENT:
         return QStringLiteral("Walk here");
     case A::GOD_TELEPORT:
@@ -241,8 +260,11 @@ QString TContextMenuController::labelOf(const input::TGameAction& action, QStrin
     case A::CYCLOPEDIA_MAP_SELECT_ITEM:
         return QStringLiteral("Select");
     default:
-        return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(action.type));
+        break;
     }
+    if (const auto* loot = input::gameActionAs<input::TGameActionQuickLoot>(&pGameAction))
+        return qtTrId(loot->position().x != UINT16_MAX ? "context_loot_all" : "context_loot");
+    return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
 }
 
 void TContextMenuController::showGameActions(const input::TGameActionList& actions, const int context, const input::TGameActionMapper& mapper)
@@ -251,21 +273,21 @@ void TContextMenuController::showGameActions(const input::TGameActionList& actio
     const A shift = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::ShiftModifier), actions);
     const A ctrl = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::ControlModifier), actions);
     const A alt = firstPresent(mapper.ruleTypes(context, Qt::LeftButton, Qt::AltModifier), actions);
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == A::CONTEXT_MENU_SEPARATOR) {
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == A::CONTEXT_MENU_SEPARATOR) {
             addSeparator();
             continue;
         }
         QString shortcut;
         const QString label = labelOf(*action, shortcut);
-        if (action->type == shift)
+        if (action->gameActionType() == shift)
             shortcut = qtTrId("context_keymodifier_shift");
-        if (action->type == ctrl)
+        if (action->gameActionType() == ctrl)
             shortcut = qtTrId("context_keymodifier_ctrl");
-        if (action->type == alt)
+        if (action->gameActionType() == alt)
             shortcut = qtTrId("context_keymodifier_alt");
         TContextMenuEntryItem* entry = addEntry(label, shortcut);
-        connect(entry, &TContextMenuEntryItem::triggered, this, [action] { input::publish(action); });
+        connect(entry, &TContextMenuEntryItem::triggered, this, [this, action] { Q_EMIT publishGameAction(action); });
     }
     std::erase_if(m_extensions, [](const auto& extension) { return extension.first.isNull(); });
     for (const auto& extension : std::vector(m_extensions))
@@ -297,10 +319,10 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
         QMetaObject::invokeMethod(field, "remove", Q_ARG(int, start), Q_ARG(int, end));
         QMetaObject::invokeMethod(field, "deselect");
     };
-    const auto copySelection = [field] {
+    const auto copySelection = [this, field] {
         if (!field)
             return;
-        input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(
             field->property("selectedText").toString()));
     };
 
@@ -308,7 +330,7 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
         connect(addEntry(qtTrId("cut_text")), &TContextMenuEntryItem::triggered, this, [=] {
             const QString text = field ? field->property("selectedText").toString() : QString();
             removeSelection();
-            input::publish(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(text));
         });
     }
     bool copyShown = false;
@@ -373,14 +395,16 @@ void TContextMenuController::onRequestClose()
 {
     if (m_shield)
         m_shield->setVisible(false);
-    setKeyboardBlocked(false);
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->hideContextMenu();
     Q_EMIT contextMenuClosed();
 }
 
 void TContextMenuController::onAsyncShow()
 {
     onCalculatePosition();
-    setKeyboardBlocked(true);
+    if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
+        eventFilters->showContextMenu();
     if (m_shield)
         m_shield->setVisible(true);
 }
@@ -402,17 +426,6 @@ void TContextMenuController::onCalculatePosition()
     const QPointF position(std::max(x, area.left()), std::max(y, area.top()));
     if (m_menu->position() != position)
         m_menu->setPosition(position);
-}
-
-void TContextMenuController::setKeyboardBlocked(const bool blocked)
-{
-    if (blocked == m_keyboardBlocked)
-        return;
-    m_keyboardBlocked = blocked;
-    if (blocked)
-        qApp->installEventFilter(&m_discardKeys);
-    else
-        qApp->removeEventFilter(&m_discardKeys);
 }
 
 }

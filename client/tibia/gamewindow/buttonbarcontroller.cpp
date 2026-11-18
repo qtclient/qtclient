@@ -59,13 +59,6 @@ constexpr std::pair<const char*, int> ButtonNames[] = {
     { "taskboard", Buttons::TASKBOARD_DIALOG },
 };
 
-void publish(const A type, const int parameter = 0)
-{
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->parameter = parameter;
-    input::publish(action);
-}
-
 struct TProductShortcut {
     QString id;
     QString label;
@@ -314,11 +307,11 @@ TButtonBarController::TButtonBarController(QObject* parent)
         m_highlightRewardWallButton = on;
         Q_EMIT highlightRewardWallButtonChanged();
     };
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, [setRewardWallHighlight](const input::TGameAction&) {
+    m_gameActions.on(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, [setRewardWallHighlight](const input::IGameAction&) {
         setRewardWallHighlight(true);
         return true;
     });
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, [setRewardWallHighlight](const input::TGameAction&) {
+    m_gameActions.on(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, [setRewardWallHighlight](const input::IGameAction&) {
         setRewardWallHighlight(false);
         return true;
     });
@@ -326,8 +319,6 @@ TButtonBarController::TButtonBarController(QObject* parent)
 
 TButtonBarController::~TButtonBarController()
 {
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_READY_TO_PICK_UP, nullptr);
-    input::setActionHandler(input::EGameAction::DAILY_REWARD_NOT_COLLECTABLE, nullptr);
 }
 
 void TButtonBarController::setAttentionStorage(mods::AttentionBackend* storage)
@@ -408,32 +399,31 @@ void TButtonBarController::onDropdownButtonClicked()
 
 void TButtonBarController::toggleWidget(const int widgetType)
 {
-    auto action = input::mutableClone(*input::makeAction(A::TOGGLE_WIDGET));
-    action->instance = widgetType;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionToggleWidget>(widgetType);
+    Q_EMIT publishGameAction(action);
 }
 
 void TButtonBarController::onSkillButtonClicked() { toggleWidget(W::Skills); }
 void TButtonBarController::onBattleListButtonClicked() { toggleWidget(W::BattleList); }
 void TButtonBarController::onPartyListButtonClicked() { toggleWidget(W::PartyList); }
 void TButtonBarController::onVipWidgetButtonClicked() { toggleWidget(W::Vip); }
-void TButtonBarController::onQuestLogButtonClicked() { publish(A::OPEN_QUESTLOG_DIALOG); }
+void TButtonBarController::onQuestLogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenQuestLog>(0)); }
 void TButtonBarController::onQuestTrackerButtonClicked() { toggleWidget(W::QuestTracker); }
 void TButtonBarController::onBestiaryTrackerButtonClicked() { toggleWidget(W::BestiaryTracker); }
 void TButtonBarController::onBosstiaryTrackerButtonClicked() { toggleWidget(W::BosstiaryTracker); }
 void TButtonBarController::onUnjustifiedPointsButtonClicked() { toggleWidget(W::UnjustifiedPoints); }
 void TButtonBarController::onKillTrackerWidgetButtonClicked() { toggleWidget(W::Prey); }
-void TButtonBarController::onPreyDialogButtonClicked() { publish(A::OPEN_PREY_DIALOG); }
+void TButtonBarController::onPreyDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_PREY_DIALOG)); }
 void TButtonBarController::onSpellListWidgetButtonClicked() { toggleWidget(W::SpellList); }
 void TButtonBarController::onOptionsButtonClicked()
 {
-    publish(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS);
-    publish(A::OPEN_OPTIONS_MENU_DIALOG, 0);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0));
 }
 
 void TButtonBarController::onSwitchCharacterButtonClicked()
 {
-    publish(A::CHANGE_CHARACTER);
+    Q_EMIT publishGameAction(input::makeGameAction(A::CHANGE_CHARACTER));
 }
 
 void TButtonBarController::onLogoutButtonClicked()
@@ -447,29 +437,27 @@ void TButtonBarController::onLogoutButtonClicked()
     m_logoutQuestion->showMessage(qtTrId("warning"), qtTrId("buttonbar_logout_warning"));
 }
 
-void TButtonBarController::onRewardWallButtonClicked() { publish(A::REQUEST_OPEN_REWARD_WALL); }
+void TButtonBarController::onRewardWallButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OPEN_REWARD_WALL)); }
 void TButtonBarController::onAnalyticsSelectorWidgetButtonClicked() { toggleWidget(W::AnalyticsSelector); }
-void TButtonBarController::onLenshelpButtonClicked() { publish(A::LENSHELP_ACTIVATE); }
-void TButtonBarController::onHighscoresDialogButtonClicked() { publish(A::OPEN_HIGHSCORES_DIALOG); }
-void TButtonBarController::onExaltationForgeDialogButtonClicked() { publish(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG); }
-void TButtonBarController::onBossSlotsDialogButtonClicked() { publish(A::OPEN_CYCLOPEDIA, 7); }
-void TButtonBarController::onSkillWheelDialogButtonClicked() { publish(A::REQUEST_OWN_SKILL_WHEEL); }
+void TButtonBarController::onLenshelpButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::LENSHELP_ACTIVATE)); }
+void TButtonBarController::onHighscoresDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_HIGHSCORES_DIALOG)); }
+void TButtonBarController::onExaltationForgeDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG)); }
+void TButtonBarController::onBossSlotsDialogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenCyclopedia>(7)); }
+void TButtonBarController::onSkillWheelDialogButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OWN_SKILL_WHEEL)); }
 void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::ImbuementTracker); }
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
+    uint16_t typeId = 0;
     if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
         const container::TInventorySlot& left = inventory->slotAt(tibia::client::InventorySlotLeft);
-        if (!left.empty()) {
-            action->objectClientId = left.typeId;
-            action->instance = left.typeId;
-        }
+        if (!left.empty())
+            typeId = static_cast<uint16_t>(left.typeId);
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(typeId));
 }
-void TButtonBarController::onTaskboardDialogButtonClicked() { publish(A::OPEN_TASKBOARD_DIALOG); }
+void TButtonBarController::onTaskboardDialogButtonClicked() { Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); }
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
-void TButtonBarController::onManageShortcutsClicked() { publish(A::OPEN_OPTIONS_MENU_DIALOG, 2); }
+void TButtonBarController::onManageShortcutsClicked() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
 
 QStringList TButtonBarController::enabledShortcutIds() const
 {
@@ -573,7 +561,7 @@ void TButtonBarController::activateShortcut(const int buttonId)
         if (m_newsButtonController)
             QMetaObject::invokeMethod(m_newsButtonController, "onOpenNewsButtonClicked");
         else
-            input::publish(input::makeAction(input::EGameAction::OPEN_NEWS_DIALOG));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
         break;
     case B::CYCLOPEDIA_DIALOG:
         if (m_cyclopediaButtonController)

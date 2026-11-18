@@ -82,33 +82,6 @@ public:
     using cip::tibia::qmlcomponents::TGlobalConstantsService::TGlobalConstantsService;
 };
 
-class TLenshelpManager final : public cip::tibia::qmlcomponents::TLenshelpManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TLenshelpManager::TLenshelpManager;
-};
-
-class TLenshelpQuickItem final : public cip::tibia::qmlcomponents::TLenshelpQuickItem
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TLenshelpQuickItem::TLenshelpQuickItem;
-
-protected:
-    void hoverEnterEvent(QHoverEvent* event) override;
-    void hoverLeaveEvent(QHoverEvent* event) override;
-};
-
-class TNotMouseMoveEventFilter final : public cip::tibia::qmlcomponents::TNotMouseMoveEventFilter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TNotMouseMoveEventFilter::TNotMouseMoveEventFilter;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
 class TOffscreenOutlineTextToImageService final : public cip::tibia::qmlcomponents::TOffscreenOutlineTextToImageService
 {
     Q_OBJECT

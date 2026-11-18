@@ -7,6 +7,7 @@
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/npcdialogcontroller.h"
 #include "mods/registry.h"
+#include "input/eventfiltermanager.h"
 #include "input/inputciptypes.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/gameactionhandlers.h"
@@ -27,7 +28,6 @@
 #include <QJsonObject>
 #include <QTextLayout>
 #include <QTextBlock>
-#include <QTextDocumentFragment>
 
 #include <algorithm>
 #include <cmath>
@@ -36,6 +36,14 @@
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The plain text of an HTML chat line.
+QString htmlToPlainText(const QString& html)
+{
+    QTextDocument document;
+    document.setHtml(html);
+    return document.toPlainText();
+}
 
 using A = input::EGameAction;
 using chat::TChatChannel;
@@ -85,61 +93,6 @@ constexpr A TabMenuOrder[] = {
     A::CHAT_CHANNEL_MUTE, A::CHAT_CHANNEL_UNMUTE, A::CONTEXT_MENU_SEPARATOR, A::SAVE_CHAT_CHANNEL_TO_FILE, A::CLEAR_CHAT_CHANNEL,
 };
 
-input::TGameActionPtr textAction(const A type, const QString& text)
-{
-    std::shared_ptr<input::TGameAction> action;
-    switch (type) {
-    case A::COPY_TEXT_TO_CLIPBOARD:
-        action = std::make_shared<input::TGameActionCopyTextToClipboard>(text);
-        break;
-    case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
-        action = std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text);
-        break;
-    case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
-        action = std::make_shared<input::TGameActionCopyChatEntryToClipboard>(text);
-        break;
-    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        action = std::make_shared<input::TGameActionCopyCreatureNameToClipboard>(text);
-        break;
-    case A::ADD_NEW_VIP:
-        action = std::make_shared<input::TGameActionAddNewVip>(text);
-        break;
-    case A::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL:
-        action = std::make_shared<input::TGameActionExcludePlayerFromChatChannel>(text);
-        break;
-    case A::INVITE_PLAYER_TO_CHAT_CHANNEL:
-        action = std::make_shared<input::TGameActionChatChannelModeration>(type, text);
-        break;
-    case A::OPEN_MESSAGE_TO_CHAT_CHANNEL:
-    case A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL:
-    case A::IGNORE_NAME:
-    case A::UNIGNORE_NAME:
-    case A::REPORT_NAME:
-    case A::RECENTLY_TRADED:
-        action = std::make_shared<input::TGameActionCreatureWithName>(type, text);
-        break;
-    case A::SELECT_CHAT_CHANNEL_AS_SECONDARY:
-    case A::OPEN_CHAT_CHANNEL:
-    case A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT:
-    case A::CLOSE_CHAT_CHANNEL:
-    case A::CLEAR_CHAT_CHANNEL:
-    case A::CHAT_CHANNEL_MUTE:
-    case A::CHAT_CHANNEL_UNMUTE:
-    case A::SHOW_CHAT_CHANNEL_AS_SECONDARY:
-    case A::HIDE_SECONDARY_CHAT_CHANNEL:
-    case A::SAVE_CHAT_CHANNEL_TO_FILE:
-    case A::CHAT_CHANNEL_SELECT_ALL:
-        action = std::make_shared<input::TGameActionChatChannel>(type);
-        action->text = text;
-        break;
-    default:
-        action = input::mutableClone(*input::makeAction(type));
-        action->text = text;
-        break;
-    }
-    return action;
-}
-
 int ownLevel()
 {
     return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerLevel() : 0;
@@ -173,9 +126,8 @@ void own(QObject* object)
 
 TChatChannelController::TChatChannelController(QObject* parent)
     : cip::tibia::gamewindow::TChatChannelController(parent)
-    , m_filter(this)
+    , m_filter(this, this)
 {
-    m_filter.setChannelModel(this);
 }
 
 void TChatChannelController::setChannel(chat::TChatChannel* channel)
@@ -202,7 +154,6 @@ void TChatChannelController::setChannel(chat::TChatChannel* channel)
         Q_EMIT chatChannelPropertyChanged();
         Q_EMIT chatChannelChanged();
     }
-    m_filter.syncFromChannel(canSubscribeToServerLog(), isSubscribedToServerLog(), writesToLocalChat(), canBeClosed(), channelName());
 }
 
 void TChatChannelController::resetChannel()
@@ -214,7 +165,6 @@ void TChatChannelController::resetChannel()
         Q_EMIT chatChannelChanged();
     }
     clearRows();
-    m_filter.syncFromChannel(false, false, true, false, QString());
 }
 
 const chat::TChatEntry* TChatChannelController::entryAt(const int row) const
@@ -233,7 +183,7 @@ QString TChatChannelController::plainTextAt(const int row) const
         return {};
     const Row& r = m_rows[static_cast<size_t>(row)];
     if (r.plain.isNull())
-        r.plain = QTextDocumentFragment::fromHtml(r.html).toPlainText();
+        r.plain = htmlToPlainText(r.html);
     return r.plain;
 }
 
@@ -635,6 +585,11 @@ void TChatChannelController::selectAll()
     updateSelection(0, m_rows.front().plainLength);
 }
 
+void TChatChannelController::copySelectionToClipboard()
+{
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(selectedText()));
+}
+
 void TChatChannelController::selectTextPassage(const int entryIndex, const int passageStart, const int passageEnd)
 {
     if (entryIndex < 0 || entryIndex >= rowCount())
@@ -695,9 +650,6 @@ void TChatChannelController::onChannelClicked(const int entryId, const int mouse
 namespace {
 constexpr int ChannelNameRole = Qt::UserRole + 1;
 constexpr int TabHighlightRole = Qt::UserRole + 2;
-/// How long a tab flashes before it stays marked (TChatChannelTabRenderInfo
-/// : single-shot timer, 0x3e8 ms).
-constexpr int FlashMilliseconds = 1000;
 }
 
 TChatChannelTabController::TChatChannelTabController(chat::TChatChannelStorage& storage, QObject* parent)
@@ -706,6 +658,8 @@ TChatChannelTabController::TChatChannelTabController(chat::TChatChannelStorage& 
 {
     m_currentRowId = 0;
     m_rows = storage.channels();
+    for (chat::TChatChannel* channel : m_rows)
+        addRenderInfo(channel);
     connect(&storage, &chat::TChatChannelStorage::channelAdded, this, &TChatChannelTabController::onChannelAdded);
     connect(&storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatChannelTabController::onChannelRemoved);
     connect(&storage, &chat::TChatChannelStorage::entryAddedToChannel, this, &TChatChannelTabController::onEntryAdded);
@@ -717,8 +671,9 @@ TChatChannelTabController::TChatChannelTabController(chat::TChatChannelStorage& 
     connect(&storage, &chat::TChatChannelStorage::channelsReset, this, [this] {
         beginResetModel();
         m_rows = m_storage.channels();
-        m_highlights.clear();
-        m_flashInfos.clear();
+        m_renderInfos.clear();
+        for (chat::TChatChannel* channel : m_rows)
+            addRenderInfo(channel);
         m_currentRowId = 0;
         endResetModel();
         Q_EMIT currentRowIdChanged();
@@ -778,10 +733,30 @@ QHash<int, QByteArray> TChatChannelTabController::roleNames() const
 
 uint TChatChannelTabController::highlightOf(const int row) const
 {
-    if (row == m_currentRowId)
-        return CURRENT;
-    const auto it = m_highlights.find(channelAt(row));
-    return it == m_highlights.end() ? NONE : it->second;
+    const TChatChannelTabRenderInfo* info = renderInfo(channelAt(row));
+    return info ? info->tabHighlight() : NONE;
+}
+
+TChatChannelTabRenderInfo* TChatChannelTabController::renderInfo(const chat::TChatChannel* channel) const
+{
+    const auto it = m_renderInfos.find(channel);
+    return it == m_renderInfos.end() ? nullptr : it->second.get();
+}
+
+void TChatChannelTabController::addRenderInfo(chat::TChatChannel* channel)
+{
+    auto info = std::make_unique<TChatChannelTabRenderInfo>(channel);
+    connect(info.get(), &TChatChannelTabRenderInfo::tabHighlightChanged, this, &TChatChannelTabController::onTabHighlightChanged);
+    m_renderInfos[channel] = std::move(info);
+}
+
+void TChatChannelTabController::onTabHighlightChanged(chat::TChatChannel* channel)
+{
+    const int row = rowOf(channel);
+    if (row < 0)
+        return;
+    Q_EMIT dataChanged(index(row), index(row), { TabHighlightRole });
+    updateButtonHighlights();
 }
 
 void TChatChannelTabController::setCurrentRow(const int row)
@@ -793,19 +768,14 @@ void TChatChannelTabController::setCurrentRow(const int row)
         Q_EMIT currentChannelChanged(nullptr);
         return;
     }
-    TChatChannel* channel = channelAt(row);
-    const int previous = m_currentRowId;
+    if (TChatChannelTabRenderInfo* previous = renderInfo(channelAt(m_currentRowId));
+        previous && previous->tabHighlight() == CURRENT)
+        previous->setTabHighlight(TChatChannelTabRenderInfo::NONE);
     m_currentRowId = row;
-    if (previous >= 0 && previous < rowCount() && previous != row)
-        Q_EMIT dataChanged(index(previous), index(previous), { TabHighlightRole });
-    m_highlights.erase(channel);
-    if (auto it = m_flashInfos.find(channel); it != m_flashInfos.end()) {
-        it->second->stopFlash();
-        m_flashInfos.erase(it);
-    }
-    Q_EMIT dataChanged(index(row), index(row), { TabHighlightRole });
+    TChatChannel* channel = channelAt(row);
+    if (TChatChannelTabRenderInfo* info = renderInfo(channel))
+        info->setTabHighlight(TChatChannelTabRenderInfo::CURRENT);
     Q_EMIT currentRowIdChanged();
-    updateButtonHighlights();
     Q_EMIT currentChannelChanged(channel);
 }
 
@@ -861,6 +831,7 @@ void TChatChannelTabController::onChannelAdded(chat::TChatChannel* channel, cons
         row = static_cast<int>(m_rows.size());
         beginInsertRows({}, row, row);
         m_rows.push_back(channel);
+        addRenderInfo(channel);
         endInsertRows();
     }
     if (makeCurrent)
@@ -875,11 +846,7 @@ void TChatChannelTabController::onChannelRemoved(chat::TChatChannel* channel)
     if (row < 0)
         return;
     const bool wasCurrent = row == m_currentRowId;
-    m_highlights.erase(channel);
-    if (auto it = m_flashInfos.find(channel); it != m_flashInfos.end()) {
-        it->second->deleteLater();
-        m_flashInfos.erase(it);
-    }
+    m_renderInfos.erase(channel);
     beginRemoveRows({}, row, row);
     m_rows.erase(m_rows.begin() + row);
     endRemoveRows();
@@ -890,30 +857,14 @@ void TChatChannelTabController::onChannelRemoved(chat::TChatChannel* channel)
     setCurrentRow(m_currentRowId);
 }
 
-void TChatChannelTabController::onEntryAdded(chat::TChatChannel* channel, const bool fromOthers)
+void TChatChannelTabController::onEntryAdded(chat::TChatChannel* channel, const bool /*fromOthers*/)
 {
-    if (!fromOthers || channel == currentChannel() || channel->isMuted())
+    // NPC conversations and channels shown in the secondary pane do not flash;
+    // the current tab ignores it.
+    TChatChannelTabRenderInfo* info = renderInfo(channel);
+    if (!info || channel->identifier().type == chat::TChatChannelIdentifier::Npc || channel->isShownAsSecondaryChannel())
         return;
-    const int row = rowOf(channel);
-    if (row < 0)
-        return;
-    m_highlights[channel] = FLASH_NEW_ENTRY;
-    TChatChannelTabRenderInfo*& info = m_flashInfos[channel];
-    if (!info) {
-        info = new TChatChannelTabRenderInfo(this);
-        QObject::connect(info, &TChatChannelTabRenderInfo::flashFinished, this, [this, channel] {
-            const auto it = m_highlights.find(channel);
-            if (it == m_highlights.end())
-                return;
-            it->second = NEW_ENTRY;
-            if (const int r = rowOf(channel); r >= 0)
-                Q_EMIT dataChanged(index(r), index(r), { TabHighlightRole });
-            updateButtonHighlights();
-        });
-    }
-    info->startFlash(FlashMilliseconds);
-    Q_EMIT dataChanged(index(row), index(row), { TabHighlightRole });
-    updateButtonHighlights();
+    info->setTabHighlight(TChatChannelTabRenderInfo::FLASH_NEW_ENTRY);
 }
 
 void TChatChannelTabController::updateButtonHighlights()
@@ -969,6 +920,7 @@ QVariantMap TOpenChatChannelDialogController::initialDialogProperties() const
 void TOpenChatChannelDialogController::onCancelClicked()
 {
     dialog()->close();
+    Q_EMIT abort();
 }
 
 void TOpenChatChannelDialogController::onControllerFinished()
@@ -1002,13 +954,16 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     , m_actionProvider(
           m_storage,
           [this](input::TGameActionList& actions, const QString& name) {
-              actions.push_back(textAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
-              if (m_storage.ownChannel())
-                  actions.push_back(textAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
-              actions.push_back(textAction(A::REPORT_NAME, name));
-              actions.push_back(textAction(m_blacklist.isIgnored(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
+              actions.push_back(std::make_shared<input::TGameActionOpenMessageToChatChannel>(name));
+              if (const TChatChannel* own = m_storage.ownChannel())
+                  actions.push_back(std::make_shared<input::TGameActionInvitePlayerToPrivateChatChannel>(own->identifier().id, name));
+              actions.push_back(std::make_shared<input::TGameActionReportCharacter>(A::REPORT_NAME, name));
+              if (m_blacklist.isIgnored(name))
+                  actions.push_back(std::make_shared<input::TGameActionUnignoreName>(name));
+              else
+                  actions.push_back(std::make_shared<input::TGameActionIgnoreName>(name));
               if (!isVip(name))
-                  actions.push_back(textAction(A::ADD_NEW_VIP, name));
+                  actions.push_back(std::make_shared<input::TGameActionAddNewVip>(name));
           },
           [] { return app::ClientOptions::load().options().value(QLatin1String("consoleShowJoinLeaveMessages")).toBool(true); })
     , m_tabs(m_storage)
@@ -1021,11 +976,13 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     own(&m_secondary);
     own(&m_tabs);
     (void)m_gameActionHandler;
-    (void)m_chatStorage;
+    connect(&m_storage, &chat::TChatChannelStorage::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
+    connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
 
     if (client::gamecore::isRunning()) {
-        m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_blacklist);
-        connect(m_protocol.get(), &chat::TChatProtocolMessageHandler::channelListReceived, this, &TChatController::onChannelListReceived);
+        m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_chatStorage, m_blacklist);
+        connect(m_protocol.get(), &chat::TChatProtocolMessageHandler::currentlyAvailableChannels, this, &TChatController::onChannelListReceived);
     }
     connect(&m_blacklist, &chat::TWhiteBlacklist::messageFiltered, this, &TChatController::onMessageFiltered);
     m_blacklist.setVipQuery(isVip);
@@ -1034,16 +991,10 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     // CIP / : both console buttons flash for 1000 ms.
     m_ignoredFlashTimer.setSingleShot(true);
     m_ignoredFlashTimer.setInterval(1000);
-    connect(&m_ignoredFlashTimer, &QTimer::timeout, this, [this] {
-        m_ignoredFlash = false;
-        Q_EMIT messageIgnoredFlashChanged();
-    });
+    connect(&m_ignoredFlashTimer, &QTimer::timeout, this, &TChatController::onIgnoredFlashTimeout);
     m_exivaSuppressedTimer.setSingleShot(true);
     m_exivaSuppressedTimer.setInterval(1000);
-    connect(&m_exivaSuppressedTimer, &QTimer::timeout, this, [this] {
-        m_exivaSuppressedFlash = false;
-        Q_EMIT exivaSuppressedFlashChanged();
-    });
+    connect(&m_exivaSuppressedTimer, &QTimer::timeout, this, &TChatController::onExivaSuppressedFlashTimeout);
 
     for (TGenericEnterTextDialogController* prompt : { &m_inviteDialog, &m_excludeDialog }) {
         const bool exclude = prompt == &m_excludeDialog;
@@ -1054,18 +1005,14 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
                 exclude ? &TChatController::onPlayerNameToExcludeFromChatChannelReceived
                         : &TChatController::onPlayerNameToInviteToChatChannelReceived);
     }
-    m_messageDialog.setButtons(
-        { new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
+    m_messageDialog.setButtons(okDialogButtons());
     m_messageDialog.setCloseOnButtonClicked(true);
 
     connect(&m_mode, &chat::TChatModeManager::chatModeChanged, this, &TChatController::chatModeChanged);
     connect(&m_storage, &chat::TChatChannelStorage::channelAdded, this, &TChatController::onChannelAdded);
     connect(&m_tabs, &TChatChannelTabController::currentChannelChanged, &m_primary, &TChatChannelController::setChannel);
     connect(&m_tabs, &TChatChannelTabController::tabClicked, this, &TChatController::showTabMenu);
-    connect(&m_storage, &chat::TChatChannelStorage::channelRemoved, this, [this](TChatChannel* channel) {
-        if (m_secondary.channel() == channel)
-            setSecondary(nullptr);
-    });
+    connect(&m_storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatController::onChatChannelRemoved);
     for (TChatChannelController* model : { &m_primary, &m_secondary }) {
         connect(model, &TChatChannelController::closeRequested, this, &TChatController::closeChannel);
         connect(model, &TChatChannelController::entryClicked, this,
@@ -1100,22 +1047,19 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
     }
 
-    // CipSoft: Ctrl/Cmd+C copies chat-output selection when present (TextEdits
-    // are not focusable — clipboard handler alone would only see chat input).
-    m_copySelectionListenerId = input::addActionListener(
-        A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::TGameAction&) {
-            QString text = m_primary.selectedText();
-            if (text.isEmpty())
-                text = m_secondary.selectedText();
-            if (text.isEmpty())
-                return false;
-            if (QClipboard* clip = QGuiApplication::clipboard())
-                clip->setText(text);
-            return true;
-        });
+    // Every handler sees these actions; the chat acts unless the NPC dialog
+    // holds the keyboard.
+    m_gameActions.on(A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, [this](const input::IGameAction&) {
+        if (!m_npcDialog || !m_npcDialog->hasFocus())
+            copySelectedText();
+    });
+    m_gameActions.on(A::REQUEST_SELECT_ALL_TEXT, [this](const input::IGameAction&) {
+        if (!m_npcDialog || !m_npcDialog->hasFocus())
+            selectAllText();
+    });
 
     m_primary.setChannel(m_tabs.currentChannel());
     bindItem();
@@ -1123,11 +1067,6 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
 
 TChatController::~TChatController()
 {
-    if (m_copySelectionListenerId)
-        input::removeActionListener(m_copySelectionListenerId);
-    for (const A type : HandledActions) {
-        input::setActionHandler(type, nullptr);
-    }
 }
 
 void TChatController::setChatItem(QQuickItem* chatItem)
@@ -1248,20 +1187,32 @@ void TChatController::storeOpenChannels() const
 
 void TChatController::onMessageFiltered()
 {
-    if (!m_ignoredFlash) {
-        m_ignoredFlash = true;
-        Q_EMIT messageIgnoredFlashChanged();
-    }
+    m_ignoredFlash = true;
+    Q_EMIT messageIgnoredFlashChanged();
     m_ignoredFlashTimer.start();
 }
 
 void TChatController::onExivaSuppressed()
 {
-    if (!m_exivaSuppressedFlash) {
-        m_exivaSuppressedFlash = true;
-        Q_EMIT exivaSuppressedFlashChanged();
-    }
+    m_exivaSuppressedFlash = true;
+    Q_EMIT exivaSuppressedFlashChanged();
     m_exivaSuppressedTimer.start();
+}
+
+void TChatController::onIgnoredFlashTimeout()
+{
+    if (!m_ignoredFlash)
+        return;
+    m_ignoredFlash = false;
+    Q_EMIT messageIgnoredFlashChanged();
+}
+
+void TChatController::onExivaSuppressedFlashTimeout()
+{
+    if (!m_exivaSuppressedFlash)
+        return;
+    m_exivaSuppressedFlash = false;
+    Q_EMIT exivaSuppressedFlashChanged();
 }
 
 bool TChatController::exivaOptionsAvailable() const
@@ -1271,12 +1222,12 @@ bool TChatController::exivaOptionsAvailable() const
 
 void TChatController::openWhiteBlacklistDialog()
 {
-    input::publish(input::makeAction(A::OPEN_WHITEBLACKLIST_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_WHITEBLACKLIST_DIALOG));
 }
 
 void TChatController::openExivaOptionsDialog()
 {
-    input::publish(input::makeAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
 }
 
 void TChatController::addLogMessage(const QString& text)
@@ -1351,25 +1302,20 @@ void TChatController::showRecentlyTraded(const QString& name)
     m_messageDialog.showMessage(qtTrId("recently_traded_titel"), qtTrId("recently_traded_text").arg(name));
 }
 
-void TChatController::onChannelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels)
+void TChatController::onChannelListReceived(const std::vector<TChatChannelIdentifier>& channels)
 {
     if (!m_channelListRequested)
         return;
     m_channelListRequested = false;
-    std::vector<TChatChannelIdentifier> list;
-    list.reserve(channels.size() + 2);
-    for (const auto& [id, name] : channels) {
-        if (id == 0xFFFF)
-            list.push_back({ TChatChannelIdentifier::OwnPrivateChannelToOpen, id, name });
-        else
-            list.push_back(TChatChannelIdentifier::channel(id, name));
-    }
-    list.push_back({ TChatChannelIdentifier::Npc });
-    list.push_back({ TChatChannelIdentifier::Loot });
-    m_openDialog.open(list);
+    m_openDialog.open(channels);
 }
 
 void TChatController::requestChannelList()
+{
+    Q_EMIT publishGameAction(input::makeGameAction(A::GET_CHAT_CHANNEL_LIST));
+}
+
+void TChatController::requestChannelListFromServer()
 {
     if (!tibia::game::isOnline())
         return;
@@ -1524,7 +1470,8 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     if (!channel) {
         static constexpr tibia::client::MessageMode Modes[] = { tibia::client::MessageWhisper, tibia::client::MessageSay, tibia::client::MessageYell };
         // CIP : crosshair spells by cast type.
-        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType);
+        input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType,
+                   [this](const input::IGameActionPtr& action) { Q_EMIT publishGameAction(action); });
         return;
     }
     const TChatChannelIdentifier& identifier = channel->identifier();
@@ -1554,9 +1501,7 @@ void TChatController::sendPrivate(const QString& recipient, const QString& text,
 void TChatController::sendKeyword(const QString& keyword)
 {
     // The keyword is sent right away, through the game action.
-    auto action = std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(keyword);
-    action->enable = true;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(keyword, true));
 }
 
 void TChatController::setInputText(const QString& text, const bool sendDirectly)
@@ -1673,25 +1618,43 @@ void TChatController::onSecondaryChannelClicked(const int mouseButtonRaw, const 
     showTabMenu(m_secondary.channel(), mouseButtonRaw, keyboardModifiersRaw);
 }
 
+void TChatController::onChatChannelRemoved(TChatChannel* channel)
+{
+    // The secondary pane hides when its channel goes.
+    if (m_secondary.channel() == channel)
+        setSecondary(nullptr);
+}
+
 void TChatController::onSelectTabAsSecondaryChannel(const int rowId)
 {
     if (TChatChannel* channel = m_tabs.channelAt(rowId))
         setSecondary(channel);
 }
 
-bool TChatController::handleAction(const input::TGameAction& action)
+bool TChatController::handleAction(const input::IGameAction& action)
 {
     const bool noDialog = !TDialogStackController::instance() || TDialogStackController::instance()->isEmpty();
-    switch (action.type) {
+    const auto* channelAction = input::gameActionAs<input::TGameActionChatChannel>(&action);
+    const auto* visibleAction = input::gameActionAs<input::TGameActionVisibleChatChannel>(&action);
+    // CIP TGameActionVisibleChatChannel: the pane the action is for.
+    const auto visibleChannel = [&]() -> TChatChannel* {
+        return visibleAction && visibleAction->isSecondaryChannel() ? m_secondary.channel() : m_primary.channel();
+    };
+    // CIP TGameActionChatChannel: the channel the action names.
+    const auto namedChannel = [&]() -> TChatChannel* {
+        return channelAction ? m_storage.find(channelAction->chatChannelIdentifier()) : nullptr;
+    };
+    switch (action.gameActionType()) {
     case A::GET_CHAT_CHANNEL_LIST:
-        requestChannelList();
+        requestChannelListFromServer();
         return true;
     case A::OPEN_CHAT_CHANNEL:
     case A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT: {
+        if (!channelAction)
+            return true;
         // CIP : server channels are joined, the client's own opened.
-        const bool makeCurrent = action.type == A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT;
-        const TChatChannelIdentifier identifier{ TChatChannelIdentifier::Type(action.chatChannelType),
-                                                 static_cast<uint16_t>(action.chatChannelId), action.text };
+        const bool makeCurrent = action.gameActionType() == A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT;
+        const TChatChannelIdentifier& identifier = channelAction->chatChannelIdentifier();
         switch (identifier.type) {
         case TChatChannelIdentifier::ChannelId:
             tibia::game::joinChannel(identifier.id);
@@ -1710,8 +1673,8 @@ bool TChatController::handleAction(const input::TGameAction& action)
         return true;
     }
     case A::OPEN_MESSAGE_TO_CHAT_CHANNEL:
-        if (!action.text.isEmpty())
-            tibia::game::openPrivateChannel(action.text.toStdString());
+        if (channelAction && !channelAction->chatChannelIdentifier().name.isEmpty())
+            tibia::game::openPrivateChannel(channelAction->chatChannelIdentifier().name.toStdString());
         return true;
     case A::CLOSE_CURRENT_CHAT_CHANNEL:
         closeChannel(m_tabs.currentChannel());
@@ -1721,12 +1684,14 @@ bool TChatController::handleAction(const input::TGameAction& action)
         return true;
     case A::INVITE_PLAYER_TO_CHAT_CHANNEL:
     case A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL:
-        if (!action.text.isEmpty())
-            tibia::game::inviteToOwnChannel(action.text.toStdString());
+        if (const auto* invite = input::gameActionAs<input::TGameActionChatChannelModeration>(&action);
+            invite && !invite->playerName().isEmpty())
+            tibia::game::inviteToOwnChannel(invite->playerName().toStdString());
         return true;
     case A::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL:
-        if (!action.text.isEmpty())
-            tibia::game::excludeFromOwnChannel(action.text.toStdString());
+        if (const auto* exclude = input::gameActionAs<input::TGameActionChatChannelModeration>(&action);
+            exclude && !exclude->playerName().isEmpty())
+            tibia::game::excludeFromOwnChannel(exclude->playerName().toStdString());
         return true;
     case A::PRESS_ENTER_IN_CHAT:
         // product: while the NPC dialog is open, Enter drives that input (CIP
@@ -1736,24 +1701,29 @@ bool TChatController::handleAction(const input::TGameAction& action)
                 m_npcDialog->takeFocus();
             else
                 m_npcDialog->pressEnter();
-        } else if (noDialog || !TDialogStackController::instance()->hotkeysBlocked()) {
+        } else if (const input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance();
+                   noDialog || !eventFilters || !eventFilters->isBlocked()) {
             pressEnter();
         }
         return true;
-    case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT:
+    case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: {
+        const auto* input = input::gameActionAs<input::TGameActionSetCurrentChatChannelInputText>(&action);
+        if (!input)
+            return true;
         if (m_npcDialog && m_npcDialog->isShown()) {
-            m_npcDialog->setInputText(action.text, action.enable, action.isSpell, action.spellCastType);
+            m_npcDialog->setInputText(input->text(), input->sendAutomatically(), input->isSpell(), input->spellCastOptionalTargetType());
             return true;
         }
         // CIP : sent text goes out at say volume with the hotkey's
         // spell flags, and the input is cleared.
-        if (action.enable && m_chatItem) {
-            sendChatMessage(action.text, 0, action.isSpell, action.spellCastType);
+        if (input->sendAutomatically() && m_chatItem) {
+            sendChatMessage(input->text(), 0, input->isSpell(), input->spellCastOptionalTargetType());
             m_chatItem->setProperty("currentChatInput", QString());
         } else {
-            setInputText(action.text, action.enable);
+            setInputText(input->text(), input->sendAutomatically());
         }
         return true;
+    }
     case A::DISPLAY_NEXT_CHAT_CHANNEL_TAB:
         m_tabs.onMakeNextChannelCurrent();
         return true;
@@ -1761,120 +1731,147 @@ bool TChatController::handleAction(const input::TGameAction& action)
         m_tabs.onMakePreviousChannelCurrent();
         return true;
     case A::ADD_SYSTEM_CHAT_MESSAGE:
-        m_storage.addSystemEntry(m_tabs.currentChannel(), action.color.isValid() ? action.color : chat::systemWhite(), action.text);
+        if (const auto* message = input::gameActionAs<input::TGameActionAddTextMessage>(&action))
+            m_storage.addSystemEntry(m_tabs.currentChannel(), message->color().isValid() ? message->color() : chat::systemWhite(),
+                                     message->text());
         return true;
     case A::IGNORE_NAME:
-        m_blacklist.ignore(action.text);
-        addLogMessage(qtTrId("ignoring_player_log_message").arg(action.text));
+        if (const auto* ignore = input::gameActionAs<input::TGameActionIgnoreName>(&action)) {
+            m_blacklist.ignore(ignore->name());
+            addLogMessage(qtTrId("ignoring_player_log_message").arg(ignore->name()));
+        }
         return true;
     case A::UNIGNORE_NAME:
-        m_blacklist.unignore(action.text);
-        addLogMessage(qtTrId("unignoring_player_log_message").arg(action.text));
+        if (const auto* unignore = input::gameActionAs<input::TGameActionUnignoreName>(&action)) {
+            m_blacklist.unignore(unignore->name());
+            addLogMessage(qtTrId("unignoring_player_log_message").arg(unignore->name()));
+        }
         return true;
     case A::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME:
-        sendChatMessage(action.text, action.parameter, action.isSpell, action.spellCastType);
+        if (const auto* say = input::gameActionAs<input::TGameActionSendChatMessageWithSpeechVolume>(&action))
+            sendChatMessage(say->text(), say->speechVolume(), false, 0);
         return true;
     case A::SEND_CHAT_MESSAGE_AS_GAMEMASTER_BROADCAST:
-        if (!action.text.isEmpty())
-            tibia::game::talkChannel(tibia::client::MessageGamemasterBroadcast, 0, action.text.toStdString());
+        if (const auto* say = input::gameActionAs<input::TGameActionSendChatMessage>(&action); say && !say->text().isEmpty())
+            tibia::game::talkChannel(tibia::client::MessageGamemasterBroadcast, 0, say->text().toStdString());
         return true;
     case A::SEND_CHAT_MESSAGE_WITH_CHANNEL_ID:
-        if (!action.text.isEmpty())
-            tibia::game::talkChannel(tibia::client::MessageChannel, static_cast<uint16_t>(action.chatChannelId), action.text.toStdString());
+        if (const auto* say = input::gameActionAs<input::TGameActionSendChatMessageWithChannelID>(&action);
+            say && !say->text().isEmpty())
+            tibia::game::talkChannel(tibia::client::MessageChannel, say->channelId(), say->text().toStdString());
         return true;
     case A::SEND_CHAT_MESSAGE_WITH_RECIPIENT:
-        // CIP: recipient in `text`, message body in `statement` (hotkey private message).
-        if (!action.text.isEmpty() && !action.statement.isEmpty())
-            sendPrivate(action.text, action.statement, false);
+        if (const auto* say = input::gameActionAs<input::TGameActionSendChatMessageWithRecipient>(&action);
+            say && !say->recipient().isEmpty() && !say->text().isEmpty())
+            sendPrivate(say->recipient(), say->text(), false);
         return true;
     case A::SEND_CHAT_MESSAGE_TO_NPC:
-        if (!action.text.isEmpty())
-            tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, action.text.toStdString());
+        if (const auto* say = input::gameActionAs<input::TGameActionSendChatMessageToNpc>(&action); say && !say->text().isEmpty())
+            tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, say->text().toStdString());
         return true;
-    case A::SWITCH_CHAT_MODE:
+    case A::SWITCH_CHAT_MODE: {
         // CIP Enter-from-chat-off → ChatModeTemporaryOn. With an NPC dialog open,
         // focus that input instead of opening HudChat (bubble stays closed).
-        if (action.parameter == chat::TChatModeManager::CHAT_TEMPORARY_ON && m_npcDialog
-            && m_npcDialog->isShown()) {
-            m_mode.handleGameAction(action);
-            m_npcDialog->takeFocus();
-            return true;
-        }
+        const auto* mode = input::gameActionAs<input::TGameActionSwitchChatMode>(&action);
         m_mode.handleGameAction(action);
+        if (mode && mode->chatMode() == chat::TChatModeManager::CHAT_TEMPORARY_ON && m_npcDialog && m_npcDialog->isShown())
+            m_npcDialog->takeFocus();
         return true;
+    }
     case A::OPEN_WHITEBLACKLIST_DIALOG:
         m_whiteBlacklistDialog.open();
         return true;
     case A::OPEN_INVITE_TO_CHAT_CHANNEL_DIALOG:
     case A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG:
-        // The parameter names the pane whose channel the prompt is for.
-        if (action.parameter == 0 || action.parameter == 1)
-            openInviteDialog(action.parameter == 1 ? m_secondary.channel() : m_primary.channel(),
-                             action.type == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
+        if (visibleAction)
+            openInviteDialog(visibleChannel(), action.gameActionType() == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
         return true;
     case A::SAVE_CHAT_CHANNEL_TO_FILE:
-        saveChannel(action.parameter == 1 ? m_secondary.channel() : m_primary.channel());
+        if (visibleAction)
+            saveChannel(visibleChannel());
         return true;
     case A::RECENTLY_TRADED:
-        showRecentlyTraded(action.text);
+        if (const auto* traded = input::gameActionAs<input::TGameActionRecentlyTraded>(&action))
+            showRecentlyTraded(traded->name());
         return true;
     case A::GET_GUILD_MESSAGE:
         tibia::game::requestGuildMessage();
         return true;
     case A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES:
     case A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES:
-        app::ClientOptions::store(QStringLiteral("consoleShowJoinLeaveMessages"), action.type == A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES);
+        app::ClientOptions::store(QStringLiteral("consoleShowJoinLeaveMessages"),
+                                  action.gameActionType() == A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES);
         return true;
     case A::EXIVA_WAS_SUPPRESSED:
         onExivaSuppressed();
         return true;
     case A::CLOSE_CHAT_CHANNEL:
-        closeChannel(m_tabs.currentChannel());
+        closeChannel(namedChannel());
         return true;
     case A::CLEAR_CHAT_CHANNEL:
-        if (TChatChannel* channel = m_tabs.currentChannel())
+        if (TChatChannel* channel = namedChannel())
             channel->clear();
         return true;
     case A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG:
     case A::CHAT_CHANNEL_UNSUBSCRIBE_SERVER_LOG:
-        if (TChatChannel* channel = m_tabs.currentChannel())
-            channel->setSubscribedToServerLog(action.type == A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG);
+        if (TChatChannel* channel = namedChannel())
+            channel->setSubscribedToServerLog(action.gameActionType() == A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG);
         return true;
     case A::CHAT_CHANNEL_MUTE:
     case A::CHAT_CHANNEL_UNMUTE:
-        if (TChatChannel* channel = m_tabs.currentChannel()) {
-            channel->setMuted(action.type == A::CHAT_CHANNEL_MUTE);
-        }
+        if (TChatChannel* channel = namedChannel())
+            channel->setMuted(action.gameActionType() == A::CHAT_CHANNEL_MUTE);
         return true;
     case A::SHOW_CHAT_CHANNEL_AS_SECONDARY:
     case A::SELECT_CHAT_CHANNEL_AS_SECONDARY:
-        if (!action.text.isEmpty()) {
-            for (TChatChannel* each : m_storage.channels()) {
-                if (each->name().compare(action.text, Qt::CaseInsensitive) == 0) {
-                    setSecondary(each);
-                    return true;
-                }
-            }
-        }
-        setSecondary(m_tabs.currentChannel());
+        if (TChatChannel* channel = namedChannel())
+            setSecondary(channel);
         return true;
     case A::HIDE_SECONDARY_CHAT_CHANNEL:
         setSecondary(nullptr);
         return true;
     case A::CHAT_CHANNEL_SELECT_ALL:
-        // The parameter names the pane: 0 the primary, 1 the secondary channel.
-        if (action.parameter == 0)
-            m_primary.selectAll();
-        else if (action.parameter == 1)
-            m_secondary.selectAll();
+        if (visibleAction) {
+            if (visibleAction->isSecondaryChannel())
+                m_secondary.selectAll();
+            else
+                m_primary.selectAll();
+        }
         return true;
     case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
-        if (!action.text.isEmpty())
-            QGuiApplication::clipboard()->setText(action.text);
+        if (const auto* copy = input::gameActionAs<input::TGameActionCopyTextToClipboard>(&action); copy && !copy->text().isEmpty())
+            QGuiApplication::clipboard()->setText(copy->text());
         return true;
     default:
         return false;
     }
+}
+
+void TChatController::selectAllText()
+{
+    if (!m_chatItem || !m_chatItem->property("keepChatInputFocus").toBool())
+        return;
+    if (m_chatItem->property("currentChatInput").toString().isEmpty()) {
+        m_primary.selectAll();
+        return;
+    }
+    m_primary.startNewSelection(0, 0);
+    QMetaObject::invokeMethod(m_chatItem, "selectAllChatInput");
+}
+
+void TChatController::copySelectedText()
+{
+    if (!m_chatItem)
+        return;
+    const QString inputSelection = m_chatItem->property("currentChatInputSelectedText").toString();
+    if (!inputSelection.isEmpty()) {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(inputSelection));
+        return;
+    }
+    if (m_primary.hasSelection())
+        m_primary.copySelectionToClipboard();
+    else if (m_secondary.hasSelection())
+        m_secondary.copySelectionToClipboard();
 }
 
 void TChatController::showEntryMenu(TChatChannelController* model, const int row, const int button, const int modifiers)
@@ -1896,16 +1893,14 @@ void TChatController::showTabMenu(chat::TChatChannel* channel, const int button,
         if (!menu || m_mapper.map(candidates, ChatTabContext, static_cast<Qt::MouseButton>(button), modifiers) == nullptr)
             return;
         menu->beginCustomMenu();
-        for (const input::TGameActionPtr& action : candidates) {
-            if (action->type != A::SELECT_CHAT_CHANNEL_AS_SECONDARY)
+        for (const input::IGameActionPtr& candidate : candidates) {
+            const auto* select = input::gameActionAs<input::TGameActionChatChannel>(candidate);
+            if (!select || candidate->gameActionType() != A::SELECT_CHAT_CHANNEL_AS_SECONDARY)
                 continue;
-            const TChatChannelIdentifier identifier = chat::TChatGameActionProvider::identifierOf(*action);
-            auto labelled = input::mutableClone(*action);
-            labelled->text = identifier.displayName();
             QString shortcut;
-            const QString label = TContextMenuController::labelOf(*labelled, shortcut);
+            const QString label = TContextMenuController::labelOf(*candidate, shortcut);
             connect(menu->addCustomEntry(label, shortcut), &TContextMenuEntryItem::triggered, this,
-                    [this, target = QPointer<TChatChannel>(m_storage.find(identifier))] { setSecondary(target); });
+                    [this, target = QPointer<TChatChannel>(m_storage.find(select->chatChannelIdentifier()))] { setSecondary(target); });
         }
         menu->showCustomMenu();
         return;
@@ -1916,11 +1911,11 @@ void TChatController::showTabMenu(chat::TChatChannel* channel, const int button,
 void TChatController::showMenu(const input::TGameActionList& candidates, const std::span<const input::EGameAction> order, const int context,
                                const int button, const int modifiers, TChatChannelController* model, chat::TChatChannel* channel)
 {
-    const input::TGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
+    const input::IGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
     if (!picked)
         return;
-    if (picked->type != A::CONTEXT_MENU) {
-        runMenuAction(*picked, model, channel);
+    if (picked->gameActionType() != A::CONTEXT_MENU) {
+        runMenuAction(picked, model, channel);
         return;
     }
     auto* menu = TContextMenuController::instance();
@@ -1928,8 +1923,8 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
     if (!menu || entries.empty())
         return;
     menu->beginCustomMenu();
-    for (const input::TGameActionPtr& action : entries) {
-        if (action->type == A::CONTEXT_MENU_SEPARATOR) {
+    for (const input::IGameActionPtr& action : entries) {
+        if (action->gameActionType() == A::CONTEXT_MENU_SEPARATOR) {
             menu->addCustomSeparator();
             continue;
         }
@@ -1937,15 +1932,15 @@ void TChatController::showMenu(const input::TGameActionList& candidates, const s
         const QString label = TContextMenuController::labelOf(*action, shortcut);
         connect(menu->addCustomEntry(label, shortcut), &TContextMenuEntryItem::triggered, this,
                 [this, action, target = QPointer<TChatChannelController>(model), tab = QPointer<TChatChannel>(channel)] {
-                    runMenuAction(*action, target, tab);
+                    runMenuAction(action, target, tab);
                 });
     }
     menu->showCustomMenu();
 }
 
-void TChatController::runMenuAction(const input::TGameAction& action, TChatChannelController* model, chat::TChatChannel* channel)
+void TChatController::runMenuAction(const input::IGameActionPtr& action, TChatChannelController* model, chat::TChatChannel* channel)
 {
-    switch (action.type) {
+    switch (action->gameActionType()) {
     case A::CHAT_CHANNEL_SELECT_ALL:
         if (model)
             model->selectAll();
@@ -1953,11 +1948,8 @@ void TChatController::runMenuAction(const input::TGameAction& action, TChatChann
     case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
     case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
     case A::COPY_TEXT_TO_CLIPBOARD:
-        QGuiApplication::clipboard()->setText(action.text);
-        return;
-    case A::ADD_NEW_VIP:
-        // The VIP list's game action handler sends AddBuddy.
-        input::publish(std::make_shared<input::TGameActionAddNewVip>(action.text));
+        if (const auto* copy = input::gameActionAs<input::TGameActionCopyTextToClipboard>(action))
+            QGuiApplication::clipboard()->setText(copy->text());
         return;
     case A::CLOSE_CHAT_CHANNEL:
         closeChannel(channel);
@@ -1969,13 +1961,12 @@ void TChatController::runMenuAction(const input::TGameAction& action, TChatChann
     case A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG:
     case A::CHAT_CHANNEL_UNSUBSCRIBE_SERVER_LOG:
         if (channel)
-            channel->setSubscribedToServerLog(action.type == A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG);
+            channel->setSubscribedToServerLog(action->gameActionType() == A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG);
         return;
     case A::CHAT_CHANNEL_MUTE:
     case A::CHAT_CHANNEL_UNMUTE:
-        if (channel) {
-            channel->setMuted(action.type == A::CHAT_CHANNEL_MUTE);
-        }
+        if (channel)
+            channel->setMuted(action->gameActionType() == A::CHAT_CHANNEL_MUTE);
         return;
     case A::SHOW_CHAT_CHANNEL_AS_SECONDARY:
     case A::SELECT_CHAT_CHANNEL_AS_SECONDARY:
@@ -1989,10 +1980,11 @@ void TChatController::runMenuAction(const input::TGameAction& action, TChatChann
         return;
     case A::OPEN_INVITE_TO_CHAT_CHANNEL_DIALOG:
     case A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG:
-        openInviteDialog(channel, action.type == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
+        openInviteDialog(channel, action->gameActionType() == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
         return;
     default:
-        input::publish(input::mutableClone(action));
+        // ADD_NEW_VIP goes to the VIP list's game action handler (AddBuddy).
+        Q_EMIT publishGameAction(action);
         return;
     }
 }

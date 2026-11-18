@@ -1,6 +1,8 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "input/gameactionptr.h"
 
 #include <QObject>
 
@@ -50,12 +52,18 @@ public:
     TPreyDialogController* prey() const { return m_prey; }
     TQuestLogController* questLog() const { return m_questLog; }
     TCyclopediaButtonController* cyclopediaButton() const { return m_cyclopediaButton; }
+    TCyclopediaDialogController* cyclopedia() const { return m_cyclopedia; }
     TBosstiaryButtonController* bosstiaryButton() const { return m_bosstiaryButton; }
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// The local minimap the Cyclopedia map's LocalMinimap mode draws.
     void setMinimapTileStorage(minimap::TMinimapTileStorage* tiles);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
+
+
+Q_SIGNALS:
+    /// The dialogs' publishGameAction, forwarded (qtclient groups them here).
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     void hookOutfitDialog();
@@ -76,6 +84,14 @@ private:
     TCyclopediaDialogController* m_cyclopedia;
     TCyclopediaButtonController* m_cyclopediaButton;
     TBosstiaryButtonController* m_bosstiaryButton;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

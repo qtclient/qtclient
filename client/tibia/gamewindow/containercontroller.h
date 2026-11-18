@@ -100,7 +100,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// CIP moc signal (shared_ptr arg skipped); qtclient name parity — live split via SHOW_SPLIT_STACK_DIALOG.
     void showSplitStackDialog();
 

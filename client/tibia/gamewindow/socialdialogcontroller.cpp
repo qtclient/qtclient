@@ -5,6 +5,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
+#include <tibia/game/gamesession.h>
+
 namespace tibia::gamewindow {
 
 namespace {
@@ -38,7 +40,14 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     m_configurationController = m_config;
     m_joinTeamController = m_join;
     m_assembleTeamController = m_assemble;
-    m_hasPremium = true;
+    connect(m_friends, &TFriendsFriendListPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_invites, &TFriendsInvitesPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_search, &TFriendsAccountSearchPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_badges, &TFriendsBadgesPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_config, &TFriendsConfigurationPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_join, &TTeamJoinPageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_assemble, &TTeamAssemblePageController::publishGameAction, this, &TSocialDialogController::publishGameAction);
+    connect(m_button, &TSocialButtonController::publishGameAction, this, &TSocialDialogController::publishGameAction);
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
     m_errorDialog->setCloseOnButtonClicked(true);
@@ -48,15 +57,13 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
             &TSocialDialogController::onGenericFriendSystemError);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)
         g_socialDialog = this;
 }
 
 TSocialDialogController::~TSocialDialogController()
 {
-    input::setActionHandler(input::EGameAction::OPEN_SOCIAL_DIALOG, nullptr);
-    input::setActionHandler(input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT, nullptr);
     if (g_socialDialog == this)
         g_socialDialog = nullptr;
 }
@@ -112,9 +119,10 @@ bool TSocialDialogController::refreshButtonVisible() const
     return m_dialogTab == JoinTeam;
 }
 
+/// The local player's premium state, false without a player.
 bool TSocialDialogController::hasPremium() const
 {
-    return m_hasPremium;
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 cip::tibia::gamewindow::IDialogTabPage* TSocialDialogController::page(const EDialogTab tab) const
@@ -173,13 +181,13 @@ void TSocialDialogController::onGenericFriendSystemError(const QString& errorMes
     showErrorMessage(errorMessage);
 }
 
-bool TSocialDialogController::handleGameAction(const input::TGameAction& action)
+bool TSocialDialogController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::OPEN_SOCIAL_DIALOG) {
-        // Parameter p opens tab p + 1; anything else the friend list.
-        const int parameter = action.parameter;
-        showDialog(parameter >= 0 && parameter <= 6 ? static_cast<EDialogTab>(parameter + 1) : FriendList);
-    } else if (action.type == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
+    if (const auto* open = input::gameActionAs<input::TGameActionOpenSocialDialog>(&action)) {
+        // Tab t opens EDialogTab t + 1; anything else the friend list.
+        const int tab = open->tab();
+        showDialog(tab >= 0 && tab <= 6 ? static_cast<EDialogTab>(tab + 1) : FriendList);
+    } else if (action.gameActionType() == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
         setTab(AccountSearch);
     }
     // The account search page runs its own actions (a new search).

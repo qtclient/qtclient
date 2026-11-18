@@ -11,8 +11,9 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
+#include "game/gamesessionbase.h"
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QGuiApplication>
@@ -80,10 +81,10 @@ void toggleOption(const char* name)
     app::ClientOptions::store(QLatin1String(name), !option(name));
 }
 
-input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
+input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == type)
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == type)
             return action;
     }
     return nullptr;
@@ -112,6 +113,8 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
     if (container::TContainerStorage* storage = container::TContainerStorage::instance())
         connect(storage, &container::TContainerStorage::manualSortModeChanged, this,
                 &TContainerController::refreshViewOptions);
+    if (const game::TGameSessionBase* session = game::TGameSessionBase::active())
+        m_model.setObjectCountStorage(session->objectCountStorage().get());
     m_clockTimer.setInterval(1000);
     connect(&m_clockTimer, &QTimer::timeout, &m_model, &TAppearanceInstanceListModel::refreshClocks);
     m_clockTimer.start();
@@ -278,9 +281,9 @@ void TContainerController::onShowConfigurationMenu()
 void TContainerController::showConfirmDialog(const char* caption, const char* content,
                                              std::function<void(bool showAgain)> onYes)
 {
-    m_confirmDialog = std::make_unique<TGenericConfirmWithDontShowAgainDialogController>();
-    m_confirmDialog->configure(qtTrId(caption), qtTrId(content), qtTrId("confirmation_do_not_show_again"), true);
-    m_confirmDialog->setConfirmHandler(std::move(onYes));
+    m_confirmDialog = std::make_unique<TGenericConfirmWithDontShowAgainDialogController>(
+        qtTrId(caption), qtTrId(content), qtTrId("confirmation_do_not_show_again"), true);
+    connect(m_confirmDialog.get(), &TGenericConfirmWithDontShowAgainDialogController::yesClicked, this, std::move(onYes));
     m_confirmDialog->showDialog();
 }
 
@@ -443,20 +446,15 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
     const Position position = slotPosition(pageSlot);
     input::TGameActionList actions;
     if (row->hasParent) {
-        auto openParent = input::mutableClone(*input::makeObjectAction(A::OPEN_PARENT_CONTAINER, position, pageSlot));
-        openParent->objectClientId = slot.typeId;
-        actions.push_back(std::move(openParent));
-        ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+        actions.push_back(input::makeObjectGameAction(A::OPEN_PARENT_CONTAINER, position, pageSlot, slot.typeId));
+        TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
         if (!type || !type->isNotMoveable()) {
-            auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, position, pageSlot));
-            moveUp->objectClientId = slot.typeId;
-            moveUp->destination = Position(UINT16_MAX, static_cast<uint16_t>(0x40 | m_containerId), ParentContainerSlot);
-            moveUp->moveAll = true;
-            actions.push_back(std::move(moveUp));
+            // The generic handler moves the whole stack to the parent slot.
+            actions.push_back(input::makeObjectGameAction(A::MOVE_UP, position, pageSlot, slot.typeId));
         }
     }
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
-    for (input::TGameActionPtr& action :
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
+    for (input::IGameActionPtr& action :
          input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot), SlotActionTypes))
         actions.push_back(std::move(action));
     return actions;
@@ -465,12 +463,11 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
 void TContainerController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = slotActions(slotId);
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -510,7 +507,7 @@ void TContainerController::updateMouseCursorForCurrentSlot()
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(m_isUpdatable ? Cursor::Container : Cursor::ContainerNoDrop,
                           action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
@@ -520,7 +517,7 @@ void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = firstOfType(slotActions(slotId), A::MOVE_OBJECT))
+    if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -530,38 +527,38 @@ void TContainerController::onSlotDragDropped(const int slotId)
     const container::TStoredContainer* row = stored();
     if (!dnd || !row)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
     const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex) : AnySlot;
     const Position destination = slotPosition(pageSlot);
-    input::publish(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
+    Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
 void TContainerController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
-        input::publish(target);
+    if (const input::IGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
+        Q_EMIT publishGameAction(target);
 }
 
 void TContainerController::onPreviousPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && row->firstIndex > 0)
-        tibia::game::seekInContainer(m_containerId, std::max(0, static_cast<int>(row->firstIndex) - static_cast<int>(row->capacity)));
+    if (row && !row->isFirstPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->previousPageFirstIndex()));
 }
 
 void TContainerController::onNextPageClicked()
 {
     const container::TStoredContainer* row = stored();
-    if (row && static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity) < static_cast<int>(row->size))
-        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity));
+    if (row && !row->isLastPage())
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->nextPageFirstIndex()));
 }
 
 void TContainerController::onSearchButtonClicked()
 {
-    input::publish(input::makeAction(A::REQUEST_DEPOT_SEARCH));
+    Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_DEPOT_SEARCH));
 }
 
 void TContainerController::onRequestClose()

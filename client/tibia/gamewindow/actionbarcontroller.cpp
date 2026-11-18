@@ -1,16 +1,18 @@
 #include "actionbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/actionbaroptions.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/actionbuttoncontroller.h"
+#include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameactionhandlers.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "spells/spellinfostorage.h"
 
 #include <client/position.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <QQmlComponent>
 #include <QQmlEngine>
@@ -136,11 +138,31 @@ TActionBarController::TActionBarController(TActionBarManager* manager, const int
     m_mapWindowPane = mapWindowPane;
     for (int id = 1; id <= ButtonCount; ++id) {
         auto* button = new TActionButtonController(this, id, -1, this);
+        connect(button, &TActionButtonController::publishGameAction, this, &TActionBarController::publishGameAction);
         connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu);
         m_buttons.push_back(button);
         m_actionButtonModel << button;
     }
+    m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(this);
+    m_objectDialog = std::make_unique<TAssignObjectActionDialogController>(this);
+    connect(m_objectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this, &TActionBarController::publishGameAction);
+    m_textDialog = std::make_unique<TAssignTextActionDialogController>(this);
+    m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(this);
+    m_hotkeyDialog = std::make_unique<TRecordKeyboardShortcutDialogController>();
+    connect(m_spellDialog.get(), &TAssignSpellActionDialogController::requestAssignSpell, this,
+            [this](const uint id, const int index, const int spell, const QString& parameters, const ECastType castType) {
+                onRequestAssignSpell(id, index, spell, parameters, int(castType));
+            });
+    connect(m_objectDialog.get(), &TAssignObjectActionDialogController::requestAssignObject, this,
+            &TActionBarController::onRequestAssignObject);
+    connect(m_textDialog.get(), &TAssignTextActionDialogController::requestAssignText, this, &TActionBarController::onRequestAssignText);
+    connect(m_passiveAbilityDialog.get(), &TAssignPassiveAbilityActionDialogController::requestAssignPassiveAbility, this,
+            &TActionBarController::onRequestAssignPassiveAbility);
+    connect(m_hotkeyDialog.get(), &TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
+            &TActionBarController::onAssignSelectedKeySequenceToActionButton);
 }
+
+TActionBarController::~TActionBarController() = default;
 
 TActionButtonController* TActionBarController::button(const int buttonId) const
 {
@@ -244,12 +266,18 @@ void TActionBarController::onActionBarOptionsChanged()
         if (TActionButtonController* button = buttonController(id, -1))
             applySetting(button, hotkeys->mapping(m_actionBarId, id));
     refreshObjects();
-    // The current preset's first visible button.
-    const int first = hotkeys->firstVisibleButton(m_actionBarId);
-    if (first != m_firstVisibleButtonId) {
-        m_firstVisibleButtonId = first;
-        Q_EMIT firstVisibleButtonIdChanged();
-    }
+}
+
+void TActionBarController::onCharacterConfigurationLoaded()
+{
+    config::TActionBarOptions* options = m_manager->actionBarOptions();
+    const int first = options ? options->firstVisibleButton(static_cast<uint8_t>(m_actionBarId)) : 0;
+    if (first == m_firstVisibleButtonId)
+        return;
+    m_firstVisibleButtonId = first;
+    if (options && m_firstVisibleCanBeSaved)
+        options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), first);
+    Q_EMIT firstVisibleButtonIdChanged();
 }
 
 void TActionBarController::onHotkeyOptionsChanged()
@@ -265,8 +293,8 @@ void TActionBarController::setFirstVisibleButtonId(const int v)
     if (v == m_firstVisibleButtonId)
         return;
     m_firstVisibleButtonId = v;
-    if (m_firstVisibleCanBeSaved)
-        config::THotkeyOptions::instance()->setFirstVisibleButton(m_actionBarId, v);
+    if (config::TActionBarOptions* options = m_manager->actionBarOptions(); options && m_firstVisibleCanBeSaved)
+        options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), v);
     Q_EMIT firstVisibleButtonIdChanged();
 }
 
@@ -341,11 +369,6 @@ void TActionBarController::assign(const int buttonId, const int multiActionIndex
     hotkeys->setMapping(m_actionBarId, buttonId, multi);
 }
 
-void TActionBarController::openAssignDialog(const EAssignKind kind, const int buttonId, const int multiActionIndex)
-{
-    m_manager->openAssignDialog(this, kind, buttonId, multiActionIndex);
-}
-
 void TActionBarController::onRequestContextMenu(const uint ButtonId, const int MultiActionChild)
 {
     TContextMenuController* menu = TContextMenuController::instance();
@@ -395,30 +418,116 @@ void TActionBarController::onRequestContextMenu(const uint ButtonId, const int M
 
 void TActionBarController::onOpenAssignSpellActionDialog(const uint ButtonId, const int MultiActionChild)
 {
-    openAssignDialog(ASSIGN_SPELL, int(ButtonId), MultiActionChild);
+    // A button casting a spell opens with it, any other with the list's first.
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::SPELL) {
+        m_spellDialog->showDialog(ButtonId, MultiActionChild, button->spellId(), button->actionText(), ECastType(button->castType()));
+        return;
+    }
+    m_spellDialog->showDialog(ButtonId, MultiActionChild);
 }
 
 void TActionBarController::onOpenAssignObjectActionDialog(const uint ButtonId, const int MultiActionChild)
 {
-    openAssignDialog(ASSIGN_OBJECT, int(ButtonId), MultiActionChild);
+    // The preview filters smoothly with antialiasing on.
+    m_objectDialog->setClientSettingSmoothFiltering(
+        app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt() ==
+        int(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::OBJECT) {
+        m_objectDialog->showDialog(ButtonId, MultiActionChild, int(button->objectID()), int(button->objectUpgradeTier()),
+                                   int(button->liquidType()), button->useType(), button->useEquipSmartMode(), false);
+        return;
+    }
+    m_objectDialog->showDialog(ButtonId, MultiActionChild);
 }
 
 void TActionBarController::onOpenAssignTextActionDialog(const uint ButtonId, const int MultiActionChild)
 {
-    openAssignDialog(ASSIGN_TEXT, int(ButtonId), MultiActionChild);
+    const TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (button && button->type() == TActionButtonController::TEXT) {
+        m_textDialog->showDialog(ButtonId, MultiActionChild, button->actionText(), button->sendAutomatically());
+        return;
+    }
+    m_textDialog->showDialog(ButtonId, MultiActionChild);
 }
 
 void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint ButtonId)
 {
-    openAssignDialog(ASSIGN_PASSIVE_ABILITY, int(ButtonId), -1);
+    const TActionButtonController* button = buttonController(int(ButtonId), -1);
+    if (button && button->type() == TActionButtonController::PASSIVEABILITY) {
+        m_passiveAbilityDialog->showDialog(ButtonId, button->passiveAbility());
+        return;
+    }
+    m_passiveAbilityDialog->showDialog(ButtonId);
+}
+
+void TActionBarController::openSpellDialog(const int buttonId, const int multiActionIndex, const int spellId)
+{
+    m_spellDialog->showDialog(uint(buttonId), multiActionIndex, spellId, QString(), ECastType(0));
+}
+
+void TActionBarController::onRequestAssignSpell(const uint ButtonId, const int MultiActionIndex, const int SpellId,
+                                                const QString& Parameters, const int CastType)
+{
+    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(SpellId);
+    if (!spell)
+        return;
+    Setting setting;
+    setting.kind = Setting::TEXT;
+    setting.text = Parameters.trimmed().isEmpty() ? spell->words : spell->words + QLatin1Char(' ') + Parameters.trimmed();
+    setting.sendAutomatically = true;
+    setting.spellCastType = CastType;
+    assign(int(ButtonId), MultiActionIndex, setting);
+}
+
+void TActionBarController::onRequestAssignObject(const uint ButtonId, const int MultiActionIndex, const int ObjectId,
+                                                 const int UpgradeTier, const int LiquidType, const config::EUseType UseType,
+                                                 const bool UseEquipSmartMode)
+{
+    Setting setting;
+    setting.kind = Setting::OBJECT;
+    setting.objectId = ObjectId;
+    setting.useType = UseType;
+    if (UpgradeTier)
+        setting.upgradeTier = UpgradeTier;
+    if (LiquidType)
+        setting.liquidType = LiquidType;
+    setting.useEquipSmartMode = UseEquipSmartMode;
+    assign(int(ButtonId), MultiActionIndex, setting);
+}
+
+void TActionBarController::onRequestAssignText(const uint ButtonId, const int MultiActionIndex, const QString& Text,
+                                               const bool SendAutomatically)
+{
+    Setting setting;
+    setting.kind = Setting::TEXT;
+    setting.text = Text;
+    setting.sendAutomatically = SendAutomatically;
+    assign(int(ButtonId), MultiActionIndex, setting);
+}
+
+void TActionBarController::onRequestAssignPassiveAbility(const uint ButtonId, const int PassiveAbility)
+{
+    Setting setting;
+    setting.kind = Setting::PASSIVE_ABILITY;
+    setting.passiveAbility = PassiveAbility;
+    assign(int(ButtonId), -1, setting);
+}
+
+void TActionBarController::closeAllDialogs()
+{
+    m_spellDialog->dialog()->close();
+    m_objectDialog->dialog()->close();
+    m_textDialog->dialog()->close();
+    m_passiveAbilityDialog->dialog()->close();
+    m_hotkeyDialog->dialog()->close();
 }
 
 void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
 {
-    auto close = input::mutableClone(*input::makeAction(input::EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
-    close->actionBarId = m_actionBarId;
-    close->actionButtonId = int(ButtonId);
-    input::publish(close);
+    auto close = std::make_shared<input::TGameActionCloseAllMultiActionButtons>(static_cast<uint8_t>(m_actionBarId), int(ButtonId));
+    Q_EMIT publishGameAction(close);
     if (TActionButtonController* button = buttonController(int(ButtonId), -1)) {
         button->createMultiActions(int(Setting::MaxMultiActions));
         button->setMultiActionExpanded(!button->multiActionExpanded());
@@ -436,7 +545,18 @@ void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
 
 void TActionBarController::onAssignHotkey(const uint ButtonId)
 {
-    m_manager->editHotkey(this, int(ButtonId));
+    const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    const bool chatOn = m_manager->chatOn();
+    const QString action = config::THotkeyOptions::triggerActionButtonName(m_actionBarId, int(ButtonId));
+    m_hotkeyButtonId = int(ButtonId);
+    m_hotkeyDialog->showDialog(chatOn, false, hotkeys->buttonKeys(m_actionBarId, int(ButtonId), chatOn),
+                               qtTrId("actionbar_button_identifier").arg(m_actionBarId).arg(ButtonId),
+                               TRecordKeyboardShortcutDialogController::occupiedKeys(action, chatOn));
+}
+
+void TActionBarController::onAssignSelectedKeySequenceToActionButton(const QKeySequence& NewKeySequence)
+{
+    config::THotkeyOptions::instance()->setButtonKeys(m_actionBarId, m_hotkeyButtonId, m_manager->chatOn(), NewKeySequence);
 }
 
 void TActionBarController::onClearAction(const uint ButtonId, const int MultiActionChild)
@@ -449,25 +569,26 @@ void TActionBarController::onDropped(const uint ButtonId, const int MultiActionI
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
-    if (!move)
+    const input::TMoveObjectPtr dropped = dnd->takeAction();
+    if (!dropped)
         return;
-    uint16_t typeId = move->objectClientId;
+    const input::TObjectGameActionContext& move = dropped->context();
+    uint16_t typeId = move.objectClientId();
     uint8_t tier = 0;
-    if (typeId != 0 && move->position.x == UINT16_MAX) {
-        if (move->position.y & 0x40) {
+    if (typeId != 0 && move.position().x == UINT16_MAX) {
+        if (move.position().y & 0x40) {
             if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                if (const container::TStoredContainer* row = storage->containerAt(move->position.y & 0x3F))
-                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move->stackPosition).tier;
+                if (const container::TStoredContainer* row = storage->containerAt(move.position().y & 0x3F))
+                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move.stackPosition()).tier;
             }
         } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-            tier = inventory->slotAt(move->position.y).tier;
+            tier = inventory->slotAt(move.position().y).tier;
         }
     }
     if (typeId == 0)
         return;
-    m_manager->assignDroppedObject(this, int(ButtonId), MultiActionIndex, typeId, tier,
-                                   dnd->modifiers().testFlag(Qt::AltModifier));
+    // Alt assigns the object with its default use; otherwise its dialog opens.
+    m_objectDialog->showDialogForObject(ButtonId, MultiActionIndex, typeId, tier, dnd->modifiers().testFlag(Qt::AltModifier));
 }
 
 void TActionBarController::onSwapActions(const uint SourceActionBarId, const uint SourceButtonId, const int SourceMultiActionIndex,
@@ -493,7 +614,7 @@ void TActionBarController::onSpellIconDropped(const uint ButtonId, const int Spe
     if (!spell)
         return;
     if (!spell->parameterHints.isEmpty()) {
-        m_manager->openSpellDialogFor(this, int(ButtonId), MultiActionIndex, SpellEnumId);
+        m_spellDialog->showDialog(ButtonId, MultiActionIndex, SpellEnumId, QString(), ECastType(0));
         return;
     }
     Setting setting;
@@ -620,6 +741,7 @@ void TActionBarGroup::createActionBar(const uint8_t actionBarId)
         return;
     auto bar = std::make_unique<TActionBarController>(m_manager, actionBarId, positionOfBar(actionBarId), m_buttonsDisplayOptions,
                                                       m_gameWindowItem, m_mapWindowPane, this);
+    connect(bar.get(), &TActionBarController::publishGameAction, this, &TActionBarGroup::publishGameAction);
     bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
     bar->setLocked(locked());
     bar->createItem(m_engine, barContainer);
@@ -653,13 +775,13 @@ void TActionBarGroup::setFirstVisibleButtonIdCanBeSaved(const bool CanBeSaved)
         bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
 }
 
-void TActionBarGroup::handleGameAction(const input::TGameAction& action)
+void TActionBarGroup::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::TOGGLE_ACTION_BARS) {
-        if (action.parameter == static_cast<int>(m_position))
+    if (const auto* bars = input::gameActionAs<input::TGameActionToggleActionBars>(&action)) {
+        if (bars->position() == static_cast<int>(m_position))
             toggleOption(leftOf(GroupOptions, m_position));
-    } else if (action.type == input::EGameAction::TOGGLE_ACTION_BAR) {
-        const auto actionBarId = static_cast<uint8_t>(action.actionBarId);
+    } else if (const auto* bar = input::gameActionAs<input::TGameActionToggleActionBar>(&action)) {
+        const uint8_t actionBarId = bar->actionBarId();
         if (managesBar(actionBarId))
             toggleOption(showOptionOfBar(actionBarId));
     }

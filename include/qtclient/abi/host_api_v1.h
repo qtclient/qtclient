@@ -57,8 +57,9 @@ enum {
     /**
      * v2: nested session/notify/options; pack_host C wiring (additive tail).
      * v3: add_world_overlay_factory takes QtClientWorldOverlayFactory* (C vtable), not opaque C++.
+     * v4: pack_host->game_action_router (additive tail of QtClientPackHostApiV1).
      */
-    QTCLIENT_HOST_API_V1_VERSION = 3,
+    QTCLIENT_HOST_API_V1_VERSION = 4,
 };
 
 /**

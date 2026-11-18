@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "gamewindow/dialogmanager.h"
@@ -68,7 +69,7 @@ public:
     uint cosmeticTokenCount() const override;
     uint bountyTaskRerollTokenCount() const override;
 
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void showDialog() override;
@@ -112,6 +113,17 @@ private:
     TMessageDialogController* m_warningDialog;
     QTimer m_timer;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

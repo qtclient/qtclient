@@ -20,7 +20,7 @@
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 #include "worldmap/worldmapviewport.h"
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include <QCursor>
 #include <QGuiApplication>
 #include <QHoverEvent>
@@ -109,13 +109,11 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         connect(pane, &QQuickItem::heightChanged, this, &TMapWindowController::syncFov);
     }
     for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TMapWindowController::~TMapWindowController()
 {
-    for (const input::EGameAction type : { input::EGameAction::USE_AT_MOUSECURSOR, input::EGameAction::SPELL_AT_MOUSE_CURSOR })
-        input::setActionHandler(type, nullptr);
     unbind();
 }
 
@@ -130,7 +128,7 @@ void TMapWindowController::applyTargetHighlightOption()
                                           || options.value(QLatin1String("gameWindowShowTargetHighlight")).toBool(true));
 }
 
-void TMapWindowController::bindSession(const chat::TTextStorage* texts, const worldmap::TNumericalEffectStorage* numericalEffects)
+void TMapWindowController::bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects)
 {
     if (!m_provider)
         return;
@@ -173,7 +171,7 @@ void TMapWindowController::bindSession(const chat::TTextStorage* texts, const wo
     if (m_speechBubbles)
         m_speechBubbles->setSources(texts ? m_provider : nullptr, texts);
     if (m_numericalEffects)
-        m_numericalEffects->setSources(numericalEffects ? m_provider : nullptr, numericalEffects);
+        m_numericalEffects->setSources(effects ? m_provider : nullptr, effects);
 }
 
 void TMapWindowController::updateTrackedUseAtMouseCursor()
@@ -182,9 +180,8 @@ void TMapWindowController::updateTrackedUseAtMouseCursor()
     if (m_unhandledAtMouseFrames < 0 || ++m_unhandledAtMouseFrames < 2)
         return;
     clearTrackedUseAtMouseCursorGameAction();
-    auto status = input::mutableClone(*input::makeAction(input::EGameAction::SET_STATUS_LINE));
-    status->text = qtTrId("actionbar_action_no_target");
-    input::publish(status);
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("actionbar_action_no_target"));
+    Q_EMIT publishGameAction(status);
 }
 
 void TMapWindowController::trackUseAtMouseCursorGameAction()
@@ -625,16 +622,16 @@ void TMapWindowController::updateMouseTarget()
     // mouse (none off creatures) is the temporarily selected one, like a
     // hovered battle-list entry.
     if (m_highlightMouseTarget) {
-        for (const input::TGameActionPtr& candidate : candidates) {
-            if (candidate->type == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
-                m_actionHandler->handleGameAction(candidate);
+        for (const input::IGameActionPtr& candidate : candidates) {
+            if (candidate->gameActionType() == input::EGameAction::TEMPORARY_SELECT_CREATURE) {
+                Q_EMIT publishGameAction(candidate);
                 break;
             }
         }
     }
     // CIP : the action a left click with the held modifiers would run.
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext, Qt::LeftButton, modifiers);
     if (!action) {
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
@@ -664,14 +661,15 @@ void TMapWindowController::onMapWindowClicked(const int mouseX, const int mouseY
         return;
     }
     const input::TGameActionList candidates = m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)));
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
+    const input::IGameActionPtr action =
+m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
                                                       static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != input::EGameAction::CONTEXT_MENU) {
-        m_actionHandler->handleGameAction(action);
+    if (action->gameActionType() != input::EGameAction::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         // A click on the map closes the open multi action buttons.
-        input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -684,9 +682,9 @@ void TMapWindowController::onMapWindowStartDrag(const int mouseX, const int mous
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
         return;
-    for (const input::TGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
-        if (action->type == input::EGameAction::MOVE_OBJECT) {
-            dnd->startDrag(action, source);
+    for (const input::IGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
+        if (action->gameActionType() == input::EGameAction::MOVE_OBJECT) {
+            dnd->startDrag(std::dynamic_pointer_cast<const input::TGameActionMoveObject>(action), source);
             return;
         }
     }
@@ -697,25 +695,26 @@ void TMapWindowController::onMapWindowDragDropped(const int mouseX, const int mo
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd || !m_provider || !m_mapWindow || !m_worldMap)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move || !tibia::game::isOnline())
         return;
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(QPointF(mouseX, mouseY)));
     if (!pick.isValid())
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String("dragAndDropDefaultActionIsMoveAll")).toBool(false);
-    m_actionHandler->handleGameAction(
+    Q_EMIT publishGameAction(
         input::finalizeDrop(move, pick.position, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
-input::TGameActionPtr TMapWindowController::targetAt(const QPointF& mapWindowPoint) const
+input::TTargetSelectedPtr TMapWindowController::targetAt(const QPointF& mapWindowPoint) const
 {
     if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap)
         return nullptr;
-    input::TGameActionPtr target;
-    for (const input::TGameActionPtr& candidate : m_actions->actionsAt(toMapPixel(mapWindowPoint))) {
-        if (candidate->type == input::EGameAction::TARGET_SELECTED && (!target || candidate->creatureId))
-            target = candidate;
+    input::TTargetSelectedPtr target;
+    for (const input::IGameActionPtr& candidate : m_actions->actionsAt(toMapPixel(mapWindowPoint))) {
+        auto selected = std::dynamic_pointer_cast<const input::TGameActionTargetSelected>(candidate);
+        if (selected && (!target || selected->creatureId()))
+            target = std::move(selected);
     }
     return target;
 }
@@ -724,16 +723,16 @@ void TMapWindowController::onMapWindowTargetSelected(const int mouseX, const int
 {
     if (!tibia::game::isOnline())
         return;
-    if (const input::TGameActionPtr target = targetAt(QPointF(mouseX, mouseY)))
-        m_actionHandler->handleGameAction(target);
+    if (const input::TTargetSelectedPtr target = targetAt(QPointF(mouseX, mouseY)))
+        Q_EMIT publishGameAction(target);
 }
 
-bool TMapWindowController::handleGameAction(const input::TGameAction& action)
+bool TMapWindowController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::USE_AT_MOUSECURSOR)
-        handleGameActionAtMouseCursor(action);
-    else if (action.type == input::EGameAction::SPELL_AT_MOUSE_CURSOR)
-        handleGameActionCastSpellAtMouseCursor(action);
+    if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action))
+        handleGameActionAtMouseCursor(*use);
+    else if (const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action))
+        handleGameActionCastSpellAtMouseCursor(*spell);
     return true;
 }
 
@@ -749,7 +748,7 @@ QPointF TMapWindowController::mouseCursorPosition(bool& onMap) const
     return point;
 }
 
-void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameAction& action)
+void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action)
 {
     // The use waits a frame for a handler; off the map the battle lists may take it.
     trackUseAtMouseCursorGameAction();
@@ -761,16 +760,18 @@ void TMapWindowController::handleGameActionAtMouseCursor(const input::TGameActio
     const QPointF point = mouseCursorPosition(onMap);
     if (!onMap)
         return;
-    // The use goes to the TARGET_SELECTED under the mouse.
-    const input::TGameActionPtr target = targetAt(point);
+    // The use goes to the TARGET_SELECTED under the mouse: on a creature, or
+    // with the object there.
+    const input::TTargetSelectedPtr target = targetAt(point);
     if (!target)
         return;
-    auto use = std::make_shared<input::TGameActionUseAtMouseCursor>(action);
-    use->target = target;
-    m_actionHandler->handleGameAction(use);
+    if (target->creatureId())
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+    else
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionUseWith>(action.context(), target->context()));
 }
 
-void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameAction& action)
+void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)
 {
     Cursor* cursor = Cursor::instance();
     if (!cursor || cursor->topRegion() != Cursor::MapWindow)
@@ -781,11 +782,11 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
         return;
     // The spell's talk aimed (2) at the field under the mouse.
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(point));
-    if (!pick.isValid() || action.text.isEmpty())
+    if (!pick.isValid() || action.words().isEmpty())
         return;
     tibia::game::setNextTalkAim(pick.position);
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
 }
 
 }

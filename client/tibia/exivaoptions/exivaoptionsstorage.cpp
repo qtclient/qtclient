@@ -57,28 +57,27 @@ TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     });
 
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 TExivaOptionsStorage::~TExivaOptionsStorage()
 {
     if (g_instance == this)
         g_instance = nullptr;
-    for (const A type : Handled)
-        input::setActionHandler(type, nullptr);
 }
 
 TExivaOptionsStorage* TExivaOptionsStorage::instance() { return g_instance; }
 
-bool TExivaOptionsStorage::handleGameAction(const input::TGameAction& action)
+bool TExivaOptionsStorage::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::EXIVA_TOGGLE_ALLOW_EVERYONE:
         toggleAllowEveryone();
         return true;
     case A::EXIVA_ADD_CHARACTER_TO_WHITELIST:
     case A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST:
-        requestWhitelistChange(action.text, action.type == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
+        if (const auto* vip = input::gameActionAs<input::TGameActionVip>(&action))
+            requestWhitelistChange(vip->vipName(), action.gameActionType() == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
         return true;
     case A::EXIVA_UPADATE_OPTIONS:
         // The dialog's apply calls update() with its payload; this action
@@ -157,15 +156,13 @@ void TExivaOptionsStorage::send(const Options& options, const Names& addCharacte
                             options.allowGuildWhitelist, wire(addCharacters), wire(removeCharacters), wire(addGuilds), wire(removeGuilds));
 }
 
-void TExivaOptionsStorage::toggleAllowEveryone() const
+void TExivaOptionsStorage::toggleAllowEveryone()
 {
     Options options = m_options;
     options.allowAll = !options.allowAll;
     send(options, {}, {}, {}, {});
-    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-    status->text = qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false");
-    status->color = chat::systemWhite();
-    input::publish(status);
+    auto status = std::make_shared<input::TGameActionSetStatusLine>(qtTrId(options.allowAll ? "exivaoptions_toggle_allow_everyone_to_true" : "exivaoptions_toggle_allow_everyone_to_false"), chat::systemWhite());
+    Q_EMIT publishGameAction(status);
 }
 
 void TExivaOptionsStorage::requestWhitelistChange(const QString& name, const bool add) const

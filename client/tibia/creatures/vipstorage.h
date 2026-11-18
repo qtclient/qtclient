@@ -86,7 +86,7 @@ Q_SIGNALS:
     void vipDataChangedOrAdded(const tibia::creatures::TVipStorage::Vip& vip);
     void vipStateChanged(uint32_t id, int state);
     void vipDataRemoved(uint32_t id);
-    void publishGameAction(const tibia::input::TGameActionPtr& action);
+    void publishGameAction(const tibia::input::IGameActionPtr& action);
     void loginOrLogoutStateUpdate(int state);
 
 private:

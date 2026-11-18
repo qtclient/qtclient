@@ -3,7 +3,7 @@
 #include "chat/textstorage.h"
 #include "renderer/mapscale.h"
 #include "renderer/worldmaprenderprovider.h"
-#include "worldmap/numericaleffectstorage.h"
+#include "effects/effectstorage.h"
 
 #include "worldmap/worldmapfield.h"
 
@@ -58,7 +58,7 @@ void TNumericalEffectOverlayQuickItem::geometryChange(const QRectF& newGeometry,
     cip::tibia::qmlcomponents::TNumericalEffectOverlayQuickItem::geometryChange(newGeometry, oldGeometry);
 }
 
-void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provider, const worldmap::TNumericalEffectStorage* effects)
+void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provider, const effects::TEffectStorage* effects)
 {
     disconnect(m_frameConnection);
     m_provider = provider;
@@ -144,25 +144,22 @@ void TNumericalEffectOverlayQuickItem::update()
     const int MapHeight = m_provider->frame().visibleHeight * Provider::FieldSize;
     const MapCoverScale cover = MapCoverScale::placed(width(), height(), MapWidth, MapHeight, frame.viewScale);
     const QRect visible(frame.camera, QSize(MapWidth, MapHeight));
-    const qint64 now = chat::TTextStorage::now();
 
     for (Field& field : m_fields)
         field.seen = false;
 
-    // Effects grouped by field, each group in the order its numbers appeared.
+    // The fields with numbers, each in the order its numbers appeared.
     std::vector<std::pair<Position, std::vector<TNumericEffectsItemController::Item>>> groups;
-    for (const effects::TNumericalEffect& effect : m_effects->effects()) {
-        auto group = std::find_if(groups.begin(), groups.end(), [&effect](const auto& g) { return g.first == effect.coordinate; });
-        if (group == groups.end()) {
-            if (!isShown(effect.coordinate))
-                continue;
-            const QRect field(m_provider->mapPixelOf(effect.coordinate), QSize(Provider::FieldSize, Provider::FieldSize));
-            if (!visible.intersects(field))
-                continue;
-            groups.emplace_back(effect.coordinate, std::vector<TNumericEffectsItemController::Item>());
-            group = std::prev(groups.end());
-        }
-        group->second.push_back({ QString::number(static_cast<int>(effect.value)), effect.color, effect.progress(now) });
+    for (const Position& coordinate : m_effects->numericalEffectFields(0, 15)) {
+        if (!isShown(coordinate))
+            continue;
+        const QRect field(m_provider->mapPixelOf(coordinate), QSize(Provider::FieldSize, Provider::FieldSize));
+        if (!visible.intersects(field))
+            continue;
+        std::vector<TNumericEffectsItemController::Item> items;
+        for (const effects::TNumericalEffectPtr& effect : m_effects->numericalEffectsAt(coordinate))
+            items.push_back({ QString::number(static_cast<int>(effect->value())), effect->color(), effect->progress() });
+        groups.emplace_back(coordinate, std::move(items));
     }
 
     for (auto& [coordinate, items] : groups) {
@@ -176,7 +173,7 @@ void TNumericalEffectOverlayQuickItem::update()
         // : (16, 8) into the field, lifted by its elevation.
         int elevation = 0;
         if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coordinate))
-            elevation = tile->getDrawElevation();
+            elevation = tile->objectElevation();
         const QPoint camera = frame.camera;
         const QPoint pixel = m_provider->mapPixelOf(coordinate) + QPoint(16 - elevation, 8 - elevation) - camera;
         const QPointF position = cover.toPaneRounded(pixel.x(), pixel.y());

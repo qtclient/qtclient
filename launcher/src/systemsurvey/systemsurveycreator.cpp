@@ -1,11 +1,11 @@
 #include "systemsurveycreator.h"
 
-#include "systemsurveyvalueretriever.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
 
 #include <algorithm>
 #include <iterator>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 TSystemSurveyCreator::TSystemSurveyCreator(std::shared_ptr<TSystemSurveyValueRetriever> valueRetriever)
     : m_valueRetriever(std::move(valueRetriever))
@@ -33,4 +33,4 @@ TSystemSurvey TSystemSurveyCreator::createSystemSurvey() const
     return survey;
 }
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

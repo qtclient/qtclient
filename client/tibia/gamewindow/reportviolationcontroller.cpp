@@ -5,7 +5,7 @@
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
-#include "assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
@@ -21,24 +21,13 @@ constexpr A Handled[] = { A::REPORT_STATEMENT, A::REPORT_NAME, A::REPORT_BOT, A:
 /// A report within ten minutes of the last one is refused.
 constexpr qint64 ReportCooldownSeconds = 600;
 
-QString nameOf(const input::TGameAction& action)
-{
-    if (!action.text.isEmpty() || !action.creatureId)
-        return action.text;
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
-            return row->name();
-    }
-    return {};
-}
-
 }
 
 TReportViolationController::TReportViolationController(QObject* parent)
     : TDialogController(QStringLiteral("ReportViolationDialog.qml"), parent)
 {
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onRuleViolationReportConfirmed", [this](GameObject*, const std::vector<std::any>&) {
         onRuleViolationReportConfirmedByServer();
         return std::any{};
@@ -47,35 +36,40 @@ TReportViolationController::TReportViolationController(QObject* parent)
 
 TReportViolationController::~TReportViolationController()
 {
-    for (const A type : Handled)
-        input::setActionHandler(type, nullptr);
 }
 
 /// The report actions open the dialog for their report type;
 /// GET_TEXT_FOR_REPORT asks the server for a text's author and content.
-bool TReportViolationController::handleAction(const input::TGameAction& action)
+bool TReportViolationController::handleAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::REPORT_STATEMENT:
-        open(Statement, nameOf(action), action.statement, static_cast<uint32_t>(action.parameter));
+        if (const auto* report = input::gameActionAs<input::TGameActionReportStatement>(&action))
+            open(Statement, report->characterName(), report->statement(), static_cast<uint32_t>(report->statementId()));
         return true;
     case A::REPORT_NAME:
-        open(Name, nameOf(action), {}, 0);
+        if (const auto* report = input::gameActionAs<input::TGameActionReportCharacter>(&action))
+            open(Name, report->characterName(), {}, 0);
         return true;
     case A::REPORT_BOT:
-        open(Bot, nameOf(action), {}, 0);
+        if (const auto* report = input::gameActionAs<input::TGameActionReportCharacter>(&action))
+            open(Bot, report->characterName(), {}, 0);
         return true;
     case A::REPORT_HIRELING_NAME:
-        open(Hireling, nameOf(action), {}, action.creatureId);
+        if (const auto* report = input::gameActionAs<input::TGameActionReportHireling>(&action))
+            open(Hireling, report->hirelingName(), {}, report->creatureId());
         return true;
     case A::REPORT_TEXT:
-        open(Text, nameOf(action), action.statement, static_cast<uint32_t>(action.parameter));
+        if (const auto* report = input::gameActionAs<input::TGameActionReportText>(&action))
+            open(Text, report->characterName(), report->text(), static_cast<uint32_t>(report->textId()));
         return true;
-    case A::GET_TEXT_FOR_REPORT: {
-        const uint16_t typeId = action.objectClientId;
-        tibia::game::requestTextForReport(action.position, typeId, static_cast<uint8_t>(std::max(action.stackPosition, 0)));
+    case A::GET_TEXT_FOR_REPORT:
+        if (const auto* request = input::gameActionAs<input::TGameActionGetTextForReport>(&action)) {
+            const input::TObjectGameActionContext& object = request->object();
+            tibia::game::requestTextForReport(object.position(), object.objectClientId(),
+                                              static_cast<uint8_t>(std::max(object.stackPosition(), 0)));
+        }
         return true;
-    }
     default:
         return false;
     }
@@ -88,10 +82,7 @@ void TReportViolationController::open(const EType type, const QString& name, con
         // A chat system message and the same line beneath the world map.
         const QString text = qtTrId("new_report_too_soon_error");
         for (const A messageType : { A::ADD_SYSTEM_CHAT_MESSAGE, A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE }) {
-            auto message = input::mutableClone(*input::makeAction(messageType));
-            message->text = text;
-            message->color = chat::consoleColor(30);
-            input::publish(message);
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddTextMessage>(messageType, text, chat::consoleColor(30)));
         }
         return;
     }

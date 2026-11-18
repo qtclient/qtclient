@@ -1,4 +1,5 @@
 #include "outfittypes.h"
+#include "colorhelper.h"
 
 #include "qmlcomponents/worldmapqmltypes.h"
 
@@ -43,58 +44,12 @@ int clampIndex(const int v)
 
 namespace outfitpalette {
 
-/// Hue in 18 steps (step 0 is grey), then 7 saturation/value pairs per row.
+/// CipSoft's outfit palette (shared::outfitColor); indices out of range are colour 0.
 QColor color(int index)
 {
     if (index < 0 || index >= Count)
         index = 0;
-    float hue = 0.f;
-    float saturation = 0.f;
-    float value = 0.f;
-    if (index % HueSteps != 0) {
-        hue = static_cast<float>(index % HueSteps) / 18.f;
-        static constexpr float rows[7][2] = { { 0.25f, 1.f }, { 0.25f, 0.75f }, { 0.5f, 0.75f }, { 0.667f, 0.75f },
-                                               { 1.f, 1.f }, { 1.f, 0.75f }, { 1.f, 0.5f } };
-        saturation = rows[index / HueSteps][0];
-        value = rows[index / HueSteps][1];
-    } else {
-        value = 1.f - static_cast<float>(index) / HueSteps / 7.f;
-    }
-    if (value == 0.f)
-        return QColor(0, 0, 0, 0);
-    if (saturation == 0.f) {
-        const int grey = static_cast<int>(value * 255);
-        return QColor(grey, grey, grey);
-    }
-    float red = 0.f;
-    float green = 0.f;
-    float blue = 0.f;
-    if (hue < 1.f / 6.f) {
-        red = value;
-        blue = value * (1 - saturation);
-        green = blue + (value - blue) * 6 * hue;
-    } else if (hue < 2.f / 6.f) {
-        green = value;
-        blue = value * (1 - saturation);
-        red = green - (value - blue) * (6 * hue - 1);
-    } else if (hue < 3.f / 6.f) {
-        green = value;
-        red = value * (1 - saturation);
-        blue = red + (value - red) * (6 * hue - 2);
-    } else if (hue < 4.f / 6.f) {
-        blue = value;
-        red = value * (1 - saturation);
-        green = blue - (value - red) * (6 * hue - 3);
-    } else if (hue < 5.f / 6.f) {
-        blue = value;
-        green = value * (1 - saturation);
-        red = green + (value - green) * (6 * hue - 4);
-    } else {
-        red = value;
-        green = value * (1 - saturation);
-        blue = red - (value - green) * (6 * hue - 5);
-    }
-    return QColor(static_cast<int>(red * 255), static_cast<int>(green * 255), static_cast<int>(blue * 255));
+    return tibia::shared::outfitColor(index);
 }
 
 int index(const QColor& c)

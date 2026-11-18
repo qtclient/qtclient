@@ -3,6 +3,7 @@
 // The daily reward: the session's reward wall data, the messages that fill
 // it and the game actions that ask the server for it.
 
+#include "input/gameactiondispatch.h"
 #include "input/gameaction.h"
 #include "shared/cip_typed.h"
 
@@ -17,6 +18,7 @@
 #include <vector>
 
 namespace tibia::protobuf::protocol {
+class GameserverMessageLoginSuccess;
 class GameserverMessageCloseRewardWall;
 class GameserverMessageDailyRewardBasic;
 class GameserverMessageDailyRewardCollectionState;
@@ -190,7 +192,7 @@ public:
     explicit TDailyRewardGameActionHandler(TDailyRewardStorage* storage, QObject* parent = nullptr);
     ~TDailyRewardGameActionHandler() override;
 
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void handleRequestOpenRewardWallGameAction() override;
@@ -199,6 +201,17 @@ public Q_SLOTS:
 
 private:
     TDailyRewardStorage* m_storage;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler
@@ -206,22 +219,23 @@ class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward:
     Q_OBJECT
 public:
     using cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler;
-    static void handleRestingAreaStateMessage(const ::tibia::protobuf::protocol::GameserverMessageRestingAreaState& message);
+    void handleRestingAreaStateMessage(const ::tibia::protobuf::protocol::GameserverMessageRestingAreaState& message);
     /// The wall's state, then OPEN_OR_UPDATE_REWARD_WALL_DIALOG. An unknown
     /// collect state ends the message there (CIP throws).
-    static void handleOpenRewardWallMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenRewardWall& message);
-    static void handleCloseRewardWallMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseRewardWall&);
+    void handleOpenRewardWallMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenRewardWall& message);
+    void handleCloseRewardWallMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseRewardWall&);
     /// Instant Reward Access (20), jokers (21), bounty reroll (88) and cosmetic
     /// tokens (89).
-    static void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
+    void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
     /// The streak bonuses, then every day's free and premium reward.
-    static void handleDailyRewardBasicMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardBasic& message);
-    static void handleDailyRewardHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardHistory& message);
+    void handleDailyRewardBasicMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardBasic& message);
+    void handleDailyRewardHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardHistory& message);
     /// Lights (245) or clears (246) the button bar's reward wall button.
-    static void handleDailyRewardCollectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState& message);
+    void handleDailyRewardCollectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState& message);
     /// Message dialog type 40 says the daily rewards are disabled.
-    static void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
-public:
+    void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
+    /// The login success carries the reward streak length.
+    void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
 };
 
 }

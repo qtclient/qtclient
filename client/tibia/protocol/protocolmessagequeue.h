@@ -367,7 +367,7 @@ class GameclientMessageWeaponProficiencyCommand;
 } // namespace tibia::protobuf::protocol
 
 namespace tibia::input {
-struct TGameAction;
+class IGameAction;
 } // namespace tibia::input
 
 Q_MOC_INCLUDE(<protocol.pb.h>)
@@ -614,7 +614,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     /// The queue takes no game actions; game code sends through the typed slots below.
-    void handleGameAction(std::shared_ptr<::tibia::input::TGameAction> pGameAction);
+    void handleGameAction(std::shared_ptr<const ::tibia::input::IGameAction> pGameAction);
     // <gen_dispatch.py: client message slots>
     void sendLogin(const ::tibia::protobuf::protocol::GameclientMessageLogin& LoginMessage);
     void sendQuitGame(const ::tibia::protobuf::protocol::GameclientMessageQuitGame& QuitGameMessage);

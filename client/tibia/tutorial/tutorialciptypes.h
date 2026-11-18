@@ -42,12 +42,6 @@ class TSessiondumpHintTutorialProgress final : public ::tibia::CipTyped {};
 
 class TSessiondumpHints final : public ::tibia::CipTyped {};
 
-class TTutorialProgressUploader final : public cip::tibia::tutorial::TTutorialProgressUploader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::tutorial::TTutorialProgressUploader::TTutorialProgressUploader;
-};
 
 /// CIP `tutorial::TTutorialProtocolMessageHandler` — native Q→H for TutorialHint.
 class TTutorialProtocolMessageHandler final : public cip::tibia::tutorial::TTutorialProtocolMessageHandler
@@ -65,12 +59,6 @@ public:
 
 };
 
-class TTutorialSessiondumpGameActionHandler final : public cip::tibia::tutorial::TTutorialSessiondumpGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::tutorial::TTutorialSessiondumpGameActionHandler::TTutorialSessiondumpGameActionHandler;
-};
 
 }
 }

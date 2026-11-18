@@ -2,6 +2,7 @@
 
 // CIP-named creatures surfaces (promoted from cipwire).
 
+#include "input/gameactiondispatch.h"
 #include "creatures/creaturestorage.h"
 #include "input/gameaction.h"
 #include "shared/cip_typed.h"
@@ -33,13 +34,8 @@ public:
 
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 
-/// CIP `creatures::TCreatureProtocolMessageHandler` — qtclient Q→H for filled creature
-/// attribute opcodes + MoveCreature (109). CIP contract has queue
-/// `receivedCreature*Message` / `receivedMoveCreatureMessage` only (no
-/// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — each
-/// message applies its fields to the stored creature (`applyProtocolCreature`
-/// for a whole creature) or `Map::applyCreatureMove` in
-/// `onServerMessageEnqueued`; do not invent handle* names.
+/// Applies the creature messages to the session's creature storage: moves,
+/// whole creatures and single attributes, marks and the player's id.
 class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCreatureProtocolMessageHandler
 {
     Q_OBJECT
@@ -49,14 +45,29 @@ public:
     static TCreatureProtocolMessageHandler* liveInstance();
     static void setLiveInstance(TCreatureProtocolMessageHandler* handler);
 
-    /// Tip Q→H wire: peel structured creature-attribute opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    void handleMoveCreatureMessage(const ::tibia::protobuf::protocol::GameserverMessageMoveCreature& message);
+    void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
+    void handleSessionDumpStartMessage(const ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart& message);
+    void handleCreatureUpdateMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureUpdate& message);
+    void handleCreatureOutfitMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureOutfit& message);
+    void handleCreatureHealthMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureHealth& message);
+    void handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& message);
+    void handleCreatureSkullMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSkull& message);
+    void handleCreaturePartyMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureParty& message);
+    void handleInspectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionState& message);
+    void handleCreatureUnpassMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureUnpass& message);
+    void handleCreatureMarksMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureMarks& message);
+    void handleCreatureDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureData& message);
+    void handleCreatureLightMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureLight& message);
+    void handleUpdateTargetMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message);
+    /// Product server: a creature's type and master.
+    void handleCreatureTypeMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureType& message);
 
 private:
     /// A creature mark: timed or static square, or the attack animation.
-    void handleCreatureMarksMessage(uint32_t creatureId, uint32_t kind, uint32_t value);
+    void applyCreatureMarks(uint32_t creatureId, uint32_t kind, uint32_t value);
     /// The server changed the attack or follow target the sequence names.
-    void handleUpdateTargetMessage(uint32_t sequence, uint32_t target);
+    void applyUpdateTarget(uint32_t sequence, uint32_t target);
 
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };
@@ -97,18 +108,29 @@ public:
     TVipGameActionHandler(TVipStorage* storage, QObject* parent = nullptr);
     ~TVipGameActionHandler() override;
 
-    void handleGameAction(const ::tibia::input::TGameAction& action);
-    void handleAddNewVipGameAction(const ::tibia::input::TGameAction& action);
+    void handleGameAction(const ::tibia::input::IGameAction& action);
+    void handleAddNewVipGameAction(const ::tibia::input::TGameActionVip& action);
     /// Removes the VIP named by the action, locally and on the server.
-    void handleRemoveVipGameAction(const ::tibia::input::TGameAction& action);
+    void handleRemoveVipGameAction(const ::tibia::input::TGameActionVip& action);
     /// Stores the edited VIP (keeping its state) and sends the edit.
-    void handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameAction& action);
-    void handleAddNewVipGroupGameAction(const ::tibia::input::TGameAction& action);
-    void handleRemoveVipGroupGameAction(const ::tibia::input::TGameAction& action);
-    void handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameAction& action);
+    void handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameActionRequestVipDataUpdate& action);
+    void handleAddNewVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action);
+    void handleRemoveVipGroupGameAction(const ::tibia::input::TGameActionVipGroup& action);
+    void handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameActionRequestVipGroupUpdate& action);
 
 private:
     TVipStorage* m_storage;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// BuddyData, BuddyStatusChange and BuddyGroupData into the VIP storage

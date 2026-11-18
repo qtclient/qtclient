@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "config/icharacterconfiguration.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -16,8 +17,18 @@
 #include <cstdint>
 #include <deque>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <vector>
+
+namespace tibia {
+namespace cyclopedia {
+class TItemTrackingStorage;
+}
+namespace quickloot {
+class TQuickLootBlackWhitelistStorage;
+}
+}
 
 namespace tibia {
 namespace analysers {
@@ -26,17 +37,6 @@ namespace analysers {
 std::vector<double> linearWeights(int n);
 /// CIP : a graph's y range follows its maximum with hysteresis.
 double adjustGraphMaxY(double currentMaxY, double maxValue);
-
-/// The character's analyser options (CIP: ICharacterConfigurationBase::name / toJson / fromJson),
-/// one file per storage in <app data>/characterdata/<character id>/<name>.json.
-class TCharacterConfiguration : public ::tibia::CipTyped
-{
-public:
-    virtual ~TCharacterConfiguration() = default;
-    virtual QString configurationName() const = 0;
-    virtual QJsonObject toJson() const = 0;
-    virtual void fromJson(const QJsonObject& json) = 0;
-};
 
 /// One of TProgressStorage's TExperienceChangeTracker (CIP ctor in): the session total
 /// and 4501 one-second bins, the newest last.
@@ -65,15 +65,16 @@ private:
 };
 
 /// XP analyser storage (CIP: tibia::cyclopedia::TProgressStorage, config "xpanalyser").
-class TProgressStorage final : public cip::tibia::cyclopedia::TProgressStorage, public TCharacterConfiguration
+class TProgressStorage final : public cip::tibia::cyclopedia::TProgressStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
     explicit TProgressStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("xpanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// CIP vt15.
     void tick(qint64 nowMs);
@@ -119,7 +120,7 @@ class TItemPriceStorage;
 
 /// Loot and supply analyser storage (CIP: tibia::cyclopedia::TGainWasteStorage, config
 /// "gainandwaste"). Items are added as they come; metrics and signals follow on the next tick.
-class TGainWasteStorage final : public cip::tibia::cyclopedia::TGainWasteStorage, public TCharacterConfiguration
+class TGainWasteStorage final : public cip::tibia::cyclopedia::TGainWasteStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -163,8 +164,9 @@ public:
     TGainWasteStorage(TItemPriceStorage* prices, QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("gainandwaste"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     void addLoot(uint16_t itemId, quint32 count, const QString& name, qint64 nowMs);
     void addWaste(uint16_t itemId, quint32 count, qint64 nowMs);
@@ -233,7 +235,7 @@ private:
 
 /// Damage and healing output (CIP: tibia::cyclopedia::TImpactStorage, ctor ,
 /// config "impactanalyser").
-class TImpactStorage final : public cip::tibia::cyclopedia::TImpactStorage, public TCharacterConfiguration
+class TImpactStorage final : public cip::tibia::cyclopedia::TImpactStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -271,8 +273,9 @@ public:
     explicit TImpactStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("impactanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// Element -1: the secondary amount has no element.
     void addDamage(qint64 primary, qint64 secondary, int element, qint64 nowMs);
@@ -292,6 +295,8 @@ public:
     double maxPerSecond(Kind kind) const { return m_data[kind].maxPerSecond; }
     /// Session total over the session's length, per second.
     double sessionPerSecond(Kind kind) const { return m_data[kind].sessionPerSecond; }
+    /// The highest session per second value.
+    double maxSessionPerSecond(Kind kind) const { return m_data[kind].maxSessionPerSecond; }
     /// At least 1 s.
     qint64 sessionLengthMs() const;
     /// At most 15 s.
@@ -359,42 +364,55 @@ private:
 };
 
 /// Damage taken (CIP: tibia::cyclopedia::TDamageInputStorage, config "damageinputanalyser").
-class TDamageInputStorage final : public cip::tibia::cyclopedia::TDamageInputStorage, public TCharacterConfiguration
+class TDamageInputStorage final : public cip::tibia::cyclopedia::TDamageInputStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
     static constexpr int ElementCount = TImpactStorage::ElementCount;
     static constexpr qint64 WindowMs = 300000;
     static constexpr int ListedSources = 5;
+    static constexpr int GraphPoints = TImpactStorage::GraphPoints;
 
+    /// One hit taken.
+    struct Hit
+    {
+        int amount = 0;
+        int element = 0;
+        QString source;
+        qint64 timestamp = 0;
+    };
+
+    /// The damage of one source, per element (sorted by element).
     struct Source
     {
         QString name;
-        qint64 total = 0;
-        std::array<qint64, ElementCount> byElement{};
+        int total = 0;
+        std::vector<std::pair<int, int>> elements;
+
+        explicit Source(const Hit& hit);
+        void add(int element, int amount);
     };
 
     explicit TDamageInputStorage(QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("damageinputanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
-    /// CIP .
-    void addDamage(qint64 amount, int element, const QString& source, qint64 nowMs);
-    /// CIP vt15 .
-    void tick(qint64 nowMs);
-    /// CIP .
+    /// A hit of the damage-received impact tracking.
+    void addHit(const Hit& hit);
+    /// Refreshes the recent values (at most every 401 ms) and the graph
+    /// (every 4 s, or 30 s with session values).
+    void update(qint64 nowMs);
     void reset();
 
     qint64 total() const { return m_showSessionValues ? m_sessionTotal : m_windowTotal; }
-    qint64 sessionTotal() const { return m_sessionTotal; }
     qint64 maxPerSecond() const { return m_maxPerSecond; }
-    /// The listed sources (top 5, then the rest under an empty name) and the per-element sums,
-    /// over the session or the last 5 minutes.
-    const std::vector<Source>& sources() const { return m_listedSources; }
-    const std::array<qint64, ElementCount>& elements() const { return m_showSessionValues ? m_sessionElements : m_windowElements; }
-    const Source* source(const QString& name) const;
+    /// The listed sources (the five biggest) and the per-element sums, over
+    /// the session or the last 5 minutes.
+    const std::vector<Source>& sources() const { return m_showSessionValues ? m_listedSessionSources : m_windowSources; }
+    const std::vector<std::pair<int, int>>& elements() const { return m_showSessionValues ? m_sessionElements : m_windowElements; }
     /// Damage taken per second, one point per 4 s (60 s with session values).
     std::vector<double> graph(double& maxY) const;
 
@@ -416,43 +434,35 @@ Q_SIGNALS:
     void optionsChanged();
 
 private:
-    struct Hit
-    {
-        qint64 timestamp = 0;
-        qint64 amount = 0;
-        int element = 0;
-        QString source;
-    };
-
-    void rebuildLists();
     void emitValuesChanged();
     void emitGraphChanged();
     void emitOptionsChanged();
 
-    std::vector<qint64> m_bins;
-    qint64 m_second = 0;
-    qint64 m_sessionTotal = 0;
-    qint64 m_windowTotal = 0;
-    qint64 m_maxPerSecond = 0;
-    std::deque<Hit> m_hits;
-    std::array<qint64, ElementCount> m_sessionElements{};
-    std::array<qint64, ElementCount> m_windowElements{};
-    std::map<QString, Source> m_sessionSources;
-    std::vector<Source> m_listedSources;
-    std::vector<double> m_weights15;
-    std::vector<double> m_weights900;
-    qint64 m_lastUpdate = 0;
-    qint64 m_lastGraph = 0;
-    bool m_dirty = false;
     bool m_showSessionValues = false;
     bool m_showGraph = true;
     bool m_showTypes = true;
     bool m_showSources = true;
+    qint64 m_lastDataUpdate = 0;
+    qint64 m_lastGraphUpdate = 0;
+    int m_sessionTotal = 0;
+    int m_windowTotal = 0;
+    quint32 m_maxPerSecond = 0;
+    /// Damage per second, the newest second last.
+    std::vector<quint32> m_seconds;
+    std::vector<Hit> m_hits;
+    /// Sorted by element.
+    std::vector<std::pair<int, int>> m_sessionElements;
+    /// Sorted by name.
+    std::vector<Source> m_sessionSources;
+    std::vector<Source> m_listedSessionSources;
+    std::vector<Source> m_windowSources;
+    std::vector<std::pair<int, int>> m_windowElements;
+    std::array<int, GraphPoints> m_graph{};
 };
 
 /// Hunting session analyser storage (CIP: tibia::cyclopedia::THuntingSessionStorage, config
 /// "huntingsessionanalyser").
-class THuntingSessionStorage final : public cip::tibia::cyclopedia::THuntingSessionStorage, public TCharacterConfiguration
+class THuntingSessionStorage final : public cip::tibia::cyclopedia::THuntingSessionStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -461,8 +471,9 @@ public:
     explicit THuntingSessionStorage(TProgressStorage* progress, QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("huntingsessionanalyser"); }
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     void tick(qint64 nowMs);
     /// CIP .
@@ -562,8 +573,8 @@ private:
 /// The session's analyser storages (CIP: the storage container behind session+0x40 vt0xb0) and
 /// the engine hooks that feed them. One instance lives in main; widgets and the product HUD read
 /// it through instance. A new game session starts from zero, as CIP makes new storages per
-/// session; the options are character configuration, read when a character enters the world
-/// and written when it leaves.
+/// session; the options are character configuration the TCharacterConfigurationManager reads
+/// and writes.
 class TAnalyserStorages final : public QObject
 {
     Q_OBJECT
@@ -585,19 +596,30 @@ public:
     TDamageInputStorage* damageInput() { return &m_damageInput; }
     THuntingSessionStorage* huntingSession() { return &m_huntingSession; }
     TPartyHuntStorage* partyHunt() { return &m_partyHunt; }
+    cyclopedia::TItemTrackingStorage* itemTracking() { return m_itemTracking.get(); }
+    quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() { return m_lootBlackWhitelist.get(); }
 
     /// RESET_HUNTING_SESSION (CIP).
     void resetAll();
-    /// The character whose configuration the storages use (0: none; saves the previous one).
-    void setCharacter(quint32 characterId);
-    void saveConfiguration();
+    /// Whether the storages hold a character's configuration (loaded by the
+    /// config::TCharacterConfigurationManager; none after the game ends).
+    bool hasCharacter() const { return m_hasCharacter; }
+
+public Q_SLOTS:
+    /// The character configuration manager read the character's storages.
+    void onCharacterConfigurationLoaded();
 
 Q_SIGNALS:
+    /// The storages' publishGameAction (impact, item tracking), forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
     void sessionReset();
+    /// The character's configurations were read (CIP TCharacterConfigurationManager).
+    void configurationLoadedForCharacter();
+    /// The own character's premium time changed.
+    void premiumTimeChanged();
 
 private:
     void tick();
-    QString configurationPath(const TCharacterConfiguration& configuration) const;
 
     TProgressStorage m_progress;
     TGainWasteStorage m_gainWaste;
@@ -605,9 +627,11 @@ private:
     TDamageInputStorage m_damageInput;
     THuntingSessionStorage m_huntingSession;
     TPartyHuntStorage m_partyHunt;
+    std::unique_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
+    std::unique_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_lootBlackWhitelist;
     std::vector<client::gamecore::Hook> m_hooks;
     QTimer m_timer;
-    quint32 m_characterId = 0;
+    bool m_hasCharacter = false;
 };
 
 }

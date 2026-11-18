@@ -166,6 +166,7 @@ bool TTutorialHintDialogController::showHintById(const int hintId)
     const HintAssets* assets = hintAssets(hintId);
     if (!assets)
         return false;
+    m_tutorialHintId = hintId;
     const QString button = assets->buttonTextId.isEmpty() ? QString() : qtTrId(assets->buttonTextId.toUtf8().constData());
     if (!assets->captionImagePath.isEmpty()) {
         showBannerHint(assets->captionImagePath, assets->imagePath, button, 0, assets->bevel);
@@ -180,7 +181,7 @@ void TTutorialHintDialogController::emitDisplay() { Q_EMIT displayDataChanged();
 void TTutorialHintDialogController::requestClose()
 {
     dialog()->close();
-    input::publish(input::makeAction(A::CONFIRM_TUTORIAL_HINT));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
 }
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }
@@ -200,44 +201,41 @@ TTutorialShell::TTutorialShell(QObject* parent)
         m_vocation->dialog()->destroy();
     });
 
-    input::setActionHandler(A::SHOW_TUTORIAL_HINT, [this](const input::TGameAction& action) {
-        if (action.parameter > 0)
-            handleTutorialHintId(action.parameter);
-        else if (!action.filePath.isEmpty() || !action.text.isEmpty())
-            m_hint->showHint(action.text, action.filePath, action.statement, 0, true);
+    m_gameActions.on(A::SHOW_TUTORIAL_HINT, [this](const input::TGameActionShowTutorialHint& action) {
+        if (action.tutorialHintId() > 0)
+            handleTutorialHintId(action.tutorialHintId());
         return true;
     });
-    input::setActionHandler(A::ADD_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameAction& action) {
-        m_hint->showHint(action.text, action.filePath, action.statement, action.parameter, true);
+    m_gameActions.on(A::ADD_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameActionAddHintAtTutorialMarker& action) {
+        m_hint->showHint(action.text(), action.image(), action.caption(), action.markerId(), true);
         return true;
     });
-    input::setActionHandler(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameAction& action) {
-        m_hint->showHint(action.text, action.filePath, action.statement, action.parameter, false);
+    m_gameActions.on(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker& action) {
+        qCInfo(lcTutorial) << "ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER" << action.markerId();
         return true;
     });
-    input::setActionHandler(A::CONFIRM_TUTORIAL_HINT, [this](const input::TGameAction&) {
+    m_gameActions.on(A::CONFIRM_TUTORIAL_HINT, [this](const input::IGameAction&) {
         m_hint->dialog()->close();
         return true;
     });
-    input::setActionHandler(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameAction& action) {
-        qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.parameter << action.text
-                           << action.creatureId;
+    m_gameActions.on(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameActionAddGUITutorialMarker& action) {
+        qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.markerId() << action.creatureId();
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
             overlay->addGuiMarker(action);
-        if (action.creatureId != 0 && action.parameter > 0) {
+        if (action.creatureId() != 0 && action.markerId() > 0) {
             if (TBattleListControllerStorage* lists = TBattleListControllerStorage::instance())
-                lists->setCreatureTutorialMarker(action.creatureId, action.parameter);
+                lists->setCreatureTutorialMarker(action.creatureId(), action.markerId());
         }
         if (qmlcomponents::TTutorialHelperQmlService* helper = qmlcomponents::TTutorialHelperQmlService::instance()) {
-            if (action.parameter > 0) {
-                if (auto* item = helper->findTutorialMarkerQuickItemWithID(action.parameter))
+            if (action.markerId() > 0) {
+                if (auto* item = helper->findTutorialMarkerQuickItemWithID(action.markerId()))
                     item->setVisible(true);
             }
         }
         return true;
     });
-    input::setActionHandler(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::TGameAction&) {
+    m_gameActions.on(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "REMOVE_ALL_TUTORIAL_MARKERS";
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
@@ -246,51 +244,36 @@ TTutorialShell::TTutorialShell(QObject* parent)
             lists->clearCreatureTutorialMarkers();
         return true;
     });
-    input::setActionHandler(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::TGameAction&) {
+    m_gameActions.on(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {
         qCInfo(lcTutorial) << "FINISHED_TUTORIAL_FOR_CHARACTER";
         Q_EMIT tutorialFinished();
         return true;
     });
-    input::setActionHandler(A::TUTORIAL_PROGRESS, [](const input::TGameAction& action) {
-        qCInfo(lcTutorial) << "TUTORIAL_PROGRESS" << action.parameter << action.text;
+    m_gameActions.on(A::TUTORIAL_PROGRESS, [](const input::TGameActionTutorialProgress& action) {
+        qCInfo(lcTutorial) << "TUTORIAL_PROGRESS" << action.tutorialProgress();
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_PAUSE, [](const input::TGameAction&) {
+    m_gameActions.on(A::SESSIONDUMP_PAUSE, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "SESSIONDUMP_PAUSE (PacketPlayer has no pause yet)";
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_RESUME, [](const input::TGameAction&) {
+    m_gameActions.on(A::SESSIONDUMP_RESUME, [](const input::IGameAction&) {
         qCInfo(lcTutorial) << "SESSIONDUMP_RESUME (PacketPlayer has no resume yet)";
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_SKIP_TO, [this](const input::TGameAction& action) {
-        qCInfo(lcTutorial) << "SESSIONDUMP_SKIP_TO" << action.parameter << action.text;
-        // Finish only on an explicit end cue — CIP `.hints` use SKIP_TO 0 as a
-        // no-op / restart marker at TutorialStart, not "end cinematic".
-        if (action.text == QLatin1String("end") || action.text == QLatin1String("finish"))
-            Q_EMIT tutorialFinished();
+    m_gameActions.on(A::SESSIONDUMP_SKIP_TO, [](const input::TGameActionSessiondumpSkipTo& action) {
+        // CIP `.hints` use SKIP_TO 0 as a no-op / restart marker at TutorialStart.
+        qCInfo(lcTutorial) << "SESSIONDUMP_SKIP_TO" << action.timestamp();
         return true;
     });
-    input::setActionHandler(A::SESSIONDUMP_START, [](const input::TGameAction& action) {
-        qCInfo(lcTutorial) << "SESSIONDUMP_START" << action.text;
+    m_gameActions.on(A::SESSIONDUMP_START, [](const input::TGameActionSessiondumpStart& action) {
+        qCInfo(lcTutorial) << "SESSIONDUMP_START" << action.url();
         return true;
     });
 }
 
 TTutorialShell::~TTutorialShell()
 {
-    input::setActionHandler(A::SHOW_TUTORIAL_HINT, nullptr);
-    input::setActionHandler(A::ADD_HINT_AT_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::CONFIRM_TUTORIAL_HINT, nullptr);
-    input::setActionHandler(A::ADD_GUI_TUTORIAL_MARKER, nullptr);
-    input::setActionHandler(A::REMOVE_ALL_TUTORIAL_MARKERS, nullptr);
-    input::setActionHandler(A::FINISHED_TUTORIAL_FOR_CHARACTER, nullptr);
-    input::setActionHandler(A::TUTORIAL_PROGRESS, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_PAUSE, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_RESUME, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_SKIP_TO, nullptr);
-    input::setActionHandler(A::SESSIONDUMP_START, nullptr);
 }
 
 void TTutorialShell::handleTutorialHintId(const int hintId)

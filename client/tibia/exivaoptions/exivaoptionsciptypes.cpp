@@ -33,7 +33,7 @@ TExivaOptionsStorage::Names names(const google::protobuf::RepeatedPtrField<std::
 
 void TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed&)
 {
-    input::publish(input::makeAction(input::EGameAction::EXIVA_WAS_SUPPRESSED));
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::EXIVA_WAS_SUPPRESSED));
 }
 
 void TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message)

@@ -43,6 +43,7 @@ public Q_SLOTS:
 private:
     input::TClickAreaEventFilter m_clickArea;
     QMetaObject::Connection m_keyboardConnection;
+    QMetaObject::Connection m_otherFocusConnection;
 };
 
 }

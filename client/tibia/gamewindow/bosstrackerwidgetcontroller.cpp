@@ -14,19 +14,16 @@
 #include <QJsonObject>
 #include <tibia/game/thingsession_forward.h>
 
+#include "qmlcomponents/texthelper.h"
+
+#include <QQuickWindow>
+
 namespace tibia::gamewindow {
 
 namespace {
 
 using A = input::EGameAction;
 constexpr auto OptionsKey = "bossCooldownsWidgetOptions";
-
-QString formatCooldownEnd(const qint64 until)
-{
-    if (until <= 0)
-        return {};
-    return QDateTime::fromSecsSinceEpoch(until).toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
-}
 
 qmlcomponents::TOutfitQmlModel* outfitForRace(const int raceId, QObject* parent)
 {
@@ -62,17 +59,21 @@ QVariant TBossTrackerListModel::data(const QModelIndex& index, const int role) c
     if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_visible.size()))
         return {};
     const Row& row = m_all[static_cast<size_t>(m_visible[static_cast<size_t>(index.row())])];
+    // CIP: a cooldown runs while its end lies ahead; the text is the time left.
+    const qint64 nowSeconds = m_currentTimeMs / 1000;
     switch (role) {
-    case BossRaceIdRole:
-        return row.entry.raceId;
     case NameRole:
         return row.entry.name;
-    case HasCooldownRole:
-        return row.entry.hasCooldown();
-    case CooldownEndStringRole:
-        return formatCooldownEnd(row.entry.cooldownUntil);
+    case BossRaceIdRole:
+        return row.entry.raceId;
     case OutfitRole:
         return QVariant::fromValue<QObject*>(row.outfit);
+    case HasCooldownRole:
+        return nowSeconds < row.entry.cooldownUntil;
+    case CooldownEndStringRole:
+        return qmlcomponents::shortDurationString(row.entry.cooldownUntil - nowSeconds);
+    case CooldownEndRole:
+        return static_cast<uint>(row.entry.cooldownUntil);
     default:
         return {};
     }
@@ -80,11 +81,12 @@ QVariant TBossTrackerListModel::data(const QModelIndex& index, const int role) c
 
 QHash<int, QByteArray> TBossTrackerListModel::roleNames() const
 {
-    return { { BossRaceIdRole, "bossRaceId" },
-             { NameRole, "name" },
+    return { { NameRole, "name" },
+             { BossRaceIdRole, "bossRaceId" },
+             { OutfitRole, "outfit" },
              { HasCooldownRole, "hasCooldown" },
              { CooldownEndStringRole, "cooldownEndString" },
-             { OutfitRole, "outfit" } };
+             { CooldownEndRole, "cooldownEnd" } };
 }
 
 void TBossTrackerListModel::clearOutfits()
@@ -104,6 +106,19 @@ void TBossTrackerListModel::setRows(std::vector<Row> rows)
     m_all = std::move(rows);
     rebuildVisible();
     endResetModel();
+}
+
+void TBossTrackerListModel::setCurrentTime(const qint64 currentTimeMs)
+{
+    const qint64 previousMs = std::min(m_currentTimeMs, currentTimeMs);
+    if (m_currentTimeMs / 1000 >= currentTimeMs / 1000)
+        return;
+    m_currentTimeMs = currentTimeMs;
+    for (int row = 0; row < static_cast<int>(m_visible.size()); ++row) {
+        const qint64 endMs = m_all[static_cast<size_t>(m_visible[static_cast<size_t>(row)])].entry.cooldownUntil * 1000;
+        if (endMs != previousMs && previousMs <= endMs)
+            Q_EMIT dataChanged(index(row), index(row), { CooldownEndStringRole, HasCooldownRole });
+    }
 }
 
 void TBossTrackerListModel::setNameFilter(const QString& filter)
@@ -167,10 +182,23 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
         connect(m_storage, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
                 &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
     }
+    m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch());
     onBossTrackingEntriesChanged();
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
-    if (QQuickItem* item = quickItem())
+    // CIP: the sidebar widgets' frame update gives the model the time.
+    const auto followFrames = [this](QQuickWindow* window) {
+        if (window)
+            connect(window, &QQuickWindow::afterAnimating, this, [this] { m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch()); });
+    };
+    if (gameWindowItem) {
+        followFrames(gameWindowItem->window());
+        connect(gameWindowItem, &QQuickItem::windowChanged, this, followFrames);
+    }
+    if (QQuickItem* item = quickItem()) {
+        m_focus.setClickArea(item);
         connect(item, &QObject::destroyed, this, &TBossTrackerWidgetController::onWidgetQuickItemDestroyed);
+    }
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TBossTrackerWidgetController::focusChanged);
 }
 
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
@@ -178,7 +206,7 @@ QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
 bool TBossTrackerWidgetController::hasUnlockedAnyBosses() const { return m_storage && m_storage->hasUnlockedAnyBosses(); }
 
 QQuickItem* TBossTrackerWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
-bool TBossTrackerWidgetController::hasFocus() const { return m_hasFocus; }
+bool TBossTrackerWidgetController::hasFocus() const { return m_focus.hasFocus(); }
 
 void TBossTrackerWidgetController::onCloseClicked() { onRequestClose(); }
 void TBossTrackerWidgetController::onRequestClose() { Q_EMIT widgetClosed(); }
@@ -196,21 +224,16 @@ void TBossTrackerWidgetController::setCursorToResizeVertical(const bool Enabled)
 void TBossTrackerWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TBossTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 
+// CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
+// TUiFocusManager's (a click outside the widget gives it back).
 void TBossTrackerWidgetController::takeFocus()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
-    Q_EMIT requestWidgetControlToTakeFocus();
+    m_focus.takeFocus();
 }
 
 void TBossTrackerWidgetController::releaseFocus()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
+    m_focus.releaseFocus();
 }
 
 void TBossTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
@@ -260,10 +283,9 @@ void TBossTrackerWidgetController::requestFilterByBossName(const QString& Filter
 
 void TBossTrackerWidgetController::requestOpenBosstiary(const int BossRaceID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 6;
-    action->category = BossRaceID;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(6);
+    action->setRaceId(static_cast<uint16_t>(BossRaceID));
+    Q_EMIT publishGameAction(action);
 }
 
 /// Two checkable sort entries; picking one sorts and saves the options.
@@ -305,6 +327,7 @@ TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options
 {
     if (!m_controller) {
         m_controller = new TBossTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TBossTrackerWidgetController::publishGameAction, this, &TBossTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

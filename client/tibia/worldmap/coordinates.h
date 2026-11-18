@@ -6,6 +6,10 @@
 
 #include <QPoint>
 
+class QDebug;
+
+#include <iosfwd>
+
 namespace tibia {
 namespace worldmap {
 
@@ -35,9 +39,26 @@ public:
 
     Position toPosition() const { return Position(x, y, static_cast<uint8_t>(z)); }
 
+    /// The field drawn at the same place on floor `floor`: every floor up shifts
+    /// the picture one field up and left.
+    TWorldMapCoordinate shearedToFloor(const int floor) const { return { x + z - floor, y + z - floor, floor }; }
+    /// The field moved diagonally by `floor - z` fields (down-right), on the same floor.
+    TWorldMapCoordinate shiftedTowardsFloor(const int floor) const { return { x + floor - z, y + floor - z, z }; }
+    /// The field moved diagonally by `floor - z` fields (up-left), on the same floor.
+    TWorldMapCoordinate shiftedAwayFromFloor(const int floor) const { return { x - floor + z, y - floor + z, z }; }
+
     bool operator==(const TWorldMapCoordinate& other) const
     {
         return x == other.x && y == other.y && z == other.z;
+    }
+    /// Ordered by x, then y, then z.
+    bool operator<(const TWorldMapCoordinate& other) const
+    {
+        if (x != other.x)
+            return x < other.x;
+        if (y != other.y)
+            return y < other.y;
+        return z < other.z;
     }
 };
 
@@ -89,10 +110,10 @@ public:
 
     QPoint toMapPixel() const { return { subfieldX, subfieldY }; }
 
-    /// Field that contains this subfield (CIP field size 32).
+    /// Field that contains this subfield (CIP field size 32; division toward zero).
     TWorldMapCoordinate toFieldCoordinate() const
     {
-        return { subfieldX >> 5, subfieldY >> 5, z };
+        return { subfieldX / 32, subfieldY / 32, z };
     }
 
     static TWorldMapSubfieldCoordinate fromField(const TWorldMapCoordinate& field, const int offsetX = 16,
@@ -133,26 +154,103 @@ public:
     }
 };
 
-/// Aware-range volume after a full map / floor window update (CIP:
-/// TShearedWorldMapCuboid — arg of TWorldMapStorage::storedVolumeHasChanged).
-class TShearedWorldMapCuboid : public ::tibia::CipTyped
+/// A box of fields: its origin, the field past its far corner and its size
+/// (CIP: TWorldMapCuboid).
+class TWorldMapCuboid : public ::tibia::CipTyped
 {
 public:
-    TWorldMapCoordinate topLeft;
+    TWorldMapCoordinate origin;
+    /// origin + extent: one past the last field on every axis.
+    TWorldMapCoordinate end;
     TWorldMapExtent extent;
 
-    TShearedWorldMapCuboid() = default;
-    TShearedWorldMapCuboid(const TWorldMapCoordinate& topLeft_, const TWorldMapExtent& extent_)
-        : topLeft(topLeft_)
+    TWorldMapCuboid()
+        : extent(0, 0, 0)
+    {
+    }
+    TWorldMapCuboid(const TWorldMapCoordinate& origin_, const TWorldMapExtent& extent_)
+        : origin(origin_)
+        , end(origin_.x + extent_.width, origin_.y + extent_.height, origin_.z + extent_.depth)
         , extent(extent_)
     {
     }
 
-    bool operator==(const TShearedWorldMapCuboid& other) const
+    /// The same box moved by `offset` fields.
+    TWorldMapCuboid translated(const TWorldMapExtent& offset) const
     {
-        return topLeft == other.topLeft && extent == other.extent;
+        return TWorldMapCuboid({ origin.x + offset.width, origin.y + offset.height, origin.z + offset.depth }, extent);
+    }
+    /// The middle field of the origin's floor.
+    TWorldMapCoordinate center() const
+    {
+        return { origin.x + (end.x - origin.x) / 2, origin.y + (end.y - origin.y) / 2, origin.z };
+    }
+
+    bool operator==(const TWorldMapCuboid& other) const
+    {
+        return origin == other.origin && end == other.end && extent == other.extent;
     }
 };
+
+/// A box of fields seen through the isometric shear: floors other than
+/// `shearFloor` are shifted one field per floor (CIP: TShearedWorldMapCuboid; the
+/// stored volume and the visible area).
+class TShearedWorldMapCuboid : public TWorldMapCuboid
+{
+public:
+    int shearFloor = 0;
+
+    TShearedWorldMapCuboid() = default;
+    TShearedWorldMapCuboid(const TWorldMapCoordinate& origin_, const TWorldMapExtent& extent_, const int shearFloor_)
+        : TWorldMapCuboid(origin_, extent_)
+        , shearFloor(shearFloor_)
+    {
+    }
+    /// Sheared at the box's own floor.
+    explicit TShearedWorldMapCuboid(const TWorldMapCuboid& cuboid)
+        : TWorldMapCuboid(cuboid)
+        , shearFloor(cuboid.origin.z)
+    {
+    }
+    TShearedWorldMapCuboid(const TWorldMapCuboid& cuboid, const int shearFloor_)
+        : TWorldMapCuboid(cuboid)
+        , shearFloor(shearFloor_)
+    {
+    }
+
+    /// The box itself.
+    TWorldMapCuboid cuboid() const { return *this; }
+    /// The floors `firstFloor` to `lastFloor` of the box (same shear); empty when
+    /// lastFloor is above firstFloor.
+    TShearedWorldMapCuboid restrictedToFloors(const int firstFloor, const int lastFloor) const
+    {
+        if (lastFloor < firstFloor)
+            return {};
+        const TWorldMapCuboid moved = translated(TWorldMapExtent(0, 0, firstFloor - origin.z));
+        return TShearedWorldMapCuboid(
+            TWorldMapCuboid(moved.origin, TWorldMapExtent(moved.extent.width, moved.extent.height, lastFloor - firstFloor + 1)),
+            shearFloor);
+    }
+
+    /// The field, seen from the shear floor, lies inside the box (half-open on
+    /// every axis).
+    bool contains(const TWorldMapCoordinate& coordinate) const
+    {
+        const int shift = coordinate.z - shearFloor;
+        const int x = coordinate.x + shift;
+        const int y = coordinate.y + shift;
+        return origin.x <= x && x < end.x && origin.y <= y && y < end.y && origin.z <= coordinate.z && coordinate.z < end.z;
+    }
+
+    bool operator==(const TShearedWorldMapCuboid& other) const
+    {
+        return TWorldMapCuboid::operator==(other) && shearFloor == other.shearFloor;
+    }
+};
+
+/// "[x=fieldX+offsetX, y=fieldY+offsetY, z]" (CIP's debug print of a subfield coordinate).
+QDebug operator<<(QDebug debug, const TWorldMapSubfieldCoordinate& coordinate);
+std::ostream& operator<<(std::ostream& stream, const TWorldMapSubfieldCoordinate& coordinate);
 
 }
 }

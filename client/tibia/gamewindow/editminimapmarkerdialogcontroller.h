@@ -10,7 +10,7 @@
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace minimap {
 class TMinimapMarkerStorage;
@@ -28,12 +28,14 @@ class TEditMinimapMarkerDialogController final
     Q_OBJECT
 public:
     TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers, QObject* parent = nullptr);
+    /// CIP v26: the dialog's item goes.
+    void destroyDialog() { dialog()->destroy(); }
 
     /// SHOW_DIALOG_CREATE_MINIMAP_MARKER opens an empty dialog for the action's
     /// field, SHOW_DIALOG_EDIT_MINIMAP_MARKER one with the field's marker, and
     /// SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION one for the player's
     /// field (with its marker, if it has one).
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void onCancelClicked() override;

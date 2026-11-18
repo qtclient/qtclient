@@ -1,6 +1,10 @@
 #include "domainhandlers.h"
 
+#include <algorithm>
+
 #include "app/portalurls.h"
+#include "config/clientoptions.h"
+#include "shared/tibiaurltools.h"
 #include "gameaction.h"
 
 #include <creatures/creaturestorage.h>
@@ -22,109 +26,81 @@ namespace {
 
 using A = EGameAction;
 
-constexpr std::array<A, 7> ClipboardActions = {
-    A::COPY_TEXT_TO_CLIPBOARD,
-    A::COPY_TRUSTED_TEXT_TO_CLIPBOARD,
-    A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD,
-    A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD,
-    A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
-    A::COPY_CREATURE_NAME_TO_CLIPBOARD,
-    A::COPY_CHAT_ENTRY_TO_CLIPBOARD,
-};
-
-QObject* focusedTextField()
-{
-    return QGuiApplication::focusObject();
 }
 
-QString focusedSelectedText()
-{
-    if (QObject* field = focusedTextField())
-        return field->property("selectedText").toString();
-    return {};
-}
-
-void copyFocusedOrActionText(const TGameAction& action)
-{
-    QString text = action.text;
-    if (text.isEmpty())
-        text = focusedSelectedText();
-    if (!text.isEmpty())
-        QGuiApplication::clipboard()->setText(text);
-}
-
-bool handleClipboard(const TGameAction& action)
-{
-    switch (action.type) {
-    case A::COPY_TEXT_TO_CLIPBOARD:
-    case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
-        QGuiApplication::clipboard()->setText(action.text);
-        return true;
-    case A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD:
-    case A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD:
-    case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
-        copyFocusedOrActionText(action);
-        return true;
-    case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
-    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        if (action.creatureId) {
-            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId)) {
-                    QGuiApplication::clipboard()->setText(row->name());
-                    return true;
-                }
-            }
-        }
-        if (!action.text.isEmpty())
-            QGuiApplication::clipboard()->setText(action.text);
-        return true;
-    default:
-        return false;
-    }
-}
-
-}
-
-TActionButtonGameActionHandler::TActionButtonGameActionHandler(ActionHandler handler, QObject* parent)
+TActionButtonGameActionHandler::TActionButtonGameActionHandler(Handler handler, QObject* parent)
     : cip::tibia::input::TActionButtonGameActionHandler(parent)
+    , m_handler(std::move(handler))
 {
-    setActionHandler(A::ACTION_BUTTON_TRIGGERED, std::move(handler));
 }
 
-TActionButtonGameActionHandler::~TActionButtonGameActionHandler()
+TActionButtonGameActionHandler::~TActionButtonGameActionHandler() = default;
+
+void TActionButtonGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr& pGameAction)
 {
-    setActionHandler(A::ACTION_BUTTON_TRIGGERED, nullptr);
+    if (const auto* triggered = gameActionAs<TGameActionActionButtonTriggered>(pGameAction); triggered && m_handler)
+        m_handler(*triggered);
 }
 
 TClipboardGameActionHandler::TClipboardGameActionHandler(QObject* parent)
     : cip::tibia::input::TClipboardGameActionHandler(parent)
 {
-    for (const A type : ClipboardActions)
-        setActionHandler(type, handleClipboard);
 }
 
-TClipboardGameActionHandler::~TClipboardGameActionHandler()
+TClipboardGameActionHandler::~TClipboardGameActionHandler() = default;
+
+void TClipboardGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    for (const A type : ClipboardActions)
-        setActionHandler(type, nullptr);
+    switch (pGameAction->gameActionType()) {
+    case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
+    case A::COPY_TEXT_TO_CLIPBOARD:
+        if (auto copy = std::dynamic_pointer_cast<const TGameActionCopyTextToClipboard>(pGameAction))
+            handleCopyTextToClipboardGameAction(std::move(copy));
+        return;
+    case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
+    case A::COPY_TRUSTED_TEXT_TO_CLIPBOARD:
+        if (const auto* copy = gameActionAs<TGameActionCopyTextToClipboard>(pGameAction))
+            QGuiApplication::clipboard()->setText(copy->text());
+        return;
+    default:
+        return;
+    }
+}
+
+void TClipboardGameActionHandler::handleCopyTextToClipboardGameAction(
+    const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
+{
+    const config::TClientOptions* options = config::TClientOptions::instance();
+    if (options && options->boolOption(config::EClientOption::linkCopyWarningEnabled)
+        && shared::TTibiaUrlTools::containsUrl(pGameAction->text())) {
+        Q_EMIT publishGameAction(std::make_shared<TGameActionRequestConformationForCopyingTextToClipboard>(pGameAction->text()));
+        return;
+    }
+    QGuiApplication::clipboard()->setText(pGameAction->text());
+}
+
+void TClipboardGameActionHandler::handleCopyTrustedTextToClipboardGameAction(
+    const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
+{
+    QGuiApplication::clipboard()->setText(pGameAction->text());
 }
 
 TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)
     : cip::tibia::input::TGatherAllGameActionHandler(parent)
 {
-    setActionHandler(A::GATHER_ALL, [](const TGameAction& action) {
-        const uint16_t typeId = action.objectClientId;
-        if (typeId != 0) {
-            const uint8_t stackpos = action.stackPosition >= 0 ? static_cast<uint8_t>(action.stackPosition) : 0;
-            tibia::game::gatherAll(action.position, typeId, stackpos);
-        }
-        return true;
-    });
 }
 
-TGatherAllGameActionHandler::~TGatherAllGameActionHandler()
+TGatherAllGameActionHandler::~TGatherAllGameActionHandler() = default;
+
+void TGatherAllGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    setActionHandler(A::GATHER_ALL, nullptr);
+    if (!pGameAction || pGameAction->gameActionType() != A::GATHER_ALL)
+        return;
+    const std::optional<TObjectGameActionContext> object = objectContextOf(*pGameAction);
+    if (object && object->objectClientId() != 0) {
+        const uint8_t stackpos = object->stackPosition() >= 0 ? static_cast<uint8_t>(object->stackPosition()) : 0;
+        tibia::game::gatherAll(object->position(), object->objectClientId(), stackpos);
+    }
 }
 
 TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* parent)
@@ -153,25 +129,20 @@ TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const app::Launcher
     : cip::tibia::input::TOpenWebsiteGameActionHandler(parent)
     , m_env(env)
 {
-    for (const A type : OpenWebsiteActions) {
-        setActionHandler(type, [this](const TGameAction& action) {
-            handleGameAction(action);
-            return true;
-        });
-    }
 }
 
-TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler()
-{
-    for (const A type : OpenWebsiteActions)
-        setActionHandler(type, nullptr);
-}
+TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler() = default;
 
-void TOpenWebsiteGameActionHandler::handleGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr pGameAction)
 {
-    switch (action.type) {
+    if (!pGameAction
+        || std::find(OpenWebsiteActions.begin(), OpenWebsiteActions.end(), pGameAction->gameActionType()) == OpenWebsiteActions.end())
+        return;
+    const EGameAction type = pGameAction->gameActionType();
+    switch (type) {
     case A::OPEN_URL_GET_PREMIUM:
-        handleOpenGetPremiumUrlGameAction(action);
+        if (const auto* premium = gameActionAs<TGameActionOpenGetPremiumUrl>(pGameAction))
+            handleOpenGetPremiumUrlGameAction(*premium);
         break;
     case A::OPEN_URL_GET_COINS:
     case A::OPEN_URL_TIBIA_PAGE:
@@ -183,36 +154,38 @@ void TOpenWebsiteGameActionHandler::handleGameAction(const TGameAction& action)
     case A::OPEN_URL_PREMIUM_FEATURES:
     case A::OPEN_URL_TWITCH_TIBIA:
     case A::OPEN_URL_YOUTUBE_TIBIA:
-        openUrlLater(configuredUrl(action.type, tibiaComUrl()));
+        openUrlLater(configuredUrl(type, tibiaComUrl()));
         break;
     case A::OPEN_URL_CIPSOFT:
         // cipSoftUrl is the one page without a tibia.com fallback.
-        openUrlLater(configuredUrl(action.type, QUrl()));
+        openUrlLater(configuredUrl(type, QUrl()));
         break;
     case A::OPEN_URL_SURVEY:
-        handleOpenSurveyUrlGameAction(action);
+        if (const auto* survey = gameActionAs<TGameActionOpenSurveyUrl>(pGameAction))
+            handleOpenSurveyUrlGameAction(*survey);
         break;
     case A::OPEN_URL:
-        openUrlLater(QUrl(action.text, QUrl::TolerantMode));
+        if (const auto* url = gameActionAs<TGameActionOpenUrl>(pGameAction))
+            openUrlLater(QUrl(url->url(), QUrl::TolerantMode));
         break;
     default:
         break;
     }
 }
 
-void TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction(const TGameActionOpenGetPremiumUrl& action)
 {
     QString url = configuredUrl(A::OPEN_URL_GET_PREMIUM, tibiaComUrl()).toString();
-    url.append(QString::number(action.parameter));
+    url.append(QString::number(action.source()));
     openUrlLater(QUrl(url, QUrl::TolerantMode));
 }
 
-void TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction(const TGameAction& action)
+void TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction(const TGameActionOpenSurveyUrl& action)
 {
     QString url = configuredUrl(A::OPEN_URL_SURVEY, tibiaComUrl()).toString();
-    url.append(QString::number(action.parameter));
+    url.append(QString::number(action.surveyId()));
     url.append(QStringLiteral("/lang-en?token="));
-    url.append(action.text);
+    url.append(action.token());
     openUrlLater(QUrl(url, QUrl::TolerantMode));
 }
 

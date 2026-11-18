@@ -1,10 +1,13 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "config/optionsarchive.h"
+#include "config/clientoptionsmodeswitcher.h"
 #include "config/configciptypes.h"
 #include "config/optionspages.h"
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -14,6 +17,7 @@
 #include <QUrl>
 
 #include <atomic>
+#include <memory>
 #include <vector>
 
 class QQuickWindow;
@@ -48,6 +52,9 @@ public:
     /// `category` (: 0 general, 1 hotkeys, 2 button bar), every
     /// page loaded from the options , then shown.
     void open(int category);
+    /// CIP handleGameAction: OPEN_OPTIONS_MENU_DIALOG opens the page of its parameter;
+    /// TARGET_SELECTION_FINISHED shows the dialog again when a hotkey's target selection hid it.
+    bool handleGameAction(const input::IGameAction& action);
     /// The game session (CIP +0xc08) began or ended.
     void setInGame(bool inGame);
     /// The window whose frames currentFrameRate counts (CipSoft +0xbe0).
@@ -57,7 +64,7 @@ public:
     /// product: a product page (category past CIP's) loaded, applied and reset like CIP's own.
     void addProductPage(int category, config::TOptionsPage* page);
     /// The client whose minimap the minimap export saves first (CIP +0xc0).
-    void setGameClient(client::TGameClient* client) { m_gameClient = client; }
+    void setGameClient(client::TGameClient* client);
     /// Portal origin for About / Website (LauncherEnv::loginBase).
     void setPortalBase(const QUrl& loginBase);
 
@@ -104,6 +111,8 @@ public:
     /// CIP : "Restart" publishes OPEN_LAUNCHER.
     void onResartMessageControllerClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
 
+    QString currentFrameRate() const override;
+
     void afterShow() override;
     void afterHide() override;
 
@@ -125,18 +134,23 @@ private:
     void resetPageToDefault(EDialogCategories category);
     /// CIP : the Basic page's options from the defaults.
     void resetBasicPage();
-    /// The options as the pages would write them.
-    QJsonObject pendingSettings() const;
+    /// A copy of the client's options with every page's pending values.
+    std::unique_ptr<config::TClientOptions> pendingOptions() const;
     TMessageDialogController* makeMessageDialog();
     /// CIP : conf, characterdata and minimap files from the archive.
     void importArchive();
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
     /// CIP : GameclientMessageSetClientOptions with alwaysTurnTowardsMoveDirection.
     void sendTurnTowardsMoveDirection(bool enabled);
+    /// CIP: a hotkey page action; START_TARGET_SELECTION hides the dialog until the selection ends.
+    bool onHotkeyPageGameAction(const input::IGameAction& action);
+    /// CIP v14: closing the dialog closes its message dialogs and the about dialog.
+    void closeSubDialogs();
+    /// CIP: the shown frame rate from the frame timing, set when it changed.
+    void onBeforeRenderFrame();
+    void setFrameRate(double frameRate);
 
     /// CIP config surfaces owned for the options dialog lifetime.
-    config::TActionBarOptions m_actionBarOptions;
-    config::TCharacterConfigurationManager m_characterConfigurationManager;
     config::TClientOptionsModeSwitcher m_clientOptionsModeSwitcher;
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
     config::TConfigBackupReader::TConfigBackupException m_configBackupException;
@@ -149,6 +163,8 @@ private:
     TAboutDialogController* m_about;
     /// CIP +0xbf0.
     QString m_importFile;
+    /// CIP +0xbe8: hidden for a hotkey's target selection.
+    bool m_hiddenForTargetSelection = false;
     client::TGameClient* m_gameClient = nullptr;
 
     QPointer<QQuickWindow> m_window;
@@ -156,6 +172,21 @@ private:
     QMetaObject::Connection m_frameConnection;
     std::atomic<int> m_frames { 0 };
     QTimer m_frameRateTimer;
+    /// CIP +0xbe0.
+    double m_frameRate = 0.0;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+        if ((&m_clientOptionsModeSwitcher))
+            (&m_clientOptionsModeSwitcher)->handleGameAction(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

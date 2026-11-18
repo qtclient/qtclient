@@ -11,9 +11,11 @@ TTargetSelectionController::TTargetSelectionController(QQuickItem* root, QObject
 {
     m_filterFinishedConn = connect(m_filter, &cip::tibia::gamewindow::TTargetSelectionEventFilter::targetSelectionFinished, this,
                                    &TTargetSelectionController::onTargetSelectionFinished);
-    // CipSoft: input::publish(START_TARGET_SELECTION) → this controller.
-    // Tip keeps the listener so action-bar / crosshair start paths stay live.
+    // CipSoft: START_TARGET_SELECTION / TARGET_SELECTION_FINISHED reach this
+    // controller through the router; input::startTargetSelection tells it too.
     input::setTargetSelectionListener([this](const bool selecting) { setSelecting(selecting); });
+    m_gameActions.on(input::EGameAction::START_TARGET_SELECTION, [this](const input::IGameAction&) { setSelecting(true); });
+    m_gameActions.on(input::EGameAction::TARGET_SELECTION_FINISHED, [this](const input::IGameAction&) { setSelecting(false); });
     bindDialogStack();
 }
 
@@ -53,9 +55,9 @@ void TTargetSelectionController::setSelecting(const bool selecting)
         m_filter->setSelecting(selecting);
 }
 
-void TTargetSelectionController::handleGameAction(const input::TGameAction& action)
+void TTargetSelectionController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::START_TARGET_SELECTION)
+    if (action.gameActionType() == input::EGameAction::START_TARGET_SELECTION)
         setSelecting(true);
 }
 
@@ -72,9 +74,7 @@ void TTargetSelectionController::onTargetSelectionFinished()
     m_selecting = false;
     if (m_filter)
         m_filter->setSelecting(false);
-    auto finished = std::make_shared<input::TGameAction>();
-    finished->type = input::EGameAction::TARGET_SELECTION_FINISHED;
-    Q_EMIT publishGameAction(finished);
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::TARGET_SELECTION_FINISHED));
 }
 
 }

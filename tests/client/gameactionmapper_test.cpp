@@ -9,7 +9,6 @@
 using tibia::input::EGameAction;
 using tibia::input::TGameActionList;
 using tibia::input::TGameActionMapper;
-using tibia::input::TGameActionPtr;
 using A = EGameAction;
 
 namespace tibia::input {

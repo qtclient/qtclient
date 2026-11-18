@@ -15,7 +15,7 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -62,10 +62,10 @@ constexpr A TypeContextMenuOrder[] = {
 
 constexpr auto ControlSchemeOption = "controlSchemeIndex";
 
-ThingType* typeOf(const uint16_t typeId)
+TAppearanceType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type && type->getId() != 0 ? type.get() : nullptr;
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type && type->getId() != 0 ? type : nullptr;
 }
 
 exaltation::TExaltationStorage* exaltationStorage()
@@ -79,7 +79,7 @@ std::vector<TAppearanceTypeEntry> searchEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
     exaltation::TExaltationStorage* exaltation = exaltationStorage();
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
+    for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
         TAppearanceTypeEntry entry = TItemInfoDialogController::cyclopediaEntry(type);
         if (entry.classification == 0) {
             entries.push_back(std::move(entry));
@@ -183,6 +183,9 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindo
     });
 
     widget()->createItem(QStringLiteral("DepotSearchWidget.qml"));
+    if (QQuickItem* item = widget()->quickItem())
+        m_focus.setClickArea(item);
+    connect(&m_focus, &TUiFocusManager::focusChanged, this, &TDepotSearchWidgetController::focusChanged);
     tibia::game::onEachGameSession(this, [this] { setGameSession(game::TGameSessionBase::active()); });
 }
 
@@ -205,6 +208,8 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
     m_availableNPCs = npcs;
     Q_EMIT availableNPCsChanged();
 
+    for (TAppearanceInstanceListModel* model : { &m_depotModel, &m_inboxModel })
+        model->setObjectCountStorage(session ? session->objectCountStorage().get() : nullptr);
     if (!session) {
         m_searchProxy.resetEntries({});
         m_depotModel.setObjects({});
@@ -229,7 +234,7 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
 void TDepotSearchWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyWidgetOptions();
+    onWidgetOptionsChanged();
 }
 
 void TDepotSearchWidgetController::applyWidgetOptions()
@@ -251,7 +256,8 @@ void TDepotSearchWidgetController::saveWidgetOptions()
     m_options->setDepotSearchWidgetOptions(options);
 }
 
-void TDepotSearchWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TDepotSearchWidgetController::onWidgetOptionsChanged() { applyWidgetOptions(); }
 
 void TDepotSearchWidgetController::onDetailListChanged()
 {
@@ -260,7 +266,7 @@ void TDepotSearchWidgetController::onDetailListChanged()
     std::vector<container::TInventorySlot> inbox;
     if (m_session && m_detailList) {
         for (const auto& [key, count] : m_detailList->stashCounts()) {
-            if (const ThingTypePtr& type = tibia::game::thingType(key.first, ThingCategoryItem); type && type->getId() != 0)
+            if (const TAppearanceTypePtr& type = tibia::game::thingType(key.first, ThingCategoryItem); type && type->getId() != 0)
                 stash.push_back(TItemInfoDialogController::cyclopediaEntry(type));
         }
         depot = m_detailList->depotObjects();
@@ -284,7 +290,7 @@ QString TDepotSearchWidgetController::detailListObjectName() const
 {
     if (!m_detailList)
         return {};
-    const ThingTypePtr& type = tibia::game::thingType(m_detailList->typeId(), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(m_detailList->typeId(), ThingCategoryItem);
     return type && type->getId() != 0 ? TItemInfoDialogController::cyclopediaEntry(type).name : QString();
 }
 
@@ -299,7 +305,7 @@ bool TDepotSearchWidgetController::isAppearanceAllowedToRetrieve() const
 {
     if (!m_session || !m_detailList || m_detailList->typeId() == 0)
         return false;
-    const ThingType* type = typeOf(m_detailList->typeId());
+    const TAppearanceType* type = typeOf(m_detailList->typeId());
     return type && !type->isNotMoveable();
 }
 
@@ -354,20 +360,16 @@ QStringList TDepotSearchWidgetController::availableTiers() const
     return tiers;
 }
 
+// CIP TSidebarWidgetControllerWithFocusHandling: the widget's focus is its
+// TUiFocusManager's (a click outside the widget gives it back).
 void TDepotSearchWidgetController::takeFocus()
 {
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
+    m_focus.takeFocus();
 }
 
 void TDepotSearchWidgetController::releaseFocus()
 {
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
+    m_focus.releaseFocus();
 }
 
 void TDepotSearchWidgetController::onRequestClose()
@@ -389,7 +391,7 @@ void TDepotSearchWidgetController::requestSearch() { publishSimpleAction(A::REQU
 
 void TDepotSearchWidgetController::requestRefresh() { requestSearch(); }
 
-void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { input::publish(input::makeAction(type)); }
+void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { Q_EMIT publishGameAction(input::makeGameAction(type)); }
 
 bool TDepotSearchWidgetController::categorySupportsTiers(const int category) const
 {
@@ -548,7 +550,7 @@ void TDepotSearchWidgetController::selectType(const uint16_t typeId, const uint8
     m_selectedTier.reset();
     if (!m_session)
         return;
-    if (const ThingType* type = typeOf(typeId); type && type->getClassification() > 0)
+    if (const TAppearanceType* type = typeOf(typeId); type && type->getClassification() > 0)
         m_selectedTier = tier;
 }
 
@@ -556,10 +558,8 @@ void TDepotSearchWidgetController::publishSearchTypeRequest()
 {
     if (m_selectedTypeId == 0)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::REQUEST_SEARCH_TYPE_IN_DEPOT));
-    action->objectClientId = m_selectedTypeId;
-    action->parameter = m_selectedTier.value_or(0);
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionRequestSearchTypeInDepot>(static_cast<uint16_t>(m_selectedTypeId), static_cast<uint16_t>(m_selectedTier.value_or(0)));
+    Q_EMIT publishGameAction(action);
 }
 
 void TDepotSearchWidgetController::requestItemSelect(const int AppearanceId, const int UpgradeTier)
@@ -576,19 +576,16 @@ void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, con
 input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t typeId) const
 {
     input::TGameActionList actions;
-    ThingType* type = typeOf(typeId);
+    TAppearanceType* type = typeOf(typeId);
     if (!type)
         return actions;
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     if (type->hasCyclopediaItem()) {
-        auto cyclopedia = input::mutableClone(*input::makeObjectAction(A::OPEN_CYCLOPEDIA, {}, -1));
-        cyclopedia->objectClientId = typeId;
-        actions.push_back(cyclopedia);
+        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
     }
     if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
-        auto market = input::mutableClone(*input::makeObjectAction(A::MARKET_BROWSE, {}, -1));
-        market->objectClientId = typeId;
-        actions.push_back(market);
+        actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
+            input::TObjectGameActionContext{ {}, -1, static_cast<uint16_t>(typeId) }));
     }
     return actions;
 }
@@ -599,12 +596,11 @@ void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId,
     if (!m_session)
         return;
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(AppearanceId));
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     const input::TGameActionList entries = input::contextMenuActions(candidates, TypeContextMenuOrder);
@@ -623,25 +619,19 @@ void TDepotSearchWidgetController::requestRetrieveFromStash(const int TypeID)
     const auto it = counts.find({ static_cast<uint16_t>(TypeID), 0 });
     if (it == counts.end())
         return;
-    const ThingType* type = typeOf(static_cast<uint16_t>(TypeID));
+    const TAppearanceType* type = typeOf(static_cast<uint16_t>(TypeID));
     const uint32_t maximum = type && type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
-    auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));
-    retrieve->parameter = TypeID;
-    retrieve->amount = static_cast<int>(std::min(it->second, maximum));
-    auto dialog = input::mutableClone(*input::makeAction(A::STASH_OPEN_RETRIEVE_DIALOG));
-    dialog->inner = retrieve;
-    input::publish(dialog);
+    auto retrieve = std::make_shared<input::TGameActionStashRetrieve>(static_cast<uint16_t>(TypeID),
+                                                                      static_cast<int>(std::min(it->second, maximum)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
 }
 
 void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int StorageLocation)
 {
     if (StorageLocation < Depot || StorageLocation > Inbox || !m_session || !m_detailList)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::DEPOT_SERACH_RETRIEVE));
-    action->exaltationTypeId = m_detailList->typeId();
-    action->exaltationTier = m_detailList->tier().value_or(0);
-    action->category = StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionDepotSearchRetrieve>(static_cast<uint16_t>(m_detailList->typeId()), static_cast<uint16_t>(m_detailList->tier().value_or(0)), StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot);
+    Q_EMIT publishGameAction(action);
 }
 
 input::TGameActionList TDepotSearchWidgetController::slotActions(const int storageLocation, const int slotId) const
@@ -654,9 +644,14 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
         storageLocation == Inbox ? m_detailList->inboxObjects() : m_detailList->depotObjects();
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
-    input::TGameActionList actions{ input::makeAction(A::CONTEXT_MENU) };
-    for (input::TGameActionPtr& action :
-         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(objects[static_cast<size_t>(slotId)], {}, slotId),
+    // CIP: the depot search's depot or inbox item location.
+    const input::TGameActionContextPtr location =
+        storageLocation == Inbox
+            ? input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchInboxItemGameActionContext>(slotId))
+            : input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchDepotItemGameActionContext>(slotId));
+    input::TGameActionList actions{ input::makeGameAction(A::CONTEXT_MENU) };
+    for (input::IGameActionPtr& action :
+         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(location, objects[static_cast<size_t>(slotId)]),
                               ObjectContextMenuOrder))
         actions.push_back(std::move(action));
     return actions;
@@ -669,18 +664,17 @@ void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const 
         return;
     const int context = StorageLocation == Stash ? StashContext : ContainerContext;
     const input::TGameActionList candidates = slotActions(StorageLocation, SlotIDRaw);
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    const input::IGameActionPtr action = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     input::TGameActionList entries = context == StashContext ? input::contextMenuActions(candidates, TypeContextMenuOrder)
                                                              : input::contextMenuActions(candidates, ObjectContextMenuOrder);
     if (context == ContainerContext)
-        std::erase_if(entries, [](const input::TGameActionPtr& entry) { return entry && entry->type == A::OPEN; });
+        std::erase_if(entries, [](const input::IGameActionPtr& entry) { return entry && entry->gameActionType() == A::OPEN; });
     if (entries.empty())
         return;
     if (TContextMenuController* menu = TContextMenuController::instance())
@@ -695,7 +689,7 @@ void TDepotSearchWidgetController::updateHoverCursor()
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::TGameActionList candidates =
         m_hoveredStorageLocation == Stash ? input::TGameActionList{} : slotActions(m_hoveredStorageLocation, m_hoveredSlot);
-    const input::TGameActionPtr action = m_mapper.map(candidates, ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(Cursor::ContainerNoDrop, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 
@@ -743,7 +737,7 @@ void TDepotSearchWidgetController::slotTargetSelected(const int StorageLocation,
         return;
     const input::TGameActionList candidates = input::filterActions(slotActions(StorageLocation, SlotIDRaw), { A::TARGET_SELECTED });
     if (!candidates.empty())
-        input::publish(candidates.front());
+        Q_EMIT publishGameAction(candidates.front());
 }
 
 TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
@@ -752,6 +746,7 @@ TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, 
     , m_sidebars(sidebars)
     , m_controller(new TDepotSearchWidgetController(gameWindowItem, engine, this))
 {
+    connect(m_controller, &TDepotSearchWidgetController::publishGameAction, this, &TDepotSearchWidgetManager::publishGameAction);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchResults", [this](GameObject*, const std::vector<std::any>&) {
         show();
         return std::any{};

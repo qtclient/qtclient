@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "config/sidebaroptions.h"
 
 #include <cip_gen.h>
@@ -66,6 +67,14 @@ private:
     QPointer<QQuickItem> m_inventoryItem;
     QPointer<QQuickItem> m_buttonBarItem;
     QPointer<QQuickItem> m_premiumPanelItem;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

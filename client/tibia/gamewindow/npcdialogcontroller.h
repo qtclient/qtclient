@@ -1,7 +1,10 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "gamewindow/dialogcontrollerwithfocushandlingbase.h"
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 #include "gamewindow/npckeywordbuttonmodel.h"
 #include "gamewindow/npctradecontroller.h"
 #include "gamewindow/uifocusmanager.h"
@@ -80,20 +83,17 @@ struct TRemoteNpcSession
 /// window message (talk partners and keyword buttons) opens and closes it;
 /// without one it opens and closes with the trade. The conversation pane
 /// shows the NPCs channel. product remote sessions bring their own keyword
-/// buttons. Focus (CIP TDialogControllerWithFocusHandlingBase, take
-/// / release with an application event filter): taken
-/// when the dialog opens and on a press inside it, released on a press
-/// outside it. The trade pane has its own TUiFocusManager (+0x160), active
-/// while the trade shows, for its search field.
-class TNpcDialogController final : public TDialogController<cip::tibia::gamewindow::TNpcDialogController>
+/// buttons. Focus: TDialogControllerWithFocusHandlingBase (taken when the dialog
+/// shows and on a click inside it, given back on a click elsewhere). The trade
+/// pane has its own TUiFocusManager (+0x160), active while the trade shows; while
+/// it has the keyboard the dialog's focus is not allowed. Losing the focus puts
+/// the chat mode back to the one it had when the dialog took it.
+class TNpcDialogController final : public TDialogControllerWithFocusHandlingBase<cip::tibia::gamewindow::TNpcDialogController>
 {
     Q_OBJECT
 public:
     explicit TNpcDialogController(trade::TNPCTradeStorage* storage, QObject* parent = nullptr);
     ~TNpcDialogController() override;
-
-    /// v18 (CIP).
-    bool hasPersonalMouseShield() const override { return true; }
 
     /// CIP ctor's chat controller (+0x138, chatController): ChatInput's history and chat
     /// mode, typed lines, and the conversation pane's channel (chatChannelModel, the NPCs
@@ -101,9 +101,14 @@ public:
     void setChatController(TChatController* controller);
 
     bool isShown() const { return dialog()->isShown(); }
+    /// CIP: more than one talk partner.
+    bool isMultiNpcTalk() const override { return m_talkPartners.size() > 1; }
     /// CIP (PRESS_ENTER_IN_CHAT while focused,): sends the input
     /// and keeps what the chat leaves of it.
     void pressEnter();
+    /// CIP: PRESS_ENTER_IN_CHAT and the text actions while focused, the chat
+    /// select-all for the NPCs channel and the input text while shown.
+    bool handleGameAction(const input::IGameAction& action);
     /// CIP (SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT while shown): fills the input,
     /// or sends `text` (spells to the local chat) and clears it.
     void setInputText(const QString& text, bool send, bool isSpell, int spellCastType);
@@ -128,8 +133,6 @@ public Q_SLOTS:
     void onSizeChanged(int NewDialogWidth, int NewContentHeight) override;
     void onTradeRequestTakeFocus() override;
     void onTradeRequestReleaseFocus() override;
-    void takeFocus() override;
-    void releaseFocus() override;
 
 Q_SIGNALS:
     /// product: chat HUD leaves the bubble closed while this dialog is shown so
@@ -137,13 +140,26 @@ Q_SIGNALS:
     void shownChanged(bool shown);
 
 protected:
+    void afterCreate() override;
+    void beforeDestroy() override;
+    void beforeHide() override;
     void afterShow() override;
     void afterHide() override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     void setShowTrade(bool show);
+    /// CIP: the trade, the NPC outfit and the keyword buttons go.
+    void resetConversation();
+    /// CIP: losing the focus restores the chat mode saved when taking it.
+    void onFocusChanged();
+    /// REQUEST_SELECT_ALL_TEXT: an empty input selects the conversation, else the input.
+    void selectAllText();
+    /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection, else the conversation's.
+    void copySelectedText();
     void setTalkPartnerNames(const QString& names);
+    /// CIP: positionAndSize follows the client options' NPC dialog rectangle.
+    void onDialogOptionsChanged();
     void bindNpcChannel();
     /// CIP (onNpcTalkPartnersChanged) and 
     /// (onKeywordButtonsChanged): no talk partners closes the dialog, else the
@@ -151,10 +167,11 @@ private:
     void onNpcChatWindow(const std::vector<uint32_t>& npcIds, std::vector<TNpcKeywordButtonModel::Button> buttons);
     /// CIP : "A", "A, B and C"; a partner not on screen is the fallback name.
     static QString partnerNamesOf(const std::vector<uint32_t>& npcIds);
+    /// CIP: "npc_dialog_talking_to" in the NPCs channel when the talk partners change.
+    void postTalkingTo(const QString& names);
 
     QPointer<trade::TNPCTradeStorage> m_storage;
     std::vector<uint32_t> m_talkPartners;
-    std::vector<client::gamecore::Hook> m_hooks;
     TNPCTradeController m_trade;
     TUiFocusManager m_tradeFocus;
     TNpcDialogOutfit m_outfit;
@@ -163,6 +180,18 @@ private:
     QPointer<chat::TChatChannelStorage> m_chatStorage;
     TChatChannelController* m_chat = nullptr;
     std::optional<TRemoteNpcSession> m_remote;
+    int m_savedChatMode = 0;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

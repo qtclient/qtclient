@@ -9,7 +9,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -35,21 +35,6 @@ std::optional<qulonglong> balance(const tibia::client::ResourceTypes_t type)
     if (!tibia::game::hasLocalPlayer())
         return std::nullopt;
     return tibia::game::localPlayerResourceBalance(type);
-}
-
-/// The item type an OPEN_CYCLOPEDIA action names: its `instance`, or the
-/// Cyclopedia type of its object (context menus).
-uint16_t cyclopediaTypeOf(const input::TGameAction& action)
-{
-    if (action.instance > 0)
-        return static_cast<uint16_t>(action.instance);
-    const uint16_t typeId = action.objectClientId;
-    if (typeId == 0)
-        return 0;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    if (!type || !type->hasCyclopediaItem())
-        return 0;
-    return static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId());
 }
 
 QString balanceString(const tibia::client::ResourceTypes_t type, const char* fallback)
@@ -83,6 +68,13 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     m_bosstiaryDialogController = m_bosstiary;
     m_bossSlotsDialogController = m_bossSlots;
     m_magicalArchiveDialogController = m_magicalArchive;
+    connect(m_itemInfo, &TItemInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_monsters, &TMonsterDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_bonusEffects, &TMonsterBonusEffectsDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_houses, &THousesInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_map, &TCyclopediaMapDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_magicalArchive, &TMagicalArchiveDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
 
     // Tip ICyclopediaDialogTab / IDialogTabPage twins (moc floor); live tabs
     // inherit cip::ICyclopediaDialogTab via their CIP T* bases.
@@ -120,8 +112,6 @@ void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_
 
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, nullptr);
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, nullptr);
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -157,49 +147,65 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
-    input::setActionHandler(A::OPEN_CYCLOPEDIA, [this](const input::TGameAction& action) {
+    m_gameActions.on(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
+        m_bosstiary->handleGameAction(action);
+        return true;
+    });
+    m_gameActions.on(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
         // The action's tab and the page it opens there.
-        switch (action.parameter) {
+        switch (action.tab()) {
             case 0: {
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::ItemInfo);
-                if (const uint16_t typeId = cyclopediaTypeOf(action))
+                if (const uint16_t typeId = action.typeId())
                     m_itemInfo->showType(typeId);
                 break;
             }
             case 1:
-                if (action.category > 0)
-                    m_monsters->setNextRace(action.category);
+                if (action.raceId() > 0)
+                    m_monsters->setNextRace(action.raceId());
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Monsters);
                 break;
             case 2:
-                if (action.category > 0)
-                    m_characterInfo->setNextDataType(action.category);
+                if (action.category().value_or(0) > 0)
+                    m_characterInfo->setNextDataType(*action.category());
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::CharacterInfo);
                 break;
             case 3:
-                // Charm 0 is a charm; no charm is -1 (CIP 0xff).
+                // Charm 0 is a charm; no charm is 0xff.
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::BonusEffects);
-                if (action.category >= 0)
-                    m_bonusEffects->selectCharm(action.category);
+                if (action.charmId() != 0xff)
+                    m_bonusEffects->selectCharm(action.charmId());
                 break;
-            case 4:
+            case 4: {
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Map);
-                if (action.position.x != 0 || action.position.y != 0 || action.position.z != 0)
-                    m_map->centerAt(action.position, std::numeric_limits<float>::quiet_NaN());
+                const Position& coordinate = action.coordinate();
+                if (coordinate.x != 0 || coordinate.y != 0 || coordinate.z != 0)
+                    m_map->centerAt(coordinate, action.zoom());
                 break;
-            case 5: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses); break;
+            }
+            case 5:
+                // The houses page selects the action's house.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses);
+                if (action.category().value_or(0) > 0)
+                    m_houses->selectHouse(static_cast<uint>(*action.category()));
+                break;
             case 6:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Bosstiary);
-                if (action.category > 0)
-                    m_bosstiary->showRace(action.category);
+                if (action.raceId() > 0)
+                    m_bosstiary->showRace(action.raceId());
                 break;
             case 7: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::BossSlots); break;
-            case 8: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive); break;
+            case 8:
+                // The magical archive selects the action's spell.
+                captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive);
+                if (action.typeId() > 0)
+                    m_magicalArchive->setSelectedSpellID(action.typeId());
+                break;
             default: break;
         }
         return true;
     });
-    input::setActionHandler(A::CLOSE_CYCLOPEDIA, [this](const input::TGameAction&) {
+    m_gameActions.on(A::CLOSE_CYCLOPEDIA, [this](const input::IGameAction&) {
         clearBacklog();
         closeDialog();
         return true;
@@ -211,9 +217,8 @@ void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
     closeDialog();
     // CIP asks the server for the charm, bank and inventory balances.
     for (const int resource : { 30, 0, 1 }) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
-        input::publish(action);
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
+        Q_EMIT publishGameAction(action);
     }
     if (!dialog()->isShown())
         dialog()->show();
@@ -256,7 +261,7 @@ void TCyclopediaDialogController::requestOpenManageLootContainerDialog()
 {
     clearBacklog();
     closeDialog();
-    input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER));
+    Q_EMIT publishGameAction(input::makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
 }
 
 void TCyclopediaDialogController::requestBack()
@@ -267,8 +272,8 @@ void TCyclopediaDialogController::requestBack()
     m_backlog.pop_back();
     // The page gets its context back. Pages that rebuild on showDialogTab
     // take it as pending before the switch; the item page takes it after.
-    if (context.tab == CharacterInfo && context.characterInfoDataType > 0)
-        m_characterInfo->setNextDataType(context.characterInfoDataType);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->setNextDataType(context.characterInfo.dataType);
     if (context.tab == Monsters)
         m_monsters->restoreContext(context.monsters);
     if (context.tab == BonusEffects)
@@ -277,9 +282,13 @@ void TCyclopediaDialogController::requestBack()
         m_bosstiary->restoreContext(context.bosstiary);
     if (context.tab == Houses)
         m_houses->restoreContext(context.houses);
+    if (context.tab == MagicalArchive)
+        m_magicalArchive->restoreContext(context.magicalArchiveSpellId);
     switchTab(context.tab);
     if (context.tab == ItemInfo)
         m_itemInfo->restoreContext(context.itemInfo);
+    if (context.tab == CharacterInfo)
+        m_characterInfo->restoreContext(context.characterInfo);
     Q_EMIT navigationBacklogChanged();
 }
 
@@ -322,7 +331,7 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
     if (m_dialogTab == ItemInfo)
         context.itemInfo = m_itemInfo->captureContext();
     if (m_dialogTab == CharacterInfo)
-        context.characterInfoDataType = m_characterInfo->dataType();
+        context.characterInfo = m_characterInfo->captureContext();
     if (m_dialogTab == Monsters)
         context.monsters = m_monsters->captureContext();
     if (m_dialogTab == BonusEffects)
@@ -331,6 +340,8 @@ TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext
         context.bosstiary = m_bosstiary->captureContext();
     if (m_dialogTab == Houses)
         context.houses = m_houses->captureContext();
+    if (m_dialogTab == MagicalArchive)
+        context.magicalArchiveSpellId = m_magicalArchive->captureContext();
     return context;
 }
 
@@ -386,19 +397,20 @@ TCyclopediaButtonController::TCyclopediaButtonController(QObject* parent)
 
 void TCyclopediaButtonController::onCyclopediaButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 0;
+    std::shared_ptr<input::TGameActionOpenCyclopedia> action;
     if (const auto* raceId = std::get_if<uint16_t>(&m_highlightReason)) {
-        action->parameter = 1;
-        action->category = *raceId;
+        action = std::make_shared<input::TGameActionOpenCyclopedia>(1);
+        action->setRaceId(*raceId);
     } else if (const auto* raid = std::get_if<worldmap::TWorldMapCoordinate>(&m_highlightReason)) {
-        action->parameter = 4;
-        action->position = raid->toPosition();
+        action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
+        action->setCoordinate(raid->toPosition());
     } else if (const auto* imminent = std::get_if<TImminentRaid>(&m_highlightReason)) {
-        action->parameter = 4;
-        action->position = imminent->coordinate.toPosition();
+        action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
+        action->setCoordinate(imminent->coordinate.toPosition());
+    } else {
+        action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
     stopHighlight();
 }
 
@@ -448,10 +460,9 @@ TBosstiaryButtonController::TBosstiaryButtonController(QObject* parent)
 
 void TBosstiaryButtonController::onOpenBosstiaryButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = 6;
-    action->category = m_highlightedBossRaceId;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(6);
+    action->setRaceId(static_cast<uint16_t>(m_highlightedBossRaceId));
+    Q_EMIT publishGameAction(action);
     if (m_highlightedBossRaceId != 0) {
         m_highlightedBossRaceId = 0;
         Q_EMIT changed();
@@ -477,6 +488,14 @@ void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
         return;
     m_highlightedBossRaceId = BossRaceID;
     Q_EMIT changed();
+}
+
+
+void TCyclopediaDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    m_gameActions.handle(pGameAction);
+    if (m_map)
+        m_map->handleGameAction(pGameAction);
 }
 
 }

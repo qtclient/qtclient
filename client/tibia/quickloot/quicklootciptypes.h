@@ -1,5 +1,8 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
+#include <set>
+
 // CIP-named quickloot surfaces (promoted from cipwire).
 
 #include "shared/cip_typed.h"
@@ -19,7 +22,7 @@ class GameserverMessageUpdateManagedContainers;
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace quickloot {
 
@@ -53,17 +56,13 @@ public:
     static void quickLoot(const Position& position, uint16_t objectId, int stackPosition, bool allCorpsesInArea);
     /// Loots every corpse around the player.
     static void quickLootAreaAtPlayer();
+    /// Sends the quick loot list of `listType` (0 black-, 1 whitelist), the
+    /// object type ids in ascending order.
+    static void sendQuickLootBlackWhitelist(int listType, const std::set<uint16_t>& objectTypeIds);
     /// One ManagedContainer action for an object category; select actions
     /// carry the chosen container.
     static void sendManagedContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
                                      int stackPosition = 0);
-};
-
-class TQuickLootBlackWhitelistStorage final : public cip::tibia::quickloot::TQuickLootBlackWhitelistStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::quickloot::TQuickLootBlackWhitelistStorage::TQuickLootBlackWhitelistStorage;
 };
 
 /// The quick-loot game actions: loot, the managed loot / obtain containers,
@@ -75,11 +74,22 @@ public:
     explicit TQuickLootGameActionHandler(QObject* parent = nullptr);
     ~TQuickLootGameActionHandler() override;
 
-    static bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
 
 private:
     /// A full list refuses the object with a status line.
-    static void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
+    void handleAddToBlackWhitelistStatusAction(uint16_t objectId);
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

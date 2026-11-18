@@ -1,13 +1,16 @@
 #include "minimaprendererquickitem.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include "qmlcomponents/worldmapqmltypes.h"
 
 #include "client/gameclient.h"
 #include "client/gamecore.h"
 #include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "sprites/spritesheetdecompressor.h"
+#include "sprites/spritesystem.h"
 #include "minimap/minimapmanager.h"
 #include "minimap/minimapmarkerstorage.h"
-#include "minimap/minimapmarkertypes.h"
 #include "minimap/minimaptile.h"
 #include "minimap/minimaptilestorage.h"
 
@@ -36,7 +39,8 @@ namespace tibia::qmlcomponents {
 
 namespace {
 
-using EFileType = cyclopedia::TCyclopediaMapStaticData::EFileType;
+using EFileType = cyclopedia::TCyclopediaMapStaticDataStorage::EMapFileType;
+using TStaticData = cyclopedia::TCyclopediaMapStaticDataStorage;
 using ETileType = cip::tibia::qmlcomponents::TMinimapRendererQuickItem::EMinimapTileType;
 
 constexpr int SubfieldsPerField = 32;
@@ -258,7 +262,9 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
         syncZoneBlinkTimer();
         scheduleUpdate();
     });
-    connect(&cyclopedia::TCyclopediaMapStaticData::instance(), &cyclopedia::TCyclopediaMapStaticData::imageLoaded, this,
+    // Map images come from the sprite system; redraw when one is decompressed.
+    connect(tibia::sprites::TSpriteSystem::instance().decompressor().get(),
+            &tibia::sprites::TSpritesheetDecompressor::decompressingSpritesheetFinished, this,
             &TMinimapRendererQuickItem::scheduleUpdate);
     m_playerTimer.setInterval(250);
     connect(&m_playerTimer, &QTimer::timeout, this, [this] {
@@ -422,26 +428,27 @@ void TMinimapRendererQuickItem::buildDrawList()
 
 void TMinimapRendererQuickItem::addTiles(TDraw& draw, const int layer)
 {
-    auto& data = cyclopedia::TCyclopediaMapStaticData::instance();
+    const auto& data = TStaticData::instance();
     const EFileType type = m_tileType == ETileType::Satellite ? EFileType::Satellite : EFileType::Minimap;
     // CIP : one level of detail for the whole viewport.
-    const double scale = data.levelOfDetail(type, m_worldCamera->scaleFactor());
+    const float scale = data.levelOfDetail(static_cast<float>(m_worldCamera->scaleFactor()), type);
     const QRectF viewport = boundingRect();
-    const auto& files = data.files();
-    for (size_t index = 0; index < files.size(); ++index) {
-        const auto& file = files[index];
-        if (file.type != type || file.scale != scale || file.topLeft.z != layer)
+    for (const auto& file : data.mapFiles(type)) {
+        if (file.scale != scale || file.extent.origin.z != layer)
             continue;
-        const QPointF topLeft = m_worldCamera->pixelOf(file.topLeft.x, file.topLeft.y, layer);
-        const QPointF bottomRight = m_worldCamera->pixelOf(file.topLeft.x + file.width, file.topLeft.y + file.height, layer);
+        const auto& origin = file.extent.origin;
+        const QPointF topLeft = m_worldCamera->pixelOf(origin.x, origin.y, layer);
+        const QPointF bottomRight = m_worldCamera->pixelOf(file.extent.end.x, file.extent.end.y, layer);
         const QRectF target(topLeft, bottomRight);
         if (!target.intersects(viewport))
             continue;
-        const QImage image = data.image(index);
+        const QImage image = TStaticData::mapImage(file.fileName);
         if (image.isNull())
             continue;
         const qreal pixelsPerField = file.scale * SubfieldsPerField;
-        draw.images.push_back({ image, target, QRectF(0, 0, file.width * pixelsPerField, file.height * pixelsPerField), type == EFileType::Satellite });
+        draw.images.push_back({ image, target,
+                                QRectF(0, 0, file.extent.extent.width * pixelsPerField, file.extent.extent.height * pixelsPerField),
+                                type == EFileType::Satellite });
     }
 }
 
@@ -477,35 +484,32 @@ void TMinimapRendererQuickItem::addLocalMinimap(TDraw& draw, const int layer)
 
 void TMinimapRendererQuickItem::addZones(TDraw& draw, const int layer)
 {
-    auto& data = cyclopedia::TCyclopediaMapStaticData::instance();
+    const auto& data = TStaticData::instance();
     const QRectF viewport = boundingRect();
     // CIP builds the zone with 0xffffe137; draw opacity is
     // DAT_1077b32c8 so the selection blinks like mouse
     // / attack highlights on the game world map.
     const qreal opacity = zoneHighlightOpacity();
     for (const int subareaId : m_highlighted) {
-        const int index = data.subareaFile(subareaId);
-        if (index < 0)
+        const auto* subArea = data.subArea(static_cast<quint16>(subareaId));
+        if (!subArea || subArea->fileName.isEmpty())
             continue;
-        const auto& file = data.files()[static_cast<size_t>(index)];
-        if (file.topLeft.z != layer)
+        const auto& extent = subArea->extent;
+        if (extent.origin.z != layer)
             continue;
-        const QRectF target(m_worldCamera->pixelOf(file.topLeft.x, file.topLeft.y, layer),
-                            m_worldCamera->pixelOf(file.topLeft.x + file.width, file.topLeft.y + file.height, layer));
+        const QRectF target(m_worldCamera->pixelOf(extent.origin.x, extent.origin.y, layer),
+                            m_worldCamera->pixelOf(extent.end.x, extent.end.y, layer));
         if (!target.intersects(viewport))
             continue;
-        // Sync so the blink appears on the same click that selected the subarea.
-        const QImage mask = data.imageSync(static_cast<size_t>(index));
+        const QImage mask = TStaticData::mapImage(subArea->fileName);
         if (mask.isNull())
             continue;
         // Linear filtering matches CIP cyclopedia zone edges when the mask is scaled.
-        draw.images.push_back({ zoneImage(subareaId, mask), target, QRectF(0, 0, file.width, file.height), true, opacity });
+        draw.images.push_back({ zoneImage(subareaId, mask), target, QRectF(0, 0, extent.extent.width, extent.extent.height), true, opacity });
     }
     for (const int subareaId : m_highlighted) {
-        const int cipIndex = data.subareaFile(subareaId);
-        if (cipIndex >= 0) {
-            const auto& file = data.files()[static_cast<size_t>(cipIndex)];
-            if (file.topLeft.z == layer)
+        if (const auto* subArea = data.subArea(static_cast<quint16>(subareaId)); subArea && !subArea->fileName.isEmpty()) {
+            if (subArea->extent.origin.z == layer)
                 continue; // CIP mask already drawn above.
         }
         const auto zoneIt = m_missionZones.find(subareaId);
@@ -612,7 +616,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         m_markers.push_back({ target, tooltip });
     };
     if (m_showNPCMarkers) {
-        for (const auto& npc : cyclopedia::TCyclopediaMapStaticData::instance().npcs()) {
+        for (const auto& npc : TStaticData::instance().npcs()) {
             if (npc.coordinate.z == z)
                 addPin(m_npcIcon, QColor(0x33, 0x99, 0xff), npc.coordinate.x, npc.coordinate.y, z, npc.name);
         }
@@ -632,33 +636,33 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
     }
     // CIP THouseMarkerWorldMapAreaData: house positions from staticdata.dat.
     if (m_showHouses) {
-        for (const CyclopediaHouseType& house : tibia::game::cyclopediaHouses()) {
+        for (const cyclopedia::TStaticHouse& house : cyclopedia::staticHouses()) {
             if (house.position.z != z)
                 continue;
-            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z,
-                   QString::fromStdString(house.name));
+            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z, house.name);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
     if (minimap::TMinimapMarkerStorage* markers = minimap::TMinimapMarkerStorage::active()) {
         const int flagSize = m_flagStrip.isNull() ? 0 : m_flagStrip.height();
         const int columns = flagSize > 0 ? std::max(1, m_flagStrip.width() / flagSize) : 1;
-        for (const minimap::MinimapMarker& marker : markers->floorMarkers(static_cast<uint8_t>(z))) {
-            if (marker.icon < m_minimapMarkersFilter.size() && !m_minimapMarkersFilter.at(marker.icon))
+        const auto onFloor = [z](const worldmap::TWorldMapCoordinate& coordinate) { return coordinate.z == z; };
+        for (const minimap::TMinimapMarkerPtr& marker : markers->markers(onFloor)) {
+            if (marker->icon < m_minimapMarkersFilter.size() && !m_minimapMarkersFilter.at(marker->icon))
                 continue;
             QImage icon;
-            if (flagSize > 0 && marker.icon < minimap::MINIMAP_MARKER_ICONS) {
-                const QRect cell((marker.icon % columns) * flagSize, (marker.icon / columns) * flagSize, flagSize,
+            if (flagSize > 0 && marker->icon < minimap::MINIMAP_MARKER_ICONS) {
+                const QRect cell((marker->icon % columns) * flagSize, (marker->icon / columns) * flagSize, flagSize,
                                  flagSize);
                 if (m_flagStrip.rect().contains(cell))
                     icon = m_flagStrip.copy(cell);
             }
-            addPin(icon, QColor(0xff, 0xcc, 0x33), marker.x, marker.y, z, QString::fromStdString(marker.description));
+            addPin(icon, QColor(0xff, 0xcc, 0x33), marker->coordinate.x, marker->coordinate.y, z, marker->description);
         }
     }
     // CIP TPassageMapAreaData from 0xDD subtype 6 (TCyclopediaMapStorage).
     if (m_showPassages && m_storage) {
-        const auto& staticNpcs = cyclopedia::TCyclopediaMapStaticData::instance().npcs();
+        const auto& staticNpcs = TStaticData::instance().npcs();
         for (const auto& passage : m_storage->passages()) {
             if (passage.coordinate.z != z)
                 continue;
@@ -715,8 +719,21 @@ void TMinimapRendererQuickItem::updateCaptions()
         if (scale >= 1.0f / 16.0f)
             subareaOpacity = 1.0f;
         const QRectF viewport = boundingRect();
-        for (const auto& area : cyclopedia::TCyclopediaMapStaticData::instance().areas()) {
-            if (!area.hasLabel)
+        struct TLabel
+        {
+            int id;
+            QString name;
+            worldmap::TWorldMapCoordinate label;
+            bool isSubarea;
+        };
+        std::vector<TLabel> labels;
+        const auto& staticData = TStaticData::instance();
+        for (const auto& [areaId, area] : staticData.areas())
+            labels.push_back({ areaId, area.name, area.labelCoordinate, false });
+        for (const auto& [subAreaId, subArea] : staticData.subAreas())
+            labels.push_back({ subAreaId, subArea.name, subArea.labelCoordinate, true });
+        for (const TLabel& area : labels) {
+            if (area.label.x == 0 && area.label.y == 0 && area.label.z == 0)
                 continue;
             // Only the CIP label's own floor. Underground text must not stack onto z7 —
             // but CIP may place a name on z7 even when the hunt is deeper (Cyclopolis).

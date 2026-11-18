@@ -90,6 +90,7 @@ THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode()
 
 void THighlightedSpriteScenegraphNode::set(QSGTexture* texture, const QRectF& rect, const QColor& color, const bool smooth)
 {
+    m_rect = rect;
     const QRectF source = texture ? texture->normalizedTextureSubRect() : QRectF();
     QSGGeometry::updateTexturedRectGeometry(&m_geometry, rect, source);
     markDirty(DirtyGeometry);
@@ -99,6 +100,15 @@ void THighlightedSpriteScenegraphNode::set(QSGTexture* texture, const QRectF& re
         m_material.smooth = smooth;
         markDirty(DirtyMaterial);
     }
+}
+
+void THighlightedSpriteScenegraphNode::setTexture(QSGTexture* texture)
+{
+    const QRectF source = texture ? texture->normalizedTextureSubRect() : QRectF(0, 0, 1, 1);
+    QSGGeometry::updateTexturedRectGeometry(&m_geometry, m_rect, source);
+    markDirty(DirtyGeometry);
+    m_material.texture = texture;
+    markDirty(DirtyMaterial);
 }
 
 }

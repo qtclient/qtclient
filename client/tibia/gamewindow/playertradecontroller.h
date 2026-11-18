@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
@@ -87,7 +88,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
 
 private Q_SLOTS:
     void onOwnOfferChanged();
@@ -125,7 +125,7 @@ public:
 private:
     void open();
     void close();
-    bool tradeItem(const input::TGameAction& action);
+    bool tradeItem(const input::TGameActionPlayerTradeItem& action);
 
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;
@@ -133,6 +133,17 @@ private:
     trade::TPlayerTradeStorage m_storage;
     trade::TPlayerTradeProtocolMessageHandler m_handler;
     QPointer<TPlayerTradeController> m_controller;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

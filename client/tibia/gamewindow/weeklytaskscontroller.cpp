@@ -2,9 +2,10 @@
 
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "taskboard/taskboardciptypes.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QString>
@@ -37,7 +38,7 @@ QString raceCaption(const uint16_t raceId)
 
 QString itemCaption(const uint16_t itemId)
 {
-    const ThingTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
+    const TAppearanceTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!type)
         return QString::number(itemId);
     const std::string name = type->getName();
@@ -66,7 +67,7 @@ TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
 
 void TWeeklyTasksController::showDialogTab()
 {
-    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_REFRESH_DATA);
+    taskboard::TTaskboardProtocolMessageHandler::requestWeeklyTasks();
 }
 
 void TWeeklyTasksController::hideDialogTab() {}
@@ -96,11 +97,6 @@ int TWeeklyTasksController::htpMultiplier(const int completedTasks)
     if (completedTasks >= 5)
         return 2;
     return 1;
-}
-
-uint16_t TWeeklyTasksController::toLuaDifficulty(const int cipDifficulty)
-{
-    return static_cast<uint16_t>(std::clamp(cipDifficulty, 0, 3) + 1);
 }
 
 void TWeeklyTasksController::applyWeeklyData(const std::map<std::string, uint32_t>& header,
@@ -178,20 +174,18 @@ void TWeeklyTasksController::notifyChanged() { Q_EMIT weeklyTaskDataChanged(); }
 void TWeeklyTasksController::openPermanentWeeklyTaskExpansionUnlockStore()
 {
     // OPEN_STORE open-action 4 jumps to the offer id (Crystal SubActions.WEEKLY_TASK_EXPANSION).
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 4;
-    action->instance = 16;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(4, 16);
+    Q_EMIT publishGameAction(action);
 }
 
 void TWeeklyTasksController::deliverTask(const int taskIndex)
 {
-    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_DELIVER_ITEM, static_cast<uint16_t>(std::max(0, taskIndex)));
+    taskboard::TTaskboardProtocolMessageHandler::deliverWeeklyTask(std::max(0, taskIndex));
 }
 
 void TWeeklyTasksController::selectDifficulty(const int difficulty)
 {
-    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_SELECT_DIFFICULTY, toLuaDifficulty(difficulty));
+    taskboard::TTaskboardProtocolMessageHandler::selectWeeklyTaskDifficulty(std::clamp(difficulty, 0, 3));
 }
 
 int TWeeklyTasksController::getRequiredLevelForDifficulty(const int difficulty)

@@ -4,6 +4,34 @@
 
 namespace tibia::shared {
 
+namespace {
+
+/// Tiles `sourceRect` of `source` over `targetRect` of `target`, unscaled; the
+/// last tile in each direction is cut at the target's edge.
+void tileImage(const QImage& source, const QRect& sourceRect, QImage& target, const QRect& targetRect)
+{
+    // Host: a source narrower than 3 pixels has an empty edge to tile (a
+    // division by zero in CipSoft's code).
+    if (sourceRect.width() <= 0 || sourceRect.height() <= 0)
+        return;
+    const int columns = targetRect.width() / sourceRect.width();
+    const int rows = targetRect.height() / sourceRect.height();
+    QPainter painter(&target);
+    if (rows < 0 || columns < 0)
+        return;
+    for (int row = 0; row <= rows; ++row) {
+        for (int column = 0; column <= columns; ++column) {
+            const QRect tile = targetRect
+                & QRect(targetRect.x() + column * sourceRect.width(), targetRect.y() + row * sourceRect.height(),
+                        sourceRect.width(), sourceRect.height());
+            painter.drawImage(QRectF(tile), source,
+                              QRectF(sourceRect.x(), sourceRect.y(), tile.width(), tile.height()));
+        }
+    }
+}
+
+}
+
 TOptimized1PixelBorderImageProvider::TOptimized1PixelBorderImageProvider()
     : QQuickImageProvider(Image)
 {
@@ -11,73 +39,54 @@ TOptimized1PixelBorderImageProvider::TOptimized1PixelBorderImageProvider()
 
 QImage loadOptimized1PixelBorderResourceImage(const QString& id)
 {
-    // CipSoft : QString::fromUtf8(":%1").arg(id) — id keeps a leading '/'.
     return QImage(QStringLiteral(":%1").arg(id));
 }
 
 QImage TOptimized1PixelBorderImageProvider::requestImage(const QString& id, QSize* size,
                                                          const QSize& requestedSize)
 {
-    // CipSoft : clamp requested size to at least 3×3; missing → red block.
     QSize target = requestedSize;
-    if (target.width() < 3)
-        target.setWidth(3);
-    if (target.height() < 3)
-        target.setHeight(3);
+    if (target.height() < 3 || target.width() < 3)
+        target = QSize(3, 3);
 
-    QImage src = loadOptimized1PixelBorderResourceImage(id);
-    if (src.isNull()) {
-        src = QImage(target, QImage::Format_ARGB32_Premultiplied);
-        src.fill(Qt::red);
+    QImage source = loadOptimized1PixelBorderResourceImage(id);
+    if (source == QImage()) {
+        source = QImage(target, QImage::Format_ARGB32_Premultiplied);
+        source.fill(Qt::red);
     }
 
-    // CipSoft: invalid requestedSize → return source; equal size → return source;
-    // otherwise nine-patch stretch (corners via setPixel, edges/center via tiled draw).
-    if (requestedSize.width() < 1 || requestedSize.height() < 1
-        || (target.width() == src.width() && target.height() == src.height())) {
-        if (size)
-            *size = src.size();
-        return src;
+    const QSize sourceSize = source.size();
+    if (requestedSize.width() < 1 || requestedSize.height() < 1)
+        target = sourceSize;
+    if (target == sourceSize) {
+        *size = QSize(source.width(), source.height());
+        return source;
     }
 
-    const int w = target.width();
-    const int h = target.height();
-    const int sw = src.width();
-    const int sh = src.height();
-    QImage out(target, src.format() == QImage::Format_Invalid
-                           ? QImage::Format_ARGB32_Premultiplied
-                           : src.format());
-    out.fill(Qt::transparent);
-
-    if (sw < 3 || sh < 3) {
-        // Degenerate source: copy what we can; CIP still enters stretch helpers.
-        QPainter p(&out);
-        p.setCompositionMode(QPainter::CompositionMode_Source);
-        p.drawImage(QRect(0, 0, w, h), src);
-        p.end();
-        if (size)
-            *size = out.size();
-        return out;
-    }
-
-    QPainter p(&out);
-    p.setRenderHint(QPainter::SmoothPixmapTransform, false);
-    p.setCompositionMode(QPainter::CompositionMode_Source);
-    // Corners (CipSoft uses setPixel for the four corners).
-    p.drawImage(QRect(0, 0, 1, 1), src, QRect(0, 0, 1, 1));
-    p.drawImage(QRect(w - 1, 0, 1, 1), src, QRect(sw - 1, 0, 1, 1));
-    p.drawImage(QRect(0, h - 1, 1, 1), src, QRect(0, sh - 1, 1, 1));
-    p.drawImage(QRect(w - 1, h - 1, 1, 1), src, QRect(sw - 1, sh - 1, 1, 1));
-    // Edges + center (CipSoft tiled drawImage).
-    p.drawImage(QRect(1, 0, w - 2, 1), src, QRect(1, 0, sw - 2, 1));
-    p.drawImage(QRect(1, h - 1, w - 2, 1), src, QRect(1, sh - 1, sw - 2, 1));
-    p.drawImage(QRect(0, 1, 1, h - 2), src, QRect(0, 1, 1, sh - 2));
-    p.drawImage(QRect(w - 1, 1, 1, h - 2), src, QRect(sw - 1, 1, 1, sh - 2));
-    p.drawImage(QRect(1, 1, w - 2, h - 2), src, QRect(1, 1, sw - 2, sh - 2));
-    p.end();
-    if (size)
-        *size = out.size();
-    return out;
+    QImage image(target, source.format());
+    // Host: CipSoft leaves the new image uninitialised before painting over it.
+    image.fill(Qt::transparent);
+    const int width = target.width();
+    const int height = target.height();
+    const int sourceWidth = sourceSize.width();
+    const int sourceHeight = sourceSize.height();
+    image.setPixel(0, 0, source.pixel(0, 0));
+    image.setPixel(0, height - 1, source.pixel(0, sourceHeight - 1));
+    image.setPixel(width - 1, 0, source.pixel(sourceWidth - 1, 0));
+    image.setPixel(width - 1, height - 1, source.pixel(sourceWidth - 1, sourceHeight - 1));
+    // Left, right, top and bottom edges, then the centre.
+    tileImage(source, QRect(QPoint(0, 1), QPoint(0, sourceHeight - 2)), image,
+              QRect(QPoint(0, 1), QPoint(0, height - 2)));
+    tileImage(source, QRect(QPoint(sourceWidth - 1, 1), QPoint(sourceWidth - 1, sourceHeight - 2)), image,
+              QRect(QPoint(width - 1, 1), QPoint(width - 1, height - 2)));
+    tileImage(source, QRect(QPoint(1, 0), QPoint(sourceWidth - 2, 0)), image,
+              QRect(QPoint(1, 0), QPoint(width - 2, 0)));
+    tileImage(source, QRect(QPoint(1, sourceHeight - 1), QPoint(sourceWidth - 2, sourceHeight - 1)), image,
+              QRect(QPoint(1, height - 1), QPoint(width - 2, height - 1)));
+    tileImage(source, QRect(QPoint(1, 1), QPoint(sourceWidth - 2, sourceHeight - 2)), image,
+              QRect(QPoint(1, 1), QPoint(width - 2, height - 2)));
+    *size = QSize(image.width(), image.height());
+    return image;
 }
 
 } // namespace tibia::shared

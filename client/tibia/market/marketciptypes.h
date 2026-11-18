@@ -16,6 +16,7 @@ namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageMarketEnter;
+class GameserverMessageMarketLeave;
 class GameserverMessageMarketDetail;
 class GameserverMessageMarketBrowse;
 class GameserverMessageMessage;
@@ -60,7 +61,7 @@ public:
     /// CIP: the depot counts and the active offer count, then the dialog.
     void handleMarketEnterMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketEnter& message);
     void handleMarketDetailMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketDetail& message);
-    void handleMarketLeaveMessage();
+    void handleMarketLeaveMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketLeave& message);
     void handleMarketBrowseMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketBrowse& message);
     /// CIP: a market text message shows in the market's message dialog.
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message);
@@ -68,8 +69,6 @@ public:
     /// CIP: one offer of a browse message.
     static TMarketOffer offerFrom(const ::tibia::protobuf::protocol::ProtocolMarketOffer& source, EMarketOfferType type);
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
 
 private:
     TMarketStorage* m_storage = nullptr;

@@ -5,6 +5,9 @@
 #include <QString>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace app {
 
 /// TClientOptions' change notification (CIP controllers' onOptionChanged).
@@ -46,6 +49,9 @@ public:
     /// of `changes` key by key, keeping the keys it does not name.
     /// Emits optionChanged for each changed option, and once per other changed section.
     static void storeAll(const QJsonObject& changes);
+    /// The options dialog's apply: whatever `pending` (a working copy of the
+    /// client's options) holds differently, written as storeAll writes.
+    static void storeChanged(const config::TClientOptions& pending);
 
     const QJsonObject& root() const { return m_root; }
     /// The "options" section, keyed by CIP's option names (cip_options.h).

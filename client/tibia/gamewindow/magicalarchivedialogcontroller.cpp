@@ -53,11 +53,10 @@ void TMagicalArchiveDialogController::setSelectedSpellID(const int v)
     Q_EMIT selectedSpellIDChanged();
 }
 
+/// CIP: any selected spell id is a valid selection.
 void TMagicalArchiveDialogController::refreshSelectionFlags()
 {
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_selectedSpellID);
-    m_isValidSpellSelected = spell != nullptr;
-    Q_UNUSED(spell);
+    m_isValidSpellSelected = m_selectedSpellID != 0;
 }
 
 void TMagicalArchiveDialogController::showDialogTab()
@@ -78,17 +77,14 @@ void TMagicalArchiveDialogController::showDialogTab()
     Q_EMIT selectedSpellIDChanged();
 }
 
-void TMagicalArchiveDialogController::hideDialogTab() {}
+void TMagicalArchiveDialogController::hideDialogTab() { m_proxy->resetFilter(); }
 
 void TMagicalArchiveDialogController::requestAssignSpellToActionButton()
 {
     if (m_selectedSpellID <= 0)
         return;
-    auto action = input::mutableClone(*input::makeAction(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON));
-    action->parameter = m_selectedSpellID;
-    action->actionBarId = 1;
-    action->actionButtonId = 0;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionAssignSpellToActionButton>(static_cast<uint8_t>(1), 0, -1, static_cast<uint16_t>(m_selectedSpellID), A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON);
+    Q_EMIT publishGameAction(action);
 }
 
 }

@@ -1,0 +1,20 @@
+// Tip-owned reconstruction of CipSoft's tibia.protobuf.minimap schema (the
+// minimap marker file, minimap/minimapmarkers.bin): the client binary does not
+// embed its descriptor. Message names come from the binary's RTTI; field
+// numbers and types from the marker file and from how the client reads and
+// writes each field (TMinimapMarkerStorage's conversions, TMinimapDiskIO).
+syntax = "proto2";
+package tibia.protobuf.minimap;
+import "shared.proto";
+
+message MinimapMarker {
+  optional tibia.protobuf.shared.Coordinate position = 1;
+  optional uint32 icon = 2;
+  optional string description = 3;
+  // When the marker was set, in milliseconds since the epoch (0 for CipSoft's).
+  optional int64 timestamp = 4;
+}
+
+message MinimapMarkerFileContent {
+  repeated tibia.protobuf.minimap.MinimapMarker marker = 1;
+}

@@ -6,13 +6,15 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QJsonArray>
+#include <stdexcept>
 #include <QJsonObject>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
@@ -53,11 +55,6 @@ bool isIgnoredName(const QString& name)
     return false;
 }
 
-TGameActionPtr namedCreatureAction(const EGameAction type, const QString& name)
-{
-    return std::make_shared<TGameActionCreatureWithName>(type, name);
-}
-
 }
 
 bool isHireling(const tibia::creatures::TCreature& stored)
@@ -86,9 +83,9 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         if (stored->isNpc()) {
             push(A::START_TALKING_TO_NPC);
             if (hireling) {
-                push(A::REQUEST_OUTFITS_FROM_SERVER);
-                push(A::REPORT_HIRELING_NAME);
-                push(A::BUY_HIRELING_NAME_OR_SEX_CHANGE);
+                actions.push_back(TGameActionRequestOutfitsFromServer::forHireling(creatureId));
+                actions.push_back(std::make_shared<TGameActionReportHireling>(A::REPORT_HIRELING_NAME, name, creatureId));
+                actions.push_back(std::make_shared<TGameActionBuyHirelingNameOrSexChange>(creatureId));
             }
         } else {
             push(attackingId == creatureId ? A::STOP_ATTACKING_CREATURE : A::ATTACK_CREATURE);
@@ -96,20 +93,23 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         if (!hireling)
             push(followingId == creatureId ? A::STOP_FOLLOWING_CREATURE : A::FOLLOW_CREATURE);
     } else {
-        push(A::REQUEST_OUTFITS_FROM_SERVER);
+        actions.push_back(std::make_shared<TGameActionRequestOutfitsFromServer>());
         push(stored->outfit().getMount() == 0 ? A::MOUNT_PLAYER : A::UNMOUNT_PLAYER);
         push(A::OPEN_PREY_DIALOG);
     }
 
     if (stored->isPlayer() && !own) {
         // TGenericChatGameActionProvider, then the bot report by name.
-        actions.push_back(namedCreatureAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
-        actions.push_back(namedCreatureAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
-        actions.push_back(namedCreatureAction(A::REPORT_NAME, name));
-        actions.push_back(namedCreatureAction(isIgnoredName(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
+        actions.push_back(std::make_shared<TGameActionOpenMessageToChatChannel>(name));
+        actions.push_back(std::make_shared<TGameActionInvitePlayerToPrivateChatChannel>(0, name));
+        actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_NAME, name));
+        if (isIgnoredName(name))
+            actions.push_back(std::make_shared<TGameActionUnignoreName>(name));
+        else
+            actions.push_back(std::make_shared<TGameActionIgnoreName>(name));
         if (!isVipName(name))
-            actions.push_back(namedCreatureAction(A::ADD_NEW_VIP, name));
-        actions.push_back(namedCreatureAction(A::REPORT_BOT, name));
+            actions.push_back(std::make_shared<TGameActionAddNewVip>(name));
+        actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
         creatures::TPartyGameActionProvider::appendActions(actions, creatureId);
@@ -124,7 +124,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     return actions;
 }
 
-TGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId)
+IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId)
 {
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> stored =
@@ -141,182 +141,264 @@ TGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32
     return makeSmartClick(makeCreatureAction(inner, creatureId));
 }
 
+IGameActionPtr TGenericObjectGameActionProvider::openCyclopediaAction(const uint16_t clientId)
+{
+    auto action = std::make_shared<TGameActionOpenCyclopedia>(0);
+    if (TAppearanceType* type = clientId ? tibia::game::thingType(clientId, ThingCategoryItem) : nullptr)
+        action->setTypeId(static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId()));
+    return action;
+}
+
 namespace {
 
-TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TObjectAppearanceInstance* fieldObject,
-                                  ThingType* flags, const Position& position, const int stackPosition,
-                                  const int stackCountOverride = -1)
+/// CIP's loot corpse: a container corpse that is not a
+/// player's, of the object bank.
+bool isLootCorpse(const TAppearanceType* type)
+{
+    return type && type->isContainer() && type->isCorpse() && !type->isPlayerCorpse() && type->isItem();
+}
+
+bool isMapLocation(const IGameActionContext* location)
+{
+    return location
+        && location->gameActionContextType() == EGameActionContextType::LOCATION_WORLD_MAP_COORDINATE_WITH_STACK_POSITION;
+}
+
+const TLocationContainerWithSlotGameActionContext* containerLocation(const IGameActionContext* location)
+{
+    return location && location->gameActionContextType() == EGameActionContextType::LOCATION_CONTAINER_WITH_SLOT
+               ? static_cast<const TLocationContainerWithSlotGameActionContext*>(location)
+               : nullptr;
+}
+
+/// The location of qtclient's classic object position. A container slot gets
+/// the flags CIP's container provider (v3) sets: the window shows a loot corpse
+/// (+0x10), it is the "Browse Field" one (TContainer +0x54).
+TGameActionContextPtr locationOf(const Position& position, const int stackPosition)
+{
+    TGameActionContextPtr location = locationContextFromPosition(position, stackPosition);
+    const TLocationContainerWithSlotGameActionContext* slot = containerLocation(location.get());
+    if (!slot)
+        return location;
+    auto flagged = std::make_shared<TLocationContainerWithSlotGameActionContext>(*slot);
+    const container::TContainerStorage* storage = container::TContainerStorage::instance();
+    if (const container::TStoredContainer* row = storage ? storage->containerAt(slot->containerId()) : nullptr) {
+        const container::TInventorySlot& item = row->containerItem;
+        const TAppearanceType* type = item.appearance ? item.appearance->thingType()
+                                                : (item.typeId ? tibia::game::rawThingType(item.typeId, ThingCategoryItem) : nullptr);
+        flagged->setContainerIsLootCorpse(isLootCorpse(type));
+        flagged->setContainerIsBrowseField(row->name == QLatin1String("Browse Field"));
+    }
+    return flagged;
+}
+
+/// CIP v6: what can be done to an object, in CipSoft's order.
+TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const TGameActionContextPtr& objectContext,
+                                  const uint32_t creatureId, const uint8_t fieldTier, TAppearanceType* flags,
+                                  const uint16_t fieldCount)
 {
     TGameActionList actions;
+    const uint16_t clientId = appearanceTypeIdOf(objectContext.get());
     if (!clientId)
         return actions;
     const uint32_t id = clientId;
-    const auto make = [&](const EGameAction type) -> TGameActionPtr {
-        return makeObjectAction(type, position, stackPosition, clientId);
-    };
+    const TObjectGameActionContext object{ location, objectContext };
+    const auto make = [&](const EGameAction type) -> IGameActionPtr { return makeObjectGameAction(type, object); };
     const auto push = [&](const EGameAction type) {
-        TGameActionPtr action = make(type);
-        actions.push_back(action);
+        IGameActionPtr action = make(type);
+        if (action) // makeObjectGameAction logs a type it has no object action for
+            actions.push_back(action);
         return action;
     };
+    const bool mapLocation = isMapLocation(location.get());
+    const TLocationContainerWithSlotGameActionContext* container = containerLocation(location.get());
 
-    const auto has = [flags](bool (ThingType::*flag)() const) { return flags && (flags->*flag)(); };
-    const bool isContainer = flags && flags->isContainer();
-    const bool take = has(&ThingType::isPickupable);
-    const bool unmove = has(&ThingType::isNotMoveable);
-    const bool podium = has(&ThingType::isPodium);
-    const uint8_t fieldTier = fieldObject ? fieldObject->tier() : 0;
-    // Inventory/container slots own the authoritative count; appearance instances can
-    // retain a stale shared count and open the split dialog for the wrong total.
-    const uint16_t fieldCount = stackCountOverride >= 0
-                                    ? static_cast<uint16_t>(stackCountOverride)
-                                    : (fieldObject ? fieldObject->count() : 0);
+    const auto has = [flags](bool (TAppearanceType::*flag)() const) { return flags && (flags->*flag)(); };
+    const bool isContainer = has(&TAppearanceType::isContainer);
+    const bool take = has(&TAppearanceType::isPickupable);
+    const bool unmove = has(&TAppearanceType::isNotMoveable);
+    const bool podium = has(&TAppearanceType::isPodium);
+    // The object's count: a cumulative one's stack, 1 for any other.
+    const int count = has(&TAppearanceType::isStackable) ? static_cast<int>(fieldCount) : 1;
 
-    const TGameActionPtr look = push(A::LOOK);
-    if (take && !has(&ThingType::isIgnoreLook))
+    const IGameActionPtr look = push(A::LOOK);
+    if (take && !has(&TAppearanceType::isIgnoreLook))
         push(A::INSPECT_OBJECT);
 
-    TGameActionPtr use;
+    IGameActionPtr use;
     if (!isContainer) {
-        use = push(has(&ThingType::isMultiUse) ? A::USE_WITH : A::USE);
+        use = push(has(&TAppearanceType::isMultiUse) ? A::USE_WITH : A::USE);
     } else {
         use = push(A::OPEN);
         if (id != tibia::game::supplyStashId()) {
             // A container inside a container opens in its window by default;
             // anywhere else in a new one.
-            const TGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
-            const bool inContainer = position.x == UINT16_MAX && (position.y & 0x40);
-            if (!inContainer)
+            const IGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
+            if (!container)
                 use = openInNewWindow;
         }
-        push(A::OPEN_MANAGE_LOOT_CONTAINER);
+        // CIP: a TGameActionSimple; the dialog takes no object context.
+        actions.push_back(makeGameAction(A::OPEN_MANAGE_LOOT_CONTAINER));
     }
-    if (id && id == tibia::game::standardRewardChestId())
+    if (id == tibia::game::standardRewardChestId())
         push(A::GATHER_ALL);
-    if (has(&ThingType::isWrapable))
+    if (has(&TAppearanceType::isWrapable))
         push(A::WRAP);
-    else if (has(&ThingType::isUnwrapable))
+    else if (has(&TAppearanceType::isUnwrapable))
         push(A::UNWRAP);
     if (podium)
         push(A::CONFIGURE_SHOW_OFF_SOCKET);
-    if (has(&ThingType::isRotateable) || podium)
+    if (has(&TAppearanceType::isRotateable) || podium)
         push(A::ROTATE_OBJECT);
-    if (has(&ThingType::isReportable))
-        push(A::GET_TEXT_FOR_REPORT);
+    if (has(&TAppearanceType::isReportable))
+        actions.push_back(std::make_shared<TGameActionGetTextForReport>(object));
     if (take && !unmove)
         push(A::TRADE_ITEM);
+    // The loot list offers a pickupable object that is not a corpse.
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (const quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr;
+        loot && take && !unmove && !has(&TAppearanceType::isCorpse) && !has(&TAppearanceType::isPlayerCorpse)) {
+        actions.push_back(std::make_shared<TGameActionToggleBlackWhitelistStatus>(
+            loot->isListed(clientId) ? A::LOOT_REMOVE_FROM_BLACKWHITELIST : A::LOOT_ADD_TO_BLACKWHITELIST, clientId));
+    }
+    if (has(&TAppearanceType::hasCyclopediaItem)) {
+        auto cyclopedia = std::make_shared<TGameActionOpenCyclopedia>(0);
+        cyclopedia->setTypeId(static_cast<uint16_t>(flags->getCyclopediaType()));
+        actions.push_back(cyclopedia);
+    }
+    if (has(&TAppearanceType::hasProficiency))
+        actions.push_back(std::make_shared<gameactions::TGameActionOpenWeaponProficiencyDialog>(clientId));
+    actions.push_back(std::make_shared<TGameActionMoveObject>(object, std::nullopt, false, count));
+
+    // A creature is targeted as itself, except the player's own one.
+    const std::shared_ptr<tibia::creatures::TCreature> creature =
+        creatureId && tibia::creatures::TCreatureStorage::instance()
+            ? tibia::creatures::TCreatureStorage::instance()->creatureAt(creatureId)
+            : nullptr;
+    const bool ownCreature = creature && creature->isLocalPlayer();
+    if (creatureId && !ownCreature)
+        actions.push_back(std::make_shared<TGameActionTargetSelected>(
+            TObjectGameActionContext{ location, std::make_shared<TObjectCreatureGameActionContext>(creatureId) }));
+    else
+        actions.push_back(make(A::TARGET_SELECTED));
+
+    // The lens help of a world map object: a creature's is 1000 (1001 the
+    // player's own), a container without one has 1002.
+    if (mapLocation) {
+        int lensHelp = 0;
+        if (creatureId) {
+            lensHelp = 1000 | (ownCreature ? 1 : 0);
+        } else {
+            lensHelp = flags ? flags->getLensHelp() : 0;
+            if (lensHelp == 0 && isContainer)
+                lensHelp = 1002;
+        }
+        if (lensHelp != 0)
+            actions.push_back(std::make_shared<TGameActionShowLenshelp>(lensHelp, object.position(), QRectF()));
+    }
+
+    // Quick loot: a loot corpse on the map or in the browse field window.
+    // CipSoft also offers it inside an open loot corpse when a provider member
+    // (+0x58, set through v2) agrees; that member is not identified yet.
+    const bool lootCorpse = isLootCorpse(flags);
+    if ((mapLocation && lootCorpse) || (container && lootCorpse && container->containerIsBrowseField()))
+        push(A::QUICK_LOOT);
+
+    IGameActionPtr inner;
+    if (!has(&TAppearanceType::hasAction)) {
+        if (creatureId) {
+            // v5 adds the creature's smart click itself.
+            actions.push_back(TGenericObjectGameActionProvider::creatureSmartClick(creatureId));
+        } else {
+            inner = has(&TAppearanceType::isUsable) ? use : look;
+        }
+    } else {
+        switch (flags->getDefaultAction()) {
+        case PLAYER_ACTION_NONE:
+        case PLAYER_ACTION_LOOK: inner = look; break;
+        case PLAYER_ACTION_USE:
+        case PLAYER_ACTION_OPEN: inner = use; break;
+        case PLAYER_ACTION_AUTOWALK_HIGHLIGHT:
+            inner = mapLocation ? IGameActionPtr(makeMovementIntent(object.position())) : look;
+            break;
+        default: throw std::logic_error("missing case statement (AppearanceType.defaultAction())");
+        }
+    }
+    if (inner)
+        actions.push_back(makeSmartClick(inner));
+
     if (tibia::game::localPlayerIsSupplyStashAvailable()) {
-        if (has(&ThingType::isMarketable) && (has(&ThingType::isStackable) || fieldTier == 0)) {
+        if (has(&TAppearanceType::isMarketable) && (has(&TAppearanceType::isStackable) || fieldTier == 0)) {
             push(A::STASH_STOW_TYPE);
-            auto stow = mutableClone(*make(A::STASH_STOW_STACK));
-            stow->amount = static_cast<int>(fieldCount);
-            auto dialog = mutableClone(*make(A::STASH_OPEN_STOW_STACK_DIALOG));
-            dialog->inner = stow;
-            actions.push_back(dialog);
+            auto stow = std::make_shared<TGameActionStashStowStack>(object, count);
+            actions.push_back(std::make_shared<TGameActionStashOpenStowStackDialog>(stow));
         }
         if (isContainer && id != tibia::game::supplyStashId())
             push(A::STASH_STOW_CONTAINER_CONTENT);
     }
-    if (tibia::game::localPlayerIsMarketAvailable() && has(&ThingType::isMarketable))
-        push(A::MARKET_BROWSE);
-    if (has(&ThingType::hasCyclopediaItem))
-        push(A::OPEN_CYCLOPEDIA);
-    if (flags && flags->getProficiencyId() != 0)
-        push(A::OPEN_WEAPON_PROFICIENCY_DIALOG);
-    // qtclient loot black/whitelist: menus filter these; handler is ManageLoot.
-    if (take && id != 0) {
-        if (cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance()) {
-            if (loot->isLootListed(static_cast<uint16_t>(id)))
-                push(A::LOOT_REMOVE_FROM_BLACKWHITELIST);
-            else if (!loot->isLootListFull())
-                push(A::LOOT_ADD_TO_BLACKWHITELIST);
-        }
-    }
-    {
-        // Map stacks carry count on the appearance; inventory/container paths
-        // resolve count at drop via storageSlotCount. Without amount here,
-        // finalizeDrop / Shift-move-all / Ctrl-split treat every map stack as 1.
-        if (fieldCount > 1 && has(&ThingType::isStackable)) {
-            auto move = mutableClone(*make(A::MOVE_OBJECT));
-            move->amount = static_cast<int>(fieldCount);
-            actions.push_back(move);
-        } else {
-            push(A::MOVE_OBJECT);
-        }
-    }
-
-    actions.push_back(make(A::TARGET_SELECTED));
-
-    int lensHelp = flags ? flags->getLensHelp() : 0;
-    if (isContainer && lensHelp == 0)
-        lensHelp = 1002;
-    if (lensHelp != 0) {
-        auto help = mutableClone(*make(A::LENSHELP_SHOW));
-        help->lensHelpId = lensHelp;
-        actions.push_back(help);
-    }
-
-    if (isContainer && has(&ThingType::isCorpse) && !has(&ThingType::isPlayerCorpse))
-        push(A::QUICK_LOOT);
-
-    TGameActionPtr inner;
-    if (!has(&ThingType::hasAction)) {
-        inner = has(&ThingType::isUsable) ? use : look;
-    } else {
-        const auto defaultAction = flags->getDefaultAction();
-        if (defaultAction == PLAYER_ACTION_AUTOWALK_HIGHLIGHT)
-            inner = makeMovementIntent(position);
-        else if (defaultAction >= PLAYER_ACTION_USE)
-            inner = use;
-        else
-            inner = look;
-    }
-    actions.push_back(makeSmartClick(inner));
+    if (tibia::game::localPlayerIsMarketAvailable() && has(&TAppearanceType::isMarketable))
+        actions.push_back(std::make_shared<gameactions::TGameActionMarketBrowse>(
+            object, flags->getClassification() != 0 ? fieldTier : uint8_t(0)));
     return actions;
 }
 
 } // namespace
+
+TGameActionContextPtr TGenericObjectGameActionProvider::objectContext(const TAppearanceType* type, const uint16_t appearanceTypeId,
+                                                                      const uint32_t liquidType, const uint8_t tier,
+                                                                      const uint16_t decoItemId)
+{
+    if (type && type->isFluidContainer())
+        return std::make_shared<TLiquidObjectApperanceTypeGameActionContext>(appearanceTypeId, liquidType);
+    if (type && type->getClassification() > 0)
+        return std::make_shared<TUpgradeableObjectApperanceTypeGameActionContext>(appearanceTypeId, tier);
+    if (type && type->isDecoKit())
+        return std::make_shared<TDecoItemKitObjectApperanceTypeGameActionContext>(appearanceTypeId, decoItemId);
+    return std::make_shared<TObjectApperanceTypeGameActionContext>(appearanceTypeId);
+}
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::TFieldObject& object,
                                                                 const worldmap::TWorldMapField* field,
                                                                 const Position& position)
 {
     (void)field;
-    // CipSoft map creatures are moved as MOVE_OBJECT with wire id Proto::Creature (99 /
-    // 0x63) — see Crystal AddCreature / playerMoveThing STACKPOS_MOVE. Previously
-    // clientId stayed 0 so objectActionsImpl returned nothing and map drag never
-    // offered MOVE_OBJECT (no crosshair / no startDrag) for creatures.
-    if (object.creatureId) {
-        TGameActionList actions;
-        auto move = std::make_shared<TGameActionMoveObject>(
-            position, object.stackPosition, static_cast<uint16_t>(Proto::Creature));
-        move->creatureId = object.creatureId;
-        actions.push_back(move);
-        return actions;
+    // A creature is the object of its outfit's appearance.
+    appearances::TAppearanceInstancePtr appearance = object.appearance;
+    if (!appearance && object.creatureId) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(object.creatureId))
+                appearance = row->outfitAppearance();
     }
-    uint16_t clientId = 0;
-    const appearances::TObjectAppearanceInstance* objectInst = nullptr;
-    ThingType* type = nullptr;
-    if (object.appearance) {
-        clientId = object.appearance->id();
-        type = object.appearance->thingType();
-        objectInst = dynamic_cast<const appearances::TObjectAppearanceInstance*>(object.appearance.get());
-    }
-    return objectActionsImpl(clientId, objectInst, type, position, object.stackPosition);
+    if (!appearance)
+        return {};
+    TAppearanceType* type = appearance->thingType();
+    const auto* instance = dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get());
+    const auto* liquid = dynamic_cast<const appearances::TLiquidObjectAppearanceInstance*>(appearance.get());
+    // The map instances keep no decoration kit item (render's TDecoItemKitAppearanceInstance).
+    const TGameActionContextPtr context =
+        objectContext(type, appearance->id(), liquid ? liquid->fluid() : 0, instance ? instance->tier() : 0, 0);
+    return objectActionsImpl(locationOf(position, object.stackPosition), context, object.creatureId,
+                             instance ? instance->tier() : 0, type, instance ? instance->count() : 0);
 }
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const container::TInventorySlot& slot,
                                                                 const Position& position, const int stackPosition)
 {
+    return objectActions(locationOf(position, stackPosition), slot);
+}
+
+TGameActionList TGenericObjectGameActionProvider::objectActions(const TGameActionContextPtr& location,
+                                                                const container::TInventorySlot& slot)
+{
     if (slot.empty())
         return {};
-    ThingType* type = slot.appearance ? slot.appearance->thingType() : nullptr;
+    TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : nullptr;
     if (!type)
         type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
-    const appearances::TObjectAppearanceInstance* objectInst =
-        slot.appearance ? dynamic_cast<const appearances::TObjectAppearanceInstance*>(slot.appearance.get()) : nullptr;
-    const int stackCount = slot.stackable ? static_cast<int>(slot.count) : 0;
-    return objectActionsImpl(slot.typeId, objectInst, type, position, stackPosition, stackCount);
+    // Inventory and container slots own the count; appearance instances can keep a
+    // stale shared one.
+    const TGameActionContextPtr context = objectContext(type, slot.typeId, slot.fluid, slot.tier, slot.decoItemId);
+    return objectActionsImpl(location, context, 0, slot.tier, type, slot.stackable ? slot.count : 0);
 }
 
 }

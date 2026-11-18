@@ -1,11 +1,13 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
+#include <qtconnectionmanager.h>
 
 #include <client/declarations.h>
 
@@ -29,6 +31,9 @@ class TCreature;
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class TPremiumTimeStorage;
 }
 }
 
@@ -160,13 +165,16 @@ public:
 
     int battleListId() const { return m_id; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
-    /// The list's options (name, filters, sort order, view) and size.
-    void applyOptions(const BattleListOptions& options);
-    void setPremium(bool premium);
+    /// The list follows its entry in `options`: it reads it now and on every
+    /// change of its id (nullptr detaches).
+    void attachSidebarOptions(config::TSidebarOptions* options);
+    /// The list's premium state follows `storage` (premiumTimeChanged on
+    /// every change and once now).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR, forwarded by the storage:
     /// the hovered entry's TARGET_SELECTED creature takes the object
     /// (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
-    bool onAtMouseCursor(const input::TGameAction& action);
+    bool onAtMouseCursor(const input::IGameAction& action);
 
     /// The QML properties, read from the list's options.
     bool filterButtonsVisible() const override;
@@ -223,7 +231,6 @@ Q_SIGNALS:
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
     /// Tip-owned non-chrome signals.
     void battleListClosed(int battleListId);
 
@@ -258,6 +265,12 @@ private:
     uint32_t m_hoveredCreature = 0;
     uint32_t m_lockedCreature = 0;
     QMetaObject::Connection m_contextMenuClosed;
+    /// CIP +0xa0: the widget item's three signals and the rename dialog's
+    /// textEntered; the destructor disconnects them.
+    shared::TQtConnectionManager m_connections;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
+    QPointer<config::TSidebarOptions> m_sidebarOptions;
+    QMetaObject::Connection m_sidebarOptionsChanged;
 };
 
 /// The open battle lists (CIP: TBattleListControllerStorage). Battle list ids
@@ -300,7 +313,7 @@ public:
     /// CIP: OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, MAKE_BATTLE_LIST_PRIMARY,
     /// TOGGLE_WIDGET of a battle list, and the at-mouse-cursor actions every
     /// list sees.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// CIP: the list leaves the storage; `saveOptions` first saves its options.
     void removeBattleList(uint8_t battleListId, bool saveOptions);
     /// Every list leaves the storage, saving its options.
@@ -310,6 +323,9 @@ public:
     /// The list's options from the sidebar options (defaults when it has none).
     BattleListOptions options(int battleListId) const;
     void setOptions(int battleListId, const BattleListOptions& options);
+    /// Whether the sidebar options hold an entry for the list.
+    bool hasOptions(int battleListId) const;
+    config::TSidebarOptions* sidebarOptions() const;
     void removeOptions(int battleListId);
     /// CIP: the list becomes the primary list in the sidebar options.
     void makePrimary(uint8_t battleListId);
@@ -342,6 +358,9 @@ public Q_SLOTS:
     void onBattleListClosed(int battleListId);
 
 Q_SIGNALS:
+    /// A list took a USE_AT_MOUSECURSOR / SPELL_AT_MOUSE_CURSOR (the map window
+    /// then does not report it unhandled).
+    void atMouseCursorGameActionTaken();
     /// EWidgetType 1 (primary list) and 2 (party list).
     void widgetVisible(int widgetType);
     void widgetHidden(int widgetType);
@@ -355,7 +374,7 @@ private:
     bool findFreeBattleListId(uint8_t requestedId, uint8_t* battleListId) const;
     /// CIP: a list opened after login starts maximized.
     void maximizeIfLoggedIn(TBattleListController* controller) const;
-    static void publishStatusLine(const QString& text, const QColor& color);
+    void publishStatusLine(const QString& text, const QColor& color);
     BattleListEntry entryOf(const std::shared_ptr<creatures::TCreature>& creature) const;
     void onUpdateTimer();
 
@@ -375,7 +394,17 @@ private:
     QTimer m_updateTimer;
     TBattleListGameActionHandler* m_gameActionHandler = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<int> m_actionListeners;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

@@ -2,6 +2,7 @@
 
 #include "bossbestiary/bosstrackerstorage.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "gamewindow/uifocusmanager.h"
 
 #include <cip_gen.h>
 
@@ -30,12 +31,14 @@ class TBossTrackerListModel final : public cip::TBossTrackerModel
 {
     Q_OBJECT
 public:
+    /// CIP's role ids (0x101..0x106).
     enum Role {
-        BossRaceIdRole = Qt::UserRole + 1,
-        NameRole,
+        NameRole = Qt::UserRole + 1,
+        BossRaceIdRole,
+        OutfitRole,
         HasCooldownRole,
         CooldownEndStringRole,
-        OutfitRole
+        CooldownEndRole
     };
 
     struct Row {
@@ -54,6 +57,8 @@ public:
     enum ESortMode { SortByRemainingCooldown = 0, SortByName = 1 };
 
     void setRows(std::vector<Row> rows);
+    /// CIP: a new second updates the time and the texts of the running cooldowns.
+    void setCurrentTime(qint64 currentTimeMs);
     void setNameFilter(const QString& filter);
     QString nameFilter() const { return m_filter; }
     int sortMode() const { return m_sortMode; }
@@ -70,6 +75,8 @@ private:
 
     std::vector<Row> m_all;
     std::vector<int> m_visible;
+    /// CIP: the time (ms since the epoch) the cooldowns are measured against.
+    qint64 m_currentTimeMs = 0;
     QString m_filter;
     int m_sortMode = SortByRemainingCooldown;
 };
@@ -116,7 +123,6 @@ Q_SIGNALS:
     void widgetClosed();
     /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
-    void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
     void focusChanged();
@@ -132,6 +138,8 @@ private Q_SLOTS:
 private:
     void persistOptions();
 
+    /// CIP TSidebarWidgetControllerWithFocusHandling +0xa0.
+    TUiFocusManager m_focus;
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;
     TBossTrackerListModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;
@@ -148,6 +156,11 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;

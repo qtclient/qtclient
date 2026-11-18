@@ -11,7 +11,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <QGuiApplication>
 #include <QQuickItem>
@@ -86,10 +86,10 @@ container::TInventorySlot slotAppearance(const int slotId)
     return {};
 }
 
-input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
+input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
-    for (const input::TGameActionPtr& action : actions) {
-        if (action->type == type)
+    for (const input::IGameActionPtr& action : actions) {
+        if (action->gameActionType() == type)
             return action;
     }
     return nullptr;
@@ -128,15 +128,10 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
         updateMouseCursorForCurrentSlot();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulChange", onPlayer(&TPlayerInventoryAndStatusController::refreshSoul));
-    for (const char* event : { "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::refreshCapacity));
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBlessingsChange", onPlayer(&TPlayerInventoryAndStatusController::refreshBlessings));
-    for (const char* event : { "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const Args&) {
-            refreshTactics();
-            return std::any{};
-        });
+    // CIP: the player's data-changed signal refreshes everything the panel shows.
+    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange",
+                               "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::onPlayerDataChanged));
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
     });
@@ -158,20 +153,19 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     connect(&m_clockTimer, &QTimer::timeout, this, &TPlayerInventoryAndStatusController::refreshClocks);
     m_clockTimer.start();
 
-    using input::setActionHandler;
-    setActionHandler(A::SET_PVP_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_CHASE_OPPONENTS, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_CHASE_OPPONENTS, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_SECURE_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_SECURE_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::TGameAction&) {
+    m_gameActions.on(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    m_gameActions.on(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::IGameAction&) {
         if (tibia::game::isOnline() && !tibia::game::localPlayerHasReachedMain())
             Q_EMIT showCapacityWarning();
         return true;
     });
     // CIP handleGameAction case 0x94: walking turns chasing off
     // unless auto chase is enabled.
-    setActionHandler(A::APPLY_AUTOCHASE_SETTING, [this](const input::TGameAction&) {
+    m_gameActions.on(A::APPLY_AUTOCHASE_SETTING, [this](const input::IGameAction&) {
         if (!m_autoChaseEnabled && m_chaseEnabled)
             onChaseModeChangeRequested(false);
         return true;
@@ -180,9 +174,6 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
 
 TPlayerInventoryAndStatusController::~TPlayerInventoryAndStatusController()
 {
-    for (const A type : { A::SET_PVP_MODE, A::SET_CHASE_OPPONENTS, A::TOGGLE_CHASE_OPPONENTS, A::TOGGLE_SECURE_MODE, A::SET_SECURE_MODE,
-                          A::SHOW_INVENTORY_CAPACITY_WARNING, A::APPLY_AUTOCHASE_SETTING })
-        input::setActionHandler(type, nullptr);
 }
 
 void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* panel)
@@ -266,7 +257,7 @@ input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const in
     const Position position(UINT16_MAX, static_cast<uint16_t>(slotId), 0);
     input::TGameActionList actions =
         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, 0), SlotActionTypes);
-    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
     return actions;
 }
 
@@ -314,6 +305,15 @@ void TPlayerInventoryAndStatusController::readExpireOptions()
     m_showExpireWhenUnused = options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false);
 }
 
+void TPlayerInventoryAndStatusController::onPlayerDataChanged()
+{
+    refreshSoul();
+    refreshCapacity();
+    refreshBlessings();
+    refreshTactics();
+    refreshExpertMode();
+}
+
 void TPlayerInventoryAndStatusController::refreshSoul()
 {
     const int soul = tibia::game::isOnline() ? tibia::game::localPlayerSoul() : 0;
@@ -327,10 +327,11 @@ void TPlayerInventoryAndStatusController::refreshCapacity()
 {
     const bool online = tibia::game::isOnline();
     const int capacity = online ? static_cast<int>(tibia::game::localPlayerFreeCapacity()) : 0;
-    const bool zero = online && capacity == 0;
+    // CIP: no capacity at all (the server's hundredths), not below one oz.
+    const bool zero = online && tibia::game::localPlayerFreeCapacityHundredths() == 0;
     const uint32_t baseCap = tibia::game::localPlayerBaseCapacity();
     const uint32_t totalCap = tibia::game::localPlayerTotalCapacity();
-    const bool boost = online && baseCap > 0 && baseCap < totalCap;
+    const bool boost = online && baseCap < totalCap;
     if (capacity == m_capacity && zero == m_hasZeroCapacity && boost == m_hasCapacityBoost)
         return;
     m_capacity = capacity;
@@ -410,11 +411,8 @@ void TPlayerInventoryAndStatusController::refreshExpertMode()
 
 void TPlayerInventoryAndStatusController::publishTactics()
 {
-    auto action = input::mutableClone(*input::makeAction(A::SET_TACTICS));
-    action->chase = m_chaseEnabled;
-    action->secure = m_secureModeEnabled;
-    action->pvpMode = m_pvpMode;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetTactics>(
+        input::TGameActionSetTactics::TTactics{ m_chaseEnabled, m_secureModeEnabled, m_pvpMode }));
 }
 
 void TPlayerInventoryAndStatusController::onChaseModeChangeRequested(const bool chaseOpponents)
@@ -459,14 +457,16 @@ void TPlayerInventoryAndStatusController::requestPvpMode(const int mode)
     publishTactics();
 }
 
-bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGameAction& action)
+bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::SET_PVP_MODE:
-        requestPvpMode(action.pvpMode);
+        if (const auto* pvp = input::gameActionAs<input::TGameActionSetPvPMode>(&action))
+            requestPvpMode(pvp->pvpMode());
         break;
     case A::SET_CHASE_OPPONENTS:
-        onChaseModeChangeRequested(action.chase);
+        if (const auto* chase = input::gameActionAs<input::TGameActionSetChaseMode>(&action))
+            onChaseModeChangeRequested(chase->chase());
         break;
     case A::TOGGLE_CHASE_OPPONENTS:
         onToggleChaseMode();
@@ -476,8 +476,9 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGame
         break;
     case A::SET_SECURE_MODE:
         // Unlike the panel's button, the action sends only a change.
-        if (action.secure != m_secureModeEnabled) {
-            onSecureModeEnabledRequested(action.secure);
+        if (const auto* secure = input::gameActionAs<input::TGameActionSetSecureMode>(&action);
+            secure && secure->secure() != m_secureModeEnabled) {
+            onSecureModeEnabledRequested(secure->secure());
             break;
         }
         Q_EMIT secureModeEnabledChanged();
@@ -495,19 +496,18 @@ void TPlayerInventoryAndStatusController::onBlessingsButtonClicked()
 
 void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()
 {
-    if (const input::TGameActionPtr open = firstOfType(slotActions(StoreInboxSlot), A::OPEN_IN_NEW_WINDOW))
-        input::publish(open);
+    if (const input::IGameActionPtr open = firstOfType(slotActions(StoreInboxSlot), A::OPEN_IN_NEW_WINDOW))
+        Q_EMIT publishGameAction(open);
 }
 
 void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = input::filterActions(slotActions(slotId), ClickActionTypes);
-    const input::TGameActionPtr action =
-        m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+    const input::IGameActionPtr action = m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
@@ -542,7 +542,7 @@ void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
     if (m_hoveredSlot == -1 || !cursor)
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
     cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 
@@ -551,7 +551,7 @@ void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObj
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    if (const input::TGameActionPtr move = firstOfType(slotActions(slotId), A::MOVE_OBJECT))
+    if (auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(firstOfType(slotActions(slotId), A::MOVE_OBJECT)))
         dnd->startDrag(move, source);
 }
 
@@ -560,23 +560,23 @@ void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
     TDragAndDropController* dnd = TDragAndDropController::instance();
     if (!dnd)
         return;
-    const input::TGameActionPtr move = dnd->takeAction();
+    const input::TMoveObjectPtr move = dnd->takeAction();
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
     const Position destination(UINT16_MAX, static_cast<uint16_t>(std::max(0, slotId)), 0);
-    input::publish(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
+    Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
 void TPlayerInventoryAndStatusController::onSlotTargetSelected(const int slotId)
 {
-    if (const input::TGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
-        input::publish(target);
+    if (const input::IGameActionPtr target = firstOfType(slotActions(slotId), A::TARGET_SELECTED))
+        Q_EMIT publishGameAction(target);
 }
 
 void TPlayerInventoryAndStatusController::onStopClicked()
 {
-    input::publish(input::makeAction(A::STOP_ATTACKING_FOLLOWING_WALKING));
+    Q_EMIT publishGameAction(input::makeGameAction(A::STOP_ATTACKING_FOLLOWING_WALKING));
 }
 
 }

@@ -1,10 +1,12 @@
 #include "game/gamesessionbase.h"
 #include "container/containerciptypes.h"
+
+#include <cmath>
 #include "game/gamesessionstate.h"
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
-#include "tibia/assets/thingtype.h"
+#include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "tibia/client/outfit.h"
 #include "tibia/game/gamenotify.h"
@@ -22,7 +24,6 @@
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
 #include <client/staticdata.h>
-#include "cyclopedia/iteminfostorage.h"
 
 #include <limits>
 #include <map>
@@ -162,161 +163,75 @@ void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
     tibia::game::notify("onSpecialContainersAvailable", stash, market);
 }
 
-void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
+void TContainerProtocolMessageHandler::handleStashMessage(const ::tibia::protobuf::protocol::GameserverMessageStash& message)
 {
+    std::vector<std::vector<uint32_t>> stash;
+    for (const auto& e : message.entries())
+        stash.push_back({ e.object_id(), e.amount() });
+    tibia::game::notify("onSupplyStashEnter", stash);
+}
 
-    switch (opcode) {
-    case 41: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageStash::gameserver_message_stash))
-            return;
-        std::vector<std::vector<uint32_t>> stash;
-        for (const auto& e : shadow->GetExtension(GameserverMessageStash::gameserver_message_stash).entries())
-            stash.push_back({ e.object_id(), e.amount() });
-        tibia::game::notify("onSupplyStashEnter", stash);
-        break;
+void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message)
+{
+    const auto typeId = static_cast<uint16_t>(message.object().object_id());
+    const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    const std::optional<uint8_t> tier =
+        type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(message.object().tier())) : std::nullopt;
+    std::vector<TInventorySlot> depotObjects;
+    for (const auto& item : message.depot_objects())
+        depotObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
+    std::vector<TInventorySlot> inboxObjects;
+    for (const auto& item : message.inbox_objects())
+        inboxObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
+    TObjectCountStorage::TCounts stash;
+    for (const auto& entry : message.stash())
+        stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] += entry.amount();
+    if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+        session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), message.depot_count(),
+                                                               std::move(inboxObjects), message.inbox_count(), stash);
+    tibia::game::processDepotSearchDetail();
+}
+
+void TContainerProtocolMessageHandler::handleCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch&)
+{
+    tibia::game::processCloseDepotSearch();
+}
+
+void TContainerProtocolMessageHandler::handleObjectInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageObjectInfo& message)
+{
+    // Descriptions are keyed by object id.
+    std::vector<std::tuple<uint16_t, std::string>> objects;
+    for (const auto& o : message.objects())
+        objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
+    tibia::game::notify("onItemInfo", objects);
+}
+
+void TContainerProtocolMessageHandler::handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& message)
+{
+    // The locker's counts, by type and tier (CIP: the session's object counts).
+    TObjectCountStorage::TCounts counts;
+    for (const auto& e : message.entries())
+        counts[{ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()) }] += e.count();
+    if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+        session->objectCountStorage()->setCounts(counts);
+    tibia::game::processDepotSearchResults();
+}
+
+void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message)
+{
+    // Counts per (object, tier); the tier only counts for tiered objects.
+    std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
+    for (const auto& e : message.entries()) {
+        const auto id = static_cast<uint16_t>(e.object_id());
+        const TAppearanceType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+        const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
+        auto& entry = counts[{ id, tier }];
+        entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
     }
-    case 42: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(GameserverMessageSpecialContainersAvailable::
-                                         gameserver_message_special_containers_available))
-            return;
-        handleSpecialContainersAvailableMessage(shadow->GetExtension(
-            GameserverMessageSpecialContainersAvailable::
-                gameserver_message_special_containers_available));
-        break;
-    }
-    case 111: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(GameserverMessageCloseContainer::gameserver_message_close_container))
-            return;
-        handleCloseContainerMessage(
-            shadow->GetExtension(GameserverMessageCloseContainer::gameserver_message_close_container));
-        break;
-    }
-    case 110:
-    case 112:
-    case 113:
-    case 114: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow)
-            return;
-        if (opcode == 110 && shadow->HasExtension(GameserverMessageContainer::gameserver_message_container))
-            handleContainerMessage(shadow->GetExtension(GameserverMessageContainer::gameserver_message_container));
-        else if (opcode == 112
-                 && shadow->HasExtension(GameserverMessageCreateInContainer::gameserver_message_create_in_container))
-            handleCreateInContainerMessage(
-                shadow->GetExtension(GameserverMessageCreateInContainer::gameserver_message_create_in_container));
-        else if (opcode == 113
-                 && shadow->HasExtension(GameserverMessageChangeInContainer::gameserver_message_change_in_container))
-            handleChangeInContainerMessage(
-                shadow->GetExtension(GameserverMessageChangeInContainer::gameserver_message_change_in_container));
-        else if (opcode == 114
-                 && shadow->HasExtension(GameserverMessageDeleteInContainer::gameserver_message_delete_in_container))
-            handleDeleteInContainerMessage(
-                shadow->GetExtension(GameserverMessageDeleteInContainer::gameserver_message_delete_in_container));
-        break;
-    }
-    case 120: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(GameserverMessageSetInventory::gameserver_message_set_inventory))
-            return;
-        handleSetInventoryMessage(
-            shadow->GetExtension(GameserverMessageSetInventory::gameserver_message_set_inventory));
-        break;
-    }
-    case 121: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(
-                GameserverMessageDeleteInventory::gameserver_message_delete_inventory))
-            return;
-        handleDeleteInventoryMessage(shadow->GetExtension(
-            GameserverMessageDeleteInventory::gameserver_message_delete_inventory));
-        break;
-    }
-    case 153: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list))
-            return;
-        const auto& m = shadow->GetExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list);
-        const auto typeId = static_cast<uint16_t>(m.object().object_id());
-        const ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
-        const std::optional<uint8_t> tier =
-            type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(m.object().tier())) : std::nullopt;
-        std::vector<TInventorySlot> depotObjects;
-        for (const auto& item : m.depot_objects())
-            depotObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
-        std::vector<TInventorySlot> inboxObjects;
-        for (const auto& item : m.inbox_objects())
-            inboxObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
-        TObjectCountStorage::TCounts stash;
-        for (const auto& entry : m.stash())
-            stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] += entry.amount();
-        if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
-            session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), m.depot_count(),
-                                                                   std::move(inboxObjects), m.inbox_count(), stash);
-        tibia::game::processDepotSearchDetail();
-        break;
-    }
-    case 154: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (shadow && shadow->HasExtension(GameserverMessageCloseDepotSearch::gameserver_message_close_depot_search))
-            tibia::game::processCloseDepotSearch();
-        break;
-    }
-    case 244: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageObjectInfo::gameserver_message_object_info))
-            return;
-        // Descriptions are keyed by object id.
-        std::vector<std::tuple<uint16_t, std::string>> objects;
-        for (const auto& o : shadow->GetExtension(GameserverMessageObjectInfo::gameserver_message_object_info).objects())
-            objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
-        if (auto* storage = tibia::cyclopedia::TItemInfoStorage::instance())
-            storage->applyItemInfo(objects);
-        else
-            tibia::game::notify("onItemInfo", objects);
-        break;
-    }
-    case 148: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result))
-            return;
-        // The locker's counts, by type and tier (CIP: the session's object counts).
-        TObjectCountStorage::TCounts counts;
-        for (const auto& e : shadow->GetExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result).entries())
-            counts[{ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()) }] += e.count();
+    if (tibia::game::hasLocalPlayer()) {
         if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
             session->objectCountStorage()->setCounts(counts);
-        tibia::game::processDepotSearchResults();
-        break;
-    }
-    case 245: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory))
-            return;
-        // Counts per (object, tier); the tier only counts for tiered objects.
-        std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
-        for (const auto& e : shadow->GetExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory).entries()) {
-            const auto id = static_cast<uint16_t>(e.object_id());
-            const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
-            const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
-            auto& entry = counts[{ id, tier }];
-            entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
-        }
-        if (tibia::game::hasLocalPlayer()) {
-            if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
-                session->objectCountStorage()->setCounts(counts);
-            tibia::game::notify("updateInventoryItems");
-        }
-        break;
-    }
-    default:
-        break;
+        tibia::game::notify("updateInventoryItems");
     }
 }
 
@@ -329,12 +244,6 @@ void ownProductSurface(QObject* parent)
     (void)typedKeep();
     auto* handler = new TContainerProtocolMessageHandler(parent);
     TContainerProtocolMessageHandler::setLiveInstance(handler);
-    // GameClient::start() may have already run before containers exist — connect
-    // here so SpecialContainersAvailable (0x2A) still flips stash/market flags.
-    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        QObject::connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, handler,
-                         &TContainerProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
-    }
 }
 
 uint32_t TInventorySlot::durationRemainingSeconds() const
@@ -353,7 +262,7 @@ int64_t TInventorySlot::durationRemainingMilliseconds() const
     return int64_t(durationSeconds) * 1000;
 }
 
-TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_t countOrSubType, const uint8_t tier,
+TInventorySlot TInventorySlot::fromProtocolObject(TAppearanceType* type, const uint16_t countOrSubType, const uint8_t tier,
                                                   const uint8_t hangSide)
 {
     TInventorySlot slot;
@@ -367,7 +276,7 @@ TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_
     slot.fluid = slot.fluidOrSplash ? static_cast<uint8_t>(std::clamp<uint16_t>(countOrSubType, 0, 255)) : 0;
     slot.tier = tier;
     slot.hasWearOut = type->hasWearOut();
-    slot.hasClock = type->hasClockExpire() || type->hasExpire() || type->hasExpireStop();
+    slot.hasClock = type->hasExpire() || type->hasExpireStop();
     slot.dualWield = type->isDualWield();
 
     const uint16_t count = slot.stackable ? slot.count : 0;
@@ -385,7 +294,7 @@ TInventorySlot TInventorySlot::fromTypeId(const uint16_t typeId, const uint16_t 
 TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventoryItem& item)
 {
     const uint16_t typeId = static_cast<uint16_t>(item.item_id());
-    ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return {};
 
@@ -550,7 +459,7 @@ std::optional<TContainerProperties> TContainerRenderProvider::containerPropertie
         properties.currentPage = row->firstIndex / capacity + 1;
     }
     properties.numberOfContainerSlots = capacity;
-    properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->items.size());
+    properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->itemCount());
     properties.levelUpButtonVisible = row->hasParent;
     properties.searchButtonVisible = row->showSearch;
     properties.isUpdatable = row->unlocked;
@@ -651,88 +560,83 @@ void TContainerStorage::closeContainer(const TContainerID id)
     Q_EMIT containerRemoved(id);
 }
 
+TInventorySlot TContainer::itemAt(const uint32_t slot) const
+{
+    const size_t index = slotIndex(slot);
+    return index < items.size() ? items[index] : TInventorySlot{};
+}
+
+void TContainer::setItem(const uint32_t slot, const TInventorySlot& item)
+{
+    const size_t index = slotIndex(slot);
+    if (index < items.size())
+        items[index] = item;
+}
+
+void TContainer::removeItem(const uint32_t slot)
+{
+    if (firstIndex <= slot && slot < static_cast<uint32_t>(firstIndex) + capacity) {
+        const size_t index = slotIndex(slot);
+        if (index < items.size())
+            items.erase(items.begin() + static_cast<std::ptrdiff_t>(index));
+    }
+    decreaseSize();
+}
+
+void TContainer::insertItem(const uint32_t slot, const TInventorySlot& item)
+{
+    const size_t index = std::min(slotIndex(slot), items.size());
+    items.insert(items.begin() + static_cast<std::ptrdiff_t>(index), item);
+    while (items.size() > capacity)
+        items.pop_back();
+    increaseSize();
+}
+
+uint32_t TContainer::pageCount() const
+{
+    if (!hasPages || capacity == 0)
+        return 1;
+    return std::max<uint32_t>(1, static_cast<uint32_t>(std::ceil(static_cast<float>(size) / static_cast<float>(capacity))));
+}
+
+uint32_t TContainer::currentPage() const
+{
+    if (!hasPages || capacity == 0)
+        return 1;
+    return firstIndex / capacity + 1;
+}
+
 void TContainerStorage::applyAddItem(const TContainerID id, const TInventorySlot& item, const uint16_t slot)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-
-    int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-
-    // Item landed on a later page: size only.
-    if (row->hasPages && pageSlot > static_cast<int>(row->capacity)) {
-        ++row->size;
-        emitUpdated(id, false);
-        return;
-    }
-
-    if (static_cast<int>(row->items.size()) == static_cast<int>(row->capacity)) {
-        applyRemoveItem(id, static_cast<uint16_t>(row->firstIndex + row->capacity - 1), {});
-        row = mutableAt(id);
-        if (!row)
-            return;
-        ++row->size;
-        pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-    }
-
-    if (pageSlot < 0 || pageSlot > static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container add slot out of range").c_str());
-        return;
-    }
-
-    row->items.insert(row->items.begin() + pageSlot, item);
-    ++row->size;
+    // Without the object it landed on another page: only the total grows.
+    if (item.empty())
+        container->increaseSize();
+    else
+        container->insertItem(slot, item);
     emitUpdated(id, false);
 }
 
 void TContainerStorage::applyUpdateItem(const TContainerID id, const uint16_t slot, const TInventorySlot& item)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-    const int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-    if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container update slot not found").c_str());
-        return;
-    }
-    row->items[static_cast<size_t>(pageSlot)] = item;
+    container->setItem(slot, item);
     emitUpdated(id, false);
 }
 
 void TContainerStorage::applyRemoveItem(const TContainerID id, const uint16_t slot, const TInventorySlot& lastItem)
 {
-    TStoredContainer* row = mutableAt(id);
-    if (!row)
+    TContainer* container = mutableAt(id);
+    if (!container)
         return;
-
-    int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
-
-    // Deleted from a later page: size only.
-    if (row->hasPages && pageSlot >= static_cast<int>(row->items.size())) {
-        if (row->size > 0)
-            --row->size;
-        emitUpdated(id, false);
-        return;
-    }
-
-    if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        qCritical("%s", std::format("container remove slot not found").c_str());
-        return;
-    }
-
-    row->items.erase(row->items.begin() + pageSlot);
-
-    if (!lastItem.empty()) {
-        applyAddItem(id, lastItem, static_cast<uint16_t>(row->firstIndex + row->capacity - 1));
-        row = mutableAt(id);
-        if (!row)
-            return;
-        if (row->size > 0)
-            --row->size;
-    }
-
-    if (row->size > 0)
-        --row->size;
+    container->removeItem(slot);
+    // The object that moves up into the page's last slot.
+    if (!lastItem.empty())
+        container->appendItem(lastItem);
     emitUpdated(id, false);
 }
 
@@ -744,13 +648,10 @@ const TStoredContainer* TContainerStorage::containerAt(const TContainerID id) co
 
 TInventorySlot TContainerStorage::slotAt(const TContainerID id, const int slotId) const
 {
-    const TStoredContainer* row = containerAt(id);
-    if (!row)
+    const TContainer* container = containerAt(id);
+    if (!container || slotId < 0)
         return {};
-    const int index = slotId - static_cast<int>(row->firstIndex);
-    if (index < 0 || index >= static_cast<int>(row->items.size()))
-        return {};
-    return row->items[static_cast<size_t>(index)];
+    return container->itemAt(static_cast<uint32_t>(slotId));
 }
 
 QList<TContainerID> TContainerStorage::openIds() const
@@ -804,7 +705,11 @@ void TInventoryContainer::setSlot(const int slotId, const TInventorySlot& slot)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    m_slots[static_cast<size_t>(slotId)] = slot;
+    TInventorySlot& stored = m_slots[static_cast<size_t>(slotId)];
+    // The same object again changes nothing.
+    if (stored.appearance == slot.appearance && stored.typeId == slot.typeId)
+        return;
+    stored = slot;
     Q_EMIT inventoryChanged();
     Q_EMIT inventorySlotChanged(slotId);
 }

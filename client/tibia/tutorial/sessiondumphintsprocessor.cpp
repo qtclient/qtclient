@@ -107,35 +107,26 @@ void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
 {
     const QString type = action.value(QLatin1String("type")).toString();
     if (type == QLatin1String("TUTORIAL_PROGRESS")) {
-        auto a = input::mutableClone(*input::makeAction(A::TUTORIAL_PROGRESS));
-        a->text = action.value(QLatin1String("tutorialprogress")).toString();
-        input::publish(a);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialProgress>(action.value(QLatin1String("tutorialprogress")).toString()));
         return;
     }
     if (type == QLatin1String("SKIP_TO")) {
-        auto a = input::mutableClone(*input::makeAction(A::SESSIONDUMP_SKIP_TO));
-        a->parameter = action.value(QLatin1String("skiptotimestamp")).toInt();
-        // Do not treat 0 as "end" — that is a no-op / restart cue in CIP sidecars.
-        a->text = QStringLiteral("seek");
-        input::publish(a);
+        // 0 is a no-op / restart cue in CIP sidecars, not the end.
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSessiondumpSkipTo>(
+            static_cast<int64_t>(action.value(QLatin1String("skiptotimestamp")).toDouble())));
         return;
     }
     if (type == QLatin1String("CONDITION")) {
         const QString condition = action.value(QLatin1String("conditiontype")).toString();
         const QJsonObject data = action.value(QLatin1String("conditiondata")).toObject();
         if (condition == QLatin1String("SHOW_TUTORIAL_HINT") || data.contains(QLatin1String("showtutorialhintid"))) {
-            auto a = input::mutableClone(*input::makeAction(A::SHOW_TUTORIAL_HINT));
-            a->parameter = data.value(QLatin1String("showtutorialhintid")).toInt();
-            input::publish(a);
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowTutorialHint>(data.value(QLatin1String("showtutorialhintid")).toInt()));
             return;
         }
         // Text-hint conditions: surface as status-line style tutorial progress until overlays land.
         const QJsonObject textHint = data.value(QLatin1String("texthint")).toObject();
         if (!textHint.isEmpty()) {
-            auto a = input::mutableClone(*input::makeAction(A::TUTORIAL_PROGRESS));
-            a->text = textHint.value(QLatin1String("text")).toString();
-            a->statement = condition;
-            input::publish(a);
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialProgress>(textHint.value(QLatin1String("text")).toString()));
         }
         qCInfo(lcHints).noquote() << "condition" << condition << "(overlay deferred)";
         return;
@@ -143,7 +134,7 @@ void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
     if (type == QLatin1String("SWITCH_CHANNEL") || type == QLatin1String("CLEAR_OLDEST_MESSAGE")
         || type == QLatin1String("FINISHED_TUTORIAL")) {
         if (type == QLatin1String("FINISHED_TUTORIAL")) {
-            input::publish(input::makeAction(A::FINISHED_TUTORIAL_FOR_CHARACTER));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionFinishedTutorialForCharacter>(QString()));
             return;
         }
         qCInfo(lcHints).noquote() << "action" << type;

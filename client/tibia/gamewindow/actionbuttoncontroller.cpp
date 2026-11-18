@@ -4,7 +4,7 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
@@ -25,7 +25,7 @@ using A = input::EGameAction;
 QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 {
     QString name;
-    if (const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
+    if (const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
         name = QString::fromStdString(type->getName());
     if (name.isEmpty())
         name = qtTrId("actionbar_tooltip_object_name_dummy");
@@ -36,7 +36,7 @@ QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 
 bool isMultiUse(const int objectId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
     return type && type->isMultiUse();
 }
 
@@ -138,6 +138,7 @@ void TActionButtonController::createMultiActions(const int count)
     reset();
     for (int i = 0; i < count; ++i) {
         auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
+        connect(child, &Base::publishGameAction, this, &Base::publishGameAction);
         connect(child, &Base::changed, this, &Base::changed);
         connect(child, &Base::cooldownRemainingPercentChanged, this, &Base::cooldownRemainingPercentChanged);
         connect(child, &Base::cooldownTextChanged, this, &Base::cooldownTextChanged);
@@ -214,11 +215,36 @@ void TActionButtonController::setPassiveAbility(const int passiveAbility)
 void TActionButtonController::setHotkeys(const QList<QKeySequence>& hotkeys)
 {
     m_hotkeys = hotkeys;
-    const QString hotkeyShort = hotkeys.isEmpty() ? QString() : hotkeys.front().toString(QKeySequence::NativeText);
+    const QString hotkeyShort = hotkeys.isEmpty() ? QString() : shortHotkeyText(hotkeys.front());
     if (hotkeyShort == m_hotkeyShort)
         return;
     m_hotkeyShort = hotkeyShort;
     Q_EMIT changed();
+}
+
+QString TActionButtonController::shortHotkeyText(const QKeySequence& key)
+{
+    QString text;
+    if (key.isEmpty())
+        return text;
+    const QString portable = key.toString(QKeySequence::PortableText);
+    QStringList parts = portable.split(QStringLiteral("+"), Qt::KeepEmptyParts, Qt::CaseSensitive);
+    // A key that is itself "+" leaves empty parts behind.
+    if (portable.endsWith(QStringLiteral("+"))) {
+        if (portable.toUpper().endsWith(QStringLiteral("N+")))
+            parts.back() = QStringLiteral("N+");
+        else
+            parts.append(QStringLiteral("+"));
+    }
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        if (i == parts.size() - 1) {
+            text.append(parts[i]);
+            break;
+        }
+        if (!parts[i].isEmpty())
+            text.append(parts[i].toUpper().at(0));
+    }
+    return text;
 }
 
 QString TActionButtonController::tooltip() const
@@ -468,7 +494,7 @@ QString TActionButtonController::cooldownText(const qint64 remainingMs)
 void TActionButtonController::onTriggered()
 {
     // A multi-action slot triggers its button, which runs its current slot.
-    input::publish(std::make_shared<input::TGameActionActionButtonTriggered>(int(m_actionBarID), int(m_actionButtonID)));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionActionButtonTriggered>(static_cast<uint8_t>(m_actionBarID), int(m_actionButtonID)));
 }
 
 void TActionButtonController::contextMenuRequested()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "creatures/movementdirection.h"
+#include "input/inputciptypes.h"
 #include "input/movementpathplanner.h"
 #include "worldmap/coordinates.h"
 
@@ -63,13 +64,14 @@ public:
 
     explicit TPlayerMovementIntentHandler(Environment environment, QObject* parent = nullptr);
 
-    /// A held direction: steps now, then repeats until `stopIntent`.
-    void walkInDirection(creatures::EMovementDirection direction);
+    /// CIP v16: the player's new movement intent. A target coordinate plans a
+    /// path there; a direction is held: it steps now and repeats until another
+    /// intent (after a turn the turn's direction counts as held); a rotation
+    /// turns the player; a stop ends the held direction. Without a player the
+    /// intent kept for the next one is a stop.
+    void handleMovementIntent(const TMovementIntentPtr& intent);
     /// One step in `direction`.
     void step(creatures::EMovementDirection direction);
-    void walkTo(const worldmap::TWorldMapCoordinate& goal, bool enterUnwalkableGoal);
-    void rotate(creatures::ECreatureLookDirection direction);
-    void stopIntent();
     /// Drop the goal and the path; a step in flight still completes.
     void stopWalking();
     /// Drop the goal and the path, keeping a held direction.
@@ -96,7 +98,6 @@ private:
     /// (no ground known, a field to avoid, a creature that may let the player
     /// through) are only sent, Blocked ones (not loaded, unpassable) stop the path.
     enum class EFieldState { Free, Blocked, Unsure };
-    enum class EIntent { None, Target, Direction, Rotate, Stop };
 
     int goTo(const worldmap::TWorldMapCoordinate& goal, bool enterUnwalkableGoal, bool allowDiagonalStep);
     void goToAndSend(const worldmap::TWorldMapCoordinate& goal, bool enterUnwalkableGoal, bool allowDiagonalStep);
@@ -112,7 +113,10 @@ private:
     qint64 nextStepDelay(const worldmap::TWorldMapCoordinate& from, const worldmap::TWorldMapCoordinate& to) const;
     EFieldState fieldState(const worldmap::TWorldMapCoordinate& coordinate) const;
     bool canStepTowards(creatures::EMovementDirection direction) const;
-    void noteIntent(EIntent intent);
+    /// A held direction steps now; holding it again counts a repeat.
+    void holdDirection(creatures::EMovementDirection direction);
+    /// CIP v23: the player holds a movement intent unless it is a stop.
+    void noteIntent(TMovementIntentKind kind);
     static creatures::EMovementDirection directionOfLook(creatures::ECreatureLookDirection look);
 
     Environment m_env;
@@ -132,8 +136,8 @@ private:
     std::optional<worldmap::TWorldMapCoordinate> m_lastPosition;
     std::optional<worldmap::TWorldMapCoordinate> m_stuckPosition;
     int m_stuckCount = 0;
-    EIntent m_lastIntent = EIntent::None;
-    creatures::ECreatureLookDirection m_lastRotation = creatures::ECreatureLookDirection::North;
+    /// +0xd0: the last intent.
+    TMovementIntentPtr m_intent;
 };
 
 }

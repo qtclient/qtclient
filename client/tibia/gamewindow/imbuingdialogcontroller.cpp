@@ -1,10 +1,11 @@
 #include "imbuingdialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
@@ -274,24 +275,25 @@ bool localPlayerPremium()
 /// An object type's name with each space-separated word capitalised.
 QString objectTypeName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
 }
 
 uint32_t imbuementSlotCount(const uint16_t typeId)
 {
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? type->getImbueSlots() : 0;
 }
 
-void publishOpenPremiumStore()
+input::IGameActionPtr openPremiumStoreAction()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    return action;
 }
 
 }
+
+bool TImbuingDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
 TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ImbuingDialog.qml"), parent)
@@ -304,7 +306,6 @@ TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* sto
 {
     m_availableImbuements = m_available;
     m_imbuementSlots = m_slotsModel;
-    m_clientSettingSmoothFiltering = true;
     m_resultMessage->setCloseOnButtonClicked(true);
     m_imbueConfirm->setCloseOnButtonClicked(true);
     m_clearConfirm->setCloseOnButtonClicked(true);
@@ -416,11 +417,11 @@ void TImbuingDialogController::requestClearImbuement()
                                 qtTrId("imbuing_confirm_clearing_text").arg(imbuing::goldText(existing->clearingGoldCost())).arg(selected->name()));
 }
 
-void TImbuingDialogController::requestOpenStoreWithPremiumCategory() { publishOpenPremiumStore(); }
+void TImbuingDialogController::requestOpenStoreWithPremiumCategory() { Q_EMIT publishGameAction(openPremiumStoreAction()); }
 
 void TImbuingDialogController::openPremiumStore()
 {
-    publishOpenPremiumStore();
+    Q_EMIT publishGameAction(openPremiumStoreAction());
     closeDialog();
 }
 
@@ -459,12 +460,12 @@ void TImbuingDialogController::handlePickItemToImbue()
     dialog()->hide();
     // The picked object goes to the server; when the selection ends the
     // dialog comes back if it is still there.
-    input::startTargetSelection([this](const input::TGameActionPtr& target) {
+    input::startTargetSelection([this](const input::TTargetSelectedPtr& target) {
         if (!m_picking)
             return;
-        if (target && target->objectClientId) {
-            const uint8_t stackpos = target->stackPosition >= 0 ? static_cast<uint8_t>(target->stackPosition) : 0;
-            tibia::game::selectImbuementItem(target->objectClientId, target->position, stackpos);
+        if (target && target->objectClientId()) {
+            const uint8_t stackpos = target->stackPosition() >= 0 ? static_cast<uint8_t>(target->stackPosition()) : 0;
+            tibia::game::selectImbuementItem(target->objectClientId(), target->position(), stackpos);
         }
         m_picking = false;
         if (dialog()->item() && !dialog()->isShown())

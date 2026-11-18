@@ -21,6 +21,8 @@
 namespace tibia::protobuf::protocol {
 class GameserverMessageCharacterTradeConfiguration;
 class GameserverMessageCloseNPCTrade;
+class GameserverMessageCloseTrade;
+class GameserverMessageDead;
 class GameserverMessageNPCOffer;
 class GameserverMessagePlayerGoods;
 class GameserverMessageOwnOffer;
@@ -36,26 +38,6 @@ namespace trade {
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-struct TCharacterTradeConditionEntry {
-    QString notification;
-    int status = 1; // TibiaEnums.EYesNoWarning: Yes=0 No=1 Warning=2
-};
-
-struct TCharacterTradeHighlightEntry {
-    int highlightId = 0;
-    QString highlight;
-    QString category;
-    QString categoryIcon;
-};
-
-struct TCharacterTradeItemEntry {
-    int id = 0;
-    QString name;
-    int amount = 0;
-    QString description;
-    int upgradeTier = 0;
-};
-
 class TCharacterTradeProtocolMessageHandler final : public cip::tibia::trade::TCharacterTradeProtocolMessageHandler
 {
     Q_OBJECT
@@ -67,12 +49,53 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& message);
 };
 
-/// CipSoft CharacterTradeDialog data from onCharacterTrade* publishes.
+/// The auctioned character (CIP: the character trade storage's basic data).
+struct TCharacterTradeCondition
+{
+    QString text;
+    bool fulfilled = false;
+};
+
+struct TCharacterTradeBasicData
+{
+    QString name;
+    QString vocation;
+    QString worldType;
+    quint16 level = 0;
+    Outfit outfit;
+    quint32 startTime = 0;
+    quint32 endTime = 0;
+    quint32 minimumBid = 0;
+    std::vector<TCharacterTradeCondition> conditions;
+};
+
+/// An item (or store item) the character takes along.
+struct TCharacterTradeItem
+{
+    quint16 objectId = 0;
+    quint8 tier = 0;
+    quint32 count = 0;
+};
+
+/// A group of highlights the auction can show.
+struct TCharacterTradeHighlightGroup
+{
+    struct Entry
+    {
+        quint16 id = 0;
+        QString text;
+    };
+    int category = 0;
+    QString name;
+    std::vector<Entry> entries;
+};
+
+/// The character trade configuration the server sends (CIP: trade::TCharacterTradeStorage).
 class TCharacterTradeStorage final : public cip::tibia::trade::TCharacterTradeStorage
 {
     Q_OBJECT
 public:
-    /// CipSoft CharacterTradeConfiguration dataType (Crystal S 0x80 / CIP ECharacterTradeDataType).
+    /// CipSoft CharacterTradeConfiguration dataType (CIP ECharacterTradeDataType).
     enum DataType {
         Conditions = 0,
         Items = 1,
@@ -85,44 +108,31 @@ public:
     explicit TCharacterTradeStorage(QObject* parent = nullptr);
     static TCharacterTradeStorage* instance();
 
-    const QString& characterName() const { return m_characterName; }
-    int characterLevel() const { return m_characterLevel; }
-    uint8_t vocationClientId() const { return m_vocationClientId; }
-    const Outfit& outfit() const { return m_outfit; }
-    uint8_t worldType() const { return m_worldType; }
-    uint32_t startTimestamp() const { return m_startTimestamp; }
-    uint32_t endTimestamp() const { return m_endTimestamp; }
-    uint16_t minimumBid() const { return m_minimumBid; }
-    const std::vector<TCharacterTradeConditionEntry>& conditions() const { return m_conditions; }
-    const std::vector<TCharacterTradeItemEntry>& items() const { return m_items; }
-    const std::vector<TCharacterTradeItemEntry>& storeItems() const { return m_storeItems; }
-    const std::vector<TCharacterTradeHighlightEntry>& highlights() const { return m_highlights; }
-    uint16_t summaryFee() const { return m_summaryFee; }
-    const std::vector<TCharacterTradeConditionEntry>& confirmations() const { return m_confirmations; }
-    bool hasUnfulfilledConditions() const;
-    bool hasConfirmationError() const;
+    const TCharacterTradeBasicData& basicData() const { return m_basicData; }
+    const std::vector<TCharacterTradeItem>& items() const { return m_items; }
+    const std::vector<TCharacterTradeItem>& storeItems() const { return m_storeItems; }
+    const std::vector<TCharacterTradeHighlightGroup>& highlights() const { return m_highlights; }
+    const std::vector<QString>& problems() const { return m_problems; }
+    quint16 fee() const { return m_fee; }
+
+    void setBasicData(TCharacterTradeBasicData data);
+    void setItems(std::vector<TCharacterTradeItem> items);
+    void setStoreItems(std::vector<TCharacterTradeItem> items);
+    void setHighlights(std::vector<TCharacterTradeHighlightGroup> highlights);
+    void setSummary(std::vector<QString> problems, quint16 fee);
 
 Q_SIGNALS:
     void infoUpdated(tibia::trade::TCharacterTradeStorage::DataType dataType);
 
 private:
     static TCharacterTradeStorage* s_instance;
-    std::vector<client::gamecore::Hook> m_hooks;
 
-    QString m_characterName;
-    int m_characterLevel = 0;
-    uint8_t m_vocationClientId = 0;
-    Outfit m_outfit;
-    uint8_t m_worldType = 0;
-    uint32_t m_startTimestamp = 0;
-    uint32_t m_endTimestamp = 0;
-    uint16_t m_minimumBid = 0;
-    std::vector<TCharacterTradeConditionEntry> m_conditions;
-    std::vector<TCharacterTradeItemEntry> m_items;
-    std::vector<TCharacterTradeItemEntry> m_storeItems;
-    std::vector<TCharacterTradeHighlightEntry> m_highlights;
-    uint16_t m_summaryFee = 0;
-    std::vector<TCharacterTradeConditionEntry> m_confirmations;
+    TCharacterTradeBasicData m_basicData;
+    std::vector<TCharacterTradeItem> m_items;
+    std::vector<TCharacterTradeItem> m_storeItems;
+    std::vector<TCharacterTradeHighlightGroup> m_highlights;
+    std::vector<QString> m_problems;
+    quint16 m_fee = 0;
 };
 
 /// CIP: TNPCTradeProtocolMessageHandler. Fills the NPC trade storage from
@@ -148,11 +158,9 @@ public:
     void handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& message);
     /// CIP: the quest flag currency's balance.
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
-    void handleCloseNPCTradeMessage();
-    void handleDeadMessage();
+    void handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& message);
+    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
 
 private:
     TNPCTradeStorage* m_storage = nullptr;
@@ -182,10 +190,11 @@ public:
 
     void handleOwnOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageOwnOffer& OwnOfferMessage);
     void handleCounterOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage);
-    void handleCloseTradeMessage();
+    void handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade& message);
 
-    /// Tip Q→H wire: OwnOffer, CounterOffer and CloseTrade from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The live handler (the player trade widget manager owns it).
+    static TPlayerTradeProtocolMessageHandler* instance();
+
 
 private:
     static TPlayerTradeProtocolMessageHandler* s_instance;

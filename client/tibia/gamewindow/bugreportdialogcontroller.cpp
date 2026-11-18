@@ -29,28 +29,28 @@ TBugReportDialogController::TBugReportDialogController(QObject* parent)
     : TDialogController(QStringLiteral("BugReportDialog.qml"), parent)
 {
     for (const A type : Handled)
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
 }
 
 TBugReportDialogController::~TBugReportDialogController()
 {
-    for (const A type : Handled)
-        input::setActionHandler(type, nullptr);
 }
 
 /// REPORT_BUG_OTHER keeps the category, REPORT_BUG_MAP and REPORT_BUG_TYPO
 /// (speaker and text) set theirs.
-bool TBugReportDialogController::handleAction(const input::TGameAction& action)
+bool TBugReportDialogController::handleAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::REPORT_BUG_OTHER:
         showReportOtherDialog();
         return true;
     case A::REPORT_BUG_MAP:
-        showReportMapDialog(action.position);
+        if (const auto* bug = input::gameActionAs<input::TGameActionReportMapBug>(&action))
+            showReportMapDialog(bug->coordinate());
         return true;
     case A::REPORT_BUG_TYPO:
-        showReportTypoDialog(action.text, action.statement);
+        if (const auto* typo = input::gameActionAs<input::TGameActionReportTypo>(&action))
+            showReportTypoDialog(typo->speaker(), typo->text());
         return true;
     default:
         return false;

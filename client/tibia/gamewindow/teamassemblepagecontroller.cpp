@@ -1,8 +1,9 @@
 #include "teamassemblepagecontroller.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include "assets/things.h"
 #include "creatures/creaturestorage.h"
-#include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -81,20 +82,11 @@ void TTeamAssemblePageController::loadActivities()
     activities.push_back(makeActivity({ .kind = TTeamActivity::Other }, m_resolver));
 
     // Hunting places: each map area (with an "any" entry when it has several subareas) and its subareas.
-    std::vector<const cyclopedia::TCyclopediaMapStaticData::TArea*> areas;
-    for (const auto& area : cyclopedia::TCyclopediaMapStaticData::instance().areas()) {
-        if (!area.isSubarea)
-            areas.push_back(&area);
-    }
-    std::sort(areas.begin(), areas.end(), [](const auto* left, const auto* right) { return left->id < right->id; });
-    for (const auto* area : areas) {
-        std::vector<int> subareas = area->subareaIds;
-        std::sort(subareas.begin(), subareas.end());
-        subareas.erase(std::unique(subareas.begin(), subareas.end()), subareas.end());
-        if (subareas.size() > 1)
-            addHunt(area->id, 0);
-        for (const int subarea : subareas)
-            addHunt(area->id, subarea);
+    for (const auto& [areaId, area] : cyclopedia::TCyclopediaMapStaticDataStorage::instance().areas()) {
+        if (area.subareaIds.size() > 1)
+            addHunt(areaId, 0);
+        for (const quint16 subarea : area.subareaIds)
+            addHunt(areaId, subarea);
     }
 
     std::vector<uint16_t> bosses;
@@ -106,8 +98,10 @@ void TTeamAssemblePageController::loadActivities()
     for (const uint16_t boss : bosses)
         addBoss(boss);
 
-    for (const auto& quest : appearances::TAppearancesManager::instance().getCyclopediaQuests())
-        addQuest(quest.id);
+    for (const cyclopedia::TStaticQuest& quest : cyclopedia::staticQuests()) {
+        if (quest.id != 0 && !quest.name.isEmpty())
+            addQuest(static_cast<uint16_t>(quest.id));
+    }
 
     m_activities->setActivities(activities);
 }
@@ -244,9 +238,8 @@ void TTeamAssemblePageController::onEditMemberStatusClicked(const uint Character
 
 void TTeamAssemblePageController::getPremiumClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    Q_EMIT publishGameAction(action);
 }
 
 uint TTeamAssemblePageController::getLeaderlevel()

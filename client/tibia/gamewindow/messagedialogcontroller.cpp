@@ -2,14 +2,64 @@
 
 #include <QQuickItem>
 
+#include <algorithm>
+
 namespace tibia::gamewindow {
 
-TMessageDialogButton::TMessageDialogButton(const QString& label, const EMessageDialogButtonIdentifier identifier, const QKeySequence& key, QObject* parent)
+TMessageDialogButton::TMessageDialogButton(const EMessageDialogButtonIdentifier identifier, const QString& label,
+                                           const uint defaultKeys, QObject* parent)
     : cip::tibia::gamewindow::TMessageDialogButton(parent)
-    , m_key(key)
 {
-    m_label = label;
     m_identifier = identifier;
+    m_label = label;
+    if (defaultKeys & RETURN_KEYS) {
+        m_keySequences.emplace_back(QStringLiteral("Return"));
+        m_keySequences.emplace_back(QStringLiteral("Enter"));
+    }
+    if (defaultKeys & ESCAPE_KEY)
+        m_keySequences.emplace_back(QStringLiteral("Esc"));
+}
+
+TMessageDialogButton::TMessageDialogButton(const EMessageDialogButtonIdentifier identifier, const QString& label,
+                                           const QKeySequence& key, QObject* parent)
+    : cip::tibia::gamewindow::TMessageDialogButton(parent)
+    , m_keySequences{ key }
+{
+    m_identifier = identifier;
+    m_label = label;
+}
+
+TMessageDialogButton::TMessageDialogButton(const TMessageDialogButton& other)
+    : cip::tibia::gamewindow::TMessageDialogButton(other.parent())
+    , m_keySequences(other.m_keySequences)
+{
+    m_identifier = other.m_identifier;
+    m_label = other.m_label;
+}
+
+bool TMessageDialogButton::hasKey(const QKeySequence& key) const
+{
+    return std::find(m_keySequences.begin(), m_keySequences.end(), key) != m_keySequences.end();
+}
+
+QList<TMessageDialogButton*> okDialogButtons()
+{
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::OK, qtTrId("ok"),
+                                      TMessageDialogButton::RETURN_KEYS | TMessageDialogButton::ESCAPE_KEY) };
+}
+
+QList<TMessageDialogButton*> cancelDialogButtons()
+{
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL, qtTrId("cancel"),
+                                      TMessageDialogButton::RETURN_KEYS | TMessageDialogButton::ESCAPE_KEY) };
+}
+
+QList<TMessageDialogButton*> okCancelDialogButtons()
+{
+    return { new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::OK, qtTrId("ok"),
+                                      TMessageDialogButton::RETURN_KEYS),
+             new TMessageDialogButton(TMessageDialogButton::EMessageDialogButtonIdentifier::CANCEL, qtTrId("cancel"),
+                                      TMessageDialogButton::ESCAPE_KEY) };
 }
 
 TMessageDialogController::TMessageDialogController(QObject* parent)
@@ -95,7 +145,7 @@ void TMessageDialogController::onDialogButtonClicked(const QVariant& Identifier,
 void TMessageDialogController::pressButtonWithKey(const QKeySequence& key)
 {
     for (TMessageDialogButton* button : std::as_const(m_buttons)) {
-        if (button->key() == key) {
+        if (button->hasKey(key)) {
             const QQuickItem* item = dialog()->item();
             const bool checked = item && item->property("checkBoxIsChecked").toBool();
             onDialogButtonClicked(static_cast<int>(button->identifier()), checked);

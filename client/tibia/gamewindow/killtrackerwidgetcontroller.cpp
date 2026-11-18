@@ -2,12 +2,17 @@
 
 #include "config/sidebaroptions.h"
 #include "gamewindow/preydialogcontroller.h"
+#include "gamewindow/taskboarddialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "taskboard/taskboardbountytasksstorage.h"
+#include "taskboard/taskboardweeklytasksstorage.h"
 
 #include <tibia/assets/things.h>
 
 #include <QJsonObject>
+
+#include <utility>
 #include <QString>
 
 #include <any>
@@ -96,33 +101,27 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
 {
     m_bountyTasksModel = new TTaskMonsterModel(this);
     m_weeklyTasksModel = new TTaskMonsterModel(this);
-    for (prey::TPreyData* data : m_storage->slots())
-        m_preyList.append(new TPreyRenderInfo(data, this));
+    for (prey::TPreyData* data : m_storage->slots()) {
+        auto* info = new TPreyRenderInfo(data, this);
+        connect(info, &TPreyRenderInfo::publishGameAction, this, &TKillTrackerWidgetController::publishGameAction);
+        m_preyList.append(info);
+    }
     Q_EMIT preyListChanged();
     connect(m_storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TKillTrackerWidgetController::bonusRerollPossibleChanged);
     connect(m_storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TKillTrackerWidgetController::lockPreyPossibleChanged);
 
-    // Task board → kill-tracker bounty/weekly rows (S task-board subtypes).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyTaskData", [this](GameObject*, const Args& args) {
-        if (args.size() < 2)
-            return std::any{};
-        if (const auto* monsters = std::any_cast<std::vector<std::map<std::string, uint32_t>>>(&args[1])) {
-            m_pendingBounty = *monsters;
-            bountyTaskDataChanged();
-        }
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeeklyTaskData", [this](GameObject*, const Args& args) {
-        if (args.size() < 2)
-            return std::any{};
-        if (const auto* monsters = std::any_cast<std::vector<std::map<std::string, uint32_t>>>(&args[1])) {
-            const auto* header = std::any_cast<std::map<std::string, uint32_t>>(&args[0]);
-            m_weeklyActive = !header || mapU32(*header, "weeklyProgressFinished") == 0;
-            m_pendingWeekly = *monsters;
-            weeklyTaskDataChanged();
-        }
-        return std::any{};
-    });
+    // Task board storages → kill-tracker bounty/weekly rows.
+    connect(taskboard::TTaskboardBountyTasksStorage::instance(), &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged,
+            this, [this](const taskboard::TBountyTaskData& data) {
+                m_pendingBounty = taskboardBountyMonsterRows(data);
+                bountyTaskDataChanged();
+            });
+    connect(taskboard::TTaskboardWeeklyTasksStorage::instance(), &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged,
+            this, [this](const taskboard::TWeeklyTaskData& data) {
+                m_weeklyActive = taskboardWeeklyActive(data);
+                m_pendingWeekly = taskboardWeeklyMonsterRows(data);
+                weeklyTaskDataChanged();
+            });
 
     widget()->createItem(QStringLiteral("prey/KillTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
@@ -177,6 +176,15 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
     model->setEntries(std::move(entries));
 }
 
+TKillTrackerWidgetController::~TKillTrackerWidgetController() { clearPreyList(); }
+
+void TKillTrackerWidgetController::clearPreyList()
+{
+    const QList<QObject*> old = std::exchange(m_preyList, {});
+    Q_EMIT preyListChanged();
+    qDeleteAll(old);
+}
+
 void TKillTrackerWidgetController::bountyTaskDataChanged() { applyBountyMonsters(m_pendingBounty); }
 
 void TKillTrackerWidgetController::weeklyTaskDataChanged() { applyWeeklyMonsters(m_pendingWeekly); }
@@ -212,28 +220,19 @@ void TKillTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+    onWidgetOptionsChanged();
 }
 
-void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeAction(input::EGameAction::OPEN_PREY_DIALOG)); }
+void TKillTrackerWidgetController::requestOpenPreyDialog() { Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::OPEN_PREY_DIALOG)); }
 
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = 0; // the bounty tasks tab
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(0)); // the bounty tasks tab
 }
 
 void TKillTrackerWidgetController::requestOpenWeeklyTasksDialog()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = 1; // the weekly tasks tab
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionOpenTaskboardDialog>(1)); // the weekly tasks tab
 }
 
 void TKillTrackerWidgetController::saveWidgetOptions()
@@ -246,7 +245,16 @@ void TKillTrackerWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TKillTrackerWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored content height and maximized state are applied to the widget.
+void TKillTrackerWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
+    if (json.contains(QLatin1String("contentHeight")))
+        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
+                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+}
 
 TKillTrackerWidgetManager::TKillTrackerWidgetManager(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                      QObject* parent)
@@ -262,6 +270,7 @@ TSidebarWidget* TKillTrackerWidgetManager::open(config::TSidebarOptions* options
 {
     if (!m_controller) {
         m_controller = new TKillTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        connect(m_controller, &TKillTrackerWidgetController::publishGameAction, this, &TKillTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

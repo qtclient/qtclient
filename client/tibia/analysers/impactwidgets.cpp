@@ -35,19 +35,15 @@ QString percentString(const double fraction) { return QString::number(fraction *
 QString rateString(const double value) { return format::multi(static_cast<quint32>(static_cast<qint64>(std::ceil(value)))); }
 
 /// The store's premium page (OPEN_STORE 1 / 0).
-void openPremiumStore()
+input::IGameActionPtr premiumStoreAction()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = 1;
-    action->instance = 0;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    return action;
 }
 
-void copyToClipboard(const QString& text)
+input::IGameActionPtr copyToClipboardAction(const QString& text)
 {
-    auto action = input::mutableClone(*input::makeAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD));
-    action->text = text;
-    input::publish(action);
+    return std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text);
 }
 
 QJsonObject readOptions(config::TSidebarOptions* options, const char* key)
@@ -221,7 +217,7 @@ TImpactWidgetController::~TImpactWidgetController() { delete m_targetDialog; }
 void TImpactWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, ImpactOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TImpactWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -253,7 +249,8 @@ void TImpactWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TImpactWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, ImpactOptionsKey); }
 
-void TImpactWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TImpactWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, ImpactOptionsKey); }
 
 void TImpactWidgetController::onGraphValuesChanged() { updateGraphs(); }
 
@@ -415,7 +412,7 @@ void TImpactWidgetController::setVisibleIfPremium(void (TImpactStorage::*set)(TI
     if (isPremiumPlayer())
         (m_storage->*set)(kind, visible);
     else
-        openPremiumStore();
+        Q_EMIT publishGameAction(premiumStoreAction());
 }
 
 void TImpactWidgetController::onShowDpsGaugeContextMenu()
@@ -546,7 +543,7 @@ TDamageInputWidgetController::TDamageInputWidgetController(TDamageInputStorage* 
 void TDamageInputWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, DamageInputOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TDamageInputWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -577,7 +574,8 @@ void TDamageInputWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TDamageInputWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, DamageInputOptionsKey); }
 
-void TDamageInputWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored widget options are applied (saving is saveWidgetOptions).
+void TDamageInputWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, DamageInputOptionsKey); }
 
 bool TDamageInputWidgetController::showDamageGraph() const { return m_storage->showGraph(); }
 
@@ -608,11 +606,9 @@ void TDamageInputWidgetController::updateLists()
 {
     const double total = static_cast<double>(m_storage->total());
     std::vector<TDamageTypedModel::Entry> types;
-    const auto& elements = m_storage->elements();
-    for (int e = 0; e < TDamageInputStorage::ElementCount; ++e) {
-        const qint64 value = elements[static_cast<size_t>(e)];
+    for (const auto& [element, value] : m_storage->elements()) {
         if (value != 0)
-            types.push_back({ e, value, total > 0 ? static_cast<double>(value) / total : 0.0 });
+            types.push_back({ element, value, total > 0 ? static_cast<double>(value) / total : 0.0 });
     }
     m_types->setEntries(std::move(types));
     std::vector<TDamageSourceModel::Entry> sources;
@@ -630,10 +626,9 @@ void TDamageInputWidgetController::updateDetail()
             if (sourceLabel(source.name) != m_detailedSource)
                 continue;
             std::vector<TDamageTypedModel::Entry> entries;
-            for (int e = 0; e < TDamageInputStorage::ElementCount; ++e) {
-                const qint64 value = source.byElement[static_cast<size_t>(e)];
+            for (const auto& [element, value] : source.elements) {
                 if (value != 0 && source.total != 0)
-                    entries.push_back({ e, value, static_cast<double>(value) / static_cast<double>(source.total) });
+                    entries.push_back({ element, value, static_cast<double>(value) / static_cast<double>(source.total) });
             }
             m_fromSource->setEntries(std::move(entries));
             return;
@@ -681,7 +676,7 @@ void TDamageInputWidgetController::onShowContextMenu()
     checkable("damageinput_show_sources_list", m_storage->showSources(), &TDamageInputStorage::setShowSources);
     menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { copyToClipboard(exportText()); });
+            [this] { Q_EMIT publishGameAction(copyToClipboardAction(exportText())); });
     menu->showCustomMenu();
 }
 
@@ -784,7 +779,7 @@ TPartyHuntWidgetController::TPartyHuntWidgetController(TPartyHuntStorage* storag
 void TPartyHuntWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    applyContentHeight(widget(), m_options, PartyHuntOptionsKey);
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TPartyHuntWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -815,7 +810,8 @@ void TPartyHuntWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TPartyHuntWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, PartyHuntOptionsKey); }
 
-void TPartyHuntWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+/// CIP: the stored content height and maximized state are applied to the widget.
+void TPartyHuntWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, PartyHuntOptionsKey); }
 
 void TPartyHuntWidgetController::tryConnectToPlayerPartyStateSignal()
 {
@@ -895,7 +891,8 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
                 [] { tibia::game::sendPartyAnalyzerReset(); });
         if (isPremiumPlayer())
             connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 0 ? "partyhunt_set_loot_type_leader" : "partyhunt_set_loot_type_market")),
-                    &gamewindow::TContextMenuEntryItem::triggered, this, [] { tibia::game::sendPartyAnalyzerPriceType(); });
+                    &gamewindow::TContextMenuEntryItem::triggered, this,
+                    [this] { tibia::game::sendPartyAnalyzerPriceType(m_storage->priceType() == 0 ? 1 : 0); });
     } else if (!inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_local")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_storage->clear(); });
@@ -905,7 +902,7 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
     if (hasEntries)
         menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [this] { copyToClipboard(exportText()); });
+            [this] { Q_EMIT publishGameAction(copyToClipboardAction(exportText())); });
     menu->showCustomMenu();
 }
 

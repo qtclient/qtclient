@@ -2,41 +2,39 @@
 
 #include "gameaction.h"
 
+#include <QObject>
+
 #include <functional>
 
 namespace tibia {
 namespace input {
 
-/// Runs an action on the game (CIP: publishing to the per-domain
-/// TGameActionHandlers). SMART_CLICK runs its inner action. Actions whose
-/// dialogs and flows are not ported yet do nothing.
-void publish(const TGameActionPtr& action);
+/// The game actions whose CIP handlers are not ported as classes yet (CIP:
+/// TCreaturesGameActionHandler, TPlayerGameActionHandler, the container and
+/// depot search handlers, ...): one switch, a router slot like theirs. Out of
+/// the game it only takes the actions that work before login.
+class TUnportedGameActionHandler final : public QObject
+{
+    Q_OBJECT
+public:
+    explicit TUnportedGameActionHandler(QObject* parent = nullptr);
 
-/// Receives the minimap actions (93-101; CIP: TMinimapController's handler).
-/// Null drops them.
-void setMinimapActionHandler(std::function<void(const TGameAction&)> handler);
+Q_SIGNALS:
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
-/// Receives one action type ahead of the built-in handling (CIP: a
-/// controller's handleGameAction, e.g. the inventory's tactics). Returning
-/// false lets the built-in handling run. A null handler removes it.
-using ActionHandler = std::function<bool(const TGameAction&)>;
-void setActionHandler(EGameAction type, ActionHandler handler);
-
-/// One of several controllers seeing an action type before its handler (CIP:
-/// the sidebar manager handing USE_AT_MOUSECURSOR / SPELL_AT_MOUSE_CURSOR to
-/// every widget,). Returning true consumes the action.
-using ActionListener = std::function<bool(const TGameAction&)>;
-int addActionListener(EGameAction type, ActionListener listener);
-void removeActionListener(int id);
+public Q_SLOTS:
+    /// Connected to the router's publishGameActionInternal.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+};
 
 /// Target selection (CIP: START_TARGET_SELECTION .. TARGET_SELECTION_FINISHED):
 /// the next world map click picks a target and `handler` gets that click's
 /// TARGET_SELECTED action, or null when it had none or the selection was
 /// cancelled. A new selection cancels the pending one.
-using TargetHandler = std::function<void(const TGameActionPtr& target)>;
+using TargetHandler = std::function<void(const TTargetSelectedPtr& target)>;
 void startTargetSelection(TargetHandler handler);
 bool isSelectingTarget();
-void finishTargetSelection(const TGameActionPtr& target);
+void finishTargetSelection(const TTargetSelectedPtr& target);
 /// Told true when a selection starts and false when it ends, before the
 /// handler runs (CIP: TTargetSelectionController's START_TARGET_SELECTION /
 /// TARGET_SELECTION_FINISHED). Null removes it.

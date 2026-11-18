@@ -267,12 +267,11 @@ TPlayerTradeWidgetManager::TPlayerTradeWidgetManager(TSidebarManager* sidebars, 
         m_storage.reset();
         close();
     });
-    input::setActionHandler(input::EGameAction::TRADE_ITEM, [this](const input::TGameAction& action) { return tradeItem(action); });
+    m_gameActions.on(input::EGameAction::TRADE_ITEM, [this](const input::TGameActionPlayerTradeItem& action) { return tradeItem(action); });
 }
 
 TPlayerTradeWidgetManager::~TPlayerTradeWidgetManager()
 {
-    input::setActionHandler(input::EGameAction::TRADE_ITEM, nullptr);
     if (input::isSelectingTarget())
         input::finishTargetSelection(nullptr);
 }
@@ -300,25 +299,25 @@ void TPlayerTradeWidgetManager::close()
 
 /// TRADE_ITEM starts a target selection; a player picked on the map gets the
 /// trade request.
-bool TPlayerTradeWidgetManager::tradeItem(const input::TGameAction& action)
+bool TPlayerTradeWidgetManager::tradeItem(const input::TGameActionPlayerTradeItem& action)
 {
-    const uint16_t typeId = action.objectClientId;
+    const uint16_t typeId = action.objectClientId();
     if (typeId == 0)
         return true;
-    const Position position = action.position;
-    const int stackPosition = action.stackPosition >= 0 ? action.stackPosition : 0;
+    const Position position = action.position();
+    const int stackPosition = action.stackPosition() >= 0 ? action.stackPosition() : 0;
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setTargetSelection(true);
-    input::startTargetSelection([position, typeId, stackPosition](const input::TGameActionPtr& target) {
+    input::startTargetSelection([position, typeId, stackPosition](const input::TTargetSelectedPtr& target) {
         if (TMouseCursorController* cursor = TMouseCursorController::instance())
             cursor->setTargetSelection(false);
-        if (!target || !target->creatureId)
+        if (!target || !target->creatureId())
             return;
         tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
         const std::shared_ptr<tibia::creatures::TCreature> row =
-            storage ? storage->creatureAt(target->creatureId) : nullptr;
+            storage ? storage->creatureAt(target->creatureId()) : nullptr;
         if (row && row->isPlayer() && !row->isLocalPlayer())
-            tibia::game::requestTradeAt(position, typeId, stackPosition, target->creatureId);
+            tibia::game::requestTradeAt(position, typeId, stackPosition, target->creatureId());
     });
     return true;
 }

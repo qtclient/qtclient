@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
@@ -63,7 +64,7 @@ public:
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
 
     /// The minimap hotkeys (CIP , actions 93-101).
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     int currentLayer() const override;
     void setCurrentLayer(int layer) override;
@@ -126,6 +127,17 @@ private:
     /// The last mouse position on the rose, normalised to 0..1 (unset: NaN).
     QPointF m_roseMouseNormalized{ qSNaN(), qSNaN() };
     client::gamecore::Hook m_positionHook;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

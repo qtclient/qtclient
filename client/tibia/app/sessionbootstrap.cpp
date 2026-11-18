@@ -9,7 +9,7 @@
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
-#include "gamewindow/waitdialogcontroller.h"
+#include "app/loginwaitdialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
 
@@ -52,7 +52,7 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
     , m_gameWindow(gameWindow)
     , m_createCharacter(new gamewindow::TCreateCharacterDialogController())
     , m_createAccount(new gamewindow::TCreateAccountDialogController(this))
-    , m_loginWait(new gamewindow::TWaitDialogController(this))
+    , m_loginWait(new TLoginWaitDialogController(this))
     , m_error(makeBox(this, qtTrId("ok"), {}))
     , m_keepRenderer(makeBox(this, {}, {}))
 {
@@ -86,9 +86,9 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
                 }
                 m_client->submitCredentials(email, password);
             });
-    connect(m_loginWait, &gamewindow::TWaitDialogController::aborted, this, [this] {
+    connect(m_loginWait, &TLoginWaitDialogController::aborted, this, [this] {
         m_client->abortPendingEnter();
-        if (m_loginWait->abortedPhase() == gamewindow::TWaitDialogController::Phase::GameWorld) {
+        if (m_loginWait->abortedPhase() == TLoginWaitDialogController::Phase::GameWorld) {
             // CIP: Abort while entering the world returns to the character list.
             m_client->ensureLoginSurface();
             return;
@@ -99,14 +99,13 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
 
     if (m_gameWindow) {
         bindLoginWait(m_gameWindow);
-        connect(m_gameWindow, &gamewindow::TGameWindowController::createAccountDialogRequested, this,
+        connect(m_gameWindow, &gamewindow::TGameWindowController::createAccountRequested, this,
                 &TSessionBootstrap::openCreateAccount);
     }
 }
 
 TSessionBootstrap::~TSessionBootstrap()
 {
-    input::setActionHandler(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG, nullptr);
 }
 
 void TSessionBootstrap::installCreateCharacter(gamewindow::TCreateCharacterDialogController* controller)
@@ -123,14 +122,9 @@ void TSessionBootstrap::installCreateCharacter(gamewindow::TCreateCharacterDialo
 
 void TSessionBootstrap::wireCreateCharacter()
 {
-    auto* characters = m_client->characterSelection();
-    QObject::disconnect(m_createCharacterRequested);
     QObject::disconnect(m_createCharacterIfEmpty);
     QObject::disconnect(m_characterCreated);
 
-    m_createCharacterRequested =
-        connect(characters, &gamewindow::TCharacterSelectionController::createCharacterRequested, this,
-                &TSessionBootstrap::openCreateCharacter);
     m_createCharacterIfEmpty =
         connect(m_client, &client::TGameClient::characterSelectionRequested, this,
                 &TSessionBootstrap::openCreateCharacterIfAccountEmpty);
@@ -141,25 +135,27 @@ void TSessionBootstrap::wireCreateCharacter()
                     m_client->refreshAccount(reply);
                 });
     // CIP : SHOW_CREATE_CHARACTER_DIALOG (parameter: account has no characters).
-    input::setActionHandler(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
-                            [self = QPointer<TSessionBootstrap>(this)](const input::TGameAction& action) {
+    m_gameActions.on(input::EGameAction::SHOW_CREATE_CHARACTER_DIALOG,
+                            [self = QPointer<TSessionBootstrap>(this)](const input::gameactions::TGameActionShowCreateCharacterDialog& action) {
                                 if (!self)
                                     return true;
-                                self->openCreateCharacter(action.parameter != 0 || action.enable);
+                                self->openCreateCharacter(action.accountIsEmpty());
                                 return true;
                             });
 }
 
 void TSessionBootstrap::openCreateCharacterIfAccountEmpty()
 {
-    if (m_client->characterSelection()->characters().isEmpty())
+    if (m_client->characterSelection()->characters().empty())
         openCreateCharacter(true);
 }
 
 void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWindow)
 {
-    connect(gameWindow, &gamewindow::TGameWindowController::accountLoginRequested, this,
-            [this, gameWindow](const QString&, const QString&) {
+    connect(gameWindow, &gamewindow::TGameWindowController::loginRequested, this,
+            [this, gameWindow](const QString& email, const QString& password) {
+                if (email.trimmed().isEmpty() || password.isEmpty())
+                    return;
                 // CIP hides the login mask while the account service answers.
                 gameWindow->setAuthenticated(true);
                 m_loginWait->showCharacterList();

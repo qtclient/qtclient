@@ -1,7 +1,9 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
+#include "news/eventsuploader.h"
 
 #include <cip_gen.h>
 
@@ -43,7 +45,7 @@ public:
     ~TCalendarDialogController() override;
 
     /// The events storage's schedule, from the portal reply's `eventlist`.
-    void setEvents(const QJsonArray& events);
+    void setEvents(const std::vector<news::TEventInformation>& events);
     /// The game server's clock (CIP: the time provider passed at creation).
     void setServerClock(std::function<QDateTime()> clock) { m_serverClock = std::move(clock); }
 
@@ -57,7 +59,7 @@ public:
     void closeButtonClicked() override;
     QString getTooltipForDay(const QString& DateString) override;
     QString getSeasonalTooltipForDay(const QString& DateString) override;
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 private:
     struct EntryDetails
@@ -77,6 +79,17 @@ private:
     QVariantMap m_seasonalEventsMap;
     /// What TEventQMLEntry carries in CIP but the qtclient entry does not.
     QHash<const QObject*, EntryDetails> m_entryDetails;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

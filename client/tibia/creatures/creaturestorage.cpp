@@ -98,21 +98,21 @@ bool TCreature::isHidden() const
     return m_creatureType == Proto::CreatureTypeHidden;
 }
 
-ThingType* TCreature::outfitThingType() const
+TAppearanceType* TCreature::outfitThingType() const
 {
     if (!m_outfit.isCreature())
         return nullptr;
     return tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
 }
 
-ThingType* TCreature::mountThingType() const
+TAppearanceType* TCreature::mountThingType() const
 {
     return m_outfit.hasMount() ? tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature) : nullptr;
 }
 
 namespace {
 
-std::optional<animation::TMovingOutfitAnimator> walkAnimatorFor(const ThingType* type)
+std::optional<animation::TMovingOutfitAnimator> walkAnimatorFor(const TAppearanceType* type)
 {
     const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
     if (!moving || moving->phaseCount() == 0)
@@ -123,7 +123,7 @@ std::optional<animation::TMovingOutfitAnimator> walkAnimatorFor(const ThingType*
 
 // A rebuilt sprite sequence keeps its walk animator, so the leg cycle runs on;
 // the divisor becomes the plain phase count even for a ping-pong animation.
-void refreshWalkAnimator(std::optional<animation::TMovingOutfitAnimator>& walk, const ThingType* type)
+void refreshWalkAnimator(std::optional<animation::TMovingOutfitAnimator>& walk, const TAppearanceType* type)
 {
     const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
     if (walk && moving && moving->phaseCount() > 0)
@@ -134,7 +134,7 @@ void refreshWalkAnimator(std::optional<animation::TMovingOutfitAnimator>& walk, 
 
 }
 
-static std::optional<animation::TAnimator> idleAnimatorFor(const ThingType* type)
+static std::optional<animation::TAnimator> idleAnimatorFor(const TAppearanceType* type)
 {
     if (const animation::TAnimationInfo* info = type ? type->idleAnimation() : nullptr)
         return animation::TAnimator(*info, 0);
@@ -226,6 +226,7 @@ void TCreature::update(const qint64 nowMs)
         m_outfitIdleAnimator->update(nowMs);
     if (m_mountIdleAnimator)
         m_mountIdleAnimator->update(nowMs);
+    updateOutfitPatterns();
     m_animationPhase = animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
     m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
@@ -238,7 +239,7 @@ void TCreature::update(const qint64 nowMs)
     }
 }
 
-uint16_t TCreature::animationPhaseFor(const ThingType* type,
+uint16_t TCreature::animationPhaseFor(const TAppearanceType* type,
                                       const std::optional<animation::TMovingOutfitAnimator>& walk,
                                       const std::optional<animation::TAnimator>& idle) const
 {
@@ -316,11 +317,20 @@ void TCreature::updateCoveredField()
 
 void TCreature::rebuildOutfitAppearance()
 {
-    ThingType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
+    TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
     m_outfitAppearance = appearances::TAppearanceInstanceFactory::fromOutfit(m_outfit, type);
+    if (m_outfitAppearance)
+        m_outfitAppearance->linkCreature(m_creatureId);
     if (const auto outfitInstance =
             std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-        outfitInstance->setOutfitLook(m_outfit, m_patternX);
+        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), true);
+}
+
+void TCreature::updateOutfitPatterns()
+{
+    if (const auto outfitInstance =
+            std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
+        outfitInstance->setPatterns(m_patternX, m_movementLook, patternZ(), false);
 }
 
 void TCreature::syncLocalPlayerStats()
@@ -465,11 +475,7 @@ void TCreature::setDirection(const uint8_t direction)
 
     m_direction = direction;
     m_patternX = patternX;
-    if (m_outfitAppearance) {
-        if (const auto outfitInstance =
-                std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
-            outfitInstance->setOutfitLook(m_outfit, m_patternX);
-    }
+    updateOutfitPatterns();
 }
 
 void TCreature::attachEffect(const AttachedEffectPtr& effect)

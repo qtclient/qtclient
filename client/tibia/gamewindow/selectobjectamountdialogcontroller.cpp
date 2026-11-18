@@ -8,7 +8,7 @@
 #include "worldmap/worldmapstorage.h"
 
 #include "protocol/protocolcodes.h"
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 
 #include <algorithm>
 
@@ -26,7 +26,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
                 if (const appearances::TAppearanceInstancePtr appearance = field->appearanceAt(stackPosition)) {
                     if (const auto* object =
                             dynamic_cast<const appearances::TObjectAppearanceInstance*>(appearance.get())) {
-                        if (ThingType* type = object->thingType(); type && type->isStackable())
+                        if (TAppearanceType* type = object->thingType(); type && type->isStackable())
                             return std::max<int>(1, object->count());
                     }
                 }
@@ -59,54 +59,62 @@ using A = input::EGameAction;
 TSelectObjectAmountDialogController::TSelectObjectAmountDialogController(QObject* parent)
     : TDialogController(QStringLiteral("SelectObjectAmountDialog.qml"), parent)
 {
-    input::setActionHandler(A::SHOW_SPLIT_STACK_DIALOG, [this](const input::TGameAction& action) { return handleSplitStack(action); });
-    input::setActionHandler(A::STASH_OPEN_STOW_STACK_DIALOG, [this](const input::TGameAction& action) { return handleStash(action); });
-    input::setActionHandler(A::STASH_OPEN_RETRIEVE_DIALOG, [this](const input::TGameAction& action) { return handleStash(action); });
+    m_gameActions.on(A::SHOW_SPLIT_STACK_DIALOG, [this](const input::IGameAction& action) { return handleSplitStack(action); });
+    m_gameActions.on(A::STASH_OPEN_STOW_STACK_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
+    m_gameActions.on(A::STASH_OPEN_RETRIEVE_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });
 }
 
 TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController()
 {
-    input::setActionHandler(A::SHOW_SPLIT_STACK_DIALOG, nullptr);
-    input::setActionHandler(A::STASH_OPEN_STOW_STACK_DIALOG, nullptr);
-    input::setActionHandler(A::STASH_OPEN_RETRIEVE_DIALOG, nullptr);
 }
 
-bool TSelectObjectAmountDialogController::handleSplitStack(const input::TGameAction& action)
+bool TSelectObjectAmountDialogController::handleSplitStack(const input::IGameAction& action)
 {
-    const input::TGameActionPtr& move = action.inner;
-    if (!move || !move->objectClientId)
+    const auto* split = input::gameActionAs<input::TGameActionShowSplitStackDialog>(&action);
+    const input::TMoveObjectPtr move = split ? split->moveObject() : nullptr;
+    if (!move)
         return false;
-    // Creatures use wire id Proto::Creature — never a stackable item amount.
-    if (move->creatureId || move->objectClientId == Proto::Creature)
+    // Without an amount to pick the move goes as it is. Creatures use wire id
+    // Proto::Creature — never a stackable item amount.
+    const int count = !move->objectClientId() || input::creatureOfObject(move->context())
+        ? 1
+        : move->amount() > 0 ? move->amount() : storageSlotCount(move->position(), move->stackPosition());
+    if (count <= 1) {
+        Q_EMIT publishGameAction(move);
         return false;
-    const int count = move->amount > 0 ? move->amount : storageSlotCount(move->position, move->stackPosition);
-    if (count <= 1)
-        return false;
+    }
     m_inner = move;
-    open(static_cast<int>(move->objectClientId), static_cast<uint>(count));
+    open(static_cast<int>(move->objectClientId()), static_cast<uint>(count));
     return true;
 }
 
-bool TSelectObjectAmountDialogController::handleStash(const input::TGameAction& action)
+bool TSelectObjectAmountDialogController::handleStash(const input::IGameAction& action)
 {
-    const input::TGameActionPtr& inner = action.inner;
-    if (!inner)
-        return false;
+    input::IGameActionPtr inner;
     int typeId = 0;
-    if (action.type == A::STASH_OPEN_RETRIEVE_DIALOG) {
-        typeId = inner->parameter;
-    } else {
-        if (!inner->objectClientId)
+    int amount = 0;
+    if (const auto* retrieve = input::gameActionAs<input::TGameActionStashOpenRetrieveDialog>(&action)) {
+        if (!retrieve->retrieve())
             return false;
-        typeId = static_cast<int>(inner->objectClientId);
+        inner = retrieve->retrieve();
+        typeId = retrieve->retrieve()->typeId();
+        amount = retrieve->retrieve()->amount();
+    } else if (const auto* stow = input::gameActionAs<input::TGameActionStashOpenStowStackDialog>(&action)) {
+        if (!stow->stowStack() || !stow->stowStack()->objectClientId())
+            return false;
+        inner = stow->stowStack();
+        typeId = static_cast<int>(stow->stowStack()->objectClientId());
+        amount = stow->stowStack()->amount();
+    } else {
+        return false;
     }
-    if (inner->amount == 1) {
-        input::publish(inner);
+    if (amount == 1) {
+        Q_EMIT publishGameAction(inner);
         return true;
     }
-    if (inner->amount > 1) {
+    if (amount > 1) {
         m_inner = inner;
-        open(typeId, static_cast<uint>(inner->amount));
+        open(typeId, static_cast<uint>(amount));
     }
     return true;
 }
@@ -120,7 +128,7 @@ void TSelectObjectAmountDialogController::open(const int typeId, const uint coun
     m_slotData = m_slot;
     m_maxAmount = count;
     // CIP.
-    const A type = m_inner ? m_inner->type : A::MOVE_OBJECT;
+    const A type = m_inner ? m_inner->gameActionType() : A::MOVE_OBJECT;
     const char* caption = type == A::STASH_STOW_STACK ? "selectamount_stow_caption"
                           : type == A::STASH_RETRIEVE ? "selectamount_retrieve_caption"
                                                       : "selectamount_move_caption";
@@ -134,9 +142,14 @@ void TSelectObjectAmountDialogController::open(const int typeId, const uint coun
 void TSelectObjectAmountDialogController::okButtonClicked()
 {
     if (m_inner && m_slot) {
-        auto inner = input::mutableClone(*m_inner);
-        inner->amount = static_cast<int>(m_slot->count());
-        input::publish(inner);
+        // The pending action again, with the chosen amount.
+        const int amount = static_cast<int>(m_slot->count());
+        if (const auto* move = input::gameActionAs<input::TGameActionMoveObject>(m_inner))
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionMoveObject>(move->context(), move->destination(), move->moveAll(), amount));
+        else if (const auto* stow = input::gameActionAs<input::TGameActionStashStowStack>(m_inner))
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashStowStack>(stow->context(), amount));
+        else if (const auto* retrieve = input::gameActionAs<input::TGameActionStashRetrieve>(m_inner))
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashRetrieve>(retrieve->typeId(), amount));
     }
     finish();
 }

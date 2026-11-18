@@ -11,11 +11,14 @@
 #include <tibia/renderer/texturedeletionqueue.h>
 #include "mods/registry.h"
 #include "network/gameserverconnection.h"
-#include "sound/soundstorage.h"
+#include "sound/soundcontroller.h"
+#include "assets/assetcatalog.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QMetaObject>
 #include <QObject>
 
@@ -242,6 +245,29 @@ std::string soundsRoot(const int /*version*/)
     return "sounds/";
 }
 
+namespace {
+
+/// The catalog's map (map.dat) and full map entries, as CIP's asset handler hands
+/// them to the Cyclopedia map's static data.
+void loadCyclopediaMapData(const std::string& directory)
+{
+    auto& storage = tibia::cyclopedia::TCyclopediaMapStaticDataStorage::instance();
+    try {
+        tibia::assets::TAssetCatalog catalog;
+        catalog.load(QJsonDocument::fromJson(
+            QByteArray::fromStdString(tibia::files::data().readFileContents(directory + "catalog-content.json"))));
+        storage.setFullMapFileName(catalog.fileOf(tibia::assets::TAsset::FullMap));
+        const QString mapFile = catalog.fileOf(tibia::assets::TAsset::Map);
+        if (mapFile.isEmpty())
+            return;
+        storage.initialize(QByteArray::fromStdString(tibia::files::data().readFileContents(directory + mapFile.toStdString())));
+    } catch (const std::exception& e) {
+        qWarning("cyclopedia map: %s", e.what());
+    }
+}
+
+}
+
 bool loadAssets(const int version, QString* error)
 {
     const std::string dir = assetsRoot(version);
@@ -250,11 +276,12 @@ bool loadAssets(const int version, QString* error)
         errors << QStringLiteral("Couldn't load assets from %1").arg(QString::fromStdString(dir));
     if (!tibia::assets::loadStaticData(dir))
         errors << QStringLiteral("Couldn't load static data from %1").arg(QString::fromStdString(dir));
+    loadCyclopediaMapData(dir);
     if (!tibia::assets::resolveProficiencies(dir))
         qWarning().noquote() << "gamecore: no proficiencies-<hash>.json in" << QString::fromStdString(dir);
 
     const std::string soundsDir = soundsRoot(version);
-    if (auto* storage = sound::TSoundStorage::instance(); storage && storage->loadBank(soundsDir))
+    if (auto* sounds = sound::TSoundController::instance(); sounds && sounds->metadata()->loadBank(soundsDir))
         qInfo().noquote() << "gamecore: loaded sound bank from" << QString::fromStdString(soundsDir);
     // Missing bank is optional (make extract); stay quiet on CipSoft.
     if (error)

@@ -9,7 +9,7 @@
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 
@@ -46,7 +46,7 @@ public:
     void hideDialogTab() override;
 
     /// FRIENDS_DIALOG_SEARCH_ACCOUNT: a new search for the action's character name.
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void onClickedSearchForCharacter(const QString& SearchString) override;

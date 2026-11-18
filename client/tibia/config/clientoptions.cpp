@@ -4,6 +4,7 @@
 #include "config/clientoptionsmigration.h"
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionsoptions.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -382,6 +383,127 @@ void TClientOptions::setStringOption(const EClientOption id, const QString& valu
     Q_EMIT optionChanged(id);
 }
 
+QDateTime TClientOptions::dateOption(const EClientOption id) const
+{
+    return m_dates.at(id);
+}
+
+void TClientOptions::setDateOption(const EClientOption id, const QDateTime& value)
+{
+    if (m_dates.at(id) == value)
+        return;
+    m_dates[id] = value;
+    Q_EMIT optionChanged(id);
+}
+
+QStringList controlSchemeListModel()
+{
+    return { qtTrId("optionsmenu_controlscheme_classic"), qtTrId("optionsmenu_controlscheme_legacy"),
+             qtTrId("optionsmenu_controlscheme_leftsmartclick") };
+}
+
+QStringList lootSchemeListModel()
+{
+    return { qtTrId("optionsmenu_lootscheme_right"), qtTrId("optionsmenu_lootscheme_shift_right"),
+             qtTrId("optionsmenu_lootscheme_left") };
+}
+
+int controlSchemeForListModelIndex(const int index)
+{
+    const QStringList names = controlSchemeListModel();
+    if (index >= 0 && index < names.size()) {
+        const QString& name = names.at(index);
+        if (name == qtTrId("optionsmenu_controlscheme_classic"))
+            return 1;
+        if (name == qtTrId("optionsmenu_controlscheme_legacy"))
+            return 2;
+        if (name == qtTrId("optionsmenu_controlscheme_leftsmartclick"))
+            return 3;
+    }
+    throw std::logic_error("bug: FindControlSchemeForListModelIndex: end of loop");
+}
+
+int controlSchemeListModelIndex(const int scheme)
+{
+    static constexpr const char* Names[] = { "optionsmenu_controlscheme_classic", "optionsmenu_controlscheme_legacy",
+                                             "optionsmenu_controlscheme_leftsmartclick" };
+    const QString name = qtTrId(scheme >= 1 && scheme <= 3 ? Names[scheme - 1] : "dummy_unknown");
+    const qsizetype index = controlSchemeListModel().indexOf(name);
+    if (index < 0)
+        throw std::logic_error("bug: FindControlSchemeListModelIndex: end of loop");
+    return int(index);
+}
+
+int lootSchemeForListModelIndex(const int index)
+{
+    const QStringList names = lootSchemeListModel();
+    if (index >= 0 && index < names.size()) {
+        const QString& name = names.at(index);
+        if (name == qtTrId("optionsmenu_lootscheme_right"))
+            return 0;
+        if (name == qtTrId("optionsmenu_lootscheme_shift_right"))
+            return 1;
+        if (name == qtTrId("optionsmenu_lootscheme_left"))
+            return 2;
+    }
+    throw std::logic_error("bug: FindLootSchemeForListModelIndex: end of loop");
+}
+
+int lootSchemeListModelIndex(const int scheme)
+{
+    static constexpr const char* Names[] = { "optionsmenu_lootscheme_right", "optionsmenu_lootscheme_shift_right",
+                                             "optionsmenu_lootscheme_left" };
+    const QString name = qtTrId(scheme >= 0 && scheme <= 2 ? Names[scheme] : "dummy_unknown");
+    const qsizetype index = lootSchemeListModel().indexOf(name);
+    if (index < 0)
+        throw std::logic_error("bug: FindLootSchemeListModelIndex: end of loop");
+    return int(index);
+}
+
+int TClientOptions::controlScheme() const
+{
+    return controlSchemeForListModelIndex(intOption(EClientOption::controlSchemeIndex));
+}
+
+void TClientOptions::setControlScheme(const int scheme)
+{
+    setIntOption(EClientOption::controlSchemeIndex, controlSchemeListModelIndex(scheme));
+}
+
+void TClientOptions::setLeftSmartClickControlScheme()
+{
+    setControlScheme(3);
+}
+
+int TClientOptions::lootScheme() const
+{
+    return lootSchemeForListModelIndex(intOption(EClientOption::lootSchemeIndex));
+}
+
+void TClientOptions::setLootScheme(const int scheme)
+{
+    setIntOption(EClientOption::lootSchemeIndex, lootSchemeListModelIndex(scheme));
+}
+
+THotkeySet TClientOptions::currentHotkeySet() const
+{
+    const THotkeyOptionsData hotkeys = THotkeyOptionsData::fromJson(m_hotkeyOptions);
+    const auto it = hotkeys.hotkeySets.find(hotkeys.currentHotkeySetName);
+    return it != hotkeys.hotkeySets.end() ? it->second : THotkeySet{};
+}
+
+void TClientOptions::setCurrentHotkeySet(const THotkeySet& set)
+{
+    THotkeyOptionsData hotkeys = THotkeyOptionsData::fromJson(m_hotkeyOptions);
+    const QString current = hotkeys.currentHotkeySetName;
+    const auto it = hotkeys.hotkeySets.find(current);
+    if ((it != hotkeys.hotkeySets.end() ? it->second : THotkeySet{}) == set)
+        return;
+    hotkeys.hotkeySets[current] = set;
+    m_hotkeyOptions = hotkeys.toJson();
+    Q_EMIT hotkeyOptionsChanged();
+}
+
 void TClientOptions::setClientWindowOptions(const TClientWindowOptions& options)
 {
     if (m_clientWindow == options)
@@ -544,6 +666,53 @@ bool TClientOptions::optionValuesEqual(const TClientOptions& other) const
            && m_strings == other.m_strings;
 }
 
+void TClientOptions::assignFrom(const TClientOptions& other)
+{
+    if (this == &other)
+        return;
+    m_bools = other.m_bools;
+    m_ints = other.m_ints;
+    m_floats = other.m_floats;
+    m_strings = other.m_strings;
+    m_dates = other.m_dates;
+    m_rendererChangeConfirmationRequired = other.m_rendererChangeConfirmationRequired;
+    m_clientWindow = other.m_clientWindow;
+    m_npcDialog = other.m_npcDialog;
+    m_controlButtons = other.m_controlButtons;
+    m_deviceCookies = other.m_deviceCookies;
+    m_hotkeyOptions = other.m_hotkeyOptions;
+    m_chat = other.m_chat;
+    m_whiteBlacklist = other.m_whiteBlacklist;
+    m_survey = other.m_survey;
+    m_newsMaxUnlockLevel = other.m_newsMaxUnlockLevel;
+    m_specialConditions = other.m_specialConditions;
+    m_pinnedCharacters = other.m_pinnedCharacters;
+    m_extraOptions = other.m_extraOptions;
+    m_extraSections = other.m_extraSections;
+    m_hasStartupNotice = other.m_hasStartupNotice;
+    m_startupNotice = other.m_startupNotice;
+}
+
+bool TClientOptions::hasOption(const EClientOption id) const
+{
+    return m_bools.contains(id) || m_ints.contains(id) || m_floats.contains(id) || m_strings.contains(id)
+           || m_dates.contains(id);
+}
+
+void TClientOptions::assignOption(const EClientOption id, const TClientOptions& other)
+{
+    if (const auto it = other.m_bools.find(id); it != other.m_bools.end() && m_bools.contains(id))
+        setBoolOption(id, it->second);
+    else if (const auto it = other.m_ints.find(id); it != other.m_ints.end() && m_ints.contains(id))
+        setIntOption(id, it->second);
+    else if (const auto it = other.m_floats.find(id); it != other.m_floats.end() && m_floats.contains(id))
+        setFloatOption(id, it->second);
+    else if (const auto it = other.m_strings.find(id); it != other.m_strings.end() && m_strings.contains(id))
+        setStringOption(id, it->second);
+    else if (const auto it = other.m_dates.find(id); it != other.m_dates.end() && m_dates.contains(id))
+        setDateOption(id, it->second);
+}
+
 QString TClientOptions::exportToBase64String() const
 {
     // qCompress prefixes the zlib stream with its 4-byte length.
@@ -561,7 +730,7 @@ void TClientOptions::setExtraSection(const QString& name, const QJsonValue& valu
     m_extraSections.insert(name, value);
 }
 
-void TClientOptions::setDefaults()
+void TClientOptions::setDefaults(const int mode)
 {
     m_bools.clear();
     m_ints.clear();
@@ -580,6 +749,15 @@ void TClientOptions::setDefaults()
             m_floats[id] = float(it->toDouble());
         else
             m_ints[id] = it->toInt();
+    }
+    // The tutorial's options have no sound options.
+    if (mode != 0) {
+        for (int id = int(EClientOption::soundAmbienceVolume); id <= int(EClientOption::soundVipEnabled); ++id) {
+            m_bools.erase(EClientOption(id));
+            m_ints.erase(EClientOption(id));
+            m_floats.erase(EClientOption(id));
+            m_strings.erase(EClientOption(id));
+        }
     }
     m_rendererChangeConfirmationRequired = false;
     m_clientWindow = {};
@@ -739,14 +917,27 @@ void TClientOptions::load()
     if (file.open(QIODevice::ReadOnly))
         document = QJsonDocument::fromJson(file.readAll());
     if (document.isEmpty()) {
-        setDefaults();
+        setDefaults(1);
         document = toJson();
     }
     const QJsonObject migrated = clientoptionsmigration::migrate(document.object());
-    setDefaults();
+    setDefaults(0);
     fromJson(migrated);
     announceAllOptions();
     ensureGlobalShortcuts();
+}
+
+void TClientOptions::loadDefaultClientOptions()
+{
+    QJsonDocument document = shared::TTibiaFileSystemHelper().readDefaultClientOptions();
+    if (document.isEmpty()) {
+        setDefaults(1);
+        document = toJson();
+    }
+    const QJsonObject migrated = clientoptionsmigration::migrate(document.object());
+    setDefaults(1);
+    fromJson(migrated);
+    announceAllOptions();
 }
 
 void TClientOptions::ensureGlobalShortcuts()

@@ -231,7 +231,7 @@ sub_000854ea5888	000854ea588867b8	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_000854ea5888#2	000854ea588867b8	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_00401b4d154d	00401b4d154dbfc6	skip	library: QList<QNetworkInterface> / QList<QHostAddress> template code
 sub_0179fc2bf018	0179fc2bf018501a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
-sub_02057e248030	02057e248030aad6	tested	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::manufacturerOfVendorId	test=tests/launcher/systemsurvey_test.cpp
+sub_02057e248030	02057e248030aad6	tested	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::manufacturerOfVendorId	test=tests/launcher/systemsurvey_test.cpp
 sub_028d9dcf84e9	028d9dcf84e990b2	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
 sub_02954a2db83a	02954a2db83a2ed8	skip	library: libc++ std::async / std::thread / future::get / future_error
 sub_02c7724076b2	02c7724076b2ae9a	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
@@ -475,7 +475,7 @@ sub_2f59241085be	2f59241085bef6f2	ported	shared/src/rpcserviceclient.cpp:TRPCSer
 sub_2fea4273515a	2fea4273515ab822	skip	library: libc++ std::optional / std::string helpers
 sub_2ffa4390540a	2ffa4390540a1694	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_30f98ed2b8d1	30f98ed2b8d1c834	skip	generated: compiler-generated destructor (QString path)
-sub_314136373eae	314136373eae7edb	inlined	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOperatingSystemInformation
+sub_314136373eae	314136373eae7edb	inlined	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOperatingSystemInformation
 sub_314547993827	3145479938273dab	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_31f7d6c3b196	31f7d6c3b19636bf	skip	library: libc++ vector/map/tree internals
 sub_32555c17115c	32555c17115cee87	skip	library: std::vector push_back reallocation / length_error
@@ -504,7 +504,7 @@ sub_39921a12c243	39921a12c24341eb	skip	library: zlib 1.3.2 (adler32, crc32, infl
 sub_39b0d726845c	39b0d726845c6564	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_39cbb8bb6c49	39cbb8bb6c491116	tested	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart	test=tests/client/sharednet_test.cpp
 sub_3a18297c11fd	3a18297c11fd2cdb	ported	launcherapplication.cpp:TLauncherApplication::TLauncherApplication
-sub_3a19c6e1b2fa	3a19c6e1b2faaa86	inlined	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOpenGLInformation
+sub_3a19c6e1b2fa	3a19c6e1b2faaa86	inlined	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOpenGLInformation
 sub_3a293831cb08	3a293831cb08537b	tested	shared/src/jsonhelper.cpp:jsonInt	test=tests/client/sharednet_test.cpp
 sub_3a38227db03e	3a38227db03eadc4	skip	generated: destructor
 sub_3a3d6ca4e512	3a3d6ca4e51255b3	skip	generated: destructor
@@ -545,7 +545,7 @@ sub_41801f1792d0	41801f1792d0ad36	tested	shared/src/ringbufferstopwatch.cpp:TRin
 sub_4260da39b479	4260da39b479a261	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_42ed29877df4	42ed29877df4b9b0	tested	shared/src/qtconnectionmanager.cpp:TQtConnectionManager::disconnectAll	test=tests/client/sharednet_test.cpp
 sub_42ef2cb162e7	42ef2cb162e7dc23	skip	generated: destructor
-sub_43952e5e13dd	43952e5e13dd0b46	inlined	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMonitorInformation
+sub_43952e5e13dd	43952e5e13dd0b46	inlined	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMonitorInformation
 sub_449de4b0e83c	449de4b0e83cd372	inlined	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::TRPCServiceConnection
 sub_44aa9a4afde0	44aa9a4afde0aac6	skip	library: QMap<QString, QVariant> template code
 sub_44b3b5c31da0	44b3b5c31da0285e	skip	library: QMap<QUrl, TActiveDownload> (std::map) template code
@@ -572,7 +572,7 @@ sub_4a97c48339c6	4a97c48339c671c2	skip	library: CryptoPP StringSource / StringSt
 sub_4b356d808179	4b356d8081794ab4	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179#2	4b356d8081794ab4	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b7eec990cfe	4b7eec990cfe6e7e	ported	shared/src/rpcserviceclient.cpp:TRPCServiceClient::closeConnection
-sub_4c5930584576	4c5930584576ea3f	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuid
+sub_4c5930584576	4c5930584576ea3f	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuid
 sub_4ca3c6ebe6f9	4ca3c6ebe6f936f2	ported	shared/src/jsondocumentuploaderbase.cpp:TJsonDocumentUploaderBase::errorCode
 sub_4caa0728f441	4caa0728f44130a9	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::stop	test=tests/client/sharednet_test.cpp
 sub_4caa13febfeb	4caa13febfeb7456	skip	library: std::sort of QNetworkInterface by index() (libc++ introsort / sort3-5 / insertion sort)
@@ -689,7 +689,7 @@ sub_69de9258ee77	69de9258ee775365	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_69e90b13f802	69e90b13f8023567	tested	cloudflarecdntrace.cpp:parseCdnTrace	test=tests/launcher/package_test.cpp
 sub_6ac0ff6cf332	6ac0ff6cf33270f8	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_6c54548a392e	6c54548a392ebb55	ported	launcherapplication.cpp:TLauncherApplication::onDefaultChanged
-sub_6caabbacfa24	6caabbacfa243010	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuBrandName
+sub_6caabbacfa24	6caabbacfa243010	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuBrandName
 sub_6cf13b3b24f1	6cf13b3b24f1b08d	inlined	clientpackagelayoutitem.cpp:TClientPackageLayoutItem::TClientPackageLayoutItem
 sub_6d08c6cb99ef	6d08c6cb99ef7a9c	skip	library: libc++ __put_character_sequence / __pad_and_output
 sub_6d2e925f2c3c	6d2e925f2c3cb7fc	skip	generated: QtPrivate slot object impls (member-function connections)
@@ -742,7 +742,7 @@ sub_7b737791289d#2	7b737791289da552	skip	generated: vtable install (compiler-gen
 sub_7bb6872abf9a	7bb6872abf9a4331	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::~TZlibInflateWrapper
 sub_7c0c85b3db95	7c0c85b3db95f71c	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_7c0c85b3db95#2	7c0c85b3db95f71c	tested	shared/src/paginationproxymodel.cpp:TPagination::TPagination	test=tests/client/sharednet_test.cpp
-sub_7c46a16d1f2a	7c46a16d1f2a3569	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuManufacturer
+sub_7c46a16d1f2a	7c46a16d1f2a3569	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuManufacturer
 sub_7caface43c17	7caface43c17039f	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_7ce2c2eb96cb	7ce2c2eb96cb7bec	ported	shared/src/downloadpool.cpp:TDownloadPool::isWaitingOrActive
 sub_7cf7e420b759	7cf7e420b75991b6	inlined	package.cpp:TPackage::configurationForCurrentPlatform
@@ -823,7 +823,7 @@ sub_90e244c8e74f	90e244c8e74fef73	skip	dead: unreferenced time/number formatting
 sub_90e890aa8a70	90e890aa8a70851f	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::isInitialized	test=tests/client/sharedio_test.cpp
 sub_90e890aa8a70#2	90e890aa8a70851f	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::isInitialized	test=tests/client/sharedio_test.cpp
 sub_91456aaf4614	91456aaf4614d01a	ported	shared/src/readonlymemoryblob.cpp:throwOnFileError
-sub_91507878e9ea	91507878e9ea7807	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse
+sub_91507878e9ea	91507878e9ea7807	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse
 sub_918fc2d216c1	918fc2d216c173b0	ported	installationmanager.cpp:TInstallationManager::TInstallationManager
 sub_91aead3f952e	91aead3f952e6952	skip	dead: x == 1 predicate with no call site in the corpus and no fixup/pointer to its address (index/fixups.txt)
 sub_91d95a9e2847	91d95a9e284789ab	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
@@ -875,7 +875,7 @@ sub_a04b41f7f331	a04b41f7f331c7ec	skip	generated: compiler-generated destructor 
 sub_a0e480f3b11e	a0e480f3b11e89a9	tested	package.cpp:TPackageBuild::TPackageBuild	test=tests/launcher/package_test.cpp
 sub_a0ec04652811	a0ec0465281138db	skip	generated: vector<TGpuInformation> / struct destructors
 sub_a15c01528003	a15c01528003a123	skip	library: libc++ std::sort (introsort/heap/insertion) instantiation over TFileInPackage
-sub_a16476614987	a16476614987fb9a	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse2
+sub_a16476614987	a16476614987fb9a	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse2
 sub_a1f1e1bb3cb6	a1f1e1bb3cb6c390	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::numberOfPages	test=tests/client/sharednet_test.cpp
 sub_a234bd7e4403	a234bd7e4403b55f	ported	packagefiledownloader.cpp:urlLess
 sub_a2ea2302c102	a2ea2302c1021717	ported	launcherapplication.cpp:TLauncherApplication::onPackageConfigurationDownloadsFinished
@@ -1208,7 +1208,7 @@ sub_f2a4602f56f1	f2a4602f56f1e672	skip	library: Qt QList<QFileInfo> / libc++ std
 sub_f2a4602f56f1#2	f2a4602f56f1e672	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_f37600df9ef4	f37600df9ef4a542	ported	shared/src/jsondocumenthttppostsender.cpp:TJsonDocumentHttpPostSender::cloudflareMitigation
 sub_f39d2cd2ccb6	f39d2cd2ccb6ae44	tested	shared/src/singlethreadedlowpriorityexecutor.cpp:TSingleThreadedLowPriorityExecutor::TSingleThreadedLowPriorityExecutor	test=tests/client/sharednet_test.cpp
-sub_f3be61e94158	f3be61e94158f419	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuIs64Bit
+sub_f3be61e94158	f3be61e94158f419	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuIs64Bit
 sub_f430ef3b39ae	f430ef3b39ae9036	skip	library: std::make_shared<TClockService>() instantiation (start 0)
 sub_f468dbfe59a7	f468dbfe59a7a21c	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_f4e6b8d2f7c2	f4e6b8d2f7c291af	ported	package.h:TPackage::isLauncher
@@ -1263,11 +1263,11 @@ systemsurvey::TSystemSurveyUploader::v13	16db531ff99171f8	ported	systemsurvey/sy
 systemsurvey::TSystemSurveyUploader::~TSystemSurveyUploader	22d845c75e739209	skip	generated: compiler-generated destructor (url, document creator, base)
 systemsurvey::TSystemSurveyValueRetriever::v0	872d4faac408f6d5	skip	generated: destructor pair
 systemsurvey::TSystemSurveyValueRetriever::v1	e9caf669ab302182	skip	generated: destructor pair
-systemsurvey::TSystemSurveyValueRetriever::v2	43530e02e4200f2a	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMonitorInformation
-systemsurvey::TSystemSurveyValueRetriever::v3	61a12340a3672715	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuInformation
-systemsurvey::TSystemSurveyValueRetriever::v4	43530e02e4200f2a	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOpenGLInformation
-systemsurvey::TSystemSurveyValueRetriever::v5	f17d4f313fc2bfeb	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOperatingSystemInformation
-systemsurvey::TSystemSurveyValueRetriever::v6	0589b715e9782cbd	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMainMemorySize
-systemsurvey::TSystemSurveyValueRetriever::v7	ca2072b0cd76d104	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuCounts
-systemsurvey::TSystemSurveyValueRetriever::v8	b3577d41d46f9baf	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuClockSpeed
-systemsurvey::TSystemSurveyValueRetriever::v9	f2530132c62dcbc6	tested	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::parseDisplaysDataType	test=tests/launcher/systemsurvey_test.cpp
+systemsurvey::TSystemSurveyValueRetriever::v2	43530e02e4200f2a	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMonitorInformation
+systemsurvey::TSystemSurveyValueRetriever::v3	61a12340a3672715	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuInformation
+systemsurvey::TSystemSurveyValueRetriever::v4	43530e02e4200f2a	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOpenGLInformation
+systemsurvey::TSystemSurveyValueRetriever::v5	f17d4f313fc2bfeb	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOperatingSystemInformation
+systemsurvey::TSystemSurveyValueRetriever::v6	0589b715e9782cbd	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getMainMemorySize
+systemsurvey::TSystemSurveyValueRetriever::v7	ca2072b0cd76d104	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuCounts
+systemsurvey::TSystemSurveyValueRetriever::v8	b3577d41d46f9baf	ported	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuClockSpeed
+systemsurvey::TSystemSurveyValueRetriever::v9	f2530132c62dcbc6	tested	shared/src/systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::parseDisplaysDataType	test=tests/launcher/systemsurvey_test.cpp

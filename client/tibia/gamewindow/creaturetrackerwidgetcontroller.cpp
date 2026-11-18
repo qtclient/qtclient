@@ -229,6 +229,11 @@ void TCreatureTrackerWidgetController::setSidebarOptions(config::TSidebarOptions
     if (!m_options)
         return;
     const QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
+    // The saved sort of the list (by name / percentage / remaining, ascending / descending).
+    if (json.contains(QLatin1String("sortType")))
+        m_model->setSortType(static_cast<decltype(m_model->sortType())>(json.value(QLatin1String("sortType")).toInt()));
+    if (json.contains(QLatin1String("sortOrder")))
+        m_model->setSortOrder(static_cast<decltype(m_model->sortOrder())>(json.value(QLatin1String("sortOrder")).toInt()));
     if (json.contains(QLatin1String("contentHeight")))
         widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
@@ -245,6 +250,8 @@ void TCreatureTrackerWidgetController::persistOptions()
     QJsonObject json = m_options->section(QLatin1String(optionsKey(m_mode))).toObject();
     json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
     json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
+    json.insert(QStringLiteral("sortType"), static_cast<int>(m_model->sortType()));
+    json.insert(QStringLiteral("sortOrder"), static_cast<int>(m_model->sortOrder()));
     m_options->setSection(QLatin1String(optionsKey(m_mode)), json);
 }
 
@@ -317,17 +324,15 @@ void TCreatureTrackerWidgetController::updateCooldownExpiry()
 
 void TCreatureTrackerWidgetController::requestOpenBestiary()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = m_mode == Mode::Bosstiary ? 6 : 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
+    Q_EMIT publishGameAction(action);
 }
 
 void TCreatureTrackerWidgetController::requestOpenBestiaryEntry(const uint RaceID)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
-    action->parameter = m_mode == Mode::Bosstiary ? 6 : 1;
-    action->category = static_cast<int>(RaceID);
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(m_mode == Mode::Bosstiary ? 6 : 1);
+    action->setRaceId(static_cast<uint16_t>(static_cast<int>(RaceID)));
+    Q_EMIT publishGameAction(action);
 }
 
 void TCreatureTrackerWidgetController::requestContextMenu(const uint RaceID, const QString& RaceName)
@@ -391,6 +396,7 @@ TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions* opt
 {
     if (!m_controller) {
         m_controller = new TCreatureTrackerWidgetController(m_mode, m_creatures, m_bosses, m_gameWindowItem, m_engine);
+        connect(m_controller, &TCreatureTrackerWidgetController::publishGameAction, this, &TCreatureTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
     }
     return m_controller->widget();

@@ -98,8 +98,6 @@ TScreenshotManager::TScreenshotManager(QObject* parent)
                 if (name.startsWith(QLatin1String("scre")))
                     onScreenshotMangerOptionsChanged();
             });
-    connect(this, &TScreenshotManager::publishGameAction, this,
-            [](const input::TGameActionPtr& action) { input::publish(action); });
 }
 
 TScreenshotManager::~TScreenshotManager()
@@ -161,13 +159,13 @@ void TScreenshotManager::requestScreenshot(const int event)
         m_pendingEvent = event;
 }
 
-bool TScreenshotManager::handleGameAction(const input::TGameAction& action)
+bool TScreenshotManager::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT) {
-        requestScreenshot(action.parameter);
+    if (const auto* automatic = input::gameActionAs<input::TGameActionTakeAutomaticScreenshot>(&action)) {
+        requestScreenshot(automatic->screenshotType());
         return true;
     }
-    if (action.type == input::EGameAction::TAKE_MANUAL_SCREENSHOT) {
+    if (action.gameActionType() == input::EGameAction::TAKE_MANUAL_SCREENSHOT) {
         if (isScreenshotEnabled(EVENT_HOTKEY))
             m_pendingEvent = EVENT_HOTKEY;
         return true;
@@ -312,11 +310,8 @@ void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, cons
     const QString text = qtTrId("screenshot_saved")
                              .arg(eventName)
                              .arg(QDir::toNativeSeparators(m_fileSystemHelper->getScreenshotsDirectory().path()));
-    auto message = std::make_shared<input::TGameActionAddTextMessage>(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE);
-    message->text = text;
-    message->color = chat::consoleColor(ScreenshotSavedMessageMode);
-    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>();
-    sound->parameter = ScreenshotSavedSoundEffect;
+    auto message = std::make_shared<input::TGameActionAddTextMessage>(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, text, chat::consoleColor(ScreenshotSavedMessageMode));
+    auto sound = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{ ScreenshotSavedSoundEffect });
     // Saving runs on the thread pool; actions are published on the manager's thread.
     QMetaObject::invokeMethod(
         this,

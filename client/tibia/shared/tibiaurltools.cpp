@@ -7,7 +7,7 @@ namespace tibia::shared {
 
 namespace {
 
-/// CIP (initialised by).
+/// The characters a URL may not hold.
 const QRegularExpression& nonUrlCharacter()
 {
     static const QRegularExpression expression(QStringLiteral("[^a-zA-Z0-9$+-_.;:/?&=]"));

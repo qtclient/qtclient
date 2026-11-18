@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "config/sidebaroptions.h"
 
 #include <cip_gen.h>
@@ -16,7 +17,7 @@ class QQuickItem;
 
 namespace tibia {
 namespace input {
-struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 
@@ -176,7 +177,7 @@ private Q_SLOTS:
 private:
     TSidebarWidget* currentWidget(int widgetType) const;
     /// TOGGLE_WIDGET: the widget type's toggle in the action's sidebar.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// CIP: on a session change every widget closes without saving its
     /// options, and one right sidebar remains.
     void closeAll();
@@ -196,6 +197,14 @@ private:
     std::map<int, QMetaObject::Connection> m_closeConnections;
     int m_controlScheme = 0;
     bool m_restoring = false;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

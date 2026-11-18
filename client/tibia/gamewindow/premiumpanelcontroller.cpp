@@ -1,5 +1,7 @@
 #include "premiumpanelcontroller.h"
 
+#include "store/storestorage.h"
+
 #include "input/gameactionhandlers.h"
 
 
@@ -92,35 +94,27 @@ TPremiumPanelController::TPremiumPanelController()
             setPremiumTime(*premium, *expiration);
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const Args& args) {
-        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)),
-                               static_cast<int>(client::gamecore::argInt(args, 1)));
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         resetPremiumTime();
         applySessionVisibility();
     });
 
-    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::TGameAction&) {
+    m_gameActions.on(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         togglePanel();
         return true;
     });
-    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::TGameAction&) {
+    m_gameActions.on(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         setPanelVisible(false);
         return true;
     });
-    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameAction& action) {
-        onTutorialModeChanged(action.enable);
+    m_gameActions.on(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameActionChangeTutorialModeEnabled& action) {
+        onTutorialModeChanged(action.enabled());
         return false;
     });
 }
 
 TPremiumPanelController::~TPremiumPanelController()
 {
-    input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, nullptr);
-    input::setActionHandler(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, nullptr);
-    input::setActionHandler(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, nullptr);
     setPanelItem(nullptr);
 }
 
@@ -234,9 +228,9 @@ void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
     startHighlight(RetriggerMs);
 }
 
-void TPremiumPanelController::onStoreDeeplinkChanged(const int openAction, const int detail)
+void TPremiumPanelController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)
 {
-    if (openAction == 0 || detail == 1)
+    if (StoreDeeplink.openAction == 0 || StoreDeeplink.premiumDetail == 1)
         return;
     startHighlight(HighlightMs);
 }

@@ -1,69 +1,85 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/editminimapmarkerdialogcontroller.h"
-#include "minimap/minimapmarkertypes.h"
+#include "minimap/minimapmarker.h"
+#include "worldmap/coordinates.h"
 
 #include <cip_gen.h>
 
 #include <client/position.h>
 
-#include <QSet>
-#include <QString>
-
+#include <functional>
+#include <map>
 #include <memory>
-#include <optional>
 #include <vector>
+
+namespace tibia::protobuf::minimap {
+class MinimapMarkerFileContent;
+}
 
 namespace tibia {
 namespace minimap {
 
-/// User + bundled minimap pins (CIP: TMinimapMarkerStorage). Owns the marker
-/// layer for the session; user edits persist under AppData as JSON.
-/// Protobuf MinimapMarkerFileContent disk IO is not wired (cip_skipped).
+/// The minimap flags (CIP: TMinimapMarkerStorage): one marker per coordinate,
+/// filled from the marker file and written back to it after a change.
 class TMinimapMarkerStorage final : public cip::tibia::minimap::TMinimapMarkerStorage
 {
     Q_OBJECT
 public:
-    explicit TMinimapMarkerStorage(const QString& bundledMarkersJson, QObject* parent = nullptr);
+    explicit TMinimapMarkerStorage(QObject* parent = nullptr);
     ~TMinimapMarkerStorage() override;
 
-    /// Bundled tibiamaps JSON when present, then AppData overlay.
-    void load();
-    void saveUserMarkers() const;
-
-    std::optional<MinimapMarker> markerAt(const Position& pos) const;
-    bool createOrUpdate(const Position& pos, uint8_t icon, const QString& description);
-    bool remove(const Position& pos);
-    const std::vector<MinimapMarker>& floorMarkers(uint8_t z) const;
+    /// The marker at `coordinate`, null without one.
+    TMinimapMarkerPtr markerAt(const worldmap::TWorldMapCoordinate& coordinate) const;
+    /// Adds `marker`, replacing the one at its coordinate.
+    void addMarker(const TMinimapMarker& marker);
+    /// Removes the marker at `coordinate`.
+    void removeMarker(const worldmap::TWorldMapCoordinate& coordinate);
+    /// The markers whose coordinate `accept`s, in coordinate order.
+    std::vector<TMinimapMarkerPtr> markers(const std::function<bool(const worldmap::TWorldMapCoordinate&)>& accept) const;
+    /// Every marker, in coordinate order.
+    std::vector<TMinimapMarkerPtr> markers() const;
+    /// The markers changed since the file was last written.
+    bool isDirty() const { return m_dirty; }
+    /// Hands the markers to the disk as a marker file.
+    void saveMarkers();
 
     /// Session-active storage (TMinimapManager lifetime); used by render / menus.
     static TMinimapMarkerStorage* active();
     static void setActive(TMinimapMarkerStorage* storage);
 
-    static QString userMarkersPath();
+Q_SIGNALS:
+    void startSavingMinimapMarkerFileContentToDisk(
+        std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> fileContent);
 
 public Q_SLOTS:
+    /// Writes the markers when they changed.
     void onDelayedCallback() override;
+    /// Replaces the markers with the file's, less the obsolete ones.
+    void setMarkersFromMinimapMarkerFile(const tibia::protobuf::minimap::MinimapMarkerFileContent& fileContent);
 
 private:
+    void changed();
     void bindActions();
     void unbindActions();
-    void loadJsonFile(const QString& path, bool userOwned);
-    void scheduleSave();
-    void clearMarkers();
-    bool addMarker(const Position& pos, uint8_t icon, const std::string& description);
-    bool removeMarker(const Position& pos);
-    bool updateMarker(const Position& pos, uint8_t icon, const std::string& description);
-    bool findMarker(const Position& pos, MinimapMarker& out) const;
 
-    QString m_bundledMarkersJson;
+    std::map<worldmap::TWorldMapCoordinate, TMinimapMarkerPtr> m_markers;
+    bool m_dirty = false;
     std::unique_ptr<gamewindow::TEditMinimapMarkerDialogController> m_dialog;
-    QSet<QString> m_userOwned;
-    QSet<QString> m_deleted;
-    bool m_savePending = false;
-    std::vector<std::vector<MinimapMarker>> m_markers;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

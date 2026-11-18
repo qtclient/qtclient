@@ -63,10 +63,10 @@ void TChatModeManager::switchChatMode(const int mode)
     }
 }
 
-void TChatModeManager::handleGameAction(const input::TGameAction& action)
+void TChatModeManager::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::SWITCH_CHAT_MODE)
-        switchChatMode(action.parameter);
+    if (const auto* switchMode = input::gameActionAs<input::TGameActionSwitchChatMode>(&action))
+        switchChatMode(switchMode->chatMode());
 }
 
 void TChatModeManager::onCurrentGamesessionDisconnected()

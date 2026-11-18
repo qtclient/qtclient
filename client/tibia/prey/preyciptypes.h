@@ -39,6 +39,16 @@ public:
     /// One slot's state; every state also carries the next free reroll and the option.
     static void handlePreyDataMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyData& message);
     static void handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message);
+
+    /// The PreyAction requests of one slot (action 0 list reroll, 1 bonus
+    /// reroll, 2 list choice, 3 bestiary list, 4 bestiary choice, 5 automatic
+    /// extension option 0..2).
+    static void requestListReroll(int preyId);
+    static void requestBonusReroll(int preyId);
+    static void selectMonsterFromList(int preyId, int index);
+    static void requestFreezeAndShowBestiaryMonsters(int preyId);
+    static void selectMonsterFromBestiary(int preyId, int raceId);
+    static void setAutomaticExtendType(int preyId, int option);
 };
 
 }

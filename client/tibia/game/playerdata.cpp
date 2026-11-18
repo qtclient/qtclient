@@ -512,11 +512,15 @@ void TPlayerData::updateSerene(const bool serene)
         notify("onSereneChange", serene, oldSerene);
 }
 
-void TPlayerData::updateFreeCapacity(const uint32_t freeCapacity)
+void TPlayerData::updateFreeCapacity(const uint32_t hundredths)
 {
     const auto oldFreeCapacity = static_cast<uint32_t>(m_freeCapacity);
+    const uint32_t oldHundredths = m_freeCapacityHundredths;
+    const uint32_t freeCapacity = hundredths / 100;
+    m_freeCapacityHundredths = hundredths;
     setFreeCapacity(static_cast<int>(freeCapacity));
-    if (oldFreeCapacity != freeCapacity)
+    // A change below one oz counts too (the inventory's zero-capacity warning).
+    if (oldHundredths != hundredths)
         notify("onFreeCapacityChange", freeCapacity, oldFreeCapacity);
 }
 
@@ -764,6 +768,7 @@ void TPlayerData::clear()
     m_health = 0;
     m_maxHealth = 0;
     m_freeCapacity = 0;
+    m_freeCapacityHundredths = 0;
     m_capacity = 0;
     m_baseCapacity = 0;
     m_experience = 0;

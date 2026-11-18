@@ -9,36 +9,6 @@
 namespace tibia {
 namespace config {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
-/// CIP `config::ICharacterConfigurationBase` moc surface. Live dirty/save still
-/// rides concrete storages (`TSidebarOptions`, analysers, statusbar, …); this
-/// twin re-owns the signal for keep-alive only.
-class ICharacterConfigurationBase : public cip::tibia::config::ICharacterConfigurationBase
-{
-    Q_OBJECT
-public:
-    explicit ICharacterConfigurationBase(QObject* parent = nullptr);
-
-    /// Process-lifetime twin (moc/RTTI keep).
-    static ICharacterConfigurationBase* instance();
-
-    /// Mark dirty from a user gesture without owning disk IO.
-    void notifyConfigurationChangedFromUserInput();
-
-Q_SIGNALS:
-    /// CIP moc signal — redeclared for product wiring (cip:: base also has it).
-    void configurationChangedFromUserInput();
-};
-
-class TActionBarOptions final : public cip::tibia::config::TActionBarOptions
-{
-    Q_OBJECT
-public:
-    using cip::tibia::config::TActionBarOptions::TActionBarOptions;
-};
-
 class TActionBarsQMLOptionsPage : public cip::tibia::config::TActionBarsQMLOptionsPage
 {
     Q_OBJECT
@@ -60,19 +30,7 @@ public:
     using cip::tibia::config::TButtonBarQMLOptionsPage::TButtonBarQMLOptionsPage;
 };
 
-class TCharacterConfigurationManager final : public cip::tibia::config::TCharacterConfigurationManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::config::TCharacterConfigurationManager::TCharacterConfigurationManager;
-};
 
-class TClientOptionsModeSwitcher final : public cip::tibia::config::TClientOptionsModeSwitcher
-{
-    Q_OBJECT
-public:
-    using cip::tibia::config::TClientOptionsModeSwitcher::TClientOptionsModeSwitcher;
-};
 
 class TConsoleQMLOptionsPage : public cip::tibia::config::TConsoleQMLOptionsPage
 {

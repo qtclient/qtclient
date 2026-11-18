@@ -1,7 +1,9 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
+#include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/housesinfodialogcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
@@ -33,7 +35,6 @@ class InstanceBackend;
 namespace tibia {
 namespace gamewindow {
 
-class TCharacterInfoDialogController;
 class TCyclopediaMapDialogController;
 class TMagicalArchiveDialogController;
 
@@ -47,6 +48,8 @@ class TCyclopediaDialogController final : public TDialogController<cip::tibia::g
 public:
     explicit TCyclopediaDialogController(QObject* parent = nullptr);
     ~TCyclopediaDialogController() override;
+
+    TCyclopediaMapDialogController* mapDialog() const { return m_map; }
 
     /// The local player's gold; "unknown" (charms: "0") outside the game.
     QString bankGoldBalanceString() const override;
@@ -82,12 +85,13 @@ private:
     struct Context
     {
         DialogTab tab = NoTabInitialState;
-        int characterInfoDataType = 0;
+        TCharacterInfoDialogController::Context characterInfo;
         TItemInfoDialogController::Context itemInfo;
         TMonsterDialogController::Context monsters;
         TMonsterBonusEffectsDialogController::Context bonusEffects;
         TBosstiaryDialogController::Context bosstiary;
         THousesInfoDialogController::Context houses;
+        int magicalArchiveSpellId = 0;
         bool operator==(const Context&) const = default;
     };
 
@@ -115,6 +119,14 @@ private:
     TMagicalArchiveDialogController* m_magicalArchive;
     std::deque<Context> m_backlog;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 /// The button bar's Cyclopedia button (CIP: TCyclopediaButtonController).

@@ -1,11 +1,6 @@
 #include "sidebaroptions.h"
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
 #include <QJsonDocument>
-#include <QSaveFile>
-#include <QStandardPaths>
 
 #include <algorithm>
 #include <climits>
@@ -680,46 +675,19 @@ void TSidebarOptions::reset()
 
 QString TSidebarOptions::fileName() { return QStringLiteral("sidebars"); }
 
-QString TSidebarOptions::filePath() const
+QJsonObject TSidebarOptions::configurationToJson() const
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(fileName());
-}
-
-void TSidebarOptions::loadForCharacter(const quint32 characterId)
-{
-    if (characterId == m_characterId)
-        return;
-    save();
-    m_characterId = characterId;
-    QJsonObject root;
-    if (characterId != 0) {
-        QFile file(filePath());
-        if (file.open(QIODevice::ReadOnly))
-            root = QJsonDocument::fromJson(file.readAll()).object();
-    }
-    m_containersChangedTimer.stop();
-    reset();
-    fromJson(root);
-    m_dirty = false;
-}
-
-void TSidebarOptions::save()
-{
-    if (!m_dirty || m_characterId == 0)
-        return;
     QJsonObject root = m_unknownSections;
     const QJsonObject known = toJson();
     for (auto it = known.begin(); it != known.end(); ++it)
         root.insert(it.key(), it.value());
-    const QString path = filePath();
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(root).toJson());
-        if (file.commit())
-            m_dirty = false;
-    }
+    return root;
+}
+
+void TSidebarOptions::resetConfiguration()
+{
+    m_containersChangedTimer.stop();
+    reset();
 }
 
 QJsonObject TSidebarOptions::toJson() const
@@ -888,7 +856,6 @@ void TSidebarOptions::ensurePrimaryBattleList()
 
 void TSidebarOptions::changed()
 {
-    m_dirty = true;
     Q_EMIT configurationChangedFromUserInput();
 }
 

@@ -1,10 +1,11 @@
+#include "spells/spellinfostorage.h"
 #include "game/gameciptypes.h"
 #include "game/inspectedobject.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include <utility>
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tuple>
 #include <client/outfit.h>
 #include "creatures/creatureprotocolapply.h"
@@ -15,6 +16,8 @@
 #include "input/gameactionhandlers.h"
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
+#include "input/playermovementintenthandler.h"
+#include "game/gamesessionstate.h"
 #include "clockservice.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/dialogmanager.h"
@@ -34,6 +37,7 @@
 
 #include <protocol.pb.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -99,7 +103,6 @@ FPSDropsLogger* FPSDropsLogger::instance()
 
 namespace {
 struct CipTypedKeep {
-    TExperienceCalculator tExperienceCalculator;
     TGameSessionMetaInfo tGameSessionMetaInfo;
     TGameWorldVolumeStorage tGameWorldVolumeStorage;
     TGameserverGameSessionMetaInfo tGameserverGameSessionMetaInfo;
@@ -127,11 +130,9 @@ using ::tibia::protobuf::protocol::GameserverMessageLoginChallenge;
 using ::tibia::protobuf::protocol::GameserverMessageLoginError;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
 using ::tibia::protobuf::protocol::GameserverMessageLoginWait;
-using ::tibia::protobuf::protocol::GameserverMessagePartyLeft;
 using ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered;
 using ::tibia::protobuf::protocol::GameserverMessagePing;
 using ::tibia::protobuf::protocol::GameserverMessagePingBack;
-using ::tibia::protobuf::protocol::GameserverMessageSessionDumpMarker;
 using ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart;
 using ::tibia::protobuf::protocol::GameserverMessageSessionEndInformation;
 using ::tibia::protobuf::protocol::GameserverMessageDead;
@@ -149,7 +150,6 @@ using ::tibia::protobuf::protocol::GameserverMessageEditList;
 using ::tibia::protobuf::protocol::GameserverMessageEditText;
 using ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger;
 using ::tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection;
-using ::tibia::protobuf::protocol::GameserverMessageInspectionState;
 using ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog;
 using ::tibia::protobuf::protocol::GameserverMessageSnapBack;
 using ::tibia::protobuf::protocol::GameserverMessageSpellDataModification;
@@ -231,413 +231,192 @@ void TGameProtocolMessageHandler::handleLoginSuccessMessage(
     tibia::game::notify("onLogin");
 }
 
-void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
+void TGameProtocolMessageHandler::handleLoginAdviceMessage(const GameserverMessageLoginAdvice& m)
 {
+    tibia::game::notify("onLoginAdvice", m.has_message() ? m.message() : std::string());
+}
 
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
+void TGameProtocolMessageHandler::handleLoginWaitMessage(const GameserverMessageLoginWait& m)
+{
+    tibia::game::notify("onLoginWait", m.has_message() ? m.message() : std::string(),
+                static_cast<uint8_t>(m.time()));
+}
 
-    switch (opcode) {
-    case 4: {
-        if (!shadow->HasExtension(GameserverMessageSessionDumpStart::gameserver_message_session_dump_start))
-            return;
-        handleSessionDumpStartMessage(
-            shadow->GetExtension(GameserverMessageSessionDumpStart::gameserver_message_session_dump_start));
-        break;
-    }
-    case 5: {
-        // CIP has queue receivedSessionDumpMarkerMessage / session signals only —
-        // no handleSessionDumpMarkerMessage. Same side effects as parseSessionDumpMarker
-        if (!shadow->HasExtension(
-                GameserverMessageSessionDumpMarker::gameserver_message_session_dump_marker))
-            return;
-        const auto& m = shadow->GetExtension(
-            GameserverMessageSessionDumpMarker::gameserver_message_session_dump_marker);
-        tibia::game::notify("onSessionDumpMarker",
-                            m.has_marker() ? m.marker() : std::string());
-        break;
-    }
-    case 6: {
-        // CIP: receivedPartyLeftMessage only — no handlePartyLeftMessage.
-        if (!shadow->HasExtension(GameserverMessagePartyLeft::gameserver_message_party_left))
-            return;
-        tibia::game::notify("onPartyLeft");
-        break;
-    }
-    case 10: {
-        if (!shadow->HasExtension(
-                GameserverMessagePendingStateEntered::gameserver_message_pending_state_entered))
-            return;
-        handlePendingStateEnteredMessage(shadow->GetExtension(
-            GameserverMessagePendingStateEntered::gameserver_message_pending_state_entered));
-        break;
-    }
-    case 15: {
-        // CIP: receivedWorldEnteredMessage only — no handleWorldEnteredMessage.
-        if (!shadow->HasExtension(GameserverMessageWorldEntered::gameserver_message_world_entered))
-            return;
-        processWorldEntered();
-        break;
-    }
-    case 20: {
-        // CIP: receivedLoginErrorMessage + gameLoginErrorMessage — no handleLoginErrorMessage.
-        if (!shadow->HasExtension(GameserverMessageLoginError::gameserver_message_login_error))
-            return;
-        const auto& m = shadow->GetExtension(GameserverMessageLoginError::gameserver_message_login_error);
-        tibia::game::notify("onLoginError", m.has_error() ? m.error() : std::string());
-        break;
-    }
-    case 21: {
-        if (!shadow->HasExtension(GameserverMessageLoginAdvice::gameserver_message_login_advice))
-            return;
-        const auto& m = shadow->GetExtension(GameserverMessageLoginAdvice::gameserver_message_login_advice);
-        tibia::game::notify("onLoginAdvice", m.has_message() ? m.message() : std::string());
-        break;
-    }
-    case 22: {
-        if (!shadow->HasExtension(GameserverMessageLoginWait::gameserver_message_login_wait))
-            return;
-        const auto& m = shadow->GetExtension(GameserverMessageLoginWait::gameserver_message_login_wait);
-        tibia::game::notify("onLoginWait", m.has_message() ? m.message() : std::string(),
-                            static_cast<uint8_t>(m.time()));
-        break;
-    }
-    case 23: {
-        if (!shadow->HasExtension(GameserverMessageLoginSuccess::gameserver_message_login_success))
-            return;
-        handleLoginSuccessMessage(
-            shadow->GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success));
-        break;
-    }
-    case 40:
-        if (shadow->HasExtension(GameserverMessageDead::gameserver_message_dead)) {
-            const auto& m = shadow->GetExtension(GameserverMessageDead::gameserver_message_dead);
-            // The penalty is only sent for a regular death; otherwise it stays 100.
-            tibia::game::processDeath(static_cast<uint8_t>(m.death_type()),
-                                      m.has_penalty() ? static_cast<uint8_t>(m.penalty()) : uint8_t(100));
+void TGameProtocolMessageHandler::handleDeadMessage(const GameserverMessageDead& m)
+{
+    // The penalty is only sent for a regular death; otherwise it stays 100.
+    tibia::game::processDeath(static_cast<uint8_t>(m.death_type()),
+                              m.has_penalty() ? static_cast<uint8_t>(m.penalty()) : uint8_t(100));
+}
+
+void TGameProtocolMessageHandler::handleReadyForSecondaryConnectionMessage(const GameserverMessageReadyForSecondaryConnection& m)
+{
+    tibia::game::processReadyForSecondaryConnection(
+                    m.token());
+}
+
+void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMessageInspectionList& m)
+{
+    const auto details = [](const auto& list) { return inspectionDetails(list); };
+    const auto fill = [](auto& dest, const auto& item) { fillInspectedAppearance(dest, item); };
+    if (m.window_type() == 1) {
+        CyclopediaCharacterInspection data;
+        data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
+        data.creatureId = m.creature_id();
+        for (const auto& o : m.objects()) {
+            InspectionInventoryItem entry;
+            entry.slot = static_cast<uint8_t>(o.slot());
+            entry.name = o.name();
+            fill(entry, o.item());
+            entry.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
+            entry.descriptions = details(o.details());
+            data.inventoryItems.push_back(std::move(entry));
         }
-        break;
-    case 11:
-        if (shadow->HasExtension(GameserverMessageReadyForSecondaryConnection::gameserver_message_ready_for_secondary_connection))
-            tibia::game::processReadyForSecondaryConnection(
-                shadow->GetExtension(GameserverMessageReadyForSecondaryConnection::gameserver_message_ready_for_secondary_connection).token());
-        break;
-    case 119:
-        if (shadow->HasExtension(GameserverMessageInspectionState::gameserver_message_inspection_state)) {
-            const auto& m = shadow->GetExtension(GameserverMessageInspectionState::gameserver_message_inspection_state);
-            tibia::game::processInspectionState(m.creature_id(), static_cast<uint8_t>(m.state()));
+        data.playerName = m.player_name();
+        // The server sends no outfit; the inspected creature shows its current one.
+        if (auto* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(m.creature_id()))
+                data.outfit = row->outfit();
         }
-        break;
-    case 117:
-        if (shadow->HasExtension(GameserverMessageGameEvent::gameserver_message_game_event)) {
-            const auto& m = shadow->GetExtension(GameserverMessageGameEvent::gameserver_message_game_event);
-            const auto type = static_cast<tibia::client::ClientEventType_t>(m.event_type());
-            const auto small = static_cast<uint8_t>(m.small_value());
-            const auto value = static_cast<uint16_t>(m.value());
-            switch (m.event_type()) {
-            case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
-                if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
-                    if (tibia::game::hasLocalPlayer()) {
-                        auto action = tibia::input::mutableClone(
-                            *tibia::input::makeAction(tibia::input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
-                        action->parameter = static_cast<int>(small);
-                        tibia::input::publish(action);
-                    }
-                } else {
-                    tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));
-                }
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_ACHIEVEMENT:
-            case tibia::client::CLIENT_EVENT_TYPE_TITLE:
-                tibia::game::notify("onClientEvent", type, m.text());
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_SKILL:
-                tibia::game::notify("onClientEvent", type, small, value);
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_BESTIARY:
-            case tibia::client::CLIENT_EVENT_TYPE_BOSSTIARY:
-                tibia::game::notify("onClientEvent", type, value, small);
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_QUEST:
-                tibia::game::notify("onClientEvent", type, m.text(), small);
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_COSMETIC:
-                tibia::game::notify("onClientEvent", type, value, m.text(), small);
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_PROFICIENCY:
-                tibia::game::notify("onClientEvent", type, value, m.text());
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_SPELL_UNLOCKED:
-                tibia::game::notify("onClientEvent", type, static_cast<uint32_t>(m.large_value()));
-                break;
-            case tibia::client::CLIENT_EVENT_TYPE_LEADER_MONSTER:
-                tibia::game::notify("onClientEvent", type, value, static_cast<uint32_t>(m.large_value()));
-                break;
-            default:
-                tibia::game::notify("onClientEvent", type, value);
-                break;
+        data.playerDescriptions = details(m.player_details());
+        tibia::game::notify("onParseCharacterInspection", data);
+    } else if (m.objects_size() > 0) {
+        const auto& o = m.objects(0);
+        ItemInspectionData data;
+        data.inspectionType = static_cast<uint8_t>(m.inspection_type());
+        data.creatureId = m.creature_id();
+        data.name = o.name();
+        fill(data, o.item());
+        data.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
+        data.descriptions = details(o.details());
+        tibia::game::processItemDetail(data);
+    }
+}
+
+void TGameProtocolMessageHandler::handleOutfitMemorialMessage(const GameserverMessageOutfitMemorial& m)
+{
+    const auto names = [](const auto& list) { return std::vector<std::string>(list.begin(), list.end()); };
+    OutfitMemorialData data;
+    data.baseGoldenOutfitCost = m.base_golden_cost();
+    data.oneAddonGoldenOutfitCost = m.one_addon_golden_cost();
+    data.fullGoldenOutfitCost = m.full_golden_cost();
+    data.baseGoldenOutfitOwners = names(m.base_golden_owners());
+    data.oneAddonGoldenOutfitOwners = names(m.one_addon_golden_owners());
+    data.fullGoldenOutfitOwners = names(m.full_golden_owners());
+    data.baseTokenOutfitSilverToken = static_cast<uint16_t>(m.base_silver_tokens());
+    data.baseTokenOutfitGoldToken = static_cast<uint16_t>(m.base_gold_tokens());
+    data.oneAddonTokenOutfitSilverToken = static_cast<uint16_t>(m.one_addon_silver_tokens());
+    data.oneAddonTokenOutfitGoldToken = static_cast<uint16_t>(m.one_addon_gold_tokens());
+    data.fullTokenOutfitSilverToken = static_cast<uint16_t>(m.full_silver_tokens());
+    data.fullTokenOutfitGoldToken = static_cast<uint16_t>(m.full_gold_tokens());
+    data.baseTokenOutfitOwners = names(m.base_token_owners());
+    data.oneAddonTokenOutfitOwners = names(m.one_addon_token_owners());
+    data.fullTokenOutfitOwners = names(m.full_token_owners());
+    tibia::game::processOutfitMemorial(data);
+}
+
+void TGameProtocolMessageHandler::handleUnlockedSpellsMessage(const GameserverMessageUnlockedSpells& m)
+{
+    std::vector<uint16_t> spellIds;
+    for (const uint32_t id : m.spell_ids())
+        spellIds.push_back(static_cast<uint16_t>(id));
+    spells::TSpellInfoStorage::instance()->setUnlockedSpells(spellIds);
+    tibia::game::notify("onUnlockedSpells", spellIds);
+}
+
+void TGameProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& m)
+{
+    const auto code = static_cast<uint8_t>(m.dialog_type());
+    tibia::game::notify("onServerError", code, m.message());
+    tibia::game::TGameNotify::instance()->emitServerError(code, QString::fromStdString(m.message()));
+}
+
+void TGameProtocolMessageHandler::handleClientCheckMessage(const GameserverMessageClientCheck& m)
+{
+    const std::string& data = m.data();
+    std::vector<uint8_t> bytes(data.begin(), data.end());
+    // Acknowledged with the same bytes (C 0x63).
+    protocol::gameclient::sendClientCheck(bytes);
+    tibia::game::notify("onClientCheck", bytes);
+}
+
+void TGameProtocolMessageHandler::handleWorldEnteredMessage(const GameserverMessageWorldEntered&)
+{
+    processWorldEntered();
+}
+
+void TGameProtocolMessageHandler::handleLoginErrorMessage(const GameserverMessageLoginError& m)
+{
+    tibia::game::notify("onLoginError", m.has_error() ? m.error() : std::string());
+}
+
+void TGameProtocolMessageHandler::handleLoginChallengeMessage(const GameserverMessageLoginChallenge& m)
+{
+    if (auto* connection = network::TGameserverNetworkPacketProcessor::live())
+        connection->sendLogin(m.timestamp(), static_cast<uint8_t>(m.random()));
+}
+
+void TGameProtocolMessageHandler::handlePingMessage(const GameserverMessagePing&)
+{
+    processPing();
+}
+
+void TGameProtocolMessageHandler::handlePingBackMessage(const GameserverMessagePingBack&)
+{
+    processPingBack();
+}
+
+void TGameProtocolMessageHandler::handleSpellDataModificationMessage(const GameserverMessageSpellDataModification& m)
+{
+    // The first entry's spell and modification.
+    const uint16_t firstSpell = m.entries_size() > 0 ? uint16_t(m.entries(0).spell_id()) : 0;
+    const uint8_t firstFlags = m.entries_size() > 0 ? uint8_t(m.entries(0).mod()) : 0;
+    tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
+}
+
+void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMessageGameEvent& m)
+{
+    const auto type = static_cast<tibia::client::ClientEventType_t>(m.event_type());
+    const auto small = static_cast<uint8_t>(m.small_value());
+    const auto value = static_cast<uint16_t>(m.value());
+    switch (m.event_type()) {
+    case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
+        if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
+            if (tibia::game::hasLocalPlayer()) {
+                Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(static_cast<int>(small)));
             }
-        }
-        break;
-    case 118:
-        if (shadow->HasExtension(GameserverMessageInspectionList::gameserver_message_inspection_list)) {
-            const auto& m = shadow->GetExtension(GameserverMessageInspectionList::gameserver_message_inspection_list);
-            const auto details = [](const auto& list) { return inspectionDetails(list); };
-            const auto fill = [](auto& dest, const auto& item) { fillInspectedAppearance(dest, item); };
-            if (m.window_type() == 1) {
-                CyclopediaCharacterInspection data;
-                data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
-                data.creatureId = m.creature_id();
-                for (const auto& o : m.objects()) {
-                    InspectionInventoryItem entry;
-                    entry.slot = static_cast<uint8_t>(o.slot());
-                    entry.name = o.name();
-                    fill(entry, o.item());
-                    entry.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
-                    entry.descriptions = details(o.details());
-                    data.inventoryItems.push_back(std::move(entry));
-                }
-                data.playerName = m.player_name();
-                // The server sends no outfit; the inspected creature shows its current one.
-                if (auto* storage = tibia::creatures::TCreatureStorage::instance()) {
-                    if (const auto row = storage->creatureAt(m.creature_id()))
-                        data.outfit = row->outfit();
-                }
-                data.playerDescriptions = details(m.player_details());
-                tibia::game::notify("onParseCharacterInspection", data);
-                tibia::game::notify("onParseCyclopediaCharacterInspection", data);
-            } else if (m.objects_size() > 0) {
-                const auto& o = m.objects(0);
-                ItemInspectionData data;
-                data.inspectionType = static_cast<uint8_t>(m.inspection_type());
-                data.creatureId = m.creature_id();
-                data.name = o.name();
-                fill(data, o.item());
-                data.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
-                data.descriptions = details(o.details());
-                tibia::game::processItemDetail(data);
-            }
-        }
-        break;
-    case 218:
-        if (shadow->HasExtension(protobuf::protocol::GameserverMessageCyclopediaCharacterInfo::gameserver_message_cyclopedia_character_info))
-            cyclopedia::TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
-                shadow->GetExtension(protobuf::protocol::GameserverMessageCyclopediaCharacterInfo::gameserver_message_cyclopedia_character_info));
-        break;
-    case 176:
-        if (shadow->HasExtension(GameserverMessageOutfitMemorial::gameserver_message_outfit_memorial)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOutfitMemorial::gameserver_message_outfit_memorial);
-            const auto names = [](const auto& list) { return std::vector<std::string>(list.begin(), list.end()); };
-            OutfitMemorialData data;
-            data.baseGoldenOutfitCost = m.base_golden_cost();
-            data.oneAddonGoldenOutfitCost = m.one_addon_golden_cost();
-            data.fullGoldenOutfitCost = m.full_golden_cost();
-            data.baseGoldenOutfitOwners = names(m.base_golden_owners());
-            data.oneAddonGoldenOutfitOwners = names(m.one_addon_golden_owners());
-            data.fullGoldenOutfitOwners = names(m.full_golden_owners());
-            data.baseTokenOutfitSilverToken = static_cast<uint16_t>(m.base_silver_tokens());
-            data.baseTokenOutfitGoldToken = static_cast<uint16_t>(m.base_gold_tokens());
-            data.oneAddonTokenOutfitSilverToken = static_cast<uint16_t>(m.one_addon_silver_tokens());
-            data.oneAddonTokenOutfitGoldToken = static_cast<uint16_t>(m.one_addon_gold_tokens());
-            data.fullTokenOutfitSilverToken = static_cast<uint16_t>(m.full_silver_tokens());
-            data.fullTokenOutfitGoldToken = static_cast<uint16_t>(m.full_gold_tokens());
-            data.baseTokenOutfitOwners = names(m.base_token_owners());
-            data.oneAddonTokenOutfitOwners = names(m.one_addon_token_owners());
-            data.fullTokenOutfitOwners = names(m.full_token_owners());
-            tibia::game::processOutfitMemorial(data);
-        }
-        break;
-    case 200:
-        if (shadow->HasExtension(GameserverMessageOutfit::gameserver_message_outfit)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOutfit::gameserver_message_outfit);
-            Outfit current = creatures::outfitFromProtocol(m.outfit(), nullptr);
-            current.setMount(static_cast<uint16_t>(m.mount()));
-            current.setMountColors(static_cast<uint8_t>(m.mount_colors().head()), static_cast<uint8_t>(m.mount_colors().body()),
-                                   static_cast<uint8_t>(m.mount_colors().legs()), static_cast<uint8_t>(m.mount_colors().feet()));
-            current.setFamiliar(static_cast<uint16_t>(m.familiar()));
-            std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>> outfits;
-            std::vector<uint32_t> outfitOffers, mountOffers, familiarOffers;
-            for (const auto& o : m.outfits()) {
-                outfits.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
-                                     static_cast<uint8_t>(o.mode()));
-                outfitOffers.push_back(o.offer_id());
-            }
-            std::vector<std::tuple<uint16_t, std::string, uint8_t>> mounts;
-            for (const auto& o : m.mounts()) {
-                mounts.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.mode()));
-                mountOffers.push_back(o.offer_id());
-            }
-            std::vector<std::tuple<uint16_t, std::string>> familiars;
-            for (const auto& o : m.familiars()) {
-                familiars.emplace_back(static_cast<uint16_t>(o.look_type()), o.name());
-                familiarOffers.push_back(o.offer_id());
-            }
-            std::vector<std::tuple<uint16_t, uint16_t>> pairs;
-            for (const auto& p : m.gender_pairs())
-                pairs.emplace_back(static_cast<uint16_t>(p.male()), static_cast<uint16_t>(p.female()));
-            Position podium;
-            podium.x = static_cast<int>(m.podium_position().x());
-            podium.y = static_cast<int>(m.podium_position().y());
-            podium.z = static_cast<short>(m.podium_position().z());
-            const bool podiumWindow = m.window_mode() == 5;
-            tibia::game::notify("onOutfitWindowOptions", static_cast<uint8_t>(m.window_mode()), m.mounted(), m.random_mount(), pairs,
-                                outfitOffers, mountOffers, familiarOffers, podium, static_cast<uint16_t>(m.podium_object()),
-                                static_cast<uint8_t>(m.podium_stack_position()),
-                                static_cast<uint8_t>(podiumWindow ? (m.podium_visible() ? 1 : 0) : 1),
-                                static_cast<uint8_t>(podiumWindow ? (m.podium_show_outfit() ? 1 : 0) : 1),
-                                static_cast<uint8_t>(podiumWindow ? m.podium_direction() : 2));
-            tibia::game::processOpenOutfitWindow(current, outfits, mounts, familiars);
-        }
-        break;
-    case 156:
-        if (shadow->HasExtension(GameserverMessageBlessings::gameserver_message_blessings)) {
-            const auto& m = shadow->GetExtension(GameserverMessageBlessings::gameserver_message_blessings);
-            tibia::game::localPlayerSetBlessings(static_cast<uint16_t>(m.blessings()), static_cast<uint8_t>(m.visual_state()));
-        }
-        break;
-    case 194:
-        if (shadow->HasExtension(GameserverMessageConfigureCreaturePodium::gameserver_message_configure_creature_podium)) {
-            const auto& m = shadow->GetExtension(GameserverMessageConfigureCreaturePodium::gameserver_message_configure_creature_podium);
-            // An empty look is no outfit at all.
-            const auto outfitOf = [](const ::tibia::protobuf::protocol::ProtocolOutfit& look) {
-                return look.look_type() == 0 && look.look_type_ex() == 0 ? Outfit{} : creatures::outfitFromProtocol(look, nullptr);
-            };
-            std::vector<std::tuple<uint16_t, std::string, Outfit>> races;
-            for (const auto& race : m.races())
-                races.emplace_back(static_cast<uint16_t>(race.race_id()), race.name(), m.boss_podium() ? outfitOf(race.outfit()) : Outfit{});
-            const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()),
-                               static_cast<short>(m.position().z()));
-            tibia::game::notify("onConfigureCreaturePodium", outfitOf(m.outfit()), static_cast<uint8_t>(m.boss_podium() ? 1 : 0), races, pos,
-                                static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.stack_position()),
-                                static_cast<uint8_t>(m.podium_visible() ? 1 : 0), static_cast<uint8_t>(m.monster_visible() ? 1 : 0),
-                                static_cast<uint8_t>(m.direction()));
-        }
-        break;
-    case 46:
-        if (shadow->HasExtension(GameserverMessageUnlockedSpells::gameserver_message_unlocked_spells)) {
-            std::vector<uint16_t> spellIds;
-            for (const uint32_t id : shadow->GetExtension(GameserverMessageUnlockedSpells::gameserver_message_unlocked_spells).spell_ids())
-                spellIds.push_back(static_cast<uint16_t>(id));
-            tibia::game::notify("onUnlockedSpells", spellIds);
-        }
-        break;
-    case 237:
-        if (shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog)) {
-            const auto& m = shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog);
-            const auto code = static_cast<uint8_t>(m.dialog_type());
-            tibia::game::notify("onServerError", code, m.message());
-            tibia::game::TGameNotify::instance()->emitServerError(code, QString::fromStdString(m.message()));
-        }
-        break;
-    case 157:
-        if (shadow->HasExtension(GameserverMessageSwitchPreset::gameserver_message_switch_preset))
-            tibia::game::notify("onPreset", shadow->GetExtension(GameserverMessageSwitchPreset::gameserver_message_switch_preset).preset_id());
-        break;
-    case 24: {
-        if (!shadow->HasExtension(
-                GameserverMessageSessionEndInformation::gameserver_message_session_end_information))
-            return;
-        handleSessionEndInformationMessage(shadow->GetExtension(
-            GameserverMessageSessionEndInformation::gameserver_message_session_end_information));
-        break;
-    }
-    case 27: {
-        if (!shadow->HasExtension(GameserverMessageShowMultiOfflineTrainingDialog::
-                                      gameserver_message_show_multi_offline_training_dialog))
-            return;
-        handleShowMultiOfflineTrainingDialogMessage(shadow->GetExtension(
-            GameserverMessageShowMultiOfflineTrainingDialog::
-                gameserver_message_show_multi_offline_training_dialog));
-        break;
-    }
-    case 29: // CIP Ping (0x1D) — Proto::GameServerPingBack = 29
-    case 30: { // CIP PingBack (0x1E) — Proto::GameServerPing = 30
-        // No CIP handlePing* on qtclient network H; queue has receivedPing(Back)Message only.
-        // Preserve dispatch.gen.cpp GameClientPing swap → processPing / processPingBack.
-        if (opcode == 29) {
-            if (!shadow->HasExtension(GameserverMessagePing::gameserver_message_ping))
-                return;
-        } else if (!shadow->HasExtension(GameserverMessagePingBack::gameserver_message_ping_back)) {
-            return;
-        }
-        const bool feature = true;
-        // Proto enum names are inverted vs CIP comments: PingBack=29, Ping=30.
-        if (((opcode == Proto::GameServerPing) && feature)
-            || ((opcode == Proto::GameServerPingBack) && !feature)) {
-            processPingBack();
         } else {
-            processPing();
+            tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));
         }
         break;
-    }
-    case 31: {
-        // CIP: receivedLoginChallengeMessage + gameLoginChallengeMessage only —
-        // no handleLoginChallengeMessage. Same side effects as parseLoginChallenge.
-        if (!shadow->HasExtension(
-                GameserverMessageLoginChallenge::gameserver_message_login_challenge))
-            return;
-        const auto& m = shadow->GetExtension(
-            GameserverMessageLoginChallenge::gameserver_message_login_challenge);
-        if (auto* connection = network::TGameserverNetworkPacketProcessor::live())
-            connection->sendLogin(m.timestamp(), static_cast<uint8_t>(m.random()));
+    case tibia::client::CLIENT_EVENT_TYPE_ACHIEVEMENT:
+    case tibia::client::CLIENT_EVENT_TYPE_TITLE:
+        tibia::game::notify("onClientEvent", type, m.text());
         break;
-    }
-    case 99: {
-        if (!shadow->HasExtension(GameserverMessageClientCheck::gameserver_message_client_check))
-            return;
-        const std::string& data = shadow->GetExtension(GameserverMessageClientCheck::gameserver_message_client_check).data();
-        std::vector<uint8_t> bytes(data.begin(), data.end());
-        // Acknowledged with the same bytes (C 0x63).
-        protocol::gameclient::sendClientCheck(bytes);
-        tibia::game::notify("onClientCheck", bytes);
+    case tibia::client::CLIENT_EVENT_TYPE_SKILL:
+        tibia::game::notify("onClientEvent", type, small, value);
         break;
-    }
-    case 96: {
-        // CIP: receivedSpellDataModificationMessage only — no handleSpellDataModificationMessage.
-        // Same notify args as parseSpellDataModification (first entry spellId + mod).
-        if (!shadow->HasExtension(GameserverMessageSpellDataModification::
-                                      gameserver_message_spell_data_modification))
-            return;
-        const auto& m = shadow->GetExtension(
-            GameserverMessageSpellDataModification::gameserver_message_spell_data_modification);
-        const uint16_t firstSpell = m.entries_size() > 0 ? uint16_t(m.entries(0).spell_id()) : 0;
-        const uint8_t firstFlags = m.entries_size() > 0 ? uint8_t(m.entries(0).mod()) : 0;
-        tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
+    case tibia::client::CLIENT_EVENT_TYPE_BESTIARY:
+    case tibia::client::CLIENT_EVENT_TYPE_BOSSTIARY:
+        tibia::game::notify("onClientEvent", type, value, small);
         break;
-    }
-    case 181: {
-        // The server refused the step: the player snaps back, facing `direction`.
-        if (!shadow->HasExtension(GameserverMessageSnapBack::gameserver_message_snap_back))
-            return;
-        tibia::game::processWalkCancel(static_cast<tibia::client::Direction>(
-            shadow->GetExtension(GameserverMessageSnapBack::gameserver_message_snap_back).direction()));
+    case tibia::client::CLIENT_EVENT_TYPE_QUEST:
+        tibia::game::notify("onClientEvent", type, m.text(), small);
         break;
-    }
-    case 182:
-        // The official client reads the wait time and does nothing with it.
+    case tibia::client::CLIENT_EVENT_TYPE_COSMETIC:
+        tibia::game::notify("onClientEvent", type, value, m.text(), small);
         break;
-    case 188: {
-        // CIP: receivedStopMessage only — no handleStopMessage.
-        if (!shadow->HasExtension(GameserverMessageStop::gameserver_message_stop))
-            return;
-        tibia::game::notify("onServerStop");
+    case tibia::client::CLIENT_EVENT_TYPE_PROFICIENCY:
+        tibia::game::notify("onClientEvent", type, value, m.text());
         break;
-    }
-    case 219: {
-        // CIP: receivedHirelingNameChangeMessage only — no handleHirelingNameChangeMessage.
-        if (!shadow->HasExtension(
-                GameserverMessageHirelingNameChange::gameserver_message_hireling_name_change))
-            return;
-        const auto& m = shadow->GetExtension(
-            GameserverMessageHirelingNameChange::gameserver_message_hireling_name_change);
-        tibia::game::notify("onHirelingNameChange", m.creature_id(), m.object_id());
+    case tibia::client::CLIENT_EVENT_TYPE_SPELL_UNLOCKED:
+        tibia::game::notify("onClientEvent", type, static_cast<uint32_t>(m.large_value()));
         break;
-    }
-    case 247:
-        // market::TMarketProtocolMessageHandler handles the market leave.
+    case tibia::client::CLIENT_EVENT_TYPE_LEADER_MONSTER:
+        tibia::game::notify("onClientEvent", type, value, static_cast<uint32_t>(m.large_value()));
         break;
     default:
+        tibia::game::notify("onClientEvent", type, value);
         break;
     }
 }
@@ -773,7 +552,7 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
 {
     using tibia::client::ExperienceRate_t;
     tibia::game::localPlayerSetHealth(message.health(), message.max_health());
-    tibia::game::localPlayerSetFreeCapacity(message.free_capacity() / 100);
+    tibia::game::localPlayerSetFreeCapacity(message.free_capacity());
     tibia::game::localPlayerSetExperience(message.experience());
     tibia::game::localPlayerSetLevel(static_cast<uint16_t>(message.level()),
                                      static_cast<uint16_t>(message.level_percent_hundredths()));
@@ -922,6 +701,124 @@ void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
     }
 }
 
+void TPlayerProtocolMessageHandler::handleOutfitMessage(const GameserverMessageOutfit& m)
+{
+    Outfit current = creatures::outfitFromProtocol(m.outfit(), nullptr);
+    current.setMount(static_cast<uint16_t>(m.mount()));
+    current.setMountColors(static_cast<uint8_t>(m.mount_colors().head()), static_cast<uint8_t>(m.mount_colors().body()),
+                           static_cast<uint8_t>(m.mount_colors().legs()), static_cast<uint8_t>(m.mount_colors().feet()));
+    current.setFamiliar(static_cast<uint16_t>(m.familiar()));
+    std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>> outfits;
+    std::vector<uint32_t> outfitOffers, mountOffers, familiarOffers;
+    for (const auto& o : m.outfits()) {
+        outfits.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
+                             static_cast<uint8_t>(o.mode()));
+        outfitOffers.push_back(o.offer_id());
+    }
+    std::vector<std::tuple<uint16_t, std::string, uint8_t>> mounts;
+    for (const auto& o : m.mounts()) {
+        mounts.emplace_back(static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.mode()));
+        mountOffers.push_back(o.offer_id());
+    }
+    std::vector<std::tuple<uint16_t, std::string>> familiars;
+    for (const auto& o : m.familiars()) {
+        familiars.emplace_back(static_cast<uint16_t>(o.look_type()), o.name());
+        familiarOffers.push_back(o.offer_id());
+    }
+    std::vector<std::tuple<uint16_t, uint16_t>> pairs;
+    for (const auto& p : m.gender_pairs())
+        pairs.emplace_back(static_cast<uint16_t>(p.male()), static_cast<uint16_t>(p.female()));
+    Position podium;
+    podium.x = static_cast<int>(m.podium_position().x());
+    podium.y = static_cast<int>(m.podium_position().y());
+    podium.z = static_cast<short>(m.podium_position().z());
+    const bool podiumWindow = m.window_mode() == 5;
+    tibia::game::notify("onOutfitWindowOptions", static_cast<uint8_t>(m.window_mode()), m.mounted(), m.random_mount(), pairs,
+                        outfitOffers, mountOffers, familiarOffers, podium, static_cast<uint16_t>(m.podium_object()),
+                        static_cast<uint8_t>(m.podium_stack_position()),
+                        static_cast<uint8_t>(podiumWindow ? (m.podium_visible() ? 1 : 0) : 1),
+                        static_cast<uint8_t>(podiumWindow ? (m.podium_show_outfit() ? 1 : 0) : 1),
+                        static_cast<uint8_t>(podiumWindow ? m.podium_direction() : 2));
+    tibia::game::processOpenOutfitWindow(current, outfits, mounts, familiars);
+}
+
+void TPlayerProtocolMessageHandler::handleBlessingsMessage(const GameserverMessageBlessings& m)
+{
+    tibia::game::localPlayerSetBlessings(static_cast<uint16_t>(m.blessings()), static_cast<uint8_t>(m.visual_state()));
+}
+
+void TPlayerProtocolMessageHandler::handleConfigureCreaturePodiumMessage(const GameserverMessageConfigureCreaturePodium& m)
+{
+    // An empty look is no outfit at all.
+    const auto outfitOf = [](const ::tibia::protobuf::protocol::ProtocolOutfit& look) {
+        return look.look_type() == 0 && look.look_type_ex() == 0 ? Outfit{} : creatures::outfitFromProtocol(look, nullptr);
+    };
+    std::vector<std::tuple<uint16_t, std::string, Outfit>> races;
+    for (const auto& race : m.races())
+        races.emplace_back(static_cast<uint16_t>(race.race_id()), race.name(), m.boss_podium() ? outfitOf(race.outfit()) : Outfit{});
+    const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()),
+                       static_cast<short>(m.position().z()));
+    tibia::game::notify("onConfigureCreaturePodium", outfitOf(m.outfit()), static_cast<uint8_t>(m.boss_podium() ? 1 : 0), races, pos,
+                        static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.stack_position()),
+                        static_cast<uint8_t>(m.podium_visible() ? 1 : 0), static_cast<uint8_t>(m.monster_visible() ? 1 : 0),
+                        static_cast<uint8_t>(m.direction()), static_cast<uint16_t>(m.reserved()));
+}
+
+void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMessageSwitchPreset& m)
+{
+    // The vocation's hotkey set, when the player switches hotkey presets with
+    // the vocation.
+    static constexpr const char* kVocationHotkeySets[] = { "Knight", "Paladin", "Sorcerer", "Druid", "Monk" };
+    const uint32_t preset = m.preset_id();
+    if (preset >= 1 && preset <= std::size(kVocationHotkeySets)) {
+        Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTryToSwitchHotkeySet>(
+            QString::fromLatin1(kVocationHotkeySets[preset - 1]), true));
+    }
+    // Host: the skill wheel follows the preset on the notify bus.
+    tibia::game::notify("onPreset", preset);
+}
+
+void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& m)
+{
+    // The player's own speed also goes to the player data.
+    if (m.creature_id() != localPlayerId())
+        return;
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        data->setSpeed(static_cast<uint16_t>(m.speed()));
+}
+
+void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessageSnapBack& m)
+{
+    // The server refused the step: the walk plan cancels, or without one the
+    // player stops where it is and faces `direction`.
+    const auto direction = static_cast<uint8_t>(m.direction());
+    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+        intent->onCancelWalk(static_cast<creatures::ECreatureLookDirection>(direction));
+        return;
+    }
+    if (const auto player = localPlayerCreature()) {
+        player->resetMovement();
+        player->setDirection(direction);
+    }
+}
+
+void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageStop&)
+{
+    // The server stopped the player: the walk plan clears, or without one the
+    // player's step stops.
+    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+        intent->clearGoal();
+        return;
+    }
+    if (const auto player = localPlayerCreature())
+        player->resetMovement();
+}
+
+void TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage(const GameserverMessageHirelingNameChange& m)
+{
+    tibia::game::notify("onHirelingNameChange", m.creature_id(), m.object_id());
+}
+
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;
@@ -941,7 +838,6 @@ void ownProductSurface(QObject* parent)
         auto* handler = new TGameProtocolMessageHandler(parent);
         TGameProtocolMessageHandler::setLiveInstance(handler);
     }
-    new TInternalGameActionRouter(parent);
     new TPassiveAbilityInfoStorage(parent);
     new TPlayerGameActionHandler(parent);
     TPlayerProtocolMessageHandler::setLiveInstance(new TPlayerProtocolMessageHandler(parent));
@@ -961,6 +857,11 @@ void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMess
 void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMessageEditList& m)
 {
     tibia::game::processEditList(m.list_id(), static_cast<uint8_t>(m.list_type()), m.text());
+}
+
+void TEditTextProtocolMessageHandler::handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& m)
+{
+    tibia::game::notify("onEditGuildMessage", m.text());
 }
 
 namespace {
@@ -1025,11 +926,29 @@ void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
     tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
 }
 
+std::optional<uint8_t> TPremiumProtocolMessageHandler::premiumFeature(const uint32_t trigger)
+{
+    // The protocol's feature ids skip 3, 34, 35 and 37.
+    static constexpr int8_t kFeatures[40] = { 0,  1,  2,  -1, 3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                              13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                                              27, 28, 29, 30, 31, 32, -1, -1, 33, -1, 34, 35 };
+    if (trigger >= std::size(kFeatures) || kFeatures[trigger] < 0)
+        return std::nullopt;
+    return static_cast<uint8_t>(kFeatures[trigger]);
+}
+
 void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const GameserverMessagePremiumTrigger& m)
 {
     std::vector<uint8_t> triggers;
-    for (const uint32_t trigger : m.triggers())
-        triggers.push_back(static_cast<uint8_t>(trigger));
+    for (const uint32_t trigger : m.triggers()) {
+        const std::optional<uint8_t> feature = premiumFeature(trigger);
+        // A feature the client does not know drops the whole message.
+        if (!feature) {
+            qWarning("EPremiumFeature %u couldn't be converted", trigger);
+            return;
+        }
+        triggers.push_back(*feature);
+    }
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 
@@ -1129,5 +1048,26 @@ void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
     if (Message.dialog_type() == SpellBookMessageDialogType)
         Q_EMIT requestShowSpellBookDialog(QString::fromStdString(Message.message()), static_cast<uint16_t>(Message.extra_value()));
 }
+
+namespace {
+TOutfitDialogStorage* g_outfitDialogStorage = nullptr;
+}
+
+TOutfitDialogStorage::TOutfitDialogStorage(QObject* parent)
+    : cip::tibia::game::TOutfitDialogStorage(parent)
+{
+}
+
+TOutfitDialogStorage::~TOutfitDialogStorage()
+{
+    if (g_outfitDialogStorage == this)
+        g_outfitDialogStorage = nullptr;
+}
+
+TOutfitDialogStorage* TOutfitDialogStorage::instance() { return g_outfitDialogStorage; }
+
+void TOutfitDialogStorage::setInstance(TOutfitDialogStorage* storage) { g_outfitDialogStorage = storage; }
+
+void TOutfitDialogStorage::announcePresetsChanged() { Q_EMIT configurationChangedFromUserInput(); }
 
 } // namespace tibia::game

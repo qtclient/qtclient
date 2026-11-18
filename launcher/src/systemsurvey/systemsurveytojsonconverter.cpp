@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace systemsurvey {
+namespace tibia::systemsurvey {
 
 QString TSystemSurveyToJsonConverter::clientId()
 {
@@ -123,4 +123,4 @@ QJsonDocument TSystemSurveyToJsonConverter::convert(const TSystemSurvey& survey)
     return document;
 }
 
-} // namespace systemsurvey
+} // namespace tibia::systemsurvey

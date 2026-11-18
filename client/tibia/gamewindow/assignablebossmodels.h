@@ -31,6 +31,8 @@ public:
 
     void setBosses(const std::vector<cyclopedia::TAssignableBoss>& bosses);
     void refreshAll();
+    /// The rarity tooltips change with the boss points per stage.
+    void refreshRarityTooltips();
 
 private:
     const cyclopedia::TBosstiaryStorage& m_storage;

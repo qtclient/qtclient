@@ -1,4 +1,7 @@
 #include "monsterbonuseffectsdialogcontroller.h"
+#include "colorhelper.h"
+
+#include <utility>
 
 #include "cyclopedia/bestiarystorage.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -30,7 +33,7 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 QColor outfitColor(const int index)
 {
-    const QColor c = Outfit::getColor(index);
+    const QColor c = tibia::shared::outfitColor(index);
     return QColor(c.red(), c.green(), c.blue());
 }
 
@@ -132,7 +135,13 @@ TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBest
     });
 }
 
-TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController() = default;
+TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController()
+{
+    // CIP: without its session the bonus effect list is rebuilt empty.
+    QList<QObject*> previous = std::exchange(m_monsterBonusEffects, {});
+    Q_EMIT qmlMonsterBonusEffectsChanged();
+    deleteAll(previous);
+}
 
 TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogController::captureContext() const
 {
@@ -382,10 +391,8 @@ QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
     const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = expansionOrPremium ? 3 : 1;
-    action->instance = expansionOrPremium ? 3 : -1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? 3 : 1, expansionOrPremium ? 3 : -1);
+    Q_EMIT publishGameAction(action);
 }
 
 void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()

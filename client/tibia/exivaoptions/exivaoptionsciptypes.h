@@ -35,9 +35,9 @@ public:
     using cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler;
 
     /// A suppressed exiva only flashes the chat's exiva button.
-    static void handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed& message);
+    void handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed& message);
     /// The flags replace the stored ones; the listed names join or leave the whitelists.
-    static void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
+    void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
 };
 
 }

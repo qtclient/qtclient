@@ -1,12 +1,12 @@
 #include "exaltationforgedialogcontroller.h"
+#include "gamewindow/smoothfiltering.h"
 
-#include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
 #include <tibia/game/gamesession.h>
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QColor>
@@ -29,7 +29,7 @@ std::optional<int> classificationOf(const uint16_t typeId)
 {
     if (typeId == 0)
         return std::nullopt;
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getClassification() == 0)
         return std::nullopt;
     return type->getClassification();
@@ -181,17 +181,9 @@ using A = input::EGameAction;
 using exaltation::classificationOf;
 using ObjectKey = std::pair<uint16_t, uint8_t>;
 
-void publish(const A type)
+input::IGameActionPtr simpleAction(const A type)
 {
-    input::publish(input::makeAction(type));
-}
-
-/// Option antialiasingMode is AntialiasingModeAntialiasing (CIP ,
-/// ).
-bool smoothTextureFilteringOption()
-{
-    return app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
-           == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing);
+    return input::makeGameAction(type);
 }
 
 }
@@ -342,13 +334,9 @@ void TExaltationForgeFusionPageController::resourceObjectSelected(const int Type
 /// CIP .
 void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanceIncreased, const bool TierLossImproved)
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_FUSION));
-    action->exaltationTypeId = m_fusionObjectTypeId;
-    action->exaltationTier = m_fusionObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_resourceObjectTypeId;
-    action->exaltationSuccessIncreased = SuccessChanceIncreased;
-    action->exaltationTierLossImproved = TierLossImproved;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeFusion>(
+        static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
+        static_cast<uint16_t>(m_resourceObjectTypeId), SuccessChanceIncreased, TierLossImproved));
     m_fusionObjectTypeId = 0;
     m_fusionObjectUpgradeTier = 0;
     m_resourceObjectTypeId = 0;
@@ -359,11 +347,9 @@ void TExaltationForgeFusionPageController::requestFusion(const bool SuccessChanc
 /// CIP .
 void TExaltationForgeFusionPageController::requestConvergenceFusion()
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_CONVERGENCE_FUSION));
-    action->exaltationTypeId = m_fusionObjectTypeId;
-    action->exaltationTier = m_fusionObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_resourceObjectTypeId;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeConvergenceFusion>(
+        static_cast<uint16_t>(m_fusionObjectTypeId), static_cast<uint8_t>(m_fusionObjectUpgradeTier),
+        static_cast<uint16_t>(m_resourceObjectTypeId)));
     m_fusionObjectTypeId = 0;
     m_fusionObjectUpgradeTier = 0;
     m_resourceObjectTypeId = 0;
@@ -496,7 +482,7 @@ uint TExaltationForgeTransferPageController::sourceObjectCount() const
 QString TExaltationForgeTransferPageController::sourceObjectName() const
 {
     if (m_sourceObjectTypeId != 0) {
-        if (const ThingTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
+        if (const TAppearanceTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
             return QString::fromStdString(type->getName());
     }
     return qtTrId("dummy_unknown");
@@ -588,12 +574,9 @@ void TExaltationForgeTransferPageController::targetSelected(const int TypeID)
 /// CIP .
 void TExaltationForgeTransferPageController::requestTransfer()
 {
-    auto action = input::mutableClone(*input::makeAction(A::EXALTATION_FORGE_TRANSFER));
-    action->exaltationTypeId = m_sourceObjectTypeId;
-    action->exaltationTier = m_sourceObjectUpgradeTier;
-    action->exaltationSecondTypeId = m_targetObjectTypeId;
-    action->exaltationConvergence = m_convergenceTransferEnabled;
-    input::publish(action);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionExaltationForgeTransfer>(
+        static_cast<uint16_t>(m_sourceObjectTypeId), static_cast<uint8_t>(m_sourceObjectUpgradeTier),
+        static_cast<uint16_t>(m_targetObjectTypeId), m_convergenceTransferEnabled));
 }
 
 /// CIP : every donor of every group, counted.
@@ -739,7 +722,7 @@ ushort TExaltationForgeHistoryPageController::numberOfPages() const
 
 void TExaltationForgeHistoryPageController::showDialogTab()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE));
     onHistoryChanged();
 }
 
@@ -750,12 +733,12 @@ void TExaltationForgeHistoryPageController::hideDialogTab()
 
 void TExaltationForgeHistoryPageController::requestPreviousPage()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE));
 }
 
 void TExaltationForgeHistoryPageController::requestNextPage()
 {
-    publish(A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE);
+    Q_EMIT publishGameAction(simpleAction(A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE));
 }
 
 /// Newest first.
@@ -774,8 +757,9 @@ TExaltationResultDialogController::TExaltationResultDialogController(exaltation:
     : TDialogController(QStringLiteral("ExaltationResultDialog.qml"), parent)
     , m_storage(storage)
 {
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
 }
+
+bool TExaltationResultDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
 
 uchar TExaltationResultDialogController::dustCost() const
 {
@@ -828,6 +812,8 @@ void TExaltationResultDialogController::requestClose()
 // ---------------------------------------------------------------------------
 // Forge dialog
 
+bool TExaltationForgeDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
+
 TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::TExaltationStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), parent)
     , m_storage(storage)
@@ -839,8 +825,12 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     m_fusionController = fusion;
     m_transferController = transfer;
     m_conversionController = new TExaltationForgeConversionPageController(storage, this);
-    m_historyController = new TExaltationForgeHistoryPageController(storage, this);
-    m_smoothTextureFiltering = smoothTextureFilteringOption();
+    auto* history = new TExaltationForgeHistoryPageController(storage, this);
+    m_historyController = history;
+    connect(fusion, &TExaltationForgeFusionPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
+    connect(transfer, &TExaltationForgeTransferPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
+    connect(history, &TExaltationForgeHistoryPageController::publishGameAction, this,
+            &TExaltationForgeDialogController::publishGameAction);
     m_readOnlyMode = true;
     m_errorDialog->setCloseOnButtonClicked(true);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, fusion, &TExaltationForgeFusionPageController::prepareOpenDialog);
@@ -848,13 +838,13 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
 
     for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
                           A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
 /// The result travels in the storage instead of the action.
-bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction& action)
+bool TExaltationForgeDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG:
         showDialog(true);
         break;
@@ -878,7 +868,8 @@ bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction
         break;
     case A::SHOW_EXALTATION_ERROR_DIALOG:
         m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
-        m_errorDialog->showMessage(qtTrId("exaltation_forge_info_dialog_caption"), action.text);
+        if (const auto* message = input::gameActionAs<input::TGameActionShowMessageDialog>(&action))
+            m_errorDialog->showMessage(qtTrId("exaltation_forge_info_dialog_caption"), message->text());
         break;
     default:
         return false;
@@ -888,16 +879,13 @@ bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction
 
 TExaltationForgeDialogController::~TExaltationForgeDialogController()
 {
-    for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
-                          A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
-        input::setActionHandler(type, nullptr);
 }
 
 /// Closes and tells the storage (EXALTATION_FORGE_DIALOG_CLOSED).
 void TExaltationForgeDialogController::requestClose()
 {
     closeDialog();
-    publish(A::EXALTATION_FORGE_DIALOG_CLOSED);
+    Q_EMIT publishGameAction(simpleAction(A::EXALTATION_FORGE_DIALOG_CLOSED));
 }
 
 void TExaltationForgeDialogController::requestTabSwitch(const EDialogTab NewTab)
@@ -914,9 +902,8 @@ void TExaltationForgeDialogController::showDialog(const bool ReadOnly)
     m_readOnlyMode = ReadOnly;
     if (ReadOnly) {
         for (const int resource : { 0, 1, 0x46, 0x47, 0x48 }) {
-            auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-            action->parameter = resource;
-            input::publish(action);
+            auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
+            Q_EMIT publishGameAction(action);
         }
     }
     if (!dialog()->item()) {

@@ -225,18 +225,15 @@ void TSkillsWidgetController::onPlayerSkillStatsChanged()
 
 void TSkillsWidgetController::onStoreXpBoostButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
-    action->instance = 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSkillsWidgetController::onMoreStatDetailsClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 2;
-    action->category = 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(2);
+    action->setCategory(1);
+    Q_EMIT publishGameAction(action);
 }
 
 void TSkillsWidgetController::setProgressBarVisible(const SkillType type, const bool visible)

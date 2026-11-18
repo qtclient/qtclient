@@ -6,7 +6,7 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 
-#include <tibia/assets/thingtype.h>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <QJsonObject>
@@ -337,7 +337,7 @@ QString TNPCTradeController::currencyName() const
 {
     if (!m_storage || m_storage->currencyIsName())
         return m_storage ? m_storage->currencyName() : QString();
-    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
+    const TAppearanceTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
     if (!type)
         return {};
     // Gold is shown with every word capitalised.

@@ -4,9 +4,12 @@
 
 #include <cip_gen.h>
 
+#include "gameactioncontext.h"
+
 #include <QObject>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace tibia {
@@ -15,194 +18,12 @@ namespace input {
 /// Own CIP-named types under `parent` (keyboard shortcut handler).
 void ownProductSurface(QObject* parent);
 
-class TKeyEventHandler final : public cip::tibia::input::TKeyEventHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyEventHandler::TKeyEventHandler;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
 class TKeyboardInputToGameActionConverter final : public cip::tibia::input::TKeyboardInputToGameActionConverter
 {
     Q_OBJECT
 public:
     using cip::tibia::input::TKeyboardInputToGameActionConverter::TKeyboardInputToGameActionConverter;
 };
-
-class TKeyboardShortcutHandlerEventFilter final : public cip::tibia::input::TKeyboardShortcutHandlerEventFilter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyboardShortcutHandlerEventFilter::TKeyboardShortcutHandlerEventFilter;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
-class TKeyboardStatusStorage final : public cip::tibia::input::TKeyboardStatusStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TKeyboardStatusStorage::TKeyboardStatusStorage;
-};
-
-class TRecordKeyboardShortcutHandler final : public cip::tibia::input::TRecordKeyboardShortcutHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TRecordKeyboardShortcutHandler::TRecordKeyboardShortcutHandler;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
-};
-
-/// CIP location / appearance action contexts — carry where an action targets.
-class TLocationUnknownContext final : public ::tibia::CipTyped
-{
-public:
-    TLocationUnknownContext() = default;
-};
-
-class TLocationWorldMapCoordinateContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TLocationWorldMapCoordinateContext(int x = 0, int y = 0, int z = 0)
-        : m_x(x), m_y(y), m_z(z)
-    {
-    }
-    int x() const { return m_x; }
-    int y() const { return m_y; }
-    int z() const { return m_z; }
-    /// Path planning may end on the goal even when it cannot be walked on.
-    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
-
-private:
-    int m_x = 0, m_y = 0, m_z = 0;
-    bool m_enterUnwalkableGoal = false;
-};
-
-class TLocationWorldMapCoordinateWithStackPositionContext final : public ::tibia::CipTyped
-{
-public:
-    TLocationWorldMapCoordinateWithStackPositionContext(int x = 0, int y = 0, int z = 0, int stack = -1)
-        : m_x(x), m_y(y), m_z(z), m_stack(stack)
-    {
-    }
-    int x() const { return m_x; }
-    int y() const { return m_y; }
-    int z() const { return m_z; }
-    int stackPosition() const { return m_stack; }
-
-private:
-    int m_x = 0, m_y = 0, m_z = 0, m_stack = -1;
-};
-
-class TLocationWorldMapGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TLocationWorldMapGameActionContext(int x = 0, int y = 0, int z = 0)
-        : m_x(x), m_y(y), m_z(z)
-    {
-    }
-    int x() const { return m_x; }
-    int y() const { return m_y; }
-    int z() const { return m_z; }
-    /// Path planning may end on the goal even when it cannot be walked on.
-    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
-
-private:
-    int m_x = 0, m_y = 0, m_z = 0;
-    bool m_enterUnwalkableGoal = false;
-};
-
-class TLocationActionButtonGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TLocationActionButtonGameActionContext(int barId = 0, int buttonId = 0)
-        : m_barId(barId), m_buttonId(buttonId)
-    {
-    }
-    int barId() const { return m_barId; }
-    int buttonId() const { return m_buttonId; }
-
-private:
-    int m_barId = 0, m_buttonId = 0;
-};
-
-class TLocationBattleListGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TLocationBattleListGameActionContext(uint32_t creatureId = 0)
-        : m_creatureId(creatureId)
-    {
-    }
-    uint32_t creatureId() const { return m_creatureId; }
-
-private:
-    uint32_t m_creatureId = 0;
-};
-
-class TLocationContainerWithSlotGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    TLocationContainerWithSlotGameActionContext(int containerId = 0, int slot = 0)
-        : m_containerId(containerId), m_slot(slot)
-    {
-    }
-    int containerId() const { return m_containerId; }
-    int slot() const { return m_slot; }
-
-private:
-    int m_containerId = 0, m_slot = 0;
-};
-
-class TLocationDepotSearchGameActionContext final : public ::tibia::CipTyped {};
-class TLocationDepotSearchDepotItemGameActionContext final : public ::tibia::CipTyped {};
-class TLocationDepotSearchInboxItemGameActionContext final : public ::tibia::CipTyped {};
-class TLocationInventoryGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TLocationInventoryGameActionContext(int slot = 0)
-        : m_slot(slot)
-    {
-    }
-    int slot() const { return m_slot; }
-
-private:
-    int m_slot = 0;
-};
-class TLocationNPCChatKeywordGameActionContext final : public ::tibia::CipTyped {};
-class TLocationNpcTradeGameActionContext final : public ::tibia::CipTyped {};
-class TLocationPlayerTradeGameActionContext final : public ::tibia::CipTyped {};
-class TLocationTutorialHintDialogGameActionContext final : public ::tibia::CipTyped {};
-
-class TDecoItemKitObjectApperanceTypeGameActionContext final : public ::tibia::CipTyped {};
-class TLiquidObjectApperanceTypeGameActionContext final : public ::tibia::CipTyped {};
-class TObjectApperanceTypeGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TObjectApperanceTypeGameActionContext(uint16_t appearanceId = 0)
-        : m_appearanceId(appearanceId)
-    {
-    }
-    uint16_t appearanceId() const { return m_appearanceId; }
-
-private:
-    uint16_t m_appearanceId = 0;
-};
-class TObjectCreatureGameActionContext final : public ::tibia::CipTyped
-{
-public:
-    explicit TObjectCreatureGameActionContext(uint32_t creatureId = 0)
-        : m_creatureId(creatureId)
-    {
-    }
-    uint32_t creatureId() const { return m_creatureId; }
-
-private:
-    uint32_t m_creatureId = 0;
-};
-class TUpgradeableObjectApperanceTypeGameActionContext final : public ::tibia::CipTyped {};
 
 class TGenericChatGameActionProvider final : public ::tibia::CipTyped
 {
@@ -219,7 +40,19 @@ enum class TMovementIntentKind : int {
     Stop = 3,
 };
 
-class TMovementIntentDirection final : public ::tibia::CipTyped
+/// CIP's movement intent interface: what the player's movement input asks for.
+class TMovementIntent
+{
+public:
+    virtual ~TMovementIntent() = default;
+    /// CIP v2: the intent's kind.
+    virtual int v2() const = 0;
+    TMovementIntentKind kind() const { return static_cast<TMovementIntentKind>(v2()); }
+};
+using TMovementIntentPtr = std::shared_ptr<const TMovementIntent>;
+
+/// A step direction (+0x8): tibia::client::Direction.
+class TMovementIntentDirection final : public TMovementIntent
 {
 public:
     explicit TMovementIntentDirection(int direction = 0)
@@ -228,14 +61,14 @@ public:
     }
     /// CIP `TMovementIntentDirection::v2` → 1.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Direction; }
-    int v2() const { return static_cast<int>(kindTag()); }
+    int v2() const override { return static_cast<int>(kindTag()); }
     int direction() const { return m_direction; }
 
 private:
     int m_direction = 0;
 };
 
-class TMovementIntentRotate final : public ::tibia::CipTyped
+class TMovementIntentRotate final : public TMovementIntent
 {
 public:
     explicit TMovementIntentRotate(int direction = 0)
@@ -244,23 +77,23 @@ public:
     }
     /// CIP `TMovementIntentRotate::v2` → 2.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Rotate; }
-    int v2() const { return static_cast<int>(kindTag()); }
+    int v2() const override { return static_cast<int>(kindTag()); }
     int direction() const { return m_direction; }
 
 private:
     int m_direction = 0;
 };
 
-class TMovementIntentStop final : public ::tibia::CipTyped
+class TMovementIntentStop final : public TMovementIntent
 {
 public:
     TMovementIntentStop() = default;
     /// CIP `TMovementIntentStop::v2` → 3.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Stop; }
-    int v2() const { return static_cast<int>(kindTag()); }
+    int v2() const override { return static_cast<int>(kindTag()); }
 };
 
-class TMovementIntentTargetCoordinate final : public ::tibia::CipTyped
+class TMovementIntentTargetCoordinate final : public TMovementIntent
 {
 public:
     TMovementIntentTargetCoordinate(int x = 0, int y = 0, int z = 0, bool enterUnwalkableGoal = false)
@@ -269,7 +102,7 @@ public:
     }
     /// CIP `TMovementIntentTargetCoordinate::v2` → 0.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Target; }
-    int v2() const { return static_cast<int>(kindTag()); }
+    int v2() const override { return static_cast<int>(kindTag()); }
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }
@@ -292,54 +125,6 @@ public:
 
 private:
     std::string m_message;
-};
-
-class TPlayerMovementIntent final : public ::tibia::CipTyped
-{
-public:
-    /// Same numeric tags as CIP `TMovementIntent*::v2` / `TPlayerMovementIntent` compares.
-    using Kind = TMovementIntentKind;
-    TPlayerMovementIntent() = default;
-    static TPlayerMovementIntent stop()
-    {
-        TPlayerMovementIntent intent;
-        intent.m_kind = Kind::Stop;
-        return intent;
-    }
-    static TPlayerMovementIntent direction(const int dir)
-    {
-        TPlayerMovementIntent intent;
-        intent.m_kind = Kind::Direction;
-        intent.m_direction = dir;
-        return intent;
-    }
-    static TPlayerMovementIntent rotate(const int dir)
-    {
-        TPlayerMovementIntent intent;
-        intent.m_kind = Kind::Rotate;
-        intent.m_direction = dir;
-        return intent;
-    }
-    static TPlayerMovementIntent target(const int x, const int y, const int z)
-    {
-        TPlayerMovementIntent intent;
-        intent.m_kind = Kind::Target;
-        intent.m_x = x;
-        intent.m_y = y;
-        intent.m_z = z;
-        return intent;
-    }
-    Kind kind() const { return m_kind; }
-    int kindId() const { return static_cast<int>(m_kind); }
-    int direction() const { return m_direction; }
-    int x() const { return m_x; }
-    int y() const { return m_y; }
-    int z() const { return m_z; }
-
-private:
-    Kind m_kind = Kind::Stop;
-    int m_direction = 0;
-    int m_x = 0, m_y = 0, m_z = 0;
 };
 
 }

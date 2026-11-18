@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
@@ -52,7 +53,7 @@ public:
     void onRuleViolationReportConfirmedByServer();
 
 private:
-    bool handleAction(const input::TGameAction& action);
+    bool handleAction(const input::IGameAction& action);
     void open(EType type, const QString& name, const QString& statement, uint32_t id);
 
     EType m_type = Name;
@@ -60,6 +61,17 @@ private:
     int m_reasonId = -1;
     QDateTime m_lastReport;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

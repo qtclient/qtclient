@@ -53,12 +53,15 @@ TMinimapController::TMinimapController(QObject* parent)
                 onPlayerPositionChanged(*position);
         return std::any{};
     });
-    input::setMinimapActionHandler([this](const input::TGameAction& action) { handleGameAction(action); });
+    using A = input::EGameAction;
+    for (const A type : { A::MINIMAP_ONE_FLOOR_UP, A::MINIMAP_ONE_FLOOR_DOWN, A::MINIMAP_ZOOM_IN, A::MINIMAP_ZOOM_OUT,
+                          A::MINIMAP_SCROLL_NORTH, A::MINIMAP_SCROLL_EAST, A::MINIMAP_SCROLL_SOUTH, A::MINIMAP_SCROLL_WEST,
+                          A::MINIMAP_CENTER })
+        m_gameActions.on(type, [this](const input::IGameAction& action) { handleGameAction(action); });
 }
 
 TMinimapController::~TMinimapController()
 {
-    input::setMinimapActionHandler(nullptr);
     if (m_minimap)
         m_minimap->setRenderProvider(nullptr);
 }
@@ -91,7 +94,8 @@ void TMinimapController::setAmbientLightStorage(worldmap::TAmbientLightStorage* 
         connect(ambientLight, &worldmap::TAmbientLightStorage::normalizedTibiaTimeOfDayWasChanged, this, &TMinimapController::updateTimeDisplay);
         connect(ambientLight, &worldmap::TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged, this, &TMinimapController::updateTimeDisplay);
     }
-    updateTimeDisplay();
+    // CIP (session setup): the time display follows the storage's signals only. The player's position
+    // arrives through the onPositionChange hook (CIP: the player's positionChanged, queued).
 }
 
 void TMinimapController::setSidebarOptions(config::TSidebarOptions* options)
@@ -180,13 +184,12 @@ minimap::TMinimapTileStorage* TMinimapController::tileStorage() const { return m
 void TMinimapController::onCyclopediaMapButtonClicked()
 {
     // The cyclopedia's map tab, at the player's field.
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 4;
+    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
     if (tibia::game::hasLocalPlayer()) {
         m_playerPosition = tibia::game::localPlayerPosition();
-        action->position = m_playerPosition;
+        action->setCoordinate(m_playerPosition);
     }
-    input::publish(action);
+    Q_EMIT publishGameAction(action);
 }
 
 // The rose's centre recentres on the player, its arms scroll, from the last
@@ -248,12 +251,11 @@ void TMinimapController::onMinimapDragged(const float deltaX, const float deltaY
 void TMinimapController::dispatchClick(const input::TGameActionList& actions, const int mouseButton, const int modifiers,
                                        const std::span<const input::EGameAction> contextMenuOrder)
 {
-    const input::TGameActionPtr action =
-        m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    const input::IGameActionPtr action = m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
     if (!action)
         return;
-    if (action->type != A::CONTEXT_MENU) {
-        input::publish(action);
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
         return;
     }
     const input::TGameActionList entries = input::contextMenuActions(actions, contextMenuOrder);
@@ -294,7 +296,7 @@ void TMinimapController::updateMouseCursor()
         return;
     }
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-    const input::TGameActionPtr action = m_mapper.map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
+    const input::IGameActionPtr action = m_mapper.map(actionsAtMouse(), input::TGameActionMapper::MinimapContext, Qt::LeftButton, modifiers);
     const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
     if (auto* cursor = Cursor::instance())
         cursor->setLayerShape(Cursor::Minimap, shape);
@@ -309,9 +311,9 @@ void TMinimapController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
-void TMinimapController::handleGameAction(const input::TGameAction& action)
+void TMinimapController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::MINIMAP_ONE_FLOOR_UP:
         m_area.moveZ(-1);
         break;

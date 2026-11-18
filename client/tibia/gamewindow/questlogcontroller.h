@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/questtrackerwidgetcontroller.h"
 
@@ -145,8 +146,10 @@ public:
     /// The tracked missions, shared with the quest tracker widget.
     TQuestTrackerStorage* tracker() { return &m_tracker; }
     /// Loads the per-character file when the logged-in character changed.
-    void ensureStorage();
     void clear();
+    /// The character's questtracking configuration was loaded: the tracker reads it and the
+    /// tracked flags go to the server.
+    void onCharacterConfigurationLoaded();
 
     bool canTrackAdditionalQuestFlags() const override;
     bool isTracked() const override;
@@ -182,7 +185,6 @@ private:
     /// CIP slots.
     void onQuestLinesChanged();
     void onQuestLinePartsChanged(int questLineId);
-    void onCharacterConfigurationLoaded();
     void onFilterOptionChanged();
     /// CIP: closing forgets the selection and resets the list's filter and sorting.
     void resetSelection();
@@ -192,8 +194,6 @@ private:
     QString missionProgress() const;
     QVariantList missionChoices() const;
     QString selectedPartName() const;
-    void loadStorage();
-    void saveStorage();
 
     QTimer m_questLinesChangedTimer;
     questlog::TQuestLogStorage m_storage;
@@ -204,7 +204,17 @@ private:
     TQuestLinePartsSortFilterProxyModel m_partsProxy;
     QPointer<mods::MissionBackend> m_missionBackend;
     std::function<void(const QString&)> m_browseOpener;
-    quint32 m_characterId = 0;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

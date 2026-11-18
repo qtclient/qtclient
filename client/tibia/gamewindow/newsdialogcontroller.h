@@ -18,6 +18,7 @@
 namespace tibia {
 namespace news {
 class TNewsRequestUploader;
+class TNewsViewsUploader;
 }
 }
 
@@ -33,12 +34,14 @@ class TNewsDialogController final : public TDialogController<cip::tibia::gamewin
     Q_OBJECT
 public:
     explicit TNewsDialogController(news::TNewsStorage* storage, QObject* parent = nullptr);
+    /// CIP: the entry list is emptied.
+    ~TNewsDialogController() override;
 
-    void setNewsUploader(news::TNewsRequestUploader* uploader);
+    void setNewsUploaders(news::TNewsRequestUploader* uploader, news::TNewsViewsUploader* viewsUploader);
 
     /// CIP: OPEN_NEWS_DIALOG (an entry id in parameter selects that entry),
     /// OPEN_NEWS_CATEGORY (the category in parameter) and REFRESH_COMPENDIUM_NEWS.
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     EDialogTab dialogTab() const override;
     QString headline() const override;
@@ -67,13 +70,15 @@ private:
     void refresh();
     /// CIP: the model takes `entries`; the selection stays when it is in the
     /// category, a pending entry wins, else the first row is selected.
-    void setEntries(const QVector<news::NewsItem>& entries);
+    void setEntries(const std::vector<news::TNewsEntry>& entries);
     void resetCategoryAndSelection();
 
     QPointer<news::TNewsStorage> m_storage;
     QPointer<news::TNewsRequestUploader> m_uploader;
-    TNewsEntryModel m_model;
-    int m_category = news::NewsItem::UsefulInfo;
+    QPointer<news::TNewsViewsUploader> m_viewsUploader;
+    /// The dialog's entry list over the client's news entry model.
+    TNewsEntrySortProxyModel m_entries;
+    int m_category = news::NEWS_CATEGORY_USEFUL_INFO;
     uint m_pendingEntry = 0;
     bool m_userChoseCategory = false;
 };

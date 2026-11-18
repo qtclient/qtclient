@@ -9,13 +9,13 @@ namespace tutorial {
 class TSessiondumpHintPublishGameAction : public TSessiondumpHintBase
 {
 public:
-    TSessiondumpHintPublishGameAction(EType type, input::TGameActionPtr action);
+    TSessiondumpHintPublishGameAction(EType type, input::IGameActionPtr action);
 
     /// The action; the hint is done afterwards.
     input::TGameActionList execute() override;
 
 protected:
-    input::TGameActionPtr m_action;
+    input::IGameActionPtr m_action;
 };
 
 /// CIP `tutorial::TSessiondumpHintSkipTo`: jumps the replay to a timestamp.

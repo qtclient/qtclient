@@ -4,6 +4,7 @@
 #include "gamewindow/appearanceinstancelistmodel.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "gamewindow/uifocusmanager.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
 
@@ -77,7 +78,7 @@ public:
     QStringList availableClassifications() const override;
     QStringList availableNPCs() const override { return m_availableNPCs; }
 
-    bool hasFocus() const override { return m_hasFocus; }
+    bool hasFocus() const override { return m_focus.hasFocus(); }
 
 public Q_SLOTS:
     void takeFocus() override;
@@ -123,6 +124,8 @@ private Q_SLOTS:
     void onDetailListChanged();
 
 private:
+    /// CIP TSidebarWidgetControllerWithFocusHandling +0xa0.
+    TUiFocusManager m_focus;
     /// QML storage locations.
     enum EStorageLocation
     {
@@ -186,6 +189,11 @@ public:
 
     void setSidebarOptions(config::TSidebarOptions* options);
     TSidebarWidget* current() const;
+
+
+Q_SIGNALS:
+    /// The controller's publishGameAction, forwarded.
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     /// Results or a detail list arrived: the widget shows in a sidebar.

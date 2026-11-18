@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "config/sidebaroptions.h"
 #include "game/playerstatestracker.h"
@@ -86,6 +87,8 @@ private:
     void refreshSlots();
     /// CIP on every slot: counting-down texts.
     void refreshClocks();
+    /// CIP: every player value the panel shows, each emitted when it changed.
+    void onPlayerDataChanged();
     void refreshSoul();
     void refreshCapacity();
     void refreshBlessings();
@@ -96,7 +99,7 @@ private:
     void requestPvpMode(int mode);
     /// CIP : sends the tactics the panel shows.
     void publishTactics();
-    bool handleTacticsAction(const input::TGameAction& action);
+    bool handleTacticsAction(const input::IGameAction& action);
     void readExpireOptions();
     /// CIP: the expiry options apply to every slot.
     void onInventoryOptionsChanged();
@@ -114,6 +117,17 @@ private:
     bool m_autoChaseEnabled = false;
     int m_pvpMode = 0;
     std::vector<client::gamecore::Hook> m_hooks;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

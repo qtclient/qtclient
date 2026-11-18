@@ -46,29 +46,16 @@ public:
     bool isEmpty() const { return m_dialogs.empty(); }
     /// Hides every dialog (leaving the world).
     void hideAll();
-    /// The keyboard hotkeys are off: a dialog without a personal mouse shield
-    /// is on top (CIP calls TEventFilterManager::block
-    /// , whose flag +0x13 keeps the TKeyEventHandler filter out in
-    /// ; an empty stack or a personal-shield dialog unblocks,
-    /// ).
-    bool hotkeysBlocked() const { return m_hotkeysBlocked; }
-    /// CIP / : the top dialog took or gave back the
-    /// keyboard; TEventFilterManager / then release or
-    /// rebind the console's chat input (chatInputFocusChanged).
+    /// Escape: closes the topmost shown dialog with a personal mouse shield;
+    /// false when there is none.
+    bool closeTopShieldedDialog();
+    /// The top dialog's element asks for the focus or lets go
+    /// (TEventFilterManager::requestFocus / releaseFocus); only for the top dialog.
     void dialogTookFocus(const TDialog* dialog);
     void dialogReleasedFocus(const TDialog* dialog);
-    /// CIP TEventFilterManager::block for a TUiFocusManager:
-    /// the hotkeys are off and the chat input lets go of the keyboard.
-    void blockKeyboard();
-    /// Character selection is not a stack dialog. While it is open, walk hotkeys stay off.
+    /// Character selection is not a stack dialog. While it is open, the keyboard is blocked.
     void setCharacterListOpen(bool open);
-    /// CIP TEventFilterManager::unblock : the hotkeys follow
-    /// the stack again and the chat input takes the keyboard back
-    /// (chatInputFocusChanged(true)), once per block.
-    void unblockKeyboard();
 
-Q_SIGNALS:
-    void chatInputFocusChanged(bool bound);
 
 private:
     /// CIP : only the top dialog shows; emits dialogVisible.
@@ -77,10 +64,6 @@ private:
     QQmlEngine* m_engine;
     QPointer<QQuickItem> m_placeholder;
     std::vector<TDialog*> m_dialogs;
-    /// CIP TEventFilterManager .
-    input::TEventFilterManager m_eventFilters;
-    bool m_hotkeysBlocked = false;
-    bool m_keyboardBlocked = false;
     bool m_characterListOpen = false;
 };
 
@@ -100,6 +83,9 @@ public:
     virtual void beforeHide() {}
     virtual void afterShow() {}
     virtual void afterHide() {}
+    /// v19 / v20 (CIP): after the item is made, before it is destroyed.
+    virtual void afterCreate() {}
+    virtual void beforeDestroy() {}
 };
 
 /// What CIP's TDialogControllerBase (ctor) does for a dialog

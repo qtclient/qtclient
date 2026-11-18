@@ -3,15 +3,10 @@
 #include "app/clientoptions.h"
 #include "config/clientoptiondefaults.h"
 #include "config/hotkeyoptions.h"
-#include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "input/inputciptypes.h"
 
-#include <QGuiApplication>
-#include <QKeyEvent>
-#include <QQuickItem>
-#include <QQuickWindow>
 
 #include <algorithm>
 #include <optional>
@@ -35,11 +30,6 @@ const std::unordered_map<QString, tibia::client::Direction>& goActions()
     return actions;
 }
 
-bool isArrow(const int key)
-{
-    return key == Qt::Key_Up || key == Qt::Key_Down || key == Qt::Key_Left || key == Qt::Key_Right;
-}
-
 bool boolOption(const QJsonObject& options, const char* name)
 {
     const QLatin1String key(name);
@@ -48,11 +38,10 @@ bool boolOption(const QJsonObject& options, const char* name)
 
 }
 
-TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(QQuickWindow* window, QQuickItem* chatItem, std::function<int()> chatMode,
-                                                                 QObject* parent)
+TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(std::shared_ptr<TKeyboardStatusStorage> pKeyboardStatusStorage,
+                                                                 std::function<int()> chatMode, QObject* parent)
     : cip::tibia::input::TPlayerMovementInputInterpreter(parent)
-    , m_window(window)
-    , m_chatItem(chatItem)
+    , m_pKeyboardStatusStorage(std::move(pKeyboardStatusStorage))
     , m_chatMode(std::move(chatMode))
 {
     config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
@@ -62,28 +51,12 @@ TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(QQuickWindow* w
         if (name.startsWith(QLatin1String("rotateWith")))
             onOptionsChanged();
     });
-    connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
-            &TPlayerMovementInputInterpreter::onApplicationStateChanged);
-    onHotkeyOptionsChanged();
+    // CIP: TKeyboardInputToGameActionConverter reads the status on every change.
+    connect(m_pKeyboardStatusStorage.get(), &TKeyboardStatusStorage::changed, this, &TPlayerMovementInputInterpreter::update);
     onOptionsChanged();
-    if (window)
-        window->installEventFilter(this);
 }
 
-void TPlayerMovementInputInterpreter::onApplicationStateChanged(const Qt::ApplicationState state)
-{
-    // Leaving the active state forgets every key; presses are ignored until
-    // the application is active again.
-    m_applicationActive = state == Qt::ApplicationActive;
-    if (!m_applicationActive)
-        release();
-}
-
-TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter()
-{
-    if (m_window)
-        m_window->removeEventFilter(this);
-}
+TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter() = default;
 
 void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
 {
@@ -119,6 +92,18 @@ void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
             directions[it->second].push_back({ combined & 0x1ffffff, (combined & Qt::KeypadModifier) != 0 });
         }
     }
+    // The status tracks every direction key of the chat mode, then the enabled
+    // rotate modifiers.
+    std::vector<TKey> tracked;
+    for (const std::vector<TKey>& keys : currentDirections())
+        tracked.insert(tracked.end(), keys.begin(), keys.end());
+    if (m_rotateWithCtrl)
+        tracked.push_back({ Qt::Key_Control, false });
+    if (m_rotateWithShift)
+        tracked.push_back({ Qt::Key_Shift, false });
+    if (m_rotateWithAlt)
+        tracked.push_back({ Qt::Key_Alt, false });
+    m_pKeyboardStatusStorage->setTrackedKeys(tracked);
 }
 
 void TPlayerMovementInputInterpreter::onOptionsChanged()
@@ -127,31 +112,7 @@ void TPlayerMovementInputInterpreter::onOptionsChanged()
     m_rotateWithCtrl = boolOption(options, "rotateWithCtrl");
     m_rotateWithShift = boolOption(options, "rotateWithShift");
     m_rotateWithAlt = boolOption(options, "rotateWithAlt");
-}
-
-bool TPlayerMovementInputInterpreter::eventFilter(QObject* watched, QEvent* event)
-{
-    if (watched == m_window) {
-        switch (event->type()) {
-            case QEvent::KeyPress: onKeyEvent(static_cast<QKeyEvent*>(event), true); break;
-            case QEvent::KeyRelease: onKeyEvent(static_cast<QKeyEvent*>(event), false); break;
-            default: break;
-        }
-    }
-    return QObject::eventFilter(watched, event);
-}
-
-bool TPlayerMovementInputInterpreter::inputAllowsWalk() const
-{
-    if (!tibia::game::isOnline())
-        return false;
-    // CIP TEventFilterManager: personal-mouse-shield dialogs (NPC, etc.) leave the
-    // filter up so walk/hotkeys still run; only modal / focused-UI blocks match
-    // hotkeysBlocked (same gate as TKeyboardShortcutHandler).
-    if (gamewindow::TDialogStackController* dialogs = gamewindow::TDialogStackController::instance(); dialogs && dialogs->hotkeysBlocked())
-        return false;
-    QQuickItem* focus = m_window ? m_window->activeFocusItem() : nullptr;
-    return !focus || !(focus->inherits("QQuickTextInput") || focus->inherits("QQuickTextEdit")) || (m_chatItem && m_chatItem->isAncestorOf(focus));
+    onHotkeyOptionsChanged();
 }
 
 bool TPlayerMovementInputInterpreter::rotates() const
@@ -170,63 +131,14 @@ bool TPlayerMovementInputInterpreter::rotates() const
     return false;
 }
 
-tibia::client::Direction TPlayerMovementInputInterpreter::directionOf(TKey key) const
+const TPlayerMovementInputInterpreter::TDirectionKeys& TPlayerMovementInputInterpreter::currentDirections() const
 {
-    if (isArrow(key.key))
-        key.keypad = false;
-    const TDirectionKeys& directions = m_directions[m_chatMode && m_chatMode() != 0 ? 1 : 0];
-    const auto it = std::find_if(directions.begin(), directions.end(), [&key](const std::vector<TKey>& keys) {
-        return std::find(keys.begin(), keys.end(), key) != keys.end();
-    });
-    return it == directions.end() ? tibia::client::InvalidDirection : tibia::client::Direction(it - directions.begin());
-}
-
-bool TPlayerMovementInputInterpreter::isTracked(const TKey& key) const
-{
-    if (directionOf(key) != tibia::client::InvalidDirection)
-        return true;
-    return (key.key == Qt::Key_Control && m_rotateWithCtrl) || (key.key == Qt::Key_Shift && m_rotateWithShift)
-        || (key.key == Qt::Key_Alt && m_rotateWithAlt);
+    return m_directions[m_chatMode && m_chatMode() != 0 ? 1 : 0];
 }
 
 bool TPlayerMovementInputInterpreter::statusHolds(const int key) const
 {
-    return std::any_of(m_status.begin(), m_status.end(), [key](const TKey& held) { return held.key == key; });
-}
-
-/// CIP TKeyEventHandler::eventFilter + TKeyboardStatusStorage::v13 / v14.
-void TPlayerMovementInputInterpreter::onKeyEvent(const QKeyEvent* event, const bool pressed)
-{
-    if (!pressed && event->isAutoRepeat())
-        return;
-    TKey key{ event->key(), event->modifiers().testFlag(Qt::KeypadModifier) };
-    if (isArrow(key.key))
-        key.keypad = false;
-    if (!isTracked(key))
-        return;
-    if (pressed && !m_applicationActive)
-        return;
-    const std::vector<TKey> before = m_status;
-    if (pressed) {
-        m_status.clear();
-        static constexpr std::array<int, 5> Modifiers{ Qt::Key_Shift, Qt::Key_Control, Qt::Key_Alt, Qt::Key_Meta,
-                                                       Qt::Key_AltGr };
-        if (std::find(Modifiers.begin(), Modifiers.end(), key.key) == Modifiers.end())
-            m_status.push_back(key);
-        const Qt::KeyboardModifiers modifiers = event->modifiers();
-        if (modifiers.testFlag(Qt::ControlModifier))
-            m_status.push_back({ Qt::Key_Control, false });
-        if (modifiers.testFlag(Qt::AltModifier))
-            m_status.push_back({ Qt::Key_Alt, false });
-        if (modifiers.testFlag(Qt::ShiftModifier))
-            m_status.push_back({ Qt::Key_Shift, false });
-        if (modifiers.testFlag(Qt::MetaModifier))
-            m_status.push_back({ Qt::Key_Meta, false });
-    } else if (std::find(m_status.begin(), m_status.end(), key) != m_status.end()) {
-        m_status.clear();
-    }
-    if (m_status != before)
-        update();
+    return m_pKeyboardStatusStorage->isPressed({ key, false });
 }
 
 void TPlayerMovementInputInterpreter::update()
@@ -235,12 +147,12 @@ void TPlayerMovementInputInterpreter::update()
     // the status walks (no modifier in the status) or turns; only a change
     // becomes a new intent (v14).
     TIntent intent;
-    if (inputAllowsWalk()) {
-        std::optional<TKey> recent;
-        for (auto it = m_status.rbegin(); it != m_status.rend() && !recent; ++it) {
-            if (directionOf(*it) != tibia::client::InvalidDirection)
-                recent = *it;
-        }
+    {
+        const TDirectionKeys& directions = currentDirections();
+        std::vector<TKey> walkKeys;
+        for (const std::vector<TKey>& keys : directions)
+            walkKeys.insert(walkKeys.end(), keys.begin(), keys.end());
+        const std::optional<TKey> recent = m_pKeyboardStatusStorage->mostRecentlyPressed(walkKeys);
         static constexpr std::array<int, 5> Blocking{ Qt::Key_Shift, Qt::Key_Control, Qt::Key_Alt, Qt::Key_Meta,
                                                       Qt::Key_AltGr };
         const bool blocked = std::any_of(Blocking.begin(), Blocking.end(), [this](const int key) { return statusHolds(key); });
@@ -251,7 +163,6 @@ void TPlayerMovementInputInterpreter::update()
         static constexpr std::array<tibia::client::Direction, 4> turning{
             tibia::client::North, tibia::client::East, tibia::client::West, tibia::client::South,
         };
-        const TDirectionKeys& directions = m_directions[m_chatMode && m_chatMode() != 0 ? 1 : 0];
         const auto bound = [&](const tibia::client::Direction direction) {
             const std::vector<TKey>& keys = directions[direction];
             return std::find(keys.begin(), keys.end(), *recent) != keys.end();
@@ -277,26 +188,18 @@ void TPlayerMovementInputInterpreter::update()
     m_intent = intent;
     switch (intent.kind) {
     case EIntentKind::Walk:
-        (void)TPlayerMovementIntent::direction(TMovementIntentDirection(static_cast<int>(intent.direction)).direction());
-        publish(makeAction(A::APPLY_AUTOCHASE_SETTING));
-        publish(makeAction(A::STOP_FOLLOWING_CREATURE));
+        Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
+        Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
         tibia::game::localPlayerHoldDirection(intent.direction);
         break;
     case EIntentKind::Rotate:
-        (void)TPlayerMovementIntent::rotate(TMovementIntentRotate(static_cast<int>(intent.direction)).direction());
         tibia::game::localPlayerRotate(intent.direction);
         break;
     case EIntentKind::Stop:
-        (void)TPlayerMovementIntent::stop();
         tibia::game::localPlayerReleaseDirection();
         break;
     }
 }
 
-void TPlayerMovementInputInterpreter::release()
-{
-    m_status.clear();
-    update();
-}
 
 }

@@ -24,18 +24,25 @@ public:
     explicit TDragAndDropControllerEventFilter(QQuickItem* root, QObject* parent = nullptr);
     ~TDragAndDropControllerEventFilter() override;
 
-    /// Leaves the current drop area (a drag-leave event).
-    void leaveTarget();
+public Q_SLOTS:
+    /// The drop area the mouse was last over went away.
+    void onLastFoundDropAreaDestroyed();
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
-    void moveTo(const QPointF& scenePosition, Qt::KeyboardModifiers modifiers, bool drop);
+    /// Stops following the drop area the mouse was last over.
+    void forgetLastFoundDropArea();
+    /// Sends the last found drop area a drag-leave and forgets it.
+    void leaveLastFoundDropArea();
+    /// The topmost visible, enabled drop area at `scenePosition` below `root`
+    /// that accepts `keys`.
+    static QQuickItem* findDropArea(const QPointF& scenePosition, QQuickItem* root, const QStringList& keys);
 
-    QPointer<QQuickItem> m_root;
+    QQuickItem* m_root;
     QMimeData* m_mimeData;
-    QPointer<QQuickItem> m_target;
+    QQuickItem* m_lastFoundDropArea = nullptr;
 };
 
 /// Moving objects with the mouse (CIP: TDragAndDropController, ctor
@@ -54,18 +61,23 @@ public:
     static TDragAndDropController* instance();
 
     /// CIP . `source` is the item the drag started from.
-    void startDrag(const input::TGameActionPtr& action, QObject* source);
+    void startDrag(const input::TMoveObjectPtr& action, QObject* source);
     /// CIP : the dragged action, which the drag no longer holds.
-    input::TGameActionPtr takeAction();
+    input::TMoveObjectPtr takeAction();
     /// CIP : the modifiers at the drop.
     Qt::KeyboardModifiers modifiers() const { return m_modifiers; }
     bool isDragging() const { return m_filterInstalled; }
 
 private:
-    /// CIP : the drag ended (dropped or cancelled).
-    void finish();
-    /// CIP : the icon follows the mouse.
-    void moveIcon();
+public Q_SLOTS:
+    /// The drag ended (dropped or cancelled).
+    void onDragAndDropEventFilterFinished();
+    /// The drop happened with these modifiers held.
+    void onDragAndDropConfirmed(Qt::KeyboardModifiers KeyboardModifiers);
+    /// The icon follows the mouse.
+    void onDragAndDropMousePositionChanged();
+
+private:
     /// CIP : the icon shows the dragged object (Thing or CIP typeId).
     /// Creatures leave the icon empty — SingleObject cannot draw outfits.
     void updateIcon(uint16_t objectClientId, const Position& position, int stackPosition,
@@ -74,7 +86,7 @@ private:
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_icon;
     TDragAndDropControllerEventFilter* m_filter;
-    input::TGameActionPtr m_action;
+    input::TMoveObjectPtr m_action;
     QPointer<QQuickItem> m_source;
     Qt::KeyboardModifiers m_modifiers;
     bool m_filterInstalled = false;

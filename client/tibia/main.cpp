@@ -1,17 +1,11 @@
 #include "app/bootstrap.h"
 #include "mods/modloader.h"
-#include "mods/pack_host_abi.h"
-#include <qtclient/pack_host.h>
+#include "mods/registry.h"
 
-#include <exception>
 #include "app/clientoptions.h"
-#include "config/optionspages.h"
-#include "gamewindow/createcharacterdialogcontroller.h"
-#include "screenshot/screenshotciptypes.h"
 #include "app/crashlog.h"
 #include "app/launcherenv.h"
 #include "app/portalurls.h"
-#include "app/sessionbootstrap.h"
 #if defined(__EMSCRIPTEN__)
 #include "browser/qtclient_opfs_backend.h"
 #endif
@@ -19,94 +13,10 @@
 #include "app/qtplatformwindow.h"
 #include "client/clientciptypes.h"
 #include "client/gameclient.h"
-#include "client/gamecore.h"
-#include <client/const.h>
-
-#include "game/gameservergamesession.h"
-#include "game/sessiondumpgamesession.h"
-#include "gamewindow/actionbarmanager.h"
-#include "gamewindow/cooldownbarcontroller.h"
-#include "gamewindow/buttonbarcontroller.h"
 #include "config/hotkeyoptions.h"
-#include "gamewindow/chatcontroller.h"
-#include "gamewindow/containerstoragecontroller.h"
-#include "gamewindow/contextmenucontroller.h"
-#include "gamewindow/dialogmanager.h"
-#include "gamewindow/draganddropcontroller.h"
-#include "gamewindow/cyclopediadialogcontroller.h"
-#include "cyclopedia/iteminfostorage.h"
-#include "gamewindow/informationdialogs.h"
-#include "gamewindow/remainingdialogs.h"
-#include "gamewindow/newsdialogcontroller.h"
-#include "gamewindow/killtrackerwidgetcontroller.h"
-#include "gamewindow/loottrackingwidgetcontroller.h"
-#include "gamewindow/rewardwalldialogcontroller.h"
-#include "gamewindow/taskboarddialogcontroller.h"
-#include "gamewindow/spelllistwidgetcontroller.h"
-#include "gamewindow/unjustifiedpointswidgetcontroller.h"
-#include "gamewindow/imbuementtrackerwidgetcontroller.h"
-#include "gamewindow/creaturetrackerwidgetcontroller.h"
-#include "gamewindow/bosstrackerwidgetcontroller.h"
-#include "gamewindow/depotsearchwidgetcontroller.h"
-#include "gamewindow/playerguidewidgetcontroller.h"
-#include "gamewindow/cipsoftuieventbridge.h"
-#include "gamewindow/questlogcontroller.h"
-#include "cyclopedia/creaturetrackerstorage.h"
-#include "bossbestiary/bosstrackerstorage.h"
-#include "analysers/analyserstorages.h"
-#include "analysers/analyserwidgets.h"
-#include "proficiency/proficiencystorage.h"
-#include "proficiency/weaponproficiencydialogcontroller.h"
-#include "proficiency/weaponproficiencyshapedialogs.h"
-#include "gamewindow/preydialogcontroller.h"
-#include "gamewindow/mapwindowcontroller.h"
-#include "gamewindow/marketcontroller.h"
-#include "gamewindow/imbuingdialogcontroller.h"
-#include "gamewindow/exaltationforgedialogcontroller.h"
-#include "skillwheel/skillwheelmanager.h"
-#include "gamewindow/minimapcontroller.h"
-#include "gamewindow/mousecursorcontroller.h"
-#include "gamewindow/npcdialogcontroller.h"
-#include "gamewindow/fpslatencyindicatorcontroller.h"
-#include "gamewindow/optionsmenudialogcontroller.h"
-#include "gamewindow/blessingsdialogcontroller.h"
-#include "gamewindow/tutorialhintdialogcontroller.h"
-#include "gamewindow/battlelistcontroller.h"
-#include "gamewindow/playerinventoryandstatuscontroller.h"
-#include "gamewindow/playertradecontroller.h"
-#include "gamewindow/premiumpanelcontroller.h"
-#include "gamewindow/selectobjectamountdialogcontroller.h"
-#include "gamewindow/sidebarpanelsmanager.h"
-#include "gamewindow/sidebarwidgetsmanager.h"
-#include "gamewindow/stashdialogcontroller.h"
-#include "gamewindow/managelootcontainerdialogcontroller.h"
-#include "quickloot/managedcontainerstorage.h"
-#include "gamewindow/statusbarcontroller.h"
-#include "gamewindow/storeandresourcebalancehelpercontroller.h"
-#include "gamewindow/storedialogcontroller.h"
-#include "gamewindow/vipwidgetcontroller.h"
-#include "gamewindow/bugreportdialogcontroller.h"
-#include "gamewindow/deathdialogcontroller.h"
-#include "gamewindow/messagedialogcontroller.h"
-#include "gamewindow/naggingmessagedialogcontroller.h"
-#include "gamewindow/reportviolationcontroller.h"
-#include "exivaoptions/exivaoptionsdialogcontroller.h"
-#include "mods/registry.h"
-#include "mods/modloader.h"
-#include "store/dynamicallyloadedimage.h"
-#include "input/domainhandlers.h"
-#include "input/eventfilters.h"
-#include "input/gameactionhandlers.h"
-#include "input/genericgameactionhandler.h"
-#include "input/keyboardshortcuthandler.h"
-#include "input/playermovementgameactionhandler.h"
-#include "input/playermovementinputinterpreter.h"
-#include "minimap/minimapmanager.h"
-#include "qmlcomponents/soundhelper.h"
 #endif
 #include "controllers/characterselectioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
-#include "gamewindow/sidebarmanager.h"
 
 #include <QCommandLineParser>
 #include <QDateTime>
@@ -118,6 +28,8 @@
 #include <QSaveFile>
 #include <QSettings>
 #include <QGuiApplication>
+#include <QSettings>
+#include <QStandardPaths>
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -245,35 +157,6 @@ void restoreClientWindowGeometry(QQuickWindow* window)
         window->showMaximized();
 }
 
-/// CIP quit-game prompt on window close (Exit / Logout / Cancel).
-class QuitCloseFilter final : public QObject
-{
-public:
-    QuitCloseFilter(gamewindow::TGameWindowController* controller, QObject* parent = nullptr)
-        : QObject(parent)
-        , m_controller(controller)
-    {
-    }
-
-    bool eventFilter(QObject* watched, QEvent* event) override
-    {
-        if (event->type() != QEvent::Close || !m_controller)
-            return QObject::eventFilter(watched, event);
-        // SIGINT/SIGTERM is handled by asking quitPressed, same as this close.
-        // Only an intentional relaunch (graphics-engine restart) skips the prompt.
-        if (gamewindow::TGameWindowController::processExitAllowed())
-            m_controller->setAllowWindowClose(true);
-        if (m_controller->allowWindowClose())
-            return QObject::eventFilter(watched, event);
-        event->ignore();
-        m_controller->quitPressed();
-        return true;
-    }
-
-private:
-    QPointer<gamewindow::TGameWindowController> m_controller;
-};
-
 void saveClientWindowGeometry(QQuickWindow* window)
 {
     if (!window)
@@ -342,20 +225,19 @@ int checkQml(QQmlEngine& engine)
     return failed;
 }
 
-QList<gamewindow::CharacterEntry> previewCharacters()
+authentication::TCharacterList previewCharacters()
 {
-    const auto entry = [](const char* name, int level, const char* vocation, int outfit, bool main = false) {
-        gamewindow::CharacterEntry c;
+    const auto entry = [](const char* name, int level, const char* vocation, uint16_t outfit, bool main = false) {
+        authentication::TCharacter c;
         c.name = QString::fromLatin1(name);
+        c.worldId = 1;
         c.level = level;
         c.vocation = QString::fromLatin1(vocation);
-        c.world = QCoreApplication::applicationName();
-        c.worldRules = QStringLiteral("Optional PvP");
         c.outfitId = outfit;
-        c.headColor = QColor(0x9a, 0x7d, 0x5a);
-        c.torsoColor = QColor(0x3e, 0x5e, 0x9a);
-        c.legsColor = QColor(0x6a, 0x4a, 0x2a);
-        c.detailColor = QColor(0x9a, 0x2a, 0x2a);
+        c.headColor = 78;
+        c.torsoColor = 69;
+        c.legsColor = 58;
+        c.detailColor = 76;
         c.isMainCharacter = main;
         return c;
     };
@@ -366,6 +248,15 @@ QList<gamewindow::CharacterEntry> previewCharacters()
         entry("Dorn Mossbeard", 42, "Elder Druid", 144),
         entry("Eli Ashwalker", 8, "None", 128),
     };
+}
+
+authentication::TWorldList previewWorlds()
+{
+    authentication::TWorld world;
+    world.id = 1;
+    world.name = QCoreApplication::applicationName();
+    world.pvpType = 1;
+    return { { world.id, world } };
 }
 
 }
@@ -397,6 +288,15 @@ int main(int argc, char** argv)
     // OPFS (~/.config/<org>/<app>.ini), as Linux desktop does.
     QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
+    // QTCLIENT_TEST_PATHS=1 (render check, smoke runs): settings and data go to
+    // Qt's test locations (~/.qttest), never the user's Application Support or
+    // Preferences.
+    if (qEnvironmentVariableIntValue("QTCLIENT_TEST_PATHS") == 1) {
+        QStandardPaths::setTestModeEnabled(true);
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+                           QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation));
+    }
     tibia::app::installCrashLog();
 
     // --no-mods → CipSoft; else all qtclient mods/<id>.
@@ -550,12 +450,14 @@ int main(int argc, char** argv)
     const bool preview = parser.isSet(QStringLiteral("preview"));
     gamewindow::TCharacterSelectionController previewController;
     gamewindow::TCharacterSelectionController* controller = &previewController;
-    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::characterChosen, [](const gamewindow::CharacterEntry& c) {
-        qInfo().noquote() << "character selected:" << c.name << c.world;
-    });
-    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::cancelled, &application, &QCoreApplication::quit);
-    if (preview)
-        previewController.setAccount(QStringLiteral("Premium Account (365 days left)"), true, previewCharacters(), 0);
+    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::requestCharacterLogin,
+                     [](const gamewindow::TCharacterLoginData& c) { qInfo().noquote() << "character selected:" << c.characterName << c.worldName; });
+    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::abort, &application, &QCoreApplication::quit);
+    if (preview) {
+        previewController.setPremium(1, 365);
+        previewController.setCharacters(previewCharacters(), previewWorlds());
+        previewController.setLastSelectedCharacterName(QStringLiteral("Aria Stormblade"));
+    }
 
 #ifdef TIBIA_WITH_GAMECORE
     client::TGameClient gameClient;
@@ -563,167 +465,17 @@ int main(int argc, char** argv)
     if (!preview)
         controller = gameClient.characterSelection();
 
-    // CIP ShowClientOutOfDate: caption "info", body client_too_old, single Restart
-    // (YES/Return). Restart writes QTCLIENT_RESTART_FILE so the launcher updates.
-    using OutOfDateBox = gamewindow::TMessageDialogController;
-    OutOfDateBox clientOutOfDateDialog;
-    clientOutOfDateDialog.setCloseOnButtonClicked(true);
-    clientOutOfDateDialog.setButtons(
-        { new gamewindow::TMessageDialogButton(qtTrId("restart"), OutOfDateBox::Button::YES,
-                                               QKeySequence(QStringLiteral("Return"))) });
-    QObject::connect(&gameClient, &client::TGameClient::clientOutOfDate, &clientOutOfDateDialog, [&] {
-        if (!clientOutOfDateDialog.dialog()->isInStack())
-            clientOutOfDateDialog.showMessage(qtTrId("info"), qtTrId("client_too_old"));
-    });
-    QObject::connect(&clientOutOfDateDialog, &OutOfDateBox::acceptClicked, &application, [] {
-        const QString marker = qEnvironmentVariable("QTCLIENT_RESTART_FILE");
-        if (!marker.isEmpty()) {
-            QSaveFile file(marker);
-            if (file.open(QIODevice::WriteOnly) && file.write("1") == 1)
-                file.commit();
-        }
-        QCoreApplication::quit();
-    });
-#endif
-
-    // CIP's game window: the start screen until the world is entered, then the
-    // map, sidebars, chat and bars. Dialogs go into its dialogPlaceholder.
-    gamewindow::TGameWindowController gameWindowController(placeholder);
-#ifdef TIBIA_WITH_GAMECORE
-    // kill / SIGTERM / Ctrl+C: same Exit / Logout / Cancel prompt as the window close.
-    client::gamecore::setForceExitHandler([&gameWindowController] { gameWindowController.quitPressed(); });
-    gamewindow::TStatusBarController statusBarController;
-    gameWindowController.setStatusBarController(&statusBarController);
-#endif
-    auto* quitCloseFilter = new QuitCloseFilter(&gameWindowController, window);
-    window->installEventFilter(quitCloseFilter);
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameExitRequested, window,
-                     [window, &gameWindowController
-#ifdef TIBIA_WITH_GAMECORE
-                      ,
-                      &gameClient
-#endif
-    ] {
-#ifdef TIBIA_WITH_GAMECORE
-                         // Close of the last window can exit from AppKit before aboutToQuit.
-                         gameClient.shutdown();
-#endif
-                         gameWindowController.setAllowWindowClose(true);
-                         window->close();
-                         QCoreApplication::quit();
-                     });
-#ifdef TIBIA_WITH_GAMECORE
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameLogoutRequested, &gameClient,
-                     [&gameClient, &gameWindowController] {
-                         if (game::TGameserverGameSession* session = gameClient.session())
-                             session->requestLogout();
-                         else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
-                             dump->requestLogout();
-                         else
-                             gameWindowController.showStartScreen();
-                     });
-#else
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::quitGameLogoutRequested, &application,
-                     &QCoreApplication::quit);
-#endif
-    QQmlComponent gameWindowComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/gamewindow.qml")));
-    std::unique_ptr<QObject> gameWindow(gameWindowComponent.create());
-    auto* gameWindowItem = qobject_cast<QQuickItem*>(gameWindow.get());
-    if (!gameWindowItem) {
-        qCritical().noquote() << gameWindowComponent.errorString();
-        return 1;
-    }
-    gameWindowItem->setParentItem(placeholder);
-    gameWindowItem->setProperty("controller", QVariant::fromValue<QObject*>(&gameWindowController));
-    gameWindowController.setGameWindowItem(gameWindowItem);
-    gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
-    gameWindowController.showStartScreen();
-    auto* dialogPlaceholder = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dialogPlaceholder"));
-    auto* mapWindowPane = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("mapWindowPane"));
-    gamewindow::TSidebarManager sidebarManager(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("rightSidebarManager")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarPlaceholder")),
-                                               gameWindowItem->findChild<QQuickItem*>(QStringLiteral("leftSidebarManager")));
-    // CIP clientwindow.qml: minimum width grows with each sidebar so the 15×11
-    // map is not crushed. The manager already emitted before this connection.
-    const auto applySidebarCount = [window, &sidebarManager] {
-        window->setProperty("numberOfSidebars", static_cast<int>(sidebarManager.sidebarIds().size()));
-        if (QObject* split = window->findChild<QObject*>(QStringLiteral("mainFrame")))
-            QTimer::singleShot(0, split, [split] { QMetaObject::invokeMethod(split, "correctLayout"); });
-    };
-    applySidebarCount();
-    QObject::connect(&sidebarManager, &gamewindow::TSidebarManager::numberOfSidebarsChanged, window, applySidebarCount);
-
-    QQmlComponent dialogComponent(engine.get(), QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/CharacterSelection.qml")));
-    std::unique_ptr<QObject> dialog(dialogComponent.beginCreate(engine->rootContext()));
-    auto* dialogItem = qobject_cast<QQuickItem*>(dialog.get());
-    if (!dialogItem) {
-        qCritical().noquote() << dialogComponent.errorString();
-        return 1;
-    }
-    dialogComponent.setInitialProperties(dialogItem, { { QStringLiteral("controller"), QVariant::fromValue<QObject*>(controller) } });
-    dialogItem->setParentItem(dialogPlaceholder);
-
-    QObject productHost;
-    {
-        tibia::mods::ModContext earlyCtx;
-        earlyCtx.engine = engine.get();
-        earlyCtx.rootItem = window->contentItem();
-        earlyCtx.gameClient = &gameClient;
-        earlyCtx.gameHost = gameClient.gameHost();
-        earlyCtx.host = &productHost;
-        earlyCtx.launcherEnv = &env;
-        tibia::mods::earlyBootstrapAll(earlyCtx);
-    }
-    dialogComponent.completeCreate();
-    dialogItem->setVisible(controller == &previewController);
-
-#ifdef TIBIA_WITH_GAMECORE
-    client::TGameClient::Options clientOptions;
+    client::TGameClient::TGameWindowSetup setup;
+    setup.engine = engine.get();
+    setup.window = window;
+    setup.placeholder = placeholder;
+    setup.env = env;
+    setup.preview = preview;
+    setup.characterSelection = controller;
+    setup.argv0 = QCoreApplication::applicationFilePath();
+    setup.workDir = QDir::currentPath();
     if (!preview) {
-        QObject::connect(&gameClient, &client::TGameClient::characterSelectionRequested, dialogItem, [dialogItem, &gameWindowController] {
-            gameWindowController.setAuthenticated(true);
-            dialogItem->setVisible(true);
-            if (tibia::game::isOnline()) {
-                if (auto* stack = gamewindow::TDialogStackController::instance())
-                    stack->setCharacterListOpen(true);
-            }
-            // CIP initialFocusItem is the character table: Up/Down move the row, Return confirms.
-            QTimer::singleShot(0, dialogItem, [dialogItem] {
-                QObject* focus = dialogItem->property("initialFocusItem").value<QObject*>();
-                if (auto* item = qobject_cast<QQuickItem*>(focus))
-                    item->forceActiveFocus(Qt::PopupFocusReason);
-                else
-                    dialogItem->forceActiveFocus(Qt::PopupFocusReason);
-            });
-        });
-        QObject::connect(&gameClient, &client::TGameClient::characterSelectionClosed, dialogItem, [dialogItem] {
-            dialogItem->setVisible(false);
-            if (auto* stack = gamewindow::TDialogStackController::instance())
-                stack->setCharacterListOpen(false);
-        });
-        QObject::connect(&gameClient, &client::TGameClient::returnToLoginRequested, &gameWindowController, [&gameWindowController] {
-            gameWindowController.setAuthenticated(false);
-        });
-        // Start screen with the account still "authenticated" hides the login mask.
-        // If the character list is also closed (dropped switch, refused reconnect),
-        // put one of those surfaces back. Deferred so a logout that opens the list
-        // in the same turn is left alone.
-        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::gameWindowStateChanged, dialogItem,
-                         [dialogItem, &gameClient, &gameWindowController] {
-                             if (!gameWindowController.property("gameWindowState").toString().isEmpty())
-                                 return;
-                             QTimer::singleShot(0, dialogItem, [dialogItem, &gameClient, &gameWindowController] {
-                                 if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter() || dialogItem->isVisible())
-                                     return;
-                                 if (!gameWindowController.property("isAuthenticated").toBool())
-                                     return;
-                                 gameClient.ensureLoginSurface();
-                             });
-                         });
-        QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::accountLoginRequested, &gameClient,
-                         &client::TGameClient::submitCredentials);
-
+        client::TGameClient::Options& clientOptions = setup.options;
         clientOptions.env = env;
         clientOptions.account = parser.value(QStringLiteral("account"));
         if (clientOptions.account.isEmpty())
@@ -739,482 +491,9 @@ int main(int argc, char** argv)
         if (clientOptions.recordTo.isEmpty())
             clientOptions.recordTo = qEnvironmentVariable("QTCLIENT_RECORD");
         clientOptions.replay = parser.value(QStringLiteral("replay"));
-        // CLI credentials / session replay: hide CIP's start-screen login mask.
-        if (!clientOptions.account.isEmpty() || !clientOptions.replay.isEmpty())
-            gameWindowController.setAuthenticated(true);
-        // start runs after the dialog stack + bootstrap so login errors can show.
-    } else {
-        gameWindowController.setAuthenticated(true);
     }
-    const bool softwareRenderer = window->rendererInterface()->graphicsApi() == QSGRendererInterface::Software;
-    auto* mapWindowController = new gamewindow::TMapWindowController(mapWindowPane, softwareRenderer, mapWindowPane);
-    mapWindowController->setRenderProvider(gameClient.worldMapRenderProvider());
-    mapWindowController->syncFov();
-    QObject::connect(mapWindowController, &gamewindow::TMapWindowController::unusedWidthChanged, &sidebarManager,
-                     &gamewindow::TSidebarManager::onUnusedWidthChanged);
-    mapWindowController->onUnusedWidthChanged();
-
-    gamewindow::TContextMenuController contextMenu(engine.get(), window->contentItem());
-    gamewindow::TDialogStackController dialogStack(engine.get(), dialogPlaceholder);
-#ifdef TIBIA_WITH_GAMECORE
-    // CIP TGameClient: a crash dump of the last run offers a crash report.
-    // CipSoft checks at the end of TGameClient's constructor; qtclient's
-    // dialogs need the dialog stack first.
-    if (!preview)
-        gameClient.checkForCrashDump();
-#endif
-    // CIP session chrome (WaitDialog, errors, create account/character, keep_renderer).
-    // Must run after the dialog stack so MessageDialog / WaitDialog can show.
-    std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
-    if (!preview) {
-        sessionBootstrap = std::make_unique<app::TSessionBootstrap>(&gameClient, env, &gameWindowController, &productHost);
-    }
-    QObject::connect(&gameClient, &client::TGameClient::sessionEmailAvailable, &gameWindowController,
-                     &gamewindow::TGameWindowController::rememberLoginEmailIfEnabled);
-    if (!preview) {
-        if (!gameClient.start(QCoreApplication::applicationFilePath(), QDir::currentPath(), clientOptions))
-            return 1;
-    }
-    // CIP wires these controller signals to gamewindow.qml; TEventFilterManager
-    // emits them while a dialog is up, so dialog inputs get the focus.
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::bindFocusToChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "bindFocusToChatInput"); });
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::releaseFocusFromChatInput, gameWindowItem,
-                     [gameWindowItem] { QMetaObject::invokeMethod(gameWindowItem, "releaseFocusFromChatInput"); });
-    QObject::connect(&dialogStack, &gamewindow::TDialogStackController::dialogVisible, &gameWindowController, [&gameWindowController](bool visible) {
-        if (visible)
-            Q_EMIT gameWindowController.releaseFocusFromChatInput();
-        else
-            Q_EMIT gameWindowController.bindFocusToChatInput();
-    });
-    QObject::connect(&dialogStack, &gamewindow::TDialogStackController::chatInputFocusChanged, &gameWindowController, [&gameWindowController](bool bound) {
-        if (bound)
-            Q_EMIT gameWindowController.bindFocusToChatInput();
-        else
-            Q_EMIT gameWindowController.releaseFocusFromChatInput();
-    });
-    gamewindow::TSelectObjectAmountDialogController splitStackDialog;
-    gamewindow::TInformationDialogs informationDialogs;
-    gamewindow::TDragAndDropController dragAndDrop(window->contentItem(),
-                                                   gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dragApperanceInstanceIcon")));
-    engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), &dragAndDrop);
-    store::TStoreStorage storeStorage;
-    store::TStoreProtocolMessageHandler storeMessages;
-    storeMessages.setStorage(&storeStorage);
-    gamewindow::TStoreAndResourceBalanceHelperController storeBalance(&storeStorage);
-    engine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"), &storeBalance);
-    gamewindow::TStoreDialogController storeDialog(&storeStorage, &storeMessages);
-    gamewindow::TStoreButtonController storeButton(&storeDialog);
-    market::TMarketStorage marketStorage;
-    market::TMarketProtocolMessageHandler marketMessages(&marketStorage);
-    storeMessages.setMarketStorage(&marketStorage);
-    gamewindow::TMarketController marketController(&marketStorage, &marketMessages);
-    marketController.setOpenStore([&storeDialog] { storeDialog.open(); });
-    gamewindow::TStashDialogController stashDialog;
-    QObject::connect(&marketController, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, &stashDialog,
-                     &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
-    quickloot::TManagedContainerStorage managedContainers;
-    gamewindow::TManageLootContainerDialogController manageLootDialog;
-    QObject::connect(&manageLootDialog, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, &stashDialog,
-                     &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
-    imbuing::TImbuingStorage imbuingStorage;
-    gamewindow::TImbuingDialogController imbuingDialog(&imbuingStorage);
-    exaltation::TExaltationStorage exaltationStorage;
-    gamewindow::TExaltationForgeDialogController exaltationForgeDialog(&exaltationStorage);
-    storeBalance.setExaltationStorage(&exaltationStorage);
-    skillwheel::TSkillWheelManager skillWheel;
-    input::setActionHandler(input::EGameAction::OPEN_STORE, [&storeDialog](const input::TGameAction& action) {
-        storeDialog.openWith(action.parameter, action.instance, action.text);
-        return true;
-    });
-    // The daily reward: the session's storage and its game actions (238, 243, 244).
-    dailyreward::TDailyRewardStorage dailyRewardStorage;
-    dailyreward::TDailyRewardGameActionHandler dailyRewardActions(&dailyRewardStorage);
-    input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
-        if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
-            cursor->setLenshelp(true);
-        return true;
-    });
-    input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [&gameClient](const input::TGameAction&) {
-        if (minimap::TMinimapManager* minimap = gameClient.minimap())
-            minimap->loadDefaultTilesFromResources();
-        return true;
-    });
-    screenshot::TScreenshotManager screenshotManager;
-    screenshotManager.configure(window, mapWindowPane);
-    const auto takeScreenshot = [&screenshotManager](const input::TGameAction& action) {
-        return screenshotManager.handleGameAction(action);
-    };
-    input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
-    input::setActionHandler(input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [](const input::TGameAction&) {
-        auto open = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-        open->parameter = 6; // Bosstiary tab (CIP OPEN_CYCLOPEDIA)
-        input::publish(open);
-        return true;
-    });
-    input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::TGameAction& action) {
-        // CIP: parameter selects a skill immediately; otherwise open MultiOfflineTrainingDialog.
-        if (action.parameter > 0) {
-            tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(action.parameter));
-            return true;
-        }
-        if (auto* offline = gamewindow::TMultiOfflineTrainingDialogController::instance())
-            offline->showSkillsDialog();
-        return true;
-    });
-    qmlcomponents::installSoundActionHandler();
-
-    gamewindow::TSidebarPanelsManager sidebarPanels(&sidebarManager, engine.get());
-    gamewindow::TSidebarWidgetsManager sidebarWidgets(&sidebarManager, gameWindowItem, engine.get());
-    const QJsonObject storedOptions = app::ClientOptions::load().options();
-    const int controlScheme = storedOptions.value(QLatin1String("controlSchemeIndex")).toInt(0);
-    const int lootScheme = storedOptions.value(QLatin1String("lootSchemeIndex")).toInt(0);
-    gamewindow::TMinimapController* minimapController = sidebarPanels.minimap();
-    if (minimapController)
-        minimapController->setControlScheme(controlScheme);
-    if (gamewindow::TPlayerInventoryAndStatusController* inventory = sidebarPanels.inventory()) {
-        inventory->setControlScheme(controlScheme);
-        inventory->setLootScheme(lootScheme);
-    }
-    gamewindow::TContainerStorageController containers(&sidebarManager, gameWindowItem, engine.get());
-    containers.setControlScheme(controlScheme);
-    containers.setLootScheme(lootScheme);
-    sidebarWidgets.setContainerStorage(&containers);
-    sidebarWidgets.setControlScheme(controlScheme);
-    sidebarWidgets.battleLists()->setWorldMapRenderProvider(gameClient.worldMapRenderProvider());
-    gamewindow::TVipWidgetManager vipWidget(gameWindowItem, engine.get());
-    vipWidget.setControlScheme(controlScheme);
-    informationDialogs.setControlScheme(controlScheme);
-    exivaoptions::TExivaOptionsDialogController exivaOptionsDialog;
-    exivaOptionsDialog.setStorage(vipWidget.exivaOptions(), [&gameClient] { return gameClient.worldType(); });
-    gamewindow::TReportViolationController reportViolation;
-    gamewindow::TBugReportDialogController bugReport;
-    gamewindow::TNaggingMessageDialogController naggingDialog;
-    gamewindow::TDeathDialogController deathDialog;
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Vip, gamewindow::TSidebarWidgetsManager::hooksFor(vipWidget, [&vipWidget] { return vipWidget.open(); }));
-    gamewindow::TKillTrackerWidgetManager preyWidget(informationDialogs.prey()->storage(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Prey, gamewindow::TSidebarWidgetsManager::hooksFor(preyWidget, [&] { return preyWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TQuestTrackerWidgetManager questTrackerWidget(informationDialogs.questLog()->tracker(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::QuestTracker, gamewindow::TSidebarWidgetsManager::hooksFor(questTrackerWidget, [&] { return questTrackerWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TLootTrackingWidgetManager lootTrackingWidget(cyclopedia::TItemInfoStorage::instance(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::LootTracker, gamewindow::TSidebarWidgetsManager::hooksFor(lootTrackingWidget, [&] { return lootTrackingWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TSpellListWidgetManager spellListWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::SpellList, gamewindow::TSidebarWidgetsManager::hooksFor(spellListWidget, [&] { return spellListWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TUnjustifiedPointsWidgetManager unjustifiedWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::UnjustifiedPoints, gamewindow::TSidebarWidgetsManager::hooksFor(unjustifiedWidget, [&] { return unjustifiedWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TImbuementTrackerWidgetManager imbuementTrackerWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::ImbuementTracker, gamewindow::TSidebarWidgetsManager::hooksFor(imbuementTrackerWidget, [&] { return imbuementTrackerWidget.open(gameClient.sidebarOptions()); }));
-    cyclopedia::TCreatureTrackerStorage creatureTrackerStorage;
-    bossbestiary::TBossTrackerStorage bossTrackerStorage;
-    using CreatureMode = gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
-    gamewindow::TCreatureTrackerWidgetManager bestiaryTrackerWidget(CreatureMode::Bestiary, &creatureTrackerStorage, &bossTrackerStorage,
-                                                                    gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BestiaryTracker, gamewindow::TSidebarWidgetsManager::hooksFor(bestiaryTrackerWidget, [&] { return bestiaryTrackerWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TCreatureTrackerWidgetManager bosstiaryTrackerWidget(CreatureMode::Bosstiary, &creatureTrackerStorage, &bossTrackerStorage,
-                                                                     gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BosstiaryTracker, gamewindow::TSidebarWidgetsManager::hooksFor(bosstiaryTrackerWidget, [&] { return bosstiaryTrackerWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TBossTrackerWidgetManager bossCooldownsWidget(&bossTrackerStorage, gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BossCooldowns, gamewindow::TSidebarWidgetsManager::hooksFor(bossCooldownsWidget, [&] { return bossCooldownsWidget.open(gameClient.sidebarOptions()); }));
-    // CipSoft DepotSearchWidget (CIP sidebar); owns onDepotSearch* hooks. Product dialog retired.
-    qInfo("tibia.boot: before DepotSearchWidget");
-    gamewindow::TDepotSearchWidgetManager depotSearchWidget(&sidebarManager, gameWindowItem, engine.get());
-    qInfo("tibia.boot: after DepotSearchWidget");
-    gamewindow::TPlayerGuideWidgetManager playerGuideWidget(gameWindowItem, engine.get());
-    qInfo("tibia.boot: after PlayerGuideWidget");
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::PlayerGuide, gamewindow::TSidebarWidgetsManager::hooksFor(playerGuideWidget, [&] { return playerGuideWidget.open(gameClient.sidebarOptions()); }));
-    // CipSoft subscribers for gem atelier / helpers / RV channel / virtues yellow border.
-    qInfo("tibia.boot: before CipSoftUiEventBridge");
-    gamewindow::TCipSoftUiEventBridge cipSoftUiEventBridge;
-    qInfo("tibia.boot: before AnalyserStorages");
-    analysers::TAnalyserStorages analyserStorages;
-    qInfo("tibia.boot: before AnalyserWidgets");
-    analysers::TAnalyserWidgets analyserWidgets(&analyserStorages, &sidebarWidgets, gameWindowItem, engine.get(),
-                                                [&gameClient] { return gameClient.sidebarOptions(); });
-    qInfo("tibia.boot: after AnalyserWidgets");
-    proficiency::TProficiencyStorage proficiencyStorage;
-    proficiency::TWeaponProficiencyDialogController weaponProficiencyDialog(&proficiencyStorage);
-    proficiency::TWeaponProficiencyShapeDialogController weaponProficiencyShapeDialog(&proficiencyStorage);
-    proficiency::TWeaponProficiencyReshapeDialogController weaponProficiencyReshapeDialog(&proficiencyStorage,
-                                                                                          &weaponProficiencyShapeDialog);
-    proficiency::TWeaponProficiencyShapeOptionsDialogController weaponProficiencyShapeOptionsDialog;
-    qInfo("tibia.boot: after proficiency dialogs");
-    gamewindow::TBlessingsDialogController blessingsDialog;
-    gamewindow::TRewardWallDialogController rewardWallDialog(&dailyRewardStorage);
-    gamewindow::TTaskboardDialogController taskboardDialog;
-    gamewindow::TTutorialShell tutorialShell;
-    qInfo("tibia.boot: after blessings/reward/taskboard/tutorial");
-    QObject::connect(&tutorialShell, &gamewindow::TTutorialShell::tutorialFinished, &gameClient,
-                     &client::TGameClient::finishTutorialCinematic);
-    if (gamewindow::TButtonBarController* buttonBar = sidebarPanels.buttonBar()) {
-        QObject::connect(&sidebarWidgets, &gamewindow::TSidebarWidgetsManager::widgetVisible, buttonBar,
-                         &gamewindow::TButtonBarController::onWidgetVisible);
-        QObject::connect(&sidebarWidgets, &gamewindow::TSidebarWidgetsManager::widgetHidden, buttonBar,
-                         &gamewindow::TButtonBarController::onWidgetHidden);
-        QObject::connect(buttonBar, &gamewindow::TButtonBarController::logoutRequested, &gameClient, [&gameClient] {
-            if (game::TGameserverGameSession* session = gameClient.session())
-                session->requestLogout();
-            else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
-                dump->requestLogout();
-        });
-        buttonBar->setStoreButtonController(&storeButton);
-        buttonBar->setNewsButtonController(gameWindowController.newsButton());
-        buttonBar->setCyclopediaButtonController(informationDialogs.cyclopediaButton());
-        buttonBar->setBosstiaryButtonController(informationDialogs.bosstiaryButton());
-        if (QQuickItem* buttonBarItem = sidebarPanels.buttonBarItem()) {
-            // storeButtonController is constant: rebinding panelController re-reads it.
-            buttonBarItem->setProperty("panelController", QVariant::fromValue<QObject*>(nullptr));
-            buttonBarItem->setProperty("panelController", QVariant::fromValue<QObject*>(buttonBar));
-            QObject::connect(buttonBar, &gamewindow::TButtonBarController::buttonControllersChanged, buttonBarItem,
-                             [buttonBarItem, buttonBar] {
-                                 buttonBarItem->setProperty("panelController", QVariant::fromValue<QObject*>(nullptr));
-                                 buttonBarItem->setProperty("panelController", QVariant::fromValue<QObject*>(buttonBar));
-                             });
-        }
-    }
-    QObject::connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, gameWindowItem, [&](const QString& name) {
-        const QJsonObject opts = app::ClientOptions::load().options();
-        if (name == QLatin1String("controlSchemeIndex")) {
-            const int scheme = opts.value(name).toInt(0);
-            if (minimapController)
-                minimapController->setControlScheme(scheme);
-            if (gamewindow::TPlayerInventoryAndStatusController* inventory = sidebarPanels.inventory())
-                inventory->setControlScheme(scheme);
-            containers.setControlScheme(scheme);
-            sidebarWidgets.setControlScheme(scheme);
-            vipWidget.setControlScheme(scheme);
-        } else if (name == QLatin1String("lootSchemeIndex")) {
-            const int scheme = opts.value(name).toInt(0);
-            if (gamewindow::TPlayerInventoryAndStatusController* inventory = sidebarPanels.inventory())
-                inventory->setLootScheme(scheme);
-            containers.setLootScheme(scheme);
-        }
-    });
-
-    qInfo("tibia.boot: before OptionsMenuDialog");
-    gamewindow::TOptionsMenuDialogController optionsDialog;
-    optionsDialog.setWindow(window);
-    optionsDialog.setFrameDurations(gameClient.frameDurations());
-    optionsDialog.setGameClient(&gameClient);
-    optionsDialog.setPortalBase(env.loginBase);
-    qInfo("tibia.boot: after OptionsMenuDialog");
-    input::TOpenWebsiteGameActionHandler openWebsiteActions(env);
-    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [&optionsDialog](const input::TGameAction& action) {
-        optionsDialog.open(action.parameter);
-        return true;
-    });
-    gamewindow::TFPSLatencyIndicatorController fpsLatency;
-    fpsLatency.setWindow(window);
-    fpsLatency.setFrameDurations(gameClient.frameDurations());
-    fpsLatency.setRenderProvider(gameClient.worldMapRenderProvider());
-    if (QQuickItem* fpsItem = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("tibiaFpsLatencyIndicator")))
-        fpsItem->setProperty("controller", QVariant::fromValue<QObject*>(&fpsLatency));
-
-    qInfo("tibia.boot: before ChatController");
-    gamewindow::TChatController chat(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), gameClient);
-    qInfo("tibia.boot: after ChatController");
-    gameClient.setMessageIgnoreList(&chat.ignoreList());
-    if (cyclopedia::TItemInfoStorage* itemInfo = cyclopedia::TItemInfoStorage::instance())
-        itemInfo->setChatStorage(&chat.storage());
-
-    qInfo("tibia.boot: before ActionBarManager");
-    gamewindow::TActionBarManager actionBars(gameWindowItem, mapWindowPane, engine.get(), [&chat] { return chat.chatMode(); });
-    qInfo("tibia.boot: after ActionBarManager");
-    QObject::connect(&chat, &gamewindow::TChatController::chatModeChanged, &actionBars, &gamewindow::TActionBarManager::onChatModeChanged);
-    // After actionBars so TCooldownStorage::instance exists (CIP TCooldownBarController).
-    gamewindow::TCooldownBarController cooldownBar(gameWindowItem);
-    input::TKeyboardShortcutHandler keyboardShortcuts(window, gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")),
-                                                      [&chat] { return chat.chatMode(); });
-    input::TPlayerMovementInputInterpreter playerMovement(window, gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")),
-                                                          [&chat] { return chat.chatMode(); });
-    input::TPlayerMovementGameActionHandler playerMovementActions;
-    input::TClipboardGameActionHandler clipboardActions;
-    input::TGenericGameActionHandler genericActions;
-    QObject::connect(&genericActions, &input::TGenericGameActionHandler::publishGameAction, &genericActions,
-                     [](const input::TGameActionPtr& action) { input::publish(action); });
-    QObject::connect(&genericActions, &input::TGenericGameActionHandler::sendQuitGame, &gameClient, [&gameClient] {
-        if (game::TGameserverGameSession* session = gameClient.session())
-            session->requestLogout();
-        else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
-            dump->requestLogout();
-    });
-    QObject::connect(&genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, &gameClient,
-                     [&gameClient] { gameClient.openCharacterSelectionForSwitch(); });
-    input::TGatherAllGameActionHandler gatherAllActions;
-    [[maybe_unused]] input::TGatherAllProtocolMessageHandler gatherAllProtocol;
-    // Do not install TDiscardMouseWheelEventFilter on the window: that eats every
-    // Wheel event (containers, chat, options lists). Dialogs that need it install
-    // the filter on themselves.
-    input::TDiscardUnhandledMouseButtonsEventFilter discardMouseButtons;
-    window->installEventFilter(&discardMouseButtons);
-
-    trade::TNPCTradeStorage npcTrade;
-    trade::TNPCTradeProtocolMessageHandler npcTradeMessages(&npcTrade);
-    gamewindow::TNpcDialogController npcDialog(&npcTrade);
-    npcDialog.setChatController(&chat);
-    gamewindow::TPlayerTradeWidgetManager playerTrade(&sidebarManager, gameWindowItem, engine.get());
-
-    // Must outlive bootstrapAll: SuiteRuntime keeps PackHostWire* for deferred
-    // slots (HUD chat switch, store/options/logout). Destroying it at scope end
-    // dangling-pointer crashes on the first of those (SIGBUS on HUD toggle).
-    qtclient::PackHostWire packHost;
-    packHost.bindQuestTracker = [&questTrackerWidget](tibia::mods::MissionBackend* backend,
-                                                      qtclient::BrowseOpenerFn browse) {
-        questTrackerWidget.setMissionBackend(backend);
-        questTrackerWidget.setBrowseOpener(std::move(browse));
-    };
-    packHost.bindQuestLog = [&informationDialogs](tibia::mods::MissionBackend* backend,
-                                                  qtclient::BrowseOpenerFn browse) {
-        if (auto* log = informationDialogs.questLog()) {
-            log->setMissionBackend(backend);
-            log->setBrowseOpener(std::move(browse));
-        }
-    };
-    packHost.bindInstanceToInfoDialogs = [&informationDialogs](tibia::mods::InstanceBackend* instance) {
-        informationDialogs.setInstanceStorage(instance);
-    };
-    packHost.bindAttentionToButtonBar = [&sidebarPanels](tibia::mods::AttentionBackend* attention) {
-        if (auto* buttonBar = sidebarPanels.buttonBar())
-            buttonBar->setAttentionStorage(attention);
-    };
-    packHost.addProductOptionsPage = [&optionsDialog](const int category, void* page) {
-        optionsDialog.addProductPage(category, static_cast<config::TOptionsPage*>(page));
-    };
-    packHost.openOptionsPage = [&optionsDialog](const int page) { optionsDialog.open(page); };
-    packHost.openStore = [&storeDialog] { storeDialog.open(); };
-    packHost.requestLogoutViaButtonBar = [&sidebarPanels, &gameClient] {
-        if (auto* buttonBar = sidebarPanels.buttonBar()) {
-            buttonBar->onLogoutButtonClicked();
-            return;
-        }
-        if (game::TGameserverGameSession* session = gameClient.session())
-            session->requestLogout();
-        else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
-            dump->requestLogout();
-    };
-    packHost.setSocialButtonOnButtonBar = [&sidebarPanels](QObject* controller) {
-        if (auto* buttonBar = sidebarPanels.buttonBar())
-            buttonBar->setSocialButtonController(controller);
-    };
-    packHost.setActiveChatItem = [&chat, &keyboardShortcuts, &playerMovement](QQuickItem* item) {
-        if (!item)
-            return;
-        chat.setChatItem(item);
-        keyboardShortcuts.setChatItem(item);
-        playerMovement.setChatItem(item);
-    };
-    packHost.installCreateCharacterController = [&sessionBootstrap](QObject* controller) {
-        if (!sessionBootstrap || !controller)
-            return;
-        sessionBootstrap->installCreateCharacter(
-            qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
-    };
-    packHost.blessingsDialog = [&blessingsDialog]() -> QObject* { return &blessingsDialog; };
-    packHost.npcDialog = [&npcDialog]() -> QObject* { return &npcDialog; };
-    packHost.chatController = [&chat]() -> QObject* { return &chat; };
-    packHost.chatStorage = [&chat]() -> QObject* { return &chat.storage(); };
-    packHost.storeMessages = [&storeMessages]() -> QObject* { return &storeMessages; };
-    packHost.storeImageManager = [&storeDialog]() -> QObject* {
-        return storeDialog.property("dynamicallyLoadedImageManager").value<QObject*>();
-    };
-    packHost.minimapController = [minimapController]() -> QObject* { return minimapController; };
-    packHost.sidebarManager = [&sidebarManager]() -> QObject* { return &sidebarManager; };
-    packHost.sidebarWidgets = [&sidebarWidgets]() -> QObject* { return &sidebarWidgets; };
-    packHost.containers = [&containers]() -> QObject* { return &containers; };
-    packHost.buttonBar = [&sidebarPanels]() -> QObject* { return sidebarPanels.buttonBar(); };
-    packHost.imbuingDialog = [&imbuingDialog]() -> QObject* { return &imbuingDialog; };
-    packHost.imbuingStorage = [&imbuingStorage]() -> QObject* { return &imbuingStorage; };
-    packHost.sessionBootstrap = [&sessionBootstrap]() -> QObject* { return sessionBootstrap.get(); };
-    packHost.minimapPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.minimapItem(); };
-    packHost.inventoryPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.inventoryItem(); };
-    packHost.buttonBarPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.buttonBarItem(); };
-
-    tibia::mods::fillPackHostAbiFromPackHostWire(&packHost);
-
-    {
-        tibia::mods::ModContext ctx;
-        ctx.engine = engine.get();
-        ctx.rootItem = window->contentItem();
-        ctx.mapWindowPane = mapWindowPane;
-        ctx.gameWindowItem = gameWindowItem;
-        ctx.gameClient = &gameClient;
-        ctx.gameHost = gameClient.gameHost();
-        ctx.dialogStack = &dialogStack;
-        ctx.host = &productHost;
-        ctx.launcherEnv = &env;
-        ctx.packHost = &packHost;
-        qInfo("tibia.boot: before mods::bootstrapAll");
-        tibia::mods::bootstrapAll(ctx);
-        qInfo("tibia.boot: after mods::bootstrapAll");
-    }
-
-    bool mapWindowBound = false;
-    // A new game session brings its own texts, effects, view and light.
-    QObject::connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, gameWindowItem, [&] {
-        if (mapWindowBound)
-            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
-        informationDialogs.setAmbientLightStorage(gameClient.ambientLight());
-        if (minimapController)
-            minimapController->setAmbientLightStorage(gameClient.ambientLight());
-    });
-    QObject::connect(&gameClient, &client::TGameClient::mainWindowInitialized, gameWindowItem, [&] {
-        // Show the game window before the heavier binds. A throw later must not
-        // leave the login mask hidden and the game window still off.
-        gameWindowController.showGameScreen();
-        try {
-            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
-            if (!mapWindowBound && !mapWindowController->isBound())
-                qCritical("MapWindowPane has no WorldMap named worldmap");
-            mapWindowBound = true;
-            vipWidget.setSidebarOptions(gameClient.sidebarOptions());
-            vipWidget.setWorldType(gameClient.worldType());
-            sidebarWidgets.setSidebarOptions(gameClient.sidebarOptions());
-            depotSearchWidget.setSidebarOptions(gameClient.sidebarOptions());
-            sidebarPanels.setSidebarOptions(gameClient.sidebarOptions());
-            if (gamewindow::TPremiumPanelController* premiumPanel = sidebarPanels.premiumPanel())
-                premiumPanel->onSessionStarted(gameClient.account().session.isPremium, gameClient.account().session.premiumUntil);
-            skillWheel.setSessionPremium(gameClient.account().session.isPremium);
-            containers.setSidebarOptions(gameClient.sidebarOptions());
-            containers.onLoginRampUpFinished();
-            sidebarWidgets.onLoginRampUpFinished();
-            statusBarController.setStorage(gameClient.statusbarStorage());
-            informationDialogs.setAmbientLightStorage(gameClient.ambientLight());
-            informationDialogs.setMinimapTileStorage(gameClient.minimap() ? gameClient.minimap()->tileStorage() : nullptr);
-            if (minimapController) {
-                minimapController->setAmbientLightStorage(gameClient.ambientLight());
-                minimapController->setTileStorage(gameClient.minimap() ? gameClient.minimap()->tileStorage() : nullptr);
-            }
-            optionsDialog.setInGame(true);
-            actionBars.onWorldEntered();
-            qmlcomponents::applyOptionVolumes(); // stop login anthem; keep channel gains
-        } catch (const std::exception& ex) {
-            qCritical("tibia.client: entering the world failed: %s", ex.what());
-        } catch (...) {
-            qCritical("tibia.client: entering the world failed");
-        }
-    });
-    QObject::connect(&gameClient, &client::TGameClient::worldLeft, gameWindowItem, [&] {
-        if (minimapController)
-            minimapController->setTileStorage(nullptr);
-        informationDialogs.setMinimapTileStorage(nullptr);
-        sidebarPanels.setSidebarOptions(nullptr);
-        sidebarWidgets.setSidebarOptions(nullptr);
-        vipWidget.setSidebarOptions(nullptr);
-        containers.setSidebarOptions(nullptr);
-        statusBarController.setStorage(nullptr);
-        optionsDialog.setInGame(false);
-        actionBars.onWorldLeft();
-        dialogStack.hideAll();
-        gameWindowController.showStartScreen();
-        qmlcomponents::applyOptionVolumes(); // resume login anthem when offline
-    });
-    QObject::connect(&application, &QCoreApplication::aboutToQuit, &gameClient, [&] {
-        mapWindowController->unbind();
-        if (minimapController)
-            minimapController->setTileStorage(nullptr);
-        informationDialogs.setMinimapTileStorage(nullptr);
-        gameClient.shutdown();
-    });
+    if (!gameClient.createGameWindow(setup))
+        return 1;
 #endif
 
     if (const QString shot = parser.value(QStringLiteral("screenshot")); !shot.isEmpty()) {

@@ -137,36 +137,36 @@ private:
     std::set<uint16_t> m_knownSpells;
 };
 
-/// Shared action-bar bind/assign state for the CIP assign dialogs (not a QObject
-/// parent — each dialog inherits `TDialogController<cip::…>` so qtclient_inherited
-/// sees the CIP moc surface).
+/// The button a bar's assign dialog edits (CIP TAssignActionDialogControllerBase
+/// +0x3c button, +0x40 multi-action slot, +0x44 showActionBarTarget).
 class TAssignActionDialogState
 {
 public:
-    void bind(QObject* dialog, TActionBarController* bar, int buttonId, int multiActionIndex);
-    config::TActionSetting current() const;
-    void assign(const config::TActionSetting& setting) const;
+    void bind(const TActionBarController* bar, uint buttonId, int multiActionIndex);
 
-    QPointer<TActionBarController> bar;
-    int multiActionIndex = 0;
+    int multiActionIndex = -1;
     uint actionBarId = 0;
     uint buttonId = 0;
     QString buttonName;
-    bool showActionBarTarget = false;
+    bool showActionBarTarget = true;
 };
 
-/// AssignSpellActionDialog.qml (CIP: TAssignSpellActionDialogController,
-/// v37). Cast type is kept on the action-bar setting
-/// (crosshair / aim-at-target wave / none).
+using ECastType = ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
+
+/// AssignSpellActionDialog.qml (CIP: TAssignSpellActionDialogController, one
+/// per action bar). OK and Apply ask the bar to assign the spell.
 class TAssignSpellActionDialogController final
     : public TDialogController<cip::tibia::gamewindow::TAssignSpellActionDialogController>
 {
     Q_OBJECT
 public:
-    TAssignSpellActionDialogController(TActionBarController* bar, int buttonId, int multiActionIndex, int preselectedSpellId,
-                                       QObject* parent = nullptr);
+    explicit TAssignSpellActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
 
-    /// CIP moc property getters / showOnlyKnown WRITE.
+    /// CIP v26: the list's first spell, no parameters.
+    void showDialog(uint ButtonId, int MultiActionIndex);
+    /// CIP v33: a spell with its parameters and cast type.
+    void showDialog(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, ECastType CastType);
+
     uint actionBarId() const override;
     uint buttonId() const override;
     QString buttonName() const override;
@@ -175,33 +175,46 @@ public:
     QString spellParameters() const override;
     bool showOnlyKnownSpells() const override;
     void setShowOnlyKnownSpells(bool v) override;
-    ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType currentSpellCastType() const override;
+    ECastType currentSpellCastType() const override;
     QVariant spellListModel() const override;
 
 public Q_SLOTS:
-    void onOkClicked(const QString& Parameters, ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType CastType) override;
-    void onApplyClicked(const QString& Parameters, ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType CastType) override;
+    void onOkClicked(const QString& Parameters, ECastType CastType) override;
+    void onApplyClicked(const QString& Parameters, ECastType CastType) override;
     void spellSelected(uint SpellEnumId) override;
     void onCloseClicked() override;
 
+Q_SIGNALS:
+    void requestAssignSpell(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, ECastType CastType);
+
 private:
+    const TActionBarController* m_bar;
     TAssignActionDialogState m_assign;
     TSpellListDataModelSortFilterProxy m_proxy;
     int m_spellId = 0;
 };
 
-/// AssignObjectActionDialog.qml (CIP: TAssignObjectActionDialogController).
+/// AssignObjectActionDialog.qml (CIP: TAssignObjectActionDialogController,
+/// one per action bar). OK and Apply ask the bar to assign the object.
 class TAssignObjectActionDialogController final
     : public TDialogController<cip::tibia::gamewindow::TAssignObjectActionDialogController>
 {
     Q_OBJECT
 public:
-    TAssignObjectActionDialogController(TActionBarController* bar, int buttonId, int multiActionIndex, QObject* parent = nullptr);
+    explicit TAssignObjectActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
 
-    /// Shows `objectId` with CIP's default use for it.
-    void setObject(int objectId, int upgradeTier);
+    /// CIP v26: no object yet, so the next click picks one.
+    void showDialog(uint ButtonId, int MultiActionIndex);
+    /// CIP v33: shows an object with its use; with `assignWithoutDialog` it is
+    /// assigned at once instead.
+    void showDialog(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, int LiquidType, config::EUseType UseType,
+                    bool SmartModeEnabled, bool assignWithoutDialog);
+    /// CIP v34 (qtclient's appearance data): an object picked or dropped, with
+    /// its default use.
+    void showDialogForObject(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, bool assignWithoutDialog);
+    /// The smooth filtering client setting the preview uses.
+    void setClientSettingSmoothFiltering(bool enabled);
 
-    /// CIP moc property getters.
     uint actionBarId() const override;
     uint buttonId() const override;
     QString buttonName() const override;
@@ -221,26 +234,41 @@ public:
 public Q_SLOTS:
     void onOkClicked(uint UseObjectTypeEnumId, bool UseEquipSmartModeEnabled) override;
     void onApplyClicked(uint UseObjectTypeEnumId, bool UseEquipSmartModeEnabled) override;
-    /// "Select Object": the next click on the map or an inventory slot picks it.
+    /// "Select Object": the dialog hides and the next click on the map or an
+    /// inventory slot picks the object.
     void startTargetSelection() override;
     void onCloseClicked() override;
-    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient live path is
-    /// startTargetSelection → input::startTargetSelection.
-    void handleGameAction();
+
+Q_SIGNALS:
+    void requestAssignObject(uint ButtonId, int MultiActionIndex, int ObjectId, int UpgradeTier, int LiquidType,
+                             tibia::config::EUseType UseType, bool UseEquipSmartMode);
 
 private:
+    void setObject(int objectId, int upgradeTier);
+    void setUseObjectType(uint useObjectType);
+    void setSmartModeEnabled(bool enabled);
+    void emitRequestAssignObject();
+
     TAssignActionDialogState m_assign;
+    const TActionBarController* m_bar;
+    /// A target selection runs for this dialog.
+    bool m_selectingTarget = false;
 };
 
-/// AssignTextActionDialog.qml (CIP: TAssignTextActionDialogController).
+/// AssignTextActionDialog.qml (CIP: TAssignTextActionDialogController, one
+/// per action bar). OK and Apply ask the bar to assign the text.
 class TAssignTextActionDialogController final
     : public TDialogController<cip::tibia::gamewindow::TAssignTextActionDialogController>
 {
     Q_OBJECT
 public:
-    TAssignTextActionDialogController(TActionBarController* bar, int buttonId, int multiActionIndex, QObject* parent = nullptr);
+    explicit TAssignTextActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
 
-    /// CIP moc property getters.
+    /// CIP v26: an empty text, sent automatically.
+    void showDialog(uint ButtonId, int MultiActionIndex);
+    /// CIP v33.
+    void showDialog(uint ButtonId, int MultiActionIndex, const QString& Text, bool SendAutomatically);
+
     uint actionBarId() const override;
     uint buttonId() const override;
     QString buttonName() const override;
@@ -253,20 +281,28 @@ public Q_SLOTS:
     void onApplyClicked(const QString& Text, bool SendAutomatically) override;
     void onCloseClicked() override;
 
+Q_SIGNALS:
+    void requestAssignText(uint ButtonId, int MultiActionIndex, const QString& Text, bool SendAutomatically);
+
 private:
+    const TActionBarController* m_bar;
     TAssignActionDialogState m_assign;
 };
 
 /// AssignPassiveAbilityActionDialog.qml (CIP:
-/// TAssignPassiveAbilityActionDialogController, v37).
+/// TAssignPassiveAbilityActionDialogController, one per action bar).
 class TAssignPassiveAbilityActionDialogController final
     : public TDialogController<cip::tibia::gamewindow::TAssignPassiveAbilityActionDialogController>
 {
     Q_OBJECT
 public:
-    TAssignPassiveAbilityActionDialogController(TActionBarController* bar, int buttonId, QObject* parent = nullptr);
+    explicit TAssignPassiveAbilityActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
 
-    /// CIP moc property getters.
+    /// CIP v26: the list's first ability.
+    void showDialog(uint ButtonId);
+    /// CIP v33.
+    void showDialog(uint ButtonId, int PassiveAbility);
+
     uint actionBarId() const override;
     uint buttonId() const override;
     QString buttonName() const override;
@@ -282,9 +318,15 @@ public Q_SLOTS:
     void passiveAbilitySelected(uint PassiveAbilityEnumId) override;
     void onCloseClicked() override;
 
+Q_SIGNALS:
+    void requestAssignPassiveAbility(uint ButtonId, int PassiveAbility);
+
 private:
     void refreshSelectedPassive();
+    /// The abilities the storage knows now.
+    void reloadAbilities();
 
+    const TActionBarController* m_bar;
     TAssignActionDialogState m_assign;
     TPassiveAbilityListDataModel* m_model = nullptr;
     TPassiveAbilityListDataModelSortFilterProxy* m_proxy = nullptr;
@@ -300,8 +342,9 @@ class TRecordKeyboardShortcutDialogController final
 {
     Q_OBJECT
 public:
-    /// An action bar button's key: OK writes it to the hotkey options.
-    TRecordKeyboardShortcutDialogController(int actionBarId, int buttonId, bool chatModeOn, QObject* parent = nullptr);
+    /// A bar's recorder (CIP: TActionBarController +0x3d8): showDialog opens it,
+    /// keySequenceSelected hands the key to the bar.
+    explicit TRecordKeyboardShortcutDialogController(QObject* parent = nullptr);
     /// The options page's capture: OK only emits keySequenceSelected.
     /// `actionName` is the action whose own keys are not "occupied".
     TRecordKeyboardShortcutDialogController(const QString& description, const QString& actionName, bool chatModeOn,
@@ -326,13 +369,13 @@ public Q_SLOTS:
     void onCancelButtonClicked() override;
     void requestClose() override;
 
-protected:
-    /// Stands in for CIP's key recorder: key presses while the dialog shows.
-    bool eventFilter(QObject* watched, QEvent* event) override;
-
 private:
     void initKeyLists();
-    std::set<QKeySequence> occupiedKeys(const QString& ownAction, bool chatModeOn) const;
+public:
+    /// The keys bound to other actions in the chat mode.
+    static std::set<QKeySequence> occupiedKeys(const QString& ownAction, bool chatModeOn);
+
+private:
     void startRecording();
     void stopRecording();
 
@@ -347,6 +390,7 @@ private:
     QString m_description;
     std::set<QKeySequence> m_occupiedKeys;
     bool m_recording = false;
+    QMetaObject::Connection m_recordConnection;
 };
 
 }

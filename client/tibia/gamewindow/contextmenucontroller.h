@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameactiondispatch.h"
 #include "input/eventfilters.h"
 #include "input/gameaction.h"
 
@@ -64,7 +65,7 @@ public:
 
     /// The entry text for an action (CIP:); some actions also
     /// set `shortcut`.
-    static QString labelOf(const input::TGameAction& action, QString& shortcut);
+    static QString labelOf(const input::IGameAction& pGameAction, QString& shortcut);
 
     /// A menu its owner builds entry by entry (CIP: clear,
     /// add entry, separator, show).
@@ -95,17 +96,24 @@ private:
     /// CIP : the entry closes the menu when triggered.
     TContextMenuEntryItem* addEntry(const QString& text, const QString& shortcut = {});
     void requestShow();
-    void setKeyboardBlocked(bool blocked);
 
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_shield;
     QPointer<QQuickItem> m_menu;
     QTimer m_showTimer;
-    /// CIP TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter .
-    input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter m_discardKeys;
-    bool m_keyboardBlocked = false;
     bool m_enabled = true;
     std::vector<std::pair<QPointer<QObject>, GameActionsExtension>> m_extensions;
+
+public Q_SLOTS:
+    /// The router's game actions (CIP: handleGameAction; connected to
+    /// publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+    {
+        m_gameActions.handle(pGameAction);
+    }
+
+private:
+    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

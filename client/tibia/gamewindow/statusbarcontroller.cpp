@@ -220,16 +220,14 @@ bool TStatusBarController::showPlayerStatesInBar() const { return m_showPlayerSt
 
 void TStatusBarController::onClickedOpenStoreXPBoost()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
-    action->instance = 1;
-    input::publish(action);
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
+    Q_EMIT publishGameAction(action);
 }
 
 void TStatusBarController::requestContextMenu()
 {
     // Opening the menu closes any open multi-action button first.
-    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu || !m_storage)
         return;

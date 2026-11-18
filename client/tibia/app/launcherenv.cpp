@@ -231,6 +231,16 @@ QUrl LauncherEnv::crashReportUrl() const
     return withPath(loginBase, crashReportPath);
 }
 
+QUrl LauncherEnv::fpsHistoryRecipientUrl() const
+{
+    const QString path = qEnvironmentVariable("QTCLIENT_FPS_HISTORY_PATH",
+                                              QStringLiteral("/clientservices/hardwarereceiver.php"));
+    const QUrl absolute(path);
+    if (absolute.isValid() && !absolute.isRelative())
+        return absolute;
+    return withPath(loginBase, ensureLeadingSlash(path));
+}
+
 LauncherEnv LauncherEnv::load(const QString& workDir)
 {
     const auto release = readReleaseEnv(workDir);

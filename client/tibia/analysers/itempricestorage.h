@@ -15,7 +15,7 @@ namespace analysers {
 /// The item values of the loot and waste analysers, the loot value levels and the colours of
 /// coloured item names (CIP: tibia::cyclopedia::TItemPriceStorage, config "itemprices").
 /// One instance per client, created on first use.
-class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage, public TCharacterConfiguration
+class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
 public:
@@ -31,8 +31,9 @@ public:
     static TItemPriceStorage* instance();
 
     QString configurationName() const override;
-    QJsonObject toJson() const override;
-    void fromJson(const QJsonObject& json) override;
+    QJsonObject configurationToJson() const override;
+    void configurationFromJson(const QJsonObject& json) override;
+    void resetConfiguration() override;
 
     /// Coins at face value, else the best price an NPC pays for the item.
     quint32 npcBuyPrice(uint16_t typeId) const;
