@@ -5,7 +5,6 @@
 #include "assets/contentcatalog.h"
 #include "sprites/sprite.h"
 #include "sprites/spriteresolver.h"
-#include "sprites/spritesheetdecompressorsynchronous.h"
 #include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
 
@@ -71,12 +70,7 @@ TSpriteSystem& TSpriteSystem::instance()
 
 TSpriteSystem::TSpriteSystem()
 {
-#if defined(__EMSCRIPTEN__)
-    // Host: the browser build's extra thread pool worker aborts the runtime.
-    m_decompressor = std::make_shared<TSpritesheetDecompressorSynchronous>();
-#else
     m_decompressor = std::make_shared<TSpritesheetDecompressorThreadpool>();
-#endif
     const uint32_t capacity = defaultCacheCapacity();
     qDebug() << "Using spritesheet cache size of" << capacity;
     m_spritesheets = std::make_shared<TSpritesheetManager>(m_decompressor, std::make_shared<TSpritesheetCache>(capacity));

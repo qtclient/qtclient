@@ -86,14 +86,9 @@ namespace {
 
 size_t workerThreadCount()
 {
-#if defined(__EMSCRIPTEN__)
-    // Host: the browser runtime cannot start extra Qt threads (see load()).
-    return 0;
-#else
     static const size_t idealThreadCount = static_cast<size_t>(std::max(0, QThread::idealThreadCount()));
     static const size_t count = idealThreadCount == 0 ? 1 : std::min<size_t>(4, idealThreadCount);
     return count;
-#endif
 }
 
 }
@@ -131,29 +126,7 @@ void TAssetAsyncLoader::startWorkerThread()
 
 bool TAssetAsyncLoader::load(const TAsset& asset, const bool prioritized)
 {
-    const bool queued = m_queue->add(asset, prioritized);
-#if defined(__EMSCRIPTEN__)
-    // Host: without worker threads the browser build loads on this thread, one
-    // asset per event loop pass so the page stays responsive.
-    if (queued || prioritized) {
-        QMetaObject::invokeMethod(this, [this] {
-            TAsset next;
-            bool nextPrioritized = false;
-            if (*m_stopped || !m_queue->takeNext(next, nextPrioritized, false))
-                return;
-            TAssetLoadResult result;
-            result.asset = next;
-            try {
-                result.data = m_fileSystemHelper->openAsset(next);
-            } catch (const std::exception& error) {
-                result.error = error.what();
-            }
-            m_queue->addResult(std::move(result));
-            onWorkerThreadAssetLoaded();
-        }, Qt::QueuedConnection);
-    }
-#endif
-    return queued;
+    return m_queue->add(asset, prioritized);
 }
 
 void TAssetAsyncLoader::stop()

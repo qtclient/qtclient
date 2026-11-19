@@ -26,6 +26,18 @@ EM_JS(void, qtclientReloadInto, (const char* clientProgram), {
             sessionStorage.setItem("tibia.play", UTF8ToString(clientProgram));
         sessionStorage.setItem("tibia.play.transition", "1");
     } catch (e) {}
+    // Keep the branded cover up through canvas teardown and the document gap
+    // before location.reload() — otherwise /play flashes white/empty.
+    try {
+        document.documentElement.style.background = "#0b0e12";
+        if (document.body)
+            document.body.style.background = "#0b0e12";
+        var transition = document.getElementById("play-transition");
+        if (transition) {
+            transition.style.opacity = "1";
+            transition.style.pointerEvents = "auto";
+        }
+    } catch (e) {}
     try {
         document.querySelectorAll("canvas").forEach(function(canvas) {
             canvas.width = 0;

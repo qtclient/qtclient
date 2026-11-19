@@ -237,18 +237,24 @@ def _cip_file_record(dest_dir: Path, localfile: str, data: bytes) -> dict:
 
     /play always fetches `/content/<aa>/<packedhash>` (see tibia-browser
     contentUrl). Writing only beside the tip leaves package.json hashes 404.
+
+    `localfile` may be nested (e.g. bin/tibia.js) — same as release
+    apps/release/scripts/cip_package.py.
     """
     # Late import: content_store lives next to this module.
     import content_store  # noqa: PLC0415
 
+    localfile = localfile.lstrip("/").replace("\\", "/")
     packed = lzma.compress(data, format=lzma.FORMAT_ALONE)
     packed_hash = _sha256(packed)
-    lzma_name = f"{localfile}.lzma"
-    (dest_dir / lzma_name).write_bytes(packed)
+    lzma_rel = f"{localfile}.lzma"
+    lzma_path = dest_dir / lzma_rel
+    lzma_path.parent.mkdir(parents=True, exist_ok=True)
+    lzma_path.write_bytes(packed)
     # Same store full assemble uses — required for tipWarm / contentUrl boots.
     content_store.put_blob(CDN / "content", packed)
     return {
-        "url": lzma_name,
+        "url": lzma_rel,
         "localfile": localfile,
         "packedhash": packed_hash,
         "packedsize": len(packed),
@@ -257,52 +263,16 @@ def _cip_file_record(dest_dir: Path, localfile: str, data: bytes) -> dict:
     }
 
 
-def tibia_client_web(src_dir: Path | None = None) -> int:
-    """Hot-swap CipSoft tip client under launcher/tibiaclient-web-current."""
-    if not cdn_ready():
-        return 0
-    if src_dir is None:
-        src_dir = _wasm_src_dir()
-    if src_dir is None:
-        return fail("no tibia.wasm — run make browser-build")
-    dest_dir = CDN / "launcher" / "tibiaclient-web-current"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    files = []
-    for name in ("tibia.js", "tibia.wasm", "qtloader.js", "tibia.data"):
-        src = src_dir / name
-        if not src.is_file() and name == "qtloader.js":
-            src = src_dir.parent / name
-        if not src.is_file():
-            if name == "tibia.data":
-                continue
-            return fail(f"missing {name} in {src_dir}")
-        place(src, dest_dir / name)
-        files.append(_cip_file_record(dest_dir, name, src.read_bytes()))
-    for name in ("tibia.html", "qtlogo.svg"):
-        src = src_dir / name
-        if src.is_file():
-            place(src, dest_dir / name)
-    stamp = _cip_stamp(dest_dir / "tibia.wasm")
-    pkg = {
-        "version": stamp,
-        "files": files,
-        "executable": "tibia.js",
-        "creation_time": 0,
-        "generation": "second",
-    }
-    (dest_dir / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
-    (dest_dir / "package.json.version").write_text(stamp + "\n")
-    # Keep tip pack when qtclient wasm rebuild overwrites floating tip files.
-    _resync_tip_pack(src_dir, dest_dir)
-    print(f"[dev-cdn] tibiaclient-web -> {dest_dir} ({stamp})")
-    return 0
+# Keep in sync with apps/release/scripts/cip_package.py (WEB_CLIENT_BIN /
+# wasm_pack_files): web client packages use CipSoft's Linux layout — engine +
+# tip packs under bin/, assets/sounds from assets.json at the package root.
+WEB_CLIENT_BIN = "bin"
+WASM_PACK_SKIP_DIRS = frozenset({"lib", "native"})
+WASM_PACK_SKIP_FILES = frozenset({".pack.stamp", ".files.manifest"})
 
 
-def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
-    """Copy mods/<id> from the wasm build tip onto the CDN floating tip if present."""
-    # Prefer bin/mods (POST_BUILD + merge-launcher-brand: brand.json + images/launcher)
-    # over a sibling flat mods/ tree that only has the linked archive leftovers.
-    build_root: Path | None = None
+def _wasm_mods_root(src_dir: Path) -> Path | None:
+    """Directory that contains mods/<id>/mod.json (prefer bin/ over flat)."""
     candidates = (
         src_dir / "bin",
         src_dir,
@@ -311,6 +281,7 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
         OTC / "build" / "tibia-wasm" / "bin",
         OTC / "build" / "tibia-wasm",
     )
+    best: Path | None = None
     for cand in candidates:
         mods = cand / "mods"
         if not mods.is_dir():
@@ -320,64 +291,142 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
         ]
         if not packs_here:
             continue
-        # Prefer a pack that already has launcher chrome when several roots match.
-        branded = [p for p in packs_here if (p / "brand.json").is_file()]
-        build_root = cand
-        if branded:
-            break
+        best = cand
+        if any((p / "brand.json").is_file() for p in packs_here):
+            return cand
+    return best
+
+
+def _wasm_pack_files(wasm_dir: Path) -> list[tuple[Path, str]]:
+    """(blob, localfile) for mods/<id>/… — same rules as cip_package.wasm_pack_files."""
+    mods = wasm_dir / "mods"
+    if not mods.is_dir():
+        return []
+    files: list[tuple[Path, str]] = []
+    for path in sorted(p for p in mods.rglob("*") if p.is_file()):
+        parts = path.relative_to(mods).parts  # (<id>, …)
+        if len(parts) < 2 or parts[1] in WASM_PACK_SKIP_DIRS or path.name in WASM_PACK_SKIP_FILES:
+            continue
+        files.append((path, path.relative_to(wasm_dir).as_posix().replace("\\", "/")))
+    return files
+
+
+def tibia_client_web(src_dir: Path | None = None) -> int:
+    """Hot-swap CipSoft tip client under launcher/tibiaclient-web-current.
+
+    Layout matches release emit_cip web packages: executable bin/tibia.js,
+    engine + tip packs as bin/… in package.json (launcher installs into
+    packages/<directoryname>/ the same way as desktop).
+    """
+    if not cdn_ready():
+        return 0
+    if src_dir is None:
+        src_dir = _wasm_src_dir()
+    if src_dir is None:
+        return fail("no tibia.wasm — run make browser-build")
+    dest_dir = CDN / "launcher" / "tibiaclient-web-current"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    files: list[dict] = []
+    required = {"tibia.js", "tibia.wasm"}
+    for name in ("tibia.js", "tibia.wasm", "tibia.data", "qtloader.js"):
+        src = src_dir / name
+        if not src.is_file() and name == "qtloader.js":
+            src = src_dir.parent / name
+        if not src.is_file():
+            if name in required:
+                return fail(f"missing {name} in {src_dir}")
+            continue
+        # Plain tip copy: qtloader fetches tibia.data next to the tip URL.
+        place(src, dest_dir / name)
+        files.append(
+            _cip_file_record(dest_dir, f"{WEB_CLIENT_BIN}/{name}", src.read_bytes())
+        )
+    for name in ("tibia.html", "qtlogo.svg"):
+        src = src_dir / name
+        if src.is_file():
+            place(src, dest_dir / name)
+    # Tip packs next to the binary (desktop parity) — FS tree for tip checks +
+    # CIP package.json entries under bin/mods/<id>/….
+    _resync_tip_pack(src_dir, dest_dir)
+    mods_root = _wasm_mods_root(src_dir)
+    pack_n = 0
+    if mods_root is not None:
+        for blob, localfile in _wasm_pack_files(mods_root):
+            files.append(
+                _cip_file_record(
+                    dest_dir, f"{WEB_CLIENT_BIN}/{localfile}", blob.read_bytes()
+                )
+            )
+            pack_n += 1
+    stamp = _cip_stamp(dest_dir / "tibia.wasm")
+    exe = f"{WEB_CLIENT_BIN}/tibia.js"
+    pkg = {
+        "version": stamp,
+        "files": files,
+        "executable": exe,
+        "creation_time": 0,
+        "generation": "second",
+    }
+    (dest_dir / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
+    (dest_dir / "package.json.version").write_text(stamp + "\n")
+    print(
+        f"[dev-cdn] tibiaclient-web -> {dest_dir} ({stamp}, "
+        f"executable={exe}, files={len(files)}, pack_files={pack_n})"
+    )
+    return 0
+
+
+def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
+    """Copy every mods/<id> from the wasm build tip onto the CDN tip.
+
+    Same set release ships in the web client package (product + stock packs).
+    Writes tip-relative mods/<id>/ for tip-presence / tipWarm; package.json
+    localfiles use bin/mods/<id>/ via tibia_client_web.
+    """
+    build_root = _wasm_mods_root(src_dir)
     if build_root is None:
         return
     packs = [
-        p for p in (build_root / "mods").iterdir() if p.is_dir() and (p / "mod.json").is_file()
+        p
+        for p in (build_root / "mods").iterdir()
+        if p.is_dir() and (p / "mod.json").is_file()
     ]
     if not packs:
         return
-    # Single tip pack slot — prefer QTCLIENT_PACK_ID, else branded product, else
-    # skip stock clientmods/minimap placeholders.
-    prefer = os.environ.get("QTCLIENT_PACK_ID", "").strip()
-    skip = {"clientmods", "minimap", "qtc-aac"}
-    pack = next((p for p in packs if prefer and p.name == prefer), None)
-    if pack is None:
-        pack = next((p for p in packs if (p / "brand.json").is_file()), None)
-    if pack is None:
-        pack = next((p for p in packs if p.name not in skip), None)
-    if pack is None:
-        print(f"[dev-cdn] tip pack skip — only stock packs under {build_root / 'mods'}")
-        return
-    out = dest_dir / "mods" / pack.name
-    if out.exists():
-        shutil.rmtree(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(pack, out)
-    # Runtime MODULE packs ship native/mod.*; drop only stale lib/ archives.
-    lib_path = out / "lib"
-    if lib_path.exists():
-        shutil.rmtree(lib_path)
-    # Content fingerprint for /play OPFS restage (see merge-pack-into-tip.sh).
-    digest = hashlib.sha256()
-    for path in sorted(out.rglob("*")):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(out).as_posix().replace("\\", "/")
-        if rel.startswith("lib/") or rel in {".pack.stamp", ".files.manifest"}:
-            continue
-        digest.update(rel.encode())
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    (out / ".pack.stamp").write_text(digest.hexdigest() + "\n")
-    files_list = [
-        str(p.relative_to(out)).replace("\\", "/")
-        for p in sorted(out.rglob("*"))
-        if p.is_file() and not str(p.relative_to(out)).startswith("lib/")
-    ]
-    (dest_dir / "mods" / f"{pack.name}.files").write_text(
-        "\n".join(files_list) + ("\n" if files_list else "")
-    )
-    print(
-        f"[dev-cdn] tip pack -> {out} ({len(files_list)} files, "
-        f"brand={(out / 'brand.json').is_file()}, stamp={digest.hexdigest()[:12]})"
-    )
+    out_mods = dest_dir / "mods"
+    if out_mods.exists():
+        shutil.rmtree(out_mods)
+    out_mods.mkdir(parents=True, exist_ok=True)
+    total_files = 0
+    for pack in sorted(packs, key=lambda p: p.name):
+        out = out_mods / pack.name
+        shutil.copytree(pack, out)
+        lib_path = out / "lib"
+        if lib_path.exists():
+            shutil.rmtree(lib_path)
+        digest = hashlib.sha256()
+        files_list: list[str] = []
+        for path in sorted(out.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(out).as_posix().replace("\\", "/")
+            if rel.startswith("lib/") or rel in WASM_PACK_SKIP_FILES:
+                continue
+            digest.update(rel.encode())
+            digest.update(b"\0")
+            digest.update(path.read_bytes())
+            digest.update(b"\0")
+            files_list.append(rel)
+        (out / ".pack.stamp").write_text(digest.hexdigest() + "\n")
+        (out_mods / f"{pack.name}.files").write_text(
+            "\n".join(files_list) + ("\n" if files_list else "")
+        )
+        total_files += len(files_list)
+        print(
+            f"[dev-cdn] tip pack -> {out} ({len(files_list)} files, "
+            f"brand={(out / 'brand.json').is_file()}, stamp={digest.hexdigest()[:12]})"
+        )
+    print(f"[dev-cdn] tip packs -> {out_mods} ({len(packs)} packs, {total_files} files)")
 
 
 def launcher() -> int:
