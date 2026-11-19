@@ -1037,6 +1037,14 @@ int sessLpDirection()
                                          : QTCLIENT_DIRECTION_INVALID;
 }
 
+void sessHoldDirection(const int direction)
+{
+    if (direction >= QTCLIENT_DIRECTION_NORTH && direction < QTCLIENT_DIRECTION_INVALID)
+        tibia::game::localPlayerHoldDirection(static_cast<tibia::client::Direction>(direction));
+}
+
+void sessReleaseDirection() { tibia::game::localPlayerReleaseDirection(); }
+
 int sessCreatureTypeIsSummon(uint8_t t) { return tibia::game::creatureTypeIsSummon(t) ? 1 : 0; }
 
 QtClientHandle sessFindPlayerItem(uint32_t item_id, int sub_type)
@@ -1173,6 +1181,8 @@ const QtClientSessionApiV1 g_sessionApi = {
     .attach_creature_effect = &sessAttachCreatureEffect,
     .detach_creature_effect = &sessDetachCreatureEffect,
     .local_player_direction = &sessLpDirection,
+    .local_player_hold_direction = &sessHoldDirection,
+    .local_player_release_direction = &sessReleaseDirection,
 };
 
 // --- Notify nested API ---

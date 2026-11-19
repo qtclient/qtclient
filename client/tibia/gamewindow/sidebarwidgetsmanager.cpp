@@ -369,8 +369,15 @@ QJsonArray TSidebarWidgetsManager::serializeSidebar(const uint sidebarId) const
     };
     for (const auto& [id, widget] : m_battleLists->widgets())
         collect(widget, { { QStringLiteral("instance"), id }, { QStringLiteral("type"), widgetTypeName(BattleList) } });
-    for (const auto& [type, hooks] : m_widgets)
-        collect(hooks.current ? hooks.current() : nullptr, { { QStringLiteral("type"), widgetTypeName(type) } });
+    for (const auto& [type, hooks] : m_widgets) {
+        // qtclient: pack widget types (e.g. the IdleOT minimap, 100) have no
+        // options name; parseWidgetsManager drops nameless entries, so storing
+        // them would never compare equal and every save would re-run the
+        // restore (closeAll) below.
+        const QString name = widgetTypeName(type);
+        if (!name.isEmpty())
+            collect(hooks.current ? hooks.current() : nullptr, { { QStringLiteral("type"), name } });
+    }
     if (m_containers) {
         for (const auto& [id, widget] : m_containers->widgets())
             collect(widget, { { QStringLiteral("instance"), id }, { QStringLiteral("type"), widgetTypeName(Container) } });
@@ -428,7 +435,10 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
     // do not fit the game window, only the main sidebar opens.
     const auto savedCount = static_cast<int>(saved.openWidgetsOrderPerSidebar.size());
     const int wanted = std::max(1, savedCount);
-    const qreal width = m_gameWindowItem ? m_gameWindowItem->width() : 0.0;
+    // qtclient: a pack layout that does not put the sidebars beside the map
+    // (a phone sheet) states the width they get as `sidebarRestoreWidth`.
+    const qreal roomOverride = m_gameWindowItem ? m_gameWindowItem->property("sidebarRestoreWidth").toReal() : 0.0;
+    const qreal width = roomOverride > 0.0 ? roomOverride : (m_gameWindowItem ? m_gameWindowItem->width() : 0.0);
     const int total = (wanted * 176 + 240 <= width || width <= 0.0) ? wanted : 1;
     const int left = saved.leftSidebarCount < total ? saved.leftSidebarCount : 0;
     const int right = total - left;

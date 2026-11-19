@@ -252,6 +252,12 @@ typedef struct QtClientSessionApiV1 {
 
     /** QTCLIENT_DIRECTION_* the local player faces, or QTCLIENT_DIRECTION_INVALID offline. */
     int (*local_player_direction)(void);
+
+    /** Hold a walk direction (QTCLIENT_DIRECTION_*, diagonals too): the player steps
+     *  now and keeps stepping like a held arrow key until released or another
+     *  direction is held (touch joysticks). */
+    void (*local_player_hold_direction)(int direction);
+    void (*local_player_release_direction)(void);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus
