@@ -41,6 +41,10 @@ done
 # Emscripten/Qt sidecar data (preload) if present.
 shopt -s nullglob
 for f in "${SRC}"/tibia.data "${SRC}"/*.wasm "${SRC}"/qtloader.js; do
+  # tibia.data is a literal (not a glob): nullglob keeps it when the build
+  # preloads nothing, and a failing copy_file here would end the script
+  # silently under set -e.
+  [[ -e "$f" ]] || continue
   base="$(basename "$f")"
   [[ -e "${OUT}/${base}" ]] || copy_file "$f" "${OUT}/${base}"
 done
