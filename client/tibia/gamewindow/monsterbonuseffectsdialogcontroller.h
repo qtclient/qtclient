@@ -1,9 +1,11 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 
 #include <cip_gen.h>
 
+#include <QPointer>
 #include <QString>
 
 #include <optional>
@@ -16,6 +18,9 @@ class TBestiaryStorage;
 }
 
 namespace tibia {
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -26,20 +31,15 @@ class TMonsterBonusEffectsDialogController final : public cip::tibia::gamewindow
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP context type 2): the selected charm
-    /// and the selected monster of the assign list.
-    struct Context
-    {
-        int charmId = 0;
-        int temporarySelectedMonsterIndex = 0;
-        bool operator==(const Context&) const = default;
-    };
-
     TMonsterBonusEffectsDialogController(cyclopedia::TBestiaryStorage& storage, QObject* parent = nullptr);
     ~TMonsterBonusEffectsDialogController() override;
 
-    Context captureContext() const;
-    void restoreContext(const Context& context);
+    /// The session's premium state: its change changes the store button's tooltip.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
+    /// The page left for another tab: the charm and the monster picked for it.
+    TCyclopediaDialogContext captureContext() const;
+    /// Another tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
     /// CIP : shows the charm's tab and selects it once the data arrives.
     void selectCharm(int charmId);
 
@@ -71,6 +71,9 @@ public:
 
 private:
     using Args = std::vector<std::any>;
+
+    bool isPremium() const;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 
     /// CIP : the charm list, the races and the pending selection.
     void refresh();

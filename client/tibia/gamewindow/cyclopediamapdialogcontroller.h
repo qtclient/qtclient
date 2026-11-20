@@ -2,6 +2,7 @@
 
 #include "cyclopedia/cyclopediamapgameactionprovider.h"
 #include "client/gamecore.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
@@ -162,6 +163,11 @@ public:
     /// Centers the map on a field; a NaN scale keeps the current one. Nothing
     /// without the map's QML item.
     void centerAt(const Position& position, float scale);
+    /// The page left for another tab: the camera's top-left and zoom.
+    TCyclopediaDialogContext captureContext() const;
+    /// The camera back where it was (on the own character for a context taken
+    /// without a camera); another tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
 
     /// Restores the selection the character's configuration holds (also when
     /// the configuration is loaded).

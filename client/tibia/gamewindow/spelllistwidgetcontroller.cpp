@@ -146,7 +146,7 @@ void TSpellListWidgetController::onShowMoreForSpell(const int SpellID)
 {
     // The Magical Archive tab with the spell.
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(8);
-    action->setTypeId(static_cast<uint16_t>(uint16_t(SpellID)));
+    action->setSpellId(static_cast<uint16_t>(SpellID));
     Q_EMIT publishGameAction(action);
 }
 

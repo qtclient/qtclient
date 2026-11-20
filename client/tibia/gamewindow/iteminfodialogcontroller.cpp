@@ -1,5 +1,7 @@
 #include "iteminfodialogcontroller.h"
 
+#include "game/gameciptypes.h"
+
 #include "app/clientoptions.h"
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
@@ -127,12 +129,6 @@ TItemInspectData::TItemInspectData(const QString& name, const uint16_t typeId,
         first = false;
     }
     m_objectInformation += QStringLiteral("</table>");
-}
-
-bool TItemInfoDialogController::Context::operator==(const Context& other) const
-{
-    return category == other.category && name == other.name && std::equal(std::begin(buttons), std::end(buttons), std::begin(other.buttons))
-           && typeId == other.typeId;
 }
 
 TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
@@ -518,10 +514,9 @@ bool TItemInfoDialogController::hasWeaponProficiency() const
     return type && type->getProficiencyId() != 0;
 }
 
-bool TItemInfoDialogController::isPremium() const
-{
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
-}
+void TItemInfoDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage) { m_premiumTimeStorage = storage; }
+
+bool TItemInfoDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 
 int TItemInfoDialogController::primaryLootValueSource() const { return m_primaryLootValueSource; }
 
@@ -626,9 +621,9 @@ void TItemInfoDialogController::showType(const uint16_t typeId)
     Q_EMIT itemListSelectionRequest(0);
 }
 
-TItemInfoDialogController::Context TItemInfoDialogController::captureContext() const
+TCyclopediaDialogContext TItemInfoDialogController::captureContext() const
 {
-    Context context;
+    TItemInfoCyclopediaContext context;
     context.category = m_category;
     context.name = m_name;
     std::copy(std::begin(m_buttons), std::end(m_buttons), std::begin(context.buttons));
@@ -636,8 +631,9 @@ TItemInfoDialogController::Context TItemInfoDialogController::captureContext() c
     return context;
 }
 
-void TItemInfoDialogController::restoreContext(const Context& context)
+void TItemInfoDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
+    const auto& context = cyclopediaContextAs<TItemInfoCyclopediaContext>(CyclopediaContext);
     Q_EMIT filterOptionsUpdateRequest(context.buttons[0], context.buttons[1], context.buttons[2], context.buttons[3]);
     if (context.category == -1) {
         if (context.name.isEmpty()) {

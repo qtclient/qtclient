@@ -242,6 +242,18 @@ TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setTypeId(const uint16_t t
     return *this;
 }
 
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setHouseId(const uint32_t houseId)
+{
+    m_houseId = houseId;
+    return *this;
+}
+
+TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setSpellId(const uint16_t spellId)
+{
+    m_spellId = spellId;
+    return *this;
+}
+
 TGameActionOpenCyclopedia& TGameActionOpenCyclopedia::setCharmId(const uint8_t charmId)
 {
     m_charmId = charmId;

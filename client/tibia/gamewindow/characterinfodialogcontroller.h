@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 
 #include <cip_gen.h>
 
@@ -45,21 +46,19 @@ public:
         Titles = 13,
     };
 
-    /// The page and the deaths / kills page a Cyclopedia backlog entry keeps.
-    struct Context
-    {
-        int dataType = GeneralStats;
-        qint64 page = 1;
-        bool operator==(const Context&) const = default;
-    };
-
     explicit TCharacterInfoDialogController(QObject* parent = nullptr);
+    ~TCharacterInfoDialogController() override;
+    /// The client setting: smooth filtering of the outfit previews.
     bool clientSettingSmoothFiltering() const override;
 
-    Context captureContext() const;
-    /// Shows the context's page and asks for its deaths / kills page.
-    void restoreContext(const Context& context);
-    ~TCharacterInfoDialogController() override;
+    /// A new game session: the page opens on the inspection again.
+    void connectToGameSession();
+
+    /// The page left for another tab: the data type and the deaths / kills page.
+    TCyclopediaDialogContext captureContext() const;
+    /// Shows the context's page and asks for its deaths / kills page; another
+    /// tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
 
     int dataType() const { return m_dataType; }
     int inspectionState() const { return m_inspectionState; }
@@ -74,11 +73,9 @@ public:
     bool hasDualWielding() const override;
     int dualWieldingObjectID() const override;
 
-    /// The page the next showDialogTab opens (CIP: the open action's sub-page,
-    /// or the backlog context restored by); general stats after it.
-    void setNextDataType(int dataType) { m_nextDataType = dataType; }
-    /// CIP (+0x118): whose data is asked for, 0 for the own character.
+    /// Whose data is asked for, 0 for the own character.
     void setCharacterId(uint32_t characterId) { m_characterId = characterId; }
+    /// Opens on the data type shown last.
     void showDialogTab() override;
     /// Opens on `dataType`, fetching every record anew.
     void showDialogTab(int dataType);
@@ -133,6 +130,8 @@ private:
     void updateOutfitsMounts();
     void updateTitles();
     void onErrorReceived(int dataType, int errorCode);
+    /// The error message's OK: a refused inspection is reported.
+    void onErrorMessageOkClicked();
     void rebuildStatsBlocks();
 
     template <class T>
@@ -143,10 +142,12 @@ private:
     TMessageDialogController* m_errorMessage;
     class TSelectOutfitDialogController* m_outfitDialog = nullptr;
     bool m_shown = false;
-    int m_dataType = NoData;
-    int m_nextDataType = GeneralStats;
+    /// The data type shown; the inspection until another page is picked.
+    int m_dataType = Inspection;
     uint32_t m_characterId = 0;
     int m_inspectionState = 0;
+    /// The error the error message shows (2 no permission, 3 no inspection).
+    int m_errorType = 0;
 
 Q_SIGNALS:
     void inspectionStateChanged();

@@ -141,13 +141,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
                     bar->closeOpenMultiActionButtons(action.actionBarId(), action.actionButtonId());
         return true;
     });
-    m_gameActions.on(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
-        TActionBarController* target = bar(action.actionBarId() > 0 ? action.actionBarId() : 1);
-        if (!target)
-            return true;
-        target->openSpellDialog(action.actionButtonId(), action.multiActionIndex(), action.spellId());
-        return true;
-    });
     m_gameActions.on(A::ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameActionAssignSpellToActionButton& action) {
         TActionBarController* target = bar(action.actionBarId());
         if (!target || action.spellId() == 0)

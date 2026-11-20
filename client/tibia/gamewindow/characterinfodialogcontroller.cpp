@@ -29,6 +29,7 @@
 #include <QAbstractListModel>
 #include <QKeySequence>
 #include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -347,6 +348,7 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
 {
     m_achievementsController = new TAchievementInfoController(this);
     m_errorMessage->setCloseOnButtonClicked(true);
+    connect(m_errorMessage, &TMessageDialogController::acceptClicked, this, [this](bool) { onErrorMessageOkClicked(); });
     // CIP character-trade / transfer QML carriers + dialog controllers.
     auto* character = new TQMLCharacterData(this);
     character->setCharacter({}, {}, 0, {});
@@ -363,6 +365,8 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TMainCharacterChangeDialogController(this);
     new TMarketCoinTransactionDetailsDialogController(this);
     hookEvents();
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TCharacterInfoDialogController::connectToGameSession);
 }
 
 TCharacterInfoDialogController::~TCharacterInfoDialogController() = default;
@@ -377,11 +381,13 @@ TCharacterInfoDialogController::EDialogCategory TCharacterInfoDialogController::
 
 bool TCharacterInfoDialogController::dataIsLoading() const { return !cyclopedia::TCharacterInfoStorage::instance()->hasInfo(m_dataType); }
 
-void TCharacterInfoDialogController::showDialogTab()
+void TCharacterInfoDialogController::showDialogTab() { showDialogTab(m_dataType); }
+
+void TCharacterInfoDialogController::connectToGameSession()
 {
-    const int dataType = m_nextDataType > BaseInformation ? m_nextDataType : GeneralStats;
-    m_nextDataType = GeneralStats;
-    showDialogTab(dataType);
+    // The session's achievements and the stats' player come with the new
+    // session (qtclient reads them from the live session).
+    m_dataType = Inspection;
 }
 
 void TCharacterInfoDialogController::showDialogTab(const int dataType)
@@ -433,13 +439,14 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
     Q_EMIT dataIsLoadingChanged();
 }
 
-TCharacterInfoDialogController::Context TCharacterInfoDialogController::captureContext() const
+TCyclopediaDialogContext TCharacterInfoDialogController::captureContext() const
 {
-    return { m_dataType, cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType) };
+    return TCharacterInfoCyclopediaContext{ m_dataType, cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType) };
 }
 
-void TCharacterInfoDialogController::restoreContext(const Context& context)
+void TCharacterInfoDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
+    const auto& context = cyclopediaContextAs<TCharacterInfoCyclopediaContext>(CyclopediaContext);
     request(context.dataType, false);
     sendRequest(context.dataType, static_cast<int>(context.page));
 }
@@ -523,6 +530,7 @@ void TCharacterInfoDialogController::onErrorReceived(int /*dataType*/, const int
 {
     if (!m_shown)
         return;
+    m_errorType = errorCode;
     const char* text = nullptr;
     switch (errorCode) {
         case 1: text = "charinfo_error_no_data"; break;
@@ -537,6 +545,13 @@ void TCharacterInfoDialogController::onErrorReceived(int /*dataType*/, const int
         Q_EMIT noPermissionsToViewCharacter();
     else if (errorCode == 1)
         Q_EMIT errorLoadingCharacter();
+}
+
+void TCharacterInfoDialogController::onErrorMessageOkClicked()
+{
+    // The inspection was refused: the owner of the page shows another one.
+    if (m_errorType == 3)
+        Q_EMIT noPermissionsToInspectCharacter();
 }
 
 int TCharacterInfoDialogController::currentPage() const

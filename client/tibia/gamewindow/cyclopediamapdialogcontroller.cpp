@@ -407,6 +407,33 @@ void TCyclopediaMapDialogController::centerAt(const Position& position, const fl
     camera->centerDelayed(position.x * SubfieldsPerField + SubfieldsPerField / 2, position.y * SubfieldsPerField + SubfieldsPerField / 2, position.z);
 }
 
+TCyclopediaDialogContext TCyclopediaMapDialogController::captureContext() const
+{
+    TMapInfoCyclopediaContext context;
+    if (m_renderer) {
+        const qmlcomponents::TWorldMapCamera* camera = m_renderer->worldCamera();
+        context.topLeft = worldmap::TWorldMapSubfieldCoordinate(camera->topLeft(), camera->layer());
+        context.zoom = camera->scaleFactor();
+    }
+    return context;
+}
+
+void TCyclopediaMapDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
+{
+    const auto& context = cyclopediaContextAs<TMapInfoCyclopediaContext>(CyclopediaContext);
+    if (!m_renderer)
+        return;
+    qmlcomponents::TWorldMapCamera* camera = m_renderer->worldCamera();
+    if (!std::isnan(context.zoom)) {
+        Q_EMIT requestSetScaleFactor(context.zoom);
+        camera->setScaleFactor(context.zoom);
+    }
+    if (context.topLeft == worldmap::TWorldMapSubfieldCoordinate())
+        centerToPlayer();
+    else
+        camera->setTopLeftDelayed(context.topLeft.subfieldX, context.topLeft.subfieldY, context.topLeft.z);
+}
+
 void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
 {
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(1);
@@ -467,7 +494,7 @@ void TCyclopediaMapDialogController::handleGameAction(const ::tibia::input::IGam
     case input::TCyclopediaMapSelectionAreaData::HouseMarker: {
         // The houses tab opens with the house once this action is done.
         auto action = std::make_shared<input::TGameActionOpenCyclopedia>(HousesTab);
-        action->setCategory(static_cast<int>(areaData.houseId));
+        action->setHouseId(areaData.houseId);
         QTimer::singleShot(0, this, [this, action]() { Q_EMIT publishGameAction(action); });
         break;
     }

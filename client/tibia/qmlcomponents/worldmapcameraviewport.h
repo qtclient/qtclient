@@ -35,6 +35,8 @@ public:
 
     /// Centres field (x,y,z) in the viewport (subfield = field * 32 + 16).
     void centerAtField(int x, int y, int z);
+    /// Centres subfield (x, y) of layer z in the viewport.
+    void centerAtSubfield(int subfieldX, int subfieldY, int z) { applyCenter(subfieldX, subfieldY, z); }
 
 Q_SIGNALS:
     /// CIP renderer::TWorldMapCameraViewport::viewportChanged — qtclient owns emit sites.

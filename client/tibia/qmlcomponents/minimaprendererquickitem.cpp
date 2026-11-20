@@ -21,6 +21,7 @@
 
 #include <QList>
 #include <QStringList>
+#include <QTimer>
 #include <QQmlComponent>
 #include <QThread>
 #include <QQmlContext>
@@ -208,6 +209,16 @@ void TWorldMapCamera::centerDelayed(const int subfieldX, const int subfieldY, co
     m_pendingLayer = layer;
     m_hasPendingCenter = true;
     Q_EMIT cameraViewportChanged();
+}
+
+void TWorldMapCamera::setTopLeftDelayed(const int subfieldX, const int subfieldY, const int layer)
+{
+    QTimer::singleShot(0, this, [this, subfieldX, subfieldY, layer] {
+        if (topLeft() == QPoint(subfieldX, subfieldY) && this->layer() == layer)
+            return;
+        setTopLeft({ subfieldX, subfieldY }, layer);
+        Q_EMIT cameraViewportChanged();
+    });
 }
 
 void TWorldMapCamera::applyPendingCenter()

@@ -91,6 +91,8 @@ public:
 
     /// The gold the player can pay with (bank and inventory).
     static quint64 goldBalance();
+    /// Forgets the charms received, their slots and reset cost (closing the Cyclopedia).
+    void clearCharms();
 
 Q_SIGNALS:
     void charmsChanged();

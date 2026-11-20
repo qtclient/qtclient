@@ -51,6 +51,9 @@ public:
     /// after the QML that creates it has set its scale (CIP 
     /// defers it with a zero timer).
     void centerDelayed(int subfieldX, int subfieldY, int layer);
+    /// Puts subfield (x, y) of `layer` at the top-left once the event loop
+    /// runs (the Cyclopedia's back button restoring the map).
+    void setTopLeftDelayed(int subfieldX, int subfieldY, int layer);
     /// Applies a pending centerDelayed once the viewport has a size.
     void applyPendingCenter();
 

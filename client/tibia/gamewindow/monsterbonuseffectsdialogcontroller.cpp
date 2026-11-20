@@ -1,4 +1,6 @@
 #include "monsterbonuseffectsdialogcontroller.h"
+
+#include "game/gameciptypes.h"
 #include "colorhelper.h"
 
 #include <utility>
@@ -143,13 +145,14 @@ TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController()
     deleteAll(previous);
 }
 
-TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogController::captureContext() const
+TCyclopediaDialogContext TMonsterBonusEffectsDialogController::captureContext() const
 {
-    return Context{ m_selectedCharm, m_temporarySelectedMonsterIndex };
+    return TMonsterBonusEffectCyclopediaContext{ m_selectedCharm, m_temporarySelectedMonsterIndex };
 }
 
-void TMonsterBonusEffectsDialogController::restoreContext(const Context& context)
+void TMonsterBonusEffectsDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
+    const auto& context = cyclopediaContextAs<TMonsterBonusEffectCyclopediaContext>(CyclopediaContext);
     if (m_selectedCharm != context.charmId) {
         m_selectedCharm = context.charmId;
         Q_EMIT qmlSelectedBonusEffectIdChanged();
@@ -318,6 +321,17 @@ void TMonsterBonusEffectsDialogController::updatePlayerData()
     Q_EMIT playerDataChanged();
 }
 
+void TMonsterBonusEffectsDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage.data(), nullptr, this, nullptr);
+    m_premiumTimeStorage = storage;
+    if (storage)
+        connect(storage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TMonsterBonusEffectsDialogController::updateStoreTooltip);
+}
+
+bool TMonsterBonusEffectsDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
+
 void TMonsterBonusEffectsDialogController::updateStoreTooltip()
 {
     // Unlimited slots (0xFF): no tooltip.
@@ -328,7 +342,7 @@ void TMonsterBonusEffectsDialogController::updateStoreTooltip()
             lines << qtTrId("monster_bonus_effects_no_more_remaining_unassigned_bonus_effects");
         else
             lines << qtTrId("monster_bonus_effects_remaining_unassigned_bonus_effects").arg(slots);
-        lines << (tibia::game::localPlayerIsPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
+        lines << (isPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
                                                       : qtTrId("monster_bonus_effects_no_premium_tooltip"));
     }
     m_storeButtonTooltip = lines.join(u'\n');
@@ -390,7 +404,7 @@ QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int 
 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
-    const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
+    const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || isPremium();
     auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? 3 : 1, expansionOrPremium ? 3 : -1);
     Q_EMIT publishGameAction(action);
 }

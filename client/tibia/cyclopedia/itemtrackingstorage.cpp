@@ -4,6 +4,7 @@
 #include "chat/chatchannel.h"
 #include "chat/textstorage.h"
 #include "config/clientoptions.h"
+#include "game/gameciptypes.h"
 #include "input/gameactionhandlers.h"
 
 #include <tibia/appearances/appearancetype.h>
@@ -310,10 +311,9 @@ void TItemTrackingStorage::onItemTrackingStorageOptionsChanged()
     m_colorizeLootStyle = config::TClientOptions::instance()->colorizeLootStyle();
 }
 
-bool TItemTrackingStorage::isPremium() const
-{
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
-}
+void TItemTrackingStorage::setPremiumTimeStorage(game::TPremiumTimeStorage* storage) { m_premiumTimeStorage = storage; }
+
+bool TItemTrackingStorage::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 
 std::deque<TTrackedItem>::iterator TItemTrackingStorage::findActiveTrackedItem(const uint16_t objectType)
 {

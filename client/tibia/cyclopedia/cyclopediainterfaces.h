@@ -36,9 +36,10 @@ public:
 public Q_SLOTS:
     void showDialogTab() override;
     void hideDialogTab() override;
-    /// CIP `restoreContext(TCyclopediaDialogContext)` — qtclient-safe map floor
-    /// (CIP context type is not in cip_gen). Live backlog restore stays on the
-    /// concrete qtclient page controllers' `Context` structs.
+    /// CIP `restoreContext(TCyclopediaDialogContext)` — moc floor only (the
+    /// context type is not in cip_gen). The dialog restores a tab through its
+    /// page controller's restoreContext(TCyclopediaDialogContext), see
+    /// gamewindow/cyclopediadialogcontext.h.
     void restoreContext(const QVariantMap& CyclopediaContext = {});
 };
 
