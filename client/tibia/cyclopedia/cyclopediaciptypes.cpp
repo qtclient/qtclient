@@ -4,7 +4,6 @@
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
 #include "analysers/analyserstorages.h"
-#include "cyclopedia/bosstiarystorage.h"
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediamapdata.h"
@@ -65,6 +64,23 @@ void ownProductSurface(QObject* parent)
     owned = true;
     (void)typedKeep();
     (void)parent;
+}
+
+QString capitalizeWords(const QString& name)
+{
+    if (name.isEmpty())
+        return name;
+    QStringList words = name.split(QStringLiteral(" "), Qt::SkipEmptyParts);
+    for (QString& word : words) {
+        if (!word.isEmpty())
+            word = QString(word.at(0).toUpper()) + word.mid(1);
+    }
+    return words.join(QStringLiteral(" "));
+}
+
+QString bossName(const int raceId)
+{
+    return capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name));
 }
 
 QString monsterRaceName(const uint16_t raceId)
@@ -235,17 +251,13 @@ void TMonsterRaceStorage::setClassificationRaces(const QString& classificationNa
     m_classificationName = classificationName;
     m_classificationRaces = std::move(races);
     Q_EMIT monsterClassificationMonstersChanged(m_classificationName);
-    // The monster dialog still reads the overview rows.
-    std::vector<BestiaryOverviewMonsters> rows;
-    rows.reserve(m_classificationRaces.size());
-    uint16_t animusMasteryPoints = 0;
-    for (const TMonsterRace& race : m_classificationRaces) {
-        rows.push_back({ .id = race.raceId, .currentLevel = static_cast<uint8_t>(race.progress),
-                         .occurrence = static_cast<uint8_t>(race.occurrence ? race.occurrence->occurrence : 0),
-                         .creatureAnimusMasteryBonus = static_cast<uint16_t>(std::lround(race.animusMasteryBonus * 1000.0)) });
-        animusMasteryPoints = race.animusMasteryPoints;
-    }
-    tibia::game::processParseBestiaryOverview(m_classificationName.toStdString(), rows, animusMasteryPoints);
+}
+
+void TMonsterRaceStorage::clearMonsterRaces()
+{
+    m_classificationRaces.clear();
+    m_racesUnlockedForCharms.clear();
+    m_racesUnlockedForMinorCharms.clear();
 }
 
 } // namespace tibia::cyclopedia
@@ -273,22 +285,11 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message)
 {
     // The classifications in order: name, number of races, known races.
-    std::vector<CyclopediaBestiaryRace> classes;
-    classes.reserve(static_cast<size_t>(message.classes_size()));
     std::vector<TMonsterRaceStorage::TMonsterClassificationSummary> summary;
     summary.reserve(static_cast<size_t>(message.classes_size()));
-    uint8_t index = 0;
-    for (const auto& c : message.classes()) {
+    for (const auto& c : message.classes())
         summary.push_back({ QString::fromStdString(c.name()), static_cast<int>(c.total()), static_cast<int>(c.known()) });
-        CyclopediaBestiaryRace& entry = classes.emplace_back();
-        entry.race = index++;
-        entry.bestClass = c.name();
-        entry.count = static_cast<uint16_t>(c.total());
-        entry.unlockedCount = static_cast<uint16_t>(c.known());
-    }
     TMonsterRaceStorage::instance()->setMonsterClassificationSummary(std::move(summary));
-    // The monster dialog still reads the classification rows.
-    tibia::game::processParseBestiaryRaces(classes);
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage(

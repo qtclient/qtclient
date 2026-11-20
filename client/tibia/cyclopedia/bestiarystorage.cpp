@@ -5,7 +5,6 @@
 #include <client/staticdata.h>
 
 #include <algorithm>
-#include <tuple>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -144,25 +143,10 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         Q_EMIT charmsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaTracker", [this](GameObject*, const Args& args) {
-        using Entry = std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>;
-        if (client::gamecore::argInt(args, 0) != 0)
-            return std::any{};
-        const auto* entries = arg<std::vector<Entry>>(args, 1);
-        if (!entries)
-            return std::any{};
-        m_trackedRaces.clear();
-        for (const Entry& entry : *entries)
-            m_trackedRaces.insert(std::get<0>(entry));
-        Q_EMIT trackerChanged();
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_charms.clear();
         m_charmableRaces.clear();
         m_majorCharmRaces.clear();
-        m_raceProgress.clear();
-        m_trackedRaces.clear();
         m_hasCharmData = false;
     });
 }
@@ -191,8 +175,6 @@ bool TBestiaryStorage::isRaceOnlyAssignableForMinorCharms(const int raceId) cons
 {
     return !m_majorCharmRaces.contains(raceId);
 }
-
-void TBestiaryStorage::setRaceProgress(const int raceId, const int progress) { m_raceProgress.insert(raceId, progress); }
 
 void TBestiaryStorage::clearCharms()
 {

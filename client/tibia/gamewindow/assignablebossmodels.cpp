@@ -2,7 +2,17 @@
 
 namespace tibia::gamewindow {
 
-TAssignableBossModel::TAssignableBossModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent)
+QString bossRaritySource(const int category)
+{
+    switch (category) {
+        case 0: return QStringLiteral("/images/icon-bosstiary-bane.png");
+        case 1: return QStringLiteral("/images/icon-bosstiary-archfoe.png");
+        case 2: return QStringLiteral("/images/icon-bosstiary-nemesis.png");
+        default: return {};
+    }
+}
+
+TAssignableBossModel::TAssignableBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent)
     : cip::TAssignableBossModel(parent)
     , m_storage(storage)
 {}
@@ -16,11 +26,11 @@ QVariant TAssignableBossModel::data(const QModelIndex& index, const int role) co
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= rowCount())
         return {};
-    const cyclopedia::TAssignableBoss& boss = m_bosses[static_cast<size_t>(index.row())];
+    const bossbestiary::TAssignableBoss& boss = m_bosses[static_cast<size_t>(index.row())];
     switch (role) {
         case BossRaceId: return boss.raceId;
         case Name: return boss.name;
-        case BossRaritySource: return cyclopedia::bossRaritySource(boss.category);
+        case BossRaritySource: return bossRaritySource(boss.category);
         case BossRarityTooltip: return m_storage.rarityTooltip(boss.category);
         default: return {};
     }
@@ -41,7 +51,7 @@ int TAssignableBossModel::count() const
     return static_cast<int>(m_bosses.size());
 }
 
-void TAssignableBossModel::setBosses(const std::vector<cyclopedia::TAssignableBoss>& bosses)
+void TAssignableBossModel::setBosses(const std::vector<bossbestiary::TAssignableBoss>& bosses)
 {
     beginResetModel();
     m_bosses = bosses;
@@ -62,7 +72,7 @@ void TAssignableBossModel::refreshRarityTooltips()
         Q_EMIT dataChanged(index(0), index(rowCount() - 1), { BossRarityTooltip });
 }
 
-TAssignableBossSortProxyModel::TAssignableBossSortProxyModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent)
+TAssignableBossSortProxyModel::TAssignableBossSortProxyModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent)
     : cip::TAssignableBossSortProxyModel(parent)
     , m_source(new TAssignableBossModel(storage, this))
 {

@@ -26,6 +26,7 @@
 namespace tibia {
 namespace cyclopedia {
 class TBestiaryStorage;
+class TCreatureTrackerStorage;
 }
 }
 
@@ -92,6 +93,8 @@ public:
     void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
+    /// The session's creature tracker storage for the monster and bosstiary pages.
+    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
 
 private:
     void hookActions();
@@ -115,7 +118,7 @@ private:
     TCharacterInfoDialogController* m_characterInfo;
     TMonsterDialogController* m_monsters;
     TMonsterBonusEffectsDialogController* m_bonusEffects;
-    cyclopedia::TBosstiaryStorage* m_bosstiaryStorage;
+    bossbestiary::TBosstiaryStorage* m_bosstiaryStorage;
     TBosstiaryDialogController* m_bosstiary;
     TBossSlotsDialogController* m_bossSlots;
     THousesInfoDialogController* m_houses;
@@ -187,7 +190,7 @@ public:
 
 private:
     uint16_t m_highlightedBossRaceId = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
+    QMetaObject::Connection m_highlightConnection;
 };
 
 }

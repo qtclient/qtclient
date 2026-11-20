@@ -614,7 +614,6 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/bestiarystorage.cpp cyclopedia/bestiarystorage.h
     gamewindow/monsterdialogcontroller.cpp gamewindow/monsterdialogcontroller.h
     gamewindow/monsterbonuseffectsdialogcontroller.cpp gamewindow/monsterbonuseffectsdialogcontroller.h
-    cyclopedia/bosstiarystorage.cpp cyclopedia/bosstiarystorage.h
     gamewindow/bosstiarydialogcontroller.cpp gamewindow/bosstiarydialogcontroller.h
     gamewindow/assignablebossmodels.cpp gamewindow/assignablebossmodels.h
     cyclopedia/characterinfostorage.cpp cyclopedia/characterinfostorage.h

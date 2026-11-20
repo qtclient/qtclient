@@ -305,6 +305,10 @@ struct TMonsterRace
     std::optional<Combat> combat;
 };
 
+/// Every word of `name` with its first letter upper-cased; empty words dropped.
+QString capitalizeWords(const QString& name);
+/// The static race name, each word capitalised.
+QString bossName(int raceId);
 /// The static race name, each word capitalised (CIP: the monster race name lookup).
 QString monsterRaceName(uint16_t raceId);
 /// The static race's appearance, a monster's or else a boss's.
@@ -343,6 +347,9 @@ public:
     const std::vector<TMonsterRace>& racesUnlockedForCharms() const { return m_racesUnlockedForCharms; }
     const std::vector<TMonsterRace>& racesUnlockedForMinorCharms() const { return m_racesUnlockedForMinorCharms; }
     void setRacesUnlockedForCharms(std::vector<TMonsterRace> races, std::vector<TMonsterRace> minorRaces);
+    /// Forgets the races received (the classification's and the charms' lists),
+    /// silently; the classification summary stays.
+    void clearMonsterRaces();
 
 Q_SIGNALS:
     void monsterClassificationMonstersChanged(const QString& MonsterClassificationID);

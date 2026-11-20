@@ -12,7 +12,7 @@
 #include "game/boostedcreaturerequestuploader.h"
 #include "game/liveinformationrequestuploader.h"
 #include "game/showoffrequestuploader.h"
-#include "cyclopedia/bosstiarystorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "gamewindow/calendardialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"

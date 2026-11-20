@@ -1,5 +1,7 @@
 #include "cyclopediadialogcontroller.h"
 
+#include "bossbestiary/bossbestiaryciptypes.h"
+
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediainterfaces.h"
@@ -54,7 +56,7 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     , m_characterInfo(new TCharacterInfoDialogController(this))
     , m_monsters(new TMonsterDialogController(*m_bestiary, this))
     , m_bonusEffects(new TMonsterBonusEffectsDialogController(*m_bestiary, this))
-    , m_bosstiaryStorage(new cyclopedia::TBosstiaryStorage(this))
+    , m_bosstiaryStorage(new bossbestiary::TBosstiaryStorage(this))
     , m_bosstiary(new TBosstiaryDialogController(*m_bosstiaryStorage, this))
     , m_bossSlots(new TBossSlotsDialogController(*m_bosstiaryStorage, this))
     , m_houses(new THousesInfoDialogController(this))
@@ -70,6 +72,7 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     m_bosstiaryDialogController = m_bosstiary;
     m_bossSlotsDialogController = m_bossSlots;
     m_magicalArchiveDialogController = m_magicalArchive;
+    bossbestiary::TBossBestiaryProtocolMessageHandler::setBosstiaryStorage(m_bosstiaryStorage);
     connect(m_itemInfo, &TItemInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_monsters, &TMonsterDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
@@ -138,10 +141,17 @@ void TCyclopediaDialogController::setInstanceStorage(mods::InstanceBackend* inst
 
 void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_map->setControlScheme(controlScheme); }
 
+void TCyclopediaDialogController::setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* const pCreatureTrackerStorage)
+{
+    m_monsters->setCreatureTrackerStorage(pCreatureTrackerStorage);
+    m_bosstiary->setCreatureTrackerStorage(pCreatureTrackerStorage);
+}
+
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
     clearBacklog();
     closeDialog();
+    bossbestiary::TBossBestiaryProtocolMessageHandler::setBosstiaryStorage(nullptr);
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -282,8 +292,8 @@ void TCyclopediaDialogController::closeDialog()
     Q_EMIT dialogTabChanged();
     if (previous)
         previous->hideDialogTab();
-    // The bestiary and charm data received go with the dialog.
-    m_monsters->clearBestiaryCache();
+    // The races and charm data received go with the dialog.
+    cyclopedia::TMonsterRaceStorage::instance()->clearMonsterRaces();
     m_bestiary->clearCharms();
     dialog()->close();
 }
@@ -505,11 +515,10 @@ void TBosstiaryButtonController::connectToGameSession()
         m_highlightedBossRaceId = 0;
         Q_EMIT changed();
     }
-    m_hooks.clear();
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBosstiaryEntryChanged", [this](GameObject*, const std::vector<std::any>& args) {
-        onHighlightRequested(static_cast<uint16_t>(client::gamecore::argInt(args, 0)));
-        return std::any{};
-    });
+    disconnect(m_highlightConnection);
+    m_highlightConnection = connect(bossbestiary::TBossBestiaryProtocolMessageHandler::instance(),
+                                    &bossbestiary::TBossBestiaryProtocolMessageHandler::requestBosstiaryButtonHighlight, this,
+                                    &TBosstiaryButtonController::onHighlightRequested);
 }
 
 void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)

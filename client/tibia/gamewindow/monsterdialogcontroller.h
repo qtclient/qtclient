@@ -8,12 +8,16 @@
 #include <client/staticdata.h>
 
 #include <QList>
+#include <QPointer>
 #include <QString>
 
 #include <optional>
 #include <vector>
 
 namespace tibia {
+namespace cyclopedia {
+class TCreatureTrackerStorage;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -108,9 +112,9 @@ public:
     /// Shows the context's view again, asking the server for it; another
     /// tab's context throws.
     void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
-    /// Forgets the classifications, races and race details received (the
-    /// session's bestiary cache; also on closing the Cyclopedia).
-    void clearBestiaryCache();
+    /// The session's creature tracker storage: whether the shown race is
+    /// tracked and whether more can be.
+    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
 
     bool isMonsterTracked() const override;
     bool canTrackMoreMonsters() const override;
@@ -151,25 +155,24 @@ private:
 
     void hookEvents();
     void setDialogState(DialogState state);
-    /// CIP /.
+    /// The monster race storage's classification summary / races changed.
     void onClassificationSummaryChanged();
-    void onMonsterRacesChanged();
+    void onMonsterRacesChanged(const QString& MonsterClassificationID);
     void onMonsterRaceDetailsChanged();
     void rebuildSingleMonster();
     void onConfirmDialogAccepted();
     TQmlMonsterRace* singleRace() const;
 
     cyclopedia::TBestiaryStorage& m_storage;
+    QPointer<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
+    std::vector<QMetaObject::Connection> m_creatureTrackerConnections;
     std::vector<client::gamecore::Hook> m_hooks;
     TMessageDialogController* m_confirmDialog;
     bool m_shown = false;
     /// Set by the destructor: the page refreshes run but build no QML objects.
     bool m_tearingDown = false;
 
-    std::vector<CyclopediaBestiaryRace> m_classifications;
-    std::vector<BestiaryOverviewMonsters> m_races;
     std::optional<BestiaryMonsterData> m_details;
-    int m_animusMasteryPoints = 0;
     QString m_selectedClassification;
     QString m_search;
     int m_selectedRace = 0;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cyclopedia/bosstiarystorage.h"
+#include "bossbestiary/bosstiarystorage.h"
 
 #include <cip_gen.h>
 
@@ -8,6 +8,9 @@
 
 namespace tibia {
 namespace gamewindow {
+
+/// The image of a boss rarity: bane, archfoe, nemesis; none for another.
+QString bossRaritySource(int category);
 
 /// The bosses a slot can be set to (CIP: TAssignableBossModel, data).
 class TAssignableBossModel final : public cip::TAssignableBossModel
@@ -22,21 +25,21 @@ public:
         BossRarityTooltip,
     };
 
-    TAssignableBossModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    TAssignableBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
     int count() const override;
 
-    void setBosses(const std::vector<cyclopedia::TAssignableBoss>& bosses);
+    void setBosses(const std::vector<bossbestiary::TAssignableBoss>& bosses);
     void refreshAll();
     /// The rarity tooltips change with the boss points per stage.
     void refreshRarityTooltips();
 
 private:
-    const cyclopedia::TBosstiaryStorage& m_storage;
-    std::vector<cyclopedia::TAssignableBoss> m_bosses;
+    const bossbestiary::TBosstiaryStorage& m_storage;
+    std::vector<bossbestiary::TAssignableBoss> m_bosses;
 };
 
 /// CIP: TAssignableBossSortProxyModel (filter , lessThan).
@@ -45,7 +48,7 @@ class TAssignableBossSortProxyModel final : public cip::TAssignableBossSortProxy
     Q_OBJECT
     Q_PROPERTY(int raceIDRoleEnumValue READ raceIDRoleEnumValue CONSTANT)
 public:
-    TAssignableBossSortProxyModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    TAssignableBossSortProxyModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
 
     TAssignableBossModel* source() const { return m_source; }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cyclopedia/bosstiarystorage.h"
+#include "bossbestiary/bosstiarystorage.h"
 #include "worldmap/coordinates.h"
 
 #include <cip_gen.h>
@@ -92,7 +92,7 @@ struct TCharacterInfoCyclopediaContext
 /// The bosstiary page: the filter and the page.
 struct TBosstiaryCyclopediaContext
 {
-    cyclopedia::TBosstiaryFilter filter;
+    bossbestiary::TBosstiaryFilter filter;
     int page = 1;
     bool operator==(const TBosstiaryCyclopediaContext&) const = default;
 };

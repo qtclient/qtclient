@@ -1,7 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
-#include "cyclopedia/bosstiarystorage.h"
+#include "bossbestiary/bosstiarystorage.h"
 #include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/assignablebossmodels.h"
 #include "input/gameaction.h"
@@ -9,12 +9,16 @@
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
+#include <QPointer>
 
 #include <functional>
 #include <optional>
 #include <vector>
 
 namespace tibia {
+namespace cyclopedia {
+class TCreatureTrackerStorage;
+}
 namespace gamewindow {
 
 /// The bosses of the current bosstiary page (CIP: the list model at
@@ -36,20 +40,20 @@ public:
         Tracked,
     };
 
-    TBosstiaryBossModel(const cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    TBosstiaryBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
     /// CIP : resizes the rows, then refreshes all of them.
-    void setEntries(std::vector<cyclopedia::TBosstiaryEntry> entries);
+    void setEntries(std::vector<bossbestiary::TBosstiaryEntry> entries);
     void refreshAll();
     void refreshRoles(const QList<int>& roles);
 
 private:
-    const cyclopedia::TBosstiaryStorage& m_storage;
-    std::vector<cyclopedia::TBosstiaryEntry> m_entries;
+    const bossbestiary::TBosstiaryStorage& m_storage;
+    std::vector<bossbestiary::TBosstiaryEntry> m_entries;
 };
 
 /// The Cyclopedia's bosstiary page, BosstiaryDialog.qml (CIP:
@@ -60,7 +64,7 @@ class TBosstiaryDialogController final : public cip::tibia::gamewindow::TBosstia
 {
     Q_OBJECT
 public:
-    TBosstiaryDialogController(cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    TBosstiaryDialogController(bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
     ~TBosstiaryDialogController() override;
 
     /// The page left for another tab: the filter and the page.
@@ -71,6 +75,8 @@ public:
     void showRace(int raceId);
     /// The Cyclopedia's actions: a received free podium shows its message.
     void handleGameAction(const input::IGameAction& action);
+    /// The session's creature tracker storage: whether more bosses can be tracked.
+    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
 
     QString baneTooltip() const override;
     QString archfoeTooltip() const override;
@@ -113,14 +119,16 @@ private:
     /// Kill stage / boss point changes refresh those roles of every row.
     void onKillStagesChanged();
     void onPointsChanged();
-    void changeFilter(const std::function<void(cyclopedia::TBosstiaryFilter&)>& change);
+    void changeFilter(const std::function<void(bossbestiary::TBosstiaryFilter&)>& change);
     void rebuild();
 
     TMessageDialogController* m_message;
     /// A context is being restored: list changes do not rebuild.
     bool m_restoring = false;
-    cyclopedia::TBosstiaryStorage& m_storage;
+    bossbestiary::TBosstiaryStorage& m_storage;
     TBosstiaryBossModel* m_model;
+    QPointer<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
+    QMetaObject::Connection m_creatureTrackerConnection;
 };
 
 /// One slot of the boss slots page (CIP: TBossSlotQMLInformation, metacall
@@ -131,7 +139,7 @@ class TBossSlotInformation final : public cip::tibia::gamewindow::TBossSlotQMLIn
 public:
     using cip::tibia::gamewindow::TBossSlotQMLInformation::TBossSlotQMLInformation;
 
-    void update(const cyclopedia::TBossSlot& slot, const cyclopedia::TBosstiaryStorage& storage);
+    void update(const bossbestiary::TBossSlot& slot, const bossbestiary::TBosstiaryStorage& storage);
 };
 
 /// The Cyclopedia's boss slots page, BossSlotsDialog.qml (CIP:
@@ -140,7 +148,7 @@ class TBossSlotsDialogController final : public cip::tibia::gamewindow::TBossSlo
 {
     Q_OBJECT
 public:
-    TBossSlotsDialogController(cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    TBossSlotsDialogController(bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
     ~TBossSlotsDialogController() override;
 
     qlonglong playerGold() const override;
@@ -159,13 +167,12 @@ private:
     void update();
     void onBossPointsChanged();
 
-    cyclopedia::TBosstiaryStorage& m_storage;
+    bossbestiary::TBosstiaryStorage& m_storage;
     TBossSlotInformation* m_first;
     TBossSlotInformation* m_second;
     TBossSlotInformation* m_boosted;
     TAssignableBossSortProxyModel* m_firstList;
     TAssignableBossSortProxyModel* m_secondList;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

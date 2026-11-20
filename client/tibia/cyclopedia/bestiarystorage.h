@@ -2,7 +2,6 @@
 
 #include "client/gamecore.h"
 
-#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QSet>
@@ -58,9 +57,7 @@ int charmCost(int charmId, int grade);
 /// CIP .
 QString charmImageSource(int charmId);
 
-/// The player's bestiary state shared by the Cyclopedia's monster and charm
-/// pages (CIP: TCharmsStorage behind the session's vfunc 0x328, and the
-/// bestiary tracker list behind 0x338).
+/// The player's charms shared by the Cyclopedia's monster and charm pages.
 class TBestiaryStorage final : public QObject
 {
     Q_OBJECT
@@ -81,13 +78,6 @@ public:
     const std::vector<uint16_t>& charmableRaces() const { return m_charmableRaces; }
     /// The race is not in the charm message's list for major charms.
     bool isRaceOnlyAssignableForMinorCharms(int raceId) const;
-    /// The bestiary progress (0..4) last seen for a race, -1 if unknown.
-    int raceProgress(int raceId) const { return m_raceProgress.value(raceId, -1); }
-    void setRaceProgress(int raceId, int progress);
-
-    bool isTracked(int raceId) const { return m_trackedRaces.contains(raceId); }
-    /// CIP : up to 50 tracked races.
-    bool canTrackMore() const { return m_trackedRaces.size() < 50; }
 
     /// The gold the player can pay with (bank and inventory).
     static quint64 goldBalance();
@@ -96,7 +86,6 @@ public:
 
 Q_SIGNALS:
     void charmsChanged();
-    void trackerChanged();
 
 private:
     std::vector<client::gamecore::Hook> m_hooks;
@@ -106,8 +95,6 @@ private:
     bool m_hasCharmData = false;
     std::vector<uint16_t> m_charmableRaces;
     QSet<int> m_majorCharmRaces;
-    QHash<int, int> m_raceProgress;
-    QSet<int> m_trackedRaces;
 };
 
 }

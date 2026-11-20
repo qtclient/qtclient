@@ -1,6 +1,6 @@
 #include "bossbestiary/bosstrackerstorage.h"
 
-#include "cyclopedia/bosstiarystorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 
 #include <client/staticdata.h>
 

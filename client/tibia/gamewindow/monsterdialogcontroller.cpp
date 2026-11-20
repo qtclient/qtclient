@@ -8,6 +8,8 @@
 #include "gamewindow/smoothfiltering.h"
 
 #include "cyclopedia/bestiarystorage.h"
+#include "cyclopedia/creaturetrackerstorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -37,6 +39,7 @@ namespace {
 using A = input::EGameAction;
 using cyclopedia::TBestiaryStorage;
 using cyclopedia::TCharm;
+using cyclopedia::TMonsterRaceStorage;
 
 /// CIP: 15 classifications / races a page .
 constexpr int PageSize = 15;
@@ -57,6 +60,20 @@ QColor outfitColor(const int index)
 }
 
 int pageCount(const size_t entries) { return static_cast<int>(std::ceil(static_cast<double>(entries) / PageSize)); }
+
+/// The monster race storage's classifications and races; none once the
+/// session is gone (the controller going away).
+const std::vector<TMonsterRaceStorage::TMonsterClassificationSummary>& classificationSummary(const bool sessionGone)
+{
+    static const std::vector<TMonsterRaceStorage::TMonsterClassificationSummary> none;
+    return sessionGone ? none : TMonsterRaceStorage::instance()->monsterClassificationSummary();
+}
+
+const std::vector<cyclopedia::TMonsterRace>& classificationRaces(const bool sessionGone)
+{
+    static const std::vector<cyclopedia::TMonsterRace> none;
+    return sessionGone ? none : TMonsterRaceStorage::instance()->classificationRaces();
+}
 
 /// The "monster-classifications" image strip's cells (cell 0: unknown).
 int classificationImageId(const QString& name)
@@ -89,12 +106,12 @@ QString damageTypeName(const int element)
 class TQmlMonsterClassificationSummary final : public cip::tibia::gamewindow::TQmlMonsterClassificationSummary
 {
 public:
-    TQmlMonsterClassificationSummary(const CyclopediaBestiaryRace& race, QObject* parent)
+    TQmlMonsterClassificationSummary(const TMonsterRaceStorage::TMonsterClassificationSummary& summary, QObject* parent)
         : cip::tibia::gamewindow::TQmlMonsterClassificationSummary(parent)
     {
-        m_name = qstr(race.bestClass);
-        m_totalMonsters = race.count;
-        m_knownMonsters = race.unlockedCount;
+        m_name = summary.name;
+        m_totalMonsters = summary.total;
+        m_knownMonsters = summary.known;
     }
 
     /// The classification's cell of the "monster-classifications" strip.
@@ -625,10 +642,10 @@ TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QO
     m_confirmDialog->setYesNoButtons();
     m_confirmDialog->setCloseOnButtonClicked(true);
     connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, &TMonsterDialogController::onConfirmDialogAccepted);
-    connect(&m_storage, &TBestiaryStorage::trackerChanged, this, [this] {
-        Q_EMIT qmlIsMonsterTrackedChanged();
-        Q_EMIT qmlCanTrackMoreMonstersChanged();
-    });
+    TMonsterRaceStorage* races = TMonsterRaceStorage::instance();
+    connect(races, &TMonsterRaceStorage::monsterClassificationSummaryChanged, this,
+            &TMonsterDialogController::onClassificationSummaryChanged);
+    connect(races, &TMonsterRaceStorage::monsterClassificationMonstersChanged, this, &TMonsterDialogController::onMonsterRacesChanged);
     connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
         if (m_dialogState == SingleMonster)
             rebuildSingleMonster();
@@ -645,11 +662,9 @@ TMonsterDialogController::~TMonsterDialogController()
     // is made for QML while the controller goes away.
     m_tearingDown = true;
     m_hooks.clear();
-    m_classifications.clear();
-    m_races.clear();
     m_details.reset();
     onClassificationSummaryChanged();
-    onMonsterRacesChanged();
+    onMonsterRacesChanged(m_selectedClassification);
     if (QObject* single = std::exchange(m_singleMonster, nullptr)) {
         Q_EMIT qmlSingleMonsterChanged();
         delete single;
@@ -658,9 +673,33 @@ TMonsterDialogController::~TMonsterDialogController()
 
 TQmlMonsterRace* TMonsterDialogController::singleRace() const { return qobject_cast<TQmlMonsterRace*>(m_singleMonster); }
 
-bool TMonsterDialogController::isMonsterTracked() const { return m_singleMonster && m_storage.isTracked(m_selectedRace); }
+bool TMonsterDialogController::isMonsterTracked() const
+{
+    return m_pCreatureTrackerStorage && m_singleMonster && m_pCreatureTrackerStorage->isMonsterTracked(m_selectedRace);
+}
 
-bool TMonsterDialogController::canTrackMoreMonsters() const { return m_storage.canTrackMore(); }
+bool TMonsterDialogController::canTrackMoreMonsters() const
+{
+    return m_pCreatureTrackerStorage && m_pCreatureTrackerStorage->canTrackMoreMonsters();
+}
+
+void TMonsterDialogController::setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* const pCreatureTrackerStorage)
+{
+    for (const QMetaObject::Connection& connection : m_creatureTrackerConnections)
+        disconnect(connection);
+    m_creatureTrackerConnections.clear();
+    m_pCreatureTrackerStorage = pCreatureTrackerStorage;
+    if (pCreatureTrackerStorage) {
+        m_creatureTrackerConnections.push_back(connect(pCreatureTrackerStorage,
+                                                       &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
+                                                       &TMonsterDialogController::qmlIsMonsterTrackedChanged));
+        m_creatureTrackerConnections.push_back(connect(pCreatureTrackerStorage,
+                                                       &cyclopedia::TCreatureTrackerStorage::canTrackMoreMonstersChanged, this,
+                                                       &TMonsterDialogController::qmlCanTrackMoreMonstersChanged));
+    }
+    Q_EMIT qmlIsMonsterTrackedChanged();
+    Q_EMIT qmlCanTrackMoreMonstersChanged();
+}
 
 TCyclopediaDialogContext TMonsterDialogController::captureContext() const
 {
@@ -694,17 +733,12 @@ void TMonsterDialogController::restoreContext(const TCyclopediaDialogContext& Cy
     }
 }
 
-void TMonsterDialogController::clearBestiaryCache()
-{
-    m_classifications.clear();
-    m_races.clear();
-    m_details.reset();
-}
-
 void TMonsterDialogController::showDialogTab()
 {
     m_shown = true;
-    clearBestiaryCache();
+    // The races received before go; the classification summary stays.
+    TMonsterRaceStorage::instance()->clearMonsterRaces();
+    m_details.reset();
     m_selectedClassification.clear();
     m_search.clear();
     m_selectedRace = 0;
@@ -749,9 +783,10 @@ void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage
     previous.swap(m_monsterClassificationSummary);
     if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterClassificationCurrentPage && NewPage <= m_monsterClassificationTotalPages) {
         m_monsterClassificationCurrentPage = NewPage;
-        const size_t end = std::min(m_classifications.size(), static_cast<size_t>(NewPage * PageSize));
+        const auto& classifications = classificationSummary(m_tearingDown);
+        const size_t end = std::min(classifications.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i)
-            m_monsterClassificationSummary.append(new TQmlMonsterClassificationSummary(m_classifications[i], this));
+            m_monsterClassificationSummary.append(new TQmlMonsterClassificationSummary(classifications[i], this));
     }
     Q_EMIT qmlMonsterClassificationSummaryChanged();
     Q_EMIT qmlMonsterClassificationPageChanged();
@@ -764,11 +799,12 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
     previous.swap(m_monsterRaceSummary);
     if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterRacesCurrentPage && NewPage <= m_monsterRacesTotalPages) {
         m_monsterRacesCurrentPage = NewPage;
-        const size_t end = std::min(m_races.size(), static_cast<size_t>(NewPage * PageSize));
+        const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown);
+        const size_t end = std::min(races.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i) {
-            const BestiaryOverviewMonsters& race = m_races[i];
-            m_monsterRaceSummary.append(new TQmlMonsterRace(race.id, race.currentLevel, race.creatureAnimusMasteryBonus / 1000.0,
-                                                            m_animusMasteryPoints, nullptr, {}, this));
+            const cyclopedia::TMonsterRace& race = races[i];
+            m_monsterRaceSummary.append(new TQmlMonsterRace(race.raceId, race.progress, race.animusMasteryBonus,
+                                                            race.animusMasteryPoints, nullptr, {}, this));
         }
     }
     Q_EMIT qmlMonsterRacesPageChanged();
@@ -816,7 +852,8 @@ void TMonsterDialogController::requestToggleBestiaryTracking()
 {
     if (!m_singleMonster)
         return;
-    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !m_storage.isTracked(m_selectedRace));
+    const bool tracked = m_pCreatureTrackerStorage && m_pCreatureTrackerStorage->isMonsterTracked(m_selectedRace);
+    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !tracked);
 }
 
 void TMonsterDialogController::viewSelectedCharm(const int charmID)
@@ -870,10 +907,11 @@ void TMonsterDialogController::onClassificationSummaryChanged()
     // The page of the selected classification, else the first.
     setDialogState(MonsterClassification);
     m_monsterClassificationCurrentPage = 0;
-    m_monsterClassificationTotalPages = pageCount(m_classifications.size());
+    const auto& classifications = classificationSummary(m_tearingDown);
+    m_monsterClassificationTotalPages = pageCount(classifications.size());
     int page = 1;
-    for (size_t i = 0; i < m_classifications.size(); ++i) {
-        if (qstr(m_classifications[i].bestClass) == m_selectedClassification) {
+    for (size_t i = 0; i < classifications.size(); ++i) {
+        if (classifications[i].name == m_selectedClassification) {
             page = static_cast<int>(i / PageSize) + 1;
             break;
         }
@@ -881,15 +919,17 @@ void TMonsterDialogController::onClassificationSummaryChanged()
     requestClassificationPageSwitch(page);
 }
 
-void TMonsterDialogController::onMonsterRacesChanged()
+void TMonsterDialogController::onMonsterRacesChanged(const QString& MonsterClassificationID)
 {
-    // The page of the selected race, else the first.
+    // The classification's races, on the page of the selected race, else the first.
     setDialogState(MonsterRaces);
+    m_selectedClassification = MonsterClassificationID;
     m_monsterRacesCurrentPage = 0;
-    m_monsterRacesTotalPages = pageCount(m_races.size());
+    const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown);
+    m_monsterRacesTotalPages = pageCount(races.size());
     int page = 1;
-    for (size_t i = 0; i < m_races.size(); ++i) {
-        if (m_races[i].id == m_selectedRace) {
+    for (size_t i = 0; i < races.size(); ++i) {
+        if (races[i].raceId == m_selectedRace) {
             page = static_cast<int>(i / PageSize) + 1;
             break;
         }
@@ -929,33 +969,10 @@ void TMonsterDialogController::onMonsterRaceDetailsChanged()
 
 void TMonsterDialogController::hookEvents()
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseBestiaryRaces", [this](GameObject*, const Args& args) {
-        const auto* races = arg<std::vector<CyclopediaBestiaryRace>>(args, 0);
-        if (!m_shown || !races)
-            return std::any{};
-        m_classifications = *races;
-        if (m_dialogState == MonsterClassification)
-            onClassificationSummaryChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseBestiaryOverview", [this](GameObject*, const Args& args) {
-        const auto* races = arg<std::vector<BestiaryOverviewMonsters>>(args, 1);
-        if (!races)
-            return std::any{};
-        for (const BestiaryOverviewMonsters& race : *races)
-            m_storage.setRaceProgress(race.id, race.currentLevel);
-        if (!m_shown)
-            return std::any{};
-        m_races = *races;
-        m_animusMasteryPoints = static_cast<int>(client::gamecore::argInt(args, 2));
-        onMonsterRacesChanged();
-        return std::any{};
-    });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBestiaryMonsterData", [this](GameObject*, const Args& args) {
         const auto* data = arg<BestiaryMonsterData>(args, 0);
         if (!data)
             return std::any{};
-        m_storage.setRaceProgress(data->id, data->currentLevel);
         if (!m_shown)
             return std::any{};
         m_details = *data;

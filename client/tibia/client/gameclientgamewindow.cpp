@@ -619,6 +619,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     sidebarWidgets->registerWidget(Widgets::ImbuementTracker, Widgets::hooksFor(*g.imbuementTrackerWidget, [this, w = g.imbuementTrackerWidget.get()] { return w->open(sidebarOptions()); }));
     g.creatureTrackerStorage = std::make_unique<cyclopedia::TCreatureTrackerStorage>();
     cyclopedia::TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(g.creatureTrackerStorage.get());
+    if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
+        cyclopedia->setCreatureTrackerStorage(g.creatureTrackerStorage.get());
     g.bossTrackerStorage = std::make_unique<bossbestiary::TBossTrackerStorage>();
     using CreatureMode = gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
     g.bestiaryTrackerWidget = std::make_unique<gamewindow::TCreatureTrackerWidgetManager>(

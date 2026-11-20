@@ -37,6 +37,8 @@ public:
     const std::vector<TCreatureTrackerEntry>& bosses() const { return m_bosses; }
     bool canTrackMoreMonsters() const { return static_cast<int>(m_monsters.size()) < TrackLimit; }
     bool canTrackMoreBosses() const { return static_cast<int>(m_bosses.size()) < TrackLimit; }
+    /// The bestiary tracks the race.
+    bool isMonsterTracked(int raceId) const;
     /// The bosstiary tracks the race.
     bool isBossTracked(int raceId) const;
 

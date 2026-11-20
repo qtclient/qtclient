@@ -1,13 +1,7 @@
 #include "cyclopedia/creaturetrackerstorage.h"
 
-#include "cyclopedia/bosstiarystorage.h"
-
-#include <tibia/assets/things.h>
-
 #include <algorithm>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
-#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::cyclopedia {
 
@@ -33,6 +27,11 @@ void TCreatureTrackerStorage::setTrackedMonsters(const std::vector<TCreatureTrac
     m_monsters = entries;
     Q_EMIT trackedMonstersChanged();
     Q_EMIT canTrackMoreMonstersChanged();
+}
+
+bool TCreatureTrackerStorage::isMonsterTracked(const int raceId) const
+{
+    return std::ranges::any_of(m_monsters, [raceId](const TCreatureTrackerEntry& entry) { return entry.raceId == raceId; });
 }
 
 bool TCreatureTrackerStorage::isBossTracked(const int raceId) const

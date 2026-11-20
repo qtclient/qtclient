@@ -1,6 +1,6 @@
 #include "cyclopediamapdialogcontroller.h"
 
-#include "cyclopedia/bosstiarystorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
 #include "cyclopedia/cyclopediainterfaces.h"
 #include "cyclopedia/cyclopediamapdata.h"
