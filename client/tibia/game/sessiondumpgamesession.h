@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/gamesessionbase.h"
+#include "game/sessiondumpgamesessionmetainfo.h"
 
 #include "client/gamecore.h"
 
@@ -46,6 +47,13 @@ public:
     explicit TSessiondumpGameSession(QObject* parent = nullptr);
     ~TSessiondumpGameSession() override;
 
+    /// Builds the session from a TSessiondumpGameSessionMetaInfo.
+    void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
+    /// Plays the meta info's sessiondump.
+    void startSession() override;
+    /// True for the tutorial dump a new character watches before its live session.
+    bool isTutorial() const;
+
     /// Plays a recorded OTC packet log or CIP `dmpd` dump through g_game.
     void replay(const QString& file);
     /// Drops the replay without waiting for the recording to finish.
@@ -58,9 +66,6 @@ public:
     QString worldName() const;
 
 Q_SIGNALS:
-    void gameLoginErrorMessage(const QString& ErrorMessage);
-    void gameLoginWaitMessage(const QString& WaitMessage, int WaitSecondsUntilNextTry);
-    void sessionEndInformation(int Reason);
     void clientOutOfDate();
     /// Named cue from CIP SessionDumpMarker (S 0x05) during a live dump or replay.
     void sessionDumpMarker(const QString& marker);
@@ -87,6 +92,7 @@ private:
     void startHintsForDump(const QString& dumpPath);
     void stopHints();
 
+    std::shared_ptr<const TSessiondumpGameSessionMetaInfo> m_sessiondumpMetaInfo;
     QTimer m_replayTimer;
     QElapsedTimer m_replayClock;
     std::vector<ReplayBody> m_replayPackets;

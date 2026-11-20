@@ -205,7 +205,7 @@ void TGameSessionState::createMovementIntent()
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
     // CIP: the session's movement intent handler publishes through the session's router.
-    if (TGameserverGameSession* session = TGameserverGameSession::liveInstance())
+    if (auto* session = dynamic_cast<TGameserverGameSession*>(TGameSessionBase::active()))
         QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
                          &TInternalGameActionRouter::handleGameActionInternal);
     QObject::connect(tibia::app::ClientOptionsNotifier::instance(), &tibia::app::ClientOptionsNotifier::optionChanged, intent,

@@ -17,6 +17,7 @@
 #include <QStringList>
 #include <QTimer>
 
+#include <deque>
 #include <memory>
 #include <vector>
 
@@ -54,7 +55,9 @@ class TCrashReportSender;
 }
 namespace tibia {
 namespace game {
+class IGameSession;
 class TGameActionRouter;
+class TGameSessionMetaInfo;
 class TOutfitDialogStorage;
 class TGameserverGameSession;
 class TSessiondumpGameSession;
@@ -196,9 +199,12 @@ public:
     void checkForCrashDump();
 
     gamewindow::TCharacterSelectionController* characterSelection() const { return m_characterSelection.get(); }
-    game::TGameserverGameSession* session() const { return m_session.get(); }
-    /// CIP-shaped replay session when `--replay` is set; null for live login.
-    game::TSessiondumpGameSession* sessiondump() const { return m_sessiondump.get(); }
+    /// The current game session: one per login, replay or tutorial; null between them.
+    const std::shared_ptr<game::IGameSession>& currentGameSession() const { return m_currentGameSession; }
+    /// The current session when it is a live one; null otherwise.
+    game::TGameserverGameSession* session() const;
+    /// The current session when it replays a sessiondump (`--replay`, the tutorial); null otherwise.
+    game::TSessiondumpGameSession* sessiondump() const;
     network::ExtendedOpcodeRouter* opcodes() const { return m_opcodes.get(); }
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const { return m_worldMapRenderProvider.get(); }
     /// The view the world map shows: centred by the full map, read by the picker.
@@ -295,6 +301,9 @@ Q_SIGNALS:
     void sessionEmailAvailable(const QString& email);
 
 public Q_SLOTS:
+    /// CIP: takes the next meta info off the queue, builds its game session,
+    /// makes it the current session and starts it.
+    void autoconnectNextGameSessionInQueue();
     /// CIP: with FPS tracking on, samples the frame rate every
     /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
     /// (and when the session ends or the client closes); off drops both.
@@ -327,8 +336,23 @@ private:
     void onWorldEntered();
     /// Writes the session's minimap and character options.
     void onWorldLeft();
-    void startTutorialThenLive(const game::GameserverCredentials& live, const QString& dumpPath);
-    void connectLive(const game::GameserverCredentials& credentials);
+    /// CIP: the meta infos of a character login: a tutorial character first
+    /// watches the tutorial dump, then the live session logs in.
+    std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> createGameSessionMetaInfos(
+        const game::GameserverCredentials& loginData, const QString& tutorialSessiondump) const;
+    /// The settings every session's meta info carries (queue delays, effect
+    /// and chat limits, movement).
+    void setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const;
+    /// Queues the meta infos and connects the first one.
+    void enqueueGameSessions(std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos);
+    /// Makes `session` the current game session (null: none) and releases the
+    /// previous one.
+    void setCurrentGameSession(const std::shared_ptr<game::IGameSession>& session);
+    /// CIP: the current session disconnected: the next queued one connects;
+    /// with none left there is no current session.
+    void onCurrentGameSessionDisconnected();
+    /// The game client's own reactions to a session's signals.
+    void connectToCurrentGameSession();
     void fail(const QString& message);
     /// Once per frame, before the scene graph syncs (CIP:).
     void tick();
@@ -366,8 +390,9 @@ private:
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
     bool m_characterSelectionOpen = false;
-    std::unique_ptr<game::TGameserverGameSession> m_session;
-    std::unique_ptr<game::TSessiondumpGameSession> m_sessiondump;
+    /// CIP: the sessions to play next, in order.
+    std::deque<std::shared_ptr<const game::TGameSessionMetaInfo>> m_gameSessionMetaInfoQueue;
+    std::shared_ptr<game::IGameSession> m_currentGameSession;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
@@ -393,10 +418,8 @@ private:
     QMetaObject::Connection m_objectSoundConnection;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
-    std::optional<game::GameserverCredentials> m_pendingLiveCredentials;
     int m_worldType = -1;
     bool m_started = false;
-    bool m_tutorialCinematic = false;
     bool m_sameSocketCharacterSwitch = false;
     /// Logged in once the current character has left the world (CIP switch).
     std::optional<QString> m_pendingCharacter;

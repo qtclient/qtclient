@@ -11,6 +11,7 @@
 
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
+#include "game/gamesessionbase.h"
 #include "network/gameserverpacketprocessor.h"
 #include "network/gameserverconnection.h"
 #include "rsahelper.h"
@@ -27,7 +28,6 @@ namespace {
 
 TProtobufServerMessageTranslator* g_serverTranslator = nullptr;
 TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
-TProtocolMessageQueue* g_messageQueue = nullptr;
 std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> g_lastServerMessage;
 
 struct CipTypedKeep {
@@ -1931,15 +1931,7 @@ void ownProductSurface(QObject* parent)
     owned = true;
     g_serverTranslator = &typedKeep().tProtobufServerMessageTranslator;
     g_clientTranslator = &typedKeep().tProtobufClientMessageTranslator;
-    g_messageQueue = new TProtocolMessageQueue(parent);
-    // CIP TProtocolClientMessageProcessor: encoded client messages → the game connection.
-    QObject::connect(g_messageQueue, &TProtocolMessageQueue::clientMessageEnqueued, g_messageQueue,
-                     [](int, const QByteArray& frame) {
-                         if (frame.isEmpty())
-                             return;
-                         if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
-                             processor->writeClientFrame(frame);
-                     });
+    (void)parent;
 }
 
 TProtobufServerMessageTranslator* serverMessageTranslator()
@@ -1954,7 +1946,8 @@ TProtobufClientMessageTranslator* clientMessageTranslator()
 
 TProtocolMessageQueue* protocolMessageQueue()
 {
-    return g_messageQueue;
+    const game::TGameSessionBase* session = game::TGameSessionBase::active();
+    return session ? session->protocolMessageQueue().get() : nullptr;
 }
 
 bool emptyStructuredServerOpcode(int opcode)
@@ -2105,8 +2098,8 @@ QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf)
 
 const GameserverMessage* lastShadowServerMessage()
 {
-    if (g_messageQueue && g_messageQueue->lastServerMessage())
-        return g_messageQueue->lastServerMessage();
+    if (TProtocolMessageQueue* queue = protocolMessageQueue(); queue && queue->lastServerMessage())
+        return queue->lastServerMessage();
     return g_lastServerMessage.get();
 }
 

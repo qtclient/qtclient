@@ -3,6 +3,10 @@
 #include "protocol/clientmessages.h"
 #include "game/gameciptypes.h"
 #include "game/tgamenotify.h"
+#include "network/gameserverpacketprocessor.h"
+#include "protocol/protocolmessagequeue.h"
+
+#include <stdexcept>
 
 #include <QtGlobal>
 #include <format>
@@ -19,8 +23,6 @@ using SoftHook = tibia::game::SoftHook;
 using Args = TGameNotify::Args;
 
 namespace {
-
-TGameserverGameSession* g_liveGameserverSession = nullptr;
 
 void wireProcessLoginImpl()
 {
@@ -48,16 +50,6 @@ void wireProcessSessionEndImpl(const uint8_t reason)
 }
 
 } // namespace
-
-TGameserverGameSession* TGameserverGameSession::liveInstance()
-{
-    return g_liveGameserverSession;
-}
-
-void TGameserverGameSession::setLiveInstance(TGameserverGameSession* const session)
-{
-    g_liveGameserverSession = session;
-}
 
 void TGameserverGameSession::wireProcessLogin()
 {
@@ -153,7 +145,6 @@ void hubDisconnectNow()
 TGameserverGameSession::TGameserverGameSession(QObject* parent)
     : TGameSessionBase(parent)
 {
-    game::ownProductSurface(this);
     // The game connection publishes onConnect once the socket is open.
     m_hooks.emplace_back("onConnect", [this](const Args&) {
         Q_EMIT connected();
@@ -175,7 +166,7 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
         else
             Q_EMIT pingTimeoutRecovered();
     });
-    m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0)); }));
+    m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0), 0); }));
     m_hooks.push_back(gameHook("onLoginAdvice", [this](const Args& a) { Q_EMIT gameLoginAdviceMessage(argString(a, 0)); }));
     m_hooks.push_back(gameHook("onLoginWait", [this](const Args& a) {
         Q_EMIT gameLoginWaitMessage(argString(a, 0), static_cast<int>(argInt(a, 1)));
@@ -186,15 +177,36 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
     m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
 }
 
-TGameserverGameSession::~TGameserverGameSession()
+TGameserverGameSession::~TGameserverGameSession() = default;
+
+void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
 {
-    if (g_liveGameserverSession == this)
-        g_liveGameserverSession = nullptr;
+    TGameSessionBase::initialize(metaInfo);
+    const auto gameserverMetaInfo = std::dynamic_pointer_cast<const TGameserverGameSessionMetaInfo>(metaInfo);
+    if (!gameserverMetaInfo)
+        throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
+    createStorages();
+    createProtocolMessageHandlers();
+    // The session's network stack: its encoded client messages go to the game connection.
+    connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::clientMessageEnqueued, this,
+            [](int, const QByteArray& frame) {
+                if (frame.isEmpty())
+                    return;
+                if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+                    processor->writeClientFrame(frame);
+            });
+    m_loginData = gameserverMetaInfo->loginData;
+    connectProtocolMessageHandlers();
 }
 
-void TGameserverGameSession::connectToGameserver(const GameserverCredentials& c)
+void TGameserverGameSession::startSession()
 {
-    // Remaining hub call: loginWorld (session-owned; IGameSession qtclient twin does not mirror).
+}
+
+void TGameserverGameSession::connectToGameserver()
+{
+    const GameserverCredentials& c = m_loginData;
+    // Remaining hub call: loginWorld.
     try {
         gameSessionState().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
                           c.host.toStdString(), c.port, c.characterName.toStdString(),

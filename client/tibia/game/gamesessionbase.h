@@ -1,8 +1,7 @@
 #pragma once
 
+#include "game/igamesession.h"
 #include "game/tgamenotify.h"
-
-#include <cip_gen.h>
 
 #include <memory>
 #include <vector>
@@ -59,26 +58,34 @@ namespace tibia::game {
 
 /// CIP game::TGameSessionBase: a game session (live or replayed) owns its
 /// storages, protocol message handlers and providers, and hands them out by
-/// type. Each session builds its own; the one being played is the active
-/// session, whose storages are their classes' instance(). Everything holding
-/// a storage rebinds on TGameNotify::gameSessionChanged.
-class TGameSessionBase : public cip::tibia::game::TGameSessionBase
+/// type. Each login builds a new one; the game client's current session is
+/// the active one, whose storages are their classes' instance(). Everything
+/// holding a storage rebinds on TGameNotify::gameSessionChanged.
+class TGameSessionBase : public IGameSession
 {
     Q_OBJECT
 public:
-    /// Builds the session's storages (the engine must be up).
     explicit TGameSessionBase(QObject* parent = nullptr);
     ~TGameSessionBase() override;
 
-    /// The session being played, or null.
+    /// Keeps the meta info and builds the session's protocol message queue
+    /// from its configuration.
+    void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
+
+    /// The game client's current session, or null.
     static TGameSessionBase* active();
-    /// Makes this the session being played: its storages become their classes'
-    /// instance(), and gameSessionChanged announces it.
-    void activate();
     bool isActive() const { return active() == this; }
+    /// The game client makes this its current session (or stops it being
+    /// one): its storages become their classes' instance(), and
+    /// gameSessionChanged announces it.
+    void install(bool installed);
     /// Re-links the protocol queue to the handlers that exist now. The game
-    /// window creates most handlers after the session is activated.
+    /// window creates most handlers after a replay given on the command line
+    /// started.
     void relinkProtocolMessageHandlers();
+
+    const std::shared_ptr<protocol::TProtocolMessageQueue>& protocolMessageQueue() const { return m_protocolMessageQueue; }
+    const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo() const { return m_metaInfo; }
 
     const std::shared_ptr<worldmap::TWorldMapViewport>& worldMapViewport() const { return m_worldMapViewport; }
     const std::shared_ptr<creatures::TCreatureMovementSpeedCalculator>& creatureMovementSpeedCalculator() const
@@ -130,18 +137,21 @@ public:
         return m_effectProtocolMessageHandler;
     }
 
-private:
+protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
     void createStorages();
     /// CIP: the protocol message handlers that fill them.
     void createProtocolMessageHandlers();
-    void install(bool installed);
     /// CIP: connects the session's message queue to its handlers' typed slots.
-    void connectProtocolMessageHandlers(protocol::TProtocolMessageQueue* queue);
+    void connectProtocolMessageHandlers();
+
+private:
     void releaseStorages();
 
     bool m_worldInitialized = false;
     std::vector<QMetaObject::Connection> m_queueConnections;
+    std::shared_ptr<const TGameSessionMetaInfo> m_metaInfo;
+    std::shared_ptr<protocol::TProtocolMessageQueue> m_protocolMessageQueue;
     std::shared_ptr<worldmap::TWorldMapViewport> m_worldMapViewport;
     std::shared_ptr<creatures::TCreatureMovementSpeedCalculator> m_creatureMovementSpeedCalculator;
     std::shared_ptr<TPlayerData> m_playerData;

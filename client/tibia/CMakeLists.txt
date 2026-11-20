@@ -490,6 +490,12 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/optionsmenudialogcontroller.cpp gamewindow/optionsmenudialogcontroller.h
     gamewindow/fpslatencyindicatorcontroller.cpp gamewindow/fpslatencyindicatorcontroller.h
     gamewindow/aboutdialogcontroller.cpp gamewindow/aboutdialogcontroller.h
+    game/igamesession.cpp game/igamesession.h
+    game/gamesessionmetainfo.cpp game/gamesessionmetainfo.h
+    game/gameservergamesessionmetainfo.cpp game/gameservergamesessionmetainfo.h
+    game/sessiondumpgamesessionmetainfo.cpp game/sessiondumpgamesessionmetainfo.h
+    game/tutorialsessiondumpgamesessionmetainfo.cpp game/tutorialsessiondumpgamesessionmetainfo.h
+    game/playermovementintenthandlerconfiguration.h
     game/gamesessionbase.cpp game/gamesessionbase.h
     game/gameservergamesession.cpp game/gameservergamesession.h
     game/sessiondumpgamesession.cpp game/sessiondumpgamesession.h

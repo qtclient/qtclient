@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/gamesessionbase.h"
+#include "game/gameservergamesessionmetainfo.h"
 
 #include "client/gamecore.h"
 
@@ -19,24 +20,10 @@ namespace game {
 /// may call this — the only path that touches `g_game` for disconnect.
 void hubDisconnectNow();
 
-/// What the game server needs to log a character in.
-struct GameserverCredentials
-{
-    QString account;
-    QString password;
-    QString sessionKey;
-    QString authenticatorToken;
-    QString worldName;
-    QString host;
-    int port = 0;
-    QString characterName;
-    /// Records the session's packets to this file (CIP's packet log), for replay().
-    QString recordTo;
-};
-
-/// Live gameserver session (CIP: TGameserverGameSession). Owns loginWorld,
-/// forceLogout, and cancelLogin on the OTC hub; other queries/actions use
-/// `gamesession` peels. SoftHooks / TGameNotify fan out CIP session signals.
+/// Live gameserver session (CIP: TGameserverGameSession), one per login. Owns
+/// loginWorld, forceLogout, and cancelLogin on the OTC hub; other
+/// queries/actions use `gamesession` peels. SoftHooks / TGameNotify fan out
+/// CIP session signals.
 class TGameserverGameSession final : public TGameSessionBase
 {
     Q_OBJECT
@@ -44,8 +31,13 @@ public:
     explicit TGameserverGameSession(QObject* parent = nullptr);
     ~TGameserverGameSession() override;
 
-    /// Connects and logs in; progress arrives as signals.
-    void connectToGameserver(const GameserverCredentials& credentials);
+    /// Builds the session from a TGameserverGameSessionMetaInfo and keeps its
+    /// login data.
+    void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
+    void startSession() override;
+    /// Connects with the meta info's login data and logs in; progress arrives
+    /// as signals.
+    void connectToGameserver();
     /// Asks the server to log the character out (it may refuse, e.g. in fight).
     void requestLogout();
     /// Drops the connection without waiting for the server.
@@ -54,9 +46,6 @@ public:
     bool isOnline() const;
     QString characterName() const;
     QString worldName() const;
-
-    static TGameserverGameSession* liveInstance();
-    static void setLiveInstance(TGameserverGameSession* session);
 
     /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
@@ -72,14 +61,11 @@ public:
     static void wireProcessPingBack();
 
 Q_SIGNALS:
-    /// CIP's carry an ELoginErrorAction / TSeconds the generator does not map.
-    void gameLoginErrorMessage(const QString& ErrorMessage);
-    void gameLoginWaitMessage(const QString& WaitMessage, int WaitSecondsUntilNextTry);
-    void sessionEndInformation(int Reason);
     /// The server wants a newer client (UpdateNeeded).
     void clientOutOfDate();
 
 private:
+    GameserverCredentials m_loginData;
     std::vector<tibia::game::SoftHook> m_hooks;
 };
 

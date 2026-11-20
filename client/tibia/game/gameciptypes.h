@@ -237,19 +237,9 @@ public:
     void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 };
 
-class TGameSessionMetaInfo final : public ::tibia::CipTyped {
-public:
-    TGameSessionMetaInfo() = default;
-};
-
 class TGameWorldVolumeStorage final : public ::tibia::CipTyped {
 public:
     TGameWorldVolumeStorage() = default;
-};
-
-class TGameserverGameSessionMetaInfo final : public ::tibia::CipTyped {
-public:
-    TGameserverGameSessionMetaInfo() = default;
 };
 
 /// The character's outfit presets (character configuration "outfitPresets", qtclient's
@@ -409,11 +399,6 @@ public:
     static void handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& message);
 };
 
-class TSessiondumpGameSessionMetaInfo final : public ::tibia::CipTyped {
-public:
-    TSessiondumpGameSessionMetaInfo() = default;
-};
-
 }
 }
 
@@ -447,11 +432,6 @@ class TTutorialSessiondumpGameSession final : public cip::tibia::game::TTutorial
     Q_OBJECT
 public:
     using cip::tibia::game::TTutorialSessiondumpGameSession::TTutorialSessiondumpGameSession;
-};
-
-class TTutorialSessiondumpGameSessionMetaInfo final : public ::tibia::CipTyped {
-public:
-    TTutorialSessiondumpGameSessionMetaInfo() = default;
 };
 
 }

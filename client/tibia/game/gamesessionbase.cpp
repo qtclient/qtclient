@@ -1,6 +1,7 @@
 #include "game/gamesessionbase.h"
 
 #include "game/gamesession.h"
+#include "game/gamesessionmetainfo.h"
 #include "game/tgamenotify.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
@@ -63,7 +64,7 @@ TGameSessionBase* g_active = nullptr;
 }
 
 TGameSessionBase::TGameSessionBase(QObject* parent)
-    : cip::tibia::game::TGameSessionBase(parent)
+    : IGameSession(parent)
     , m_worldMapViewport(std::make_shared<worldmap::TWorldMapViewport>())
     , m_creatureMovementSpeedCalculator(std::make_shared<creatures::TCreatureMovementSpeedCalculator>())
     // CIP's world camera (renderer::TWorldMapCamera) is the render provider's here.
@@ -73,8 +74,13 @@ TGameSessionBase::TGameSessionBase(QObject* parent)
     , m_outfitDialogStorage(std::make_shared<TOutfitDialogStorage>())
     , m_gameActionRouter(std::make_shared<TGameActionRouter>())
 {
-    createStorages();
-    createProtocolMessageHandlers();
+}
+
+void TGameSessionBase::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
+{
+    m_metaInfo = metaInfo;
+    std::shared_ptr<protocol::TProtocolMessageQueueConfiguration> configuration = m_metaInfo->protocolMessageQueueConfiguration;
+    m_protocolMessageQueue = std::make_shared<protocol::TProtocolMessageQueue>(configuration);
 }
 
 void TGameSessionBase::createStorages()
@@ -117,11 +123,11 @@ void TGameSessionBase::createProtocolMessageHandlers()
 
 TGameSessionBase::~TGameSessionBase()
 {
-    if (isActive()) {
+    if (isActive())
         install(false);
-        g_active = nullptr;
-        TGameNotify::instance()->emitGameSessionChanged();
-    }
+    for (const QMetaObject::Connection& connection : m_queueConnections)
+        disconnect(connection);
+    m_queueConnections.clear();
     releaseStorages();
 }
 
@@ -130,30 +136,21 @@ TGameSessionBase* TGameSessionBase::active()
     return g_active;
 }
 
-void TGameSessionBase::activate()
-{
-    if (isActive())
-        return;
-    if (g_active)
-        g_active->install(false);
-    g_active = this;
-    install(true);
-    // The map's session state needs its storage installed (aware range, pruning).
-    if (!m_worldInitialized) {
-        m_worldMapStorage->sessionState().init();
-        m_worldInitialized = true;
-    }
-    TGameNotify::instance()->emitGameSessionChanged();
-}
-
 void TGameSessionBase::relinkProtocolMessageHandlers()
 {
-    if (isActive())
-        install(true);
+    for (const QMetaObject::Connection& connection : m_queueConnections)
+        disconnect(connection);
+    m_queueConnections.clear();
+    connectProtocolMessageHandlers();
 }
 
 void TGameSessionBase::install(const bool installed)
 {
+    if (installed == isActive())
+        return;
+    if (installed && g_active)
+        g_active->install(false);
+    g_active = installed ? this : nullptr;
     worldmap::TWorldMapStorage::setInstance(installed ? m_worldMapStorage.get() : nullptr);
     creatures::TCreatureStorage::setInstance(installed ? m_creatureStorage.get() : nullptr);
     container::TContainerStorage::setInstance(installed ? m_containerStorage.get() : nullptr);
@@ -162,19 +159,18 @@ void TGameSessionBase::install(const bool installed)
     effects::TEffectStorage::setInstance(installed ? m_effectStorage.get() : nullptr);
     TPlayerData::setLiveInstance(installed ? m_playerData.get() : nullptr);
     TPlayerSkillStats::setLiveInstance(installed ? m_playerSkillStats.get() : nullptr);
-
-    // Only the active session's handlers read the protocol queue.
-    for (const QMetaObject::Connection& connection : m_queueConnections)
-        disconnect(connection);
-    m_queueConnections.clear();
-    protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
-    if (installed && queue)
-        connectProtocolMessageHandlers(queue);
+    // The map's session state needs its storage installed (aware range, pruning).
+    if (installed && !m_worldInitialized) {
+        m_worldMapStorage->sessionState().init();
+        m_worldInitialized = true;
+    }
+    TGameNotify::instance()->emitGameSessionChanged();
 }
 
-void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessageQueue* queue)
+void TGameSessionBase::connectProtocolMessageHandlers()
 {
     using Queue = protocol::TProtocolMessageQueue;
+    Queue* queue = m_protocolMessageQueue.get();
     const auto link = [this, queue](auto signal, auto* receiver, auto slot) {
         m_queueConnections.push_back(connect(queue, signal, receiver, slot));
     };
@@ -520,9 +516,6 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedBossDifficultySelectionMessage, this,
          &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);
 
-    // Host: the live session is reused across logins (CIP builds a new one).
-    m_queueConnections.push_back(connect(queue, &Queue::receivedLoginSuccessMessage, worldmap,
-                                         [worldmap] { worldmap->restartSession(); }));
 }
 
 void TGameSessionBase::releaseStorages()

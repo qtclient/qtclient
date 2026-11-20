@@ -451,68 +451,6 @@ void resetTeamFinderLeader();
 void updateTeamFinderMember(const uint32_t memberId, const uint8_t status);
 
 
-/// CIP `game::IGameSession` moc surface (contract signals + qtclient-safe skipped
-/// args + TGameSessionBase slot floor). Declared after free-function peels so
-/// qtclient scanners do not attribute those decls to this class. Live login/world
-/// still rides `TGameserverGameSession` / `g_game`; this qtclient twin re-emits the
-/// same notify bus (no `loginWorld` / disconnect ownership). Frame prep stays
-/// on `TGameClient::tick` / `TNextFrameUpdater` — `onPrepareNextFrameToRender`
-/// is a CIP-named no-op so we never double-advance frames.
-class IGameSession : public cip::tibia::game::IGameSession
-{
-    Q_OBJECT
-public:
-    explicit IGameSession(QObject* parent = nullptr);
-    ~IGameSession() override;
-
-public Q_SLOTS:
-    /// CIP slot (skipped `::shared::TMilliseconds` → `qint64` ms).
-    void onPrepareNextFrameToRender(qint64 nextFramePredictedTimestampMs);
-
-    /// CIP `TGameSessionBase` slots (skipped/weak types → qtclient-safe). Fan into
-    /// qtclient signals / `g_game` peels; do not own login.
-    void onPlayerCreatureAddedToCreatureStorage();
-    void onSettingHintsFromServerChanged(bool canChangePvPFrameSetting);
-    void onMessageAtEndOfLoginRampUpReceived();
-    void onWorldTypeReceived(int worldType);
-    void onCharacterConfigurationLoaded();
-
-Q_SIGNALS:
-    /// CIP skipped `weak_ptr<TCreature>` — qtclient emits name-only floor.
-    void playerCreatureAddedToCreatureStorage();
-    /// CIP skipped `ESessionEndInformation` → `int` (same as TGameserverGameSession).
-    void sessionEndInformation(int Reason);
-    /// CIP skipped `ELoginErrorAction` → `int`.
-    void gameLoginErrorMessage(const QString& ErrorMessage, int Action);
-    /// CIP skipped `::shared::TSeconds` → `int` seconds.
-    void gameLoginWaitMessage(const QString& WaitMessage, int WaitSeconds);
-
-    /// CIP base signals re-owned on qtclient for moc + SoftHook fan-out.
-    /// Same signatures as `cip::tibia::game::IGameSession` (not login owners).
-    void loginRampUpFinished();
-    void connected();
-    void disconnected();
-    void connectionError(const QString& ErrorDescription);
-    void gameLoginSuccessful();
-    void worldEntered();
-    void deadMessage();
-    void worldTypeSet();
-    void gameLoginChallengeMessage();
-    void gameLoginAdviceMessage(const QString& AdviceMessage);
-    void pingTimeout();
-    void pingTimeoutRecovered();
-    void showCharacterSelectionDialog();
-    void startTargetSelection();
-
-private:
-    void bindLiveNotifyFans();
-
-    struct LiveFans;
-    LiveFans* m_liveFans = nullptr;
-};
-
-/// Process-lifetime qtclient IGameSession (moc/RTTI keep). Not the live GameClient session.
-IGameSession* tipIGameSession();
 
 } // namespace game
 } // namespace tibia

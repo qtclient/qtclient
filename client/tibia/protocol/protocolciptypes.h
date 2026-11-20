@@ -100,6 +100,7 @@ public:
 
 TProtobufServerMessageTranslator* serverMessageTranslator();
 TProtobufClientMessageTranslator* clientMessageTranslator();
+/// The game client's current session's protocol message queue; null without a session.
 TProtocolMessageQueue* protocolMessageQueue();
 
 

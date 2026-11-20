@@ -78,6 +78,11 @@
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
 #include "game/sessiondumpgamesession.h"
+#include <QSettings>
+#include "protocol/protocolmessagequeue.h"
+#include "game/tutorialsessiondumpgamesessionmetainfo.h"
+#include "game/sessiondumpgamesessionmetainfo.h"
+#include "game/gameservergamesessionmetainfo.h"
 #include "game/statusbarstorage.h"
 #include "input/gameactionhandlers.h"
 #include "minimap/minimapmanager.h"
@@ -140,6 +145,32 @@ void linkGameActionRouters(game::TGameActionRouter& client, game::TGameSessionBa
                      &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
     QObject::connect(other, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, own,
                      &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+}
+
+void unlinkGameActionRouters(game::TGameActionRouter& client, game::TGameSessionBase& session)
+{
+    game::TInternalGameActionRouter* own = client.internalRouter();
+    game::TInternalGameActionRouter* other = session.gameActionRouter()->internalRouter();
+    QObject::disconnect(own, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, other,
+                        &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+    QObject::disconnect(other, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, own,
+                        &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+}
+
+/// Set while the client shuts down: a released session is deleted at once.
+bool g_releaseGameSessionsNow = false;
+
+/// A new game session. Released inside one of its own signals (it disconnected),
+/// it is deleted once control is back in the event loop.
+template<typename Session>
+std::shared_ptr<Session> createGameSession()
+{
+    return std::shared_ptr<Session>(new Session(), [](Session* session) {
+        if (g_releaseGameSessionsNow)
+            delete session;
+        else
+            session->deleteLater();
+    });
 }
 
 }
@@ -524,19 +555,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             fail(tr("No recorded session at %1.").arg(m_options.replay));
             return true;
         }
-        m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
-        linkGameActionRouters(*m_pGameActionRouter, *m_sessiondump);
-        m_sessiondump->activate();
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connectionError, this, &TGameClient::fail);
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::clientOutOfDate, this, [this] {
-            Q_EMIT clientOutOfDate();
-            fail(tr("The game server needs a newer client."));
-        });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::disconnected, this, [this] {
-            onWorldLeft();
-        });
         // Prefer canonical path (follows symlinks). Basename-only is kept for
         // files that live under cwd `records/` (where --record writes).
         const QFileInfo resolved(file.canonicalFilePath().isEmpty() ? file.absoluteFilePath()
@@ -544,25 +562,14 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         QString replayArg = resolved.absoluteFilePath();
         if (resolved.absolutePath().endsWith(QLatin1String("/records")))
             replayArg = resolved.fileName();
-        m_sessiondump->replay(replayArg);
+        auto metaInfo = std::make_shared<game::TSessiondumpGameSessionMetaInfo>();
+        setGameSessionSettings(*metaInfo);
+        metaInfo->sessiondump.url = QUrl::fromLocalFile(replayArg);
+        metaInfo->startedByGameAction = true;
+        enqueueGameSessions({ metaInfo });
         return true;
     }
 
-    m_session = std::make_unique<game::TGameserverGameSession>();
-
-    linkGameActionRouters(*m_pGameActionRouter, *m_session);
-    game::TGameserverGameSession::setLiveInstance(m_session.get());
-    m_session->activate();
-    connect(m_session.get(), &game::TGameserverGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    connect(m_session.get(), &game::TGameserverGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
-    connect(m_session.get(), &game::TGameserverGameSession::connectionError, this, &TGameClient::fail);
-    connect(m_session.get(), &game::TGameserverGameSession::clientOutOfDate, this, [this] {
-        Q_EMIT clientOutOfDate();
-        fail(tr("The game server needs a newer client."));
-    });
-    connect(m_session.get(), &game::TGameserverGameSession::disconnected, this, [this] {
-        onWorldLeft();
-    });
     login();
     return true;
 }
@@ -675,6 +682,10 @@ void TGameClient::shutdown()
     m_idleTick.stop();
     m_frameLimitTimer.stop();
     onWorldLeft();
+    // No session follows: the logout below must not connect the next one.
+    m_gameSessionMetaInfoQueue.clear();
+    if (m_currentGameSession)
+        disconnect(m_currentGameSession.get(), nullptr, this, nullptr);
     // Force logout / Map::clean while TWorldMapStorage still owns the field
     // QObjects. Map tileBlocks hold raw pointers into that tree; destroying
     // storage first leaves terminate → removeUnawareThings dangling (SIGSEGV
@@ -685,9 +696,10 @@ void TGameClient::shutdown()
     m_messageHandler.reset();
     m_opcodes.reset();
     m_dualConnection.reset();
-    m_sessiondump.reset();
-    game::TGameserverGameSession::setLiveInstance(nullptr);
-    m_session.reset();
+    // The session goes now, not on the next event loop pass: the engine is down.
+    g_releaseGameSessionsNow = true;
+    setCurrentGameSession(nullptr);
+    g_releaseGameSessionsNow = false;
 }
 
 void TGameClient::login()
@@ -713,10 +725,10 @@ void TGameClient::abortPendingEnter()
     m_suppressConnectError = true;
     m_login->abort();
     if (!tibia::game::isOnline()) {
-        if (m_session)
-            m_session->disconnectNow();
-        else if (m_sessiondump)
-            m_sessiondump->disconnectNow();
+        if (game::TGameserverGameSession* live = session())
+            live->disconnectNow();
+        else if (game::TSessiondumpGameSession* dump = sessiondump())
+            dump->disconnectNow();
     }
     QTimer::singleShot(0, this, [this] { m_suppressConnectError = false; });
 }
@@ -890,67 +902,156 @@ void TGameClient::onCharacterChosen(const QString& characterName)
     if (!m_options.recordTo.isEmpty())
         credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
 
-    if (chosen->tutorial) {
-        const QString dump = game::resolveTutorialSessiondumpPath();
-        if (!dump.isEmpty()) {
-            startTutorialThenLive(credentials, dump);
-            return;
-        }
-    }
-
-    connectLive(credentials);
+    enqueueGameSessions(createGameSessionMetaInfos(credentials, chosen->tutorial ? game::resolveTutorialSessiondumpPath() : QString()));
 }
 
-void TGameClient::connectLive(const game::GameserverCredentials& credentials)
+void TGameClient::setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const
 {
+    const QString debug = QStringLiteral("DEBUG");
+    auto queueConfiguration = std::make_shared<protocol::TProtocolMessageQueueConfiguration>();
+    queueConfiguration->gameclientMessageDelay =
+        static_cast<int>(config::clientSetting(debug, QStringLiteral("simulatedGameclientLag"), 0));
+    queueConfiguration->gameserverMessageDelay =
+        static_cast<int>(config::clientSetting(debug, QStringLiteral("simulatedGameserverLag"), 0));
+    metaInfo.protocolMessageQueueConfiguration = std::move(queueConfiguration);
+    const QString graphics = QStringLiteral("GRAPHICS");
+    metaInfo.maximumNumberOfEffects =
+        static_cast<quint32>(config::clientSettingAtMost(graphics, QStringLiteral("maximumNumberOfEffects"), 400, 800));
+    metaInfo.millisecondsForAmbientLightChange =
+        config::clientSetting(graphics, QStringLiteral("millisecondsForAmbientLightChange"), 10200);
+    metaInfo.maxChatBacklogLength =
+        static_cast<quint32>(config::clientSettingAtLeast(QStringLiteral("CHAT"), QStringLiteral("maxChatBacklogLength"), 1000, 5));
+}
+
+std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGameSessionMetaInfos(
+    const game::GameserverCredentials& loginData, const QString& tutorialSessiondump) const
+{
+    std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos;
+    auto gameserver = std::make_shared<game::TGameserverGameSessionMetaInfo>();
+    setGameSessionSettings(*gameserver);
+    {
+        const QString movement = QStringLiteral("MOVEMENT");
+        QSettings settings;
+        settings.beginGroup(movement);
+        gameserver->playerMovementIntentHandlerConfiguration->minPercentageOfCurrentMovementBeforeSendNext =
+            settings.value(QStringLiteral("minPercentageOfCurrentMovementBeforeSendNext"), 1.0).toDouble();
+        settings.endGroup();
+        gameserver->playerMovementIntentHandlerConfiguration->maxMillisecondsToFinishCurrentMovementBeforeSendNext =
+            config::clientSetting(movement, QStringLiteral("maxMillisecondsToFinishCurrentMovementBeforeSendNext"), 0);
+    }
+    gameserver->loginData = loginData;
+    if (!tutorialSessiondump.isEmpty()) {
+        auto tutorial = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
+        tutorial->sessiondump.url = QUrl::fromLocalFile(tutorialSessiondump);
+        setGameSessionSettings(*tutorial);
+        tutorial->characterName = loginData.characterName;
+        metaInfos.push_back(std::move(tutorial));
+    }
+    metaInfos.push_back(std::move(gameserver));
+    return metaInfos;
+}
+
+void TGameClient::enqueueGameSessions(std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos)
+{
+    for (std::shared_ptr<game::TGameSessionMetaInfo>& metaInfo : metaInfos)
+        m_gameSessionMetaInfoQueue.push_back(std::move(metaInfo));
+    autoconnectNextGameSessionInQueue();
+}
+
+void TGameClient::autoconnectNextGameSessionInQueue()
+{
+    if (m_gameSessionMetaInfoQueue.empty())
+        return;
+    const std::shared_ptr<const game::TGameSessionMetaInfo> metaInfo = m_gameSessionMetaInfoQueue.front();
+    m_gameSessionMetaInfoQueue.pop_front();
+    using EType = game::TGameSessionMetaInfo::EType;
+    const EType type = metaInfo->getType();
+    if (type == EType::Sessiondump || type == EType::TutorialSessiondump) {
+        const auto dump = createGameSession<game::TSessiondumpGameSession>();
+        dump->initialize(metaInfo);
+        setCurrentGameSession(dump);
+        connectToCurrentGameSession();
+        dump->startSession();
+        return;
+    }
+    if (type != EType::Gameserver)
+        return;
+    setCurrentGameSession(nullptr);
+    const auto live = createGameSession<game::TGameserverGameSession>();
+    live->initialize(metaInfo);
+    setCurrentGameSession(live);
+    connectToCurrentGameSession();
+    const auto& loginData = std::static_pointer_cast<const game::TGameserverGameSessionMetaInfo>(metaInfo)->loginData;
     if (m_dualConnection)
-        m_dualConnection->setEndpoint(credentials.host, credentials.port);
-    if (!m_session) {
-        m_session = std::make_unique<game::TGameserverGameSession>();
-        linkGameActionRouters(*m_pGameActionRouter, *m_session);
-        game::TGameserverGameSession::setLiveInstance(m_session.get());
-    }
-    m_session->activate();
-    m_session->connectToGameserver(credentials);
+        m_dualConnection->setEndpoint(loginData.host, loginData.port);
+    live->connectToGameserver();
+    live->startSession();
 }
 
-void TGameClient::startTutorialThenLive(const game::GameserverCredentials& live, const QString& dumpPath)
+void TGameClient::connectToCurrentGameSession()
 {
-    m_pendingLiveCredentials = live;
-    m_tutorialCinematic = true;
-    m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
-    linkGameActionRouters(*m_pGameActionRouter, *m_sessiondump);
-    m_sessiondump->activate();
-    connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
-    connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connectionError, this, &TGameClient::fail);
-    connect(m_sessiondump.get(), &game::TSessiondumpGameSession::disconnected, this, [this] {
-        // The replay ends inside its own signal: delete it once that returns.
-        if (game::TSessiondumpGameSession* dump = m_sessiondump.release())
-            dump->deleteLater();
-        if (!m_tutorialCinematic) {
-            onWorldLeft();
-            return;
+    game::IGameSession* current = m_currentGameSession.get();
+    connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
+    connect(current, &game::IGameSession::gameLoginErrorMessage, this, [this](const QString& message, int) { fail(message); });
+    connect(current, &game::IGameSession::connectionError, this, &TGameClient::fail);
+    const auto outOfDate = [this] {
+        Q_EMIT clientOutOfDate();
+        fail(tr("The game server needs a newer client."));
+    };
+    if (auto* live = dynamic_cast<game::TGameserverGameSession*>(current))
+        connect(live, &game::TGameserverGameSession::clientOutOfDate, this, outOfDate);
+    else if (auto* dump = dynamic_cast<game::TSessiondumpGameSession*>(current))
+        connect(dump, &game::TSessiondumpGameSession::clientOutOfDate, this, outOfDate);
+    // The session ends inside its own signal; its deleter waits for the event loop.
+    connect(current, &game::IGameSession::disconnected, this, &TGameClient::onCurrentGameSessionDisconnected);
+}
+
+void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession>& session)
+{
+    if (m_currentGameSession) {
+        disconnect(m_currentGameSession.get(), nullptr, this, nullptr);
+        // A retired session no longer follows the game's notifications.
+        disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
+        if (auto* previous = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
+            unlinkGameActionRouters(*m_pGameActionRouter, *previous);
+            previous->install(false);
         }
-        m_tutorialCinematic = false;
-        if (!m_pendingLiveCredentials) {
-            onWorldLeft();
-            return;
-        }
-        const game::GameserverCredentials live = *m_pendingLiveCredentials;
-        m_pendingLiveCredentials.reset();
-        // Tear down cinematic world UI before the live session attaches.
-        onWorldLeft();
-        connectLive(live);
-    });
-    m_sessiondump->replay(dumpPath);
+    }
+    m_currentGameSession = session;
+    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
+        linkGameActionRouters(*m_pGameActionRouter, *current);
+        current->install(true);
+    }
+}
+
+void TGameClient::onCurrentGameSessionDisconnected()
+{
+    if (!m_currentGameSession)
+        return;
+    onWorldLeft();
+    if (m_gameSessionMetaInfoQueue.empty()) {
+        setCurrentGameSession(nullptr);
+        return;
+    }
+    autoconnectNextGameSessionInQueue();
+}
+
+game::TGameserverGameSession* TGameClient::session() const
+{
+    return dynamic_cast<game::TGameserverGameSession*>(m_currentGameSession.get());
+}
+
+game::TSessiondumpGameSession* TGameClient::sessiondump() const
+{
+    return dynamic_cast<game::TSessiondumpGameSession*>(m_currentGameSession.get());
 }
 
 void TGameClient::finishTutorialCinematic()
 {
-    if (!m_tutorialCinematic || !m_sessiondump)
+    game::TSessiondumpGameSession* dump = sessiondump();
+    if (!dump || !dump->isTutorial())
         return;
-    m_sessiondump->disconnectNow();
+    dump->disconnectNow();
 }
 
 void TGameClient::onWorldEntered()
@@ -1025,10 +1126,10 @@ void TGameClient::onWorldEntered()
     if (m_options.playForSeconds > 0) {
         QTimer::singleShot(m_options.playForSeconds * 1000, this, [this] {
             const bool online = tibia::game::isOnline();
-            if (m_session)
-                m_session->disconnectNow();
-            else if (m_sessiondump)
-                m_sessiondump->disconnectNow();
+            if (game::TGameserverGameSession* live = session())
+                live->disconnectNow();
+            else if (game::TSessiondumpGameSession* dump = sessiondump())
+                dump->disconnectNow();
             QCoreApplication::exit(online ? 0 : 1);
         });
     }

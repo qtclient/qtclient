@@ -103,12 +103,8 @@ FPSDropsLogger* FPSDropsLogger::instance()
 
 namespace {
 struct CipTypedKeep {
-    TGameSessionMetaInfo tGameSessionMetaInfo;
     TGameWorldVolumeStorage tGameWorldVolumeStorage;
-    TGameserverGameSessionMetaInfo tGameserverGameSessionMetaInfo;
-    TSessiondumpGameSessionMetaInfo tSessiondumpGameSessionMetaInfo;
     TTraderStorage tTraderStorage;
-    TTutorialSessiondumpGameSessionMetaInfo tTutorialSessiondumpGameSessionMetaInfo;
 };
 CipTypedKeep& typedKeep()
 {

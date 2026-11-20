@@ -49,6 +49,14 @@ else()
 endif()
 
 qtclient_add_port_test(client_durationtween_tests durationtween_test.cpp)
+# The meta infos a game session is built from.
+qtclient_add_port_test(client_gamesessionmetainfo_tests
+    gamesessionmetainfo_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/gamesessionmetainfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/gameservergamesessionmetainfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/sessiondumpgamesessionmetainfo.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/tutorialsessiondumpgamesessionmetainfo.cpp
+)
 # Classic positions of game action locations (depot search items included).
 qtclient_add_port_test(client_gameactioncontext_tests
     gameactioncontext_test.cpp

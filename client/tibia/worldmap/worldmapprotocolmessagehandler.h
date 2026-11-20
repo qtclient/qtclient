@@ -92,9 +92,6 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageAmbientLight& AmbientLightMessage);
     /// The world's time of day.
     void handleTibiaTimeMessage(const ::tibia::protobuf::protocol::GameserverMessageTibiaTime& TibiaTimeMessage);
-    /// Host: the live session outlives a logout, so a new login waits for its
-    /// first full map again.
-    void restartSession() { m_mapKnown = false; }
 
 Q_SIGNALS:
 

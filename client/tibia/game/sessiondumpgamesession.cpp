@@ -17,6 +17,7 @@
 #include <QUrl>
 
 #include <filesystem>
+#include <stdexcept>
 #include <tibia/game/gamesession.h>
 #include "gameservergamesession.h"
 
@@ -61,7 +62,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
         else
             Q_EMIT pingTimeoutRecovered();
     });
-    m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0)); }));
+    m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0), 0); }));
     m_hooks.push_back(gameHook("onLoginAdvice", [this](const Args& a) { Q_EMIT gameLoginAdviceMessage(argString(a, 0)); }));
     m_hooks.push_back(gameHook("onLoginWait", [this](const Args& a) {
         Q_EMIT gameLoginWaitMessage(argString(a, 0), static_cast<int>(argInt(a, 1)));
@@ -82,6 +83,28 @@ TSessiondumpGameSession::~TSessiondumpGameSession()
 {
     stopReplay();
     stopHints();
+}
+
+void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
+{
+    TGameSessionBase::initialize(metaInfo);
+    m_sessiondumpMetaInfo = std::dynamic_pointer_cast<const TSessiondumpGameSessionMetaInfo>(metaInfo);
+    if (!m_sessiondumpMetaInfo)
+        throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
+    createStorages();
+    createProtocolMessageHandlers();
+    connectProtocolMessageHandlers();
+}
+
+void TSessiondumpGameSession::startSession()
+{
+    const QUrl& url = m_sessiondumpMetaInfo->sessiondump.url;
+    replay(url.isLocalFile() ? url.toLocalFile() : url.toString());
+}
+
+bool TSessiondumpGameSession::isTutorial() const
+{
+    return m_sessiondumpMetaInfo && m_sessiondumpMetaInfo->getType() == TGameSessionMetaInfo::EType::TutorialSessiondump;
 }
 
 void TSessiondumpGameSession::replay(const QString& file)
