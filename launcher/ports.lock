@@ -11,7 +11,8 @@ launcher::TClientPackageLayoutItem::updatePackageNameAndVersion	e269ff8cf54f11ce
 launcher::TClientPackageLayoutItem::v0@10	d028d2679c289d7d	skip	generated: destructor
 launcher::TClientPackageLayoutItem::v1@10	b83a0a37f04ff650	skip	generated: destructor
 launcher::TClientPackageLayoutItem::~TClientPackageLayoutItem	2baeebca59ccfa14	skip	generated: destructor
-launcher::TCloudflareCdnTrace::diagnosticsTraceReceived	4c122fa397352a86	ported	cloudflarecdntrace.cpp:TCloudflareCdnTrace::onDownloadSuccess
+launcher::TCloudflareCdnTrace::onDownloadFailed	a9159365eac2ffd7	ported	cloudflarecdntrace.cpp:TCloudflareCdnTrace::onDownloadFailed
+launcher::TCloudflareCdnTrace::onDownloadSuccess	4c122fa397352a86	ported	cloudflarecdntrace.cpp:TCloudflareCdnTrace::onDownloadSuccess
 launcher::TCloudflareCdnTrace::~TCloudflareCdnTrace	097457dc45e86dd8	skip	generated: destructor
 launcher::TDraggableMainWindow::v0@10	6a60b0b2b65ffc7f	skip	generated: destructor
 launcher::TDraggableMainWindow::v1@10	1c5837e5cc39444c	skip	generated: destructor
@@ -134,7 +135,6 @@ shared::THashHelper::v1	e9caf669ab302182	skip	generated: compiler-generated dest
 shared::THashHelper::v2	d49b17a08893a3b2	tested	shared/src/hashhelper.cpp:THashHelper::getSha256Hash	test=tests/client/sharedio_test.cpp
 shared::THashHelper::v3	79470adbdcddb8c0	tested	shared/src/hashhelper.cpp:THashHelper::getSha1Hash	test=tests/client/sharedio_test.cpp
 shared::THashHelper::v4	de76ba0fc65a0de1	tested	shared/src/hashhelper.cpp:THashHelper::isSha256Hash	test=tests/client/sharedio_test.cpp
-shared::THighlightTimer::changed	48032cf20fd7dbc9	tested	shared/src/highlighttimer.cpp:THighlightTimer::isHighlighted	test=tests/client/sharednet_test.cpp
 shared::THighlightTimer::~THighlightTimer	2282dc228c2f5faf	skip	generated: compiler-generated destructor
 shared::TJsonArrayValidator::v0	1c78789c6ae86f80	skip	generated: compiler-generated destructor
 shared::TJsonArrayValidator::v1	d9c80c502db082ac	skip	generated: compiler-generated destructor
@@ -157,8 +157,7 @@ shared::TNetworkAccessManagerAuthenticationHandler::~TNetworkAccessManagerAuthen
 shared::TPaginationProxyModel::metaObject	5750e8c5ba5cc195	skip	generated: moc
 shared::TPaginationProxyModel::qt_metacall	487327492321d8f0	skip	generated: moc
 shared::TPaginationProxyModel::qt_metacast	4a5745b054a5b5b1	skip	generated: moc
-shared::TPaginationProxyModel::rowData	f764966ac6964e43	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::currentPage	test=tests/client/sharednet_test.cpp
-shared::TPaginationProxyModel::sourceModelChanged	572ea5534fb3e524	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::entriesPerPage	test=tests/client/sharednet_test.cpp
+shared::TPaginationProxyModel::rowData	068647c815fb0463	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::rowData	test=tests/client/sharednet_test.cpp
 shared::TPaginationProxyModel::v49	b795fa6edfc4acc5	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::setSourceModel	test=tests/client/sharednet_test.cpp
 shared::TPaginationProxyModel::v54	46dec83295c5f150	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::filterAcceptsRow	test=tests/client/sharednet_test.cpp
 shared::TPaginationProxyModel::~TPaginationProxyModel	2f37e6936de6c864	skip	generated: compiler-generated destructor
@@ -239,7 +238,6 @@ sub_04ec60429c66	04ec60429c66415e	skip	dead: unreferenced time/number formatting
 sub_0515635bab67	0515635bab674310	tested	shared/src/jsonhelper.cpp:jsonString	test=tests/client/sharednet_test.cpp
 sub_0557ab3a92c2	0557ab3a92c27301	skip	library: QList<QHostAddress> template code
 sub_05e3e9ad37b2	05e3e9ad37b2793d	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
-sub_068647c815fb	068647c815fb0463	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::rowData	test=tests/client/sharednet_test.cpp
 sub_0695c9d79543	0695c9d795439579	ported	shared/src/clockservice.cpp:TClockService::microsToMillis
 sub_06d55caa201d	06d55caa201df821	ported	launchermainwindow.cpp:TLauncherMainWindow::createVersionLabel
 sub_07314700e05a	07314700e05a3e43	skip	library: libc++ vector/map/tree internals
@@ -559,6 +557,7 @@ sub_47373ee5bd84	47373ee5bd847d38	tested	systemsurvey/systemsurveytojsonconverte
 sub_4745b6ad8e02	4745b6ad8e026c72	tested	shared/src/crashreportdata.cpp:TCrashReportData::toJson	test=tests/client/sharednet_test.cpp
 sub_4797af37a2a4	4797af37a2a4845f	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
 sub_47b2e7450661	47b2e74506619cb8	skip	generated: destructor
+sub_48032cf20fd7	48032cf20fd7dbc9	tested	shared/src/highlighttimer.cpp:THighlightTimer::isHighlighted	test=tests/client/sharednet_test.cpp
 sub_480dcc731438	480dcc73143814aa	ported	shared/src/downloadpool.cpp:TDownloadPool::createRequest
 sub_48d957037987	48d957037987f1a7	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_49125f831334	49125f831334b843	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
@@ -602,6 +601,7 @@ sub_54242f4534ba	54242f4534bad55d	skip	generated: QtPrivate slot object impl (me
 sub_5584d91c0a54	5584d91c0a54f3f9	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_5639997ee325	5639997ee325bcca	skip	library: libc++ vector/map/tree internals
 sub_564c5c2cdce7	564c5c2cdce73193	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_572ea5534fb3	572ea5534fb3e524	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::entriesPerPage	test=tests/client/sharednet_test.cpp
 sub_576711c6b9d3	576711c6b9d3ce6b	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_576d10f91fe2	576d10f91fe23d38	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_585f16159ab3	585f16159ab3694b	skip	library: Qt qRegisterMetaType<T*>(name) / qRegisterNormalizedMetaType template
@@ -909,7 +909,6 @@ sub_a87f47464ecb	a87f47464ecb07fa	tested	shared/src/paginationproxymodel.cpp:TPa
 sub_a887bdce82ce	a887bdce82ce4455	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_a89d061d0d73	a89d061d0d734db7	ported	shared/src/downloadpool.cpp:TDownloadPool::startDownload
 sub_a8bdcc53857d	a8bdcc53857d58e2	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
-sub_a9159365eac2	a9159365eac2ffd7	ported	cloudflarecdntrace.cpp:TCloudflareCdnTrace::onDownloadFailed
 sub_a91de195e07b	a91de195e07b190c	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isString	test=tests/client/jsonvalidator_test.cpp
 sub_a9a792699e46	a9a792699e4623f3	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::TLocalFileInfo	test=tests/client/sharedio_test.cpp
 sub_a9a792699e46#2	a9a792699e4623f3	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::TLocalFileInfo	test=tests/client/sharedio_test.cpp
@@ -1227,6 +1226,7 @@ sub_f764966ac696	f764966ac6964e43	ported	shared/src/jsonvalidator.cpp:TJsonObjec
 sub_f764966ac696#2	f764966ac6964e43	ported	shared/src/jsonvalidator.cpp:TJsonObjectValidator::isValid
 sub_f764966ac696#3	f764966ac6964e43	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_f764966ac696#4	f764966ac6964e43	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
+sub_f764966ac696#5	f764966ac6964e43	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::currentPage	test=tests/client/sharednet_test.cpp
 sub_f7e7763c3800	f7e7763c38008d65	skip	library: QMap<QString, QVariant> template code
 sub_f7e7763c3800#2	f7e7763c38008d65	skip	library: QMap<QUrl, QVariant> template code
 sub_f8a11d3eeda3	f8a11d3eeda38994	ported	shared/src/downloadpool.cpp:TDownloadPool::removeWaiting
