@@ -1,5 +1,7 @@
 #include "minimapmanager.h"
 
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
+
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -31,6 +33,7 @@ TMinimapManager::TMinimapManager(const QString& defaultTilesDir, QObject* parent
     m_worldFeed = std::make_unique<TMinimapWorldFeed>(m_storage);
     m_markers = std::make_unique<TMinimapMarkerStorage>(this);
     TMinimapMarkerStorage::setActive(m_markers.get());
+    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setMinimapMarkerStorage(m_markers.get());
     connect(&m_diskIO, &TMinimapDiskIOAsync::loadingMinimapMarkersSucceeded, m_markers.get(),
             &TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile);
     connect(m_markers.get(), &TMinimapMarkerStorage::startSavingMinimapMarkerFileContentToDisk, &m_diskIO,
@@ -64,6 +67,7 @@ TMinimapManager::~TMinimapManager()
     setProtocolHandler(nullptr);
     m_worldFeed.reset();
     TMinimapMarkerStorage::setActive(nullptr);
+    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setMinimapMarkerStorage(nullptr);
     if (m_markers)
         m_markers->onDelayedCallback();
     m_markers.reset();

@@ -145,14 +145,47 @@ void TCyclopediaMapCharacterConfigurationStorage::set(T& member, const T& value)
 }
 
 void TCyclopediaMapCharacterConfigurationStorage::setSelectedMarkers(const std::unordered_set<int>& markers) { set(m_selectedMarkers, markers); }
-void TCyclopediaMapCharacterConfigurationStorage::setSurfaceView(const bool value) { set(m_surfaceView, value); }
-void TCyclopediaMapCharacterConfigurationStorage::setShowNPCMarker(const bool value) { set(m_showNPCMarker, value); }
-void TCyclopediaMapCharacterConfigurationStorage::setShowPassageMarker(const bool value) { set(m_showPassageMarker, value); }
-void TCyclopediaMapCharacterConfigurationStorage::setShowHouseMarker(const bool value) { set(m_showHouseMarker, value); }
+
+void TCyclopediaMapCharacterConfigurationStorage::addSelectedMarker(const int marker)
+{
+    m_selectedMarkers.insert(marker);
+    Q_EMIT configurationChangedFromUserInput();
+}
+
+void TCyclopediaMapCharacterConfigurationStorage::removeSelectedMarker(const int marker)
+{
+    if (m_selectedMarkers.erase(marker) == 0)
+        return;
+    Q_EMIT configurationChangedFromUserInput();
+}
+void TCyclopediaMapCharacterConfigurationStorage::setSurfaceView(const bool value)
+{
+    m_surfaceView = value;
+    Q_EMIT configurationChangedFromUserInput();
+}
+void TCyclopediaMapCharacterConfigurationStorage::setShowNPCMarker(const bool value)
+{
+    m_showNPCMarker = value;
+    Q_EMIT configurationChangedFromUserInput();
+}
+void TCyclopediaMapCharacterConfigurationStorage::setShowPassageMarker(const bool value)
+{
+    m_showPassageMarker = value;
+    Q_EMIT configurationChangedFromUserInput();
+}
+void TCyclopediaMapCharacterConfigurationStorage::setShowHouseMarker(const bool value)
+{
+    m_showHouseMarker = value;
+    Q_EMIT configurationChangedFromUserInput();
+}
 void TCyclopediaMapCharacterConfigurationStorage::setShowNavigation(const bool value) { set(m_showNavigation, value); }
 void TCyclopediaMapCharacterConfigurationStorage::setShowAreaAndSubAreaInfo(const bool value) { set(m_showAreaAndSubAreaInfo, value); }
 void TCyclopediaMapCharacterConfigurationStorage::setShowDisplay(const bool value) { set(m_showDisplay, value); }
-void TCyclopediaMapCharacterConfigurationStorage::setShadingValue(const float value) { set(m_shadingValue, value); }
+void TCyclopediaMapCharacterConfigurationStorage::setShadingValue(const float value)
+{
+    m_shadingValue = value;
+    Q_EMIT configurationChangedFromUserInput();
+}
 void TCyclopediaMapCharacterConfigurationStorage::setLocation(const TLocation& location) { set(m_location, location); }
 
 }
