@@ -13390,6 +13390,7 @@ sub_5faa0ecda1e9	5faa0ecda1e9f158	ported	gamewindow/housesinfodialogcontroller.h
 sub_5fb070463f01	5fb070463f015ce5	skip	library: std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_5fb070463f01#2	5fb070463f015ce5	skip	library: boost::bimap / std::map template instantiation
 sub_5fb5973aa760	5fb5973aa7609aeb	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
+sub_5fb600811229	5fb600811229c4f4	ported	cyclopedia/playeroffencestatsprovider.cpp:skillTypeFromProtocol
 sub_5fc11c58ea3c	5fc11c58ea3c89df	skip	library: std::vector growth / copy / length_error (library)
 sub_5fc4b107dc1f	5fc4b107dc1f88a6	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_5fcdc0607645	5fcdc06076459773	ported	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::setTexture
@@ -14150,8 +14151,8 @@ sub_6e77367ef5e5#14	6e77367ef5e50ae3	inlined	protocol::TProtobufServerMessageTra
 sub_6e7e711f086c#2	6e7e711f086c0f11	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_6e9cf76a972c	6e9cf76a972ca300	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_6e9edb1bb7e5	6e9edb1bb7e58d51	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_6eae2e025ff2	6eae2e025ff28bd3	ported	cyclopedia/cyclopediamapdata.cpp:TCyclopediaMapStorage::isImprovedRespawnActive
 sub_6eac5f6cd3d7	6eac5f6cd3d714d9	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::setPremiumTimeStorage
+sub_6eae2e025ff2	6eae2e025ff28bd3	ported	cyclopedia/cyclopediamapdata.cpp:TCyclopediaMapStorage::isImprovedRespawnActive
 sub_6eae9822a34c	6eae9822a34c8cc3	skip	library: QList template instantiation (reserve/insert/detach of QList<shared_ptr<TChatChannelTabRenderInfo>>)
 sub_6eae9822a34c#2	6eae9822a34c8cc3	skip	library: QList template instantiation (reserve/insert/detach)
 sub_6ebc56a14671	6ebc56a146716bae	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
@@ -17154,6 +17155,7 @@ sub_a32a066573d9	a32a066573d9aa42	skip	generated: moc property getter, provided 
 sub_a3300aee3c33	a3300aee3c332f3f	skip	library: libc++abi Itanium demangler (__cxa_demangle) internals
 sub_a335c75973be	a335c75973beb208	skip	generated: destructors, destructor bodies, moc signal emitters and variant/optional copy/destroy and index visitors
 sub_a337c53f75c9	a337c53f75c9f267	ported	config/optionspages.cpp:TControlsOptionsPage::lootSchemeIndex
+sub_a33e47d78d9f	a33e47d78d9fa7ee	skip	dead: no call, jump or data reference: the disassembly has only its own label and no fixup targets 0x100a70800
 sub_a34e309c8e4a	a34e309c8e4aa30a	skip	generated: moc property getter, provided by the generated cip base
 sub_a34e30a9238f	a34e30a9238f3328	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_a355f9575216	a355f957521642a0	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed

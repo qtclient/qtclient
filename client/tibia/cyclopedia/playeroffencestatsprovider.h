@@ -60,8 +60,8 @@ private:
 };
 
 /// CIP: the protocol's skill (1 magic level, 6 shielding, 7 distance, 8
-/// sword, 9 club, 10 axe, 11 fist, 13 fishing) as CIP's skill type; -1 for
-/// the others.
+/// sword, 9 club, 10 axe, 11 fist, 13 fishing) as CIP's skill type; throws
+/// std::runtime_error for the others.
 int skillTypeFromProtocol(int skill);
 
 }

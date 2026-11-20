@@ -1,5 +1,7 @@
 #include "cyclopedia/playeroffencestatsprovider.h"
 
+#include <stdexcept>
+
 namespace tibia::cyclopedia {
 
 namespace {
@@ -51,7 +53,7 @@ int skillTypeFromProtocol(const int skill)
         case 10: return 14;
         case 11: return 15;
         case 13: return 16;
-        default: return -1;
+        default: throw std::runtime_error("unhandled enum value");
     }
 }
 
