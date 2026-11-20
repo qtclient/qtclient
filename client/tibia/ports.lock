@@ -14150,7 +14150,6 @@ sub_6e77367ef5e5#14	6e77367ef5e50ae3	inlined	protocol::TProtobufServerMessageTra
 sub_6e7e711f086c#2	6e7e711f086c0f11	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_6e9cf76a972c	6e9cf76a972ca300	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_6e9edb1bb7e5	6e9edb1bb7e58d51	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_6eac5f6cd3d7	6eac5f6cd3d714d9	inlined	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController
 sub_6eae2e025ff2	6eae2e025ff28bd3	ported	cyclopedia/cyclopediamapdata.cpp:TCyclopediaMapStorage::isImprovedRespawnActive
 sub_6eac5f6cd3d7	6eac5f6cd3d714d9	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::setPremiumTimeStorage
 sub_6eae9822a34c	6eae9822a34c8cc3	skip	library: QList template instantiation (reserve/insert/detach of QList<shared_ptr<TChatChannelTabRenderInfo>>)
