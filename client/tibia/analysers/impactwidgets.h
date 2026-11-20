@@ -160,14 +160,11 @@ private Q_SLOTS:
     /// CIP private slots — options persist + graph / damage refresh hooks.
     void onWidgetOptionsChanged();
     void onGraphValuesChanged();
+    /// The damage per element of the shown period, over its total.
     void onDamageValuesChanged();
     void onWidgetQuickItemDestroyed();
 
 private:
-    /// CIP : the damage per element of the shown period, over its total.
-    void updateTypedModel();
-    /// CIP .
-    void updateGraphs();
     void addGaugeEntries(TImpactStorage::Kind kind, bool premium);
     void addGraphEntry(TImpactStorage::Kind kind, bool premium);
     void showTargetDialog(TImpactStorage::Kind kind);

@@ -458,17 +458,7 @@ void TBattleListController::handleGameAction()
     // The game actions reach the list through the mapper and the action listeners.
 }
 
-void TBattleListController::handleGameActionAtMouseCursor()
-{
-    // The storage forwards USE_AT_MOUSECURSOR to onAtMouseCursor.
-}
-
-void TBattleListController::handleGameActionCastSpellAtMouseCursor()
-{
-    // The storage forwards SPELL_AT_MOUSE_CURSOR to onAtMouseCursor.
-}
-
-bool TBattleListController::onAtMouseCursor(const input::IGameAction& action)
+bool TBattleListController::handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action)
 {
     if (!m_hoveredCreature)
         return false;
@@ -476,20 +466,24 @@ bool TBattleListController::onAtMouseCursor(const input::IGameAction& action)
         findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED));
     if (!target || !target->creatureId())
         return false;
-    if (const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action)) {
-        Q_EMIT m_storage->publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(use->context(), target->creatureId()));
-        return true;
-    }
-    const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action);
-    if (!spell)
+    Q_EMIT m_storage->publishGameAction(std::make_shared<input::TGameActionUseOnCreature>(action.context(), target->creatureId()));
+    return true;
+}
+
+bool TBattleListController::handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action)
+{
+    if (!m_hoveredCreature)
         return false;
-    // The spell is aimed (mode 2) at the creature's field, or at no field when
-    // the creature is gone.
+    const auto* target = input::gameActionAs<input::TGameActionTargetSelected>(
+        findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED));
+    if (!target || !target->creatureId())
+        return false;
+    // The creature's field, or no field when the creature is gone.
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
     const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId()) : nullptr;
     tibia::game::setNextTalkAim(creature ? creature->position() : Position());
     tibia::game::setNextTalkAimMode(2);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(spell->talkMode()), 0, spell->words().toStdString());
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
     return true;
 }
 
@@ -1008,9 +1002,15 @@ bool TBattleListControllerStorage::handleGameAction(const input::IGameAction& ac
         case A::USE_AT_MOUSECURSOR:
         case A::SPELL_AT_MOUSE_CURSOR: {
             // Every list sees it; the list with a hovered creature takes it.
+            const auto* use = input::gameActionAs<input::TGameActionUseAtMouseCursor>(&action);
+            const auto* spell = input::gameActionAs<input::TGameActionSpellAtMouseCursor>(&action);
             bool handled = false;
-            for (const auto& [id, controller] : m_controllers)
-                handled |= controller->onAtMouseCursor(action);
+            for (const auto& [id, controller] : m_controllers) {
+                if (use)
+                    handled |= controller->handleGameActionAtMouseCursor(*use);
+                else if (spell)
+                    handled |= controller->handleGameActionCastSpellAtMouseCursor(*spell);
+            }
             return handled;
         }
         case A::TOGGLE_WIDGET:

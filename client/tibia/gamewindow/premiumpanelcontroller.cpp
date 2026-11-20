@@ -84,7 +84,7 @@ TPremiumPanelController::TPremiumPanelController()
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumTrigger", [this](GameObject*, const Args& args) {
         if (const auto* features = args.empty() ? nullptr : std::any_cast<std::vector<uint8_t>>(&args[0]))
-            setTriggers(*features);
+            onNewPremiumFeatureList(*features);
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumExpiration", [this](GameObject*, const Args& args) {
@@ -218,7 +218,7 @@ void TPremiumPanelController::setPanelItem(QQuickItem* item)
     setPanelVisible(false);
 }
 
-void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
+void TPremiumPanelController::onNewPremiumFeatureList(const std::vector<uint8_t>& features)
 {
     m_premiumMessages.clear();
     // An unknown feature adds an empty line, as the table lookup inserts one.

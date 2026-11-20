@@ -148,10 +148,6 @@ private:
     /// The filter to the search list: the name if there is one, else the
     /// category.
     void applyFilter(const QString& nameFilter, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand, bool showLockerOnly);
-    /// The type (and tier, for a classified type) the search list picked.
-    void selectType(uint16_t typeId, uint8_t tier);
-    /// Asks the server for the picked type's detail list.
-    void publishSearchTypeRequest();
     void publishSimpleAction(input::EGameAction type);
     /// The mouse cursor over the hovered slot.
     void updateHoverCursor();

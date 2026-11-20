@@ -287,7 +287,11 @@ void TGameWindowController::configureClientServices(const QUrl& url, const QStri
         shared::TClockService::process());
     connect(m_eventsUploader.get(), &news::TEventsUploader::updated, m_eventsStorage.get(),
             &news::TEventsStorage::onEventsUpdated);
-    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, &TGameWindowController::onEventScheduleUpdated);
+    connect(m_eventsUploader.get(), &news::TEventsUploader::updated, this, [this](const std::vector<news::TEventInformation>& events) {
+        onEventScheduleUpdated(events);
+        if (m_calendarDialog)
+            m_calendarDialog->setEvents(m_eventsStorage->events());
+    });
     m_newsUploader = std::make_unique<news::TNewsRequestUploader>(
         service, m_newsStorage, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
         shared::TClockService::process());
@@ -457,13 +461,6 @@ void TGameWindowController::clearEventModels()
 
 void TGameWindowController::onEventScheduleUpdated(const std::vector<news::TEventInformation>& events)
 {
-    updateEventsSchedulePreview(events);
-    if (m_calendarDialog)
-        m_calendarDialog->setEvents(m_eventsStorage->events());
-}
-
-void TGameWindowController::updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events)
-{
     clearEventModels();
     if (&m_events != &events)
         m_events = events;
@@ -529,7 +526,7 @@ void TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout()
 {
     const QTime time = QDateTime::currentDateTimeUtc().toTimeZone(news::serverTimeZone()).time();
     if (ServerSaveTime <= time && m_beforeServerSave)
-        updateEventsSchedulePreview(m_events);
+        onEventScheduleUpdated(m_events);
     m_beforeServerSave = time < ServerSaveTime;
 }
 

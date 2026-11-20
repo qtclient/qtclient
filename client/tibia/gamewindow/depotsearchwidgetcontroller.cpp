@@ -382,14 +382,12 @@ void TDepotSearchWidgetController::onRequestClose()
 
 void TDepotSearchWidgetController::onLevelUpClicked()
 {
-    requestSearch();
+    requestRefresh();
     if (m_detailList)
         m_detailList->clear();
 }
 
-void TDepotSearchWidgetController::requestSearch() { publishSimpleAction(A::REQUEST_DEPOT_SEARCH); }
-
-void TDepotSearchWidgetController::requestRefresh() { requestSearch(); }
+void TDepotSearchWidgetController::requestRefresh() { publishSimpleAction(A::REQUEST_DEPOT_SEARCH); }
 
 void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction type) { Q_EMIT publishGameAction(input::makeGameAction(type)); }
 
@@ -544,17 +542,7 @@ void TDepotSearchWidgetController::onNpcFilterWasSelected(const int SelectedInde
     applyFilter(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, ShowLockerOnly);
 }
 
-void TDepotSearchWidgetController::selectType(const uint16_t typeId, const uint8_t tier)
-{
-    m_selectedTypeId = typeId;
-    m_selectedTier.reset();
-    if (!m_session)
-        return;
-    if (const TAppearanceType* type = typeOf(typeId); type && type->getClassification() > 0)
-        m_selectedTier = tier;
-}
-
-void TDepotSearchWidgetController::publishSearchTypeRequest()
+void TDepotSearchWidgetController::requestSearch()
 {
     if (m_selectedTypeId == 0)
         return;
@@ -564,13 +552,19 @@ void TDepotSearchWidgetController::publishSearchTypeRequest()
 
 void TDepotSearchWidgetController::requestItemSelect(const int AppearanceId, const int UpgradeTier)
 {
-    selectType(static_cast<uint16_t>(AppearanceId), static_cast<uint8_t>(UpgradeTier));
+    // The tier counts only for a classified type.
+    m_selectedTypeId = static_cast<uint16_t>(AppearanceId);
+    m_selectedTier.reset();
+    if (!m_session)
+        return;
+    if (const TAppearanceType* type = typeOf(m_selectedTypeId); type && type->getClassification() > 0)
+        m_selectedTier = static_cast<uint8_t>(UpgradeTier);
 }
 
 void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, const int UpgradeTier)
 {
-    selectType(static_cast<uint16_t>(AppearanceId), static_cast<uint8_t>(UpgradeTier));
-    publishSearchTypeRequest();
+    requestItemSelect(AppearanceId, UpgradeTier);
+    requestSearch();
 }
 
 input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t typeId) const

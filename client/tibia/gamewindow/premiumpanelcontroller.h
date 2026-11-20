@@ -89,7 +89,7 @@ private:
     /// Premium, unlimited premium or a known premium time.
     bool canTogglePanel() const;
     /// CIP : the triggered features become the messages.
-    void setTriggers(const std::vector<uint8_t>& features);
+    void onNewPremiumFeatureList(const std::vector<uint8_t>& features);
     /// CIP .
     void setMaximized(bool maximized);
     /// CIP : highlights unless maximized or already highlighted

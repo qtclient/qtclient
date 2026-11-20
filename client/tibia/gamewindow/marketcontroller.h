@@ -127,15 +127,15 @@ private:
     /// CIP v20: clears the lists, resets the filters and the storage and destroys the item.
     void destroyDialog();
     /// CIP.
-    void onItemDetailsChanged();
+    void onMarketItemDetailsChanged();
     /// CIP.
-    void onOffersChanged(const market::TMarketOfferList& NewOffers);
-    void onHistoryChanged(const market::TMarketOfferList& NewOffers);
-    void onOwnOffersChanged(const market::TMarketOfferList& NewOffers);
+    void onMarketOffersChanged(const market::TMarketOfferList& NewOffers);
+    void onMarketHistoryChanged(const market::TMarketOfferList& NewOffers);
+    void onMarketOwnOffersChanged(const market::TMarketOfferList& NewOffers);
     /// CIP: canCreateNewOffer below 100 active offers.
     void onActiveOfferCountChanged(uint16_t NewOfferCount);
     /// CIP: the option changed elsewhere.
-    void onMarketOptionsChanged();
+    void onMarketOptionsChagend();
     /// CIP: the list's locker button changed the option.
     void onShowLockerOnlyChanged();
     /// CIP: the message dialog's OK.

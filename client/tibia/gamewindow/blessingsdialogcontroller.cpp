@@ -156,7 +156,7 @@ TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
 {
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBlessDialog", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<BlessDialogData>(&args[0]))
-            setData(*data);
+            showDialog(*data);
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
@@ -168,7 +168,7 @@ TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
     });
 }
 
-void TBlessingsDialogController::setData(const BlessDialogData& data)
+void TBlessingsDialogController::showDialog(const BlessDialogData& data)
 {
     QObject* previous = m_blessingsData;
     m_blessingsData = new TQmlBlessingDialogData(data, localPlayerPremium(), this);

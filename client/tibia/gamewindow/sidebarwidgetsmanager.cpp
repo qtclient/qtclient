@@ -205,13 +205,13 @@ void TSidebarWidgetsManager::onRegisteredWidgetClosed()
     for (const auto& [widgetType, hooks] : m_widgets) {
         TSidebarWidget* widget = hooks.current ? hooks.current() : nullptr;
         if (widget && widget->controller() == controller) {
-            closeWidget(widgetType);
+            onWidgetClosed(widgetType);
             return;
         }
     }
 }
 
-void TSidebarWidgetsManager::closeWidget(const int widgetType, const bool saveWidgetOptions)
+void TSidebarWidgetsManager::onWidgetClosed(const int widgetType, const bool saveWidgetOptions)
 {
     switch (widgetType) {
         case BattleList:
@@ -246,7 +246,7 @@ void TSidebarWidgetsManager::closeWidget(const int widgetType, const bool saveWi
 void TSidebarWidgetsManager::toggleWidget(const int widgetType, const uint sidebarId)
 {
     if (isWidgetOpen(widgetType))
-        closeWidget(widgetType, true);
+        onWidgetClosed(widgetType, true);
     else
         openWidget(widgetType, sidebarId);
 }
@@ -318,12 +318,12 @@ void TSidebarWidgetsManager::closeAll()
     for (const int type : { Skills, UnjustifiedPoints, KillTracker, SpellList, LootTracker, LootAnalyser, WasteAnalyser, BossCooldowns,
                             QuestTracker, ImpactAnalyser, DamageInputAnalyser, XpAnalyser, HuntingSessionAnalyser, AnalyticsSelector,
                             PartyHuntAnalyser })
-        closeWidget(type, false);
+        onWidgetClosed(type, false);
     std::vector<int> others;
     for (const auto& [type, hooks] : m_widgets)
         others.push_back(type);
     for (const int type : others)
-        closeWidget(type, false);
+        onWidgetClosed(type, false);
     if (m_sidebars) {
         m_sidebars->setSidebarCount(TSidebarManager::Right, 1);
         m_sidebars->setSidebarCount(TSidebarManager::Left, 0);

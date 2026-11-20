@@ -472,7 +472,7 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
             &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
             [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
-                onHouseActionResult(houseId, action, errorCode, hasBeenOutbidden);
+                onRequestHouseActionResultDialog(houseId, action, errorCode, hasBeenOutbidden);
             });
     connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
         // The towns, "Own Houses" first.
@@ -658,13 +658,13 @@ void THousesInfoDialogController::refresh()
 void THousesInfoDialogController::setHouseWorldMapQuickItem(cip::tibia::qmlcomponents::TWorldMapQuickItem* pWorldMapQuickItem)
 {
     m_houseWorldMap = pWorldMapQuickItem;
-    centerHousePreview();
+    onHouseViewportChanged();
 }
 
 void THousesInfoDialogController::setHouseCameraViewport(cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType* pCameraViewport)
 {
     m_houseCamera = pCameraViewport;
-    centerHousePreview();
+    onHouseViewportChanged();
 }
 
 void THousesInfoDialogController::selectHouse(const uint HouseId)
@@ -673,7 +673,7 @@ void THousesInfoDialogController::selectHouse(const uint HouseId)
         return;
     m_currentHouseId = HouseId;
     updateHouseLayers(HouseId);
-    centerHousePreview();
+    onHouseViewportChanged();
     Q_EMIT currentHouseIdChanged();
 }
 
@@ -723,12 +723,12 @@ void THousesInfoDialogController::ensureTownAndHouseSelection()
     if (currentMissing)
         selectHouse(firstId);
     else
-        centerHousePreview();
+        onHouseViewportChanged();
 }
 
-void THousesInfoDialogController::centerHouse() { centerHousePreview(); }
+void THousesInfoDialogController::centerHouse() { onHouseViewportChanged(); }
 
-void THousesInfoDialogController::centerHousePreview()
+void THousesInfoDialogController::onHouseViewportChanged()
 {
     const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house || !m_houseCamera)
@@ -854,7 +854,7 @@ void THousesInfoDialogController::resetHouseActionData()
     m_pendingName.clear();
 }
 
-void THousesInfoDialogController::onHouseActionResult(const quint32 houseId, const int action, const int errorCode, const bool hasBeenOutbidden)
+void THousesInfoDialogController::onRequestHouseActionResultDialog(const quint32 houseId, const int action, const int errorCode, const bool hasBeenOutbidden)
 {
     static const char* const names[] = { "bid", "move_out", "transfer", "cancel_move_out", "cancel_transfer", "accept_transfer", "reject_transfer" };
     const bool known = action >= 1 && action <= 7;

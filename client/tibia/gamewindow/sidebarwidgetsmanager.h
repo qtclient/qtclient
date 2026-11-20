@@ -104,10 +104,10 @@ public:
     /// Opens the widget in `sidebarId` (0xff or a missing sidebar: the first
     /// with room, or HUD right when hud placement is on).
     void openWidget(int widgetType, uint sidebarId = 0xff);
-    /// CIP onWidgetClosed: the widget saves its options when
+    /// The widget saves its options when
     /// `saveWidgetOptions`, is deleted, the open widgets are saved and
     /// widgetHidden is emitted.
-    void closeWidget(int widgetType, bool saveWidgetOptions = true);
+    void onWidgetClosed(int widgetType, bool saveWidgetOptions = true);
     /// The CIP per-type toggle: an open widget saves its options and closes,
     /// a closed one opens in `sidebarId`.
     void toggleWidget(int widgetType, uint sidebarId = 0xff);
@@ -144,22 +144,21 @@ public Q_SLOTS:
     void onToggleAnalyticsSelectorWidget(uint targetSidebarId) { toggleWidget(AnalyticsSelector, targetSidebarId); }
     void onTogglePartyHuntAnalyserWidget(uint targetSidebarId) { toggleWidget(PartyHuntAnalyser, targetSidebarId); }
 
-    void onSkillsWidgetClosed(bool saveWidgetOptions) { closeWidget(Skills, saveWidgetOptions); }
-    void onUnjustifiedPointsWidgetClosed(bool saveWidgetOptions) { closeWidget(UnjustifiedPoints, saveWidgetOptions); }
-    void onKillTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(KillTracker, saveWidgetOptions); }
-    void onSpellListWidgetClosed(bool saveWidgetOptions) { closeWidget(SpellList, saveWidgetOptions); }
-    void onBossTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(BossCooldowns, saveWidgetOptions); }
-    void onQuestTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(QuestTracker, saveWidgetOptions); }
-    void onLootTrackingWidgetClosed(bool saveWidgetOptions) { closeWidget(LootTracker, saveWidgetOptions); }
-    void onLootAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(LootAnalyser, saveWidgetOptions); }
-    void onWasteAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(WasteAnalyser, saveWidgetOptions); }
-    void onImpactAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(ImpactAnalyser, saveWidgetOptions); }
-    void onDamageInputAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(DamageInputAnalyser, saveWidgetOptions); }
-    void onHuntingSessionAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(HuntingSessionAnalyser, saveWidgetOptions); }
-    void onProgressAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(XpAnalyser, saveWidgetOptions); }
-    void onAnalyticsSelectorWidgetClosed(bool saveWidgetOptions) { closeWidget(AnalyticsSelector, saveWidgetOptions); }
-    void onPartyHuntAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(PartyHuntAnalyser, saveWidgetOptions); }
-    void onWidgetClosed(int type, bool saveWidgetOptions) { closeWidget(type, saveWidgetOptions); }
+    void onSkillsWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(Skills, saveWidgetOptions); }
+    void onUnjustifiedPointsWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(UnjustifiedPoints, saveWidgetOptions); }
+    void onKillTrackerWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(KillTracker, saveWidgetOptions); }
+    void onSpellListWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(SpellList, saveWidgetOptions); }
+    void onBossTrackerWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(BossCooldowns, saveWidgetOptions); }
+    void onQuestTrackerWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(QuestTracker, saveWidgetOptions); }
+    void onLootTrackingWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(LootTracker, saveWidgetOptions); }
+    void onLootAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(LootAnalyser, saveWidgetOptions); }
+    void onWasteAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(WasteAnalyser, saveWidgetOptions); }
+    void onImpactAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(ImpactAnalyser, saveWidgetOptions); }
+    void onDamageInputAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(DamageInputAnalyser, saveWidgetOptions); }
+    void onHuntingSessionAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(HuntingSessionAnalyser, saveWidgetOptions); }
+    void onProgressAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(XpAnalyser, saveWidgetOptions); }
+    void onAnalyticsSelectorWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(AnalyticsSelector, saveWidgetOptions); }
+    void onPartyHuntAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(PartyHuntAnalyser, saveWidgetOptions); }
 
     /// CIP: the imbuement tracker widget subscribes to imbuement durations
     /// while it is shown (GameclientMessageTrackImbuements).

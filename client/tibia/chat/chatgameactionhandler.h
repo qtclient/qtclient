@@ -4,6 +4,7 @@
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
+#include <protocol.pb.h>
 
 #include <QColor>
 #include <QObject>
@@ -28,6 +29,12 @@ class TChatGameActionHandler final : public cip::tibia::chat::TChatGameActionHan
     Q_OBJECT
 public:
     using cip::tibia::chat::TChatGameActionHandler::TChatGameActionHandler;
+
+    /// Ends the conversation with the NPCs on the server.
+    void emitSendCloseNPCChannel() override;
+
+Q_SIGNALS:
+    void sendCloseNPCChannel(const ::tibia::protobuf::protocol::GameclientMessageCloseNPCChannel& CloseNPCChannelMessage);
 };
 
 /// An NPC keyword button: the KEYWORDBUTTONICON_* value and the keyword it says.

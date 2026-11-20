@@ -79,7 +79,7 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
     m_message->setMessageDialogTextFormat(gamewindow::TMessageDialogController::RICH_TEXT);
     connect(m_message, &gamewindow::TMessageDialogController::acceptClicked, this,
             &TWeaponProficiencyShapeDialogController::onMessageDialogAccept);
-    connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) { update(static_cast<uint16_t>(typeId)); });
+    connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); });
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
@@ -129,7 +129,7 @@ std::optional<TShapedSlot> TWeaponProficiencyShapeDialogController::shapedSlot()
     return slot ? std::optional<TShapedSlot>(*slot) : std::nullopt;
 }
 
-void TWeaponProficiencyShapeDialogController::update(const uint16_t typeId)
+void TWeaponProficiencyShapeDialogController::onProficiencyDataChanged(const uint16_t typeId)
 {
     if (typeId != m_typeId)
         return;
@@ -232,7 +232,7 @@ void TWeaponProficiencyShapeDialogController::updateReshape(const std::optional<
 void TWeaponProficiencyShapeDialogController::showDialog()
 {
     m_message->dialog()->close();
-    update(m_typeId);
+    onProficiencyDataChanged(m_typeId);
     for (const int resource : DialogResources)
         Q_EMIT publishGameAction(std::make_shared<input::TGameActionRequestResourceBalance>(resource));
     if (!dialog()->item()) {
@@ -292,7 +292,7 @@ void TWeaponProficiencyShapeDialogController::onMessageDialogAccept()
     }
 }
 
-void TWeaponProficiencyShapeDialogController::onResourceBalanceChanged() { update(m_typeId); }
+void TWeaponProficiencyShapeDialogController::onResourceBalanceChanged() { onProficiencyDataChanged(m_typeId); }
 
 void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
 {

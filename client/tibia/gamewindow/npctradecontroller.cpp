@@ -270,7 +270,7 @@ void TNPCTradeController::setTradeStorage()
         // The player's balance (gold, currency objects, resources).
         m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this, &TNPCTradeController::currencyBalanceChanged));
         m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this,
-                                               &TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged));
+                                               &TNPCTradeController::onAvailableCurrencyBalanceMightHaveChagned));
         Q_EMIT showNameFitlerChanged();
         m_refreshTimer.start();
         Q_EMIT currencyChanged();
@@ -441,7 +441,7 @@ void TNPCTradeController::refresh()
     Q_EMIT buyOrSellPriceChanged();
 }
 
-void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged()
+void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChagned()
 {
     const uint64_t money = m_storage ? m_storage->money() : 0;
     if (money == m_money)

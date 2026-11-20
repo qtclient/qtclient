@@ -78,13 +78,13 @@ private Q_SLOTS:
     /// CIP : the dragged object goes to the slot (0 for any).
     void onSlotDragDropped(int slotId);
     void onSlotTargetSelected(int slotId);
-    void onStopClicked();
+    void onStopButtonClicked();
 
 private:
     /// The slot's actions (CIP: the inventory's action provider, v4).
     input::TGameActionList slotActions(int slotId) const;
     void refreshSlot(int slotId);
-    void refreshSlots();
+    void onInventoryChanged();
     /// CIP on every slot: counting-down texts.
     void refreshClocks();
     /// CIP: every player value the panel shows, each emitted when it changed.

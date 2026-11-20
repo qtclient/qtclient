@@ -116,7 +116,7 @@ private:
     void startContainerPick(int category, bool lootColumn);
     void finishPick(const input::TTargetSelectedPtr& target);
     void cancelPick();
-    void onClearConfirmed();
+    void onClearItemBlackWhitelistConfirmed();
 
     quickloot::TQuickLootBlackWhitelistStorage* m_lootBlackWhitelist = nullptr;
     quickloot::TManagedContainerStorage* m_containers = nullptr;

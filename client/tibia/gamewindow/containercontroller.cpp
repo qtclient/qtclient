@@ -203,8 +203,8 @@ void TContainerController::onShowConfigurationMenu()
     const auto setFilter = [this](const uint32_t category) {
         if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
             storage->setFilterCategory(m_containerId, category);
-            const container::TStoredContainer* row = stored();
-            container::TContainerStorage::requestFilteredContent(m_containerId, row ? row->firstIndex : 0, category);
+            if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+                handler->requestUpdateContainer(m_containerId);
         }
     };
 
@@ -288,13 +288,14 @@ void TContainerController::sortContainer(const int sortType)
     if (recursive && warn) {
         showConfirmDialog("container_confirm_sort_recursive_caption", "container_confirm_sort_recursive",
                           [id = m_containerId, sortType, backpacksFirst, recursive](const bool showAgain) {
-                              container::TContainerStorage::requestSort(id, static_cast<uint32_t>(sortType),
-                                                                        backpacksFirst, recursive);
+                              if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+                                  handler->requestSortContainer(id, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
                               app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), showAgain);
                           });
         return;
     }
-    container::TContainerStorage::requestSort(m_containerId, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestSortContainer(m_containerId, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
     app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), warn);
 }
 
@@ -306,12 +307,14 @@ void TContainerController::moveContentToManagedContainers()
         showConfirmDialog("container_confirm_move_content_to_managed_containers_recursive_caption",
                           "container_confirm_move_content_to_managed_containers_recursive",
                           [id = m_containerId, recursive](const bool showAgain) {
-                              container::TContainerStorage::requestMoveContentToManagedContainers(id, recursive);
+                              if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+                                  handler->requestMoveContentToManagedContainers(id, recursive);
                               app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), showAgain);
                           });
         return;
     }
-    container::TContainerStorage::requestMoveContentToManagedContainers(m_containerId, recursive);
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestMoveContentToManagedContainers(m_containerId, recursive);
     app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), warn);
 }
 
@@ -516,16 +519,14 @@ void TContainerController::onSlotTargetSelected(const int slotId)
 
 void TContainerController::onPreviousPageClicked()
 {
-    const container::TStoredContainer* row = stored();
-    if (row && !row->isFirstPage())
-        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->previousPageFirstIndex()));
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestPreviousPageForContainer(m_containerId);
 }
 
 void TContainerController::onNextPageClicked()
 {
-    const container::TStoredContainer* row = stored();
-    if (row && !row->isLastPage())
-        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->nextPageFirstIndex()));
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestNextPageForContainer(m_containerId);
 }
 
 void TContainerController::onSearchButtonClicked()
@@ -536,14 +537,16 @@ void TContainerController::onSearchButtonClicked()
 void TContainerController::onRequestClose()
 {
     removeThisContainersOptions();
-    tibia::game::closeById(m_containerId);
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestCloseContainer(m_containerId);
     widget()->hide();
     TSidebarWidgetController::onRequestClose();
 }
 
 void TContainerController::onLevelUpClicked()
 {
-    tibia::game::openParentById(m_containerId);
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+        handler->requestUpContainer(m_containerId);
 }
 
 void TContainerController::readExpireOptions()

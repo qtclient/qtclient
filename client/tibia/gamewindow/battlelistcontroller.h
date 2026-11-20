@@ -171,10 +171,12 @@ public:
     /// The list's premium state follows `storage` (premiumTimeChanged on
     /// every change and once now).
     void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
-    /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR, forwarded by the storage:
-    /// the hovered entry's TARGET_SELECTED creature takes the object
-    /// (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
-    bool onAtMouseCursor(const input::IGameAction& action);
+    /// USE_AT_MOUSECURSOR, forwarded by the storage: the hovered entry's
+    /// TARGET_SELECTED creature takes the object (USE_ON_CREATURE).
+    bool handleGameActionAtMouseCursor(const input::TGameActionUseAtMouseCursor& action);
+    /// SPELL_AT_MOUSE_CURSOR, forwarded by the storage: the spell is said aimed
+    /// (mode 2) at the field of the hovered entry's TARGET_SELECTED creature.
+    bool handleGameActionCastSpellAtMouseCursor(const input::TGameActionSpellAtMouseCursor& action);
 
     /// The QML properties, read from the list's options.
     bool filterButtonsVisible() const override;
@@ -216,10 +218,6 @@ public Q_SLOTS:
     /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient live path is
     /// the mapper + action listeners; shared_ptr arg skipped (auth pattern).
     void handleGameAction();
-    /// CIP handleGameActionAtMouseCursor(shared_ptr) — live USE_AT_MOUSECURSOR.
-    void handleGameActionAtMouseCursor();
-    /// CIP handleGameActionCastSpellAtMouseCursor(shared_ptr) — live SPELL_AT_MOUSE_CURSOR.
-    void handleGameActionCastSpellAtMouseCursor();
 
 Q_SIGNALS:
     /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.

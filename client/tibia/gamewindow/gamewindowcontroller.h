@@ -184,10 +184,9 @@ private:
     void onBoostedCreatureReceived();
     void onLiveInformationReceived();
     void onShowOffReceived();
-    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void clearEventModels();
-    /// CIP: today's events and the next starting ones, with their tooltips.
-    void updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events);
+    /// Today's events and the next starting ones, with their tooltips.
+    void onEventScheduleUpdated(const std::vector<news::TEventInformation>& events);
     void syncAnthemButton();
 
     QPointer<QQuickItem> m_container;

@@ -64,7 +64,7 @@ private:
     };
 
     /// CIP .
-    void update(uint16_t typeId);
+    void onProficiencyDataChanged(uint16_t typeId);
     /// CIP /.
     void updateRefine(const std::optional<TShapedSlot>& slot);
     void updateMaximise(const std::optional<TShapedSlot>& slot);

@@ -173,11 +173,6 @@ void TMinimapController::onMoveDownButtonClicked()
     refresh();
 }
 
-void TMinimapController::onCenterButtonClicked()
-{
-    centerOnPlayer();
-}
-
 qmlcomponents::TMinimapQuickItem* TMinimapController::minimapItem() const { return m_minimap; }
 minimap::TMinimapTileStorage* TMinimapController::tileStorage() const { return m_storage; }
 
@@ -202,7 +197,7 @@ void TMinimapController::emulateClickOnAutomapRose()
     const double sx = nx + nx - 1.0;
     const double sy = ny + ny - 1.0;
     if (std::sqrt(sx * sx + sy * sy) < double(0.33f)) {
-        centerOnPlayer();
+        onCenterButtonClicked();
         refresh();
         return;
     }
@@ -222,7 +217,7 @@ void TMinimapController::emulateClickOnAutomapRose()
 void TMinimapController::onMinimapRoseButtonClicked(const int offsetX, const int offsetY)
 {
     if (offsetX == 0 && offsetY == 0) {
-        centerOnPlayer();
+        onCenterButtonClicked();
     } else {
         const int step = scrollStep();
         if (offsetX != 0)
@@ -339,7 +334,7 @@ void TMinimapController::handleGameAction(const input::IGameAction& action)
         m_area.moveX(-scrollStep());
         break;
     case A::MINIMAP_CENTER:
-        centerOnPlayer();
+        onCenterButtonClicked();
         return;
     default:
         return;
@@ -382,7 +377,7 @@ void TMinimapController::onPlayerPositionChanged(const Position& position)
 }
 
 // CIP .
-void TMinimapController::centerOnPlayer()
+void TMinimapController::onCenterButtonClicked()
 {
     if (!tibia::game::hasLocalPlayer())
         return;

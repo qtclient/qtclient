@@ -206,7 +206,7 @@ TImpactWidgetController::TImpactWidgetController(TImpactStorage* storage, QQuick
     Q_EMIT sessionLengthChanged();
     Q_EMIT optionsChanged();
     Q_EMIT allTimeValuesChanged();
-    updateGraphs();
+    onGraphValuesChanged();
     widget()->createItem(QStringLiteral("ImpactWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TImpactWidgetController::onWidgetQuickItemDestroyed);
@@ -252,15 +252,7 @@ void TImpactWidgetController::saveWidgetOptions() { storeContentHeight(widget(),
 /// CIP: the stored widget options are applied (saving is saveWidgetOptions).
 void TImpactWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, ImpactOptionsKey); }
 
-void TImpactWidgetController::onGraphValuesChanged() { updateGraphs(); }
-
 void TImpactWidgetController::onDamageValuesChanged()
-{
-    updateTypedModel();
-    Q_EMIT damageValuesChanged();
-}
-
-void TImpactWidgetController::updateTypedModel()
 {
     const TImpactStorage::Summary& summary =
         m_storage->showSessionValues() ? m_storage->session(TImpactStorage::Damage) : m_storage->window(TImpactStorage::Damage);
@@ -271,9 +263,10 @@ void TImpactWidgetController::updateTypedModel()
             entries.push_back({ e, value, static_cast<double>(value) / static_cast<double>(summary.total) });
     }
     m_typedModel->setEntries(std::move(entries));
+    Q_EMIT damageValuesChanged();
 }
 
-void TImpactWidgetController::updateGraphs()
+void TImpactWidgetController::onGraphValuesChanged()
 {
     const bool session = m_storage->showSessionValues();
     const auto& damage = m_storage->graph(TImpactStorage::Damage);

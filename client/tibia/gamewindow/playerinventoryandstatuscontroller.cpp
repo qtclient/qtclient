@@ -130,7 +130,7 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_hoveredSlot = -1;
-        refreshSlots();
+        onInventoryChanged();
         Q_EMIT gamesessionDisconnected();
     });
 
@@ -180,7 +180,7 @@ void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* panel)
     connect(panel, SIGNAL(slotStartDrag(int, QObject*)), this, SLOT(onSlotStartDrag(int, QObject*)));
     connect(panel, SIGNAL(slotDragDropped(int)), this, SLOT(onSlotDragDropped(int)));
     connect(panel, SIGNAL(slotTargetSelected(int)), this, SLOT(onSlotTargetSelected(int)));
-    connect(panel, SIGNAL(stopClicked()), this, SLOT(onStopClicked()));
+    connect(panel, SIGNAL(stopClicked()), this, SLOT(onStopButtonClicked()));
     QVariantList model;
     for (container::TContainerSlotQmlInformation* slot : m_slots)
         model.append(QVariant::fromValue<QObject*>(slot));
@@ -193,7 +193,7 @@ void TPlayerInventoryAndStatusController::setSidebarOptions(config::TSidebarOpti
     if (!options)
         return;
     specialConditionsOptionsChanged();
-    refreshSlots();
+    onInventoryChanged();
     refreshSoul();
     refreshCapacity();
     refreshBlessings();
@@ -260,7 +260,7 @@ void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)
     m_slots[slotId]->assign(info);
 }
 
-void TPlayerInventoryAndStatusController::refreshSlots()
+void TPlayerInventoryAndStatusController::onInventoryChanged()
 {
     for (int i = 0; i < SlotCount; ++i)
         refreshSlot(i);
@@ -281,7 +281,7 @@ void TPlayerInventoryAndStatusController::refreshClocks()
 void TPlayerInventoryAndStatusController::onInventoryOptionsChanged()
 {
     readExpireOptions();
-    refreshSlots();
+    onInventoryChanged();
 }
 
 void TPlayerInventoryAndStatusController::readExpireOptions()
@@ -560,7 +560,7 @@ void TPlayerInventoryAndStatusController::onSlotTargetSelected(const int slotId)
         Q_EMIT publishGameAction(target);
 }
 
-void TPlayerInventoryAndStatusController::onStopClicked()
+void TPlayerInventoryAndStatusController::onStopButtonClicked()
 {
     Q_EMIT publishGameAction(input::makeGameAction(A::STOP_ATTACKING_FOLLOWING_WALKING));
 }

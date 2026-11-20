@@ -6,12 +6,14 @@
 // CIP-named container surfaces (promoted from cipwire).
 
 #include "appearances/appearanceinstance.h"
+#include "appearances/objectappearanceinstancetypeid.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
 #include <client/const.h>
 #include <client/declarations.h>
+#include <protocol.pb.h>
 
 #include <QByteArray>
 #include <QList>
@@ -239,6 +241,29 @@ public:
     void handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& message);
     void handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message);
     void handleCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch& message);
+
+    void requestCloseContainer(TContainerID ContainerID);
+    /// Opens the container's parent in its place.
+    void requestUpContainer(TContainerID ContainerID);
+    /// Seeks to the first index of the container's next page, keeping its filter category.
+    void requestNextPageForContainer(TContainerID ContainerID);
+    /// Seeks to the first index of the container's previous page, keeping its filter category.
+    void requestPreviousPageForContainer(TContainerID ContainerID);
+    /// Seeks to the container's current first index: the server sends the page again.
+    void requestUpdateContainer(TContainerID ContainerID);
+    /// The names of the instances, answered by the object info message. The data
+    /// is the liquid of a liquid instance, the tier of a tiered one, else 0.
+    void requestGetObjectsInfo(const std::vector<appearances::TObjectAppearanceInstanceTypeID>& ObjectInstanceTypes);
+    void requestGetObjectInfo(const appearances::TObjectAppearanceInstanceTypeID& ObjectInstanceType);
+    void requestSortContainer(TContainerID ContainerID, uint32_t SortOption, bool SortBackpacksFirst, bool SortRecursive);
+    void requestMoveContentToManagedContainers(TContainerID ContainerID, bool MoveRecursive);
+
+Q_SIGNALS:
+    void sendCloseContainerMessage(const ::tibia::protobuf::protocol::GameclientMessageCloseContainer& CloseContainerMessage);
+    void sendUpContainerMessage(const ::tibia::protobuf::protocol::GameclientMessageUpContainer& UpContainerMessage);
+    void sendSeekInContainerMessage(const ::tibia::protobuf::protocol::GameclientMessageSeekInContainer& SeekInContainerMessage);
+    void sendGetObjectInfoMessage(const ::tibia::protobuf::protocol::GameclientMessageGetObjectInfo& GetObjectInfoMessage);
+    void sendContainerActionMessage(const ::tibia::protobuf::protocol::GameclientMessageContainerAction& ContainerActionMessage);
 };
 
 /// What a container widget shows (CIP: the render provider's container properties).
@@ -312,11 +337,6 @@ public:
     /// Manual sort mode, one for all containers of the session.
     static bool manualSortMode();
     void setManualSortMode(bool enabled);
-
-    /// The server requests of the configuration menu.
-    static void requestFilteredContent(TContainerID id, uint16_t index, uint32_t category);
-    static void requestSort(TContainerID id, uint32_t sortType, bool backpacksFirst, bool recursive);
-    static void requestMoveContentToManagedContainers(TContainerID id, bool recursive);
 
 Q_SIGNALS:
     void manualSortModeChanged();
