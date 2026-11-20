@@ -41,7 +41,7 @@ public:
     /// Asks the server to log the character out (it may refuse, e.g. in fight).
     void requestLogout();
     /// Drops the connection without waiting for the server.
-    void disconnectNow();
+    void disconnectNow() override;
 
     bool isOnline() const;
     QString characterName() const;

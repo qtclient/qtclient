@@ -104,6 +104,8 @@ public:
         std::function<bool()> showSurveyInvitationDialog;
         /// Whether the assets are loaded, so the game server login can start.
         std::function<bool()> assetsComplete;
+        /// Forgets the account's session (the host keeps the play session data).
+        std::function<void()> resetSessionData;
     };
 
     explicit TAuthenticationProcessController(QObject* parent = nullptr);
@@ -125,6 +127,12 @@ public:
     std::optional<EState> postLoginDialogState() const { return m_child; }
     /// Raises a trigger; ignored unless the active state has a transition for it.
     void trigger(ETrigger trigger);
+    /// CIP: back to the character selection while authenticated: a running
+    /// machine advances straight to it, a stopped one starts there.
+    void showCharacterSelection();
+    /// CIP: forgets the account's session data, so the next login asks for
+    /// the credentials again.
+    void resetSessionData();
 
     bool authenticated() const { return m_authenticated; }
     bool fpsTrackingActive() const { return m_fpsTrackingActive; }

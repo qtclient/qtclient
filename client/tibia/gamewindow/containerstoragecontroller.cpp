@@ -27,14 +27,6 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
     m_updateTimer.setInterval(0);
     connect(&m_updateTimer, &QTimer::timeout, this, &TContainerStorageController::flushUpdates);
 
-    tibia::game::onEachGameSession(this, [this] {
-        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-            connect(storage, &container::TContainerStorage::containerUpdated, this,
-                    &TContainerStorageController::onContainerUpdated, Qt::UniqueConnection);
-            connect(storage, &container::TContainerStorage::containerRemoved, this,
-                    &TContainerStorageController::onContainerClosed, Qt::UniqueConnection);
-        }
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clear();
     });
@@ -229,4 +221,16 @@ void TContainerStorageController::clear()
     }
 }
 
+}
+
+void tibia::gamewindow::TContainerStorageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    container::TContainerStorage* storage = session ? session->containerStorage().get() : nullptr;
+    if (!storage)
+        return;
+    connect(storage, &container::TContainerStorage::containerUpdated, this, &TContainerStorageController::onContainerUpdated,
+            Qt::UniqueConnection);
+    connect(storage, &container::TContainerStorage::containerRemoved, this, &TContainerStorageController::onContainerClosed,
+            Qt::UniqueConnection);
 }

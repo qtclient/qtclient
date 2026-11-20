@@ -164,6 +164,8 @@ void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWin
         m_loginWait->showGameWorld();
     });
     connect(m_client, &client::TGameClient::mainWindowInitialized, this, [this] { m_loginWait->close(); });
+    // The game session's disconnect reaction returns to the start screen when a login fails.
+    connect(gameWindow, &gamewindow::TGameWindowController::startScreenNowDisplayed, this, [this] { m_loginWait->close(); });
     connect(m_client, &client::TGameClient::returnToLoginRequested, this, [this] { m_loginWait->close(); });
     connect(m_client, &client::TGameClient::showErrorAsPopupAndCriticalLog, this, [this, gameWindow](const QString&) {
         m_loginWait->close();

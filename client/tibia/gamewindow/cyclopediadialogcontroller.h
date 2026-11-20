@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
@@ -22,6 +24,10 @@
 #include <deque>
 #include <variant>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace cyclopedia {
@@ -83,8 +89,8 @@ public:
     /// Returns to the last remembered page and its context.
     void requestBack() override;
 
-    /// A new game session: no backlog and the dialog closed.
-    void connectToGameSession();
+    /// CIP connector: a new game session: no backlog and the dialog closed.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The monster page's loot item: the items page on its object type.
     void onSwitchToItemInfoDialogRequested(uint16_t AppearanceTypeID);
 

@@ -31,6 +31,10 @@
 
 class QQuickItem;
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace client {
 class TGameClient;
@@ -272,6 +276,8 @@ public:
     /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
     chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
+    /// CIP connector: the protocol handler writes `GameSession`'s texts and effects.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     chat::TChatStorage& chatStorage() { return m_chatStorage; }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 

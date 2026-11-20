@@ -268,7 +268,6 @@ TStashDialogController::TStashDialogController(QObject* parent)
 
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { closeDialog(); });
     m_gameActions.on(A::MARKET_BROWSE, [this](const input::IGameAction& action) { handleGameAction(action); });
-    tibia::game::onEachGameSession(this, [this] { setGameSession(game::TGameSessionBase::active()); });
 }
 
 TStashDialogController::~TStashDialogController()
@@ -557,4 +556,9 @@ void TStashDialogController::onRequestShowStashMessageDialog(const QString& Mess
     m_info->showMessage(qtTrId("info"), Message);
 }
 
+}
+
+void tibia::gamewindow::TStashDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    setGameSession(dynamic_cast<game::TGameSessionBase*>(GameSession.get()));
 }

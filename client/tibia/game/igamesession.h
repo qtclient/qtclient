@@ -31,6 +31,9 @@ public:
     /// Starts the session once it is the client's current one: a replay starts
     /// playing; a live session is already connecting.
     virtual void startSession() = 0;
+    /// Ends the session's connection or playback now; the session then
+    /// reports disconnected.
+    virtual void disconnectNow() = 0;
 
 Q_SIGNALS:
     void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);

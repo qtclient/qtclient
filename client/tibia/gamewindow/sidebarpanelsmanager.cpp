@@ -1,4 +1,5 @@
 #include "sidebarpanelsmanager.h"
+#include "game/gamesessionbase.h"
 
 #include "gamewindow/buttonbarcontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -180,4 +181,11 @@ void TSidebarPanelsManager::handleGameAction(const ::tibia::input::IGameActionPt
         m_premiumPanel->handleGameAction(pGameAction);
 }
 
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (TMinimapController* minimapController = minimap())
+        minimapController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
 }

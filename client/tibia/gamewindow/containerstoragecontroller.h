@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "input/gameactiondispatch.h"
 #include <cip_gen.h>
 
@@ -14,6 +16,10 @@
 
 class QQmlEngine;
 class QQuickItem;
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace config {
@@ -47,6 +53,8 @@ public:
     void setControlScheme(int controlScheme);
     void setLootScheme(int lootScheme);
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP connector: follows the session's container storage.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// A place waiting for its container: the sidebar, the index in its
     /// saved widget list (-1: appended) and the sidebar identifier reserved

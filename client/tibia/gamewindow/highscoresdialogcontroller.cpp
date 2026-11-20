@@ -111,9 +111,7 @@ THighscoresDialogController::THighscoresDialogController(QObject* parent)
     m_indexOfSelectedVocation = -1;
     m_indexOfSelectedCategory = -1;
     m_worldTypeModel = &m_worldTypes;
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &THighscoresDialogController::connectToGameSession);
-    connectToGameSession();
+    connectToGameSession(nullptr);
 }
 
 THighscoresDialogController::~THighscoresDialogController()
@@ -121,7 +119,7 @@ THighscoresDialogController::~THighscoresDialogController()
     delete m_highscoreData;
 }
 
-void THighscoresDialogController::connectToGameSession()
+void THighscoresDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>&)
 {
     closeDialog();
     if (m_storage)

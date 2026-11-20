@@ -111,13 +111,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         scheduleObjectRefresh();
         return std::any{};
     });
-    tibia::game::onEachGameSession(this, [this] {
-        disconnect(m_containerUpdated);
-        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-            m_containerUpdated = connect(storage, &container::TContainerStorage::containerUpdated, this,
-                                         [this](container::TContainerID, bool) { scheduleObjectRefresh(); });
-        }
-    });
     // GameserverMessageUnlockedSpells 0x2E (CIP reads u16 count, u16 ids;
     // emits receivedUnlockedSpell per id).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", [this](GameObject*, const Args& args) {
@@ -342,4 +335,13 @@ bool TActionBarManager::toggleActionBars(const input::IGameAction& action)
     return true;
 }
 
+}
+
+void tibia::gamewindow::TActionBarManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    disconnect(m_containerUpdated);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (container::TContainerStorage* storage = session ? session->containerStorage().get() : nullptr)
+        m_containerUpdated = connect(storage, &container::TContainerStorage::containerUpdated, this,
+                                     [this](container::TContainerID, bool) { scheduleObjectRefresh(); });
 }

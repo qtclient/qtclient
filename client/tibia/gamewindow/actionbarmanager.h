@@ -25,6 +25,10 @@
 class QQmlEngine;
 class QQuickItem;
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace config {
 class TActionBarOptions;
@@ -61,6 +65,8 @@ public Q_SLOTS:
     /// The character's configuration was loaded: every bar reads its first visible button.
     void onCharacterConfigurationLoaded();
     /// Character entered the world: auto-switch preset, fresh counts.
+    /// CIP connector: the bars' object counts follow the session's containers.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onWorldEntered();
     void onWorldLeft();
 

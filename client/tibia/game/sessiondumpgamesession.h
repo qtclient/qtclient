@@ -57,7 +57,7 @@ public:
     /// Plays a recorded OTC packet log or CIP `dmpd` dump through g_game.
     void replay(const QString& file);
     /// Drops the replay without waiting for the recording to finish.
-    void disconnectNow();
+    void disconnectNow() override;
     /// No server logout in replay; same as disconnectNow for UI wiring.
     void requestLogout();
 

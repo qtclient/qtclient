@@ -9,6 +9,7 @@
 #include "config/characterconfigurationmanager.h"
 #include "game/gameservergamesession.h"
 #include "runtime/gamehost.h"
+#include "qtconnectionwrapper.h"
 
 #include <cip_gen.h>
 
@@ -47,6 +48,7 @@ namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCrashReportDialogController;
+class TGameSessionDisconnectReactionController;
 class TGameWindowController;
 }
 namespace shared {
@@ -224,11 +226,6 @@ public:
     chat::TTextStorage* textStorage() const;
     /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
     void setMessageIgnoreList(chat::TWhiteBlacklist* list);
-    /// The chat handler the active session's game window texts go to.
-    void setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler);
-    /// The active game session changed: its message handler, frame updater,
-    /// view and minimap feed are rebuilt on it.
-    void bindActiveSession();
         effects::TEffectStorage* effectStorage() const;
     /// The character's sidebars.json, loaded on entering the world.
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
@@ -304,6 +301,11 @@ public Q_SLOTS:
     /// CIP: takes the next meta info off the queue, builds its game session,
     /// makes it the current session and starts it.
     void autoconnectNextGameSessionInQueue();
+    /// CIP: the current session disconnected (or failed to connect): the
+    /// dialogs that only make sense in a session close; the next queued
+    /// session connects, or with none left there is no current session (and
+    /// the client logs in again when the player asked for it).
+    void onGameSessionDisconnected();
     /// CIP: with FPS tracking on, samples the frame rate every
     /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
     /// (and when the session ends or the client closes); off drops both.
@@ -345,14 +347,21 @@ private:
     void setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const;
     /// Queues the meta infos and connects the first one.
     void enqueueGameSessions(std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> metaInfos);
-    /// Makes `session` the current game session (null: none) and releases the
-    /// previous one.
-    void setCurrentGameSession(const std::shared_ptr<game::IGameSession>& session);
-    /// CIP: the current session disconnected: the next queued one connects;
-    /// with none left there is no current session.
-    void onCurrentGameSessionDisconnected();
-    /// The game client's own reactions to a session's signals.
+    /// CIP: makes `GameSession` the current game session (null: none). The
+    /// previous one is unhooked and released; every game window controller
+    /// connects to the new one, in CipSoft's order.
+    void setCurrentGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// qtclient's own reactions to the current session (world entry, an
+    /// outdated client), until the game client's CipSoft slots replace them.
     void connectToCurrentGameSession();
+    /// The game window's controllers follow the current session (CipSoft's
+    /// connector calls of setCurrentGameSession); in gameclientgamewindow.cpp.
+    void connectGameWindowToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Logs the last chosen character in again (after a login wait, or when the
+    /// player logged out to log in again).
+    void loginAgainWithLastCharacter();
+    /// The game window's disconnect reaction; null before the game window exists.
+    gamewindow::TGameSessionDisconnectReactionController* gameSessionDisconnectReactionController() const;
     void fail(const QString& message);
     /// Once per frame, before the scene graph syncs (CIP:).
     void tick();
@@ -385,7 +394,7 @@ private:
     std::unique_ptr<authentication::TCloudflareChallengeController> m_cloudflareChallenge;
     /// The account login's state machine; the game client still performs the
     /// login steps it enters.
-    std::unique_ptr<authentication::TAuthenticationProcessController> m_authentication;
+    std::shared_ptr<authentication::TAuthenticationProcessController> m_authentication;
     bool m_suppressConnectError = false;
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
@@ -393,6 +402,10 @@ private:
     /// CIP: the sessions to play next, in order.
     std::deque<std::shared_ptr<const game::TGameSessionMetaInfo>> m_gameSessionMetaInfoQueue;
     std::shared_ptr<game::IGameSession> m_currentGameSession;
+    /// CIP: the current session's disconnected and connectionError, once and
+    /// on the next event loop pass (the session is not released inside its own
+    /// signal).
+    shared::TQtConnectionWrapper m_gameSessionDisconnected{ 1, true };
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
@@ -404,7 +417,6 @@ private:
     std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
-    chat::TChatProtocolMessageHandler* m_chatProtocol = nullptr;
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
@@ -415,7 +427,6 @@ private:
     std::shared_ptr<sound::TSoundManager> m_soundManager;
     std::shared_ptr<sound::TSoundPlayerManager> m_soundPlayerManager;
     std::shared_ptr<sound::TSoundController> m_soundController;
-    QMetaObject::Connection m_objectSoundConnection;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
     int m_worldType = -1;

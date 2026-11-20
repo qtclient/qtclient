@@ -252,6 +252,23 @@ void TAuthenticationProcessController::setOptionsTrackingActive(const bool value
     Q_EMIT optionsTrackingActiveChanged(m_optionsTrackingActive);
 }
 
+void TAuthenticationProcessController::showCharacterSelection()
+{
+    if (!m_authenticated)
+        return;
+    if (m_running) {
+        Q_EMIT advanceStateMachineDirectlyToCharacterSelection();
+        return;
+    }
+    start(true);
+}
+
+void TAuthenticationProcessController::resetSessionData()
+{
+    if (m_host.resetSessionData)
+        m_host.resetSessionData();
+}
+
 void TAuthenticationProcessController::onLoginStateMachineStartedShortcutToCharacterSelection()
 {
     Q_EMIT advanceStateMachineDirectlyToCharacterSelection();

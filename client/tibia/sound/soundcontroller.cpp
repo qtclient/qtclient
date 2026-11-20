@@ -1,8 +1,10 @@
 #include "sound/soundcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "input/gameaction.h"
 
 #include "sound/gamesessionsoundprovider.h"
+#include "sound/objectsoundcontroller.h"
 #include "sound/soundstorage.h"
 
 #include <tibia/game/gamesession.h>
@@ -156,4 +158,14 @@ void TSoundController::onQueuedSoundsTimerTriggered()
     m_queuedSounds.clear();
 }
 
+}
+
+void tibia::sound::TSoundController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    disconnect(m_objectSoundConnection);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
+    if (session && session->objectSoundController())
+        m_objectSoundConnection = connect(session->objectSoundController().get(), &TObjectSoundController::ambienceObjectStreamCountChanged,
+                                          this, &TSoundController::onAmbienceObjectStreamCountChanged);
 }

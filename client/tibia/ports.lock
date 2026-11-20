@@ -2652,6 +2652,24 @@ gamewindow::TFriendsInvitesPageController::v13	c32a35fed4f29304	ported	gamewindo
 gamewindow::TFriendsInvitesPageController::v14	bd7cfa016a324732	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::hideDialogTab
 gamewindow::TFriendsInvitesPageController::~TFriendsInvitesPageController	1b73485888c8bcb2	skip	generated: compiler-generated destructor pair
 gamewindow::TFriendsInvitesPageController::~TFriendsInvitesPageController_deleting	58f85c5491be938d	skip	generated: compiler-generated destructor pair
+gamewindow::TGameSessionDisconnectReactionController::handleGameAction	13581b8bd3b5e166	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::handleGameAction
+gamewindow::TGameSessionDisconnectReactionController::onConnectionError	6a5605a3d5a06dde	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
+gamewindow::TGameSessionDisconnectReactionController::onDeadMessage	4b7c6b568bac6f78	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onDeadMessage
+gamewindow::TGameSessionDisconnectReactionController::onDialogResponseShowCharacterSelection	f4195ccdffd65ab0	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onDialogResponseShowCharacterSelection
+gamewindow::TGameSessionDisconnectReactionController::onDialogResponseShowLoginDialog	ee2ecf1873a72a8f	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onDialogResponseShowLoginDialog
+gamewindow::TGameSessionDisconnectReactionController::onFailedConnectionWaitAborted	25810d9762b54618	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onFailedConnectionWaitAborted
+gamewindow::TGameSessionDisconnectReactionController::onGameLoginChallengeMessage	5e2ad3bf38e4d8d2	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameLoginChallengeMessage
+gamewindow::TGameSessionDisconnectReactionController::onGameLoginErrorMessage	acfe0ffc92af7a0a	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameLoginErrorMessage
+gamewindow::TGameSessionDisconnectReactionController::onGameLoginWaitMessage	a0f308e72d803652	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameLoginWaitMessage
+gamewindow::TGameSessionDisconnectReactionController::onGameSessionDisconnected	5c7bcec6017e371e	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameSessionDisconnected
+gamewindow::TGameSessionDisconnectReactionController::onGameSessionLoginSuccessful	79151b6d103ec85b	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameSessionLoginSuccessful
+gamewindow::TGameSessionDisconnectReactionController::onGameSessionPingTimeout	6b4469d8c30eccce	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameSessionPingTimeout
+gamewindow::TGameSessionDisconnectReactionController::onGameSessionPingTimeoutRecovered	a50e98d560e0f7d4	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onGameSessionPingTimeoutRecovered
+gamewindow::TGameSessionDisconnectReactionController::onPingTimeoutWaitTimeAborted	e19dbfc7548ea18d	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onPingTimeoutWaitTimeAborted
+gamewindow::TGameSessionDisconnectReactionController::onPingTimeoutWaitTimeElapsed	e19dbfc7548ea18d	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onPingTimeoutWaitTimeElapsed
+gamewindow::TGameSessionDisconnectReactionController::onSessionEndInformation	dc8c90acc12c2d29	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onSessionEndInformation
+gamewindow::TGameSessionDisconnectReactionController::onWaitAbortedShowCharacterSelection	f4195ccdffd65ab0	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onWaitAbortedShowCharacterSelection
+gamewindow::TGameSessionDisconnectReactionController::onWorldEntered	7f4db0d4d6a45249	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onWorldEntered
 gamewindow::TGameSessionDisconnectReactionController::~TGameSessionDisconnectReactionController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TGameSessionDisconnectReactionController::~TGameSessionDisconnectReactionController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TGameWindowController::cipSoftLogoPressed	92c9b3cac8be9ec4	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::cipSoftLogoPressed
@@ -7526,6 +7544,7 @@ sub_097457dc45e8#294	097457dc45e86dd8	skip	generated: forwarding thunk (std::mak
 sub_097457dc45e8#297	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
 sub_097457dc45e8#298	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
 sub_097457dc45e8#299	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
+sub_097457dc45e8#300	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call to the wait dialog constructor)
 sub_097457dc45e8#301	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
 sub_097457dc45e8#302	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call)
 sub_097457dc45e8#303	097457dc45e86dd8	inlined	gamewindow/edittextcontroller.cpp:TEditTextController::TEditTextController
@@ -7771,6 +7790,7 @@ sub_09ad6c28b37c	09ad6c28b37cfde1	skip	library: libc++ vector/map/unordered_map/
 sub_09ae5eb1e2bd	09ae5eb1e2bd6be7	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_09b5b0346dcb	09b5b0346dcb830c	ported	sound/soundconfiguration.cpp:TSoundConfiguration::ambienceVolume
 sub_09beaee80f97	09beaee80f9712b6	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
+sub_09bfbf624679	09bfbf624679c2cd	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:reconnectionWaitSeconds
 sub_09c95d25c2de	09c95d25c2de8b4f	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::bonusPointItemNames
 sub_09cb619886e1	09cb619886e11a18	skip	library: std container internals (map/vector/set)
 sub_09d2985fb206	09d2985fb2065395	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
@@ -10967,6 +10987,7 @@ sub_2f89e676d988	2f89e676d988f240	skip	library: std::map node teardown (library)
 sub_2f89e676d988#10	2f89e676d988f240	skip	library: boost::bimap / std::map template instantiation
 sub_2f89e676d988#11	2f89e676d988f240	skip	library: std::map tree destructor template instantiation
 sub_2f89e676d988#2	2f89e676d988f240	skip	library: std::map node destructor (library)
+sub_2f94341286c8	2f94341286c859a5	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
 sub_2fa26ce88497	2fa26ce88497514c	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_2faabb58ff31#3	2faabb58ff3122c4	skip	generated: moc signal emitter
 sub_2fb19db2a4bf	2fb19db2a4bffeee	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::toggleWidget
@@ -11749,6 +11770,7 @@ sub_3e389d683f07#2	3e389d683f076f28	inlined	gamewindow/playertradecontroller.cpp
 sub_3e38a401d595	3e38a401d595bd24	tested	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::TSessiondumpMessageReader	test=tests/client/sessiondumpreader_test.cpp
 sub_3e38a401d595#2	3e38a401d595bd24	tested	sessiondump/sessiondumpmessagereader.cpp:TSessiondumpMessageReader::TSessiondumpMessageReader	test=tests/client/sessiondumpreader_test.cpp
 sub_3e39713199af	3e39713199af3551	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
+sub_3e4c3e4891ee	3e4c3e4891eeba6a	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController
 sub_3e4d8b3511f5	3e4d8b3511f594ea	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreated
 sub_3e52fc909e61	3e52fc909e61cca3	skip	library: libc++ runtime/template helper (statically linked library range)
 sub_3e52fc909e61#3	3e52fc909e61cca3	skip	library: Qt/std container template code
@@ -12013,6 +12035,7 @@ sub_42afdda3ab23	42afdda3ab23bcea	inlined	gamewindow/monsterbonuseffectsdialogco
 sub_42afdda3ab23#3	42afdda3ab23bcea	ported	sound/soundcontrollerbase.h:TSoundControllerBase::activePlayers
 sub_42e15a3a6632	42e15a3a66320cee	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_42e7e6be2b03	42e7e6be2b037b71	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
+sub_42ed29877df4	42ed29877df4b9b0	ported	shared/src/qtconnectionmanager.cpp:TQtConnectionManager::disconnectAll
 sub_43029119c89b	43029119c89b7468	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_430db1ebdc39	430db1ebdc393a86	skip	generated: moc property getter, provided by the generated cip base
 sub_430db1ebdc39#3	430db1ebdc393a86	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
@@ -13360,6 +13383,7 @@ sub_59e0ef7b5c52#2	59e0ef7b5c5213dd	ported	input/gameaction.h:TGameActionSwitchC
 sub_59e71cb1cc98	59e71cb1cc98f8e1	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::baseAccumulatedXpString
 sub_59e941f7c4bd	59e941f7c4bdc8d6	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::transferTimeout
 sub_59ead3fb2905	59ead3fb29054edc	skip	generated: compiler-generated defaulted operator==/aggregate init, or rcc resource static initializer
+sub_59ead3fb2905#5	59ead3fb29054edc	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
 sub_59ead3fb2905#7	59ead3fb29054edc	inlined	gamewindow/magicalarchivedialogcontroller.h:TMagicalArchiveDialogController::captureContext
 sub_59ec81f07c7d	59ec81f07c7d943d	skip	library: miniaudio library
 sub_59f203f85b4a	59f203f85b4a49a8	inlined	renderer/highlightedspritenode.cpp:THighlightedSpriteScenegraphNode::set
@@ -14094,6 +14118,7 @@ sub_67dec7fb2bca	67dec7fb2bcaba75	skip	library: miniaudio channel-map tables (ma
 sub_67e018d74d7a	67e018d74d7a2ffe	skip	library: libc++/absl/protobuf template or runtime internals (btree node ops, std::map<QString> find, __tree range assign, std::string from range, protobuf serialization/arena)
 sub_67e9d479e1c2	67e9d479e1c2a46c	ported	trade/npctradestorage.cpp:maximumBuyAmount
 sub_67f248605845	67f2486058457d96	skip	library: libc++/Qt/absl/protobuf container template instantiation (vector push_back slow path, QList insert, btree node ops, RepeatedPtrField, hash)
+sub_67fa0e184dfc	67fa0e184dfcf1f5	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::disableReconnectionAttempts
 sub_67ff795fbd37	67ff795fbd371509	skip	generated: compiler-generated destructor/clear of a CipSoft struct vector, or protobuf message constructor
 sub_6800b04187aa	6800b04187aa05f2	skip	library: libc++ std::vector insert/realloc/assign instantiation
 sub_6803c309e5cd	6803c309e5cdc74b	ported	gamewindow/dialogmanager.cpp:TDialog::TDialog
@@ -15967,6 +15992,7 @@ sub_8bc657910ca0	8bc657910ca03667	skip	library: miniaudio (statically linked via
 sub_8bdbd57bf834	8bdbd57bf834a1bd	ported	chat/chatchannel.h:TChatChannelIdentifier::canBeClosed
 sub_8bdbd57bf834#2	8bdbd57bf834a1bd	ported	chat/chatchannel.h:TChatChannelIdentifier::canBeClosed
 sub_8bde7cb3dde1	8bde7cb3dde16b6a	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
+sub_8bdf8645ffd5	8bdf8645ffd5ebaf	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::connectToGameSession
 sub_8beedc78a96d	8beedc78a96d753b	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::setResult
 sub_8bf1155b59ab#17	8bf1155b59abd4ec	skip	library: libc++ std::deque<TTrackedItem> rotate, add-capacity, split-buffer, erase range and move helpers (read: 0x1000 blocks, 0x80 per block)
 sub_8bf1155b59ab#18	8bf1155b59abd4ec	skip	library: libc++ std::deque<TTrackedItem> rotate, add-capacity, split-buffer, erase range and move helpers (read: 0x1000 blocks, 0x80 per block)
@@ -19438,6 +19464,7 @@ sub_c3c0eaa667ff	c3c0eaa667ffbed8	skip	library: libc++ std::vector push_back rea
 sub_c3c7f2006a16	c3c7f2006a16f54f	skip	library: nlohmann::json 3.12 parse(): lexer, SAX DOM parser, exceptions, json_value/vector instantiations
 sub_c3c87bcdc82d	c3c87bcdc82d629d	ported	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::perHour
 sub_c3cb1662b839	c3cb1662b8398972	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
+sub_c3d64604ca23	c3d64604ca236a39	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
 sub_c3da08be09dd	c3da08be09dd9a8e	inlined	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onStashContentChanged
 sub_c3de186d5a9f	c3de186d5a9f88db	inlined	gamewindow/assignactiondialogs.cpp:TAssignObjectActionDialogController::startTargetSelection
 sub_c3df29d63679#2	c3df29d63679b9ce	skip	library: libc++/Qt/absl/protobuf template instantiation (tree destroy/find, std::string from C string, QString from const char*, dynamic_pointer_cast, variant visit, vector move-assign, unique_ptr helpers, protobuf arena)
@@ -19514,6 +19541,7 @@ sub_c58b251f286e	c58b251f286ebabe	skip	library: SFML audio library (miniaudio ba
 sub_c58e73cf8005	c58e73cf8005b794	skip	library: libc++ unordered_map/vector/map/optional/istringstream template code (rehash, emplace, find, copy, destroy)
 sub_c58e73cf8005#2	c58e73cf8005b794	skip	library: libc++ unordered_map/vector/map/optional/istringstream template code (rehash, emplace, find, copy, destroy)
 sub_c58f9b402e0a	c58f9b402e0a8814	ported	appearances/appearancetype.h:patternWidth
+sub_c58f9b402e0a#12	c58f9b402e0a8814	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
 sub_c58f9b402e0a#17	c58f9b402e0a8814	ported	appearances/appearancetype.h:patternWidth
 sub_c58f9b402e0a#18	c58f9b402e0a8814	inlined	protocol::TProtobufServerMessageTranslator::v2
 sub_c58f9b402e0a#19	c58f9b402e0a8814	ported	appearances/appearancetype.h:patternWidth
@@ -19768,6 +19796,7 @@ sub_ca3658472a8c#2	ca3658472a8c2935	skip	generated: compiler-generated destructo
 sub_ca3658472a8c#3	ca3658472a8c2935	skip	library: std container template instance
 sub_ca3bd3e3e3a0	ca3bd3e3e3a0d977	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_ca4d66a57a02	ca4d66a57a02e81f	skip	library: QMap/QList template instantiations
+sub_ca57cf56d2a7	ca57cf56d2a766ee	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController
 sub_ca58ad0859d2	ca58ad0859d26029	inlined	gamewindow/configurecreaturepodiumdialogcontroller.cpp:sameOutfit
 sub_ca5963e3f559	ca5963e3f559b46b	skip	generated: moc property getter, provided by the generated cip base
 sub_ca5963e3f559#2	ca5963e3f559b46b	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::selectedLiquidType
@@ -19937,6 +19966,7 @@ sub_ce015e63c982#12	ce015e63c982bee9	inlined	gamewindow/battlelistcontroller.cpp
 sub_ce015e63c982#13	ce015e63c982bee9	inlined	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::handleGameAction
 sub_ce015e63c982#14	ce015e63c982bee9	inlined	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::handleGameAction
 sub_ce015e63c982#22	ce015e63c982bee9	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
+sub_ce015e63c982#3	ce015e63c982bee9	ported	input/gameaction.h:TGameActionQuitGame::flag
 sub_ce015e63c982#4	ce015e63c982bee9	inlined	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::handleGameAction
 sub_ce015e63c982#6	ce015e63c982bee9	inlined	gamewindow/battlelistcontroller.cpp:TBattleListControllerStorage::handleGameAction
 sub_ce015e63c982#8	ce015e63c982bee9	inlined	gamewindow/actionbarcontroller.cpp:TActionBarGroup::handleGameAction
@@ -20053,6 +20083,7 @@ sub_cf5a3261c15f#4	cf5a3261c15f16d6	skip	data: translation-unit static initializ
 sub_cf5a3261c15f#5	cf5a3261c15f16d6	inlined	shared::TTibiaFileSystemHelper::v2
 sub_cf5a3261c15f#6	cf5a3261c15f16d6	skip	data: static initialisers of file-scope constants (vocation names, directory/file names, time zone)
 sub_cf628eba0c6e	cf628eba0c6e8723	ported	cyclopedia/cyclopediamapdata.cpp:TCyclopediaMapStorage::mainAreaProgress
+sub_cf66867af732	cf66867af732d15a	ported	gamewindow/waitdialogcontroller.cpp:TWaitDialogController::startWait
 sub_cf69eeabe14f	cf69eeabe14f3aa0	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_cf6dc45ac74e	cf6dc45ac74e1988	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::spellTooltip
 sub_cf6dcab03d61	cf6dcab03d619b15	ported	cyclopedia/staticcontentinformation.cpp:addQuests
@@ -20063,6 +20094,7 @@ sub_cf86c8b7b474	cf86c8b7b474d6ed	skip	library: std library template (vector pus
 sub_cf8af85b00e6#2	cf8af85b00e6cac5	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::captureContext
 sub_cf9ccbb0da04	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cf9ccbb0da04#2	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_cf9de02004bd	cf9de02004bdeaa4	ported	authentication/authenticationprocesscontroller.cpp:TAuthenticationProcessController::showCharacterSelection
 sub_cf9de0a87311	cf9de0a873116a19	skip	data: translation-unit static initialiser: constant strings/tables, typeid maps, QTimeZone/QTime constants
 sub_cfa072762180	cfa0727621802b2f	skip	library: libc++ std::vector internals (realloc/insert, equality, destroy guard)
 sub_cfa2d81c6f74	cfa2d81c6f74ec26	inlined	sound/soundmanager.cpp:TSoundManager::TSoundManager
@@ -20175,6 +20207,7 @@ sub_d20c83d49477	d20c83d494771fe1	ported	assets/assetasyncloader.cpp:TAssetAsync
 sub_d20e16356b28	d20e16356b281e3d	ported	cyclopedia/housesstorage.cpp:THouseInformation::setAuction
 sub_d216a6b26cab	d216a6b26cab104e	skip	generated: implicit destructors/constructor of houses storage and its house record structs
 sub_d227d36ee154	d227d36ee1549161	skip	data: translation-unit static initializer (misattributed)
+sub_d2306b47853a	d2306b47853a33c6	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::resetShowCharacterSelectionOnDisconnect
 sub_d2330eb395f3	d2330eb395f338d5	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::grabScreenshot
 sub_d2342c5dae7a	d2342c5dae7aecc4	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::TPremiumPanelController
 sub_d23831de0bd1	d23831de0bd1e5d4	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
@@ -21559,6 +21592,7 @@ sub_e93ab20fa778	e93ab20fa7789f1a	inlined	input/eventfiltermanager.cpp:TEventFil
 sub_e93ab20fa778#2	e93ab20fa7789f1a	inlined	input/eventfiltermanager.cpp:TEventFilterManager::installRecordKeyboardShortcutHandler
 sub_e9441689fdf3	e9441689fdf35bdc	skip	generated: moc property getter, provided by the generated cip base
 sub_e96df1bdff30	e96df1bdff305c85	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setPremiumTime
+sub_e971c67cb629	e971c67cb62911ac	inlined	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onConnectionError
 sub_e976f34cd5a2	e976f34cd5a21604	skip	library: std::__split_buffer destructor instantiation
 sub_e9778ceb1cca	e9778ceb1cca3108	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_e97cfec6f9e3	e97cfec6f9e3cd6f	ported	gamewindow/gamewindowciptypes.cpp:TQmlWorldTransferCondition::TQmlWorldTransferCondition
@@ -21946,6 +21980,7 @@ sub_ee33436e3075	ee33436e30759a75	skip	library: libc++ std::vector<TChildTransac
 sub_ee4c10960418	ee4c10960418ede5	ported	analysers/analyserwidgets.cpp:TProgressWidgetController::xpPerHourString
 sub_ee568eb1527e	ee568eb1527e029f	tested	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender	test=tests/client/sharednet_test.cpp
 sub_ee686499304a	ee686499304acb0b	inlined	gamewindow/containercontroller.cpp:TContainerController::onSlotDragDropped
+sub_ee77839f97af	ee77839f97afc59c	skip	generated: destructor body (member teardown)
 sub_ee881c9ef632	ee881c9ef6324e60	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::advertisePremium
 sub_ee8ad351396b	ee8ad351396bf8ae	skip	library: Qt QList/QArrayDataPointer template instantiation (grow/insert/erase)
 sub_ee923d9d7093	ee923d9d709309a9	inlined	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::setDialogCategory
@@ -22277,6 +22312,7 @@ sub_f3f905a55b81	f3f905a55b81c3b2	ported	gamewindow/characterinfomodels.cpp:TTit
 sub_f405ed21cd6a	f405ed21cd6a16bc	ported	input/gameaction.h:TGameActionReportTypo::TGameActionReportTypo
 sub_f405ed21cd6a#2	f405ed21cd6a16bc	ported	input/gameaction.h:TGameActionReportTypo::TGameActionReportTypo
 sub_f40864d3f015	f40864d3f0151bae	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::inflate	test=tests/client/sharedio_test.cpp
+sub_f4195ccdffd6#3	f4195ccdffd65ab0	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::onDialogResponseShowCharacterSelection
 sub_f41effa2689a	f41effa2689a3d38	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_f430ef3b39ae	f430ef3b39ae9036	skip	library: std::make_shared<TClockService>() instantiation (start 0)
 sub_f43de44f58af	f43de44f58af632e	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
@@ -22641,6 +22677,7 @@ sub_fba6151b925d	fba6151b925d73f8	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_fbaebf552152	fbaebf552152e99a	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::indexOf
 sub_fbb206d17a5b	fbb206d17a5b7e88	skip	generated: compiler-generated destructor pair
 sub_fbb3f32e0afe	fbb3f32e0afebc69	skip	generated: implicit copy constructors (base information record, vector of QString pairs; member copies only, read)
+sub_fbba6db1c428#2	fbba6db1c428d40b	ported	gamewindow/gamesessiondisconnectreactioncontroller.h:TGameSessionDisconnectReactionController::reconnectRequested
 sub_fbba6db1c428#3	fbba6db1c428d40b	ported	sound/activesoundplayer.h:TActiveSoundPlayer::distanceModifier
 sub_fbba6db1c428#4	fbba6db1c428d40b	skip	generated: moc property getter, provided by the generated cip base
 sub_fbbce5be7cf7	fbbce5be7cf7fee8	inlined	analysers/itempricestorage.cpp:TItemPriceStorage::npcBuyPrice
@@ -22666,6 +22703,7 @@ sub_fc3fc647fe11	fc3fc647fe114faa	ported	gamewindow/bosstiarydialogcontroller.cp
 sub_fc41f416431a	fc41f416431ab802	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_fc42e667414d	fc42e667414d521e	skip	data: translation-unit static initializer (misattributed)
 sub_fc4c59941f33	fc4c59941f33faff	skip	generated: compiler-generated destructor
+sub_fc54cc17b121	fc54cc17b1210ea7	ported	gamewindow/gamesessiondisconnectreactioncontroller.cpp:TGameSessionDisconnectReactionController::disableReconnectionAttempts
 sub_fc625c3b85fd	fc625c3b85fdcce7	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_fc625c3b85fd#2	fc625c3b85fdcce7	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_fc62f4beabf9	fc62f4beabf9ff7d	skip	library: libc++/Qt container template instantiation (vector assign/copy, map/set tree insert/assign/erase, QHash data copy/emplace, QList<QHostAddress>)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "gamewindow/dialogmanager.h"
 #include "highscores/highscoresciptypes.h"
 
@@ -11,6 +13,10 @@
 #include <QString>
 
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace highscores {
@@ -84,8 +90,8 @@ public:
     explicit THighscoresDialogController(QObject* parent = nullptr);
     ~THighscoresDialogController() override;
 
-    /// Follows the session's storage: closes the dialog and listens to answers.
-    void connectToGameSession();
+    /// CIP connector: follows the session's storage: closes the dialog and listens to answers.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// OPEN_HIGHSCORES_DIALOG: shows the dialog and asks for the own character's page.
     void openDialog();
     /// Host: the session ended.

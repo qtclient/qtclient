@@ -18,6 +18,10 @@
 #include <set>
 #include <vector>
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace container {
 class TStashStorage;
@@ -102,6 +106,8 @@ public Q_SLOTS:
     /// CIP .
     void onStashContentChanged() override;
     void onStashOptionsChanged() override;
+    /// CIP connector: follows `GameSession`'s stash storage and container protocol handler.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onMarketDialogDialogClosed() override;
     void onManageLootContainerDialogClosed() override;
 
