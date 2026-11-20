@@ -84,8 +84,6 @@ public:
     const std::vector<CyclopediaQuestType>& getCyclopediaQuests() const { return m_cyclopediaQuests; }
     const CyclopediaQuestType* getCyclopediaQuest(uint16_t id) const;
     const std::vector<MonsterClassType>& getMonsterClasses() const { return m_monsterClasses; }
-    /// The house areas of the staticmapdata asset.
-    const std::vector<THouseMapArea>& getHouseMapAreas() const { return m_houseMapAreas; }
     /// Parses the staticdata asset (throws std::invalid_argument on malformed data).
     static TStaticInformation parseStaticInformation(const std::string& bytes);
     /// Parses the staticmapdata asset.
@@ -159,7 +157,6 @@ private:
     std::vector<CyclopediaAchievementType> m_cyclopediaAchievements;
     std::vector<CyclopediaQuestType> m_cyclopediaQuests;
     std::vector<MonsterClassType> m_monsterClasses;
-    std::vector<THouseMapArea> m_houseMapAreas;
     TAppearanceTypeList m_marketObjectTypes;
     TAppearanceTypeList m_skillWheelGemObjectTypes;
     std::shared_ptr<TSpecialAppearancesForProtocolParsing> m_specialAppearances;

@@ -1,5 +1,6 @@
 #include "cyclopediamapdialogcontroller.h"
 
+#include "cyclopedia/bosstiarystorage.h"
 #include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
 #include "cyclopedia/cyclopediainterfaces.h"
 #include "cyclopedia/cyclopediamapdata.h"
@@ -30,6 +31,7 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/game/gamesession_forward.h>
 #include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -81,15 +83,6 @@ double unlockedImprovedRespawn(const TCyclopediaMapAreaValues& area)
     return std::min(1.0, double(area.donated) / double(area.donationGoal));
 }
 
-/// The creatures of a subarea as the info panel lists them.
-TCyclopediaCreatureOccurrencesInfo* creatureOccurrences(const quint16 subAreaId, QObject* parent)
-{
-    auto* occurrences = new TCyclopediaCreatureOccurrencesInfo(parent);
-    occurrences->setSubArea(subAreaId, StaticData::instance().subAreaName(subAreaId));
-    occurrences->setCreatures({}, {}, {});
-    return occurrences;
-}
-
 }
 
 TCyclopediaMapSelectionInfoArea::TCyclopediaMapSelectionInfoArea(const TCyclopediaMapAreaValues& values, QObject* parent)
@@ -120,6 +113,7 @@ TCyclopediaMapSelectionInfoSubArea::TCyclopediaMapSelectionInfoSubArea(const Val
 
 void TCyclopediaMapSelectionInfoSubArea::setSubAreaData(const Values& values)
 {
+    m_data = values;
     m_subAreaID = values.id;
     m_subAreaName = values.name;
     m_viewpointsCount = values.viewpointsCount;
@@ -137,7 +131,7 @@ void TCyclopediaMapSelectionInfoSubArea::setSubAreaData(const Values& values)
     m_rejectDonations = values.area.rejectDonations;
     Q_EMIT cip::tibia::gamewindow::TCyclopediaMapSelectionInfoArea::infoChanged();
     QObject* previous = m_creatureOccurrences;
-    m_creatureOccurrences = ::tibia::gamewindow::creatureOccurrences(values.id, this);
+    m_creatureOccurrences = new TCyclopediaCreatureOccurrencesInfo(values.creatureOccurrences, this);
     Q_EMIT cip::tibia::gamewindow::TCyclopediaMapSelectionInfoSubArea::infoChanged();
     if (previous)
         previous->deleteLater();
@@ -155,8 +149,8 @@ void TCyclopediaMapSelectionInfoPassage::setPassageData(const Values& values)
     m_data = values;
     const QList<QObject*> previous = m_reachableCreatureOccurrences;
     m_reachableCreatureOccurrences.clear();
-    for (const quint16 subAreaId : m_data.subAreaIds)
-        m_reachableCreatureOccurrences.append(creatureOccurrences(subAreaId, this));
+    for (const auto& [subAreaId, occurrences] : m_data.creatureOccurrences)
+        m_reachableCreatureOccurrences.append(new TCyclopediaCreatureOccurrencesInfo(occurrences, this));
     Q_EMIT infoChanged();
     for (QObject* occurrences : previous)
         occurrences->deleteLater();
@@ -324,14 +318,19 @@ void TCyclopediaMapDialogController::onSelectedItemChanged()
 {
     if (!m_renderer)
         return;
+    // An area or subarea highlights its subareas, a passage its field.
     std::set<int> highlighted;
+    Position coordinate(0, 0, 0);
     if (const auto* area = std::get_if<TAreaSelection>(&m_selection)) {
         for (const quint16 id : StaticData::instance().subAreaIdsOfArea(area->data.id))
             highlighted.insert(id);
     } else if (const auto* subArea = std::get_if<TSubAreaSelection>(&m_selection)) {
         highlighted.insert(subArea->data.id);
+    } else if (const auto* passage = std::get_if<TPassageSelection>(&m_selection)) {
+        coordinate = passage->data.coordinate;
     }
     m_renderer->setHighlightedSubareas(highlighted);
+    m_renderer->setHighlightedCoordinate(coordinate);
 }
 
 void TCyclopediaMapDialogController::setMinimapRendererQuickItem(QObject* pItem)
@@ -450,7 +449,7 @@ void TCyclopediaMapDialogController::handleGameAction(const ::tibia::input::IGam
         return;
     if (pGameAction->gameActionType() == A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE) {
         if (m_renderer)
-            m_renderer->polish();
+            m_renderer->requestRebuild();
         return;
     }
     if (pGameAction->gameActionType() != A::CYCLOPEDIA_MAP_SELECT_ITEM)
@@ -620,16 +619,16 @@ void TCyclopediaMapDialogController::updateSubAreaData(TCyclopediaMapSelectionIn
     if (subArea.unlocked || m_storage->isAreaCompleted(subArea.area.id)) {
         subArea.viewpointsCount = CompletedViewpoints;
         subArea.viewpointsFound = CompletedViewpoints;
-    } else if (subArea.id == m_storage->discoverySubarea()) {
-        // The viewpoints the server sent for the subarea.
-        const auto& points = m_storage->viewpoints();
-        subArea.viewpointsCount = m_storage->poiTarget();
-        subArea.viewpointsFound = static_cast<int>(std::count_if(points.begin(), points.end(), [](const auto& point) { return point.state != 0; }));
-    } else {
+    } else if (!m_storage->hasSubAreaViewpointInfo(subArea.id)) {
         // Not known yet: the panel waits for the server's answer.
         subArea.viewpointInfoDelayed = true;
         tibia::game::sendCyclopediaMapRequestArea(subArea.id);
+    } else {
+        const auto info = m_storage->subAreaViewpointInfo(subArea.id);
+        subArea.viewpointsCount = info.count;
+        subArea.viewpointsFound = info.found;
     }
+    subArea.creatureOccurrences = creatureOccurrences(subArea.id);
 }
 
 void TCyclopediaMapDialogController::updatePassageData(TCyclopediaMapSelectionInfoPassage::Values& passage) const
@@ -638,11 +637,31 @@ void TCyclopediaMapDialogController::updatePassageData(TCyclopediaMapSelectionIn
     for (const auto& known : m_storage->passages()) {
         if (known.coordinate.x == passage.coordinate.x && known.coordinate.y == passage.coordinate.y && known.coordinate.z == passage.coordinate.z) {
             // The passage message lists the subareas the passage leads to.
-            for (const int subAreaId : known.raceIds)
+            for (const int subAreaId : known.subAreaIds)
                 passage.subAreaIds.push_back(static_cast<quint16>(subAreaId));
             break;
         }
     }
+    passage.creatureOccurrences.clear();
+    for (const quint16 subAreaId : passage.subAreaIds)
+        passage.creatureOccurrences[subAreaId] = creatureOccurrences(subAreaId);
+}
+
+TCyclopediaCreatureOccurrencesData TCyclopediaMapDialogController::creatureOccurrences(const quint16 subAreaId) const
+{
+    TCyclopediaCreatureOccurrencesData data;
+    data.subAreaId = subAreaId;
+    data.subAreaName = StaticData::instance().subAreaName(subAreaId);
+    for (const cyclopedia::TCyclopediaMapStorage::TSubAreaMonster& monster : m_storage->subAreaMonsters(subAreaId)) {
+        TCyclopediaCreatureData creature;
+        creature.raceId = monster.raceId;
+        creature.isUnknown = !m_storage->isRaceKnown(monster.raceId);
+        creature.raceName = creature.isUnknown
+            ? qtTrId("monsters_unknown_name")
+            : cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(monster.raceId).name));
+        data.creatures[monster.occurrence].push_back(std::move(creature));
+    }
+    return data;
 }
 
 QString TCyclopediaMapDialogController::donationsTooltip() const

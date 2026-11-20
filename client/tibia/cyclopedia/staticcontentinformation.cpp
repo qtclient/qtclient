@@ -18,6 +18,7 @@ QHash<quint8, TStaticMonsterClassification> s_monsterClassificationsById;
 QHash<QString, TStaticMonsterClassification> s_monsterClassificationsByName;
 std::vector<TStaticAchievement> s_achievements;
 std::vector<TStaticHouse> s_houses;
+std::vector<TStaticHouseMapArea> s_houseMapAreas;
 QHash<int, QString> s_questNames;
 
 bool raceIdLess(const RaceType& a, const RaceType& b) { return a.raceId < b.raceId; }
@@ -190,6 +191,24 @@ TStaticHouse staticHouse(const quint32 id)
     if (it != s_houses.end() && it->id == id)
         return *it;
     return TStaticHouse::unknown(id);
+}
+
+void setHouseMapAreas(std::vector<TStaticHouseMapArea> areas)
+{
+    s_houseMapAreas = std::move(areas);
+    std::sort(s_houseMapAreas.begin(), s_houseMapAreas.end(),
+              [](const TStaticHouseMapArea& a, const TStaticHouseMapArea& b) { return a.houseId < b.houseId; });
+}
+
+TStaticHouseMapArea houseMapArea(const quint32 houseId)
+{
+    const auto it = std::lower_bound(s_houseMapAreas.begin(), s_houseMapAreas.end(), houseId,
+                                     [](const TStaticHouseMapArea& entry, const quint32 key) { return entry.houseId < key; });
+    if (it != s_houseMapAreas.end() && it->houseId == houseId)
+        return *it;
+    TStaticHouseMapArea area;
+    area.houseId = houseId;
+    return area;
 }
 
 QString questName(const int id)

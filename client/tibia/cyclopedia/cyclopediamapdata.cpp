@@ -41,8 +41,20 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     });
     // CIP : an active area replaces the viewpoints (full session list + states).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDiscoveryArea", [this](GameObject*, const std::vector<std::any>& args) {
-        if (!argInt(args, 1))
+        // Every SetDiscoveryArea, active or not, tells the subarea's viewpoint counts.
+        const auto* areaPoints = args.size() > 3 ? std::any_cast<std::vector<std::vector<int>>>(&args[3]) : nullptr;
+        int found = 0;
+        if (areaPoints) {
+            for (const std::vector<int>& point : *areaPoints)
+                found += point.size() >= 4 && point[3] != 0 ? 1 : 0;
+        }
+        setSubAreaViewpointInfo(static_cast<quint16>(argInt(args, 0)), static_cast<quint8>(argInt(args, 2)),
+                                static_cast<quint8>(found));
+        if (!argInt(args, 1)) {
+            Q_EMIT areaAndSubAreaDataChanged();
+            Q_EMIT changed();
             return std::any{};
+        }
         m_discoverySubarea = static_cast<int>(argInt(args, 0));
         m_poiTarget = static_cast<int>(argInt(args, 2));
         m_viewpoints.clear();
@@ -66,9 +78,9 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
             return std::any{};
         TPassage passage;
         passage.coordinate = { (*row)[0], (*row)[1], (*row)[2] };
-        const int raceCount = (*row)[3];
-        for (int i = 0; i < raceCount && 4 + i < static_cast<int>(row->size()); ++i)
-            passage.raceIds.push_back((*row)[4 + i]);
+        const int subAreaCount = (*row)[3];
+        for (int i = 0; i < subAreaCount && 4 + i < static_cast<int>(row->size()); ++i)
+            passage.subAreaIds.push_back((*row)[4 + i]);
         const auto it = std::ranges::find_if(m_passages, [&](const TPassage& p) {
             return p.coordinate.x == passage.coordinate.x && p.coordinate.y == passage.coordinate.y && p.coordinate.z == passage.coordinate.z;
         });
@@ -77,6 +89,31 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         else
             m_passages.push_back(std::move(passage));
         Q_EMIT passagesChanged();
+        Q_EMIT changed();
+        return std::any{};
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapSubAreaMonsters", [this](GameObject*, const std::vector<std::any>& args) {
+        const auto* areas = args.size() > 0 ? std::any_cast<std::vector<std::vector<int>>>(&args[0]) : nullptr;
+        if (!areas)
+            return std::any{};
+        for (const std::vector<int>& row : *areas) {
+            if (row.empty())
+                continue;
+            std::vector<TSubAreaMonster> monsters;
+            for (size_t i = 1; i + 2 < row.size(); i += 3) {
+                const auto raceId = static_cast<quint16>(row[i]);
+                monsters.push_back({ raceId, row[i + 2] });
+                setRaceKnown(raceId, row[i + 1] != 0);
+            }
+            setSubAreaMonsters(static_cast<quint16>(row[0]), std::move(monsters));
+        }
+        Q_EMIT areaAndSubAreaDataChanged();
+        Q_EMIT changed();
+        return std::any{};
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapMonsterBestiary", [this](GameObject*, const std::vector<std::any>& args) {
+        setRaceKnown(static_cast<quint16>(argInt(args, 0)), argInt(args, 1) != 0);
+        Q_EMIT areaAndSubAreaDataChanged();
         Q_EMIT changed();
         return std::any{};
     });
@@ -157,6 +194,9 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         m_poiTarget = 0;
         m_viewpoints.clear();
         m_passages.clear();
+        m_subAreaViewpoints.clear();
+        m_subAreaMonsters.clear();
+        m_knownRaces.clear();
         m_donationGoal = 0;
         m_donations.clear();
         m_currentArea = 0;
@@ -252,6 +292,40 @@ QColor TCyclopediaMapStorage::areaColor(const int areaId) const
     if (main->progress > 0)
         return QColor(main->progress > 1.0f ? QStringLiteral("#8f8f8f") : QStringLiteral("#cc3391"));
     return QColor(QStringLiteral("#ffffff"));
+}
+
+
+TCyclopediaMapStorage::TSubAreaViewpointInfo TCyclopediaMapStorage::subAreaViewpointInfo(const quint16 subAreaId) const
+{
+    const auto it = m_subAreaViewpoints.find(subAreaId);
+    return it == m_subAreaViewpoints.end() ? TSubAreaViewpointInfo{} : it->second;
+}
+
+void TCyclopediaMapStorage::setSubAreaViewpointInfo(const quint16 subAreaId, const quint8 count, const quint8 found)
+{
+    m_subAreaViewpoints[subAreaId] = { count, found };
+}
+
+std::vector<TCyclopediaMapStorage::TSubAreaMonster> TCyclopediaMapStorage::subAreaMonsters(const quint16 subAreaId) const
+{
+    const auto it = m_subAreaMonsters.find(subAreaId);
+    return it == m_subAreaMonsters.end() ? std::vector<TSubAreaMonster>{} : it->second;
+}
+
+void TCyclopediaMapStorage::setSubAreaMonsters(const quint16 subAreaId, std::vector<TSubAreaMonster> monsters)
+{
+    m_subAreaMonsters[subAreaId] = std::move(monsters);
+}
+
+bool TCyclopediaMapStorage::isRaceKnown(const quint16 raceId) const
+{
+    const auto it = m_knownRaces.find(raceId);
+    return it != m_knownRaces.end() && it->second;
+}
+
+void TCyclopediaMapStorage::setRaceKnown(const quint16 raceId, const bool known)
+{
+    m_knownRaces[raceId] = known;
 }
 
 }

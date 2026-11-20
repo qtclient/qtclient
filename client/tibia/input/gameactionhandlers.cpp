@@ -279,7 +279,7 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
         A::COPY_CREATURE_NAME_TO_CLIPBOARD, A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
         A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD,
         A::SHOW_CREATE_CHARACTER_DIALOG, A::CHARACER_SELECTION_AUTO_CLOSE, A::LENSHELP_SHOW, A::LENSHELP_HIDE,
-        A::LENSHELP_ACTIVATE, A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE, A::RESOLVE_SPRITE, A::SPRITE_RESOLVED,
+        A::LENSHELP_ACTIVATE, A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE,
         A::OPEN_SHOW_IMAGE_DIALOG,
         // Login-mask Manage Account / logos / Create Account → PortalUrls handlers.
         A::OPEN_URL, A::OPEN_URL_GET_PREMIUM, A::OPEN_URL_GET_COINS, A::OPEN_URL_TIBIA_PAGE,
@@ -495,12 +495,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
         break;
     case A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
         clearSpriteCaches();
-        break;
-    case A::RESOLVE_SPRITE:
-        // CIP resolves a sprite id into the texture atlas. Without a window-bound
-        // sprite identifier here we acknowledge the action; sheets load on next draw.
-        break;
-    case A::SPRITE_RESOLVED:
         break;
     case A::OPEN_SHOW_IMAGE_DIALOG:
         if (const auto* show = gameActionAs<TGameActionOpenShowImageDialog>(pGameAction)) {

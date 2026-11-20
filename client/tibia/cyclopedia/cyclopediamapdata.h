@@ -62,7 +62,24 @@ public:
     struct TPassage
     {
         TMapCoordinate coordinate;
-        std::vector<int> raceIds;
+        /// The subareas the passage leads to.
+        std::vector<int> subAreaIds;
+    };
+
+    /// A subarea's viewpoints as the last SetDiscoveryArea for it told: how many
+    /// it has and how many are found.
+    struct TSubAreaViewpointInfo
+    {
+        quint8 count = 0;
+        quint8 found = 0;
+    };
+
+    /// A creature of a subarea (SubAreaMonsters): its race and how often it
+    /// occurs there (0 common, 1 rare, 2 dynamic).
+    struct TSubAreaMonster
+    {
+        quint16 raceId = 0;
+        int occurrence = 0;
     };
 
     explicit TCyclopediaMapStorage(QObject* parent = nullptr);
@@ -79,6 +96,17 @@ public:
     int poiTarget() const { return m_poiTarget; }
     const std::vector<TViewpoint>& viewpoints() const { return m_viewpoints; }
     const std::vector<TPassage>& passages() const { return m_passages; }
+    /// A SetDiscoveryArea for the subarea arrived, active or not.
+    bool hasSubAreaViewpointInfo(quint16 subAreaId) const { return m_subAreaViewpoints.contains(subAreaId); }
+    /// The subarea's last viewpoint info; none (0 of 0) before one arrived.
+    TSubAreaViewpointInfo subAreaViewpointInfo(quint16 subAreaId) const;
+    void setSubAreaViewpointInfo(quint16 subAreaId, quint8 count, quint8 found);
+    /// The creatures of the subarea; empty when none were sent.
+    std::vector<TSubAreaMonster> subAreaMonsters(quint16 subAreaId) const;
+    void setSubAreaMonsters(quint16 subAreaId, std::vector<TSubAreaMonster> monsters);
+    /// The player knows the race from the bestiary; false for a race not sent.
+    bool isRaceKnown(quint16 raceId) const;
+    void setRaceKnown(quint16 raceId, bool known);
     quint64 donationGoal() const { return m_donationGoal; }
     quint64 donated(int areaId) const;
     /// CIP .
@@ -120,6 +148,9 @@ private:
     int m_poiTarget = 0;
     std::vector<TViewpoint> m_viewpoints;
     std::vector<TPassage> m_passages;
+    std::map<quint16, TSubAreaViewpointInfo> m_subAreaViewpoints;
+    std::map<quint16, std::vector<TSubAreaMonster>> m_subAreaMonsters;
+    std::map<quint16, bool> m_knownRaces;
     quint64 m_donationGoal = 0;
     std::map<int, std::pair<bool, quint64>> m_donations;
     int m_currentArea = 0;

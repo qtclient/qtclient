@@ -967,7 +967,25 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
     case 11:
         tibia::game::notify("onCyclopediaMapExploringArea", static_cast<int>(m.area_id()));
         return;
-    default: // imminent raids, sub area monsters, monster bestiary: no consumer yet
+    case 7: {
+        // Per subarea: its id, then race, known and occurrence of each creature.
+        std::vector<std::vector<int>> areas;
+        for (const auto& area : m.sub_area_monsters()) {
+            std::vector<int> row{ static_cast<int>(area.sub_area_id()) };
+            for (const auto& monster : area.monsters()) {
+                row.push_back(static_cast<int>(monster.race_id()));
+                row.push_back(monster.known() ? 1 : 0);
+                row.push_back(static_cast<int>(monster.stage()));
+            }
+            areas.push_back(std::move(row));
+        }
+        tibia::game::notify("onCyclopediaMapSubAreaMonsters", areas);
+        return;
+    }
+    case 8:
+        tibia::game::notify("onCyclopediaMapMonsterBestiary", static_cast<int>(m.area_id()), static_cast<int>(m.flag() ? 1 : 0));
+        return;
+    default: // imminent raids: no consumer yet
         return;
     }
 

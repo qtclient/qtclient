@@ -4,6 +4,7 @@
 
 #include <client/staticdata.h>
 
+#include <QByteArray>
 #include <QString>
 
 #include <optional>
@@ -93,6 +94,21 @@ TStaticAchievement staticAchievement(quint16 id);
 const std::vector<TStaticHouse>& staticHouses();
 /// TStaticHouse::unknown(id) when the static data does not name the house.
 TStaticHouse staticHouse(quint32 id);
+
+/// A house's area of the static map data: its box and the fields of the box
+/// that belong to it.
+struct TStaticHouseMapArea
+{
+    quint32 houseId = 0;
+    worldmap::TWorldMapCuboid area;
+    QByteArray fields;
+};
+
+/// Replaces the house areas of the static map data (sorted by house id).
+void setHouseMapAreas(std::vector<TStaticHouseMapArea> areas);
+/// The house's area; an empty box without fields when the static map data has
+/// none.
+TStaticHouseMapArea houseMapArea(quint32 houseId);
 
 /// The quest's name; throws std::out_of_range for a quest the static data
 /// does not know.
