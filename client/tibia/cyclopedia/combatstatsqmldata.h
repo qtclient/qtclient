@@ -145,7 +145,8 @@ class TConcoctionQmlData final : public cip::tibia::cyclopedia::TConcoctionQmlDa
 {
     Q_OBJECT
 public:
-    TConcoctionQmlData(int appearanceTypeId, qlonglong secondsRemaining, const QString& name, QObject* parent = nullptr);
+    /// Named after the object type `appearanceTypeId`.
+    TConcoctionQmlData(int appearanceTypeId, qlonglong secondsRemaining, QObject* parent = nullptr);
 };
 
 /// The misc block of the character info's combat stats (CIP:

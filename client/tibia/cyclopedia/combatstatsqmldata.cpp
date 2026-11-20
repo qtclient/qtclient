@@ -679,16 +679,12 @@ private:
     CombatStats m_stats;
 };
 
-/// CIP: the concoctions and foods with the object's name.
+/// CIP: the concoctions and foods.
 QList<QObject*> timedEffectData(const std::vector<IMiscStatsProvider::TimedEffect>& effects, QObject* parent)
 {
     QList<QObject*> out;
-    for (const IMiscStatsProvider::TimedEffect& effect : effects) {
-        QString name;
-        if (const TAppearanceTypePtr& type = tibia::game::thingType(effect.appearanceTypeId, ThingCategoryItem))
-            name = QString::fromStdString(type->getName());
-        out.append(new TConcoctionQmlData(effect.appearanceTypeId, effect.secondsRemaining, name, parent));
-    }
+    for (const IMiscStatsProvider::TimedEffect& effect : effects)
+        out.append(new TConcoctionQmlData(effect.appearanceTypeId, effect.secondsRemaining, parent));
     return out;
 }
 
@@ -718,13 +714,13 @@ QList<QObject*> spellAugmentStats(const std::vector<IMiscStatsProvider::SpellAug
 
 }
 
-TConcoctionQmlData::TConcoctionQmlData(const int appearanceTypeId, const qlonglong secondsRemaining, const QString& name,
-                                       QObject* parent)
+TConcoctionQmlData::TConcoctionQmlData(const int appearanceTypeId, const qlonglong secondsRemaining, QObject* parent)
     : cip::tibia::cyclopedia::TConcoctionQmlData(parent)
 {
     m_appearanceTypeID = appearanceTypeId;
     m_secondsRemaining = secondsRemaining;
-    m_name = name;
+    if (const TAppearanceTypePtr& type = tibia::game::thingType(appearanceTypeId, ThingCategoryItem))
+        m_name = QString::fromStdString(type->getName());
 }
 
 TMiscStatsQmlData::TMiscStatsQmlData(const CombatStats& stats, QObject* parent)

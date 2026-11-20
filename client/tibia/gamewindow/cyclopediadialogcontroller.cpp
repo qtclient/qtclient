@@ -13,6 +13,7 @@
 #include <tibia/assets/things.h>
 
 #include <QLocale>
+#include <QQuickItem>
 
 #include <limits>
 #include <tibia/game/gamenotify.h>
@@ -75,6 +76,8 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     connect(m_houses, &THousesInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_map, &TCyclopediaMapDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_magicalArchive, &TMagicalArchiveDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
+    connect(m_monsters, &TMonsterDialogController::itemInfoDialogRequested, this,
+            &TCyclopediaDialogController::onSwitchToItemInfoDialogRequested);
 
     // Tip ICyclopediaDialogTab / IDialogTabPage twins (moc floor); live tabs
     // inherit cip::ICyclopediaDialogTab via their CIP T* bases.
@@ -94,10 +97,23 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
             default: break;
         }
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        clearBacklog();
-        closeDialog();
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TCyclopediaDialogController::connectToGameSession);
+    // The session's end closes the dialog; the backlog goes with the next session.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
+            &TCyclopediaDialogController::closeDialog);
+}
+
+void TCyclopediaDialogController::connectToGameSession()
+{
+    clearBacklog();
+    closeDialog();
+}
+
+void TCyclopediaDialogController::onSwitchToItemInfoDialogRequested(const uint16_t AppearanceTypeID)
+{
+    requestTabSwitch(ItemInfo);
+    m_itemInfo->showType(AppearanceTypeID);
 }
 
 void TCyclopediaDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
@@ -112,6 +128,8 @@ void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_
 
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
+    clearBacklog();
+    closeDialog();
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -147,8 +165,19 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
-    m_gameActions.on(A::SHOW_BOSSTIARY_FREEPODIUM_DIALOG, [this](const input::IGameAction& action) {
-        m_bosstiary->handleGameAction(action);
+    // Assigning a spell to an action button hides the dialog for the target
+    // selection; its end shows the dialog again.
+    m_gameActions.on(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::IGameAction&) {
+        m_hiddenForTargetSelection = true;
+        dialog()->hide();
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionStartTargetSelection>());
+        return true;
+    });
+    m_gameActions.on(A::TARGET_SELECTION_FINISHED, [this](const input::IGameAction&) {
+        if (m_hiddenForTargetSelection && dialog()->item() && !dialog()->item()->isVisible()) {
+            m_hiddenForTargetSelection = false;
+            dialog()->show();
+        }
         return true;
     });
     m_gameActions.on(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
@@ -367,12 +396,11 @@ void TCyclopediaDialogController::clearBacklog()
 
 TCyclopediaButtonController::TCyclopediaButtonController(QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaButtonController(parent)
+    , m_highlightTimer(600000)
 {
-    // A single-shot ten-minute highlight; its end forgets what a click opens.
-    m_highlightTimer.setSingleShot(true);
-    m_highlightTimer.setInterval(600000);
-    connect(&m_highlightTimer, &QTimer::timeout, this, &TCyclopediaButtonController::changed);
-    connect(&m_highlightTimer, &QTimer::timeout, this, &TCyclopediaButtonController::onHighlightCyclopediaButtonEnds);
+    // A ten-minute highlight; its end forgets what a click opens.
+    connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TCyclopediaButtonController::changed);
+    connect(&m_highlightTimer, &shared::THighlightTimer::timeout, this, &TCyclopediaButtonController::onHighlightCyclopediaButtonEnds);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onBestiaryEntryChanged", [this](GameObject*, const std::vector<std::any>& args) {
         onMonsterCyclopediaNewDetailsMessage(static_cast<uint16_t>(client::gamecore::argInt(args, 0)));
         return std::any{};
@@ -405,49 +433,47 @@ void TCyclopediaButtonController::onCyclopediaButtonClicked()
         action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
         action->setCoordinate(raid->toPosition());
     } else if (const auto* imminent = std::get_if<TImminentRaid>(&m_highlightReason)) {
+        // An imminent raid opens the map at the raid with the raid's zoom.
         action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
         action->setCoordinate(imminent->coordinate.toPosition());
+        action->setZoom(imminent->scale);
     } else {
         action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
     }
     Q_EMIT publishGameAction(action);
-    stopHighlight();
+    m_highlightTimer.stop(false);
+    m_highlightReason = std::monostate{};
 }
 
-void TCyclopediaButtonController::onHighlightCyclopediaButtonEnds() { stopHighlight(); }
+void TCyclopediaButtonController::onHighlightCyclopediaButtonEnds()
+{
+    m_highlightTimer.stop(false);
+    m_highlightReason = std::monostate{};
+}
 
-void TCyclopediaButtonController::connectToGameSession() { stopHighlight(); }
+void TCyclopediaButtonController::connectToGameSession()
+{
+    m_highlightTimer.stop(false);
+    m_highlightReason = std::monostate{};
+}
 
 void TCyclopediaButtonController::onMonsterCyclopediaNewDetailsMessage(const uint16_t NewDetailsMonsterRaceID)
 {
     m_highlightReason = NewDetailsMonsterRaceID;
-    startHighlight();
+    m_highlightTimer.start(false);
 }
 
 void TCyclopediaButtonController::onCyclopediaMapActiveRaidAdded(const worldmap::TWorldMapCoordinate& WorldMapCoordinate)
 {
     m_highlightReason = WorldMapCoordinate;
-    startHighlight();
+    m_highlightTimer.start(false);
 }
 
 void TCyclopediaButtonController::onCyclopediaMapImminentRaidsChanged(const worldmap::TWorldMapCoordinate& WorldMapCoordinate,
                                                                       const float MapScaleFactor)
 {
     m_highlightReason = TImminentRaid{ WorldMapCoordinate, MapScaleFactor };
-    startHighlight();
-}
-
-void TCyclopediaButtonController::startHighlight()
-{
-    m_highlightTimer.start();
-    Q_EMIT changed();
-}
-
-void TCyclopediaButtonController::stopHighlight()
-{
-    m_highlightTimer.stop();
-    Q_EMIT changed();
-    m_highlightReason = std::monostate{};
+    m_highlightTimer.start(false);
 }
 
 TBosstiaryButtonController::TBosstiaryButtonController(QObject* parent)
@@ -494,8 +520,11 @@ void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
 void TCyclopediaDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     m_gameActions.handle(pGameAction);
+    // Every action also reaches the map and the bosstiary page.
     if (m_map)
         m_map->handleGameAction(pGameAction);
+    if (m_bosstiary && pGameAction)
+        m_bosstiary->handleGameAction(*pGameAction);
 }
 
 }

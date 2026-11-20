@@ -233,6 +233,21 @@ TCyclopediaCreatureOccurrencesInfo::TCyclopediaCreatureOccurrencesInfo(QObject* 
     : cip::tibia::gamewindow::TCyclopediaCreatureOccurrencesInfo(parent)
 {}
 
+TCyclopediaCreatureOccurrencesInfo::TCyclopediaCreatureOccurrencesInfo(const TCyclopediaCreatureOccurrencesData& data, QObject* parent)
+    : cip::tibia::gamewindow::TCyclopediaCreatureOccurrencesInfo(parent)
+{
+    m_subAreaID = data.subAreaId;
+    m_subAreaName = data.subAreaName;
+    QList<QObject*>* lists[] = { &m_commonCreatures, &m_rareCreatures, &m_dynamicCreatures };
+    for (int occurrence = 0; occurrence < 3; ++occurrence) {
+        const auto found = data.creatures.find(occurrence);
+        if (found == data.creatures.end())
+            continue;
+        for (const TCyclopediaCreatureData& creature : found->second)
+            lists[occurrence]->append(new TCyclopediaCreatureInfo(creature.raceId, creature.raceName, creature.isUnknown, this));
+    }
+}
+
 void TCyclopediaCreatureOccurrencesInfo::setSubArea(const int id, const QString& name)
 {
     m_subAreaID = id;

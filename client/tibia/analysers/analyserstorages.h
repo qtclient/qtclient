@@ -55,8 +55,10 @@ public:
     /// The linear-weighted mean per second of the 900 complete seconds that end `offsetSeconds`
     /// before the newest (open) bin (CIP).
     double perSecond(int offsetSeconds = 0) const;
-    /// CIP .
+    /// The weighted rate per hour; 0 while fewer seconds than the window are kept.
     double perHour() const { return perSecond() * 3600.0; }
+    /// The weighted rate per minute.
+    double perMinute() const { return perSecond() * 60.0; }
 
 private:
     qint64 m_total = 0;
@@ -110,8 +112,9 @@ Q_SIGNALS:
 private:
     TExperienceChangeTracker m_final;
     TExperienceChangeTracker m_base;
+    /// The gauge target stays 0 until the configuration is read.
     bool m_gaugeVisible = true;
-    double m_gaugeTarget = 100.0;
+    double m_gaugeTarget = 0.0;
     bool m_graphVisible = true;
     bool m_showBaseXp = false;
 };
@@ -358,7 +361,8 @@ private:
     qint64 m_lastGraphUpdate = 0;
     bool m_showSessionValues = false;
     std::array<bool, 2> m_gaugeVisible{ true, true };
-    std::array<double, 2> m_gaugeTarget{ 100.0, 100.0 };
+    /// 0 until the configuration is read.
+    std::array<double, 2> m_gaugeTarget{ 0.0, 0.0 };
     std::array<bool, 2> m_graphVisible{ true, true };
     bool m_damageTypesVisible = true;
 };

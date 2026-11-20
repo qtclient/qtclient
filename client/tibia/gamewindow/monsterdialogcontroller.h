@@ -147,6 +147,10 @@ public:
     Q_INVOKABLE void removeSelectedCharm() override;
     Q_INVOKABLE void assignSelectedCharm(int SelectedCharmID) override;
 
+Q_SIGNALS:
+    /// A loot item's object type to show on the items page.
+    void itemInfoDialogRequested(uint16_t AppearanceTypeID);
+
 private:
     using Args = std::vector<std::any>;
 

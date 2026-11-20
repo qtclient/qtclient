@@ -35,13 +35,13 @@ public:
     }
 };
 
-/// CIP gamewindow::TAccountBadgeListData: the badges model of one result.
-class TAccountBadgeList final : public cip::tibia::gamewindow::TAccountBadgeListData
+/// The badges model of one result.
+class TAccountBadgeListData final : public cip::tibia::gamewindow::TAccountBadgeListData
 {
     Q_OBJECT
 public:
-    TAccountBadgeList(const std::vector<friends::TAccountBadge>& badges, QObject* parent)
-        : TAccountBadgeListData(parent)
+    TAccountBadgeListData(const std::vector<friends::TAccountBadge>& badges, QObject* parent)
+        : cip::tibia::gamewindow::TAccountBadgeListData(parent)
     {
         std::vector<AccountBadgeEntry> entries;
         entries.reserve(badges.size());
@@ -61,7 +61,7 @@ TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject
     connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TFriendsAccountSearchPageController::publishGameAction);
     m_showEmptyTab = true;
     m_accountCharacterList = new TAccountCharacterList({}, this);
-    m_accountBadgeList = new TAccountBadgeList({}, this);
+    m_accountBadgeList = new TAccountBadgeListData({}, this);
     connect(m_characterInfo, &TCharacterInfoDialogController::errorLoadingCharacter, this,
             &TFriendsAccountSearchPageController::onErrorLoadingCharacter);
     connect(m_characterInfo, &TCharacterInfoDialogController::noPermissionsToViewCharacter, this,
@@ -237,7 +237,7 @@ void TFriendsAccountSearchPageController::replaceLists()
     auto* characters = m_accountCharacterList;
     auto* badges = m_accountBadgeList;
     m_accountCharacterList = new TAccountCharacterList(result.characters, this);
-    m_accountBadgeList = new TAccountBadgeList(result.badges, this);
+    m_accountBadgeList = new TAccountBadgeListData(result.badges, this);
     // QML may still read the old lists until it sees dataChanged.
     if (characters)
         characters->deleteLater();
