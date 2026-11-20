@@ -3393,7 +3393,7 @@ message GameserverMessageTutorialHint {
 }
 
 // server opcode 0xDD (221) — CyclopediaMapData
-// classic: u8 type; 0: position, u8, string; 1: discovery data; 2: position, u8; 3: u16; 4: u16, u8; 5: u16, bool, u8, u8 n x (position, u8); 6: position, u8 n x u16; 7: u8 n x sub area; 8: u16, bool; 9: u64, u8 n x donation; 10/11: u16
+// classic: u8 type; 0: position, u8, string; 1: discovery data; 2: position, u8; 3: u16, u8; 4: u16, u8; 5: u16, bool, u8, u8 n x (position, u8); 6: position, u8 n x u16; 7: u8 n x sub area; 8: u16, bool; 9: u64, u8 n x donation; 10/11: u16
 // CIP TProtobufServerMessageTranslator::v127. Passage (6) carries one passage per message.
 message GameserverMessageCyclopediaMapData {
   optional string text = 1;

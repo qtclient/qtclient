@@ -3473,7 +3473,12 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
                 return 0;
             m->set_icon(u8v);
             break;
-        case 3: // imminent raid (main area)
+        case 3: // imminent raid (main area): id and state, like a subarea's
+            if (!r.u16(u16v) || !r.u8(u8v))
+                return 0;
+            m->set_area_id(u16v);
+            m->set_icon(u8v);
+            break;
         case 10: // current area
         case 11: // exploration reward amount (Go Strength)
             if (!r.u16(u16v))
