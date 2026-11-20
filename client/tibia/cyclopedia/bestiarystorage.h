@@ -76,10 +76,10 @@ public:
     quint64 resetAllCharmsCost() const { return m_resetAllCharmsCost; }
     bool hasCharmData() const { return m_hasCharmData; }
 
-    /// The races charms can be assigned to (Crystal: the races at the second
-    /// bestiary stage or beyond).
+    /// The races charms can be assigned to: the charm message's major and minor
+    /// lists (TMonsterRaceStorage).
     const std::vector<uint16_t>& charmableRaces() const { return m_charmableRaces; }
-    /// Major charms need a fully unlocked race; unknown progress allows both.
+    /// The race is not in the charm message's list for major charms.
     bool isRaceOnlyAssignableForMinorCharms(int raceId) const;
     /// The bestiary progress (0..4) last seen for a race, -1 if unknown.
     int raceProgress(int raceId) const { return m_raceProgress.value(raceId, -1); }
@@ -103,6 +103,7 @@ private:
     quint64 m_resetAllCharmsCost = 0;
     bool m_hasCharmData = false;
     std::vector<uint16_t> m_charmableRaces;
+    QSet<int> m_majorCharmRaces;
     QHash<int, int> m_raceProgress;
     QSet<int> m_trackedRaces;
 };

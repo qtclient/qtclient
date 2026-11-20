@@ -33,6 +33,7 @@ class GameserverMessageMonsterCyclopediaRace;
 class GameserverMessageMonsterCyclopedia;
 class GameserverMessageMonsterCyclopediaNewDetails;
 class GameserverMessageXpChanged;
+class GameserverMessageDead;
 class GameserverMessageCyclopediaCurrentHouseData;
 class GameserverMessageCyclopediaMapData;
 class GameserverMessageCyclopediaStaticHouseData;
@@ -71,6 +72,8 @@ class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::T
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler;
+    /// The charms (with the static table's name, description and kind), the races they
+    /// can go to by charm kind, the free charm slots and the reset cost.
     static void handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage);
     static void handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
     static void handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
@@ -107,6 +110,8 @@ public:
     static void handleCyclopediaHouseActionResultMessage(
         const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message);
     static void handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message);
+    /// The player died: the cyclopedia dialog closes (requestCloseCyclopediaDialog).
+    static void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
     // Requests (CipSoft's ICyclopediaProtocol slots).
     /// Cyclopedia inspection of an object type (InspectObject type 3, no count).
@@ -154,11 +159,52 @@ public:
     using cip::tibia::cyclopedia::TItemPriceStorage::TItemPriceStorage;
 };
 
+/// One charm of the player as the charm message and the static charm table give it
+/// (CIP: TMonsterBonusEffect).
+struct TMonsterBonusEffect
+{
+    uint8_t id = 0;
+    QString name;
+    /// The description with the percentage of `tier`.
+    QString description;
+    /// The static charm kind (0 offensive, 1 defensive, 2 minor).
+    int type = 1;
+    /// 0: not unlocked, 1..3.
+    int tier = 0;
+    /// The race the charm is assigned to, 0 for none.
+    uint16_t raceId = 0;
+    uint32_t removeCost = 0;
+};
+
+/// The player's charms (CIP: cyclopedia::TMonsterBonusEffectStorage).
 class TMonsterBonusEffectStorage final : public cip::tibia::cyclopedia::TMonsterBonusEffectStorage
 {
     Q_OBJECT
 public:
-    using cip::tibia::cyclopedia::TMonsterBonusEffectStorage::TMonsterBonusEffectStorage;
+    explicit TMonsterBonusEffectStorage(QObject* parent = nullptr);
+    ~TMonsterBonusEffectStorage() override;
+    static TMonsterBonusEffectStorage* instance();
+
+    const std::map<uint8_t, TMonsterBonusEffect>& bonusEffects() const { return m_bonusEffects; }
+    /// 0xFF: no limit.
+    uint8_t remainingNumberOfAssignableBonusEffects() const { return m_remainingNumberOfAssignableBonusEffects; }
+    uint64_t resetAllCharmCost() const { return m_resetAllCharmCost; }
+    /// The charm state of a finished race the server sent (0..2), or -1.
+    int finishedRaceState(uint16_t raceId) const;
+
+    /// Each charm replaces the one with its id; charms the message leaves out stay.
+    void setBonusEffects(const std::vector<TMonsterBonusEffect>& bonusEffects);
+    void clearFinishedRaceStates();
+    void setFinishedRaceState(uint16_t raceId, int state);
+    /// Signals only a change.
+    void setRemainingNumberOfAssignableBonusEffects(uint8_t remaining);
+    void setResetAllCharmCost(uint64_t cost);
+
+private:
+    std::map<uint8_t, TMonsterBonusEffect> m_bonusEffects;
+    uint8_t m_remainingNumberOfAssignableBonusEffects = 0;
+    uint64_t m_resetAllCharmCost = 0;
+    std::map<uint16_t, int> m_finishedRaceStates;
 };
 
 /// One monster race of the bestiary (CIP: TMonsterRace).
@@ -241,6 +287,10 @@ public:
     const TMonsterRace* race(uint16_t raceId) const;
     /// One race's details replace that race in the list (or join it).
     void setRaceDetails(TMonsterRace race);
+    /// The races major and minor charms can be assigned to (from the charm message).
+    const std::vector<TMonsterRace>& racesUnlockedForCharms() const { return m_racesUnlockedForCharms; }
+    const std::vector<TMonsterRace>& racesUnlockedForMinorCharms() const { return m_racesUnlockedForMinorCharms; }
+    void setRacesUnlockedForCharms(std::vector<TMonsterRace> races, std::vector<TMonsterRace> minorRaces);
 
 Q_SIGNALS:
     void monsterClassificationMonstersChanged(const QString& MonsterClassificationID);
@@ -249,6 +299,8 @@ Q_SIGNALS:
 private:
     QString m_classificationName;
     std::vector<TMonsterRace> m_classificationRaces;
+    std::vector<TMonsterRace> m_racesUnlockedForCharms;
+    std::vector<TMonsterRace> m_racesUnlockedForMinorCharms;
 };
 
 // TPlayerDefenceStatsProvider — real implementation in playerdefencestatsprovider.h.

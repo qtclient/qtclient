@@ -1,4 +1,5 @@
 #include "bestiarystorage.h"
+#include "cyclopediaciptypes.h"
 
 #include <client/const.h>
 #include <client/staticdata.h>
@@ -125,7 +126,20 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         }
         m_availableCharmSlots = data->availableCharmSlots;
         m_resetAllCharmsCost = data->resetAllCharmsCost;
-        m_charmableRaces = data->finishedMonsters;
+        // The race lists of the charm message (major and minor charms).
+        m_charmableRaces.clear();
+        m_majorCharmRaces.clear();
+        if (const TMonsterRaceStorage* races = TMonsterRaceStorage::instance()) {
+            for (const TMonsterRace& race : races->racesUnlockedForCharms()) {
+                m_majorCharmRaces.insert(race.raceId);
+                if (std::ranges::find(m_charmableRaces, race.raceId) == m_charmableRaces.end())
+                    m_charmableRaces.push_back(race.raceId);
+            }
+            for (const TMonsterRace& race : races->racesUnlockedForMinorCharms()) {
+                if (std::ranges::find(m_charmableRaces, race.raceId) == m_charmableRaces.end())
+                    m_charmableRaces.push_back(race.raceId);
+            }
+        }
         m_hasCharmData = true;
         Q_EMIT charmsChanged();
         return std::any{};
@@ -146,6 +160,7 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_charms.clear();
         m_charmableRaces.clear();
+        m_majorCharmRaces.clear();
         m_raceProgress.clear();
         m_trackedRaces.clear();
         m_hasCharmData = false;
@@ -174,8 +189,7 @@ const TCharm* TBestiaryStorage::assignedCharm(const int raceId, const bool minor
 
 bool TBestiaryStorage::isRaceOnlyAssignableForMinorCharms(const int raceId) const
 {
-    const int progress = raceProgress(raceId);
-    return progress >= 0 && progress < 4;
+    return !m_majorCharmRaces.contains(raceId);
 }
 
 void TBestiaryStorage::setRaceProgress(const int raceId, const int progress) { m_raceProgress.insert(raceId, progress); }
