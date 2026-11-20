@@ -280,7 +280,7 @@ void TBossSlotInformation::update(const bossbestiary::TBossSlot& slot, const bos
     m_killBonus = slot.hasBoss ? slot.killBonus : 0;
     m_priceForReset = slot.hasBoss ? QLocale(QLocale::English).toString(static_cast<qlonglong>(slot.removePrice)) : QStringLiteral("0");
     m_resetPriceNumber = slot.hasBoss ? static_cast<int>(slot.removePrice) : 0;
-    m_bossRaritySource = slot.hasBoss ? bossRaritySource(slot.category) : QString();
+    m_bossRaritySource = slot.hasBoss ? ::tibia::gamewindow::bossRaritySource(slot.category) : QString();
     m_bossRarityTooltip = slot.hasBoss ? storage.rarityTooltip(slot.category) : QString();
     m_killsForProwess = slot.hasBoss ? storage.killsForStage(slot.category, 1) : 0;
     m_killsForExpertise = slot.hasBoss ? storage.killsForStage(slot.category, 2) : 0;
