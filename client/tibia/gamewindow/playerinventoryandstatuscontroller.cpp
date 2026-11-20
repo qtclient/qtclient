@@ -2,6 +2,7 @@
 
 #include "app/clientoptions.h"
 #include "container/containerciptypes.h"
+#include "container/containergameactionprovider.h"
 #include "container/containerslotinformation.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
@@ -27,14 +28,6 @@ using A = input::EGameAction;
 using Cursor = TMouseCursorController;
 
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
-
-/// CIP : the actions the inventory offers on its objects.
-constexpr A SlotActionTypes[] = {
-    A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::USE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW,
-    A::MOVE_OBJECT, A::TRADE_ITEM, A::TARGET_SELECTED, A::SMART_CLICK, A::OPEN_MANAGE_LOOT_CONTAINER, A::LOOT_ADD_TO_BLACKWHITELIST,
-    A::LOOT_REMOVE_FROM_BLACKWHITELIST, A::STASH_STOW_CONTAINER_CONTENT, A::STASH_OPEN_STOW_STACK_DIALOG, A::MARKET_BROWSE,
-    A::GET_TEXT_FOR_REPORT,
-};
 
 /// CIP (DAT_1022d037c): a click's candidates, in context-menu order.
 constexpr A ClickActionTypes[] = {
@@ -251,14 +244,7 @@ void TPlayerInventoryAndStatusController::setShowPlayerStatesInBar(const bool sh
 
 input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const int slotId) const
 {
-    const container::TInventorySlot slot = slotAppearance(slotId);
-    if (slot.empty())
-        return {};
-    const Position position(UINT16_MAX, static_cast<uint16_t>(slotId), 0);
-    input::TGameActionList actions =
-        input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, 0), SlotActionTypes);
-    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    return actions;
+    return container::TContainerGameActionProvider::inventorySlotActions(slotAppearance(slotId), slotId);
 }
 
 void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)

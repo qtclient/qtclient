@@ -4,6 +4,7 @@
 #include "assets/assetfilesystemhelper.h"
 #include "assets/contentcatalog.h"
 #include "sprites/sprite.h"
+#include "sprites/spriteinspritesheet.h"
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
@@ -13,38 +14,11 @@
 #include <QMutex>
 #include <QMutexLocker>
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
-#include <sys/sysctl.h>
-#elif defined(Q_OS_WIN)
-#include <windows.h>
-#elif defined(Q_OS_UNIX) && !defined(__EMSCRIPTEN__)
-#include <unistd.h>
-#endif
+#include "platform/platform.h"
 
 namespace tibia::sprites {
 
 namespace {
-
-quint64 physicalMemory()
-{
-#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
-    quint64 bytes = 0;
-    size_t size = sizeof(bytes);
-    if (sysctlbyname("hw.memsize", &bytes, &size, nullptr, 0) == 0)
-        return bytes;
-    return 0;
-#elif defined(Q_OS_WIN)
-    MEMORYSTATUSEX status{};
-    status.dwLength = sizeof(status);
-    return GlobalMemoryStatusEx(&status) ? status.ullTotalPhys : 0;
-#elif defined(Q_OS_UNIX) && !defined(__EMSCRIPTEN__)
-    const long pages = sysconf(_SC_PHYS_PAGES);
-    const long pageSize = sysconf(_SC_PAGE_SIZE);
-    return pages > 0 && pageSize > 0 ? quint64(pages) * quint64(pageSize) : 0;
-#else
-    return 0;
-#endif
-}
 
 /// The metadata manager remembers its last lookup; the renderer asks from its thread.
 QMutex& metadataMutex()
@@ -57,7 +31,7 @@ QMutex& metadataMutex()
 
 uint32_t TSpriteSystem::defaultCacheCapacity()
 {
-    const quint64 bytes = std::min<quint64>(physicalMemory() / 2, 0x20000000);
+    const quint64 bytes = std::min<quint64>(tibia::platform::physicalMemory() / 2, 0x20000000);
     const uint32_t spritesheets = static_cast<uint32_t>(bytes / (384 * 384 * 4));
     return std::max<uint32_t>(spritesheets, 350);
 }
@@ -102,10 +76,6 @@ void TSpriteSystem::start(const tibia::assets::TContentCatalog& catalog, const Q
                          // CIP's asset handler gives sprite and map image files to the spritesheets.
                          if (asset.type() == tibia::assets::TAsset::Sprite || asset.type() == tibia::assets::TAsset::MapImage)
                              m_spritesheets->addCompressedSpritesheet(asset.file(), data);
-                     });
-    QObject::connect(m_assetLoader.get(), &tibia::assets::TAssetAsyncLoader::assetLoadError, m_spritesheets.get(),
-                     [](const tibia::assets::TAsset& asset, const std::string& error) {
-                         qWarning() << "Failed to load asset" << asset.file() << QString::fromStdString(error);
                      });
     QObject::connect(m_spritesheets.get(), &TSpritesheetManager::spritesheetMissing, m_assetLoader.get(),
                      &tibia::assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::QueuedConnection);
@@ -153,6 +123,24 @@ QImage TSpriteSystem::spriteImage(const uint32_t spriteId, bool& loading)
         return {};
     }
     return sprite->getImage().convertToFormat(QImage::Format_RGBA8888);
+}
+
+QImage TSpriteSystem::spriteImageDecoded(const uint32_t spriteId, bool& loading)
+{
+    loading = false;
+    if (spriteId == 0)
+        return {};
+    const TSpriteFromSpritesheetInfo info = spriteInfo(spriteId);
+    if (info.spritesheetId.isEmpty())
+        return {};
+    const TSpritesheetPointer spritesheet = m_spritesheets->decodeNow(info.spritesheetId);
+    if (!spritesheet) {
+        loading = true;
+        return {};
+    }
+    // Same cell/area as TSpriteResolver::resolveSpritesheetSprite.
+    const QRect area(QPoint(0, 0), QPoint(info.cell.right() - info.cell.left(), info.cell.bottom() - info.cell.top()));
+    return TSpriteInSpritesheet(0.0, spritesheet, info.cell, area, info.opaque).getImage().convertToFormat(QImage::Format_RGBA8888);
 }
 
 bool TSpriteSystem::isSpriteReady(const uint32_t spriteId)

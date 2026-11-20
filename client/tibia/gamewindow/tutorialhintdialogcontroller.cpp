@@ -7,7 +7,6 @@
 #include "qmlcomponents/tutorialhelper.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 
-#include <QLoggingCategory>
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -15,8 +14,6 @@
 namespace tibia::gamewindow {
 
 namespace {
-
-Q_LOGGING_CATEGORY(lcTutorial, "tibia.tutorial")
 
 using A = input::EGameAction;
 using Args = std::vector<std::any>;
@@ -210,8 +207,7 @@ TTutorialShell::TTutorialShell(QObject* parent)
         m_hint->showHint(action.text(), action.image(), action.caption(), action.markerId(), true);
         return true;
     });
-    m_gameActions.on(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker& action) {
-        qCInfo(lcTutorial) << "ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER" << action.markerId();
+    m_gameActions.on(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker&) {
         return true;
     });
     m_gameActions.on(A::CONFIRM_TUTORIAL_HINT, [this](const input::IGameAction&) {
@@ -219,7 +215,6 @@ TTutorialShell::TTutorialShell(QObject* parent)
         return true;
     });
     m_gameActions.on(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameActionAddGUITutorialMarker& action) {
-        qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.markerId() << action.creatureId();
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
             overlay->addGuiMarker(action);
@@ -236,7 +231,6 @@ TTutorialShell::TTutorialShell(QObject* parent)
         return true;
     });
     m_gameActions.on(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::IGameAction&) {
-        qCInfo(lcTutorial) << "REMOVE_ALL_TUTORIAL_MARKERS";
         if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
                 worldmap::TWorldMapTutorialMarkerOverlayController::instance())
             overlay->removeAllMarkers();
@@ -245,29 +239,23 @@ TTutorialShell::TTutorialShell(QObject* parent)
         return true;
     });
     m_gameActions.on(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::IGameAction&) {
-        qCInfo(lcTutorial) << "FINISHED_TUTORIAL_FOR_CHARACTER";
         Q_EMIT tutorialFinished();
         return true;
     });
-    m_gameActions.on(A::TUTORIAL_PROGRESS, [](const input::TGameActionTutorialProgress& action) {
-        qCInfo(lcTutorial) << "TUTORIAL_PROGRESS" << action.tutorialProgress();
+    m_gameActions.on(A::TUTORIAL_PROGRESS, [](const input::TGameActionTutorialProgress&) {
         return true;
     });
     m_gameActions.on(A::SESSIONDUMP_PAUSE, [](const input::IGameAction&) {
-        qCInfo(lcTutorial) << "SESSIONDUMP_PAUSE (PacketPlayer has no pause yet)";
         return true;
     });
     m_gameActions.on(A::SESSIONDUMP_RESUME, [](const input::IGameAction&) {
-        qCInfo(lcTutorial) << "SESSIONDUMP_RESUME (PacketPlayer has no resume yet)";
         return true;
     });
-    m_gameActions.on(A::SESSIONDUMP_SKIP_TO, [](const input::TGameActionSessiondumpSkipTo& action) {
+    m_gameActions.on(A::SESSIONDUMP_SKIP_TO, [](const input::TGameActionSessiondumpSkipTo&) {
         // CIP `.hints` use SKIP_TO 0 as a no-op / restart marker at TutorialStart.
-        qCInfo(lcTutorial) << "SESSIONDUMP_SKIP_TO" << action.timestamp();
         return true;
     });
-    m_gameActions.on(A::SESSIONDUMP_START, [](const input::TGameActionSessiondumpStart& action) {
-        qCInfo(lcTutorial) << "SESSIONDUMP_START" << action.url();
+    m_gameActions.on(A::SESSIONDUMP_START, [](const input::TGameActionSessiondumpStart&) {
         return true;
     });
 }
@@ -278,13 +266,11 @@ TTutorialShell::~TTutorialShell()
 
 void TTutorialShell::handleTutorialHintId(const int hintId)
 {
-    qCInfo(lcTutorial) << "tutorial hint id" << hintId;
     if (hintId == 2) {
         m_vocation->showDialog();
         return;
     }
-    if (!m_hint->showHintById(hintId))
-        qCInfo(lcTutorial) << "unknown tutorial hint id" << hintId;
+    m_hint->showHintById(hintId);
 }
 
 }

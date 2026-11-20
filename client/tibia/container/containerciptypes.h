@@ -180,8 +180,6 @@ public:
     using cip::tibia::container::TContainerGameActionHandler::TContainerGameActionHandler;
 };
 
-class TContainerGameActionProvider final : public ::tibia::CipTyped {};
-
 /// CIP `container::TContainerProtocolMessageHandler` — native Q→H for CloseContainer /
 /// SetInventory / DeleteInventory / SpecialContainersAvailable.
 class TContainerProtocolMessageHandler final : public cip::tibia::container::TContainerProtocolMessageHandler

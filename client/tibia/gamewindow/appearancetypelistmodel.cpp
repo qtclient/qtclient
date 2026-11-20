@@ -1,5 +1,7 @@
 #include "appearancetypelistmodel.h"
 
+#include "platform/platform.h"
+
 
 #include <QLocale>
 
@@ -238,11 +240,7 @@ TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy
     setDynamicSortFilter(true);
     sort(0, Qt::AscendingOrder);
     setSourceModel(model);
-#if !defined(Q_OS_WASM)
-    // Wasm's POSIX collator logs and ignores both of these.
-    m_collator.setNumericMode(true);
-    m_collator.setCaseSensitivity(Qt::CaseInsensitive);
-#endif
+    tibia::platform::configureNaturalCollator(m_collator);
     m_filterTimer.setInterval(0);
     m_filterTimer.setSingleShot(true);
     connect(this, &TAppearanceTypeListModelSortFilterProxy::filterChanged, &m_filterTimer, qOverload<>(&QTimer::start));

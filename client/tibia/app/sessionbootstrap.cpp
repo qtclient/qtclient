@@ -1,5 +1,7 @@
 #include "app/sessionbootstrap.h"
 
+#include "platform/platform.h"
+
 #include "app/clientoptions.h"
 #include "app/graphicsrestart.h"
 #include "client/gameclient.h"
@@ -12,15 +14,11 @@
 #include "app/loginwaitdialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-
 #include <QCoreApplication>
-#include <QLoggingCategory>
 #include <QPointer>
 #include <QProcess>
 #include <QTimer>
 #include <tibia/game/gamesession.h>
-
-Q_LOGGING_CATEGORY(lcSessionBootstrap, "tibia.session")
 
 namespace tibia::app {
 
@@ -68,10 +66,7 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
     connect(m_keepRenderer, &Box::acceptClicked, this, [] { graphicsrestart::clearPendingConfirm(); });
     connect(m_keepRenderer, &Box::discardClicked, this, [] {
         graphicsrestart::revertPending();
-#ifndef Q_OS_WASM
-        QProcess::startDetached(QCoreApplication::applicationFilePath(), QCoreApplication::arguments().mid(1));
-#endif
-        QCoreApplication::quit();
+        tibia::platform::restartApplication();
     });
     QTimer::singleShot(0, this, &TSessionBootstrap::promptKeepGraphicsEngine);
 
@@ -79,7 +74,6 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
 
     connect(m_createAccount, &gamewindow::TCreateAccountDialogController::accountCreated, this,
             [this](const QString& email, const QString& password) {
-                qCInfo(lcSessionBootstrap).noquote() << "created account" << email;
                 if (m_gameWindow) {
                     m_gameWindow->setAuthenticated(true);
                     m_loginWait->showCharacterList();
@@ -131,7 +125,6 @@ void TSessionBootstrap::wireCreateCharacter()
     m_characterCreated =
         connect(m_createCharacter, &gamewindow::TCreateCharacterDialogController::characterCreated, this,
                 [this](const QString& name, const QJsonObject& reply) {
-                    qCInfo(lcSessionBootstrap).noquote() << "created character" << name;
                     m_client->refreshAccount(reply);
                 });
     // CIP : SHOW_CREATE_CHARACTER_DIALOG (parameter: account has no characters).

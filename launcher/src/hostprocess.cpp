@@ -60,10 +60,8 @@ bool startDetached(const QString& program, const QStringList& arguments, const Q
     const QString name = QFileInfo(program).fileName();
     const bool client = name == QStringLiteral("tibia.js");
     if (!client && name != QStringLiteral("launcher.js")) {
-        qWarning().noquote() << "web: cannot start" << program;
         return false;
     }
-    qInfo().noquote() << "web: reloading into" << program;
     const QByteArray path = QFileInfo(program).absoluteFilePath().toUtf8();
     qtclientReloadInto(client ? path.constData() : nullptr);
     return true;

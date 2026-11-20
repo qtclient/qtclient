@@ -35,7 +35,6 @@
 #include "container/containerciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "creatures/creaturestorage.h"
-#include "creatures/walkdebug.h"
 #include "clockservice.h"
 #include <QStringList>
 #include <tibia/schedule/schedule.h>

@@ -1,4 +1,6 @@
 #include "game/objectreference.h"
+
+#include "platform/platform.h"
 #include <optional>
 #include "gameactionhandlers.h"
 
@@ -21,7 +23,6 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QGuiApplication>
-#include <QLoggingCategory>
 #include <QMetaObject>
 #include <QProcess>
 #include <QQuickWindow>
@@ -35,8 +36,6 @@
 #include <utility>
 #include <vector>
 #include <tibia/game/gamesession.h>
-
-Q_LOGGING_CATEGORY(lcGameActions, "tibia.gameactions")
 
 namespace tibia::input {
 
@@ -218,10 +217,7 @@ void openLauncher()
 {
     // Quit closes the window. That must not raise Exit / Logout / Cancel.
     gamewindow::TGameWindowController::allowProcessExit();
-#ifndef Q_OS_WASM
-    QProcess::startDetached(QCoreApplication::applicationFilePath(), QCoreApplication::arguments().mid(1));
-#endif
-    QCoreApplication::quit();
+    tibia::platform::restartApplication();
 }
 
 /// Focused QML/text field helpers (CIP REQUEST_SELECT_ALL_TEXT / COPY / CONFIRM_COPY).
@@ -503,12 +499,8 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
     case A::RESOLVE_SPRITE:
         // CIP resolves a sprite id into the texture atlas. Without a window-bound
         // sprite identifier here we acknowledge the action; sheets load on next draw.
-        if (const auto* sprite = gameActionAs<TGameActionSprite>(pGameAction))
-            qCInfo(lcGameActions) << "RESOLVE_SPRITE" << sprite->spriteId();
         break;
     case A::SPRITE_RESOLVED:
-        if (const auto* sprite = gameActionAs<TGameActionSprite>(pGameAction))
-            qCInfo(lcGameActions) << "SPRITE_RESOLVED" << sprite->spriteId();
         break;
     case A::OPEN_SHOW_IMAGE_DIALOG:
         if (const auto* show = gameActionAs<TGameActionOpenShowImageDialog>(pGameAction)) {

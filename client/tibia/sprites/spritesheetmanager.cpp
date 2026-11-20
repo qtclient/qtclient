@@ -71,6 +71,32 @@ void TSpritesheetManager::onDecompressingSpritesheetFinished(const TSpritesheetI
     Q_EMIT spritesheetUncompressFailed(spritesheetId);
 }
 
+TSpritesheetPointer TSpritesheetManager::decodeNow(const TSpritesheetID& spritesheetId)
+{
+    std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob> data;
+    {
+        const QMutexLocker lock(&m_mutex);
+        if (TSpritesheetPointer cached = m_cache->get(spritesheetId))
+            return cached;
+        // Read the bytes without taking them: the async path keeps its own bookkeeping.
+        data = m_compressedSpritesheets.value(spritesheetId);
+        if (!data)
+            data = m_spritesheetsBeingDecompressed.value(spritesheetId);
+        if (!data) {
+            Q_EMIT spritesheetMissing(spritesheetId);
+            return nullptr;
+        }
+    }
+    TSpritesheetPointer spritesheet = TSpritesheetDecompressor::decode(data);
+    if (!spritesheet || spritesheet->isNull())
+        return nullptr;
+    const QMutexLocker lock(&m_mutex);
+    if (TSpritesheetPointer cached = m_cache->get(spritesheetId))
+        return cached;
+    m_cache->insert(spritesheetId, spritesheet);
+    return spritesheet;
+}
+
 bool TSpritesheetManager::isSpritesheetCached(const TSpritesheetID& spritesheetId) const
 {
     const QMutexLocker lock(&m_mutex);

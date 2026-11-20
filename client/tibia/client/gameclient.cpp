@@ -103,7 +103,6 @@
 #include "container/containerciptypes.h"
 #include "creatures/creaturesciptypes.h"
 #include "creatures/creaturestorage.h"
-#include "creatures/walkdebug.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
 
@@ -114,20 +113,15 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
-#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QHash>
 #include <QJsonObject>
-#include <QLoggingCategory>
 #include <QPointer>
 #include <QQuickWindow>
 #include <QThread>
 
 #include <utility>
 #include <tibia/game/gamesession.h>
-
-Q_LOGGING_CATEGORY(lcGameClient, "tibia.client")
-Q_LOGGING_CATEGORY(lcFrameCost, "tibia.frame", QtWarningMsg)
 
 namespace tibia::client {
 
@@ -511,8 +505,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
         linkGameActionRouters(*m_pGameActionRouter, *m_sessiondump);
         m_sessiondump->activate();
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connected, this, [] { qCInfo(lcGameClient) << "session dump connected"; });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginSuccessful, this, [] { qCInfo(lcGameClient) << "session dump login accepted"; });
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connectionError, this, &TGameClient::fail);
@@ -520,21 +512,8 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             Q_EMIT clientOutOfDate();
             fail(tr("The game server needs a newer client."));
         });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginAdviceMessage, this, [](const QString& message) {
-            qCInfo(lcGameClient).noquote() << "login advice:" << message;
-        });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginWaitMessage, this, [](const QString& message, int seconds) {
-            qCInfo(lcGameClient).noquote() << "login queue:" << message << seconds << "s";
-        });
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::disconnected, this, [this] {
-            qCInfo(lcGameClient) << "left the game (session dump)";
             onWorldLeft();
-        });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::sessionEndInformation, this, [](int reason) {
-            qCInfo(lcGameClient) << "session ended, reason" << reason;
-        });
-        connect(m_sessiondump.get(), &game::TSessiondumpGameSession::sessionDumpMarker, this, [](const QString& marker) {
-            qCInfo(lcGameClient).noquote() << "session dump marker:" << marker;
         });
         // Prefer canonical path (follows symlinks). Basename-only is kept for
         // files that live under cwd `records/` (where --record writes).
@@ -543,8 +522,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         QString replayArg = resolved.absoluteFilePath();
         if (resolved.absolutePath().endsWith(QLatin1String("/records")))
             replayArg = resolved.fileName();
-        qCInfo(lcGameClient).noquote() << "replaying" << resolved.absoluteFilePath()
-                                       << "as" << replayArg;
         m_sessiondump->replay(replayArg);
         return true;
     }
@@ -554,8 +531,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     linkGameActionRouters(*m_pGameActionRouter, *m_session);
     game::TGameserverGameSession::setLiveInstance(m_session.get());
     m_session->activate();
-    connect(m_session.get(), &game::TGameserverGameSession::connected, this, [] { qCInfo(lcGameClient) << "game server connected"; });
-    connect(m_session.get(), &game::TGameserverGameSession::gameLoginSuccessful, this, [] { qCInfo(lcGameClient) << "game login accepted"; });
     connect(m_session.get(), &game::TGameserverGameSession::worldEntered, this, &TGameClient::onWorldEntered);
     connect(m_session.get(), &game::TGameserverGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
     connect(m_session.get(), &game::TGameserverGameSession::connectionError, this, &TGameClient::fail);
@@ -563,18 +538,8 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         Q_EMIT clientOutOfDate();
         fail(tr("The game server needs a newer client."));
     });
-    connect(m_session.get(), &game::TGameserverGameSession::gameLoginAdviceMessage, this, [](const QString& message) {
-        qCInfo(lcGameClient).noquote() << "login advice:" << message;
-    });
-    connect(m_session.get(), &game::TGameserverGameSession::gameLoginWaitMessage, this, [](const QString& message, int seconds) {
-        qCInfo(lcGameClient).noquote() << "login queue:" << message << seconds << "s";
-    });
     connect(m_session.get(), &game::TGameserverGameSession::disconnected, this, [this] {
-        qCInfo(lcGameClient) << "left the game";
         onWorldLeft();
-    });
-    connect(m_session.get(), &game::TGameserverGameSession::sessionEndInformation, this, [](int reason) {
-        qCInfo(lcGameClient) << "session ended, reason" << reason;
     });
     login();
     return true;
@@ -708,10 +673,8 @@ void TGameClient::login()
     const auto& env = m_options.env;
     if (m_options.account.isEmpty()) {
         // CIP start-screen login mask (TGameWindowController::loginPressed) supplies credentials.
-        qCInfo(lcGameClient) << "waiting for account login (CIP login mask)";
         return;
     }
-    qCInfo(lcGameClient).noquote() << "logging in" << m_options.account << "at" << env.loginUrl().toString();
     Q_EMIT loginStarted();
     authentication::TLoginRequestData request;
     request.email = m_options.account;
@@ -768,7 +731,6 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
     // CipSoft login has no session.email; remember-email is fed from the typed mask / CLI.
     if (!m_options.account.isEmpty())
         Q_EMIT sessionEmailAvailable(m_options.account);
-    qCInfo(lcGameClient) << "account has" << result.characters.size() << "characters on" << result.worlds.size() << "worlds";
     // CIP (TAuthenticationProcessController): the news learn the account's
     // returner state and unlock against its highest character level.
     if (news::TNewsStorage* news = news::TNewsStorage::current()) {
@@ -909,12 +871,9 @@ void TGameClient::onCharacterChosen(const QString& characterName)
     if (chosen->tutorial) {
         const QString dump = game::resolveTutorialSessiondumpPath();
         if (!dump.isEmpty()) {
-            qCInfo(lcGameClient).noquote() << "tutorial character: cinematic" << dump
-                                           << "then live" << world->name << "as" << chosen->name;
             startTutorialThenLive(credentials, dump);
             return;
         }
-        qCInfo(lcGameClient) << "tutorial character but no sessiondump fixture; entering live Newhaven";
     }
 
     connectLive(credentials);
@@ -922,8 +881,6 @@ void TGameClient::onCharacterChosen(const QString& characterName)
 
 void TGameClient::connectLive(const game::GameserverCredentials& credentials)
 {
-    qCInfo(lcGameClient).noquote() << "entering" << credentials.worldName << "as" << credentials.characterName
-                                   << "at" << credentials.host << credentials.port;
     if (m_dualConnection)
         m_dualConnection->setEndpoint(credentials.host, credentials.port);
     if (!m_session) {
@@ -971,17 +928,11 @@ void TGameClient::finishTutorialCinematic()
 {
     if (!m_tutorialCinematic || !m_sessiondump)
         return;
-    qCInfo(lcGameClient) << "finishing tutorial cinematic for live handoff";
     m_sessiondump->disconnectNow();
 }
 
 void TGameClient::onWorldEntered()
 {
-    const QString world = m_session ? m_session->worldName()
-                                    : (m_sessiondump ? m_sessiondump->worldName() : QString());
-    const QString character = m_session ? m_session->characterName()
-                                        : (m_sessiondump ? m_sessiondump->characterName() : QString());
-    qCInfo(lcGameClient).noquote() << "in world" << world << "as" << character;
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
     // A new game session: no own team or listed teams, the team finder pages start over.
@@ -1051,14 +1002,6 @@ void TGameClient::onWorldEntered()
 
     if (m_options.playForSeconds > 0) {
         QTimer::singleShot(m_options.playForSeconds * 1000, this, [this] {
-            const Position pos = tibia::game::localPlayerPosition();
-            const tibia::creatures::TCreatureStorage* creatures = tibia::creatures::TCreatureStorage::instance();
-            qCInfo(lcGameClient).noquote() << "after" << m_options.playForSeconds << "s:"
-                                           << QStringLiteral("at %1,%2,%3").arg(pos.x).arg(pos.y).arg(pos.z)
-                                           << "level" << tibia::game::localPlayerLevel()
-                                           << "hp" << tibia::game::localPlayerHealth() << "/" << tibia::game::localPlayerMaxHealth()
-                                           << "known creatures" << (creatures ? creatures->creatureIds().size() : 0)
-                                           << "online" << tibia::game::isOnline();
             const bool online = tibia::game::isOnline();
             if (m_session)
                 m_session->disconnectNow();
@@ -1102,18 +1045,6 @@ void TGameClient::onWorldLeft()
 
 void TGameClient::setWindow(QQuickWindow* window)
 {
-    // QTCLIENT_PERF / QTCLIENT_GPU_PERF must enable categories before isDebugEnabled gates:
-    // bootstrap is constructed after setWindow, so rules set there would miss this hook.
-    if (!qEnvironmentVariableIsEmpty("QTCLIENT_PERF") || !qEnvironmentVariableIsEmpty("QTCLIENT_GPU_PERF")) {
-        // lcRaycast is registered as tibia.rendering (not mod.raycast).
-        QLoggingCategory::setFilterRules(QStringLiteral(
-            "tibia.frame.debug=true\n"
-            "tibia.worldmap.debug=true\n"
-            "tibia.worldmap.build.debug=true\n"
-            "tibia.weather.perf.debug=true\n"
-            "tibia.rendering.debug=true"));
-    }
-    tibia::creatures::enableWalkDebugFromEnv();
 
     // CIP: .
     connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
@@ -1122,52 +1053,6 @@ void TGameClient::setWindow(QQuickWindow* window)
     connect(window, &QQuickWindow::frameSwapped, this, [this] {
         if (m_fpsHistory)
             m_fpsHistory->fpsCounter()->startNewFrame();
-    }, Qt::DirectConnection);
-
-    // Render-thread cost per frame, sync and render, against the plan's budgets.
-    if (!lcFrameCost().isDebugEnabled())
-        return;
-    // The render stage also waits for the swapchain's drawable (vSync), so the
-    // main pass recording is timed on its own.
-    struct Cost
-    {
-        QElapsedTimer stage;
-        QElapsedTimer pass;
-        QElapsedTimer window;
-        qint64 syncNs = 0;
-        qint64 passNs = 0;
-        qint64 stageNs = 0;
-        qint64 maxNs = 0;
-        qint64 frameSyncNs = 0;
-        int frames = 0;
-    };
-    auto cost = std::make_shared<Cost>();
-    connect(window, &QQuickWindow::beforeSynchronizing, this, [cost] { cost->stage.start(); }, Qt::DirectConnection);
-    connect(window, &QQuickWindow::afterSynchronizing, this, [cost] {
-        cost->frameSyncNs = cost->stage.isValid() ? cost->stage.nsecsElapsed() : 0;
-        cost->syncNs += cost->frameSyncNs;
-    }, Qt::DirectConnection);
-    connect(window, &QQuickWindow::beforeRendering, this, [cost] { cost->stage.start(); }, Qt::DirectConnection);
-    connect(window, &QQuickWindow::beforeRenderPassRecording, this, [cost] { cost->pass.start(); }, Qt::DirectConnection);
-    connect(window, &QQuickWindow::afterRenderPassRecording, this, [cost] {
-        const qint64 ns = cost->pass.isValid() ? cost->pass.nsecsElapsed() : 0;
-        cost->passNs += ns;
-        cost->maxNs = std::max(cost->maxNs, cost->frameSyncNs + ns);
-    }, Qt::DirectConnection);
-    connect(window, &QQuickWindow::afterRendering, this, [cost] {
-        if (!cost->stage.isValid())
-            return;
-        cost->stageNs += cost->stage.nsecsElapsed();
-        ++cost->frames;
-        if (!cost->window.isValid())
-            cost->window.start();
-        if (cost->window.elapsed() >= 1000) {
-            qCDebug(lcFrameCost) << "frames" << cost->frames << "render thread us: sync" << cost->syncNs / cost->frames / 1000
-                                 << "pass" << cost->passNs / cost->frames / 1000 << "max sync+pass" << cost->maxNs / 1000
-                                 << "render stage incl. vsync wait" << cost->stageNs / cost->frames / 1000;
-            *cost = Cost{};
-            cost->window.start();
-        }
     }, Qt::DirectConnection);
 }
 
@@ -1266,7 +1151,6 @@ void TGameClient::fail(const QString& message)
 {
     if (m_suppressConnectError)
         return;
-    qCCritical(lcGameClient).noquote() << message;
     Q_EMIT showErrorAsPopupAndCriticalLog(message);
     if (!m_options.autoCharacter.isEmpty() || !m_options.replay.isEmpty() || m_options.playForSeconds > 0)
         QCoreApplication::exit(2);

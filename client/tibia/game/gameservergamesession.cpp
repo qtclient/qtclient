@@ -123,8 +123,7 @@ void TGameserverGameSession::wireProcessPingBack()
         hub.m_ping = hub.m_pingTimer.elapsed();
         if (oldPing != hub.m_ping)
             tibia::game::notify("onPingBack", hub.m_ping);
-    } else
-        qCritical("%s", std::format("Got an invalid ping from server").c_str());
+    }
 
     const int pingDelay = hub.m_pingDelay;
     hub.m_pingEvent = tibia::schedule::after([] { gameSessionState().ping(); }, pingDelay);

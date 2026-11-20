@@ -1,5 +1,7 @@
 #include "bootstrap.h"
 
+#include "platform/platform.h"
+
 #include "clientoptions.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -110,35 +112,7 @@ int parseRendererIndex(const QString& value, const int fallback)
 
 bool isRendererSupported(const int rendererIndex)
 {
-    switch (graphicsApiForRenderer(rendererIndex)) {
-        case QSGRendererInterface::Unknown:
-        case QSGRendererInterface::Software:
-            return true;
-#if defined(Q_OS_WASM)
-        case QSGRendererInterface::OpenGL:
-            return true;
-#elif defined(Q_OS_MACOS) || defined(Q_OS_IOS)
-        case QSGRendererInterface::OpenGL:
-        case QSGRendererInterface::Metal:
-            return true;
-#if defined(Q_OS_MACOS)
-        case QSGRendererInterface::Vulkan:
-            return true;
-#endif
-#elif defined(Q_OS_WIN)
-        case QSGRendererInterface::OpenGL:
-        case QSGRendererInterface::Direct3D11:
-        case QSGRendererInterface::Direct3D12:
-        case QSGRendererInterface::Vulkan:
-            return true;
-#else
-        case QSGRendererInterface::OpenGL:
-        case QSGRendererInterface::Vulkan:
-            return true;
-#endif
-        default:
-            return false;
-    }
+    return tibia::platform::supportsGraphicsApi(graphicsApiForRenderer(rendererIndex));
 }
 
 void configureProcess(const ClientOptions& options, const int rendererOverride)
@@ -148,11 +122,7 @@ void configureProcess(const ClientOptions& options, const int rendererOverride)
     int renderer = rendererOverride >= 0 ? rendererOverride : options.rendererIndex();
     if (!isRendererSupported(renderer))
         renderer = 0;
-#ifdef Q_OS_WASM
-    // WebGL is the only accelerated API in the browser.
-    if (renderer == 0)
-        renderer = 8;
-#endif
+    renderer = tibia::platform::autoRenderer(renderer);
     const auto api = graphicsApiForRenderer(renderer);
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Unknown);
     if (api == QSGRendererInterface::Vulkan || api == QSGRendererInterface::Metal)
@@ -204,25 +174,21 @@ namespace {
 
 void removeOldQtQmlFolder()
 {
-#if !defined(Q_OS_WASM)
+    if (!tibia::platform::kHasInstallDirectory)
+        return;
     // Qt 5 builds installed QML modules next to the binary; they clash with Qt 6's.
     QDir old(QCoreApplication::applicationDirPath() + QStringLiteral("/QtQml"));
     if (old.exists()) {
         qInfo() << "Found old QtQml folder, deleting to prevent conflict with Qt6 files";
         old.removeRecursively();
     }
-#endif
 }
 
 }
 
 void applyBundledMoltenVkIcd()
 {
-#if defined(Q_OS_MACOS)
-    const QString moltenIcd = QCoreApplication::applicationDirPath() + QStringLiteral("/../Frameworks/MoltenVK_icd.json");
-    if (QFile::exists(moltenIcd))
-        qputenv("VK_ICD_FILENAMES", QFile::encodeName(moltenIcd));
-#endif
+    tibia::platform::prepareGraphicsDrivers();
 }
 
 QString mountGraphicsResources(const QStringList& dirs)
@@ -296,33 +262,22 @@ void installUiFonts(const QStringList& dirs)
             }
         }
     }
-    if (loaded.isEmpty())
-        qWarning("Verdana is not installed and data/fonts has no Verdana faces; UI text will not match the desktop client");
-    else
-        qInfo("loaded %d Verdana face(s) for the UI", static_cast<int>(loaded.size()));
 }
 
 void alignTextHinting(QQmlEngine* engine)
 {
-#if !defined(Q_OS_WASM)
-    Q_UNUSED(engine);
-#else
-    // CIP sets PreferDefaultHinting. On the desktop that is CoreText, which
-    // keeps Verdana's advances, so the 1px outline sits in the gap. On wasm
-    // the same setting is FreeType full hinting, which rewrites those advances
-    // and the outline of one letter lands on the next. Vertical-only hinting
-    // is the FreeType mode that leaves horizontal advances alone.
-    if (!engine)
+    // The platform's font engine may need its own hinting to match the desktop
+    // (see tibia::platform::uiTextHinting).
+    const auto hinting = tibia::platform::uiTextHinting();
+    if (!hinting || !engine)
         return;
     QObject* style = engine->singletonInstance<QObject*>(QStringLiteral("qmlcomponents"), QStringLiteral("TibiaStyle"));
     if (!style) {
-        qWarning("TibiaStyle is not loaded; browser text hinting stays at the platform default");
         return;
     }
     QFont font = style->property("defaultTextFont").value<QFont>();
-    font.setHintingPreference(QFont::PreferVerticalHinting);
+    font.setHintingPreference(*hinting);
     style->setProperty("defaultTextFont", font);
-#endif
 }
 
 void installTranslations()
@@ -370,13 +325,8 @@ std::unique_ptr<QQmlEngine> createEngine()
 #endif
     // Production / fallback: qrc:/qt/qml/<module>/… → staged mods/<id>/qml/<module>/…
     engine->addUrlInterceptor(new PackQmlInterceptor());
-#ifdef Q_OS_MACOS
-    // macdeployqt symlinks QML plugins from Resources/qml to PlugIns/quick; the launcher
-    // installs no symlinks, so load them from PlugIns/quick directly.
-    const QString quickPlugins = QLibraryInfo::path(QLibraryInfo::PluginsPath) + QStringLiteral("/quick");
-    if (QDir(quickPlugins).exists())
-        engine->addPluginPath(quickPlugins);
-#endif
+    for (const QString& path : tibia::platform::extraQmlPluginPaths())
+        engine->addPluginPath(path);
     imageproviders::registerImageProviders(engine.get());
 
     auto* cursor = new gamewindow::TMouseCursorController(ClientOptions::load().options(), engine.get());

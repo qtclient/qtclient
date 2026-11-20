@@ -1,4 +1,6 @@
 #include <QString>
+
+#include "platform/platform.h"
 #include <QUtf8StringView>
 #include <stdexcept>
 #include "things.h"
@@ -69,9 +71,7 @@ std::string loadAssetIdentifier(const std::string& directory)
 
     QStringList roots;
     const QString appDir = QCoreApplication::applicationDirPath();
-#if defined(Q_OS_MACOS)
-    roots << QDir(appDir + QStringLiteral("/../..")).canonicalPath();
-#endif
+    roots << tibia::platform::installRoots(appDir);
     roots << QDir(appDir).canonicalPath();
     roots << QDir(appDir + QStringLiteral("/..")).canonicalPath();
     for (const QString& root : roots) {
@@ -291,7 +291,6 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         if (m_assetIdentifier.empty()) {
             // Expected for bare --data extracts until make extract stamps the file.
             m_assetIdentifier = "appearancesHash";
-            qDebug("%s", std::format("assets.json.sha256 missing; using fallback appearancesHash").c_str());
         }
 
         tibia::assets::TContentCatalog catalog;
@@ -310,8 +309,7 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
                              &tibia::assets::TAssetAsyncLoader::priorityLoadOfSpritesheet, Qt::UniqueConnection);
         m_datLoaded = true;
         return true;
-    } catch (const std::exception& e) {
-        qCritical("%s", std::format("Failed to load '{}' (Appearances): {}", directory, e.what()).c_str());
+    } catch (const std::exception&) {
         return false;
     }
 }
@@ -333,8 +331,7 @@ bool TAppearancesManager::loadStaticData(const std::string& directory)
             m_houseMapAreas = parseStaticMapData(
                 tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + mapFileName)));
         return true;
-    } catch (const std::exception& e) {
-        qCritical("%s", std::format("Failed to load '{}' (StaticData): {}", directory, e.what()).c_str());
+    } catch (const std::exception&) {
         return false;
     }
 }
@@ -659,7 +656,6 @@ ThingShape TAppearancesManager::thingShape(const uint16_t itemId) const
 void TAppearancesManager::registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader, const bool underCreatures)
 {
     if (virtualId == 0 || baseId == 0) {
-        qWarning("%s", std::format("registerEffectVariant: invalid ids {} -> {}", virtualId, baseId).c_str());
         return;
     }
     m_effectVariants[virtualId] = EffectVariant{ baseId, shader, underCreatures };

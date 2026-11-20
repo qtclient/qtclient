@@ -3,6 +3,7 @@
 #include <cip_gen.h>
 
 #include <QByteArray>
+#include <QLoggingCategory>
 #include <QString>
 
 #include <cstdint>
@@ -12,6 +13,9 @@
 #include <variant>
 #include <string>
 #include <vector>
+
+/// CipSoft's "sound" logging category (off unless enabled by rules).
+Q_DECLARE_LOGGING_CATEGORY(lcSound)
 
 namespace tibia {
 namespace sound {

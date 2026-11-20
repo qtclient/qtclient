@@ -49,12 +49,12 @@ QByteArray TFileSystemHelper::readFile(const QString& filePath) const
 QByteArray TFileSystemHelper::readFileIfExists(const QString& filePath) const
 {
     QFile file(filePath);
-    file.open(QIODevice::ReadOnly);
     QByteArray data;
-    if (file.error() == QFileDevice::OpenError)
-        return data;
-    if (file.error() != QFileDevice::NoError)
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (file.error() == QFileDevice::OpenError)
+            return data;
         throwFileError(file, file.errorString());
+    }
     data = file.readAll();
     if (file.error() != QFileDevice::NoError)
         throwFileError(file, file.errorString());
@@ -84,7 +84,8 @@ void TFileSystemHelper::writeFile(const QString& filePath, const QByteArray& dat
 void TFileSystemHelper::writeTextFile(const QString& filePath, const QString& text) const
 {
     QFile file(filePath);
-    file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+        throwFileError(file, QStringLiteral("Could not open file."));
     QTextStream stream(&file);
     stream << text;
     file.close();
@@ -93,7 +94,8 @@ void TFileSystemHelper::writeTextFile(const QString& filePath, const QString& te
 void TFileSystemHelper::appendTextFile(const QString& filePath, const QString& text) const
 {
     QFile file(filePath);
-    file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+        throwFileError(file, QStringLiteral("Could not open file."));
     QTextStream stream(&file);
     stream << text;
     file.close();

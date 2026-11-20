@@ -74,14 +74,32 @@ if [[ ! -f "$OTC/data/assets/catalog-content.json" ]]; then
   exit 1
 fi
 
+# Resolve the tip binary and Qt kit paths in this shell. find-client-bin alone
+# runs in a subshell, so QT_PLUGIN_PATH (needed for offscreen) would be lost.
+# shellcheck source=../lifecycle/lib/desktop-paths.sh
+source "$OTC/scripts/lifecycle/lib/desktop-paths.sh"
+qtclient_desktop_paths "$OTC" || true
+
 BIN="${QTCLIENT_CLIENT_BIN:-}"
-if [[ -z "$BIN" ]]; then
+if [[ -z "$BIN" || ! -e "$BIN" ]]; then
   FIND_BIN="$OTC/scripts/lifecycle/lib/find-client-bin.sh"
   BIN="$("$FIND_BIN" "$OTC" 2>/dev/null || true)"
 fi
 if [[ -z "${BIN:-}" || ! -x "$BIN" ]]; then
   echo "[session-dump-smoke] client binary not found — set QTCLIENT_CLIENT_BIN or run make client-build" >&2
   exit 1
+fi
+
+# Non-macdeployqt tips (macos-dev / linux-dev) need the kit's platforms/;
+# release .app may also miss offscreen unless plugins are next to the binary.
+if [[ -z "${QT_PLUGIN_PATH:-}" ]]; then
+  qt_prefix=""
+  if [[ -x "$OTC/tools/qt/qt-prefix.sh" ]]; then
+    qt_prefix="$(bash "$OTC/tools/qt/qt-prefix.sh" 2>/dev/null || true)"
+  fi
+  if [[ -n "$qt_prefix" && -d "$qt_prefix/plugins" ]]; then
+    export QT_PLUGIN_PATH="$qt_prefix/plugins"
+  fi
 fi
 
 DUMP_ABS="$(cd "$(dirname "$DUMP")" && pwd)/$(basename "$DUMP")"

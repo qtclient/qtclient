@@ -1,20 +1,15 @@
 #include "sound/audiobackend.h"
 
+#include "platform/platform.h"
+
 #include "miniaudio_vorbis_backend.h"
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QEvent>
 #include <QGuiApplication>
-#include <QLoggingCategory>
-
-#if defined(Q_OS_WASM)
-#include <emscripten.h>
-#endif
 
 #include <algorithm>
 #include <set>
-
-Q_LOGGING_CATEGORY(lcAudioBackend, "tibia.sound.backend")
 
 namespace tibia::sound {
 
@@ -97,46 +92,6 @@ void applyMix(TAudioSource::Impl& impl, const float volume, const float pitch, c
     ma_sound_set_pitch(&impl.sound, pitch);
     ma_sound_set_looping(&impl.sound, looping ? MA_TRUE : MA_FALSE);
 }
-
-#if defined(Q_OS_WASM)
-void resumeWebAudio()
-{
-    EM_ASM({
-        if (window.qtclientSoundMuted)
-            return;
-        var root = (typeof window !== 'undefined') ? window.miniaudio : null;
-        if (!root || !root.devices)
-            return;
-        for (var i = 0; i < root.devices.length; i++) {
-            var device = root.devices[i];
-            if (device && device.webaudio && device.webaudio.state === 'suspended')
-                device.webaudio.resume();
-        }
-    });
-}
-
-/// Browsers start the audio context suspended until a user gesture.
-class TWebAudioUnlock final : public QObject
-{
-public:
-    using QObject::QObject;
-
-protected:
-    bool eventFilter(QObject*, QEvent* event) override
-    {
-        switch (event->type()) {
-        case QEvent::MouseButtonPress:
-        case QEvent::KeyPress:
-        case QEvent::TouchBegin:
-            resumeWebAudio();
-            break;
-        default:
-            break;
-        }
-        return false;
-    }
-};
-#endif
 
 bool initEngine(const std::optional<QString>& name)
 {
@@ -393,10 +348,7 @@ bool initialize()
     if (!initEngine(std::nullopt))
         return false;
     e.device = defaultDevice();
-#if defined(Q_OS_WASM)
-    if (auto* app = QGuiApplication::instance())
-        app->installEventFilter(new TWebAudioUnlock(app));
-#endif
+    tibia::platform::installAudioUnlock();
     return true;
 }
 
@@ -474,16 +426,12 @@ bool setDevice(const QString& name)
         if (entry.playing)
             ma_sound_start(&entry.impl->sound);
     }
-    if (!ok)
-        qCWarning(lcAudioBackend) << "could not open playback device" << name;
     return ok;
 }
 
 void setSuspended(const bool suspended)
 {
-#if defined(Q_OS_WASM)
-    EM_ASM({ window.qtclientSoundMuted = $0 ? true : false; }, suspended);
-#endif
+    tibia::platform::setAudioSuspended(suspended);
     TEngine& e = engine();
     if (!e.initialized)
         return;

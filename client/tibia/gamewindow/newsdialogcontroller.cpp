@@ -29,7 +29,8 @@ const QString& contentStyle()
 {
     static const QString style = [] {
         QFile file(QStringLiteral(":/css/news.css"));
-        file.open(QIODevice::ReadOnly);
+        if (!file.open(QIODevice::ReadOnly))
+            return QString();
         return QStringLiteral("<style type=\"text/css\">\n") + QString::fromUtf8(file.readAll()) + QStringLiteral("\n</style>\n");
     }();
     return style;

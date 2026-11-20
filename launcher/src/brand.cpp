@@ -56,7 +56,6 @@ bool tryLoadBrandDir(const QString& packDir)
     const QString brandPath = QDir(packDir).filePath(QStringLiteral("brand.json"));
     if (!readBrandJson(brandPath, &g_brand))
         return false;
-    qInfo().noquote() << "launcher brand pack:" << g_brand.id << g_brand.packRoot;
     return true;
 }
 
@@ -107,11 +106,6 @@ void scanLauncherCapabilities(const QString& modsRoot)
                 g_launcherMods.minimapChannel = true;
         }
     }
-    if (g_launcherMods.clientModsChannel || g_launcherMods.minimapChannel) {
-        qInfo().noquote() << "launcher mods capabilities:"
-                          << (g_launcherMods.clientModsChannel ? "clientmods" : "")
-                          << (g_launcherMods.minimapChannel ? "minimap" : "");
-    }
 }
 
 } // namespace
@@ -148,7 +142,6 @@ void LauncherBrand::load(int argc, char* argv[])
     }
     LauncherMods::load(g_brand.noMods);
     if (g_brand.noMods) {
-        qInfo("--no-mods: stock qtclient launcher (Play → CipSoft client)");
         return;
     }
 
@@ -158,7 +151,6 @@ void LauncherBrand::load(int argc, char* argv[])
         if (!pack.isEmpty() && tryLoadBrandDir(pack))
             return;
         // Exclusive env may be a client-only pack (mod.json, no brand) — keep CIP chrome.
-        qInfo().noquote() << "QTCLIENT_MODS_DIR set; no brand.json under" << env;
         return;
     }
 
@@ -186,11 +178,28 @@ QString LauncherBrand::chromePath(const QString& fileName) const
     return {};
 }
 
+QString LauncherBrand::chromeCdnUrl(const QString& fileName) const
+{
+    QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
+    if (cdn.isEmpty())
+        cdn = qEnvironmentVariable("QTCLIENT_ASSET_BASE");
+    if (cdn.isEmpty())
+        cdn = defaultCdn;
+    while (cdn.endsWith(u'/'))
+        cdn.chop(1);
+    if (cdn.isEmpty())
+        return {};
+    return cdn + QStringLiteral("/images/launcher/") + fileName;
+}
+
 QString LauncherBrand::chromeUrl(const QString& fileName) const
 {
     const QString disk = chromePath(fileName);
     if (!disk.isEmpty())
         return QUrl::fromLocalFile(disk).toString();
+    const QString tip = chromeCdnUrl(fileName);
+    if (!tip.isEmpty())
+        return tip;
     return QStringLiteral(":/images/launcher/") + fileName;
 }
 

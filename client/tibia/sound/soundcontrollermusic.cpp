@@ -4,7 +4,7 @@
 
 #include <limits>
 
-Q_LOGGING_CATEGORY(lcSoundMusic, "sound.music", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSoundMusic, "sound.music", QtFatalMsg)
 
 namespace tibia::sound {
 
@@ -58,7 +58,8 @@ void TSoundControllerMusic::updateMusic()
         const int64_t duration = m_activePlayer.durationMs();
         const int64_t offset = m_activePlayer.playingOffsetMs();
         if (half < duration && half < offset && offset < duration - half) {
-            qCDebug(lcSoundMusic) << "Skipping to the end of" << soundManager()->soundName(m_currentTemplate ? m_currentTemplate->soundId : 0);
+            qCDebug(lcSoundMusic) << "skipping music" << soundManager()->soundName(m_currentTemplate ? m_currentTemplate->soundId : 0)
+                                  << "to last " << half << "ms for better debugging";
             m_activePlayer.setPlayingOffsetMs(duration - half);
         }
     }
@@ -97,7 +98,7 @@ void TSoundControllerMusic::updateMusic()
 
 void TSoundControllerMusic::onMusicFinished()
 {
-    qCDebug(lcSoundMusic) << "Music finished"
+    qCDebug(lcSoundMusic) << "music has stopped:"
                           << soundManager()->soundName(m_currentTemplate ? m_currentTemplate->soundId : 0);
     m_activePlayer.reset();
     if (m_currentTemplate) {
@@ -108,7 +109,8 @@ void TSoundControllerMusic::onMusicFinished()
         else if (m_currentTemplate->musicType == Music)
             cooldown = randomSeconds(settings.musicCooldown);
         if (!isSuspended()) {
-            qCDebug(lcSoundMusic) << "Music template" << m_currentTemplate->id << "cooldown" << cooldown << "seconds";
+            qCDebug(lcSoundMusic) << "Earliest time to play" << soundManager()->soundName(m_currentTemplate->soundId)
+                                  << "again is" << cooldown << "seconds";
             m_templateCooldownSeconds[m_currentTemplate->id] = cooldown + m_nowSeconds;
         }
     }
@@ -157,7 +159,7 @@ void TSoundControllerMusic::startMusic(const TSoundEffectID soundId)
     if (!playable || !playable->isReady())
         return;
     if (playable->metadata().fileName.isEmpty()) {
-        qCDebug(lcSoundMusic) << "Music" << soundManager()->soundName(soundId) << "has no file";
+        qCDebug(lcSoundMusic) << "no filename for music found. stopping music " << soundManager()->soundName(soundId);
     } else if (!m_activePlayer.isPlaying()) {
         m_activePlayer.setVolume(volume);
         const char* kind = "music";
@@ -165,7 +167,8 @@ void TSoundControllerMusic::startMusic(const TSoundEffectID soundId)
             kind = "immediate music";
         else if (m_currentTemplate && m_currentTemplate->musicType == TitleMusic)
             kind = "title music";
-        qCDebug(lcSoundMusic) << "Start" << kind << soundManager()->soundName(soundId);
+        qCDebug(lcSoundMusic) << "starting" << QString::fromLatin1(kind) << soundManager()->soundName(soundId)
+                              << "with volume of" << volume;
         m_activePlayer.play(*playable);
         return;
     } else {
@@ -173,7 +176,6 @@ void TSoundControllerMusic::startMusic(const TSoundEffectID soundId)
             return;
         m_activePlayer.setVolume(volume);
         m_activePlayer.setNextSound(*playable);
-        qCDebug(lcSoundMusic) << "Cross-fade to" << soundManager()->soundName(soundId);
     }
     m_activePlayer.fadeOut();
 }
@@ -182,7 +184,7 @@ void TSoundControllerMusic::stopMusic(const bool immediately)
 {
     if (!m_activePlayer.isPlaying())
         return;
-    qCDebug(lcSoundMusic) << "Stop music" << soundManager()->soundName(m_currentTemplate ? m_currentTemplate->soundId : 0);
+    qCDebug(lcSoundMusic) << "stopping music " << soundManager()->soundName(m_currentTemplate ? m_currentTemplate->soundId : 0);
     if (immediately)
         m_activePlayer.stopNow();
     else
@@ -192,7 +194,7 @@ void TSoundControllerMusic::stopMusic(const bool immediately)
 void TSoundControllerMusic::setCurrentMusicTemplate(const uint16_t templateId)
 {
     m_requestedTemplate = metadata()->musicTemplate(templateId);
-    qCDebug(lcSoundMusic) << "TSoundControllerMusic::setCurrentMusicTemplate: New Music Template" << templateId;
+    qDebug() << "TSoundControllerMusic::setCurrentMusicTemplate: New Music Template" << templateId;
     const bool otherTemplate = m_currentTemplate && m_currentTemplate->id != templateId;
     if (otherTemplate && m_currentTemplate->musicType == ImmediateMusic && m_nextMusicSeconds > m_nowSeconds)
         setPause(LongPause);
@@ -214,7 +216,7 @@ void TSoundControllerMusic::setSuspended(const bool suspended)
         return;
     }
     m_templateCooldownSeconds.clear();
-    qCDebug(lcSoundMusic) << "Music cooldowns cleared";
+    qCDebug(lcSoundMusic) << "Clear earliest times to play for all music tracks";
     if (const std::optional<TMusicTemplateMetadata> title = metadata()->titleMusicTemplate()) {
         setCurrentMusicTemplate(title->id);
         setPause(Immediate);

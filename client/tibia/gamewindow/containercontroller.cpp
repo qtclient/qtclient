@@ -3,6 +3,7 @@
 #include "app/clientoptions.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
+#include "container/containergameactionprovider.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -29,14 +30,6 @@ using Cursor = TMouseCursorController;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
-
-/// CIP : the object actions container slots offer.
-constexpr A SlotActionTypes[] = {
-    A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::USE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW,
-    A::MOVE_OBJECT, A::TRADE_ITEM, A::TARGET_SELECTED, A::SMART_CLICK, A::OPEN_MANAGE_LOOT_CONTAINER, A::LOOT_ADD_TO_BLACKWHITELIST,
-    A::LOOT_REMOVE_FROM_BLACKWHITELIST, A::STASH_STOW_CONTAINER_CONTENT, A::STASH_OPEN_STOW_STACK_DIALOG, A::MARKET_BROWSE,
-    A::GET_TEXT_FOR_REPORT,
-};
 
 /// CIP DAT_10278d408: a container slot's context menu.
 constexpr A ContextMenuOrder[] = {
@@ -436,28 +429,7 @@ Position TContainerController::slotPosition(const int pageSlot) const
 
 input::TGameActionList TContainerController::slotActions(const int slotId) const
 {
-    const container::TStoredContainer* row = stored();
-    if (!row || slotId < 0)
-        return {};
-    const container::TInventorySlot slot = container::TContainerStorage::instance()->slotAt(m_containerId, slotId);
-    if (slot.empty())
-        return {};
-    const int pageSlot = slotId - static_cast<int>(row->firstIndex);
-    const Position position = slotPosition(pageSlot);
-    input::TGameActionList actions;
-    if (row->hasParent) {
-        actions.push_back(input::makeObjectGameAction(A::OPEN_PARENT_CONTAINER, position, pageSlot, slot.typeId));
-        TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
-        if (!type || !type->isNotMoveable()) {
-            // The generic handler moves the whole stack to the parent slot.
-            actions.push_back(input::makeObjectGameAction(A::MOVE_UP, position, pageSlot, slot.typeId));
-        }
-    }
-    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    for (input::IGameActionPtr& action :
-         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot), SlotActionTypes))
-        actions.push_back(std::move(action));
-    return actions;
+    return container::TContainerGameActionProvider::containerSlotActions(static_cast<uint8_t>(m_containerId), slotId);
 }
 
 void TContainerController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)

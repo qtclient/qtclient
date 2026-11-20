@@ -8,7 +8,6 @@
 #include "rsahelper.h"
 
 #include <QCoreApplication>
-#include <QLoggingCategory>
 #include <QMetaObject>
 #include <QPointer>
 #include <QStringList>
@@ -24,8 +23,6 @@
 #if defined(Q_OS_WASM)
 #include <emscripten/val.h>
 #endif
-
-Q_LOGGING_CATEGORY(lcGameConn, "tibia.gameconnection")
 
 namespace tibia::network {
 
@@ -333,7 +330,6 @@ void TGameserverNetworkPacketConnection::ingestWire(const QByteArray& chunk)
         const auto header = readU16(m_recv, 0);
         const int remaining = modern ? int(header) * 8 + 4 : int(header);
         if (remaining <= 0 || remaining > 0xffff) {
-            qCWarning(lcGameConn) << "invalid frame header" << header;
             fail(QStringLiteral("invalid packet size"), false);
             return;
         }
@@ -352,7 +348,6 @@ void TGameserverNetworkPacketConnection::decodeFrame(const QByteArray& afterSize
     const bool modern = true;
     const bool hasWord = m_sequenced || m_checksum || modern;
     if (hasWord && afterSize.size() < 4) {
-        qCWarning(lcGameConn) << "short game frame" << afterSize.size();
         return;
     }
     uint32_t word = 0;
@@ -364,19 +359,16 @@ void TGameserverNetworkPacketConnection::decodeFrame(const QByteArray& afterSize
     if (!m_sequenced && m_checksum) {
         const auto sum = uint32_t(::adler32(::adler32(0L, Z_NULL, 0), reinterpret_cast<const Bytef*>(body.constData()), uInt(body.size())));
         if (sum != word) {
-            qCWarning(lcGameConn) << "invalid game checksum";
             return;
         }
     }
     if (m_xtea) {
         if (modern) {
             if (!decryptGameXtea1405(m_xteaKey, body)) {
-                qCWarning(lcGameConn) << "XTEA decrypt failed";
                 return;
             }
         } else {
             if (body.size() < 8 || (body.size() % 8) != 0) {
-                qCWarning(lcGameConn) << "invalid encrypted frame";
                 return;
             }
             xteaBlocks(reinterpret_cast<uint8_t*>(body.data()), size_t(body.size()), m_xteaKey, false);
@@ -384,7 +376,6 @@ void TGameserverNetworkPacketConnection::decodeFrame(const QByteArray& afterSize
                 return;
             const int inner = readU16(body, 0);
             if (inner < 0 || 2 + inner > body.size()) {
-                qCWarning(lcGameConn) << "invalid decrypted size";
                 return;
             }
             body = body.mid(2, inner);
@@ -420,7 +411,6 @@ bool TGameserverNetworkPacketConnection::inflatePrecursor(QByteArray& body)
         if (tryPerPacket())
             return true;
         if (m_compression == PerPacket) {
-            qCWarning(lcGameConn) << "per-packet inflate failed";
             return false;
         }
         m_compression = Stream;
@@ -437,7 +427,6 @@ bool TGameserverNetworkPacketConnection::inflatePrecursor(QByteArray& body)
     m_zstream.total_out = 0;
     const int ret = inflate(&m_zstream, Z_SYNC_FLUSH);
     if (ret != Z_OK && ret != Z_STREAM_END) {
-        qCWarning(lcGameConn) << "stream inflate failed";
         return false;
     }
     if (m_zstream.total_out == 0)

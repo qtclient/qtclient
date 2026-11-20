@@ -40,7 +40,7 @@ constexpr A ContextMenuOrder[] = {
     A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST, A::CONTEXT_MENU_SEPARATOR, A::COPY_CREATURE_NAME_TO_CLIPBOARD,
 };
 
-/// The widget's own game actions (CIP).
+/// The game actions the widget handles itself. // not-a-cip-table
 constexpr A WidgetActions[] = {
     A::OPEN_ADD_VIP_DIALOG, A::OPEN_EDIT_VIP_DIALOG, A::OPEN_ADD_VIP_GROUP_DIALOG, A::OPEN_EDIT_VIP_GROUP_DIALOG,
     A::SORT_VIPS_BY_NAME,   A::SORT_VIPS_BY_ICON,    A::SORT_VIPS_BY_STATUS,       A::HIDE_OFFLINE_VIPS,

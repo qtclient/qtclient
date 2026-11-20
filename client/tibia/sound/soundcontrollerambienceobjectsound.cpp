@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-Q_LOGGING_CATEGORY(lcSoundObjects, "sound.objects", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSoundObjects, "sound.ambience.objectsounds", QtFatalMsg)
 
 namespace tibia::sound {
 
@@ -45,15 +45,17 @@ void TSoundControllerAmbienceObjectSound::update(const int64_t nowMs)
 void TSoundControllerAmbienceObjectSound::applyDistance(TActiveSoundPlayer* player, const int nearestDistance)
 {
     const TSoundSettings& settings = configuration()->settings();
-    player->setDistanceModifier(distanceModifier(settings.distanceVolumeMax, settings.distanceVolumeStep, nearestDistance));
-    qCDebug(lcSoundObjects) << "Distance of" << soundManager()->soundName(player->currentSoundId()) << "is" << nearestDistance;
+    const auto modifier = distanceModifier(settings.distanceVolumeMax, settings.distanceVolumeStep, nearestDistance);
+    player->setDistanceModifier(modifier);
+    qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::updateVolumeForPlayer:" << "updating distance fade to"
+                            << int(modifier) << soundManager()->soundName(player->currentSoundId());
 }
 
 void TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged(const uint16_t streamId, const size_t count,
                                                                            const int nearestDistance)
 {
     qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged for object sound"
-                            << streamId << "count" << count << "nearest" << nearestDistance;
+                            << streamId << "new count:" << count << "distance:" << nearestDistance;
     auto it = m_entries.find(streamId);
     if (it == m_entries.end()) {
         const std::optional<TAmbienceObjectStreamMetadata> stream = metadata()->ambienceObjectStream(streamId);
@@ -89,8 +91,9 @@ void TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged(const
     }
     if (!soundId) {
         if (player->isPlaying()) {
-            qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged: stop"
-                                    << soundManager()->soundName(player->currentSoundId()) << "count" << count;
+            qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
+                                    << "stop playing" << soundManager()->soundName(player->currentSoundId())
+                                    << "for object sound " << streamId << " with " << count << " objects";
             player->fadeOut();
         }
         return;
@@ -98,16 +101,18 @@ void TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged(const
 
     std::optional<TPlayableSound> playable = soundManager()->playableSound(*soundId);
     if (!playable || (!playable->isReady() && !playable->isLoading())) {
-        qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged: no sound"
-                                << soundManager()->soundName(*soundId);
+        qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
+                                << "stop playing" << soundManager()->soundName(*soundId) << "for object sound "
+                                << streamId << " due to invalid EffectInfo";
         player->fadeOut();
         return;
     }
     if (player->currentSoundId() != playable->soundId()) {
         const TSoundSettings& soundSettings = configuration()->settings();
         player->setFade(2, soundSettings.ambienceObjectFadeMs, soundSettings.fadeSteps);
-        qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged: play"
-                                << soundManager()->soundName(playable->soundId());
+        qCDebug(lcSoundObjects) << "TSoundControllerAmbienceObjectSound::ambienceObjectStreamCountChanged:"
+                                << "start playing" << soundManager()->soundName(playable->soundId())
+                                << "for object sound" << streamId;
         player->play(*playable);
         player->setLooping(true);
     }

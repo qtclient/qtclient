@@ -286,9 +286,8 @@ void TProficiencyStorage::loadTables() const
     m_tablesLoaded = true;
     try {
         readTables(path);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
         m_tables.clear();
-        qWarning("proficiencies: %s", e.what());
     }
 }
 

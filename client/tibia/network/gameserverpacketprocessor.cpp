@@ -12,53 +12,16 @@
 
 #include <protocol.pb.h>
 
-#include <QLoggingCategory>
-
 #include <algorithm>
 #include <ctime>
 #include <random>
 #include <string>
-
-Q_LOGGING_CATEGORY(lcPacketProcessor, "tibia.network.packetprocessor")
 
 namespace tibia::network {
 
 namespace {
 
 TGameserverNetworkPacketProcessor* g_live = nullptr;
-
-// Log the opcodes when a second crosses the server's packet rate cap, so a
-// reconnect or resend loop shows in the client log.
-void noteClientSendRate(const QByteArray& frame)
-{
-    struct Bucket {
-        std::time_t second = 0;
-        int count = 0;
-        int byOpcode[256] = {};
-    };
-    static Bucket bucket;
-    const std::time_t now = std::time(nullptr);
-    if (now != bucket.second) {
-        bucket = {};
-        bucket.second = now;
-    }
-    const auto opcode = frame.isEmpty() ? 0 : uint8_t(frame[0]);
-    ++bucket.count;
-    ++bucket.byOpcode[opcode];
-    if (bucket.count != 40 && bucket.count != 80 && bucket.count != 160)
-        return;
-    int ranked[256];
-    for (int i = 0; i < 256; ++i)
-        ranked[i] = i;
-    std::sort(ranked, ranked + 256, [&](const int a, const int b) { return bucket.byOpcode[a] > bucket.byOpcode[b]; });
-    std::string top;
-    for (int n = 0; n < 6 && bucket.byOpcode[ranked[n]] > 0; ++n) {
-        if (!top.empty())
-            top += ' ';
-        top += std::to_string(ranked[n]) + "x" + std::to_string(bucket.byOpcode[ranked[n]]);
-    }
-    qWarning("%s", std::format("client send rate reached {} packets this second ({})", bucket.count, top).c_str());
-}
 
 constexpr uint8_t kQuitGameOpcode = 20;
 
@@ -231,10 +194,7 @@ void TGameserverNetworkPacketProcessor::write(const QByteArray& frame, const boo
             fail({}, true);
         return;
     }
-    if (!raw)
-        noteClientSendRate(frame);
     if (frame.size() > 0xffff) {
-        qCritical("%s", std::format("game packet exceeds 65535 bytes").c_str());
         return;
     }
     if (m_connection)

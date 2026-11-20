@@ -94,9 +94,6 @@ TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObje
 {
     if (gameWindowItem)
         m_bar = gameWindowItem->findChild<QQuickItem*>(QLatin1String("cooldownBar"));
-    if (!m_bar)
-        qWarning("gamewindow.qml has no cooldownBar");
-
     showIdleSpellGroups();
 
     m_nextFrame.setSingleShot(true);

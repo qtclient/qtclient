@@ -5,11 +5,7 @@
 #include "mods/mission_backend.h"
 #include "mods/weather_driver.h"
 
-#include <QLoggingCategory>
-
 #include <algorithm>
-
-Q_LOGGING_CATEGORY(lcModRegistry, "tibia.mods.registry")
 
 namespace tibia::mods {
 namespace {
@@ -157,12 +153,10 @@ void setWeatherDriver(WeatherDriver* driver)
 {
     // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
     if (driver && g_weather && g_weather != driver) {
-        qCWarning(lcModRegistry) << "WeatherDriver already set; keeping first";
         return;
     }
     g_weather = driver;
 }
 WeatherDriver* weatherDriver() { return g_weather; }
-
 
 } // namespace tibia::mods

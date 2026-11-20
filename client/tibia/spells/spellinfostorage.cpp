@@ -161,7 +161,7 @@ TSpellInfoStorage::TSpellInfoStorage()
     const QString path = spellsJsonPath();
     QFile file(path);
     if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
-        qWarning("spells.json missing (make extract → data/assets/spells.json): spells unknown");
+        qWarning() << "can't load spells.json";
         return;
     }
     for (const QJsonValue& value : QJsonDocument::fromJson(file.readAll()).array()) {

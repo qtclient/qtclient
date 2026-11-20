@@ -271,8 +271,6 @@ TCreatureHUDOverlayController::TCreatureHUDOverlayController(QQuickItem* overlay
     if (QQmlEngine* engine = qmlEngine(overlay)) {
         m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/CreatureHUD.qml")),
                                         QQmlComponent::PreferSynchronous, this);
-        if (m_component->isError())
-            qWarning().noquote() << "CreatureHUD:" << m_component->errorString();
     }
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             [this] { m_options = app::ClientOptions::load().options(); });

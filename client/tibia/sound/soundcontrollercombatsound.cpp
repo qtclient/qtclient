@@ -58,7 +58,8 @@ void TSoundControllerCombatSound::playEffectSounds(const std::vector<TSoundToPla
             keepSingleShot(std::move(*token));
     }
     if (!skipped.isEmpty())
-        qWarning() << "No free sound player for the effects" << skipped;
+        qDebug() << "Could not play" << skipped.size() << "numeric sound effects because no player was available"
+                 << skipped;
 }
 
 void TSoundControllerCombatSound::stopAll()

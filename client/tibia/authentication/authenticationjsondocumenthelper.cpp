@@ -1,5 +1,7 @@
 #include "authentication/authenticationjsondocumenthelper.h"
 
+#include "platform/capabilities.h"
+
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QSysInfo>
@@ -130,11 +132,9 @@ uint32_t readUnsigned(const QJsonObject& object, const QString& key)
 
 int TWorld::port() const
 {
-#ifdef Q_OS_WASM
-    // A browser can only open WebSockets: the product's WebSocket game port.
-    if (webSocketPort > 0)
+    // Without TCP (the browser) the product's WebSocket game port is the game port.
+    if (!tibia::platform::kHasTcpSockets && webSocketPort > 0)
         return webSocketPort;
-#endif
     return externalPortProtected;
 }
 

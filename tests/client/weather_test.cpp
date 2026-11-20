@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
 
-#include "qtclient/weather/weathersounds.h"
-#include "qtclient/weather/weatherstate.h"
+#include "idleot/weather/weathersounds.h"
+#include "idleot/weather/weatherstate.h"
 #include "renderer/worldgeometry.h"
 
 #include <QJsonObject>
 
-using tibia::qtclient::WeatherKind;
-using tibia::qtclient::WeatherState;
-using tibia::qtclient::weatherStateFromOpcode;
+using tibia::idleot::WeatherKind;
+using tibia::idleot::WeatherState;
+using tibia::idleot::weatherStateFromOpcode;
 using tibia::qmlcomponents::WorldGeometry;
 
 TEST(WeatherState, HasAtmosphereIgnoresBareKind)
@@ -80,7 +80,7 @@ TEST(WeatherOpcode, ParsesThunderSoundId)
 
 TEST(WeatherSounds, ResolveBedsOutdoorIndoor)
 {
-    using namespace tibia::qtclient::weather_sounds;
+    using namespace tibia::idleot::weather_sounds;
     WeatherState rain;
     rain.kind = WeatherKind::Rain;
     rain.intensity = 0.3f;
@@ -100,6 +100,12 @@ TEST(WeatherSounds, ResolveBedsOutdoorIndoor)
         const BedChoice inn = resolvePrecipBed(rain, false);
         EXPECT_EQ(inn.shelter, Shelter::Indoor);
         EXPECT_STREQ(inn.path, kRainIndoorRoof);
+    }
+    // Light indoor rain uses the window bed (heavy/storm keep roof).
+    rain.intensity = 0.3f;
+    {
+        const BedChoice inn = resolvePrecipBed(rain, false);
+        EXPECT_STREQ(inn.path, kRainIndoorWindow);
     }
 
     WeatherState storm;

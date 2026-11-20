@@ -1,6 +1,9 @@
 #include "stashdialogcontroller.h"
 
+#include "platform/platform.h"
+
 #include "app/clientoptions.h"
+#include "container/containergameactionprovider.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -28,10 +31,6 @@ using Order = cip::tibia::qmlcomponents::enums::ESortOrder;
 
 /// CIP: the mouse mapping context of stash slots ((.., 8, ..)).
 constexpr int StashContext = 8;
-/// CIP : STASH_RETRIEVE offers at most this many of a type.
-constexpr uint32_t MaximumRetrieveCount = 100;
-constexpr uint32_t MaximumCumulativeRetrieveCount = 10000;
-
 /// CIP DAT_102793cf0 (filled from): a stash slot's context menu.
 constexpr A ContextMenuOrder[] = {
     A::STASH_OPEN_RETRIEVE_DIALOG, A::CONTEXT_MENU_SEPARATOR, A::OPEN_CYCLOPEDIA, A::CONTEXT_MENU_SEPARATOR,
@@ -94,11 +93,7 @@ TStashProxyModel::TStashProxyModel(TAppearanceTypeListModel* model, std::functio
     , m_counts(std::move(counts))
 {
     setSourceModel(model);
-#if !defined(Q_OS_WASM)
-    // Wasm's POSIX collator logs and ignores both of these.
-    m_collator.setCaseSensitivity(Qt::CaseInsensitive);
-    m_collator.setNumericMode(true);
-#endif
+    tibia::platform::configureNaturalCollator(m_collator);
     sort(0);
 }
 
@@ -488,26 +483,10 @@ void TStashDialogController::closeButtonClicked()
 
 input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId) const
 {
-    input::TGameActionList actions;
-    TAppearanceType* type = typeOf(typeId);
     const auto stored = m_content.find(typeId);
-    if (!type || stored == m_content.end())
-        return actions;
-    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    if (type->hasCyclopediaItem()) {
-        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
-    }
-
-    const uint32_t maximum = type->isStackable() ? MaximumCumulativeRetrieveCount : MaximumRetrieveCount;
-    auto retrieve = std::make_shared<input::TGameActionStashRetrieve>(static_cast<uint16_t>(typeId),
-                                                                      static_cast<int>(std::min(stored->second, maximum)));
-    actions.push_back(std::make_shared<input::TGameActionStashOpenRetrieveDialog>(retrieve));
-
-    if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
-        actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
-            input::TObjectGameActionContext{ {}, -1, static_cast<uint16_t>(typeId) }));
-    }
-    return actions;
+    if (stored == m_content.end())
+        return {};
+    return container::TContainerGameActionProvider::stashTypeActions(typeId, stored->second);
 }
 
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)

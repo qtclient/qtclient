@@ -76,8 +76,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
                                                                     { P::ActionBarPositionRight, "rightActionBars" } } };
         for (size_t i = 0; i < containers.size(); ++i) {
             auto* container = gameWindowItem->findChild<QQuickItem*>(QLatin1String(containers[i].second));
-            if (!container)
-                qWarning("gamewindow.qml has no %s", containers[i].second);
             m_groups[i] = std::make_unique<TActionBarGroup>(this, containers[i].first, container, engine, gameWindowItem, mapWindowPane,
                                                            &m_displayOptions);
             connect(m_groups[i].get(), &TActionBarGroup::publishGameAction, this, &TActionBarManager::publishGameAction);

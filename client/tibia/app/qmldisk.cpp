@@ -1,5 +1,7 @@
 #include "qmldisk.h"
 
+#include "platform/platform.h"
+
 #if defined(TIBIA_QML_DISK)
 
 #include <QCoreApplication>
@@ -39,7 +41,6 @@ public:
             return false;
         if (auto* engine = property("engine").value<QQmlEngine*>()) {
             engine->clearComponentCache();
-            qInfo("qml-disk: cleared component cache (F5)");
         }
         return false;
     }
@@ -68,12 +69,7 @@ QUrl DiskQmlInterceptor::rewriteCipResourceUrl(const QUrl& url) const
 {
     QString path;
     if (url.scheme() == QLatin1String("file")) {
-        path = url.toLocalFile();
-#if defined(Q_OS_WIN)
-        path.replace(QLatin1Char('\\'), QLatin1Char('/'));
-        if (path.size() >= 2 && path.at(1) == QLatin1Char(':'))
-            path = path.mid(2);
-#endif
+        path = tibia::platform::normalizeLocalPath(url.toLocalFile());
     } else if (url.scheme().isEmpty()) {
         path = url.path();
     } else {
@@ -161,7 +157,6 @@ void installQmlDiskHotReload(QQmlEngine* engine, QObject* context)
     debounce->setInterval(150);
     QObject::connect(debounce, &QTimer::timeout, context, [engine] {
         engine->clearComponentCache();
-        qInfo("qml-disk: source changed — component cache cleared (reopen dialogs; F5 to clear again)");
     });
     QObject::connect(watcher, &QFileSystemWatcher::fileChanged, context, [watcher, debounce](const QString& path) {
         if (QFileInfo::exists(path))
@@ -173,7 +168,6 @@ void installQmlDiskHotReload(QQmlEngine* engine, QObject* context)
     filter->setProperty("engine", QVariant::fromValue(engine));
     qApp->installEventFilter(filter);
 
-    qInfo("qml-disk: mod QML + overrides from disk; qmlcomponents on qrc (F5 clears cache)");
 }
 
 }

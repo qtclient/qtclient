@@ -32,7 +32,6 @@
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 #include "creatures/creaturestorage.h"
-#include "creatures/walkdebug.h"
 #include "minimap/waypointcosts.h"
 
 #include <QThreadPool>
@@ -670,7 +669,6 @@ void TWorldMapSessionState::setCentralPosition(const Position& centralPosition)
             localPlayerDisappeared();
         setLocalPlayerPosition(m_centralPosition);
         localPlayerAppeared();
-        qDebug("%s", std::format("Forced player position update").c_str());
     });
 }
 

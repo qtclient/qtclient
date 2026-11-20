@@ -244,8 +244,8 @@ QWidget* TLauncherMainWindow::createEulaText()
         }
 )CSS") + scrollBarStyle());
     QFile eula(QStringLiteral(":/documents/tibia-eula.md"));
-    eula.open(QIODevice::ReadOnly);
-    text->setMarkdown(QString::fromUtf8(eula.readAll()));
+    if (eula.open(QIODevice::ReadOnly))
+        text->setMarkdown(QString::fromUtf8(eula.readAll()));
     return text;
 }
 

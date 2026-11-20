@@ -85,9 +85,6 @@ private:
     std::vector<TFileInPackage> m_completedFiles;
     std::map<QUrl, TFileSize> m_downloadedBytes;
     QTimer m_speedTimer;
-    QElapsedTimer m_elapsed;
-    quint64 m_progressTicks = 0;
-    TFileSize m_progressBytes = 0;
     TFileSize m_lastDownloadedBytes = 0;
     quint64 m_speedSamples = 0;
     quint64 m_minimumSpeed = ~0ULL;

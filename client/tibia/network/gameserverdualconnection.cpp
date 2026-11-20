@@ -7,14 +7,10 @@
 #include <tibia/game/gamesession.h>
 #include "network/gameserverpacketprocessor.h"
 
-#include <QLoggingCategory>
 #include <QTimer>
 #include <QUrl>
 
 #include <tibia/game/gamenotify.h>
-
-
-Q_LOGGING_CATEGORY(lcDualConn, "tibia.dualconnection")
 
 namespace tibia::network {
 
@@ -58,7 +54,6 @@ QByteArray frameModern(const QByteArray& payload, const quint32 checksum)
     out.append(packet);
     return out;
 }
-
 
 }
 
@@ -225,7 +220,6 @@ void TGameserverDualConnection::adoptPrimaryXteaKeys()
     // keep-alive frames can be decrypted (Crystal shares one XTEA session).
     const auto* primary = TGameserverNetworkPacketProcessor::live();
     if (!primary) {
-        qCWarning(lcDualConn) << "no primary game connection; secondary stays keep-alive-only";
         return;
     }
     m_xteaKey = primary->xteaKey();
@@ -289,7 +283,6 @@ void TGameserverDualConnection::processRecvBuffer()
         const auto headerSize = quint16(uint8_t(m_recvBuffer[0]) | (uint16_t(uint8_t(m_recvBuffer[1])) << 8));
         const int remaining = int(headerSize) * 8 + 4;
         if (remaining <= 0 || remaining > 0xffff) {
-            qCWarning(lcDualConn) << "invalid secondary frame headerSize" << headerSize;
             m_recvBuffer.clear();
             return;
         }
@@ -309,7 +302,6 @@ void TGameserverDualConnection::processRecvBuffer()
 
         if (m_xteaEnabled) {
             if (!decryptXteaInPlace(body)) {
-                qCWarning(lcDualConn) << "secondary XTEA decrypt failed; checksum" << Qt::hex << checksum;
                 continue;
             }
             deliverSecondaryDecrypted(checksum, std::move(body));

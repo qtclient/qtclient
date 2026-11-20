@@ -131,7 +131,6 @@ bool TSpriteTextureCache::syncHdMode(const bool hd)
 {
     if (hd == m_hdMode)
         return false;
-    qWarning("tibia.sprites: HD mode %s — rebuilding sprite textures", hd ? "on" : "off");
     m_hdMode = hd;
     // Callers that own the scene graph (WorldMap) must clear nodes before clear.
     // Shared UI rebuilds nodes each paint; retire frees after swap.

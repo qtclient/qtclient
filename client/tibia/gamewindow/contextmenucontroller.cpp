@@ -327,7 +327,7 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
     };
 
     if (hasSelection && plain && !readOnly) {
-        connect(addEntry(qtTrId("cut_text")), &TContextMenuEntryItem::triggered, this, [=] {
+        connect(addEntry(qtTrId("cut_text")), &TContextMenuEntryItem::triggered, this, [=, this] {
             const QString text = field ? field->property("selectedText").toString() : QString();
             removeSelection();
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(text));

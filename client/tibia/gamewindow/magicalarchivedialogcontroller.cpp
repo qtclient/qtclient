@@ -5,7 +5,9 @@
 #include "spells/spellinfostorage.h"
 
 #include <QFile>
+#include <QDebug>
 #include <QJsonDocument>
+#include <QJsonParseError>
 #include <QJSEngine>
 #include <QLocale>
 
@@ -28,10 +30,17 @@ TMagicalArchiveDialogController::TMagicalArchiveDialogController(QObject* parent
 
     const QString path = spells::spellsAssetPath(QStringLiteral("spells-previews.json"));
     QFile file(path);
-    if (!path.isEmpty() && file.open(QIODevice::ReadOnly))
-        m_previewsVariant = QJsonDocument::fromJson(file.readAll()).toVariant();
-    else
-        qWarning("spells-previews.json missing (make extract → data/assets/spells-previews.json)");
+    if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open" << qUtf8Printable(path);
+        return;
+    }
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse JSON:" << error.errorString();
+        return;
+    }
+    m_previewsVariant = document.toVariant();
 }
 
 QJSValue TMagicalArchiveDialogController::spellsPreviewsJson() const

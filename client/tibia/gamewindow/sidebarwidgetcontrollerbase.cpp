@@ -49,7 +49,6 @@ void TSidebarWidget::createItemFromUrl(const QUrl& url)
     QObject* object = component.beginCreate(m_engine->rootContext());
     auto* item = qobject_cast<QQuickItem*>(object);
     if (!item) {
-        qWarning().noquote() << "Component creation error for" << url << component.errorString();
         delete object;
         return;
     }

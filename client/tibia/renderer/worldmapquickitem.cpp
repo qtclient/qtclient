@@ -10,7 +10,6 @@
 #include "renderer/spritetextureprovider.h"
 
 #include "sprites/hdscale.h"
-#include "creatures/walkdebug.h"
 
 #include <algorithm>
 #include <QElapsedTimer>
@@ -30,7 +29,6 @@
 #include <type_traits>
 #include <vector>
 
-Q_LOGGING_CATEGORY(lcWorldMap, "tibia.worldmap", QtWarningMsg)
 
 namespace tibia::qmlcomponents {
 
@@ -136,23 +134,7 @@ void TWorldMapQuickItem::harvestNodes(QSGNode* node)
 
 QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
-    QElapsedTimer cost;
-    cost.start();
     if (!m_provider || !m_provider->frame().valid) {
-        static QElapsedTimer s_blackWorldLog;
-        if (tibia::creatures::walkDebugShouldLog(s_blackWorldLog, 500)) {
-            qCDebug(lcWorldMap) << "black-world"
-                                << "hasProvider" << (m_provider != nullptr)
-                                << "frameValid" << (m_provider && m_provider->frame().valid)
-                                << "sprites" << (m_provider ? m_provider->frame().sprites.size() : 0)
-                                << "creatures" << (m_provider ? m_provider->frame().creatures.size() : 0)
-                                << "camera" << (m_provider ? m_provider->frame().camera : QPoint());
-            if (tibia::creatures::lcWalk().isDebugEnabled()) {
-                qCDebug(tibia::creatures::lcWalk) << "black-world"
-                                                  << "hasProvider" << (m_provider != nullptr)
-                                                  << "frameValid" << (m_provider && m_provider->frame().valid);
-            }
-        }
         tibia::mods::abandonWorldOverlayNodes();
         harvestNodes(oldNode);
         delete oldNode;
@@ -286,8 +268,6 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         return &*group;
     };
 
-    int drawn = 0;
-    int highlighted = 0;
     bool waiting = false;
     for (const SpriteRecord& record : frame.sprites) {
         Children* parent = parentFor(record.opacity);
@@ -302,7 +282,6 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
                 waiting = true;
             continue;
         }
-        ++drawn;
         // The texture holds the sprite's part `sprite.rect` (HD textures hold more
         // texels per pixel; they are drawn at the part's size).
         const QRectF source(QPointF(), texture->textureSize());
@@ -311,7 +290,6 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         const QRectF rect(topLeft, sprite.rect.size());
 
         if (record.highlight != SpriteRecord::NoHighlight && !bakeHighlight) {
-            ++highlighted;
             const QColor base = renderer::TScenegraphNodeProvider::highlightColor(record.highlight);
             QColor color = base;
             color.setAlphaF(frame.highlightStrength);
@@ -351,12 +329,9 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         if (image->rect() != rect)
             image->setRect(rect);
     }
-    int groupCount = 0;
     for (std::optional<Children>& group : groups) {
-        if (group) {
+        if (group)
             trim(*group);
-            ++groupCount;
-        }
     }
     trim(root);
     m_textures->cache().endFrame();
@@ -371,17 +346,6 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             factory->updateScene(window(), camera, sprites);
     }
 
-    if (lcWorldMap().isDebugEnabled()) {
-        static QElapsedTimer logged;
-        if (!logged.isValid() || logged.elapsed() > 1000) {
-            logged.start();
-            qCDebug(lcWorldMap) << "sprites" << frame.sprites.size() << "drawn" << drawn << "highlighted" << highlighted
-                                << "opacity groups" << groupCount
-                                << "textures" << m_textures->cache().size()
-                                << "creatures" << frame.creatures.size() << "camera" << frame.camera
-                                << "build us" << m_provider->buildNs() / 1000 << "sync us" << cost.nsecsElapsed() / 1000;
-        }
-    }
     return camera;
 }
 

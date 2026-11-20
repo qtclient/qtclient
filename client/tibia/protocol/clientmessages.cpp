@@ -38,7 +38,6 @@ void sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
 {
     auto* processor = network::TGameserverNetworkPacketProcessor::live();
     if (!processor || !processor->productTransportEnabled()) {
-        qCritical("%s", std::format("Unable to send extended opcode {}, extended opcodes are not enabled", opcode).c_str());
         return;
     }
     ClassicWriter w;
@@ -420,7 +419,6 @@ void sendTalk(const tibia::client::MessageMode mode, const uint16_t channelId, c
     if (message.empty())
         return;
     if (message.length() > UINT8_MAX) {
-        qCritical("%s", std::format("message too large").c_str());
         return;
     }
     auto talk = tibia::protocol::newGameclientMessage(150);

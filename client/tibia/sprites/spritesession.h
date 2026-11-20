@@ -13,5 +13,9 @@ namespace sprites {
 /// Sprite pixels as QImage (RGBA8888 copy). Null when missing / still loading / not RGBA8.
 QImage spriteImage(uint32_t id);
 
+/// Worker threads only: like spriteImage(id, loading), but a loaded, uncached sheet is
+/// decoded on the calling thread instead of waiting for the async decompressor.
+QImage spriteImageDecoded(uint32_t id, bool& loading);
+
 }
 }

@@ -1,18 +1,17 @@
 #include "client/clientciptypes.h"
 
+#include "platform/platform.h"
+
 #include <tibia/game/tgamenotify.h>
 
 #include "app/clientoptions.h"
 #include "client/gameclient.h"
 #include "crashhandler.h"
+#include "logging.h"
 #include "shared/tibiafilesystemhelper.h"
 
 #include <QCryptographicHash>
 #include <QEvent>
-#include <QLoggingCategory>
-#ifndef __EMSCRIPTEN__
-#include <QNetworkInterface>
-#endif
 #include <QSysInfo>
 
 #include <algorithm>
@@ -21,8 +20,6 @@
 extern "C" const char qtclient_host_build_id[];
 
 namespace tibia::client {
-
-Q_LOGGING_CATEGORY(lcGameApplication, "tibia.client.gameapplication")
 
 struct IGamesessionManager::LiveFans {
     std::vector<QMetaObject::Connection> typed;
@@ -77,6 +74,14 @@ TGameApplication::TGameApplication(QObject* parent)
 {
 }
 
+void TGameApplication::setUpLogging()
+{
+    const shared::TTibiaFileSystemHelper fileSystem;
+    shared::setUpLogging(fileSystem.getLogDirectory().filePath(QStringLiteral("client.log")), 1024 * 1024);
+    shared::setLogMessageCallback(
+        [](const QString& message) { shared::TCrashHandler::instance().addLogMessage(message); });
+}
+
 void TGameApplication::setUpCrashHandler(const QUrl& loginUrl)
 {
     const shared::TTibiaFileSystemHelper fileSystem;
@@ -117,14 +122,8 @@ QString TGameApplication::hardwareId()
         return hardwareId;
     QCryptographicHash hash(QCryptographicHash::Sha1);
     hash.addData(QStringLiteral("91bb3378-6faa-40dc-8f8b-93b2f1d55e48").toLocal8Bit());
-#ifndef __EMSCRIPTEN__
-    // Host: the browser has no network interfaces to read.
-    QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
-    std::sort(interfaces.begin(), interfaces.end(),
-              [](const QNetworkInterface& a, const QNetworkInterface& b) { return a.index() < b.index(); });
-    for (const QNetworkInterface& networkInterface : interfaces)
-        hash.addData(networkInterface.hardwareAddress().toLocal8Bit());
-#endif
+    for (const QByteArray& address : tibia::platform::hardwareAddresses())
+        hash.addData(address);
     const QByteArray hex = hash.result().toHex();
     if (hex.isEmpty())
         hardwareId.clear();
@@ -137,7 +136,7 @@ void TGameApplication::showErrorAsPopupAndCriticalLog(QString ErrorMessage)
 {
     // CIP slot: critical log + error popup. Tip logs only — opening a blocking
     // dialog from the keep-alive twin can race the login/character shell.
-    qCCritical(lcGameApplication).noquote() << ErrorMessage;
+    qCritical().noquote() << ErrorMessage;
 }
 
 void TGameApplication::onClientPluginReadyToClose()

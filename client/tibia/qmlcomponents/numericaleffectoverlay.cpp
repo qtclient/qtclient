@@ -71,8 +71,6 @@ void TNumericalEffectOverlayQuickItem::setSources(TWorldMapRenderProvider* provi
         if (QQmlEngine* engine = qmlEngine(this)) {
             m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/NumericalEffectsTemplate.qml")),
                                             QQmlComponent::PreferSynchronous, this);
-            if (m_component->isError())
-                qWarning().noquote() << "NumericalEffectsTemplate:" << m_component->errorString();
         }
     }
     m_frameConnection = connect(provider, &Provider::overlaysAdvanced, this, &TNumericalEffectOverlayQuickItem::update);

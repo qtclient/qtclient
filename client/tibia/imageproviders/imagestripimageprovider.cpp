@@ -87,8 +87,6 @@ void TImagestrip::load() const
             m_animationFrames.clear();
         }
 
-        if (m_image.isNull())
-            qWarning("image strip %s failed to load", qPrintable(m_file));
         m_cellHeight = m_image.height();
         if (m_cellWidth <= 0)
             m_cellWidth = m_image.height();

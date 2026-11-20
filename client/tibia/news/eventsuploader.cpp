@@ -111,8 +111,7 @@ void TEventsUploader::onFinished(const bool UploadSuccessful, const QJsonDocumen
             m_fileSystemHelper->writeEventSchedule(QJsonDocument(stamped));
         }
         Q_EMIT updated(m_events);
-    } catch (const std::exception& e) {
-        qWarning() << "Event schedule update failed:" << e.what();
+    } catch (const std::exception&) {
     }
 }
 

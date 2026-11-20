@@ -120,7 +120,8 @@
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "TIBIA_QML_DISK": "ON",
         "SPEED_UP_BUILD_UNITY": "OFF",
-        "TIBIA_BUILD_TESTS": "OFF"
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
       }
     },
     {
@@ -171,7 +172,8 @@
         "TIBIA_QML_DISK": "ON",
         "ASAN_ENABLED": "OFF",
         "SPEED_UP_BUILD_UNITY": "OFF",
-        "TIBIA_BUILD_TESTS": "OFF"
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
       }
     },
     {
@@ -220,6 +222,18 @@
     {
       "name": "macos-debug",
       "configurePreset": "macos-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "macos-dev",
+      "configurePreset": "macos-dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-dev",
+      "configurePreset": "linux-dev",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }
     }

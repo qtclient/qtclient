@@ -122,8 +122,6 @@ void StaticText::compose()
         text += m_name;
         text += " says:\n";
         m_color = MESSAGE_COLOR3;
-    } else {
-        qWarning("%s", std::format("Unknown speak type: {}", static_cast<uint8_t>(m_mode)).c_str());
     }
 
     for (uint32_t i = 0; i < m_messages.size(); ++i) {

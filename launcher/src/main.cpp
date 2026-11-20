@@ -2,6 +2,7 @@
 
 #include "app/launcherenv.h"
 
+#include <cstdlib>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
@@ -67,7 +68,7 @@ int main(int argc, char* argv[])
     // engine's qtclient-fs Worker; mount before anything opens a file. QSettings
     // as ini files there, as on Linux desktop (wasm defaults to localStorage).
     if (!qtclientMountOpfs())
-        qFatal("launcher.wasm: could not mount OPFS at /home/web_user (see the console)");
+        std::abort();
     QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
     launcher::TLauncherApplication application(argc, argv);

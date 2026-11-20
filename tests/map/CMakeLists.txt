@@ -13,7 +13,9 @@ target_include_directories(qtclient_map_spectator_tests_objects PRIVATE
     ${CMAKE_SOURCE_DIR}/client
     ${CMAKE_SOURCE_DIR}/client/tibia
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/shared/src
     ${CMAKE_BINARY_DIR}/client/tibia/cipgen
+    ${CMAKE_BINARY_DIR}/client/tibia/protobuf
 )
 # Avoid `-DCLIENT=1` — conflicts with cip_gen identifiers named CLIENT.
 target_compile_definitions(qtclient_map_spectator_tests_objects PRIVATE

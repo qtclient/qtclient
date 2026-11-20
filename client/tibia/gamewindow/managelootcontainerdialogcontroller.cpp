@@ -256,9 +256,6 @@ void TManageLootContainerDialogController::showDialog()
     }
     rebuildListItems();
     onLootContainersUpdated();
-    const bool stashScroll = m_scrollOnShow;
-    qInfo().nospace() << "tibia.loot: show ManageLootContainerDialog stashScroll=" << stashScroll
-                      << " (action " << (stashScroll ? 252 : 251) << ')';
     dialog()->show();
     if (m_scrollOnShow) {
         m_scrollOnShow = false;
@@ -406,7 +403,6 @@ void TManageLootContainerDialogController::syncFallback()
 
 void TManageLootContainerDialogController::startContainerPick(const int category, const bool lootColumn)
 {
-    qInfo().nospace() << "tibia.loot: startContainerPick category=" << category << " lootColumn=" << lootColumn;
     m_pick = lootColumn ? PickMode::LootContainer : PickMode::ObtainContainer;
     m_pickCategory = category;
     if (TMouseCursorController* cursor = TMouseCursorController::instance())

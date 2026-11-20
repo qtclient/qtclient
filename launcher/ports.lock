@@ -442,7 +442,7 @@ sub_2875dd124d0e	2875dd124d0e790a	tested	shared/src/qtconnectionmanager.cpp:TQtC
 sub_2875dd124d0e#2	2875dd124d0e790a	tested	shared/src/qtconnectionmanager.cpp:TQtConnectionManager::add	test=tests/client/sharednet_test.cpp
 sub_288e0dc526d1	288e0dc526d106a0	skip	generated: moc signal body TExecutor::executed
 sub_289aac716131	289aac71613109f0	skip	library: QMap<QUrl, TActiveDownload> (std::map) template code
-sub_28b5d14b5614	28b5d14b5614dddc	skip	library: libc++ std::function __func clone/destroy
+sub_28b5d14b5614	28b5d14b5614dddc	tested	shared/src/logging.cpp:setLogMessageCallback	test=tests/client/logging_test.cpp
 sub_28e23d388b48	28e23d388b48be07	ported	shared/src/launcherutils.cpp:TLauncherUtils::canConnect
 sub_29c906555c85	29c906555c85336a	inlined	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::rowData
 sub_29c9e2458894	29c9e2458894665c	ported	installationmanager.cpp:TInstallationManager::packages
@@ -455,7 +455,7 @@ sub_2a74a06351c3#5	2a74a06351c35f0d	skip	generated: QtPrivate slot object impl (
 sub_2af1304bf004	2af1304bf004ba3d	skip	library: QMap<QUrl, TActiveDownload> (std::map) template code
 sub_2af260e163d1	2af260e163d1a5b9	tested	shared/src/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_2b4737d1c669	2b4737d1c6698b25	ported	packageinstallation.cpp:TPackageInstallation::setFilesToDownload
-sub_2b7b7ab3c347	2b7b7ab3c347b044	ported	launcherapplication.cpp:TLauncherApplication::setUpLogging
+sub_2b7b7ab3c347	2b7b7ab3c347b044	tested	shared/src/logging.cpp:setUpLogging	test=tests/client/logging_test.cpp
 sub_2bb3296af36d	2bb3296af36dc8f7	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::getLevel	test=tests/client/sharedio_test.cpp
 sub_2be498d8123f	2be498d8123f454d	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_2be498d8123f#2	2be498d8123f454d	skip	library: QList<QHostAddress> template code
@@ -1240,7 +1240,7 @@ sub_faaadfc7d891	faaadfc7d8913d91	skip	generated: shared_ptr release / Qt slot o
 sub_fad82605eb1b	fad82605eb1b2439	skip	library: libc++ vector/map/tree internals
 sub_fb2ddecb4a4f	fb2ddecb4a4ffa1c	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_fb5ceecc4405	fb5ceecc4405ad2e	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
-sub_fb5e974141d0	fb5e974141d092de	ported	launcherapplication.cpp:writeLog
+sub_fb5e974141d0	fb5e974141d092de	tested	shared/src/logging.cpp:qtMessageHandler	test=tests/client/logging_test.cpp
 sub_fc1a190661a9	fc1a190661a945f3	ported	launcherapplication.cpp:TLauncherApplication::isOnlyInstance
 sub_fc995cc59a48	fc995cc59a48dcfe	ported	launcherapplication.cpp:TApplicationLock::TApplicationLock
 sub_fcb88cfadac6	fcb88cfadac63993	ported	shared/src/rpcserviceserver.cpp:TRPCServiceServer::TRPCServiceServer

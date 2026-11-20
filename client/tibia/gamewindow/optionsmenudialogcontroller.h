@@ -181,8 +181,7 @@ public Q_SLOTS:
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
     {
         m_gameActions.handle(pGameAction);
-        if ((&m_clientOptionsModeSwitcher))
-            (&m_clientOptionsModeSwitcher)->handleGameAction(pGameAction);
+        m_clientOptionsModeSwitcher.handleGameAction(pGameAction);
     }
 
 private:

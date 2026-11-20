@@ -87,7 +87,7 @@ TSessiondumpAsyncLoader::TSessiondumpAsyncLoader(const QUrl& url)
     : m_url(url)
 {
     m_file.setAutoRemove(true);
-    m_file.open();
+    static_cast<void>(m_file.open());
 }
 
 TSessiondumpAsyncLoader::~TSessiondumpAsyncLoader()
@@ -139,13 +139,13 @@ void TSessiondumpAsyncLoader::downloadFinished()
         m_chunkTimer.start();
 }
 
-void TSessiondumpAsyncLoader::downloadError(const QNetworkReply::NetworkError NetworkError)
+void TSessiondumpAsyncLoader::downloadError(const QNetworkReply::NetworkError)
 {
     m_chunkTimer.stop();
     QString message;
     if (m_reply)
         message = m_reply->errorString();
-    qDebug() << QStringLiteral("QNetworkReply::error") << NetworkError << message;
+    qDebug() << "QNetworkReply::error" << message;
     Q_EMIT sessiondumpLoadingError(message);
 }
 

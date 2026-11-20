@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-Q_LOGGING_CATEGORY(lcSoundFades, "sound.fades", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSoundFades, "sound.fades", QtFatalMsg)
 
 namespace tibia::sound {
 

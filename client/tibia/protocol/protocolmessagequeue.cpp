@@ -4,13 +4,9 @@
 
 #include <protocol.pb.h>
 
-#include <QLoggingCategory>
-
 #include <exception>
 
 namespace tibia::protocol {
-
-Q_LOGGING_CATEGORY(lcProtocolQueue, "tibia.protocol.queue")
 
 namespace {
 
@@ -165,8 +161,7 @@ void TProtocolMessageQueue::dispatchGameserverMessage(const std::shared_ptr<Game
         // CipSoft's never does must not take the whole client down.
         try {
             handler->second(*message);
-        } catch (const std::exception& e) {
-            qCCritical(lcProtocolQueue) << "dropped server message" << message->type() << ":" << e.what();
+        } catch (const std::exception&) {
         }
     }
     Q_EMIT serverMessageEnqueued(message->has_type() ? message->type() : -1);

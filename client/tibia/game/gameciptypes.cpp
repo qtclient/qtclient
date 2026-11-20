@@ -478,7 +478,6 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
     // The premium flag and its end go to TPremiumProtocolMessageHandler.
     // A vocation beyond the five abandons the message.
     if (message.vocation() >= 6) {
-        qWarning() << "PlayerDataBasic carries unknown vocation" << message.vocation();
         return;
     }
     if (TPlayerData* data = TPlayerData::liveInstance()) {
@@ -593,7 +592,6 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
 {
     // A PvP mode beyond the four abandons the message.
     if (message.pvp_mode() >= 4) {
-        qWarning() << "SetTactics carries unknown PvP mode" << message.pvp_mode();
         return;
     }
     if (TPlayerData* data = TPlayerData::liveInstance()) {
@@ -944,7 +942,6 @@ void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const Gameserve
         const std::optional<uint8_t> feature = premiumFeature(trigger);
         // A feature the client does not know drops the whole message.
         if (!feature) {
-            qWarning("EPremiumFeature %u couldn't be converted", trigger);
             return;
         }
         triggers.push_back(*feature);

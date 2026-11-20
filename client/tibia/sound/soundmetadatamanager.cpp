@@ -57,8 +57,7 @@ bool TSoundMetadataManager::loadBank(const std::string& directory)
             return false;
         try {
             initialize(QByteArray::fromStdString(*bank));
-        } catch (const std::exception& e) {
-            qWarning() << "sound bank" << QString::fromStdString(file) << "is invalid:" << e.what();
+        } catch (const std::exception&) {
             return false;
         }
         return !m_sounds.empty();
@@ -183,7 +182,7 @@ void TSoundMetadataManager::assignLoadTypes()
     for (auto& [id, sound] : m_sounds) {
         switch (sound.memoryPriority) {
         case 0:
-            qDebug() << "sound" << id << "has no memory priority";
+            qCDebug(lcSound) << "sound" << sound.fileName << "has no memory priority";
             break;
         case kPriorityMusic:
         case kPriorityAmbienceStream:
@@ -217,7 +216,7 @@ void TSoundMetadataManager::setMemoryPriority(const uint16_t soundId, const int 
         return;
     const int current = it->second.memoryPriority;
     if (current != priority && current != 0 && current != kPriorityEffect)
-        qDebug() << "Sound" << soundId << "has already sound memory priority of" << current << ". It will be reset to"
+        qCDebug(lcSound) << "Sound" << soundId << "has already sound memory priority of" << current << ". It will be reset to"
                  << priority;
     it->second.memoryPriority = priority;
 }

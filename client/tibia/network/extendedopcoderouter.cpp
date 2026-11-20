@@ -110,7 +110,6 @@ void ExtendedOpcodeRouter::onExtendedOpcode(const uint8_t opcode, const std::str
     if (error.error == QJsonParseError::IllegalUTF8String)
         doc = QJsonDocument::fromJson(QString::fromLatin1(raw.data(), static_cast<qsizetype>(raw.size())).toUtf8(), &error);
     if (error.error != QJsonParseError::NoError) {
-        qWarning().noquote() << "extended JSON opcode" << opcode << "invalid:" << error.errorString();
         return;
     }
     const JsonHandler handler = json;

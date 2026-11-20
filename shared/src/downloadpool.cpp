@@ -15,8 +15,6 @@
 #include <algorithm>
 #include <chrono>
 
-Q_LOGGING_CATEGORY(lcDownload, "tibia.download", QtInfoMsg)
-
 namespace tibia::shared {
 
 namespace {
@@ -188,7 +186,7 @@ void TDownloadPool::setCache(QAbstractNetworkCache* cache)
 
 void TDownloadPool::startDownload(const QUrl& url, const int retries, const qint64 transferTimeoutMs)
 {
-    qCDebug(lcDownload) << "StartDownload: " << url;
+    qInfo() << "StartDownload: " << url;
     QNetworkRequest request = createRequest(url);
     request.setTransferTimeout(static_cast<int>(transferTimeoutMs));
     QNetworkReplyWrapper* reply = m_networkAccessManager->get(request);
@@ -210,8 +208,6 @@ void TDownloadPool::onDownloadFinished(QNetworkReplyWrapper* reply)
     if (reply->replyError() != QNetworkReply::NoError) {
         const bool hasHost = !url.host(QUrl::FullyDecoded).isEmpty();
         if (retries > 0 && hasHost && m_activeDownloads.contains(url)) {
-            qCWarning(lcDownload).noquote() << "Download of" << url.toString() << "failed (" << reply->errorString()
-                                            << "), retrying," << retries << "left";
             const qint64 transferTimeoutMs = reply->transferTimeout();
             QTimer::singleShot(std::chrono::milliseconds(m_retryDelayMs), this, [this, url, retries, transferTimeoutMs] {
                 if (!m_activeDownloads.contains(url) || m_activeDownloads[url].retries != retries)

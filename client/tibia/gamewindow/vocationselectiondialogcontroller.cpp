@@ -4,14 +4,11 @@
 
 #include <tibia/game/gamesession.h>
 
-#include <QLoggingCategory>
 #include <QQuickItem>
 
 namespace tibia::gamewindow {
 
 namespace {
-
-Q_LOGGING_CATEGORY(lcVocation, "tibia.vocation")
 
 QQuickItem* mapWindowPaneItem()
 {
@@ -48,7 +45,6 @@ QQuickItem* TVocationSelectionDialogController::mapWindowPane() { return mapWind
 void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcomponents::enums::EVocation Vocation)
 {
     const auto cipId = static_cast<uint8_t>(Vocation);
-    qCInfo(lcVocation) << "selectVocation" << cipId;
     // EVocation matches Crystal VOCATION_*_CIP (Knight=1 … Monk=5).
     if (cipId >= 1 && cipId <= 5)
         tibia::game::sendTutorialChangeVocation(cipId);

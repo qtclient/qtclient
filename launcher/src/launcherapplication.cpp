@@ -20,15 +20,14 @@
 #include "systemsurvey/systemsurveyuploader.h"
 #include "systemsurvey/systemsurveyvalueretriever.h"
 #include "jsondocumenthttppostsender.h"
+#include "logging.h"
 
-#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
-#include <QMutex>
 #include <QNetworkAccessManager>
 #include <QPixmap>
 #include <QSplashScreen>
@@ -66,48 +65,6 @@ void TApplicationLock::release()
 #endif
     m_file.close();
     m_file.remove();
-}
-
-// --- logging -------------------------------------------------------------------------------
-
-namespace {
-
-QFile* g_logFile = nullptr;
-qint64 g_logMaxSize = 0;
-QMutex g_logMutex;
-
-void writeLog(QtMsgType type, const QMessageLogContext&, const QString& message)
-{
-    const QByteArray line = QStringLiteral("[ %1 ] %2\n")
-                                .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss,zzz")),
-                                     message)
-                                .toUtf8();
-    fputs(line.constData(), stdout);
-    QMutexLocker locker(&g_logMutex);
-    if (!g_logFile)
-        return;
-    if (g_logFile->size() + line.size() > g_logMaxSize) {
-        // Rotate: keep one previous log.
-        const QString path = g_logFile->fileName();
-        g_logFile->close();
-        QFile::remove(path + QStringLiteral(".1"));
-        QFile::rename(path, path + QStringLiteral(".1"));
-        g_logFile->open(QIODevice::WriteOnly | QIODevice::Append);
-    }
-    g_logFile->write(line);
-    g_logFile->flush();
-    if (type == QtFatalMsg)
-        abort();
-}
-
-} // namespace
-
-void TLauncherApplication::setUpLogging(const QString& logFile, qint64 maxSize)
-{
-    g_logFile = new QFile(logFile);
-    g_logFile->open(QIODevice::WriteOnly | QIODevice::Append);
-    g_logMaxSize = maxSize;
-    qInstallMessageHandler(writeLog);
 }
 
 // --- TLauncherApplication ----------------------------------------------------------------
@@ -165,8 +122,8 @@ TLauncherApplication::TLauncherApplication(int& argc, char** argv)
     connect(m_selfUpdater.get(), &TLauncherSelfUpdater::diskAccessFailed, this,
             &TLauncherApplication::onDiskAccessFailed);
 
-    setUpLogging(TLauncherFilesystemHelper::logDirectory().filePath(QStringLiteral("tibia-launcher.log")),
-                 10 * 1024 * 1024);
+    tibia::shared::setUpLogging(
+        TLauncherFilesystemHelper::logDirectory().filePath(QStringLiteral("tibia-launcher.log")), 10 * 1024 * 1024);
     m_parser.addOption(m_firstLaunchOption);
     m_parser.addOption(m_skipSelfUpdateOption);
     m_parser.addOption(m_showUiOption);
@@ -179,7 +136,6 @@ TLauncherApplication::~TLauncherApplication()
 {
     m_mainWindow.reset();
     m_splash.reset();
-    qInstallMessageHandler(nullptr);
 }
 
 bool TLauncherApplication::isOnlyInstance() const
@@ -461,8 +417,6 @@ void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std
         *finished = true;
         for (const QMetaObject::Connection& connection : *connections)
             QObject::disconnect(connection);
-        if (revision != fallback)
-            qInfo().noquote() << "Login revision" << revision << "(package version" << fallback << ")";
         then(revision.isEmpty() ? fallback : revision);
     };
     connections->push_back(connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::success, this,
@@ -479,7 +433,6 @@ void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std
                                    [manifest, finish](const QUrl& url, QNetworkReply::NetworkError, const QString& error) {
                                        if (url != manifest)
                                            return;
-                                       qWarning() << "Release manifest" << url.toString() << "failed:" << error;
                                        finish(QString());
                                    }));
     m_downloadPool->download(manifest, m_filesystemHelper->retries(), m_filesystemHelper->configurationTransportTimeout());

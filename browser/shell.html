@@ -185,7 +185,6 @@
           reportRuntimeError("abort", reason || "unknown reason");
         },
         setStatus: function (text) {
-          console.log("status: " + text);
           let display = "";
           if (text.includes("Running...")) {
             display = "Loading...";
@@ -197,7 +196,6 @@
           document.getElementById("title-text").innerHTML = display;
         },
         monitorRunDependencies: function (left) {
-          console.log("monitor run deps: " + left);
           document.getElementById("title-text").innerHTML = "Initializing...";
         },
       };

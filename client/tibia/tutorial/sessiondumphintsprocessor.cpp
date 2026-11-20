@@ -8,12 +8,9 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QLoggingCategory>
 
 #include <algorithm>
 #include <memory>
-
-Q_LOGGING_CATEGORY(lcHints, "tibia.tutorial.hints")
 
 namespace tibia::tutorial {
 
@@ -48,16 +45,13 @@ bool TSessiondumpHintsProcessor::load(const QString& hintsPath)
         return false;
     QFile file(hintsPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        qCWarning(lcHints).noquote() << "cannot open" << hintsPath;
         return false;
     }
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) {
-        qCWarning(lcHints).noquote() << "invalid hints JSON" << hintsPath;
         return false;
     }
     m_actionsByTs = doc.object().value(QLatin1String("actions")).toObject();
-    qCInfo(lcHints).noquote() << "loaded" << m_actionsByTs.size() << "hint buckets from" << hintsPath;
     return !m_actionsByTs.isEmpty();
 }
 
@@ -96,7 +90,6 @@ void TSessiondumpHintsProcessor::fireBucket(const qint64 timestampMs)
     if (!m_running)
         return;
     const QJsonArray bucket = m_actionsByTs.value(QString::number(timestampMs)).toArray();
-    qCInfo(lcHints) << "fire" << timestampMs << "actions" << bucket.size();
     for (const QJsonValue& value : bucket) {
         if (value.isObject())
             dispatchAction(value.toObject());
@@ -128,7 +121,6 @@ void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
         if (!textHint.isEmpty()) {
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialProgress>(textHint.value(QLatin1String("text")).toString()));
         }
-        qCInfo(lcHints).noquote() << "condition" << condition << "(overlay deferred)";
         return;
     }
     if (type == QLatin1String("SWITCH_CHANNEL") || type == QLatin1String("CLEAR_OLDEST_MESSAGE")
@@ -137,10 +129,8 @@ void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionFinishedTutorialForCharacter>(QString()));
             return;
         }
-        qCInfo(lcHints).noquote() << "action" << type;
         return;
     }
-    qCInfo(lcHints).noquote() << "unhandled hint action" << type;
 }
 
 }

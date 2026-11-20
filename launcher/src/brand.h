@@ -28,10 +28,13 @@ struct LauncherBrand {
     /// Parse argv; scan tip mods/ (or QTCLIENT_MODS_DIR) for brand.json unless --no-mods.
     static void load(int argc, char* argv[]);
 
-    /// Prefer pack images/launcher/<file>, else :/images/launcher/<file>.
+    /// Prefer pack images/launcher/<file>, else tip CDN URL, else :/images/launcher/<file>.
     QString chromeUrl(const QString& fileName) const;
     QString chromePath(const QString& fileName) const;
+    /// Tip CDN URL for launcher chrome (`{defaultCdn|/QTCLIENT_CDN_URL}/images/launcher/<file>`).
+    QString chromeCdnUrl(const QString& fileName) const;
     /// Path usable in stylesheets / QPixmap: pack image if present, else the qrc one.
+    /// (QSS cannot load remote URLs — CDN splash is for network Image / /play.)
     QString imagePath(const QString& fileName) const;
 };
 

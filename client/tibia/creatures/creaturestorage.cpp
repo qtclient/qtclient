@@ -5,7 +5,6 @@
 #include "protocol/protocolcodes.h"
 #include "clockservice.h"
 #include "tibia/creatures/attachedeffect.h"
-#include "creatures/walkdebug.h"
 #include "game/playerdata.h"
 #include "worldmap/worldmapfield.h"
 #include <tibia/game/gamesession.h>
@@ -192,13 +191,6 @@ void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::T
         m_outfitWalkAnimator->setKey(endMs - startMs, startMs);
     if (m_mountWalkAnimator)
         m_mountWalkAnimator->setKey(endMs - startMs, startMs);
-    if (lcWalk().isDebugEnabled()) {
-        qCDebug(lcWalk) << "move" << "id" << m_creatureId << "local" << m_isLocalPlayer
-                        << "origin" << origin.x << origin.y << origin.z << "dir" << int(direction)
-                        << "pos" << walkPos(m_position) << "ms" << (endMs - startMs) << "mode"
-                        << m_movementTween.mode() << "started" << started << "scale"
-                        << m_movementTween.continueScale();
-    }
     updateCoveredField();
 }
 
@@ -231,12 +223,6 @@ void TCreature::update(const qint64 nowMs)
     m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
-    if (m_isLocalPlayer && walkDebugVerbose()) {
-        const QPoint offset = walkOffset();
-        qCDebug(lcWalk) << "frame" << nowMs << "pos" << walkPos(m_position) << "drawn"
-                        << (m_position.x * 32 + offset.x()) << (m_position.y * 32 + offset.y()) << "moving" << isMoving()
-                        << "phase" << m_animationPhase;
-    }
 }
 
 uint16_t TCreature::animationPhaseFor(const TAppearanceType* type,

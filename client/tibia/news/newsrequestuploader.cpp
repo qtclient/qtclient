@@ -100,7 +100,6 @@ void TNewsRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDo
             m_retries.clear();
         m_storage->mergeNewsData(data);
     } catch (const std::exception& e) {
-        qWarning() << "News merge failed:" << e.what();
         Q_EMIT newsQueryFailed(QString::fromUtf8(e.what()));
     }
 }

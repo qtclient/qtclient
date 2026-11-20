@@ -1,5 +1,7 @@
 #include "launcherenv.h"
 
+#include "platform/platform.h"
+
 #include "mods/registry.h"
 
 #include <QCoreApplication>
@@ -13,7 +15,6 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTimer>
@@ -48,16 +49,13 @@ QHash<QString, QString> readReleaseEnv(const QString& workDir)
 
 bool LauncherEnv::ssoHosted() const
 {
-#ifdef Q_OS_WASM
-    return true;
-#else
-    return fromLauncher;
-#endif
+    return tibia::platform::kAlwaysLauncherHosted || fromLauncher;
 }
 
 bool LauncherEnv::startLauncherIfUpdateNeeded()
 {
-#ifndef Q_OS_WASM
+    if (!tibia::platform::kCanSpawnProcesses)
+        return false;
     if (!qEnvironmentVariable("QTCLIENT_LAUNCHER").isEmpty())
         return false;
     QDir dir(QCoreApplication::applicationDirPath());
@@ -75,13 +73,7 @@ bool LauncherEnv::startLauncherIfUpdateNeeded()
         return false;
 
     const LauncherEnv env = load(QCoreApplication::applicationDirPath());
-#if defined(Q_OS_MACOS)
-    const QString package = QStringLiteral("tibiaclient-macos-current");
-#elif defined(Q_OS_WIN)
-    const QString package = QStringLiteral("tibiaclient-windows-current");
-#else
-    const QString package = QStringLiteral("tibiaclient-linux-current");
-#endif
+    const QString package = tibia::platform::clientPackageName();
     QNetworkAccessManager net;
     QNetworkReply* reply = net.get(QNetworkRequest(QUrl(env.assetBase.toString() + QStringLiteral("/launcher/") + package + QStringLiteral("/package.json.version"))));
     QEventLoop loop;
@@ -107,16 +99,8 @@ bool LauncherEnv::startLauncherIfUpdateNeeded()
     const QString bin = QString::fromUtf8(pathFile.readAll()).trimmed();
     if (bin.isEmpty() || !QFileInfo::exists(bin))
         return false;
-    QProcess process;
-    process.setProgram(bin);
-    process.setArguments({ QStringLiteral("--patch") });
-    QProcessEnvironment penv = QProcessEnvironment::systemEnvironment();
-    penv.insert(QStringLiteral("QTCLIENT_CDN_URL"), env.assetBase.toString());
-    process.setProcessEnvironment(penv);
-    return process.startDetached();
-#else
-    return false;
-#endif
+    return tibia::platform::startDetached(bin, { QStringLiteral("--patch") },
+                                          { { QStringLiteral("QTCLIENT_CDN_URL"), env.assetBase.toString() } });
 }
 
 namespace {
@@ -124,11 +108,7 @@ namespace {
 QString findDevLauncherBinary()
 {
     const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList candidates = {
-#if defined(Q_OS_MACOS)
-        appDir + QStringLiteral("/../../../launcher/launcher.app/Contents/MacOS/launcher"),
-        appDir + QStringLiteral("/../../../../launcher/src/launcher.app/Contents/MacOS/launcher"),
-#endif
+    const QStringList candidates = tibia::platform::devLauncherCandidates(appDir) + QStringList{
         appDir + QStringLiteral("/launcher"),
         appDir + QStringLiteral("/../launcher/launcher"),
         appDir + QStringLiteral("/../../launcher/launcher"),
@@ -141,15 +121,11 @@ QString findDevLauncherBinary()
     // client-start / cmake presets: build/<preset>/launcher/src/...
     QDir dir(appDir);
     for (int i = 0; i < 6 && dir.cdUp(); ++i) {
-#if defined(Q_OS_MACOS)
-        const QString mac = dir.filePath(QStringLiteral("launcher/src/launcher.app/Contents/MacOS/launcher"));
-        if (QFileInfo::exists(mac))
-            return QFileInfo(mac).canonicalFilePath();
-#endif
-        // Do not name this `linux` — glibc defines linux as a macro (=1).
-        const QString desktop = dir.filePath(QStringLiteral("launcher/src/launcher"));
-        if (QFileInfo::exists(desktop))
-            return QFileInfo(desktop).canonicalFilePath();
+        for (const QString& relative : tibia::platform::devLauncherRelativePaths()) {
+            const QString candidate = dir.filePath(relative);
+            if (QFileInfo::exists(candidate))
+                return QFileInfo(candidate).canonicalFilePath();
+        }
     }
     return {};
 }
@@ -158,7 +134,9 @@ QString findDevLauncherBinary()
 
 void LauncherEnv::showLauncher()
 {
-#ifndef Q_OS_WASM
+    // The browser session has no desktop launcher to raise.
+    if (!tibia::platform::kCanSpawnProcesses)
+        return;
     const QString marker = qEnvironmentVariable("QTCLIENT_SHOW_FILE");
     if (!marker.isEmpty()) {
         QFile file(marker);
@@ -175,10 +153,7 @@ void LauncherEnv::showLauncher()
     if (bin.isEmpty() || !QFileInfo::exists(bin))
         bin = findDevLauncherBinary();
     if (!bin.isEmpty() && QFileInfo::exists(bin))
-        QProcess::startDetached(bin, {});
-#else
-    // The browser session has no desktop launcher to raise.
-#endif
+        tibia::platform::startDetached(bin, {});
 }
 
 namespace {

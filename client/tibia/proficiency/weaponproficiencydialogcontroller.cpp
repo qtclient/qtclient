@@ -1,5 +1,7 @@
 #include "proficiency/weaponproficiencydialogcontroller.h"
 
+#include "platform/platform.h"
+
 #include "app/clientoptions.h"
 #include "analysers/itempricestorage.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -196,11 +198,7 @@ TWeaponObjectsProxy::TWeaponObjectsProxy(TWeaponObjectsModel* model, QObject* pa
     , m_model(model)
 {
     m_typeIdEnumValue = TWeaponObjectsModel::TypeID;
-#if !defined(Q_OS_WASM)
-    // Wasm's POSIX collator logs and ignores both of these.
-    m_collator.setNumericMode(true);
-    m_collator.setCaseSensitivity(Qt::CaseInsensitive);
-#endif
+    tibia::platform::configureNaturalCollator(m_collator);
     setSortRole(TWeaponObjectsModel::ProficiencyXP);
     setSourceModel(model);
     sort(0);

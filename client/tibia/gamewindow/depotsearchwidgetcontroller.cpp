@@ -1,6 +1,7 @@
 #include "depotsearchwidgetcontroller.h"
 
 #include "app/clientoptions.h"
+#include "container/containergameactionprovider.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "exaltation/exaltationstorage.h"
@@ -575,19 +576,10 @@ void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, con
 
 input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t typeId) const
 {
-    input::TGameActionList actions;
-    TAppearanceType* type = typeOf(typeId);
-    if (!type)
-        return actions;
-    actions.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    if (type->hasCyclopediaItem()) {
-        actions.push_back(input::TGenericObjectGameActionProvider::openCyclopediaAction(typeId));
-    }
-    if (tibia::game::localPlayerIsMarketAvailable() && type->isMarketable()) {
-        actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
-            input::TObjectGameActionContext{ {}, -1, static_cast<uint16_t>(typeId) }));
-    }
-    return actions;
+    // The detail list's type is the searched one, with its tier.
+    if (m_detailList && m_detailList->typeId() == typeId)
+        return container::TContainerGameActionProvider::depotSearchTypeActions(typeId, m_detailList->tier());
+    return container::TContainerGameActionProvider::typeActions(typeId);
 }
 
 void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId, const int, const int MouseButtonRaw,
@@ -644,17 +636,8 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
         storageLocation == Inbox ? m_detailList->inboxObjects() : m_detailList->depotObjects();
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
-    // CIP: the depot search's depot or inbox item location.
-    const input::TGameActionContextPtr location =
-        storageLocation == Inbox
-            ? input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchInboxItemGameActionContext>(slotId))
-            : input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchDepotItemGameActionContext>(slotId));
-    input::TGameActionList actions{ input::makeGameAction(A::CONTEXT_MENU) };
-    for (input::IGameActionPtr& action :
-         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(location, objects[static_cast<size_t>(slotId)]),
-                              ObjectContextMenuOrder))
-        actions.push_back(std::move(action));
-    return actions;
+    return container::TContainerGameActionProvider::depotSearchSlotActions(storageLocation == Inbox, slotId,
+                                                                           objects[static_cast<size_t>(slotId)]);
 }
 
 void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const int SlotIDRaw, const int MouseButtonRaw,

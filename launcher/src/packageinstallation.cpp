@@ -90,8 +90,6 @@ void TPackageInstallation::start()
         for (const THostChannel& channel : TLauncherFilesystemHelper::enabledHostChannels(*build)) {
             if (!build->activeHostChannels.contains(channel.name))
                 continue;
-            qDebug() << "downloading" << channel.name << "channel for package" << m_package->name() << "from"
-                     << channel.url;
             ++m_waitingForHostChannels;
             m_downloader->downloadHostChannelMetaData(channel.url);
         }
@@ -216,7 +214,7 @@ void TPackageInstallation::downloadFiles()
     m_downloader->start();
     qInfo() << "Starting download of" << m_filesToDownload.size() << "files for package" << m_package->name();
     for (const TFileInPackage& file : m_filesToDownload)
-        qCDebug(lcDownload) << "Queued file for download:" << file.url.toString();
+        qInfo() << "Queued file for download:" << file.url.toString();
 }
 
 } // namespace launcher

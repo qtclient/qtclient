@@ -1,31 +1,59 @@
-qtclient_add_gtest(client_heightstamp_tests
-    heightstamp_test.cpp
-)
-
-qtclient_add_gtest(client_weather_tests
-    weather_test.cpp
-)
-target_include_directories(client_weather_tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/client/tibia
-)
-# Header-only weather/worldgeometry helpers need Qt Core for QJsonObject / QImage types.
-find_package(Qt6 QUIET COMPONENTS Core Gui)
-if(Qt6_FOUND)
-    target_link_libraries(client_weather_tests PRIVATE Qt6::Core Qt6::Gui)
-endif()
-
 # Ported CipSoft classes that only need QtCore: built from their own sources.
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui)
 include(GoogleTest)
 function(qtclient_add_port_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
-    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/client ${CMAKE_SOURCE_DIR}/shared/src)
+    target_include_directories(${TARGET_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/shared/src
+        # Generated CipSoft stubs (<cip_gen.h>).
+        ${CMAKE_BINARY_DIR}/client/tibia/cipgen
+        ${CMAKE_BINARY_DIR}/client/tibia/protobuf
+    )
     target_link_libraries(${TARGET_NAME} PRIVATE GTest::gtest GTest::gtest_main Qt6::Core)
+    if(TARGET cip_codegen_tibia)
+        add_dependencies(${TARGET_NAME} cip_codegen_tibia)
+    endif()
     gtest_discover_tests(${TARGET_NAME})
 endfunction()
 
+# Height stamps live in tip idleot/ (geometry-only; no pack required).
+qtclient_add_port_test(client_heightstamp_tests
+    heightstamp_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/idleot/heightstamp.cpp
+)
+target_link_libraries(client_heightstamp_tests PRIVATE Qt6::Gui)
+
+# Weather state/sounds live in the product pack — build when the pack is linked or QTCLIENT_PACK is set.
+set(_pack_client "")
+if(QTCLIENT_LINKED_PACK AND EXISTS "${QTCLIENT_LINKED_PACK}/idleot/weather/weatherstate.h")
+    set(_pack_client "${QTCLIENT_LINKED_PACK}")
+elseif(DEFINED ENV{QTCLIENT_PACK})
+    set(_pack_env "$ENV{QTCLIENT_PACK}")
+    if(NOT IS_ABSOLUTE "${_pack_env}")
+        # Umbrella .env uses repo-relative paths (e.g. apps/idleot-client).
+        get_filename_component(_pack_env "${CMAKE_SOURCE_DIR}/../../${_pack_env}" ABSOLUTE)
+    endif()
+    if(EXISTS "${_pack_env}/client/idleot/weather/weatherstate.h")
+        set(_pack_client "${_pack_env}/client")
+    endif()
+endif()
+if(_pack_client)
+    qtclient_add_port_test(client_weather_tests weather_test.cpp)
+    target_include_directories(client_weather_tests PRIVATE "${_pack_client}")
+    target_link_libraries(client_weather_tests PRIVATE Qt6::Gui)
+else()
+    message(STATUS "qtclient tests: skip client_weather_tests (no IdleOT pack weather headers)")
+endif()
+
 qtclient_add_port_test(client_durationtween_tests durationtween_test.cpp)
+# Classic positions of game action locations (depot search items included).
+qtclient_add_port_test(client_gameactioncontext_tests
+    gameactioncontext_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/input/gameactioncontext.cpp
+)
 qtclient_add_port_test(client_creaturemovement_tests
     creaturemovement_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementspeedcalculator.cpp
@@ -270,6 +298,11 @@ if(TARGET qtclient_shared)
     include(GoogleTest)
     gtest_discover_tests(client_sharednet_tests)
 
+    add_executable(client_logging_tests logging_test.cpp)
+    set_target_properties(client_logging_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_link_libraries(client_logging_tests PRIVATE GTest::gtest GTest::gtest_main qtclient_shared)
+    gtest_discover_tests(client_logging_tests)
+
     add_executable(client_newsstorage_tests newsstorage_test.cpp ${CMAKE_SOURCE_DIR}/client/tibia/news/newsstorage.cpp)
     set_target_properties(client_newsstorage_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
     target_include_directories(client_newsstorage_tests PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/shared/src)
@@ -308,6 +341,8 @@ endif()
 
 # CIP appearance instance tracker and the appearance type -> spritesheet mapping.
 if(TARGET cip_messages)
+    set(_cipgen01 ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_01.cpp)
+    set_source_files_properties(${_cipgen01} PROPERTIES GENERATED TRUE)
     qtclient_add_port_test(client_appearanceinstancetracker_tests
         appearanceinstancetracker_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
@@ -315,6 +350,7 @@ if(TARGET cip_messages)
         ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearanceinstancetracker.h
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/appearancetypespritesheetmapping.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+        ${_cipgen01}
     )
     target_link_libraries(client_appearanceinstancetracker_tests PRIVATE cip_messages Qt6::Gui)
     set_target_properties(client_appearanceinstancetracker_tests PROPERTIES AUTOMOC ON)

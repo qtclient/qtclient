@@ -187,7 +187,6 @@ bool TLauncherConfigurationHandler::loadMainConfiguration(const QByteArray& data
         m_configuration = std::make_shared<TLauncherConfigurationReader>(
             data, m_mainConfigurationUrl.adjusted(QUrl::RemoveFilename));
     } catch (const TLauncherConfigurationException& exception) {
-        qCritical() << "Launcher configuration could not be parsed:" << exception.what();
         return false;
     }
     return true;
@@ -258,8 +257,6 @@ bool TLauncherConfigurationHandler::takeHostChannelVersion(TPendingPackageConfig
         // A failed channel version leaves the channel out; the client still installs.
         if (data)
             pending.hostChannelVersions.emplace_back(channel->first, *data);
-        else
-            qWarning() << "Version of channel" << channel->first << "could not be downloaded; skipping it.";
         pending.hostChannelVersionUrls.erase(channel);
         return true;
     }

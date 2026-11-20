@@ -33,7 +33,6 @@ namespace tibia::container {
 namespace {
 struct CipTypedKeep {
     TContainer tContainer;
-    TContainerGameActionProvider tContainerGameActionProvider;
     TContainerRenderProvider tContainerRenderProvider;
 };
 CipTypedKeep& typedKeep()
@@ -333,7 +332,6 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             podiumOutfit.setCategory(ThingCategoryCreature);
             uint16_t lookId = looktype;
             if (!tibia::game::isValidDatId(lookId, ThingCategoryCreature)) {
-                qCritical("%s", std::format("invalid podium looktype {}", lookId).c_str());
                 lookId = 0;
             }
             podiumOutfit.setId(lookId);
@@ -346,7 +344,6 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             uint16_t lookTypeEx = static_cast<uint16_t>(item.has_look_type_ex() ? item.look_type_ex() : 0);
             if (lookTypeEx != 0) {
                 if (!tibia::game::isValidDatId(lookTypeEx, ThingCategoryItem)) {
-                    qCritical("%s", std::format("invalid podium looktypeex {}", lookTypeEx).c_str());
                     lookTypeEx = 0;
                 }
                 if (lookTypeEx != 0) {

@@ -93,7 +93,6 @@ void updateCreature(const uint32_t creatureId, Apply&& apply)
     TCreatureStorage* storage = TCreatureStorage::instance();
     const auto creature = storage ? storage->creatureAt(creatureId) : nullptr;
     if (!creature) {
-        qWarning() << "updateOrCreateCreatureFromProtobuf: no creature with id" << creatureId << "found";
         return;
     }
     apply(*storage, creature);

@@ -387,14 +387,20 @@ private:
 
 // --- qtclient's protocol form -------------------------------------------------
 
+/// The classic position's y of a depot search depot and inbox item; x is
+/// 0xffff and z the item's index among the searched type's objects there.
+constexpr uint16_t DepotSearchDepotItemY = 0x20;
+constexpr uint16_t DepotSearchInboxItemY = 0x21;
 /// The location of qtclient's classic object position: an inventory slot is
 /// Position(0xFFFF, slot, 0), a container slot Position(0xFFFF, 0x40 | id, slot),
-/// a map object its coordinate with the stack position (none: the field);
+/// a map object its coordinate with the stack position (none: the field), a
+/// depot search item Position(0xFFFF, 0x20 or 0x21, index);
 /// Position(0xFFFF, 0, 0) is anywhere (TLocationUnknownContext). An invalid
 /// position gives no location (null).
 TGameActionContextPtr locationContextFromPosition(const Position& position, int stackPosition);
 /// The classic object position of a location: Position(0xFFFF, 0, 0) for an
-/// unknown one, invalid for one without a field (battle list, depot search, ...).
+/// unknown one, (0xFFFF, 0x20 or 0x21, index) for a depot search item, invalid
+/// for one without a field (battle list, NPC trade, ...).
 Position protocolPosition(const IGameActionContext* location);
 /// The classic stack position of a location: the map stack position, the
 /// container slot, 0 for an inventory slot or an unknown location; -1 for any other.

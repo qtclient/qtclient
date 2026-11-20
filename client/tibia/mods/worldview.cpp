@@ -1,10 +1,6 @@
 #include "mods/worldview.h"
 
-#include <QLoggingCategory>
-
 #include <algorithm>
-
-Q_LOGGING_CATEGORY(lcModWorldView, "tibia.mods.worldview")
 
 namespace tibia::mods {
 namespace {
@@ -19,7 +15,6 @@ void setWorldLightingDriver(WorldLightingDriver* driver)
 {
     // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
     if (driver && g_lighting && g_lighting != driver) {
-        qCWarning(lcModWorldView) << "WorldLightingDriver already set; keeping first";
         return;
     }
     g_lighting = driver;

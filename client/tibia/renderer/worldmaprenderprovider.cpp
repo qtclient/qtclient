@@ -20,7 +20,6 @@
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QJsonObject>
-#include <QLoggingCategory>
 
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/creatures/movementtweens.h>
@@ -28,7 +27,6 @@
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 #include "creatures/creaturestorage.h"
-#include "creatures/walkdebug.h"
 #include "worldmap/worldmapfield.h"
 #include "clockservice.h"
 
@@ -50,9 +48,6 @@
 
 namespace tibia::qmlcomponents {
 
-Q_LOGGING_CATEGORY(lcWorldMapBuild, "tibia.worldmap.build", QtWarningMsg)
-Q_LOGGING_CATEGORY(lcWeatherFrame, "tibia.weather.frame", QtWarningMsg)
-Q_LOGGING_CATEGORY(lcWeatherPerf, "tibia.weather.perf", QtWarningMsg)
 
 namespace {
 
@@ -254,35 +249,6 @@ void TWorldMapRenderProvider::advance()
     if (!m_frame.valid) {
         m_frame.sprites.clear();
         m_frame.creatures.clear();
-        if (tibia::creatures::lcWalk().isDebugEnabled()) {
-            static QElapsedTimer s_invalidFrameLog;
-            if (tibia::creatures::walkDebugShouldLog(s_invalidFrameLog, 500)) {
-                qCDebug(tibia::creatures::lcWalk)
-                    << "frame-invalid" << "buildUs" << (m_buildNs / 1000)
-                    << "camera" << tibia::creatures::walkPos(m_camera)
-                    << "floors" << int(m_firstFloor) << ".." << int(m_lastFloor);
-            }
-        }
-    }
-    if (m_tilesNs > 5'000'000) {
-        // Always visible under QTCLIENT_PERF (category default is Warning).
-        // tilesUs excludes gather; sum tiles+gather ≈ tile-walk wall time.
-        qCWarning(lcWorldMapBuild) << "slow tiles us" << m_tilesNs / 1000
-                                   << "floors" << int(m_firstFloor) << ".." << int(m_lastFloor)
-                                   << "sprites" << m_frame.sprites.size()
-                                   << "gather us" << m_raycastGatherNs / 1000 << "light us" << m_lightNs / 1000
-                                   << "roofs us" << m_raycastRoofsNs / 1000 << "raycast us" << m_raycastNs / 1000
-                                   << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty;
-    } else if (lcWorldMapBuild().isDebugEnabled()) {
-        static QElapsedTimer logged;
-        if (!logged.isValid() || logged.elapsed() > 1000) {
-            logged.start();
-            qCDebug(lcWorldMapBuild) << "build us" << m_buildNs / 1000 << "tiles us" << m_tilesNs / 1000
-                                     << "gather us" << m_raycastGatherNs / 1000 << "light us" << m_lightNs / 1000
-                                     << "roofs us" << m_raycastRoofsNs / 1000 << "raycast us" << m_raycastNs / 1000
-                                     << "sprites" << m_frame.sprites.size()
-                                     << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty;
-        }
     }
     // CIP rebuilds the sprite list every frame; QSG reconciles in place.
     if (m_frame.valid) {
@@ -458,8 +424,6 @@ bool TWorldMapRenderProvider::build()
 
 WeatherFrame TWorldMapRenderProvider::weatherFrame() const
 {
-    QElapsedTimer cost;
-    cost.start();
     WeatherFrame out;
     auto* weather = tibia::mods::weatherDriver();
     if (!weather || !weather->enabled() || !m_frame.valid)
@@ -492,94 +456,6 @@ WeatherFrame TWorldMapRenderProvider::weatherFrame() const
     out.mapSize = QSize(drawWidth() * FieldSize, drawHeight() * FieldSize);
     const Position originField = m_camera.translated(-centerX(), -centerY());
     out.worldOrigin = QPointF(double(originField.x) * FieldSize, double(originField.y) * FieldSize);
-    const qint64 frameUs = cost.nsecsElapsed();
-
-    // Throttled geometry + cost feedback (~1 Hz).
-    if (lcWeatherFrame().isDebugEnabled() || lcWeatherPerf().isDebugEnabled()) {
-        static qint64 s_lastLogMs = 0;
-        static qint64 s_frameUsSum = 0;
-        static int s_frameSamples = 0;
-        s_frameUsSum += frameUs;
-        ++s_frameSamples;
-        const qint64 now = tibia::shared::TClockService::frameMillis();
-        if (now - s_lastLogMs >= 1000) {
-            s_lastLogMs = now;
-            const qint64 avgFrameUs = s_frameSamples > 0 ? s_frameUsSum / s_frameSamples : 0;
-            s_frameUsSum = 0;
-            s_frameSamples = 0;
-            if (lcWeatherPerf().isDebugEnabled()) {
-                qCDebug(lcWeatherPerf).nospace()
-                    << "weatherFrame avg us=" << avgFrameUs / 1000
-                    << " mask=" << out.outdoorMask.width() << "x" << out.outdoorMask.height()
-                    << " mapPx=" << out.mapSize.width() << "x" << out.mapSize.height()
-                    << " precip=" << out.kind << "/" << out.intensity
-                    << " fog=" << out.fog << " clouds=" << out.clouds;
-            }
-            if (lcWeatherFrame().isDebugEnabled()) {
-                int outdoor = 0;
-                int impact = 0;
-                int maxH = 0;
-                qint64 sumH = 0;
-                // ThingShape histogram on impact cells (0=none … 6=Ridge).
-                int shapeCount[7] = {};
-                int shapeImpact = 0;
-                const QImage& mask = out.outdoorMask;
-                const QImage& ceil = out.ceilingMap;
-                const QImage& shapes = out.shapeMap;
-                const bool haveShapes = !shapes.isNull() && shapes.size() == mask.size();
-                if (!mask.isNull() && !ceil.isNull() && mask.size() == ceil.size()) {
-                    for (int y = 0; y < mask.height(); ++y) {
-                        const uchar* o = mask.constScanLine(y);
-                        const uchar* c = ceil.constScanLine(y);
-                        const uchar* s = haveShapes ? shapes.constScanLine(y) : nullptr;
-                        for (int x = 0; x < mask.width(); ++x) {
-                            if (o[x] < 128)
-                                continue;
-                            ++outdoor;
-                            const int h = int(c[x]);
-                            if (h > 3) {
-                                ++impact;
-                                sumH += h;
-                                maxH = std::max(maxH, h);
-                                if (s) {
-                                    const int sid = int(s[x]);
-                                    if (sid >= 0 && sid <= 6) {
-                                        ++shapeCount[sid];
-                                        ++shapeImpact;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                const float avgH = impact > 0 ? float(sumH) / float(impact) : 0.f;
-                qCDebug(lcWeatherFrame).nospace()
-                    << "frame precip=" << out.kind << "/" << out.intensity
-                    << " fog=" << out.fog << " clouds=" << out.clouds
-                    << " wind=(" << out.windX << "," << out.windY << ")"
-                    << " fall=(" << out.fallX << "," << out.fallY << ")"
-                    << " outdoorFrac=" << out.outdoorFraction
-                    << " outdoorCells=" << outdoor
-                    << " impactCells=" << impact << " (h>3, splash/collide)"
-                    << " maxH=" << maxH << " avgH=" << avgH
-                    << " mapPx=" << out.mapSize.width() << "x" << out.mapSize.height()
-                    << " origin=(" << out.worldOrigin.x() << "," << out.worldOrigin.y() << ")"
-                    << " lightning=" << out.lightning
-                    << " t=" << out.time;
-                qCDebug(lcWeatherFrame).nospace()
-                    << "shapes impact=" << shapeImpact
-                    << " map=" << (haveShapes ? "yes" : "NO")
-                    << " none=" << shapeCount[0]
-                    << " flat=" << shapeCount[1]
-                    << " wall=" << shapeCount[2]
-                    << " box=" << shapeCount[3]
-                    << " round=" << shapeCount[4]
-                    << " window=" << shapeCount[5]
-                    << " ridge=" << shapeCount[6]
-                    << " (splash: wall=drip box/ridge=ring round=ripple+beads flat/none=puddle)";
-            }
-        }
-    }
     return out;
 }
 
@@ -604,8 +480,6 @@ void TWorldMapRenderProvider::updateWorldGeometry()
             && m_geometryHeight == drawHeight() && m_geometryFirst == m_firstFloor
             && m_geometryLast == m_lastFloor && m_geometryOrigin == origin;
         if (!geoFresh) {
-            QElapsedTimer geoCost;
-            geoCost.start();
             m_frame.geometry = buildWorldGeometry({
                 .camera = geometryCamera(m_camera),
                 .drawWidth = drawWidth(),
@@ -616,7 +490,6 @@ void TWorldMapRenderProvider::updateWorldGeometry()
                 .lastFloor = m_lastFloor,
                 .heightOriginZ = origin,
             });
-            const qint64 geoNs = geoCost.nsecsElapsed();
             m_geometryCamera = m_camera;
             m_geometryRevision = revision;
             m_geometryWidth = drawWidth();
@@ -624,26 +497,6 @@ void TWorldMapRenderProvider::updateWorldGeometry()
             m_geometryFirst = m_firstFloor;
             m_geometryLast = m_lastFloor;
             m_geometryOrigin = origin;
-            if (geoNs > 3'000'000) {
-                qCWarning(lcWeatherPerf) << "slow worldGeometry us" << geoNs / 1000
-                                         << "size" << m_frame.geometry.width << "x" << m_frame.geometry.height
-                                         << "floors" << m_firstFloor << ".." << m_lastFloor;
-            } else if (lcWeatherPerf().isDebugEnabled()) {
-                static QElapsedTimer s_geoLog;
-                static qint64 s_geoSum = 0;
-                static int s_geoCount = 0;
-                s_geoSum += geoNs;
-                ++s_geoCount;
-                if (!s_geoLog.isValid() || s_geoLog.elapsed() > 1000) {
-                    s_geoLog.start();
-                    qCDebug(lcWeatherPerf) << "worldGeometry rebuilds" << s_geoCount
-                                           << "avg us" << (s_geoCount > 0 ? s_geoSum / s_geoCount / 1000 : 0)
-                                           << "last us" << geoNs / 1000
-                                           << "size" << m_frame.geometry.width << "x" << m_frame.geometry.height;
-                    s_geoSum = 0;
-                    s_geoCount = 0;
-                }
-            }
         }
     }
 

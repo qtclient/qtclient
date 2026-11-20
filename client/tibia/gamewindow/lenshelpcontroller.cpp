@@ -40,7 +40,7 @@ void TLenshelpController::createPopup()
     QQmlComponent component(m_engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/LenshelpTemplate.qml")));
     auto* item = qobject_cast<QQuickItem*>(component.create());
     if (!item) {
-        qWarning().noquote() << component.errorString();
+        qCritical() << "Component creation error for " << component.url().url() << "\n" << component.errors();
         return;
     }
     QQmlEngine::setObjectOwnership(item, QQmlEngine::CppOwnership);

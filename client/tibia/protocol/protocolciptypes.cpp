@@ -18,15 +18,12 @@
 
 #include <protocol.pb.h>
 
-#include <QLoggingCategory>
-
 #include <cstring>
 #include <string>
 
 namespace tibia::protocol {
 
 namespace {
-Q_LOGGING_CATEGORY(lcProtoXlat, "tibia.protocol.translator")
 
 TProtobufServerMessageTranslator* g_serverTranslator = nullptr;
 TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
@@ -2033,7 +2030,6 @@ QByteArray TProtobufServerMessageTranslator::translateToClassic(const Gameserver
 QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message) const
 {
     if (!message.has_type()) {
-        qCWarning(lcProtoXlat) << "translateToClassic: missing type";
         return {};
     }
     const int opcode = message.type();
@@ -2102,7 +2098,6 @@ QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf)
         return {};
     GameserverMessage message;
     if (!message.ParseFromArray(gameserverProtobuf.constData(), gameserverProtobuf.size())) {
-        qCWarning(lcProtoXlat) << "serverProtobufToClassic: ParseFromArray failed";
         return {};
     }
     return xlat->translateToClassic(message);

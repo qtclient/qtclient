@@ -1,5 +1,7 @@
 #include "packqmlinterceptor.h"
 
+#include "platform/platform.h"
+
 #include "mods/registry.h"
 
 #include <QDir>
@@ -30,12 +32,7 @@ QUrl rewriteCipResourceUrl(const QUrl& url)
 {
     QString path;
     if (url.scheme() == QLatin1String("file")) {
-        path = url.toLocalFile();
-#if defined(Q_OS_WIN)
-        path.replace(QLatin1Char('\\'), QLatin1Char('/'));
-        if (path.size() >= 2 && path.at(1) == QLatin1Char(':'))
-            path = path.mid(2);
-#endif
+        path = tibia::platform::normalizeLocalPath(url.toLocalFile());
     } else if (url.scheme().isEmpty()) {
         path = url.path();
     } else {
@@ -71,7 +68,6 @@ QUrl findPackFile(const QString& rel)
     return {};
 }
 
-#if defined(Q_OS_WASM)
 /// Every QML component load and url-string binding under qrc:/qt/qml/ comes
 /// through here. On the web each QFileInfo::exists is an OPFS lookup that
 /// suspends the main thread (JSPI), and override files mostly do not exist
@@ -99,7 +95,6 @@ QUrl cachedPackFile(const QString& rel)
     cache.insert(rel, found);
     return found;
 }
-#endif
 
 } // namespace
 
@@ -124,11 +119,8 @@ QUrl PackQmlInterceptor::intercept(const QUrl& url, const DataType type)
     if (rel.isEmpty() || rel.startsWith(QLatin1String("QtQuick/")))
         return url;
 
-#if defined(Q_OS_WASM)
-    const QUrl found = cachedPackFile(rel);
-#else
-    const QUrl found = findPackFile(rel); // desktop dev: new pack files show up live
-#endif
+    // Desktop dev: new pack files show up live. Browser: every lookup is an OPFS round trip.
+    const QUrl found = tibia::platform::kCheapFileLookups ? findPackFile(rel) : cachedPackFile(rel);
     return found.isValid() ? found : url;
 }
 

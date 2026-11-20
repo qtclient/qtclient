@@ -554,8 +554,7 @@ QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zo
     std::string data;
     try {
         data = tibia::files::data().readFileContents(path);
-    } catch (const std::exception& e) {
-        qWarning("mission zone: %s: %s", path.c_str(), e.what());
+    } catch (const std::exception&) {
         m_missionZoneImages.emplace(zone.id, QImage{});
         return {};
     }

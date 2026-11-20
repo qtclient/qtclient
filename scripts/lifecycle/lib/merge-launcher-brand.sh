@@ -57,4 +57,22 @@ if [[ -d "$PACK/images" ]]; then
   mkdir -p "$dest/images"
   cp -a "$PACK/images/." "$dest/images/"
 fi
+# Tip CDN splash for login + /play: `{assetBase}/images/launcher/…`.
+# Walk up from TIP until we find a CDN root (has launcher/ or hints.json / latest/).
+cdn_images=""
+cand="$TIP"
+for _ in 1 2 3 4; do
+  if [[ -d "$cand/launcher" || -f "$cand/hints.json" || -d "$cand/latest" ]]; then
+    cdn_images="$cand/images/launcher"
+    break
+  fi
+  parent="$(dirname "$cand")"
+  [[ "$parent" == "$cand" ]] && break
+  cand="$parent"
+done
+if [[ -n "$cdn_images" && -d "$PACK/images/launcher" ]]; then
+  mkdir -p "$cdn_images"
+  cp -a "$PACK/images/launcher/." "$cdn_images/"
+  echo "[merge-launcher-brand] splash → ${cdn_images}"
+fi
 echo "[merge-launcher-brand] ${PACK} → ${dest}"

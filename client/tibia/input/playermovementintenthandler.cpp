@@ -1,7 +1,6 @@
 #include "input/playermovementintenthandler.h"
 
 #include "creatures/creaturestorage.h"
-#include "creatures/walkdebug.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -14,7 +13,6 @@ namespace tibia::input {
 namespace {
 
 using creatures::EMovementDirection;
-using creatures::lcWalkGoPath;
 using worldmap::TWorldMapCoordinate;
 
 constexpr int RepeatIntervalMs = 50;
@@ -221,7 +219,6 @@ int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bo
             }
         }
         if (!canStep) {
-            qCDebug(lcWalkGoPath) << "blocked" << creatures::walkPos(goal.toPosition()) << "turned" << turned;
             if (!turned && m_env.showFailure)
                 m_env.showFailure(QStringLiteral("sorry_not_possible"));
             m_goal.reset();
@@ -254,8 +251,6 @@ int TPlayerMovementIntentHandler::plan()
                                                                           : std::vector<TWorldMapCoordinate>{};
     const int result = planMovementPath(predictedPosition(), *m_goal, m_enterUnwalkableGoal, m_allowDiagonalStep,
                                         m_env.waypointCost(), blocked, m_path);
-    qCDebug(lcWalkGoPath) << "plan" << "from" << creatures::walkPos(predictedPosition().toPosition()) << "goal"
-                          << creatures::walkPos(m_goal->toPosition()) << "result" << result << "steps" << m_path.size();
     if (result == PathComplete && m_path.size() < 2)
         m_goal.reset();
     if (result == PathComplete || result == PathPartial) {
@@ -364,8 +359,6 @@ void TPlayerMovementIntentHandler::onPositionChanged(const TWorldMapCoordinate& 
         const int dy = position.y - m_lastPosition->y;
         const bool jump = !(std::abs(dx) < 2 && std::abs(dy) < 2 && position.z == m_lastPosition->z);
         const bool atGoal = m_goal && m_goal->x == position.x && m_goal->y == position.y;
-        qCDebug(lcWalkGoPath) << "position" << creatures::walkPos(position.toPosition()) << "step" << dx << dy << "pending"
-                              << m_pendingX << m_pendingY << "jump" << jump << "atGoal" << atGoal;
         if ((atGoal && (jump || m_goal->z == position.z)) || (!atGoal && jump)) {
             clearPath();
             m_pendingX = m_pendingY = 0;
@@ -387,8 +380,6 @@ void TPlayerMovementIntentHandler::onPositionChanged(const TWorldMapCoordinate& 
 
 void TPlayerMovementIntentHandler::onCancelWalk(const creatures::ECreatureLookDirection direction)
 {
-    qCDebug(lcWalkGoPath) << "cancel" << "pending" << m_pendingX << m_pendingY << "steps" << m_stepsTaken << "of"
-                          << m_path.size();
     m_nextStepMs = m_env.now() + 1;
     bool stuck = false;
     if (m_lastPosition && m_stuckPosition && *m_lastPosition == *m_stuckPosition) {
@@ -453,7 +444,6 @@ void TPlayerMovementIntentHandler::sendPath()
 {
     if (m_path.empty())
         return;
-    qCDebug(lcWalkGoPath) << "send" << "steps" << m_path.size() << "first" << int(m_path.front());
     if (m_env.stopChaseAndFollow)
         m_env.stopChaseAndFollow();
     if (m_path.size() == 1)

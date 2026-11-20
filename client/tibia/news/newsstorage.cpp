@@ -81,7 +81,6 @@ QString newsCategoryName(const int category)
             return QStringLiteral("SUPPORT");
         default:
             // CIP throws; on WASM that escapes application.exec and freezes /play.
-            qWarning("getNewsCategoryName: missing case statement! %d", category);
             return QStringLiteral("USEFUL INFO");
     }
 }
@@ -96,7 +95,6 @@ QString newsTypeName(const int type)
         case NEWS_TYPE_REGULAR:
             return QStringLiteral("REGULAR");
         default:
-            qWarning("getNewsTypeName: missing case statement! %d", type);
             return QStringLiteral("REGULAR");
     }
 }
@@ -156,8 +154,8 @@ std::optional<TNewsEntry> parseNewsEntry(const QJsonObject& object)
     const int type = newsTypeFromName(object[QStringLiteral("type")].toString(), NEWS_TYPE_REGULAR);
     QString headline = shared::jsonString(object, QStringLiteral("headline"));
     QString message = shared::jsonString(object, QStringLiteral("message"));
-    // Qt::UTC — CIP WASM Qt may lack QTimeZone::utc() (added later in Qt 6).
-    QDateTime publishDate = QDateTime::fromSecsSinceEpoch(object[QStringLiteral("publishdate")].toInt(), Qt::UTC);
+    QDateTime publishDate =
+        QDateTime::fromSecsSinceEpoch(object[QStringLiteral("publishdate")].toInt(), QTimeZone::UTC);
     const int unlockLevel = shared::jsonInt(object, QStringLiteral("unlocklevel"), 0, IntMax, 0);
     const int campaignId = object[QStringLiteral("campaignid")].toInt();
     const bool read = shared::jsonBool(object, QStringLiteral("isread"), false);

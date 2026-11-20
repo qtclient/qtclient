@@ -144,7 +144,6 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
         // An unknown vocation abandons the rest of the message.
         const std::optional<uint8_t> vocation = vocationFromProtocol(c.vocation());
         if (!vocation) {
-            qWarning() << "creature" << c.id() << "carries unknown vocation" << c.vocation();
             return false;
         }
         target.setVocation(*vocation);
@@ -160,7 +159,6 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
             const std::optional<uint8_t> id = kind == 0 ? playerIconFromProtocol(icon.icon())
                                                         : creatureIconFromProtocol(icon.icon());
             if (!id) {
-                qWarning() << "creature" << c.id() << "carries unknown icon" << icon.icon() << "of kind" << kind;
                 return false;
             }
             target.addIcon({ kind, *id, static_cast<uint16_t>(icon.value()), icon.flag() });
@@ -202,7 +200,7 @@ uint32_t applyProtocolCreature(const protobuf::protocol::ProtocolCreature& c)
     if (!created) {
         creature = storage->creatureAt(id);
         if (!creature) {
-            qWarning() << "updateOrCreateCreatureFromProtobuf: no creature with id" << id << "found";
+            qWarning() << QStringLiteral("updateOrCreateCreatureFromProtobuf: no creature with id %1 found").arg(id);
             return 0;
         }
     } else {

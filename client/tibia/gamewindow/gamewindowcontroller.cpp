@@ -1,5 +1,7 @@
 #include "gamewindowcontroller.h"
 
+#include "platform/platform.h"
+
 #include <QQmlComponent>
 #include <QQmlEngine>
 
@@ -41,18 +43,11 @@
 #include <QJsonObject>
 #include <QKeyEvent>
 #include <QKeySequence>
-#include <QLoggingCategory>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QTime>
 #include <QTimeZone>
 #include <tibia/game/gamesession.h>
-
-#if defined(Q_OS_WIN)
-#include <qt_windows.h>
-#endif
-
-Q_LOGGING_CATEGORY(lcGameWindow, "tibia.gamewindow")
 
 namespace tibia::gamewindow {
 
@@ -72,16 +67,7 @@ constexpr auto ShowEmailAsPlainText = "showEMailAsPlainText";
 /// The OS Caps Lock state with a key event (CIP asks the platform).
 bool capsLockActive(const QKeyEvent* event)
 {
-#if defined(Q_OS_MACOS)
-    // NSEventModifierFlagCapsLock.
-    return (event->nativeModifiers() & (1u << 16)) != 0;
-#elif defined(Q_OS_WIN)
-    Q_UNUSED(event);
-    return (GetKeyState(VK_CAPITAL) & 1) != 0;
-#else
-    Q_UNUSED(event);
-    return false;
-#endif
+    return tibia::platform::isCapsLockActive(event->nativeModifiers());
 }
 
 std::atomic_bool g_processExitAllowed{ false };
@@ -241,7 +227,6 @@ std::unique_ptr<QObject> TGameWindowController::createGameWindow(QQmlEngine* eng
     std::unique_ptr<QObject> object(component.create());
     auto* item = qobject_cast<QQuickItem*>(object.get());
     if (!item) {
-        qCritical().noquote() << component.errorString();
         return nullptr;
     }
     item->setParentItem(m_container);
@@ -319,10 +304,10 @@ void TGameWindowController::requestStartScreenServices()
     // CipSoft GameWindowController starts these on the start screen (boosted /
     // calendar / live info / showoff); news is the same multiplex (`type:"news"`).
     loadHints();
-#if defined(Q_OS_WASM) || defined(__EMSCRIPTEN__)
-    // iPhone Safari jetsams when login chrome fetches boosted/showoff/events on
-    // a fresh Module. Defer multiplex until account login (setAuthenticated).
-#else
+    // Browser: iPhone Safari jetsams when login chrome fetches boosted/showoff/events
+    // on a fresh Module. Defer multiplex until account login (setAuthenticated).
+    if (!tibia::platform::kStartScreenServicesBeforeLogin)
+        return;
     m_liveInfoUploader->requestUpdate();
     if (m_eventsUploader)
         m_eventsUploader->requestUpdate();
@@ -330,7 +315,6 @@ void TGameWindowController::requestStartScreenServices()
         m_newsUploader->requestUpdate();
     m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
-#endif
 }
 
 void TGameWindowController::requestDeferredStartScreenServices()
@@ -432,8 +416,6 @@ void TGameWindowController::onBoostedCreatureReceived()
     m_boostedCreatureName = name;
     m_boostedBossRace = bossRace;
     m_boostedBossName = bossName;
-    qCInfo(lcGameWindow) << "boosted creature" << m_boostedCreatureRace << m_boostedCreatureName
-                         << "boss" << m_boostedBossRace << m_boostedBossName;
     Q_EMIT boostedCreatureRaceChanged();
 }
 
@@ -453,14 +435,11 @@ void TGameWindowController::onLiveInformationReceived()
     m_twitchViewerCount = twitchViewers;
     m_youTubeStreamCount = youTubeStreams;
     m_youTubeViewerCount = youTubeViewers;
-    qCInfo(lcGameWindow) << "live info players" << m_onlinePlayerCount;
     Q_EMIT liveInformationChanged();
 }
 
 void TGameWindowController::onShowOffReceived()
 {
-    qCInfo(lcGameWindow) << "showoff" << m_showOffUploader->title()
-                         << m_showOffUploader->imageUrl();
 }
 
 void TGameWindowController::clearEventModels()
@@ -565,10 +544,8 @@ void TGameWindowController::setAuthenticated(const bool authenticated)
         return;
     m_isAuthenticated = authenticated;
     Q_EMIT authenticatedStateChanged();
-#if defined(Q_OS_WASM) || defined(__EMSCRIPTEN__)
-    if (authenticated)
+    if (!tibia::platform::kStartScreenServicesBeforeLogin && authenticated)
         requestDeferredStartScreenServices();
-#endif
 }
 
 void TGameWindowController::showGameScreen()
@@ -806,7 +783,6 @@ void TGameWindowController::optionsPressed()
     auto action = std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0);
     Q_EMIT publishGameAction(action);
 }
-
 
 void TGameWindowController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {

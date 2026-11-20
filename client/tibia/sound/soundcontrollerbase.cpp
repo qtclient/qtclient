@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-Q_LOGGING_CATEGORY(lcSound, "sound", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSound, "sound", QtFatalMsg)
 
 namespace tibia::sound {
 
@@ -105,12 +105,12 @@ std::optional<TSoundPlayerToken> TSoundControllerBase::playSingleShot(const floa
     // CipSoft preloads effect data, so its sounds are ready here; qtclient
     // converts on first use and the player waits for the data.
     if (!manager || !playable || (!playable->isReady() && !playable->isLoading())) {
-        qCDebug(lcSound) << "Could not find Sound Effect ID" << soundId;
+        qDebug() << "Could not find Sound Effect ID" << soundId;
         return std::nullopt;
     }
     std::optional<TSoundPlayerToken> token = manager->acquirePlayer();
     if (!token) {
-        qCDebug(lcSound) << "Could not get free player for single shot sound effect" << playable->metadata().fileName;
+        qDebug() << "Could not get free player for single shot sound effect" << soundId;
         return std::nullopt;
     }
     TSoundPlayer* player = token->player();

@@ -120,7 +120,7 @@ public Q_SLOTS:
     /// The key recorder's key becomes the hotkey of the button it was opened for.
     void onAssignSelectedKeySequenceToActionButton(const QKeySequence& NewKeySequence);
     /// Closes the four assign dialogs and the key recorder.
-    void closeAllDialogs();
+    void closeAllDialogs() override;
     /// CIP .
     void setNumVisibleSlots(int Amount) override;
 

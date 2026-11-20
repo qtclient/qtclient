@@ -1,17 +1,19 @@
 # Mod / WorldView performance oracle
 
-Extensibility must not regress the CIP world hot path. Use existing frame timers
-(`QTCLIENT_PERF` / `QTCLIENT_PERF`, `provider->buildNs()` / `tilesNs()` / `lightNs()`).
+Extensibility must not regress the CIP world hot path. Use the existing frame
+timers (`provider->buildNs()` / `tilesNs()` / `lightNs()`); the client logs only
+CipSoft's messages, so read them from the FPS / latency indicator (world map
+build time) or a profiler, not from the log.
 
 ## Stock baseline (no packs)
 
 ```bash
 cmake --build … --target client
-QTCLIENT_PERF=1 ./client --replay=records/smoke-world.cam --play-for=20
+./client --replay=records/smoke-world.cam --play-for=20
 # or: --account=… --password=… --character=… --play-for=20
 ```
 
-Record average `worldmapBuildUs` / FPS from the perf log line.
+Record average `worldmapBuildUs` / FPS from the FPS / latency indicator.
 
 ## After WorldView / pack changes
 

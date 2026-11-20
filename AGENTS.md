@@ -36,6 +36,15 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
   (`qtclient/Qt5`) or the browser runtime (`client/tibia/browser/`,
   `browser/qtclient-fs.js`; e.g. `main_thread_wait.cpp` keeps main-thread
   waits Safari-safe). Reproduce browser claims first with `tools/safari-poc`.
+- The browser is a platform like Windows, macOS and Linux. Every behaviour
+  that differs per platform goes behind `client/tibia/platform/platform.h`
+  (compile-time capabilities in `platform/capabilities.h`), implemented once per
+  platform in `platform_{browser,desktop,mac,windows,linux}.cpp`. Shared code
+  calls those functions instead of adding `Q_OS_*` / `__EMSCRIPTEN__` / `_WIN32`
+  `#if`s. Remaining exceptions: the game-server transport classes in
+  `network/` (TCP vs WebSocket), `framework/pch.h`, the
+  WebGL shader preamble (`renderer/wasnglsl.h`) and the browser runtime glue
+  in `browser/`.
 
 ## Do not
 

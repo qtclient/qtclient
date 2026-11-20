@@ -3,12 +3,10 @@
 #include "mods/registry.h"
 
 #include "app/clientoptions.h"
-#include "app/crashlog.h"
 #include "app/launcherenv.h"
+#include "app/loginsplash.h"
 #include "app/portalurls.h"
-#if defined(__EMSCRIPTEN__)
-#include "browser/qtclient_opfs_backend.h"
-#endif
+#include "platform/platform.h"
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
 #include "client/clientciptypes.h"
@@ -51,10 +49,6 @@
 
 #include <tibia/game/gamesession.h>
 
-#ifdef Q_OS_WASM
-#include <emscripten.h>
-#include <emscripten/val.h>
-#endif
 
 #if defined(TIBIA_DESKTOP_WEBENGINE)
 #include <QtWebEngineQuick/qtwebenginequickglobal.h>
@@ -90,19 +84,7 @@ int rendererFromArgs(const int argc, char** argv)
 
 QStringList commandLine()
 {
-    QStringList args = QCoreApplication::arguments();
-#ifdef Q_OS_WASM
-    // The page URL carries the options: tibia.html?preview&renderer=software
-    // Portal-only keys (launcher → game handoff) are not client flags.
-    const auto search = QString::fromStdString(emscripten::val::global("location")["search"].as<std::string>());
-    const QUrlQuery query(search.mid(1));
-    for (const auto& [key, value] : query.queryItems(QUrl::FullyDecoded)) {
-        if (key == QLatin1String("game"))
-            continue;
-        args << (value.isEmpty() ? QStringLiteral("--") + key : QStringLiteral("--%1=%2").arg(key, value));
-    }
-#endif
-    return args;
+    return QCoreApplication::arguments() + tibia::platform::extraArguments();
 }
 
 constexpr auto ClientWindowSection = "clientWindowOptions";
@@ -187,21 +169,17 @@ QStringList dataDirs(const QString& explicitDir)
     QDir resources(appDir);
     resources.cdUp();
     resources.cd(QStringLiteral("./Resources"));
-    return {
+    return QStringList{
         explicitDir,
         qEnvironmentVariable("QTCLIENT_DATA_DIR"),
         appDir,
         resources.absolutePath(),
         // Host: monorepo builds run outside a package (`make extract` → data/).
         QDir::current().filePath(QStringLiteral("data")),
-#ifdef __EMSCRIPTEN__
-        // Host: local wasm builds may preload the RCC (WASM_PRELOAD_GRAPHICS_RCC=1).
-        QStringLiteral("/data"),
-#endif
 #ifdef TIBIA_SOURCE_DATA_DIR
         QStringLiteral(TIBIA_SOURCE_DATA_DIR),
 #endif
-    };
+    } + tibia::platform::extraDataRoots();
 }
 
 /// Compiles every CIP QML file (and override) the app ships; the count of
@@ -219,10 +197,9 @@ int checkQml(QQmlEngine& engine)
         QQmlComponent component(&engine, QUrl(QStringLiteral("qrc") + path), QQmlComponent::PreferSynchronous);
         if (component.isError()) {
             ++failed;
-            qWarning().noquote() << component.errorString().trimmed();
+            qCritical() << "Component creation error for " << component.url().url() << "\n" << component.errors();
         }
     }
-    qInfo("qml check: %d of %d files compile", total - failed, total);
     return failed;
 }
 
@@ -280,15 +257,7 @@ void applyPackIdentity(const tibia::mods::ModIdentity& id)
 
 int main(int argc, char** argv)
 {
-#if defined(__EMSCRIPTEN__)
-    // /home/web_user (AppData, tip packages) and /mods are the origin's OPFS,
-    // served by the portal's qtclient-fs Worker. Mount before anything opens a file.
-    if (!qtclientMountOpfs())
-        qFatal("tibia.wasm: could not mount OPFS at /home/web_user (see the console)");
-    // QSettings on wasm defaults to localStorage; keep settings as ini files in
-    // OPFS (~/.config/<org>/<app>.ini), as Linux desktop does.
-    QSettings::setDefaultFormat(QSettings::IniFormat);
-#endif
+    tibia::platform::initializeProcess();
     // QTCLIENT_TEST_PATHS=1 (render check, smoke runs): settings and data go to
     // Qt's test locations (~/.qttest), never the user's Application Support or
     // Preferences.
@@ -298,7 +267,6 @@ int main(int argc, char** argv)
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                            QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation));
     }
-    tibia::app::installCrashLog();
 
     // --no-mods → CipSoft; else all qtclient mods/<id>.
     for (int i = 1; i < argc; ++i) {
@@ -315,6 +283,10 @@ int main(int argc, char** argv)
     QCoreApplication::setOrganizationDomain(QStringLiteral("tibia.local"));
     applyPackIdentity(tibia::mods::ModLoader::identityBeforeApplication(
         argc > 0 ? QFileInfo(QString::fromLocal8Bit(argv[0])).absolutePath() : QString()));
+#ifdef TIBIA_WITH_GAMECORE
+    // CIP TGameApplication: the process log starts once the identity names AppData.
+    client::TGameApplication::setUpLogging();
+#endif
 
     app::configureProcess(app::ClientOptions::readStoredFile(), rendererFromArgs(argc, argv));
 
@@ -325,9 +297,7 @@ int main(int argc, char** argv)
     QGuiApplication application(argc, argv);
     app::applyBundledMoltenVkIcd();
     // Runtime packs after QApp.
-    if (tibia::mods::ModLoader::skipLoad())
-        qInfo("--no-mods: stock CipSoft client (no pack)");
-    else
+    if (!tibia::mods::ModLoader::skipLoad())
         tibia::mods::ModLoader::loadAll();
     tibia::mods::ensureModsRegistered();
     if (const auto* id = tibia::mods::primaryIdentity())
@@ -357,8 +327,7 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("package-is-up-to-date"),
                        QStringLiteral("Tip Play: package and assets stamps already match (CIP).") });
     // Launcher settings may carry arguments of the Lua client; they are not fatal.
-    if (!parser.parse(commandLine()))
-        qWarning().noquote() << parser.errorText();
+    parser.parse(commandLine());
     if (parser.isSet(QStringLiteral("help")))
         parser.showHelp();
 
@@ -375,9 +344,7 @@ int main(int argc, char** argv)
         && app::LauncherEnv::startLauncherIfUpdateNeeded())
         return 0;
 
-    const QString graphics = app::mountGraphicsResources(dataDirs(parser.value(QStringLiteral("data"))));
-    if (graphics.isEmpty())
-        qWarning("graphics_resources.rcc not found; run make extract or pass --data");
+    app::mountGraphicsResources(dataDirs(parser.value(QStringLiteral("data"))));
     app::installTranslations();
     app::installUiFonts(dataDirs(parser.value(QStringLiteral("data"))));
 
@@ -391,10 +358,8 @@ int main(int argc, char** argv)
     if (parser.isSet(QStringLiteral("check-hotkeys"))) {
         const QString error = tibia::config::THotkeyOptions::selfCheckRoundTrip();
         if (!error.isEmpty()) {
-            qCritical().noquote() << "check-hotkeys:" << error;
             return 1;
         }
-        qInfo("check-hotkeys: ok (clientoptions.json hotkeyOptions)");
         return 0;
     }
 #endif
@@ -403,7 +368,7 @@ int main(int argc, char** argv)
     std::unique_ptr<QObject> windowObject(windowComponent.create());
     auto* window = qobject_cast<QQuickWindow*>(windowObject.get());
     if (!window) {
-        qCritical().noquote() << windowComponent.errorString();
+        qCritical() << "Component creation error: " << windowComponent.errors();
         return 1;
     }
     // QRhi::Timestamps for lastCompletedGpuTime (raycast pass GPU). Must be set before the
@@ -413,46 +378,34 @@ int main(int argc, char** argv)
         config.setTimestamps(true);
         window->setGraphicsConfiguration(config);
     }
-#ifdef Q_OS_WASM
-    // clientwindow.qml pins width/height to CIP minimum onCompleted. On WASM the
-    // QScreen is the host element — keep the window filling it so the world is
-    // not left-aligned with a black gutter.
-    const auto fillHost = [window] {
-        if (QScreen* screen = window->screen())
-            window->resize(screen->size());
-    };
-    fillHost();
-    if (QScreen* screen = window->screen())
-        QObject::connect(screen, &QScreen::geometryChanged, window, fillHost);
-#else
-    restoreClientWindowGeometry(window);
-    QObject::connect(&application, &QCoreApplication::aboutToQuit, window, [window] { saveClientWindowGeometry(window); });
-    QObject::connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, window,
-                     [window](const QString& name) {
-                         if (name == QLatin1String(ClientWindowSection)
-                             || name == QLatin1String(ClientWindowBorderlessKey))
-                             applyClientWindowBorderlessFromOptions(window);
-                     });
-#endif
+    // The browser window fills the page; a desktop window restores its saved geometry.
+    if (!tibia::platform::adaptMainWindow(window)) {
+        restoreClientWindowGeometry(window);
+        QObject::connect(&application, &QCoreApplication::aboutToQuit, window, [window] { saveClientWindowGeometry(window); });
+        QObject::connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, window,
+                         [window](const QString& name) {
+                             if (name == QLatin1String(ClientWindowSection)
+                                 || name == QLatin1String(ClientWindowBorderlessKey))
+                                 applyClientWindowBorderlessFromOptions(window);
+                         });
+    }
 #ifdef TIBIA_WITH_GAMECORE
     app::qtWindow().attach(window);
 #endif
-    qInfo().noquote() << "renderer:" << window->rendererInterface()->graphicsApi() << "graphics:" << graphics;
     app::alignTextHinting(engine.get());
 
     QQuickItem* placeholder = window->findChild<QQuickItem*>(QStringLiteral("placeholder"));
     placeholder->setProperty("windowTitle", QCoreApplication::applicationName());
+    // Tip CDN splash (images/launcher/BackgroundImage.jpg); RCC title.jpg on miss.
+    app::applyLoginSplash(window, placeholder, env.assetBase);
 
     if (env.isRelease() && !env.ssoHosted()) {
-        qCritical().noquote() << QStringLiteral("Start %1 from the %1 launcher. It installs and updates the game.").arg(QCoreApplication::applicationName());
         return 1;
     }
 
     const bool preview = parser.isSet(QStringLiteral("preview"));
     gamewindow::TCharacterSelectionController previewController;
     gamewindow::TCharacterSelectionController* controller = &previewController;
-    QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::requestCharacterLogin,
-                     [](const gamewindow::TCharacterLoginData& c) { qInfo().noquote() << "character selected:" << c.characterName << c.worldName; });
     QObject::connect(&previewController, &gamewindow::TCharacterSelectionController::abort, &application, &QCoreApplication::quit);
     if (preview) {
         previewController.setPremium(1, 365);
@@ -500,7 +453,6 @@ int main(int argc, char** argv)
     if (const QString shot = parser.value(QStringLiteral("screenshot")); !shot.isEmpty()) {
         const auto takeShot = [window, shot] {
             const bool saved = window->grabWindow().save(shot);
-            qInfo().noquote() << (saved ? "screenshot:" : "screenshot failed:") << shot;
             QCoreApplication::exit(saved ? 0 : 1);
         };
 #ifdef TIBIA_WITH_GAMECORE
@@ -519,17 +471,7 @@ int main(int argc, char** argv)
             QTimer::singleShot(2000, window, takeShot);
     }
 
-    qInfo("tibia.boot: entering application.exec");
-#ifdef Q_OS_WASM
-    // Portal /play overlay: qtLoad never resolves under JSPI (main stays in
-    // exec). Hand the login-ready signal explicitly instead.
-    EM_ASM({
-        try {
-            if (typeof window.__qtclientGameUiReady === 'function')
-                window.__qtclientGameUiReady();
-        } catch (e) {}
-    });
-#endif
+    tibia::platform::notifyUiReady();
     // An uncaught C++ exception leaving a Qt event handler unwinds
     // QEventLoop::exec and leaves the WASM module frozen (Safari /play after
     // world enter). Catch here so the console shows `what()` and play.diag can
@@ -537,31 +479,10 @@ int main(int argc, char** argv)
     try {
         return application.exec();
     } catch (const std::exception& e) {
-        qCritical("tibia.boot: exception escaped event loop: %s", e.what());
-#ifdef Q_OS_WASM
-        EM_ASM({
-            var msg = UTF8ToString($0);
-            try {
-                var d = window.__qtclientDiag;
-                if (d && typeof d.mark === 'function')
-                    d.mark('exception escaped event loop', { message: msg });
-            } catch (err) {}
-            console.error('tibia.boot: exception escaped event loop:', msg);
-        }, e.what());
-#endif
+        tibia::platform::reportFatalException(e.what());
         return 1;
     } catch (...) {
-        qCritical("tibia.boot: unknown exception escaped event loop");
-#ifdef Q_OS_WASM
-        EM_ASM({
-            try {
-                var d = window.__qtclientDiag;
-                if (d && typeof d.mark === 'function')
-                    d.mark('unknown exception escaped event loop', {});
-            } catch (err) {}
-            console.error('tibia.boot: unknown exception escaped event loop');
-        });
-#endif
+        tibia::platform::reportFatalException(nullptr);
         return 1;
     }
 }

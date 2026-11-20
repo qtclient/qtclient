@@ -1,18 +1,12 @@
-#include "capslockstate.h"
+#include "gamewindow/capslockstate.h"
 
-#if defined(__APPLE__)
-#include <Carbon/Carbon.h>
-#endif
+#include "platform/platform.h"
 
 namespace tibia::gamewindow {
 
 bool isCapsLockActive()
 {
-#if defined(__APPLE__) && !defined(__EMSCRIPTEN__)
-    return (GetCurrentKeyModifiers() >> alphaLockBit) & 1;
-#else
-    return false;
-#endif
+    return tibia::platform::isCapsLockActive();
 }
 
 }

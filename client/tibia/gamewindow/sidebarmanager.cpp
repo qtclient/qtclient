@@ -5,6 +5,7 @@
 #include "input/gameactionhandlers.h"
 
 #include <QPointF>
+#include <QDebug>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -20,7 +21,7 @@ QQuickItem* createQuickItem(QQmlEngine* engine, const QString& file)
     QObject* object = component.beginCreate(engine->rootContext());
     auto* item = qobject_cast<QQuickItem*>(object);
     if (!item) {
-        qWarning().noquote() << "Component creation error for" << file << component.errorString();
+        qCritical() << "Component creation error for " << component.url().url() << "\n" << component.errors();
         delete object;
         return nullptr;
     }
@@ -44,7 +45,6 @@ TSidebarController::TSidebarController(const uint sidebarId, QQuickItem* placeho
     QQmlComponent component(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/sidebar.qml")));
     m_item = qobject_cast<QQuickItem*>(component.beginCreate(engine->rootContext()));
     if (!m_item) {
-        qWarning().noquote() << "sidebar.qml:" << component.errorString();
         return;
     }
     m_item->setParent(placeholder);

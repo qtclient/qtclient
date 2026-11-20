@@ -62,9 +62,6 @@ void TPackageFileDownloader::start()
     m_diskAccessFailed = false;
     m_downloadedBytes.clear();
     m_speedTimer.start();
-    m_elapsed.start();
-    m_progressTicks = 0;
-    m_progressBytes = 0;
     m_lastDownloadedBytes = 0;
     m_speedSamples = 0;
     for (const TFileInPackage& file : m_pendingFiles)
@@ -147,7 +144,7 @@ void TPackageFileDownloader::handleDownloadedFile(const QUrl& url, const QByteAr
         }));
         return;
     }
-    qCDebug(lcDownload) << "Downloading" << url.toString() << "was finished, now saving to disk.";
+    qInfo() << "Downloading" << url.toString() << "was finished, now saving to disk.";
     saveFile(*file, data);
     m_completedFiles.push_back(*file);
     m_pendingFiles.erase(file);
@@ -161,7 +158,6 @@ void TPackageFileDownloader::saveFile(const TFileInPackage& file, const QByteArr
     if (m_updateMode == 1 && TLauncherFilesystemHelper::fileExists(path))
         TLauncherFilesystemHelper::renameFile(path, path + TLauncherFilesystemHelper::backupFileSuffix());
     if (!TLauncherFilesystemHelper::writeFile(path, data)) {
-        qCritical() << "Writing" << path << "failed.";
         m_diskAccessFailed = true;
         return;
     }
@@ -216,17 +212,6 @@ void TPackageFileDownloader::onDownloadProgress(const QUrl& url, TFileSize bytes
 void TPackageFileDownloader::onMeasureDownloadSpeed()
 {
     const TFileSize downloaded = downloadedBytes();
-    // Host: a progress line every 10 s (speed over those 10 s) instead of three
-    // lines per file.
-    if (++m_progressTicks % 10 == 0) {
-        qCInfo(lcDownload).noquote() << QStringLiteral("Downloading: %1/%2 files, %3/%4 MB, %5 KB/s")
-                                            .arg(m_completedFiles.size())
-                                            .arg(m_files.size())
-                                            .arg(double(downloaded) / 1048576.0, 0, 'f', 1)
-                                            .arg(double(totalBytes()) / 1048576.0, 0, 'f', 1)
-                                            .arg(double(downloaded - m_progressBytes) / 1024.0 / 10.0, 0, 'f', 0);
-        m_progressBytes = downloaded;
-    }
     const quint64 sample = static_cast<quint64>(downloaded - m_lastDownloadedBytes);
     m_lastDownloadedBytes = downloaded;
     if (m_speedSamples == 0) {
@@ -257,17 +242,6 @@ void TPackageFileDownloader::checkFinished()
         return;
     m_speedSamples = 0;
     m_speedTimer.stop();
-    // Host: one summary per download (the per-file lines are lcDownload debug).
-    const double seconds = double(m_elapsed.elapsed()) / 1000.0;
-    qCInfo(lcDownload).noquote() << QStringLiteral("Downloaded %1/%2 files, %3 MB in %4 s (%5 KB/s)%6")
-                                        .arg(m_completedFiles.size())
-                                        .arg(m_files.size())
-                                        .arg(double(downloadedBytes()) / 1048576.0, 0, 'f', 1)
-                                        .arg(seconds, 0, 'f', 1)
-                                        .arg(seconds > 0 ? double(downloadedBytes()) / 1024.0 / seconds : 0.0, 0, 'f', 0)
-                                        .arg(m_downloadFailed       ? QStringLiteral(", download failed")
-                                             : m_diskAccessFailed ? QStringLiteral(", disk access failed")
-                                                                  : QString());
     Q_EMIT downloadProgress(downloadedBytes(), totalBytes());
     if (m_downloadFailed)
         Q_EMIT downloadFailed(DownloadFailed);

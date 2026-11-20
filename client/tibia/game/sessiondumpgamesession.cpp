@@ -15,13 +15,10 @@
 
 #include <QFile>
 #include <QUrl>
-#include <QLoggingCategory>
 
 #include <filesystem>
 #include <tibia/game/gamesession.h>
 #include "gameservergamesession.h"
-
-Q_LOGGING_CATEGORY(lcSessiondump, "tibia.sessiondump")
 
 namespace tibia::game {
 
@@ -119,7 +116,6 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
                 *converter = TDmpdClassicConverter(metadata.characterName.toUtf8());
                 if (!metadata.sessionKey.isEmpty())
                     Q_EMIT sessionDumpStart(metadata.sessionKey);
-                qCInfo(lcSessiondump).noquote() << "replaying dmpd" << metadata.characterName << metadata.worldName;
             });
     connect(player, &sessiondump::TSessiondumpPlayer::requestResetOfStorages, this,
             &TSessiondumpGameSession::onRequestResetOfStorages);
@@ -192,7 +188,6 @@ void TSessiondumpGameSession::replayHexDump(const QString& file)
             Q_EMIT connectionError(tr("Invalid record file: %1").arg(file));
             return;
         }
-        qCInfo(lcSessiondump).noquote() << "replaying OTC packet dump" << file << "packets" << bodies.size();
         startReplay(std::move(bodies));
         startHintsForDump(file);
     } catch (const std::exception& e) {
@@ -247,7 +242,6 @@ void TSessiondumpGameSession::startHintsForDump(const QString& dumpPath)
 {
     const QString hintsPath = tutorial::hintsPathForDump(dumpPath);
     if (hintsPath.isEmpty()) {
-        qCInfo(lcSessiondump).noquote() << "no .hints sidecar for" << dumpPath;
         return;
     }
     m_hints = std::make_unique<tutorial::TSessiondumpHintsProcessor>(this);
@@ -302,7 +296,6 @@ void TSessiondumpGameSession::onRequestResetOfStorages()
 
 void TSessiondumpGameSession::onSessiondumpFinished()
 {
-    qCInfo(lcSessiondump) << "session dump finished";
     stopHints();
 }
 

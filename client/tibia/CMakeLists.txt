@@ -83,8 +83,8 @@ qt_add_executable(tibia
   app/bootstrap.cpp app/bootstrap.h
   app/clientoptions.cpp app/clientoptions.h
   app/graphicsrestart.cpp app/graphicsrestart.h
-  app/crashlog.cpp app/crashlog.h
   app/launcherenv.cpp app/launcherenv.h
+  app/loginsplash.cpp app/loginsplash.h
   app/sessionbootstrap.cpp app/sessionbootstrap.h
   app/loginwaitdialogcontroller.cpp app/loginwaitdialogcontroller.h
   app/overrideinterceptor.cpp app/overrideinterceptor.h
@@ -225,6 +225,21 @@ target_sources(tibia PRIVATE
   mods/modloader.cpp mods/modloader.h
   mods/mod_entry.h)
 target_include_directories(tibia PRIVATE "${TIBIA_ROOT}/include")
+# Host platform layer: every per-platform behaviour (platform/platform.h). One
+# implementation per platform; shared code carries no platform #ifdefs.
+target_sources(tibia PRIVATE platform/platform.h platform/capabilities.h)
+if(EMSCRIPTEN)
+  target_sources(tibia PRIVATE platform/platform_browser.cpp)
+else()
+  target_sources(tibia PRIVATE platform/platform_desktop.cpp)
+  if(APPLE)
+    target_sources(tibia PRIVATE platform/platform_mac.cpp)
+  elseif(WIN32)
+    target_sources(tibia PRIVATE platform/platform_windows.cpp)
+  else()
+    target_sources(tibia PRIVATE platform/platform_linux.cpp)
+  endif()
+endif()
 # Host build id for ModLoader / mod_api_v1 — full SHA for artifact pinning.
 # Prefer CI/env (SOURCE_COMMIT / GITHUB_SHA / QTCLIENT_HOST_BUILD_ID), else git HEAD.
 set(_qtclient_host_sha "$ENV{QTCLIENT_HOST_BUILD_ID}")
@@ -390,7 +405,6 @@ if(TIBIA_WITH_GAMECORE)
     creatures/creaturemovementspeedcalculator.cpp creatures/creaturemovementspeedcalculator.h
     creatures/creaturemovementtween.cpp creatures/creaturemovementtween.h
     creatures/movementdirection.h
-    creatures/walkdebug.cpp creatures/walkdebug.h
     creatures/creaturesciptypes.cpp creatures/creaturesciptypes.h
     creatures/partygameactionprovider.cpp creatures/partygameactionprovider.h
     creatures/inspectplayergameactionprovider.cpp creatures/inspectplayergameactionprovider.h
@@ -414,6 +428,7 @@ if(TIBIA_WITH_GAMECORE)
     qmlcomponents/soundhelper.cpp qmlcomponents/soundhelper.h
     config/sidebaroptions.cpp config/sidebaroptions.h
     container/containerciptypes.cpp container/containerciptypes.h
+    container/containergameactionprovider.cpp container/containergameactionprovider.h
     container/containerslotinformation.cpp container/containerslotinformation.h
     container/qmlitemslotdata.cpp container/qmlitemslotdata.h
     config/specialconditionsoptions.cpp config/specialconditionsoptions.h

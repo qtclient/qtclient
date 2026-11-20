@@ -38,7 +38,7 @@ QQuickItem* createItem(QQmlEngine* engine, const QString& qmlFile, QQuickItem* p
     QObject* object = component.beginCreate(engine->rootContext());
     auto* item = qobject_cast<QQuickItem*>(object);
     if (!item) {
-        qCritical().noquote() << "Component creation error for" << qmlFile << component.errorString();
+        qCritical() << "Component creation error for " << urlOf(qmlFile).url() << "\n" << component.errors();
         delete object;
         return nullptr;
     }

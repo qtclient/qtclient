@@ -286,7 +286,6 @@ void TLauncherFilesystemHelper::repairMacFrameworkVersions(const QDir& bundle)
         if (target.isEmpty())
             continue;
         if (!QFile::link(target, current)) {
-            qWarning() << "Linking" << current << "->" << target << "failed.";
             continue;
         }
         const QDir root(framework.absoluteFilePath());
@@ -297,8 +296,7 @@ void TLauncherFilesystemHelper::repairMacFrameworkVersions(const QDir& bundle)
             const QString destination = QStringLiteral("Versions/Current/") + leaf;
             if (QFileInfo::exists(link) || !QFileInfo::exists(root.filePath(destination)))
                 continue;
-            if (!QFile::link(destination, link))
-                qWarning() << "Linking" << link << "->" << destination << "failed.";
+            QFile::link(destination, link);
         }
     }
 #else

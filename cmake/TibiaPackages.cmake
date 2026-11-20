@@ -5,7 +5,7 @@
 find_package(ZLIB REQUIRED)
 find_package(LibLZMA REQUIRED)
 find_package(Threads REQUIRED)
-# CipSoft tip ships spdlog (+ private fmt). qtclient Logger stays the public façade.
+# CipSoft links spdlog (+ fmt) for its process log (shared/src/logging.cpp).
 find_package(spdlog CONFIG REQUIRED)
 find_package(Ogg CONFIG REQUIRED)
 find_package(Vorbis CONFIG REQUIRED)

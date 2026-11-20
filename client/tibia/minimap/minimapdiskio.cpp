@@ -142,8 +142,7 @@ void TMinimapDiskIOAsync::loadMinimapMarkerFileContentFromDiskIfPossible()
             try {
                 return std::make_shared<tibia::protobuf::minimap::MinimapMarkerFileContent>(
                     deserializeMinimapMarkerFileContent(file.readAll()));
-            } catch (const std::exception& error) {
-                qWarning("%s: %s", qPrintable(file.fileName()), error.what());
+            } catch (const std::exception&) {
                 return nullptr;
             }
         }

@@ -32,13 +32,11 @@ AttachedEffectManager g_attachedEffects;
 AttachedEffectPtr AttachedEffectManager::getById(const uint16_t id) {
     const auto it = m_effects.find(id);
     if (it == m_effects.end()) {
-        qCritical("%s", std::format("AttachedEffectManager::getById({}): not found.", id).c_str());
         return nullptr;
     }
 
     const auto& obj = it->second;
     if (obj->m_thingId > 0 && !tibia::game::isValidDatId(obj->m_thingId, obj->m_thingCategory)) {
-        qCritical("%s", std::format("AttachedEffectManager::getById({}): invalid thing with id {}.", id, obj->m_thingId).c_str());
         return nullptr;
     }
 
@@ -48,7 +46,6 @@ AttachedEffectPtr AttachedEffectManager::getById(const uint16_t id) {
 AttachedEffectPtr AttachedEffectManager::registerByThing(uint16_t id, const std::string_view name, const uint16_t thingId, const ThingCategory category) {
     const auto it = m_effects.find(id);
     if (it != m_effects.end()) {
-        qCritical("%s", std::format("AttachedEffectManager::registerByThing({}, {}): has already been registered.", id, name).c_str());
         return nullptr;
     }
 
@@ -66,7 +63,6 @@ AttachedEffectPtr AttachedEffectManager::registerByThing(uint16_t id, const std:
 AttachedEffectPtr AttachedEffectManager::registerByImage(uint16_t id, const std::string_view name, const std::string_view path, const bool smooth) {
     const auto it = m_effects.find(id);
     if (it != m_effects.end()) {
-        qCritical("%s", std::format("AttachedEffectManager::registerByImage({}, {}): has already been registered.", id, name).c_str());
         return nullptr;
     }
 
@@ -75,7 +71,6 @@ AttachedEffectPtr AttachedEffectManager::registerByImage(uint16_t id, const std:
     if (!tibia::files::data().fileExists(filePathEx))
         filePathEx = tibia::files::data().guessFilePath(filePath, "png");
     if (!tibia::files::data().fileExists(filePathEx)) {
-        qCritical("%s", std::format("AttachedEffectManager::registerByImage({}, {}): Texture({}) not found.", id, name, path).c_str());
         return nullptr;
     }
 

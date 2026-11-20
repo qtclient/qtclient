@@ -71,6 +71,9 @@ class TGameApplication final : public TGameApplicationBase
 public:
     explicit TGameApplication(QObject* parent = nullptr);
 
+    /// CIP: the process log `client.log` in the log directory (1 MiB, one
+    /// backup); every message is also kept for crash reports.
+    static void setUpLogging();
     /// CIP: installs the crash handler into the crashdump directory,
     /// annotates the login host and lets crashes end the process normally.
     static void setUpCrashHandler(const QUrl& loginUrl);

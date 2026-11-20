@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-Q_LOGGING_CATEGORY(lcSoundAmbience, "sound.ambience", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSoundAmbience, "sound.ambience", QtFatalMsg)
 
 namespace tibia::sound {
 
@@ -42,12 +42,12 @@ void TSoundControllerAmbienceStream::update(const int64_t nowMs)
         request.effectId = effect.effectId;
         const TSoundEffectParameters parameters = effectParameters(request);
         if (std::optional<TSoundPlayerToken> token = playSingleShot(parameters)) {
-            qCDebug(lcSoundAmbience) << "Play delayed ambience effect" << effect.effectId;
+            qDebug() << "Play ambience numeric sound" << QString::number(effect.effectId) << "at" << nowMs;
             keepSingleShot(std::move(*token));
         }
         const int64_t next = randomDelay(effect.delayMs) + now();
         if (effect.effectId != 0) {
-            qCDebug(lcSoundAmbience) << "Next delayed ambience effect" << effect.effectId << "in"
+            qCDebug(lcSoundAmbience) << "Append future ambience numeric sound" << QString::number(effect.effectId) << "in"
                                      << (next - now()) / 1000 << "seconds";
             m_scheduledEffects.emplace(next, effect);
         }
@@ -82,7 +82,7 @@ void TSoundControllerAmbienceStream::startStream(const bool updatePlayer)
         m_player->setVolume(settings.volume);
         const TSoundSettings& soundSettings = configuration()->settings();
         m_player->setFade(2, soundSettings.ambienceStreamFadeMs, soundSettings.fadeSteps);
-        qCDebug(lcSoundAmbience) << "Start ambience stream" << m_stream.id << soundManager()->soundName(playable->soundId());
+        qCDebug(lcSoundAmbience) << "Start ambience stream " << soundManager()->soundName(playable->soundId());
         m_player->play(*playable);
     }
 
@@ -113,8 +113,8 @@ void TSoundControllerAmbienceStream::startStream(const bool updatePlayer)
         if (roll.effect.effectId == 0)
             continue;
         m_scheduledEffects.emplace(roll.delayMs + now(), roll.effect);
-        qCDebug(lcSoundAmbience) << "Delayed ambience effect" << roll.effect.effectId << "in" << roll.delayMs / 1000
-                                 << "seconds";
+        qCDebug(lcSoundAmbience) << "Append future ambience sound" << QString::number(roll.effect.effectId) << "in"
+                                 << roll.delayMs / 1000 << "seconds";
     }
 }
 

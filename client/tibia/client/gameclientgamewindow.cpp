@@ -401,7 +401,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.dialogItem = qobject_cast<QQuickItem*>(g.dialog.get());
     QQuickItem* dialogItem = g.dialogItem;
     if (!dialogItem) {
-        qCritical().noquote() << g.dialogComponent->errorString();
         return false;
     }
     g.dialogComponent->setInitialProperties(
@@ -1005,9 +1004,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         ctx.host = g.productHost.get();
         ctx.launcherEnv = &g.env;
         ctx.packHost = &packHost;
-        qInfo("tibia.boot: before mods::bootstrapAll");
         mods::bootstrapAll(ctx);
-        qInfo("tibia.boot: after mods::bootstrapAll");
     }
 
     // A new game session brings its own texts, effects, view and light.
@@ -1024,8 +1021,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         g.gameWindowController->showGameScreen();
         try {
             g.mapWindowController->bindSession(textStorage(), effectStorage());
-            if (!g.mapWindowBound && !g.mapWindowController->isBound())
-                qCritical("MapWindowPane has no WorldMap named worldmap");
             g.mapWindowBound = true;
             g.vipWidget->setSidebarOptions(sidebarOptions());
             g.vipWidget->setWorldType(worldType());
@@ -1051,10 +1046,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             g.optionsDialog->setInGame(true);
             g.actionBars->onWorldEntered();
             qmlcomponents::applyOptionVolumes(); // stop login anthem; keep channel gains
-        } catch (const std::exception& ex) {
-            qCritical("tibia.client: entering the world failed: %s", ex.what());
         } catch (...) {
-            qCritical("tibia.client: entering the world failed");
         }
     });
     connect(this, &TGameClient::worldLeft, gameWindowItem, [&g] {

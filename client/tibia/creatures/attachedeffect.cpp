@@ -30,7 +30,6 @@
 
 AttachedEffectPtr AttachedEffect::create(const uint16_t thingId, const ThingCategory category) {
     if (!tibia::game::isValidDatId(thingId, category)) {
-        qCritical("%s", std::format("AttachedEffectManager::getInstance({}, {}): invalid thing with id or category.", thingId, static_cast<uint8_t>(category)).c_str());
         return nullptr;
     }
 

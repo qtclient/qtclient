@@ -124,8 +124,8 @@ TEST(HeightStamp, PoleStandsOnItsFoot)
     EXPECT_FLOAT_EQ(foot->second, 0.f);
     EXPECT_FALSE(f.column(10, 10)) << "the pole's top is drawn there, not standing there";
 
-    // Halfway up: the column's top, and 8 px up it.
-    EXPECT_EQ(f.surfaceAt(12, 12)[1], 30);
+    // Halfway up the pole (Round surfaces use local h, not tip height).
+    EXPECT_EQ(f.surfaceAt(12, 12)[1], 16);
     EXPECT_EQ(f.surfaceAt(12, 12)[2], 16);
 }
 
@@ -224,10 +224,11 @@ TEST(HeightStamp, RidgeSolidHeightWithRoundFootprint)
     ridge.fatPole();
     EXPECT_EQ(ridge.stamp(false, ThingShape::Ridge), ThingShape::Ridge);
 
-    // Floor-level surface blends with Flat mountain fillers.
-    EXPECT_EQ(ridge.surfaceAt(12, 12)[3], 0xFF);
-    EXPECT_EQ(ridge.surfaceAt(12, 12)[2], 0) << "floor-level surface blends with Flat ground";
-    EXPECT_EQ(ridge.surfaceAt(12, 12)[1], 0);
+    // Floor-level surface on the silhouette blends with Flat mountain fillers.
+    // (12,12) is not inked by fatPole — use a mid-stem pixel that is.
+    EXPECT_EQ(ridge.surfaceAt(8, 16)[3], 0xFF);
+    EXPECT_EQ(ridge.surfaceAt(8, 16)[2], 0) << "floor-level surface blends with Flat ground";
+    EXPECT_EQ(ridge.surfaceAt(8, 16)[1], 0);
 
     // Round-scaled SE footprint (not a plan disc under the ink) + solid floor→tip for caves.
     EXPECT_GT(ridge.columnCount(), 0);
@@ -291,8 +292,8 @@ TEST(HeightStamp, LightFloatsAboveItsFlame)
     const PixelGrid surface = f.surfaceGrid();
     const FrameLight light = findFrameLight(f.spriteGrid(), QRect(0, 0, CELL, CELL), &surface, QPoint(0, 0), 1, -1, QPoint());
 
-    EXPECT_FLOAT_EQ(light.point.x, 6.f);
-    EXPECT_FLOAT_EQ(light.point.y, 4.f);
+    EXPECT_FLOAT_EQ(light.point.x(), 6.f);
+    EXPECT_FLOAT_EQ(light.point.y(), 4.f);
     EXPECT_GT(light.shape.ground, 10.f) << "the flame stands on the pole's foot";
     EXPECT_GT(light.shape.height, light.shape.ground);
 }

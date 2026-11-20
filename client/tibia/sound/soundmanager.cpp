@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-Q_LOGGING_CATEGORY(lcSoundTokens, "sound.tokens", QtWarningMsg)
+Q_LOGGING_CATEGORY(lcSoundTokens, "sound.tokens", QtFatalMsg)
 
 namespace tibia::sound {
 

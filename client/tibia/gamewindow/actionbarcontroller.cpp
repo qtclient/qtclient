@@ -194,7 +194,6 @@ void TActionBarController::createItem(QQmlEngine* engine, QQuickItem* container)
     QObject* object = component.beginCreate(engine->rootContext());
     auto* item = qobject_cast<QQuickItem*>(object);
     if (!item) {
-        qWarning().noquote() << "ActionBar.qml:" << component.errorString();
         delete object;
         return;
     }

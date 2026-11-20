@@ -197,7 +197,6 @@ void TSpeechBubbleOverlayQuickItem::setup()
     m_component = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/SpeechBubbleTemplate.qml")),
                                     QQmlComponent::PreferSynchronous, this);
     if (m_component->isError()) {
-        qWarning().noquote() << "SpeechBubbleTemplate:" << m_component->errorString();
         return;
     }
     for (auto& fixed : m_fixed)

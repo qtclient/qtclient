@@ -80,7 +80,6 @@ private:
     void hostResolveLoginRevision(const QString& fallback, std::function<void(QString)> then);
     void showSplash(ESplashState state);
     void hideSplash();
-    void setUpLogging(const QString& logFile, qint64 maxSize);
 
     std::shared_ptr<QNetworkAccessManager> m_networkAccessManager;
     std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;

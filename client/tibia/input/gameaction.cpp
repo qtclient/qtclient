@@ -7,8 +7,6 @@
 
 #include <algorithm>
 
-#include <QLoggingCategory>
-
 namespace tibia::input {
 
 namespace {
@@ -87,8 +85,6 @@ const IGameActionPtr* firstOfType(const TGameActionList& candidates, const EGame
 }
 
 namespace {
-
-Q_LOGGING_CATEGORY(lcGameAction, "tibia.input.gameaction")
 
 /// The types CIP builds as TGameActionCreature.
 bool isTGameActionCreatureType(const EGameAction type)
@@ -197,9 +193,6 @@ TGameActionSetCurrentChatChannelInputText& TGameActionSetCurrentChatChannelInput
     m_spellCastOptionalTargetType = spellCastOptionalTargetType;
     return *this;
 }
-
-
-
 
 namespace gameactions {
 
@@ -339,7 +332,6 @@ IGameActionPtr makeObjectGameAction(const EGameAction type, const TObjectGameAct
     case EGameAction::MARKET_BROWSE:
         return std::make_shared<gameactions::TGameActionMarketBrowse>(context);
     default:
-        qCCritical(lcGameAction) << "makeObjectGameAction:" << static_cast<int>(type) << "is no object action";
         return makeGameAction(type);
     }
 }
@@ -482,8 +474,6 @@ IGameActionPtr makeGameAction(const EGameAction type)
     case EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER:
         return std::make_shared<gameactions::TGameActionSimple>(type);
     default:
-        if (isTGameActionCreatureType(type))
-            qCCritical(lcGameAction) << "makeGameAction: construct" << static_cast<int>(type) << "with TGameActionCreature";
         return std::make_shared<gameactions::TGameActionSimple>(type);
     }
 }

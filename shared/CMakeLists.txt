@@ -3,6 +3,8 @@
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 find_package(ZLIB REQUIRED)
+# CipSoft's process log (shared::setUpLogging) is spdlog.
+find_package(spdlog CONFIG REQUIRED)
 
 add_library(qtclient_shared STATIC
   src/clipboardhelper.cpp
@@ -82,6 +84,8 @@ add_library(qtclient_shared STATIC
   src/hashhelper.h
   src/localfileinfo.cpp
   src/localfileinfo.h
+  src/logging.cpp
+  src/logging.h
   src/lzmacompressedreadonlymemoryblob.cpp
   src/lzmacompressedreadonlymemoryblob.h
   src/randomnumbergenerator.cpp
@@ -113,6 +117,7 @@ target_include_directories(qtclient_shared PUBLIC
 target_include_directories(qtclient_shared PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/src/lzma")
 target_link_libraries(qtclient_shared PUBLIC Qt6::Widgets Qt6::Network ZLIB::ZLIB)
+target_link_libraries(qtclient_shared PRIVATE spdlog::spdlog)
 if(APPLE AND NOT IOS AND NOT EMSCRIPTEN)
   # systemsurvey::TSystemSurveyValueRetriever: screen modes (CoreGraphics).
   target_link_libraries(qtclient_shared PUBLIC "-framework ApplicationServices")

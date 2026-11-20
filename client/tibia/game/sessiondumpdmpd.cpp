@@ -14,7 +14,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QLoggingCategory>
 
 #include <algorithm>
 #include <cmath>
@@ -22,8 +21,6 @@
 #include <functional>
 #include <memory>
 #include <limits>
-
-Q_LOGGING_CATEGORY(lcDmpd, "tibia.sessiondump.dmpd")
 
 namespace tibia::game {
 
@@ -312,7 +309,6 @@ std::optional<std::vector<uint8_t>> synthesizeFullMap(const QByteArray& nested, 
             appendSkipTiles(out, kTilesPerFloor - centerIndex - 1);
         }
     }
-    qCInfo(lcDmpd) << "synthetic FullMap at" << x << y << int(z) << "playerId" << playerId;
     return out;
 }
 
@@ -651,8 +647,6 @@ std::vector<std::shared_ptr<std::vector<uint8_t>>> TDmpdClassicConverter::conver
         classic = mapSimpleOpcode(*opcode, nested, &m_playerId, m_characterName, &m_emittedFullMap);
     }
     if (!classic) {
-        qCInfo(lcDmpd) << "skip protobuf GameserverMessage opcode" << Qt::hex << *opcode << "bytes" << Qt::dec
-                       << protobuf.size();
         return out;
     }
     if (*opcode == 0x0A)

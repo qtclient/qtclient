@@ -40,6 +40,11 @@ public:
     bool isSpritesheetCached(const TSpritesheetID& spritesheetId) const;
     void clear();
 
+    /// Host (pack lighting worker threads): the cached image, else decode the loaded
+    /// bytes on the calling thread and cache them. Null while the bytes are not loaded
+    /// (spritesheetMissing queues them). Never waits on the async decompressor.
+    TSpritesheetPointer decodeNow(const TSpritesheetID& spritesheetId);
+
 Q_SIGNALS:
     void spritesheetUncompressFailed(const tibia::sprites::TSpritesheetID& SpritesheetID);
     void spritesheetMissing(const tibia::sprites::TSpritesheetID& SpritesheetID);

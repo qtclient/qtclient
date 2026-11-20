@@ -49,6 +49,9 @@ public:
     /// A sprite's image; null while its spritesheet is not decompressed yet
     /// (`loading`) or for an unknown sprite. Thread safe.
     QImage spriteImage(uint32_t spriteId, bool& loading);
+    /// Host: like spriteImage, but decodes a loaded, uncached sheet on the calling
+    /// thread (TSpritesheetManager::decodeNow). For worker threads only.
+    QImage spriteImageDecoded(uint32_t spriteId, bool& loading);
     /// The sprite's spritesheet is decompressed (no load is started).
     bool isSpriteReady(uint32_t spriteId);
 

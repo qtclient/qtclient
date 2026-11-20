@@ -1,4 +1,6 @@
 #include "housesinfodialogcontroller.h"
+
+#include "platform/platform.h"
 #include "game/serversave.h"
 
 #include "qmlcomponents/worldmapcameraviewport.h"
@@ -288,11 +290,7 @@ THousesSortProxyModel::THousesSortProxyModel(QObject* parent)
     setDynamicSortFilter(true);
     sort(0);
     setSourceModel(m_houses);
-#if !defined(Q_OS_WASM)
-    // Wasm's POSIX collator logs and ignores both of these.
-    m_collator.setNumericMode(true);
-    m_collator.setCaseSensitivity(Qt::CaseInsensitive);
-#endif
+    tibia::platform::configureNaturalCollator(m_collator);
 }
 
 template <class F>

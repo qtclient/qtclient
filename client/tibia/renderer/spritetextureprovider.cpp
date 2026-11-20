@@ -188,8 +188,6 @@ TSpriteTexture TSpriteTextureProvider::texture(const SpriteIdentifier& identifie
         // CIP TQtTextureAtlasTextureCreator: cacheable sprites go to the atlas.
         texture.texture = cacheable ? m_window->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas)
                                     : m_window->createTextureFromImage(image);
-        if (!texture.texture)
-            qWarning("tibia.sprites: createTextureFromImage failed (%dx%d)", image.width(), image.height());
     }
     if (!bypassCache && cacheable)
         m_cache->insert(identifier, texture);

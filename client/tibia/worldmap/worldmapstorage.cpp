@@ -333,9 +333,11 @@ appearances::TAppearanceInstancePtr TWorldMapStorage::creatureInstanceAt(const T
           << " ) ";
     if (!found)
         error << "null";
-    else
-        error << "FoundAppearanceInstance::AppearanceType( " << found->id() << " )  FoundAppearanceInstanceTypeId( "
-              << typeid(*found).name() << " )";
+    else {
+        const appearances::TAppearanceInstance& appearance = *found;
+        error << "FoundAppearanceInstance::AppearanceType( " << appearance.id()
+              << " )  FoundAppearanceInstanceTypeId( " << typeid(appearance).name() << " )";
+    }
     error << " Appearances in Network Order: ";
     if (TWorldMapField* field = fieldAt(coordinate)) {
         int index = 0;

@@ -97,8 +97,6 @@ bool init(const QString& argv0, const QString& workDir)
         }
     }
     if (!found) {
-        qCritical().noquote() << "engine: no assets/catalog-content.json under" << workDir
-                              << "or CipSoft Resources next to" << QCoreApplication::applicationDirPath();
         return false;
     }
     // Virtual paths resolve under workDir. CIP assets use one Resources tree
@@ -287,8 +285,7 @@ void loadCyclopediaMapData(const std::string& directory)
         if (mapFile.isEmpty())
             return;
         storage.initialize(QByteArray::fromStdString(tibia::files::data().readFileContents(directory + mapFile.toStdString())));
-    } catch (const std::exception& e) {
-        qWarning("cyclopedia map: %s", e.what());
+    } catch (const std::exception&) {
     }
 }
 
@@ -303,13 +300,12 @@ bool loadAssets(const int version, QString* error)
     if (!tibia::assets::loadStaticData(dir))
         errors << QStringLiteral("Couldn't load static data from %1").arg(QString::fromStdString(dir));
     loadCyclopediaMapData(dir);
-    if (!tibia::assets::resolveProficiencies(dir))
-        qWarning().noquote() << "gamecore: no proficiencies-<hash>.json in" << QString::fromStdString(dir);
+    tibia::assets::resolveProficiencies(dir);
 
     const std::string soundsDir = soundsRoot(version);
-    if (auto* sounds = sound::TSoundController::instance(); sounds && sounds->metadata()->loadBank(soundsDir))
-        qInfo().noquote() << "gamecore: loaded sound bank from" << QString::fromStdString(soundsDir);
-    // Missing bank is optional (make extract); stay quiet on CipSoft.
+    // A missing bank is optional (make extract).
+    if (auto* sounds = sound::TSoundController::instance())
+        sounds->metadata()->loadBank(soundsDir);
     if (error)
         *error = errors.join(u'\n');
     return errors.isEmpty();

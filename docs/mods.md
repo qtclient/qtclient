@@ -40,6 +40,18 @@ host API table (SDK headers under `include/qtclient/abi/` define the surface).
 
 Local product path: `make qtclient client|wasm install`.
 
+## Tip splash (login / launcher /play)
+
+Canonical CDN path (shared by qtclient login, launcher chrome URL, and `/play`
+transitions):
+
+`{assetBase}/images/launcher/BackgroundImage.jpg`
+
+Resolution: pack `mods/<id>/images/launcher/` (local F5) → tip CDN file → RCC
+(`qrc:/images/title.jpg` / `:/images/launcher/…`). Product rebrand = replace
+the tip file; stock / unchanged tip keeps CipSoft art. Do not put UI chrome
+(`/images/background.png`, skin buttons) on the CDN — splash/marketing only.
+
 ## Pack format (desktop + WASM — same tree)
 
 ```text
