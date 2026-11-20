@@ -255,6 +255,7 @@ private:
     QImage m_houseIcon;
     QImage m_passageIcon;
     QImage m_passageSelectedIcon;
+    QImage m_raidIcon;
     QImage m_flagStrip;
     QQmlComponent* m_captionComponent = nullptr;
     std::map<int, TCaption> m_captions;

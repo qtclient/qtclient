@@ -615,6 +615,7 @@ void TMinimapRendererQuickItem::ensureMarkerIcons()
          ":/qt/qml/qmlcomponents/qml/images/icon-map-passage-idle.png");
     load(m_passageSelectedIcon, ":/images/icon-map-passage-selected.png",
          ":/qt/qml/qmlcomponents/qml/images/icon-map-passage-selected.png");
+    load(m_raidIcon, ":/images/icon-raid.png", nullptr);
     if (m_flagStrip.isNull()) {
         m_flagStrip = QImage(QStringLiteral(":/images/minimap/markers.png"));
         if (m_flagStrip.isNull())
@@ -704,7 +705,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         for (const worldmap::TWorldMapCoordinate& raid : m_storage->activeRaids()) {
             if (raid.z != z)
                 continue;
-            addPin(QImage(), QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, qtTrId("active_raid_tooltip"), TMarkerHit::ActiveRaid, 0);
+            addPin(m_raidIcon, QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, qtTrId("active_raid_tooltip"), TMarkerHit::ActiveRaid, 0);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
