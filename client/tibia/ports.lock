@@ -12119,7 +12119,6 @@ sub_4a603c26db89	4a603c26db89051e	skip	library: statically linked SFML audio / m
 sub_4a68811bf099	4a68811bf099e9bf	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage
 sub_4a69ed4d2c5c	4a69ed4d2c5ce2ae	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_4a6df87758f5	4a6df87758f54b55	ported	bossbestiary/bosstiarystorage.cpp:TBosstiaryStorage::killsForStage
-sub_4a6df87758f5	4a6df87758f54b55	ported	cyclopedia/bosstiarystorage.cpp:TBosstiaryStorage::killsForStage
 sub_4a776eeea9de	4a776eeea9de7b0a	inlined	container/objectappearanceinstanceinfostorage.cpp:TObjectAppearanceInstanceInfoStorage::setName
 sub_4a82218152eb	4a82218152eb7b1b	skip	library: libc++ std::vector<T> assign/operator= (and element copy-assign/variant copy-assign) instantiated for the list model items
 sub_4a88f7c99b1a	4a88f7c99b1a8e7a	inlined	gamewindow/actionbarcontroller.cpp:TActionBarController::onHotkeyOptionsChanged
