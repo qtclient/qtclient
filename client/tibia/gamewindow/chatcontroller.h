@@ -200,7 +200,7 @@ Q_SIGNALS:
 private:
     void onChannelAdded(chat::TChatChannel* channel, bool makeCurrent);
     void onChannelRemoved(chat::TChatChannel* channel);
-    void onEntryAdded(chat::TChatChannel* channel, bool fromOthers);
+    void onEntryAddedToChatChannel(chat::TChatChannel* channel, bool fromOthers);
     /// A tab's highlight changed: its row and the scroll buttons repaint.
     void onTabHighlightChanged(chat::TChatChannel* channel);
     /// The tab's render info, made when the tab is added.
@@ -273,6 +273,7 @@ public:
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
     chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
     chat::TChatStorage& chatStorage() { return m_chatStorage; }
+    chat::TChatGameActionHandler& gameActionHandler() { return m_gameActionHandler; }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
@@ -363,7 +364,7 @@ private:
     /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection first,
     /// then the primary channel's, then the secondary one's.
     void copySelectedText();
-    void showTabMenu(chat::TChatChannel* channel, int button, int modifiers);
+    void onChatChannelTabClicked(chat::TChatChannel* channel, int button, int modifiers);
     void showMenu(const input::TGameActionList& candidates, std::span<const input::EGameAction> order, int context, int button,
                   int modifiers, TChatChannelController* model, chat::TChatChannel* channel);
     void runMenuAction(const input::IGameActionPtr& action, TChatChannelController* model, chat::TChatChannel* channel);

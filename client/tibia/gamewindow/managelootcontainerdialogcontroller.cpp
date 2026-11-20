@@ -131,7 +131,7 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
     m_confirm = new TMessageDialogController(this);
     m_confirm->setCloseOnButtonClicked(true);
     connect(m_confirm, &cip::tibia::gamewindow::TMessageDialogController::acceptClicked, this,
-            [this](bool) { onClearConfirmed(); });
+            [this](bool) { onClearItemBlackWhitelistConfirmed(); });
 
     for (const int category : CategoryOrder) {
         auto* row = new TLootContainerQMLInfo(category, this);
@@ -288,7 +288,7 @@ void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
                            qtTrId(white ? "managecontainer_confirm_clear_whitelist_text" : "managecontainer_confirm_clear_blacklist_text"));
 }
 
-void TManageLootContainerDialogController::onClearConfirmed()
+void TManageLootContainerDialogController::onClearItemBlackWhitelistConfirmed()
 {
     if (!m_lootBlackWhitelist)
         return;

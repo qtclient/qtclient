@@ -394,7 +394,7 @@ void TCyclopediaMapDialogController::centerToPlayer()
     m_renderer->worldCamera()->centerDelayed(position.x * SubfieldsPerField + SubfieldsPerField / 2, position.y * SubfieldsPerField + SubfieldsPerField / 2, position.z);
 }
 
-void TCyclopediaMapDialogController::centerAt(const Position& position, const float scale)
+void TCyclopediaMapDialogController::centerAtWorldMapCoordinate(const Position& position, const float scale)
 {
     if (!m_renderer)
         return;

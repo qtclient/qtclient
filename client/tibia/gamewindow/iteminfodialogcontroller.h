@@ -136,13 +136,13 @@ private:
     void setPrimaryLootValueSource(int source);
     /// The character's item settings changed: the type's loot value source
     /// again, and its value, tracking and list state.
-    void onCharacterDataChanged();
+    void onCharacterConfigurationChanged();
     void onInspectObjectDataReceived(const ItemInspectionData& data);
     void setInspectData(TItemInspectData* data);
     /// CIP .
     void updateNpcData();
     /// CIP .
-    void sendInspect();
+    void onInspectRequestTimeoutReached();
 
     analysers::TAnalyserStorages* storages() const;
     analysers::TItemPriceStorage* prices() const;

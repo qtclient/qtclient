@@ -244,7 +244,7 @@ TCharacterTradeDialogController::TCharacterTradeDialogController(QObject* parent
     m_characterOverviewItemsModel = m_overviewItems;
 
     if (trade::TCharacterTradeStorage* storage = trade::TCharacterTradeStorage::instance()) {
-        connect(storage, &trade::TCharacterTradeStorage::infoUpdated, this, &TCharacterTradeDialogController::onStorageUpdated);
+        connect(storage, &trade::TCharacterTradeStorage::infoUpdated, this, &TCharacterTradeDialogController::onInfoUpdated);
     }
 }
 
@@ -328,6 +328,7 @@ void TCharacterTradeDialogController::closeDialog()
 void TCharacterTradeDialogController::closeButtonClicked()
 {
     dialog()->close();
+    Q_EMIT dialogClosed();
 }
 
 void TCharacterTradeDialogController::requestClose()
@@ -400,7 +401,7 @@ void TCharacterTradeDialogController::requestConfirmConfiguration()
                                               config.highlights, true);
 }
 
-void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTradeStorage::DataType dataType)
+void TCharacterTradeDialogController::onInfoUpdated(const trade::TCharacterTradeStorage::DataType dataType)
 {
     trade::TCharacterTradeStorage* storage = trade::TCharacterTradeStorage::instance();
     if (!storage)

@@ -254,7 +254,7 @@ int supremeGoldCost(int grade);
 /// CIP .. : reveal costs; : domain switch costs.
 int revealCost(int quality);
 int changeAffinityCost(int quality);
-/// CipSoft External reshapeGemCost : gold {125k,1M,5M}; fragments quality+1.
+/// The gold ({125k, 1M, 5M}) or fragment (quality + 1) cost to reshape a gem; -1 for an unknown quality.
 int reshapeGemCost(int quality, bool goldCost);
 
 /// CIP : a perk value in a display format (0 none, 1 number,

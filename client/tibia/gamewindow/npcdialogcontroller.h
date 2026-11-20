@@ -127,6 +127,8 @@ public Q_SLOTS:
     QString sendChatMessage(const QString& Message, bool EnforceWritesToLocalChat) override;
     QString sendChatMessage(const QString& Message) override;
     void sendKeyword(const QString& Keyword) override;
+    /// positionAndSize follows the client options' NPC dialog rectangle.
+    void onNpcDialogOptionsChanged() override;
     void onRequestOpenNPCTrade() override;
     void onRequestCloseNPCTrade() override;
     void onPositionChanged(int x, int y) override;
@@ -158,8 +160,6 @@ private:
     /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection, else the conversation's.
     void copySelectedText();
     void setTalkPartnerNames(const QString& names);
-    /// CIP: positionAndSize follows the client options' NPC dialog rectangle.
-    void onDialogOptionsChanged();
     void bindNpcChannel();
     /// CIP (onNpcTalkPartnersChanged) and 
     /// (onKeywordButtonsChanged): no talk partners closes the dialog, else the

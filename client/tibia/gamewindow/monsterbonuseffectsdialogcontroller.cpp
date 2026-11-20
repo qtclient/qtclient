@@ -123,7 +123,7 @@ TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBest
             &TMonsterBonusEffectsDialogController::onConfirmDialogAccepted);
     connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
         if (m_shown)
-            refresh();
+            onMonsterBonusEffectsChangedFromStorage();
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
@@ -131,7 +131,7 @@ TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBest
             return;
         if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)
             || type == static_cast<int>(tibia::client::RESOURCE_CHARM) || type == static_cast<int>(tibia::client::RESOURCE_MINOR_CHARM)) {
-            rebuildBonusEffects();
+            onMonsterBonusEffectsChanged();
             updatePlayerData();
         }
     });
@@ -168,7 +168,7 @@ void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
     const TCharm probe{ charmId };
     setActiveTab(probe.isMinor() ? 1 : 0);
     if (m_shown)
-        refresh();
+        onMonsterBonusEffectsChangedFromStorage();
     m_pendingCharm = charmId;
 }
 
@@ -222,7 +222,7 @@ void TMonsterBonusEffectsDialogController::setUnassignedMonstersNameFilter(const
 void TMonsterBonusEffectsDialogController::showDialogTab()
 {
     m_shown = true;
-    refresh();
+    onMonsterBonusEffectsChangedFromStorage();
     // Crystal answers the bestiary request with the charm data too.
     tibia::game::requestBestiary();
 }
@@ -233,9 +233,9 @@ void TMonsterBonusEffectsDialogController::hideDialogTab()
     m_selectedCharm = -1;
 }
 
-void TMonsterBonusEffectsDialogController::refresh()
+void TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChangedFromStorage()
 {
-    rebuildBonusEffects();
+    onMonsterBonusEffectsChanged();
     rebuildMonsterInfos();
     updatePlayerData();
     updateStoreTooltip();
@@ -252,7 +252,7 @@ void TMonsterBonusEffectsDialogController::refresh()
     m_pendingCharm.reset();
 }
 
-void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
+void TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChanged()
 {
     QList<TCharm> charms;
     const bool minorTab = m_activeTab == 1;
@@ -421,7 +421,7 @@ void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()
 void TMonsterBonusEffectsDialogController::onActiveTabChanged(const int activeTabId)
 {
     setActiveTab(activeTabId);
-    refresh();
+    onMonsterBonusEffectsChangedFromStorage();
 }
 
 bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms(const int RaceID)

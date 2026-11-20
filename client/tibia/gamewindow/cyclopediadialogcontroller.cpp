@@ -233,7 +233,7 @@ void TCyclopediaDialogController::hookActions()
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Map);
                 const Position& coordinate = action.coordinate();
                 if (coordinate.x != 0 || coordinate.y != 0 || coordinate.z != 0)
-                    m_map->centerAt(coordinate, action.zoom());
+                    m_map->centerAtWorldMapCoordinate(coordinate, action.zoom());
                 break;
             }
             case 5:

@@ -76,9 +76,9 @@ private:
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 
     /// CIP : the charm list, the races and the pending selection.
-    void refresh();
+    void onMonsterBonusEffectsChangedFromStorage();
     /// CIP .
-    void rebuildBonusEffects();
+    void onMonsterBonusEffectsChanged();
     /// CIP .
     void rebuildMonsterInfos();
     void updatePlayerData();

@@ -435,10 +435,7 @@ void TRewardWallDialogController::collectRewardButtonClicked()
     case 1: showCollectWarning(); break;
     case 2: showNotCollectableMessage(); break;
     default:
-        if (!m_storage->isUsingRewardShrine())
-            showConfirmUsOfInstantRewardAccessDialogIfNeeded();
-        else
-            requestCollectFixedItemsReward();
+        showConfirmUsOfInstantRewardAccessDialogIfNeeded();
         break;
     }
 }
@@ -601,7 +598,7 @@ QString TRewardWallDialogController::dailyRewardNumbersText(const int Index, con
 
 /// Without an Instant Reward Access only an explanation; otherwise the
 /// player confirms using one (the last one, or one of several).
-void TRewardWallDialogController::showConfirmUsOfInstantRewardAccessDialogIfNeeded()
+void TRewardWallDialogController::showConfirmUseOfInstantRewardAccessDialog()
 {
     if (!m_storage)
         return;
@@ -621,12 +618,22 @@ void TRewardWallDialogController::showConfirmUsOfInstantRewardAccessDialogIfNeed
 
 void TRewardWallDialogController::onConfirmedCollectReward() { requestCollectFixedItemsReward(); }
 
-/// After the server's warning: confirm the Instant Reward Access away from a
-/// shrine, collect at one.
+/// Away from a shrine the player confirms using an Instant Reward Access;
+/// at one the reward is collected.
+void TRewardWallDialogController::showConfirmUsOfInstantRewardAccessDialogIfNeeded()
+{
+    if (m_storage && !m_storage->isUsingRewardShrine()) {
+        showConfirmUseOfInstantRewardAccessDialog();
+        return;
+    }
+    requestCollectFixedItemsReward();
+}
+
+/// After the server's warning; the same as showConfirmUsOfInstantRewardAccessDialogIfNeeded.
 void TRewardWallDialogController::onConfirmedPartialCollect()
 {
     if (m_storage && !m_storage->isUsingRewardShrine()) {
-        showConfirmUsOfInstantRewardAccessDialogIfNeeded();
+        showConfirmUseOfInstantRewardAccessDialog();
         return;
     }
     requestCollectFixedItemsReward();

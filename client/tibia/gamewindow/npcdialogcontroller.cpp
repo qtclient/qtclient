@@ -81,9 +81,9 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     m_keywordButtonsModel = &m_keywordButtons;
     m_positionAndSize = QRect(-1, -1, 0, 0);
     connect(config::TClientOptions::instance(), &config::TClientOptions::npcDialogOptionsChanged, this,
-            &TNpcDialogController::onDialogOptionsChanged);
+            &TNpcDialogController::onNpcDialogOptionsChanged);
     if (config::TClientOptions::instance()->npcDialogOptions().isValid())
-        onDialogOptionsChanged();
+        onNpcDialogOptionsChanged();
     if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance()) {
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
         connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
@@ -166,8 +166,10 @@ void TNpcDialogController::closeButtonPressed()
             close();
         return;
     }
-    m_trade.onRequestCloseNpcTrade();
     dialog()->close();
+    if (m_chatControl)
+        m_chatControl->gameActionHandler().emitSendCloseNPCChannel();
+    m_trade.onRequestCloseNpcTrade();
     resetConversation();
 }
 
@@ -410,7 +412,7 @@ void TNpcDialogController::onPositionChanged(const int x, const int y)
     options->setNpcDialogOptions(rect);
 }
 
-void TNpcDialogController::onDialogOptionsChanged()
+void TNpcDialogController::onNpcDialogOptionsChanged()
 {
     const QRect rect = config::TClientOptions::instance()->npcDialogOptions();
     if (rect == m_positionAndSize)

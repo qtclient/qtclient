@@ -169,7 +169,7 @@ private:
     /// CIP .
     void refresh();
     /// CIP .
-    void onAvailableCurrencyBalanceMightHaveChanged();
+    void onAvailableCurrencyBalanceMightHaveChagned();
     /// CIP .
     void onNpcTradeOptionsChanged();
     /// CIP : the good of the type (and liquid for fluids).

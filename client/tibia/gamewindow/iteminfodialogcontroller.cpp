@@ -142,7 +142,7 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     m_availableClassifications = { QString() };
     m_inspectTimer.setSingleShot(true);
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
-    connect(&m_inspectTimer, &QTimer::timeout, this, &TItemInfoDialogController::sendInspect);
+    connect(&m_inspectTimer, &QTimer::timeout, this, &TItemInfoDialogController::onInspectRequestTimeoutReached);
 
     connect(prices(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TItemInfoDialogController::lootValueChanged);
     connect(prices(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoDialogController::lootValueChanged);
@@ -157,7 +157,7 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
             Q_EMIT premiumTimeChanged();
         });
         connect(container, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
-            onCharacterDataChanged();
+            onCharacterConfigurationChanged();
             Q_EMIT premiumTimeChanged();
         });
     }
@@ -321,7 +321,7 @@ void TItemInfoDialogController::showDialogTab()
     if (!m_entriesBuilt)
         rebuildEntries();
     m_shown = true;
-    onCharacterDataChanged();
+    onCharacterConfigurationChanged();
     Q_EMIT premiumTimeChanged();
     setEnableTier(false);
     setClassificationIndex(-1);
@@ -435,7 +435,7 @@ void TItemInfoDialogController::setPrimaryLootValueSource(const int source)
     Q_EMIT primaryLootValueSourceChanged();
 }
 
-void TItemInfoDialogController::onCharacterDataChanged()
+void TItemInfoDialogController::onCharacterConfigurationChanged()
 {
     if (!hasCharacter())
         return;
@@ -476,7 +476,7 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
         updateNpcData();
 }
 
-void TItemInfoDialogController::sendInspect()
+void TItemInfoDialogController::onInspectRequestTimeoutReached()
 {
     if (m_typeId == 0 || !tibia::game::isOnline())
         return;

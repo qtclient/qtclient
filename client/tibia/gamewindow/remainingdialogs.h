@@ -141,7 +141,7 @@ private:
         std::vector<uint16_t> highlights;
     };
     TConfiguration configuration() const;
-    void onStorageUpdated(trade::TCharacterTradeStorage::DataType dataType);
+    void onInfoUpdated(trade::TCharacterTradeStorage::DataType dataType);
     void refreshOverviewModels();
     static TCharacterTradeDialogController* s_instance;
     TCharacterAuctionConfiguration* m_auction = nullptr;

@@ -179,14 +179,14 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     connect(m_storage, &TSkillWheelStorage::serverSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TSkillWheelPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TSkillWheelPageController::onWheelChanged);
-    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, &TSkillWheelPageController::updatePresetsInfoModel);
+    connect(m_storage, &TSkillWheelStorage::configurationChangedFromUserInput, this, &TSkillWheelPageController::updatePresetsInfoModelIfNeeded);
     onWheelChanged();
-    updatePresetsInfoModel();
+    updatePresetsInfoModelIfNeeded();
 }
 
 /// CIP: the own character's presets (with a known change state) sorted by name, numbers by value and
 /// without case; the rows' available points are the regular, extra and mod grade points.
-void TSkillWheelPageController::updatePresetsInfoModel()
+void TSkillWheelPageController::updatePresetsInfoModelIfNeeded()
 {
     std::vector<TPresetInfo> presets;
     int totalPoints = 0;
@@ -267,7 +267,7 @@ void TSkillWheelPageController::showDialogTab()
     clearSelection();
     if (!m_skipNextShowUpdate) {
         validatePresets();
-        updatePresetsInfoModel();
+        updatePresetsInfoModelIfNeeded();
         selectMatchingPreset();
         selectPendingPreset();
     }
@@ -1036,7 +1036,7 @@ void TSkillWheelPageController::useServerSkillWheelAsCurrent()
         return;
     m_storage->setCurrentSkillWheel(*server);
     validatePresets();
-    updatePresetsInfoModel();
+    updatePresetsInfoModelIfNeeded();
     selectMatchingPreset();
     selectPendingPreset();
 }
@@ -1055,7 +1055,7 @@ void TSkillWheelPageController::clearSelection()
 /// CIP: the new preset is shown.
 void TSkillWheelPageController::onNewPresetName(const QString& PresetName)
 {
-    updatePresetsInfoModel();
+    updatePresetsInfoModelIfNeeded();
     selectPresetByName(PresetName, true);
 }
 

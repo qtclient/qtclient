@@ -8,6 +8,7 @@
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
 #include <tibia/appearances/appearancetype.h>
 #include "tibia/assets/things.h"
 #include "tibia/client/outfit.h"
@@ -205,9 +206,8 @@ void TContainerProtocolMessageHandler::handleShowMessageDialogMessage(const Game
 void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message)
 {
     const auto typeId = static_cast<uint16_t>(message.object().object_id());
-    const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
     const std::optional<uint8_t> tier =
-        type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(message.object().tier())) : std::nullopt;
+        message.object().has_tier() ? std::optional<uint8_t>(static_cast<uint8_t>(message.object().tier())) : std::nullopt;
     std::vector<TInventorySlot> depotObjects;
     for (const auto& item : message.depot_objects())
         depotObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
@@ -215,8 +215,9 @@ void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const 
     for (const auto& item : message.inbox_objects())
         inboxObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
     TObjectCountStorage::TCounts stash;
+    // A type listed twice keeps its last amount.
     for (const auto& entry : message.stash())
-        stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] += entry.amount();
+        stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] = entry.amount();
     if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
         session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), message.depot_count(),
                                                                std::move(inboxObjects), message.inbox_count(), stash);
@@ -265,6 +266,91 @@ void TContainerProtocolMessageHandler::handleDepotSearchResultMessage(const ::ti
     Q_EMIT requestOpenDepotSearchWidget();
 }
 
+void TContainerProtocolMessageHandler::requestCloseContainer(const TContainerID ContainerID)
+{
+    ::tibia::protobuf::protocol::GameclientMessageCloseContainer message;
+    message.set_container_id(ContainerID);
+    Q_EMIT sendCloseContainerMessage(message);
+}
+
+void TContainerProtocolMessageHandler::requestUpContainer(const TContainerID ContainerID)
+{
+    ::tibia::protobuf::protocol::GameclientMessageUpContainer message;
+    message.set_container_id(ContainerID);
+    Q_EMIT sendUpContainerMessage(message);
+}
+
+namespace {
+/// A seek in the container to `index`, with the container's filter category.
+::tibia::protobuf::protocol::GameclientMessageSeekInContainer seekMessage(const TContainerID id, const uint32_t index)
+{
+    ::tibia::protobuf::protocol::GameclientMessageSeekInContainer message;
+    message.set_container_id(id);
+    message.set_index(index);
+    const TContainerStorage* storage = TContainerStorage::instance();
+    message.set_primary_type(storage ? storage->filterCategory(id) : 0);
+    return message;
+}
+} // namespace
+
+void TContainerProtocolMessageHandler::requestNextPageForContainer(const TContainerID ContainerID)
+{
+    const TContainerStorage* storage = TContainerStorage::instance();
+    const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
+    Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->nextPageFirstIndex() : 0));
+}
+
+void TContainerProtocolMessageHandler::requestPreviousPageForContainer(const TContainerID ContainerID)
+{
+    const TContainerStorage* storage = TContainerStorage::instance();
+    const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
+    Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->previousPageFirstIndex() : 0));
+}
+
+void TContainerProtocolMessageHandler::requestUpdateContainer(const TContainerID ContainerID)
+{
+    const TContainerStorage* storage = TContainerStorage::instance();
+    const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
+    Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->firstIndex : 0));
+}
+
+void TContainerProtocolMessageHandler::requestGetObjectsInfo(
+    const std::vector<appearances::TObjectAppearanceInstanceTypeID>& ObjectInstanceTypes)
+{
+    ::tibia::protobuf::protocol::GameclientMessageGetObjectInfo message;
+    for (const appearances::TObjectAppearanceInstanceTypeID& instance : ObjectInstanceTypes) {
+        auto* object = message.add_objects();
+        object->set_object_id(instance.typeId);
+        object->set_data(instance.hasLiquid() ? instance.liquid : instance.hasTier() ? instance.tier : 0);
+    }
+    Q_EMIT sendGetObjectInfoMessage(message);
+}
+
+void TContainerProtocolMessageHandler::requestGetObjectInfo(const appearances::TObjectAppearanceInstanceTypeID& ObjectInstanceType)
+{
+    requestGetObjectsInfo({ ObjectInstanceType });
+}
+
+void TContainerProtocolMessageHandler::requestSortContainer(const TContainerID ContainerID, const uint32_t SortOption,
+                                                            const bool SortBackpacksFirst, const bool SortRecursive)
+{
+    ::tibia::protobuf::protocol::GameclientMessageContainerAction message;
+    message.set_container_id(ContainerID);
+    auto* sort = message.mutable_sort();
+    sort->set_sort_type(SortOption);
+    sort->set_first_flag(SortBackpacksFirst);
+    sort->set_second_flag(SortRecursive);
+    Q_EMIT sendContainerActionMessage(message);
+}
+
+void TContainerProtocolMessageHandler::requestMoveContentToManagedContainers(const TContainerID ContainerID, const bool MoveRecursive)
+{
+    ::tibia::protobuf::protocol::GameclientMessageContainerAction message;
+    message.set_container_id(ContainerID);
+    message.set_move_to_managed_containers(MoveRecursive);
+    Q_EMIT sendContainerActionMessage(message);
+}
+
 void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message)
 {
     // Counts per (object, tier); the tier only counts for tiered objects.
@@ -292,6 +378,38 @@ void ownProductSurface(QObject* parent)
     (void)typedKeep();
     auto* handler = new TContainerProtocolMessageHandler(parent);
     TContainerProtocolMessageHandler::setLiveInstance(handler);
+    // CIP connects the client messages to the session's protocol queue.
+    using namespace ::tibia::protobuf::protocol;
+    using protocol::TProtocolMessageQueue;
+    const auto queue = []() -> TProtocolMessageQueue* {
+        TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
+        return queue && tibia::game::canPerformGameAction() ? queue : nullptr;
+    };
+    QObject::connect(handler, &TContainerProtocolMessageHandler::sendCloseContainerMessage, handler,
+                     [queue](const GameclientMessageCloseContainer& message) {
+                         if (TProtocolMessageQueue* q = queue())
+                             q->sendCloseContainer(message);
+                     });
+    QObject::connect(handler, &TContainerProtocolMessageHandler::sendUpContainerMessage, handler,
+                     [queue](const GameclientMessageUpContainer& message) {
+                         if (TProtocolMessageQueue* q = queue())
+                             q->sendUpContainer(message);
+                     });
+    QObject::connect(handler, &TContainerProtocolMessageHandler::sendSeekInContainerMessage, handler,
+                     [queue](const GameclientMessageSeekInContainer& message) {
+                         if (TProtocolMessageQueue* q = queue())
+                             q->sendSeekInContainer(message);
+                     });
+    QObject::connect(handler, &TContainerProtocolMessageHandler::sendGetObjectInfoMessage, handler,
+                     [queue](const GameclientMessageGetObjectInfo& message) {
+                         if (TProtocolMessageQueue* q = queue())
+                             q->sendGetObjectInfo(message);
+                     });
+    QObject::connect(handler, &TContainerProtocolMessageHandler::sendContainerActionMessage, handler,
+                     [queue](const GameclientMessageContainerAction& message) {
+                         if (TProtocolMessageQueue* q = queue())
+                             q->sendContainerActionMessage(message);
+                     });
 }
 
 uint32_t TInventorySlot::durationRemainingSeconds() const
@@ -565,47 +683,6 @@ void TContainerStorage::setManualSortMode(const bool enabled)
         return;
     g_manualSortMode = enabled;
     Q_EMIT manualSortModeChanged();
-}
-
-void TContainerStorage::requestFilteredContent(const TContainerID id, const uint16_t index, const uint32_t category)
-{
-    if (!tibia::game::canPerformGameAction())
-        return;
-    auto message = tibia::protocol::newGameclientMessage(204);
-    auto* m = message->MutableExtension(
-        ::tibia::protobuf::protocol::GameclientMessageSeekInContainer::gameclient_message_seek_in_container);
-    m->set_container_id(static_cast<uint32_t>(id));
-    m->set_index(index);
-    m->set_primary_type(category);
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
-void TContainerStorage::requestSort(const TContainerID id, const uint32_t sortType, const bool backpacksFirst,
-                                    const bool recursive)
-{
-    if (!tibia::game::canPerformGameAction())
-        return;
-    auto message = tibia::protocol::newGameclientMessage(117);
-    auto* m = message->MutableExtension(
-        ::tibia::protobuf::protocol::GameclientMessageContainerAction::gameclient_message_container_action);
-    m->set_container_id(static_cast<uint32_t>(id));
-    auto* sort = m->mutable_sort();
-    sort->set_sort_type(sortType);
-    sort->set_first_flag(backpacksFirst);
-    sort->set_second_flag(recursive);
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
-void TContainerStorage::requestMoveContentToManagedContainers(const TContainerID id, const bool recursive)
-{
-    if (!tibia::game::canPerformGameAction())
-        return;
-    auto message = tibia::protocol::newGameclientMessage(117);
-    auto* m = message->MutableExtension(
-        ::tibia::protobuf::protocol::GameclientMessageContainerAction::gameclient_message_container_action);
-    m->set_container_id(static_cast<uint32_t>(id));
-    m->set_move_to_managed_containers(recursive);
-    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
 void TContainerStorage::closeContainer(const TContainerID id)

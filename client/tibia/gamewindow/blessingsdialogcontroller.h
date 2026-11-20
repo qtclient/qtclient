@@ -68,10 +68,10 @@ public Q_SLOTS:
     void requestClose() override;
 
 private:
-    /// CIP : replaces the data and shows the dialog. CIP only
+    /// Replaces the data and shows the dialog. CipSoft only
     /// creates the item when there is none; the QML reads blessingsData once,
     /// so an open dialog is rebuilt instead.
-    void setData(const BlessDialogData& data);
+    void showDialog(const BlessDialogData& data);
 
     std::vector<client::gamecore::Hook> m_hooks;
 };

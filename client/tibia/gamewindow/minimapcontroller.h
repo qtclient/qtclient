@@ -100,7 +100,6 @@ private:
     /// CIP : area to the storage, crosshair, repaint, cursor.
     void refresh();
     void onPlayerPositionChanged(const Position& position);
-    void centerOnPlayer();
     /// Fields one rose click or scroll hotkey moves: round(12 / scale).
     int scrollStep() const;
     /// CIP : the player's field is light (blue 255) on the minimap.

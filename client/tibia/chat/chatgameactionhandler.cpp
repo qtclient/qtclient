@@ -19,6 +19,11 @@ using ::tibia::input::TGameActionList;
     return std::make_shared<::tibia::input::TGameActionChatChannel>(type, std::make_shared<const TChatChannelIdentifier>(identifier));
 }
 
+void TChatGameActionHandler::emitSendCloseNPCChannel()
+{
+    Q_EMIT sendCloseNPCChannel(::tibia::protobuf::protocol::GameclientMessageCloseNPCChannel());
+}
+
 /// CIP TGameActionVisibleChatChannel: the action and whether the channel is
 /// in the secondary pane.
 ::tibia::input::IGameActionPtr visibleChannelAction(const A type, const bool secondaryShown)

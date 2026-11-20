@@ -11,6 +11,8 @@
 #include "input/inputciptypes.h"
 #include "input/crosshairgameactionhandlers.h"
 #include "input/gameactionhandlers.h"
+#include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
 
 #include <QClipboard>
 #include <QDateTime>
@@ -662,7 +664,7 @@ TChatChannelTabController::TChatChannelTabController(chat::TChatChannelStorage& 
         addRenderInfo(channel);
     connect(&storage, &chat::TChatChannelStorage::channelAdded, this, &TChatChannelTabController::onChannelAdded);
     connect(&storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatChannelTabController::onChannelRemoved);
-    connect(&storage, &chat::TChatChannelStorage::entryAddedToChannel, this, &TChatChannelTabController::onEntryAdded);
+    connect(&storage, &chat::TChatChannelStorage::entryAddedToChannel, this, &TChatChannelTabController::onEntryAddedToChatChannel);
     connect(&storage, &chat::TChatChannelStorage::channelsMoved, this, [this] {
         beginResetModel();
         m_rows = m_storage.channels();
@@ -857,7 +859,7 @@ void TChatChannelTabController::onChannelRemoved(chat::TChatChannel* channel)
     setCurrentRow(m_currentRowId);
 }
 
-void TChatChannelTabController::onEntryAdded(chat::TChatChannel* channel, const bool /*fromOthers*/)
+void TChatChannelTabController::onEntryAddedToChatChannel(chat::TChatChannel* channel, const bool /*fromOthers*/)
 {
     // NPC conversations and channels shown in the secondary pane do not flash;
     // the current tab ignores it.
@@ -975,7 +977,13 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     own(&m_primary);
     own(&m_secondary);
     own(&m_tabs);
-    (void)m_gameActionHandler;
+    // CIP connects the handler's client messages to the session's protocol queue.
+    connect(&m_gameActionHandler, &chat::TChatGameActionHandler::sendCloseNPCChannel, this,
+            [](const tibia::protobuf::protocol::GameclientMessageCloseNPCChannel& message) {
+                if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
+                    queue && tibia::game::canPerformGameAction())
+                    queue->sendCloseNPCChannel(message);
+            });
     connect(&m_storage, &chat::TChatChannelStorage::publishGameAction, this, &TChatController::publishGameAction);
     connect(&m_primary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
     connect(&m_secondary, &TChatChannelController::publishGameAction, this, &TChatController::publishGameAction);
@@ -1011,7 +1019,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_mode, &chat::TChatModeManager::chatModeChanged, this, &TChatController::chatModeChanged);
     connect(&m_storage, &chat::TChatChannelStorage::channelAdded, this, &TChatController::onChannelAdded);
     connect(&m_tabs, &TChatChannelTabController::currentChannelChanged, &m_primary, &TChatChannelController::setChannel);
-    connect(&m_tabs, &TChatChannelTabController::tabClicked, this, &TChatController::showTabMenu);
+    connect(&m_tabs, &TChatChannelTabController::tabClicked, this, &TChatController::onChatChannelTabClicked);
     connect(&m_storage, &chat::TChatChannelStorage::channelRemoved, this, &TChatController::onChatChannelRemoved);
     for (TChatChannelController* model : { &m_primary, &m_secondary }) {
         connect(model, &TChatChannelController::closeRequested, this, &TChatController::closeChannel);
@@ -1615,7 +1623,7 @@ void TChatController::setSecondary(chat::TChatChannel* channel)
 
 void TChatController::onSecondaryChannelClicked(const int mouseButtonRaw, const int keyboardModifiersRaw)
 {
-    showTabMenu(m_secondary.channel(), mouseButtonRaw, keyboardModifiersRaw);
+    onChatChannelTabClicked(m_secondary.channel(), mouseButtonRaw, keyboardModifiersRaw);
 }
 
 void TChatController::onChatChannelRemoved(TChatChannel* channel)
@@ -1884,7 +1892,7 @@ void TChatController::showEntryMenu(TChatChannelController* model, const int row
     showMenu(candidates, EntryMenuOrder, ChatEntryContext, button, modifiers, model, nullptr);
 }
 
-void TChatController::showTabMenu(chat::TChatChannel* channel, const int button, const int modifiers)
+void TChatController::onChatChannelTabClicked(chat::TChatChannel* channel, const int button, const int modifiers)
 {
     const input::TGameActionList candidates = m_actionProvider.gameActions(channel ? &channel->identifier() : nullptr);
     if (!channel) {

@@ -327,16 +327,16 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     m_proxy.setShowLockerOnly(options->boolOption(config::EClientOption::marketShowLockerOnly));
 
     connect(m_message, &TMessageDialogController::acceptClicked, this, &TMarketController::onMessageDialogOkay);
-    connect(options, &config::TClientOptions::marketOtpionsChanged, this, &TMarketController::onMarketOptionsChanged);
+    connect(options, &config::TClientOptions::marketOtpionsChanged, this, &TMarketController::onMarketOptionsChagend);
     connect(&m_proxy, &cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy::showLockerOnlyChanged, this,
             &TMarketController::onShowLockerOnlyChanged);
     connect(messages, &market::TMarketProtocolMessageHandler::requestOpenMarketDialog, this, &TMarketController::showDialog);
     connect(messages, &market::TMarketProtocolMessageHandler::requestCloseMarketDialog, this, &TMarketController::closeDialog);
     connect(messages, &market::TMarketProtocolMessageHandler::requestMarketMessageDialog, this, &TMarketController::showMarketMessage);
-    connect(storage, &market::TMarketStorage::marketItemDetailsChanged, this, &TMarketController::onItemDetailsChanged);
-    connect(storage, &market::TMarketStorage::marketOffersChanged, this, &TMarketController::onOffersChanged);
-    connect(storage, &market::TMarketStorage::marketHistoryChanged, this, &TMarketController::onHistoryChanged);
-    connect(storage, &market::TMarketStorage::marketOwnOffersChanged, this, &TMarketController::onOwnOffersChanged);
+    connect(storage, &market::TMarketStorage::marketItemDetailsChanged, this, &TMarketController::onMarketItemDetailsChanged);
+    connect(storage, &market::TMarketStorage::marketOffersChanged, this, &TMarketController::onMarketOffersChanged);
+    connect(storage, &market::TMarketStorage::marketHistoryChanged, this, &TMarketController::onMarketHistoryChanged);
+    connect(storage, &market::TMarketStorage::marketOwnOffersChanged, this, &TMarketController::onMarketOwnOffersChanged);
     connect(storage, &market::TMarketStorage::activeOfferCountChanged, this, &TMarketController::onActiveOfferCountChanged);
     connect(storage, &market::TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged);
     connect(storage, &market::TMarketStorage::classificationsChanged, this, [this] {
@@ -788,7 +788,7 @@ void TMarketController::showDialog()
         return;
     }
     if (m_storage)
-        onOffersChanged(m_storage->offers());
+        onMarketOffersChanged(m_storage->offers());
 }
 
 void TMarketController::closeDialog()
@@ -851,7 +851,7 @@ void TMarketController::onMessageDialogOkay()
     m_message->dialog()->close();
 }
 
-void TMarketController::onMarketOptionsChanged()
+void TMarketController::onMarketOptionsChagend()
 {
     m_proxy.setShowLockerOnly(config::TClientOptions::instance()->boolOption(config::EClientOption::marketShowLockerOnly));
 }
@@ -862,7 +862,7 @@ void TMarketController::onShowLockerOnlyChanged()
     Q_EMIT showLockerOnlyChanged();
 }
 
-void TMarketController::onItemDetailsChanged()
+void TMarketController::onMarketItemDetailsChanged()
 {
     if (!dialog()->item() || !m_storage)
         return;
@@ -925,17 +925,17 @@ void TMarketController::setOfferLists(const char* buyProperty, const char* sellP
     setItemProperty(sellProperty, QVariant::fromValue(displayOffers(offers.sellOffers, ownedSell)));
 }
 
-void TMarketController::onOffersChanged(const market::TMarketOfferList& NewOffers)
+void TMarketController::onMarketOffersChanged(const market::TMarketOfferList& NewOffers)
 {
     setOfferLists("buyOffersModel", "sellOffersModel", NewOffers, m_buyOffers, m_sellOffers);
 }
 
-void TMarketController::onHistoryChanged(const market::TMarketOfferList& NewOffers)
+void TMarketController::onMarketHistoryChanged(const market::TMarketOfferList& NewOffers)
 {
     setOfferLists("historicBuyOffersModel", "historicSellOffersModel", NewOffers, m_historicBuyOffers, m_historicSellOffers);
 }
 
-void TMarketController::onOwnOffersChanged(const market::TMarketOfferList& NewOffers)
+void TMarketController::onMarketOwnOffersChanged(const market::TMarketOfferList& NewOffers)
 {
     setOfferLists("ownBuyOffersModel", "ownSellOffersModel", NewOffers, m_ownBuyOffers, m_ownSellOffers);
 }

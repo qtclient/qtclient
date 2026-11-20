@@ -190,7 +190,7 @@ public:
     void centerHouse() override;
 
 private:
-    void onHouseActionResult(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);
+    void onRequestHouseActionResultDialog(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);
     void onHouseActionConfirmed();
     void resetHouseActionData();
     /// The state and sort-order filter entries are emptied and deleted.
@@ -200,7 +200,7 @@ private:
     void setDisableQmlSelect(bool disable);
     /// The floors of the house (CIP: the staticmapdata extent of the house).
     void updateHouseLayers(uint houseId);
-    void centerHousePreview();
+    void onHouseViewportChanged();
     /// The town filter's houses from the server.
     void onRequestDynamicDataForTownTimerTimeout();
     /// Pick a town (if none) and the first house row so the 3D preview is not blank.

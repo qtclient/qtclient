@@ -175,7 +175,7 @@ public:
     cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration; }
     /// Centers the map on a field; a NaN scale keeps the current one. Nothing
     /// without the map's QML item.
-    void centerAt(const Position& position, float scale);
+    void centerAtWorldMapCoordinate(const Position& position, float scale);
     /// The page left for another tab: the camera's top-left and zoom.
     TCyclopediaDialogContext captureContext() const;
     /// The camera back where it was (on the own character for a context taken

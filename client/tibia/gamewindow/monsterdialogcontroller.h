@@ -156,7 +156,7 @@ private:
     void hookEvents();
     void setDialogState(DialogState state);
     /// The monster race storage's classification summary / races changed.
-    void onClassificationSummaryChanged();
+    void onMonsterClassificationSummaryChanged();
     void onMonsterRacesChanged(const QString& MonsterClassificationID);
     void onMonsterRaceDetailsChanged();
     void rebuildSingleMonster();

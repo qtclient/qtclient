@@ -137,7 +137,7 @@ private:
     bool hasOwnWheel() const;
     void setCurrentPresetName(const QString& name);
     void validatePresets();
-    void updatePresetsInfoModel();
+    void updatePresetsInfoModelIfNeeded();
     void ensureDefaultPreset();
     void selectMatchingPreset();
     void selectPendingPreset();

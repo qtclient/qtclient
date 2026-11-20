@@ -644,7 +644,7 @@ TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QO
     connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, &TMonsterDialogController::onConfirmDialogAccepted);
     TMonsterRaceStorage* races = TMonsterRaceStorage::instance();
     connect(races, &TMonsterRaceStorage::monsterClassificationSummaryChanged, this,
-            &TMonsterDialogController::onClassificationSummaryChanged);
+            &TMonsterDialogController::onMonsterClassificationSummaryChanged);
     connect(races, &TMonsterRaceStorage::monsterClassificationMonstersChanged, this, &TMonsterDialogController::onMonsterRacesChanged);
     connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
         if (m_dialogState == SingleMonster)
@@ -663,7 +663,7 @@ TMonsterDialogController::~TMonsterDialogController()
     m_tearingDown = true;
     m_hooks.clear();
     m_details.reset();
-    onClassificationSummaryChanged();
+    onMonsterClassificationSummaryChanged();
     onMonsterRacesChanged(m_selectedClassification);
     if (QObject* single = std::exchange(m_singleMonster, nullptr)) {
         Q_EMIT qmlSingleMonsterChanged();
@@ -728,7 +728,7 @@ void TMonsterDialogController::restoreContext(const TCyclopediaDialogContext& Cy
             break;
         case MonsterClassification:
             m_selectedClassification = context.classification;
-            onClassificationSummaryChanged();
+            onMonsterClassificationSummaryChanged();
             break;
     }
 }
@@ -742,7 +742,7 @@ void TMonsterDialogController::showDialogTab()
     m_selectedClassification.clear();
     m_search.clear();
     m_selectedRace = 0;
-    onClassificationSummaryChanged();
+    onMonsterClassificationSummaryChanged();
     tibia::game::requestBestiary();
 }
 
@@ -818,7 +818,7 @@ void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
     tibia::game::requestBestiarySearch(static_cast<uint16_t>(MonsterRaceID));
 }
 
-void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onClassificationSummaryChanged(); }
+void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onMonsterClassificationSummaryChanged(); }
 
 void TMonsterDialogController::requestSwitchBackToRaceSummary() { requestClassificationSelection(m_selectedClassification); }
 
@@ -902,7 +902,7 @@ void TMonsterDialogController::setDialogState(const DialogState state)
     Q_EMIT qmlDialogStateChanged();
 }
 
-void TMonsterDialogController::onClassificationSummaryChanged()
+void TMonsterDialogController::onMonsterClassificationSummaryChanged()
 {
     // The page of the selected classification, else the first.
     setDialogState(MonsterClassification);

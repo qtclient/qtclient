@@ -1365,7 +1365,7 @@ int changeAffinityCost(const int quality)
 int reshapeGemCost(const int quality, const bool goldCost)
 {
     if (quality < 0 || quality > 2)
-        return 0;
+        return -1;
     if (!goldCost)
         return quality + 1;
     constexpr int Costs[] = { 125000, 1000000, 5000000 };

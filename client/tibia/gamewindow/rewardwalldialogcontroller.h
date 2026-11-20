@@ -93,6 +93,8 @@ public Q_SLOTS:
     void requestCollectFixedItemsReward() override;
 
 private:
+    /// The confirmation to use an Instant Reward Access, or why there is none.
+    void showConfirmUseOfInstantRewardAccessDialog();
     void updateDailyRewards();
     void clearDailyRewards();
     void clearHistory();
