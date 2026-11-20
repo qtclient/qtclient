@@ -16,6 +16,7 @@ namespace {
 using A = input::EGameAction;
 using worldmap::TWorldMapCoordinate;
 
+// The actions the storage handles. // not-a-cip-table
 constexpr A HandledActions[] = {
     A::SHOW_DIALOG_CREATE_MINIMAP_MARKER,
     A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
@@ -138,7 +139,7 @@ void TMinimapMarkerStorage::setMarkersFromMinimapMarkerFile(const tibia::protobu
 void TMinimapMarkerStorage::bindActions()
 {
     // The marker dialog's actions.
-    for (const A type : { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
+    for (const A type : { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, A::SHOW_DIALOG_EDIT_MINIMAP_MARKER, // not-a-cip-table
                           A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION }) {
         m_gameActions.on(type, [this](const input::IGameAction& action) {
             m_dialog->handleGameAction(action);

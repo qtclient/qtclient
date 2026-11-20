@@ -20,6 +20,7 @@
 #include "assets/cipbmpimage.h"
 
 #include <QList>
+#include <QStringList>
 #include <QQmlComponent>
 #include <QThread>
 #include <QQmlContext>
@@ -597,14 +598,15 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
     const qreal halfField = SubfieldsPerField * 0.5 * m_worldCamera->scaleFactor();
     m_markers.clear();
     const auto addPin = [&](const QImage& icon, const QColor& fallback, const int x, const int y, const int layer,
-                            const QString& tooltip) {
+                            const QString& tooltip, const int kind, const quint32 houseId) {
+        const TMarkerHit hit{ kind, Position(x, y, static_cast<uint8_t>(layer)), houseId };
         const QPointF center = m_worldCamera->pixelOf(x, y, layer) + QPointF(halfField, halfField);
         if (!icon.isNull()) {
             const QRectF target(center - QPointF(icon.width() * 0.5, icon.height() * 0.5), icon.size());
             if (!target.intersects(viewport))
                 return;
             draw.images.push_back({ icon, target, QRectF(QPointF(0, 0), icon.size()), false });
-            m_markers.push_back({ target, tooltip });
+            m_markers.push_back({ target, tooltip, hit });
             return;
         }
         const qreal size = 6 * m_worldCamera->scaleFactor() * SubfieldsPerField / 8.0;
@@ -612,12 +614,12 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         if (!target.intersects(viewport))
             return;
         draw.rects.push_back({ target, fallback });
-        m_markers.push_back({ target, tooltip });
+        m_markers.push_back({ target, tooltip, hit });
     };
     if (m_showNPCMarkers) {
         for (const auto& npc : TStaticData::instance().npcs()) {
             if (npc.coordinate.z == z)
-                addPin(m_npcIcon, QColor(0x33, 0x99, 0xff), npc.coordinate.x, npc.coordinate.y, z, npc.name);
+                addPin(m_npcIcon, QColor(0x33, 0x99, 0xff), npc.coordinate.x, npc.coordinate.y, z, npc.name, TMarkerHit::NPCMarker, 0);
         }
     }
     // Explore overlay: viewpoint POIs of the discovery subarea (CIP pink pins).
@@ -629,8 +631,12 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
             const qreal size = 6 * m_worldCamera->scaleFactor() * SubfieldsPerField / 8.0;
             const QPointF center = m_worldCamera->pixelOf(point.coordinate.x, point.coordinate.y, z) + QPointF(halfField, halfField);
             const QRectF target(center.x() - size * 0.5, center.y() - size * 0.5, size, size);
-            if (target.intersects(viewport))
+            if (target.intersects(viewport)) {
                 draw.rects.push_back({ target, color });
+                m_markers.push_back({ target, qtTrId("viewpoint_tooltip"),
+                                      { TMarkerHit::Viewpoint,
+                                        Position(point.coordinate.x, point.coordinate.y, static_cast<uint8_t>(point.coordinate.z)), 0 } });
+            }
         }
     }
     // CIP THouseMarkerWorldMapAreaData: house positions from staticdata.dat.
@@ -638,7 +644,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         for (const cyclopedia::TStaticHouse& house : cyclopedia::staticHouses()) {
             if (house.position.z != z)
                 continue;
-            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z, house.name);
+            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z, house.name, TMarkerHit::HouseMarker, house.id);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
@@ -656,24 +662,21 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
                 if (m_flagStrip.rect().contains(cell))
                     icon = m_flagStrip.copy(cell);
             }
-            addPin(icon, QColor(0xff, 0xcc, 0x33), marker->coordinate.x, marker->coordinate.y, z, marker->description);
+            addPin(icon, QColor(0xff, 0xcc, 0x33), marker->coordinate.x, marker->coordinate.y, z, marker->description,
+                   TMarkerHit::MinimapMarker, 0);
         }
     }
-    // CIP TPassageMapAreaData from 0xDD subtype 6 (TCyclopediaMapStorage).
+    // CIP TPassageMapAreaData from 0xDD subtype 6 (TCyclopediaMapStorage). The tooltip
+    // names the subareas the passage leads to.
     if (m_showPassages && m_storage) {
-        const auto& staticNpcs = TStaticData::instance().npcs();
         for (const auto& passage : m_storage->passages()) {
             if (passage.coordinate.z != z)
                 continue;
-            QString tooltip = qtTrId("passage_tooltip");
-            for (const auto& npc : staticNpcs) {
-                if (npc.coordinate.x == passage.coordinate.x && npc.coordinate.y == passage.coordinate.y
-                    && npc.coordinate.z == passage.coordinate.z) {
-                    tooltip = npc.name;
-                    break;
-                }
-            }
-            addPin(m_passageIcon, QColor(0x66, 0xcc, 0xff), passage.coordinate.x, passage.coordinate.y, z, tooltip);
+            QStringList names;
+            for (const int subAreaId : passage.raceIds)
+                names.append(cyclopedia::TCyclopediaMapStaticDataStorage::instance().subAreaName(static_cast<quint16>(subAreaId)));
+            const QString tooltip = qtTrId("passage_tooltip").arg(names.join(QStringLiteral(", ")));
+            addPin(m_passageIcon, QColor(0x66, 0xcc, 0xff), passage.coordinate.x, passage.coordinate.y, z, tooltip, TMarkerHit::Passage, 0);
         }
     }
     m_playerLayer = -1;
@@ -684,8 +687,18 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         const bool drawn = position.z == z || (z <= GroundLayer && position.z > z && position.z <= GroundLayer && m_tileType != ETileType::LocalMinimap);
         if (position.isValid() && drawn)
             addPin(m_playerIcon, QColor(0x66, 0xff, 0x5e), position.x, position.y, position.z,
-                   qtTrId("player_position_tooltip"));
+                   qtTrId("player_position_tooltip"), TMarkerHit::PlayerPosition, 0);
     }
+}
+
+std::vector<TMinimapRendererQuickItem::TMarkerHit> TMinimapRendererQuickItem::markersAt(const QPointF& point) const
+{
+    std::vector<TMarkerHit> hits;
+    for (auto it = m_markers.rbegin(); it != m_markers.rend(); ++it) {
+        if (it->rect.contains(point))
+            hits.push_back(it->hit);
+    }
+    return hits;
 }
 
 QString TMinimapRendererQuickItem::markerTooltipAt(const QPointF& point) const

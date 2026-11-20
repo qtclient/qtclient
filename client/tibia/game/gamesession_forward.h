@@ -221,6 +221,9 @@ void sendCyclopediaMapDonate(uint16_t areaId, uint32_t amount);
 
 void sendCyclopediaMapResetViewpoints(uint16_t subAreaId);
 
+/// Asks the server for what the Cyclopedia map shows of a subarea (its viewpoints).
+void sendCyclopediaMapRequestArea(uint16_t subAreaId);
+
 void sendExivaOptions(bool allowAll, bool allowOwnGuild, bool allowOwnParty, bool allowVipList, bool allowPlayerWhitelist, bool allowGuildWhitelist, const std::vector<std::string>& characterWhiteList, const std::vector<std::string>& removeCharacter, const std::vector<std::string>& guildWhiteList, const std::vector<std::string>& removeGuild);
 
 void sendForgeBrowseHistoryRequest(uint16_t page);

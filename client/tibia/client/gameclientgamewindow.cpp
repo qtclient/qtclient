@@ -737,7 +737,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                 &analysers::TAnalyserStorages::onCharacterConfigurationLoaded);
         if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
             connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
-                    &gamewindow::TCyclopediaMapDialogController::applyCharacterConfiguration);
+                    &gamewindow::TCyclopediaMapDialogController::showDialogTab);
         if (gamewindow::TQuestLogController* questLog = informationDialogs->questLog())
             connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
                     &gamewindow::TQuestLogController::onCharacterConfigurationLoaded);

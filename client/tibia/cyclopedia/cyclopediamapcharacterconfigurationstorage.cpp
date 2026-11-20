@@ -186,6 +186,11 @@ void TCyclopediaMapCharacterConfigurationStorage::setShadingValue(const float va
     m_shadingValue = value;
     Q_EMIT configurationChangedFromUserInput();
 }
-void TCyclopediaMapCharacterConfigurationStorage::setLocation(const TLocation& location) { set(m_location, location); }
+// A location always counts as a user change, also when it is the stored one.
+void TCyclopediaMapCharacterConfigurationStorage::setLocation(const TLocation& location)
+{
+    m_location = location;
+    Q_EMIT configurationChangedFromUserInput();
+}
 
 }

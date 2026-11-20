@@ -134,14 +134,6 @@ public:
     void setCreatures(QList<QObject*> common, QList<QObject*> rare, QList<QObject*> dynamic);
 };
 
-class TCyclopediaMapSelectionInfoPassage final : public cip::tibia::gamewindow::TCyclopediaMapSelectionInfoPassage
-{
-    Q_OBJECT
-public:
-    explicit TCyclopediaMapSelectionInfoPassage(QObject* parent = nullptr);
-    void setReachableCreatureOccurrences(QList<QObject*> occurrences);
-};
-
 class TQMLCharacterData final : public cip::tibia::gamewindow::TQMLCharacterData
 {
     Q_OBJECT
