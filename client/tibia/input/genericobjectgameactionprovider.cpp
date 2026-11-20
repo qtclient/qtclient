@@ -327,7 +327,8 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
     if (inner)
         actions.push_back(makeSmartClick(inner));
 
-    if (tibia::game::localPlayerIsSupplyStashAvailable()) {
+    const container::TContainerStorage* containers = container::TContainerStorage::instance();
+    if (containers && containers->isStashAvailable()) {
         if (has(&TAppearanceType::isMarketable) && TGenericObjectGameActionProvider::canStowObject(flags, instance)) {
             push(A::STASH_STOW_TYPE);
             auto stow = std::make_shared<TGameActionStashStowStack>(object, count);
@@ -336,7 +337,7 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
         if (isContainer && id != tibia::game::supplyStashId())
             push(A::STASH_STOW_CONTAINER_CONTENT);
     }
-    if (tibia::game::localPlayerIsMarketAvailable() && has(&TAppearanceType::isMarketable))
+    if (containers && containers->isMarketAvailable() && has(&TAppearanceType::isMarketable))
         actions.push_back(std::make_shared<gameactions::TGameActionMarketBrowse>(
             object, flags->hasUpgradeClassification() ? fieldTier : uint8_t(0)));
     return actions;

@@ -201,7 +201,6 @@ private:
 
     QPointer<TSidebarManager> m_sidebars;
     TDepotSearchWidgetController* m_controller = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

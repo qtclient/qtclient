@@ -1,5 +1,7 @@
 #include "game/gamesessionbase.h"
 #include "container/containerciptypes.h"
+#include "container/objectappearanceinstanceinfostorage.h"
+#include "input/gameaction.h"
 
 #include <cmath>
 #include "game/gamesessionstate.h"
@@ -57,6 +59,7 @@ using ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch;
 using ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList;
 using ::tibia::protobuf::protocol::GameserverMessageObjectInfo;
 using ::tibia::protobuf::protocol::GameserverMessageSetInventory;
+using ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog;
 using ::tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable;
 using ::tibia::protobuf::protocol::GameserverMessageStash;
 using ::tibia::protobuf::protocol::ProtocolInventoryItem;
@@ -155,19 +158,48 @@ void TContainerProtocolMessageHandler::handleDeleteInventoryMessage(
 void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
     const GameserverMessageSpecialContainersAvailable& SpecialContainersAvailableMessage)
 {
+    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    if (!session)
+        return;
     const bool stash = SpecialContainersAvailableMessage.stash() != 0;
-    const bool market = SpecialContainersAvailableMessage.market() != 0;
-    tibia::game::localPlayerSetSupplyStashAvailable(stash);
-    tibia::game::localPlayerSetMarketAvailable(market);
-    tibia::game::notify("onSpecialContainersAvailable", stash, market);
+    if (!stash) {
+        session->stashStorage()->clear();
+        Q_EMIT requestCloseStashDialog();
+    }
+    session->containerStorage()->setStashAvailable(stash);
+    session->containerStorage()->setMarketAvailable(SpecialContainersAvailableMessage.market() != 0);
 }
 
-void TContainerProtocolMessageHandler::handleStashMessage(const ::tibia::protobuf::protocol::GameserverMessageStash& message)
+void TContainerProtocolMessageHandler::handleStashMessage(const GameserverMessageStash& StashMessage)
 {
-    std::vector<std::vector<uint32_t>> stash;
-    for (const auto& e : message.entries())
-        stash.push_back({ e.object_id(), e.amount() });
-    tibia::game::notify("onSupplyStashEnter", stash);
+    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    if (!session)
+        return;
+    // A type listed twice keeps its last amount.
+    TObjectCountStorage::TCounts counts;
+    for (const auto& entry : StashMessage.entries())
+        counts[{ static_cast<uint16_t>(entry.object_id()), 0 }] = entry.amount();
+    session->stashStorage()->setCounts(counts);
+    Q_EMIT requestShowOrRefreshStashDialog();
+}
+
+void TContainerProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& ShowMessageDialogMessage)
+{
+    switch (ShowMessageDialogMessage.dialog_type()) {
+    case 0x1e:
+        Q_EMIT requestShowStashMessageDialog(QString::fromStdString(ShowMessageDialogMessage.message()));
+        break;
+    case 0x46:
+        Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::SHOW_INVENTORY_CAPACITY_WARNING));
+        break;
+    case 0x5a:
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowNaggingDialog>(
+            QStringLiteral("Warning"), QString::fromStdString(ShowMessageDialogMessage.message()),
+            static_cast<qint64>(ShowMessageDialogMessage.extra_byte())));
+        break;
+    default:
+        break;
+    }
 }
 
 void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message)
@@ -188,32 +220,49 @@ void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const 
     if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
         session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), message.depot_count(),
                                                                std::move(inboxObjects), message.inbox_count(), stash);
-    tibia::game::processDepotSearchDetail();
+    Q_EMIT requestOpenDepotSearchWidget();
 }
 
 void TContainerProtocolMessageHandler::handleCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch&)
 {
-    tibia::game::processCloseDepotSearch();
+    Q_EMIT requestCloseDepotSearchWidget();
 }
 
-void TContainerProtocolMessageHandler::handleObjectInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageObjectInfo& message)
+void TContainerProtocolMessageHandler::handleObjectInfoMessage(const GameserverMessageObjectInfo& ObjectInfoMessage)
 {
-    // Descriptions are keyed by object id.
-    std::vector<std::tuple<uint16_t, std::string>> objects;
-    for (const auto& o : message.objects())
-        objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
-    tibia::game::notify("onItemInfo", objects);
+    using appearances::TObjectAppearanceInstanceTypeID;
+    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    if (!session)
+        return;
+    for (const auto& object : ObjectInfoMessage.objects()) {
+        const QString name = QString::fromStdString(object.description());
+        const auto typeId = static_cast<uint16_t>(object.object_id());
+        // The data is the liquid of fluid containers and splashes, the tier
+        // of classified objects, nothing for the others.
+        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
+        if (type && (type->isSplash() || type->isFluidContainer()))
+            instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, object.data());
+        else if (type && type->hasUpgradeClassification())
+            instance = TObjectAppearanceInstanceTypeID::withTier(typeId, static_cast<uint8_t>(object.data()));
+        session->objectAppearanceInstanceInfoStorage()->setName(instance, name);
+    }
 }
 
-void TContainerProtocolMessageHandler::handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& message)
+void TContainerProtocolMessageHandler::handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& DepotSearchResultMessage)
 {
-    // The locker's counts, by type and tier (CIP: the session's object counts).
+    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    if (!session)
+        return;
+    // The locker's counts by type and tier; a type listed twice keeps its last count.
     TObjectCountStorage::TCounts counts;
-    for (const auto& e : message.entries())
-        counts[{ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()) }] += e.count();
-    if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
-        session->objectCountStorage()->setCounts(counts);
-    tibia::game::processDepotSearchResults();
+    for (const auto& entry : DepotSearchResultMessage.entries()) {
+        const uint8_t tier = entry.has_tier() ? static_cast<uint8_t>(entry.tier()) : 0;
+        counts[{ static_cast<uint16_t>(entry.object_id()), tier }] = entry.count();
+    }
+    session->objectCountStorage()->setCounts(counts);
+    session->depotSearchDetailListStorage()->clear();
+    Q_EMIT requestOpenDepotSearchWidget();
 }
 
 void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message)

@@ -430,6 +430,7 @@ if(TIBIA_WITH_GAMECORE)
     container/containerciptypes.cpp container/containerciptypes.h
     container/containergameactionprovider.cpp container/containergameactionprovider.h
     container/containerslotinformation.cpp container/containerslotinformation.h
+    container/objectappearanceinstanceinfostorage.cpp container/objectappearanceinstanceinfostorage.h
     container/qmlitemslotdata.cpp container/qmlitemslotdata.h
     config/specialconditionsoptions.cpp config/specialconditionsoptions.h
     config/specialconditionobject.cpp config/specialconditionobject.h
@@ -681,6 +682,7 @@ if(TIBIA_WITH_GAMECORE)
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
+    appearances/objectappearanceinstancetypeid.h
     appearances/genericstorage.h
     appearances/appearanceinstancetracker.cpp appearances/appearanceinstancetracker.h
     appearances/appearanceinstancespritesequence.cpp appearances/appearanceinstancespritesequence.h
