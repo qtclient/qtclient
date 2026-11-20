@@ -1095,8 +1095,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // and connect the controllers made after it to it.
     if (game::TGameSessionBase* session = game::TGameSessionBase::active())
         session->relinkProtocolMessageHandlers();
+    // Host: a replay's session starts before the game window; only the
+    // controllers made here still need connecting (the client's world map
+    // updater keeps following the running session).
     if (m_currentGameSession)
-        connectGameWindowToGameSession(m_currentGameSession);
+        connectGameWindowControllersToGameSession(m_currentGameSession);
     return true;
 }
 
@@ -1119,6 +1122,12 @@ void TGameClient::connectGameWindowToGameSession(const std::shared_ptr<game::IGa
         m_messageHandler->setOptions(app::ClientOptions::load().options());
         m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
     }
+    connectGameWindowControllersToGameSession(GameSession);
+}
+
+void TGameClient::connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     // CipSoft's order of the game window controllers' connectors.
     if (m_gameWindow) {
         TGameWindow& g = *m_gameWindow;

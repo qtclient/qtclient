@@ -357,6 +357,8 @@ private:
     /// The game window's controllers follow the current session (CipSoft's
     /// connector calls of setCurrentGameSession); in gameclientgamewindow.cpp.
     void connectGameWindowToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The game window controllers' connectors, in CipSoft's order.
+    void connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Logs the last chosen character in again (after a login wait, or when the
     /// player logged out to log in again).
     void loginAgainWithLastCharacter();
