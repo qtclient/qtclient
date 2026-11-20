@@ -52,6 +52,11 @@ void TCreatureTrackerStorage::setTrackedMonsters(const std::vector<TCreatureTrac
     Q_EMIT canTrackMoreMonstersChanged();
 }
 
+bool TCreatureTrackerStorage::isBossTracked(const int raceId) const
+{
+    return std::ranges::any_of(m_bosses, [raceId](const TCreatureTrackerEntry& entry) { return entry.raceId == raceId; });
+}
+
 void TCreatureTrackerStorage::setTrackedBosses(const std::vector<TCreatureTrackerEntry>& entries)
 {
     m_bosses = entries;

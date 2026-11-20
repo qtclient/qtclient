@@ -413,6 +413,8 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedLoginSuccessMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
 
     using cyclopedia::TCyclopediaProtocolMessageHandler;
+    // Its constructor ties the item price storage's statistics requests to the server.
+    TCyclopediaProtocolMessageHandler::instance();
     link(&Queue::receivedKillTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleKillTrackingMessage);
     link(&Queue::receivedImpactTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage);
     link(&Queue::receivedMarketStatisticsMessage, this, &TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage);

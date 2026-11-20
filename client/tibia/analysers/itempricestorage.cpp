@@ -69,7 +69,6 @@ TItemPriceStorage::TItemPriceStorage(QObject* parent)
         onPremiumTimeChanged();
         setWorldName(QString::fromStdString(tibia::game::getWorldName()));
     });
-    connect(this, &TItemPriceStorage::requestMarketStatistics, this, [] { tibia::game::requestMarketStatistics(); });
     m_lootValueLevelColors = { { 0, QColor(0xf0, 0xf0, 0xf0) }, { 1, QColor(0xaa, 0xaa, 0xaa) }, { 2, QColor(0x00, 0xf0, 0x00) },
                                { 3, QColor(0x20, 0xa0, 0xff) }, { 4, QColor(0xff, 0x68, 0xff) }, { 5, QColor(0xf0, 0xf0, 0x00) } };
 }

@@ -79,11 +79,16 @@ struct TAreaWorldMapAreaData
 
 /// The dynamic map data of the Cyclopedia map storage and its protocol
 /// handler; the static data storage makes none of them.
+/// A passage: the races met beyond it and its field.
 struct TPassageMapAreaData
 {
+    std::vector<quint16> raceIds;
+    TWorldMapCoordinate coordinate;
 };
+/// A viewpoint of the subarea being discovered: found (state 1) or not.
 struct TViewpointMapAreaData
 {
+    bool discovered = false;
 };
 struct TActiveRaidMapAreaData
 {

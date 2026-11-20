@@ -575,15 +575,6 @@ void requestItemInfo(const uint16_t typeId, const uint8_t subType, const uint8_t
     gameclient::sendRequestItemInfo(typeId, subType, index);
 }
 
-void requestMarketStatistics(uint16_t itemId, uint8_t tier)
-{
-    if (!canPerformGameAction())
-        return;
-    (void)itemId;
-    (void)tier;
-    cyclopedia::TCyclopediaProtocolMessageHandler::sendMarketStatistics();
-}
-
 void requestOpenRewardHistory()
 {
     if (!canPerformGameAction())

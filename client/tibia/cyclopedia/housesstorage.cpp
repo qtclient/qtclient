@@ -1,4 +1,5 @@
 #include "housesstorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 
 #include <tibia/game/gamesession.h>
 #include <client/staticdata.h>
@@ -141,6 +142,8 @@ THousesStorage::THousesStorage(QObject* parent)
             return std::any{};
         applyStaticHouseData(*excludedUntil, *counts, firstList ? *firstList : std::vector<uint32_t>(),
                              secondList ? *secondList : std::vector<uint32_t>());
+        // Then the handler's static house data observer.
+        TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(*this);
         return std::any{};
     });
 

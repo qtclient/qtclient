@@ -14,6 +14,7 @@
 #include <QStringList>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -65,16 +66,41 @@ public:
 
 // TCyclopediaMapCharacterConfigurationStorage — real implementation in cyclopediamapcharacterconfigurationstorage.h.
 
+class THousesStorage;
+
+/// Told once the static house data reached the houses storage (CIP: the
+/// handler's static house data observer; the Cyclopedia map's static data
+/// storage takes the house entrances from the houses storage).
+class IStaticHouseDataObserver
+{
+public:
+    virtual ~IStaticHouseDataObserver() = default;
+    virtual void onStaticHouseDataChanged(const THousesStorage& HousesStorage) = 0;
+};
+
 class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler;
+    /// The item price storage's requests for market statistics go out as the
+    /// market statistics message. Host: CipSoft's constructor takes the
+    /// session's storages; qtclient's handlers reach the client-wide ones.
+    explicit TCyclopediaProtocolMessageHandler(QObject* parent = nullptr);
+
+    /// Host: the client's handler, made on first use.
+    static TCyclopediaProtocolMessageHandler* instance();
+
+    /// The observer told after each static house data message; null for none.
+    static void setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver);
+    /// The houses storage applied a static house data message.
+    static void notifyStaticHouseDataObserver(const THousesStorage& HousesStorage);
     /// The charms (with the static table's name, description and kind), the races they
     /// can go to by charm kind, the free charm slots and the reset cost.
     static void handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage);
     static void handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
     static void handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
+    /// The map data message: each part goes to its map storage setter (the
+    /// minimap marker part is the minimap's).
     static void handleCyclopediaMapDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaMapData& CyclopediaMapDataMessage);
 public:
 
@@ -148,6 +174,9 @@ public:
     /// The party's loot type (0 market, 1 leader); with the leader's prices the prices of every
     /// cyclopedia object follow, 400 per message.
     static void sendPartyHuntLootType(int lootType);
+
+private:
+    std::shared_ptr<IStaticHouseDataObserver> m_pStaticHouseDataObserver;
 };
 
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage
@@ -277,6 +306,18 @@ public:
     ~TMonsterRaceStorage() override;
     static TMonsterRaceStorage* instance();
 
+    /// One classification of the bestiary overview: its name, its races and the known ones.
+    struct TMonsterClassificationSummary
+    {
+        QString name;
+        int total = 0;
+        int known = 0;
+        bool operator==(const TMonsterClassificationSummary&) const = default;
+    };
+    const std::vector<TMonsterClassificationSummary>& monsterClassificationSummary() const { return m_monsterClassificationSummary; }
+    /// The bestiary overview's classifications; only a change announces itself.
+    void setMonsterClassificationSummary(std::vector<TMonsterClassificationSummary> summary);
+
     const QString& classificationName() const { return m_classificationName; }
     const std::vector<TMonsterRace>& classificationRaces() const { return m_classificationRaces; }
     /// The races of one classification (or of a search), replacing the previous ones.
@@ -295,6 +336,7 @@ Q_SIGNALS:
     void monsterRaceDetailsChanged(int ChangedRace);
 
 private:
+    std::vector<TMonsterClassificationSummary> m_monsterClassificationSummary;
     QString m_classificationName;
     std::vector<TMonsterRace> m_classificationRaces;
     std::vector<TMonsterRace> m_racesUnlockedForCharms;

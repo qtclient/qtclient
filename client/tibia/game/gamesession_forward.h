@@ -172,7 +172,6 @@ void requestGuildMessage();
 
 void requestItemInfo(uint16_t typeId, uint8_t subType, uint8_t index);
 
-void requestMarketStatistics(uint16_t itemId = 0, uint8_t tier = 0);
 
 void requestOpenRewardHistory();
 

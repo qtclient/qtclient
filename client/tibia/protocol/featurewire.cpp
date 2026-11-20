@@ -3475,7 +3475,7 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
             break;
         case 3: // imminent raid (main area)
         case 10: // current area
-        case 11: // exploring sub area
+        case 11: // exploration reward amount (Go Strength)
             if (!r.u16(u16v))
                 return 0;
             m->set_area_id(u16v);

@@ -7,6 +7,8 @@
 #include "cyclopedia/bosstiarystorage.h"
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
+#include "cyclopedia/cyclopediamapdata.h"
+#include "worldmap/coordinates.h"
 #include "analysers/itempricestorage.h"
 #include "cyclopedia/characterinfostorage.h"
 #include "cyclopedia/itemtrackingstorage.h"
@@ -25,6 +27,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <map>
+#include <set>
 #include <string>
 #include <tuple>
 #include <protocol.pb.h>
@@ -217,6 +220,14 @@ TMonsterRaceStorage* TMonsterRaceStorage::instance()
     return g_monsterRaceStorage;
 }
 
+void TMonsterRaceStorage::setMonsterClassificationSummary(std::vector<TMonsterClassificationSummary> summary)
+{
+    if (summary == m_monsterClassificationSummary)
+        return;
+    m_monsterClassificationSummary = std::move(summary);
+    Q_EMIT monsterClassificationSummaryChanged();
+}
+
 void TMonsterRaceStorage::setClassificationRaces(const QString& classificationName, std::vector<TMonsterRace> races)
 {
     m_classificationName = classificationName;
@@ -258,14 +269,19 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
     // The classifications in order: name, number of races, known races.
     std::vector<CyclopediaBestiaryRace> classes;
     classes.reserve(static_cast<size_t>(message.classes_size()));
+    std::vector<TMonsterRaceStorage::TMonsterClassificationSummary> summary;
+    summary.reserve(static_cast<size_t>(message.classes_size()));
     uint8_t index = 0;
     for (const auto& c : message.classes()) {
+        summary.push_back({ QString::fromStdString(c.name()), static_cast<int>(c.total()), static_cast<int>(c.known()) });
         CyclopediaBestiaryRace& entry = classes.emplace_back();
         entry.race = index++;
         entry.bestClass = c.name();
         entry.count = static_cast<uint16_t>(c.total());
         entry.unlockedCount = static_cast<uint16_t>(c.known());
     }
+    TMonsterRaceStorage::instance()->setMonsterClassificationSummary(std::move(summary));
+    // The monster dialog still reads the classification rows.
     tibia::game::processParseBestiaryRaces(classes);
 }
 
@@ -863,6 +879,35 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessa
     tibia::game::processUpdateBestiaryCharmsData(data);
 }
 
+namespace {
+TCyclopediaProtocolMessageHandler* g_cyclopediaProtocolMessageHandler = nullptr;
+}
+
+TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler(QObject* parent)
+    : cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler(parent)
+{
+    if (analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance())
+        connect(itemPrices, &analysers::TItemPriceStorage::requestMarketStatistics, this, &TCyclopediaProtocolMessageHandler::sendMarketStatistics);
+}
+
+TCyclopediaProtocolMessageHandler* TCyclopediaProtocolMessageHandler::instance()
+{
+    if (!g_cyclopediaProtocolMessageHandler)
+        g_cyclopediaProtocolMessageHandler = new TCyclopediaProtocolMessageHandler(QCoreApplication::instance());
+    return g_cyclopediaProtocolMessageHandler;
+}
+
+void TCyclopediaProtocolMessageHandler::setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver)
+{
+    instance()->m_pStaticHouseDataObserver = std::move(pObserver);
+}
+
+void TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(const THousesStorage& HousesStorage)
+{
+    if (const std::shared_ptr<IStaticHouseDataObserver>& observer = instance()->m_pStaticHouseDataObserver)
+        observer->onStaticHouseDataChanged(HousesStorage);
+}
+
 void TCyclopediaProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
 {
     // requestCloseCyclopediaDialog
@@ -921,56 +966,97 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
 {
     using namespace ::tibia::protobuf::protocol;
     const auto& m = CyclopediaMapDataMessage;
-    const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()), static_cast<short>(m.position().z()));
-    switch (m.data_type()) {
-    case 0:
+    const auto coordinate = [](const ProtocolCoordinate& position) {
+        return worldmap::TWorldMapCoordinate(static_cast<int>(position.x()), static_cast<int>(position.y()), static_cast<int>(position.z()));
+    };
+    if (m.data_type() == 0) {
+        // Host: the minimap marker part belongs to the minimap's protocol handler.
+        const Position pos(static_cast<int>(m.position().x()), static_cast<int>(m.position().y()), static_cast<short>(m.position().z()));
         tibia::game::processAddAutomapFlag(pos, static_cast<uint8_t>(m.icon()), m.text());
         return;
-    case 1: {
-        std::vector<std::vector<int>> mains;
-        for (const auto& a : m.main_areas())
-            mains.push_back({ static_cast<int>(a.area_id()), static_cast<int>(a.status()), static_cast<int>(a.progress()) });
-        const std::vector<int> discovered(m.discovered_areas().begin(), m.discovered_areas().end());
-        const std::vector<int> discoverable(m.discoverable_areas().begin(), m.discoverable_areas().end());
-        tibia::game::notify("onCyclopediaMapDiscoveryData", mains, discovered, discoverable);
-        return;
     }
-    case 2:
-        tibia::game::notify("onCyclopediaMapRaid", static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z));
+    TCyclopediaMapStorage* storage = TCyclopediaMapStorage::liveInstance();
+    if (!storage)
         return;
-    case 5: {
-        std::vector<std::vector<int>> points;
-        for (const auto& p : m.points())
-            points.push_back({ static_cast<int>(p.position().x()), static_cast<int>(p.position().y()), static_cast<int>(p.position().z()),
-                               static_cast<int>(p.state()) });
-        tibia::game::notify("onCyclopediaMapDiscoveryArea", static_cast<int>(m.area_id()), static_cast<int>(m.flag() ? 1 : 0),
-                            static_cast<int>(m.target()), points);
-        return;
+    switch (m.data_type()) {
+    case 1: { // the main areas and the discovered and discoverable subareas
+        std::map<quint16, TCyclopediaMapStorage::TMainArea> mainAreas;
+        for (const auto& area : m.main_areas()) {
+            const auto areaId = static_cast<quint16>(area.area_id());
+            mainAreas.try_emplace(areaId, TCyclopediaMapStorage::TMainArea{ areaId, static_cast<int>(area.status()),
+                                                                             static_cast<float>(area.progress()) / 100.0f });
+        }
+        std::set<quint16> discovered;
+        for (const uint32_t subAreaId : m.discovered_areas())
+            discovered.insert(static_cast<quint16>(subAreaId));
+        std::set<quint16> discoverable;
+        for (const uint32_t subAreaId : m.discoverable_areas())
+            discoverable.insert(static_cast<quint16>(subAreaId));
+        storage->setDiscoveryData(std::move(mainAreas), std::move(discovered), std::move(discoverable));
+        break;
     }
-    case 6: {
-        std::vector<int> passage{ static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(pos.z), m.race_ids_size() };
-        for (const uint32_t race : m.race_ids())
-            passage.push_back(static_cast<int>(race));
-        tibia::game::notify("onCyclopediaMapPassage", passage);
-        return;
+    case 2: // an active raid: status 0 starts it, 1 ends it
+        if (m.icon() == 1)
+            storage->removeActiveRaid(coordinate(m.position()));
+        else if (m.icon() == 0)
+            storage->addActiveRaid(coordinate(m.position()));
+        break;
+    case 3: // an imminent raid in a main area
+        storage->setImminentRaidOfArea(static_cast<quint16>(m.area_id()), static_cast<quint8>(m.icon()));
+        break;
+    case 4: // an imminent raid in a subarea
+        storage->setImminentRaidOfSubArea(static_cast<quint16>(m.area_id()), static_cast<quint8>(m.icon()));
+        break;
+    case 5: { // a subarea's viewpoints; the first state of a field counts
+        std::map<worldmap::TWorldMapCoordinate, int> viewpoints;
+        for (const auto& point : m.points())
+            viewpoints.try_emplace(coordinate(point.position()), static_cast<int>(point.state()));
+        storage->setDiscoveryArea(static_cast<quint16>(m.area_id()), m.flag(), static_cast<quint8>(m.target()), viewpoints);
+        break;
     }
-    case 9: {
-        std::vector<std::vector<double>> areas;
-        for (const auto& d : m.donations())
-            areas.push_back({ static_cast<double>(d.area_id()), d.improved_respawn() ? 1.0 : 0.0, static_cast<double>(d.donated()) });
-        tibia::game::notify("onCyclopediaMapDonations", m.donation_goal(), areas);
-        return;
+    case 6: { // a passage and the races beyond it
+        std::vector<quint16> raceIds;
+        raceIds.reserve(static_cast<size_t>(m.race_ids_size()));
+        for (const uint32_t raceId : m.race_ids())
+            raceIds.push_back(static_cast<quint16>(raceId));
+        storage->setPassage(coordinate(m.position()), raceIds);
+        break;
     }
-    case 10:
-        tibia::game::notify("onCyclopediaMapCurrentArea", static_cast<int>(m.area_id()));
-        return;
-    case 11:
-        tibia::game::notify("onCyclopediaMapExploringArea", static_cast<int>(m.area_id()));
-        return;
-    default: // imminent raids, sub area monsters, monster bestiary: no consumer yet
-        return;
+    case 7: // the monsters of subareas: whether each is known, and its bestiary state
+        for (const auto& subArea : m.sub_area_monsters()) {
+            std::vector<TCyclopediaMapStorage::TSubAreaMonster> monsters;
+            monsters.reserve(static_cast<size_t>(subArea.monsters_size()));
+            for (const auto& monster : subArea.monsters()) {
+                const auto raceId = static_cast<quint16>(monster.race_id());
+                storage->setMonsterKnown(raceId, monster.known());
+                const int state = monster.stage() == 2 ? 2 : (monster.stage() == 1 ? 1 : 0);
+                monsters.push_back({ raceId, state });
+            }
+            storage->setSubAreaMonsters(static_cast<quint16>(subArea.sub_area_id()), std::move(monsters));
+        }
+        break;
+    case 8: // whether a monster is known
+        storage->setMonsterKnown(static_cast<quint16>(m.area_id()), m.flag());
+        break;
+    case 9: { // the donations of the areas and their goal
+        std::map<quint16, TCyclopediaMapStorage::TAreaDonation> donations;
+        for (const auto& donation : m.donations()) {
+            const auto areaId = static_cast<quint16>(donation.area_id());
+            donations.try_emplace(areaId, TCyclopediaMapStorage::TAreaDonation{ areaId, donation.improved_respawn(), donation.donated() });
+        }
+        storage->setAreaDonations(std::move(donations));
+        storage->setDonationGoal(m.donation_goal());
+        break;
     }
-
+    case 10: // the area the player is in
+        storage->setPlayerArea(static_cast<quint16>(m.area_id()));
+        break;
+    case 11: // the Go Strength exploring a subarea rewards
+        storage->setExplorationRewardAmountGoStrength(static_cast<int>(m.area_id()));
+        break;
+    default:
+        break;
+    }
 }
 
 namespace {
