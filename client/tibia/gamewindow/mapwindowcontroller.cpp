@@ -1,4 +1,5 @@
 #include "mapwindowcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "app/clientoptions.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -790,4 +791,12 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
     tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
 }
 
+}
+
+void tibia::gamewindow::TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (!m_bound)
+        return;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    bindSession(session ? session->textStorage().get() : nullptr, session ? session->effectStorage().get() : nullptr);
 }

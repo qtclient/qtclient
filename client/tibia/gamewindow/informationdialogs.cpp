@@ -84,7 +84,6 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     }
     // CIP misc dialogs / overlays kept alive on the information hub (ledger wires).
     new TEmergencyDialogController(this);
-    forward(new TGameSessionDisconnectReactionController(this));
     new TCinematicSessiondumpPlayerController(this);
     new TGenericConfirmWithDontShowAgainDialogController(this);
     forward(new TLinkCopyWarningDialogController(this));

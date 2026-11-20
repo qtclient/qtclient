@@ -278,17 +278,6 @@ private:
     int m_id = 0;
 };
 
-/// CIP TGameSessionDisconnectReactionController (v3).
-class TGameSessionDisconnectReactionController final : public cip::tibia::gamewindow::TGameSessionDisconnectReactionController
-{
-    Q_OBJECT
-public:
-    explicit TGameSessionDisconnectReactionController(QObject* parent = nullptr);
-
-    void requestLoginAgain();
-    void requestQuitAndPatch();
-};
-
 /// GenericConfirmWithDontShowAgainDialog.qml (CIP:
 /// TGenericConfirmWithDontShowAgainDialogController): a yes/no question with a
 /// "do not show again" check box. Yes emits yesClicked with the check box

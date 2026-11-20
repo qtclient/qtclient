@@ -36,6 +36,7 @@
 #include "crashreportdata.h"
 #include "crashreportsender.h"
 #include "gamewindow/remainingdialogs.h"
+#include "gamewindow/gamesessiondisconnectreactioncontroller.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "config/configciptypes.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
@@ -337,8 +338,10 @@ TGameClient::TGameClient(QObject* parent)
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
-    // Each game session brings its own storages, view and handlers.
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
+    // CIP: the current session's disconnect reaches the client once, after its signal returned.
+    m_gameSessionDisconnected.setAsyncDelay(1);
+    m_gameSessionDisconnected.setOnlyFirstSignal(true);
+    connect(&m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionDisconnected);
     initializeSound();
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
@@ -411,7 +414,13 @@ TGameClient::TGameClient(QObject* parent)
     m_idleTick.setSingleShot(true);
     connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
 
-    m_authentication = std::make_unique<authentication::TAuthenticationProcessController>();
+    m_authentication = std::make_shared<authentication::TAuthenticationProcessController>();
+    {
+        // The play session data the login machine forgets lives in the client's account.
+        authentication::TAuthenticationProcessController::THost host;
+        host.resetSessionData = [this] { m_account.session = {}; };
+        m_authentication->setHost(std::move(host));
+    }
     m_authentication->bindLoginUploader(m_login.get());
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
@@ -626,45 +635,6 @@ chat::TTextStorage* TGameClient::textStorage() const
 effects::TEffectStorage* TGameClient::effectStorage() const
 {
     return activeSession() ? activeSession()->effectStorage().get() : nullptr;
-}
-
-void TGameClient::bindActiveSession()
-{
-    // The updater and the message handler work on one session's texts and effects.
-    m_updater.reset();
-    m_messageHandler.reset();
-    game::TGameSessionBase* session = activeSession();
-    m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
-    if (m_soundController) {
-        disconnect(m_objectSoundConnection);
-        m_soundController->setGameSessionSoundProvider(session ? session->gameSessionSoundProvider() : nullptr);
-        if (session && session->objectSoundController())
-            m_objectSoundConnection = connect(session->objectSoundController().get(),
-                                              &sound::TObjectSoundController::ambienceObjectStreamCountChanged,
-                                              m_soundController.get(),
-                                              &sound::TSoundController::onAmbienceObjectStreamCountChanged);
-    }
-    if (m_chatProtocol) {
-        m_chatProtocol->setTextStorage(session ? session->textStorage().get() : nullptr);
-        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
-    }
-    if (m_minimap)
-        m_minimap->setProtocolHandler(worldmapProtocol());
-    if (!session)
-        return;
-    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
-    m_messageHandler->setOptions(app::ClientOptions::load().options());
-    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
-}
-
-void TGameClient::setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler)
-{
-    m_chatProtocol = handler;
-    if (m_chatProtocol) {
-        m_chatProtocol->setTextStorage(textStorage());
-        game::TGameSessionBase* session = activeSession();
-        m_chatProtocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
-    }
 }
 
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
@@ -902,7 +872,17 @@ void TGameClient::onCharacterChosen(const QString& characterName)
     if (!m_options.recordTo.isEmpty())
         credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
 
+    // CIP: a new login does not open the character selection on its own disconnect.
+    if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
+        reaction->resetShowCharacterSelectionOnDisconnect();
     enqueueGameSessions(createGameSessionMetaInfos(credentials, chosen->tutorial ? game::resolveTutorialSessiondumpPath() : QString()));
+}
+
+void TGameClient::loginAgainWithLastCharacter()
+{
+    const QString characterName = m_characterSelection->lastSelectedCharacterName();
+    if (!characterName.isEmpty())
+        onCharacterChosen(characterName);
 }
 
 void TGameClient::setGameSessionSettings(game::TGameSessionMetaInfo& metaInfo) const
@@ -967,10 +947,12 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     using EType = game::TGameSessionMetaInfo::EType;
     const EType type = metaInfo->getType();
     if (type == EType::Sessiondump || type == EType::TutorialSessiondump) {
+        // CIP: a replay or the tutorial never reconnects.
+        if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
+            reaction->disableReconnectionAttempts();
         const auto dump = createGameSession<game::TSessiondumpGameSession>();
         dump->initialize(metaInfo);
         setCurrentGameSession(dump);
-        connectToCurrentGameSession();
         dump->startSession();
         return;
     }
@@ -980,7 +962,6 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     const auto live = createGameSession<game::TGameserverGameSession>();
     live->initialize(metaInfo);
     setCurrentGameSession(live);
-    connectToCurrentGameSession();
     const auto& loginData = std::static_pointer_cast<const game::TGameserverGameSessionMetaInfo>(metaInfo)->loginData;
     if (m_dualConnection)
         m_dualConnection->setEndpoint(loginData.host, loginData.port);
@@ -992,8 +973,6 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
-    connect(current, &game::IGameSession::gameLoginErrorMessage, this, [this](const QString& message, int) { fail(message); });
-    connect(current, &game::IGameSession::connectionError, this, &TGameClient::fail);
     const auto outOfDate = [this] {
         Q_EMIT clientOutOfDate();
         fail(tr("The game server needs a newer client."));
@@ -1002,38 +981,47 @@ void TGameClient::connectToCurrentGameSession()
         connect(live, &game::TGameserverGameSession::clientOutOfDate, this, outOfDate);
     else if (auto* dump = dynamic_cast<game::TSessiondumpGameSession*>(current))
         connect(dump, &game::TSessiondumpGameSession::clientOutOfDate, this, outOfDate);
-    // The session ends inside its own signal; its deleter waits for the event loop.
-    connect(current, &game::IGameSession::disconnected, this, &TGameClient::onCurrentGameSessionDisconnected);
+    // Command line runs (smoke tests, replays) end with an error when the session fails.
+    if (!m_options.autoCharacter.isEmpty() || !m_options.replay.isEmpty() || m_options.playForSeconds > 0) {
+        connect(current, &game::IGameSession::connectionError, this, [] { QCoreApplication::exit(2); });
+        connect(current, &game::IGameSession::gameLoginErrorMessage, this, [] { QCoreApplication::exit(2); });
+    }
 }
 
-void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession>& session)
+void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     if (m_currentGameSession) {
+        auto* previous = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get());
+        if (GameSession && previous)
+            unlinkGameActionRouters(*m_pGameActionRouter, *previous);
         disconnect(m_currentGameSession.get(), nullptr, this, nullptr);
+        m_gameSessionDisconnected.disconnectAll();
         // A retired session no longer follows the game's notifications.
         disconnect(game::TGameNotify::instance(), nullptr, m_currentGameSession.get(), nullptr);
-        if (auto* previous = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
-            unlinkGameActionRouters(*m_pGameActionRouter, *previous);
+        // The session's minimap feed.
+        if (m_minimap)
+            m_minimap->setProtocolHandler(nullptr);
+        // Host shim until the storages are reached through the session: the
+        // classes' instance() stop resolving to this session.
+        if (previous)
             previous->install(false);
-        }
+        m_currentGameSession.reset();
     }
-    m_currentGameSession = session;
-    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
-        linkGameActionRouters(*m_pGameActionRouter, *current);
-        current->install(true);
-    }
-}
-
-void TGameClient::onCurrentGameSessionDisconnected()
-{
+    // Host shim: the controllers below still read the classes' instance().
+    if (auto* next = dynamic_cast<game::TGameSessionBase*>(GameSession.get()))
+        next->install(true);
+    connectGameWindowToGameSession(GameSession);
+    m_currentGameSession = GameSession;
     if (!m_currentGameSession)
         return;
-    onWorldLeft();
-    if (m_gameSessionMetaInfoQueue.empty()) {
-        setCurrentGameSession(nullptr);
-        return;
-    }
-    autoconnectNextGameSessionInQueue();
+    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
+        linkGameActionRouters(*m_pGameActionRouter, *current);
+    if (m_minimap)
+        m_minimap->setProtocolHandler(worldmapProtocol());
+    connectToCurrentGameSession();
+    m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::disconnected);
+    m_gameSessionDisconnected.connectTo(m_currentGameSession.get(), &game::IGameSession::connectionError);
+    m_gameSessionDisconnected.resetEmitCount();
 }
 
 game::TGameserverGameSession* TGameClient::session() const

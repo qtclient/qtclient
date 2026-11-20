@@ -101,8 +101,6 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
             default: break;
         }
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TCyclopediaDialogController::connectToGameSession);
     // The session's end closes the dialog; the backlog goes with the next session.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
             &TCyclopediaDialogController::closeDialog);
@@ -112,7 +110,7 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
             &TCyclopediaDialogController::closeDialog);
 }
 
-void TCyclopediaDialogController::connectToGameSession()
+void TCyclopediaDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>&)
 {
     clearBacklog();
     closeDialog();

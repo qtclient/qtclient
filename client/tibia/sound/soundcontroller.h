@@ -13,6 +13,10 @@
 #include <unordered_map>
 #include <variant>
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace sound {
 
@@ -41,6 +45,8 @@ public:
 
     /// The game session whose world sounds play (nullptr: none).
     void setGameSessionSoundProvider(std::shared_ptr<TGameSessionSoundProvider> provider);
+    /// CIP connector: plays `GameSession`'s world sounds and follows its ambience objects.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// SoundTrigger type 1: the music template.
     void setMusicTemplate(uint16_t templateId);
     /// SoundTrigger type 0: the ambience stream.
@@ -65,6 +71,7 @@ public Q_SLOTS:
 private:
     std::shared_ptr<TGameSessionSoundProvider> m_provider;
     QMetaObject::Connection m_providerConnection;
+    QMetaObject::Connection m_objectSoundConnection;
     std::shared_ptr<TSoundControllerMusic> m_music;
     std::shared_ptr<TSoundControllerAmbienceStream> m_ambienceStream;
     std::shared_ptr<TSoundControllerAmbienceObjectSound> m_ambienceObjectSound;

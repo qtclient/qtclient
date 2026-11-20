@@ -50,7 +50,14 @@
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/exaltationforgedialogcontroller.h"
 #include "gamewindow/fpslatencyindicatorcontroller.h"
+#include "gamewindow/gamesessiondisconnectreactioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
+#include "gamewindow/highscoresdialogcontroller.h"
+#include "chat/gamemessagehandler.h"
+#include "renderer/nextframeupdater.h"
+#include "renderer/worldmaprenderprovider.h"
+#include "sound/soundcontroller.h"
+#include "worldmap/worldmapviewport.h"
 #include "gamewindow/imbuementtrackerwidgetcontroller.h"
 #include "gamewindow/imbuingdialogcontroller.h"
 #include "gamewindow/informationdialogs.h"
@@ -186,7 +193,7 @@ struct TGameClient::TGameWindow
     std::unique_ptr<input::TEventFilterManager> eventFilterManager;
     std::unique_ptr<input::TPlayerMovementInputInterpreter> playerMovement;
     std::unique_ptr<gamewindow::TMessageDialogController> clientOutOfDateDialog;
-    std::unique_ptr<gamewindow::TGameWindowController> gameWindowController;
+    std::shared_ptr<gamewindow::TGameWindowController> gameWindowController;
     std::unique_ptr<gamewindow::TStatusBarController> statusBarController;
     std::unique_ptr<QObject> gameWindow;
     std::unique_ptr<qmlcomponents::TLenshelpManager> lenshelpManager;
@@ -202,6 +209,8 @@ struct TGameClient::TGameWindow
     gamewindow::TMapWindowController* mapWindowController = nullptr;
     std::unique_ptr<gamewindow::TContextMenuController> contextMenu;
     std::unique_ptr<gamewindow::TDialogStackController> dialogStack;
+    /// CIP +0x418: the dialogs and returns when the current session cannot connect or ends.
+    std::shared_ptr<gamewindow::TGameSessionDisconnectReactionController> gameSessionDisconnectReaction;
     std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
     std::unique_ptr<gamewindow::TSelectObjectAmountDialogController> splitStackDialog;
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
@@ -279,7 +288,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TPlayerTradeWidgetManager> playerTrade;
     /// Outlives the packs' bootstrap: their deferred slots keep pointers into it.
     std::unique_ptr<qtclient::PackHostWire> packHost;
-    bool mapWindowBound = false;
 };
 
 void TGameClient::TGameWindowDeleter::operator()(TGameWindow* gameWindow) const { delete gameWindow; }
@@ -327,7 +335,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         if (!outOfDate->dialog()->isInStack())
             outOfDate->showMessage(qtTrId("info"), qtTrId("client_too_old"));
     });
-    connect(outOfDate, &OutOfDateBox::acceptClicked, application, [] {
+    // Restart: the launcher updates the client (QTCLIENT_RESTART_FILE) once it quit.
+    const auto quitAndPatchClient = [] {
         const QString marker = qEnvironmentVariable("QTCLIENT_RESTART_FILE");
         if (!marker.isEmpty()) {
             QSaveFile file(marker);
@@ -335,11 +344,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                 file.commit();
         }
         QCoreApplication::quit();
-    });
+    };
+    connect(outOfDate, &OutOfDateBox::acceptClicked, application, quitAndPatchClient);
 
     // The start screen until the world is entered, then the map, sidebars,
     // chat and bars. Dialogs go into its dialogPlaceholder.
-    g.gameWindowController = std::make_unique<gamewindow::TGameWindowController>(setup.placeholder);
+    g.gameWindowController = std::make_shared<gamewindow::TGameWindowController>(setup.placeholder);
     gamewindow::TGameWindowController* gameWindowController = g.gameWindowController.get();
     // kill / SIGTERM / Ctrl+C: same Exit / Logout / Cancel prompt as the window close.
     gamecore::setForceExitHandler([gameWindowController] { gameWindowController->quitPressed(); });
@@ -492,6 +502,16 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // Must run after the dialog stack so MessageDialog / WaitDialog can show.
     if (!preview)
         g.sessionBootstrap = std::make_unique<app::TSessionBootstrap>(this, g.env, gameWindowController, g.productHost.get());
+    // Before the first session: it reacts to the session's connection and login.
+    g.gameSessionDisconnectReaction =
+        std::make_shared<gamewindow::TGameSessionDisconnectReactionController>(m_authentication, g.gameWindowController);
+    connect(g.gameSessionDisconnectReaction.get(),
+            &gamewindow::TGameSessionDisconnectReactionController::loginAgainAfterLoginWaitElapsed, this,
+            &TGameClient::loginAgainWithLastCharacter, Qt::QueuedConnection);
+    connect(g.gameSessionDisconnectReaction.get(), &gamewindow::TGameSessionDisconnectReactionController::quitAndPatchClient,
+            application, quitAndPatchClient);
+    connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
+            g.gameSessionDisconnectReaction.get(), &gamewindow::TGameSessionDisconnectReactionController::handleGameAction);
     connect(this, &TGameClient::sessionEmailAvailable, gameWindowController,
             &gamewindow::TGameWindowController::rememberLoginEmailIfEnabled);
     if (!preview) {
@@ -708,16 +728,13 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.chat = std::make_unique<gamewindow::TChatController>(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), *this);
     gamewindow::TChatController* chat = g.chat.get();
     setMessageIgnoreList(&chat->ignoreList());
-    setChatProtocolMessageHandler(chat->protocolHandler());
     analysers::TAnalyserStorages* analyserStorages = g.analyserStorages.get();
     analyserStorages->itemTracking()->setChatStorage(&chat->storage());
     // The drop tracker announces on the active session's status line and
     // follows the session's premium state.
-    const auto bindItemTrackingTexts = [this, analyserStorages, informationDialogs] {
+    const auto bindItemTrackingTexts = [this, analyserStorages] {
         analyserStorages->itemTracking()->setTextStorage(textStorage());
         analyserStorages->itemTracking()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-        if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
-            cyclopedia->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
     };
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, analyserStorages, bindItemTrackingTexts);
     bindItemTrackingTexts();
@@ -1018,21 +1035,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         mods::bootstrapAll(ctx);
     }
 
-    // A new game session brings its own texts, effects, view and light.
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, gameWindowItem, [this, &g] {
-        if (g.mapWindowBound)
-            g.mapWindowController->bindSession(textStorage(), effectStorage());
-        g.informationDialogs->setAmbientLightStorage(ambientLight());
-        if (g.minimapController)
-            g.minimapController->setAmbientLightStorage(ambientLight());
-    });
     connect(this, &TGameClient::mainWindowInitialized, gameWindowItem, [this, &g] {
         // Show the game window before the heavier binds. A throw later must not
         // leave the login mask hidden and the game window still off.
         g.gameWindowController->showGameScreen();
         try {
             g.mapWindowController->bindSession(textStorage(), effectStorage());
-            g.mapWindowBound = true;
             g.vipWidget->setSidebarOptions(sidebarOptions());
             g.vipWidget->setWorldType(worldType());
             g.sidebarWidgets->setSidebarOptions(sidebarOptions());
@@ -1083,10 +1091,86 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         shutdown();
     });
     // start() activated the session before the controllers above created their
-    // protocol message handlers (chat, store, market, trades, ...): link them now.
+    // protocol message handlers (chat, store, market, trades, ...): link them now,
+    // and connect the controllers made after it to it.
     if (game::TGameSessionBase* session = game::TGameSessionBase::active())
         session->relinkProtocolMessageHandlers();
+    if (m_currentGameSession)
+        connectGameWindowToGameSession(m_currentGameSession);
     return true;
+}
+
+gamewindow::TGameSessionDisconnectReactionController* TGameClient::gameSessionDisconnectReactionController() const
+{
+    return m_gameWindow ? m_gameWindow->gameSessionDisconnectReaction.get() : nullptr;
+}
+
+void TGameClient::connectGameWindowToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    // Host: the client still holds the world map's render provider, frame
+    // updater and message handler; they follow the session here until the
+    // session owns them.
+    m_updater.reset();
+    m_messageHandler.reset();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (session) {
+        m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
+        m_messageHandler->setOptions(app::ClientOptions::load().options());
+        m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
+    }
+    // CipSoft's order of the game window controllers' connectors.
+    if (m_gameWindow) {
+        TGameWindow& g = *m_gameWindow;
+        if (g.mapWindowController)
+            g.mapWindowController->connectToGameSession(GameSession);
+        if (g.containers)
+            g.containers->connectToGameSession(GameSession);
+        if (g.chat)
+            g.chat->connectToGameSession(GameSession);
+        if (g.sidebarPanels)
+            g.sidebarPanels->connectToGameSession(GameSession);
+        if (g.gameSessionDisconnectReaction)
+            g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
+        if (g.actionBars)
+            g.actionBars->connectToGameSession(GameSession);
+        if (g.informationDialogs) {
+            if (gamewindow::TCyclopediaDialogController* cyclopedia = g.informationDialogs->cyclopedia()) {
+                cyclopedia->connectToGameSession(GameSession);
+                cyclopedia->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+            }
+            // Host: the Cyclopedia's houses and map pages draw the session's light.
+            g.informationDialogs->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
+        }
+        if (g.stashDialog)
+            g.stashDialog->connectToGameSession(GameSession);
+        if (g.informationDialogs)
+            if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
+                highscores->connectToGameSession(GameSession);
+    }
+    if (m_soundController)
+        m_soundController->connectToGameSession(GameSession);
+}
+
+void TGameClient::onGameSessionDisconnected()
+{
+    if (!m_currentGameSession)
+        return;
+    // CIP: the dialogs that only make sense during the session close.
+    if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
+        offlineTraining->dialog()->close();
+    if (m_gameWindow && m_gameWindow->weaponProficiencyShapeOptionsDialog)
+        m_gameWindow->weaponProficiencyShapeOptionsDialog->dialog()->close();
+    // Host: the world is left (minimap and character options written, start screen).
+    onWorldLeft();
+    if (!m_gameSessionMetaInfoQueue.empty()) {
+        autoconnectNextGameSessionInQueue();
+        return;
+    }
+    setCurrentGameSession(nullptr);
+    if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController();
+        reaction && reaction->reconnectRequested())
+        loginAgainWithLastCharacter();
 }
 
 }

@@ -759,20 +759,6 @@ void TEmergencyDialogController::onOKClicked()
     dialog()->close();
 }
 
-TGameSessionDisconnectReactionController::TGameSessionDisconnectReactionController(QObject* parent)
-    : cip::tibia::gamewindow::TGameSessionDisconnectReactionController(parent)
-{}
-
-void TGameSessionDisconnectReactionController::requestLoginAgain()
-{
-    Q_EMIT loginAgainAfterLoginWaitElapsed();
-}
-
-void TGameSessionDisconnectReactionController::requestQuitAndPatch()
-{
-    Q_EMIT quitAndPatchClient();
-}
-
 TGenericConfirmWithDontShowAgainDialogController::TGenericConfirmWithDontShowAgainDialogController(QObject* parent)
     : TDialogController(QStringLiteral("GenericConfirmWithDontShowAgainDialog.qml"), parent)
 {

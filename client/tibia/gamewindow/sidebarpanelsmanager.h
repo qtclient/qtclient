@@ -12,6 +12,10 @@
 class QQmlEngine;
 class QQuickItem;
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -34,6 +38,8 @@ public:
 
     /// The character's options; null while no character is in the world.
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP connector: the minimap panel follows the session's ambient light.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     TMinimapController* minimap() const { return m_minimap.get(); }
     THitpointManabarController* hitpointManabar() const { return m_hitpointManabar.get(); }

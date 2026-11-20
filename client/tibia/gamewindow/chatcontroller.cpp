@@ -1,4 +1,5 @@
 #include "creatures/vipstorage.h"
+#include "game/gamesessionbase.h"
 #include "chatcontroller.h"
 
 #include "app/clientoptions.h"
@@ -1997,4 +1998,11 @@ void TChatController::runMenuAction(const input::IGameActionPtr& action, TChatCh
     }
 }
 
+}
+
+void tibia::gamewindow::TChatController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_protocol->setTextStorage(session ? session->textStorage().get() : nullptr);
+    m_protocol->setEffectStorage(session ? session->effectStorage().get() : nullptr);
 }

@@ -414,6 +414,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/gamewindowciptypes.cpp gamewindow/gamewindowciptypes.h
     gamewindow/anonymousciptypes.h
     gamewindow/remainingdialogs.cpp gamewindow/remainingdialogs.h
+    gamewindow/gamesessiondisconnectreactioncontroller.cpp gamewindow/gamesessiondisconnectreactioncontroller.h
     gamewindow/whiteblacklistdialogcontroller.cpp gamewindow/whiteblacklistdialogcontroller.h
     gamewindow/reportviolationcontroller.cpp gamewindow/reportviolationcontroller.h
     gamewindow/bugreportdialogcontroller.cpp gamewindow/bugreportdialogcontroller.h

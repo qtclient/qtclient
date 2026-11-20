@@ -53,6 +53,7 @@ public:
     TQuestLogController* questLog() const { return m_questLog; }
     TCyclopediaButtonController* cyclopediaButton() const { return m_cyclopediaButton; }
     TCyclopediaDialogController* cyclopedia() const { return m_cyclopedia; }
+    THighscoresDialogController* highscores() const { return m_highscores; }
     TBosstiaryButtonController* bosstiaryButton() const { return m_bosstiaryButton; }
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// The local minimap the Cyclopedia map's LocalMinimap mode draws.

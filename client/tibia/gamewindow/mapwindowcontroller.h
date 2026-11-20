@@ -14,6 +14,10 @@
 class QQuickItem;
 class QQuickWindow;
 
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace chat {
 class TTextStorage;
@@ -68,6 +72,8 @@ public:
     void bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects);
     /// Unsets the provider everywhere; call before the provider goes away.
     void unbind();
+    /// CIP connector: once bound, the map draws `GameSession`'s texts and effects.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// False when the pane lacks the world map.
     bool isBound() const { return m_worldMap != nullptr; }
 
