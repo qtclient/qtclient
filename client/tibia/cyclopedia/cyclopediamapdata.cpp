@@ -213,7 +213,7 @@ void TCyclopediaMapStorage::setPassage(const worldmap::TWorldMapCoordinate& coor
 {
     TPassage passage;
     passage.coordinate = mapCoordinate(coordinate);
-    passage.raceIds.assign(raceIds.begin(), raceIds.end());
+    passage.subAreaIds.assign(raceIds.begin(), raceIds.end());
     const auto it = std::ranges::find_if(m_passages, [&](const TPassage& known) { return isAt(known.coordinate, coordinate); });
     if (it != m_passages.end())
         *it = std::move(passage);
@@ -303,7 +303,7 @@ std::vector<quint16> TCyclopediaMapStorage::passageRaces(const worldmap::TWorldM
     std::vector<quint16> races;
     const auto it = std::ranges::find_if(m_passages, [&](const TPassage& known) { return isAt(known.coordinate, coordinate); });
     if (it != m_passages.end()) {
-        for (const int race : it->raceIds)
+        for (const int race : it->subAreaIds)
             races.push_back(static_cast<quint16>(race));
     }
     return races;

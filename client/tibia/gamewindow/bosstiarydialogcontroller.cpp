@@ -155,6 +155,8 @@ void TBosstiaryDialogController::showRace(const int raceId)
 
 void TBosstiaryDialogController::handleGameAction(const input::IGameAction& action)
 {
+    if (action.gameActionType() != input::EGameAction::SHOW_BOSSTIARY_FREEPODIUM_DIALOG)
+        return;
     const auto* podium = input::gameActionAs<input::gameactions::TGameActionShowBosstiaryFreePodiumDialog>(&action);
     if (!podium)
         return;
