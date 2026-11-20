@@ -257,8 +257,6 @@ QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, Q
         return QStringLiteral("Walk here");
     case A::GOD_TELEPORT:
         return QStringLiteral("Teleport here");
-    case A::CYCLOPEDIA_MAP_SELECT_ITEM:
-        return QStringLiteral("Select");
     default:
         break;
     }

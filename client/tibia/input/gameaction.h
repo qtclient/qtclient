@@ -2459,20 +2459,41 @@ private:
     uint32_t m_spriteId;
 };
 
-/// CIP input::TGameActionCyclopediaMapSelectionItem (CYCLOPEDIA_MAP_SELECT_ITEM).
-/// qtclient carries the subarea (CIP: two coordinates and an extent).
+/// What a click on the Cyclopedia map selects (CIP: the TWorldMapAreaData the
+/// selection item copies): a subarea under the field, a passage or a house marker.
+struct TCyclopediaMapSelectionAreaData
+{
+    /// The CIP area data alternatives a selection can be.
+    enum EKind
+    {
+        SubArea = 1,
+        Passage = 6,
+        HouseMarker = 10,
+    };
+
+    EKind kind = SubArea;
+    /// SubArea: the subarea.
+    uint16_t subAreaId = 0;
+    /// Passage, HouseMarker: the marker's field.
+    Position coordinate{ 0, 0, 0 };
+    /// HouseMarker: the house.
+    uint32_t houseId = 0;
+};
+
+/// CIP input::TGameActionCyclopediaMapSelectionItem (CYCLOPEDIA_MAP_SELECT_ITEM):
+/// selects what was clicked on the Cyclopedia map.
 class TGameActionCyclopediaMapSelectionItem final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionCyclopediaMapSelectionItem(int subareaId)
+    explicit TGameActionCyclopediaMapSelectionItem(const TCyclopediaMapSelectionAreaData& areaData)
         : TGameActionSimple(EGameAction::CYCLOPEDIA_MAP_SELECT_ITEM)
-        , m_subareaId(subareaId)
+        , m_areaData(areaData)
     {
     }
-    int subareaId() const { return m_subareaId; }
+    const TCyclopediaMapSelectionAreaData& areaData() const { return m_areaData; }
 
 private:
-    int m_subareaId;
+    TCyclopediaMapSelectionAreaData m_areaData;
 };
 
 /// CIP input::TGameActionRequestTransactionDetailsFromServer (REQUEST_TRANSACTION_DETAILS).

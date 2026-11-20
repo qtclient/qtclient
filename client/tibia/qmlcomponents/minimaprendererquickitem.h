@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cip_gen.h>
+#include <client/position.h>
 
 #include <QImage>
 #include <QPointer>
@@ -150,6 +151,25 @@ public:
     /// The tooltip of the topmost NPC / player marker under `point`.
     QString markerTooltipAt(const QPointF& point) const;
 
+    /// A marker drawn on the map (CIP: the TWorldMapAreaData alternatives).
+    struct TMarkerHit
+    {
+        enum EKind
+        {
+            NPCMarker = 0,
+            MinimapMarker = 4,
+            Passage = 6,
+            Viewpoint = 7,
+            PlayerPosition = 9,
+            HouseMarker = 10,
+        };
+        int kind = NPCMarker;
+        Position coordinate{ 0, 0, 0 };
+        quint32 houseId = 0;
+    };
+    /// The markers under `point`, the one drawn on top first.
+    std::vector<TMarkerHit> markersAt(const QPointF& point) const;
+
 Q_SIGNALS:
     /// A caption was clicked (CIP : TAreaData).
     void areaClicked(int id, bool isArea);
@@ -200,6 +220,7 @@ private:
     {
         QRectF rect;
         QString tooltip;
+        TMarkerHit hit;
     };
     struct TCaption
     {

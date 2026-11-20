@@ -153,6 +153,11 @@ void TCyclopediaMapCharacterConfigurationStorage::setShowNavigation(const bool v
 void TCyclopediaMapCharacterConfigurationStorage::setShowAreaAndSubAreaInfo(const bool value) { set(m_showAreaAndSubAreaInfo, value); }
 void TCyclopediaMapCharacterConfigurationStorage::setShowDisplay(const bool value) { set(m_showDisplay, value); }
 void TCyclopediaMapCharacterConfigurationStorage::setShadingValue(const float value) { set(m_shadingValue, value); }
-void TCyclopediaMapCharacterConfigurationStorage::setLocation(const TLocation& location) { set(m_location, location); }
+// CIP: a location always counts as a user change, also when it is the stored one.
+void TCyclopediaMapCharacterConfigurationStorage::setLocation(const TLocation& location)
+{
+    m_location = location;
+    Q_EMIT configurationChangedFromUserInput();
+}
 
 }

@@ -766,6 +766,13 @@ void sendCyclopediaMapResetViewpoints(uint16_t subAreaId)
         return;
     cyclopedia::TCyclopediaProtocolMessageHandler::sendResetMapAreaViewpoints(subAreaId);
 }
+
+void sendCyclopediaMapRequestArea(uint16_t subAreaId)
+{
+    if (!canPerformGameAction())
+        return;
+    cyclopedia::TCyclopediaProtocolMessageHandler::sendRequestMapArea(subAreaId);
+}
 void sendExivaOptions(const bool allowAll, const bool allowOwnGuild, const bool allowOwnParty, const bool allowVipList, const bool allowPlayerWhitelist, const bool allowGuildWhitelist, const std::vector<std::string>& characterWhiteList, const std::vector<std::string>& removeCharacter, const std::vector<std::string>& guildWhiteList, const std::vector<std::string>& removeGuild)
 {
     if (!canPerformGameAction() || !canExivaOptions())

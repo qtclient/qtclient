@@ -623,6 +623,7 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/housesstorage.cpp cyclopedia/housesstorage.h
     gamewindow/housesinfodialogcontroller.cpp gamewindow/housesinfodialogcontroller.h
     cyclopedia/cyclopediamapdata.cpp cyclopedia/cyclopediamapdata.h
+    cyclopedia/cyclopediamapgameactionprovider.cpp cyclopedia/cyclopediamapgameactionprovider.h
     cyclopedia/cyclopediamapstaticdatastorage.cpp cyclopedia/cyclopediamapstaticdatastorage.h
     cyclopedia/cyclopediamapstaticdatastoragehost.cpp
     cyclopedia/cyclopediamapcharacterconfigurationstorage.cpp cyclopedia/cyclopediamapcharacterconfigurationstorage.h

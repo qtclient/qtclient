@@ -246,18 +246,6 @@ void TCyclopediaCreatureOccurrencesInfo::setCreatures(QList<QObject*> common, QL
     m_dynamicCreatures = std::move(dynamic);
 }
 
-TCyclopediaMapSelectionInfoPassage::TCyclopediaMapSelectionInfoPassage(QObject* parent)
-    : cip::tibia::gamewindow::TCyclopediaMapSelectionInfoPassage(parent)
-{
-    m_selectionType = cip::tibia::qmlcomponents::enums::ECyclopediaMapSelectionType::SelectionTypePassage;
-}
-
-void TCyclopediaMapSelectionInfoPassage::setReachableCreatureOccurrences(QList<QObject*> occurrences)
-{
-    m_reachableCreatureOccurrences = std::move(occurrences);
-    Q_EMIT infoChanged();
-}
-
 TQMLCharacterData::TQMLCharacterData(QObject* parent)
     : cip::tibia::gamewindow::TQMLCharacterData(parent)
 {}
