@@ -43,7 +43,6 @@ namespace {
 using Args = std::vector<std::any>;
 
 struct CipTypedKeep {
-    TCyclopediaMapGameActionProvider tCyclopediaMapGameActionProvider;
 };
 CipTypedKeep& typedKeep()
 {

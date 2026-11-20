@@ -65,8 +65,6 @@ public:
 
 // TCyclopediaMapCharacterConfigurationStorage — real implementation in cyclopediamapcharacterconfigurationstorage.h.
 
-class TCyclopediaMapGameActionProvider final : public ::tibia::CipTyped {};
-
 class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler
 {
     Q_OBJECT

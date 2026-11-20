@@ -137,7 +137,7 @@ void TCyclopediaMapSelectionInfoSubArea::setSubAreaData(const Values& values)
     m_rejectDonations = values.area.rejectDonations;
     Q_EMIT cip::tibia::gamewindow::TCyclopediaMapSelectionInfoArea::infoChanged();
     QObject* previous = m_creatureOccurrences;
-    m_creatureOccurrences = creatureOccurrences(values.id, this);
+    m_creatureOccurrences = ::tibia::gamewindow::creatureOccurrences(values.id, this);
     Q_EMIT cip::tibia::gamewindow::TCyclopediaMapSelectionInfoSubArea::infoChanged();
     if (previous)
         previous->deleteLater();
