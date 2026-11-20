@@ -302,11 +302,19 @@ TBossSlotsDialogController::TBossSlotsDialogController(cyclopedia::TBosstiarySto
         if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT goldBalanceChanged();
     });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TBossSlotsDialogController::connectToGameSession);
     update();
     onBossPointsChanged();
 }
 
 TBossSlotsDialogController::~TBossSlotsDialogController() = default;
+
+void TBossSlotsDialogController::connectToGameSession()
+{
+    onBossPointsChanged();
+    Q_EMIT goldBalanceChanged();
+}
 
 qlonglong TBossSlotsDialogController::playerGold() const
 {

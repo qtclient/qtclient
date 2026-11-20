@@ -175,23 +175,21 @@ quint32 TPartyHuntStorage::sessionSeconds() const
 
 void TPartyHuntStorage::clear()
 {
-    const bool hadSession = m_sessionStart != 0;
-    const bool hadLeader = m_leaderId != 0;
-    const bool hadLootType = m_lootType != 0;
-    m_sessionStart = 0;
-    m_leaderId = 0;
-    m_lootType = 0;
-    m_members.clear();
-    m_names.clear();
-    m_totalLoot = m_totalSupplies = m_totalBalance = 0;
-    Q_EMIT changed();
-    Q_EMIT partyHuntDataChanged();
-    if (hadLootType)
+    // No members first; then each value that was set falls back, with its signal.
+    setMembers({}, {});
+    if (m_lootType != 0) {
+        m_lootType = 0;
         Q_EMIT lootTypeChanged();
-    if (hadSession)
+    }
+    if (m_sessionStart != 0) {
+        m_sessionStart = 0;
         Q_EMIT sessionStartChanged();
-    if (hadLeader)
+    }
+    if (m_leaderId != 0) {
+        m_leaderId = 0;
+        recompute();
         Q_EMIT partyLeaderIDChanged();
+    }
 }
 
 TAnalyserStorages::TAnalyserStorages(QObject* parent)

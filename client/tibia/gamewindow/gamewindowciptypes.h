@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+#include <vector>
+
 // CIP-named gamewindow surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
@@ -125,11 +128,29 @@ public:
     TCyclopediaCreatureInfo(int raceId, QString raceName, bool isUnknown, QObject* parent = nullptr);
 };
 
+/// A creature of a subarea's occurrence lists.
+struct TCyclopediaCreatureData
+{
+    uint16_t raceId = 0;
+    QString raceName;
+    bool isUnknown = false;
+};
+
+/// A subarea and its creatures by occurrence: 0 common, 1 rare, 2 dynamic.
+struct TCyclopediaCreatureOccurrencesData
+{
+    uint16_t subAreaId = 0;
+    QString subAreaName;
+    std::map<int, std::vector<TCyclopediaCreatureData>> creatures;
+};
+
 class TCyclopediaCreatureOccurrencesInfo final : public cip::tibia::gamewindow::TCyclopediaCreatureOccurrencesInfo
 {
     Q_OBJECT
 public:
     explicit TCyclopediaCreatureOccurrencesInfo(QObject* parent = nullptr);
+    /// One TCyclopediaCreatureInfo child per creature, listed by occurrence.
+    explicit TCyclopediaCreatureOccurrencesInfo(const TCyclopediaCreatureOccurrencesData& data, QObject* parent = nullptr);
     void setSubArea(int id, const QString& name);
     void setCreatures(QList<QObject*> common, QList<QObject*> rare, QList<QObject*> dynamic);
 };
@@ -470,9 +491,7 @@ public:
 };
 
 /// CIP QML DTOs / list payloads (pin units); deepen fields from units as needed.
-class TAccountBadgeListData final : public ::tibia::CipTyped { public: TAccountBadgeListData() = default; };
 class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAccountCharacterListData() = default; };
-class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSlotQMLInformation() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
 /// An outfit as QML shows it (CIP: TOutfitQMLInformation): the look type, the four colour indices as
 /// colours and the addons.

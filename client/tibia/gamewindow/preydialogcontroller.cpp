@@ -413,6 +413,13 @@ TListRerollEntryInfo::TListRerollEntryInfo(const prey::TPreyMonster& monster, QO
     m_monsterSecondAddOn = monster.secondAddOn;
 }
 
+TPreyBestiarySelectionModel::TPreyBestiarySelectionModel(QObject* parent)
+    : cip::TPreyBestiarySelectionModel(parent)
+{
+    connect(this, &QAbstractItemModel::rowsInserted, this, &TPreyBestiarySelectionModel::rowCountChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &TPreyBestiarySelectionModel::rowCountChanged);
+}
+
 void TPreyBestiarySelectionModel::setRaces(const QList<uint16_t>& races)
 {
     beginResetModel();

@@ -172,7 +172,8 @@ class TPreyBestiarySelectionModel final : public cip::TPreyBestiarySelectionMode
 public:
     enum ERole { IdRole = 0x101, NameRole = 0x102 };
 
-    using cip::TPreyBestiarySelectionModel::TPreyBestiarySelectionModel;
+    /// Inserted and removed rows change the count.
+    explicit TPreyBestiarySelectionModel(QObject* parent = nullptr);
 
     void setRaces(const QList<uint16_t>& races);
 

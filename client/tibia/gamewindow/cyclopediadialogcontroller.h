@@ -14,6 +14,8 @@
 
 #include "worldmap/coordinates.h"
 
+#include "highlighttimer.h"
+
 #include <QTimer>
 
 #include <deque>
@@ -76,6 +78,11 @@ public:
     /// Returns to the last remembered page and its context.
     void requestBack() override;
 
+    /// A new game session: no backlog and the dialog closed.
+    void connectToGameSession();
+    /// The monster page's loot item: the items page on its object type.
+    void onSwitchToItemInfoDialogRequested(uint16_t AppearanceTypeID);
+
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
@@ -118,6 +125,8 @@ private:
     TCyclopediaMapDialogController* m_map;
     TMagicalArchiveDialogController* m_magicalArchive;
     std::deque<Context> m_backlog;
+    /// Hidden while a spell is assigned to an action button.
+    bool m_hiddenForTargetSelection = false;
     std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
@@ -140,7 +149,7 @@ public:
     explicit TCyclopediaButtonController(QObject* parent = nullptr);
 
     /// While the highlight timer runs.
-    bool highlighted() const override { return m_highlightTimer.isActive(); }
+    bool highlighted() const override { return m_highlightTimer.isHighlighted(); }
     void onCyclopediaButtonClicked() override;
     void onHighlightCyclopediaButtonEnds() override;
 
@@ -160,10 +169,7 @@ private:
     /// imminent raid.
     using THighlightReason = std::variant<std::monostate, uint16_t, worldmap::TWorldMapCoordinate, TImminentRaid>;
 
-    void startHighlight();
-    void stopHighlight();
-
-    QTimer m_highlightTimer;
+    shared::THighlightTimer m_highlightTimer;
     THighlightReason m_highlightReason;
     std::vector<client::gamecore::Hook> m_hooks;
 };

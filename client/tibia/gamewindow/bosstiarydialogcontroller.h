@@ -151,6 +151,8 @@ public:
 
     qlonglong playerGold() const override;
 
+    /// A new game session: the boss points and the gold balance are new.
+    void connectToGameSession();
     /// CIP.
     void showDialogTab() override;
     void hideDialogTab() override {}

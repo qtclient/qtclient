@@ -105,8 +105,8 @@ void TProgressStorage::configurationFromJson(const QJsonObject& json)
     m_gaugeTarget = std::clamp(json.value(QLatin1String(KeyGaugeTarget)).toDouble(100.0), MinGaugeTarget, MaxGaugeTarget);
     m_graphVisible = json.value(QLatin1String(KeyGraphVisible)).toBool(true);
     m_showBaseXp = json.value(QLatin1String(KeyShowBaseXp)).toBool(false);
+    // Loading is not a user change: only the tip's widgets are told.
     Q_EMIT optionsChanged();
-    Q_EMIT configurationChangedFromUserInput();
 }
 
 void TProgressStorage::resetConfiguration()

@@ -27,6 +27,8 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
+#include <tibia/appearances/appearancetype.h>
+#include <tibia/assets/things.h>
 
 namespace tibia::gamewindow {
 
@@ -780,9 +782,9 @@ void TMonsterDialogController::requestSwitchBackToRaceSummary() { requestClassif
 
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
 {
-    auto action = std::make_shared<input::TGameActionOpenCyclopedia>(0);
-    action->setTypeId(static_cast<uint16_t>(AppearanceTypeID));
-    Q_EMIT publishGameAction(action);
+    // Only a known object type opens the items page.
+    if (tibia::game::thingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem))
+        Q_EMIT itemInfoDialogRequested(static_cast<uint16_t>(AppearanceTypeID));
 }
 
 void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTypeID)
