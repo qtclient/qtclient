@@ -148,6 +148,8 @@ void sendOpenRewardWall();
 void sendOpenRewardHistory();
 void sendGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
 void sendStashWithdraw(uint16_t itemId, uint32_t count, uint8_t stackpos);
+/// Asks the server for the stash's content again (stash action 4).
+void sendStashReopen();
 void sendGreet(uint32_t npcId);
 void sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action);
 void sendTaskBoardAction(const uint8_t option, const uint16_t value = 0, const uint16_t extraValue = 0);

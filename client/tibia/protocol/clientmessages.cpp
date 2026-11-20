@@ -1611,6 +1611,14 @@ void sendStashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
+void sendStashReopen()
+{
+    auto message = tibia::protocol::newGameclientMessage(40);
+    auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
+    m->set_action(4);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
 void sendGreet(const uint32_t npcId)
 {
     auto message = tibia::protocol::newGameclientMessage(238);

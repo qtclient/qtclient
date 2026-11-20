@@ -10,6 +10,7 @@
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/textstorage.h"
 #include "container/containerciptypes.h"
+#include "container/objectappearanceinstanceinfostorage.h"
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
 #include "game/gameactionrouter.h"
@@ -84,8 +85,10 @@ void TGameSessionBase::createStorages()
     m_effectStorage = std::make_shared<effects::TEffectStorage>();
     m_containerStorage = std::make_shared<container::TContainerStorage>();
     m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
+    m_stashStorage = std::make_shared<container::TStashStorage>();
     m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
     m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
+    m_objectAppearanceInstanceInfoStorage = std::make_shared<container::TObjectAppearanceInstanceInfoStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
     // CIP: the client's sound reaches the session through its provider and
     // its object sound counts.
@@ -317,6 +320,9 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
         link(&Queue::receivedObjectInfoMessage, containers, &TContainerProtocolMessageHandler::handleObjectInfoMessage);
         link(&Queue::receivedStashMessage, containers, &TContainerProtocolMessageHandler::handleStashMessage);
         link(&Queue::receivedSpecialContainersAvailableMessage, containers, &TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage);
+        link(&Queue::receivedShowMessageDialogMessage, containers, &TContainerProtocolMessageHandler::handleShowMessageDialogMessage);
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::publishGameAction,
+                                             m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal));
         link(&Queue::receivedDepotSearchResultMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchResultMessage);
         link(&Queue::receivedDepotSearchDetailListMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage);
         link(&Queue::receivedCloseDepotSearchMessage, containers, &TContainerProtocolMessageHandler::handleCloseDepotSearchMessage);

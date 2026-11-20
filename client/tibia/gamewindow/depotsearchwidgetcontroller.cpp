@@ -18,7 +18,6 @@
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -730,18 +729,13 @@ TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, 
     , m_controller(new TDepotSearchWidgetController(gameWindowItem, engine, this))
 {
     connect(m_controller, &TDepotSearchWidgetController::publishGameAction, this, &TDepotSearchWidgetManager::publishGameAction);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchResults", [this](GameObject*, const std::vector<std::any>&) {
-        show();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchDetail", [this](GameObject*, const std::vector<std::any>&) {
-        show();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseDepotSearch", [this](GameObject*, const std::vector<std::any>&) {
-        m_controller->widget()->hide();
-        return std::any{};
-    });
+    // The container protocol handler opens the widget with the server's
+    // search results and detail lists and closes it when the search ends.
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance()) {
+        using Handler = container::TContainerProtocolMessageHandler;
+        connect(handler, &Handler::requestOpenDepotSearchWidget, this, &TDepotSearchWidgetManager::show);
+        connect(handler, &Handler::requestCloseDepotSearchWidget, this, [this] { m_controller->widget()->hide(); });
+    }
     connect(m_controller, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
             [this] { m_controller->widget()->hide(); });
 }

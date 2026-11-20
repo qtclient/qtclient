@@ -3,20 +3,22 @@
 #include "platform/platform.h"
 
 #include "app/clientoptions.h"
+#include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 #include "input/genericobjectgameactionprovider.h"
+#include "protocol/clientmessages.h"
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
 #include <set>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
@@ -218,12 +220,10 @@ TStashDialogController::TStashDialogController(QObject* parent)
         tibia::game::stashWithdraw(action.typeId(), static_cast<uint32_t>(action.amount()), 0);
         return true;
     });
-    // CIP STASH_REQUEST_REOPEN (275): market / manage-loot close republishes this
-    // so the stash can reopen without a direct dialog↔dialog call.
-    m_gameActions.on(A::STASH_REQUEST_REOPEN, [this](const input::IGameAction&) {
-        if (m_content.empty() || dialog()->isShown())
-            return true;
-        showDialog();
+    // The market or loot container dialog the stash made way for closed: the
+    // server sends the stash again, which shows the dialog.
+    m_gameActions.on(A::STASH_REQUEST_REOPEN, [](const input::IGameAction&) {
+        protocol::gameclient::sendStashReopen();
         return true;
     });
     // CIP / / : the object's field, type
@@ -266,54 +266,43 @@ TStashDialogController::TStashDialogController(QObject* parent)
         return true;
     });
 
-    using Args = std::vector<std::any>;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSupplyStashEnter", [this](GameObject*, const Args& args) {
-        const auto* items = args.empty() ? nullptr : std::any_cast<std::vector<std::vector<uint32_t>>>(&args[0]);
-        std::map<uint16_t, uint32_t> content;
-        if (items) {
-            for (const std::vector<uint32_t>& item : *items) {
-                if (item.size() >= 2 && item[1] > 0)
-                    content[static_cast<uint16_t>(item[0])] = item[1];
-            }
-        }
-        setContent(std::move(content));
-        showDialog();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpecialContainersAvailable", [this](GameObject*, const Args& args) {
-        if (!client::gamecore::argBool(args, 0)) {
-            setContent({});
-            closeDialog();
-        }
-        return std::any{};
-    });
-    // CIP : ShowMessageDialog type 0x1E is the stash's.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
-            [this](int code, const QString& message) {
-                if (code == 0x1e)
-                    onRequestShowStashMessageDialog(message);
-            });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        setContent({});
-        closeDialog();
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { closeDialog(); });
     m_gameActions.on(A::MARKET_BROWSE, [this](const input::IGameAction& action) { handleGameAction(action); });
+    tibia::game::onEachGameSession(this, [this] { setGameSession(game::TGameSessionBase::active()); });
 }
 
 TStashDialogController::~TStashDialogController()
 {
 }
 
-int TStashDialogController::count(const uint16_t typeId) const
+void TStashDialogController::setGameSession(game::TGameSessionBase* session)
 {
-    const auto it = m_content.find(typeId);
-    return it == m_content.end() ? 0 : static_cast<int>(std::min<uint32_t>(it->second, INT32_MAX));
+    resetAllFilters();
+    m_reopenAfterMarket = false;
+    m_reopenAfterManageLoot = false;
+    closeDialog();
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    m_stashStorage.reset();
+    if (!session)
+        return;
+    m_stashStorage = session->stashStorage();
+    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance()) {
+        using Handler = container::TContainerProtocolMessageHandler;
+        m_sessionConnections.push_back(connect(handler, &Handler::requestShowOrRefreshStashDialog, this, &TStashDialogController::showDialog));
+        m_sessionConnections.push_back(connect(handler, &Handler::requestCloseStashDialog, this, &TStashDialogController::closeButtonClicked));
+        m_sessionConnections.push_back(
+            connect(handler, &Handler::requestShowStashMessageDialog, this, &TStashDialogController::onRequestShowStashMessageDialog));
+    }
+    m_sessionConnections.push_back(connect(m_stashStorage.get(), &cip::tibia::container::TObjectCountStorage::objectCountsChanged, this,
+                                           &TStashDialogController::onStashContentChanged));
 }
 
-void TStashDialogController::setContent(std::map<uint16_t, uint32_t> content)
+int TStashDialogController::count(const uint16_t typeId) const
 {
-    m_content = std::move(content);
-    onStashContentChanged();
+    const uint32_t amount = m_stashStorage ? m_stashStorage->count(typeId) : 0;
+    return static_cast<int>(std::min<uint32_t>(amount, INT32_MAX));
 }
 
 void TStashDialogController::onStashContentChanged()
@@ -321,8 +310,11 @@ void TStashDialogController::onStashContentChanged()
     // "All weapons" is always offered; the rest are the stored types' categories.
     std::set<int> categories{ Proxy::AllWeaponsCategory };
     std::vector<TAppearanceTypeEntry> entries;
-    entries.reserve(m_content.size());
-    for (const auto& [typeId, amount] : m_content) {
+    const container::TObjectCountStorage::TCounts noCounts;
+    const container::TObjectCountStorage::TCounts& counts = m_stashStorage ? m_stashStorage->counts() : noCounts;
+    entries.reserve(counts.size());
+    for (const auto& [key, amount] : counts) {
+        const uint16_t typeId = key.first;
         TAppearanceType* type = typeOf(typeId);
         TAppearanceTypeEntry entry;
         entry.typeId = typeId;
@@ -460,6 +452,8 @@ void TStashDialogController::closeDialog()
     m_info->dialog()->close();
     saveFilter();
     applyFilter({});
+    if (m_stashStorage)
+        m_stashStorage->clear();
     dialog()->close();
 }
 
@@ -483,8 +477,11 @@ void TStashDialogController::closeButtonClicked()
 
 input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId) const
 {
-    const auto stored = m_content.find(typeId);
-    if (stored == m_content.end())
+    if (!m_stashStorage)
+        return {};
+    const auto& counts = m_stashStorage->counts();
+    const auto stored = counts.find({ typeId, 0 });
+    if (stored == counts.end())
         return {};
     return container::TContainerGameActionProvider::stashTypeActions(typeId, stored->second);
 }

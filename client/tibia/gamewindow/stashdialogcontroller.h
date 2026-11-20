@@ -19,6 +19,12 @@
 #include <vector>
 
 namespace tibia {
+namespace container {
+class TStashStorage;
+}
+namespace game {
+class TGameSessionBase;
+}
 namespace gamewindow {
 
 class TConfirmMoveObjectToStashDialogController;
@@ -59,13 +65,13 @@ private:
     QCollator m_collator;
 };
 
-/// StashDialog.qml: the supply stash's types (CIP: TStashDialogController,
-/// qt_static_metacall). The server's Stash message (CIP
-/// TContainerProtocolMessageHandler::handleStashMessage) shows or
-/// refreshes it; SpecialContainersAvailable without the stash 
-/// closes it. Also runs the stash game actions.
 /// The NPCs the stash and depot search trader filters offer.
 std::set<QString> traderNames();
+
+/// StashDialog.qml: the supply stash's types (CIP: TStashDialogController).
+/// It shows the session's stash storage and follows the container protocol
+/// handler's requests to show, refresh and close it and to show the stash's
+/// messages. Also runs the stash game actions.
 
 class TStashDialogController final : public TDialogController<cip::tibia::gamewindow::TStashDialogController>
 {
@@ -100,6 +106,10 @@ public Q_SLOTS:
     void onManageLootContainerDialogClosed() override;
 
 private:
+    /// Follows `session`'s stash storage and container protocol handler; the
+    /// dialog closes and the filters reset.
+    void setGameSession(game::TGameSessionBase* session);
+
     /// The name and the two filter indices, applied and remembered together.
     struct Filter
     {
@@ -110,7 +120,6 @@ private:
 
     /// CIP TContainerGameActionProvider::v4 for a stash type.
     input::TGameActionList typeActions(uint16_t typeId) const;
-    void setContent(std::map<uint16_t, uint32_t> content);
     int count(uint16_t typeId) const;
     void persistSortOrder(int order);
     void applyFilter(const Filter& filter);
@@ -123,7 +132,8 @@ private:
     void reopenStash();
     void handleGameAction(const input::IGameAction& action);
 
-    std::map<uint16_t, uint32_t> m_content;
+    std::shared_ptr<container::TStashStorage> m_stashStorage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<int> m_categories;
     QStringList m_traders;
     Filter m_savedFilter;
@@ -133,7 +143,6 @@ private:
     TConfirmMoveObjectToStashDialogController* m_confirmStow;
     input::TGameActionMapper m_mapper;
     input::TMoveObjectPtr m_pendingStow;
-    std::vector<client::gamecore::Hook> m_hooks;
     bool m_reopenAfterMarket = false;
     bool m_reopenAfterManageLoot = false;
 

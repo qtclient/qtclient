@@ -43,6 +43,7 @@ class GameserverMessageCreateInContainer;
 class GameserverMessageDeleteInContainer;
 class GameserverMessageDeleteInventory;
 class GameserverMessageSetInventory;
+class GameserverMessageShowMessageDialog;
 class GameserverMessageSpecialContainersAvailable;
 class GameserverMessagePlayerInventory;
 class GameserverMessageObjectInfo;
@@ -180,8 +181,9 @@ public:
     using cip::tibia::container::TContainerGameActionHandler::TContainerGameActionHandler;
 };
 
-/// CIP `container::TContainerProtocolMessageHandler` — native Q→H for CloseContainer /
-/// SetInventory / DeleteInventory / SpecialContainersAvailable.
+/// CIP `container::TContainerProtocolMessageHandler`: the container, inventory,
+/// stash and depot search messages, applied to the active session's storages.
+/// The stash dialog and the depot search widget follow its request signals.
 class TContainerProtocolMessageHandler final : public cip::tibia::container::TContainerProtocolMessageHandler
 {
     Q_OBJECT
@@ -218,14 +220,22 @@ public:
     void handleDeleteInventoryMessage(
         const ::tibia::protobuf::protocol::GameserverMessageDeleteInventory& DeleteInventoryMessage);
 
-    /// CIP slot: SpecialContainersAvailable (S 0x2A / 42) — native Q→H apply.
+    /// The stash and the market became available or went away. Without the
+    /// stash its content is dropped and the stash dialog closes.
     void handleSpecialContainersAvailableMessage(
         const ::tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable&
             SpecialContainersAvailableMessage);
 
     void handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message);
-    void handleObjectInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageObjectInfo& message);
-    void handleStashMessage(const ::tibia::protobuf::protocol::GameserverMessageStash& message);
+    /// The names of the instances asked about, into the session's object info storage.
+    void handleObjectInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageObjectInfo& ObjectInfoMessage);
+    /// The stash's content, into the session's stash storage; the stash dialog
+    /// shows or refreshes.
+    void handleStashMessage(const ::tibia::protobuf::protocol::GameserverMessageStash& StashMessage);
+    /// The message dialogs this handler owns: the stash's message, the
+    /// nagging warning and the inventory capacity warning.
+    void handleShowMessageDialogMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& ShowMessageDialogMessage);
     void handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& message);
     void handleDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& message);
     void handleCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch& message);
@@ -294,6 +304,11 @@ public:
     /// The category the container shows, 0 for all.
     uint32_t filterCategory(TContainerID id) const;
     void setFilterCategory(TContainerID id, uint32_t category);
+    /// The stash and the market, as the server last announced them.
+    bool isStashAvailable() const { return m_stashAvailable; }
+    void setStashAvailable(bool available) { m_stashAvailable = available; }
+    bool isMarketAvailable() const { return m_marketAvailable; }
+    void setMarketAvailable(bool available) { m_marketAvailable = available; }
     /// Manual sort mode, one for all containers of the session.
     static bool manualSortMode();
     void setManualSortMode(bool enabled);
@@ -314,6 +329,8 @@ private:
 
     /// Ordered by id, as CIP keeps them.
     QMap<TContainerID, TStoredContainer> m_containers;
+    bool m_stashAvailable = false;
+    bool m_marketAvailable = false;
 };
 
 
@@ -346,13 +363,6 @@ private:
     TInventorySlot m_empty;
 };
 
-class TObjectAppearanceInstanceInfoStorage final : public cip::tibia::container::TObjectAppearanceInstanceInfoStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::container::TObjectAppearanceInstanceInfoStorage::TObjectAppearanceInstanceInfoStorage;
-};
-
 /// Object counts keyed by type and tier: the player's inventory counts (the
 /// session owns one), the forge's and the stash's.
 class TObjectCountStorage : public cip::tibia::container::TObjectCountStorage
@@ -376,11 +386,13 @@ private:
     TCounts m_counts;
 };
 
-class TStashStorage final : public cip::tibia::container::TStashStorage
+/// The supply stash's content: counts by type, tier 0 (CIP: TStashStorage,
+/// an object count storage).
+class TStashStorage final : public TObjectCountStorage
 {
     Q_OBJECT
 public:
-    using cip::tibia::container::TStashStorage::TStashStorage;
+    explicit TStashStorage(QObject* parent = nullptr) : TObjectCountStorage(parent) {}
 };
 
 /// The depot search's detail list of one object type (CIP:

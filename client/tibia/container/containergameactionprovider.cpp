@@ -71,7 +71,8 @@ void addLootListToggle(TGameActionList& actions, const TAppearanceType& type, co
 
 void addMarketBrowse(TGameActionList& actions, const TAppearanceType& type, const uint16_t typeId, const uint8_t tier)
 {
-    if (tibia::game::localPlayerIsMarketAvailable() && type.isMarketable())
+    const TContainerStorage* containers = TContainerStorage::instance();
+    if (containers && containers->isMarketAvailable() && type.isMarketable())
         actions.push_back(std::make_shared<input::gameactions::TGameActionMarketBrowse>(
             input::TObjectGameActionContext{ {}, -1, typeId }, tier));
 }
