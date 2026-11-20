@@ -48,15 +48,20 @@ namespace cyclopedia {
 void ownProductSurface(QObject* parent);
 
 
+class TCreatureTrackerStorage;
+
 class TBestiaryTrackerProtocolMessageHandler final : public cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler
 {
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler;
 
-    /// The tracked races with their capitalised names ("onCreatureTracker": tracker type,
-    /// rows; tracker 0 is the bestiary's, any other the bosstiary's). The raw rows also go
-    /// out as "onParseCyclopediaTracker" for packs.
+    /// The creature tracker storage the tracker message fills (CipSoft: handed to
+    /// the constructor); none drops the message. Its owner clears it.
+    static void setCreatureTrackerStorage(TCreatureTrackerStorage* pCreatureTrackerStorage);
+    /// The tracked races with their capitalised names: tracker 0 is the bestiary's,
+    /// any other the bosstiary's. The raw rows also go out as
+    /// "onParseCyclopediaTracker" for packs.
     static void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
 };
 
@@ -92,6 +97,9 @@ public:
 
     /// The observer told after each static house data message; null for none.
     static void setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver);
+    /// The houses storage the house data messages fill (CipSoft: the session's,
+    /// handed to the constructor); none drops them. Its owner clears it.
+    static void setHousesStorage(THousesStorage* pHousesStorage);
     /// The houses storage applied a static house data message.
     static void notifyStaticHouseDataObserver(const THousesStorage& HousesStorage);
     /// The charms (with the static table's name, description and kind), the races they
@@ -175,8 +183,13 @@ public:
     /// cyclopedia object follow, 400 per message.
     static void sendPartyHuntLootType(int lootType);
 
+Q_SIGNALS:
+    void monsterCyclopediaNewDetailsForMonster(quint16 UpdatedMonsterRaceID);
+    void requestHouseActionResultDialog(quint32 HouseID, quint8 Action, quint8 ErrorCode, bool HasBeenOutbidden);
+
 private:
     std::shared_ptr<IStaticHouseDataObserver> m_pStaticHouseDataObserver;
+    THousesStorage* m_pHousesStorage = nullptr;
 };
 
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage

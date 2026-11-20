@@ -46,7 +46,6 @@ public:
 
 private:
 
-    std::vector<client::gamecore::Hook> m_hooks;
     std::vector<TCreatureTrackerEntry> m_monsters;
     std::vector<TCreatureTrackerEntry> m_bosses;
 };

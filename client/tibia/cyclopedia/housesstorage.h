@@ -161,12 +161,17 @@ public:
     void acceptTransfer(quint32 houseId);
     void rejectTransfer(quint32 houseId);
 
+    /// The static house data message: the character's houses, the limits
+    /// and the two house lists (the six counts in message order).
+    void applyStaticHouseData(quint32 excludedUntil, const std::vector<uint8_t>& counts, const std::vector<uint32_t>& firstList,
+                              const std::vector<uint32_t>& secondList);
+    /// The current house data message: the state of each listed house.
+    void applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses);
+
 Q_SIGNALS:
     void houseInformationChanged();
     void characterHousesInfoChanged();
     void housesLimitsChanged();
-    /// CIP: TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog.
-    void houseActionResult(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);
 
 private:
     void loadStaticHouses();
@@ -175,14 +180,6 @@ private:
     /// The house, or a shared stand-in record for an id the static data does
     /// not name.
     THouseInformation& findHouse(quint32 id);
-    /// The static house data message: the character's houses, the limits
-    /// and the two house lists.
-    void applyStaticHouseData(quint32 excludedUntil, const std::vector<uint8_t>& counts, const std::vector<uint32_t>& firstList,
-                              const std::vector<uint32_t>& secondList);
-    /// The current house data message: the state of each listed house.
-    void applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses);
-
-    std::vector<client::gamecore::Hook> m_hooks;
     std::vector<THouseInformation> m_houses;
     QHash<quint32, size_t> m_index;
     QStringList m_towns;

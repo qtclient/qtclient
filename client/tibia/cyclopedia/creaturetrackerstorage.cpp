@@ -11,26 +11,9 @@
 
 namespace tibia::cyclopedia {
 
-namespace {
-
-using Args = std::vector<std::any>;
-
-} // namespace
-
 TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCreatureTrackerStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCreatureTracker", [this](GameObject*, const Args& args) {
-        const int trackerType = client::gamecore::argInt(args, 0);
-        const auto* entries = args.size() > 1 ? std::any_cast<std::vector<TCreatureTrackerEntry>>(&args[1]) : nullptr;
-        if (!entries)
-            return std::any{};
-        if (trackerType == 0)
-            setTrackedMonsters(*entries);
-        else
-            setTrackedBosses(*entries);
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         if (!m_monsters.empty()) {
             m_monsters.clear();

@@ -1,6 +1,7 @@
 #include "cyclopediadialogcontroller.h"
 
 #include "cyclopedia/bestiarystorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediainterfaces.h"
 #include "gamewindow/cyclopediamapdialogcontroller.h"
 #include "gamewindow/characterinfodialogcontroller.h"
@@ -103,10 +104,9 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
             &TCyclopediaDialogController::closeDialog);
     // The character's death closes it too.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRequestCloseCyclopediaDialog", [this](GameObject*, const std::vector<std::any>&) {
-        closeDialog();
-        return std::any{};
-    });
+    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
+            &cyclopedia::TCyclopediaProtocolMessageHandler::requestCloseCyclopediaDialog, this,
+            &TCyclopediaDialogController::closeDialog);
 }
 
 void TCyclopediaDialogController::connectToGameSession()
@@ -419,24 +419,10 @@ TCyclopediaButtonController::TCyclopediaButtonController(QObject* parent)
     // A ten-minute highlight; its end forgets what a click opens.
     connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TCyclopediaButtonController::changed);
     connect(&m_highlightTimer, &shared::THighlightTimer::timeout, this, &TCyclopediaButtonController::onHighlightCyclopediaButtonEnds);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBestiaryEntryChanged", [this](GameObject*, const std::vector<std::any>& args) {
-        onMonsterCyclopediaNewDetailsMessage(static_cast<uint16_t>(client::gamecore::argInt(args, 0)));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapRaid", [this](GameObject*, const std::vector<std::any>& args) {
-        using client::gamecore::argInt;
-        onCyclopediaMapActiveRaidAdded(worldmap::TWorldMapCoordinate(static_cast<int>(argInt(args, 0)), static_cast<int>(argInt(args, 1)),
-                                                                     static_cast<int>(argInt(args, 2))));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapImminentRaid", [this](GameObject*, const std::vector<std::any>& args) {
-        using client::gamecore::argInt;
-        const worldmap::TWorldMapCoordinate coordinate(static_cast<int>(argInt(args, 0)), static_cast<int>(argInt(args, 1)),
-                                                       static_cast<int>(argInt(args, 2)));
-        const auto* scale = args.size() > 3 ? std::any_cast<double>(&args[3]) : nullptr;
-        onCyclopediaMapImminentRaidsChanged(coordinate, scale ? static_cast<float>(*scale) : 0.0f);
-        return std::any{};
-    });
+    // New bestiary details highlight the button.
+    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
+            &cyclopedia::TCyclopediaProtocolMessageHandler::monsterCyclopediaNewDetailsForMonster, this,
+            [this](const quint16 raceId) { onMonsterCyclopediaNewDetailsMessage(raceId); });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
             &TCyclopediaButtonController::connectToGameSession);
 }

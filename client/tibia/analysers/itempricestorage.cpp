@@ -53,18 +53,6 @@ TItemPriceStorage::TItemPriceStorage(QObject* parent)
         onPremiumTimeChanged();
         return std::any{};
     });
-    // The market statistics of the world the character plays on.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
-        const auto* prices = args.empty() ? nullptr : std::any_cast<std::map<uint16_t, uint64_t>>(&args[0]);
-        if (!prices)
-            return std::any{};
-        std::unordered_map<uint16_t, quint64> market;
-        market.reserve(prices->size());
-        for (const auto& [typeId, price] : *prices)
-            market.emplace(typeId, price);
-        setMarketPrices(std::move(market));
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         onPremiumTimeChanged();
         setWorldName(QString::fromStdString(tibia::game::getWorldName()));

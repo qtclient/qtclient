@@ -8,6 +8,7 @@
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/housesstorage.h"
 #include "worldmap/coordinates.h"
 #include "analysers/itempricestorage.h"
 #include "cyclopedia/characterinfostorage.h"
@@ -25,6 +26,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <unordered_map>
 #include <stdexcept>
 #include <map>
 #include <set>
@@ -260,7 +262,11 @@ void TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage(
             continue;
         prices[static_cast<uint16_t>(entry.object_id())] = entry.price();
     }
-    tibia::game::notify("onItemsPrice", prices);
+    std::unordered_map<uint16_t, quint64> market;
+    market.reserve(prices.size());
+    for (const auto& [typeId, price] : prices)
+        market.emplace(typeId, price);
+    analysers::TItemPriceStorage::instance()->setMarketPrices(std::move(market));
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
@@ -288,22 +294,21 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message)
 {
-    // monsterCyclopediaNewDetailsForMonster
-    tibia::game::notify("onBestiaryEntryChanged", static_cast<uint16_t>(message.race_id()));
+    Q_EMIT instance()->monsterCyclopediaNewDetailsForMonster(static_cast<quint16>(message.race_id()));
 }
 
 void TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message)
 {
-    // requestHouseActionResultDialog
-    tibia::game::notify("onCyclopediaHouseAuctionMessage", message.house_id(), static_cast<uint8_t>(message.action_type()),
-                        static_cast<uint8_t>(message.error_code()), message.outbidden());
+    Q_EMIT instance()->requestHouseActionResultDialog(message.house_id(), static_cast<quint8>(message.action_type()),
+                                                      static_cast<quint8>(message.error_code()), message.outbidden());
 }
 
 void TCyclopediaProtocolMessageHandler::handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message)
 {
-    // The progress storage stamps the gain with the current time.
-    tibia::game::notify("onUpdateExperience", message.raw_experience(), message.final_experience());
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
+        storages->progress()->onExperienceGained(message.raw_experience(), message.final_experience(),
+                                                 analysers::TAnalyserStorages::nowMs());
 }
 
 namespace {
@@ -755,22 +760,38 @@ void TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage(
 void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
     const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message)
 {
-    const auto type = static_cast<uint8_t>(message.type());
-    // Damage dealt splits into its physical part and its elemental part.
-    const auto element = static_cast<uint8_t>(type == 1 ? message.elemental_type() : message.element());
-    tibia::game::notify("onImpactTracker", type, message.amount(), element, message.source(), message.elemental_amount());
+    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+    if (!storages)
+        return;
+    const qint64 now = analysers::TAnalyserStorages::nowMs();
+    switch (message.type()) {
+    case 0: // healing
+        storages->impact()->addHealing(message.amount(), now);
+        break;
+    case 1: // damage dealt: its physical part and its elemental part
+        storages->impact()->addDamage(message.amount(), message.elemental_amount(), static_cast<int>(message.elemental_type()), now);
+        break;
+    case 2: // damage received, with its element and source
+        storages->damageInput()->addHit({ static_cast<int>(message.amount()), static_cast<int>(message.element()),
+                                          QString::fromStdString(message.source()), now });
+        break;
+    default:
+        break;
+    }
 }
 
 void TCyclopediaProtocolMessageHandler::handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message)
 {
-    tibia::game::notify("onSupplyTracker", static_cast<uint16_t>(message.object_id()));
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
+        storages->gainWaste()->addWaste(static_cast<uint16_t>(message.object_id()), 1, analysers::TAnalyserStorages::nowMs());
 }
 
 void TCyclopediaProtocolMessageHandler::handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message)
 {
     const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(message.item());
-    const uint16_t count = slot.stackable ? slot.count : 1;
-    tibia::game::notify("onLootStats", slot.typeId, count, message.name());
+    const quint32 count = slot.stackable ? std::max<quint32>(1, slot.count) : 1;
+    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
+        storages->gainWaste()->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs());
 }
 
 void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
@@ -902,6 +923,11 @@ void TCyclopediaProtocolMessageHandler::setStaticHouseDataObserver(std::shared_p
     instance()->m_pStaticHouseDataObserver = std::move(pObserver);
 }
 
+void TCyclopediaProtocolMessageHandler::setHousesStorage(THousesStorage* const pHousesStorage)
+{
+    instance()->m_pHousesStorage = pHousesStorage;
+}
+
 void TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(const THousesStorage& HousesStorage)
 {
     if (const std::shared_ptr<IStaticHouseDataObserver>& observer = instance()->m_pStaticHouseDataObserver)
@@ -910,8 +936,7 @@ void TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(const THou
 
 void TCyclopediaProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
 {
-    // requestCloseCyclopediaDialog
-    tibia::game::notify("onRequestCloseCyclopediaDialog");
+    Q_EMIT instance()->requestCloseCyclopediaDialog();
 }
 
 void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage)
@@ -945,7 +970,8 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(
         house.moveOutDate = h.move_out_date();
         house.cancelMoveOutDisableReason = static_cast<uint8_t>(h.cancel_move_out_disable_reason());
     }
-    tibia::game::notify("onCyclopediaHouseList", houses);
+    if (THousesStorage* storage = instance()->m_pHousesStorage)
+        storage->applyCurrentHouseData(houses);
 
 }
 
@@ -958,7 +984,10 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage(c
                                        static_cast<uint8_t>(m.fifth_count()),  static_cast<uint8_t>(m.sixth_count()) };
     const std::vector<uint32_t> shown(m.shown_houses().begin(), m.shown_houses().end());
     const std::vector<uint32_t> others(m.other_houses().begin(), m.other_houses().end());
-    tibia::game::notify("onCyclopediaHousesInfo", m.excluded_until(), counts, shown, others);
+    if (THousesStorage* storage = instance()->m_pHousesStorage) {
+        storage->applyStaticHouseData(m.excluded_until(), counts, shown, others);
+        notifyStaticHouseDataObserver(*storage);
+    }
 
 }
 
@@ -1306,6 +1335,22 @@ void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vec
     protocol::sendGameclientMessage(std::move(message));
 }
 
+namespace {
+
+/// The creature tracker storage the tracker message fills.
+TCreatureTrackerStorage*& creatureTrackerStorage()
+{
+    static TCreatureTrackerStorage* storage = nullptr;
+    return storage;
+}
+
+}
+
+void TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(TCreatureTrackerStorage* const pCreatureTrackerStorage)
+{
+    creatureTrackerStorage() = pCreatureTrackerStorage;
+}
+
 void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
     const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message)
 {
@@ -1328,7 +1373,12 @@ void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
         entry.killsForDetails3 = static_cast<uint16_t>(e.last_unlock());
         entry.status = e.completed() ? 1 : 0;
     }
-    tibia::game::notify("onCreatureTracker", trackerType, entries);
+    if (TCreatureTrackerStorage* storage = creatureTrackerStorage()) {
+        if (trackerType == 0)
+            storage->setTrackedMonsters(entries);
+        else
+            storage->setTrackedBosses(entries);
+    }
     tibia::game::notify("onParseCyclopediaTracker", static_cast<uint8_t>(trackerType), rows);
 }
 

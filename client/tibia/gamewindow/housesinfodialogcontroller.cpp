@@ -1,5 +1,6 @@
 #include "housesinfodialogcontroller.h"
 
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 
 #include "platform/platform.h"
@@ -466,7 +467,13 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     connect(m_storage, &cyclopedia::THousesStorage::characterHousesInfoChanged, this,
             &THousesInfoDialogController::onCharacterHousesInfoChanged);
     connect(m_storage, &cyclopedia::THousesStorage::housesLimitsChanged, this, &THousesInfoDialogController::onHousesLimitsChanged);
-    connect(m_storage, &cyclopedia::THousesStorage::houseActionResult, this, &THousesInfoDialogController::onHouseActionResult);
+    // The house data messages fill this storage; their action results come to this dialog.
+    cyclopedia::TCyclopediaProtocolMessageHandler::setHousesStorage(m_storage);
+    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
+            &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
+            [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
+                onHouseActionResult(houseId, action, errorCode, hasBeenOutbidden);
+            });
     connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
         // The towns, "Own Houses" first.
         QStringList towns = m_storage->towns();
@@ -487,6 +494,7 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
 THousesInfoDialogController::~THousesInfoDialogController()
 {
     disconnect(m_storage, nullptr, this, nullptr);
+    cyclopedia::TCyclopediaProtocolMessageHandler::setHousesStorage(nullptr);
     cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(nullptr);
     clearFilterModels();
 }

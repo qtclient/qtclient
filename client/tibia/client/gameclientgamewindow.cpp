@@ -17,6 +17,7 @@
 #include "config/optionspages.h"
 #include "controllers/characterselectioncontroller.h"
 #include "cyclopedia/creaturetrackerstorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/itemtrackingstorage.h"
 #include "game/gameciptypes.h"
 #include "qmlcomponents/lenshelpmanager.h"
@@ -617,6 +618,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.imbuementTrackerWidget = std::make_unique<gamewindow::TImbuementTrackerWidgetManager>(gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::ImbuementTracker, Widgets::hooksFor(*g.imbuementTrackerWidget, [this, w = g.imbuementTrackerWidget.get()] { return w->open(sidebarOptions()); }));
     g.creatureTrackerStorage = std::make_unique<cyclopedia::TCreatureTrackerStorage>();
+    cyclopedia::TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(g.creatureTrackerStorage.get());
     g.bossTrackerStorage = std::make_unique<bossbestiary::TBossTrackerStorage>();
     using CreatureMode = gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
     g.bestiaryTrackerWidget = std::make_unique<gamewindow::TCreatureTrackerWidgetManager>(

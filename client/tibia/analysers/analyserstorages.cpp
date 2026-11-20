@@ -22,13 +22,6 @@ namespace tibia::analysers {
 namespace {
 
 using Args = std::vector<std::any>;
-using client::gamecore::argInt;
-using client::gamecore::argString;
-
-/// onImpactTracker analyzer types (Crystal ANALYZER_*; CIP handler types 0 / 1 / 2).
-constexpr qint64 AnalyzerHeal = 0;
-constexpr qint64 AnalyzerDamageDealt = 1;
-constexpr qint64 AnalyzerDamageReceived = 2;
 
 constexpr auto KeyShowBaseXp = "showBaseXp";
 
@@ -216,39 +209,6 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         m_timer.stop();
         m_hasCharacter = false;
         Q_EMIT configurationLoadedForCharacter();
-    });
-    // CIP XpChanged handler : (raw, final).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateExperience", [this](GameObject*, const Args& args) {
-        m_progress.onExperienceGained(argInt(args, 0), argInt(args, 1), nowMs());
-        return std::any{};
-    });
-    // CIP ItemLooted handler .
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onLootStats", [this](GameObject*, const Args& args) {
-        if (args.size() < 2)
-            return std::any{};
-        const uint16_t typeId = static_cast<uint16_t>(argInt(args, 0));
-        const quint32 count = static_cast<quint32>(std::max<qint64>(1, argInt(args, 1)));
-        m_gainWaste.addLoot(typeId, count, argString(args, 2), nowMs());
-        return std::any{};
-    });
-    // CIP ItemWasted handler : one item per message.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSupplyTracker", [this](GameObject*, const Args& args) {
-        m_gainWaste.addWaste(static_cast<uint16_t>(argInt(args, 0)), 1, nowMs());
-        return std::any{};
-    });
-    // CIP ImpactTracking handler: damage dealt is (physical amount, elemental
-    // amount, element).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onImpactTracker", [this](GameObject*, const Args& args) {
-        const qint64 type = argInt(args, 0);
-        const qint64 amount = argInt(args, 1);
-        const int element = static_cast<int>(argInt(args, 2));
-        if (type == AnalyzerHeal)
-            m_impact.addHealing(amount, nowMs());
-        else if (type == AnalyzerDamageDealt)
-            m_impact.addDamage(amount, argInt(args, 4), element, nowMs());
-        else if (type == AnalyzerDamageReceived)
-            m_damageInput.addHit({ static_cast<int>(amount), element, argString(args, 3), nowMs() });
-        return std::any{};
     });
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);

@@ -460,6 +460,7 @@ TGameClient::~TGameClient()
     // The manager saves the character's configuration on destruction, through
     // storages the game window owns: it goes first.
     m_characterConfigurationManager.reset();
+    cyclopedia::TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(nullptr);
     m_gameWindow.reset();
     shutdown();
     qmlcomponents::TSoundHelperService::setInstance(nullptr);

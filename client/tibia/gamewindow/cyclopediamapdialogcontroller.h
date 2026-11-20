@@ -170,6 +170,8 @@ public:
     /// nothing selected.
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
+    /// The map storage the Cyclopedia protocol handler fills.
+    cyclopedia::TCyclopediaMapStorage* storage() const { return m_storage; }
     cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration; }
     /// Centers the map on a field; a NaN scale keeps the current one. Nothing
     /// without the map's QML item.

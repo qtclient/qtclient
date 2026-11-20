@@ -2,6 +2,8 @@
 
 #include "gamewindow/configurecreaturepodiumdialogcontroller.h"
 #include "gamewindow/cyclopediadialogcontroller.h"
+#include "gamewindow/cyclopediamapdialogcontroller.h"
+#include "cyclopedia/cyclopediamapdata.h"
 #include "gamewindow/edittextcontroller.h"
 #include "gamewindow/highscoresdialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"
@@ -71,6 +73,15 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     forward(m_cyclopedia);
     forward(m_cyclopediaButton);
     forward(m_bosstiaryButton);
+    // The Cyclopedia button follows the map storage's raids.
+    if (cyclopedia::TCyclopediaMapStorage* mapStorage = m_cyclopedia->mapDialog() ? m_cyclopedia->mapDialog()->storage() : nullptr) {
+        connect(mapStorage, &cyclopedia::TCyclopediaMapStorage::activeRaidAdded, m_cyclopediaButton,
+                &TCyclopediaButtonController::onCyclopediaMapActiveRaidAdded);
+        connect(mapStorage, &cyclopedia::TCyclopediaMapStorage::imminentRaidAnnouncement, m_cyclopediaButton,
+                [button = m_cyclopediaButton](const worldmap::TWorldMapCoordinate& coordinate, const cyclopedia::TMapScaleFactor scale) {
+                    button->onCyclopediaMapImminentRaidsChanged(coordinate, static_cast<float>(scale.scale));
+                });
+    }
     // CIP misc dialogs / overlays kept alive on the information hub (ledger wires).
     new TEmergencyDialogController(this);
     forward(new TGameSessionDisconnectReactionController(this));

@@ -18,14 +18,6 @@ namespace tibia::cyclopedia {
 
 namespace {
 
-using Args = std::vector<std::any>;
-
-template <class T>
-const T* arg(const Args& args, const size_t index)
-{
-    return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
-}
-
 QString fromStd(const std::string& text) { return QString::fromStdString(text); }
 
 }
@@ -131,36 +123,6 @@ THousesStorage::THousesStorage(QObject* parent)
         Q_EMIT houseInformationChanged();
         Q_EMIT characterHousesInfoChanged();
         Q_EMIT housesLimitsChanged();
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHousesInfo", [this](GameObject*, const Args& args) {
-        const auto* excludedUntil = arg<uint32_t>(args, 0);
-        const auto* counts = arg<std::vector<uint8_t>>(args, 1);
-        const auto* firstList = arg<std::vector<uint32_t>>(args, 2);
-        const auto* secondList = arg<std::vector<uint32_t>>(args, 3);
-        if (!excludedUntil || !counts || counts->size() < 6)
-            return std::any{};
-        applyStaticHouseData(*excludedUntil, *counts, firstList ? *firstList : std::vector<uint32_t>(),
-                             secondList ? *secondList : std::vector<uint32_t>());
-        // Then the handler's static house data observer.
-        TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(*this);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHouseList", [this](GameObject*, const Args& args) {
-        if (const auto* list = arg<std::vector<CyclopediaHouseEntry>>(args, 0))
-            applyCurrentHouseData(*list);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHouseAuctionMessage", [this](GameObject*, const Args& args) {
-        const auto* houseId = arg<uint32_t>(args, 0);
-        const auto* action = arg<uint8_t>(args, 1);
-        const auto* errorCode = arg<uint8_t>(args, 2);
-        const auto* outbidden = arg<bool>(args, 3);
-        if (houseId && action && errorCode)
-            Q_EMIT houseActionResult(*houseId, *action, *errorCode, outbidden && *outbidden);
-        return std::any{};
     });
 }
 

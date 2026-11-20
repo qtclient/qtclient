@@ -124,7 +124,6 @@ private:
     std::deque<TCyclopediaDialogContext> m_backlog;
     /// Hidden while a spell is assigned to an action button.
     bool m_hiddenForTargetSelection = false;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to
@@ -168,7 +167,6 @@ private:
 
     shared::THighlightTimer m_highlightTimer;
     THighlightReason m_highlightReason;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 /// The button bar's Bosstiary button (CIP: TBosstiaryButtonController). It is
