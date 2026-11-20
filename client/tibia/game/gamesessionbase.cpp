@@ -440,6 +440,7 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedCyclopediaHouseActionResultMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage);
     link(&Queue::receivedPartyHuntAnalyserMessage, this, &TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage);
     link(&Queue::receivedXpChangedMessage, this, &TCyclopediaProtocolMessageHandler::handleXpChangedMessage);
+    link(&Queue::receivedDeadMessage, this, &TCyclopediaProtocolMessageHandler::handleDeadMessage);
 
     link(&Queue::receivedBestiaryTrackerMessage, this,
          &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);

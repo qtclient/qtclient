@@ -5,6 +5,7 @@
 #include "client/staticdata.h"
 #include "analysers/analyserstorages.h"
 #include "cyclopedia/bosstiarystorage.h"
+#include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "analysers/itempricestorage.h"
 #include "cyclopedia/characterinfostorage.h"
@@ -22,6 +23,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <stdexcept>
 #include <map>
 #include <string>
 #include <tuple>
@@ -145,6 +147,67 @@ void TMonsterRaceStorage::setRaceDetails(TMonsterRace race)
             data.location = r.combat->locations.front().toStdString();
     }
     tibia::game::processUpdateBestiaryMonsterData(data);
+}
+
+void TMonsterRaceStorage::setRacesUnlockedForCharms(std::vector<TMonsterRace> races, std::vector<TMonsterRace> minorRaces)
+{
+    m_racesUnlockedForCharms = std::move(races);
+    m_racesUnlockedForMinorCharms = std::move(minorRaces);
+    Q_EMIT monsterRacesUnlockedForCharmsChanged();
+}
+
+namespace {
+TMonsterBonusEffectStorage* g_monsterBonusEffectStorage = nullptr;
+}
+
+TMonsterBonusEffectStorage::TMonsterBonusEffectStorage(QObject* parent)
+    : cip::tibia::cyclopedia::TMonsterBonusEffectStorage(parent)
+{
+    g_monsterBonusEffectStorage = this;
+}
+
+TMonsterBonusEffectStorage::~TMonsterBonusEffectStorage()
+{
+    if (g_monsterBonusEffectStorage == this)
+        g_monsterBonusEffectStorage = nullptr;
+}
+
+TMonsterBonusEffectStorage* TMonsterBonusEffectStorage::instance()
+{
+    if (!g_monsterBonusEffectStorage)
+        g_monsterBonusEffectStorage = new TMonsterBonusEffectStorage(QCoreApplication::instance());
+    return g_monsterBonusEffectStorage;
+}
+
+int TMonsterBonusEffectStorage::finishedRaceState(const uint16_t raceId) const
+{
+    const auto it = m_finishedRaceStates.find(raceId);
+    return it != m_finishedRaceStates.end() ? it->second : -1;
+}
+
+void TMonsterBonusEffectStorage::setBonusEffects(const std::vector<TMonsterBonusEffect>& bonusEffects)
+{
+    for (const TMonsterBonusEffect& effect : bonusEffects)
+        m_bonusEffects[effect.id] = effect;
+    Q_EMIT bonusEffectsChanged();
+}
+
+void TMonsterBonusEffectStorage::clearFinishedRaceStates() { m_finishedRaceStates.clear(); }
+
+void TMonsterBonusEffectStorage::setFinishedRaceState(const uint16_t raceId, const int state) { m_finishedRaceStates[raceId] = state; }
+
+void TMonsterBonusEffectStorage::setRemainingNumberOfAssignableBonusEffects(const uint8_t remaining)
+{
+    if (m_remainingNumberOfAssignableBonusEffects == remaining)
+        return;
+    m_remainingNumberOfAssignableBonusEffects = remaining;
+    Q_EMIT remainingNumberOfAssignableBonusEffectsChanged();
+}
+
+void TMonsterBonusEffectStorage::setResetAllCharmCost(const uint64_t cost)
+{
+    m_resetAllCharmCost = cost;
+    Q_EMIT resetAllCharmCostChanged();
 }
 
 TMonsterRaceStorage* TMonsterRaceStorage::instance()
@@ -713,8 +776,76 @@ void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage)
 {
-    using namespace ::tibia::protobuf::protocol;
     const auto& m = MonsterCyclopediaBonusEffectsMessage;
+    TMonsterBonusEffectStorage* bonusEffectStorage = TMonsterBonusEffectStorage::instance();
+    // A race entry of the charm lists: the race and its appearance.
+    const auto raceEntry = [](const uint16_t raceId) {
+        TMonsterRace race;
+        race.raceId = raceId;
+        race.appearance = monsterRaceAppearance(raceId);
+        return race;
+    };
+    std::vector<TMonsterBonusEffect> bonusEffects;
+    std::vector<TMonsterRace> racesForCharms;
+    std::vector<TMonsterRace> racesForMinorCharms;
+    for (const auto& c : m.charms()) {
+        const auto charmId = static_cast<uint8_t>(c.charm_id());
+        const TCharmInfo* info = charmInfo(charmId);
+        uint16_t raceId = 0;
+        uint32_t removeCost = 0;
+        if (c.assigned()) {
+            // An assigned race stays in the list of its charm's kind.
+            raceId = static_cast<uint16_t>(c.race_id());
+            removeCost = c.remove_cost();
+            if (info && info->kind == 2)
+                racesForMinorCharms.push_back(raceEntry(raceId));
+            else
+                racesForCharms.push_back(raceEntry(raceId));
+        }
+        TMonsterBonusEffect& effect = bonusEffects.emplace_back();
+        effect.id = charmId;
+        effect.name = info ? QString::fromUtf8(info->name) : QString();
+        effect.description = charmDescription(charmId, static_cast<int>(c.tier()));
+        effect.type = info ? info->kind : 0;
+        if (c.tier() > 3)
+            throw std::runtime_error("unhandled enum value");
+        effect.tier = static_cast<int>(c.tier());
+        effect.raceId = raceId;
+        effect.removeCost = removeCost;
+    }
+    bonusEffectStorage->clearFinishedRaceStates();
+    for (const auto& f : m.finished_races()) {
+        const auto raceId = static_cast<uint16_t>(f.race_id());
+        // The race's assigned charm: 0 and 1 a major one, 2 a minor one.
+        const bool hasState = f.has_second_value();
+        const uint32_t state = f.second_value();
+        if (hasState) {
+            if (state > 2)
+                throw std::runtime_error("unhandled enum value");
+            bonusEffectStorage->setFinishedRaceState(raceId, static_cast<int>(state));
+        }
+        // The first flag: the race only takes minor charms.
+        const bool onlyMinor = f.first_flag();
+        bool forCharms = false;
+        bool forMinorCharms = false;
+        if (!onlyMinor) {
+            forCharms = !hasState || state >= 2;
+            forMinorCharms = !hasState || state != 2;
+        } else {
+            forMinorCharms = !hasState || state != 2;
+        }
+        if (forCharms)
+            racesForCharms.push_back(raceEntry(raceId));
+        if (forMinorCharms)
+            racesForMinorCharms.push_back(raceEntry(raceId));
+    }
+    TMonsterRaceStorage::instance()->setRacesUnlockedForCharms(std::move(racesForCharms), std::move(racesForMinorCharms));
+    bonusEffectStorage->setBonusEffects(bonusEffects);
+    bonusEffectStorage->setRemainingNumberOfAssignableBonusEffects(
+        m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : uint8_t{ 0xff });
+    bonusEffectStorage->setResetAllCharmCost(m.reset_all_charms_cost());
+
+    // Host: the charm dialogs and packs still read the charms as one record.
     BestiaryCharmsData data{};
     data.resetAllCharmsCost = m.reset_all_charms_cost();
     data.availableCharmSlots = m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : 0xff;
@@ -731,7 +862,12 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessa
     for (const auto& f : m.finished_races())
         data.finishedMonsters.push_back(static_cast<uint16_t>(f.race_id()));
     tibia::game::processUpdateBestiaryCharmsData(data);
+}
 
+void TCyclopediaProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
+{
+    // requestCloseCyclopediaDialog
+    tibia::game::notify("onRequestCloseCyclopediaDialog");
 }
 
 void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage)
