@@ -56,6 +56,11 @@ public:
 
     /// The setters store a user's change (configurationChangedFromUserInput).
     void setSelectedMarkers(const std::unordered_set<int>& markers);
+    /// Selects a marker type; announces the change even when it was selected.
+    void addSelectedMarker(int marker);
+    /// Deselects a marker type; announces only a removal.
+    void removeSelectedMarker(int marker);
+    /// These four and the shading announce every call, changed or not.
     void setSurfaceView(bool value);
     void setShowNPCMarker(bool value);
     void setShowPassageMarker(bool value);

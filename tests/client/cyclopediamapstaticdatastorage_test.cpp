@@ -12,6 +12,9 @@
 using tibia::cyclopedia::TCyclopediaMapStaticDataStorage;
 using tibia::worldmap::TWorldMapCoordinate;
 using EMapFileType = TCyclopediaMapStaticDataStorage::EMapFileType;
+using tibia::worldmap::TWorldMapAreaElement;
+using tibia::worldmap::TWorldMapCuboid;
+using tibia::worldmap::TWorldMapExtent;
 
 namespace {
 
@@ -124,6 +127,10 @@ TEST(CyclopediaMapStaticDataStorage, AreasSubareasAndNpcs)
     EXPECT_EQ(storage.npcs()[0].name, QStringLiteral("Frodo"));
     EXPECT_EQ(storage.npcs()[0].subareaId, 10);
     EXPECT_EQ(storage.npcs()[0].coordinate, TWorldMapCoordinate(32300, 32200, 7));
+    // The NPC gets the area of its subarea.
+    EXPECT_EQ(storage.npcs()[0].areaId, 1);
+    EXPECT_EQ(storage.areaIdOfSubArea(10), 1);
+    EXPECT_EQ(storage.areaIdOfSubArea(99), 0);
 }
 
 TEST(CyclopediaMapStaticDataStorage, AreaWithoutLabelGetsTheMiddleOfItsSubareas)
@@ -166,14 +173,19 @@ TEST(CyclopediaMapStaticDataStorage, FilesAreRequestedAsMapImages)
     EXPECT_FALSE(reported[QStringLiteral("sat-a.bmp")]);
     EXPECT_FALSE(reported[QStringLiteral("mini-a.bmp")]);
 
-    ASSERT_EQ(storage.mapFiles(EMapFileType::Satellite).size(), 2u);
-    const auto& tile = storage.mapFiles(EMapFileType::Satellite)[0];
+    const auto satelliteFiles = storage.mapFiles(EMapFileType::Satellite);
+    ASSERT_EQ(satelliteFiles.size(), 2u);
+    const auto& tile = satelliteFiles[0];
     EXPECT_EQ(tile.fileName, QStringLiteral("sat-a.bmp"));
     EXPECT_EQ(tile.width, 128);
     EXPECT_EQ(tile.height, 128);
     EXPECT_EQ(storage.mapFiles(EMapFileType::Minimap).size(), 1u);
     EXPECT_EQ(storage.subArea(11)->fileName, QStringLiteral("sub-11.bmp"));
     EXPECT_EQ(storage.subArea(11)->extent.origin, TWorldMapCoordinate(32020, 32030, 7));
+    EXPECT_EQ(storage.subArea(11)->fieldsWidth, 20);
+    EXPECT_EQ(storage.subArea(11)->fieldsHeight, 10);
+    // A subarea without a file keeps -1.
+    EXPECT_EQ(storage.subArea(12)->fieldsWidth, -1);
 }
 
 TEST(CyclopediaMapStaticDataStorage, LevelOfDetail)
@@ -207,4 +219,96 @@ TEST(CyclopediaMapStaticDataStorage, SubareaMasks)
     EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(32025, 32035, 7)), 11);
     EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(31000, 31000, 7)), 0);
     testImages().clear();
+}
+
+namespace {
+
+template <typename T>
+std::vector<T> dataOf(const std::vector<TWorldMapAreaElement>& elements)
+{
+    std::vector<T> found;
+    for (const TWorldMapAreaElement& element : elements) {
+        if (const auto* data = std::get_if<T>(&element.data))
+            found.push_back(*data);
+    }
+    return found;
+}
+
+}
+
+TEST(CyclopediaMapStaticDataStorage, MarkersAreFoundByFieldAndFloor)
+{
+    TCyclopediaMapStaticDataStorage storage;
+    storage.initialize(serialized(sampleMap()));
+
+    // The NPC's piece is its field; boxes meet edges included.
+    const TWorldMapCuboid nearNpc(TWorldMapCoordinate(32290, 32190, 7), TWorldMapExtent(10, 10, 1));
+    const auto npcs = dataOf<tibia::worldmap::TNPCMarkerWorldMapAreaData>(storage.markersIn(nearNpc));
+    ASSERT_EQ(npcs.size(), 1u);
+    EXPECT_EQ(npcs[0].name, QStringLiteral("Frodo"));
+    EXPECT_EQ(npcs[0].areaId, 1);
+    EXPECT_EQ(npcs[0].subAreaId, 10);
+    // Another floor or another place: nothing.
+    EXPECT_TRUE(storage.markersIn(TWorldMapCuboid(TWorldMapCoordinate(32290, 32190, 6), TWorldMapExtent(10, 10, 1))).empty());
+    EXPECT_TRUE(storage.markersIn(TWorldMapCuboid(TWorldMapCoordinate(32302, 32202, 7), TWorldMapExtent(5, 5, 1))).empty());
+}
+
+TEST(CyclopediaMapStaticDataStorage, AreaAndSubareaPieces)
+{
+    TCyclopediaMapStaticDataStorage storage;
+    storage.initialize(serialized(sampleMap()));
+
+    // Thais's box and label, plus the sewers' label, are area pieces at (32005, 32005).
+    const TWorldMapCuboid thais(TWorldMapCoordinate(32005, 32005, 7), TWorldMapExtent(1, 1, 1));
+    const auto areas = dataOf<tibia::worldmap::TAreaWorldMapAreaData>(storage.areasIn(thais));
+    ASSERT_EQ(areas.size(), 1u);
+    EXPECT_EQ(areas[0].id, 1);
+    EXPECT_EQ(areas[0].labelCoordinate, TWorldMapCoordinate(32020, 32020, 7));
+    EXPECT_EQ(areas[0].color, QColor(Qt::white));
+    const auto subAreaLabels = dataOf<tibia::worldmap::TSubAreaWorldMapAreaData>(storage.areasIn(thais));
+    ASSERT_EQ(subAreaLabels.size(), 1u);
+    // The sewers have no label: the middle of their box.
+    EXPECT_EQ(subAreaLabels[0].id, 10);
+    EXPECT_EQ(subAreaLabels[0].labelCoordinate, TWorldMapCoordinate(32005, 32005, 7));
+    EXPECT_EQ(storage.subArea(10)->labelCoordinate, TWorldMapCoordinate(32005, 32005, 7));
+
+    const auto subAreas = dataOf<tibia::worldmap::TSubAreaWorldMapAreaData>(storage.subAreasIn(thais));
+    ASSERT_EQ(subAreas.size(), 1u);
+    EXPECT_EQ(subAreas[0].fileName, QStringLiteral("sub-10.bmp"));
+    EXPECT_EQ(subAreas[0].fieldsWidth, 10);
+    EXPECT_EQ(subAreas[0].extent.origin, TWorldMapCoordinate(32000, 32000, 7));
+}
+
+TEST(CyclopediaMapStaticDataStorage, MapTilePieces)
+{
+    TCyclopediaMapStaticDataStorage storage;
+    storage.initialize(serialized(sampleMap()));
+
+    const TWorldMapCuboid field(TWorldMapCoordinate(32100, 32100, 7), TWorldMapExtent(1, 1, 1));
+    const auto satellite = dataOf<tibia::worldmap::TMapTileMapAreaData>(storage.mapTilesIn(EMapFileType::Satellite, field, 1));
+    ASSERT_EQ(satellite.size(), 1u);
+    EXPECT_EQ(satellite[0].fileName, QStringLiteral("sat-a.bmp"));
+    // map.dat's minimap files are the Minimap kind.
+    const auto minimap = dataOf<tibia::worldmap::TMapTileMapAreaData>(storage.mapTilesIn(EMapFileType::Minimap, field, 1));
+    ASSERT_EQ(minimap.size(), 1u);
+    EXPECT_EQ(minimap[0].fileName, QStringLiteral("mini-a.bmp"));
+
+    // The minimap blocks: 256-field squares from the map's corner cut to 256, floors 0 to 15.
+    const auto blocks = storage.mapTilesIn(EMapFileType::MinimapTiles, field, 1);
+    ASSERT_EQ(blocks.size(), 1u);
+    EXPECT_EQ(blocks[0].area.origin, TWorldMapCoordinate(32000, 32000, 7));
+    const auto* block = std::get_if<tibia::worldmap::TMinimapTileMapAreaData>(&blocks[0].data);
+    ASSERT_NE(block, nullptr);
+    EXPECT_FLOAT_EQ(block->scale, 0.03125f);
+    EXPECT_EQ(block->width, 256);
+    EXPECT_EQ(block->origin, TWorldMapCoordinate(32000, 32000, 7));
+    // Every floor of the block's column.
+    const TWorldMapCuboid column(TWorldMapCoordinate(32100, 32100, 0), TWorldMapExtent(1, 1, 1));
+    EXPECT_EQ(storage.mapTilesIn(EMapFileType::MinimapTiles, column, 16).size(), 16u);
+    EXPECT_FLOAT_EQ(storage.levelOfDetail(1.0f, EMapFileType::MinimapTiles), 0.03125f);
+    // Map corner 31000 cuts to 30976.
+    const TWorldMapCuboid corner(TWorldMapCoordinate(30976, 30976, 0), TWorldMapExtent(0, 0, 1));
+    const auto cornerBlocks = storage.mapTilesIn(EMapFileType::MinimapTiles, corner, 1);
+    ASSERT_EQ(cornerBlocks.size(), 1u);
+    EXPECT_EQ(cornerBlocks[0].area.origin, TWorldMapCoordinate(30976, 30976, 0));
 }

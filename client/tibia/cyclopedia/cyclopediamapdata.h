@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "worldmap/coordinates.h"
+#include "worldmap/worldmapareadata.h"
 
 #include <cip_gen.h>
 
@@ -86,6 +87,8 @@ public:
     int exploringSubarea() const { return m_exploringSubarea; }
     /// CIP player marker (onPlayerPositionWasUpdated / onPositionChange).
     const worldmap::TWorldMapCoordinate& playerPosition() const { return m_playerPosition; }
+    /// The player's field as a piece of map data (TPlayerPositionMapAreaData).
+    const worldmap::TWorldMapAreaElement& playerPositionElement() const { return m_playerPositionElement; }
     const std::vector<worldmap::TWorldMapCoordinate>& activeRaids() const { return m_activeRaids; }
     /// CIP DAT Go Strength shown in the map info tooltip (dialog default 25).
     int explorationRewardAmountGoStrength() const { return m_explorationRewardAmountGoStrength; }
@@ -97,9 +100,9 @@ public:
     QColor areaColor(int areaId) const;
 
 public Q_SLOTS:
-    /// CIP moc slot — local player entered the session.
+    /// The local player entered the session: follow its position.
     void onPlayerCreatureAddedToGameSession(std::weak_ptr<creatures::TCreature> pPlayer);
-    /// CIP moc slot — player field update (also fed by onPositionChange).
+    /// The player's field changed (the player's positionWasUpdated).
     void onPlayerPositionWasUpdated(worldmap::TWorldMapCoordinate WorldMapCoordinate);
 
 Q_SIGNALS:
@@ -122,6 +125,7 @@ private:
     int m_currentArea = 0;
     int m_exploringSubarea = 0;
     int m_selectedId = 0;
+    worldmap::TWorldMapAreaElement m_playerPositionElement;
     worldmap::TWorldMapCoordinate m_playerPosition;
     std::vector<worldmap::TWorldMapCoordinate> m_activeRaids;
     int m_explorationRewardAmountGoStrength = 25;

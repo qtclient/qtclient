@@ -18,6 +18,8 @@ namespace tibia::cyclopedia {
 
 TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCyclopediaMapStorage(parent)
+    , m_playerPositionElement{ worldmap::TWorldMapCuboid(worldmap::TWorldMapCoordinate(0, 0, 0), worldmap::TWorldMapExtent(0, 0, 1)),
+                               worldmap::TPlayerPositionMapAreaData{} }
 {
     using client::gamecore::argInt;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDiscoveryData", [this](GameObject*, const std::vector<std::any>& args) {
@@ -129,6 +131,8 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         Q_EMIT changed();
         return std::any{};
     });
+    // Host: a storage made after the player joined the session never sees
+    // playerAdded; the position notify keeps it current.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPositionChange", [this](GameObject*, const std::vector<std::any>& args) {
         if (args.empty())
             return std::any{};
@@ -158,6 +162,7 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         m_currentArea = 0;
         m_exploringSubarea = 0;
         m_playerPosition = {};
+        m_playerPositionElement.area = worldmap::TWorldMapCuboid(m_playerPosition, worldmap::TWorldMapExtent(1, 1, 1));
         m_activeRaids.clear();
         Q_EMIT areaAndSubAreaDataChanged();
         Q_EMIT viewpointsChanged();
@@ -207,14 +212,17 @@ void TCyclopediaMapStorage::setSelectedId(const int id)
 void TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession(std::weak_ptr<creatures::TCreature> pPlayer)
 {
     if (const std::shared_ptr<creatures::TCreature> player = pPlayer.lock())
-        onPlayerPositionWasUpdated(worldmap::TWorldMapCoordinate(player->position()));
+        connect(player.get(), &creatures::TCreature::positionWasUpdated, this, &TCyclopediaMapStorage::onPlayerPositionWasUpdated);
+    // The piece stays on the last known field until the player moves.
+    m_playerPositionElement.area = worldmap::TWorldMapCuboid(m_playerPosition, worldmap::TWorldMapExtent(1, 1, 1));
+    Q_EMIT playerPositionChanged();
+    Q_EMIT changed();
 }
 
 void TCyclopediaMapStorage::onPlayerPositionWasUpdated(worldmap::TWorldMapCoordinate WorldMapCoordinate)
 {
-    if (m_playerPosition == WorldMapCoordinate)
-        return;
     m_playerPosition = WorldMapCoordinate;
+    m_playerPositionElement.area = worldmap::TWorldMapCuboid(m_playerPosition, worldmap::TWorldMapExtent(1, 1, 1));
     Q_EMIT playerPositionChanged();
     Q_EMIT changed();
 }

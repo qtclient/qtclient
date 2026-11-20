@@ -2,10 +2,12 @@
 
 #include "assets/asset.h"
 #include "worldmap/coordinates.h"
+#include "worldmap/worldmapareadata.h"
 
 #include <QByteArray>
 #include <QImage>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 
 #include <map>
@@ -13,25 +15,32 @@
 #include <vector>
 
 namespace tibia {
+namespace minimap {
+class TMinimapMarkerStorage;
+}
 namespace cyclopedia {
 
 /// The Cyclopedia map's static data from map.dat (upstream/proto/map.proto): the
 /// areas and subareas, the NPCs, the satellite / minimap / subarea image files and
-/// the full map file (CIP: TCyclopediaMapStaticDataStorage). The image files are
+/// the full map file, plus the minimap flags, all as pieces of map data the map
+/// finds by field (CIP: TCyclopediaMapStaticDataStorage). The image files are
 /// requested as map image assets (newAssetDataToLoad) and handed out by the sprite
 /// system under their file names.
 class TCyclopediaMapStaticDataStorage final : public QObject
 {
     Q_OBJECT
 public:
-    /// map.proto MAP_FILE_TYPE.
-    enum class EMapFileType { Subarea = 0, Satellite = 1, Minimap = 2 };
+    /// The kinds of map tile pieces: map.dat's satellite and minimap files and
+    /// the blocks of the client's own minimap.
+    enum class EMapFileType { Satellite = 0, Minimap = 1, MinimapTiles = 2 };
 
+    /// An NPC piece (TNPCMarkerWorldMapAreaData and its field).
     struct TNPC
     {
         worldmap::TWorldMapCoordinate coordinate;
         QString name;
         quint16 subareaId = 0;
+        quint16 areaId = 0;
     };
 
     struct TArea
@@ -54,15 +63,19 @@ public:
         QString alias;
         /// The area listing this subarea.
         quint16 areaId = 0;
+        /// map.dat's label coordinate, else the middle of `extent`.
         worldmap::TWorldMapCoordinate labelCoordinate;
         /// The fields the subarea's mask file covers.
         worldmap::TWorldMapCuboid extent;
         QString fileName;
+        /// The mask file's size in fields; -1 without a file.
+        int fieldsWidth = -1;
+        int fieldsHeight = -1;
         /// White where the subarea's mask file is opaque (inverted alpha mask); null until resolved.
         QImage mask;
     };
 
-    /// A satellite or minimap image file.
+    /// A satellite or minimap image file piece (TMapTileMapAreaData and its fields).
     struct TMapFile
     {
         /// The fields the image covers.
@@ -80,12 +93,17 @@ public:
     /// handler hands it map.dat; this one reads map.dat on first use.
     static TCyclopediaMapStaticDataStorage& instance();
 
+    /// The minimap flags to show (CIP: the constructor's marker storage). Their
+    /// pieces follow the storage's markersChanged.
+    void setMinimapMarkerStorage(minimap::TMinimapMarkerStorage* markerStorage);
+
     /// Reads map.dat; throws std::logic_error for malformed data.
     void initialize(const QByteArray& mapData);
     void setFullMapFileName(const QString& fileName) { m_fullMapFileName = fileName; }
     QString fullMapFileName() const { return m_fullMapFileName; }
 
-    const std::vector<TNPC>& npcs() const { return m_npcs; }
+    /// The NPC pieces.
+    std::vector<TNPC> npcs() const;
     const std::map<quint16, TArea>& areas() const { return m_areas; }
     const std::map<quint16, TSubArea>& subAreas() const { return m_subAreas; }
     const TArea* area(quint16 areaId) const;
@@ -99,14 +117,29 @@ public:
     bool doesAreaRejectDonations(quint16 areaId) const;
     std::set<quint16> subAreaIdsOfArea(quint16 areaId) const;
     std::set<quint16> areaIds() const;
+    /// The area listing the subarea; 0 for an unknown subarea.
+    quint16 areaIdOfSubArea(quint16 subAreaId) const;
     /// The coordinate lies on the subarea's mask.
     bool isCoordinateInSubArea(quint16 subAreaId, const worldmap::TWorldMapCoordinate& coordinate) const;
     /// The first subarea (by id) whose mask holds the coordinate; 0 for none.
     quint16 subAreaAt(const worldmap::TWorldMapCoordinate& coordinate) const;
 
-    const std::vector<TMapFile>& mapFiles(EMapFileType type) const;
+    /// The satellite or minimap file pieces of `type`, in map.dat's order.
+    std::vector<TMapFile> mapFiles(EMapFileType type) const;
     /// The largest image scale of `type` not above `scale`, else the smallest; 1 without images.
     float levelOfDetail(float scale, EMapFileType type) const;
+
+    /// The pieces meeting `cuboid` on its floor: NPCs, minimap flags and house
+    /// entrances, in that order.
+    std::vector<worldmap::TWorldMapAreaElement> markersIn(const worldmap::TWorldMapCuboid& cuboid) const;
+    std::vector<worldmap::TWorldMapAreaElement> houseMarkersIn(const worldmap::TWorldMapCuboid& cuboid) const;
+    /// The subarea pieces (their mask boxes) meeting `cuboid` on its floor.
+    std::vector<worldmap::TWorldMapAreaElement> subAreasIn(const worldmap::TWorldMapCuboid& cuboid) const;
+    /// The map tile pieces of `type` meeting `cuboid` on `floors` floors from its own.
+    std::vector<worldmap::TWorldMapAreaElement> mapTilesIn(EMapFileType type, const worldmap::TWorldMapCuboid& cuboid,
+                                                           int floors) const;
+    /// The area pieces (area boxes and area and subarea labels) meeting `cuboid` on its floor.
+    std::vector<worldmap::TWorldMapAreaElement> areasIn(const worldmap::TWorldMapCuboid& cuboid) const;
 
     /// Host: a map image file's image from the sprite system; null while it loads.
     static QImage mapImage(const QString& fileName);
@@ -116,17 +149,27 @@ Q_SIGNALS:
     void minimapMarkersChanged();
 
 private:
-    void computeAreaExtents();
+    /// After map.dat: the area boxes and labels, the area and subarea pieces, the
+    /// minimap block pieces and the NPCs' areas.
+    void buildAreaData();
+    /// The minimap flag pieces from the marker storage.
+    void updateMinimapMarkers();
     void resolveSubAreaMasks();
     void requestAsset(const QString& fileName, bool loadErrorReported);
 
-    std::vector<TNPC> m_npcs;
-    std::map<EMapFileType, std::vector<TMapFile>> m_mapFiles;
+    QPointer<minimap::TMinimapMarkerStorage> m_minimapMarkerStorage;
+    worldmap::TWorldMapAreaIndex m_npcMarkers;
+    worldmap::TWorldMapAreaIndex m_minimapMarkers;
+    worldmap::TWorldMapAreaIndex m_houseMarkers;
+    worldmap::TWorldMapAreaIndex m_areaMarkers;
+    worldmap::TWorldMapAreaIndex m_subAreaMarkers;
+    std::map<EMapFileType, worldmap::TWorldMapAreaIndex> m_mapTiles;
     std::map<EMapFileType, std::set<float>> m_scales;
     std::map<quint16, TArea> m_areas;
     std::map<quint16, TSubArea> m_subAreas;
     worldmap::TWorldMapCuboid m_mapExtent;
     QString m_fullMapFileName;
+    QMetaObject::Connection m_minimapMarkersConnection;
 };
 
 }

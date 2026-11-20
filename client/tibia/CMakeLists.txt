@@ -789,6 +789,7 @@ if(TIBIA_WITH_GAMECORE)
     worldmap/ambientlightstorage.cpp worldmap/ambientlightstorage.h
     worldmap/cacheforworldmapstoragelookupmembers.cpp worldmap/cacheforworldmapstoragelookupmembers.h
     worldmap/coordinates.cpp worldmap/coordinates.h
+    worldmap/worldmapareadata.h
     worldmap/creaturehud.cpp worldmap/creaturehud.h
     worldmap/creaturehudcontroller.cpp worldmap/creaturehudcontroller.h
     worldmap/creaturehudrenderprovider.cpp worldmap/creaturehudrenderprovider.h
