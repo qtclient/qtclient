@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "cyclopedia/bestiarystorage.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 
 #include <cip_gen.h>
 #include <client/staticdata.h>
@@ -98,24 +99,18 @@ class TMonsterDialogController final : public cip::tibia::gamewindow::TMonsterDi
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP).
-    struct Context
-    {
-        DialogState state = MonsterClassification;
-        QString classification;
-        QString search;
-        int raceId = 0;
-        bool operator==(const Context&) const = default;
-    };
-
     TMonsterDialogController(cyclopedia::TBestiaryStorage& storage, QObject* parent = nullptr);
     ~TMonsterDialogController() override;
     bool clientSettingSmoothFiltering() const override;
 
-    Context captureContext() const;
-    void restoreContext(const Context& context) { m_pendingContext = context; }
-    /// The race the next showDialogTab opens (CIP).
-    void setNextRace(int raceId);
+    /// The page left for another tab: the view, classification, search and race.
+    TCyclopediaDialogContext captureContext() const;
+    /// Shows the context's view again, asking the server for it; another
+    /// tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
+    /// Forgets the classifications, races and race details received (the
+    /// session's bestiary cache; also on closing the Cyclopedia).
+    void clearBestiaryCache();
 
     bool isMonsterTracked() const override;
     bool canTrackMoreMonsters() const override;
@@ -178,7 +173,6 @@ private:
     QString m_selectedClassification;
     QString m_search;
     int m_selectedRace = 0;
-    std::optional<Context> m_pendingContext;
 
     /// The confirmation's action (CIP: the dialog's +0x58: 0 assign, 1 remove).
     int m_confirmAction = 0;

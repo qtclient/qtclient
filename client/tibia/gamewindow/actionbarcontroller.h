@@ -67,8 +67,6 @@ public:
     /// Writes a setting to the current hotkey set (CIP: the storage's
     /// setMapping, then onHotkeyOptionsChanged).
     void assign(int buttonId, int multiActionIndex, const config::TActionSetting& setting);
-    /// The spell dialog for a button, opened with `spellId` and no parameters.
-    void openSpellDialog(int buttonId, int multiActionIndex, int spellId);
     /// CIP insertSpell : puts the spell on the first empty
     /// button scrolled into view and starts its insert animation. Returns
     /// whether a button took it.

@@ -18,6 +18,7 @@
 #include "controllers/characterselectioncontroller.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "game/gameciptypes.h"
 #include "qmlcomponents/lenshelpmanager.h"
 #include "exivaoptions/exivaoptionsdialogcontroller.h"
 #include "game/gameservergamesession.h"
@@ -706,8 +707,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     setChatProtocolMessageHandler(chat->protocolHandler());
     analysers::TAnalyserStorages* analyserStorages = g.analyserStorages.get();
     analyserStorages->itemTracking()->setChatStorage(&chat->storage());
-    // The drop tracker announces on the active session's status line.
-    const auto bindItemTrackingTexts = [this, analyserStorages] { analyserStorages->itemTracking()->setTextStorage(textStorage()); };
+    // The drop tracker announces on the active session's status line and
+    // follows the session's premium state.
+    const auto bindItemTrackingTexts = [this, analyserStorages, informationDialogs] {
+        analyserStorages->itemTracking()->setTextStorage(textStorage());
+        analyserStorages->itemTracking()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
+            cyclopedia->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+    };
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, analyserStorages, bindItemTrackingTexts);
     bindItemTrackingTexts();
 

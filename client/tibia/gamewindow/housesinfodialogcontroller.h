@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cyclopedia/housesstorage.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/gamewindowciptypes.h"
 
 #include <cip_gen.h>
@@ -144,22 +145,13 @@ class THousesInfoDialogController final : public cip::tibia::gamewindow::THouses
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP).
-    struct Context
-    {
-        QString town;
-        int state = 5;
-        int type = 0;
-        int sortOrder = 0;
-        uint houseId = 0;
-        bool operator==(const Context&) const = default;
-    };
-
     explicit THousesInfoDialogController(QObject* parent = nullptr);
     ~THousesInfoDialogController() override;
 
-    Context captureContext() const;
-    void restoreContext(const Context& context);
+    /// The page left for another tab: the filters, the house and the preview camera.
+    TCyclopediaDialogContext captureContext() const;
+    /// Another tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
     /// The Tibia time of day of the house preview.
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
 

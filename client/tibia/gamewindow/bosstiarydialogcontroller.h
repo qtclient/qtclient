@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "cyclopedia/bosstiarystorage.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/assignablebossmodels.h"
 #include "input/gameaction.h"
 
@@ -59,20 +60,13 @@ class TBosstiaryDialogController final : public cip::tibia::gamewindow::TBosstia
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP).
-    struct Context
-    {
-        cyclopedia::TBosstiaryFilter filter;
-        int page = 1;
-        bool operator==(const Context&) const = default;
-    };
-
     TBosstiaryDialogController(cyclopedia::TBosstiaryStorage& storage, QObject* parent = nullptr);
     ~TBosstiaryDialogController() override;
 
-    Context captureContext() const;
-    /// Takes the filter and page back and rebuilds.
-    void restoreContext(const Context& context);
+    /// The page left for another tab: the filter and the page.
+    TCyclopediaDialogContext captureContext() const;
+    /// Takes the filter and page back and rebuilds; another tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
     /// CIP : shows the boss of `raceId` (its name as the search).
     void showRace(int raceId);
     /// The Cyclopedia's actions: a received free podium shows its message.

@@ -26,6 +26,9 @@ namespace chat {
 class TChatChannelStorage;
 class TTextStorage;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 }
 
 namespace tibia {
@@ -78,6 +81,9 @@ public:
     /// The chat the drop notification goes to and the session's status line.
     void setChatStorage(chat::TChatChannelStorage* storage) { m_chatStorage = storage; }
     void setTextStorage(chat::TTextStorage* storage) { m_textStorage = storage; }
+    /// The session's premium state, which sets the tracked item limit and the
+    /// auto-tracking (none: a free account).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     /// A new game session: nothing tracked, no drops (the storage's state after construction).
     void clear();
 
@@ -114,6 +120,7 @@ private:
 
     chat::TChatChannelStorage* m_chatStorage = nullptr;
     chat::TTextStorage* m_textStorage = nullptr;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     analysers::TItemPriceStorage* m_prices;
     quint32 m_autoTrackAboveValue = 0;
     std::deque<TTrackedItem> m_trackedItems;

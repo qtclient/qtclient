@@ -196,8 +196,7 @@ void TFriendsAccountSearchPageController::setShowCharacterInfo(const bool show)
         return;
     m_showCharacterInfo = show;
     if (show) {
-        m_characterInfo->setNextDataType(TCharacterInfoDialogController::Inspection);
-        m_characterInfo->showDialogTab();
+        m_characterInfo->showDialogTab(TCharacterInfoDialogController::Inspection);
     } else {
         m_characterInfo->hideDialogTab();
     }
@@ -282,7 +281,6 @@ void TFriendsAccountSearchPageController::openCyclopediaCharacterInfo(const int 
 void TFriendsAccountSearchPageController::refreshCurrentCharacterInfo()
 {
     // Asks again for the page that is shown.
-    m_characterInfo->setNextDataType(m_characterInfo->dataType());
     m_characterInfo->showDialogTab();
 }
 
@@ -326,8 +324,7 @@ void TFriendsAccountSearchPageController::onNoPermissionToDisplayCharacterSummar
 void TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter()
 {
     // Without the inspection the general stats are shown.
-    m_characterInfo->setNextDataType(TCharacterInfoDialogController::GeneralStats);
-    m_characterInfo->showDialogTab();
+    m_characterInfo->showDialogTab(TCharacterInfoDialogController::GeneralStats);
 }
 
 }

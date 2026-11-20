@@ -62,6 +62,14 @@ void TMagicalArchiveDialogController::setSelectedSpellID(const int v)
     Q_EMIT selectedSpellIDChanged();
 }
 
+void TMagicalArchiveDialogController::setInitialSpellID(const int spellId)
+{
+    if (m_initialSpellID == spellId)
+        return;
+    m_initialSpellID = spellId;
+    Q_EMIT selectedSpellIDChanged();
+}
+
 /// CIP: any selected spell id is a valid selection.
 void TMagicalArchiveDialogController::refreshSelectionFlags()
 {
@@ -90,10 +98,33 @@ void TMagicalArchiveDialogController::hideDialogTab() { m_proxy->resetFilter(); 
 
 void TMagicalArchiveDialogController::requestAssignSpellToActionButton()
 {
-    if (m_selectedSpellID <= 0)
+    if (m_selectedSpellID == 0)
         return;
-    auto action = std::make_shared<input::TGameActionAssignSpellToActionButton>(static_cast<uint8_t>(1), 0, -1, static_cast<uint16_t>(m_selectedSpellID), A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON);
-    Q_EMIT publishGameAction(action);
+    m_waitingForActionButton = true;
+    Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON));
+}
+
+void TMagicalArchiveDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    if (!pGameAction)
+        return;
+    const input::EGameAction type = pGameAction->gameActionType();
+    if (m_waitingForActionButton && type == A::TARGET_SELECTION_FINISHED) {
+        m_waitingForActionButton = false;
+        return;
+    }
+    if (type != A::TARGET_SELECTED || !m_waitingForActionButton || m_selectedSpellID == 0)
+        return;
+    // Only an action button picked as the target takes the spell.
+    const auto* target = input::gameActionAs<input::TGameActionTargetSelected>(pGameAction.get());
+    if (!target || !target->location()
+        || target->location()->gameActionContextType() != input::EGameActionContextType::LOCATION_ACTION_BUTTON)
+        return;
+    const auto* button = input::gameActionContextAs<input::TLocationActionButtonGameActionContext>(target->location());
+    if (!button)
+        return;
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAssignSpellToActionButton>(
+        button->bar(), button->button(), button->value(), static_cast<uint16_t>(m_selectedSpellID)));
 }
 
 }

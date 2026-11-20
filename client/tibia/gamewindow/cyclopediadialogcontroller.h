@@ -4,6 +4,7 @@
 #include "client/gamecore.h"
 #include "gamewindow/bosstiarydialogcontroller.h"
 #include "gamewindow/characterinfodialogcontroller.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/housesinfodialogcontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
@@ -31,6 +32,9 @@ class TBestiaryStorage;
 namespace tibia {
 namespace mods {
 class InstanceBackend;
+}
+namespace game {
+class TPremiumTimeStorage;
 }
 }
 
@@ -84,30 +88,23 @@ public:
     void onSwitchToItemInfoDialogRequested(uint16_t AppearanceTypeID);
 
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
+    /// The session's premium state for the item, charm and character pages.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
 
 private:
-    /// A tab left for another (CIP: the backlog entries, each tab's context).
-    struct Context
-    {
-        DialogTab tab = NoTabInitialState;
-        TCharacterInfoDialogController::Context characterInfo;
-        TItemInfoDialogController::Context itemInfo;
-        TMonsterDialogController::Context monsters;
-        TMonsterBonusEffectsDialogController::Context bonusEffects;
-        TBosstiaryDialogController::Context bosstiary;
-        THousesInfoDialogController::Context houses;
-        int magicalArchiveSpellId = 0;
-        bool operator==(const Context&) const = default;
-    };
-
     void hookActions();
     void switchTab(DialogTab tab);
     cip::tibia::gamewindow::ICyclopediaDialogTab* page(DialogTab tab) const;
-    Context captureContext() const;
-    /// Remembers the shown page's context for requestBack.
-    void pushBacklog();
+    /// The context of `tab`'s page, which must have one.
+    TCyclopediaDialogContext captureContext(DialogTab tab) const;
+    /// The tab a context belongs to.
+    static DialogTab tabOf(const TCyclopediaDialogContext& context);
+    /// Hands `context` back to its tab's page.
+    void restoreContext(const TCyclopediaDialogContext& context);
+    /// Remembers a page's context for requestBack, unless it is the last one.
+    void pushBacklog(const TCyclopediaDialogContext& context);
     /// Forgets every step back.
     void clearBacklog();
 
@@ -124,7 +121,7 @@ private:
     THousesInfoDialogController* m_houses;
     TCyclopediaMapDialogController* m_map;
     TMagicalArchiveDialogController* m_magicalArchive;
-    std::deque<Context> m_backlog;
+    std::deque<TCyclopediaDialogContext> m_backlog;
     /// Hidden while a spell is assigned to an action button.
     bool m_hiddenForTargetSelection = false;
     std::vector<client::gamecore::Hook> m_hooks;

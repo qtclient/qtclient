@@ -3,9 +3,11 @@
 #include "client/gamecore.h"
 #include <client/staticdata.h>
 #include "gamewindow/appearancetypelistmodel.h"
+#include "gamewindow/cyclopediadialogcontext.h"
 
 #include <cip_gen.h>
 
+#include <QPointer>
 #include <QTimer>
 
 #include <string>
@@ -26,6 +28,9 @@ class TQuickLootBlackWhitelistStorage;
 }
 
 namespace tibia {
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
 /// The "Basic Item Details" of an inspected type (CIP: TInspectObjectQMLData
@@ -44,22 +49,15 @@ class TItemInfoDialogController final : public cip::tibia::gamewindow::TItemInfo
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP).
-    struct Context
-    {
-        int category = -1;
-        QString name;
-        bool buttons[4] = {};
-        uint16_t typeId = 0;
-        bool operator==(const Context& other) const;
-    };
-
     explicit TItemInfoDialogController(QObject* parent = nullptr);
     ~TItemInfoDialogController() override;
 
-    Context captureContext() const;
-    /// CIP ; the page must be shown.
-    void restoreContext(const Context& context);
+    /// The session's premium state (none: a free account).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
+    /// The page left for another tab: category, name search, filter buttons, type.
+    TCyclopediaDialogContext captureContext() const;
+    /// The page must be shown; another tab's context throws.
+    void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
     /// CIP : the list narrowed to `typeId`, which is selected.
     void showType(uint16_t typeId);
 
@@ -159,6 +157,7 @@ private:
     bool m_entriesBuilt = false;
     bool m_shown = false;
     uint16_t m_typeId = 0;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     int m_primaryLootValueSource = 0;
     int m_category = -1;
     QString m_name;

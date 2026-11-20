@@ -662,9 +662,9 @@ bool TMonsterDialogController::isMonsterTracked() const { return m_singleMonster
 
 bool TMonsterDialogController::canTrackMoreMonsters() const { return m_storage.canTrackMore(); }
 
-TMonsterDialogController::Context TMonsterDialogController::captureContext() const
+TCyclopediaDialogContext TMonsterDialogController::captureContext() const
 {
-    Context context;
+    TMonsterInfoCyclopediaContext context;
     context.state = m_dialogState;
     context.classification = m_selectedClassification;
     context.search = m_search;
@@ -672,38 +672,44 @@ TMonsterDialogController::Context TMonsterDialogController::captureContext() con
     return context;
 }
 
-void TMonsterDialogController::setNextRace(const int raceId)
+void TMonsterDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
-    Context context;
-    context.state = SingleMonster;
-    context.raceId = raceId;
-    m_pendingContext = context;
+    const auto& context = cyclopediaContextAs<TMonsterInfoCyclopediaContext>(CyclopediaContext);
+    switch (context.state) {
+        case SingleMonster:
+            // The race again, asked for anew.
+            onMonsterRaceClicked(static_cast<uint>(context.raceId));
+            break;
+        case MonsterRaces:
+            // The classification's races, or the search's.
+            if (context.search.isEmpty())
+                requestClassificationSelection(context.classification);
+            else
+                requestMonsterSearch(context.search);
+            break;
+        case MonsterClassification:
+            m_selectedClassification = context.classification;
+            onClassificationSummaryChanged();
+            break;
+    }
+}
+
+void TMonsterDialogController::clearBestiaryCache()
+{
+    m_classifications.clear();
+    m_races.clear();
+    m_details.reset();
 }
 
 void TMonsterDialogController::showDialogTab()
 {
     m_shown = true;
-    m_classifications.clear();
-    m_races.clear();
-    m_details.reset();
+    clearBestiaryCache();
     m_selectedClassification.clear();
     m_search.clear();
     m_selectedRace = 0;
     onClassificationSummaryChanged();
     tibia::game::requestBestiary();
-    if (!m_pendingContext)
-        return;
-    const Context context = *m_pendingContext;
-    m_pendingContext.reset();
-    m_selectedClassification = context.classification;
-    m_search = context.search;
-    m_selectedRace = context.raceId;
-    if (context.state == SingleMonster && context.raceId != 0)
-        tibia::game::requestBestiarySearch(static_cast<uint16_t>(context.raceId));
-    else if (context.state == MonsterRaces && !context.search.isEmpty())
-        requestMonsterSearch(context.search);
-    else if (context.state == MonsterRaces && !context.classification.isEmpty())
-        tibia::game::requestBestiaryOverview(context.classification.toStdString());
 }
 
 void TMonsterDialogController::hideDialogTab()

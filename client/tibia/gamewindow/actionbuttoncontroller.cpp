@@ -1,6 +1,8 @@
 #include "actionbuttoncontroller.h"
 
 #include "gamewindow/actionbarcontroller.h"
+#include "input/gameaction.h"
+#include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
@@ -504,7 +506,10 @@ void TActionButtonController::contextMenuRequested()
 
 void TActionButtonController::onTargetSelected()
 {
-    input::finishTargetSelection(nullptr);
+    // The button picked as a target (assigning a spell from the magical archive).
+    const auto button = std::make_shared<input::TLocationActionButtonGameActionContext>(static_cast<uint8_t>(m_actionBarID),
+                                                                                          int(m_actionButtonID), multiActionIndex());
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTargetSelected>(input::TObjectGameActionContext(button, button)));
 }
 
 void TActionButtonController::onDragChanged(bool)

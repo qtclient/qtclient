@@ -169,9 +169,15 @@ public:
     /// Character: the TCharacterInfoDialogController::EDialogCategory shown.
     std::optional<int> category() const { return m_category; }
     TGameActionOpenCyclopedia& setCategory(int category);
-    /// Items: the item type shown; magical archive: the spell (0: none).
+    /// Items: the item type shown (0: none).
     uint16_t typeId() const { return m_typeId; }
     TGameActionOpenCyclopedia& setTypeId(uint16_t typeId);
+    /// Houses: the house selected (0: none).
+    uint32_t houseId() const { return m_houseId; }
+    TGameActionOpenCyclopedia& setHouseId(uint32_t houseId);
+    /// Magical archive: the spell it opens on (0: the first one).
+    uint16_t spellId() const { return m_spellId; }
+    TGameActionOpenCyclopedia& setSpellId(uint16_t spellId);
     /// Charms: the charm selected (0xff: none).
     uint8_t charmId() const { return m_charmId; }
     TGameActionOpenCyclopedia& setCharmId(uint8_t charmId);
@@ -183,6 +189,8 @@ private:
     float m_zoom = std::numeric_limits<float>::quiet_NaN();
     std::optional<int> m_category;
     uint16_t m_typeId = 0;
+    uint32_t m_houseId = 0;
+    uint16_t m_spellId = 0;
     uint8_t m_charmId = 0xff;
 };
 
@@ -2591,14 +2599,12 @@ private:
 };
 
 /// CIP input::TGameActionAssignSpellToActionButton (ASSIGN_SPELL_TO_ACTION_BUTTON):
-/// bar (+0xc), button (+0x10), multi action (+0x14), spell (+0x18). qtclient also
-/// sends REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON with it (CIP: a TGameActionSimple).
+/// bar (+0xc), button (+0x10), multi action (+0x14), spell (+0x18).
 class TGameActionAssignSpellToActionButton final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionAssignSpellToActionButton(uint8_t actionBarId, int actionButtonId, int multiActionIndex, uint16_t spellId,
-                                         EGameAction type = EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON)
-        : TGameActionSimple(type)
+    TGameActionAssignSpellToActionButton(uint8_t actionBarId, int actionButtonId, int multiActionIndex, uint16_t spellId)
+        : TGameActionSimple(EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON)
         , m_actionBarId(actionBarId)
         , m_actionButtonId(actionButtonId)
         , m_multiActionIndex(multiActionIndex)

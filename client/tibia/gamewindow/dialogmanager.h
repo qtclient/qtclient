@@ -9,6 +9,7 @@
 #include <QString>
 #include <QVariantMap>
 
+#include <typeinfo>
 #include <vector>
 
 class QQmlEngine;
@@ -43,6 +44,9 @@ public:
     void remove(TDialog* dialog);
     /// CIP .
     bool contains(const TDialog* dialog) const;
+    /// The first stacked dialog whose controller is a `T` (not a subclass) goes on top.
+    template <class T>
+    void showDialogOfType();
     bool isEmpty() const { return m_dialogs.empty(); }
     /// Hides every dialog (leaving the world).
     void hideAll();
@@ -162,6 +166,17 @@ public:
 private:
     TDialog* m_dialog;
 };
+
+template <class T>
+void TDialogStackController::showDialogOfType()
+{
+    for (TDialog* dialog : m_dialogs) {
+        if (dialog && dialog->controller() && typeid(*dialog->controller()) == typeid(T)) {
+            show(dialog);
+            return;
+        }
+    }
+}
 
 }
 }

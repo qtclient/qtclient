@@ -194,6 +194,14 @@ bool TBestiaryStorage::isRaceOnlyAssignableForMinorCharms(const int raceId) cons
 
 void TBestiaryStorage::setRaceProgress(const int raceId, const int progress) { m_raceProgress.insert(raceId, progress); }
 
+void TBestiaryStorage::clearCharms()
+{
+    m_charms.clear();
+    m_availableCharmSlots = 0;
+    m_resetAllCharmsCost = 0;
+    m_hasCharmData = false;
+}
+
 quint64 TBestiaryStorage::goldBalance()
 {
     if (!tibia::game::hasLocalPlayer())

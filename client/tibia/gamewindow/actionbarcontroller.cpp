@@ -461,11 +461,6 @@ void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint But
     m_passiveAbilityDialog->showDialog(ButtonId);
 }
 
-void TActionBarController::openSpellDialog(const int buttonId, const int multiActionIndex, const int spellId)
-{
-    m_spellDialog->showDialog(uint(buttonId), multiActionIndex, spellId, QString(), ECastType(0));
-}
-
 void TActionBarController::onRequestAssignSpell(const uint ButtonId, const int MultiActionIndex, const int SpellId,
                                                 const QString& Parameters, const int CastType)
 {

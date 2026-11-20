@@ -124,16 +124,16 @@ TBosstiaryDialogController::TBosstiaryDialogController(cyclopedia::TBosstiarySto
 
 TBosstiaryDialogController::~TBosstiaryDialogController() = default;
 
-TBosstiaryDialogController::Context TBosstiaryDialogController::captureContext() const
+TCyclopediaDialogContext TBosstiaryDialogController::captureContext() const
 {
-    return { m_storage.filter(), m_currentPage };
+    return TBosstiaryCyclopediaContext{ m_storage.filter(), m_currentPage };
 }
 
 void TBosstiaryDialogController::onListChanged()
 {
     if (m_restoring)
         return;
-    const Context context = captureContext();
+    const TCyclopediaDialogContext context = captureContext();
     rebuild();
     restoreContext(context);
 }
@@ -205,8 +205,9 @@ void TBosstiaryDialogController::showDialogTab()
 }
 
 /// Takes the filter and page back without the list change rebuilding first.
-void TBosstiaryDialogController::restoreContext(const Context& context)
+void TBosstiaryDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
+    const auto& context = cyclopediaContextAs<TBosstiaryCyclopediaContext>(CyclopediaContext);
     m_restoring = true;
     m_storage.setFilter(context.filter);
     m_currentPage = std::max(1, context.page);

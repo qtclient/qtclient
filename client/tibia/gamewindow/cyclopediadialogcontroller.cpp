@@ -102,6 +102,11 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     // The session's end closes the dialog; the backlog goes with the next session.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
             &TCyclopediaDialogController::closeDialog);
+    // The character's death closes it too.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRequestCloseCyclopediaDialog", [this](GameObject*, const std::vector<std::any>&) {
+        closeDialog();
+        return std::any{};
+    });
 }
 
 void TCyclopediaDialogController::connectToGameSession()
@@ -120,6 +125,13 @@ void TCyclopediaDialogController::setAmbientLightStorage(worldmap::TAmbientLight
 {
     m_houses->setAmbientLightStorage(ambientLight);
     m_map->setAmbientLightStorage(ambientLight);
+}
+
+void TCyclopediaDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage)
+{
+    // The character page's stats read the premium state from the session.
+    m_itemInfo->setPremiumTimeStorage(storage);
+    m_bonusEffects->setPremiumTimeStorage(storage);
 }
 
 void TCyclopediaDialogController::setInstanceStorage(mods::InstanceBackend* instance) { m_map->setInstanceStorage(instance); }
@@ -165,8 +177,9 @@ QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { re
 
 void TCyclopediaDialogController::hookActions()
 {
-    // Assigning a spell to an action button hides the dialog for the target
-    // selection; its end shows the dialog again.
+    // Assigning a spell to an action button hides the dialog while the button
+    // is picked; the selection's end shows it again, the spell's assign
+    // dialog back on top.
     m_gameActions.on(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::IGameAction&) {
         m_hiddenForTargetSelection = true;
         dialog()->hide();
@@ -177,27 +190,28 @@ void TCyclopediaDialogController::hookActions()
         if (m_hiddenForTargetSelection && dialog()->item() && !dialog()->item()->isVisible()) {
             m_hiddenForTargetSelection = false;
             dialog()->show();
+            if (TDialogStackController* stack = TDialogStackController::instance())
+                stack->showDialogOfType<TAssignSpellActionDialogController>();
         }
         return true;
     });
     m_gameActions.on(A::OPEN_CYCLOPEDIA, [this](const input::TGameActionOpenCyclopedia& action) {
-        // The action's tab and the page it opens there.
+        // The action's tab, then the page it opens there.
         switch (action.tab()) {
-            case 0: {
+            case 0:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::ItemInfo);
                 if (const uint16_t typeId = action.typeId())
                     m_itemInfo->showType(typeId);
                 break;
-            }
             case 1:
-                if (action.raceId() > 0)
-                    m_monsters->setNextRace(action.raceId());
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Monsters);
+                if (const uint16_t raceId = action.raceId())
+                    m_monsters->onMonsterRaceClicked(raceId);
                 break;
             case 2:
-                if (action.category().value_or(0) > 0)
-                    m_characterInfo->setNextDataType(*action.category());
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::CharacterInfo);
+                if (const std::optional<int> dataType = action.category())
+                    m_characterInfo->showDialogTab(*dataType);
                 break;
             case 3:
                 // Charm 0 is a charm; no charm is 0xff.
@@ -213,22 +227,21 @@ void TCyclopediaDialogController::hookActions()
                 break;
             }
             case 5:
-                // The houses page selects the action's house.
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses);
-                if (action.category().value_or(0) > 0)
-                    m_houses->selectHouse(static_cast<uint>(*action.category()));
+                if (const uint houseId = action.houseId())
+                    m_houses->selectHouse(houseId);
                 break;
             case 6:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Bosstiary);
-                if (action.raceId() > 0)
+                if (action.raceId() != 0)
                     m_bosstiary->showRace(action.raceId());
                 break;
             case 7: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::BossSlots); break;
             case 8:
-                // The magical archive selects the action's spell.
+                // The magical archive opens on the action's spell.
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::MagicalArchive);
-                if (action.typeId() > 0)
-                    m_magicalArchive->setSelectedSpellID(action.typeId());
+                if (const uint16_t spellId = action.spellId())
+                    m_magicalArchive->setInitialSpellID(spellId);
                 break;
             default: break;
         }
@@ -257,8 +270,8 @@ void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
 void TCyclopediaDialogController::captureNavigationBacklogContextIfNeedAndShowDialog(const DialogTab& NewTab)
 {
     // Reopening the shown tab leaves no trace in the backlog.
-    if (NewTab != m_dialogTab)
-        pushBacklog();
+    if (NewTab != m_dialogTab && page(m_dialogTab))
+        pushBacklog(captureContext(m_dialogTab));
     showDialog(NewTab);
 }
 
@@ -269,6 +282,9 @@ void TCyclopediaDialogController::closeDialog()
     Q_EMIT dialogTabChanged();
     if (previous)
         previous->hideDialogTab();
+    // The bestiary and charm data received go with the dialog.
+    m_monsters->clearBestiaryCache();
+    m_bestiary->clearCharms();
     dialog()->close();
 }
 
@@ -282,7 +298,8 @@ void TCyclopediaDialogController::requestTabSwitch(const DialogTab& NewTab)
 {
     if (NewTab == m_dialogTab)
         return;
-    pushBacklog();
+    if (page(m_dialogTab))
+        pushBacklog(captureContext(m_dialogTab));
     switchTab(NewTab);
 }
 
@@ -297,27 +314,11 @@ void TCyclopediaDialogController::requestBack()
 {
     if (m_backlog.empty())
         return;
-    const Context context = m_backlog.back();
+    const TCyclopediaDialogContext context = m_backlog.back();
     m_backlog.pop_back();
-    // The page gets its context back. Pages that rebuild on showDialogTab
-    // take it as pending before the switch; the item page takes it after.
-    if (context.tab == CharacterInfo)
-        m_characterInfo->setNextDataType(context.characterInfo.dataType);
-    if (context.tab == Monsters)
-        m_monsters->restoreContext(context.monsters);
-    if (context.tab == BonusEffects)
-        m_bonusEffects->restoreContext(context.bonusEffects);
-    if (context.tab == Bosstiary)
-        m_bosstiary->restoreContext(context.bosstiary);
-    if (context.tab == Houses)
-        m_houses->restoreContext(context.houses);
-    if (context.tab == MagicalArchive)
-        m_magicalArchive->restoreContext(context.magicalArchiveSpellId);
-    switchTab(context.tab);
-    if (context.tab == ItemInfo)
-        m_itemInfo->restoreContext(context.itemInfo);
-    if (context.tab == CharacterInfo)
-        m_characterInfo->restoreContext(context.characterInfo);
+    // The context's tab shows first, then its page gets the context back.
+    switchTab(tabOf(context));
+    restoreContext(context);
     Q_EMIT navigationBacklogChanged();
 }
 
@@ -353,32 +354,49 @@ cip::tibia::gamewindow::ICyclopediaDialogTab* TCyclopediaDialogController::page(
     }
 }
 
-TCyclopediaDialogController::Context TCyclopediaDialogController::captureContext() const
+TCyclopediaDialogContext TCyclopediaDialogController::captureContext(const DialogTab tab) const
 {
-    Context context;
-    context.tab = m_dialogTab;
-    if (m_dialogTab == ItemInfo)
-        context.itemInfo = m_itemInfo->captureContext();
-    if (m_dialogTab == CharacterInfo)
-        context.characterInfo = m_characterInfo->captureContext();
-    if (m_dialogTab == Monsters)
-        context.monsters = m_monsters->captureContext();
-    if (m_dialogTab == BonusEffects)
-        context.bonusEffects = m_bonusEffects->captureContext();
-    if (m_dialogTab == Bosstiary)
-        context.bosstiary = m_bosstiary->captureContext();
-    if (m_dialogTab == Houses)
-        context.houses = m_houses->captureContext();
-    if (m_dialogTab == MagicalArchive)
-        context.magicalArchiveSpellId = m_magicalArchive->captureContext();
-    return context;
+    switch (tab) {
+        case ItemInfo: return m_itemInfo->captureContext();
+        case Monsters: return m_monsters->captureContext();
+        case BonusEffects: return m_bonusEffects->captureContext();
+        case Map: return m_map->captureContext();
+        case CharacterInfo: return m_characterInfo->captureContext();
+        case Houses: return m_houses->captureContext();
+        case Bosstiary: return m_bosstiary->captureContext();
+        case BossSlots: return TBossSlotsCyclopediaContext{};
+        case MagicalArchive: return m_magicalArchive->captureContext();
+        default: throw std::invalid_argument("Invalid cyclopedia context type.");
+    }
 }
 
-void TCyclopediaDialogController::pushBacklog()
+TCyclopediaDialogController::DialogTab TCyclopediaDialogController::tabOf(const TCyclopediaDialogContext& context)
 {
-    if (!page(m_dialogTab))
-        return;
-    const Context context = captureContext();
+    // In the order of the context kinds.
+    static constexpr DialogTab Tabs[] = { ItemInfo, Monsters, BonusEffects, Map, Houses, CharacterInfo, Bosstiary, BossSlots, MagicalArchive };
+    return Tabs[context.index()];
+}
+
+void TCyclopediaDialogController::restoreContext(const TCyclopediaDialogContext& context)
+{
+    switch (tabOf(context)) {
+        case ItemInfo: m_itemInfo->restoreContext(context); break;
+        case Monsters: m_monsters->restoreContext(context); break;
+        case BonusEffects: m_bonusEffects->restoreContext(context); break;
+        case Map: m_map->restoreContext(context); break;
+        case CharacterInfo: m_characterInfo->restoreContext(context); break;
+        case Houses: m_houses->restoreContext(context); break;
+        case Bosstiary: m_bosstiary->restoreContext(context); break;
+        // The boss slots page keeps nothing.
+        case BossSlots: break;
+        case MagicalArchive: m_magicalArchive->restoreContext(context); break;
+        default: break;
+    }
+}
+
+void TCyclopediaDialogController::pushBacklog(const TCyclopediaDialogContext& context)
+{
+    // The same context twice in a row is one step back.
     if (!m_backlog.empty() && m_backlog.back() == context)
         return;
     m_backlog.push_back(context);
@@ -520,11 +538,13 @@ void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
 void TCyclopediaDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     m_gameActions.handle(pGameAction);
-    // Every action also reaches the map and the bosstiary page.
+    // Every action also reaches the map, the bosstiary and the magical archive.
     if (m_map)
         m_map->handleGameAction(pGameAction);
     if (m_bosstiary && pGameAction)
         m_bosstiary->handleGameAction(*pGameAction);
+    if (m_magicalArchive)
+        m_magicalArchive->handleGameAction(pGameAction);
 }
 
 }

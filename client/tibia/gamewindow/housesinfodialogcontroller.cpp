@@ -522,20 +522,33 @@ void THousesInfoDialogController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
-THousesInfoDialogController::Context THousesInfoDialogController::captureContext() const
+TCyclopediaDialogContext THousesInfoDialogController::captureContext() const
 {
-    return { m_proxy->townFilter(), m_proxy->stateFilter(), m_proxy->houseTypeFilter(), m_proxy->sortOrder(), m_currentHouseId };
+    THousesInfoCyclopediaContext context{ m_proxy->townFilter(), m_proxy->stateFilter(), m_proxy->houseTypeFilter(),
+                                          m_proxy->sortOrder(), m_currentHouseId, {}, 1.0f };
+    // The preview camera's centre and zoom, while there is one.
+    if (m_houseCamera) {
+        if (const auto* center = m_houseCamera->centerSubfieldCoordinate())
+            context.cameraCenter = worldmap::TWorldMapSubfieldCoordinate(center->subfieldX(), center->subfieldY(), center->z());
+        context.cameraZoom = m_houseCamera->scaleFactor();
+    }
+    return context;
 }
 
-/// Without the preview camera.
-void THousesInfoDialogController::restoreContext(const Context& context)
+void THousesInfoDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
 {
+    const auto& context = cyclopediaContextAs<THousesInfoCyclopediaContext>(CyclopediaContext);
     setDisableQmlSelect(true);
     setTownFilter(context.town);
     m_proxy->setStateFilter(context.state);
     m_proxy->setHouseTypeFilter(context.type);
     m_proxy->setSortOrder(context.sortOrder);
     selectHouse(context.houseId);
+    // The preview camera where it was, after the house selection centred it.
+    if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
+        viewport->centerAtSubfield(context.cameraCenter.subfieldX, context.cameraCenter.subfieldY, context.cameraCenter.z);
+        viewport->setScaleFactor(context.cameraZoom);
+    }
     setDisableQmlSelect(false);
 }
 
