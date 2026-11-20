@@ -122,6 +122,12 @@ public:
     void setStorage(cyclopedia::TCyclopediaMapStorage* storage);
     /// The subareas filled with the zone colour (CIP: the selection's set).
     void setHighlightedSubareas(const std::set<int>& subareas);
+    /// The field of the selected passage (0,0,0 for none); its marker is drawn
+    /// highlighted.
+    void setHighlightedCoordinate(const Position& coordinate);
+    /// The sprite caches were cleared: the next polish drops the images made
+    /// from map files and builds them again.
+    void requestRebuild();
     /// Catalog hunt masks (overviewFile + boundary), including underground floors.
     struct TMissionZoneOverlay
     {
@@ -160,6 +166,7 @@ public:
             MinimapMarker = 4,
             Passage = 6,
             Viewpoint = 7,
+            ActiveRaid = 8,
             PlayerPosition = 9,
             HouseMarker = 10,
         };
@@ -232,6 +239,8 @@ private:
     QPointer<cyclopedia::TCyclopediaMapStorage> m_storage;
     bool m_showCyclopediaSubareaCaptions = true;
     std::set<int> m_highlighted;
+    Position m_highlightedCoordinate{ 0, 0, 0 };
+    bool m_rebuildRequested = false;
     std::unordered_map<int, TMissionZoneOverlay> m_missionZones;
     std::vector<TMissionCaption> m_missionCaptions;
     std::vector<TDraw> m_drawList;
@@ -242,6 +251,7 @@ private:
     QImage m_playerIcon;
     QImage m_houseIcon;
     QImage m_passageIcon;
+    QImage m_passageSelectedIcon;
     QImage m_flagStrip;
     QQmlComponent* m_captionComponent = nullptr;
     std::map<int, TCaption> m_captions;

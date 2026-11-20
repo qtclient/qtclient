@@ -320,7 +320,6 @@ bool TCyclopediaMapStaticDataStorage::isCoordinateInSubArea(const quint16 subAre
     const auto it = m_subAreas.find(subAreaId);
     if (it == m_subAreas.end() || !reaches(it->second.extent, coordinate))
         return false;
-    const_cast<TCyclopediaMapStaticDataStorage*>(this)->resolveSubAreaMasks();
     const QImage& mask = it->second.mask;
     const QPoint pixel(coordinate.x - it->second.extent.origin.x, coordinate.y - it->second.extent.origin.y);
     if (!mask.rect().contains(pixel))
@@ -337,19 +336,26 @@ quint16 TCyclopediaMapStaticDataStorage::subAreaAt(const worldmap::TWorldMapCoor
     return 0;
 }
 
-void TCyclopediaMapStaticDataStorage::resolveSubAreaMasks()
+void TCyclopediaMapStaticDataStorage::setSubAreaMaskImage(const QString& fileName, const QImage& image)
 {
-    // CIP asks the sprite system for each subarea's file once the main window
-    // exists and keeps the inverted alpha mask; host: on first use.
     for (auto& [subAreaId, subArea] : m_subAreas) {
-        if (!subArea.mask.isNull() || subArea.fileName.isEmpty())
-            continue;
-        const QImage image = mapImage(subArea.fileName);
-        if (image.isNull())
+        if (subArea.fileName != fileName)
             continue;
         QImage mask = image.createAlphaMask(Qt::MonoOnly);
         mask.invertPixels();
         subArea.mask = mask;
+        return;
+    }
+}
+
+void TCyclopediaMapStaticDataStorage::addHouseMarkers(const quint32 houseId, const int listing,
+                                                      const worldmap::TWorldMapCoordinate& entrance,
+                                                      const worldmap::TWorldMapCuboid& houseArea)
+{
+    for (int floor = houseArea.origin.z; floor < houseArea.end.z; ++floor) {
+        const worldmap::TWorldMapCoordinate onFloor =
+            worldmap::TWorldMapCoordinate(entrance.x, entrance.y, floor).shiftedTowardsFloor(entrance.z);
+        m_houseMarkers.insert(fieldCuboid(onFloor), worldmap::THouseMarkerWorldMapAreaData{ houseId, listing });
     }
 }
 

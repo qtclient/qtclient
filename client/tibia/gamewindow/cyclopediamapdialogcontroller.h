@@ -2,6 +2,7 @@
 
 #include "cyclopedia/cyclopediamapgameactionprovider.h"
 #include "client/gamecore.h"
+#include "gamewindow/gamewindowciptypes.h"
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
@@ -10,6 +11,7 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <map>
 #include <variant>
 #include <vector>
 
@@ -102,9 +104,13 @@ public:
         bool unlockable = false;
         bool unlocked = false;
         bool viewpointInfoDelayed = false;
+        TCyclopediaCreatureOccurrencesData creatureOccurrences;
     };
 
     TCyclopediaMapSelectionInfoSubArea(const Values& values, QObject* parent);
+
+    /// The subarea's data as last set.
+    Values subAreaData() const { return m_data; }
 
     cip::tibia::qmlcomponents::enums::ECyclopediaMapSelectionType selectionType() const override
     {
@@ -113,6 +119,9 @@ public:
     /// Takes the subarea's data and its area's, then makes a new creature
     /// occurrences object (the old one is deleted later).
     void setSubAreaData(const Values& values);
+
+private:
+    Values m_data;
 };
 
 /// The selected passage (CIP: TCyclopediaMapSelectionInfoPassage): the creatures
@@ -127,6 +136,8 @@ public:
     {
         Position coordinate{ 0, 0, 0 };
         std::vector<quint16> subAreaIds;
+        /// The creatures of each subarea the passage leads to.
+        std::map<quint16, TCyclopediaCreatureOccurrencesData> creatureOccurrences;
     };
 
     TCyclopediaMapSelectionInfoPassage(const Values& values, QObject* parent);
@@ -249,6 +260,9 @@ private:
     void updateAreaData(TCyclopediaMapAreaValues& area) const;
     void updateSubAreaData(TCyclopediaMapSelectionInfoSubArea::Values& subArea) const;
     void updatePassageData(TCyclopediaMapSelectionInfoPassage::Values& passage) const;
+    /// The subarea's creatures by occurrence; a race the player does not know
+    /// from the bestiary is listed unnamed.
+    TCyclopediaCreatureOccurrencesData creatureOccurrences(quint16 subAreaId) const;
     /// Every donating area, most gold first.
     QString donationsTooltip() const;
     /// The selection and field actions under a pixel of the map.

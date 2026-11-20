@@ -1,5 +1,7 @@
 #include "housesinfodialogcontroller.h"
 
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
+
 #include "platform/platform.h"
 #include "game/serversave.h"
 
@@ -137,28 +139,20 @@ QString shortStatus(const THouseInformation& house)
 
 bool isRented(const THouseInformation& house) { return house.state >= StateRented && house.state <= StateMoveOutPending; }
 
-/// The floors of each house: the staticmapdata MapFields extent (CIP
-/// per house id; z from the top-left, z + depth - 1).
+/// The floors of a house: its area in the static map data (z from the top
+/// left, z + depth - 1); 0 and 0 without one.
 struct THouseLayers
 {
     int minimum = 0;
     int maximum = 0;
 };
 
-const std::unordered_map<quint32, THouseLayers>& houseLayers()
+THouseLayers houseLayersOf(const quint32 houseId)
 {
-    static std::unordered_map<quint32, THouseLayers> layers;
-    if (!layers.empty())
-        return layers;
-    for (const THouseMapArea& area : tibia::appearances::TAppearancesManager::instance().getHouseMapAreas()) {
-        if (area.houseId == 0)
-            continue;
-        THouseLayers houseLayers;
-        if (area.depth > 0)
-            houseLayers = { area.topLeft.z, static_cast<int>(area.topLeft.z + area.depth - 1) };
-        layers.emplace(area.houseId, houseLayers);
-    }
-    return layers;
+    const cyclopedia::TStaticHouseMapArea house = cyclopedia::houseMapArea(houseId);
+    if (house.area.extent.depth <= 0)
+        return {};
+    return { house.area.origin.z, house.area.origin.z + house.area.extent.depth - 1 };
 }
 
 }
@@ -483,12 +477,17 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
             Q_EMIT staticDataChanged();
         }
     });
+    // Host: the Cyclopedia map's house entrances follow this storage's houses.
+    connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
+            [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage); });
+    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage);
     onHouseInformationChanged();
 }
 
 THousesInfoDialogController::~THousesInfoDialogController()
 {
     disconnect(m_storage, nullptr, this, nullptr);
+    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(nullptr);
     clearFilterModels();
 }
 
@@ -659,9 +658,7 @@ void THousesInfoDialogController::selectHouse(const uint HouseId)
 
 void THousesInfoDialogController::updateHouseLayers(const uint houseId)
 {
-    const auto& layers = houseLayers();
-    const auto it = layers.find(houseId);
-    const THouseLayers houseLayers = it == layers.end() ? THouseLayers{} : it->second;
+    const THouseLayers houseLayers = houseLayersOf(houseId);
     m_minimumHouseLayer = houseLayers.minimum;
     m_maximumHouseLayer = houseLayers.maximum;
     Q_EMIT restrictingLayersChanged();

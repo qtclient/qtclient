@@ -4,8 +4,12 @@
 #include "sprites/spriteidentifier.h"
 #include "sprites/spritesheetcache.h"
 
-#include <QObject>
+#include "input/gameactionptr.h"
 
+#include <QObject>
+#include <QTimer>
+
+#include <list>
 #include <memory>
 
 namespace tibia {
@@ -68,8 +72,23 @@ public:
     /// Every pixel `color`, its alpha the pixel's alpha scaled by the colour's.
     static QImage highlighted(const QImage& image, const QColor& color);
 
+Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+
+public Q_SLOTS:
+    /// RESOLVE_SPRITE: the identifier waits until its sprite can be made, then
+    /// SPRITE_RESOLVED carries the sprite.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+
 private:
+    /// Publishes SPRITE_RESOLVED for every waiting identifier whose sprite can be
+    /// made now; the others are tried again on the next event loop pass.
+    void resolvePendingSprites();
+
     std::shared_ptr<TSpritesheetManager> m_spritesheets;
+    QTimer m_retryTimer;
+    /// A list: publishing a resolved sprite may queue another identifier.
+    std::list<ISpriteIdentifierPtr> m_pendingIdentifiers;
 };
 
 }

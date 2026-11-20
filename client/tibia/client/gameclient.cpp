@@ -47,6 +47,9 @@
 #include "creatures/vipstorage.h"
 #include "trade/tradeciptypes.h"
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "sprites/spriteresolver.h"
+#include "sprites/spritesystem.h"
 #include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
@@ -271,6 +274,24 @@ TGameClient::TGameClient(QObject* parent)
             &input::TUnportedGameActionHandler::handleGameAction);
     connect(unported, &input::TUnportedGameActionHandler::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
+    // The Cyclopedia map's static data and the sprite resolver trade the subarea
+    // masks as RESOLVE_SPRITE / SPRITE_RESOLVED; the masks are asked for once the
+    // main window exists.
+    {
+        game::TInternalGameActionRouter* router = m_pGameActionRouter->internalRouter();
+        auto& mapStaticData = cyclopedia::TCyclopediaMapStaticDataStorage::instance();
+        connect(&mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::publishGameAction, router,
+                &game::TInternalGameActionRouter::handleGameActionInternal);
+        connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, &mapStaticData,
+                &cyclopedia::TCyclopediaMapStaticDataStorage::handleGameAction);
+        connect(this, &TGameClient::mainWindowInitialized, &mapStaticData,
+                &cyclopedia::TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized);
+        sprites::TSpriteResolver& spriteResolver = sprites::TSpriteSystem::instance().resolver();
+        connect(&spriteResolver, &sprites::TSpriteResolver::publishGameAction, router,
+                &game::TInternalGameActionRouter::handleGameActionInternal);
+        connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, &spriteResolver,
+                &sprites::TSpriteResolver::handleGameAction);
+    }
     // The sound helper the dialogs and the QML singletons play through.
     auto* soundHelper = new qmlcomponents::TSoundHelperService(this);
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);

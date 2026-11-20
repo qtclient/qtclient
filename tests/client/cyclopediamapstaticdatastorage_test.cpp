@@ -18,12 +18,6 @@ using tibia::worldmap::TWorldMapExtent;
 
 namespace {
 
-std::map<QString, QImage>& testImages()
-{
-    static std::map<QString, QImage> images;
-    return images;
-}
-
 void setCoordinate(tibia::protobuf::shared::Coordinate* coordinate, const int x, const int y, const int z)
 {
     coordinate->set_x(static_cast<uint32_t>(x));
@@ -92,11 +86,9 @@ tibia::protobuf::map::Map sampleMap()
 
 }
 
-QImage TCyclopediaMapStaticDataStorage::mapImage(const QString& fileName)
-{
-    const auto it = testImages().find(fileName);
-    return it == testImages().end() ? QImage() : it->second;
-}
+// The router slots live in the host file (sprite system and game actions).
+void TCyclopediaMapStaticDataStorage::handleGameAction(tibia::input::IGameActionPtr) {}
+void TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized() {}
 
 TEST(CyclopediaMapStaticDataStorage, MalformedDataThrows)
 {
@@ -125,7 +117,7 @@ TEST(CyclopediaMapStaticDataStorage, AreasSubareasAndNpcs)
 
     ASSERT_EQ(storage.npcs().size(), 1u);
     EXPECT_EQ(storage.npcs()[0].name, QStringLiteral("Frodo"));
-    EXPECT_EQ(storage.npcs()[0].subareaId, 10);
+    EXPECT_EQ(storage.npcs()[0].subAreaId, 10);
     EXPECT_EQ(storage.npcs()[0].coordinate, TWorldMapCoordinate(32300, 32200, 7));
     // The NPC gets the area of its subarea.
     EXPECT_EQ(storage.npcs()[0].areaId, 1);
@@ -205,20 +197,25 @@ TEST(CyclopediaMapStaticDataStorage, SubareaMasks)
     QImage sewers(10, 10, QImage::Format_ARGB32);
     sewers.fill(Qt::transparent);
     sewers.setPixel(3, 4, qRgba(255, 0, 0, 255));
-    testImages()[QStringLiteral("sub-10.bmp")] = sewers;
     QImage graveyard(20, 10, QImage::Format_ARGB32);
     graveyard.fill(qRgba(0, 0, 255, 255));
-    testImages()[QStringLiteral("sub-11.bmp")] = graveyard;
 
     TCyclopediaMapStaticDataStorage storage;
     storage.initialize(serialized(sampleMap()));
+    // Without its resolved file a subarea holds no field.
+    EXPECT_FALSE(storage.isCoordinateInSubArea(10, TWorldMapCoordinate(32003, 32004, 7)));
+    EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(32003, 32004, 7)), 0);
+
+    storage.setSubAreaMaskImage(QStringLiteral("sub-10.bmp"), sewers);
+    storage.setSubAreaMaskImage(QStringLiteral("sub-11.bmp"), graveyard);
+    // A file no subarea uses changes nothing.
+    storage.setSubAreaMaskImage(QStringLiteral("sat-a.bmp"), graveyard);
     EXPECT_TRUE(storage.isCoordinateInSubArea(10, TWorldMapCoordinate(32003, 32004, 7)));
     EXPECT_FALSE(storage.isCoordinateInSubArea(10, TWorldMapCoordinate(32004, 32004, 7)));
     EXPECT_FALSE(storage.isCoordinateInSubArea(10, TWorldMapCoordinate(32003, 32004, 6)));
     EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(32003, 32004, 7)), 10);
     EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(32025, 32035, 7)), 11);
     EXPECT_EQ(storage.subAreaAt(TWorldMapCoordinate(31000, 31000, 7)), 0);
-    testImages().clear();
 }
 
 namespace {
@@ -311,4 +308,41 @@ TEST(CyclopediaMapStaticDataStorage, MapTilePieces)
     const auto cornerBlocks = storage.mapTilesIn(EMapFileType::MinimapTiles, corner, 1);
     ASSERT_EQ(cornerBlocks.size(), 1u);
     EXPECT_EQ(cornerBlocks[0].area.origin, TWorldMapCoordinate(30976, 30976, 0));
+}
+
+TEST(CyclopediaMapStaticDataStorage, HouseMarkersPerFloorOfTheHouse)
+{
+    TCyclopediaMapStaticDataStorage storage;
+    storage.initialize(serialized(sampleMap()));
+    EXPECT_TRUE(storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32000, 32000, 7), TWorldMapExtent(500, 500, 1))).empty());
+
+    // House 5 spans floors 5 to 7; its entrance is at (32100, 32100, 7).
+    storage.addHouseMarkers(5, 1, TWorldMapCoordinate(32100, 32100, 7),
+                            TWorldMapCuboid(TWorldMapCoordinate(32095, 32095, 5), TWorldMapExtent(10, 10, 3)));
+    // Floor 7: the entrance itself.
+    const auto ground = storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32100, 32100, 7), TWorldMapExtent(0, 0, 1)));
+    ASSERT_EQ(ground.size(), 1u);
+    EXPECT_EQ(ground[0].area.origin, TWorldMapCoordinate(32100, 32100, 7));
+    const auto houses = dataOf<tibia::worldmap::THouseMarkerWorldMapAreaData>(ground);
+    ASSERT_EQ(houses.size(), 1u);
+    EXPECT_EQ(houses[0].houseId, 5u);
+    EXPECT_EQ(houses[0].listing, 1);
+    // Every floor up: the entrance one field further down and right.
+    const auto floor6 = storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32101, 32101, 6), TWorldMapExtent(0, 0, 1)));
+    ASSERT_EQ(floor6.size(), 1u);
+    EXPECT_EQ(floor6[0].area.origin, TWorldMapCoordinate(32101, 32101, 6));
+    const auto floor5 = storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32102, 32102, 5), TWorldMapExtent(0, 0, 1)));
+    ASSERT_EQ(floor5.size(), 1u);
+    // No piece outside the house's floors.
+    EXPECT_TRUE(storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32000, 32000, 4), TWorldMapExtent(500, 500, 1))).empty());
+    EXPECT_TRUE(storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32000, 32000, 8), TWorldMapExtent(500, 500, 1))).empty());
+    // markersIn lists them after the NPCs and flags.
+    EXPECT_EQ(dataOf<tibia::worldmap::THouseMarkerWorldMapAreaData>(
+                  storage.markersIn(TWorldMapCuboid(TWorldMapCoordinate(32100, 32100, 7), TWorldMapExtent(0, 0, 1))))
+                  .size(),
+              1u);
+
+    // A house without an area in the static map data has no pieces.
+    storage.addHouseMarkers(6, 0, TWorldMapCoordinate(32200, 32200, 7), TWorldMapCuboid());
+    EXPECT_TRUE(storage.houseMarkersIn(TWorldMapCuboid(TWorldMapCoordinate(32200, 32200, 7), TWorldMapExtent(0, 0, 1))).empty());
 }

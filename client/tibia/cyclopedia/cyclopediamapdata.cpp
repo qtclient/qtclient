@@ -459,4 +459,5 @@ QColor TCyclopediaMapStorage::areaColor(const int areaId) const
     return QColor(QStringLiteral("#ffffff"));
 }
 
+
 }

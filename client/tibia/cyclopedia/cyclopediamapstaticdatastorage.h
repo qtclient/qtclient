@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assets/asset.h"
+#include "input/gameactionptr.h"
 #include "worldmap/coordinates.h"
 #include "worldmap/worldmapareadata.h"
 
@@ -19,6 +20,8 @@ namespace minimap {
 class TMinimapMarkerStorage;
 }
 namespace cyclopedia {
+
+class THousesStorage;
 
 /// The Cyclopedia map's static data from map.dat (upstream/proto/map.proto): the
 /// areas and subareas, the NPCs, the satellite / minimap / subarea image files and
@@ -71,7 +74,8 @@ public:
         /// The mask file's size in fields; -1 without a file.
         int fieldsWidth = -1;
         int fieldsHeight = -1;
-        /// White where the subarea's mask file is opaque (inverted alpha mask); null until resolved.
+        /// White where the subarea's mask file is opaque (inverted alpha mask); null
+        /// until the sprite resolver hands over the file.
         QImage mask;
     };
 
@@ -129,6 +133,18 @@ public:
     /// The largest image scale of `type` not above `scale`, else the smallest; 1 without images.
     float levelOfDetail(float scale, EMapFileType type) const;
 
+    /// The house entrance pieces: one per floor of each house's area in the
+    /// static map data, the entrance drawn on that floor (CIP v13). Without a
+    /// houses storage there are none.
+    void setHousesStorage(const THousesStorage* houses);
+    /// The entrance pieces of one house: for every floor of `houseArea`, the
+    /// entrance as drawn on that floor.
+    void addHouseMarkers(quint32 houseId, int listing, const worldmap::TWorldMapCoordinate& entrance,
+                         const worldmap::TWorldMapCuboid& houseArea);
+    /// The first subarea whose mask file is `fileName` takes the image's
+    /// inverted alpha mask.
+    void setSubAreaMaskImage(const QString& fileName, const QImage& image);
+
     /// The pieces meeting `cuboid` on its floor: NPCs, minimap flags and house
     /// entrances, in that order.
     std::vector<worldmap::TWorldMapAreaElement> markersIn(const worldmap::TWorldMapCuboid& cuboid) const;
@@ -145,8 +161,15 @@ public:
     static QImage mapImage(const QString& fileName);
 
 Q_SIGNALS:
+    void publishGameAction(tibia::input::IGameActionPtr pGameAction);
     void newAssetDataToLoad(tibia::assets::TAsset AssetToLoad, bool Prioritized);
     void minimapMarkersChanged();
+
+public Q_SLOTS:
+    /// SPRITE_RESOLVED: the sprite of a subarea's mask file becomes its mask.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+    /// Asks the sprite resolver for every subarea's mask file.
+    void onGameClientMainWindowInitialized();
 
 private:
     /// After map.dat: the area boxes and labels, the area and subarea pieces, the
@@ -154,7 +177,6 @@ private:
     void buildAreaData();
     /// The minimap flag pieces from the marker storage.
     void updateMinimapMarkers();
-    void resolveSubAreaMasks();
     void requestAsset(const QString& fileName, bool loadErrorReported);
 
     QPointer<minimap::TMinimapMarkerStorage> m_minimapMarkerStorage;

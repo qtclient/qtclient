@@ -316,6 +316,14 @@ void TMinimapRendererQuickItem::setHighlightedSubareas(const std::set<int>& suba
     scheduleUpdate();
 }
 
+void TMinimapRendererQuickItem::setHighlightedCoordinate(const Position& coordinate)
+{
+    if (m_highlightedCoordinate == coordinate)
+        return;
+    m_highlightedCoordinate = coordinate;
+    scheduleUpdate();
+}
+
 void TMinimapRendererQuickItem::setMissionZones(std::vector<TMissionZoneOverlay> zones)
 {
     m_missionZones.clear();
@@ -380,8 +388,19 @@ void TMinimapRendererQuickItem::scheduleUpdate()
     polish();
 }
 
+void TMinimapRendererQuickItem::requestRebuild()
+{
+    m_rebuildRequested = true;
+    polish();
+}
+
 void TMinimapRendererQuickItem::updatePolish()
 {
+    if (m_rebuildRequested) {
+        m_rebuildRequested = false;
+        m_zoneImages.clear();
+        m_missionZoneImages.clear();
+    }
     m_worldCamera->applyPendingCenter();
     buildDrawList();
     updateCaptions();
@@ -583,6 +602,8 @@ void TMinimapRendererQuickItem::ensureMarkerIcons()
     load(m_houseIcon, ":/images/icon-map-house.png", ":/qt/qml/qmlcomponents/qml/images/icon-map-house.png");
     load(m_passageIcon, ":/images/icon-map-passage-idle.png",
          ":/qt/qml/qmlcomponents/qml/images/icon-map-passage-idle.png");
+    load(m_passageSelectedIcon, ":/images/icon-map-passage-selected.png",
+         ":/qt/qml/qmlcomponents/qml/images/icon-map-passage-selected.png");
     if (m_flagStrip.isNull()) {
         m_flagStrip = QImage(QStringLiteral(":/images/minimap/markers.png"));
         if (m_flagStrip.isNull())
@@ -639,12 +660,40 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
             }
         }
     }
-    // CIP THouseMarkerWorldMapAreaData: house positions from staticdata.dat.
+    // CIP THouseMarkerWorldMapAreaData: the house entrances of the static map
+    // data; the tooltip is the house's name and its listing.
     if (m_showHouses) {
-        for (const cyclopedia::TStaticHouse& house : cyclopedia::staticHouses()) {
-            if (house.position.z != z)
+        const worldmap::TWorldMapCuboid floor(worldmap::TWorldMapCoordinate(0, 0, z), worldmap::TWorldMapExtent(0xffff, 0xffff, 1));
+        for (const worldmap::TWorldMapAreaElement& element : TStaticData::instance().houseMarkersIn(floor)) {
+            const auto* house = std::get_if<worldmap::THouseMarkerWorldMapAreaData>(&element.data);
+            if (!house)
                 continue;
-            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z, house.name, TMarkerHit::HouseMarker, house.id);
+            QString listing;
+            switch (house->listing) {
+            case 0:
+                listing = qtTrId("house_owned_tooltip");
+                break;
+            case 1:
+                listing = qtTrId("house_auctioned_tooltip");
+                break;
+            case 2:
+                listing = qtTrId("house_not_auctionable_tooltip");
+                break;
+            default:
+                listing = qtTrId("");
+                break;
+            }
+            const QString tooltip = QStringLiteral("%1\n%2").arg(cyclopedia::staticHouse(house->houseId).name).arg(listing);
+            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), element.area.origin.x, element.area.origin.y, z, tooltip,
+                   TMarkerHit::HouseMarker, house->houseId);
+        }
+    }
+    // CIP TActiveRaidMapAreaData: the raids the server announced.
+    if (m_storage) {
+        for (const worldmap::TWorldMapCoordinate& raid : m_storage->activeRaids()) {
+            if (raid.z != z)
+                continue;
+            addPin(QImage(), QColor(0xff, 0x33, 0x33), raid.x, raid.y, z, qtTrId("active_raid_tooltip"), TMarkerHit::ActiveRaid, 0);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).
@@ -673,10 +722,14 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
             if (passage.coordinate.z != z)
                 continue;
             QStringList names;
-            for (const int subAreaId : passage.raceIds)
+            for (const int subAreaId : passage.subAreaIds)
                 names.append(cyclopedia::TCyclopediaMapStaticDataStorage::instance().subAreaName(static_cast<quint16>(subAreaId)));
             const QString tooltip = qtTrId("passage_tooltip").arg(names.join(QStringLiteral(", ")));
-            addPin(m_passageIcon, QColor(0x66, 0xcc, 0xff), passage.coordinate.x, passage.coordinate.y, z, tooltip, TMarkerHit::Passage, 0);
+            // The selected passage's field is drawn with the selected icon.
+            const bool selected = m_highlightedCoordinate == Position(passage.coordinate.x, passage.coordinate.y,
+                                                                      static_cast<uint8_t>(passage.coordinate.z));
+            addPin(selected ? m_passageSelectedIcon : m_passageIcon, QColor(0x66, 0xcc, 0xff), passage.coordinate.x,
+                   passage.coordinate.y, z, tooltip, TMarkerHit::Passage, 0);
         }
     }
     m_playerLayer = -1;

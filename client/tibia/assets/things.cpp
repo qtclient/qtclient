@@ -324,12 +324,24 @@ bool TAppearancesManager::loadStaticData(const std::string& directory)
             throw std::runtime_error("catalog has no staticdata file");
         const auto bytes = tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + fileName));
         setStaticInformation(parseStaticInformation(bytes));
-        // The houses' map areas come with the static data (CIP: asset type 6).
+        // The houses' map areas come with the static data (CIP: asset type 6),
+        // handed to the static content's house table.
         const auto mapFileName = catalogFile(catalog, tibia::assets::TAsset::StaticMapData);
-        m_houseMapAreas.clear();
-        if (!mapFileName.empty())
-            m_houseMapAreas = parseStaticMapData(
+        std::vector<cyclopedia::TStaticHouseMapArea> houseMapAreas;
+        if (!mapFileName.empty()) {
+            const std::vector<THouseMapArea> areas = parseStaticMapData(
                 tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + mapFileName)));
+            houseMapAreas.reserve(areas.size());
+            for (const THouseMapArea& area : areas) {
+                houseMapAreas.push_back({ area.houseId,
+                                          tibia::worldmap::TWorldMapCuboid(
+                                              tibia::worldmap::TWorldMapCoordinate(area.topLeft.x, area.topLeft.y, area.topLeft.z),
+                                              tibia::worldmap::TWorldMapExtent(static_cast<int>(area.width), static_cast<int>(area.height),
+                                                                        static_cast<int>(area.depth))),
+                                          QByteArray::fromStdString(area.serializedFields) });
+            }
+        }
+        cyclopedia::setHouseMapAreas(std::move(houseMapAreas));
         return true;
     } catch (const std::exception&) {
         return false;

@@ -7,6 +7,8 @@
 #include "sprites/spriteinspritesheet.h"
 #include "sprites/spritesheetmanager.h"
 
+#include "input/gameaction.h"
+
 #include <QPainter>
 
 namespace tibia::sprites {
@@ -15,6 +17,35 @@ TSpriteResolver::TSpriteResolver(std::shared_ptr<TSpritesheetManager> spriteshee
     : QObject(parent)
     , m_spritesheets(std::move(spritesheets))
 {
+    m_retryTimer.setSingleShot(true);
+    connect(&m_retryTimer, &QTimer::timeout, this, &TSpriteResolver::resolvePendingSprites);
+}
+
+void TSpriteResolver::handleGameAction(tibia::input::IGameActionPtr pGameAction)
+{
+    if (!pGameAction || pGameAction->gameActionType() != input::EGameAction::RESOLVE_SPRITE)
+        return;
+    const auto* request = input::gameActionAs<input::TGameActionResolveSprite>(pGameAction);
+    if (!request || !request->spriteIdentifier())
+        return;
+    m_pendingIdentifiers.push_back(request->spriteIdentifier());
+    resolvePendingSprites();
+}
+
+void TSpriteResolver::resolvePendingSprites()
+{
+    for (auto it = m_pendingIdentifiers.begin(); it != m_pendingIdentifiers.end();) {
+        std::shared_ptr<TSprite> sprite = resolve(**it);
+        if (!sprite) {
+            ++it;
+            continue;
+        }
+        const ISpriteIdentifierPtr identifier = *it;
+        it = m_pendingIdentifiers.erase(it);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSpriteResolved>(identifier, std::move(sprite)));
+    }
+    if (!m_pendingIdentifiers.empty())
+        m_retryTimer.start();
 }
 
 std::shared_ptr<TSprite> TSpriteResolver::resolveSpritesheetSprite(const TSpriteFromSpritesheetInfo& info) const

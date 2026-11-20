@@ -70,7 +70,8 @@ public:
     struct TPassage
     {
         TMapCoordinate coordinate;
-        std::vector<int> raceIds;
+        /// The subareas the passage leads to.
+        std::vector<int> subAreaIds;
     };
 
     /// What the map knows of a subarea's viewpoints: how many there are to find

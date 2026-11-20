@@ -1148,7 +1148,10 @@ cyclopedia::TCyclopediaMapGameActionProvider::v0	872d4faac408f6d5	skip	generated
 cyclopedia::TCyclopediaMapGameActionProvider::v1	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 cyclopedia::TCyclopediaMapGameActionProvider::v2	93d94ae4ace37823	ported	cyclopedia/cyclopediamapgameactionprovider.cpp:TCyclopediaMapGameActionProvider::fieldActions
 cyclopedia::TCyclopediaMapGameActionProvider::v3	7f6f9ac5b1343b45	ported	cyclopedia/cyclopediamapgameactionprovider.cpp:TCyclopediaMapGameActionProvider::markerActions
+cyclopedia::TCyclopediaMapStaticDataStorage::handleGameAction	0d9a6fb4f7546f3b	ported	cyclopedia/cyclopediamapstaticdatastoragehost.cpp:TCyclopediaMapStaticDataStorage::handleGameAction
+cyclopedia::TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized	e116e63a5ebe72ef	ported	cyclopedia/cyclopediamapstaticdatastoragehost.cpp:TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized
 cyclopedia::TCyclopediaMapStaticDataStorage::v12	3a88849da3b6d4bf	tested	cyclopedia/cyclopediamapstaticdatastorage.cpp:TCyclopediaMapStaticDataStorage::initialize	test=tests/client/cyclopediamapstaticdatastorage_test.cpp
+cyclopedia::TCyclopediaMapStaticDataStorage::v13	409ff5a6b7b85266	ported	cyclopedia/cyclopediamapstaticdatastoragehost.cpp:TCyclopediaMapStaticDataStorage::setHousesStorage
 cyclopedia::TCyclopediaMapStaticDataStorage::~TCyclopediaMapStaticDataStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor
 cyclopedia::TCyclopediaMapStaticDataStorage::~TCyclopediaMapStaticDataStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor
 cyclopedia::TCyclopediaMapStorage::~TCyclopediaMapStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor (member destruction only, read)
@@ -6434,6 +6437,7 @@ sprites::TSprite::v4	e0f9d28c4f3c4dc3	ported	sprites/sprite.h:TSprite::getScale
 sprites::TSpriteInSpritesheet::v0	a7aee0ce2bb97e2a	skip	generated: destructor variants
 sprites::TSpriteInSpritesheet::v1	e1672a99bf97bd37	skip	generated: destructor variants
 sprites::TSpriteInSpritesheet::v2	300c5408580a00a8	tested	sprites/spriteinspritesheet.cpp:TSpriteInSpritesheet::getImage	test=tests/client/spritesheetmanager_test.cpp
+sprites::TSpriteResolver::handleGameAction	eadbcc5d8ecc3957	ported	sprites/spriteresolver.cpp:TSpriteResolver::handleGameAction
 sprites::TSpriteResolver::v13	0069d808bee2e878	ported	sprites/spriteresolver.cpp:TSpriteResolver::resolveSpriteInfo
 sprites::TSpriteResolver::v14	96a08f4c6b2a143c	ported	sprites/spriteresolver.cpp:TSpriteResolver::resolveSpritesheetSprite
 sprites::TSpriteResolver::v15	88a1bcd3070f169d	ported	sprites/spriteresolver.cpp:TSpriteResolver::resolveMaskedSprite
@@ -7046,6 +7050,7 @@ sub_097457dc45e8#199	097457dc45e86dd8	inlined	analysers/gainwastestorage.cpp:TGa
 sub_097457dc45e8#20	097457dc45e86dd8	inlined	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::QTextBrowserWithNetwork
 sub_097457dc45e8#202	097457dc45e86dd8	skip	generated: compiler-generated destructor
 sub_097457dc45e8#203	097457dc45e86dd8	skip	generated: compiler-generated thunk (single tail call; atexit destructor of a static)
+sub_097457dc45e8#206	097457dc45e86dd8	inlined	cyclopedia/generalplayerstatisticsprovider.cpp:TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider
 sub_097457dc45e8#208	097457dc45e86dd8	ported	cyclopedia/characterinfostorage.cpp:TAccountInfos::TAccountInfos
 sub_097457dc45e8#209	097457dc45e86dd8	ported	cyclopedia/characterinfostorage.cpp:TCharacterTitlesInfo::TCharacterTitlesInfo
 sub_097457dc45e8#21	097457dc45e86dd8	skip	generated: single tail-call thunk (shared_ptr emplace / destructor forwarding)
@@ -7563,7 +7568,7 @@ sub_0d2c3d6b483f	0d2c3d6b483f3435	ported	gamewindow/questlogcontroller.cpp:TQues
 sub_0d327c856514	0d327c8565141cc0	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::onCharacterDataChanged
 sub_0d421fd6c564	0d421fd6c5645ac6	ported	gamewindow/chatchannelfiltercontroller.cpp:TChatChannelFilterController::closeChannel
 sub_0d459fa00343	0d459fa003431233	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
-sub_0d5424d062a9	0d5424d062a9feab	skip	data: static initialiser: builds and sorts a file-scope constant table
+sub_0d5424d062a9	0d5424d062a9feab	ported	cyclopedia/staticcontentinformation.cpp:setHouseMapAreas
 sub_0d5e550fd692	0d5e550fd6925619	skip	generated: compiler-generated destructor
 sub_0d6676a17fb7	0d6676a17fb7cefa	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_0d690ea67eca	0d690ea67ecac130	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
@@ -7630,6 +7635,7 @@ sub_0eeb763535a1	0eeb763535a15b90	ported	gamewindow/highscoresdialogcontroller.c
 sub_0ef010284d8c	0ef010284d8cb209	skip	generated: compiler-generated defaulted operator==/aggregate init, or rcc resource static initializer
 sub_0ef4678fe527	0ef4678fe5272a02	skip	library: Qt/std container template code
 sub_0efebe99a6c7	0efebe99a6c755ee	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_0f0443e1593f	0f0443e1593f8967	ported	cyclopedia/staticcontentinformation.cpp:houseMapArea
 sub_0f0ef03f0fc5	0f0ef03f0fc53a99	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_0f12003c46ad	0f12003c46ad02f2	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_0f16ee163cab	0f16ee163cabe8d5	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::showNoDailyRewardMessage
@@ -10333,6 +10339,7 @@ sub_29222f312fca	29222f312fca172c	ported	cyclopedia/combatstatsqmldata.cpp:TMisc
 sub_29251f1502ae	29251f1502ae418e	skip	data: translation-unit static initializer (misattributed)
 sub_29296ccab917	29296ccab917d31a	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::requestTabSwitch
 sub_293a14be4566	293a14be4566b316	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
+sub_294c7e401f9f	294c7e401f9f6a95	inlined	qmlcomponents/minimaprendererquickitem.cpp:TMinimapRendererQuickItem::addMarkers
 sub_29534d8f87a0	29534d8f87a03fe6	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updatePresetsInfoModel
 sub_295461c2c304	295461c2c30477ba	ported	gamewindow/preydialogcontroller.cpp:TPreyStorage::TPreyStorage
 sub_295549756677	295549756677f956	ported	appearances/spriteinfo.cpp:sameSpriteInfo
@@ -11598,6 +11605,7 @@ sub_41d06c389967	41d06c3899671c36	skip	library: std vector internals (push_back/
 sub_41dc69a172da	41dc69a172daa016	ported	gamewindow/sidebarmanager.cpp:createQuickItem
 sub_41e4f6b01c33	41e4f6b01c331c44	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_41e7b09a1992	41e7b09a1992f97b	skip	library: libc++ optional/vector/split-buffer destroy or implicit struct destructor instantiation (destruction only, read)
+sub_41f97206b3a9	41f97206b3a95eeb	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onSelectedItemChanged
 sub_4201c1cb8e7d	4201c1cb8e7d8d76	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_4201c1cb8e7d#2	4201c1cb8e7d8d76	skip	library: std::unordered_map emplace / rehash instantiations (option maps)
 sub_42061ed48ff0	42061ed48ff0e8c6	skip	generated: moc property setter (minimumBid / auctionEndTimestamp), provided by the generated cip base
@@ -16063,6 +16071,7 @@ sub_906ca5e00bb3	906ca5e00bb33444	ported	gamewindow/remainingdialogs.cpp:TCharac
 sub_9070749f1a90	9070749f1a902e2f	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_90719499fe5a	90719499fe5a99ed	skip	library: libc++ vector insert/assign/erase/resize, nth_element and partial_sort_copy instantiations over the damage-input source rows and element pairs (callers read)
 sub_908a6ae17617	908a6ae17617e09b	ported	sessiondump/sessiondumpcatalog.cpp:TSessiondumpCatalog::TSessiondumpCatalog
+sub_90912e7ccee8	90912e7ccee80478	ported	sprites/spriteresolver.cpp:TSpriteResolver::resolvePendingSprites
 sub_909e04dcc5ff	909e04dcc5ffbafe	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_90a40dd53de0	90a40dd53de0f4c0	ported	gamewindow/monsterdialogcontroller.cpp:TQmlMonsterRace::monsterDifficulty
 sub_90a670040d82	90a670040d82f579	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::buildContextMenu
@@ -16121,6 +16130,7 @@ sub_91d12b3bd2a5	91d12b3bd2a51b45	ported	gamewindow/appearanceinstancelistmodel.
 sub_91d2393fc5a3	91d2393fc5a3a272	skip	library: std::sort instantiation over achievements (library)
 sub_91daccf4b821	91daccf4b821bf09	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::updateHoverCursor
 sub_91db50ffdb30	91db50ffdb30576e	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::outfitPresetsDeleteIndex
+sub_91de79f97a87	91de79f97a878bbb	inlined	cyclopedia/cyclopediamapstaticdatastoragehost.cpp:TCyclopediaMapStaticDataStorage::setHousesStorage
 sub_91ded1ba0ffa	91ded1ba0ffafe87	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::handleGameAction
 sub_91ee406a731d	91ee406a731dbcc0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::centerToPlayer
 sub_91faeb2ab767	91faeb2ab7672fc0	skip	library: SFML audio internals (sf::priv::AudioDevice / sf::Sound* lifecycle, shared_ptr control blocks)
@@ -17098,6 +17108,7 @@ sub_a2b9156ea738	a2b9156ea7389e4d	skip	library: SFML/miniaudio library internals
 sub_a2bd929f23a2	a2bd929f23a203c3	skip	generated: compiler-generated destructor (member teardown only)
 sub_a2be674173d4	a2be674173d4ebcf	ported	proficiency/proficiencystorage.cpp:parseProficiencies
 sub_a2c6d3abce3e	a2c6d3abce3eee41	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterListChanged
+sub_a2eb191171ff	a2eb191171ff64f6	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::creatureOccurrences
 sub_a2f0c3f6ff1e	a2f0c3f6ff1e9b2e	ported	sound/soundcontrollerambienceobjectsound.cpp:TSoundControllerAmbienceObjectSound::TSoundControllerAmbienceObjectSound
 sub_a2f0c3f6ff1e#2	a2f0c3f6ff1e9b2e	ported	sound/soundcontrollerambienceobjectsound.cpp:TSoundControllerAmbienceObjectSound::TSoundControllerAmbienceObjectSound
 sub_a2fc0c207b95	a2fc0c207b95555e	ported	gamewindow/marketcontroller.cpp:TMarketController::getPriceOrProfitMultistring
@@ -17147,6 +17158,7 @@ sub_a3bf79a0941a	a3bf79a0941a4c16	skip	library: protobuf runtime: ExtensionSet m
 sub_a3c3bdff599d	a3c3bdff599d41b3	inlined	config/optionspages.cpp:TButtonBarOptionsPage::load
 sub_a3c3bdff599d#10	a3c3bdff599d41b3	skip	generated: moc property getter, provided by the generated cip base
 sub_a3c3bdff599d#11	a3c3bdff599d41b3	inlined	store/qmlstoreobjects.cpp:TQmlStoreOfferQuantityConfiguration::disabledReasons
+sub_a3c3bdff599d#4	a3c3bdff599d41b3	ported	input/gameaction.h:TGameActionSpriteResolved::sprite
 sub_a3c40b469ab3	a3c40b469ab3caa9	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_a3c9283d54f2	a3c9283d54f22bbe	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_a3c9878f1bc6	a3c9878f1bc654a1	ported	config/optionspages.cpp:TGraphicsOptionsPage::vSync
@@ -18169,6 +18181,8 @@ sub_b67f76756eea	b67f76756eead26c	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_b6850df0dd7d	b6850df0dd7d7113	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_b6980ce7e227	b6980ce7e22793f3	ported	market/marketciptypes.cpp:statisticsFrom
 sub_b69bfb1b619a	b69bfb1b619ad963	skip	generated: compiler-generated destructor body (member destruction only, read)
+sub_b6abcb90ca21	b6abcb90ca219e05	ported	input/gameaction.h:TGameActionResolveSprite::TGameActionResolveSprite
+sub_b6abcb90ca21#2	b6abcb90ca219e05	ported	input/gameaction.h:TGameActionResolveSprite::TGameActionResolveSprite
 sub_b6ac2b3b9f42	b6ac2b3b9f425248	tested	sessiondump/sessiondumpmetadatareader.cpp:TSessiondumpMetadataReader::readMagic	test=tests/client/sessiondumpreader_test.cpp
 sub_b6acbbb13220	b6acbbb13220e743	skip	generated: compiler-generated destructor pair
 sub_b6afd94b5fe0	b6afd94b5fe0ab7b	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::good
@@ -18597,6 +18611,7 @@ sub_b8cec0d9131f	b8cec0d9131fb6a4	skip	library: statically linked SFML audio / m
 sub_b8d547c79582	b8d547c79582de75	inlined	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::updateSelectedPerk
 sub_b8d76dd1d032	b8d76dd1d0329082	skip	library: libc++ vector insert/assign/erase/resize, nth_element and partial_sort_copy instantiations over the damage-input source rows and element pairs (callers read)
 sub_b8e59ad3b027	b8e59ad3b0274ad5	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onGridTileRightClicked
+sub_b8eaed4e00fa#2	b8eaed4e00fa9b7a	ported	sprites/spriteidentifier.h:TAssetSpritesheetIdentifier::TAssetSpritesheetIdentifier
 sub_b8ecb37b0857	b8ecb37b0857e948	skip	library: boost::multi_index hashed+sequenced container internals (destroy, insert, rehash, prime bucket modulo, qHash)
 sub_b8ed1c5fa561	b8ed1c5fa561e0e6	inlined	gamewindow/remainingdialogs.cpp:TLoginConfirmationCodeEnterTextDialogController::setAvailableMethods
 sub_b8ef14f75b8e	b8ef14f75b8e3d2e	ported	cyclopedia/cyclopediamapstaticdatastoragehost.cpp:TCyclopediaMapStaticDataStorage::updateMinimapMarkers
@@ -19284,7 +19299,7 @@ sub_c5ecaa48c2b5	c5ecaa48c2b55506	skip	generated: compiler-generated copy constr
 sub_c5f57014a1dc	c5f57014a1dcd356	inlined	controllers/characterselectioncontroller.cpp:sortCharacterList
 sub_c5fdfb80b521	c5fdfb80b521b245	tested	sessiondump/sessiondumpprogressclockservice.cpp:TSessiondumpProgressClockService::TSessiondumpProgressClockService	test=tests/client/timelapseclockservice_test.cpp
 sub_c5fdfb80b521#2	c5fdfb80b521b245	tested	sessiondump/sessiondumpprogressclockservice.cpp:TSessiondumpProgressClockService::TSessiondumpProgressClockService	test=tests/client/timelapseclockservice_test.cpp
-sub_c5ff90c752e5	c5ff90c752e53d68	skip	data: static initialiser: builds and sorts a file-scope constant table
+sub_c5ff90c752e5	c5ff90c752e53d68	ported	cyclopedia/staticcontentinformation.cpp:setHouseMapAreas
 sub_c6001033e6a4	c6001033e6a4c091	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreSuccessMessage
 sub_c60d0eb54290	c60d0eb542900b04	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_c617a142d7b5	c617a142d7b5da1a	skip	generated: moc property getter, provided by the generated cip base
@@ -19626,6 +19641,8 @@ sub_cc6d11900452	cc6d11900452cfa3	ported	shared/src/zlibinflatewrapper.cpp:TZlib
 sub_cc6d11900452#2	cc6d11900452cfa3	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::isOneShot
 sub_cc73fbebd3d6	cc73fbebd3d6d402	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_cc74f9a8f6f8	cc74f9a8f6f8e3d3	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
+sub_cc78117d85af	cc78117d85af4287	ported	input/gameaction.h:TGameActionSpriteResolved::TGameActionSpriteResolved
+sub_cc78117d85af#2	cc78117d85af4287	ported	input/gameaction.h:TGameActionSpriteResolved::TGameActionSpriteResolved
 sub_cc83c40ac998	cc83c40ac9985100	tested	sprites/spritesheetdecompressor.cpp:TSpritesheetDecompressor::decode	test=tests/client/spritesheetmanager_test.cpp
 sub_cc85c5e30f74	cc85c5e30f74e2c8	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onToggleLootTrackerWidget
 sub_cc911646ddd7	cc911646ddd7dff6	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionMoveOutClicked
@@ -20486,6 +20503,8 @@ sub_da281a529da3#2	da281a529da38641	ported	input/gameaction.h:TGameActionDepotSe
 sub_da364dbf2739#10	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsAccountSearchStorage::result
 sub_da364dbf2739#11	da364dbf273981b3	ported	friends/friendsciptypes.h:TFriendsInviteStorage::inviteList
 sub_da364dbf2739#15	da364dbf273981b3	skip	generated: moc property getter, provided by the generated cip base
+sub_da364dbf2739#23	da364dbf273981b3	ported	input/gameaction.h:TGameActionResolveSprite::spriteIdentifier
+sub_da364dbf2739#24	da364dbf273981b3	ported	input/gameaction.h:TGameActionSpriteResolved::spriteIdentifier
 sub_da364dbf2739#25	da364dbf273981b3	inlined	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::updateEvents
 sub_da364dbf2739#27	da364dbf273981b3	ported	sound/soundcontrollerbase.h:TSoundControllerBase::metadata
 sub_da364dbf2739#3	da364dbf273981b3	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::onKillStagesChanged
@@ -20614,6 +20633,7 @@ sub_dc978d30ec2a	dc978d30ec2a6535	skip	data: static initialiser: builds file-sco
 sub_dca13bb3b1f6	dca13bb3b1f64ebf	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_dca1eb760b19	dca1eb760b195668	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowDruidSpells
 sub_dca6f6ad006a	dca6f6ad006a86ad	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::copySelectedText
+sub_dcb6a9601d08	dcb6a9601d0866fe	inlined	qmlcomponents/minimaprendererquickitem.cpp:TMinimapRendererQuickItem::addMarkers
 sub_dcba9156fb8e	dcba9156fb8ea25b	inlined	creatures/creatureprotocolapply.cpp:applyProtocolCreature
 sub_dcbb11ca9a6d	dcbb11ca9a6d44f1	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_dcbc87416487	dcbc87416487703c	skip	library: libc++ std::unordered_map/set template instantiation (find/emplace/rehash)
@@ -20865,6 +20885,7 @@ sub_e0239a74bd4d#4	e0239a74bd4df02e	skip	library: QMap/QList template instantiat
 sub_e0239a74bd4d#6	e0239a74bd4df02e	skip	library: libc++ runtime/template helper (statically linked library range)
 sub_e0239a74bd4d#7	e0239a74bd4df02e	skip	library: std container template instance
 sub_e03ba77f47d5	e03ba77f47d58889	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
+sub_e0420a103205	e0420a1032057db4	ported	qmlcomponents/minimaprendererquickitem.cpp:TMinimapRendererQuickItem::requestRebuild
 sub_e04b7e1bc5c5	e04b7e1bc5c5fa95	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::TManageLootContainerDialogController
 sub_e056fe83879b	e056fe83879bb063	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onLoginOrLogoutStateUpdate
 sub_e05a6531b28c	e05a6531b28cc6e3	skip	library: Qt QRectF fuzzy operator== (qFuzzyCompare per component), inlined from Qt headers
@@ -20972,7 +20993,7 @@ sub_e245907a5791	e245907a579194ee	ported	gamewindow/imbuingdialogcontroller.cpp:
 sub_e245907a5791#2	e245907a579194ee	ported	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
 sub_e24b6257ea55	e24b6257ea55ff69	skip	library: libc++abi Itanium demangler (__cxa_demangle) internals
 sub_e24bc2b0e05a	e24bc2b0e05a321b	ported	config/clientoptionsmigration.cpp:migrateFromVersion2
-sub_e24ff7f01ff2	e24ff7f01ff217e4	ported	cyclopedia/cyclopediamapstaticdatastorage.cpp:TCyclopediaMapStaticDataStorage::houseMarkersIn
+sub_e24ff7f01ff2	e24ff7f01ff217e4	tested	cyclopedia/cyclopediamapstaticdatastorage.cpp:TCyclopediaMapStaticDataStorage::houseMarkersIn	test=tests/client/cyclopediamapstaticdatastorage_test.cpp
 sub_e2532042a3a2	e2532042a3a2532f	ported	analysers/analyserwidgets.cpp:TAnalyticsSelectorWidgetController::onWidgetVisibility
 sub_e25de0d243ca#4	e25de0d243ca520a	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_e25de0d243ca#6	e25de0d243ca520a	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
@@ -22342,6 +22363,7 @@ sub_fa3b2df9d61c	fa3b2df9d61c5a72	ported	shared/src/systemsurvey/systemsurveyval
 sub_fa441d03eb86	fa441d03eb86af0d	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onCharacterNameChecked
 sub_fa4b2d3d49ed#3	fa4b2d3d49ed42ad	skip	generated: moc property getter (generated in cip_gen)
 sub_fa4b2d3d49ed#4	fa4b2d3d49ed42ad	skip	generated: moc property getter, provided by the generated cip base
+sub_fa53a8b96894#3	fa53a8b96894f72d	ported	gamewindow/cyclopediamapdialogcontroller.h:TCyclopediaMapSelectionInfoSubArea::subAreaData
 sub_fa5de654f52d	fa5de654f52d7913	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::requestSaveCurrentPreset
 sub_fa63b555d921	fa63b555d92179c3	skip	library: std::vector push_back reallocation path (int / 24-byte element) instantiated in handleSkillWheelMessage
 sub_fa65261cefbe#4	fa65261cefbe9179	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed

@@ -27,6 +27,10 @@ namespace tibia {
 namespace chat {
 struct TChatChannelIdentifier;
 }
+namespace sprites {
+class ISpriteIdentifier;
+class TSprite;
+}
 namespace input {
 
 using EGameAction = cip::tibia::input::EGameAction;
@@ -103,6 +107,43 @@ private:
     TTrigger m_trigger;
 };
 }
+
+/// CIP input::TGameActionResolveSprite (RESOLVE_SPRITE): asks the sprite resolver
+/// for the sprite of an identifier; the resolver answers with SPRITE_RESOLVED
+/// once the sprite can be made.
+class TGameActionResolveSprite final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionResolveSprite(std::shared_ptr<const sprites::ISpriteIdentifier> identifier)
+        : TGameActionSimple(EGameAction::RESOLVE_SPRITE)
+        , m_identifier(std::move(identifier))
+    {
+    }
+    const std::shared_ptr<const sprites::ISpriteIdentifier>& spriteIdentifier() const { return m_identifier; }
+
+private:
+    std::shared_ptr<const sprites::ISpriteIdentifier> m_identifier;
+};
+
+/// CIP input::TGameActionSpriteResolved (SPRITE_RESOLVED): the sprite of an
+/// identifier a RESOLVE_SPRITE asked for.
+class TGameActionSpriteResolved final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionSpriteResolved(std::shared_ptr<const sprites::ISpriteIdentifier> identifier,
+                              std::shared_ptr<sprites::TSprite> sprite)
+        : TGameActionSimple(EGameAction::SPRITE_RESOLVED)
+        , m_identifier(std::move(identifier))
+        , m_sprite(std::move(sprite))
+    {
+    }
+    const std::shared_ptr<const sprites::ISpriteIdentifier>& spriteIdentifier() const { return m_identifier; }
+    const std::shared_ptr<sprites::TSprite>& sprite() const { return m_sprite; }
+
+private:
+    std::shared_ptr<const sprites::ISpriteIdentifier> m_identifier;
+    std::shared_ptr<sprites::TSprite> m_sprite;
+};
 
 /// CIP input::TGameActionOpenCyclopedia (OPEN_CYCLOPEDIA): opens a tab of the
 /// Cyclopedia (0 items, 1 bestiary, 2 character, 3 charms, 4 map, 5 houses,
