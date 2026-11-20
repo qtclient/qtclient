@@ -644,10 +644,11 @@ void TMapWindowController::updateMouseTarget()
     // by TMouseCursorController (static vs animated cursor frames), not here.
     if (cursor)
         cursor->setLayerShape(Cursor::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
-    if (const uint32_t creatureId = worldmap::TWorldMapGameActionProvider::mouseTargetCreatureIdOf(action))
-        m_provider->setMouseTargetCreatureId(creatureId);
-    else if (const auto object = worldmap::TWorldMapGameActionProvider::mouseTargetObjectOf(action))
-        m_provider->setMouseTargetObject(object.typeId, object.field, object.stackPos);
+    const auto target = worldmap::TWorldMapGameActionProvider::mouseTargetOf(action);
+    if (target.creatureId)
+        m_provider->setMouseTargetCreatureId(target.creatureId);
+    else if (target)
+        m_provider->setMouseTargetObject(target.typeId, target.field, target.stackPos);
     else
         m_provider->setMouseTargetObject(0, {}, -1);
 }

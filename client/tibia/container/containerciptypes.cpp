@@ -322,6 +322,15 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
     }
     if (item.has_brand_new())
         slot.brandNew = item.brand_new();
+    // A brand-new wearout or expiring object's instance says so (the supply
+    // stash takes only those of their kinds).
+    if (slot.brandNew) {
+        using appearances::TAppearanceInstanceFactory;
+        if (std::dynamic_pointer_cast<appearances::TWearoutObjectAppearanceInstance>(slot.appearance))
+            slot.appearance = TAppearanceInstanceFactory::createWearoutObject(type, slot.charges, true);
+        else if (std::dynamic_pointer_cast<appearances::TExpireObjectAppearanceInstance>(slot.appearance))
+            slot.appearance = TAppearanceInstanceFactory::createExpireObject(type, 0, true, false);
+    }
     if (item.has_deco_item_id())
         slot.decoItemId = static_cast<uint16_t>(item.deco_item_id());
 

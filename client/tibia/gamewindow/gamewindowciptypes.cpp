@@ -579,12 +579,7 @@ void TBattleListGameActionHandler::attackNextOrPreviousTarget(const bool Previou
 
 void TBattleListGameActionHandler::setCreatureTutorialMarker(const uint32_t creatureId, const int markerId)
 {
-    if (creatureId == 0)
-        return;
-    if (markerId <= 0)
-        m_creatureMarkers.remove(creatureId);
-    else
-        m_creatureMarkers.insert(creatureId, markerId);
+    m_creatureMarkers.insert(creatureId, markerId);
 }
 
 void TBattleListGameActionHandler::clearCreatureTutorialMarkers()

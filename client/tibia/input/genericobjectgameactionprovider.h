@@ -8,6 +8,9 @@
 
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstance;
+}
 namespace creatures {
 class TCreature;
 }
@@ -39,6 +42,12 @@ public:
     /// classified object's tier, a decoration kit's item, else the type alone.
     static TGameActionContextPtr objectContext(const TAppearanceType* type, uint16_t appearanceTypeId, uint32_t liquidType,
                                                uint8_t tier, uint16_t decoItemId);
+    /// Whether the supply stash takes the object `instance` of `type`: a
+    /// cumulative one always; else by the instance's kind: a pattern or
+    /// hangable object yes, a wearout or expiring one only brand new, an
+    /// upgradeable one only of tier 0, and a container, liquid, deco kit or
+    /// any other kind no.
+    static bool canStowObject(const TAppearanceType* type, const appearances::TAppearanceInstance* instance);
     /// OPEN_CYCLOPEDIA's items tab on an object type: its Cyclopedia type.
     static IGameActionPtr openCyclopediaAction(uint16_t clientId);
 };

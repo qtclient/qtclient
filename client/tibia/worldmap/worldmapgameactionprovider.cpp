@@ -160,29 +160,94 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     return result;
 }
 
-TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mouseTargetObjectOf(
-    const input::IGameActionPtr& pGameAction)
+namespace {
+
+using TMouseTarget = TWorldMapGameActionProvider::TMouseTarget;
+
+/// The object at an action's location, when that is a world map field's stack.
+TMouseTarget objectAt(const input::TObjectGameActionContext& object)
+{
+    if (object.locationType() != input::EGameActionContextType::LOCATION_WORLD_MAP_COORDINATE_WITH_STACK_POSITION)
+        return {};
+    TMouseTarget target;
+    target.creatureId = object.creatureId();
+    target.typeId = target.creatureId ? 0 : object.objectClientId();
+    target.field = object.position();
+    target.stackPos = object.stackPosition();
+    return target;
+}
+
+/// The look object of the field at `coordinate`; with `autowalkOnly` only one
+/// whose appearance's default action is the highlighting auto walk.
+TMouseTarget lookObjectAt(const Position& coordinate, const bool autowalkOnly)
+{
+    TWorldMapStorage* storage = TWorldMapStorage::instance();
+    TWorldMapField* field = storage ? storage->fieldAt(coordinate) : nullptr;
+    if (!field)
+        return {};
+    const TFieldObject look = field->lookObject();
+    if (!look)
+        return {};
+    if (autowalkOnly) {
+        appearances::TAppearanceInstancePtr appearance = look.appearance;
+        if (!appearance && look.creatureId) {
+            if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
+                if (const std::shared_ptr<creatures::TCreature> row = creatures->creatureAt(look.creatureId))
+                    appearance = row->outfitAppearance();
+        }
+        const TAppearanceType* type = appearance ? appearance->thingType() : nullptr;
+        if (!type || type->getDefaultAction() != PLAYER_ACTION_AUTOWALK_HIGHLIGHT)
+            return {};
+    }
+    TMouseTarget target;
+    target.creatureId = look.creatureId;
+    target.typeId = look.creatureId ? 0 : look.clientId();
+    target.field = coordinate;
+    target.stackPos = look.stackPosition;
+    return target;
+}
+
+TMouseTarget creatureTarget(const uint32_t creatureId)
+{
+    TMouseTarget target;
+    target.creatureId = creatureId;
+    return target;
+}
+
+}
+
+TWorldMapGameActionProvider::TMouseTarget TWorldMapGameActionProvider::mouseTargetOf(const input::IGameActionPtr& pGameAction)
 {
     if (!pGameAction)
         return {};
     switch (pGameAction->gameActionType()) {
     case A::USE:
-    case A::USE_WITH:
     case A::WRAP:
     case A::UNWRAP:
     case A::OPEN:
-    case A::OPEN_IN_NEW_WINDOW:
-    case A::LOOK: {
+    case A::OPEN_IN_NEW_WINDOW: {
         const std::optional<input::TObjectGameActionContext> object = input::objectContextOf(*pGameAction);
-        TMouseTargetObject target;
-        target.typeId = object ? object->objectClientId() : 0;
-        if (!target.typeId)
+        return object ? objectAt(*object) : TMouseTarget{};
+    }
+    case A::USE_WITH: {
+        // The target once one is chosen, else the used object.
+        const auto* use = input::gameActionAs<input::TGameActionUseWith>(pGameAction);
+        if (!use)
             return {};
-        target.field = object->position();
-        target.stackPos = object->stackPosition();
-        return target;
+        return objectAt(use->hasTarget() ? *use->target() : use->context());
     }
     case A::USE_ON_CREATURE:
+        if (const auto* use = input::gameActionAs<input::TGameActionUseOnCreature>(pGameAction))
+            return creatureTarget(use->targetCreatureId());
+        return {};
+    case A::LOOK: {
+        // The look object of the looked-at field.
+        const std::optional<input::TObjectGameActionContext> object = input::objectContextOf(*pGameAction);
+        if (!object
+            || object->locationType() != input::EGameActionContextType::LOCATION_WORLD_MAP_COORDINATE_WITH_STACK_POSITION)
+            return {};
+        return lookObjectAt(object->position(), false);
+    }
     case A::LOOK_AT_CREATURE:
     case A::ATTACK_CREATURE:
     case A::STOP_ATTACKING_CREATURE:
@@ -190,45 +255,25 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
     case A::STOP_FOLLOWING_CREATURE:
     case A::TEMPORARY_SELECT_CREATURE:
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
+        if (const auto* creature = input::gameActionAs<input::TGameActionCreature>(pGameAction))
+            return creatureTarget(creature->creatureId());
+        return {};
     case A::START_TALKING_TO_NPC:
+        if (const auto* npc = input::gameActionAs<input::TGameActionStartTalkingToNPC>(pGameAction))
+            return creatureTarget(npc->creatureId());
+        return {};
     case A::SET_PLAYER_MOVEMENT_INTENT:
-        // Creature hover is id-based (see mouseTargetCreatureIdOf).
+        // A walk to a field highlights its look object when that walks there itself.
+        if (const auto* walk = input::gameActionAs<input::TGameActionPlayerMovementIntent>(pGameAction))
+            return lookObjectAt(walk->target(), true);
         return {};
     case A::SMART_CLICK:
         if (const auto* smartClick = input::gameActionAs<input::TGameActionSmartClick>(pGameAction))
-            return mouseTargetObjectOf(smartClick->innerGameAction());
+            return mouseTargetOf(smartClick->innerGameAction());
         return {};
     default:
         return {};
     }
-}
-
-uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGameActionPtr& pGameAction)
-{
-    if (!pGameAction)
-        return 0;
-    if (const auto* creature = input::gameActionAs<input::TGameActionCreature>(pGameAction))
-        return creature->gameActionType() == A::TEMPORARY_SELECT_CREATURE || creature->gameActionType() == A::LOOK_AT_CREATURE
-                || creature->gameActionType() == A::ATTACK_CREATURE || creature->gameActionType() == A::STOP_ATTACKING_CREATURE
-                || creature->gameActionType() == A::FOLLOW_CREATURE || creature->gameActionType() == A::STOP_FOLLOWING_CREATURE
-                || creature->gameActionType() == A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD
-            ? creature->creatureId()
-            : 0;
-    if (const auto* npc = input::gameActionAs<input::TGameActionStartTalkingToNPC>(pGameAction))
-        return npc->creatureId();
-    if (const auto* smartClick = input::gameActionAs<input::TGameActionSmartClick>(pGameAction))
-        return mouseTargetCreatureIdOf(smartClick->innerGameAction());
-    if (const auto* walk = input::gameActionAs<input::TGameActionPlayerMovementIntent>(pGameAction)) {
-        TWorldMapStorage* storage = TWorldMapStorage::instance();
-        TWorldMapField* field = storage ? storage->fieldAt(walk->target()) : nullptr;
-        if (!field || field->isEmpty())
-            return 0;
-        const TFieldObject look = field->lookObject();
-        return defaultActionOf(look, field) == PLAYER_ACTION_AUTOWALK_HIGHLIGHT ? look.creatureId : 0;
-    }
-    if (const auto* use = input::gameActionAs<input::TGameActionUseOnCreature>(pGameAction))
-        return use->targetCreatureId();
-    return 0;
 }
 
 int TWorldMapGameActionProvider::cursorShapeOf(const input::IGameActionPtr& pGameAction)

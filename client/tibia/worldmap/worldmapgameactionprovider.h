@@ -31,19 +31,21 @@ public:
 
     input::TGameActionList actionsAt(const QPoint& mapPixel) const;
 
-    /// Item hover object for an action (CIP:): objectClientId + field + stackpos.
-    /// Creature hover uses `mouseTargetCreatureIdOf` + setMouseTargetCreatureId.
-    struct TMouseTargetObject
+    /// What an action highlights on the map under the mouse: a world map
+    /// field's object (type, field and stack position) or a creature.
+    struct TMouseTarget
     {
         uint16_t typeId = 0;
         Position field;
         int stackPos = -1;
-        explicit operator bool() const { return typeId != 0; }
+        uint32_t creatureId = 0;
+        explicit operator bool() const { return typeId != 0 || creatureId != 0; }
     };
-    static TMouseTargetObject mouseTargetObjectOf(const input::IGameActionPtr& pGameAction);
-    /// Deprecated shim — prefer `mouseTargetObjectOf` (returns null; item hover is id-based).
-    /// Creature id under the mouse for an action (0 when not a creature target).
-    static uint32_t mouseTargetCreatureIdOf(const input::IGameActionPtr& pGameAction);
+    /// The object or creature `pGameAction` acts on: the object at its world
+    /// map location (USE_WITH: its target once chosen), the creature of a
+    /// creature action, the field's look object for LOOK, and for a walk the
+    /// look object that auto-walks there; a smart click's inner action's.
+    static TMouseTarget mouseTargetOf(const input::IGameActionPtr& pGameAction);
     /// The map window's cursor shape for an action (TMouseCursorController shapes).
     static int cursorShapeOf(const input::IGameActionPtr& pGameAction);
 

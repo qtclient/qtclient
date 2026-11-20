@@ -195,7 +195,7 @@ TGameActionContextPtr locationOf(const Position& position, const int stackPositi
 /// CIP v6: what can be done to an object, in CipSoft's order.
 TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const TGameActionContextPtr& objectContext,
                                   const uint32_t creatureId, const uint8_t fieldTier, TAppearanceType* flags,
-                                  const uint16_t fieldCount)
+                                  const uint16_t fieldCount, const appearances::TAppearanceInstance* instance)
 {
     TGameActionList actions;
     const uint16_t clientId = appearanceTypeIdOf(objectContext.get());
@@ -297,11 +297,11 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
             actions.push_back(std::make_shared<TGameActionShowLenshelp>(lensHelp, object.position(), QRectF()));
     }
 
-    // Quick loot: a loot corpse on the map or in the browse field window.
-    // CipSoft also offers it inside an open loot corpse when a provider member
-    // (+0x58, set through v2) agrees; that member is not identified yet.
+    // Quick loot: a loot corpse on the map or in the browse field window, and
+    // a premium player's any object inside an open loot corpse.
     const bool lootCorpse = isLootCorpse(flags);
-    if ((mapLocation && lootCorpse) || (container && lootCorpse && container->containerIsBrowseField()))
+    if ((mapLocation && lootCorpse) || (container && lootCorpse && container->containerIsBrowseField())
+        || (container && container->containerIsLootCorpse() && tibia::game::localPlayerIsPremium()))
         push(A::QUICK_LOOT);
 
     IGameActionPtr inner;
@@ -328,7 +328,7 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
         actions.push_back(makeSmartClick(inner));
 
     if (tibia::game::localPlayerIsSupplyStashAvailable()) {
-        if (has(&TAppearanceType::isMarketable) && (has(&TAppearanceType::isStackable) || fieldTier == 0)) {
+        if (has(&TAppearanceType::isMarketable) && TGenericObjectGameActionProvider::canStowObject(flags, instance)) {
             push(A::STASH_STOW_TYPE);
             auto stow = std::make_shared<TGameActionStashStowStack>(object, count);
             actions.push_back(std::make_shared<TGameActionStashOpenStowStackDialog>(stow));
@@ -338,11 +338,34 @@ TGameActionList objectActionsImpl(const TGameActionContextPtr& location, const T
     }
     if (tibia::game::localPlayerIsMarketAvailable() && has(&TAppearanceType::isMarketable))
         actions.push_back(std::make_shared<gameactions::TGameActionMarketBrowse>(
-            object, flags->getClassification() != 0 ? fieldTier : uint8_t(0)));
+            object, flags->hasUpgradeClassification() ? fieldTier : uint8_t(0)));
     return actions;
 }
 
 } // namespace
+
+bool TGenericObjectGameActionProvider::canStowObject(const TAppearanceType* type,
+                                                     const appearances::TAppearanceInstance* instance)
+{
+    using namespace appearances;
+    if (type && type->isStackable())
+        return true;
+    if (!instance || dynamic_cast<const TContainerObjectAppearanceInstance*>(instance))
+        return false;
+    if (const auto* expire = dynamic_cast<const TExpireObjectAppearanceInstance*>(instance))
+        return expire->isBrandNew();
+    if (dynamic_cast<const TLiquidObjectAppearanceInstance*>(instance))
+        return false;
+    if (const auto* upgradeable = dynamic_cast<const TUpgradeableObjectAppearanceInstance*>(instance))
+        return upgradeable->tier() == 0;
+    if (const auto* wearout = dynamic_cast<const TWearoutObjectAppearanceInstance*>(instance))
+        return wearout->isBrandNew();
+    if (dynamic_cast<const TPatternObjectAppearanceInstance*>(instance))
+        return true;
+    if (dynamic_cast<const TDecoItemKitAppearanceInstance*>(instance))
+        return false;
+    return dynamic_cast<const THangableObjectAppearanceInstance*>(instance) != nullptr;
+}
 
 TGameActionContextPtr TGenericObjectGameActionProvider::objectContext(const TAppearanceType* type, const uint16_t appearanceTypeId,
                                                                       const uint32_t liquidType, const uint8_t tier,
@@ -378,7 +401,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const worldmap::
     const TGameActionContextPtr context =
         objectContext(type, appearance->id(), liquid ? liquid->fluid() : 0, instance ? instance->tier() : 0, 0);
     return objectActionsImpl(locationOf(position, object.stackPosition), context, object.creatureId,
-                             instance ? instance->tier() : 0, type, instance ? instance->count() : 0);
+                             instance ? instance->tier() : 0, type, instance ? instance->count() : 0, appearance.get());
 }
 
 TGameActionList TGenericObjectGameActionProvider::objectActions(const container::TInventorySlot& slot,
@@ -398,7 +421,8 @@ TGameActionList TGenericObjectGameActionProvider::objectActions(const TGameActio
     // Inventory and container slots own the count; appearance instances can keep a
     // stale shared one.
     const TGameActionContextPtr context = objectContext(type, slot.typeId, slot.fluid, slot.tier, slot.decoItemId);
-    return objectActionsImpl(location, context, 0, slot.tier, type, slot.stackable ? slot.count : 0);
+    return objectActionsImpl(location, context, 0, slot.tier, type, slot.stackable ? slot.count : 0,
+                             slot.appearance.get());
 }
 
 }
