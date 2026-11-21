@@ -156,16 +156,19 @@ struct TBossDifficultySelectionDialogData : TBossDifficultySelectionDialogUpdate
     std::array<std::string, 5> playerNames;
 };
 
-/// Turns the boss difficulty selection message into open / update / close of
-/// the dialog (published as onBossDifficultySelection / onBossDifficultyUpdate /
-/// onBossDifficultyClose).
+/// The session's handler of the boss difficulty selection message: it opens,
+/// updates or closes the dialog.
 class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler
 {
     Q_OBJECT
 public:
     using cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler::TBossDifficultySelectionProtocolMessageHandler;
 
-    static void handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& message);
+    void handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& message);
+
+Q_SIGNALS:
+    void openBossDifficultySelectionDialog(const TBossDifficultySelectionDialogData& BossDifficultySelectionDialogData);
+    void updateBossDifficultySelectionDialog(const TBossDifficultySelectionDialogUpdateData& BossDifficultySelectionDialogData);
 };
 
 class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditTextProtocolMessageHandler

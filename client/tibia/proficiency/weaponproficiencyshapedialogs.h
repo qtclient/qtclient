@@ -4,15 +4,20 @@
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "proficiency/proficiencystorage.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
 
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace input {
 class IGameAction;
 namespace gameactions {
@@ -53,6 +58,9 @@ public:
     void onResourceBalanceChanged() override;
     /// OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG.
     void handleGameAction(const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action);
+    /// Closes the dialog and follows the session's proficiency data and
+    /// balances; the shown weapon is refreshed.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     enum class EConfirm
@@ -82,6 +90,8 @@ private:
     uint8_t m_perk = 0;
     bool m_fromPerkTree = false;
     std::vector<client::gamecore::Hook> m_hooks;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to
@@ -116,8 +126,13 @@ public:
     void closeDialog() override;
     /// CIP .
     void onMessageDialogAccept() override;
+    /// Closes the dialog and follows the session's reshape offers.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
+    /// The server's reshape offers: the offer list is rebuilt and the dialog
+    /// shows them (it needs the shape dialog's perk).
+    void onShapedPerkReshapeOffersChanged();
     /// CIP .
     void rebuildOffers();
     void pickOffer(int index) const;
@@ -127,6 +142,8 @@ private:
     gamewindow::TMessageDialogController* m_message;
     int m_selectedOffer = -1;
     std::vector<client::gamecore::Hook> m_hooks;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 /// The shaping catalogue's perks (CIP: the list model inside

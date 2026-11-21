@@ -76,6 +76,7 @@ class TExaltationProtocolMessageHandler;
 class TExaltationStorage;
 }
 namespace game {
+class TBossDifficultySelectionProtocolMessageHandler;
 class TGameActionRouter;
 class TOutfitDialogStorage;
 class TPlayerData;
@@ -101,6 +102,17 @@ class TNextFrameUpdater;
 }
 namespace questlog {
 class TQuestLogStorage;
+}
+namespace skillwheel {
+class TSkillWheelGameActionHandler;
+class TSkillWheelProtocolMessageHandler;
+}
+namespace taskboard {
+class TTaskboardBountyTasksStorage;
+class TTaskboardCurrenciesStorage;
+class TTaskboardProtocolMessageHandler;
+class TTaskboardShopStorage;
+class TTaskboardWeeklyTasksStorage;
 }
 namespace effects {
 class TEffectGameActionHandler;
@@ -315,6 +327,33 @@ public:
     const std::shared_ptr<dailyreward::TDailyRewardStorage>& dailyRewardStorage() const { return m_dailyRewardStorage; }
     /// The exaltation forge's prices, groups and history.
     const std::shared_ptr<exaltation::TExaltationStorage>& exaltationStorage() const { return m_exaltationStorage; }
+    /// The task board's bounty points, hunting task tokens and soul seals.
+    const std::shared_ptr<taskboard::TTaskboardCurrenciesStorage>& taskboardCurrenciesStorage() const
+    {
+        return m_taskboardCurrenciesStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardBountyTasksStorage>& taskboardBountyTasksStorage() const
+    {
+        return m_taskboardBountyTasksStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage>& taskboardWeeklyTasksStorage() const
+    {
+        return m_taskboardWeeklyTasksStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardShopStorage>& taskboardShopStorage() const { return m_taskboardShopStorage; }
+    const std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler>& skillWheelProtocolMessageHandler() const
+    {
+        return m_skillWheelProtocolMessageHandler;
+    }
+    taskboard::TTaskboardProtocolMessageHandler* taskboardProtocolMessageHandler() const { return m_taskboardProtocolMessageHandler.get(); }
+    TBossDifficultySelectionProtocolMessageHandler* bossDifficultySelectionProtocolMessageHandler() const
+    {
+        return m_bossDifficultySelectionProtocolMessageHandler.get();
+    }
+    const std::shared_ptr<skillwheel::TSkillWheelGameActionHandler>& skillWheelGameActionHandler() const
+    {
+        return m_skillWheelGameActionHandler;
+    }
 
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
@@ -414,6 +453,14 @@ private:
     std::shared_ptr<bossbestiary::TBossBestiaryProtocolMessageHandler> m_bossBestiaryProtocolMessageHandler;
     std::shared_ptr<bossbestiary::TBossTrackerStorage> m_bossTrackerStorage;
     std::shared_ptr<bossbestiary::TBosstiaryStorage> m_bosstiaryStorage;
+    std::shared_ptr<taskboard::TTaskboardCurrenciesStorage> m_taskboardCurrenciesStorage;
+    std::shared_ptr<taskboard::TTaskboardBountyTasksStorage> m_taskboardBountyTasksStorage;
+    std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage> m_taskboardWeeklyTasksStorage;
+    std::shared_ptr<taskboard::TTaskboardShopStorage> m_taskboardShopStorage;
+    std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler> m_skillWheelProtocolMessageHandler;
+    std::unique_ptr<taskboard::TTaskboardProtocolMessageHandler> m_taskboardProtocolMessageHandler;
+    std::unique_ptr<TBossDifficultySelectionProtocolMessageHandler> m_bossDifficultySelectionProtocolMessageHandler;
+    std::shared_ptr<skillwheel::TSkillWheelGameActionHandler> m_skillWheelGameActionHandler;
 };
 
 /// Calls `bind` now and each time the active game session changes, for code

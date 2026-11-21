@@ -1,6 +1,7 @@
 #include "killtrackerwidgetcontroller.h"
 
 #include "config/sidebaroptions.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/preydialogcontroller.h"
 #include "gamewindow/taskboarddialogcontroller.h"
 #include "input/gameaction.h"
@@ -110,19 +111,6 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
     connect(m_storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TKillTrackerWidgetController::bonusRerollPossibleChanged);
     connect(m_storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TKillTrackerWidgetController::lockPreyPossibleChanged);
 
-    // Task board storages → kill-tracker bounty/weekly rows.
-    connect(taskboard::TTaskboardBountyTasksStorage::instance(), &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged,
-            this, [this](const taskboard::TBountyTaskData& data) {
-                m_pendingBounty = taskboardBountyMonsterRows(data);
-                bountyTaskDataChanged();
-            });
-    connect(taskboard::TTaskboardWeeklyTasksStorage::instance(), &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged,
-            this, [this](const taskboard::TWeeklyTaskData& data) {
-                m_weeklyActive = taskboardWeeklyActive(data);
-                m_pendingWeekly = taskboardWeeklyMonsterRows(data);
-                weeklyTaskDataChanged();
-            });
-
     widget()->createItem(QStringLiteral("prey/KillTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TKillTrackerWidgetController::onWidgetQuickItemDestroyed);
@@ -177,6 +165,28 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
 }
 
 TKillTrackerWidgetController::~TKillTrackerWidgetController() { clearPreyList(); }
+
+void TKillTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    auto* session = dynamic_cast<game::TGameSessionBase*>(GameSession.get());
+    if (!session)
+        return;
+    // Task board storages → kill-tracker bounty/weekly rows.
+    m_gameSessionConnections.add(connect(session->taskboardBountyTasksStorage().get(),
+                                         &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                         [this](const taskboard::TBountyTaskData& data) {
+                                             m_pendingBounty = taskboardBountyMonsterRows(data);
+                                             bountyTaskDataChanged();
+                                         }));
+    m_gameSessionConnections.add(connect(session->taskboardWeeklyTasksStorage().get(),
+                                         &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
+                                         [this](const taskboard::TWeeklyTaskData& data) {
+                                             m_weeklyActive = taskboardWeeklyActive(data);
+                                             m_pendingWeekly = taskboardWeeklyMonsterRows(data);
+                                             weeklyTaskDataChanged();
+                                         }));
+}
 
 void TKillTrackerWidgetController::clearPreyList()
 {
@@ -281,6 +291,7 @@ TSidebarWidget* TKillTrackerWidgetManager::open(config::TSidebarOptions* options
         m_controller = new TKillTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
         connect(m_controller, &TKillTrackerWidgetController::publishGameAction, this, &TKillTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
+        m_controller->connectToGameSession(m_gameSession);
     }
     return m_controller->widget();
 }
@@ -296,5 +307,12 @@ void TKillTrackerWidgetManager::close(const bool saveWidgetOptions)
 }
 
 TSidebarWidget* TKillTrackerWidgetManager::current() const { return m_controller ? m_controller->widget() : nullptr; }
+
+void TKillTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    if (m_controller)
+        m_controller->connectToGameSession(m_gameSession);
+}
 
 }

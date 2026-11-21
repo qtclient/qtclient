@@ -8,6 +8,7 @@
 
 #include <QByteArray>
 #include <QObject>
+#include <QPointer>
 
 #include <memory>
 
@@ -29,10 +30,6 @@ class GameserverMessageSkillWheel;
 namespace tibia {
 namespace skillwheel {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
-
 /// TModListSortFilterProxyModel product twin lives in skillwheelmodels.h (FragmentWorkshop).
 
 struct TWheel;
@@ -53,6 +50,8 @@ public:
     /// CIP: SAVE_SKILL_WHEEL sends its configuration, REQUEST_OWN_SKILL_WHEEL the own request,
     /// REQUEST_SKILL_WHEEL the creature's.
     void handleGameAction(const input::IGameAction& action);
+    /// The session router's game actions.
+    void handleGameAction(const input::IGameActionPtr& pGameAction);
     /// REQUEST_SKILL_WHEEL: the own player's goes through the own request.
     void handleCreatureGameAction(uint32_t creatureId);
     /// CIP: the own player's creature id, 0 when it is gone.
@@ -78,10 +77,10 @@ class TSkillWheelProtocolMessageHandler final : public cip::tibia::skillwheel::T
 public:
     explicit TSkillWheelProtocolMessageHandler(QObject* parent = nullptr);
 
-    static TSkillWheelProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TSkillWheelProtocolMessageHandler* handler);
-
-    void setSkillWheelStorage(TSkillWheelStorage* storage) { m_storage = storage; }
+    /// Host: CipSoft's handler gets the session's skill wheel storage when it
+    /// is made; the client's storage is handed over when the session becomes
+    /// current (TSkillWheelManager::connectToGameSession).
+    void setSkillWheelStorage(TSkillWheelStorage* storage);
 
     /// SkillWheel: without a wheel the no-wheel or preview message; otherwise the gem inventory, the
     /// mod grades and the server wheel go to the storage, the mod list is rebuilt and the dialog opens.
@@ -109,7 +108,7 @@ public:
     static void enhanceModGrade(int modType, int modId);
 
 private:
-    TSkillWheelStorage* m_storage = nullptr;
+    QPointer<TSkillWheelStorage> m_storage;
 };
 
 }

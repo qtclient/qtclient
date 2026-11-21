@@ -48,7 +48,11 @@
 #include "quickloot/managedcontainerstorage.h"
 #include "quickloot/quicklootciptypes.h"
 #include "spells/spellsciptypes.h"
+#include "taskboard/taskboardbountytasksstorage.h"
 #include "taskboard/taskboardciptypes.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
+#include "taskboard/taskboardshopstorage.h"
+#include "taskboard/taskboardweeklytasksstorage.h"
 #include "tutorial/tutorialciptypes.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
@@ -120,6 +124,10 @@ void TGameSessionBase::createStorages()
     m_objectAppearanceInstanceInfoStorage = std::make_shared<container::TObjectAppearanceInstanceInfoStorage>();
     m_marketStorage = std::make_shared<market::TMarketStorage>();
     m_managedContainerStorage = std::make_shared<quickloot::TManagedContainerStorage>();
+    m_taskboardCurrenciesStorage = std::make_shared<taskboard::TTaskboardCurrenciesStorage>();
+    m_taskboardBountyTasksStorage = std::make_shared<taskboard::TTaskboardBountyTasksStorage>();
+    m_taskboardWeeklyTasksStorage = std::make_shared<taskboard::TTaskboardWeeklyTasksStorage>();
+    m_taskboardShopStorage = std::make_shared<taskboard::TTaskboardShopStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
     // CIP: the client's sound reaches the session through its provider and
     // its object sound counts.
@@ -176,6 +184,10 @@ void TGameSessionBase::createProtocolMessageHandlers()
         std::make_shared<quickloot::TManagedContainersProtocolMessageHandler>(m_managedContainerStorage.get());
     m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
+    m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>();
+    m_taskboardProtocolMessageHandler = std::make_unique<taskboard::TTaskboardProtocolMessageHandler>(
+        m_taskboardCurrenciesStorage, m_taskboardWeeklyTasksStorage, m_taskboardBountyTasksStorage, m_taskboardShopStorage);
+    m_bossDifficultySelectionProtocolMessageHandler = std::make_unique<TBossDifficultySelectionProtocolMessageHandler>();
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
             &effects::TEffectGameActionHandler::handleGameAction);
@@ -227,6 +239,13 @@ void TGameSessionBase::createProtocolMessageHandlers()
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_exaltationStorage.get(),
             qOverload<const input::IGameActionPtr&>(&exaltation::TExaltationStorage::handleGameAction));
+    m_skillWheelGameActionHandler = std::make_shared<skillwheel::TSkillWheelGameActionHandler>();
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_skillWheelGameActionHandler.get(),
+            &skillwheel::TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage);
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_skillWheelGameActionHandler.get(),
+            qOverload<const input::IGameActionPtr&>(&skillwheel::TSkillWheelGameActionHandler::handleGameAction));
+    connect(m_skillWheelGameActionHandler.get(), &skillwheel::TSkillWheelGameActionHandler::publishGameAction,
+            m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
 }
 
 void TGameSessionBase::createRenderProviders()
@@ -681,11 +700,11 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedShowMessageDialogMessage, spellBook, &TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage);
 
     using skillwheel::TSkillWheelProtocolMessageHandler;
-    if (auto* skillWheel = TSkillWheelProtocolMessageHandler::liveInstance()) {
-        link(&Queue::receivedSkillWheelMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleSkillWheelMessage);
-        link(&Queue::receivedGemAtelierGemRevealedMessage, skillWheel,
-             &TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage);
-    }
+    auto* skillWheel = m_skillWheelProtocolMessageHandler.get();
+    link(&Queue::receivedSkillWheelMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleSkillWheelMessage);
+    link(&Queue::receivedGemAtelierGemRevealedMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage);
+    m_queueConnections.push_back(connect(skillWheel, &TSkillWheelProtocolMessageHandler::publishGameAction,
+                                         m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal));
     link(&Queue::receivedWeaponProficiencyMessage, this, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
     link(&Queue::receivedWeaponProficiencyNotificationMessage, this,
          &TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage);
@@ -694,18 +713,26 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedResourceBalanceMessage, this, &TProficiencyProtocolMessageHandler::handleResourceBalanceMessage);
 
     using taskboard::TTaskboardProtocolMessageHandler;
-    auto* taskboardHandler = TTaskboardProtocolMessageHandler::instance();
+    auto* taskboardHandler = m_taskboardProtocolMessageHandler.get();
     link(&Queue::receivedTaskboardMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
     link(&Queue::receivedSoulSealsDialogMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
     link(&Queue::receivedResourceBalanceMessage, taskboardHandler, &TTaskboardProtocolMessageHandler::handleResourceBalanceMessage);
 
-    link(&Queue::receivedBossDifficultySelectionMessage, this,
+    link(&Queue::receivedBossDifficultySelectionMessage, m_bossDifficultySelectionProtocolMessageHandler.get(),
          &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);
 
 }
 
 void TGameSessionBase::releaseStorages()
 {
+    m_skillWheelGameActionHandler.reset();
+    m_bossDifficultySelectionProtocolMessageHandler.reset();
+    m_taskboardProtocolMessageHandler.reset();
+    m_skillWheelProtocolMessageHandler.reset();
+    m_taskboardShopStorage.reset();
+    m_taskboardWeeklyTasksStorage.reset();
+    m_taskboardBountyTasksStorage.reset();
+    m_taskboardCurrenciesStorage.reset();
     // The handlers before the storages they fill.
     m_bossBestiaryProtocolMessageHandler.reset();
     m_highscoresProtocolMessageHandler.reset();

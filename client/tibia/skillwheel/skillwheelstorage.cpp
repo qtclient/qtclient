@@ -11,8 +11,6 @@ namespace tibia::skillwheel {
 
 namespace {
 
-TSkillWheelStorage* s_liveInstance = nullptr;
-
 bool isSocketed(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel, gemId).has_value(); }
 
 }
@@ -20,16 +18,9 @@ bool isSocketed(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel
 TSkillWheelStorage::TSkillWheelStorage(QObject* parent)
     : cip::tibia::skillwheel::TSkillWheelStorage(parent)
 {
-    s_liveInstance = this;
 }
 
-TSkillWheelStorage::~TSkillWheelStorage()
-{
-    if (s_liveInstance == this)
-        s_liveInstance = nullptr;
-}
-
-TSkillWheelStorage* TSkillWheelStorage::liveInstance() { return s_liveInstance; }
+TSkillWheelStorage::~TSkillWheelStorage() = default;
 
 QString TSkillWheelStorage::configurationName() const { return QStringLiteral("wheelOfDestiny"); }
 

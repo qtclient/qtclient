@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "qtconnectionmanager.h"
 
 #include "shared/sortedvectorlistmodel.h"
 
@@ -10,6 +11,7 @@
 #include <QPointer>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,6 +22,9 @@ class TSidebarOptions;
 }
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace prey {
 class TPreyStorage;
 }
@@ -111,6 +116,9 @@ public Q_SLOTS:
     void onLevelUpClicked() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
+    /// Host: the bounty and weekly rows follow the session's task board
+    /// storages (until TSidebarWidgetsManager's session connector is ported).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 Q_SIGNALS:
     /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
@@ -145,6 +153,7 @@ private:
     std::vector<std::map<std::string, uint32_t>> m_pendingBounty;
     std::vector<std::map<std::string, uint32_t>> m_pendingWeekly;
     bool m_weeklyActive = true;
+    shared::TQtConnectionManager m_gameSessionConnections;
 };
 
 /// Owns the kill tracker widget while it is open. The sidebar widgets manager
@@ -165,6 +174,8 @@ public:
     /// Saves its options and deletes it.
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+    /// Host: the open widget and the next one follow the session's task board.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 
 Q_SIGNALS:
@@ -176,6 +187,7 @@ private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TKillTrackerWidgetController> m_controller;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

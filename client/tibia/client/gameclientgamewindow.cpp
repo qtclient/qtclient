@@ -92,6 +92,7 @@
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "gamewindow/storedialogcontroller.h"
 #include "gamewindow/taskboarddialogcontroller.h"
+#include "gamewindow/bossdifficultyselectiondialogcontroller.h"
 #include "gamewindow/tutorialhintdialogcontroller.h"
 #include "gamewindow/unjustifiedpointswidgetcontroller.h"
 #include "gamewindow/vipwidgetcontroller.h"
@@ -256,6 +257,8 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TBlessingsDialogController> blessingsDialog;
     std::unique_ptr<gamewindow::TRewardWallDialogController> rewardWallDialog;
     std::unique_ptr<gamewindow::TTaskboardDialogController> taskboardDialog;
+    std::unique_ptr<gamewindow::TSoulSealsDialogController> soulSealsDialog;
+    std::unique_ptr<gamewindow::TBossDifficultySelectionDialogController> bossDifficultySelectionDialog;
     std::unique_ptr<gamewindow::TTutorialShell> tutorialShell;
     std::unique_ptr<gamewindow::TOptionsMenuDialogController> optionsDialog;
     std::unique_ptr<input::TOpenWebsiteGameActionHandler> openWebsiteActions;
@@ -635,6 +638,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>();
     g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>();
     g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
+    g.soulSealsDialog = std::make_unique<gamewindow::TSoulSealsDialogController>();
+    g.bossDifficultySelectionDialog = std::make_unique<gamewindow::TBossDifficultySelectionDialogController>();
     g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>();
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
     if (gamewindow::TButtonBarController* buttonBar = sidebarPanels->buttonBar()) {
@@ -824,6 +829,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.taskboardDialog.get());
     publishToRouter(g.skillWheel->dialog());
     publishToRouter(g.skillWheel->actions());
+    publishToRouter(g.exaltationStorage.get());
+    publishToRouter(g.dailyRewardActions.get());
     publishToRouter(g.analyserStorages.get());
     publishToRouter(g.analyserWidgets.get());
     // The engine's text copy controller outlives the game windows.
@@ -1002,7 +1009,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                     connect(session->storeProtocolMessageHandler().get(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged,
                             premiumPanel, &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
             }
-            g.skillWheel->setSessionPremium(account().session.isPremium);
+            if (game::TGameserverGameSession* live = session())
+                live->skillWheelGameActionHandler()->setSessionPremium(account().session.isPremium);
             g.containers->setSidebarOptions(sidebarOptions());
             g.containers->onLoginRampUpFinished();
             g.sidebarWidgets->onLoginRampUpFinished();
@@ -1095,6 +1103,9 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             session->itemTrackingStorage()->setChatStorage(&g.chat->storage());
         if (g.sidebarWidgets)
             g.sidebarWidgets->connectToGameSession(GameSession);
+        // Host: the kill tracker's task rows (CipSoft: TSidebarWidgetsManager's connector).
+        if (g.preyWidget)
+            g.preyWidget->connectToGameSession(GameSession);
         if (g.sidebarPanels)
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
@@ -1142,6 +1153,10 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             // Host: the Cyclopedia's houses and map pages draw the session's light.
             g.informationDialogs->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
         }
+        if (g.taskboardDialog)
+            g.taskboardDialog->connectToGameSession(GameSession);
+        if (g.soulSealsDialog)
+            g.soulSealsDialog->connectToGameSession(GameSession);
         if (g.stashDialog)
             g.stashDialog->connectToGameSession(GameSession);
         m_predictor->connectToGameSession(GameSession);
@@ -1152,9 +1167,22 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.exaltationForgeDialog->connectToGameSession(GameSession);
         if (g.storeBalance)
             g.storeBalance->connectToGameSession(GameSession);
+        if (g.skillWheel)
+            g.skillWheel->connectToGameSession(GameSession);
+        if (g.weaponProficiencyShapeDialog)
+            g.weaponProficiencyShapeDialog->connectToGameSession(GameSession);
+        if (g.weaponProficiencyReshapeDialog)
+            g.weaponProficiencyReshapeDialog->connectToGameSession(GameSession);
     }
     if (m_soundController)
         m_soundController->connectToGameSession(GameSession);
+    if (m_gameWindow) {
+        TGameWindow& g = *m_gameWindow;
+        if (g.bossDifficultySelectionDialog)
+            g.bossDifficultySelectionDialog->connectToGameSession(GameSession);
+        if (g.proficiencyStorage)
+            g.proficiencyStorage->clear();
+    }
 }
 
 void TGameClient::onGameSessionDisconnected()
