@@ -94,8 +94,6 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// OPEN_HIGHSCORES_DIALOG: shows the dialog and asks for the own character's page.
     void openDialog();
-    /// Host: the session ended.
-    void clear();
 
     QStringList availableWorlds() const override;
     QStringList availableBattlEyeTypes() const override;

@@ -16,6 +16,9 @@ class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace input {
 class IGameAction;
 }
@@ -71,21 +74,29 @@ public:
     /// has left its sidebar (the controller saves its widget options and is
     /// deleted); `current` is the widget while it is open; `discard`, when
     /// given, deletes the controller without saving its widget options (CIP
-    /// closes every widget that way when the session changes).
+    /// closes every widget that way when the session changes);
+    /// `connectToGameSession`, when given, is the widget manager's connector.
     struct WidgetHooks
     {
         std::function<TSidebarWidget*()> open;
         std::function<void()> close;
         std::function<TSidebarWidget*()> current;
         std::function<void()> discard = {};
+        std::function<void(const std::shared_ptr<game::IGameSession>&)> connectToGameSession = {};
     };
 
-    /// Hooks for a qtclient widget manager with open(options) / close(save) / current().
+    /// Hooks for a qtclient widget manager with open(options) / close(save) / current(),
+    /// and its connectToGameSession(session) when it has one.
     template <class Manager, class Open>
     static WidgetHooks hooksFor(Manager& manager, Open open)
     {
-        return { std::move(open), [&manager] { manager.close(true); }, [&manager] { return manager.current(); },
-                 [&manager] { manager.close(false); } };
+        WidgetHooks hooks{ std::move(open), [&manager] { manager.close(true); }, [&manager] { return manager.current(); },
+                           [&manager] { manager.close(false); } };
+        if constexpr (requires { manager.connectToGameSession(std::shared_ptr<game::IGameSession>{}); })
+            hooks.connectToGameSession = [&manager](const std::shared_ptr<game::IGameSession>& GameSession) {
+                manager.connectToGameSession(GameSession);
+            };
+        return hooks;
     }
 
     TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
@@ -94,6 +105,8 @@ public:
     /// The character's options; null while no character is in the world
     /// (every widget closes).
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP connector: every widget manager connects to the session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void setContainerStorage(TContainerStorageController* containers);
     void setControlScheme(int controlScheme);
     void onLoginRampUpFinished();

@@ -1,5 +1,7 @@
 #include "housesinfodialogcontroller.h"
 
+#include "game/gamesessionbase.h"
+
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 
@@ -410,7 +412,6 @@ THousSortOption::THousSortOption(const QString& text, const int order, QObject* 
 
 THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::THousesInfoDialogController(parent)
-    , m_storage(new cyclopedia::THousesStorage(this))
     , m_proxy(new THousesSortProxyModel(this))
     , m_resultDialog(new TMessageDialogController(this))
     , m_confirmDialog(new TMessageDialogController(this))
@@ -463,18 +464,39 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
         new THousSortOption(qtTrId("houses_sort_by_auction_end"), 4, this),
     };
 
-    connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this, &THousesInfoDialogController::onHouseInformationChanged);
-    connect(m_storage, &cyclopedia::THousesStorage::characterHousesInfoChanged, this,
-            &THousesInfoDialogController::onCharacterHousesInfoChanged);
-    connect(m_storage, &cyclopedia::THousesStorage::housesLimitsChanged, this, &THousesInfoDialogController::onHousesLimitsChanged);
-    // The house data messages fill this storage; their action results come to this dialog.
-    cyclopedia::TCyclopediaProtocolMessageHandler::setHousesStorage(m_storage);
-    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
-            &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
-            [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
-                onRequestHouseActionResultDialog(houseId, action, errorCode, hasBeenOutbidden);
-            });
-    connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
+}
+
+THousesInfoDialogController::~THousesInfoDialogController()
+{
+    connectToGameSession(nullptr);
+    clearFilterModels();
+}
+
+void THousesInfoDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->housesStorage() : nullptr;
+    // Host: the Cyclopedia map's house entrances follow this storage's houses.
+    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get());
+    if (!m_storage)
+        return;
+    cyclopedia::THousesStorage* storage = m_storage.get();
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
+                                           &THousesInfoDialogController::onHouseInformationChanged));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::characterHousesInfoChanged, this,
+                                           &THousesInfoDialogController::onCharacterHousesInfoChanged));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::housesLimitsChanged, this,
+                                           &THousesInfoDialogController::onHousesLimitsChanged));
+    // The house action results of the session's handler come to this dialog.
+    m_sessionConnections.push_back(connect(session->cyclopediaProtocolMessageHandler().get(),
+                                           &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
+                                           [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
+                                               onRequestHouseActionResultDialog(houseId, action, errorCode, hasBeenOutbidden);
+                                           }));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
         // The towns, "Own Houses" first.
         QStringList towns = m_storage->towns();
         std::sort(towns.begin(), towns.end(), [](const QString& a, const QString& b) { return a.compare(b, Qt::CaseInsensitive) < 0; });
@@ -483,20 +505,12 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
             m_townFilterModel = towns;
             Q_EMIT staticDataChanged();
         }
-    });
-    // Host: the Cyclopedia map's house entrances follow this storage's houses.
-    connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
-            [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage); });
-    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage);
+    }));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
+                                           [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get()); }));
     onHouseInformationChanged();
-}
-
-THousesInfoDialogController::~THousesInfoDialogController()
-{
-    disconnect(m_storage, nullptr, this, nullptr);
-    cyclopedia::TCyclopediaProtocolMessageHandler::setHousesStorage(nullptr);
-    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(nullptr);
-    clearFilterModels();
+    onCharacterHousesInfoChanged();
+    onHousesLimitsChanged();
 }
 
 void THousesInfoDialogController::clearFilterModels()
@@ -617,25 +631,40 @@ void THousesInfoDialogController::showDialogTab()
 void THousesInfoDialogController::hideDialogTab()
 {
     m_proxy->clearFilters();
-    m_storage->reset();
+    if (m_storage)
+        m_storage->reset();
     m_currentHouseId = 0;
     Q_EMIT currentHouseIdChanged();
 }
 
 void THousesInfoDialogController::onHouseInformationChanged()
 {
+    if (!m_storage)
+        return;
     m_proxy->changeFilter([this] { m_model->setHouses(m_storage->houses()); });
     ensureTownAndHouseSelection();
     Q_EMIT currentHouseIdChanged();
 }
 
-void THousesInfoDialogController::onCharacterHousesInfoChanged() { m_model->setCharacterInfo(m_storage->characterInfo()); }
+void THousesInfoDialogController::onCharacterHousesInfoChanged()
+{
+    if (m_storage)
+        m_model->setCharacterInfo(m_storage->characterInfo());
+}
 
-void THousesInfoDialogController::onHousesLimitsChanged() { m_model->setLimits(m_storage->limits()); }
+void THousesInfoDialogController::onHousesLimitsChanged()
+{
+    if (m_storage)
+        m_model->setLimits(m_storage->limits());
+}
 
 void THousesInfoDialogController::requestDynamicDataForTown() { m_townRequestTimer.start(); }
 
-void THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout() { m_storage->requestTown(m_proxy->townFilter()); }
+void THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout()
+{
+    if (m_storage)
+        m_storage->requestTown(m_proxy->townFilter());
+}
 
 void THousesInfoDialogController::setTownFilter(const QString& Town)
 {
@@ -651,7 +680,8 @@ void THousesInfoDialogController::setSortOrder(const int SortOrder) { m_proxy->s
 
 void THousesInfoDialogController::refresh()
 {
-    m_storage->reset();
+    if (m_storage)
+        m_storage->reset();
     m_townRequestTimer.start();
 }
 
@@ -688,7 +718,7 @@ void THousesInfoDialogController::updateHouseLayers(const uint houseId)
 /// CIP: OPEN_CYCLOPEDIA's map tab at the house.
 void THousesInfoDialogController::showOnCyclopediaMap()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     auto action = std::make_shared<input::TGameActionOpenCyclopedia>(4);
@@ -719,7 +749,7 @@ void THousesInfoDialogController::ensureTownAndHouseSelection()
     const uint firstId = first.data(THousesModel::HouseId).toUInt();
     if (firstId == 0)
         return;
-    const bool currentMissing = m_currentHouseId == 0 || !m_storage->house(m_currentHouseId);
+    const bool currentMissing = m_currentHouseId == 0 || !m_storage || !m_storage->house(m_currentHouseId);
     if (currentMissing)
         selectHouse(firstId);
     else
@@ -730,7 +760,7 @@ void THousesInfoDialogController::centerHouse() { onHouseViewportChanged(); }
 
 void THousesInfoDialogController::onHouseViewportChanged()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house || !m_houseCamera)
         return;
     if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
@@ -760,7 +790,7 @@ void THousesInfoDialogController::confirmAction(const int action, const QString&
 
 void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -770,7 +800,7 @@ void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 
 void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -780,7 +810,7 @@ void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
 
 void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, const QString& NewOwner, const qulonglong Price)
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -793,7 +823,7 @@ void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, con
 
 void THousesInfoDialogController::onActionCancelMoveOutClicked()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -802,7 +832,7 @@ void THousesInfoDialogController::onActionCancelMoveOutClicked()
 
 void THousesInfoDialogController::onActionCancelTransferClicked()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -812,7 +842,7 @@ void THousesInfoDialogController::onActionCancelTransferClicked()
 
 void THousesInfoDialogController::onActionAcceptTransferClicked()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -822,7 +852,7 @@ void THousesInfoDialogController::onActionAcceptTransferClicked()
 
 void THousesInfoDialogController::onActionRejectTransferClicked()
 {
-    const THouseInformation* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -831,7 +861,7 @@ void THousesInfoDialogController::onActionRejectTransferClicked()
 
 void THousesInfoDialogController::onHouseActionConfirmed()
 {
-    switch (m_pendingAction) {
+    switch (m_storage ? m_pendingAction : -1) {
         case 1: m_storage->bid(m_pendingHouseId, m_pendingAmount); break;
         case 2: m_storage->moveOut(m_pendingHouseId, m_pendingTimestamp); break;
         case 3: m_storage->transfer(m_pendingHouseId, m_pendingTimestamp, m_pendingName, m_pendingAmount); break;
@@ -870,8 +900,9 @@ void THousesInfoDialogController::onRequestHouseActionResultDialog(const quint32
         } else if (action == 6 || action == 7) {
             reason = incomingTransferReason(errorCode);
         } else if (action == 1) {
-            const THouseInformation* house = m_storage->house(houseId);
-            reason = bidReason(errorCode, m_storage->characterInfo(), m_storage->limits(), house && house->isGuildHall);
+            const THouseInformation* house = m_storage ? m_storage->house(houseId) : nullptr;
+            reason = m_storage ? bidReason(errorCode, m_storage->characterInfo(), m_storage->limits(), house && house->isGuildHall)
+                               : qtTrId("error_code_internal");
         } else {
             reason = qtTrId("error_code_internal");
         }

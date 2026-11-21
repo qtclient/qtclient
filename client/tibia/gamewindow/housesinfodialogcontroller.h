@@ -11,9 +11,13 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace worldmap {
 class TAmbientLightStorage;
 }
@@ -148,6 +152,10 @@ public:
     explicit THousesInfoDialogController(QObject* parent = nullptr);
     ~THousesInfoDialogController() override;
 
+    /// CIP connector: the session's houses storage and the action results of
+    /// its Cyclopedia handler.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
     /// The page left for another tab: the filters, the house and the preview camera.
     TCyclopediaDialogContext captureContext() const;
     /// Another tab's context throws.
@@ -206,7 +214,8 @@ private:
     /// Pick a town (if none) and the first house row so the 3D preview is not blank.
     void ensureTownAndHouseSelection();
 
-    cyclopedia::THousesStorage* m_storage;
+    std::shared_ptr<cyclopedia::THousesStorage> m_storage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     QPointer<cip::tibia::qmlcomponents::TWorldMapQuickItem> m_houseWorldMap;
     QPointer<cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType> m_houseCamera;
     THousesModel* m_model;

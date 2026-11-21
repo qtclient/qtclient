@@ -12,9 +12,8 @@ QString bossRaritySource(const int category)
     }
 }
 
-TAssignableBossModel::TAssignableBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent)
+TAssignableBossModel::TAssignableBossModel(QObject* parent)
     : cip::TAssignableBossModel(parent)
-    , m_storage(storage)
 {}
 
 int TAssignableBossModel::rowCount(const QModelIndex& parent) const
@@ -31,7 +30,7 @@ QVariant TAssignableBossModel::data(const QModelIndex& index, const int role) co
         case BossRaceId: return boss.raceId;
         case Name: return boss.name;
         case BossRaritySource: return bossRaritySource(boss.category);
-        case BossRarityTooltip: return m_storage.rarityTooltip(boss.category);
+        case BossRarityTooltip: return m_storage ? m_storage->rarityTooltip(boss.category) : QString();
         default: return {};
     }
 }
@@ -72,9 +71,9 @@ void TAssignableBossModel::refreshRarityTooltips()
         Q_EMIT dataChanged(index(0), index(rowCount() - 1), { BossRarityTooltip });
 }
 
-TAssignableBossSortProxyModel::TAssignableBossSortProxyModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent)
+TAssignableBossSortProxyModel::TAssignableBossSortProxyModel(QObject* parent)
     : cip::TAssignableBossSortProxyModel(parent)
-    , m_source(new TAssignableBossModel(storage, this))
+    , m_source(new TAssignableBossModel(this))
 {
     m_raceIDRoleEnumValue = TAssignableBossModel::BossRaceId;
     setSourceModel(m_source);

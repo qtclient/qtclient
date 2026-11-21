@@ -11,28 +11,14 @@
 
 namespace tibia::bossbestiary {
 
-namespace {
-
-TBossBestiaryProtocolMessageHandler* g_bossBestiaryProtocolMessageHandler = nullptr;
-
-}
-
-void ownProductSurface(QObject* parent)
+TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler(std::shared_ptr<cyclopedia::TMonsterRaceStorage> pMonsterRaceStorage,
+                                                                         std::shared_ptr<TBossTrackerStorage> pBossTrackerStorage,
+                                                                         std::shared_ptr<TBosstiaryStorage> pBosstiaryStorage, QObject* parent)
+    : cip::tibia::bossbestiary::TBossBestiaryProtocolMessageHandler(parent)
+    , m_pMonsterRaceStorage(std::move(pMonsterRaceStorage))
+    , m_pBossTrackerStorage(std::move(pBossTrackerStorage))
+    , m_pBosstiaryStorage(std::move(pBosstiaryStorage))
 {
-    (void)parent;
-    (void)TBossBestiaryProtocolMessageHandler::instance();
-}
-
-TBossBestiaryProtocolMessageHandler* TBossBestiaryProtocolMessageHandler::instance()
-{
-    if (!g_bossBestiaryProtocolMessageHandler)
-        g_bossBestiaryProtocolMessageHandler = new TBossBestiaryProtocolMessageHandler(QCoreApplication::instance());
-    return g_bossBestiaryProtocolMessageHandler;
-}
-
-void TBossBestiaryProtocolMessageHandler::setBosstiaryStorage(TBosstiaryStorage* const pBosstiaryStorage)
-{
-    instance()->m_pBosstiaryStorage = pBosstiaryStorage;
 }
 
 } // namespace tibia::bossbestiary
@@ -41,9 +27,9 @@ namespace tibia::bossbestiary {
 
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData& BosstiaryStaticDataMessage)
 {
-    TBosstiaryStorage* storage = instance()->m_pBosstiaryStorage;
+    TBosstiaryStorage* storage = m_pBosstiaryStorage.get();
     const auto& m = BosstiaryStaticDataMessage;
-    if (!storage || m.kills_for_stage_size() < 9 || m.points_for_stage_size() < 9)
+    if (m.kills_for_stage_size() < 9 || m.points_for_stage_size() < 9)
         return;
     // Three stages a rarity: bane, archfoe, nemesis.
     TBossStageValues kills{};
@@ -59,9 +45,7 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage(const
 void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::protobuf::protocol::GameserverMessageBossSlots& BossSlotsMessage)
 {
     using namespace ::tibia::protobuf::protocol;
-    TBosstiaryStorage* storage = instance()->m_pBosstiaryStorage;
-    if (!storage)
-        return;
+    TBosstiaryStorage* storage = m_pBosstiaryStorage.get();
     const auto& m = BossSlotsMessage;
     // A locked slot carries the boss points that unlock it where an unlocked one names its boss.
     const auto slotOf = [](const ProtocolBossSlot& protocolSlot) {
@@ -113,14 +97,13 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage(const ::tibia::
         bosses.push_back({ .raceId = b.race_id(), .category = static_cast<uint8_t>(b.category()), .kills = b.kills(),
                            .isTrackerActived = static_cast<uint8_t>(b.tracked() ? 1 : 0) });
     }
-    if (TBosstiaryStorage* storage = instance()->m_pBosstiaryStorage)
-        storage->setEntries(std::move(entries));
+    m_pBosstiaryStorage->setEntries(std::move(entries));
     tibia::game::processBosstiaryInfo(bosses);
 }
 
 void TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage)
 {
-    Q_EMIT instance()->requestBosstiaryButtonHighlight(static_cast<quint16>(BosstiaryHighlightMessage.boss_id()));
+    Q_EMIT requestBosstiaryButtonHighlight(static_cast<quint16>(BosstiaryHighlightMessage.boss_id()));
 }
 
 void TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage)

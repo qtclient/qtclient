@@ -13,10 +13,14 @@
 #include <QTimer>
 
 #include <map>
+#include <memory>
 #include <variant>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace cyclopedia {
 class TCyclopediaMapStorage;
 class TCyclopediaMapCharacterConfigurationStorage;
@@ -165,14 +169,18 @@ public:
     explicit TCyclopediaMapDialogController(QObject* parent = nullptr);
     ~TCyclopediaMapDialogController() override;
 
+    /// CIP connector: the session's map storage and the character's map
+    /// configuration; nothing is selected.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// mod: the instance whose subarea the tab selects when it opens with
     /// nothing selected.
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
-    /// The map storage the Cyclopedia protocol handler fills.
-    cyclopedia::TCyclopediaMapStorage* storage() const { return m_storage; }
-    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration; }
+    /// The session's map storage the Cyclopedia protocol handler fills.
+    cyclopedia::TCyclopediaMapStorage* storage() const { return m_storage.get(); }
+    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* characterConfiguration() const { return m_configuration.get(); }
     /// Centers the map on a field; a NaN scale keeps the current one. Nothing
     /// without the map's QML item.
     void centerAtWorldMapCoordinate(const Position& position, float scale);
@@ -279,8 +287,9 @@ private:
     /// player and the map are on or above the ground, else the map's.
     int displayedFloor() const;
 
-    cyclopedia::TCyclopediaMapCharacterConfigurationStorage* m_configuration;
-    cyclopedia::TCyclopediaMapStorage* m_storage;
+    std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_configuration;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStorage> m_storage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     TMessageDialogController* m_confirmDialog;
     cyclopedia::TCyclopediaMapGameActionProvider m_provider;
     QPointer<qmlcomponents::TMinimapRendererQuickItem> m_renderer;

@@ -10,9 +10,13 @@
 #include <QTimer>
 #include <QString>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace bossbestiary {
 class TBossTrackerStorage;
 }
@@ -115,6 +119,8 @@ public:
                                      QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's creature and boss tracker storages.
+    void setStorages(cyclopedia::TCreatureTrackerStorage* creatures, bossbestiary::TBossTrackerStorage* bosses);
 
     QObject* trackedCreatures() const override;
     EWidgetMode widgetMode() const override;
@@ -161,6 +167,7 @@ private:
     EWidgetMode m_mode;
     QPointer<cyclopedia::TCreatureTrackerStorage> m_creatures;
     QPointer<bossbestiary::TBossTrackerStorage> m_bosses;
+    std::vector<QMetaObject::Connection> m_storageConnections;
     TCreatureTrackerSortProxyModel* m_model = nullptr;
     /// Stands in for the sidebar manager's per-frame tick.
     QTimer m_cooldownTimer;
@@ -176,6 +183,8 @@ public:
                                   QObject* parent = nullptr);
     ~TCreatureTrackerWidgetManager() override;
 
+    /// CIP connector: the session's creature and boss tracker storages.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;

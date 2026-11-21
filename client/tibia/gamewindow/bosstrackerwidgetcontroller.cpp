@@ -1,4 +1,5 @@
 #include "bosstrackerwidgetcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -174,16 +175,11 @@ bool TBossTrackerListModel::lessThan(const Row& left, const Row& right) const
 TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem,
                                                            QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
     , m_model(new TBossTrackerListModel(this))
 {
     m_bosses = m_model;
-    if (m_storage) {
-        connect(m_storage, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
-                &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
-    }
     m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch());
-    onBossTrackingEntriesChanged();
+    setStorage(storage);
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
     // CIP: the sidebar widgets' frame update gives the model the time.
     const auto followFrames = [this](QQuickWindow* window) {
@@ -199,6 +195,16 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
         connect(item, &QObject::destroyed, this, &TBossTrackerWidgetController::onWidgetQuickItemDestroyed);
     }
     connect(&m_focus, &TUiFocusManager::focusChanged, this, &TBossTrackerWidgetController::focusChanged);
+}
+
+void TBossTrackerWidgetController::setStorage(bossbestiary::TBossTrackerStorage* const storage)
+{
+    disconnect(m_storageConnection);
+    m_storage = storage;
+    if (m_storage)
+        m_storageConnection = connect(m_storage, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
+                                      &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
+    onBossTrackingEntriesChanged();
 }
 
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
@@ -322,6 +328,14 @@ TBossTrackerWidgetManager::TBossTrackerWidgetManager(bossbestiary::TBossTrackerS
 {}
 
 TBossTrackerWidgetManager::~TBossTrackerWidgetManager() { delete m_controller; }
+
+void TBossTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->bossTrackerStorage().get() : nullptr;
+    if (m_controller)
+        m_controller->setStorage(m_storage);
+}
 
 TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options)
 {

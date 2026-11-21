@@ -15,8 +15,6 @@ namespace tibia::cyclopedia {
 
 namespace {
 
-TCharacterInfoStorage* s_instance = nullptr;
-
 QString text(const std::string& value) { return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size())); }
 
 /// The name of a hireling job (empty for an unknown job).
@@ -111,18 +109,7 @@ TCharacterInfoStorage::TCharacterInfoStorage(QObject* parent)
     , m_achievements(std::make_shared<TAchievementStorage>())
 {}
 
-TCharacterInfoStorage::~TCharacterInfoStorage()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
-
-TCharacterInfoStorage* TCharacterInfoStorage::instance()
-{
-    if (!s_instance)
-        s_instance = new TCharacterInfoStorage(QCoreApplication::instance());
-    return s_instance;
-}
+TCharacterInfoStorage::~TCharacterInfoStorage() = default;
 
 bool TCharacterInfoStorage::hasInfo(const int dataType) const
 {

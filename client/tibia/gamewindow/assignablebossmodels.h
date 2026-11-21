@@ -25,7 +25,10 @@ public:
         BossRarityTooltip,
     };
 
-    TAssignableBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    explicit TAssignableBossModel(QObject* parent = nullptr);
+
+    /// The session's bosstiary storage the rarity tooltips come from; null without a session.
+    void setStorage(const bossbestiary::TBosstiaryStorage* storage) { m_storage = storage; }
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -38,7 +41,7 @@ public:
     void refreshRarityTooltips();
 
 private:
-    const bossbestiary::TBosstiaryStorage& m_storage;
+    const bossbestiary::TBosstiaryStorage* m_storage = nullptr;
     std::vector<bossbestiary::TAssignableBoss> m_bosses;
 };
 
@@ -48,7 +51,7 @@ class TAssignableBossSortProxyModel final : public cip::TAssignableBossSortProxy
     Q_OBJECT
     Q_PROPERTY(int raceIDRoleEnumValue READ raceIDRoleEnumValue CONSTANT)
 public:
-    TAssignableBossSortProxyModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    explicit TAssignableBossSortProxyModel(QObject* parent = nullptr);
 
     TAssignableBossModel* source() const { return m_source; }
 

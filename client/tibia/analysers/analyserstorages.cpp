@@ -1,6 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "game/gamesessionbase.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include <client/staticdata.h>
@@ -187,33 +188,43 @@ void TPartyHuntStorage::clear()
 
 TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
-    , m_gainWaste(TItemPriceStorage::instance())
-    , m_huntingSession(&m_progress)
-    , m_itemTracking(std::make_unique<cyclopedia::TItemTrackingStorage>(TItemPriceStorage::instance()))
     , m_lootBlackWhitelist(std::make_unique<quickloot::TQuickLootBlackWhitelistStorage>())
 {
     s_instance = this;
-    connect(&m_impact, &TImpactStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction);
-    connect(m_itemTracking.get(), &cyclopedia::TItemTrackingStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
         Q_EMIT premiumTimeChanged();
         return std::any{};
     });
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
-        resetAll();
-        m_partyHunt.clear();
-        m_timer.start();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_timer.stop();
-        m_hasCharacter = false;
-        Q_EMIT configurationLoadedForCharacter();
-    });
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
-    if (tibia::game::isOnline())
-        m_timer.start();
+}
+
+void TAnalyserStorages::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    // The character's configuration is read again for the next session's character.
+    if (m_hasCharacter) {
+        m_hasCharacter = false;
+        Q_EMIT configurationLoadedForCharacter();
+    }
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (!session) {
+        m_timer.stop();
+        return;
+    }
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    m_progress = session->progressStorage();
+    m_gainWaste = session->gainWasteStorage();
+    m_impact = session->impactStorage();
+    m_damageInput = session->damageInputStorage();
+    m_huntingSession = session->huntingSessionStorage();
+    m_partyHunt = session->partyHuntStorage();
+    m_itemTracking = session->itemTrackingStorage();
+    m_sessionConnections.push_back(connect(m_impact.get(), &TImpactStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction));
+    m_sessionConnections.push_back(connect(m_itemTracking.get(), &cyclopedia::TItemTrackingStorage::publishGameAction, this,
+                                           &TAnalyserStorages::publishGameAction));
+    m_timer.start();
 }
 
 TAnalyserStorages::~TAnalyserStorages()
@@ -233,12 +244,14 @@ qint64 TAnalyserStorages::nowMs()
 
 void TAnalyserStorages::tick()
 {
+    if (!m_progress)
+        return;
     const qint64 now = nowMs();
-    m_huntingSession.tick(now);
-    m_progress.tick(now);
-    m_gainWaste.tick(now);
-    m_impact.tick(now);
-    m_damageInput.update(now);
+    m_huntingSession->tick(now);
+    m_progress->tick(now);
+    m_gainWaste->tick(now);
+    m_impact->tick(now);
+    m_damageInput->update(now);
     m_itemTracking->update(now);
 }
 
@@ -250,12 +263,14 @@ void TAnalyserStorages::onCharacterConfigurationLoaded()
 
 void TAnalyserStorages::resetAll()
 {
-    m_gainWaste.reset(TGainWasteStorage::Loot);
-    m_gainWaste.reset(TGainWasteStorage::Waste);
-    m_impact.reset();
-    m_damageInput.reset();
-    m_huntingSession.reset();
-    m_progress.reset();
+    if (!m_progress)
+        return;
+    m_gainWaste->reset(TGainWasteStorage::Loot);
+    m_gainWaste->reset(TGainWasteStorage::Waste);
+    m_impact->reset();
+    m_damageInput->reset();
+    m_huntingSession->reset();
+    m_progress->reset();
     Q_EMIT sessionReset();
 }
 

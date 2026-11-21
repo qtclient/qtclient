@@ -115,15 +115,6 @@ THousesStorage::THousesStorage(QObject* parent)
     : QObject(parent)
 {
     loadStaticHouses();
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
-        loadStaticHouses();
-        m_characterInfo = {};
-        m_limits = {};
-        Q_EMIT houseInformationChanged();
-        Q_EMIT characterHousesInfoChanged();
-        Q_EMIT housesLimitsChanged();
-    });
 }
 
 void THousesStorage::applyStaticHouseData(const quint32 excludedUntil, const std::vector<uint8_t>& counts,

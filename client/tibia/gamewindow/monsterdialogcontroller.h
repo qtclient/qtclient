@@ -11,12 +11,17 @@
 #include <QPointer>
 #include <QString>
 
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace tibia {
 namespace cyclopedia {
 class TCreatureTrackerStorage;
+class TMonsterRaceStorage;
+}
+namespace game {
+class IGameSession;
 }
 namespace gamewindow {
 
@@ -112,9 +117,10 @@ public:
     /// Shows the context's view again, asking the server for it; another
     /// tab's context throws.
     void restoreContext(const TCyclopediaDialogContext& CyclopediaContext);
-    /// The session's creature tracker storage: whether the shown race is
-    /// tracked and whether more can be.
-    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
+    /// CIP connector: the session's monster race storage (the classifications
+    /// and races) and creature tracker storage (whether the shown race is
+    /// tracked and whether more can be).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool isMonsterTracked() const override;
     bool canTrackMoreMonsters() const override;
@@ -164,8 +170,9 @@ private:
     TQmlMonsterRace* singleRace() const;
 
     cyclopedia::TBestiaryStorage& m_storage;
-    QPointer<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
-    std::vector<QMetaObject::Connection> m_creatureTrackerConnections;
+    std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
+    std::shared_ptr<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<client::gamecore::Hook> m_hooks;
     TMessageDialogController* m_confirmDialog;
     bool m_shown = false;

@@ -4,6 +4,7 @@
 #include "skillwheel/skillwheelciptypes.h"
 
 #include "cyclopedia/characterinfostorage.h"
+#include "game/gamesessionbase.h"
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
 #include "cyclopedia/playerdefencestatsprovider.h"
@@ -365,8 +366,6 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TMainCharacterChangeDialogController(this);
     new TMarketCoinTransactionDetailsDialogController(this);
     hookEvents();
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TCharacterInfoDialogController::connectToGameSession);
 }
 
 TCharacterInfoDialogController::~TCharacterInfoDialogController() = default;
@@ -379,15 +378,28 @@ TCharacterInfoDialogController::EDialogCategory TCharacterInfoDialogController::
     return Category::GeneralStats;
 }
 
-bool TCharacterInfoDialogController::dataIsLoading() const { return !cyclopedia::TCharacterInfoStorage::instance()->hasInfo(m_dataType); }
+bool TCharacterInfoDialogController::dataIsLoading() const
+{
+    return !characterInfoStorage() || !characterInfoStorage()->hasInfo(m_dataType);
+}
 
 void TCharacterInfoDialogController::showDialogTab() { showDialogTab(m_dataType); }
 
-void TCharacterInfoDialogController::connectToGameSession()
+void TCharacterInfoDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    // The session's achievements and the stats' player come with the new
-    // session (qtclient reads them from the live session).
+    if (m_characterInfoStorage)
+        disconnect(m_characterInfoStorage.get(), nullptr, this, nullptr);
     m_dataType = Inspection;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_characterInfoStorage = session ? session->characterInfoStorage() : nullptr;
+    if (!m_characterInfoStorage)
+        return;
+    connect(m_characterInfoStorage.get(), &cyclopedia::TCharacterInfoStorage::infoUpdated, this, [this](const int dataType) {
+        if (m_shown)
+            onCharacterInfoUpdated(dataType);
+    });
+    connect(m_characterInfoStorage.get(), &cyclopedia::TCharacterInfoStorage::errorReceived, this,
+            &TCharacterInfoDialogController::onErrorReceived);
 }
 
 void TCharacterInfoDialogController::showDialogTab(const int dataType)
@@ -395,7 +407,8 @@ void TCharacterInfoDialogController::showDialogTab(const int dataType)
     // The records are fetched anew each time the page opens, the base
     // information first.
     m_shown = true;
-    cyclopedia::TCharacterInfoStorage::instance()->clearAll();
+    if (cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
+        storage->clearAll();
     tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
     request(dataType, true);
 }
@@ -403,7 +416,8 @@ void TCharacterInfoDialogController::showDialogTab(const int dataType)
 void TCharacterInfoDialogController::hideDialogTab()
 {
     m_shown = false;
-    cyclopedia::TCharacterInfoStorage::instance()->clearAll();
+    if (cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
+        storage->clearAll();
     if (m_outfitDialog) {
         m_outfitDialog->deleteLater();
         m_outfitDialog = nullptr;
@@ -427,7 +441,7 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
     if (!force && dataType == m_dataType)
         return;
     m_dataType = dataType;
-    if (cyclopedia::TCharacterInfoStorage::instance()->hasInfo(dataType)) {
+    if (characterInfoStorage() && characterInfoStorage()->hasInfo(dataType)) {
         onCharacterInfoUpdated(dataType);
     } else {
         sendRequest(dataType, 1);
@@ -441,7 +455,7 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
 
 TCyclopediaDialogContext TCharacterInfoDialogController::captureContext() const
 {
-    return TCharacterInfoCyclopediaContext{ m_dataType, cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType) };
+    return TCharacterInfoCyclopediaContext{ m_dataType, characterInfoStorage() ? characterInfoStorage()->currentPage(m_dataType) : 1 };
 }
 
 void TCharacterInfoDialogController::restoreContext(const TCyclopediaDialogContext& CyclopediaContext)
@@ -556,12 +570,12 @@ void TCharacterInfoDialogController::onErrorMessageOkClicked()
 
 int TCharacterInfoDialogController::currentPage() const
 {
-    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType));
+    return characterInfoStorage() ? static_cast<int>(characterInfoStorage()->currentPage(m_dataType)) : 1;
 }
 
 int TCharacterInfoDialogController::numberOfPages() const
 {
-    return static_cast<int>(cyclopedia::TCharacterInfoStorage::instance()->pageCount(m_dataType));
+    return characterInfoStorage() ? static_cast<int>(characterInfoStorage()->pageCount(m_dataType)) : 1;
 }
 
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
@@ -582,14 +596,18 @@ void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 
 void TCharacterInfoDialogController::previousPaginatedPage()
 {
-    const qint64 page = cyclopedia::TCharacterInfoStorage::instance()->currentPage(m_dataType);
+    if (!characterInfoStorage())
+        return;
+    const qint64 page = characterInfoStorage()->currentPage(m_dataType);
     if (page > 1)
         sendRequest(m_dataType, static_cast<int>(page - 1));
 }
 
 void TCharacterInfoDialogController::nextPaginatedPage()
 {
-    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
+    const cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage();
+    if (!storage)
+        return;
     const qint64 page = storage->currentPage(m_dataType);
     if (page < storage->pageCount(m_dataType))
         sendRequest(m_dataType, static_cast<int>(page + 1));
@@ -642,7 +660,7 @@ void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const 
     QList<Entry> outfits;
     QList<Entry> mounts;
     QList<Entry> summons;
-    if (const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins()) {
+    if (const auto appearances = characterInfoStorage() ? characterInfoStorage()->outfitsMountsSummonSkins() : nullptr) {
         for (const auto& outfit : appearances->outfits) {
             if (IsOutfit && outfit.lookType == OutfitID)
                 current.setAddons(static_cast<uint8_t>(outfit.addons));
@@ -715,7 +733,9 @@ void TCharacterInfoDialogController::replace(QList<QObject*>& member, QList<QObj
 /// CIP: the base information object (name, vocation, level, outfit, title).
 void TCharacterInfoDialogController::updateBaseInfo()
 {
-    const cyclopedia::TCharacterBaseInformation information = cyclopedia::TCharacterInfoStorage::instance()->baseInformation();
+    if (!characterInfoStorage())
+        return;
+    const cyclopedia::TCharacterBaseInformation information = characterInfoStorage()->baseInformation();
     replace(m_characterBaseInfo, static_cast<QObject*>(new TCharacterBaseQmlInfo(information, this)));
     Q_EMIT dataModelChanged();
 }
@@ -723,7 +743,7 @@ void TCharacterInfoDialogController::updateBaseInfo()
 /// CIP: the offence stats object over the storage's provider.
 void TCharacterInfoDialogController::updateOffenceStats()
 {
-    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->offenceStats())
+    if (auto provider = characterInfoStorage() ? characterInfoStorage()->offenceStats() : nullptr)
         replace(m_offenceStats, static_cast<QObject*>(new cyclopedia::TOffenceStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
@@ -731,7 +751,7 @@ void TCharacterInfoDialogController::updateOffenceStats()
 /// CIP: the defence stats object over the storage's provider.
 void TCharacterInfoDialogController::updateDefenceStats()
 {
-    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->defenceStats())
+    if (auto provider = characterInfoStorage() ? characterInfoStorage()->defenceStats() : nullptr)
         replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
@@ -739,7 +759,7 @@ void TCharacterInfoDialogController::updateDefenceStats()
 /// CIP: the misc stats object over the storage's provider and the live skill stats.
 void TCharacterInfoDialogController::updateMiscStats()
 {
-    if (auto provider = cyclopedia::TCharacterInfoStorage::instance()->miscStats())
+    if (auto provider = characterInfoStorage() ? characterInfoStorage()->miscStats() : nullptr)
         replace(m_miscStats, static_cast<QObject*>(new cyclopedia::TMiscStatsQmlData(std::move(provider), this)));
     Q_EMIT dataModelChanged();
 }
@@ -748,8 +768,9 @@ void TCharacterInfoDialogController::updateMiscStats()
 void TCharacterInfoDialogController::updateDeaths()
 {
     QList<QObject*> deaths;
-    for (const RecentDeathEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentDeaths())
-        deaths.append(new TDeathQmlData(entry, this));
+    if (const cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
+        for (const RecentDeathEntry& entry : storage->recentDeaths())
+            deaths.append(new TDeathQmlData(entry, this));
     replace(m_characterDeaths, std::move(deaths));
     Q_EMIT dataModelChanged();
 }
@@ -758,8 +779,9 @@ void TCharacterInfoDialogController::updateDeaths()
 void TCharacterInfoDialogController::updateKills()
 {
     QList<QObject*> kills;
-    for (const RecentPvPKillEntry& entry : cyclopedia::TCharacterInfoStorage::instance()->recentPvpKills())
-        kills.append(new TKillQmlData(entry, this));
+    if (const cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage())
+        for (const RecentPvPKillEntry& entry : storage->recentPvpKills())
+            kills.append(new TKillQmlData(entry, this));
     replace(m_characterKills, std::move(kills));
     Q_EMIT dataModelChanged();
 }
@@ -767,7 +789,7 @@ void TCharacterInfoDialogController::updateKills()
 /// CIP: the store purchases object, built from the summary as it is.
 void TCharacterInfoDialogController::updateStorePurchases()
 {
-    if (const auto summary = cyclopedia::TCharacterInfoStorage::instance()->storeSummary())
+    if (const auto summary = characterInfoStorage() ? characterInfoStorage()->storeSummary() : nullptr)
         replace(m_storePurchases, static_cast<QObject*>(new TStorePurchasesQmlData(*summary, this)));
     Q_EMIT dataModelChanged();
 }
@@ -775,7 +797,7 @@ void TCharacterInfoDialogController::updateStorePurchases()
 /// The general stats page's account infos, from the badges record.
 void TCharacterInfoDialogController::updateAccountInfos()
 {
-    if (const auto infos = cyclopedia::TCharacterInfoStorage::instance()->accountInfos())
+    if (const auto infos = characterInfoStorage() ? characterInfoStorage()->accountInfos() : nullptr)
         replace(m_accountInfos, static_cast<QObject*>(new TAccountInfoQmlData(*infos, this)));
     Q_EMIT dataModelChanged();
 }
@@ -784,8 +806,8 @@ void TCharacterInfoDialogController::updateAccountInfos()
 /// when the storage holds an inspection.
 void TCharacterInfoDialogController::updateInspection()
 {
-    const cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
-    if (!storage->hasInfo(Inspection))
+    const cyclopedia::TCharacterInfoStorage* storage = characterInfoStorage();
+    if (!storage || !storage->hasInfo(Inspection))
         return;
     const CyclopediaCharacterInspection inspection = storage->inspection();
     QList<QObject*> objects;
@@ -835,12 +857,6 @@ void TCharacterInfoDialogController::hookEvents()
         Q_EMIT inspectionStateChanged();
         return std::any{};
     });
-    cyclopedia::TCharacterInfoStorage* storage = cyclopedia::TCharacterInfoStorage::instance();
-    connect(storage, &cyclopedia::TCharacterInfoStorage::infoUpdated, this, [this](const int dataType) {
-        if (m_shown)
-            onCharacterInfoUpdated(dataType);
-    });
-    connect(storage, &cyclopedia::TCharacterInfoStorage::errorReceived, this, &TCharacterInfoDialogController::onErrorReceived);
 }
 
 }

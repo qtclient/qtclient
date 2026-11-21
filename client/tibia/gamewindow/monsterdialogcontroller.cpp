@@ -10,6 +10,7 @@
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -61,18 +62,18 @@ QColor outfitColor(const int index)
 
 int pageCount(const size_t entries) { return static_cast<int>(std::ceil(static_cast<double>(entries) / PageSize)); }
 
-/// The monster race storage's classifications and races; none once the
-/// session is gone (the controller going away).
-const std::vector<TMonsterRaceStorage::TMonsterClassificationSummary>& classificationSummary(const bool sessionGone)
+/// The monster race storage's classifications and races; none without a
+/// session (or once the controller goes away).
+const std::vector<TMonsterRaceStorage::TMonsterClassificationSummary>& classificationSummary(const TMonsterRaceStorage* races)
 {
     static const std::vector<TMonsterRaceStorage::TMonsterClassificationSummary> none;
-    return sessionGone ? none : TMonsterRaceStorage::instance()->monsterClassificationSummary();
+    return races ? races->monsterClassificationSummary() : none;
 }
 
-const std::vector<cyclopedia::TMonsterRace>& classificationRaces(const bool sessionGone)
+const std::vector<cyclopedia::TMonsterRace>& classificationRaces(const TMonsterRaceStorage* races)
 {
     static const std::vector<cyclopedia::TMonsterRace> none;
-    return sessionGone ? none : TMonsterRaceStorage::instance()->classificationRaces();
+    return races ? races->classificationRaces() : none;
 }
 
 /// The "monster-classifications" image strip's cells (cell 0: unknown).
@@ -642,10 +643,6 @@ TMonsterDialogController::TMonsterDialogController(TBestiaryStorage& storage, QO
     m_confirmDialog->setYesNoButtons();
     m_confirmDialog->setCloseOnButtonClicked(true);
     connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, &TMonsterDialogController::onConfirmDialogAccepted);
-    TMonsterRaceStorage* races = TMonsterRaceStorage::instance();
-    connect(races, &TMonsterRaceStorage::monsterClassificationSummaryChanged, this,
-            &TMonsterDialogController::onMonsterClassificationSummaryChanged);
-    connect(races, &TMonsterRaceStorage::monsterClassificationMonstersChanged, this, &TMonsterDialogController::onMonsterRacesChanged);
     connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
         if (m_dialogState == SingleMonster)
             rebuildSingleMonster();
@@ -683,19 +680,25 @@ bool TMonsterDialogController::canTrackMoreMonsters() const
     return m_pCreatureTrackerStorage && m_pCreatureTrackerStorage->canTrackMoreMonsters();
 }
 
-void TMonsterDialogController::setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* const pCreatureTrackerStorage)
+void TMonsterDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    for (const QMetaObject::Connection& connection : m_creatureTrackerConnections)
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
-    m_creatureTrackerConnections.clear();
-    m_pCreatureTrackerStorage = pCreatureTrackerStorage;
-    if (pCreatureTrackerStorage) {
-        m_creatureTrackerConnections.push_back(connect(pCreatureTrackerStorage,
-                                                       &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
-                                                       &TMonsterDialogController::qmlIsMonsterTrackedChanged));
-        m_creatureTrackerConnections.push_back(connect(pCreatureTrackerStorage,
-                                                       &cyclopedia::TCreatureTrackerStorage::canTrackMoreMonstersChanged, this,
-                                                       &TMonsterDialogController::qmlCanTrackMoreMonstersChanged));
+    m_sessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_monsterRaceStorage = session ? session->monsterRaceStorage() : nullptr;
+    m_pCreatureTrackerStorage = session ? session->creatureTrackerStorage() : nullptr;
+    if (TMonsterRaceStorage* races = m_monsterRaceStorage.get()) {
+        m_sessionConnections.push_back(connect(races, &TMonsterRaceStorage::monsterClassificationSummaryChanged, this,
+                                               &TMonsterDialogController::onMonsterClassificationSummaryChanged));
+        m_sessionConnections.push_back(connect(races, &TMonsterRaceStorage::monsterClassificationMonstersChanged, this,
+                                               &TMonsterDialogController::onMonsterRacesChanged));
+    }
+    if (cyclopedia::TCreatureTrackerStorage* tracker = m_pCreatureTrackerStorage.get()) {
+        m_sessionConnections.push_back(connect(tracker, &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
+                                               &TMonsterDialogController::qmlIsMonsterTrackedChanged));
+        m_sessionConnections.push_back(connect(tracker, &cyclopedia::TCreatureTrackerStorage::canTrackMoreMonstersChanged, this,
+                                               &TMonsterDialogController::qmlCanTrackMoreMonstersChanged));
     }
     Q_EMIT qmlIsMonsterTrackedChanged();
     Q_EMIT qmlCanTrackMoreMonstersChanged();
@@ -737,7 +740,8 @@ void TMonsterDialogController::showDialogTab()
 {
     m_shown = true;
     // The races received before go; the classification summary stays.
-    TMonsterRaceStorage::instance()->clearMonsterRaces();
+    if (m_monsterRaceStorage)
+        m_monsterRaceStorage->clearMonsterRaces();
     m_details.reset();
     m_selectedClassification.clear();
     m_search.clear();
@@ -783,7 +787,7 @@ void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage
     previous.swap(m_monsterClassificationSummary);
     if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterClassificationCurrentPage && NewPage <= m_monsterClassificationTotalPages) {
         m_monsterClassificationCurrentPage = NewPage;
-        const auto& classifications = classificationSummary(m_tearingDown);
+        const auto& classifications = classificationSummary(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
         const size_t end = std::min(classifications.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i)
             m_monsterClassificationSummary.append(new TQmlMonsterClassificationSummary(classifications[i], this));
@@ -799,7 +803,7 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
     previous.swap(m_monsterRaceSummary);
     if (!m_tearingDown && NewPage > 0 && NewPage != m_monsterRacesCurrentPage && NewPage <= m_monsterRacesTotalPages) {
         m_monsterRacesCurrentPage = NewPage;
-        const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown);
+        const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
         const size_t end = std::min(races.size(), static_cast<size_t>(NewPage * PageSize));
         for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i) {
             const cyclopedia::TMonsterRace& race = races[i];
@@ -907,7 +911,7 @@ void TMonsterDialogController::onMonsterClassificationSummaryChanged()
     // The page of the selected classification, else the first.
     setDialogState(MonsterClassification);
     m_monsterClassificationCurrentPage = 0;
-    const auto& classifications = classificationSummary(m_tearingDown);
+    const auto& classifications = classificationSummary(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
     m_monsterClassificationTotalPages = pageCount(classifications.size());
     int page = 1;
     for (size_t i = 0; i < classifications.size(); ++i) {
@@ -925,7 +929,7 @@ void TMonsterDialogController::onMonsterRacesChanged(const QString& MonsterClass
     setDialogState(MonsterRaces);
     m_selectedClassification = MonsterClassificationID;
     m_monsterRacesCurrentPage = 0;
-    const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown);
+    const std::vector<cyclopedia::TMonsterRace>& races = classificationRaces(m_tearingDown ? nullptr : m_monsterRaceStorage.get());
     m_monsterRacesTotalPages = pageCount(races.size());
     int page = 1;
     for (size_t i = 0; i < races.size(); ++i) {

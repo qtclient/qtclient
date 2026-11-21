@@ -1,6 +1,7 @@
 #include "highscoresdialogcontroller.h"
 
 #include "gamewindow/waitdialogcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "protocol/protocolciptypes.h"
 
@@ -119,12 +120,13 @@ THighscoresDialogController::~THighscoresDialogController()
     delete m_highscoreData;
 }
 
-void THighscoresDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>&)
+void THighscoresDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     closeDialog();
     if (m_storage)
         disconnect(m_storage, nullptr, this, nullptr);
-    m_storage = highscores::THighscoresStorage::liveInstance();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->highscoresStorage().get() : nullptr;
     if (m_storage) {
         connect(m_storage, &highscores::THighscoresStorage::highScoresError, this, &THighscoresDialogController::onHighScoresError);
         connect(m_storage, &highscores::THighscoresStorage::highScoresUpdated, this, &THighscoresDialogController::onHighScoresUpdated);
@@ -430,14 +432,6 @@ void THighscoresDialogController::updateWorldTypes()
         }
     }
     m_worldTypes.setEntries(std::move(entries));
-}
-
-void THighscoresDialogController::clear()
-{
-    dialog()->close();
-    delete m_highscoreData;
-    m_highscoreData = nullptr;
-    Q_EMIT dataChanged();
 }
 
 /// Resets the filters and shows the dialog loading.
