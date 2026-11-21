@@ -26,18 +26,17 @@ class IGameAction;
 }
 namespace quickloot {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
+class TManagedContainerStorage;
 
-
+/// The session's managed container messages, into its managed container storage.
 class TManagedContainersProtocolMessageHandler final : public cip::tibia::quickloot::TManagedContainersProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::quickloot::TManagedContainersProtocolMessageHandler::TManagedContainersProtocolMessageHandler;
+    explicit TManagedContainersProtocolMessageHandler(TManagedContainerStorage* storage, QObject* parent = nullptr);
     /// Replaces the stored assignments, then the fallback flag. A category outside
     /// the known ones rejects the whole message.
-    static void handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message);
+    void handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message);
     /// The ManagedContainer message's actions.
     enum EManagedContainerAction : uint8_t
     {
@@ -63,6 +62,9 @@ public:
     /// carry the chosen container.
     static void sendManagedContainer(EManagedContainerAction action, int category, const Position& position = {}, uint16_t objectId = 0,
                                      int stackPosition = 0);
+
+private:
+    TManagedContainerStorage* m_storage;
 };
 
 /// The quick-loot game actions: loot, the managed loot / obtain containers,

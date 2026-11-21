@@ -46,7 +46,6 @@ CipTypedKeep& typedKeep()
 
 TContainerStorage* g_containerStorage = nullptr;
 TInventoryContainer* g_inventoryContainer = nullptr;
-TContainerProtocolMessageHandler* g_liveContainerProtocolHandler = nullptr;
 
 using ::tibia::protobuf::protocol::GameserverMessageChangeInContainer;
 using ::tibia::protobuf::protocol::GameserverMessageCloseContainer;
@@ -69,16 +68,6 @@ using ::tibia::protobuf::protocol::ProtocolInventoryItem;
 TContainerProtocolMessageHandler::TContainerProtocolMessageHandler(QObject* parent)
     : cip::tibia::container::TContainerProtocolMessageHandler(parent)
 {
-}
-
-TContainerProtocolMessageHandler* TContainerProtocolMessageHandler::liveInstance()
-{
-    return g_liveContainerProtocolHandler;
-}
-
-void TContainerProtocolMessageHandler::setLiveInstance(TContainerProtocolMessageHandler* handler)
-{
-    g_liveContainerProtocolHandler = handler;
 }
 
 void TContainerProtocolMessageHandler::handleCloseContainerMessage(
@@ -371,45 +360,8 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
 
 void ownProductSurface(QObject* parent)
 {
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
+    (void)parent;
     (void)typedKeep();
-    auto* handler = new TContainerProtocolMessageHandler(parent);
-    TContainerProtocolMessageHandler::setLiveInstance(handler);
-    // CIP connects the client messages to the session's protocol queue.
-    using namespace ::tibia::protobuf::protocol;
-    using protocol::TProtocolMessageQueue;
-    const auto queue = []() -> TProtocolMessageQueue* {
-        TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
-        return queue && tibia::game::canPerformGameAction() ? queue : nullptr;
-    };
-    QObject::connect(handler, &TContainerProtocolMessageHandler::sendCloseContainerMessage, handler,
-                     [queue](const GameclientMessageCloseContainer& message) {
-                         if (TProtocolMessageQueue* q = queue())
-                             q->sendCloseContainer(message);
-                     });
-    QObject::connect(handler, &TContainerProtocolMessageHandler::sendUpContainerMessage, handler,
-                     [queue](const GameclientMessageUpContainer& message) {
-                         if (TProtocolMessageQueue* q = queue())
-                             q->sendUpContainer(message);
-                     });
-    QObject::connect(handler, &TContainerProtocolMessageHandler::sendSeekInContainerMessage, handler,
-                     [queue](const GameclientMessageSeekInContainer& message) {
-                         if (TProtocolMessageQueue* q = queue())
-                             q->sendSeekInContainer(message);
-                     });
-    QObject::connect(handler, &TContainerProtocolMessageHandler::sendGetObjectInfoMessage, handler,
-                     [queue](const GameclientMessageGetObjectInfo& message) {
-                         if (TProtocolMessageQueue* q = queue())
-                             q->sendGetObjectInfo(message);
-                     });
-    QObject::connect(handler, &TContainerProtocolMessageHandler::sendContainerActionMessage, handler,
-                     [queue](const GameclientMessageContainerAction& message) {
-                         if (TProtocolMessageQueue* q = queue())
-                             q->sendContainerActionMessage(message);
-                     });
 }
 
 uint32_t TInventorySlot::durationRemainingSeconds() const

@@ -5,12 +5,14 @@
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QSortFilterProxyModel>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tibia {
@@ -23,6 +25,10 @@ class TQuickLootBlackWhitelistStorage;
 }
 
 namespace tibia {
+namespace game {
+class IGameSession;
+class TPremiumTimeStorage;
+}
 namespace quickloot {
 class TManagedContainerStorage;
 }
@@ -81,6 +87,11 @@ public:
 
     void setUseMainBackpackAsFallback(bool v) override;
     void setFilterString(const QString& v) override;
+    /// CIP connector: the dialog closes and its list empties; then it follows
+    /// the session's managed containers and the loot list.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// CIP: the premium time the dialog's premium state follows.
+    void connectToPremiumTimeStorage(game::TPremiumTimeStorage* storage);
 
 public Q_SLOTS:
     /// CIP / handleGameAction 251–252.
@@ -102,6 +113,8 @@ public Q_SLOTS:
     void onPremiumTimeChanged() override;
     /// CIP .
     void onLootContainersUpdated() override;
+    /// CIP: the loot list changed; the dialog shows it again.
+    void onLootBlackWhitelisteChanged();
 
 private:
     enum class PickMode { None, LootContainer, ObtainContainer };
@@ -118,8 +131,11 @@ private:
     void cancelPick();
     void onClearItemBlackWhitelistConfirmed();
 
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    game::TPremiumTimeStorage* m_premiumTimeStorage = nullptr;
     quickloot::TQuickLootBlackWhitelistStorage* m_lootBlackWhitelist = nullptr;
-    quickloot::TManagedContainerStorage* m_containers = nullptr;
+    std::shared_ptr<quickloot::TManagedContainerStorage> m_containers;
     TAppearanceTypeListModel m_listModel;
     TAppearanceTypeListModelSortFilterProxy m_listProxy;
     TMessageDialogController* m_confirm = nullptr;

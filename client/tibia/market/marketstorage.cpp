@@ -6,7 +6,6 @@
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
 #include <algorithm>
@@ -106,10 +105,6 @@ TMarketStorage::TMarketStorage(QObject* parent)
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreInit", [this](GameObject*, const Args& args) {
         m_coinsPacketSize = std::max(1, static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        clear();
-        reset();
     });
 }
 

@@ -18,15 +18,6 @@
 
 namespace tibia::quickloot {
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    new TQuickLootGameActionHandler(parent);
-}
-
 namespace {
 
 /// The categories the server may assign containers to.
@@ -163,11 +154,15 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
     Q_EMIT publishGameAction(status);
 }
 
+TManagedContainersProtocolMessageHandler::TManagedContainersProtocolMessageHandler(TManagedContainerStorage* storage, QObject* parent)
+    : cip::tibia::quickloot::TManagedContainersProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+}
+
 void TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)
 {
-    TManagedContainerStorage* storage = TManagedContainerStorage::instance();
-    if (!storage)
-        return;
+    TManagedContainerStorage* storage = m_storage;
     TManagedContainerStorage::Assignments assignments;
     for (const auto& container : message.containers()) {
         if (!isObjectCategory(container.category()))

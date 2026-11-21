@@ -26,8 +26,6 @@ public:
     explicit TManagedContainerStorage(QObject* parent = nullptr);
     ~TManagedContainerStorage() override;
 
-    static TManagedContainerStorage* instance();
-
     /// Replaces the assignments; notifies only when they differ.
     void setManagedContainers(const Assignments& assignments);
     Assignments managedContainers() const { return m_assignments; }
@@ -39,7 +37,8 @@ public:
 
 private:
     Assignments m_assignments;
-    bool m_fallback = false;
+    /// Loot falls back to the main backpack until the server says otherwise.
+    bool m_fallback = true;
 };
 
 }

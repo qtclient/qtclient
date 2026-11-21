@@ -6,6 +6,7 @@
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -24,10 +25,8 @@ class IGameSession;
 
 namespace tibia {
 namespace container {
+class TContainerProtocolMessageHandler;
 class TStashStorage;
-}
-namespace game {
-class TGameSessionBase;
 }
 namespace gamewindow {
 
@@ -106,16 +105,13 @@ public Q_SLOTS:
     /// CIP .
     void onStashContentChanged() override;
     void onStashOptionsChanged() override;
-    /// CIP connector: follows `GameSession`'s stash storage and container protocol handler.
+    /// CIP connector: the dialog closes and its filters and list reset; then it
+    /// follows `GameSession`'s stash storage and container protocol handler.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onMarketDialogDialogClosed() override;
     void onManageLootContainerDialogClosed() override;
 
 private:
-    /// Follows `session`'s stash storage and container protocol handler; the
-    /// dialog closes and the filters reset.
-    void setGameSession(game::TGameSessionBase* session);
-
     /// The name and the two filter indices, applied and remembered together.
     struct Filter
     {
@@ -138,8 +134,10 @@ private:
     void reopenStash();
     void handleGameAction(const input::IGameAction& action);
 
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::shared_ptr<container::TStashStorage> m_stashStorage;
-    std::vector<QMetaObject::Connection> m_sessionConnections;
+    std::shared_ptr<container::TContainerProtocolMessageHandler> m_containerProtocolMessageHandler;
     std::vector<int> m_categories;
     QStringList m_traders;
     Filter m_savedFilter;

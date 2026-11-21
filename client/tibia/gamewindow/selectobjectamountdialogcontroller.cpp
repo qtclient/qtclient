@@ -3,6 +3,7 @@
 #include "appearances/appearanceinstance.h"
 #include "container/containerciptypes.h"
 #include "container/qmlitemslotdata.h"
+#include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
@@ -168,6 +169,28 @@ void TSelectObjectAmountDialogController::setCurrentAmount(const uint amount)
 {
     if (m_slot)
         m_slot->setCount(amount);
+}
+
+void TSelectObjectAmountDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    finish();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    if (!m_gameSession)
+        return;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (container::TContainerProtocolMessageHandler* handler = session ? session->containerProtocolMessageHandler().get() : nullptr)
+        m_gameSessionConnections.add(connect(handler, &container::TContainerProtocolMessageHandler::requestCloseStashDialog, this,
+                                             &TSelectObjectAmountDialogController::onStashNoLongerAvailable));
+}
+
+void TSelectObjectAmountDialogController::onStashNoLongerAvailable()
+{
+    if (!m_inner)
+        return;
+    if (m_inner->gameActionType() != A::STASH_RETRIEVE && m_inner->gameActionType() != A::STASH_STOW_STACK)
+        return;
+    finish();
 }
 
 void TSelectObjectAmountDialogController::finish()

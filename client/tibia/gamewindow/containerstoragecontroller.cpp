@@ -1,6 +1,8 @@
 #include "containerstoragecontroller.h"
 #include "game/gamesessionbase.h"
 
+#include "analysers/itempricestorage.h"
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
 #include "gamewindow/containercontroller.h"
@@ -8,7 +10,6 @@
 #include "input/gameactionhandlers.h"
 
 #include <algorithm>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -27,19 +28,15 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
     m_updateTimer.setInterval(0);
     connect(&m_updateTimer, &QTimer::timeout, this, &TContainerStorageController::flushUpdates);
 
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        clear();
-    });
-
     m_gameActions.on(input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS, [this](const input::IGameAction&) {
         // CIP: drop places waiting for containers the server has not opened.
         m_pendingPlaces.clear();
         m_unplaced.clear();
         return true;
     });
-    m_gameActions.on(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [](const input::IGameAction&) {
-        if (container::TContainerStorage* storage = container::TContainerStorage::instance())
-            storage->setManualSortMode(!container::TContainerStorage::manualSortMode());
+    m_gameActions.on(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [this](const input::IGameAction&) {
+        if (m_containerStorage)
+            m_containerStorage->setManualSortMode(!container::TContainerStorage::manualSortMode());
         return true;
     });
 }
@@ -76,6 +73,24 @@ void TContainerStorageController::onLoginRampUpFinished()
     addQueuedWidgets();
 }
 
+void TContainerStorageController::onOptionsChanged()
+{
+    std::vector<int> ids;
+    ids.reserve(m_controllers.size());
+    for (const auto& [id, controller] : m_controllers)
+        ids.push_back(id);
+    for (const int id : ids)
+        onContainerUpdated(id, false);
+}
+
+void TContainerStorageController::onManualSortModeChanged()
+{
+    if (!m_gameSession)
+        return;
+    for (const auto& [id, controller] : m_controllers)
+        controller->refreshViewOptions();
+}
+
 void TContainerStorageController::onContainerUpdated(const int containerId, const bool isNewContainer)
 {
     // Open / replace-open: isNewContainer=true → create or reset scroll in place.
@@ -91,7 +106,9 @@ void TContainerStorageController::onContainerUpdated(const int containerId, cons
         it->second->update(true);
         return;
     }
-    auto* controller = new TContainerController(containerId, m_gameWindowItem, m_engine, this);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    auto* controller = new TContainerController(containerId, session ? session->containerProtocolMessageHandler().get() : nullptr,
+                                                m_gameWindowItem, m_engine, this);
     connect(controller, &TContainerController::publishGameAction, this, &TContainerStorageController::publishGameAction);
     controller->setControlScheme(m_controlScheme);
     controller->setLootScheme(m_lootScheme);
@@ -133,7 +150,7 @@ void TContainerStorageController::flushUpdates()
         const auto it = m_controllers.find(id);
         if (it == m_controllers.end())
             continue;
-        if (container::TContainerStorage::instance() && container::TContainerStorage::instance()->hasContainer(id))
+        if (m_containerStorage && m_containerStorage->hasContainer(id))
             it->second->update(false);
     }
 }
@@ -225,12 +242,27 @@ void TContainerStorageController::clear()
 
 void tibia::gamewindow::TContainerStorageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    container::TContainerStorage* storage = session ? session->containerStorage().get() : nullptr;
-    if (!storage)
+    m_gameSessionConnections.disconnectAll();
+    clear();
+    m_containerStorage.reset();
+    m_gameSession = GameSession;
+    if (!m_gameSession)
         return;
-    connect(storage, &container::TContainerStorage::containerUpdated, this, &TContainerStorageController::onContainerUpdated,
-            Qt::UniqueConnection);
-    connect(storage, &container::TContainerStorage::containerRemoved, this, &TContainerStorageController::onContainerClosed,
-            Qt::UniqueConnection);
+    using Self = TContainerStorageController;
+    m_gameSessionConnections.add(connect(m_gameSession.get(), &game::IGameSession::loginRampUpFinished, this, &Self::onLoginRampUpFinished));
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
+        m_containerStorage = session->containerStorage();
+    if (!m_containerStorage)
+        return;
+    container::TContainerStorage* storage = m_containerStorage.get();
+    m_gameSessionConnections.add(connect(storage, &container::TContainerStorage::containerUpdated, this, &Self::onContainerUpdated));
+    m_gameSessionConnections.add(connect(storage, &container::TContainerStorage::containerRemoved, this, &Self::onContainerClosed));
+    if (m_characterConfigurationManager)
+        m_gameSessionConnections.add(connect(m_characterConfigurationManager.data(),
+                                             &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                             &Self::onOptionsChanged));
+    if (analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance())
+        m_gameSessionConnections.add(
+            connect(itemPrices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &Self::onOptionsChanged));
+    m_gameSessionConnections.add(connect(storage, &container::TContainerStorage::manualSortModeChanged, this, &Self::onManualSortModeChanged));
 }

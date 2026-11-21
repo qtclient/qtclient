@@ -86,9 +86,11 @@ input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A
 
 }
 
-TContainerController::TContainerController(const int containerId, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TContainerController::TContainerController(const int containerId, container::TContainerProtocolMessageHandler* messages,
+                                           QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_containerId(containerId)
+    , m_messages(messages)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_model);
     readExpireOptions();
@@ -103,9 +105,6 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
         if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
             readExpireOptions();
     });
-    if (container::TContainerStorage* storage = container::TContainerStorage::instance())
-        connect(storage, &container::TContainerStorage::manualSortModeChanged, this,
-                &TContainerController::refreshViewOptions);
     if (const game::TGameSessionBase* session = game::TGameSessionBase::active())
         m_model.setObjectCountStorage(session->objectCountStorage().get());
     m_clockTimer.setInterval(1000);
@@ -203,8 +202,8 @@ void TContainerController::onShowConfigurationMenu()
     const auto setFilter = [this](const uint32_t category) {
         if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
             storage->setFilterCategory(m_containerId, category);
-            if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
-                handler->requestUpdateContainer(m_containerId);
+            if (m_messages)
+                m_messages->requestUpdateContainer(m_containerId);
         }
     };
 
@@ -287,14 +286,14 @@ void TContainerController::sortContainer(const int sortType)
     const bool warn = option(SortRecursiveWarningOption);
     if (recursive && warn) {
         showConfirmDialog("container_confirm_sort_recursive_caption", "container_confirm_sort_recursive",
-                          [id = m_containerId, sortType, backpacksFirst, recursive](const bool showAgain) {
-                              if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+                          [handler = m_messages, id = m_containerId, sortType, backpacksFirst, recursive](const bool showAgain) {
+                              if (handler)
                                   handler->requestSortContainer(id, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
                               app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), showAgain);
                           });
         return;
     }
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestSortContainer(m_containerId, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
     app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), warn);
 }
@@ -306,14 +305,14 @@ void TContainerController::moveContentToManagedContainers()
     if (recursive && warn) {
         showConfirmDialog("container_confirm_move_content_to_managed_containers_recursive_caption",
                           "container_confirm_move_content_to_managed_containers_recursive",
-                          [id = m_containerId, recursive](const bool showAgain) {
-                              if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+                          [handler = m_messages, id = m_containerId, recursive](const bool showAgain) {
+                              if (handler)
                                   handler->requestMoveContentToManagedContainers(id, recursive);
                               app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), showAgain);
                           });
         return;
     }
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestMoveContentToManagedContainers(m_containerId, recursive);
     app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), warn);
 }
@@ -519,13 +518,13 @@ void TContainerController::onSlotTargetSelected(const int slotId)
 
 void TContainerController::onPreviousPageClicked()
 {
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestPreviousPageForContainer(m_containerId);
 }
 
 void TContainerController::onNextPageClicked()
 {
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestNextPageForContainer(m_containerId);
 }
 
@@ -537,7 +536,7 @@ void TContainerController::onSearchButtonClicked()
 void TContainerController::onRequestClose()
 {
     removeThisContainersOptions();
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestCloseContainer(m_containerId);
     widget()->hide();
     TSidebarWidgetController::onRequestClose();
@@ -545,7 +544,7 @@ void TContainerController::onRequestClose()
 
 void TContainerController::onLevelUpClicked()
 {
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance())
+    if (container::TContainerProtocolMessageHandler* handler = m_messages)
         handler->requestUpContainer(m_containerId);
 }
 

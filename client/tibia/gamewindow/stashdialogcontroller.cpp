@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <set>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
@@ -266,36 +265,11 @@ TStashDialogController::TStashDialogController(QObject* parent)
         return true;
     });
 
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { closeDialog(); });
     m_gameActions.on(A::MARKET_BROWSE, [this](const input::IGameAction& action) { handleGameAction(action); });
 }
 
 TStashDialogController::~TStashDialogController()
 {
-}
-
-void TStashDialogController::setGameSession(game::TGameSessionBase* session)
-{
-    resetAllFilters();
-    m_reopenAfterMarket = false;
-    m_reopenAfterManageLoot = false;
-    closeDialog();
-    for (const QMetaObject::Connection& connection : m_sessionConnections)
-        disconnect(connection);
-    m_sessionConnections.clear();
-    m_stashStorage.reset();
-    if (!session)
-        return;
-    m_stashStorage = session->stashStorage();
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance()) {
-        using Handler = container::TContainerProtocolMessageHandler;
-        m_sessionConnections.push_back(connect(handler, &Handler::requestShowOrRefreshStashDialog, this, &TStashDialogController::showDialog));
-        m_sessionConnections.push_back(connect(handler, &Handler::requestCloseStashDialog, this, &TStashDialogController::closeButtonClicked));
-        m_sessionConnections.push_back(
-            connect(handler, &Handler::requestShowStashMessageDialog, this, &TStashDialogController::onRequestShowStashMessageDialog));
-    }
-    m_sessionConnections.push_back(connect(m_stashStorage.get(), &cip::tibia::container::TObjectCountStorage::objectCountsChanged, this,
-                                           &TStashDialogController::onStashContentChanged));
 }
 
 int TStashDialogController::count(const uint16_t typeId) const
@@ -560,5 +534,26 @@ void TStashDialogController::onRequestShowStashMessageDialog(const QString& Mess
 
 void tibia::gamewindow::TStashDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    setGameSession(dynamic_cast<game::TGameSessionBase*>(GameSession.get()));
+    resetAllFilters();
+    m_model.reset({});
+    m_reopenAfterMarket = false;
+    m_reopenAfterManageLoot = false;
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_stashStorage.reset();
+    m_containerProtocolMessageHandler.reset();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_stashStorage = session->stashStorage();
+    m_containerProtocolMessageHandler = session->containerProtocolMessageHandler();
+    using Handler = container::TContainerProtocolMessageHandler;
+    Handler* handler = m_containerProtocolMessageHandler.get();
+    m_gameSessionConnections.add(connect(handler, &Handler::requestShowOrRefreshStashDialog, this, &TStashDialogController::showDialog));
+    m_gameSessionConnections.add(connect(handler, &Handler::requestCloseStashDialog, this, &TStashDialogController::closeButtonClicked));
+    m_gameSessionConnections.add(
+        connect(handler, &Handler::requestShowStashMessageDialog, this, &TStashDialogController::onRequestShowStashMessageDialog));
+    m_gameSessionConnections.add(connect(m_stashStorage.get(), &cip::tibia::container::TObjectCountStorage::objectCountsChanged, this,
+                                         &TStashDialogController::onStashContentChanged));
 }

@@ -3,10 +3,16 @@
 #include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
+#include "qtconnectionmanager.h"
+
+#include <memory>
 
 namespace tibia {
 namespace container {
 class TQMLItemSlotData;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -29,6 +35,10 @@ public:
     explicit TSelectObjectAmountDialogController(QObject* parent = nullptr);
     ~TSelectObjectAmountDialogController() override;
 
+    /// CIP connector: closes the dialog and follows the session's stash
+    /// going away.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
 public Q_SLOTS:
     /// CIP : publishes the move with the chosen amount, then closes.
     void okButtonClicked() override;
@@ -37,6 +47,8 @@ public Q_SLOTS:
     void closeDialog() override;
     /// CIP .
     void setCurrentAmount(uint amount) override;
+    /// CIP: a pending stash stow or retrieve closes with the stash.
+    void onStashNoLongerAvailable();
 
 private:
     bool handleSplitStack(const input::IGameAction& action);
@@ -48,6 +60,8 @@ private:
 
     /// The action OK publishes with the chosen amount (MOVE_OBJECT,
     /// STASH_STOW_STACK or STASH_RETRIEVE).
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     input::IGameActionPtr m_inner;
     container::TQMLItemSlotData* m_slot = nullptr;
 

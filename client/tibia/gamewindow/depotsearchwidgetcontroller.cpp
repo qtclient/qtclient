@@ -723,13 +723,6 @@ TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, 
     , m_controller(new TDepotSearchWidgetController(gameWindowItem, engine, this))
 {
     connect(m_controller, &TDepotSearchWidgetController::publishGameAction, this, &TDepotSearchWidgetManager::publishGameAction);
-    // The container protocol handler opens the widget with the server's
-    // search results and detail lists and closes it when the search ends.
-    if (auto* handler = container::TContainerProtocolMessageHandler::liveInstance()) {
-        using Handler = container::TContainerProtocolMessageHandler;
-        connect(handler, &Handler::requestOpenDepotSearchWidget, this, &TDepotSearchWidgetManager::show);
-        connect(handler, &Handler::requestCloseDepotSearchWidget, this, [this] { m_controller->widget()->hide(); });
-    }
     connect(m_controller, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
             [this] { m_controller->widget()->hide(); });
 }
@@ -739,6 +732,21 @@ TDepotSearchWidgetManager::~TDepotSearchWidgetManager() = default;
 void TDepotSearchWidgetManager::setSidebarOptions(config::TSidebarOptions* options) { m_controller->setSidebarOptions(options); }
 
 TSidebarWidget* TDepotSearchWidgetManager::current() const { return m_controller->widget(); }
+
+void TDepotSearchWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    container::TContainerProtocolMessageHandler* handler = session ? session->containerProtocolMessageHandler().get() : nullptr;
+    if (!handler)
+        return;
+    using Handler = container::TContainerProtocolMessageHandler;
+    m_gameSessionConnections.push_back(connect(handler, &Handler::requestOpenDepotSearchWidget, this, &TDepotSearchWidgetManager::show));
+    m_gameSessionConnections.push_back(
+        connect(handler, &Handler::requestCloseDepotSearchWidget, this, [this] { m_controller->widget()->hide(); }));
+}
 
 void TDepotSearchWidgetManager::show()
 {

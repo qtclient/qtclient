@@ -1,35 +1,13 @@
 #include "managedcontainerstorage.h"
 
-#include <tibia/game/tgamenotify.h>
-
 namespace tibia::quickloot {
-
-namespace {
-
-TManagedContainerStorage* g_instance = nullptr;
-
-}
 
 TManagedContainerStorage::TManagedContainerStorage(QObject* parent)
     : cip::tibia::quickloot::TManagedContainerStorage(parent)
 {
-    g_instance = this;
-    // Host: this storage outlives a game session, so a session's end clears it.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_fallback = false;
-        m_assignments.clear();
-        Q_EMIT useMainBackpackAsFallbackChanged();
-        Q_EMIT managedContainersUpdated();
-    });
 }
 
-TManagedContainerStorage::~TManagedContainerStorage()
-{
-    if (g_instance == this)
-        g_instance = nullptr;
-}
-
-TManagedContainerStorage* TManagedContainerStorage::instance() { return g_instance; }
+TManagedContainerStorage::~TManagedContainerStorage() = default;
 
 void TManagedContainerStorage::setManagedContainers(const Assignments& assignments)
 {

@@ -27,6 +27,7 @@ namespace container {
 class TDepotSearchDetailListStorage;
 }
 namespace game {
+class IGameSession;
 class TGameSessionBase;
 }
 }
@@ -185,7 +186,10 @@ public:
 
     void setSidebarOptions(config::TSidebarOptions* options);
     TSidebarWidget* current() const;
-
+    /// The session's container protocol handler opens the widget with the
+    /// server's search results and detail lists and closes it when the search
+    /// ends.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 Q_SIGNALS:
     /// The controller's publishGameAction, forwarded.
@@ -197,6 +201,7 @@ private:
 
     QPointer<TSidebarManager> m_sidebars;
     TDepotSearchWidgetController* m_controller = nullptr;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 }

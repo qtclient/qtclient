@@ -5,14 +5,19 @@
 #include "gamewindow/dialogmanager.h"
 #include "market/marketciptypes.h"
 #include "market/marketstorage.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -59,8 +64,13 @@ class TMarketController final : public TDialogController<cip::tibia::market::TMa
 {
     Q_OBJECT
 public:
-    TMarketController(market::TMarketStorage* storage, market::TMarketProtocolMessageHandler* messages, QObject* parent = nullptr);
+    explicit TMarketController(QObject* parent = nullptr);
     ~TMarketController() override;
+
+    /// CIP connector: the dialog goes away and the list empties; then the
+    /// controller follows the session's market storage and market handler and
+    /// lists the marketable types.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QString selectedCategoryName() const override;
     bool showStoreDeeplink() const override;
@@ -158,6 +168,8 @@ private:
                        std::vector<QObject*>& ownedBuy, std::vector<QObject*>& ownedSell);
     uint8_t selectedTier() const { return m_hasSelectedTier ? m_selectedTier : 0; }
 
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<market::TMarketStorage> m_storage;
     QPointer<market::TMarketProtocolMessageHandler> m_messages;
     TAppearanceTypeListModel m_model;

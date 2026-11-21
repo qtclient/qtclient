@@ -31,13 +31,16 @@
 #include "exaltation/exaltationciptypes.h"
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
+#include "input/domainhandlers.h"
 #include "market/marketciptypes.h"
+#include "market/marketstorage.h"
 #include "store/storestorage.h"
 #include "skillwheel/skillwheelciptypes.h"
 #include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
+#include "quickloot/managedcontainerstorage.h"
 #include "quickloot/quicklootciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
@@ -95,6 +98,8 @@ void TGameSessionBase::createStorages()
     m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
     m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
     m_objectAppearanceInstanceInfoStorage = std::make_shared<container::TObjectAppearanceInstanceInfoStorage>();
+    m_marketStorage = std::make_shared<market::TMarketStorage>();
+    m_managedContainerStorage = std::make_shared<quickloot::TManagedContainerStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
     // CIP: the client's sound reaches the session through its provider and
     // its object sound counts.
@@ -115,10 +120,23 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
     m_worldmapProtocolMessageHandler->setViewport(m_worldMapViewport.get());
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
+    m_containerProtocolMessageHandler = std::make_shared<container::TContainerProtocolMessageHandler>();
+    m_marketProtocolMessageHandler = std::make_shared<market::TMarketProtocolMessageHandler>(m_marketStorage.get());
+    m_managedContainersProtocolMessageHandler =
+        std::make_shared<quickloot::TManagedContainersProtocolMessageHandler>(m_managedContainerStorage.get());
+    m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
             &effects::TEffectGameActionHandler::handleGameAction);
+    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>();
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_quickLootGameActionHandler.get(),
+            qOverload<const input::IGameActionPtr&>(&quickloot::TQuickLootGameActionHandler::handleGameAction));
+    connect(m_quickLootGameActionHandler.get(), &quickloot::TQuickLootGameActionHandler::publishGameAction, m_gameActionRouter->internalRouter(),
+            &TInternalGameActionRouter::handleGameActionInternal);
+    m_gatherAllGameActionHandler = std::make_shared<input::TGatherAllGameActionHandler>();
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_gatherAllGameActionHandler.get(),
+            &input::TGatherAllGameActionHandler::handleGameAction);
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -304,7 +322,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     }
 
     using container::TContainerProtocolMessageHandler;
-    if (auto* containers = TContainerProtocolMessageHandler::liveInstance()) {
+    if (auto* containers = m_containerProtocolMessageHandler.get()) {
         link(&Queue::receivedSetInventoryMessage, containers, &TContainerProtocolMessageHandler::handleSetInventoryMessage);
         link(&Queue::receivedDeleteInventoryMessage, containers, &TContainerProtocolMessageHandler::handleDeleteInventoryMessage);
         link(&Queue::receivedPlayerInventoryMessage, containers, &TContainerProtocolMessageHandler::handlePlayerInventoryMessage);
@@ -322,11 +340,38 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedDepotSearchResultMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchResultMessage);
         link(&Queue::receivedDepotSearchDetailListMessage, containers, &TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage);
         link(&Queue::receivedCloseDepotSearchMessage, containers, &TContainerProtocolMessageHandler::handleCloseDepotSearchMessage);
+        // Its client messages go out through the session's queue while the game takes actions.
+        namespace pb = ::tibia::protobuf::protocol;
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendCloseContainerMessage, queue,
+                                             [queue](const pb::GameclientMessageCloseContainer& message) {
+                                                 if (tibia::game::canPerformGameAction())
+                                                     queue->sendCloseContainer(message);
+                                             }));
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendUpContainerMessage, queue,
+                                             [queue](const pb::GameclientMessageUpContainer& message) {
+                                                 if (tibia::game::canPerformGameAction())
+                                                     queue->sendUpContainer(message);
+                                             }));
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendSeekInContainerMessage, queue,
+                                             [queue](const pb::GameclientMessageSeekInContainer& message) {
+                                                 if (tibia::game::canPerformGameAction())
+                                                     queue->sendSeekInContainer(message);
+                                             }));
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendGetObjectInfoMessage, queue,
+                                             [queue](const pb::GameclientMessageGetObjectInfo& message) {
+                                                 if (tibia::game::canPerformGameAction())
+                                                     queue->sendGetObjectInfo(message);
+                                             }));
+        m_queueConnections.push_back(connect(containers, &TContainerProtocolMessageHandler::sendContainerActionMessage, queue,
+                                             [queue](const pb::GameclientMessageContainerAction& message) {
+                                                 if (tibia::game::canPerformGameAction())
+                                                     queue->sendContainerActionMessage(message);
+                                             }));
     }
 
 
     using market::TMarketProtocolMessageHandler;
-    if (auto* market = TMarketProtocolMessageHandler::instance()) {
+    if (auto* market = m_marketProtocolMessageHandler.get()) {
         link(&Queue::receivedMarketEnterMessage, market, &TMarketProtocolMessageHandler::handleMarketEnterMessage);
         link(&Queue::receivedMarketLeaveMessage, market, &TMarketProtocolMessageHandler::handleMarketLeaveMessage);
         link(&Queue::receivedMarketDetailMessage, market, &TMarketProtocolMessageHandler::handleMarketDetailMessage);
@@ -448,7 +493,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
     link(&Queue::receivedBestiaryTrackerMessage, this,
          &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);
-    link(&Queue::receivedUpdateManagedContainersMessage, this,
+    link(&Queue::receivedUpdateManagedContainersMessage, m_managedContainersProtocolMessageHandler.get(),
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
     auto* exivaOptions = sessionHandler(static_cast<TExivaOptionsProtocolMessageHandler*>(nullptr));
@@ -525,6 +570,14 @@ void TGameSessionBase::releaseStorages()
     m_effectGameActionHandler.reset();
     m_effectStorage.reset();
     m_textStorage.reset();
+    m_gatherAllGameActionHandler.reset();
+    m_quickLootGameActionHandler.reset();
+    m_gatherAllProtocolMessageHandler.reset();
+    m_managedContainersProtocolMessageHandler.reset();
+    m_marketProtocolMessageHandler.reset();
+    m_containerProtocolMessageHandler.reset();
+    m_managedContainerStorage.reset();
+    m_marketStorage.reset();
     m_ambientLightStorage.reset();
     m_worldmapProtocolMessageHandler.reset();
     m_worldMapStorage.reset();
