@@ -12,6 +12,7 @@
 #include <QString>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tibia {
@@ -189,14 +190,13 @@ class TFriendsStorage final : public cip::tibia::friends::TFriendsStorage
 {
     Q_OBJECT
 public:
-    explicit TFriendsStorage(QObject* parent = nullptr);
+    /// The session makes the three list storages first.
+    TFriendsStorage(std::shared_ptr<TFriendsFriendListStorage> friendList, std::shared_ptr<TFriendsAccountSearchStorage> accountSearch,
+                    std::shared_ptr<TFriendsInviteStorage> invites, QObject* parent = nullptr);
 
-    /// The session's friends storage (created on first use).
-    static TFriendsStorage* instance();
-
-    TFriendsFriendListStorage* friendList() const { return m_friendList; }
-    TFriendsAccountSearchStorage* accountSearch() const { return m_accountSearch; }
-    TFriendsInviteStorage* inviteStorage() const { return m_invites; }
+    TFriendsFriendListStorage* friendList() const { return m_friendList.get(); }
+    TFriendsAccountSearchStorage* accountSearch() const { return m_accountSearch.get(); }
+    TFriendsInviteStorage* inviteStorage() const { return m_invites.get(); }
 
     const std::vector<TAccountBadge>& badges() const { return m_badges; }
     const std::vector<TVisibilitySetting>& settings() const { return m_settings; }
@@ -204,9 +204,9 @@ public:
     void setSettings(std::vector<TVisibilitySetting> settings);
 
 private:
-    TFriendsFriendListStorage* m_friendList;
-    TFriendsAccountSearchStorage* m_accountSearch;
-    TFriendsInviteStorage* m_invites;
+    std::shared_ptr<TFriendsFriendListStorage> m_friendList;
+    std::shared_ptr<TFriendsAccountSearchStorage> m_accountSearch;
+    std::shared_ptr<TFriendsInviteStorage> m_invites;
     std::vector<TAccountBadge> m_badges;
     std::vector<TVisibilitySetting> m_settings;
 };
@@ -217,11 +217,12 @@ class TFriendsProtocolMessageHandler final : public cip::tibia::friends::TFriend
 {
     Q_OBJECT
 public:
-    using cip::tibia::friends::TFriendsProtocolMessageHandler::TFriendsProtocolMessageHandler;
-
-    static TFriendsProtocolMessageHandler* instance();
+    explicit TFriendsProtocolMessageHandler(TFriendsStorage* storage, QObject* parent = nullptr);
 
     void handleFriendSystemDataMessage(const ::tibia::protobuf::protocol::GameserverMessageFriendSystemData& message);
+
+private:
+    TFriendsStorage* m_storage;
 };
 
 /// The FriendSystemData data types (CIP's switch in handleFriendSystemDataMessage).

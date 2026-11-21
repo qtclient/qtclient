@@ -10,8 +10,13 @@
 #include <QPointer>
 
 #include <functional>
+#include <memory>
+#include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace exivaoptions {
 
 class TExivaOptionsStorage;
@@ -26,8 +31,10 @@ public:
     explicit TExivaOptionsDialogController(QObject* parent = nullptr);
     ~TExivaOptionsDialogController() override;
 
-    /// The storage the dialog edits and the session's world type.
-    void setStorage(TExivaOptionsStorage* storage, std::function<int()> worldType);
+    /// The session's world type (the dialog needs an Optional PvP world).
+    void setWorldType(std::function<int()> worldType) { m_worldType = std::move(worldType); }
+    /// CIP connector: the dialog closes and edits `GameSession`'s exiva options.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QString characterWhitelist() const override;
     QString guildWhitelist() const override;
@@ -44,7 +51,11 @@ public Q_SLOTS:
 private:
     bool handleAction(const input::IGameAction& action);
 
+    /// CIP +0xc8: the current session; +0xd8: its exiva options.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<TExivaOptionsStorage> m_storage;
+    /// CIP +0x40.
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     std::function<int()> m_worldType;
     gamewindow::TMessageDialogController m_onlyOptionalPvp;
 

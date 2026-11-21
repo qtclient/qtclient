@@ -41,6 +41,9 @@ namespace tibia {
 namespace effects {
 class TEffectStorage;
 }
+namespace game {
+class IGameSession;
+}
 namespace chat {
 
 class TChatChannelStorage;
@@ -64,8 +67,8 @@ public:
 
     explicit TWhiteBlacklist(QObject* parent = nullptr);
 
-    /// v12: where allowVips looks names up.
-    void setVipQuery(std::function<bool(const QString&)> isVip) { m_isVip = std::move(isVip); }
+    /// v12: allowVips looks names up in this session's VIP list.
+    void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession) { m_gameSession = GameSession; }
     /// v13: a name already listed is replaced.
     void addToBlacklist(const QString& name, bool permanently);
     /// v14.
@@ -138,7 +141,7 @@ private:
     bool m_ignoreYelling = false;
     bool m_ignorePrivateMessages = false;
     bool m_allowVips = false;
-    std::function<bool(const QString&)> m_isVip;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 /// The console side of the server's chat messages (CIP:
@@ -153,16 +156,17 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
 {
     Q_OBJECT
 public:
-    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, TWhiteBlacklist& blacklist,
-                                QObject* parent = nullptr);
+    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, QObject* parent = nullptr);
     ~TChatProtocolMessageHandler() override;
 
     /// : the console options by CIP name.
     void setOptions(const QJsonObject& options);
-    /// CIP +0x20: the game window's texts (the active session's).
+    /// CIP +0x20: the session's texts.
     void setTextStorage(TTextStorage* textStorage) { m_textStorage = textStorage; }
-    /// CIP +0x10: the game window's numerical effects (the active session's).
+    /// CIP +0x10: the session's numerical effects.
     void setEffectStorage(effects::TEffectStorage* effects) { m_effects = effects; }
+    /// CIP +0x98: the client's ignore and white lists (null filters nothing).
+    void setWhiteBlacklist(TWhiteBlacklist* whiteBlacklist) { m_whiteBlacklist = whiteBlacklist; }
     /// CIP slots (protobuf args; empty layouts → classic notify remains live apply).
     void handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage);
@@ -173,9 +177,6 @@ public:
     void handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel);
     void handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent& ChannelEvent);
     void handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters& Message);
-
-    /// The handler the game session connects (the chat controller owns it).
-    static TChatProtocolMessageHandler* liveInstance();
 
 public Q_SLOTS:
     /// CIP moc slot (cip_gen virtual) — reload console / UI-Sounds chat options.
@@ -212,10 +213,8 @@ private:
     TChatStorage& m_chatStorage;
     TTextStorage* m_textStorage = nullptr;
     effects::TEffectStorage* m_effects = nullptr;
-    TWhiteBlacklist& m_blacklist;
+    TWhiteBlacklist* m_whiteBlacklist = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
-    /// The console handler the session's channel messages go to.
-    static TChatProtocolMessageHandler* s_console;
 
     /// Prefaults match (ids 0x1c/0x1d/0x20/0x1f/0x1b/0x1a/0x46/0x45)
     /// until setOptions runs.

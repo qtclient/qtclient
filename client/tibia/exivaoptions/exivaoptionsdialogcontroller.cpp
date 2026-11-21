@@ -1,4 +1,5 @@
 #include "exivaoptionsdialogcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "exivaoptions/exivaoptionsstorage.h"
 #include "input/gameactionhandlers.h"
@@ -51,18 +52,25 @@ TExivaOptionsDialogController::~TExivaOptionsDialogController()
 {
 }
 
-void TExivaOptionsDialogController::setStorage(TExivaOptionsStorage* storage, std::function<int()> worldType)
+void TExivaOptionsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     closeDialog();
-    if (m_storage)
-        disconnect(m_storage, nullptr, this, nullptr);
-    m_storage = storage;
-    m_worldType = std::move(worldType);
-    if (storage) {
-        connect(storage, &TExivaOptionsStorage::allowEveryoneChanged, this, &TExivaOptionsDialogController::onAllowEveryoneChanged);
-        connect(storage, &TExivaOptionsStorage::allowedGroupsChanged, this, &TExivaOptionsDialogController::onAllowedGroupsChanged);
-        connect(storage, &TExivaOptionsStorage::characterWhitelistChanged, this, &TExivaOptionsDialogController::characterWhitelistChanged);
-        connect(storage, &TExivaOptionsStorage::guildWhitelistChanged, this, &TExivaOptionsDialogController::guildWhitelistChanged);
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_storage = nullptr;
+    m_gameSession = GameSession;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        m_storage = session->exivaOptionsStorage().get();
+        TExivaOptionsStorage* storage = m_storage;
+        m_gameSessionConnections.push_back(
+            connect(storage, &TExivaOptionsStorage::allowEveryoneChanged, this, &TExivaOptionsDialogController::onAllowEveryoneChanged));
+        m_gameSessionConnections.push_back(
+            connect(storage, &TExivaOptionsStorage::allowedGroupsChanged, this, &TExivaOptionsDialogController::onAllowedGroupsChanged));
+        m_gameSessionConnections.push_back(connect(storage, &TExivaOptionsStorage::characterWhitelistChanged, this,
+                                                   &TExivaOptionsDialogController::characterWhitelistChanged));
+        m_gameSessionConnections.push_back(
+            connect(storage, &TExivaOptionsStorage::guildWhitelistChanged, this, &TExivaOptionsDialogController::guildWhitelistChanged));
     }
     onAllowEveryoneChanged();
     onAllowedGroupsChanged();

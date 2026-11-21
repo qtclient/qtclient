@@ -9,6 +9,7 @@
 #include "protocol/protocolciptypes.h"
 #include "config/clientoptiondefaults.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/vipstorage.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "shared/tibiaurltools.h"
@@ -148,7 +149,15 @@ void TWhiteBlacklist::sortEntries(Entries& entries)
 
 bool TWhiteBlacklist::isVip(const QString& name) const
 {
-    return m_isVip && m_isVip(name);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->vipStorage())
+        return false;
+    const QString lower = name.toLower();
+    for (const creatures::TVipStorage::Vip& vip : session->vipStorage()->vips()) {
+        if (vip.name.toLower() == lower)
+            return true;
+    }
+    return false;
 }
 
 void TWhiteBlacklist::addToBlacklist(const QString& name, const bool permanently)
@@ -284,14 +293,11 @@ void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistA
     setAllowVips(allowVips);
 }
 
-TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
-                                                         TWhiteBlacklist& blacklist, QObject* parent)
+TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, QObject* parent)
     : cip::tibia::chat::TChatProtocolMessageHandler(parent)
     , m_storage(storage)
     , m_chatStorage(chatStorage)
-    , m_blacklist(blacklist)
 {
-    s_console = this;
     // CIP onChatProtocolMessageHandlerOptionsChanged .
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             [this](const QString& name) {
@@ -301,23 +307,10 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
                     onChatProtocolMessageHandlerOptionsChanged();
                 }
             });
-    // CIP onPlayerCreatureAddedToCreatureStorage .
-    tibia::game::onEachGameSession(this, [this] {
-        if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
-            connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
-                    &TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage, Qt::UniqueConnection);
-        }
-    });
     onChatProtocolMessageHandlerOptionsChanged();
 }
 
-TChatProtocolMessageHandler* TChatProtocolMessageHandler::s_console = nullptr;
-
-TChatProtocolMessageHandler::~TChatProtocolMessageHandler()
-{
-    if (s_console == this)
-        s_console = nullptr;
-}
+TChatProtocolMessageHandler::~TChatProtocolMessageHandler() = default;
 
 void TChatProtocolMessageHandler::setOptions(const QJsonObject& options)
 {
@@ -401,11 +394,11 @@ void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::pro
     const int level = static_cast<uint16_t>(TalkMessage.speaker_level());
     const uint32_t statementId = TalkMessage.statement_id();
     const bool traded = TalkMessage.traded();
-    if (!TWhiteBlacklist::isExemptMode(mode) && m_blacklist.isBlacklisted(name))
+    if (!TWhiteBlacklist::isExemptMode(mode) && m_whiteBlacklist && m_whiteBlacklist->isBlacklisted(name))
         return;
     switch (mode) {
         case Yell:
-            if (m_blacklist.filtersYell(name))
+            if (m_whiteBlacklist && m_whiteBlacklist->filtersYell(name))
                 return;
             [[fallthrough]];
         case Say:
@@ -414,7 +407,7 @@ void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::pro
             showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
             break;
         case PrivateFrom:
-            if (m_blacklist.filtersPrivateMessage(name))
+            if (m_whiteBlacklist && m_whiteBlacklist->filtersPrivateMessage(name))
                 return;
             addPrivateChatEntry(name, level, traded, statementId, text, consoleColor(mode));
             if (m_showMessages && m_showPrivateMessages && m_textStorage)
@@ -563,7 +556,7 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
         QString name = invitingName(text);
         if (name.isEmpty())
             name = excludingName(text);
-        if (TWhiteBlacklist::isExemptMode(mode) || !m_blacklist.isBlacklisted(name))
+        if (TWhiteBlacklist::isExemptMode(mode) || !m_whiteBlacklist || !m_whiteBlacklist->isBlacklisted(name))
             m_storage.addChannelSystemEntry(consoleColor(mode), static_cast<uint16_t>(MessageMessage.channel_id()), text);
         break;
     }
@@ -759,11 +752,6 @@ void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::pro
     }
     m_chatStorage.setNpcTalkPartners(npcIds);
     m_chatStorage.setKeywordButtons(buttons);
-}
-
-TChatProtocolMessageHandler* TChatProtocolMessageHandler::liveInstance()
-{
-    return s_console;
 }
 
 bool TChatProtocolMessageHandler::isOwnName(const QString& name) const

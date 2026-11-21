@@ -21,6 +21,8 @@ namespace exivaoptions {
 void ownProductSurface(QObject* parent);
 
 
+class TExivaOptionsStorage;
+
 class TExivaOptionsGameActionHandler final : public cip::tibia::exivaoptions::TExivaOptionsGameActionHandler
 {
     Q_OBJECT
@@ -32,12 +34,15 @@ class TExivaOptionsProtocolMessageHandler final : public cip::tibia::exivaoption
 {
     Q_OBJECT
 public:
-    using cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler;
+    explicit TExivaOptionsProtocolMessageHandler(TExivaOptionsStorage* storage, QObject* parent = nullptr);
 
     /// A suppressed exiva only flashes the chat's exiva button.
     void handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed& message);
     /// The flags replace the stored ones; the listed names join or leave the whitelists.
     void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
+
+private:
+    TExivaOptionsStorage* m_storage;
 };
 
 }

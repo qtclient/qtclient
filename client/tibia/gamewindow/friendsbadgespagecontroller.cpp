@@ -1,4 +1,5 @@
 #include "friendsbadgespagecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
 #include "protocol/clientmessages.h"
@@ -20,7 +21,8 @@ TFriendsBadgesPageController::TFriendsBadgesPageController(QObject* parent)
 
 void TFriendsBadgesPageController::updateBadges()
 {
-    m_model->setBadges(friends::TFriendsStorage::instance()->badges());
+    if (friends::TFriendsStorage* storage = friendsStorage())
+        m_model->setBadges(storage->badges());
 }
 
 TFriendsBadgesPageController::EBadgeFilter TFriendsBadgesPageController::badgeFilter() const
@@ -48,7 +50,7 @@ void TFriendsBadgesPageController::showDialogTab()
     setBadgeFilter(ShowAll);
     updateBadges();
     disconnect(m_badgesConnection);
-    m_badgesConnection = connect(friends::TFriendsStorage::instance(), &friends::TFriendsStorage::accountBadgesChanged, this,
+    m_badgesConnection = connect(friendsStorage(), &friends::TFriendsStorage::accountBadgesChanged, this,
                                  &TFriendsBadgesPageController::updateBadges);
     protocol::gameclient::sendFriendSystemAction(kLoadBadges);
 }
@@ -61,6 +63,18 @@ void TFriendsBadgesPageController::hideDialogTab()
 void TFriendsBadgesPageController::updateBadgeVisibility(const uint BadgeID, const bool ShouldBeVisibleForOthers)
 {
     protocol::gameclient::sendFriendSystemBadgeVisibility(BadgeID, ShouldBeVisibleForOthers);
+}
+
+
+void TFriendsBadgesPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+}
+
+friends::TFriendsStorage* TFriendsBadgesPageController::friendsStorage() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->friendsStorage().get() : nullptr;
 }
 
 }

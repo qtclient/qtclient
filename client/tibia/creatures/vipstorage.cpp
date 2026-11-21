@@ -31,28 +31,6 @@ bool isLoggedIn(const int state) { return state == TVipStorage::LoggedIn || stat
 TVipStorage::TVipStorage(QObject* parent)
     : cip::tibia::creatures::TVipStorage(parent)
 {
-    // CIP makes a new storage per game session; the shared one is emptied instead.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TVipStorage::clear);
-}
-
-TVipStorage* TVipStorage::instance()
-{
-    static TVipStorage* storage = [] {
-        auto* created = new TVipStorage(QCoreApplication::instance());
-        new TVipGameActionHandler(created, created);
-        return created;
-    }();
-    return storage;
-}
-
-std::map<uint32_t, TVipStorage::Vip>& TVipStorage::entries() { return instance()->m_vips; }
-
-void TVipStorage::clear()
-{
-    m_vips.clear();
-    m_groups.clear();
-    m_groupsLeft = 0;
-    Q_EMIT vipGroupDataChanged();
 }
 
 size_t TVipStorage::vipCount() const { return m_vips.size(); }

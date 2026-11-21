@@ -397,12 +397,6 @@ constexpr VipAction VipGameActions[] = { VipAction::ADD_NEW_VIP,       VipAction
                                          VipAction::ADD_NEW_VIP_GROUP, VipAction::REMOVE_VIP_GROUP, VipAction::REQUEST_VIP_GROUP_UPDATE };
 }
 
-TVipProtocolMessageHandler* TVipProtocolMessageHandler::instance()
-{
-    static auto* handler = new TVipProtocolMessageHandler(TVipStorage::instance(), TVipStorage::instance());
-    return handler;
-}
-
 TVipProtocolMessageHandler::TVipProtocolMessageHandler(TVipStorage* storage, QObject* parent)
     : cip::tibia::creatures::TVipProtocolMessageHandler(parent)
     , m_storage(storage)

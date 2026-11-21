@@ -1,4 +1,5 @@
 #include "vipwidgetcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
 #include "exivaoptions/exivaoptionsstorage.h"
@@ -71,6 +72,20 @@ TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObjec
     connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
     connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
     connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
+    onVipGroupDataChanged();
+}
+
+void TVipWidgetDataModel::setStorage(creatures::TVipStorage* storage)
+{
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_storage = storage;
+    if (storage) {
+        connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded);
+        connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
+        connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
+        connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
+    }
     onVipGroupDataChanged();
 }
 
@@ -387,6 +402,20 @@ void TVipWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
+void TVipWidgetController::setVipStorage(creatures::TVipStorage* storage)
+{
+    m_addVipDialog->dialog()->close();
+    m_addGroupDialog->dialog()->close();
+    m_editGroupDialog->dialog()->close();
+    m_editVipDialog->dialog()->close();
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_storage = storage;
+    if (storage)
+        connect(storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this, &TVipWidgetController::onLoginOrLogoutStateUpdate);
+    m_model->setStorage(storage);
+}
+
 void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, const int worldType)
 {
     m_provider = creatures::TVipWidgetGameActionProvider(m_storage, exivaOptions);
@@ -534,10 +563,7 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     : QObject(parent)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
-    , m_storage(creatures::TVipStorage::instance())
-    , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
-    connect(m_exivaOptions, &exivaoptions::TExivaOptionsStorage::publishGameAction, this, &TVipWidgetManager::publishGameAction);
     for (const A type : WidgetActions)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return m_controller && m_controller->handleAction(action); });
 }
@@ -568,6 +594,17 @@ void TVipWidgetManager::setWorldType(const int worldType)
         m_controller->setExivaOptions(m_exivaOptions, worldType);
 }
 
+void TVipWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->vipStorage().get() : nullptr;
+    m_exivaOptions = session ? session->exivaOptionsStorage().get() : nullptr;
+    if (!m_controller)
+        return;
+    m_controller->setVipStorage(m_storage);
+    m_controller->setExivaOptions(m_exivaOptions, m_worldType);
+}
+
 TSidebarWidget* TVipWidgetManager::open()
 {
     if (!m_controller) {
@@ -596,8 +633,6 @@ TSidebarWidget* TVipWidgetManager::current() const { return m_controller ? m_con
 void TVipWidgetManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     m_gameActions.handle(pGameAction);
-    if (m_exivaOptions)
-        m_exivaOptions->handleGameAction(pGameAction);
 }
 
 }

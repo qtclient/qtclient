@@ -535,7 +535,7 @@ chat::TTextStorage::v41	df828d0afc7832cd	ported	chat/textstorage.h:TTextStorage:
 chat::TTextStorage::v42	5423cae46238b680	ported	chat/textstorage.h:TTextStorage::npcBubble
 chat::TTextStorage::~TTextStorage	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 chat::TTextStorage::~TTextStorage_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
-chat::TWhiteBlacklist::v12	05cd72b726840bb1	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setVipQuery
+chat::TWhiteBlacklist::v12	05cd72b726840bb1	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::setGameSession
 chat::TWhiteBlacklist::v13	cf83e367e7870b61	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::addToBlacklist
 chat::TWhiteBlacklist::v14	e044024f135736ae	ported	chat/chatprotocolmessagehandler.cpp:TWhiteBlacklist::removeFromBlacklist
 chat::TWhiteBlacklist::v15	bfaa78ad585d70db	ported	chat/chatprotocolmessagehandler.h:TWhiteBlacklist::blacklist
@@ -1747,17 +1747,32 @@ game::TGameSessionBase::v143	c4d2f6d9a13090ba	ported	game/gamesessionbase.h:TGam
 game::TGameSessionBase::v25	ea9461ede806184d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapViewport
 game::TGameSessionBase::v28	e9d87c96dd8d9443	ported	game/gamesessionbase.h:TGameSessionBase::worldMapStorage
 game::TGameSessionBase::v29	e306596705eadfac	ported	game/gamesessionbase.h:TGameSessionBase::ambientLightStorage
+game::TGameSessionBase::v36	74d27625b68c3382	ported	game/gamesessionbase.h:TGameSessionBase::chatChannelStorage
 game::TGameSessionBase::v40	df3836b85f1025ce	ported	game/gamesessionbase.h:TGameSessionBase::playerSkillStats
 game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGameSessionBase::creatureMovementSpeedCalculator
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
 game::TGameSessionBase::v46	1596e60ccbfcf871	ported	game/gamesessionbase.h:TGameSessionBase::depotSearchDetailListStorage
+game::TGameSessionBase::v53	20e36e41ee86962a	ported	game/gamesessionbase.h:TGameSessionBase::chatProtocolMessageHandler
+game::TGameSessionBase::v56	646b1d89e9a896c2	ported	game/gamesessionbase.h:TGameSessionBase::npcTradeStorage
+game::TGameSessionBase::v58	2b9e076b88709e8b	ported	game/gamesessionbase.h:TGameSessionBase::playerTradeStorage
+game::TGameSessionBase::v59	22f87d84f7d53911	ported	game/gamesessionbase.h:TGameSessionBase::playerTradeProtocolMessageHandler
+game::TGameSessionBase::v60	ce5366b54cee3c3e	ported	game/gamesessionbase.h:TGameSessionBase::characterTradeStorage
+game::TGameSessionBase::v65	b30d596ae2d839df	ported	game/gamesessionbase.h:TGameSessionBase::chatGameActionHandler
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
 game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::v108	2f461eecef200b97	ported	game/gamesessionbase.h:TGameSessionBase::exivaOptionsStorage
+game::TGameserverGameSession::v116	d238233f4b4d5b0a	ported	game/gamesessionbase.h:TGameSessionBase::teamFinderProtocolMessageHandler
+game::TGameserverGameSession::v117	815d64c6db38cb0f	ported	game/gamesessionbase.h:TGameSessionBase::teamFinderStorage
 game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
+game::TGameserverGameSession::v37	a0557cc8dd6afadf	ported	game/gamesessionbase.h:TGameSessionBase::chatStorage
+game::TGameserverGameSession::v57	88d48c9cb41c4a0f	ported	game/gamesessionbase.h:TGameSessionBase::npcTradeProtocolMessageHandler
+game::TGameserverGameSession::v67	42d2474c407b6483	ported	game/gamesessionbase.h:TGameSessionBase::vipStorage
+game::TGameserverGameSession::v71	39bd8aa2de07db33	ported	game/gamesessionbase.h:TGameSessionBase::friendsProtocolMessageHandler
+game::TGameserverGameSession::v82	dfde89f252bfa553	ported	game/gamesessionbase.h:TGameSessionBase::unjustifiedPointsStorage
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSessionMetaInfo::v0	8ed40c591c5325d3	skip	generated: compiler-generated destructor pair (member teardown)
@@ -2669,19 +2684,18 @@ gamewindow::TFriendsAccountSearchPageController::onNoPermissionToDisplayCharacte
 gamewindow::TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter	8c007a7e3e2b7794	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter
 gamewindow::TFriendsAccountSearchPageController::openCyclopediaCharacterInfo	ad92891f42852c0e	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::openCyclopediaCharacterInfo
 gamewindow::TFriendsAccountSearchPageController::refreshCurrentCharacterInfo	42440053ef4993ad	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::refreshCurrentCharacterInfo
-gamewindow::TFriendsAccountSearchPageController::v12	197e154728bbde82	inlined	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::TFriendsAccountSearchPageController
 gamewindow::TFriendsAccountSearchPageController::v13	cb0fd5de19d5dc07	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::showDialogTab
 gamewindow::TFriendsAccountSearchPageController::v14	be48d10002fb7833	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::hideDialogTab
 gamewindow::TFriendsAccountSearchPageController::~TFriendsAccountSearchPageController	607750c316e2d2db	skip	generated: compiler-generated destructor pair
 gamewindow::TFriendsAccountSearchPageController::~TFriendsAccountSearchPageController_deleting	f1cc5a8483f20a5d	skip	generated: compiler-generated destructor pair
 gamewindow::TFriendsBadgesPageController::updateBadgeVisibility	acc8a671c235dc63	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::updateBadgeVisibility
-gamewindow::TFriendsBadgesPageController::v12	7ae3925310f54b51	inlined	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::TFriendsBadgesPageController
+gamewindow::TFriendsBadgesPageController::v12	7ae3925310f54b51	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::connectToGameSession
 gamewindow::TFriendsBadgesPageController::v13	63c34636c7ffb9d1	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::showDialogTab
 gamewindow::TFriendsBadgesPageController::v14	bd7cfa016a324732	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::hideDialogTab
 gamewindow::TFriendsBadgesPageController::~TFriendsBadgesPageController	5f8d33cafe822101	skip	generated: compiler-generated destructor pair
 gamewindow::TFriendsBadgesPageController::~TFriendsBadgesPageController_deleting	2623567490a28967	skip	generated: compiler-generated destructor pair
 gamewindow::TFriendsConfigurationPageController::setFriendGroupSetting	4edab2c9fe740f02	ported	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::setFriendGroupSetting
-gamewindow::TFriendsConfigurationPageController::v12	7ae3925310f54b51	inlined	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::TFriendsConfigurationPageController
+gamewindow::TFriendsConfigurationPageController::v12	7ae3925310f54b51	ported	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::connectToGameSession
 gamewindow::TFriendsConfigurationPageController::v13	a4079eebb9bd94c7	ported	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::showDialogTab
 gamewindow::TFriendsConfigurationPageController::v14	bd7cfa016a324732	ported	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::hideDialogTab
 gamewindow::TFriendsConfigurationPageController::~TFriendsConfigurationPageController	5f8d33cafe822101	skip	generated: compiler-generated destructor pair
@@ -2689,7 +2703,7 @@ gamewindow::TFriendsConfigurationPageController::~TFriendsConfigurationPageContr
 gamewindow::TFriendsFriendListPageController::onConfirmDialogAccepted	62eb1f40bead3e8c	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::onConfirmDialogAccepted
 gamewindow::TFriendsFriendListPageController::showAccountDetails	d23f1586c233c99c	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showAccountDetails
 gamewindow::TFriendsFriendListPageController::showContextMenuForAccountID	169f391ccbf6ac2a	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showContextMenuForAccountID
-gamewindow::TFriendsFriendListPageController::v12	7ae3925310f54b51	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::TFriendsFriendListPageController
+gamewindow::TFriendsFriendListPageController::v12	7ae3925310f54b51	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::connectToGameSession
 gamewindow::TFriendsFriendListPageController::v13	7989b9c25940cc74	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showDialogTab
 gamewindow::TFriendsFriendListPageController::v14	872d4faac408f6d5	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::hideDialogTab
 gamewindow::TFriendsFriendListPageController::v15	7cc2be0a0dd5ecce	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::updateFriendList
@@ -2698,7 +2712,7 @@ gamewindow::TFriendsFriendListPageController::~TFriendsFriendListPageController_
 gamewindow::TFriendsInvitesPageController::showContextMenuForBlacklistedAccount	eda17ee1421d7ba4	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForBlacklistedAccount
 gamewindow::TFriendsInvitesPageController::showContextMenuForReceivedInvite	b28c2f2fff80449b	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForReceivedInvite
 gamewindow::TFriendsInvitesPageController::showContextMenuForSentInvite	e214241dcafe49ef	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForSentInvite
-gamewindow::TFriendsInvitesPageController::v12	7ae3925310f54b51	inlined	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::TFriendsInvitesPageController
+gamewindow::TFriendsInvitesPageController::v12	7ae3925310f54b51	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::connectToGameSession
 gamewindow::TFriendsInvitesPageController::v13	c32a35fed4f29304	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showDialogTab
 gamewindow::TFriendsInvitesPageController::v14	bd7cfa016a324732	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::hideDialogTab
 gamewindow::TFriendsInvitesPageController::~TFriendsInvitesPageController	1b73485888c8bcb2	skip	generated: compiler-generated destructor pair
@@ -3849,6 +3863,7 @@ gamewindow::TTeamAssemblePageController::onTeamMembersChanged	df8feb9fe216fee6	p
 gamewindow::TTeamAssemblePageController::onTeamParametersChanged	3a68de8bc68086e8	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onTeamParametersChanged
 gamewindow::TTeamAssemblePageController::onUnlistTeamClicked	853c7fc5fd490bba	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onUnlistTeamClicked
 gamewindow::TTeamAssemblePageController::onUpdateTeamSettingsClicked	513ec9511911605c	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onUpdateTeamSettingsClicked
+gamewindow::TTeamAssemblePageController::v12	31bf0e758db3e467	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::connectToGameSession
 gamewindow::TTeamAssemblePageController::v13	2755c3b187d2632e	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::showDialogTab
 gamewindow::TTeamAssemblePageController::v14	bd7cfa016a324732	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::hideDialogTab
 gamewindow::TTeamAssemblePageController::~TTeamAssemblePageController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -7477,7 +7492,7 @@ sub_0923fa8e8200	0923fa8e82008063	ported	sprites/sprite.h:TSprite::TSprite
 sub_0927d1cc9377	0927d1cc9377d940	skip	generated: compiler-generated destructor body (vtable install + member destruction only, read)
 sub_0938e8df9b4b	0938e8df9b4bc278	inlined	app/clientoptions.cpp:ClientOptions::store
 sub_0938e8df9b4b#2	0938e8df9b4bc278	skip	generated: moc-generated signal emitter
-sub_093e80bef008	093e80bef008dd33	ported	gamewindow/chatcontroller.cpp:TChatController::onWorldLeft
+sub_093e80bef008	093e80bef008dd33	ported	gamewindow/chatcontroller.cpp:TChatController::connectToGameSession
 sub_09454647cbba	09454647cbbae432	inlined	skillwheel/skillwheeldata.cpp:romanNumeral
 sub_09474d868ba3	09474d868ba32ca4	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_09520a15675a	09520a15675acfff	tested	sound/soundplayer.cpp:TSoundPlayer::setSound	test=tests/client/soundplayer_test.cpp
@@ -10100,6 +10115,7 @@ sub_20558d253176#2	20558d253176c161	ported	gamewindow/friendsbadgespagecontrolle
 sub_20624ff32cc7#2	20624ff32cc7c8d0	skip	generated: moc property getter, provided by the generated cip base
 sub_2067cfd3f45a	2067cfd3f45a1088	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamesessionstate.cpp:TGameSessionState::createMovementIntent
+sub_20793bf3f931	20793bf3f9314b82	inlined	gamewindow/chatcontroller.cpp:TChatController::connectToGameSession
 sub_207eab825827	207eab8258270b88	skip	library: libc++ std::vector<T> assign/operator= (and element copy-assign/variant copy-assign) instantiated for the list model items
 sub_208b1b1df83f	208b1b1df83f16ad	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_208eb29849e2	208eb29849e2afd0	skip	library: libc++ std::vector instantiation
@@ -10210,7 +10226,7 @@ sub_22e8e7fc4d11	22e8e7fc4d119ce3	skip	library: std::sort instantiation (introso
 sub_22f800ad4481	22f800ad448171ec	inlined	gamewindow/mapwindowcontroller.cpp:TMapWindowController::handleGameActionAtMouseCursor
 sub_22fc017d7ff9	22fc017d7ff96bad	inlined	creatures/creaturesciptypes.cpp:TVipProtocolMessageHandler::handleBuddyData
 sub_2304f4595b73	2304f4595b7395e8	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)
-sub_230b67cfedcb	230b67cfedcb602a	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
+sub_230b67cfedcb	230b67cfedcb602a	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::connectToGameSession
 sub_230c41615458#12	230c41615458f359	ported	analysers/analyserstorages.h:showBaseXp
 sub_230c41615458#2	230c41615458f359	ported	analysers/analyserstorages.h:showBaseXp
 sub_230c41615458#3	230c41615458f359	ported	analysers/analyserstorages.h:showBaseXp
@@ -12124,7 +12140,7 @@ sub_43a5e0ef11dc	43a5e0ef11dc9d7d	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_43af5407e883	43af5407e8838802	skip	library: libc++ std::vector growth / destroy (library)
 sub_43b3611eef4c	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
 sub_43b3611eef4c#2	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
-sub_43bf0649ff85	43bf0649ff852867	ported	gamewindow/chatcontroller.cpp:TChatController::onWorldLeft
+sub_43bf0649ff85	43bf0649ff852867	inlined	gamewindow/chatcontroller.cpp:TChatController::connectToGameSession
 sub_43c48b0456f3	43c48b0456f3505f	ported	config/sidebaroptions.cpp:parseContainers
 sub_43de94ae2398	43de94ae2398c66d	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions
 sub_43deffd3c1ce	43deffd3c1ceb506	skip	generated: moc property getters (parameter lists, summary/info models, showFullSummary, presets model), provided by the generated cip base
@@ -12912,6 +12928,7 @@ sub_53e64e0a36cf#2	53e64e0a36cfe11c	skip	generated: compiler/protobuf-generated 
 sub_53eed05d1344	53eed05d1344f023	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
 sub_53f54bf9354e	53f54bf9354e6ad0	ported	gamewindow/sidebarmanager.h:TSidebarManager::canCloseRightSidebar
 sub_54016d1121d8	54016d1121d8c0bc	ported	gamewindow/characterinfomodels.cpp:mergeList
+sub_5405c90e4440	5405c90e4440b821	ported	gamewindow/socialdialogcontroller.cpp:TSocialDialogController::connectToGameSession
 sub_540dc0535958	540dc0535958d6df	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_541434ce284d	541434ce284d02f0	skip	library: std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_54181b52d648	54181b52d6488abc	skip	library: boost.geometry R-tree template instantiation (insert/split/query; cluster with boost::bad_get / boost::container)
@@ -16816,6 +16833,7 @@ sub_96b6acc5580f	96b6acc5580f5921	inlined	gamewindow/cyclopediamapdialogcontroll
 sub_96d240fbe3df#6	96d240fbe3df231a	skip	generated: protobuf Appearances message constructor
 sub_96d940f70495	96d940f70495ca0a	ported	input/gameaction.h:TGameActionToggleBlackWhitelistStatus::TGameActionToggleBlackWhitelistStatus
 sub_96d940f70495#2	96d940f70495ca0a	ported	input/gameaction.h:TGameActionToggleBlackWhitelistStatus::TGameActionToggleBlackWhitelistStatus
+sub_96e1d56a7932	96e1d56a7932c0c1	ported	gamewindow/chatcontroller.cpp:TChatChannelTabController::setChannelStorage
 sub_96ebae98656d	96ebae98656d9842	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateItemSummary
 sub_96ebaf0621f2	96ebaf0621f2a85a	skip	generated: compiler-generated destructors
 sub_96ebbf61dc8a	96ebbf61dc8a2bc3	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGaugeVisible
@@ -20030,7 +20048,7 @@ sub_ce234fc16fdc	ce234fc16fdc018c	ported	gamewindow/reportviolationcontroller.cp
 sub_ce2612078533	ce26120785335480	skip	library: std::sort instantiation (introsort, sort3-5, partition, insertion and heap helpers) over the gain/waste rows
 sub_ce29c211337f	ce29c211337f8e58	ported	input/keyboardshortcuthandlereventfilter.cpp:TKeyboardShortcutHandlerEventFilter::TKeyboardShortcutHandlerEventFilter
 sub_ce29c211337f#2	ce29c211337f8e58	ported	input/keyboardshortcuthandlereventfilter.cpp:TKeyboardShortcutHandlerEventFilter::TKeyboardShortcutHandlerEventFilter
-sub_ce2a10ca5ca3	ce2a10ca5ca384e2	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::setStorage
+sub_ce2a10ca5ca3	ce2a10ca5ca384e2	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::connectToGameSession
 sub_ce2c67d2969a	ce2c67d2969aab69	ported	store/qmlstoreobjects.cpp:TQmlTransactionHistoryEntry::transactionType
 sub_ce2e250a405d	ce2e250a405de73c	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::showSocket
 sub_ce3738259089	ce37382590893419	skip	generated: compiler-generated destructor / move-assignment of store records
@@ -22175,7 +22193,7 @@ sub_f14d52f645e5	f14d52f645e563ae	ported	input/gameaction.h:TGameActionQuitGame:
 sub_f14d52f645e5#2	f14d52f645e563ae	ported	input/gameaction.h:TGameActionQuitGame::TGameActionQuitGame
 sub_f1561e22f14d	f1561e22f14d2563	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::keySequenceHardcoded
 sub_f15ad6a352e4	f15ad6a352e4a1e9	skip	library: miniaudio library
-sub_f1608eac364f	f1608eac364f4559	inlined	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::TNpcDialogController
+sub_f1608eac364f	f1608eac364f4559	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::connectToGameSession
 sub_f16a48fc56e5	f16a48fc56e5c0f6	inlined	config/specialconditionsoptions.cpp:SpecialConditionsOptions::sortOrder
 sub_f16bdcbb9e00	f16bdcbb9e009c55	skip	generated: compiler-generated destructor pair
 sub_f170b7b46fcb	f170b7b46fcb26e6	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals

@@ -8,7 +8,12 @@
 
 namespace tibia {
 namespace chat {
+class TChatChannelStorage;
+class TChatGameActionHandler;
+class TChatProtocolMessageHandler;
+class TChatStorage;
 class TTextStorage;
+class TWhiteBlacklist;
 }
 namespace container {
 class TContainerStorage;
@@ -21,6 +26,34 @@ class TStashStorage;
 namespace creatures {
 class TCreatureMovementSpeedCalculator;
 class TCreatureStorage;
+class TUnjustifiedPointsStorage;
+class TVipGameActionHandler;
+class TVipProtocolMessageHandler;
+class TVipStorage;
+}
+namespace exivaoptions {
+class TExivaOptionsProtocolMessageHandler;
+class TExivaOptionsStorage;
+}
+namespace friends {
+class TFriendsAccountSearchStorage;
+class TFriendsFriendListStorage;
+class TFriendsInviteStorage;
+class TFriendsProtocolMessageHandler;
+class TFriendsStorage;
+}
+namespace teamfinder {
+class TTeamFinderProtocolMessageHandler;
+class TTeamFinderStorage;
+}
+namespace trade {
+class TCharacterTradeProtocolMessageHandler;
+class TCharacterTradeStorage;
+class TNPCTradeProtocolMessageHandler;
+class TNPCTradeStorage;
+class TPlayerTradeGameActionHandler;
+class TPlayerTradeProtocolMessageHandler;
+class TPlayerTradeStorage;
 }
 namespace game {
 class TGameActionRouter;
@@ -136,6 +169,59 @@ public:
     {
         return m_effectProtocolMessageHandler;
     }
+    /// The chat's channels and the NPC conversation.
+    const std::shared_ptr<chat::TChatChannelStorage>& chatChannelStorage() const { return m_chatChannelStorage; }
+    const std::shared_ptr<chat::TChatStorage>& chatStorage() const { return m_chatStorage; }
+    const std::shared_ptr<creatures::TVipStorage>& vipStorage() const { return m_vipStorage; }
+    const std::shared_ptr<creatures::TUnjustifiedPointsStorage>& unjustifiedPointsStorage() const { return m_unjustifiedPointsStorage; }
+    const std::shared_ptr<trade::TNPCTradeStorage>& npcTradeStorage() const { return m_npcTradeStorage; }
+    const std::shared_ptr<trade::TPlayerTradeStorage>& playerTradeStorage() const { return m_playerTradeStorage; }
+    const std::shared_ptr<friends::TFriendsFriendListStorage>& friendsFriendListStorage() const { return m_friendsFriendListStorage; }
+    const std::shared_ptr<friends::TFriendsAccountSearchStorage>& friendsAccountSearchStorage() const
+    {
+        return m_friendsAccountSearchStorage;
+    }
+    const std::shared_ptr<friends::TFriendsInviteStorage>& friendsInviteStorage() const { return m_friendsInviteStorage; }
+    const std::shared_ptr<friends::TFriendsStorage>& friendsStorage() const { return m_friendsStorage; }
+    const std::shared_ptr<exivaoptions::TExivaOptionsStorage>& exivaOptionsStorage() const { return m_exivaOptionsStorage; }
+    const std::shared_ptr<trade::TCharacterTradeStorage>& characterTradeStorage() const { return m_characterTradeStorage; }
+    const std::shared_ptr<teamfinder::TTeamFinderStorage>& teamFinderStorage() const { return m_teamFinderStorage; }
+    const std::shared_ptr<chat::TChatProtocolMessageHandler>& chatProtocolMessageHandler() const { return m_chatProtocolMessageHandler; }
+    const std::shared_ptr<trade::TNPCTradeProtocolMessageHandler>& npcTradeProtocolMessageHandler() const
+    {
+        return m_npcTradeProtocolMessageHandler;
+    }
+    const std::shared_ptr<trade::TPlayerTradeProtocolMessageHandler>& playerTradeProtocolMessageHandler() const
+    {
+        return m_playerTradeProtocolMessageHandler;
+    }
+    const std::shared_ptr<creatures::TVipProtocolMessageHandler>& vipProtocolMessageHandler() const { return m_vipProtocolMessageHandler; }
+    const std::shared_ptr<exivaoptions::TExivaOptionsProtocolMessageHandler>& exivaOptionsProtocolMessageHandler() const
+    {
+        return m_exivaOptionsProtocolMessageHandler;
+    }
+    const std::shared_ptr<teamfinder::TTeamFinderProtocolMessageHandler>& teamFinderProtocolMessageHandler() const
+    {
+        return m_teamFinderProtocolMessageHandler;
+    }
+    const std::shared_ptr<friends::TFriendsProtocolMessageHandler>& friendsProtocolMessageHandler() const
+    {
+        return m_friendsProtocolMessageHandler;
+    }
+    const std::shared_ptr<trade::TCharacterTradeProtocolMessageHandler>& characterTradeProtocolMessageHandler() const
+    {
+        return m_characterTradeProtocolMessageHandler;
+    }
+    const std::shared_ptr<chat::TChatGameActionHandler>& chatGameActionHandler() const { return m_chatGameActionHandler; }
+    const std::shared_ptr<creatures::TVipGameActionHandler>& vipGameActionHandler() const { return m_vipGameActionHandler; }
+    const std::shared_ptr<trade::TPlayerTradeGameActionHandler>& playerTradeGameActionHandler() const
+    {
+        return m_playerTradeGameActionHandler;
+    }
+
+    /// The client's ignore and white lists reach the session's chat and team
+    /// finder handlers (null when the session stops being the current one).
+    void setWhiteBlacklist(chat::TWhiteBlacklist* whiteBlacklist);
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -177,6 +263,30 @@ private:
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    std::shared_ptr<chat::TChatChannelStorage> m_chatChannelStorage;
+    std::shared_ptr<chat::TChatStorage> m_chatStorage;
+    std::shared_ptr<creatures::TVipStorage> m_vipStorage;
+    std::shared_ptr<creatures::TUnjustifiedPointsStorage> m_unjustifiedPointsStorage;
+    std::shared_ptr<trade::TNPCTradeStorage> m_npcTradeStorage;
+    std::shared_ptr<trade::TPlayerTradeStorage> m_playerTradeStorage;
+    std::shared_ptr<friends::TFriendsFriendListStorage> m_friendsFriendListStorage;
+    std::shared_ptr<friends::TFriendsAccountSearchStorage> m_friendsAccountSearchStorage;
+    std::shared_ptr<friends::TFriendsInviteStorage> m_friendsInviteStorage;
+    std::shared_ptr<friends::TFriendsStorage> m_friendsStorage;
+    std::shared_ptr<exivaoptions::TExivaOptionsStorage> m_exivaOptionsStorage;
+    std::shared_ptr<trade::TCharacterTradeStorage> m_characterTradeStorage;
+    std::shared_ptr<teamfinder::TTeamFinderStorage> m_teamFinderStorage;
+    std::shared_ptr<chat::TChatProtocolMessageHandler> m_chatProtocolMessageHandler;
+    std::shared_ptr<trade::TNPCTradeProtocolMessageHandler> m_npcTradeProtocolMessageHandler;
+    std::shared_ptr<trade::TPlayerTradeProtocolMessageHandler> m_playerTradeProtocolMessageHandler;
+    std::shared_ptr<creatures::TVipProtocolMessageHandler> m_vipProtocolMessageHandler;
+    std::shared_ptr<exivaoptions::TExivaOptionsProtocolMessageHandler> m_exivaOptionsProtocolMessageHandler;
+    std::shared_ptr<teamfinder::TTeamFinderProtocolMessageHandler> m_teamFinderProtocolMessageHandler;
+    std::shared_ptr<friends::TFriendsProtocolMessageHandler> m_friendsProtocolMessageHandler;
+    std::shared_ptr<trade::TCharacterTradeProtocolMessageHandler> m_characterTradeProtocolMessageHandler;
+    std::shared_ptr<chat::TChatGameActionHandler> m_chatGameActionHandler;
+    std::shared_ptr<creatures::TVipGameActionHandler> m_vipGameActionHandler;
+    std::shared_ptr<trade::TPlayerTradeGameActionHandler> m_playerTradeGameActionHandler;
 };
 
 /// Calls `bind` now and each time the active game session changes, for code

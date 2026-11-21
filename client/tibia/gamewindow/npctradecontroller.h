@@ -4,12 +4,17 @@
 
 #include <cip_gen.h>
 
+#include <memory>
+
 #include <QPointer>
 #include <QTimer>
 
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TContextMenuController;
@@ -115,8 +120,11 @@ class TNPCTradeController final : public cip::tibia::gamewindow::TNPCTradeContro
 {
     Q_OBJECT
 public:
-    explicit TNPCTradeController(trade::TNPCTradeStorage* storage, QObject* parent = nullptr);
+    explicit TNPCTradeController(QObject* parent = nullptr);
     ~TNPCTradeController() override;
+
+    /// The trade follows `GameSession`'s NPC trade (attached when the NPC opens it).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP /.
     QString bankBalance() const override;
@@ -185,6 +193,8 @@ private:
     void setOptions(const TNPCTradeOptions& options);
 
     QPointer<trade::TNPCTradeStorage> m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QMetaObject::Connection m_openTradeConnection;
     TNPCTradeOptions m_options;
     TTraderInventoryModel m_model;
     TTraderInventorySortFilterProxyModel m_proxy;

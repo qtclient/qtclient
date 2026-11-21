@@ -1,4 +1,5 @@
 #include "friendsfriendlistpagecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -17,10 +18,6 @@ constexpr uint8_t kLoadFriendList = 0;
 constexpr uint8_t kRemoveFriend = 9;
 constexpr uint8_t kChangeFriendGroup = 10;
 
-friends::TFriendsFriendListStorage* friendListStorage()
-{
-    return friends::TFriendsStorage::instance()->friendList();
-}
 
 }
 
@@ -143,6 +140,24 @@ void TFriendsFriendListPageController::removeFriend(const uint32_t accountId)
 {
     protocol::gameclient::sendFriendSystemAccountAction(kRemoveFriend, accountId);
     friendListStorage()->removeFriend(accountId);
+}
+
+
+void TFriendsFriendListPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+}
+
+friends::TFriendsFriendListStorage* TFriendsFriendListPageController::friendListStorage() const
+{
+    friends::TFriendsStorage* storage = friendsStorage();
+    return storage ? storage->friendList() : nullptr;
+}
+
+friends::TFriendsStorage* TFriendsFriendListPageController::friendsStorage() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->friendsStorage().get() : nullptr;
 }
 
 }

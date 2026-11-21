@@ -1,4 +1,5 @@
 #include "teamassemblepagecontroller.h"
+#include "game/gamesessionbase.h"
 #include "cyclopedia/staticcontentinformation.h"
 
 #include "assets/things.h"
@@ -146,7 +147,9 @@ void TTeamAssemblePageController::showDialogTab()
     m_storage = nullptr;
     if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance(); premium != m_premium)
         setPremiumStorage(premium);
-    auto* handler = TTeamFinderProtocolMessageHandler::instance();
+    TTeamFinderProtocolMessageHandler* handler = m_teamFinderProtocolMessageHandler;
+    if (!handler)
+        return;
     m_storage = handler->storage();
     m_connections.push_back(connect(m_storage, &teamfinder::TTeamFinderStorage::teamParametersChanged, this,
                                     &TTeamAssemblePageController::onTeamParametersChanged));
@@ -189,7 +192,8 @@ void TTeamAssemblePageController::onStartAssembleTeamClicked(const int ActivityR
     if (row.row() < 0 || row.row() >= static_cast<int>(activities.size()))
         return;
     parameters.activity = activities[static_cast<size_t>(row.row())].type;
-    TTeamFinderProtocolMessageHandler::instance()->assembleTeam(parameters);
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->assembleTeam(parameters);
 }
 
 void TTeamAssemblePageController::onUpdateTeamSettingsClicked()
@@ -203,14 +207,16 @@ void TTeamAssemblePageController::onUpdateTeamSettingsClicked()
     }
     teamfinder::TTeamParameters parameters = m_storage->teamParameters();
     m_settings->toParameters(parameters);
-    TTeamFinderProtocolMessageHandler::instance()->updateTeam(parameters);
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->updateTeam(parameters);
 }
 
 void TTeamAssemblePageController::onUnlistTeamClicked()
 {
     if (!m_storage)
         return;
-    TTeamFinderProtocolMessageHandler::instance()->unlistTeam();
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->unlistTeam();
 }
 
 void TTeamAssemblePageController::onEditMemberStatusClicked(const uint CharacterIDRaw, const uint CurrentStatusRaw)
@@ -222,8 +228,9 @@ void TTeamAssemblePageController::onEditMemberStatusClicked(const uint Character
         return;
     menu->beginCustomMenu();
     const auto setStatus = [this, menu, CharacterIDRaw](const char* label, const uint32_t status) {
-        connect(menu->addCustomEntry(qtTrId(label)), &TContextMenuEntryItem::triggered, this, [CharacterIDRaw, status] {
-            TTeamFinderProtocolMessageHandler::instance()->setMemberStatus(CharacterIDRaw, status);
+        connect(menu->addCustomEntry(qtTrId(label)), &TContextMenuEntryItem::triggered, this, [this, CharacterIDRaw, status] {
+            if (m_teamFinderProtocolMessageHandler)
+                m_teamFinderProtocolMessageHandler->setMemberStatus(CharacterIDRaw, status);
         });
     };
     // Every status but the current one.
@@ -264,7 +271,15 @@ void TTeamAssemblePageController::onTeamMembersChanged()
 
 void TTeamAssemblePageController::onOwnTeamUpdateAvailable()
 {
-    TTeamFinderProtocolMessageHandler::instance()->requestOwnTeam();
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->requestOwnTeam();
+}
+
+void TTeamAssemblePageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_teamFinderProtocolMessageHandler = session ? session->teamFinderProtocolMessageHandler().get() : nullptr;
 }
 
 }

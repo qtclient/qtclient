@@ -266,14 +266,6 @@ TTeamFinderProtocolMessageHandler::TTeamFinderProtocolMessageHandler(TTeamFinder
 {
 }
 
-TTeamFinderProtocolMessageHandler* TTeamFinderProtocolMessageHandler::instance()
-{
-    // Session-lifetime singletons: the storage outlives the pages that bind to it.
-    static auto* storage = new TTeamFinderStorage();
-    static auto* handler = new TTeamFinderProtocolMessageHandler(storage);
-    return handler;
-}
-
 void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage(
     const ::tibia::protobuf::protocol::GameserverMessageTeamFinderTeamLeader& Message)
 {
@@ -441,13 +433,6 @@ void TTeamFinderProtocolMessageHandler::leaveTeam(const uint16_t TeamID)
     request->set_leader_id(TeamID);
     m_storage->setTeamStatus(TeamID, 0);
     protocol::sendGameclientMessage(std::move(message));
-}
-
-void TTeamFinderProtocolMessageHandler::startSession()
-{
-    m_storage->reset();
-    m_storage->setTeams({});
-    Q_EMIT sessionStarted();
 }
 
 // ---------------------------------------------------------------------------

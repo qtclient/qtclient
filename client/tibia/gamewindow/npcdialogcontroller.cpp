@@ -1,4 +1,5 @@
 #include "npcdialogcontroller.h"
+#include "game/gamesessionbase.h"
 #include "colorhelper.h"
 
 #include "chat/chatgameactionhandler.h"
@@ -71,10 +72,8 @@ void TNpcDialogOutfit::setOutfit(const Outfit& outfit)
     Q_EMIT changed();
 }
 
-TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QObject* parent)
+TNpcDialogController::TNpcDialogController(QObject* parent)
     : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), parent)
-    , m_storage(storage)
-    , m_trade(storage)
 {
     m_tradeController = &m_trade;
     m_npcOutfit = &m_outfit;
@@ -84,10 +83,6 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
             &TNpcDialogController::onNpcDialogOptionsChanged);
     if (config::TClientOptions::instance()->npcDialogOptions().isValid())
         onNpcDialogOptionsChanged();
-    if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance()) {
-        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
-        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
-    }
     // CIP / : while the trade has the keyboard the dialog's chat input lets go of it.
     m_tradeFocus.setActive(false);
     connect(&m_tradeFocus, &TUiFocusManager::focusChanged, this, [this] {
@@ -100,10 +95,37 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     for (const input::EGameAction type : { input::EGameAction::CHAT_CHANNEL_SELECT_ALL, input::EGameAction::REQUEST_SELECT_ALL_TEXT,
                                            input::EGameAction::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD })
         m_gameActions.on(type, [this](const input::IGameAction& action) { handleGameAction(action); });
+}
 
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_talkPartners.clear();
-    });
+void TNpcDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    dialog()->close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_talkPartners.clear();
+    m_gameSession = GameSession;
+    if (m_chat && !m_gameSession)
+        m_chat->resetChannel();
+    m_trade.connectToGameSession(m_gameSession);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_storage = session ? session->npcTradeStorage().get() : nullptr;
+    m_chatStorage = session ? session->chatChannelStorage().get() : nullptr;
+    if (!session)
+        return;
+    chat::TChatStorage* talk = session->chatStorage().get();
+    m_gameSessionConnections.push_back(connect(talk, &chat::TChatStorage::npcTalkPartnersChanged, this,
+                                               [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); }));
+    m_gameSessionConnections.push_back(connect(talk, &chat::TChatStorage::keywordButtonsChanged, this,
+                                               [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); }));
+    chat::TChatChannelStorage* channels = session->chatChannelStorage().get();
+    m_gameSessionConnections.push_back(connect(channels, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel));
+    trade::TNPCTradeProtocolMessageHandler* npcTrade = session->npcTradeProtocolMessageHandler().get();
+    m_gameSessionConnections.push_back(
+        connect(npcTrade, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade));
+    m_gameSessionConnections.push_back(
+        connect(npcTrade, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade));
+    bindNpcChannel();
 }
 
 QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds)
@@ -167,8 +189,8 @@ void TNpcDialogController::closeButtonPressed()
         return;
     }
     dialog()->close();
-    if (m_chatControl)
-        m_chatControl->gameActionHandler().emitSendCloseNPCChannel();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()); session && session->chatGameActionHandler())
+        session->chatGameActionHandler()->emitSendCloseNPCChannel();
     m_trade.onRequestCloseNpcTrade();
     resetConversation();
 }
@@ -345,17 +367,9 @@ void TNpcDialogController::setChatController(TChatController* controller)
     m_chatControl = controller;
     m_chatController = controller;
     controller->setNpcDialog(this);
-    chat::TChatChannelStorage* storage = &controller->storage();
-    m_chatStorage = storage;
-    chat::TChatStorage* talk = &controller->chatStorage();
-    connect(talk, &chat::TChatStorage::npcTalkPartnersChanged, this,
-            [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); });
-    connect(talk, &chat::TChatStorage::keywordButtonsChanged, this, [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); });
     m_chat = new TChatChannelController(this);
     connect(m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
     m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
-    connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel);
-    connect(storage, &chat::TChatChannelStorage::channelsReset, this, &TNpcDialogController::bindNpcChannel);
     bindNpcChannel();
 }
 

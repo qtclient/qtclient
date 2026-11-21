@@ -15,8 +15,7 @@ namespace tibia {
 namespace creatures {
 
 /// The VIP list and its groups (CIP: creatures::TVipStorage). Filled by
-/// TVipProtocolMessageHandler and edited by TVipGameActionHandler; the session
-/// owns one storage (instance()), emptied when the game ends.
+/// TVipProtocolMessageHandler and edited by TVipGameActionHandler; each game session owns one.
 class TVipStorage final : public cip::tibia::creatures::TVipStorage
 {
     Q_OBJECT
@@ -51,10 +50,7 @@ public:
         bool editable = false;
     };
 
-    /// The session's storage (created on first use).
-    static TVipStorage* instance();
-    /// The session's VIP list by character id.
-    static std::map<uint32_t, Vip>& entries();
+    explicit TVipStorage(QObject* parent = nullptr);
 
     /// How many VIPs the list holds.
     size_t vipCount() const;
@@ -90,9 +86,6 @@ Q_SIGNALS:
     void loginOrLogoutStateUpdate(int state);
 
 private:
-    explicit TVipStorage(QObject* parent = nullptr);
-    void clear();
-
     std::map<uint32_t, Vip> m_vips;
     std::map<uint8_t, Group> m_groups;
     int m_groupsLeft = 0;

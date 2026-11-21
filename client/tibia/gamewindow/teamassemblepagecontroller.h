@@ -11,8 +11,11 @@
 #include <QPointer>
 #include <QStringList>
 
+#include <memory>
+
 namespace tibia {
 namespace game {
+class IGameSession;
 class TPremiumTimeStorage;
 }
 namespace gamewindow {
@@ -25,6 +28,8 @@ class TTeamAssemblePageController final : public cip::tibia::gamewindow::TTeamAs
     Q_OBJECT
 public:
     explicit TTeamAssemblePageController(QObject* parent = nullptr);
+    /// CIP v12: the page talks to the session's team finder while shown.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool hasPremium() const override;
     /// The own team is listed (it has an activity).
@@ -54,6 +59,8 @@ public Q_SLOTS:
     void onOwnTeamUpdateAvailable() override;
 
 private:
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<teamfinder::TTeamFinderProtocolMessageHandler> m_teamFinderProtocolMessageHandler;
     /// Fills the activity list: unspecified entries of each kind, the hunting places, the bosses and the quests.
     void loadActivities();
     void showErrors(const QStringList& Errors);

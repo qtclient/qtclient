@@ -51,6 +51,8 @@ int maximumBuyAmount(const TNPCTradeGood& good, uint64_t money, uint32_t capacit
 /// CIP : the most the player can sell of `owned` objects.
 int maximumSellAmount(const TNPCTradeGood& good, uint32_t owned);
 
+class TNPCTradeProtocolMessageHandler;
+
 /// The NPC trade's data (CIP: TNPCTradeStorage): the trader's goods, the
 /// player's goods, the trade direction and the trade currency. The protocol
 /// handler (TNPCTradeProtocolMessageHandler) fills it.
@@ -62,6 +64,8 @@ public:
     using TCurrency = std::variant<uint16_t, QString>;
 
     explicit TNPCTradeStorage(QObject* parent = nullptr);
+    /// The session's handler the trade requests go to (it registers itself).
+    void setProtocolMessageHandler(TNPCTradeProtocolMessageHandler* handler) { m_protocolMessageHandler = handler; }
 
     /// The trader's goods are known (an NPC offer arrived and no close yet).
     bool isOpen() const { return m_open; }
@@ -109,6 +113,7 @@ public Q_SLOTS:
     void onPlayerDataChanged();
 
 private:
+    TNPCTradeProtocolMessageHandler* m_protocolMessageHandler = nullptr;
     bool m_open = false;
     QString m_npcName;
     std::vector<TNPCTradeGood> m_goods;

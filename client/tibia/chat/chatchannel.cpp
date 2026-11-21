@@ -234,34 +234,12 @@ TChatChannelStorage::TChatChannelStorage(QObject* parent)
     , m_maxEntries(TChatChannel::maxEntries())
 {
     openDefaultChannels();
-    // The player's name arrives with the player creature.
-    const auto bindPlayer = [this]() {
-        if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
-            connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
-                    &TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage, Qt::UniqueConnection);
-        }
-    };
-    tibia::game::onEachGameSession(this, bindPlayer);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, bindPlayer);
 }
 
 void TChatChannelStorage::openDefaultChannels()
 {
     m_localChat = open({ TChatChannelIdentifier::Local }, true, false);
     m_serverLog = open({ TChatChannelIdentifier::ServerLog }, true, false);
-}
-
-void TChatChannelStorage::reset()
-{
-    for (TChatChannel* channel : m_channels)
-        channel->deleteLater();
-    m_channels.clear();
-    m_localChat = m_serverLog = m_lootChannel = nullptr;
-    {
-        const QSignalBlocker blocker(this);
-        openDefaultChannels();
-    }
-    Q_EMIT channelsReset();
 }
 
 bool TChatChannelStorage::isOwnName(const QString& name) const

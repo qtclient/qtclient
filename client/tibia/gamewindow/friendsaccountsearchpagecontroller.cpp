@@ -1,4 +1,5 @@
 #include "friendsaccountsearchpagecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
 #include "gamewindow/characterinfodialogcontroller.h"
@@ -16,10 +17,6 @@ namespace {
 constexpr uint8_t kSendInvite = 3;
 constexpr uint8_t kAddToBlacklist = 7;
 
-const friends::TAccountSearchResult& searchResult()
-{
-    return friends::TFriendsStorage::instance()->accountSearch()->result();
-}
 
 /// CIP gamewindow::TAccountCharacterListData: the characters model of one result.
 class TAccountCharacterList final : public cip::tibia::gamewindow::TAccountCharacterListData
@@ -68,14 +65,6 @@ TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject
             &TFriendsAccountSearchPageController::onNoPermissionToDisplayCharacterSummary);
     connect(m_characterInfo, &TCharacterInfoDialogController::noPermissionsToInspectCharacter, this,
             &TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter);
-    // The session's storages live as long as the client: follow them from the start.
-    auto* search = friends::TFriendsStorage::instance()->accountSearch();
-    connect(search, &friends::TFriendsAccountSearchStorage::receivedAccountSearchResults, this,
-            &TFriendsAccountSearchPageController::onAccountSearchResults);
-    connect(search, &friends::TFriendsAccountSearchStorage::receivedNoResultsFound, this,
-            &TFriendsAccountSearchPageController::onNoResultsFound);
-    connect(friends::TFriendsProtocolMessageHandler::instance(), &friends::TFriendsProtocolMessageHandler::errorReceived, this,
-            &TFriendsAccountSearchPageController::onFriendSystemError);
 }
 
 bool TFriendsAccountSearchPageController::showAccountInfo() const
@@ -325,6 +314,39 @@ void TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter()
 {
     // Without the inspection the general stats are shown.
     m_characterInfo->showDialogTab(TCharacterInfoDialogController::GeneralStats);
+}
+
+
+void TFriendsAccountSearchPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    friends::TFriendsAccountSearchStorage* search = session->friendsAccountSearchStorage().get();
+    m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedAccountSearchResults, this,
+                                               &TFriendsAccountSearchPageController::onAccountSearchResults));
+    m_gameSessionConnections.push_back(connect(search, &friends::TFriendsAccountSearchStorage::receivedNoResultsFound, this,
+                                               &TFriendsAccountSearchPageController::onNoResultsFound));
+    m_gameSessionConnections.push_back(connect(session->friendsProtocolMessageHandler().get(),
+                                               &friends::TFriendsProtocolMessageHandler::errorReceived, this,
+                                               &TFriendsAccountSearchPageController::onFriendSystemError));
+}
+
+const friends::TAccountSearchResult& TFriendsAccountSearchPageController::searchResult() const
+{
+    static const friends::TAccountSearchResult none;
+    friends::TFriendsStorage* storage = friendsStorage();
+    return storage ? storage->accountSearch()->result() : none;
+}
+
+friends::TFriendsStorage* TFriendsAccountSearchPageController::friendsStorage() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->friendsStorage().get() : nullptr;
 }
 
 }

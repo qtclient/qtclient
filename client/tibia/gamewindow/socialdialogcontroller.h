@@ -15,7 +15,13 @@
 
 #include <QObject>
 
+#include <memory>
+#include <vector>
+
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace input {
 class IGameAction;
 }
@@ -35,6 +41,10 @@ public:
     /// Stock qtclient install: dialog + button bar controller under `parent`.
     /// Pack (IdleOT) owns the live social surfaces when mods are on.
     static TSocialDialogController* ensureInstalled(QObject* parent);
+
+    /// CIP connector: the dialog closes, its pages follow `GameSession`, and
+    /// the session's friend system errors show here.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     TSocialButtonController* socialButton() const { return m_button; }
     TFriendsFriendListPageController* friendListPage() const { return m_friends; }
@@ -90,6 +100,9 @@ private:
     TTeamAssemblePageController* m_assemble = nullptr;
     TSocialButtonController* m_button = nullptr;
     TMessageDialogController* m_errorDialog = nullptr;
+    /// CIP +0x40: the current session; +0x60: its connections.
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

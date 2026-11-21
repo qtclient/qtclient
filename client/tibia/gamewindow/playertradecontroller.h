@@ -9,11 +9,17 @@
 
 #include <cip_gen.h>
 
+#include <memory>
+#include <vector>
+
 #include <QPointer>
 
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TSidebarManager;
@@ -110,7 +116,7 @@ private:
     std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
-/// Owns the trade storage and its protocol handler, opens the trade window when
+/// Follows the session's trade storage and protocol handler, opens the trade window when
 /// the handler asks for it and closes it when the trade ends, and handles
 /// TRADE_ITEM: the item is offered to the player picked by target selection.
 class TPlayerTradeWidgetManager final : public QObject
@@ -120,7 +126,10 @@ public:
     TPlayerTradeWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TPlayerTradeWidgetManager() override;
 
-    trade::TPlayerTradeStorage* storage() { return &m_storage; }
+    trade::TPlayerTradeStorage* storage() const { return m_storage; }
+    /// The window closes; the trade follows `GameSession`'s storage and handler.
+    /// Host: the sidebar widgets manager's connector reaches the trade window here.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     void open();
@@ -130,8 +139,9 @@ private:
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
-    trade::TPlayerTradeStorage m_storage;
-    trade::TPlayerTradeProtocolMessageHandler m_handler;
+    QPointer<trade::TPlayerTradeStorage> m_storage;
+    QPointer<trade::TPlayerTradeProtocolMessageHandler> m_handler;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     QPointer<TPlayerTradeController> m_controller;
 
 public Q_SLOTS:

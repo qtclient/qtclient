@@ -282,8 +282,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<input::TGenericGameActionHandler> genericActions;
     std::unique_ptr<input::TGatherAllGameActionHandler> gatherAllActions;
     std::unique_ptr<input::TGatherAllProtocolMessageHandler> gatherAllProtocol;
-    std::unique_ptr<trade::TNPCTradeStorage> npcTrade;
-    std::unique_ptr<trade::TNPCTradeProtocolMessageHandler> npcTradeMessages;
     std::unique_ptr<gamewindow::TNpcDialogController> npcDialog;
     std::unique_ptr<gamewindow::TPlayerTradeWidgetManager> playerTrade;
     /// Outlives the packs' bootstrap: their deferred slots keep pointers into it.
@@ -618,7 +616,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     vipWidget->setControlScheme(controlScheme);
     informationDialogs->setControlScheme(controlScheme);
     g.exivaOptionsDialog = std::make_unique<exivaoptions::TExivaOptionsDialogController>();
-    g.exivaOptionsDialog->setStorage(vipWidget->exivaOptions(), [this] { return worldType(); });
+    g.exivaOptionsDialog->setWorldType([this] { return worldType(); });
     g.reportViolation = std::make_unique<gamewindow::TReportViolationController>();
     g.bugReport = std::make_unique<gamewindow::TBugReportDialogController>();
     g.naggingDialog = std::make_unique<gamewindow::TNaggingMessageDialogController>();
@@ -729,10 +727,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     gamewindow::TChatController* chat = g.chat.get();
     setMessageIgnoreList(&chat->ignoreList());
     analysers::TAnalyserStorages* analyserStorages = g.analyserStorages.get();
-    analyserStorages->itemTracking()->setChatStorage(&chat->storage());
     // The drop tracker announces on the active session's status line and
     // follows the session's premium state.
     const auto bindItemTrackingTexts = [this, analyserStorages] {
+        game::TGameSessionBase* session = game::TGameSessionBase::active();
+        analyserStorages->itemTracking()->setChatStorage(session ? session->chatChannelStorage().get() : nullptr);
         analyserStorages->itemTracking()->setTextStorage(textStorage());
         analyserStorages->itemTracking()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
     };
@@ -894,9 +893,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.gatherAllProtocol = std::make_unique<input::TGatherAllProtocolMessageHandler>();
     g.eventFilterManager->enableDiscardingUnhandledMouseButtons();
 
-    g.npcTrade = std::make_unique<trade::TNPCTradeStorage>();
-    g.npcTradeMessages = std::make_unique<trade::TNPCTradeProtocolMessageHandler>(g.npcTrade.get());
-    g.npcDialog = std::make_unique<gamewindow::TNpcDialogController>(g.npcTrade.get());
+    g.npcDialog = std::make_unique<gamewindow::TNpcDialogController>();
     g.npcDialog->setChatController(chat);
     publishToRouter(g.npcDialog.get());
     g.playerTrade = std::make_unique<gamewindow::TPlayerTradeWidgetManager>(sidebarManager, gameWindowItem, engine);
@@ -1000,7 +997,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     packHost.blessingsDialog = [&g]() -> QObject* { return g.blessingsDialog.get(); };
     packHost.npcDialog = [&g]() -> QObject* { return g.npcDialog.get(); };
     packHost.chatController = [chat]() -> QObject* { return chat; };
-    packHost.chatStorage = [chat]() -> QObject* { return &chat->storage(); };
+    // Pack ABI shim (until P): the current session's channels, resolved per call.
+    packHost.chatStorage = [chat]() -> QObject* { return chat->storage(); };
     packHost.storeMessages = [&g]() -> QObject* { return g.storeMessages.get(); };
     packHost.storeImageManager = [storeDialog]() -> QObject* {
         return storeDialog->property("dynamicallyLoadedImageManager").value<QObject*>();
@@ -1137,10 +1135,18 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.containers->connectToGameSession(GameSession);
         if (g.chat)
             g.chat->connectToGameSession(GameSession);
+        // Host: the VIP and trade widgets, which CipSoft's sidebar widgets
+        // manager connects in its connector.
+        if (g.vipWidget)
+            g.vipWidget->connectToGameSession(GameSession);
+        if (g.playerTrade)
+            g.playerTrade->connectToGameSession(GameSession);
         if (g.sidebarPanels)
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
             g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
+        if (m_messageIgnoreList)
+            m_messageIgnoreList->setGameSession(GameSession);
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
         if (g.informationDialogs) {
@@ -1153,9 +1159,15 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         }
         if (g.stashDialog)
             g.stashDialog->connectToGameSession(GameSession);
+        if (g.exivaOptionsDialog)
+            g.exivaOptionsDialog->connectToGameSession(GameSession);
         if (g.informationDialogs)
             if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
                 highscores->connectToGameSession(GameSession);
+        if (gamewindow::TCharacterTradeDialogController* characterTrade = gamewindow::TCharacterTradeDialogController::instance())
+            characterTrade->connectToGameSession(GameSession);
+        if (g.npcDialog)
+            g.npcDialog->connectToGameSession(GameSession);
     }
     if (m_soundController)
         m_soundController->connectToGameSession(GameSession);

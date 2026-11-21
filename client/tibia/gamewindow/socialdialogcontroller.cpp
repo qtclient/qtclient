@@ -1,4 +1,5 @@
 #include "socialdialogcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -51,15 +52,35 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
     m_errorDialog->setCloseOnButtonClicked(true);
-    auto* friendsHandler = friends::TFriendsProtocolMessageHandler::instance();
-    connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::cannotUseFriendSystemError, this,
-            &TSocialDialogController::onCannotUseFriendSystemError);
-    connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
-            &TSocialDialogController::onGenericFriendSystemError);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)
         g_socialDialog = this;
+}
+
+void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_errorDialog->dialog()->close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_friends->connectToGameSession(GameSession);
+    m_invites->connectToGameSession(GameSession);
+    m_search->connectToGameSession(GameSession);
+    m_badges->connectToGameSession(GameSession);
+    m_config->connectToGameSession(GameSession);
+    m_join->setGameSession(GameSession);
+    m_assemble->connectToGameSession(GameSession);
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    friends::TFriendsProtocolMessageHandler* friendsHandler = session->friendsProtocolMessageHandler().get();
+    m_gameSessionConnections.push_back(connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::cannotUseFriendSystemError, this,
+                                               &TSocialDialogController::onCannotUseFriendSystemError));
+    m_gameSessionConnections.push_back(connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
+                                               &TSocialDialogController::onGenericFriendSystemError));
 }
 
 TSocialDialogController::~TSocialDialogController()
