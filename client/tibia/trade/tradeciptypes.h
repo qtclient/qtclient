@@ -38,15 +38,19 @@ namespace trade {
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
+class TCharacterTradeStorage;
+
 class TCharacterTradeProtocolMessageHandler final : public cip::tibia::trade::TCharacterTradeProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::trade::TCharacterTradeProtocolMessageHandler::TCharacterTradeProtocolMessageHandler;
+    explicit TCharacterTradeProtocolMessageHandler(TCharacterTradeStorage* storage, QObject* parent = nullptr);
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void handleCharacterTradeConfigurationMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& message);
+    void handleCharacterTradeConfigurationMessage(const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& message);
+
+private:
+    TCharacterTradeStorage* m_storage;
 };
 
 /// The auctioned character (CIP: the character trade storage's basic data).
@@ -106,7 +110,6 @@ public:
     Q_ENUM(DataType)
 
     explicit TCharacterTradeStorage(QObject* parent = nullptr);
-    static TCharacterTradeStorage* instance();
 
     const TCharacterTradeBasicData& basicData() const { return m_basicData; }
     const std::vector<TCharacterTradeItem>& items() const { return m_items; }
@@ -125,8 +128,6 @@ Q_SIGNALS:
     void infoUpdated(tibia::trade::TCharacterTradeStorage::DataType dataType);
 
 private:
-    static TCharacterTradeStorage* s_instance;
-
     TCharacterTradeBasicData m_basicData;
     std::vector<TCharacterTradeItem> m_items;
     std::vector<TCharacterTradeItem> m_storeItems;
@@ -143,9 +144,6 @@ class TNPCTradeProtocolMessageHandler final : public cip::tibia::trade::TNPCTrad
 public:
     explicit TNPCTradeProtocolMessageHandler(TNPCTradeStorage* storage, QObject* parent = nullptr);
     ~TNPCTradeProtocolMessageHandler() override;
-
-    /// The live handler (the session owns one).
-    static TNPCTradeProtocolMessageHandler* instance();
 
     /// CIP: closes the trade; the trader's goods are dropped.
     void sendClose();
@@ -192,12 +190,8 @@ public:
     void handleCounterOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage);
     void handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade& message);
 
-    /// The live handler (the player trade widget manager owns it).
-    static TPlayerTradeProtocolMessageHandler* instance();
-
 
 private:
-    static TPlayerTradeProtocolMessageHandler* s_instance;
     TPlayerTradeStorage& m_storage;
 };
 

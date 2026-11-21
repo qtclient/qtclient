@@ -1,4 +1,5 @@
 #include "npctradecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "trade/tradeciptypes.h"
 
@@ -224,9 +225,8 @@ bool TTraderInventorySortFilterProxyModel::lessThan(const QModelIndex& left, con
     return value(left, TTraderInventoryModel::AppearanceID) < value(right, TTraderInventoryModel::AppearanceID);
 }
 
-TNPCTradeController::TNPCTradeController(trade::TNPCTradeStorage* storage, QObject* parent)
+TNPCTradeController::TNPCTradeController(QObject* parent)
     : cip::tibia::gamewindow::TNPCTradeController(parent)
-    , m_storage(storage)
     , m_options(TNPCTradeOptions::load())
     , m_proxy(&m_options)
 {
@@ -247,13 +247,23 @@ TNPCTradeController::TNPCTradeController(trade::TNPCTradeStorage* storage, QObje
     m_confirmation->setCloseOnButtonClicked(true);
     connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
 
-    // CIP attaches the trade session each time the NPC opens a trade.
-    if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance())
-        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNPCTradeController::setTradeStorage);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == OptionsKey)
             onNpcTradeOptionsChanged();
     });
+}
+
+void TNPCTradeController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    disconnect(m_openTradeConnection);
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_storage = session ? session->npcTradeStorage().get() : nullptr;
+    // CIP attaches the trade session each time the NPC opens a trade.
+    if (session)
+        m_openTradeConnection = connect(session->npcTradeProtocolMessageHandler().get(), &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade,
+                                        this, &TNPCTradeController::setTradeStorage);
+    setTradeStorage();
 }
 
 void TNPCTradeController::setTradeStorage()

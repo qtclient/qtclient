@@ -17,12 +17,16 @@
 #include <QVariantMap>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace tibia {
 namespace chat {
 class TChatChannelStorage;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -92,13 +96,16 @@ class TNpcDialogController final : public TDialogControllerWithFocusHandlingBase
 {
     Q_OBJECT
 public:
-    explicit TNpcDialogController(trade::TNPCTradeStorage* storage, QObject* parent = nullptr);
+    explicit TNpcDialogController(QObject* parent = nullptr);
     ~TNpcDialogController() override;
 
     /// CIP ctor's chat controller (+0x138, chatController): ChatInput's history and chat
     /// mode, typed lines, and the conversation pane's channel (chatChannelModel, the NPCs
     /// channel). Before the first show.
     void setChatController(TChatController* controller);
+    /// CIP connector: the dialog closes; then it follows `GameSession`'s NPC
+    /// conversation, NPCs channel and NPC trade.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     bool isShown() const { return dialog()->isShown(); }
     /// CIP: more than one talk partner.
@@ -173,6 +180,10 @@ private:
     QPointer<trade::TNPCTradeStorage> m_storage;
     std::vector<uint32_t> m_talkPartners;
     TNPCTradeController m_trade;
+    /// CIP +0x210: the current session.
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// CIP +0x50.
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     TUiFocusManager m_tradeFocus;
     TNpcDialogOutfit m_outfit;
     TNpcKeywordButtonModel m_keywordButtons;

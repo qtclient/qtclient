@@ -166,18 +166,14 @@ void TFriendsInviteStorage::setBlacklist(std::vector<TBlacklist::TBlacklistEntry
     Q_EMIT blacklistChanged();
 }
 
-TFriendsStorage::TFriendsStorage(QObject* parent)
+TFriendsStorage::TFriendsStorage(std::shared_ptr<TFriendsFriendListStorage> friendList,
+                                 std::shared_ptr<TFriendsAccountSearchStorage> accountSearch, std::shared_ptr<TFriendsInviteStorage> invites,
+                                 QObject* parent)
     : cip::tibia::friends::TFriendsStorage(parent)
-    , m_friendList(new TFriendsFriendListStorage(this))
-    , m_accountSearch(new TFriendsAccountSearchStorage(this))
-    , m_invites(new TFriendsInviteStorage(this))
+    , m_friendList(std::move(friendList))
+    , m_accountSearch(std::move(accountSearch))
+    , m_invites(std::move(invites))
 {
-}
-
-TFriendsStorage* TFriendsStorage::instance()
-{
-    static TFriendsStorage* storage = new TFriendsStorage(QCoreApplication::instance());
-    return storage;
 }
 
 void TFriendsStorage::setBadges(std::vector<TAccountBadge> badges)
@@ -192,15 +188,15 @@ void TFriendsStorage::setSettings(std::vector<TVisibilitySetting> settings)
     Q_EMIT visibilitySettingsChanged();
 }
 
-TFriendsProtocolMessageHandler* TFriendsProtocolMessageHandler::instance()
+TFriendsProtocolMessageHandler::TFriendsProtocolMessageHandler(TFriendsStorage* storage, QObject* parent)
+    : cip::tibia::friends::TFriendsProtocolMessageHandler(parent)
+    , m_storage(storage)
 {
-    static TFriendsProtocolMessageHandler* handler = new TFriendsProtocolMessageHandler(QCoreApplication::instance());
-    return handler;
 }
 
 void TFriendsProtocolMessageHandler::handleFriendSystemDataMessage(const GameserverMessageFriendSystemData& message)
 {
-    TFriendsStorage* storage = TFriendsStorage::instance();
+    TFriendsStorage* storage = m_storage;
     switch (static_cast<EFriendSystemData>(message.data_type())) {
     case EFriendSystemData::Error:
         // Every error is reported; code 2 is a failed account search.

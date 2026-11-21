@@ -31,6 +31,12 @@ TExivaOptionsStorage::Names names(const google::protobuf::RepeatedPtrField<std::
 
 }
 
+TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler(TExivaOptionsStorage* storage, QObject* parent)
+    : cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+}
+
 void TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed&)
 {
     Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::EXIVA_WAS_SUPPRESSED));
@@ -38,7 +44,7 @@ void TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage(const ::t
 
 void TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message)
 {
-    TExivaOptionsStorage* storage = TExivaOptionsStorage::instance();
+    TExivaOptionsStorage* storage = m_storage;
     if (!storage)
         return;
     storage->setAllowEveryone(message.allow_all());

@@ -143,8 +143,6 @@ class TVipProtocolMessageHandler final : public cip::tibia::creatures::TVipProto
     Q_OBJECT
 public:
     TVipProtocolMessageHandler(TVipStorage* storage, QObject* parent = nullptr);
-    /// The handler of the VIP storage.
-    static TVipProtocolMessageHandler* instance();
 
     void handleBuddyData(const ::tibia::protobuf::protocol::GameserverMessageBuddyData& message);
     void handleBuddyStatusChange(const ::tibia::protobuf::protocol::GameserverMessageBuddyStatusChange& message);

@@ -107,7 +107,6 @@ int maximumSellAmount(const TNPCTradeGood& good, const uint32_t owned)
 TNPCTradeStorage::TNPCTradeStorage(QObject* parent)
     : cip::tibia::trade::TNPCTradeStorage(parent)
 {
-    trade::ownProductSurface(this);
     // Host: the player data CIP's session forwards (capacity, balances,
     // inventory).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onFreeCapacityChange", [this](GameObject*, const Args&) {
@@ -229,28 +228,28 @@ uint64_t TNPCTradeStorage::inventoryBalance() const
 
 void TNPCTradeStorage::look(const TNPCTradeGood& good) const
 {
-    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
-        handler->sendLook(good);
+    if (m_protocolMessageHandler)
+        m_protocolMessageHandler->sendLook(good);
 }
 
 void TNPCTradeStorage::buy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity, const bool withBackpacks) const
 {
-    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
-        handler->sendBuy(good, amount, ignoreCapacity, withBackpacks);
+    if (m_protocolMessageHandler)
+        m_protocolMessageHandler->sendBuy(good, amount, ignoreCapacity, withBackpacks);
 }
 
 void TNPCTradeStorage::sell(const TNPCTradeGood& good, const int amount, const bool ignoreEquipped) const
 {
-    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
-        handler->sendSell(good, amount, ignoreEquipped);
+    if (m_protocolMessageHandler)
+        m_protocolMessageHandler->sendSell(good, amount, ignoreEquipped);
 }
 
 void TNPCTradeStorage::close()
 {
     if (!m_open)
         return;
-    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
-        handler->sendClose();
+    if (m_protocolMessageHandler)
+        m_protocolMessageHandler->sendClose();
 }
 
 }

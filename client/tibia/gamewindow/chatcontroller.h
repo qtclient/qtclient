@@ -24,6 +24,7 @@
 #include <QTimer>
 
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
 #include <utility>
@@ -68,6 +69,8 @@ public:
     chat::TChatChannel* channel() const { return m_channel; }
     /// CIP: the rows go and the new channel's entries come.
     void setChannel(chat::TChatChannel* channel);
+    /// CIP: the channel went away (also the connector without a session).
+    void resetChannel();
 
     /// The entry of a row (row 0 newest), or null.
     const chat::TChatEntry* entryAt(int row) const;
@@ -137,8 +140,6 @@ private:
         void selectAnchorTo(int side);
     };
 
-    /// CIP: the channel went away.
-    void resetChannel();
     void onIdRangeChanged(uint32_t firstId, uint32_t afterLastId);
     void onTutorialMarkerChanged();
     void clearRows();
@@ -177,7 +178,11 @@ public:
     static constexpr uint FLASH_NEW_ENTRY = TChatChannelTabRenderInfo::FLASH_NEW_ENTRY;
     static constexpr uint NEW_ENTRY = TChatChannelTabRenderInfo::NEW_ENTRY;
 
-    explicit TChatChannelTabController(chat::TChatChannelStorage& storage, QObject* parent = nullptr);
+    explicit TChatChannelTabController(QObject* parent = nullptr);
+
+    /// The session's channels become the tabs (the first one current); null
+    /// clears them.
+    void setChannelStorage(chat::TChatChannelStorage* storage);
 
     chat::TChatChannel* currentChannel() const;
     chat::TChatChannel* channelAt(int row) const;
@@ -215,7 +220,7 @@ private:
     uint highlightOf(int row) const;
     void updateButtonHighlights();
 
-    chat::TChatChannelStorage& m_storage;
+    QPointer<chat::TChatChannelStorage> m_storage;
     std::vector<chat::TChatChannel*> m_rows;
     std::unordered_map<const chat::TChatChannel*, std::unique_ptr<TChatChannelTabRenderInfo>> m_renderInfos;
     uint m_hiddenLeft = 0;
@@ -272,14 +277,14 @@ public:
     bool exivaOptionsAvailable() const override;
     int chatMode() const override { return m_mode.chatMode(); }
 
-    chat::TChatChannelStorage& storage() { return m_storage; }
+    /// The current session's channels, or null.
+    chat::TChatChannelStorage* storage() const { return m_chatChannelStorage.get(); }
     /// CIP TWhiteBlacklist shared with the game-message (map bubble) handler.
     chat::TWhiteBlacklist& ignoreList() { return m_blacklist; }
-    chat::TChatProtocolMessageHandler* protocolHandler() const { return m_protocol.get(); }
-    /// CIP connector: the protocol handler writes `GameSession`'s texts and effects.
+    /// CIP connector: the open channels are stored and the tabs, the input
+    /// and the dialogs are cleared; then the tabs show `GameSession`'s
+    /// channels, and its login opens the channels from the options.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    chat::TChatStorage& chatStorage() { return m_chatStorage; }
-    chat::TChatGameActionHandler& gameActionHandler() { return m_gameActionHandler; }
     void setControlScheme(int scheme) { m_mapper.setControlScheme(scheme); }
 
     /// CIP (+0x58): the NPC dialog. While it has focus it takes
@@ -342,7 +347,6 @@ private:
     static EInput parseInput(QString& text, QString& recipient);
 
     void onWorldEntered();
-    void onWorldLeft();
     void bindItem();
     void reloadOptions();
     void onOptionChanged(const QString& name);
@@ -387,13 +391,18 @@ private:
     void addLogMessage(const QString& text);
 
     QPointer<QQuickItem> m_chatItem;
-    chat::TChatChannelStorage m_storage;
-    chat::TChatGameActionHandler m_gameActionHandler;
-    chat::TChatStorage m_chatStorage;
     chat::TWhiteBlacklist m_blacklist;
-    chat::TChatGameActionProvider m_actionProvider;
+    /// The current session's channels' actions (made by the connector).
+    std::optional<chat::TChatGameActionProvider> m_actionProvider;
     chat::TChatModeManager m_mode;
-    std::unique_ptr<chat::TChatProtocolMessageHandler> m_protocol;
+    /// CIP +0x4b0: the current session.
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// CIP +0x4c0: the session's chat protocol message handler.
+    std::shared_ptr<chat::TChatProtocolMessageHandler> m_chatProtocolMessageHandler;
+    /// CIP +0x4d0: the session's channels.
+    std::shared_ptr<chat::TChatChannelStorage> m_chatChannelStorage;
+    /// CIP +0x4e0: the connections to the session's objects.
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     TChatChannelController m_primary;
     TChatChannelController m_secondary;
     TChatChannelTabController m_tabs;

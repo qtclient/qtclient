@@ -35,9 +35,6 @@ public:
     explicit TExivaOptionsStorage(QObject* parent = nullptr);
     ~TExivaOptionsStorage() override;
 
-    /// The storage the server's exiva messages update (the VIP widget owns it).
-    static TExivaOptionsStorage* instance();
-
     bool allowEveryone() const { return m_options.allowAll; }
     /// Notifies only when the flag changes.
     void setAllowEveryone(bool allow);

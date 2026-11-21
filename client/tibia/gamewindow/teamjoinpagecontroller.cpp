@@ -1,4 +1,5 @@
 #include "teamjoinpagecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -14,12 +15,13 @@ TTeamJoinPageController::TTeamJoinPageController(QObject* parent)
     , m_proxy(new TTeamsListSortProxyModel(this))
 {
     m_teamsList = m_proxy;
-    connect(teamfinder::TTeamFinderProtocolMessageHandler::instance(), &teamfinder::TTeamFinderProtocolMessageHandler::sessionStarted, this,
-            &TTeamJoinPageController::setGameSession);
 }
 
-void TTeamJoinPageController::setGameSession()
+void TTeamJoinPageController::setGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_teamFinderProtocolMessageHandler = session ? session->teamFinderProtocolMessageHandler().get() : nullptr;
     m_proxy->resetFilters();
 }
 
@@ -56,7 +58,9 @@ void TTeamJoinPageController::showDialogTab()
     m_storage = nullptr;
     if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance(); premium != m_premium)
         setPremiumStorage(premium);
-    auto* handler = teamfinder::TTeamFinderProtocolMessageHandler::instance();
+    teamfinder::TTeamFinderProtocolMessageHandler* handler = m_teamFinderProtocolMessageHandler;
+    if (!handler)
+        return;
     m_storage = handler->storage();
     m_connections.push_back(connect(m_storage, &teamfinder::TTeamFinderStorage::teamsChanged, this, &TTeamJoinPageController::onTeamsChanged));
     m_connections.push_back(connect(handler, &teamfinder::TTeamFinderProtocolMessageHandler::teamLisUpdateAvailable, this,
@@ -88,10 +92,16 @@ void TTeamJoinPageController::onJoinLeaveTeamClicked(const uint TeamIDRaw, const
     const auto teamId = static_cast<uint16_t>(TeamIDRaw);
     if (CurrentStatusRaw - 1u < 3u) {
         connect(menu->addCustomEntry(qtTrId("temfinder_leave")), &TContextMenuEntryItem::triggered, this,
-                [teamId] { teamfinder::TTeamFinderProtocolMessageHandler::instance()->leaveTeam(teamId); });
+                [this, teamId] {
+                    if (m_teamFinderProtocolMessageHandler)
+                        m_teamFinderProtocolMessageHandler->leaveTeam(teamId);
+                });
     } else if (CurrentStatusRaw == 0) {
         connect(menu->addCustomEntry(qtTrId("temfinder_join")), &TContextMenuEntryItem::triggered, this,
-                [teamId] { teamfinder::TTeamFinderProtocolMessageHandler::instance()->joinTeam(teamId); });
+                [this, teamId] {
+                    if (m_teamFinderProtocolMessageHandler)
+                        m_teamFinderProtocolMessageHandler->joinTeam(teamId);
+                });
     }
     menu->showCustomMenu();
 }
@@ -104,7 +114,8 @@ void TTeamJoinPageController::getPremiumClicked()
 
 void TTeamJoinPageController::onTeamLisUpdateAvailable()
 {
-    teamfinder::TTeamFinderProtocolMessageHandler::instance()->requestTeamList();
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->requestTeamList();
 }
 
 void TTeamJoinPageController::onTeamsChanged()

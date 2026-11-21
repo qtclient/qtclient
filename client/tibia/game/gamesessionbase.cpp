@@ -7,8 +7,11 @@
 #include "protocol/protocolmessagequeue.h"
 
 #include <protocol.pb.h>
+#include <tibia/game/gamesession.h>
 
 #include "app/clientoptions.h"
+#include "chat/chatchannel.h"
+#include "chat/chatgameactionhandler.h"
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
 #include "chat/textstorage.h"
@@ -16,6 +19,10 @@
 #include "container/objectappearanceinstanceinfostorage.h"
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/vipstorage.h"
+#include "exivaoptions/exivaoptionsstorage.h"
+#include "trade/npctradestorage.h"
+#include "trade/playertradestorage.h"
 #include "game/gameactionrouter.h"
 #include "game/gameciptypes.h"
 #include "trade/tradeciptypes.h"
@@ -128,6 +135,18 @@ void TGameSessionBase::createStorages()
     m_taskboardBountyTasksStorage = std::make_shared<taskboard::TTaskboardBountyTasksStorage>();
     m_taskboardWeeklyTasksStorage = std::make_shared<taskboard::TTaskboardWeeklyTasksStorage>();
     m_taskboardShopStorage = std::make_shared<taskboard::TTaskboardShopStorage>();
+    m_vipStorage = std::make_shared<creatures::TVipStorage>();
+    m_unjustifiedPointsStorage = std::make_shared<creatures::TUnjustifiedPointsStorage>();
+    m_npcTradeStorage = std::make_shared<trade::TNPCTradeStorage>();
+    m_playerTradeStorage = std::make_shared<trade::TPlayerTradeStorage>();
+    m_friendsFriendListStorage = std::make_shared<friends::TFriendsFriendListStorage>();
+    m_friendsAccountSearchStorage = std::make_shared<friends::TFriendsAccountSearchStorage>();
+    m_friendsInviteStorage = std::make_shared<friends::TFriendsInviteStorage>();
+    m_friendsStorage =
+        std::make_shared<friends::TFriendsStorage>(m_friendsFriendListStorage, m_friendsAccountSearchStorage, m_friendsInviteStorage);
+    m_exivaOptionsStorage = std::make_shared<exivaoptions::TExivaOptionsStorage>();
+    m_characterTradeStorage = std::make_shared<trade::TCharacterTradeStorage>();
+    m_teamFinderStorage = std::make_shared<teamfinder::TTeamFinderStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
     // CIP: the client's sound reaches the session through its provider and
     // its object sound counts.
@@ -136,6 +155,11 @@ void TGameSessionBase::createStorages()
         m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
     }
     m_textStorage = std::make_shared<chat::TTextStorage>();
+    m_chatChannelStorage = std::make_shared<chat::TChatChannelStorage>();
+    m_chatStorage = std::make_shared<chat::TChatStorage>();
+    // The own creature's name reaches the channels.
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatChannelStorage.get(),
+            &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
     // The own creature's arrival clears the map texts (CIP TTextStorage).
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, this,
             [texts = m_textStorage.get()](std::weak_ptr<creatures::TCreature> player) {
@@ -183,6 +207,18 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_managedContainersProtocolMessageHandler =
         std::make_shared<quickloot::TManagedContainersProtocolMessageHandler>(m_managedContainerStorage.get());
     m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
+    m_chatProtocolMessageHandler = std::make_shared<chat::TChatProtocolMessageHandler>(*m_chatChannelStorage, *m_chatStorage);
+    m_chatProtocolMessageHandler->setTextStorage(m_textStorage.get());
+    m_chatProtocolMessageHandler->setEffectStorage(m_effectStorage.get());
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatProtocolMessageHandler.get(),
+            &chat::TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage);
+    m_npcTradeProtocolMessageHandler = std::make_shared<trade::TNPCTradeProtocolMessageHandler>(m_npcTradeStorage.get());
+    m_playerTradeProtocolMessageHandler = std::make_shared<trade::TPlayerTradeProtocolMessageHandler>(*m_playerTradeStorage);
+    m_vipProtocolMessageHandler = std::make_shared<creatures::TVipProtocolMessageHandler>(m_vipStorage.get());
+    m_exivaOptionsProtocolMessageHandler = std::make_shared<exivaoptions::TExivaOptionsProtocolMessageHandler>(m_exivaOptionsStorage.get());
+    m_teamFinderProtocolMessageHandler = std::make_shared<teamfinder::TTeamFinderProtocolMessageHandler>(m_teamFinderStorage.get());
+    m_friendsProtocolMessageHandler = std::make_shared<friends::TFriendsProtocolMessageHandler>(m_friendsStorage.get());
+    m_characterTradeProtocolMessageHandler = std::make_shared<trade::TCharacterTradeProtocolMessageHandler>(m_characterTradeStorage.get());
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>();
     m_taskboardProtocolMessageHandler = std::make_unique<taskboard::TTaskboardProtocolMessageHandler>(
@@ -217,10 +253,10 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_highscoresProtocolMessageHandler = std::make_shared<highscores::THighscoresProtocolMessageHandler>(m_highscoresStorage);
     m_bossBestiaryProtocolMessageHandler =
         std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
-    // The store's coin balance also reaches the market storage (CIP passes the
-    // session's market storage to the constructor; the client sets it until
-    // the market storage is the session's).
     m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage.get());
+    // The store's coin balance also reaches the session's market storage (CIP
+    // passes it to the constructor).
+    m_storeProtocolMessageHandler->setMarketStorage(m_marketStorage.get());
     m_preyProtocolMessageHandler = std::make_shared<prey::TPreyProtocolMessageHandler>();
     m_imbuingProtocolMessageHandler =
         std::make_shared<imbuing::TImbuingProtocolMessageHandler>(m_imbuingStorage.get(), m_imbuementDurationsStorage.get());
@@ -246,6 +282,37 @@ void TGameSessionBase::createProtocolMessageHandlers()
             qOverload<const input::IGameActionPtr&>(&skillwheel::TSkillWheelGameActionHandler::handleGameAction));
     connect(m_skillWheelGameActionHandler.get(), &skillwheel::TSkillWheelGameActionHandler::publishGameAction,
             m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
+    m_chatGameActionHandler = std::make_shared<chat::TChatGameActionHandler>();
+    // The handler's client messages go to the session's protocol queue.
+    connect(m_chatGameActionHandler.get(), &chat::TChatGameActionHandler::sendCloseNPCChannel, this,
+            [this](const ::tibia::protobuf::protocol::GameclientMessageCloseNPCChannel& message) {
+                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
+                    m_protocolMessageQueue->sendCloseNPCChannel(message);
+            });
+    m_vipGameActionHandler = std::make_shared<creatures::TVipGameActionHandler>(m_vipStorage.get());
+    m_playerTradeGameActionHandler = std::make_shared<trade::TPlayerTradeGameActionHandler>();
+    // The session's storages and handlers publish to its router, and its
+    // game action handlers take the router's actions.
+    TInternalGameActionRouter* router = m_gameActionRouter->internalRouter();
+    connect(m_chatChannelStorage.get(), &chat::TChatChannelStorage::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_vipStorage.get(), &creatures::TVipStorage::publishGameAction, router, &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_exivaOptionsStorage.get(), &exivaoptions::TExivaOptionsStorage::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_exivaOptionsProtocolMessageHandler.get(), &exivaoptions::TExivaOptionsProtocolMessageHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_vipGameActionHandler.get(),
+            qOverload<const input::IGameActionPtr&>(&creatures::TVipGameActionHandler::handleGameAction));
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_exivaOptionsStorage.get(),
+            qOverload<const input::IGameActionPtr&>(&exivaoptions::TExivaOptionsStorage::handleGameAction));
+}
+
+void TGameSessionBase::setWhiteBlacklist(chat::TWhiteBlacklist* whiteBlacklist)
+{
+    if (m_chatProtocolMessageHandler)
+        m_chatProtocolMessageHandler->setWhiteBlacklist(whiteBlacklist);
+    if (m_teamFinderProtocolMessageHandler)
+        m_teamFinderProtocolMessageHandler->setIgnoreList(whiteBlacklist);
 }
 
 void TGameSessionBase::createRenderProviders()
@@ -347,7 +414,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     };
 
     using chat::TChatProtocolMessageHandler;
-    if (auto* chat = TChatProtocolMessageHandler::liveInstance()) {
+    if (auto* chat = m_chatProtocolMessageHandler.get()) {
         link(&Queue::receivedTalkMessage, chat, &TChatProtocolMessageHandler::handleTalkMessage);
         link(&Queue::receivedMessageMessage, chat, &TChatProtocolMessageHandler::handleMessageMessage);
         link(&Queue::receivedOpenChannelMessage, chat, &TChatProtocolMessageHandler::handleOpenChannelMessage);
@@ -402,7 +469,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     }
 
     using creatures::TVipProtocolMessageHandler;
-    auto* vip = TVipProtocolMessageHandler::instance();
+    auto* vip = m_vipProtocolMessageHandler.get();
     link(&Queue::receivedBuddyDataMessage, vip, &TVipProtocolMessageHandler::handleBuddyData);
     link(&Queue::receivedBuddyStatusChangeMessage, vip, &TVipProtocolMessageHandler::handleBuddyStatusChange);
     link(&Queue::receivedBuddyGroupDataMessage, vip, &TVipProtocolMessageHandler::handleBuddyGroupData);
@@ -522,7 +589,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedMessageMessage, market, &TMarketProtocolMessageHandler::handleMessageMessage);
     }
     using trade::TNPCTradeProtocolMessageHandler;
-    if (auto* npcTrade = TNPCTradeProtocolMessageHandler::instance()) {
+    if (auto* npcTrade = m_npcTradeProtocolMessageHandler.get()) {
         link(&Queue::receivedNPCOfferMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleNPCOfferMessage);
         link(&Queue::receivedPlayerGoodsMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage);
         link(&Queue::receivedResourceBalanceMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleResourceBalanceMessage);
@@ -530,7 +597,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedDeadMessage, npcTrade, &TNPCTradeProtocolMessageHandler::handleDeadMessage);
     }
     using trade::TPlayerTradeProtocolMessageHandler;
-    if (auto* playerTrade = TPlayerTradeProtocolMessageHandler::instance()) {
+    if (auto* playerTrade = m_playerTradeProtocolMessageHandler.get()) {
         link(&Queue::receivedOwnOfferMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleOwnOfferMessage);
         link(&Queue::receivedCounterOfferMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleCounterOfferMessage);
         link(&Queue::receivedCloseTradeMessage, playerTrade, &TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage);
@@ -653,11 +720,11 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedUpdateManagedContainersMessage, m_managedContainersProtocolMessageHandler.get(),
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
-    auto* exivaOptions = sessionHandler(static_cast<TExivaOptionsProtocolMessageHandler*>(nullptr));
+    auto* exivaOptions = m_exivaOptionsProtocolMessageHandler.get();
     link(&Queue::receivedExivaSuppressedMessage, exivaOptions, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
     link(&Queue::receivedUpdateExivaOptionsMessage, exivaOptions, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
 
-    link(&Queue::receivedFriendSystemDataMessage, friends::TFriendsProtocolMessageHandler::instance(),
+    link(&Queue::receivedFriendSystemDataMessage, m_friendsProtocolMessageHandler.get(),
          &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
     link(&Queue::receivedGameEventMessage, sessionHandler(static_cast<TGameEventProtocolMessageHandler*>(nullptr)),
          &TGameEventProtocolMessageHandler::handleGameEventMessage);
@@ -665,10 +732,10 @@ void TGameSessionBase::connectProtocolMessageHandlers()
          &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
     using teamfinder::TTeamFinderProtocolMessageHandler;
-    auto* teamFinder = TTeamFinderProtocolMessageHandler::instance();
+    auto* teamFinder = m_teamFinderProtocolMessageHandler.get();
     link(&Queue::receivedTeamFinderTeamLeaderMessage, teamFinder, &TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage);
     link(&Queue::receivedTeamFinderTeamMemberMessage, teamFinder, &TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage);
-    link(&Queue::receivedCharacterTradeConfigurationMessage, this,
+    link(&Queue::receivedCharacterTradeConfigurationMessage, m_characterTradeProtocolMessageHandler.get(),
          &trade::TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage);
 
     using bossbestiary::TBossBestiaryProtocolMessageHandler;
@@ -725,6 +792,31 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
 void TGameSessionBase::releaseStorages()
 {
+    // The handlers refer to their storages.
+    m_playerTradeGameActionHandler.reset();
+    m_vipGameActionHandler.reset();
+    m_chatGameActionHandler.reset();
+    m_characterTradeProtocolMessageHandler.reset();
+    m_friendsProtocolMessageHandler.reset();
+    m_teamFinderProtocolMessageHandler.reset();
+    m_exivaOptionsProtocolMessageHandler.reset();
+    m_vipProtocolMessageHandler.reset();
+    m_playerTradeProtocolMessageHandler.reset();
+    m_npcTradeProtocolMessageHandler.reset();
+    m_chatProtocolMessageHandler.reset();
+    m_teamFinderStorage.reset();
+    m_characterTradeStorage.reset();
+    m_exivaOptionsStorage.reset();
+    m_friendsStorage.reset();
+    m_friendsInviteStorage.reset();
+    m_friendsAccountSearchStorage.reset();
+    m_friendsFriendListStorage.reset();
+    m_playerTradeStorage.reset();
+    m_npcTradeStorage.reset();
+    m_unjustifiedPointsStorage.reset();
+    m_vipStorage.reset();
+    m_chatStorage.reset();
+    m_chatChannelStorage.reset();
     m_skillWheelGameActionHandler.reset();
     m_bossDifficultySelectionProtocolMessageHandler.reset();
     m_taskboardProtocolMessageHandler.reset();

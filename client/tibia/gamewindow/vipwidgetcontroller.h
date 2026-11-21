@@ -5,6 +5,7 @@
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "creatures/creaturesciptypes.h"
 #include "creatures/vipstorage.h"
+#include "exivaoptions/exivaoptionsstorage.h"
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
@@ -13,12 +14,17 @@
 #include <QPointer>
 #include <QSet>
 
+#include <memory>
+
 #include <functional>
 #include <vector>
 
 class QTimer;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace config {
 class TSidebarOptions;
 }
@@ -58,6 +64,8 @@ public:
     };
 
     explicit TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent = nullptr);
+    /// The rows follow another session's VIP list.
+    void setStorage(creatures::TVipStorage* storage);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     /// CIP .
@@ -154,6 +162,8 @@ public:
     /// The exiva whitelist entries' data (CIP TVipWidgetGameActionProvider
     /// +0x18 the exiva options storage, +0x38 the world type).
     void setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, int worldType);
+    /// The widget follows another session's VIP list (its dialogs close).
+    void setVipStorage(creatures::TVipStorage* storage);
     /// CIP : the widget's dialogs, sorting and filters.
     bool handleAction(const input::IGameAction& action);
 
@@ -244,6 +254,9 @@ public:
 
     creatures::TVipStorage* storage() const { return m_storage; }
     exivaoptions::TExivaOptionsStorage* exivaOptions() const { return m_exivaOptions; }
+    /// The widget follows `GameSession`'s VIP list and exiva options. Host: the
+    /// sidebar widgets manager's connector reaches the VIP widget through here.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Before the sidebar widgets manager restores the open widgets.
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme);
@@ -266,8 +279,8 @@ Q_SIGNALS:
 private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
-    creatures::TVipStorage* m_storage;
-    exivaoptions::TExivaOptionsStorage* m_exivaOptions;
+    QPointer<creatures::TVipStorage> m_storage;
+    QPointer<exivaoptions::TExivaOptionsStorage> m_exivaOptions;
     QPointer<TVipWidgetController> m_controller;
     QPointer<config::TSidebarOptions> m_options;
     int m_controlScheme = 0;

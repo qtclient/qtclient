@@ -16,6 +16,7 @@
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "game/offlineskilltrainingdata.h"
 #include "game/tgamenotify.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -244,10 +245,21 @@ TCharacterTradeDialogController::TCharacterTradeDialogController(QObject* parent
     m_confirmationsModel = m_confirmations;
     m_characterOverviewHighlightsModel = m_overviewHighlights;
     m_characterOverviewItemsModel = m_overviewItems;
+}
 
-    if (trade::TCharacterTradeStorage* storage = trade::TCharacterTradeStorage::instance()) {
-        connect(storage, &trade::TCharacterTradeStorage::infoUpdated, this, &TCharacterTradeDialogController::onInfoUpdated);
-    }
+void TCharacterTradeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    closeDialog();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_storage = session->characterTradeStorage().get();
+    m_gameSessionConnections.push_back(
+        connect(m_storage, &trade::TCharacterTradeStorage::infoUpdated, this, &TCharacterTradeDialogController::onInfoUpdated));
 }
 
 TCharacterTradeDialogController* TCharacterTradeDialogController::instance()
@@ -405,7 +417,7 @@ void TCharacterTradeDialogController::requestConfirmConfiguration()
 
 void TCharacterTradeDialogController::onInfoUpdated(const trade::TCharacterTradeStorage::DataType dataType)
 {
-    trade::TCharacterTradeStorage* storage = trade::TCharacterTradeStorage::instance();
+    trade::TCharacterTradeStorage* storage = m_storage;
     if (!storage)
         return;
 

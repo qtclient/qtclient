@@ -133,8 +133,6 @@ class TTeamFinderProtocolMessageHandler final : public cip::tibia::teamfinder::T
 public:
     explicit TTeamFinderProtocolMessageHandler(TTeamFinderStorage* Storage, QObject* parent = nullptr);
 
-    /// The session's handler (and its storage), created on first use.
-    static TTeamFinderProtocolMessageHandler* instance();
     TTeamFinderStorage* storage() const { return m_storage; }
 
     /// Applicants on this list are rejected as soon as they apply.
@@ -154,12 +152,6 @@ public:
     void requestTeamList();
     void joinTeam(uint16_t TeamID);
     void leaveTeam(uint16_t TeamID);
-
-    /// A new game session: no own team, no listed teams; the pages hand themselves the new session.
-    void startSession();
-
-Q_SIGNALS:
-    void sessionStarted();
 
 private:
     TTeamFinderStorage* m_storage = nullptr;

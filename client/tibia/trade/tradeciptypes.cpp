@@ -38,17 +38,9 @@ QString vocationName(const int vocation, const bool promoted)
 
 } // namespace
 
-TCharacterTradeStorage* TCharacterTradeStorage::s_instance = nullptr;
-
 TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
     : cip::tibia::trade::TCharacterTradeStorage(parent)
 {
-    s_instance = this;
-}
-
-TCharacterTradeStorage* TCharacterTradeStorage::instance()
-{
-    return s_instance;
 }
 
 void TCharacterTradeStorage::setBasicData(TCharacterTradeBasicData data)
@@ -84,8 +76,6 @@ void TCharacterTradeStorage::setSummary(std::vector<QString> problems, const qui
 
 namespace {
 
-TNPCTradeProtocolMessageHandler* s_npcTradeLive = nullptr;
-
 /// The quest flag currency's resource type.
 constexpr uint32_t QuestFlagCurrencyResource = 60;
 
@@ -105,18 +95,14 @@ TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler(TNPCTradeStorag
     : cip::tibia::trade::TNPCTradeProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-    s_npcTradeLive = this;
+    if (m_storage)
+        m_storage->setProtocolMessageHandler(this);
 }
 
 TNPCTradeProtocolMessageHandler::~TNPCTradeProtocolMessageHandler()
 {
-    if (s_npcTradeLive == this)
-        s_npcTradeLive = nullptr;
-}
-
-TNPCTradeProtocolMessageHandler* TNPCTradeProtocolMessageHandler::instance()
-{
-    return s_npcTradeLive;
+    if (m_storage)
+        m_storage->setProtocolMessageHandler(nullptr);
 }
 
 void TNPCTradeProtocolMessageHandler::sendClose()
@@ -199,20 +185,13 @@ void TNPCTradeProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf:
     Q_EMIT requestCloseNpcTrade();
 }
 
-TPlayerTradeProtocolMessageHandler* TPlayerTradeProtocolMessageHandler::s_instance = nullptr;
-
 TPlayerTradeProtocolMessageHandler::TPlayerTradeProtocolMessageHandler(TPlayerTradeStorage& storage, QObject* parent)
     : cip::tibia::trade::TPlayerTradeProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-    s_instance = this;
 }
 
-TPlayerTradeProtocolMessageHandler::~TPlayerTradeProtocolMessageHandler()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
+TPlayerTradeProtocolMessageHandler::~TPlayerTradeProtocolMessageHandler() = default;
 
 void TPlayerTradeProtocolMessageHandler::acceptTrade()
 {
@@ -247,11 +226,6 @@ void TPlayerTradeProtocolMessageHandler::handleCounterOfferMessage(
     tibia::game::processCounterTrade(tibia::game::formatCreatureName(CounterOfferMessage.name()), offerItems(CounterOfferMessage));
 }
 
-TPlayerTradeProtocolMessageHandler* TPlayerTradeProtocolMessageHandler::instance()
-{
-    return s_instance;
-}
-
 void TPlayerTradeProtocolMessageHandler::handleCloseTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseTrade&)
 {
     Q_EMIT requestClosePlayerTradeWidget();
@@ -264,7 +238,13 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    new TCharacterTradeStorage(parent);
+    (void)parent;
+}
+
+TCharacterTradeProtocolMessageHandler::TCharacterTradeProtocolMessageHandler(TCharacterTradeStorage* storage, QObject* parent)
+    : cip::tibia::trade::TCharacterTradeProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
 }
 
 void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage(
@@ -272,7 +252,7 @@ void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMes
 {
     if (m.data_type() > TCharacterTradeStorage::Summary)
         throw std::logic_error("unhandled enum value");
-    TCharacterTradeStorage* storage = TCharacterTradeStorage::instance();
+    TCharacterTradeStorage* storage = m_storage;
     if (!storage)
         return;
     switch (m.data_type()) {

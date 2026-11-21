@@ -1,4 +1,5 @@
 #include "playertradecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -259,14 +260,7 @@ TPlayerTradeWidgetManager::TPlayerTradeWidgetManager(TSidebarManager* sidebars, 
     , m_sidebars(sidebars)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
-    , m_handler(m_storage)
 {
-    connect(&m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestOpenPlayerTradeWidget, this, &TPlayerTradeWidgetManager::open);
-    connect(&m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestClosePlayerTradeWidget, this, &TPlayerTradeWidgetManager::close);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] {
-        m_storage.reset();
-        close();
-    });
     m_gameActions.on(input::EGameAction::TRADE_ITEM, [this](const input::TGameActionPlayerTradeItem& action) { return tradeItem(action); });
 }
 
@@ -276,12 +270,29 @@ TPlayerTradeWidgetManager::~TPlayerTradeWidgetManager()
         input::finishTargetSelection(nullptr);
 }
 
+void TPlayerTradeWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->playerTradeStorage().get() : nullptr;
+    m_handler = session ? session->playerTradeProtocolMessageHandler().get() : nullptr;
+    if (!m_handler)
+        return;
+    m_gameSessionConnections.push_back(connect(m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestOpenPlayerTradeWidget, this,
+                                               &TPlayerTradeWidgetManager::open));
+    m_gameSessionConnections.push_back(connect(m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestClosePlayerTradeWidget, this,
+                                               &TPlayerTradeWidgetManager::close));
+}
+
 void TPlayerTradeWidgetManager::open()
 {
     if (m_controller || !m_sidebars)
         return;
     m_controller = new TPlayerTradeController(m_gameWindowItem, m_engine, this);
-    m_controller->setGameSession(&m_storage, &m_handler);
+    m_controller->setGameSession(m_storage, m_handler);
     connect(m_controller, &TPlayerTradeController::widgetClosed, this, &TPlayerTradeWidgetManager::close);
     m_sidebars->addWidget(m_controller->widget());
     m_controller->widget()->show();

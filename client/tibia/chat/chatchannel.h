@@ -283,8 +283,6 @@ public:
     /// v39.
     void removeAllTutorialMarkers();
 
-    /// Session change: back to Local Chat and the Server Log, both empty.
-    void reset();
     /// Tab drag (the tabs show the storage order).
     void moveChannel(int from, int to);
     /// A system line in one channel (closed channel notes, client messages).
@@ -310,7 +308,6 @@ Q_SIGNALS:
     void channelAdded(TChatChannel* channel, bool makeCurrent);
     void channelRemoved(TChatChannel* channel);
     void channelsMoved();
-    void channelsReset();
     /// A channel got an entry someone else wrote (the tab flashes).
     void entryAddedToChannel(TChatChannel* channel, bool fromOthers);
 

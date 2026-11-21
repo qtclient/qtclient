@@ -1,5 +1,6 @@
 #pragma once
 
+#include "teamfinder/teamfinderciptypes.h"
 #include "teamfinder/teamsortproxymodels.h"
 
 #include <cip_gen.h>
@@ -9,8 +10,11 @@
 #include <QObject>
 #include <QPointer>
 
+#include <memory>
+
 namespace tibia {
 namespace game {
+class IGameSession;
 class TPremiumTimeStorage;
 }
 namespace gamewindow {
@@ -32,7 +36,8 @@ public:
     /// The account's premium state; premiumTimeChanged follows it.
     void setPremiumStorage(game::TPremiumTimeStorage* Storage);
     /// A new game session: the filters start over (and pick up the new character on the next show).
-    void setGameSession();
+    /// CIP v12: the page follows the session's team finder; the filters start over.
+    void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     void onJoinLeaveTeamClicked(uint TeamIDRaw, uint CurrentStatusRaw) override;
@@ -45,6 +50,8 @@ private:
 
     QPointer<game::TPremiumTimeStorage> m_premium;
     QPointer<teamfinder::TTeamFinderStorage> m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<teamfinder::TTeamFinderProtocolMessageHandler> m_teamFinderProtocolMessageHandler;
     QList<QMetaObject::Connection> m_connections;
     teamfinder::TTeamfinderActivityNameResolver m_resolver;
     TTeamsListSortProxyModel* m_proxy = nullptr;

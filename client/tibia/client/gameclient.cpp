@@ -384,12 +384,8 @@ TGameClient::TGameClient(QObject* parent)
             for (Publisher* child : findChildren<Publisher*>(QString(), Qt::FindDirectChildrenOnly))
                 publishToRouter(child);
         };
-        publishToRouter(creatures::TVipStorage::instance());
         publishChildrenToRouter(static_cast<game::TPlayerProtocolMessageHandler*>(nullptr));
         // Their game actions.
-        for (auto* handler : creatures::TVipStorage::instance()->findChildren<creatures::TVipGameActionHandler*>())
-            connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
-                    qOverload<const input::IGameActionPtr&>(&creatures::TVipGameActionHandler::handleGameAction));
     }
 
 
@@ -632,8 +628,9 @@ effects::TEffectStorage* TGameClient::effectStorage() const
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
 {
     m_messageIgnoreList = list;
-    if (auto* teamFinder = teamfinder::TTeamFinderProtocolMessageHandler::instance())
-        teamFinder->setIgnoreList(list);
+    // A game window made after the session: its lists reach the current one.
+    if (game::TGameSessionBase* session = activeSession())
+        session->setWhiteBlacklist(list);
 }
 
 void TGameClient::shutdown()
@@ -991,6 +988,8 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         // The session's minimap feed.
         if (m_minimap)
             m_minimap->setProtocolHandler(nullptr);
+        if (previous)
+            previous->setWhiteBlacklist(nullptr);
         // Host shim until the storages are reached through the session: the
         // classes' instance() stop resolving to this session.
         if (previous)
@@ -1004,8 +1003,10 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
     m_currentGameSession = GameSession;
     if (!m_currentGameSession)
         return;
-    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
+    if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {
         linkGameActionRouters(*m_pGameActionRouter, *current);
+        current->setWhiteBlacklist(m_messageIgnoreList);
+    }
     if (m_minimap)
         m_minimap->setProtocolHandler(worldmapProtocol());
     connectToCurrentGameSession();
@@ -1036,8 +1037,6 @@ void TGameClient::onWorldEntered()
 {
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
-    // A new game session: no own team or listed teams, the team finder pages start over.
-    teamfinder::TTeamFinderProtocolMessageHandler::instance()->startSession();
     if (const uint32_t playerId = tibia::game::localPlayerId(); playerId != 0 && m_characterConfigurationManager)
         m_characterConfigurationManager->onPlayerCreatureLoaded(playerId);
     const std::string assets = gamecore::assetsRoot(ClientVersion);

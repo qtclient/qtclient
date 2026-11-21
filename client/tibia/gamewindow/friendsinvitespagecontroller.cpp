@@ -1,4 +1,5 @@
 #include "friendsinvitespagecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -32,14 +33,18 @@ TFriendsInvitesPageController::TFriendsInvitesPageController(QObject* parent)
 
 void TFriendsInvitesPageController::updateInviteLists()
 {
-    const friends::TInviteList& inviteList = friends::TFriendsStorage::instance()->inviteStorage()->inviteList();
+    friends::TFriendsStorage* storage = friendsStorage();
+    if (!storage)
+        return;
+    const friends::TInviteList& inviteList = storage->inviteStorage()->inviteList();
     m_receivedModel->setItems(inviteList.received);
     m_sentModel->setItems(inviteList.sent);
 }
 
 void TFriendsInvitesPageController::updateBlacklist()
 {
-    m_blacklistModel->setItems(friends::TFriendsStorage::instance()->inviteStorage()->blacklist());
+    if (friends::TFriendsStorage* storage = friendsStorage())
+        m_blacklistModel->setItems(storage->inviteStorage()->blacklist());
 }
 
 void TFriendsInvitesPageController::disconnectStorage()
@@ -79,7 +84,10 @@ void TFriendsInvitesPageController::showDialogTab()
     // is open and asks for fresh ones.
     disconnectStorage();
     setShownListType(ReceivedInvites);
-    auto* invites = friends::TFriendsStorage::instance()->inviteStorage();
+    friends::TFriendsStorage* storage = friendsStorage();
+    if (!storage)
+        return;
+    auto* invites = storage->inviteStorage();
     m_inviteListConnection = connect(invites, &friends::TFriendsInviteStorage::inviteListChanged, this,
                                      &TFriendsInvitesPageController::updateInviteLists);
     m_blacklistConnection = connect(invites, &friends::TFriendsInviteStorage::blacklistChanged, this,
@@ -143,6 +151,18 @@ void TFriendsInvitesPageController::showContextMenuForBlacklistedAccount(const u
         protocol::gameclient::sendFriendSystemAccountAction(kRemoveFromBlacklist, BlacklistedAccountID);
     });
     menu->showCustomMenu();
+}
+
+
+void TFriendsInvitesPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+}
+
+friends::TFriendsStorage* TFriendsInvitesPageController::friendsStorage() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->friendsStorage().get() : nullptr;
 }
 
 }

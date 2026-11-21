@@ -1,4 +1,5 @@
 #include "creatures/vipstorage.h"
+#include "game/gamesessionbase.h"
 #include "genericobjectgameactionprovider.h"
 
 #include "appearances/appearanceinstance.h"
@@ -33,7 +34,11 @@ bool isPartyMemberShield(const uint8_t shield)
 
 bool isVipName(const QString& name)
 {
-    for (const auto& [id, vip] : tibia::creatures::TVipStorage::entries()) {
+    // The provider is not a session member yet: the current session's list.
+    const game::TGameSessionBase* session = game::TGameSessionBase::active();
+    if (!session || !session->vipStorage())
+        return false;
+    for (const tibia::creatures::TVipStorage::Vip& vip : session->vipStorage()->vips()) {
         if (vip.name.compare(name, Qt::CaseInsensitive) == 0)
             return true;
     }

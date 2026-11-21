@@ -110,6 +110,10 @@ public:
     explicit TCharacterTradeDialogController(QObject* parent = nullptr);
     static TCharacterTradeDialogController* instance();
 
+    /// CIP connector: the dialog closes and follows `GameSession`'s character
+    /// trade configuration.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
     QObject* characterData() const override;
     QObject* auctionConfiguration() const override;
     QObject* conditionsModel() const override;
@@ -149,6 +153,11 @@ private:
     void onInfoUpdated(trade::TCharacterTradeStorage::DataType dataType);
     void refreshOverviewModels();
     static TCharacterTradeDialogController* s_instance;
+    /// CIP +0xc8: the current session; +0xd8: its character trade storage.
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<trade::TCharacterTradeStorage> m_storage;
+    /// CIP +0xa8.
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     TCharacterAuctionConfiguration* m_auction = nullptr;
     TCharacterTradeNotificationsAbstractListModel* m_conditions = nullptr;
     TTextualHighlightsSortProxyModel* m_highlights = nullptr;

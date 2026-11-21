@@ -15,8 +15,6 @@ namespace tibia::exivaoptions {
 
 namespace {
 
-TExivaOptionsStorage* g_instance = nullptr;
-
 using A = input::EGameAction;
 using WireNames = std::vector<std::string>;
 
@@ -45,28 +43,11 @@ TExivaOptionsStorage::Names difference(const TExivaOptionsStorage::Names& from, 
 TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     : QObject(parent)
 {
-    g_instance = this;
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_options = {};
-        m_characterWhitelist.clear();
-        m_guildWhitelist.clear();
-        Q_EMIT allowEveryoneChanged();
-        Q_EMIT allowedGroupsChanged();
-        Q_EMIT characterWhitelistChanged();
-        Q_EMIT guildWhitelistChanged();
-    });
-
     for (const A type : Handled)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
-TExivaOptionsStorage::~TExivaOptionsStorage()
-{
-    if (g_instance == this)
-        g_instance = nullptr;
-}
-
-TExivaOptionsStorage* TExivaOptionsStorage::instance() { return g_instance; }
+TExivaOptionsStorage::~TExivaOptionsStorage() = default;
 
 bool TExivaOptionsStorage::handleGameAction(const input::IGameAction& action)
 {
