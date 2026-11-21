@@ -47,7 +47,7 @@ struct TImbuementSlot
 };
 
 /// What the imbuing dialog shows, as the server's last imbuing dialog refresh
-/// left it. Also carries TImbuingProtocolMessageHandler's dialog requests.
+/// left it.
 class TImbuingStorage final : public cip::tibia::imbuing::TImbuingStorage
 {
     Q_OBJECT
@@ -62,9 +62,6 @@ public:
 
     explicit TImbuingStorage(QObject* parent = nullptr);
     ~TImbuingStorage() override;
-
-    /// The storage TImbuingProtocolMessageHandler fills.
-    static TImbuingStorage* instance();
 
     uint32_t mode() const { return m_mode; }
     bool scrollAvailable() const { return m_scrollAvailable; }
@@ -84,17 +81,7 @@ public:
     /// mod/imbuing/imbuingmaterialmenu) counts until the server's next window update.
     void addOwned(uint16_t typeId, uint32_t count);
 
-Q_SIGNALS:
-    /// TImbuingProtocolMessageHandler::requestShowOrRefreshImbuingDialog.
-    void requestShowOrRefreshImbuingDialog();
-    /// TImbuingProtocolMessageHandler::requestCloseImbuingDialog.
-    void requestCloseImbuingDialog();
-    /// TImbuingProtocolMessageHandler::requestShowResultDialog.
-    void requestShowResultDialog(const QString& message);
-
 private:
-    static TImbuingStorage* s_instance;
-
     uint32_t m_mode = MODE_NONE;
     bool m_scrollAvailable = false;
     uint16_t m_itemTypeId = 0;

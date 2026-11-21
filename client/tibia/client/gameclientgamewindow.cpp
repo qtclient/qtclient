@@ -215,21 +215,15 @@ struct TGameClient::TGameWindow
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
     std::unique_ptr<gamewindow::TInformationDialogs> informationDialogs;
     std::unique_ptr<gamewindow::TDragAndDropController> dragAndDrop;
-    std::unique_ptr<store::TStoreStorage> storeStorage;
-    std::unique_ptr<store::TStoreProtocolMessageHandler> storeMessages;
     std::unique_ptr<gamewindow::TStoreAndResourceBalanceHelperController> storeBalance;
     std::unique_ptr<gamewindow::TStoreDialogController> storeDialog;
     std::unique_ptr<gamewindow::TStoreButtonController> storeButton;
     std::unique_ptr<gamewindow::TMarketController> marketController;
     std::unique_ptr<gamewindow::TStashDialogController> stashDialog;
     std::unique_ptr<gamewindow::TManageLootContainerDialogController> manageLootDialog;
-    std::unique_ptr<imbuing::TImbuingStorage> imbuingStorage;
     std::unique_ptr<gamewindow::TImbuingDialogController> imbuingDialog;
-    std::unique_ptr<exaltation::TExaltationStorage> exaltationStorage;
     std::unique_ptr<gamewindow::TExaltationForgeDialogController> exaltationForgeDialog;
     std::unique_ptr<skillwheel::TSkillWheelManager> skillWheel;
-    std::unique_ptr<dailyreward::TDailyRewardStorage> dailyRewardStorage;
-    std::unique_ptr<dailyreward::TDailyRewardGameActionHandler> dailyRewardActions;
     std::unique_ptr<screenshot::TScreenshotManager> screenshotManager;
     std::unique_ptr<gamewindow::TSidebarPanelsManager> sidebarPanels;
     std::unique_ptr<gamewindow::TSidebarWidgetsManager> sidebarWidgets;
@@ -530,12 +524,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.dragAndDrop = std::make_unique<gamewindow::TDragAndDropController>(
         window->contentItem(), gameWindowController->gameWindowChild(QStringLiteral("dragApperanceInstanceIcon")));
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), g.dragAndDrop.get());
-    g.storeStorage = std::make_unique<store::TStoreStorage>();
-    g.storeMessages = std::make_unique<store::TStoreProtocolMessageHandler>();
-    g.storeMessages->setStorage(g.storeStorage.get());
-    g.storeBalance = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>(g.storeStorage.get());
+    g.storeBalance = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
     engine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"), g.storeBalance.get());
-    g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>(g.storeStorage.get(), g.storeMessages.get());
+    g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>();
     gamewindow::TStoreDialogController* storeDialog = g.storeDialog.get();
     g.storeButton = std::make_unique<gamewindow::TStoreButtonController>(storeDialog);
     g.marketController = std::make_unique<gamewindow::TMarketController>();
@@ -545,20 +536,14 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.manageLootDialog = std::make_unique<gamewindow::TManageLootContainerDialogController>();
     connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
-    g.imbuingStorage = std::make_unique<imbuing::TImbuingStorage>();
-    g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>(g.imbuingStorage.get());
-    g.exaltationStorage = std::make_unique<exaltation::TExaltationStorage>();
-    g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>(g.exaltationStorage.get());
-    g.storeBalance->setExaltationStorage(g.exaltationStorage.get());
+    g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>();
+    g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>();
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
     g.gameActions.on(input::EGameAction::OPEN_STORE, [storeDialog](const input::TGameActionOpenStore& action) {
         const input::TGameActionOpenStore::TStoreOpenParameters& parameters = action.storeOpenParameters();
         storeDialog->openWith(parameters.openAction, parameters.detail, parameters.text);
         return true;
     });
-    // The daily reward: the session's storage and its game actions (238, 243, 244).
-    g.dailyRewardStorage = std::make_unique<dailyreward::TDailyRewardStorage>();
-    g.dailyRewardActions = std::make_unique<dailyreward::TDailyRewardGameActionHandler>(g.dailyRewardStorage.get());
     g.gameActions.on(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::IGameAction&) {
         if (minimap::TMinimapManager* manager = minimap())
             manager->loadDefaultTilesFromResources();
@@ -611,7 +596,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.deathDialog = std::make_unique<gamewindow::TDeathDialogController>();
     using Widgets = gamewindow::TSidebarWidgetsManager;
     sidebarWidgets->registerWidget(Widgets::Vip, Widgets::hooksFor(*vipWidget, [vipWidget] { return vipWidget->open(); }));
-    g.preyWidget = std::make_unique<gamewindow::TKillTrackerWidgetManager>(informationDialogs->prey()->storage(), gameWindowItem, engine);
+    g.preyWidget = std::make_unique<gamewindow::TKillTrackerWidgetManager>(gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::Prey, Widgets::hooksFor(*g.preyWidget, [this, w = g.preyWidget.get()] { return w->open(sidebarOptions()); }));
     g.questTrackerWidget = std::make_unique<gamewindow::TQuestTrackerWidgetManager>(informationDialogs->questLog()->tracker(), gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::QuestTracker, Widgets::hooksFor(*g.questTrackerWidget, [this, w = g.questTrackerWidget.get()] { return w->open(sidebarOptions()); }));
@@ -648,7 +633,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         g.proficiencyStorage.get(), g.weaponProficiencyShapeDialog.get());
     g.weaponProficiencyShapeOptionsDialog = std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>();
     g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>();
-    g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>(g.dailyRewardStorage.get());
+    g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>();
     g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
     g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>();
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
@@ -839,8 +824,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.taskboardDialog.get());
     publishToRouter(g.skillWheel->dialog());
     publishToRouter(g.skillWheel->actions());
-    publishToRouter(g.exaltationStorage.get());
-    publishToRouter(g.dailyRewardActions.get());
     publishToRouter(g.analyserStorages.get());
     publishToRouter(g.analyserWidgets.get());
     // The engine's text copy controller outlives the game windows.
@@ -888,8 +871,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     handleFromRouter(g.stashDialog.get());
     handleFromRouter(g.manageLootDialog.get());
     handleFromRouter(g.exaltationForgeDialog.get());
-    handleFromRouter(g.exaltationStorage.get());
-    handleFromRouter(g.dailyRewardActions.get());
     handleFromRouter(g.minimapController);
     handleFromRouter(g.reportViolation.get());
     handleFromRouter(g.bugReport.get());
@@ -963,7 +944,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     packHost.npcDialog = [&g]() -> QObject* { return g.npcDialog.get(); };
     packHost.chatController = [chat]() -> QObject* { return chat; };
     packHost.chatStorage = [chat]() -> QObject* { return &chat->storage(); };
-    packHost.storeMessages = [&g]() -> QObject* { return g.storeMessages.get(); };
+    // Pack ABI shim: the current game session's store handler.
+    packHost.storeMessages = [this]() -> QObject* {
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
+        return session ? session->storeProtocolMessageHandler().get() : nullptr;
+    };
     packHost.storeImageManager = [storeDialog]() -> QObject* {
         return storeDialog->property("dynamicallyLoadedImageManager").value<QObject*>();
     };
@@ -973,7 +958,11 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     packHost.containers = [containers]() -> QObject* { return containers; };
     packHost.buttonBar = [sidebarPanels]() -> QObject* { return sidebarPanels->buttonBar(); };
     packHost.imbuingDialog = [&g]() -> QObject* { return g.imbuingDialog.get(); };
-    packHost.imbuingStorage = [&g]() -> QObject* { return g.imbuingStorage.get(); };
+    // Pack ABI shim: the current game session's imbuing storage.
+    packHost.imbuingStorage = [this]() -> QObject* {
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
+        return session ? session->imbuingStorage().get() : nullptr;
+    };
     packHost.sessionBootstrap = [&g]() -> QObject* { return g.sessionBootstrap.get(); };
     packHost.gameActionRouter = [router]() -> QObject* { return router; };
     packHost.minimapPanelItem = [sidebarPanels]() -> QQuickItem* { return sidebarPanels->minimapItem(); };
@@ -1009,8 +998,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             g.sidebarPanels->setSidebarOptions(sidebarOptions());
             if (gamewindow::TPremiumPanelController* premiumPanel = g.sidebarPanels->premiumPanel()) {
                 premiumPanel->onSessionStarted(account().session.isPremium, account().session.premiumUntil);
-                connect(g.storeMessages.get(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, premiumPanel,
-                        &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
+                if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get()))
+                    connect(session->storeProtocolMessageHandler().get(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged,
+                            premiumPanel, &gamewindow::TPremiumPanelController::onStoreDeeplinkChanged, Qt::UniqueConnection);
             }
             g.skillWheel->setSessionPremium(account().session.isPremium);
             g.containers->setSidebarOptions(sidebarOptions());
@@ -1109,8 +1099,34 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
             g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
+        if (g.storeDialog)
+            g.storeDialog->connectToGameSession(GameSession);
+        // CIP: the button bar connects its store button.
+        if (g.storeButton)
+            g.storeButton->connectToGameSession(GameSession);
+        // Host: the market storage is client-wide until it is the session's.
+        if (session)
+            session->storeProtocolMessageHandler()->setMarketStorage(g.marketStorage.get());
+        if (g.informationDialogs)
+            if (gamewindow::TPreyDialogController* prey = g.informationDialogs->prey())
+                prey->connectToGameSession(GameSession);
+        // Host: the prey widget follows the session's prey storage.
+        if (g.preyWidget)
+            g.preyWidget->setPreyStorage(session ? session->preyStorage().get() : nullptr);
+        if (g.imbuingDialog) {
+            g.imbuingDialog->connectToGameSession(GameSession);
+            g.imbuingDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        }
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
+        if (g.blessingsDialog) {
+            g.blessingsDialog->connectToGameSession(GameSession);
+            g.blessingsDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        }
+        if (g.rewardWallDialog) {
+            g.rewardWallDialog->connectToGameSession(GameSession);
+            g.rewardWallDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        }
         if (g.manageLootDialog) {
             g.manageLootDialog->connectToGameSession(GameSession);
             g.manageLootDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
@@ -1132,6 +1148,10 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         if (g.informationDialogs)
             if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
                 highscores->connectToGameSession(GameSession);
+        if (g.exaltationForgeDialog)
+            g.exaltationForgeDialog->connectToGameSession(GameSession);
+        if (g.storeBalance)
+            g.storeBalance->connectToGameSession(GameSession);
     }
     if (m_soundController)
         m_soundController->connectToGameSession(GameSession);

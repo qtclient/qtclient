@@ -389,11 +389,9 @@ class TStoreProtocolMessageHandler final : public cip::tibia::store::TStoreProto
 {
     Q_OBJECT
 public:
-    explicit TStoreProtocolMessageHandler(QObject* parent = nullptr);
+    explicit TStoreProtocolMessageHandler(TStoreStorage* storage, QObject* parent = nullptr);
     ~TStoreProtocolMessageHandler() override;
 
-    /// Host: the storage the messages fill (CIP passes it to the constructor).
-    void setStorage(TStoreStorage* storage) { m_storage = storage; }
     TStoreStorage* storage() const { return m_storage; }
     /// Host: the market storage the transferable coins go to (CIP passes it
     /// to the constructor).
@@ -439,9 +437,6 @@ public:
     void handleSetStoreButtonDeeplinkMessage(const tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink& message);
     void handleStoreButtonIndicatorsMessage(const tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators& message);
     void handleOfferDescriptionMessage(const tibia::protobuf::protocol::GameserverMessageOfferDescription& message);
-    /// The live handler.
-    static TStoreProtocolMessageHandler* instance();
-
     /// The protocol's visualisation and open parameters.
     static TStoreVisualisation visualisation(const tibia::protobuf::protocol::ProtocolStoreVisual& visual);
     static TStoreOpenParameters openParameters(const tibia::protobuf::protocol::ProtocolStoreOpenParameters& parameters);
@@ -465,7 +460,6 @@ private:
     /// After a purchase: asks for the offers shown again.
     void refreshOffersAfterPurchase();
 
-    static TStoreProtocolMessageHandler* s_live;
     TStoreStorage* m_storage = nullptr;
     market::TMarketStorage* m_marketStorage = nullptr;
     QUrl m_imageBaseUrl;

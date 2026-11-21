@@ -1,20 +1,26 @@
 #pragma once
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QList>
+#include <QPointer>
 #include <QSortFilterProxyModel>
 #include <QString>
 #include <QTimer>
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <set>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace prey {
 
 /// A creature of a prey slot (CIP: name and outfit of TPreyData's monster).
@@ -125,7 +131,6 @@ public:
     void setSlotSelectionChangeMonster(int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list);
     void setSlotListSelection(int preyId, QList<uint16_t> races);
     void setSlotWildcardSelection(int preyId, const TPreyBonus& bonus, QList<uint16_t> races);
-    void reset();
 
     int listRerollPrice() const { return m_listRerollPrice; }
     int bonusRerollPrice() const { return m_bonusRerollPrice; }
@@ -286,7 +291,7 @@ class TPreyPreyPageController final : public cip::tibia::gamewindow::TPreyPreyPa
 {
     Q_OBJECT
 public:
-    TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent = nullptr);
+    explicit TPreyPreyPageController(QObject* parent = nullptr);
     /// CIP: the slot render infos go with the page.
     ~TPreyPreyPageController() override;
 
@@ -311,6 +316,8 @@ public:
     void onConfirmEnableAutoRerollBonus() override;
     void onConfirmEnableLockPrey() override;
 
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
     /// The gold or wildcard balance changed.
     void onBalanceChanged();
     void closeMessages();
@@ -325,7 +332,9 @@ private:
     void askToUseWildcards(TMessageDialogController* box, int price, bool possible);
     void emitAll();
 
-    prey::TPreyStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<prey::TPreyStorage> m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
     QList<QObject*> m_renderInfos;
     uint m_pendingPreyId = 0;
     TMessageDialogController* m_bonusReroll;
@@ -346,11 +355,12 @@ public:
     explicit TPreyDialogController(QObject* parent = nullptr);
     ~TPreyDialogController() override;
 
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
+    /// The session's prey storage, or null.
     prey::TPreyStorage* storage() const { return m_storage; }
     /// The gold or wildcard balance changed (onResourcesBalanceChange).
     void onBalanceChanged();
-    /// Leaving the world.
-    void clear();
 
     int preyWildcards() const override;
 
@@ -367,7 +377,9 @@ public:
     void onRequestShowMessageDialog(const QString& Message) override;
 
 private:
-    prey::TPreyStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    QPointer<prey::TPreyStorage> m_storage;
     TPreyPreyPageController* m_page;
     TMessageDialogController* m_notOnMain;
     TMessageDialogController* m_info;

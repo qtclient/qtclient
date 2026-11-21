@@ -3,6 +3,7 @@
 #include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
 #include "store/storestorage.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -10,9 +11,13 @@
 #include <QTimer>
 
 #include <chrono>
+#include <memory>
 #include <optional>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace store {
 class TDynamicallyLoadedImageManager;
 class TStoreDescriptionManager;
@@ -116,18 +121,17 @@ private:
     int m_offerId = 0;
 };
 
-/// The store, StoreDialog.qml (CIP: TStoreDialogController), on a
-/// TStoreStorage and its TStoreProtocolMessageHandler (CIP takes both from the
-/// game session). Crystal sends no world transfer or main character data, so
-/// those purchases never start.
+/// The store, StoreDialog.qml (CIP: TStoreDialogController), on the game
+/// session's TStoreStorage and TStoreProtocolMessageHandler. Crystal sends no
+/// world transfer or main character data, so those purchases never start.
 class TStoreDialogController final : public TDialogController<cip::tibia::gamewindow::TStoreDialogController>
 {
     Q_OBJECT
 public:
-    TStoreDialogController(store::TStoreStorage* storage, store::TStoreProtocolMessageHandler* handler, QObject* parent = nullptr);
+    explicit TStoreDialogController(QObject* parent = nullptr);
     ~TStoreDialogController() override;
 
-    store::TStoreProtocolMessageHandler* messages() const { return m_messages; }
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// Host: the store button and the market's "get coins" open the home page.
     void open();
@@ -189,7 +193,6 @@ private:
         PURCHASE_WITHOUT_CONFIRMATION = 5,
     };
 
-    void onRequestOpenStoreDialog();
     void onStoreImageBaseUrlChanged(const QUrl& baseUrl);
     /// Home first, then the server's categories; kept when unchanged.
     void onCategoriesChanged();
@@ -240,8 +243,10 @@ private:
     void showMessage(TMessageDialogController* dialog, const QString& caption, const QString& message);
     void openStore(const store::TStoreOpenParameters& parameters);
 
-    QPointer<store::TStoreStorage> m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<store::TStoreProtocolMessageHandler> m_messages;
+    QPointer<store::TStoreStorage> m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
     store::TDynamicallyLoadedImageManager* m_imageManager;
     store::TStoreDescriptionManager* m_descriptionManager;
     TStorePurchaseConfirmationDialogController m_confirmationDialog;
@@ -299,6 +304,8 @@ public:
 
     bool highlighted() const override { return m_highlightTimer.isActive(); }
 
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& pGameSession);
+
 public Q_SLOTS:
     /// OPEN_STORE with the deep link (the home page without one).
     void onOpenStoreButtonClicked() override;
@@ -314,6 +321,7 @@ private:
     void clearDeeplink();
 
     QPointer<TStoreDialogController> m_dialog;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     /// The highlight (600000 ms, single shot).
     QTimer m_highlightTimer;
     store::TStoreOpenParameters m_deeplink;

@@ -63,10 +63,11 @@ TExaltationStorage* s_instance = nullptr;
 
 TExaltationStorage* TExaltationStorage::instance() { return s_instance; }
 
+void TExaltationStorage::setInstance(TExaltationStorage* storage) { s_instance = storage; }
+
 TExaltationStorage::TExaltationStorage(QObject* parent)
     : cip::tibia::exaltation::TExaltationStorage(parent)
 {
-    s_instance = this;
     // CIP TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage:
     // the prices, then the dust limit.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {

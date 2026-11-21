@@ -3,6 +3,9 @@
 
 #include "container/containerslotinformation.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "imbuing/imbuingciptypes.h"
 #include "input/gameactionhandlers.h"
 
 #include <tibia/appearances/appearancetype.h>
@@ -198,7 +201,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 using imbuing::TImbuement;
 using imbuing::TImbuementSlot;
 using imbuing::TImbuementSource;
@@ -295,9 +297,8 @@ input::IGameActionPtr openPremiumStoreAction()
 
 bool TImbuingDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
-TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent)
+TImbuingDialogController::TImbuingDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ImbuingDialog.qml"), parent)
-    , m_storage(storage)
     , m_available(new imbuing::TAvailableImbuementsListModel(this))
     , m_slotsModel(new imbuing::TImbuementSlotsListModel(this))
     , m_resultMessage(new TMessageDialogController(this))
@@ -311,17 +312,36 @@ TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* sto
     m_clearConfirm->setCloseOnButtonClicked(true);
     connect(m_imbueConfirm, &TMessageDialogController::acceptClicked, this, &TImbuingDialogController::onImbueSlotConfirmed);
     connect(m_clearConfirm, &TMessageDialogController::acceptClicked, this, &TImbuingDialogController::onClearSlotConfirmed);
+}
 
-    connect(m_storage, &TImbuingStorage::imbuingDataChanged, this, &TImbuingDialogController::onImbuingStorageDataChanged);
-    connect(m_storage, &TImbuingStorage::requestShowOrRefreshImbuingDialog, this, &TImbuingDialogController::showDialog);
-    connect(m_storage, &TImbuingStorage::requestCloseImbuingDialog, this, &TImbuingDialogController::closeDialog);
-    connect(m_storage, &TImbuingStorage::requestShowResultDialog, this, &TImbuingDialogController::onDisplayResultMessage);
+/// The session's imbuing handler asks to show, refresh or close the dialog
+/// and reports results; its storage's data refreshes the dialog.
+void TImbuingDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_storage = session ? session->imbuingStorage().get() : nullptr;
+    if (!session)
+        return;
+    imbuing::TImbuingProtocolMessageHandler* handler = session->imbuingProtocolMessageHandler().get();
+    using Handler = imbuing::TImbuingProtocolMessageHandler;
+    m_gameSessionConnections.add(connect(handler, &Handler::requestShowOrRefreshImbuingDialog, this, &TImbuingDialogController::showDialog));
+    m_gameSessionConnections.add(connect(handler, &Handler::requestCloseImbuingDialog, this, &TImbuingDialogController::closeDialog));
+    m_gameSessionConnections.add(connect(handler, &Handler::requestShowResultDialog, this, &TImbuingDialogController::onDisplayResultMessage));
+    m_gameSessionConnections.add(
+        connect(m_storage, &TImbuingStorage::imbuingDataChanged, this, &TImbuingDialogController::onImbuingStorageDataChanged));
+}
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
-        Q_EMIT premiumStatusChanged();
-        Q_EMIT imbuingQmlDataChanged();
-        return std::any{};
-    });
+/// The client's premium time: a change is the dialog's premium status change.
+void TImbuingDialogController::connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TImbuingDialogController::premiumStatusChanged);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TImbuingDialogController::premiumStatusChanged);
 }
 
 bool TImbuingDialogController::itemSelectionValid() const

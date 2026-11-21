@@ -2,6 +2,7 @@
 #include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
@@ -186,14 +187,20 @@ input::IGameActionPtr simpleAction(const A type)
     return input::makeGameAction(type);
 }
 
+/// The session's exaltation storage, or null without a session.
+exaltation::TExaltationStorage* exaltationStorageOf(const std::shared_ptr<game::IGameSession>& gameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(gameSession.get());
+    return session ? session->exaltationStorage().get() : nullptr;
+}
+
 }
 
 // ---------------------------------------------------------------------------
 // Fusion
 
-TExaltationForgeFusionPageController::TExaltationForgeFusionPageController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationForgeFusionPageController::TExaltationForgeFusionPageController(QObject* parent)
     : cip::TExaltationForgeFusionPageController(parent)
-    , m_storage(storage)
     , m_counts(new container::TObjectCountStorage(this))
     , m_fusionObjects(new exaltation::TForgeObjectListModel(m_counts, this))
     , m_resourceObjects(new exaltation::TForgeObjectListModel(m_counts, this))
@@ -206,8 +213,18 @@ TExaltationForgeFusionPageController::TExaltationForgeFusionPageController(exalt
     m_improvedTierLoss = 50;
     m_fusionObjectsModel = QVariant::fromValue<QObject*>(m_fusionProxy);
     m_resourceObjectsModel = QVariant::fromValue<QObject*>(m_resourceProxy);
-    connect(m_storage, &exaltation::TExaltationStorage::fusionGroupsChanged, this,
-            &TExaltationForgeFusionPageController::onFusionGroupsChanged);
+}
+
+/// The session's exaltation storage's fusion groups.
+void TExaltationForgeFusionPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
+    if (m_storage)
+        connect(m_storage, &exaltation::TExaltationStorage::fusionGroupsChanged, this,
+                &TExaltationForgeFusionPageController::onFusionGroupsChanged);
 }
 
 uchar TExaltationForgeFusionPageController::sucessChance() const
@@ -417,9 +434,8 @@ void TExaltationForgeFusionPageController::reset()
 // ---------------------------------------------------------------------------
 // Transfer
 
-TExaltationForgeTransferPageController::TExaltationForgeTransferPageController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationForgeTransferPageController::TExaltationForgeTransferPageController(QObject* parent)
     : cip::TExaltationForgeTransferPageController(parent)
-    , m_storage(storage)
     , m_sourceCounts(new container::TObjectCountStorage(this))
     , m_targetCounts(new container::TObjectCountStorage(this))
     , m_sourceObjects(new exaltation::TForgeObjectListModel(m_sourceCounts, this))
@@ -429,8 +445,18 @@ TExaltationForgeTransferPageController::TExaltationForgeTransferPageController(e
 {
     m_sourceObjectsModel = QVariant::fromValue<QObject*>(m_sourceProxy);
     m_targetObjectsModel = QVariant::fromValue<QObject*>(m_targetProxy);
-    connect(m_storage, &exaltation::TExaltationStorage::transferGroupsChanged, this,
-            &TExaltationForgeTransferPageController::onTransferGroupsChanged);
+}
+
+/// The session's exaltation storage's transfer groups.
+void TExaltationForgeTransferPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
+    if (m_storage)
+        connect(m_storage, &exaltation::TExaltationStorage::transferGroupsChanged, this,
+                &TExaltationForgeTransferPageController::onTransferGroupsChanged);
 }
 
 QVariant TExaltationForgeTransferPageController::sourceObjectsModel() const
@@ -616,16 +642,25 @@ void TExaltationForgeTransferPageController::reset()
 // ---------------------------------------------------------------------------
 // Conversion
 
-TExaltationForgeConversionPageController::TExaltationForgeConversionPageController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationForgeConversionPageController::TExaltationForgeConversionPageController(QObject* parent)
     : cip::TExaltationForgeConversionPageController(parent)
-    , m_storage(storage)
 {
     m_convertDustToSliversCost = 60;
     m_convertDustToSliversResult = 3;
     m_convertSliversToCoresCost = 50;
     m_convertSliversToCoresResult = 1;
-    connect(m_storage, &exaltation::TExaltationStorage::currentDustLimitChanged, this,
-            &TExaltationForgeConversionPageController::increaseDustLimitValueChanged);
+}
+
+/// The session's exaltation storage's dust limit.
+void TExaltationForgeConversionPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
+    if (m_storage)
+        connect(m_storage, &exaltation::TExaltationStorage::currentDustLimitChanged, this,
+                &TExaltationForgeConversionPageController::increaseDustLimitValueChanged);
 }
 
 int TExaltationForgeConversionPageController::convertDustToSliversCost() const
@@ -696,13 +731,22 @@ void TExaltationForgeConversionPageController::hideDialogTab()
 // ---------------------------------------------------------------------------
 // History
 
-TExaltationForgeHistoryPageController::TExaltationForgeHistoryPageController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationForgeHistoryPageController::TExaltationForgeHistoryPageController(QObject* parent)
     : cip::TExaltationForgeHistoryPageController(parent)
-    , m_storage(storage)
     , m_history(new exaltation::TExaltationHistoryListModel(this))
 {
     m_exaltationHistoryModel = QVariant::fromValue<QObject*>(m_history);
-    connect(m_storage, &exaltation::TExaltationStorage::historyChanged, this, &TExaltationForgeHistoryPageController::onHistoryChanged);
+}
+
+/// The session's exaltation storage's history.
+void TExaltationForgeHistoryPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
+    if (m_storage)
+        connect(m_storage, &exaltation::TExaltationStorage::historyChanged, this, &TExaltationForgeHistoryPageController::onHistoryChanged);
 }
 
 QVariant TExaltationForgeHistoryPageController::exaltationHistoryModel() const
@@ -753,10 +797,15 @@ void TExaltationForgeHistoryPageController::onHistoryChanged()
 // ---------------------------------------------------------------------------
 // Result dialog
 
-TExaltationResultDialogController::TExaltationResultDialogController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationResultDialogController::TExaltationResultDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ExaltationResultDialog.qml"), parent)
-    , m_storage(storage)
 {
+}
+
+void TExaltationResultDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
 }
 
 bool TExaltationResultDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
@@ -770,7 +819,7 @@ uchar TExaltationResultDialogController::dustCost() const
 qulonglong TExaltationResultDialogController::goldCost() const
 {
     const std::optional<int> classification = classificationOf(m_inputObjectTypeId);
-    return classification ? m_storage->fusionPrice(*classification, m_inputObjectUpgradeTier) : 0;
+    return classification && m_storage ? m_storage->fusionPrice(*classification, m_inputObjectUpgradeTier) : 0;
 }
 
 void TExaltationResultDialogController::showDialog(const exaltation::TExaltationResult& result)
@@ -814,18 +863,17 @@ void TExaltationResultDialogController::requestClose()
 
 bool TExaltationForgeDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
 
-TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::TExaltationStorage* storage, QObject* parent)
+TExaltationForgeDialogController::TExaltationForgeDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), parent)
-    , m_storage(storage)
-    , m_resultDialog(new TExaltationResultDialogController(storage, this))
+    , m_resultDialog(new TExaltationResultDialogController(this))
     , m_errorDialog(new TMessageDialogController(this))
 {
-    auto* fusion = new TExaltationForgeFusionPageController(storage, this);
-    auto* transfer = new TExaltationForgeTransferPageController(storage, this);
+    auto* fusion = new TExaltationForgeFusionPageController(this);
+    auto* transfer = new TExaltationForgeTransferPageController(this);
     m_fusionController = fusion;
     m_transferController = transfer;
-    m_conversionController = new TExaltationForgeConversionPageController(storage, this);
-    auto* history = new TExaltationForgeHistoryPageController(storage, this);
+    m_conversionController = new TExaltationForgeConversionPageController(this);
+    auto* history = new TExaltationForgeHistoryPageController(this);
     m_historyController = history;
     connect(fusion, &TExaltationForgeFusionPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
     connect(transfer, &TExaltationForgeTransferPageController::publishGameAction, this, &TExaltationForgeDialogController::publishGameAction);
@@ -839,6 +887,19 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
                           A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+}
+
+/// Closes the forge; its pages and the result dialog follow the new session.
+void TExaltationForgeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSession = GameSession;
+    m_storage = exaltationStorageOf(m_gameSession);
+    qobject_cast<TExaltationForgeFusionPageController*>(m_fusionController)->connectToGameSession(m_gameSession);
+    qobject_cast<TExaltationForgeTransferPageController*>(m_transferController)->connectToGameSession(m_gameSession);
+    qobject_cast<TExaltationForgeConversionPageController*>(m_conversionController)->connectToGameSession(m_gameSession);
+    qobject_cast<TExaltationForgeHistoryPageController*>(m_historyController)->connectToGameSession(m_gameSession);
+    m_resultDialog->connectToGameSession(m_gameSession);
 }
 
 /// The result travels in the storage instead of the action.

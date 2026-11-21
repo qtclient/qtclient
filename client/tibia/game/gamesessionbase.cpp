@@ -31,9 +31,11 @@
 #include "dailyreward/dailyrewardciptypes.h"
 #include "effects/effectprotocolmessagehandler.h"
 #include "exaltation/exaltationciptypes.h"
+#include "exaltation/exaltationstorage.h"
 #include "highscores/highscoresciptypes.h"
 #include "imbuing/imbuingciptypes.h"
 #include "input/domainhandlers.h"
+#include "imbuing/imbuingstorage.h"
 #include "market/marketciptypes.h"
 #include "market/marketstorage.h"
 #include "store/storestorage.h"
@@ -41,6 +43,7 @@
 #include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
+#include "gamewindow/preydialogcontroller.h"
 #include "proficiency/proficiencyciptypes.h"
 #include "quickloot/managedcontainerstorage.h"
 #include "quickloot/quicklootciptypes.h"
@@ -153,6 +156,12 @@ void TGameSessionBase::createStorages()
     m_highscoresStorage = std::make_shared<highscores::THighscoresStorage>();
     m_bossTrackerStorage = std::make_shared<bossbestiary::TBossTrackerStorage>();
     m_bosstiaryStorage = std::make_shared<bossbestiary::TBosstiaryStorage>();
+    m_preyStorage = std::make_shared<prey::TPreyStorage>();
+    m_storeStorage = std::make_shared<store::TStoreStorage>();
+    m_imbuingStorage = std::make_shared<imbuing::TImbuingStorage>();
+    m_imbuementDurationsStorage = std::make_shared<imbuing::TImbuementDurationsStorage>();
+    m_dailyRewardStorage = std::make_shared<dailyreward::TDailyRewardStorage>();
+    m_exaltationStorage = std::make_shared<exaltation::TExaltationStorage>();
 }
 
 void TGameSessionBase::createProtocolMessageHandlers()
@@ -196,6 +205,28 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_highscoresProtocolMessageHandler = std::make_shared<highscores::THighscoresProtocolMessageHandler>(m_highscoresStorage);
     m_bossBestiaryProtocolMessageHandler =
         std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
+    // The store's coin balance also reaches the market storage (CIP passes the
+    // session's market storage to the constructor; the client sets it until
+    // the market storage is the session's).
+    m_storeProtocolMessageHandler = std::make_shared<store::TStoreProtocolMessageHandler>(m_storeStorage.get());
+    m_preyProtocolMessageHandler = std::make_shared<prey::TPreyProtocolMessageHandler>();
+    m_imbuingProtocolMessageHandler =
+        std::make_shared<imbuing::TImbuingProtocolMessageHandler>(m_imbuingStorage.get(), m_imbuementDurationsStorage.get());
+    m_dailyRewardProtocolMessageHandler = std::make_shared<dailyreward::TDailyRewardProtocolMessageHandler>(m_dailyRewardStorage.get());
+    connect(m_dailyRewardProtocolMessageHandler.get(), &dailyreward::TDailyRewardProtocolMessageHandler::publishGameAction,
+            m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
+    m_exaltationProtocolMessageHandler = std::make_shared<exaltation::TExaltationProtocolMessageHandler>();
+    // The game action handlers of the reward wall and the forge (the forge's
+    // storage handles its game actions here).
+    m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardStorage.get());
+    connect(m_dailyRewardGameActionHandler.get(), &dailyreward::TDailyRewardGameActionHandler::publishGameAction,
+            m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_dailyRewardGameActionHandler.get(),
+            qOverload<const input::IGameActionPtr&>(&dailyreward::TDailyRewardGameActionHandler::handleGameAction));
+    connect(m_exaltationStorage.get(), &exaltation::TExaltationStorage::publishGameAction, m_gameActionRouter->internalRouter(),
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_exaltationStorage.get(),
+            qOverload<const input::IGameActionPtr&>(&exaltation::TExaltationStorage::handleGameAction));
 }
 
 void TGameSessionBase::createRenderProviders()
@@ -269,6 +300,7 @@ void TGameSessionBase::install(const bool installed)
     effects::TEffectStorage::setInstance(installed ? m_effectStorage.get() : nullptr);
     TPlayerData::setLiveInstance(installed ? m_playerData.get() : nullptr);
     TPlayerSkillStats::setLiveInstance(installed ? m_playerSkillStats.get() : nullptr);
+    exaltation::TExaltationStorage::setInstance(installed ? m_exaltationStorage.get() : nullptr);
     // The map's session state needs its storage installed (aware range, pruning).
     if (installed && !m_worldInitialized) {
         m_worldMapStorage->sessionState().init();
@@ -501,7 +533,8 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedEditGuildMessageMessage, this, &TEditTextProtocolMessageHandler::handleEditGuildMessageMessage);
 
     using store::TStoreProtocolMessageHandler;
-    if (auto* store = TStoreProtocolMessageHandler::instance()) {
+    {
+        auto* store = m_storeProtocolMessageHandler.get();
         link(&Queue::receivedLoginSuccessMessage, store, &TStoreProtocolMessageHandler::handleLoginSuccessMessage);
         link(&Queue::receivedStoreCategoriesMessage, store, &TStoreProtocolMessageHandler::handleStoreCategoriesMessage);
         link(&Queue::receivedStoreOffersMessage, store, &TStoreProtocolMessageHandler::handleStoreOffersMessage);
@@ -526,20 +559,27 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedTutorialHintMessage, tutorial, &tutorial::TTutorialProtocolMessageHandler::handleTutorialHintMessage);
 
     using prey::TPreyProtocolMessageHandler;
-    link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
-    link(&Queue::receivedPreyDataMessage, this, &TPreyProtocolMessageHandler::handlePreyDataMessage);
-    link(&Queue::receivedPreyPricesMessage, this, &TPreyProtocolMessageHandler::handlePreyPricesMessage);
+    auto* preyHandler = m_preyProtocolMessageHandler.get();
+    link(&Queue::receivedPreyTimeLeftMessage, preyHandler, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
+    link(&Queue::receivedPreyDataMessage, preyHandler, &TPreyProtocolMessageHandler::handlePreyDataMessage);
+    link(&Queue::receivedPreyPricesMessage, preyHandler, &TPreyProtocolMessageHandler::handlePreyPricesMessage);
+    // CIP connects the message dialogs three times.
+    link(&Queue::receivedShowMessageDialogMessage, preyHandler, &TPreyProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedShowMessageDialogMessage, preyHandler, &TPreyProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedShowMessageDialogMessage, preyHandler, &TPreyProtocolMessageHandler::handleShowMessageDialogMessage);
 
     using imbuing::TImbuingProtocolMessageHandler;
-    link(&Queue::receivedImbuingDialogRefreshMessage, this, &TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage);
-    link(&Queue::receivedShowMessageDialogMessage, this, &TImbuingProtocolMessageHandler::handleShowMessageDialogMessage);
-    link(&Queue::receivedCloseImbuingDialogMessage, this, &TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage);
-    link(&Queue::receivedImbuementDurationsMessage, this, &TImbuingProtocolMessageHandler::handleImbuementDurationsMessage);
+    auto* imbuingHandler = m_imbuingProtocolMessageHandler.get();
+    link(&Queue::receivedImbuingDialogRefreshMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage);
+    link(&Queue::receivedShowMessageDialogMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedCloseImbuingDialogMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage);
+    link(&Queue::receivedDeadMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleDeadMessage);
+    link(&Queue::receivedImbuementDurationsMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleImbuementDurationsMessage);
 
     link(&Queue::receivedBlessingsDialogMessage, this, &TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage);
 
     using dailyreward::TDailyRewardProtocolMessageHandler;
-    auto* dailyReward = sessionHandler(static_cast<TDailyRewardProtocolMessageHandler*>(nullptr));
+    auto* dailyReward = m_dailyRewardProtocolMessageHandler.get();
     link(&Queue::receivedRestingAreaStateMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
     link(&Queue::receivedOpenRewardWallMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage);
     link(&Queue::receivedCloseRewardWallMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage);
@@ -621,12 +661,13 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedBossSlotsMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage);
 
     using exaltation::TExaltationProtocolMessageHandler;
-    link(&Queue::receivedExaltationBaseDataMessage, this, &TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage);
-    link(&Queue::receivedCloseExaltationDialogMessage, this, &TExaltationProtocolMessageHandler::handleCloseExaltationDialogMessage);
-    link(&Queue::receivedExaltationDialogRefreshMessage, this,
+    auto* exaltationHandler = m_exaltationProtocolMessageHandler.get();
+    link(&Queue::receivedExaltationBaseDataMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage);
+    link(&Queue::receivedCloseExaltationDialogMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleCloseExaltationDialogMessage);
+    link(&Queue::receivedExaltationDialogRefreshMessage, exaltationHandler,
          &TExaltationProtocolMessageHandler::handleExaltationDialogRefreshMessage);
-    link(&Queue::receivedExaltationHistoryMessage, this, &TExaltationProtocolMessageHandler::handleExaltationHistoryMessage);
-    link(&Queue::receivedExaltationResultMessage, this, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
+    link(&Queue::receivedExaltationHistoryMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleExaltationHistoryMessage);
+    link(&Queue::receivedExaltationResultMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
 
     if (auto* bugReport = reporting::TBugReportProtocolMessageHandler::liveInstance())
         link(&Queue::receivedBugReportsAllowedMessage, bugReport,

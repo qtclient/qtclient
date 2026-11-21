@@ -97,8 +97,6 @@ public:
     explicit TDailyRewardStorage(QObject* parent = nullptr);
     ~TDailyRewardStorage() override;
 
-    static TDailyRewardStorage* instance();
-
     /// Slots 12 to 19: the currencies.
     void setInstantRewardAccessAmount(int amount);
     int instantRewardAccessAmount() const { return m_instantRewardAccessAmount; }
@@ -158,9 +156,6 @@ public:
     /// Slot 49: the current reward streak bonus.
     QString rewardStreakInfoText() const;
 
-    /// A new game session starts empty.
-    void reset();
-
 private:
     int m_instantRewardAccessAmount = 0;
     uint16_t m_dailyRewardJokerAmount = 0;
@@ -218,7 +213,8 @@ class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward:
 {
     Q_OBJECT
 public:
-    using cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler;
+    explicit TDailyRewardProtocolMessageHandler(TDailyRewardStorage* storage, QObject* parent = nullptr);
+
     void handleRestingAreaStateMessage(const ::tibia::protobuf::protocol::GameserverMessageRestingAreaState& message);
     /// The wall's state, then OPEN_OR_UPDATE_REWARD_WALL_DIALOG. An unknown
     /// collect state ends the message there (CIP throws).
@@ -236,6 +232,9 @@ public:
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     /// The login success carries the reward streak length.
     void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
+
+private:
+    TDailyRewardStorage* m_storage;
 };
 
 }

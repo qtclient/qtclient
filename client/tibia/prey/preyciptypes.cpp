@@ -124,6 +124,12 @@ void TPreyProtocolMessageHandler::handlePreyDataMessage(const ::tibia::protobuf:
     }
 }
 
+void TPreyProtocolMessageHandler::handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)
+{
+    if ((message.dialog_type() & ~1u) == 0x14)
+        Q_EMIT requestShowMessageDialog(QString::fromStdString(message.message()));
+}
+
 void TPreyProtocolMessageHandler::handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message)
 {
     tibia::game::notify("onPreyRerollPrice", message.reroll_price(), static_cast<uint8_t>(message.wildcard_price()),

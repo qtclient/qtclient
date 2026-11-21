@@ -10,14 +10,19 @@
 #include <cip_gen.h>
 
 #include <QAbstractListModel>
+#include <QPointer>
 #include <QSortFilterProxyModel>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -119,7 +124,9 @@ class TExaltationForgeFusionPageController final : public cip::TExaltationForgeF
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeFusionPageController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationForgeFusionPageController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     uchar sucessChance() const override;
     uchar sucessChanceBonus() const override;
@@ -154,7 +161,8 @@ Q_SIGNALS:
 private:
     void reset();
 
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
     container::TObjectCountStorage* m_counts;
     exaltation::TForgeObjectListModel* m_fusionObjects;
     exaltation::TForgeObjectListModel* m_resourceObjects;
@@ -168,7 +176,9 @@ class TExaltationForgeTransferPageController final : public cip::TExaltationForg
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeTransferPageController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationForgeTransferPageController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QVariant sourceObjectsModel() const override;
     QVariant targetObjectsModel() const override;
@@ -200,7 +210,8 @@ Q_SIGNALS:
 private:
     void reset();
 
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
     container::TObjectCountStorage* m_sourceCounts;
     container::TObjectCountStorage* m_targetCounts;
     exaltation::TForgeObjectListModel* m_sourceObjects;
@@ -215,7 +226,9 @@ class TExaltationForgeConversionPageController final : public cip::TExaltationFo
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeConversionPageController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationForgeConversionPageController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     int convertDustToSliversCost() const override;
     int convertDustToSliversResult() const override;
@@ -239,7 +252,8 @@ Q_SIGNALS:
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
 };
 
 /// CIP: TExaltationForgeHistoryPageController (vtable , init
@@ -248,7 +262,9 @@ class TExaltationForgeHistoryPageController final : public cip::TExaltationForge
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeHistoryPageController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationForgeHistoryPageController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QVariant exaltationHistoryModel() const override;
     ushort currentPageId() const override;
@@ -266,7 +282,8 @@ Q_SIGNALS:
     /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
     exaltation::TExaltationHistoryListModel* m_history;
 };
 
@@ -276,7 +293,9 @@ class TExaltationResultDialogController final : public TDialogController<cip::ti
 {
     Q_OBJECT
 public:
-    explicit TExaltationResultDialogController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationResultDialogController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     uchar dustCost() const override;
     qulonglong goldCost() const override;
@@ -288,7 +307,8 @@ public Q_SLOTS:
     void requestClose() override;
 
 private:
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
 };
 
 /// CIP: TExaltationForgeDialogController (ctor around ,
@@ -297,7 +317,9 @@ class TExaltationForgeDialogController final : public TDialogController<cip::tib
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeDialogController(exaltation::TExaltationStorage* storage, QObject* parent = nullptr);
+    explicit TExaltationForgeDialogController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     ~TExaltationForgeDialogController() override;
 
 public Q_SLOTS:
@@ -312,7 +334,8 @@ private:
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
     void setTab(EDialogTab tab);
 
-    exaltation::TExaltationStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<exaltation::TExaltationStorage> m_storage;
     TExaltationResultDialogController* m_resultDialog;
     TMessageDialogController* m_errorDialog;
 

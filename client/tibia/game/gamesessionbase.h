@@ -66,12 +66,29 @@ class TMonsterRaceStorage;
 namespace highscores {
 class THighscoresProtocolMessageHandler;
 class THighscoresStorage;
+namespace dailyreward {
+class TDailyRewardGameActionHandler;
+class TDailyRewardProtocolMessageHandler;
+class TDailyRewardStorage;
+}
+namespace exaltation {
+class TExaltationProtocolMessageHandler;
+class TExaltationStorage;
 }
 namespace game {
 class TGameActionRouter;
 class TOutfitDialogStorage;
 class TPlayerData;
 class TPlayerSkillStats;
+}
+namespace imbuing {
+class TImbuementDurationsStorage;
+class TImbuingProtocolMessageHandler;
+class TImbuingStorage;
+}
+namespace prey {
+class TPreyProtocolMessageHandler;
+class TPreyStorage;
 }
 namespace protocol {
 class TProtocolMessageQueue;
@@ -90,6 +107,10 @@ class TEffectGameActionHandler;
 class TEffectProtocolMessageHandler;
 class TEffectStorage;
 class TEffectGameActionHandler;
+}
+namespace store {
+class TStoreProtocolMessageHandler;
+class TStoreStorage;
 }
 namespace sound {
 class TSoundProtocolMessageHandler;
@@ -222,9 +243,6 @@ public:
         return m_worldMapGameActionProvider;
     }
 
-public Q_SLOTS:
-    /// Advances everything that moves to the time the next frame is shown.
-    void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
     /// The hunting analysers' storages (CIP: handed to the session's character
     /// configuration manager, which saves them with the character).
     const std::shared_ptr<analysers::TProgressStorage>& progressStorage() const { return m_progressStorage; }
@@ -267,6 +285,40 @@ public Q_SLOTS:
     {
         return m_bossBestiaryProtocolMessageHandler;
     }
+    /// The store's offers, categories and coin balance.
+    const std::shared_ptr<store::TStoreStorage>& storeStorage() const { return m_storeStorage; }
+    const std::shared_ptr<store::TStoreProtocolMessageHandler>& storeProtocolMessageHandler() const
+    {
+        return m_storeProtocolMessageHandler;
+    }
+    /// The prey slots, their prices and the wildcards.
+    const std::shared_ptr<prey::TPreyStorage>& preyStorage() const { return m_preyStorage; }
+    const std::shared_ptr<prey::TPreyProtocolMessageHandler>& preyProtocolMessageHandler() const
+    {
+        return m_preyProtocolMessageHandler;
+    }
+    const std::shared_ptr<imbuing::TImbuingProtocolMessageHandler>& imbuingProtocolMessageHandler() const
+    {
+        return m_imbuingProtocolMessageHandler;
+    }
+    /// The imbuing dialog's item, slots and imbuements.
+    const std::shared_ptr<imbuing::TImbuingStorage>& imbuingStorage() const { return m_imbuingStorage; }
+    const std::shared_ptr<imbuing::TImbuementDurationsStorage>& imbuementDurationsStorage() const
+    {
+        return m_imbuementDurationsStorage;
+    }
+    const std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler>& dailyRewardProtocolMessageHandler() const
+    {
+        return m_dailyRewardProtocolMessageHandler;
+    }
+    /// The reward wall's rewards, streak and history.
+    const std::shared_ptr<dailyreward::TDailyRewardStorage>& dailyRewardStorage() const { return m_dailyRewardStorage; }
+    /// The exaltation forge's prices, groups and history.
+    const std::shared_ptr<exaltation::TExaltationStorage>& exaltationStorage() const { return m_exaltationStorage; }
+
+public Q_SLOTS:
+    /// Advances everything that moves to the time the next frame is shown.
+    void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -296,6 +348,7 @@ private:
     std::shared_ptr<TOutfitDialogStorage> m_outfitDialogStorage;
     std::shared_ptr<TGameActionRouter> m_gameActionRouter;
     std::shared_ptr<worldmap::TWorldMapGameActionHandler> m_worldMapGameActionHandler;
+    std::shared_ptr<store::TStoreStorage> m_storeStorage;
     std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
     std::shared_ptr<worldmap::TAmbientLightStorage> m_ambientLightStorage;
     std::shared_ptr<creatures::TCreatureProtocolMessageHandler> m_creatureProtocolMessageHandler;
@@ -315,6 +368,17 @@ private:
     std::shared_ptr<input::TGatherAllProtocolMessageHandler> m_gatherAllProtocolMessageHandler;
     std::shared_ptr<quickloot::TQuickLootGameActionHandler> m_quickLootGameActionHandler;
     std::shared_ptr<input::TGatherAllGameActionHandler> m_gatherAllGameActionHandler;
+    std::shared_ptr<prey::TPreyStorage> m_preyStorage;
+    std::shared_ptr<imbuing::TImbuingStorage> m_imbuingStorage;
+    std::shared_ptr<imbuing::TImbuementDurationsStorage> m_imbuementDurationsStorage;
+    std::shared_ptr<dailyreward::TDailyRewardStorage> m_dailyRewardStorage;
+    std::shared_ptr<exaltation::TExaltationStorage> m_exaltationStorage;
+    std::shared_ptr<store::TStoreProtocolMessageHandler> m_storeProtocolMessageHandler;
+    std::shared_ptr<prey::TPreyProtocolMessageHandler> m_preyProtocolMessageHandler;
+    std::shared_ptr<imbuing::TImbuingProtocolMessageHandler> m_imbuingProtocolMessageHandler;
+    std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> m_dailyRewardProtocolMessageHandler;
+    std::shared_ptr<exaltation::TExaltationProtocolMessageHandler> m_exaltationProtocolMessageHandler;
+    std::shared_ptr<dailyreward::TDailyRewardGameActionHandler> m_dailyRewardGameActionHandler;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
