@@ -196,7 +196,9 @@ TPreyStorage::TPreyStorage(QObject* parent) : cip::tibia::prey::TPreyStorage(par
 {
     for (int i = 0; i < SlotCount; ++i)
         m_slots[i] = new TPreyData(static_cast<uint8_t>(i), this);
-    reset();
+    // Every slot waits for the server's first state.
+    for (int i = 0; i < SlotCount; ++i)
+        m_pendingSlots.insert(i);
 }
 
 TPreyData* TPreyStorage::slot(const int preyId) const

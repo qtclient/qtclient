@@ -117,7 +117,7 @@ TEST(CyclopediaMapStaticDataStorage, AreasSubareasAndNpcs)
 
     ASSERT_EQ(storage.npcs().size(), 1u);
     EXPECT_EQ(storage.npcs()[0].name, QStringLiteral("Frodo"));
-    EXPECT_EQ(storage.npcs()[0].subAreaId, 10);
+    EXPECT_EQ(storage.npcs()[0].subareaId, 10);
     EXPECT_EQ(storage.npcs()[0].coordinate, TWorldMapCoordinate(32300, 32200, 7));
     // The NPC gets the area of its subarea.
     EXPECT_EQ(storage.npcs()[0].areaId, 1);

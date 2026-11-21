@@ -13,6 +13,11 @@
 
 namespace tibia::gamewindow {
 
+void TContainerStorageController::setCharacterConfigurationManager(config::TCharacterConfigurationManager* manager)
+{
+    m_characterConfigurationManager = manager;
+}
+
 TContainerStorageController::TContainerStorageController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                          QObject* parent)
     : cip::tibia::gamewindow::TContainerStorageController(parent)

@@ -783,9 +783,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     publishToRouter(g.exivaOptionsDialog.get());
     publishToRouter(g.taskboardDialog.get());
     publishToRouter(g.skillWheel->dialog());
-    publishToRouter(g.skillWheel->actions());
-    publishToRouter(g.exaltationStorage.get());
-    publishToRouter(g.dailyRewardActions.get());
     publishToRouter(g.analyserStorages.get());
     publishToRouter(g.analyserWidgets.get());
     // The engine's text copy controller outlives the game windows.

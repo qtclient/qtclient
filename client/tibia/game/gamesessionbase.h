@@ -100,6 +100,7 @@ class TMonsterRaceStorage;
 namespace highscores {
 class THighscoresProtocolMessageHandler;
 class THighscoresStorage;
+}
 namespace dailyreward {
 class TDailyRewardGameActionHandler;
 class TDailyRewardProtocolMessageHandler;

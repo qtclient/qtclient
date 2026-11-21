@@ -60,7 +60,7 @@ public:
     void setSidebarOptions(config::TSidebarOptions* options);
     /// Host: the client's character configuration manager, whose loaded
     /// configuration updates the widgets (CIP reaches it through the session).
-    void setCharacterConfigurationManager(config::TCharacterConfigurationManager* manager) { m_characterConfigurationManager = manager; }
+    void setCharacterConfigurationManager(config::TCharacterConfigurationManager* manager);
     /// CIP connector: drops the previous session's container widgets and
     /// follows the session's ramp-up, its container storage and the options
     /// the widgets show.

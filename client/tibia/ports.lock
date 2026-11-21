@@ -1799,11 +1799,9 @@ game::TGameserverGameSession::v115	db1afe76945f4c36	ported	game/gamesessionbase.
 game::TGameserverGameSession::v120	b4424c30a74129fa	ported	game/gamesessionbase.h:TGameSessionBase::bossBestiaryProtocolMessageHandler
 game::TGameserverGameSession::v121	6d59d776f3bb1615	ported	game/gamesessionbase.h:TGameSessionBase::bossTrackerStorage
 game::TGameserverGameSession::v122	0912fd0792bbe378	ported	game/gamesessionbase.h:TGameSessionBase::bosstiaryStorage
-game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::v98	f88aa2426a04c349	ported	game/gamesessionbase.h:TGameSessionBase::cyclopediaProtocolMessageHandler
 game::TGameserverGameSession::v99	cc7c7ae1bc68f153	ported	game/gamesessionbase.h:TGameSessionBase::monsterRaceStorage
 game::TGameserverGameSession::v123	e55cf9435738e780	ported	game/gamesessionbase.h:TGameSessionBase::exaltationStorage
-game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::v83	71436eee668324f6	ported	game/gamesessionbase.h:TGameSessionBase::storeStorage
 game::TGameserverGameSession::v84	362435b8b1ccc940	ported	game/gamesessionbase.h:TGameSessionBase::storeProtocolMessageHandler
 game::TGameserverGameSession::v88	bca661f0a9f173dc	ported	game/gamesessionbase.h:TGameSessionBase::preyStorage
@@ -1816,14 +1814,12 @@ game::TGameserverGameSession::v97	2a61f82253c6113e	ported	game/gamesessionbase.h
 game::TGameserverGameSession::v108	2f461eecef200b97	ported	game/gamesessionbase.h:TGameSessionBase::exivaOptionsStorage
 game::TGameserverGameSession::v116	d238233f4b4d5b0a	ported	game/gamesessionbase.h:TGameSessionBase::teamFinderProtocolMessageHandler
 game::TGameserverGameSession::v117	815d64c6db38cb0f	ported	game/gamesessionbase.h:TGameSessionBase::teamFinderStorage
-game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::v37	a0557cc8dd6afadf	ported	game/gamesessionbase.h:TGameSessionBase::chatStorage
 game::TGameserverGameSession::v57	88d48c9cb41c4a0f	ported	game/gamesessionbase.h:TGameSessionBase::npcTradeProtocolMessageHandler
 game::TGameserverGameSession::v67	42d2474c407b6483	ported	game/gamesessionbase.h:TGameSessionBase::vipStorage
 game::TGameserverGameSession::v71	39bd8aa2de07db33	ported	game/gamesessionbase.h:TGameSessionBase::friendsProtocolMessageHandler
 game::TGameserverGameSession::v82	dfde89f252bfa553	ported	game/gamesessionbase.h:TGameSessionBase::unjustifiedPointsStorage
 game::TGameserverGameSession::v109	63153f65640125a2	ported	game/gamesessionbase.h:TGameSessionBase::gameEventProtocolMessageHandler
-game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::v70	594133309873abd0	ported	game/gamesessionbase.h:TGameSessionBase::cooldownStorage
 game::TGameserverGameSession::v75	4ed45f81cb5ef5e1	ported	game/gamesessionbase.h:TGameSessionBase::serverModalDialogProtocolMessageHandler
 game::TGameserverGameSession::v76	ba27aedb7e18e74b	ported	game/gamesessionbase.h:TGameSessionBase::ruleViolationProtocolMessageHandler
