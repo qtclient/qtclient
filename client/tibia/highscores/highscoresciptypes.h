@@ -10,6 +10,7 @@
 #include <QString>
 #include <QStringList>
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -19,9 +20,6 @@ class GameserverMessageHighscores;
 
 namespace tibia {
 namespace highscores {
-
-/// Creates the session's highscores storage and handler under `parent`.
-void ownProductSurface(QObject* parent);
 
 /// One row of the highscore table (CIP: 0x78-byte entries).
 struct THighscoreEntry
@@ -48,8 +46,6 @@ public:
 
     explicit THighscoresStorage(QObject* parent = nullptr);
     ~THighscoresStorage() override;
-
-    static THighscoresStorage* liveInstance();
 
     /// The answer's error state; 1: the server has no data.
     int state() const { return m_state; }
@@ -97,10 +93,14 @@ class THighscoresProtocolMessageHandler final : public cip::tibia::highscores::T
 {
     Q_OBJECT
 public:
-    using cip::tibia::highscores::THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler;
+    /// The session's highscores storage the highscores message fills.
+    explicit THighscoresProtocolMessageHandler(std::shared_ptr<THighscoresStorage> pHighscoresStorage, QObject* parent = nullptr);
 
     /// The requested highscore page replaces the storage's state.
-    static void handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& message);
+    void handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& message);
+
+private:
+    std::shared_ptr<THighscoresStorage> m_pHighscoresStorage;
 };
 
 }

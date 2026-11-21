@@ -5,6 +5,8 @@
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "cyclopedia/cyclopediainterfaces.h"
+#include "cyclopedia/cyclopediamapdata.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/cyclopediamapdialogcontroller.h"
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/magicalarchivedialogcontroller.h"
@@ -56,9 +58,8 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     , m_characterInfo(new TCharacterInfoDialogController(this))
     , m_monsters(new TMonsterDialogController(*m_bestiary, this))
     , m_bonusEffects(new TMonsterBonusEffectsDialogController(*m_bestiary, this))
-    , m_bosstiaryStorage(new bossbestiary::TBosstiaryStorage(this))
-    , m_bosstiary(new TBosstiaryDialogController(*m_bosstiaryStorage, this))
-    , m_bossSlots(new TBossSlotsDialogController(*m_bosstiaryStorage, this))
+    , m_bosstiary(new TBosstiaryDialogController(this))
+    , m_bossSlots(new TBossSlotsDialogController(this))
     , m_houses(new THousesInfoDialogController(this))
     , m_map(new TCyclopediaMapDialogController(this))
     , m_magicalArchive(new TMagicalArchiveDialogController(this))
@@ -72,7 +73,6 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     m_bosstiaryDialogController = m_bosstiary;
     m_bossSlotsDialogController = m_bossSlots;
     m_magicalArchiveDialogController = m_magicalArchive;
-    bossbestiary::TBossBestiaryProtocolMessageHandler::setBosstiaryStorage(m_bosstiaryStorage);
     connect(m_itemInfo, &TItemInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_characterInfo, &TCharacterInfoDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
     connect(m_monsters, &TMonsterDialogController::publishGameAction, this, &TCyclopediaDialogController::publishGameAction);
@@ -101,19 +101,42 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
             default: break;
         }
     });
-    // The session's end closes the dialog; the backlog goes with the next session.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
-            &TCyclopediaDialogController::closeDialog);
-    // The character's death closes it too.
-    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
-            &cyclopedia::TCyclopediaProtocolMessageHandler::requestCloseCyclopediaDialog, this,
-            &TCyclopediaDialogController::closeDialog);
 }
 
-void TCyclopediaDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>&)
+void TCyclopediaDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     clearBacklog();
     closeDialog();
+    // Each page connects to the session.
+    m_monsters->connectToGameSession(GameSession);
+    m_characterInfo->connectToGameSession(GameSession);
+    m_map->connectToGameSession(GameSession);
+    m_houses->connectToGameSession(GameSession);
+    m_bosstiary->connectToGameSession(GameSession);
+    m_bossSlots->connectToGameSession(GameSession);
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_monsterRaceStorage = session ? session->monsterRaceStorage() : nullptr;
+    m_bestiary->setMonsterRaceStorage(m_monsterRaceStorage);
+    if (!session)
+        return;
+    // The charm balances of the session's bonus effects.
+    cyclopedia::TMonsterBonusEffectStorage* bonusEffects = session->monsterBonusEffectStorage().get();
+    using Storage = cip::tibia::cyclopedia::TMonsterBonusEffectStorage;
+    m_sessionConnections.push_back(connect(bonusEffects, &Storage::availableCharmPointsChanged, this,
+                                           &TCyclopediaDialogController::availableCharmPointsChanged));
+    m_sessionConnections.push_back(connect(bonusEffects, &Storage::unlockedCharmPointsChanged, this,
+                                           &TCyclopediaDialogController::unlockedCharmPointsChanged));
+    m_sessionConnections.push_back(connect(bonusEffects, &Storage::availableMinorCharmEchoesChanged, this,
+                                           &TCyclopediaDialogController::availableMinorCharmEchoesChanged));
+    m_sessionConnections.push_back(connect(bonusEffects, &Storage::unlockedMinorCharmEchoesChanged, this,
+                                           &TCyclopediaDialogController::unlockedMinorCharmEchoesChanged));
+    // The character's death closes the dialog.
+    m_sessionConnections.push_back(connect(session->cyclopediaProtocolMessageHandler().get(),
+                                           &cyclopedia::TCyclopediaProtocolMessageHandler::requestCloseCyclopediaDialog, this,
+                                           &TCyclopediaDialogController::closeDialog));
 }
 
 void TCyclopediaDialogController::onSwitchToItemInfoDialogRequested(const uint16_t AppearanceTypeID)
@@ -139,17 +162,10 @@ void TCyclopediaDialogController::setInstanceStorage(mods::InstanceBackend* inst
 
 void TCyclopediaDialogController::setControlScheme(const int controlScheme) { m_map->setControlScheme(controlScheme); }
 
-void TCyclopediaDialogController::setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* const pCreatureTrackerStorage)
-{
-    m_monsters->setCreatureTrackerStorage(pCreatureTrackerStorage);
-    m_bosstiary->setCreatureTrackerStorage(pCreatureTrackerStorage);
-}
-
 TCyclopediaDialogController::~TCyclopediaDialogController()
 {
     clearBacklog();
     closeDialog();
-    bossbestiary::TBossBestiaryProtocolMessageHandler::setBosstiaryStorage(nullptr);
 }
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
@@ -291,7 +307,8 @@ void TCyclopediaDialogController::closeDialog()
     if (previous)
         previous->hideDialogTab();
     // The races and charm data received go with the dialog.
-    cyclopedia::TMonsterRaceStorage::instance()->clearMonsterRaces();
+    if (m_monsterRaceStorage)
+        m_monsterRaceStorage->clearMonsterRaces();
     m_bestiary->clearCharms();
     dialog()->close();
 }
@@ -427,12 +444,6 @@ TCyclopediaButtonController::TCyclopediaButtonController(QObject* parent)
     // A ten-minute highlight; its end forgets what a click opens.
     connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TCyclopediaButtonController::changed);
     connect(&m_highlightTimer, &shared::THighlightTimer::timeout, this, &TCyclopediaButtonController::onHighlightCyclopediaButtonEnds);
-    // New bestiary details highlight the button.
-    connect(cyclopedia::TCyclopediaProtocolMessageHandler::instance(),
-            &cyclopedia::TCyclopediaProtocolMessageHandler::monsterCyclopediaNewDetailsForMonster, this,
-            [this](const quint16 raceId) { onMonsterCyclopediaNewDetailsMessage(raceId); });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TCyclopediaButtonController::connectToGameSession);
 }
 
 void TCyclopediaButtonController::onCyclopediaButtonClicked()
@@ -463,10 +474,27 @@ void TCyclopediaButtonController::onHighlightCyclopediaButtonEnds()
     m_highlightReason = std::monostate{};
 }
 
-void TCyclopediaButtonController::connectToGameSession()
+void TCyclopediaButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_highlightTimer.stop(false);
     m_highlightReason = std::monostate{};
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (!session)
+        return;
+    // New bestiary details, and the map storage's raids.
+    m_sessionConnections.push_back(connect(session->cyclopediaProtocolMessageHandler().get(),
+                                           &cyclopedia::TCyclopediaProtocolMessageHandler::monsterCyclopediaNewDetailsForMonster, this,
+                                           [this](const quint16 raceId) { onMonsterCyclopediaNewDetailsMessage(raceId); }));
+    cyclopedia::TCyclopediaMapStorage* mapStorage = session->cyclopediaMapStorage().get();
+    m_sessionConnections.push_back(connect(mapStorage, &cyclopedia::TCyclopediaMapStorage::activeRaidAdded, this,
+                                           &TCyclopediaButtonController::onCyclopediaMapActiveRaidAdded));
+    m_sessionConnections.push_back(connect(mapStorage, &cyclopedia::TCyclopediaMapStorage::imminentRaidAnnouncement, this,
+                                           [this](const worldmap::TWorldMapCoordinate& coordinate, const cyclopedia::TMapScaleFactor scale) {
+                                               onCyclopediaMapImminentRaidsChanged(coordinate, static_cast<float>(scale.scale));
+                                           }));
 }
 
 void TCyclopediaButtonController::onMonsterCyclopediaNewDetailsMessage(const uint16_t NewDetailsMonsterRaceID)
@@ -491,9 +519,6 @@ void TCyclopediaButtonController::onCyclopediaMapImminentRaidsChanged(const worl
 TBosstiaryButtonController::TBosstiaryButtonController(QObject* parent)
     : cip::tibia::gamewindow::TBosstiaryButtonController(parent)
 {
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TBosstiaryButtonController::connectToGameSession);
-    connectToGameSession();
 }
 
 void TBosstiaryButtonController::onOpenBosstiaryButtonClicked()
@@ -507,14 +532,17 @@ void TBosstiaryButtonController::onOpenBosstiaryButtonClicked()
     }
 }
 
-void TBosstiaryButtonController::connectToGameSession()
+void TBosstiaryButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     if (m_highlightedBossRaceId != 0) {
         m_highlightedBossRaceId = 0;
         Q_EMIT changed();
     }
     disconnect(m_highlightConnection);
-    m_highlightConnection = connect(bossbestiary::TBossBestiaryProtocolMessageHandler::instance(),
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (!session)
+        return;
+    m_highlightConnection = connect(session->bossBestiaryProtocolMessageHandler().get(),
                                     &bossbestiary::TBossBestiaryProtocolMessageHandler::requestBosstiaryButtonHighlight, this,
                                     &TBosstiaryButtonController::onHighlightRequested);
 }

@@ -54,6 +54,16 @@
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
+#include "analysers/analyserstorages.h"
+#include "analysers/itempricestorage.h"
+#include "bossbestiary/bosstiarystorage.h"
+#include "bossbestiary/bosstrackerstorage.h"
+#include "cyclopedia/characterinfostorage.h"
+#include "cyclopedia/creaturetrackerstorage.h"
+#include "cyclopedia/cyclopediamapcharacterconfigurationstorage.h"
+#include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/housesstorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
 
 namespace tibia::game {
 
@@ -108,6 +118,29 @@ void TGameSessionBase::createStorages()
             [texts = m_textStorage.get()](std::weak_ptr<creatures::TCreature> player) {
                 texts->onPlayerCreatureAddedToGameSession(std::move(player));
             });
+    analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance();
+    m_progressStorage = std::make_shared<analysers::TProgressStorage>();
+    m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices);
+    // The drop tracker announces on the session's status line and follows the premium state.
+    m_itemTrackingStorage->setTextStorage(m_textStorage.get());
+    m_itemTrackingStorage->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
+    m_gainWasteStorage = std::make_shared<analysers::TGainWasteStorage>(itemPrices);
+    m_impactStorage = std::make_shared<analysers::TImpactStorage>();
+    m_damageInputStorage = std::make_shared<analysers::TDamageInputStorage>();
+    m_huntingSessionStorage = std::make_shared<analysers::THuntingSessionStorage>(m_progressStorage.get());
+    m_cyclopediaMapCharacterConfigurationStorage = std::make_shared<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>();
+    m_partyHuntStorage = std::make_shared<analysers::TPartyHuntStorage>();
+    m_monsterRaceStorage = std::make_shared<cyclopedia::TMonsterRaceStorage>();
+    m_cyclopediaMapStorage = std::make_shared<cyclopedia::TCyclopediaMapStorage>();
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_cyclopediaMapStorage.get(),
+            &cyclopedia::TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession);
+    m_monsterBonusEffectStorage = std::make_shared<cyclopedia::TMonsterBonusEffectStorage>();
+    m_housesStorage = std::make_shared<cyclopedia::THousesStorage>();
+    m_creatureTrackerStorage = std::make_shared<cyclopedia::TCreatureTrackerStorage>();
+    m_characterInfoStorage = std::make_shared<cyclopedia::TCharacterInfoStorage>();
+    m_highscoresStorage = std::make_shared<highscores::THighscoresStorage>();
+    m_bossTrackerStorage = std::make_shared<bossbestiary::TBossTrackerStorage>();
+    m_bosstiaryStorage = std::make_shared<bossbestiary::TBosstiaryStorage>();
 }
 
 void TGameSessionBase::createProtocolMessageHandlers()
@@ -119,6 +152,24 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
             &effects::TEffectGameActionHandler::handleGameAction);
+    cyclopedia::TCyclopediaProtocolMessageHandler::TStorages cyclopediaStorages;
+    cyclopediaStorages.itemTracking = m_itemTrackingStorage;
+    cyclopediaStorages.gainWaste = m_gainWasteStorage;
+    cyclopediaStorages.impact = m_impactStorage;
+    cyclopediaStorages.damageInput = m_damageInputStorage;
+    cyclopediaStorages.progress = m_progressStorage;
+    cyclopediaStorages.huntingSession = m_huntingSessionStorage;
+    cyclopediaStorages.partyHunt = m_partyHuntStorage;
+    cyclopediaStorages.monsterRace = m_monsterRaceStorage;
+    cyclopediaStorages.monsterBonusEffect = m_monsterBonusEffectStorage;
+    cyclopediaStorages.cyclopediaMap = m_cyclopediaMapStorage;
+    cyclopediaStorages.characterInfo = m_characterInfoStorage;
+    cyclopediaStorages.houses = m_housesStorage;
+    m_cyclopediaProtocolMessageHandler = std::make_shared<cyclopedia::TCyclopediaProtocolMessageHandler>(std::move(cyclopediaStorages));
+    m_bestiaryTrackerProtocolMessageHandler = std::make_shared<cyclopedia::TBestiaryTrackerProtocolMessageHandler>(m_creatureTrackerStorage);
+    m_highscoresProtocolMessageHandler = std::make_shared<highscores::THighscoresProtocolMessageHandler>(m_highscoresStorage);
+    m_bossBestiaryProtocolMessageHandler =
+        std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -415,21 +466,24 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedLoginSuccessMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
 
     using cyclopedia::TCyclopediaProtocolMessageHandler;
-    // Its constructor ties the item price storage's statistics requests to the server.
-    TCyclopediaProtocolMessageHandler::instance();
-    link(&Queue::receivedKillTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleKillTrackingMessage);
-    link(&Queue::receivedImpactTrackingMessage, this, &TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage);
-    link(&Queue::receivedMarketStatisticsMessage, this, &TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage);
-    link(&Queue::receivedItemLootedMessage, this, &TCyclopediaProtocolMessageHandler::handleItemLootedMessage);
-    link(&Queue::receivedItemWastedMessage, this, &TCyclopediaProtocolMessageHandler::handleItemWastedMessage);
-    link(&Queue::receivedMonsterCyclopediaMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage);
-    link(&Queue::receivedMonsterCyclopediaMonstersMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage);
-    link(&Queue::receivedMonsterCyclopediaRaceMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage);
-    link(&Queue::receivedMonsterCyclopediaNewDetailsMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage);
-    link(&Queue::receivedMonsterCyclopediaBonusEffectsMessage, this, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage);
-    link(&Queue::receivedCyclopediaMapDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage);
-    link(&Queue::receivedCyclopediaCharacterInfoMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage);
-    link(&Queue::receivedResourceBalanceMessage, this, &TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage);
+    auto* cyclopediaHandler = m_cyclopediaProtocolMessageHandler.get();
+    link(&Queue::receivedKillTrackingMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleKillTrackingMessage);
+    link(&Queue::receivedImpactTrackingMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage);
+    link(&Queue::receivedMarketStatisticsMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage);
+    link(&Queue::receivedItemLootedMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleItemLootedMessage);
+    link(&Queue::receivedItemWastedMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleItemWastedMessage);
+    link(&Queue::receivedMonsterCyclopediaMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage);
+    link(&Queue::receivedMonsterCyclopediaMonstersMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage);
+    link(&Queue::receivedMonsterCyclopediaRaceMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage);
+    link(&Queue::receivedMonsterCyclopediaNewDetailsMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage);
+    link(&Queue::receivedMonsterCyclopediaBonusEffectsMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage);
+    link(&Queue::receivedCyclopediaMapDataMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage);
+    link(&Queue::receivedCyclopediaCharacterInfoMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage);
+    link(&Queue::receivedResourceBalanceMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage);
     // Host: the remaining balances (prey, coins, ...) go to the player's
     // resource table the classic widgets read.
     link(&Queue::receivedResourceBalanceMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message) {
@@ -439,14 +493,17 @@ void TGameSessionBase::connectProtocolMessageHandlers()
                                                    message.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(message.small_value()))
                                                                              : message.value());
     });
-    link(&Queue::receivedCyclopediaStaticHouseDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage);
-    link(&Queue::receivedCyclopediaCurrentHouseDataMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage);
-    link(&Queue::receivedCyclopediaHouseActionResultMessage, this, &TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage);
-    link(&Queue::receivedPartyHuntAnalyserMessage, this, &TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage);
-    link(&Queue::receivedXpChangedMessage, this, &TCyclopediaProtocolMessageHandler::handleXpChangedMessage);
-    link(&Queue::receivedDeadMessage, this, &TCyclopediaProtocolMessageHandler::handleDeadMessage);
+    link(&Queue::receivedDeadMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleDeadMessage);
+    link(&Queue::receivedCyclopediaStaticHouseDataMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage);
+    link(&Queue::receivedCyclopediaCurrentHouseDataMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage);
+    link(&Queue::receivedCyclopediaHouseActionResultMessage, cyclopediaHandler,
+         &TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage);
+    link(&Queue::receivedPartyHuntAnalyserMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage);
+    link(&Queue::receivedXpChangedMessage, cyclopediaHandler, &TCyclopediaProtocolMessageHandler::handleXpChangedMessage);
 
-    link(&Queue::receivedBestiaryTrackerMessage, this,
+    link(&Queue::receivedBestiaryTrackerMessage, m_bestiaryTrackerProtocolMessageHandler.get(),
          &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);
     link(&Queue::receivedUpdateManagedContainersMessage, this,
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
@@ -459,7 +516,8 @@ void TGameSessionBase::connectProtocolMessageHandlers()
          &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
     link(&Queue::receivedGameEventMessage, sessionHandler(static_cast<TGameEventProtocolMessageHandler*>(nullptr)),
          &TGameEventProtocolMessageHandler::handleGameEventMessage);
-    link(&Queue::receivedHighscoresMessage, this, &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
+    link(&Queue::receivedHighscoresMessage, m_highscoresProtocolMessageHandler.get(),
+         &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
     using teamfinder::TTeamFinderProtocolMessageHandler;
     auto* teamFinder = TTeamFinderProtocolMessageHandler::instance();
@@ -469,11 +527,12 @@ void TGameSessionBase::connectProtocolMessageHandlers()
          &trade::TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage);
 
     using bossbestiary::TBossBestiaryProtocolMessageHandler;
-    link(&Queue::receivedBossTrackingMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage);
-    link(&Queue::receivedBosstiaryHighlightMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage);
-    link(&Queue::receivedBosstiaryStaticDataMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage);
-    link(&Queue::receivedBosstiaryMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage);
-    link(&Queue::receivedBossSlotsMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage);
+    auto* bossBestiary = m_bossBestiaryProtocolMessageHandler.get();
+    link(&Queue::receivedBossTrackingMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage);
+    link(&Queue::receivedBosstiaryHighlightMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage);
+    link(&Queue::receivedBosstiaryStaticDataMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage);
+    link(&Queue::receivedBosstiaryMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage);
+    link(&Queue::receivedBossSlotsMessage, bossBestiary, &TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage);
 
     using exaltation::TExaltationProtocolMessageHandler;
     link(&Queue::receivedExaltationBaseDataMessage, this, &TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage);
@@ -520,6 +579,11 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
 void TGameSessionBase::releaseStorages()
 {
+    // The handlers before the storages they fill.
+    m_bossBestiaryProtocolMessageHandler.reset();
+    m_highscoresProtocolMessageHandler.reset();
+    m_bestiaryTrackerProtocolMessageHandler.reset();
+    m_cyclopediaProtocolMessageHandler.reset();
     // Effects and texts refer to the map; the map handler to its storage.
     m_effectProtocolMessageHandler.reset();
     m_effectGameActionHandler.reset();

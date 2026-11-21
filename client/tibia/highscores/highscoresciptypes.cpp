@@ -10,8 +10,6 @@ namespace tibia::highscores {
 
 namespace {
 
-THighscoresStorage* g_liveStorage = nullptr;
-
 QString qstr(const std::string& text)
 {
     return QString::fromStdString(text);
@@ -31,38 +29,22 @@ QString vocationName(const uint32_t vocation)
 
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    new THighscoresStorage(parent);
-    new THighscoresProtocolMessageHandler(parent);
-}
-
 THighscoresStorage::THighscoresStorage(QObject* parent)
     : cip::tibia::highscores::THighscoresStorage(parent)
 {
-    g_liveStorage = this;
 }
 
-THighscoresStorage::~THighscoresStorage()
-{
-    if (g_liveStorage == this)
-        g_liveStorage = nullptr;
-}
+THighscoresStorage::~THighscoresStorage() = default;
 
-THighscoresStorage* THighscoresStorage::liveInstance()
+THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler(std::shared_ptr<THighscoresStorage> pHighscoresStorage, QObject* parent)
+    : cip::tibia::highscores::THighscoresProtocolMessageHandler(parent)
+    , m_pHighscoresStorage(std::move(pHighscoresStorage))
 {
-    return g_liveStorage;
 }
 
 void THighscoresProtocolMessageHandler::handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& m)
 {
-    THighscoresStorage* storage = THighscoresStorage::liveInstance();
-    if (!storage)
-        return;
+    THighscoresStorage* storage = m_pHighscoresStorage.get();
     storage->m_state = static_cast<int>(m.no_data());
     if (storage->m_state != 0) {
         Q_EMIT storage->highScoresError();

@@ -1,6 +1,7 @@
 #include "creaturetrackerwidgetcontroller.h"
 
 #include "bossbestiary/bosstrackerstorage.h"
+#include "game/gamesessionbase.h"
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameactionhandlers.h"
@@ -175,30 +176,39 @@ TCreatureTrackerWidgetController::TCreatureTrackerWidgetController(const EWidget
                                                                    QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_mode(mode)
-    , m_creatures(creatures)
-    , m_bosses(bosses)
     , m_model(new TCreatureTrackerSortProxyModel(this))
 {
     m_widgetMode = mode;
     m_trackedCreatures = m_model;
-    if (m_creatures) {
-        if (mode == Mode::Bosstiary)
-            connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedBossesChanged, this,
-                    &TCreatureTrackerWidgetController::onTrackedCreaturesChanged);
-        else
-            connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
-                    &TCreatureTrackerWidgetController::onTrackedCreaturesChanged);
-    }
-    if (m_bosses && mode == Mode::Bosstiary)
-        connect(m_bosses, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
-                &TCreatureTrackerWidgetController::onBossCooldownsChanged);
-    onTrackedCreaturesChanged();
+    setStorages(creatures, bosses);
     m_cooldownTimer.setInterval(1000);
     connect(&m_cooldownTimer, &QTimer::timeout, this, &TCreatureTrackerWidgetController::updateCooldownExpiry);
     m_cooldownTimer.start();
     widget()->createItem(QStringLiteral("CreatureTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TCreatureTrackerWidgetController::onWidgetQuickItemDestroyed);
+}
+
+void TCreatureTrackerWidgetController::setStorages(cyclopedia::TCreatureTrackerStorage* const creatures,
+                                                   bossbestiary::TBossTrackerStorage* const bosses)
+{
+    for (const QMetaObject::Connection& connection : m_storageConnections)
+        disconnect(connection);
+    m_storageConnections.clear();
+    m_creatures = creatures;
+    m_bosses = bosses;
+    if (m_creatures) {
+        if (m_mode == Mode::Bosstiary)
+            m_storageConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedBossesChanged, this,
+                                                   &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
+        else
+            m_storageConnections.push_back(connect(m_creatures, &cyclopedia::TCreatureTrackerStorage::trackedMonstersChanged, this,
+                                                   &TCreatureTrackerWidgetController::onTrackedCreaturesChanged));
+    }
+    if (m_bosses && m_mode == Mode::Bosstiary)
+        m_storageConnections.push_back(connect(m_bosses, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
+                                               &TCreatureTrackerWidgetController::onBossCooldownsChanged));
+    onTrackedCreaturesChanged();
 }
 
 QObject* TCreatureTrackerWidgetController::trackedCreatures() const { return m_model; }
@@ -391,6 +401,15 @@ TCreatureTrackerWidgetManager::TCreatureTrackerWidgetManager(const TCreatureTrac
 {}
 
 TCreatureTrackerWidgetManager::~TCreatureTrackerWidgetManager() { delete m_controller; }
+
+void TCreatureTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_creatures = session ? session->creatureTrackerStorage().get() : nullptr;
+    m_bosses = session ? session->bossTrackerStorage().get() : nullptr;
+    if (m_controller)
+        m_controller->setStorages(m_creatures, m_bosses);
+}
 
 TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions* options)
 {

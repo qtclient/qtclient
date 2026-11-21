@@ -17,8 +17,6 @@ namespace tibia::cyclopedia {
 
 namespace {
 
-TCyclopediaMapStorage* g_liveMapStorage = nullptr;
-
 TMapCoordinate mapCoordinate(const worldmap::TWorldMapCoordinate& coordinate)
 {
     return { coordinate.x, coordinate.y, coordinate.z };
@@ -41,75 +39,9 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     , m_playerPositionElement{ worldmap::TWorldMapCuboid(worldmap::TWorldMapCoordinate(0, 0, 0), worldmap::TWorldMapExtent(0, 0, 1)),
                                worldmap::TPlayerPositionMapAreaData{} }
 {
-    g_liveMapStorage = this;
-    // Host: a storage made after the player joined the session never sees
-    // playerAdded; the position notify keeps it current.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPositionChange", [this](GameObject*, const std::vector<std::any>& args) {
-        if (args.empty())
-            return std::any{};
-        if (const auto* position = std::any_cast<Position>(&args[0]))
-            onPlayerPositionWasUpdated(worldmap::TWorldMapCoordinate(*position));
-        return std::any{};
-    });
-    const auto bindPlayer = [this]() {
-        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-            connect(storage, &creatures::TCreatureStorage::playerAdded, this,
-                    &TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession,
-                    static_cast<Qt::ConnectionType>(Qt::UniqueConnection));
-        }
-    };
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, bindPlayer);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this, bindPlayer);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TCyclopediaMapStorage::reset);
 }
 
-TCyclopediaMapStorage::~TCyclopediaMapStorage()
-{
-    if (g_liveMapStorage == this)
-        g_liveMapStorage = nullptr;
-}
-
-TCyclopediaMapStorage* TCyclopediaMapStorage::liveInstance()
-{
-    return g_liveMapStorage;
-}
-
-void TCyclopediaMapStorage::reset()
-{
-    // Host: CipSoft makes the storage per game session; this one outlives it.
-    m_mainAreas.clear();
-    m_donations.clear();
-    m_discovered.clear();
-    m_discoverable.clear();
-    m_activeRaids.clear();
-    m_imminentRaidAreas.clear();
-    m_imminentRaidSubAreas.clear();
-    m_discoverySubarea = 0;
-    m_poiTarget = 0;
-    m_viewpoints.clear();
-    m_subAreaViewpointInfo.clear();
-    m_subAreaMonsters.clear();
-    m_knownMonsters.clear();
-    m_passages.clear();
-    m_explorationRewardAmountGoStrength = 0;
-    m_passageElements.clear();
-    m_viewpointElements.clear();
-    m_activeRaidElements.clear();
-    m_playerPosition = {};
-    m_playerPositionElement.area = fieldCuboid(m_playerPosition);
-    m_donationGoal = 0;
-    m_playerArea = 0;
-    Q_EMIT areaAndSubAreaDataChanged();
-    Q_EMIT viewpointsChanged();
-    Q_EMIT passagesChanged();
-    Q_EMIT areaDonationsChanged();
-    Q_EMIT playerAreaChanged();
-    Q_EMIT playerPositionChanged();
-    Q_EMIT activeRaidsChanged();
-    Q_EMIT clickedAreaChanged();
-    Q_EMIT explorationRewardAmountGoStrengthChanged();
-    Q_EMIT changed();
-}
+TCyclopediaMapStorage::~TCyclopediaMapStorage() = default;
 
 void TCyclopediaMapStorage::setDiscoveryData(std::map<quint16, TMainArea> mainAreas, std::set<quint16> discoveredSubAreas,
                                              std::set<quint16> discoverableSubAreas)

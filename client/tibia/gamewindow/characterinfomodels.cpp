@@ -556,7 +556,9 @@ void replaceObject(QObject*& member, QObject* object)
 /// CIP: a new proxy (inventory only) per answer, sorted.
 void TCharacterInfoDialogController::updateItemSummary()
 {
-    const CyclopediaCharacterItemSummary summary = cyclopedia::TCharacterInfoStorage::instance()->itemSummary();
+    if (!characterInfoStorage())
+        return;
+    const CyclopediaCharacterItemSummary summary = characterInfoStorage()->itemSummary();
     replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(summary), this));
     Q_EMIT dataModelChanged();
 }
@@ -565,7 +567,7 @@ void TCharacterInfoDialogController::updateItemSummary()
 /// character's eight colors.
 void TCharacterInfoDialogController::updateOutfitsMounts()
 {
-    const auto appearances = cyclopedia::TCharacterInfoStorage::instance()->outfitsMountsSummonSkins();
+    const auto appearances = characterInfoStorage() ? characterInfoStorage()->outfitsMountsSummonSkins() : nullptr;
     if (!appearances)
         return;
     const auto& outfitColors = appearances->outfitColors;
@@ -589,7 +591,7 @@ void TCharacterInfoDialogController::updateOutfitsMounts()
 /// CIP: a new titles object with the current title.
 void TCharacterInfoDialogController::updateTitles()
 {
-    const auto info = cyclopedia::TCharacterInfoStorage::instance()->titlesInfo();
+    const auto info = characterInfoStorage() ? characterInfoStorage()->titlesInfo() : nullptr;
     if (!info)
         return;
     std::vector<TitleEntry> entries;
@@ -604,7 +606,9 @@ void TCharacterInfoDialogController::updateTitles()
 /// unlocked achievements.
 void TCharacterInfoDialogController::updateAchievements()
 {
-    const cyclopedia::TAchievementStorage& storage = cyclopedia::TCharacterInfoStorage::instance()->achievementStorage();
+    if (!characterInfoStorage())
+        return;
+    const cyclopedia::TAchievementStorage& storage = characterInfoStorage()->achievementStorage();
     std::vector<AchievementEntry> unlocked;
     unlocked.reserve(storage.achievements.size());
     for (const cyclopedia::TAchievementStorage::TAchievement& achievement : storage.achievements)

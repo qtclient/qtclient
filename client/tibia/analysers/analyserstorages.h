@@ -25,6 +25,9 @@ namespace tibia {
 namespace cyclopedia {
 class TItemTrackingStorage;
 }
+namespace game {
+class IGameSession;
+}
 namespace quickloot {
 class TQuickLootBlackWhitelistStorage;
 }
@@ -574,11 +577,10 @@ private:
     qint64 m_totalBalance = 0;
 };
 
-/// The session's analyser storages (CIP: the storage container behind session+0x40 vt0xb0) and
-/// the engine hooks that feed them. One instance lives in main; widgets and the product HUD read
-/// it through instance. A new game session starts from zero, as CIP makes new storages per
-/// session; the options are character configuration the TCharacterConfigurationManager reads
-/// and writes.
+/// Host shim over the current game session's analyser storages (CipSoft hands them to the
+/// session's character configuration manager). The game window keeps one; widgets and the
+/// product HUD read the current session's storages through it, and it drives their ticks.
+/// Until the pack ABI reaches the session, instance() stays for the pack.
 class TAnalyserStorages final : public QObject
 {
     Q_OBJECT
@@ -593,13 +595,17 @@ public:
     static TAnalyserStorages* instance();
     static qint64 nowMs();
 
-    TProgressStorage* progress() { return &m_progress; }
+    /// The session's storages from now on; the last session's stay until the
+    /// next one (the widgets open with a session close with its world).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
+    TProgressStorage* progress() { return m_progress.get(); }
     TItemPriceStorage* prices();
-    TGainWasteStorage* gainWaste() { return &m_gainWaste; }
-    TImpactStorage* impact() { return &m_impact; }
-    TDamageInputStorage* damageInput() { return &m_damageInput; }
-    THuntingSessionStorage* huntingSession() { return &m_huntingSession; }
-    TPartyHuntStorage* partyHunt() { return &m_partyHunt; }
+    TGainWasteStorage* gainWaste() { return m_gainWaste.get(); }
+    TImpactStorage* impact() { return m_impact.get(); }
+    TDamageInputStorage* damageInput() { return m_damageInput.get(); }
+    THuntingSessionStorage* huntingSession() { return m_huntingSession.get(); }
+    TPartyHuntStorage* partyHunt() { return m_partyHunt.get(); }
     cyclopedia::TItemTrackingStorage* itemTracking() { return m_itemTracking.get(); }
     quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() { return m_lootBlackWhitelist.get(); }
 
@@ -625,14 +631,15 @@ Q_SIGNALS:
 private:
     void tick();
 
-    TProgressStorage m_progress;
-    TGainWasteStorage m_gainWaste;
-    TImpactStorage m_impact;
-    TDamageInputStorage m_damageInput;
-    THuntingSessionStorage m_huntingSession;
-    TPartyHuntStorage m_partyHunt;
-    std::unique_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
+    std::shared_ptr<TProgressStorage> m_progress;
+    std::shared_ptr<TGainWasteStorage> m_gainWaste;
+    std::shared_ptr<TImpactStorage> m_impact;
+    std::shared_ptr<TDamageInputStorage> m_damageInput;
+    std::shared_ptr<THuntingSessionStorage> m_huntingSession;
+    std::shared_ptr<TPartyHuntStorage> m_partyHunt;
+    std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTracking;
     std::unique_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_lootBlackWhitelist;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<client::gamecore::Hook> m_hooks;
     QTimer m_timer;
     bool m_hasCharacter = false;

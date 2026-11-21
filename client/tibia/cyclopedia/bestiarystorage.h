@@ -8,10 +8,13 @@
 #include <QString>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace tibia {
 namespace cyclopedia {
+
+class TMonsterRaceStorage;
 
 /// One charm of the player (CIP: the 0x48-byte charm entries built by
 /// from the charm message and the static table).
@@ -64,6 +67,10 @@ class TBestiaryStorage final : public QObject
 public:
     explicit TBestiaryStorage(QObject* parent = nullptr);
 
+    /// The session's monster race storage the charm message's race lists are
+    /// read from; null without a session.
+    void setMonsterRaceStorage(std::shared_ptr<TMonsterRaceStorage> pMonsterRaceStorage);
+
     const QList<TCharm>& charms() const { return m_charms; }
     const TCharm* charm(int charmId) const;
     /// The charm of the major (false) or minor (true) kind assigned to `raceId`.
@@ -95,6 +102,7 @@ private:
     bool m_hasCharmData = false;
     std::vector<uint16_t> m_charmableRaces;
     QSet<int> m_majorCharmRaces;
+    std::shared_ptr<TMonsterRaceStorage> m_pMonsterRaceStorage;
 };
 
 }

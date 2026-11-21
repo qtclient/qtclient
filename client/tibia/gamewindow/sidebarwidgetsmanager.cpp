@@ -137,6 +137,14 @@ void TSidebarWidgetsManager::onLoginRampUpFinished() { m_battleLists->onLoginRam
 
 void TSidebarWidgetsManager::registerWidget(const int widgetType, WidgetHooks hooks) { m_widgets[widgetType] = std::move(hooks); }
 
+void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const auto& [widgetType, hooks] : m_widgets) {
+        if (hooks.connectToGameSession)
+            hooks.connectToGameSession(GameSession);
+    }
+}
+
 TSidebarWidget* TSidebarWidgetsManager::currentWidget(const int widgetType) const
 {
     const auto it = m_widgets.find(widgetType);

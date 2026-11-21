@@ -251,8 +251,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TSpellListWidgetManager> spellListWidget;
     std::unique_ptr<gamewindow::TUnjustifiedPointsWidgetManager> unjustifiedWidget;
     std::unique_ptr<gamewindow::TImbuementTrackerWidgetManager> imbuementTrackerWidget;
-    std::unique_ptr<cyclopedia::TCreatureTrackerStorage> creatureTrackerStorage;
-    std::unique_ptr<bossbestiary::TBossTrackerStorage> bossTrackerStorage;
     std::unique_ptr<gamewindow::TCreatureTrackerWidgetManager> bestiaryTrackerWidget;
     std::unique_ptr<gamewindow::TCreatureTrackerWidgetManager> bosstiaryTrackerWidget;
     std::unique_ptr<gamewindow::TBossTrackerWidgetManager> bossCooldownsWidget;
@@ -637,19 +635,15 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     sidebarWidgets->registerWidget(Widgets::UnjustifiedPoints, Widgets::hooksFor(*g.unjustifiedWidget, [this, w = g.unjustifiedWidget.get()] { return w->open(sidebarOptions()); }));
     g.imbuementTrackerWidget = std::make_unique<gamewindow::TImbuementTrackerWidgetManager>(gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::ImbuementTracker, Widgets::hooksFor(*g.imbuementTrackerWidget, [this, w = g.imbuementTrackerWidget.get()] { return w->open(sidebarOptions()); }));
-    g.creatureTrackerStorage = std::make_unique<cyclopedia::TCreatureTrackerStorage>();
-    cyclopedia::TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(g.creatureTrackerStorage.get());
-    if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
-        cyclopedia->setCreatureTrackerStorage(g.creatureTrackerStorage.get());
-    g.bossTrackerStorage = std::make_unique<bossbestiary::TBossTrackerStorage>();
+    // The tracker widgets take the session's tracker storages (TSidebarWidgetsManager's connector).
     using CreatureMode = gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
     g.bestiaryTrackerWidget = std::make_unique<gamewindow::TCreatureTrackerWidgetManager>(
-        CreatureMode::Bestiary, g.creatureTrackerStorage.get(), g.bossTrackerStorage.get(), gameWindowItem, engine);
+        CreatureMode::Bestiary, nullptr, nullptr, gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::BestiaryTracker, Widgets::hooksFor(*g.bestiaryTrackerWidget, [this, w = g.bestiaryTrackerWidget.get()] { return w->open(sidebarOptions()); }));
     g.bosstiaryTrackerWidget = std::make_unique<gamewindow::TCreatureTrackerWidgetManager>(
-        CreatureMode::Bosstiary, g.creatureTrackerStorage.get(), g.bossTrackerStorage.get(), gameWindowItem, engine);
+        CreatureMode::Bosstiary, nullptr, nullptr, gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::BosstiaryTracker, Widgets::hooksFor(*g.bosstiaryTrackerWidget, [this, w = g.bosstiaryTrackerWidget.get()] { return w->open(sidebarOptions()); }));
-    g.bossCooldownsWidget = std::make_unique<gamewindow::TBossTrackerWidgetManager>(g.bossTrackerStorage.get(), gameWindowItem, engine);
+    g.bossCooldownsWidget = std::make_unique<gamewindow::TBossTrackerWidgetManager>(nullptr, gameWindowItem, engine);
     sidebarWidgets->registerWidget(Widgets::BossCooldowns, Widgets::hooksFor(*g.bossCooldownsWidget, [this, w = g.bossCooldownsWidget.get()] { return w->open(sidebarOptions()); }));
     // DepotSearchWidget (sidebar); owns the onDepotSearch* hooks.
     g.depotSearchWidget = std::make_unique<gamewindow::TDepotSearchWidgetManager>(sidebarManager, gameWindowItem, engine);
@@ -728,16 +722,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.chat = std::make_unique<gamewindow::TChatController>(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), *this);
     gamewindow::TChatController* chat = g.chat.get();
     setMessageIgnoreList(&chat->ignoreList());
-    analysers::TAnalyserStorages* analyserStorages = g.analyserStorages.get();
-    analyserStorages->itemTracking()->setChatStorage(&chat->storage());
-    // The drop tracker announces on the active session's status line and
-    // follows the session's premium state.
-    const auto bindItemTrackingTexts = [this, analyserStorages] {
-        analyserStorages->itemTracking()->setTextStorage(textStorage());
-        analyserStorages->itemTracking()->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-    };
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, analyserStorages, bindItemTrackingTexts);
-    bindItemTrackingTexts();
 
     g.actionBars = std::make_unique<gamewindow::TActionBarManager>(gameWindowItem, mapWindowPane, engine, [chat] { return chat->chatMode(); });
     gamewindow::TActionBarManager* actionBars = g.actionBars.get();
@@ -747,15 +731,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         config::TCharacterConfigurationManager::TStorages storages;
         storages.itemPrice = analysers::TItemPriceStorage::instance();
         storages.questLog = informationDialogs->questLog() ? informationDialogs->questLog()->questLogStorage() : nullptr;
-        storages.gainWaste = g.analyserStorages->gainWaste();
-        storages.impact = g.analyserStorages->impact();
-        storages.damageInput = g.analyserStorages->damageInput();
-        storages.progress = g.analyserStorages->progress();
-        storages.huntingSession = g.analyserStorages->huntingSession();
-        storages.itemTracking = g.analyserStorages->itemTracking();
+        // The analysers and the Cyclopedia map configuration are the session's
+        // (CipSoft hands them to the session's configuration manager).
         storages.quickLootBlackWhitelist = g.analyserStorages->lootBlackWhitelist();
-        if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
-            storages.cyclopediaMap = cyclopedia->mapDialog()->characterConfiguration();
         storages.skillWheel = g.skillWheel->storage();
         createCharacterConfigurationManager(storages);
         config::TCharacterConfigurationManager* manager = characterConfigurationManager();
@@ -1137,6 +1115,14 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.containers->connectToGameSession(GameSession);
         if (g.chat)
             g.chat->connectToGameSession(GameSession);
+        // Host shim: the analysers' aggregate follows the session's storages;
+        // the drop tracker reports on the chat's channels.
+        if (g.analyserStorages)
+            g.analyserStorages->connectToGameSession(GameSession);
+        if (session && g.chat)
+            session->itemTrackingStorage()->setChatStorage(&g.chat->storage());
+        if (g.sidebarWidgets)
+            g.sidebarWidgets->connectToGameSession(GameSession);
         if (g.sidebarPanels)
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
@@ -1148,6 +1134,9 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
                 cyclopedia->connectToGameSession(GameSession);
                 cyclopedia->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
             }
+            // CIP: the button bar's connector (unported) connects these buttons.
+            g.informationDialogs->cyclopediaButton()->connectToGameSession(GameSession);
+            g.informationDialogs->bosstiaryButton()->connectToGameSession(GameSession);
             // Host: the Cyclopedia's houses and map pages draw the session's light.
             g.informationDialogs->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
         }

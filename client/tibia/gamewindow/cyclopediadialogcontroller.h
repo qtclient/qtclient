@@ -32,7 +32,7 @@ class IGameSession;
 namespace tibia {
 namespace cyclopedia {
 class TBestiaryStorage;
-class TCreatureTrackerStorage;
+class TMonsterRaceStorage;
 }
 }
 
@@ -89,7 +89,8 @@ public:
     /// Returns to the last remembered page and its context.
     void requestBack() override;
 
-    /// CIP connector: a new game session: no backlog and the dialog closed.
+    /// CIP connector: no backlog and the dialog closed; the pages connect to
+    /// the session, whose charm balances and death close come to the dialog.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The monster page's loot item: the items page on its object type.
     void onSwitchToItemInfoDialogRequested(uint16_t AppearanceTypeID);
@@ -99,8 +100,6 @@ public:
     void setPremiumTimeStorage(game::TPremiumTimeStorage* storage);
     void setInstanceStorage(mods::InstanceBackend* instance);
     void setControlScheme(int controlScheme);
-    /// The session's creature tracker storage for the monster and bosstiary pages.
-    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
 
 private:
     void hookActions();
@@ -124,13 +123,14 @@ private:
     TCharacterInfoDialogController* m_characterInfo;
     TMonsterDialogController* m_monsters;
     TMonsterBonusEffectsDialogController* m_bonusEffects;
-    bossbestiary::TBosstiaryStorage* m_bosstiaryStorage;
     TBosstiaryDialogController* m_bosstiary;
     TBossSlotsDialogController* m_bossSlots;
     THousesInfoDialogController* m_houses;
     TCyclopediaMapDialogController* m_map;
     TMagicalArchiveDialogController* m_magicalArchive;
     std::deque<TCyclopediaDialogContext> m_backlog;
+    std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     /// Hidden while a spell is assigned to an action button.
     bool m_hiddenForTargetSelection = false;
 
@@ -158,8 +158,9 @@ public:
     void onCyclopediaButtonClicked() override;
     void onHighlightCyclopediaButtonEnds() override;
 
-    /// A new game session: no highlight.
-    void connectToGameSession();
+    /// CIP connector: no highlight; the session's new bestiary details and
+    /// map raids highlight the button.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onMonsterCyclopediaNewDetailsMessage(uint16_t NewDetailsMonsterRaceID);
     void onCyclopediaMapActiveRaidAdded(const worldmap::TWorldMapCoordinate& WorldMapCoordinate);
     void onCyclopediaMapImminentRaidsChanged(const worldmap::TWorldMapCoordinate& WorldMapCoordinate, float MapScaleFactor);
@@ -176,6 +177,7 @@ private:
 
     shared::THighlightTimer m_highlightTimer;
     THighlightReason m_highlightReason;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
 /// The button bar's Bosstiary button (CIP: TBosstiaryButtonController). It is
@@ -190,8 +192,9 @@ public:
     bool highlighted() const override { return m_highlightedBossRaceId != 0; }
 
     void onOpenBosstiaryButtonClicked() override;
-    /// Clears the highlight and listens to the new session's highlight requests.
-    void connectToGameSession();
+    /// CIP connector: clears the highlight and listens to the session's
+    /// highlight requests.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onHighlightRequested(uint16_t BossRaceID);
 
 private:

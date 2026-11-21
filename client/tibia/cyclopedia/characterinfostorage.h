@@ -205,8 +205,6 @@ public:
     explicit TCharacterInfoStorage(QObject* parent = nullptr);
     ~TCharacterInfoStorage() override;
 
-    static TCharacterInfoStorage* instance();
-
     TAchievementStorage& achievementStorage() { return *m_achievements; }
     bool hasInfo(int dataType) const;
 

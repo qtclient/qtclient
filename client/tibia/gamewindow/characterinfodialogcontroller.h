@@ -9,10 +9,17 @@
 #include <QSet>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
 namespace tibia {
+namespace cyclopedia {
+class TCharacterInfoStorage;
+}
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -51,8 +58,9 @@ public:
     /// The client setting: smooth filtering of the outfit previews.
     bool clientSettingSmoothFiltering() const override;
 
-    /// A new game session: the page opens on the inspection again.
-    void connectToGameSession();
+    /// A new game session: its character info storage, and the page opens on
+    /// the inspection again.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// The page left for another tab: the data type and the deaths / kills page.
     TCyclopediaDialogContext captureContext() const;
@@ -106,6 +114,8 @@ public:
 
 private:
     void hookEvents();
+    /// The session's character info storage, or null without a session.
+    cyclopedia::TCharacterInfoStorage* characterInfoStorage() const { return m_characterInfoStorage.get(); }
     /// CIP : shows `dataType`, asking the server unless it is
     /// already there.
     void request(int dataType, bool force);
@@ -148,6 +158,7 @@ private:
     int m_inspectionState = 0;
     /// The error the error message shows (2 no permission, 3 no inspection).
     int m_errorType = 0;
+    std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;
 
 Q_SIGNALS:
     void inspectionStateChanged();

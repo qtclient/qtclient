@@ -128,7 +128,7 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         // The race lists of the charm message (major and minor charms).
         m_charmableRaces.clear();
         m_majorCharmRaces.clear();
-        if (const TMonsterRaceStorage* races = TMonsterRaceStorage::instance()) {
+        if (const TMonsterRaceStorage* races = m_pMonsterRaceStorage.get()) {
             for (const TMonsterRace& race : races->racesUnlockedForCharms()) {
                 m_majorCharmRaces.insert(race.raceId);
                 if (std::ranges::find(m_charmableRaces, race.raceId) == m_charmableRaces.end())
@@ -149,6 +149,11 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         m_majorCharmRaces.clear();
         m_hasCharmData = false;
     });
+}
+
+void TBestiaryStorage::setMonsterRaceStorage(std::shared_ptr<TMonsterRaceStorage> pMonsterRaceStorage)
+{
+    m_pMonsterRaceStorage = std::move(pMonsterRaceStorage);
 }
 
 const TCharm* TBestiaryStorage::charm(const int charmId) const

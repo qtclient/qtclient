@@ -12,12 +12,16 @@
 #include <QPointer>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace tibia {
 namespace cyclopedia {
 class TCreatureTrackerStorage;
+}
+namespace game {
+class IGameSession;
 }
 namespace gamewindow {
 
@@ -40,7 +44,10 @@ public:
         Tracked,
     };
 
-    TBosstiaryBossModel(const bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    explicit TBosstiaryBossModel(QObject* parent = nullptr);
+
+    /// The session's bosstiary storage the stage columns come from; null without a session.
+    void setStorage(const bossbestiary::TBosstiaryStorage* storage) { m_storage = storage; }
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -52,7 +59,7 @@ public:
     void refreshRoles(const QList<int>& roles);
 
 private:
-    const bossbestiary::TBosstiaryStorage& m_storage;
+    const bossbestiary::TBosstiaryStorage* m_storage = nullptr;
     std::vector<bossbestiary::TBosstiaryEntry> m_entries;
 };
 
@@ -64,8 +71,12 @@ class TBosstiaryDialogController final : public cip::tibia::gamewindow::TBosstia
 {
     Q_OBJECT
 public:
-    TBosstiaryDialogController(bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    explicit TBosstiaryDialogController(QObject* parent = nullptr);
     ~TBosstiaryDialogController() override;
+
+    /// CIP connector: the session's bosstiary and creature tracker storages;
+    /// the page is rebuilt where it was.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// The page left for another tab: the filter and the page.
     TCyclopediaDialogContext captureContext() const;
@@ -75,9 +86,6 @@ public:
     void showRace(int raceId);
     /// The Cyclopedia's actions: a received free podium shows its message.
     void handleGameAction(const input::IGameAction& action);
-    /// The session's creature tracker storage: whether more bosses can be tracked.
-    void setCreatureTrackerStorage(cyclopedia::TCreatureTrackerStorage* pCreatureTrackerStorage);
-
     QString baneTooltip() const override;
     QString archfoeTooltip() const override;
     QString nemesisTooltip() const override;
@@ -121,14 +129,16 @@ private:
     void onPointsChanged();
     void changeFilter(const std::function<void(bossbestiary::TBosstiaryFilter&)>& change);
     void rebuild();
+    /// The storage's filter; the default one without a session.
+    bossbestiary::TBosstiaryFilter filter() const;
 
     TMessageDialogController* m_message;
     /// A context is being restored: list changes do not rebuild.
     bool m_restoring = false;
-    bossbestiary::TBosstiaryStorage& m_storage;
+    std::shared_ptr<bossbestiary::TBosstiaryStorage> m_storage;
     TBosstiaryBossModel* m_model;
-    QPointer<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
-    QMetaObject::Connection m_creatureTrackerConnection;
+    std::shared_ptr<cyclopedia::TCreatureTrackerStorage> m_pCreatureTrackerStorage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
 /// One slot of the boss slots page (CIP: TBossSlotQMLInformation, metacall
@@ -148,13 +158,14 @@ class TBossSlotsDialogController final : public cip::tibia::gamewindow::TBossSlo
 {
     Q_OBJECT
 public:
-    TBossSlotsDialogController(bossbestiary::TBosstiaryStorage& storage, QObject* parent = nullptr);
+    explicit TBossSlotsDialogController(QObject* parent = nullptr);
     ~TBossSlotsDialogController() override;
 
     qlonglong playerGold() const override;
 
-    /// A new game session: the boss points and the gold balance are new.
-    void connectToGameSession();
+    /// CIP connector: the session's bosstiary storage; the boss points and the
+    /// gold balance are new.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// CIP.
     void showDialogTab() override;
     void hideDialogTab() override {}
@@ -167,7 +178,8 @@ private:
     void update();
     void onBossPointsChanged();
 
-    bossbestiary::TBosstiaryStorage& m_storage;
+    std::shared_ptr<bossbestiary::TBosstiaryStorage> m_storage;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
     TBossSlotInformation* m_first;
     TBossSlotInformation* m_second;
     TBossSlotInformation* m_boosted;

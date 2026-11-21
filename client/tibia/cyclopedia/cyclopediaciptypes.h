@@ -42,6 +42,14 @@ class GameserverMessageMonsterCyclopediaBonusEffects;
 }
 
 namespace tibia {
+namespace analysers {
+class TDamageInputStorage;
+class TGainWasteStorage;
+class THuntingSessionStorage;
+class TImpactStorage;
+class TPartyHuntStorage;
+class TProgressStorage;
+}
 namespace cyclopedia {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
@@ -54,15 +62,17 @@ class TBestiaryTrackerProtocolMessageHandler final : public cip::tibia::cycloped
 {
     Q_OBJECT
 public:
-    using cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler;
+    /// The session's creature tracker storage the tracker message fills.
+    explicit TBestiaryTrackerProtocolMessageHandler(std::shared_ptr<TCreatureTrackerStorage> pCreatureTrackerStorage,
+                                                    QObject* parent = nullptr);
 
-    /// The creature tracker storage the tracker message fills (CipSoft: handed to
-    /// the constructor); none drops the message. Its owner clears it.
-    static void setCreatureTrackerStorage(TCreatureTrackerStorage* pCreatureTrackerStorage);
     /// The tracked races with their capitalised names: tracker 0 is the bestiary's,
     /// any other the bosstiary's. The raw rows also go out as
     /// "onParseCyclopediaTracker" for packs.
-    static void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
+    void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
+
+private:
+    std::shared_ptr<TCreatureTrackerStorage> m_pCreatureTrackerStorage;
 };
 
 // TConcoctionQmlData — real implementation in combatstatsqmldata.h.
@@ -83,67 +93,78 @@ public:
     virtual void onStaticHouseDataChanged(const THousesStorage& HousesStorage) = 0;
 };
 
+class TCharacterInfoStorage;
+class TCyclopediaMapStorage;
+class TItemTrackingStorage;
+class TMonsterBonusEffectStorage;
+class TMonsterRaceStorage;
+
 class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    /// The item price storage's requests for market statistics go out as the
-    /// market statistics message. Host: CipSoft's constructor takes the
-    /// session's storages; qtclient's handlers reach the client-wide ones.
-    explicit TCyclopediaProtocolMessageHandler(QObject* parent = nullptr);
+    /// The session's storages the messages fill.
+    struct TStorages
+    {
+        std::shared_ptr<TItemTrackingStorage> itemTracking;
+        std::shared_ptr<analysers::TGainWasteStorage> gainWaste;
+        std::shared_ptr<analysers::TImpactStorage> impact;
+        std::shared_ptr<analysers::TDamageInputStorage> damageInput;
+        std::shared_ptr<analysers::TProgressStorage> progress;
+        std::shared_ptr<analysers::THuntingSessionStorage> huntingSession;
+        std::shared_ptr<analysers::TPartyHuntStorage> partyHunt;
+        std::shared_ptr<TMonsterRaceStorage> monsterRace;
+        std::shared_ptr<TMonsterBonusEffectStorage> monsterBonusEffect;
+        std::shared_ptr<TCyclopediaMapStorage> cyclopediaMap;
+        std::shared_ptr<TCharacterInfoStorage> characterInfo;
+        std::shared_ptr<THousesStorage> houses;
+    };
 
-    /// Host: the client's handler, made on first use.
-    static TCyclopediaProtocolMessageHandler* instance();
+    /// The handler of the session's storages. The item price storage's
+    /// requests for market statistics go out as the market statistics message.
+    explicit TCyclopediaProtocolMessageHandler(TStorages Storages, QObject* parent = nullptr);
 
     /// The observer told after each static house data message; null for none.
-    static void setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver);
-    /// The houses storage the house data messages fill (CipSoft: the session's,
-    /// handed to the constructor); none drops them. Its owner clears it.
-    static void setHousesStorage(THousesStorage* pHousesStorage);
-    /// The houses storage applied a static house data message.
-    static void notifyStaticHouseDataObserver(const THousesStorage& HousesStorage);
+    void setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver);
     /// The charms (with the static table's name, description and kind), the races they
     /// can go to by charm kind, the free charm slots and the reset cost.
-    static void handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage);
-    static void handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
-    static void handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
+    void handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage);
+    void handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
+    void handleCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
     /// The map data message: each part goes to its map storage setter (the
     /// minimap marker part is the minimap's).
-    static void handleCyclopediaMapDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaMapData& CyclopediaMapDataMessage);
+    void handleCyclopediaMapDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaMapData& CyclopediaMapDataMessage);
 public:
 
     // Slots, one per server message.
     /// The party hunt: session start, loot type (0 or 1 only), leader, then the members with names.
-    static void handlePartyHuntAnalyserMessage(const ::tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser& message);
+    void handlePartyHuntAnalyserMessage(const ::tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser& message);
     /// The races of a classification: progress 0 shows as unknown without occurrence.
-    static void handleMonsterCyclopediaMonstersMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters& message);
+    void handleMonsterCyclopediaMonstersMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters& message);
     /// One race's details, in steps by progress: occurrence and loot from 1, the
     /// characteristics from 2, element modifiers and locations from 3.
-    static void handleMonsterCyclopediaRaceMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace& message);
+    void handleMonsterCyclopediaRaceMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace& message);
     /// One kill: its drops go to the item tracking storage, the monster's name to the
     /// hunting session.
-    static void handleKillTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message);
+    void handleKillTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message);
     /// One page of the character info: an error, or the page's data by info type (no
     /// combat stats and no wheel page here).
-    static void handleCyclopediaCharacterInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message);
+    void handleCyclopediaCharacterInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message);
     /// Healing, damage dealt (physical and elemental part) and damage received with its source.
-    static void handleImpactTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message);
+    void handleImpactTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message);
     /// One object used up; a cumulative object counts once.
-    static void handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message);
+    void handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message);
     /// One looted object: a cumulative object with its count, any other once.
-    static void handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message);
+    void handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message);
     /// The charm point balances (resource types 30..33); other types are not this handler's.
     static void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
-    static void handleMarketStatisticsMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketStatistics& message);
-    static void handleMonsterCyclopediaMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message);
-    static void handleMonsterCyclopediaNewDetailsMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message);
-    static void handleCyclopediaHouseActionResultMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message);
-    static void handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message);
+    void handleMarketStatisticsMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketStatistics& message);
+    void handleMonsterCyclopediaMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message);
+    void handleMonsterCyclopediaNewDetailsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message);
+    void handleCyclopediaHouseActionResultMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message);
+    void handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message);
     /// The player died: the cyclopedia dialog closes (requestCloseCyclopediaDialog).
-    static void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
+    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
 
     // Requests (CipSoft's ICyclopediaProtocol slots).
     /// Cyclopedia inspection of an object type (InspectObject type 3, no count).
@@ -188,8 +209,8 @@ Q_SIGNALS:
     void requestHouseActionResultDialog(quint32 HouseID, quint8 Action, quint8 ErrorCode, bool HasBeenOutbidden);
 
 private:
+    TStorages m_storages;
     std::shared_ptr<IStaticHouseDataObserver> m_pStaticHouseDataObserver;
-    THousesStorage* m_pHousesStorage = nullptr;
 };
 
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage
@@ -223,7 +244,6 @@ class TMonsterBonusEffectStorage final : public cip::tibia::cyclopedia::TMonster
 public:
     explicit TMonsterBonusEffectStorage(QObject* parent = nullptr);
     ~TMonsterBonusEffectStorage() override;
-    static TMonsterBonusEffectStorage* instance();
 
     const std::map<uint8_t, TMonsterBonusEffect>& bonusEffects() const { return m_bonusEffects; }
     /// 0xFF: no limit.
@@ -321,7 +341,6 @@ class TMonsterRaceStorage final : public cip::tibia::cyclopedia::TMonsterRaceSto
 public:
     explicit TMonsterRaceStorage(QObject* parent = nullptr);
     ~TMonsterRaceStorage() override;
-    static TMonsterRaceStorage* instance();
 
     /// One classification of the bestiary overview: its name, its races and the known ones.
     struct TMonsterClassificationSummary

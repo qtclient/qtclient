@@ -1,25 +1,12 @@
 #include "cyclopedia/creaturetrackerstorage.h"
 
 #include <algorithm>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::cyclopedia {
 
 TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCreatureTrackerStorage(parent)
 {
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        if (!m_monsters.empty()) {
-            m_monsters.clear();
-            Q_EMIT trackedMonstersChanged();
-            Q_EMIT canTrackMoreMonstersChanged();
-        }
-        if (!m_bosses.empty()) {
-            m_bosses.clear();
-            Q_EMIT trackedBossesChanged();
-            Q_EMIT canTrackMoreBossesChanged();
-        }
-    });
 }
 
 void TCreatureTrackerStorage::setTrackedMonsters(const std::vector<TCreatureTrackerEntry>& entries)

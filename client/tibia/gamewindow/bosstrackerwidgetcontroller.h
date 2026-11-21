@@ -9,9 +9,13 @@
 #include <QPointer>
 #include <QString>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace config {
 class TSidebarOptions;
 }
@@ -91,6 +95,8 @@ public:
                                  QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's boss tracker storage.
+    void setStorage(bossbestiary::TBossTrackerStorage* storage);
 
     QObject* bosses() const override;
     bool hasUnlockedAnyBosses() const override;
@@ -141,6 +147,7 @@ private:
     /// CIP TSidebarWidgetControllerWithFocusHandling +0xa0.
     TUiFocusManager m_focus;
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;
+    QMetaObject::Connection m_storageConnection;
     TBossTrackerListModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;
 };
@@ -153,6 +160,8 @@ public:
                               QObject* parent = nullptr);
     ~TBossTrackerWidgetManager() override;
 
+    /// CIP connector: the session's boss tracker storage.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;

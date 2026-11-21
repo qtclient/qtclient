@@ -97,21 +97,12 @@ Outfit monsterRaceAppearance(const uint16_t raceId)
     return tibia::game::raceData(raceId).outfit;
 }
 
-namespace {
-TMonsterRaceStorage* g_monsterRaceStorage = nullptr;
-}
-
 TMonsterRaceStorage::TMonsterRaceStorage(QObject* parent)
     : cip::tibia::cyclopedia::TMonsterRaceStorage(parent)
 {
-    g_monsterRaceStorage = this;
 }
 
-TMonsterRaceStorage::~TMonsterRaceStorage()
-{
-    if (g_monsterRaceStorage == this)
-        g_monsterRaceStorage = nullptr;
-}
+TMonsterRaceStorage::~TMonsterRaceStorage() = default;
 
 const TMonsterRace* TMonsterRaceStorage::race(const uint16_t raceId) const
 {
@@ -176,28 +167,12 @@ void TMonsterRaceStorage::setRacesUnlockedForCharms(std::vector<TMonsterRace> ra
     Q_EMIT monsterRacesUnlockedForCharmsChanged();
 }
 
-namespace {
-TMonsterBonusEffectStorage* g_monsterBonusEffectStorage = nullptr;
-}
-
 TMonsterBonusEffectStorage::TMonsterBonusEffectStorage(QObject* parent)
     : cip::tibia::cyclopedia::TMonsterBonusEffectStorage(parent)
 {
-    g_monsterBonusEffectStorage = this;
 }
 
-TMonsterBonusEffectStorage::~TMonsterBonusEffectStorage()
-{
-    if (g_monsterBonusEffectStorage == this)
-        g_monsterBonusEffectStorage = nullptr;
-}
-
-TMonsterBonusEffectStorage* TMonsterBonusEffectStorage::instance()
-{
-    if (!g_monsterBonusEffectStorage)
-        g_monsterBonusEffectStorage = new TMonsterBonusEffectStorage(QCoreApplication::instance());
-    return g_monsterBonusEffectStorage;
-}
+TMonsterBonusEffectStorage::~TMonsterBonusEffectStorage() = default;
 
 int TMonsterBonusEffectStorage::finishedRaceState(const uint16_t raceId) const
 {
@@ -228,14 +203,6 @@ void TMonsterBonusEffectStorage::setResetAllCharmCost(const uint64_t cost)
 {
     m_resetAllCharmCost = cost;
     Q_EMIT resetAllCharmCostChanged();
-}
-
-TMonsterRaceStorage* TMonsterRaceStorage::instance()
-{
-    // One storage for the client's lifetime; each classification request replaces its races.
-    if (!g_monsterRaceStorage)
-        g_monsterRaceStorage = new TMonsterRaceStorage(QCoreApplication::instance());
-    return g_monsterRaceStorage;
 }
 
 void TMonsterRaceStorage::setMonsterClassificationSummary(std::vector<TMonsterClassificationSummary> summary)
@@ -289,27 +256,25 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
     summary.reserve(static_cast<size_t>(message.classes_size()));
     for (const auto& c : message.classes())
         summary.push_back({ QString::fromStdString(c.name()), static_cast<int>(c.total()), static_cast<int>(c.known()) });
-    TMonsterRaceStorage::instance()->setMonsterClassificationSummary(std::move(summary));
+    m_storages.monsterRace->setMonsterClassificationSummary(std::move(summary));
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message)
 {
-    Q_EMIT instance()->monsterCyclopediaNewDetailsForMonster(static_cast<quint16>(message.race_id()));
+    Q_EMIT monsterCyclopediaNewDetailsForMonster(static_cast<quint16>(message.race_id()));
 }
 
 void TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResultMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message)
 {
-    Q_EMIT instance()->requestHouseActionResultDialog(message.house_id(), static_cast<quint8>(message.action_type()),
-                                                      static_cast<quint8>(message.error_code()), message.outbidden());
+    Q_EMIT requestHouseActionResultDialog(message.house_id(), static_cast<quint8>(message.action_type()),
+                                          static_cast<quint8>(message.error_code()), message.outbidden());
 }
 
 void TCyclopediaProtocolMessageHandler::handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message)
 {
-    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
-        storages->progress()->onExperienceGained(message.raw_experience(), message.final_experience(),
-                                                 analysers::TAnalyserStorages::nowMs());
+    m_storages.progress->onExperienceGained(message.raw_experience(), message.final_experience(), analysers::TAnalyserStorages::nowMs());
 }
 
 namespace {
@@ -504,7 +469,7 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
     const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& m)
 {
     const int type = static_cast<int>(m.info_type());
-    TCharacterInfoStorage* storage = TCharacterInfoStorage::instance();
+    TCharacterInfoStorage* storage = m_storages.characterInfo.get();
     if (m.error_code() != 0) {
         storage->reportError(characterInfoDataType(type), static_cast<int>(m.error_code()));
         return;
@@ -624,9 +589,6 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
 void TCyclopediaProtocolMessageHandler::handleKillTrackingMessage(
     const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message)
 {
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    if (!storages)
-        return;
     const QString monsterName = QString::fromStdString(message.name());
     const Outfit outfit = creatures::outfitFromProtocol(message.outfit(), nullptr);
     const qint64 now = analysers::TAnalyserStorages::nowMs();
@@ -649,8 +611,8 @@ void TCyclopediaProtocolMessageHandler::handleKillTrackingMessage(
         loot.timestamp = timestamp;
         drops.push_back(std::move(loot));
     }
-    storages->itemTracking()->addDroppedLoot(drops);
-    storages->huntingSession()->addKill(monsterName);
+    m_storages.itemTracking->addDroppedLoot(drops);
+    m_storages.huntingSession->addKill(monsterName);
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage(
@@ -673,8 +635,7 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage(
         race.animusMasteryPoints = static_cast<uint16_t>(message.animus_mastery_points());
         races.push_back(std::move(race));
     }
-    if (TMonsterRaceStorage* storage = TMonsterRaceStorage::instance())
-        storage->setClassificationRaces(QString::fromStdString(message.class_name()), std::move(races));
+    m_storages.monsterRace->setClassificationRaces(QString::fromStdString(message.class_name()), std::move(races));
 }
 
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage(
@@ -724,17 +685,13 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage(
             }
         }
     }
-    if (TMonsterRaceStorage* storage = TMonsterRaceStorage::instance())
-        storage->setRaceDetails(std::move(race));
+    m_storages.monsterRace->setRaceDetails(std::move(race));
 }
 
 void TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser& m)
 {
-    analysers::TAnalyserStorages* analysers = analysers::TAnalyserStorages::instance();
-    if (!analysers)
-        return;
-    analysers::TPartyHuntStorage& storage = *analysers->partyHunt();
+    analysers::TPartyHuntStorage& storage = *m_storages.partyHunt;
     storage.setSessionStart(m.session_start());
     if (m.price_type() == 1)
         storage.setLootType(1);
@@ -761,19 +718,16 @@ void TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage(
 void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
     const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message)
 {
-    analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-    if (!storages)
-        return;
     const qint64 now = analysers::TAnalyserStorages::nowMs();
     switch (message.type()) {
     case 0: // healing
-        storages->impact()->addHealing(message.amount(), now);
+        m_storages.impact->addHealing(message.amount(), now);
         break;
     case 1: // damage dealt: its physical part and its elemental part
-        storages->impact()->addDamage(message.amount(), message.elemental_amount(), static_cast<int>(message.elemental_type()), now);
+        m_storages.impact->addDamage(message.amount(), message.elemental_amount(), static_cast<int>(message.elemental_type()), now);
         break;
     case 2: // damage received, with its element and source
-        storages->damageInput()->addHit({ static_cast<int>(message.amount()), static_cast<int>(message.element()),
+        m_storages.damageInput->addHit({ static_cast<int>(message.amount()), static_cast<int>(message.element()),
                                           QString::fromStdString(message.source()), now });
         break;
     default:
@@ -783,16 +737,14 @@ void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
 
 void TCyclopediaProtocolMessageHandler::handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message)
 {
-    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
-        storages->gainWaste()->addWaste(static_cast<uint16_t>(message.object_id()), 1, analysers::TAnalyserStorages::nowMs());
+    m_storages.gainWaste->addWaste(static_cast<uint16_t>(message.object_id()), 1, analysers::TAnalyserStorages::nowMs());
 }
 
 void TCyclopediaProtocolMessageHandler::handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message)
 {
     const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(message.item());
     const quint32 count = slot.stackable ? std::max<quint32>(1, slot.count) : 1;
-    if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
-        storages->gainWaste()->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs());
+    m_storages.gainWaste->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs());
 }
 
 void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
@@ -814,7 +766,7 @@ void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
 void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects& MonsterCyclopediaBonusEffectsMessage)
 {
     const auto& m = MonsterCyclopediaBonusEffectsMessage;
-    TMonsterBonusEffectStorage* bonusEffectStorage = TMonsterBonusEffectStorage::instance();
+    TMonsterBonusEffectStorage* bonusEffectStorage = m_storages.monsterBonusEffect.get();
     // A race entry of the charm lists: the race and its appearance.
     const auto raceEntry = [](const uint16_t raceId) {
         TMonsterRace race;
@@ -876,7 +828,7 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessa
         if (forMinorCharms)
             racesForMinorCharms.push_back(raceEntry(raceId));
     }
-    TMonsterRaceStorage::instance()->setRacesUnlockedForCharms(std::move(racesForCharms), std::move(racesForMinorCharms));
+    m_storages.monsterRace->setRacesUnlockedForCharms(std::move(racesForCharms), std::move(racesForMinorCharms));
     bonusEffectStorage->setBonusEffects(bonusEffects);
     bonusEffectStorage->setRemainingNumberOfAssignableBonusEffects(
         m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : uint8_t{ 0xff });
@@ -901,43 +853,22 @@ void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaBonusEffectsMessa
     tibia::game::processUpdateBestiaryCharmsData(data);
 }
 
-namespace {
-TCyclopediaProtocolMessageHandler* g_cyclopediaProtocolMessageHandler = nullptr;
-}
-
-TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler(QObject* parent)
+TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler(TStorages Storages, QObject* parent)
     : cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler(parent)
+    , m_storages(std::move(Storages))
 {
     if (analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance())
         connect(itemPrices, &analysers::TItemPriceStorage::requestMarketStatistics, this, &TCyclopediaProtocolMessageHandler::sendMarketStatistics);
 }
 
-TCyclopediaProtocolMessageHandler* TCyclopediaProtocolMessageHandler::instance()
-{
-    if (!g_cyclopediaProtocolMessageHandler)
-        g_cyclopediaProtocolMessageHandler = new TCyclopediaProtocolMessageHandler(QCoreApplication::instance());
-    return g_cyclopediaProtocolMessageHandler;
-}
-
 void TCyclopediaProtocolMessageHandler::setStaticHouseDataObserver(std::shared_ptr<IStaticHouseDataObserver> pObserver)
 {
-    instance()->m_pStaticHouseDataObserver = std::move(pObserver);
-}
-
-void TCyclopediaProtocolMessageHandler::setHousesStorage(THousesStorage* const pHousesStorage)
-{
-    instance()->m_pHousesStorage = pHousesStorage;
-}
-
-void TCyclopediaProtocolMessageHandler::notifyStaticHouseDataObserver(const THousesStorage& HousesStorage)
-{
-    if (const std::shared_ptr<IStaticHouseDataObserver>& observer = instance()->m_pStaticHouseDataObserver)
-        observer->onStaticHouseDataChanged(HousesStorage);
+    m_pStaticHouseDataObserver = std::move(pObserver);
 }
 
 void TCyclopediaProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
 {
-    Q_EMIT instance()->requestCloseCyclopediaDialog();
+    Q_EMIT requestCloseCyclopediaDialog();
 }
 
 void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage)
@@ -971,8 +902,7 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCurrentHouseDataMessage(
         house.moveOutDate = h.move_out_date();
         house.cancelMoveOutDisableReason = static_cast<uint8_t>(h.cancel_move_out_disable_reason());
     }
-    if (THousesStorage* storage = instance()->m_pHousesStorage)
-        storage->applyCurrentHouseData(houses);
+    m_storages.houses->applyCurrentHouseData(houses);
 
 }
 
@@ -985,10 +915,9 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaStaticHouseDataMessage(c
                                        static_cast<uint8_t>(m.fifth_count()),  static_cast<uint8_t>(m.sixth_count()) };
     const std::vector<uint32_t> shown(m.shown_houses().begin(), m.shown_houses().end());
     const std::vector<uint32_t> others(m.other_houses().begin(), m.other_houses().end());
-    if (THousesStorage* storage = instance()->m_pHousesStorage) {
-        storage->applyStaticHouseData(m.excluded_until(), counts, shown, others);
-        notifyStaticHouseDataObserver(*storage);
-    }
+    m_storages.houses->applyStaticHouseData(m.excluded_until(), counts, shown, others);
+    if (m_pStaticHouseDataObserver)
+        m_pStaticHouseDataObserver->onStaticHouseDataChanged(*m_storages.houses);
 
 }
 
@@ -1005,9 +934,7 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaMapDataMessage(const ::t
         tibia::game::processAddAutomapFlag(pos, static_cast<uint8_t>(m.icon()), m.text());
         return;
     }
-    TCyclopediaMapStorage* storage = TCyclopediaMapStorage::liveInstance();
-    if (!storage)
-        return;
+    TCyclopediaMapStorage* storage = m_storages.cyclopediaMap.get();
     switch (m.data_type()) {
     case 1: { // the main areas and the discovered and discoverable subareas
         std::map<quint16, TCyclopediaMapStorage::TMainArea> mainAreas;
@@ -1336,20 +1263,11 @@ void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vec
     protocol::sendGameclientMessage(std::move(message));
 }
 
-namespace {
-
-/// The creature tracker storage the tracker message fills.
-TCreatureTrackerStorage*& creatureTrackerStorage()
+TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler(std::shared_ptr<TCreatureTrackerStorage> pCreatureTrackerStorage,
+                                                                               QObject* parent)
+    : cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler(parent)
+    , m_pCreatureTrackerStorage(std::move(pCreatureTrackerStorage))
 {
-    static TCreatureTrackerStorage* storage = nullptr;
-    return storage;
-}
-
-}
-
-void TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(TCreatureTrackerStorage* const pCreatureTrackerStorage)
-{
-    creatureTrackerStorage() = pCreatureTrackerStorage;
 }
 
 void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
@@ -1374,12 +1292,10 @@ void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
         entry.killsForDetails3 = static_cast<uint16_t>(e.last_unlock());
         entry.status = e.completed() ? 1 : 0;
     }
-    if (TCreatureTrackerStorage* storage = creatureTrackerStorage()) {
-        if (trackerType == 0)
-            storage->setTrackedMonsters(entries);
-        else
-            storage->setTrackedBosses(entries);
-    }
+    if (trackerType == 0)
+        m_pCreatureTrackerStorage->setTrackedMonsters(entries);
+    else
+        m_pCreatureTrackerStorage->setTrackedBosses(entries);
     tibia::game::notify("onParseCyclopediaTracker", static_cast<uint8_t>(trackerType), rows);
 }
 

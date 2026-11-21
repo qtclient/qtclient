@@ -93,10 +93,6 @@ public:
     explicit TCyclopediaMapStorage(QObject* parent = nullptr);
     ~TCyclopediaMapStorage() override;
 
-    /// Host: the storage the Cyclopedia protocol handler fills (CipSoft hands the
-    /// session's storage to the handler's constructor).
-    static TCyclopediaMapStorage* liveInstance();
-
     // The map data message's parts.
     /// The main areas with their status and progress and the two subarea lists.
     void setDiscoveryData(std::map<quint16, TMainArea> mainAreas, std::set<quint16> discoveredSubAreas,
@@ -192,8 +188,6 @@ private:
     void addViewpoint(const worldmap::TWorldMapCoordinate& coordinate, int state);
     /// The player's piece on the player's field.
     void refreshPlayerPosition();
-    /// Host: a new game session starts from nothing.
-    void reset();
 
     std::map<quint16, TMainArea> m_mainAreas;
     std::map<quint16, TAreaDonation> m_donations;
@@ -218,7 +212,6 @@ private:
     int m_selectedId = 0;
     quint64 m_donationGoal = 0;
     quint16 m_playerArea = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

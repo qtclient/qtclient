@@ -5,6 +5,7 @@
 #include "cyclopedia/cyclopediainterfaces.h"
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -158,8 +159,6 @@ void TCyclopediaMapSelectionInfoPassage::setPassageData(const Values& values)
 
 TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     : cip::tibia::gamewindow::TCyclopediaMapDialogController(parent)
-    , m_configuration(new cyclopedia::TCyclopediaMapCharacterConfigurationStorage(this))
-    , m_storage(new cyclopedia::TCyclopediaMapStorage(this))
     , m_confirmDialog(new TMessageDialogController(this))
 {
     // Tip ICyclopediaMapSelectionInfo twin (selectionType).
@@ -175,29 +174,43 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     m_mouseCursorTimer.setInterval(MouseCursorIntervalMs);
     connect(&m_mouseCursorTimer, &QTimer::timeout, this, &TCyclopediaMapDialogController::onMouseCursorTimerTimeout);
 
-    // The session's map storage.
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::viewpointsChanged, this, &TCyclopediaMapDialogController::refreshSelection);
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::areaAndSubAreaDataChanged, this, &TCyclopediaMapDialogController::refreshSelection);
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::areaDonationsChanged, this, &TCyclopediaMapDialogController::refreshSelection);
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::playerAreaChanged, this,
-            &cip::tibia::gamewindow::TCyclopediaMapDialogController::currentPlayerAreaChanged);
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::playerPositionChanged, this,
-            &cip::tibia::gamewindow::TCyclopediaMapDialogController::currentPlayerSubAreaIDChanged);
-    connect(m_storage, &cyclopedia::TCyclopediaMapStorage::explorationRewardAmountGoStrengthChanged, this,
-            &cip::tibia::gamewindow::TCyclopediaMapDialogController::explorationRewardAmountGoStrengthChanged);
     // The player's gold.
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this](qint64, qint64, int type) {
         if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT goldBalanceChanged();
     });
-    // Host: CIP makes the controller per game session; qtclient's outlives it.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_selection = TNoSelection{};
-        refreshSelection();
-    });
 }
 
 TCyclopediaMapDialogController::~TCyclopediaMapDialogController() = default;
+
+void TCyclopediaMapDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->cyclopediaMapStorage() : nullptr;
+    m_configuration = session ? session->cyclopediaMapCharacterConfigurationStorage() : nullptr;
+    m_selection = TNoSelection{};
+    if (m_renderer)
+        m_renderer->setStorage(m_storage.get());
+    if (!m_storage)
+        return;
+    cyclopedia::TCyclopediaMapStorage* storage = m_storage.get();
+    using Base = cip::tibia::gamewindow::TCyclopediaMapDialogController;
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::viewpointsChanged, this,
+                                           &TCyclopediaMapDialogController::refreshSelection));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::areaAndSubAreaDataChanged, this,
+                                           &TCyclopediaMapDialogController::refreshSelection));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::areaDonationsChanged, this,
+                                           &TCyclopediaMapDialogController::refreshSelection));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::playerAreaChanged, this, &Base::currentPlayerAreaChanged));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::playerPositionChanged, this,
+                                           &Base::currentPlayerSubAreaIDChanged));
+    m_sessionConnections.push_back(connect(storage, &cyclopedia::TCyclopediaMapStorage::explorationRewardAmountGoStrengthChanged, this,
+                                           &Base::explorationRewardAmountGoStrengthChanged));
+    refreshSelection();
+}
 
 void TCyclopediaMapDialogController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
 {
@@ -221,31 +234,34 @@ void TCyclopediaMapDialogController::updateTimeDisplay()
     Q_EMIT timeOfDayChanged();
 }
 
-bool TCyclopediaMapDialogController::showMapMarkerPanel() const { return m_configuration->showDisplay(); }
+bool TCyclopediaMapDialogController::showMapMarkerPanel() const { return m_configuration && m_configuration->showDisplay(); }
 
 void TCyclopediaMapDialogController::setShowMapMarkerPanel(const bool v)
 {
-    if (m_configuration->showDisplay() == v)
+    if (!m_configuration || m_configuration->showDisplay() == v)
         return;
     m_configuration->setShowDisplay(v);
     Q_EMIT showMapMarkerPanelChanged();
 }
 
-bool TCyclopediaMapDialogController::showNavigationPanel() const { return m_configuration->showNavigation(); }
+bool TCyclopediaMapDialogController::showNavigationPanel() const { return m_configuration && m_configuration->showNavigation(); }
 
 void TCyclopediaMapDialogController::setShowNavigationPanel(const bool v)
 {
-    if (m_configuration->showNavigation() == v)
+    if (!m_configuration || m_configuration->showNavigation() == v)
         return;
     m_configuration->setShowNavigation(v);
     Q_EMIT showNavigationPanelChanged();
 }
 
-bool TCyclopediaMapDialogController::showAreaAndSubAreaInfoPanel() const { return m_configuration->showAreaAndSubAreaInfo(); }
+bool TCyclopediaMapDialogController::showAreaAndSubAreaInfoPanel() const
+{
+    return m_configuration && m_configuration->showAreaAndSubAreaInfo();
+}
 
 void TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel(const bool v)
 {
-    if (m_configuration->showAreaAndSubAreaInfo() == v)
+    if (!m_configuration || m_configuration->showAreaAndSubAreaInfo() == v)
         return;
     m_configuration->setShowAreaAndSubAreaInfo(v);
     Q_EMIT showAreaAndSubAreaInfoPanelChanged();
@@ -258,26 +274,31 @@ qlonglong TCyclopediaMapDialogController::totalGoldBalance() const
     return static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
 }
 
-int TCyclopediaMapDialogController::currentPlayerArea() const { return m_storage->currentArea(); }
+int TCyclopediaMapDialogController::currentPlayerArea() const { return m_storage ? m_storage->currentArea() : 0; }
 
 QString TCyclopediaMapDialogController::currentPlayerAreaName() const
 {
-    if (const int areaId = m_storage->currentArea(); areaId != 0)
+    if (const int areaId = currentPlayerArea(); areaId != 0)
         return StaticData::instance().areaName(static_cast<quint16>(areaId));
     return QString();
 }
 
-int TCyclopediaMapDialogController::currentExploringSubAreaID() const { return m_storage->exploringSubarea(); }
+int TCyclopediaMapDialogController::currentExploringSubAreaID() const { return m_storage ? m_storage->exploringSubarea() : 0; }
 
 int TCyclopediaMapDialogController::currentPlayerSubAreaID() const
 {
-    return StaticData::instance().subAreaAt(m_storage->playerPosition());
+    return m_storage ? StaticData::instance().subAreaAt(m_storage->playerPosition()) : 0;
 }
 
-int TCyclopediaMapDialogController::explorationRewardAmountGoStrength() const { return m_storage->explorationRewardAmountGoStrength(); }
+int TCyclopediaMapDialogController::explorationRewardAmountGoStrength() const
+{
+    return m_storage ? m_storage->explorationRewardAmountGoStrength() : 0;
+}
 
 void TCyclopediaMapDialogController::showDialogTab()
 {
+    if (!m_configuration)
+        return;
     const auto& data = StaticData::instance();
     const cyclopedia::TCyclopediaMapCharacterConfigurationStorage::TLocation& location = m_configuration->location();
     const auto* areaId = std::get_if<uint16_t>(&location);
@@ -342,7 +363,7 @@ void TCyclopediaMapDialogController::setMinimapRendererQuickItem(QObject* pItem)
         return;
     onSelectedItemChanged();
     connect(m_renderer, &qmlcomponents::TMinimapRendererQuickItem::areaClicked, this, &TCyclopediaMapDialogController::onAreaClicked);
-    m_renderer->setStorage(m_storage);
+    m_renderer->setStorage(m_storage.get());
     centerToPlayer();
 }
 

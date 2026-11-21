@@ -1,7 +1,6 @@
 #include "bossbestiary/bosstiarystorage.h"
 
 #include <algorithm>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::bossbestiary {
 
@@ -15,12 +14,6 @@ int categoryIndex(const int category) { return category == 2 ? 2 : category == 1
 TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
     : cip::tibia::bossbestiary::TBosstiaryStorage(parent)
 {
-    // Host: CipSoft's storage goes with the session; this one outlives it and
-    // forgets the session's list and slots instead.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_entries.clear();
-        m_slots = {};
-    });
 }
 
 int TBosstiaryStorage::killsForStage(const int category, const int stage) const

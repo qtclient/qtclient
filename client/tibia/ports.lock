@@ -1757,7 +1757,21 @@ game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compi
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::v100	c8ac9ca047503270	ported	game/gamesessionbase.h:TGameSessionBase::characterInfoStorage
+game::TGameserverGameSession::v101	3e6993a29f3eb402	ported	game/gamesessionbase.h:TGameSessionBase::monsterBonusEffectStorage
+game::TGameserverGameSession::v102	9606e913436aac55	ported	game/gamesessionbase.h:TGameSessionBase::housesStorage
+game::TGameserverGameSession::v103	774c7446b2fb9171	ported	game/gamesessionbase.h:TGameSessionBase::creatureTrackerStorage
+game::TGameserverGameSession::v104	e3ba0db1eef779e7	ported	game/gamesessionbase.h:TGameSessionBase::bestiaryTrackerProtocolMessageHandler
+game::TGameserverGameSession::v110	a52b000fbb879762	ported	game/gamesessionbase.h:TGameSessionBase::cyclopediaMapStorage
+game::TGameserverGameSession::v111	fc2ecfac89d336fa	ported	game/gamesessionbase.h:TGameSessionBase::partyHuntStorage
+game::TGameserverGameSession::v114	37cff8d686cbb05b	ported	game/gamesessionbase.h:TGameSessionBase::highscoresProtocolMessageHandler
+game::TGameserverGameSession::v115	db1afe76945f4c36	ported	game/gamesessionbase.h:TGameSessionBase::highscoresStorage
+game::TGameserverGameSession::v120	b4424c30a74129fa	ported	game/gamesessionbase.h:TGameSessionBase::bossBestiaryProtocolMessageHandler
+game::TGameserverGameSession::v121	6d59d776f3bb1615	ported	game/gamesessionbase.h:TGameSessionBase::bossTrackerStorage
+game::TGameserverGameSession::v122	0912fd0792bbe378	ported	game/gamesessionbase.h:TGameSessionBase::bosstiaryStorage
 game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
+game::TGameserverGameSession::v98	f88aa2426a04c349	ported	game/gamesessionbase.h:TGameSessionBase::cyclopediaProtocolMessageHandler
+game::TGameserverGameSession::v99	cc7c7ae1bc68f153	ported	game/gamesessionbase.h:TGameSessionBase::monsterRaceStorage
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSessionMetaInfo::v0	8ed40c591c5325d3	skip	generated: compiler-generated destructor pair (member teardown)
@@ -2182,7 +2196,7 @@ gamewindow::TBosstiaryDialogController::handleGameAction	c204904d987f58e8	ported
 gamewindow::TBosstiaryDialogController::requestNextPage	25b96468491c251c	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::requestNextPage
 gamewindow::TBosstiaryDialogController::requestPreviousPage	25b96468491c251c	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::requestPreviousPage
 gamewindow::TBosstiaryDialogController::requestToggleBosstiaryTracking	dc00ea7f05493df5	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::requestToggleBosstiaryTracking
-gamewindow::TBosstiaryDialogController::v12	25904810a19f5784	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::TBosstiaryDialogController
+gamewindow::TBosstiaryDialogController::v12	25904810a19f5784	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::connectToGameSession
 gamewindow::TBosstiaryDialogController::v13	27fc7f41728cd2d9	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::showDialogTab
 gamewindow::TBosstiaryDialogController::v14	83dd8ffb57a8a339	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::hideDialogTab
 gamewindow::TBosstiaryDialogController::v15	7f394991befccd4a	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::captureContext
@@ -2515,7 +2529,6 @@ gamewindow::TCyclopediaMapDialogController::requestResetViewpoints	cd3e63e4a0ed0
 gamewindow::TCyclopediaMapDialogController::resetSubAreaViewPoints	6ca64b9a0d5f148b	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::resetSubAreaViewPoints
 gamewindow::TCyclopediaMapDialogController::setMinimapRendererQuickItem	3dbd24f0f34f6086	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::setMinimapRendererQuickItem
 gamewindow::TCyclopediaMapDialogController::updateTimeDisplay	f639c23dc4590dd8	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::updateTimeDisplay
-gamewindow::TCyclopediaMapDialogController::v12	72b6a23ed3a0e3e2	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::TCyclopediaMapDialogController
 gamewindow::TCyclopediaMapDialogController::v13	097457dc45e86dd8	inlined	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::showDialogTab
 gamewindow::TCyclopediaMapDialogController::v14	c917e207de5d25c9	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::hideDialogTab
 gamewindow::TCyclopediaMapDialogController::v15	84b23174d2ba49fe	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::captureContext
@@ -2844,7 +2857,6 @@ gamewindow::THousesInfoDialogController::setStateFilter	4a4f3b4295c36452	ported	
 gamewindow::THousesInfoDialogController::setTownFilter	ce667f2017c01fa6	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::setTownFilter
 gamewindow::THousesInfoDialogController::showOnCyclopediaMap	69560d65ca1e021f	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::showOnCyclopediaMap
 gamewindow::THousesInfoDialogController::updateTimeDisplay	2083dcb8fa4f15ac	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::updateTimeDisplay
-gamewindow::THousesInfoDialogController::v12	716d586c152c27a0	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::THousesInfoDialogController
 gamewindow::THousesInfoDialogController::v13	872d4faac408f6d5	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::showDialogTab
 gamewindow::THousesInfoDialogController::v14	0a9fb92128525758	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::hideDialogTab
 gamewindow::THousesInfoDialogController::v15	8a6844cf4f845b92	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::captureContext
@@ -3172,7 +3184,7 @@ gamewindow::TMonsterDialogController::requestSwitchBackToClassificationSummary	0
 gamewindow::TMonsterDialogController::requestSwitchBackToRaceSummary	daeded50818db60b	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestSwitchBackToRaceSummary
 gamewindow::TMonsterDialogController::requestSwitchToItemInfo	7bb966e4a4e84ddc	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestSwitchToItemInfo
 gamewindow::TMonsterDialogController::requestToggleBestiaryTracking	d740153312b47892	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestToggleBestiaryTracking
-gamewindow::TMonsterDialogController::v12	a071946cdebc63a6	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::hookEvents
+gamewindow::TMonsterDialogController::v12	a071946cdebc63a6	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::connectToGameSession
 gamewindow::TMonsterDialogController::v13	9656f9590d7e2489	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::showDialogTab
 gamewindow::TMonsterDialogController::v14	cc764d0545b751f8	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::hideDialogTab
 gamewindow::TMonsterDialogController::v15	2c2b5ecf1bf6d26c	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::captureContext
@@ -16822,8 +16834,9 @@ sub_96ebbf61dc8a	96ebbf61dc8a2bc3	ported	analysers/gainwastestorage.cpp:TGainWas
 sub_96f75a18e6d0	96f75a18e6d07426	skip	generated: destructor body: member teardown
 sub_96ff0c90331e	96ff0c90331e9a32	inlined	analysers/gainwastestorage.cpp:TGainWasteStorage::addWaste
 sub_96ff0c90331e#2	96ff0c90331e9a32	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::offerFrom
-sub_97088935f798	97088935f798f8ca	inlined	cyclopedia/cyclopediaciptypes.cpp:TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage
-sub_97088935f798#2	97088935f798f8ca	inlined	cyclopedia/cyclopediaciptypes.cpp:TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage
+sub_97088935f798	97088935f798f8ca	ported	cyclopedia/cyclopediaciptypes.cpp:TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler
+sub_97088935f798#2	97088935f798f8ca	ported	cyclopedia/cyclopediaciptypes.cpp:TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler
+sub_97088935f798#8	97088935f798f8ca	ported	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler
 sub_97088935f798#9	97088935f798f8ca	ported	news/newsdiskio.cpp:TNewsDiskIO::TNewsDiskIO
 sub_9711547438f1	9711547438f1b63e	skip	generated: compiler-generated constructor / destructor of trade records
 sub_9711547438f1#2	9711547438f1b63e	skip	generated: compiler-generated constructor / destructor of trade records
@@ -18159,7 +18172,7 @@ sub_b0e79a54550c	b0e79a54550c6c72	skip	library: std::sort instantiation (introso
 sub_b0ebbd77b3d9	b0ebbd77b3d99577	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_b10be259e107	b10be259e107dbd8	inlined	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreOffersMessage
 sub_b11ede8af4e8	b11ede8af4e8da49	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
-sub_b121b0c11e39#2	b121b0c11e3981c1	inlined	bossbestiary/bossbestiaryciptypes.cpp:TBossBestiaryProtocolMessageHandler::instance
+sub_b121b0c11e39#2	b121b0c11e3981c1	ported	bossbestiary/bossbestiaryciptypes.cpp:TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler
 sub_b121b0c11e39#3	b121b0c11e3981c1	ported	quickloot/quicklootciptypes.cpp:TQuickLootGameActionHandler::TQuickLootGameActionHandler
 sub_b121b0c11e39#4	b121b0c11e3981c1	ported	quickloot/quicklootciptypes.cpp:TQuickLootGameActionHandler::TQuickLootGameActionHandler
 sub_b127400879f5	b127400879f5de06	ported	chat/chatchannel.cpp:TChatChannelIdentifier::channel

@@ -22,6 +22,35 @@ namespace creatures {
 class TCreatureMovementSpeedCalculator;
 class TCreatureStorage;
 }
+namespace analysers {
+class TDamageInputStorage;
+class TGainWasteStorage;
+class THuntingSessionStorage;
+class TImpactStorage;
+class TPartyHuntStorage;
+class TProgressStorage;
+}
+namespace bossbestiary {
+class TBossBestiaryProtocolMessageHandler;
+class TBossTrackerStorage;
+class TBosstiaryStorage;
+}
+namespace cyclopedia {
+class TBestiaryTrackerProtocolMessageHandler;
+class TCharacterInfoStorage;
+class TCreatureTrackerStorage;
+class TItemTrackingStorage;
+class TCyclopediaMapCharacterConfigurationStorage;
+class TCyclopediaMapStorage;
+class TCyclopediaProtocolMessageHandler;
+class THousesStorage;
+class TMonsterBonusEffectStorage;
+class TMonsterRaceStorage;
+}
+namespace highscores {
+class THighscoresProtocolMessageHandler;
+class THighscoresStorage;
+}
 namespace game {
 class TGameActionRouter;
 class TOutfitDialogStorage;
@@ -136,6 +165,48 @@ public:
     {
         return m_effectProtocolMessageHandler;
     }
+    /// The hunting analysers' storages (CIP: handed to the session's character
+    /// configuration manager, which saves them with the character).
+    const std::shared_ptr<analysers::TProgressStorage>& progressStorage() const { return m_progressStorage; }
+    const std::shared_ptr<cyclopedia::TItemTrackingStorage>& itemTrackingStorage() const { return m_itemTrackingStorage; }
+    const std::shared_ptr<analysers::TGainWasteStorage>& gainWasteStorage() const { return m_gainWasteStorage; }
+    const std::shared_ptr<analysers::TImpactStorage>& impactStorage() const { return m_impactStorage; }
+    const std::shared_ptr<analysers::TDamageInputStorage>& damageInputStorage() const { return m_damageInputStorage; }
+    const std::shared_ptr<analysers::THuntingSessionStorage>& huntingSessionStorage() const { return m_huntingSessionStorage; }
+    /// The Cyclopedia map's markers, views and location of the character.
+    const std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>& cyclopediaMapCharacterConfigurationStorage() const
+    {
+        return m_cyclopediaMapCharacterConfigurationStorage;
+    }
+    const std::shared_ptr<analysers::TPartyHuntStorage>& partyHuntStorage() const { return m_partyHuntStorage; }
+    const std::shared_ptr<cyclopedia::TMonsterRaceStorage>& monsterRaceStorage() const { return m_monsterRaceStorage; }
+    const std::shared_ptr<cyclopedia::TCharacterInfoStorage>& characterInfoStorage() const { return m_characterInfoStorage; }
+    const std::shared_ptr<cyclopedia::TMonsterBonusEffectStorage>& monsterBonusEffectStorage() const
+    {
+        return m_monsterBonusEffectStorage;
+    }
+    const std::shared_ptr<cyclopedia::THousesStorage>& housesStorage() const { return m_housesStorage; }
+    const std::shared_ptr<cyclopedia::TCreatureTrackerStorage>& creatureTrackerStorage() const { return m_creatureTrackerStorage; }
+    const std::shared_ptr<cyclopedia::TCyclopediaMapStorage>& cyclopediaMapStorage() const { return m_cyclopediaMapStorage; }
+    const std::shared_ptr<highscores::THighscoresStorage>& highscoresStorage() const { return m_highscoresStorage; }
+    const std::shared_ptr<bossbestiary::TBossTrackerStorage>& bossTrackerStorage() const { return m_bossTrackerStorage; }
+    const std::shared_ptr<bossbestiary::TBosstiaryStorage>& bosstiaryStorage() const { return m_bosstiaryStorage; }
+    const std::shared_ptr<cyclopedia::TCyclopediaProtocolMessageHandler>& cyclopediaProtocolMessageHandler() const
+    {
+        return m_cyclopediaProtocolMessageHandler;
+    }
+    const std::shared_ptr<cyclopedia::TBestiaryTrackerProtocolMessageHandler>& bestiaryTrackerProtocolMessageHandler() const
+    {
+        return m_bestiaryTrackerProtocolMessageHandler;
+    }
+    const std::shared_ptr<highscores::THighscoresProtocolMessageHandler>& highscoresProtocolMessageHandler() const
+    {
+        return m_highscoresProtocolMessageHandler;
+    }
+    const std::shared_ptr<bossbestiary::TBossBestiaryProtocolMessageHandler>& bossBestiaryProtocolMessageHandler() const
+    {
+        return m_bossBestiaryProtocolMessageHandler;
+    }
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -177,6 +248,27 @@ private:
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    std::shared_ptr<analysers::TProgressStorage> m_progressStorage;
+    std::shared_ptr<cyclopedia::TItemTrackingStorage> m_itemTrackingStorage;
+    std::shared_ptr<analysers::TGainWasteStorage> m_gainWasteStorage;
+    std::shared_ptr<analysers::TImpactStorage> m_impactStorage;
+    std::shared_ptr<analysers::TDamageInputStorage> m_damageInputStorage;
+    std::shared_ptr<analysers::THuntingSessionStorage> m_huntingSessionStorage;
+    std::shared_ptr<cyclopedia::TCyclopediaMapCharacterConfigurationStorage> m_cyclopediaMapCharacterConfigurationStorage;
+    std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_monsterRaceStorage;
+    std::shared_ptr<cyclopedia::TCharacterInfoStorage> m_characterInfoStorage;
+    std::shared_ptr<cyclopedia::TMonsterBonusEffectStorage> m_monsterBonusEffectStorage;
+    std::shared_ptr<cyclopedia::THousesStorage> m_housesStorage;
+    std::shared_ptr<cyclopedia::TCreatureTrackerStorage> m_creatureTrackerStorage;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStorage> m_cyclopediaMapStorage;
+    std::shared_ptr<analysers::TPartyHuntStorage> m_partyHuntStorage;
+    std::shared_ptr<highscores::THighscoresStorage> m_highscoresStorage;
+    std::shared_ptr<cyclopedia::TCyclopediaProtocolMessageHandler> m_cyclopediaProtocolMessageHandler;
+    std::shared_ptr<cyclopedia::TBestiaryTrackerProtocolMessageHandler> m_bestiaryTrackerProtocolMessageHandler;
+    std::shared_ptr<highscores::THighscoresProtocolMessageHandler> m_highscoresProtocolMessageHandler;
+    std::shared_ptr<bossbestiary::TBossBestiaryProtocolMessageHandler> m_bossBestiaryProtocolMessageHandler;
+    std::shared_ptr<bossbestiary::TBossTrackerStorage> m_bossTrackerStorage;
+    std::shared_ptr<bossbestiary::TBosstiaryStorage> m_bosstiaryStorage;
 };
 
 /// Calls `bind` now and each time the active game session changes, for code

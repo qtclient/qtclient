@@ -353,7 +353,6 @@ TGameClient::TGameClient(QObject* parent)
     shared::ownProductSurface(this);
     assets::ownProductSurface(this);
     authentication::ownProductSurface(this);
-    bossbestiary::ownProductSurface(this);
     client::ownProductSurface(this);
     common::ownProductSurface(this);
     container::ownProductSurface(this);
@@ -363,7 +362,6 @@ TGameClient::TGameClient(QObject* parent)
     exivaoptions::ownProductSurface(this);
     game::ownProductSurface(this);
     gameWidnow::ownProductSurface(this);
-    highscores::ownProductSurface(this);
     imbuing::ownProductSurface(this);
     market::ownProductSurface(this);
     network::ownProductSurface(this);
@@ -500,7 +498,6 @@ TGameClient::~TGameClient()
     // The manager saves the character's configuration on destruction, through
     // storages the game window owns: it goes first.
     m_characterConfigurationManager.reset();
-    cyclopedia::TBestiaryTrackerProtocolMessageHandler::setCreatureTrackerStorage(nullptr);
     m_gameWindow.reset();
     shutdown();
     qmlcomponents::TSoundHelperService::setInstance(nullptr);

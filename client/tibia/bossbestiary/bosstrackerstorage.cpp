@@ -53,14 +53,6 @@ TBossTrackerStorage::TBossTrackerStorage(QObject* parent)
         rebuild();
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_cooldownUntil.clear();
-        m_unlocked.clear();
-        if (!m_entries.empty()) {
-            m_entries.clear();
-            Q_EMIT bossEntriesChanged();
-        }
-    });
 }
 
 void TBossTrackerStorage::rebuild()
