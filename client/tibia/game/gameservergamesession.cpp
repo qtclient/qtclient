@@ -190,6 +190,7 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     createStorages();
     createProtocolMessageHandlers();
     createRenderProviders();
+    createSoundProviders();
     createGameActionProvidersAndHandlers();
     createGameActionHandlers();
     // The session's network stack: its encoded client messages go to the game connection.

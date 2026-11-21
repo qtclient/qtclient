@@ -9,9 +9,14 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace config {
@@ -144,9 +149,11 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
     void onNewsStorageContentsChanged();
 
-private:
+public:
     /// Follows the new session's player: level ups, then the guide entries.
     void onGameSessionChanged();
+
+private:
     /// The level up view: the level and its spells, shown until the hide timer runs out.
     void onPlayerLevelUp();
     /// Hides the level up view once the hide timer is not running.
@@ -176,6 +183,9 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+    /// The guide follows the session's player (its level and the news it
+    /// unlocks), now and when it enters the world.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 Q_SIGNALS:
     /// The controller's publishGameAction, forwarded.
@@ -189,6 +199,8 @@ private:
     QQmlEngine* m_engine;
     QPointer<TPlayerGuideWidgetController> m_controller;
     QPointer<config::TSidebarOptions> m_options;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 }

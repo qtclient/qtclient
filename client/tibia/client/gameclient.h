@@ -267,9 +267,10 @@ public:
     /// Abort on CIP's connecting dialog: drop the login HTTP request, or the
     /// game connection if the world is not entered yet.
     void abortPendingEnter();
-    /// Send C 0x0D character switch; server runs Alts.switchAlt (same-socket quick switch).
+    /// CIP: another character while online: this one logs out, the chosen one
+    /// logs in with a new game session once the world is left. False when
+    /// offline or a change is already pending.
     bool requestCharacterSwitch(const QString& characterName);
-    void setSameSocketCharacterSwitch(bool enabled) { m_sameSocketCharacterSwitch = enabled; }
     /// End a tutorial sessiondump cinematic and connect to the pending live world.
     void finishTutorialCinematic();
 
@@ -285,7 +286,7 @@ Q_SIGNALS:
     void characterSelectionClosed();
     /// Cancel on the login-page character list: show the start-screen login mask again.
     void returnToLoginRequested();
-    /// C 0x0D switch request accepted locally — overlay may show until S 0x0D completes.
+    /// A character change was requested: the current character logs out first.
     void characterSwitchRequested(const QString& characterName);
     /// The session ended; mainWindowInitialized follows the next world entry.
     void worldLeft();
@@ -386,7 +387,6 @@ private:
     /// The account login's state machine; the game client still performs the
     /// login steps it enters.
     std::shared_ptr<authentication::TAuthenticationProcessController> m_authentication;
-    bool m_suppressConnectError = false;
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
     bool m_characterSelectionOpen = false;
@@ -419,7 +419,6 @@ private:
     authentication::LoginResult m_account;
     int m_worldType = -1;
     bool m_started = false;
-    bool m_sameSocketCharacterSwitch = false;
     /// Logged in once the current character has left the world (CIP switch).
     std::optional<QString> m_pendingCharacter;
     /// Destroyed first: its objects use the client's storages and session.

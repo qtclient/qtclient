@@ -205,6 +205,7 @@ private:
     QPointer<TContainerStorageController> m_containers;
     std::unique_ptr<TBattleListControllerStorage> m_battleLists;
     TSkillsWidgetController* m_skills = nullptr;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::map<int, WidgetHooks> m_widgets;
     std::map<int, QMetaObject::Connection> m_closeConnections;
     int m_controlScheme = 0;

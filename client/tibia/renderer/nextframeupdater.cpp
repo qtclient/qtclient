@@ -10,9 +10,11 @@
 
 namespace tibia::renderer {
 
-TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts)
+TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts,
+                                     game::TCooldownStorage* cooldowns)
     : m_provider(provider)
     , m_texts(texts)
+    , m_cooldowns(cooldowns)
 {}
 
 void TNextFrameUpdater::v2(const qint64 timestampMs)
@@ -23,8 +25,8 @@ void TNextFrameUpdater::v2(const qint64 timestampMs)
     m_texts.update(timestampMs);
     // Cooldowns that ran out drop and announce it; their end times are on
     // the cooldown storage's own clock.
-    if (game::TCooldownStorage* cooldowns = game::TCooldownStorage::instance())
-        cooldowns->expireCooldowns(game::TCooldownStorage::now());
+    if (m_cooldowns)
+        m_cooldowns->expireCooldowns(game::TCooldownStorage::now());
     effects::TEffectStorage::instance().update(timestampMs);
     m_provider.advance();
     tibia::creatures::resumeMovementClock();

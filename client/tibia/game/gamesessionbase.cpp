@@ -99,12 +99,6 @@
 
 namespace tibia::game {
 
-namespace {
-
-TGameSessionBase* g_active = nullptr;
-
-}
-
 TGameSessionBase::TGameSessionBase(QObject* parent)
     : IGameSession(parent)
     , m_worldMapViewport(std::make_shared<worldmap::TWorldMapViewport>())
@@ -131,49 +125,28 @@ void TGameSessionBase::createStorages()
     m_ambientLightStorage = std::make_shared<worldmap::TAmbientLightStorage>();
     m_creatureStorage = std::make_shared<creatures::TCreatureStorage>();
     m_effectStorage = std::make_shared<effects::TEffectStorage>();
-    m_containerStorage = std::make_shared<container::TContainerStorage>();
-    m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
-    m_stashStorage = std::make_shared<container::TStashStorage>();
-    m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
-    m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
-    m_objectAppearanceInstanceInfoStorage = std::make_shared<container::TObjectAppearanceInstanceInfoStorage>();
-    m_marketStorage = std::make_shared<market::TMarketStorage>();
-    m_managedContainerStorage = std::make_shared<quickloot::TManagedContainerStorage>();
-    m_taskboardCurrenciesStorage = std::make_shared<taskboard::TTaskboardCurrenciesStorage>();
-    m_taskboardBountyTasksStorage = std::make_shared<taskboard::TTaskboardBountyTasksStorage>();
-    m_taskboardWeeklyTasksStorage = std::make_shared<taskboard::TTaskboardWeeklyTasksStorage>();
-    m_taskboardShopStorage = std::make_shared<taskboard::TTaskboardShopStorage>();
-    m_vipStorage = std::make_shared<creatures::TVipStorage>();
-    m_unjustifiedPointsStorage = std::make_shared<creatures::TUnjustifiedPointsStorage>();
-    m_npcTradeStorage = std::make_shared<trade::TNPCTradeStorage>();
-    m_playerTradeStorage = std::make_shared<trade::TPlayerTradeStorage>();
-    m_friendsFriendListStorage = std::make_shared<friends::TFriendsFriendListStorage>();
-    m_friendsAccountSearchStorage = std::make_shared<friends::TFriendsAccountSearchStorage>();
-    m_friendsInviteStorage = std::make_shared<friends::TFriendsInviteStorage>();
-    m_friendsStorage =
-        std::make_shared<friends::TFriendsStorage>(m_friendsFriendListStorage, m_friendsAccountSearchStorage, m_friendsInviteStorage);
-    m_exivaOptionsStorage = std::make_shared<exivaoptions::TExivaOptionsStorage>();
-    m_characterTradeStorage = std::make_shared<trade::TCharacterTradeStorage>();
-    m_teamFinderStorage = std::make_shared<teamfinder::TTeamFinderStorage>();
-    m_cooldownStorage = std::make_shared<TCooldownStorage>();
-    m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
-    // CIP: the client's sound reaches the session through its provider and
-    // its object sound counts.
-    if (sound::TSoundController* controller = sound::TSoundController::instance()) {
-        m_objectSoundController = std::make_shared<sound::TObjectSoundController>(controller->metadata());
-        m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
-    }
     m_textStorage = std::make_shared<chat::TTextStorage>();
-    m_chatChannelStorage = std::make_shared<chat::TChatChannelStorage>();
-    m_chatStorage = std::make_shared<chat::TChatStorage>();
-    // The own creature's name reaches the channels.
-    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatChannelStorage.get(),
-            &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
     // The own creature's arrival clears the map texts (CIP TTextStorage).
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, this,
             [texts = m_textStorage.get()](std::weak_ptr<creatures::TCreature> player) {
                 texts->onPlayerCreatureAddedToGameSession(std::move(player));
             });
+    m_chatChannelStorage = std::make_shared<chat::TChatChannelStorage>();
+    // The own creature's name reaches the channels.
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatChannelStorage.get(),
+            &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
+    m_chatStorage = std::make_shared<chat::TChatStorage>();
+    m_containerStorage = std::make_shared<container::TContainerStorage>();
+    // qtclient keeps the inventory beside the container storage.
+    m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
+    m_stashStorage = std::make_shared<container::TStashStorage>();
+    m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
+    m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
+    m_objectAppearanceInstanceInfoStorage = std::make_shared<container::TObjectAppearanceInstanceInfoStorage>();
+    m_vipStorage = std::make_shared<creatures::TVipStorage>();
+    m_cooldownStorage = std::make_shared<TCooldownStorage>();
+    m_unjustifiedPointsStorage = std::make_shared<creatures::TUnjustifiedPointsStorage>();
+    m_preyStorage = std::make_shared<prey::TPreyStorage>();
     analysers::TItemPriceStorage* itemPrices = analysers::TItemPriceStorage::instance();
     m_progressStorage = std::make_shared<analysers::TProgressStorage>();
     m_itemTrackingStorage = std::make_shared<cyclopedia::TItemTrackingStorage>(itemPrices);
@@ -185,24 +158,6 @@ void TGameSessionBase::createStorages()
     m_damageInputStorage = std::make_shared<analysers::TDamageInputStorage>();
     m_huntingSessionStorage = std::make_shared<analysers::THuntingSessionStorage>(m_progressStorage.get());
     m_cyclopediaMapCharacterConfigurationStorage = std::make_shared<cyclopedia::TCyclopediaMapCharacterConfigurationStorage>();
-    m_partyHuntStorage = std::make_shared<analysers::TPartyHuntStorage>();
-    m_monsterRaceStorage = std::make_shared<cyclopedia::TMonsterRaceStorage>();
-    m_cyclopediaMapStorage = std::make_shared<cyclopedia::TCyclopediaMapStorage>();
-    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_cyclopediaMapStorage.get(),
-            &cyclopedia::TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession);
-    m_monsterBonusEffectStorage = std::make_shared<cyclopedia::TMonsterBonusEffectStorage>();
-    m_housesStorage = std::make_shared<cyclopedia::THousesStorage>();
-    m_creatureTrackerStorage = std::make_shared<cyclopedia::TCreatureTrackerStorage>();
-    m_characterInfoStorage = std::make_shared<cyclopedia::TCharacterInfoStorage>();
-    m_highscoresStorage = std::make_shared<highscores::THighscoresStorage>();
-    m_bossTrackerStorage = std::make_shared<bossbestiary::TBossTrackerStorage>();
-    m_bosstiaryStorage = std::make_shared<bossbestiary::TBosstiaryStorage>();
-    m_preyStorage = std::make_shared<prey::TPreyStorage>();
-    m_storeStorage = std::make_shared<store::TStoreStorage>();
-    m_imbuingStorage = std::make_shared<imbuing::TImbuingStorage>();
-    m_imbuementDurationsStorage = std::make_shared<imbuing::TImbuementDurationsStorage>();
-    m_dailyRewardStorage = std::make_shared<dailyreward::TDailyRewardStorage>();
-    m_exaltationStorage = std::make_shared<exaltation::TExaltationStorage>();
     // CIP: the manager saves the session's analysers, Cyclopedia map and own
     // option storages with the character, next to the game window's.
     config::TCharacterConfigurationManager::TStorages characterConfiguration = m_characterConfigurationStorages;
@@ -212,11 +167,54 @@ void TGameSessionBase::createStorages()
     characterConfiguration.damageInput = m_damageInputStorage.get();
     characterConfiguration.progress = m_progressStorage.get();
     characterConfiguration.huntingSession = m_huntingSessionStorage.get();
-    characterConfiguration.cyclopediaMap = m_cyclopediaMapCharacterConfigurationStorage.get();
     characterConfiguration.sidebar = std::make_shared<config::TSidebarOptions>();
     characterConfiguration.actionBar = std::make_shared<config::TActionBarOptions>();
     characterConfiguration.statusbar = std::make_shared<TStatusbarStorage>();
+    characterConfiguration.cyclopediaMap = m_cyclopediaMapCharacterConfigurationStorage.get();
     m_characterConfigurationManager = std::make_shared<config::TCharacterConfigurationManager>(characterConfiguration);
+    m_marketStorage = std::make_shared<market::TMarketStorage>();
+    m_npcTradeStorage = std::make_shared<trade::TNPCTradeStorage>();
+    m_playerTradeStorage = std::make_shared<trade::TPlayerTradeStorage>();
+    m_friendsFriendListStorage = std::make_shared<friends::TFriendsFriendListStorage>();
+    m_friendsAccountSearchStorage = std::make_shared<friends::TFriendsAccountSearchStorage>();
+    m_friendsInviteStorage = std::make_shared<friends::TFriendsInviteStorage>();
+    m_friendsStorage =
+        std::make_shared<friends::TFriendsStorage>(m_friendsFriendListStorage, m_friendsAccountSearchStorage, m_friendsInviteStorage);
+    m_storeStorage = std::make_shared<store::TStoreStorage>();
+    m_imbuingStorage = std::make_shared<imbuing::TImbuingStorage>();
+    m_imbuementDurationsStorage = std::make_shared<imbuing::TImbuementDurationsStorage>();
+    m_dailyRewardStorage = std::make_shared<dailyreward::TDailyRewardStorage>();
+    m_managedContainerStorage = std::make_shared<quickloot::TManagedContainerStorage>();
+    m_partyHuntStorage = std::make_shared<analysers::TPartyHuntStorage>();
+    m_monsterRaceStorage = std::make_shared<cyclopedia::TMonsterRaceStorage>();
+    m_cyclopediaMapStorage = std::make_shared<cyclopedia::TCyclopediaMapStorage>();
+    connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_cyclopediaMapStorage.get(),
+            &cyclopedia::TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession);
+    m_monsterBonusEffectStorage = std::make_shared<cyclopedia::TMonsterBonusEffectStorage>();
+    m_housesStorage = std::make_shared<cyclopedia::THousesStorage>();
+    m_creatureTrackerStorage = std::make_shared<cyclopedia::TCreatureTrackerStorage>();
+    m_exivaOptionsStorage = std::make_shared<exivaoptions::TExivaOptionsStorage>();
+    m_characterInfoStorage = std::make_shared<cyclopedia::TCharacterInfoStorage>();
+    m_characterTradeStorage = std::make_shared<trade::TCharacterTradeStorage>();
+    m_teamFinderStorage = std::make_shared<teamfinder::TTeamFinderStorage>();
+    m_bossTrackerStorage = std::make_shared<bossbestiary::TBossTrackerStorage>();
+    m_bosstiaryStorage = std::make_shared<bossbestiary::TBosstiaryStorage>();
+    m_highscoresStorage = std::make_shared<highscores::THighscoresStorage>();
+    m_exaltationStorage = std::make_shared<exaltation::TExaltationStorage>();
+    m_taskboardCurrenciesStorage = std::make_shared<taskboard::TTaskboardCurrenciesStorage>();
+    m_taskboardBountyTasksStorage = std::make_shared<taskboard::TTaskboardBountyTasksStorage>();
+    m_taskboardWeeklyTasksStorage = std::make_shared<taskboard::TTaskboardWeeklyTasksStorage>();
+    m_taskboardShopStorage = std::make_shared<taskboard::TTaskboardShopStorage>();
+    m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
+}
+
+/// CIP: the session's sound pieces, only when the client has a sound controller.
+void TGameSessionBase::createSoundProviders()
+{
+    if (sound::TSoundController* controller = sound::TSoundController::instance()) {
+        m_objectSoundController = std::make_shared<sound::TObjectSoundController>(controller->metadata());
+        m_gameSessionSoundProvider = std::make_shared<sound::TGameSessionSoundProvider>(m_soundStorage);
+    }
 }
 
 void TGameSessionBase::createProtocolMessageHandlers()
@@ -361,7 +359,7 @@ void TGameSessionBase::createRenderProviders()
     // The view the map handler centres; the picker reads the player's floor from it.
     m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
     // The provider builds the frame the updater advances to.
-    m_nextFrameUpdater = std::make_shared<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *m_textStorage);
+    m_nextFrameUpdater = std::make_shared<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *m_textStorage, m_cooldownStorage.get());
     m_creatureHUDRenderProvider = std::make_shared<worldmap::TCreatureHUDRenderProvider>();
     connect(m_worldMapRenderProvider.get(), &qmlcomponents::TWorldMapRenderProvider::overlaysAdvanced, m_creatureHUDRenderProvider.get(),
             [hud = m_creatureHUDRenderProvider.get(), provider = m_worldMapRenderProvider.get()] { hud->syncFrom(*provider); });
@@ -436,17 +434,10 @@ void TGameSessionBase::createGameActionHandlers()
 
 TGameSessionBase::~TGameSessionBase()
 {
-    if (isActive())
-        install(false);
     for (const QMetaObject::Connection& connection : m_queueConnections)
         disconnect(connection);
     m_queueConnections.clear();
     releaseStorages();
-}
-
-TGameSessionBase* TGameSessionBase::active()
-{
-    return g_active;
 }
 
 void TGameSessionBase::relinkProtocolMessageHandlers()
@@ -457,28 +448,12 @@ void TGameSessionBase::relinkProtocolMessageHandlers()
     connectProtocolMessageHandlers();
 }
 
-void TGameSessionBase::install(const bool installed)
+void TGameSessionBase::initializeWorldMapSessionState()
 {
-    if (installed == isActive())
+    if (m_worldInitialized)
         return;
-    if (installed && g_active)
-        g_active->install(false);
-    g_active = installed ? this : nullptr;
-    worldmap::TWorldMapStorage::setInstance(installed ? m_worldMapStorage.get() : nullptr);
-    creatures::TCreatureStorage::setInstance(installed ? m_creatureStorage.get() : nullptr);
-    container::TContainerStorage::setInstance(installed ? m_containerStorage.get() : nullptr);
-    container::TInventoryContainer::setInstance(installed ? m_inventoryContainer.get() : nullptr);
-    effects::TEffectStorage::setInstance(installed ? m_effectStorage.get() : nullptr);
-    TPlayerData::setLiveInstance(installed ? m_playerData.get() : nullptr);
-    TPlayerSkillStats::setLiveInstance(installed ? m_playerSkillStats.get() : nullptr);
-    exaltation::TExaltationStorage::setInstance(installed ? m_exaltationStorage.get() : nullptr);
-    TCooldownStorage::setInstance(installed ? m_cooldownStorage.get() : nullptr);
-    // The map's session state needs its storage installed (aware range, pruning).
-    if (installed && !m_worldInitialized) {
-        m_worldMapStorage->sessionState().init();
-        m_worldInitialized = true;
-    }
-    TGameNotify::instance()->emitGameSessionChanged();
+    m_worldMapStorage->sessionState().init();
+    m_worldInitialized = true;
 }
 
 void TGameSessionBase::connectProtocolMessageHandlers()

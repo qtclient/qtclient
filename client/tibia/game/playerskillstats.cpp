@@ -3,8 +3,6 @@
 namespace tibia::game {
 namespace {
 
-TPlayerSkillStats* g_livePlayerSkillStats = nullptr;
-
 bool sameCombatStats(const cyclopedia::CombatStats& a, const cyclopedia::CombatStats& b)
 {
     return a.flatDamageHealing == b.flatDamageHealing
@@ -34,16 +32,6 @@ bool sameCombatStats(const cyclopedia::CombatStats& a, const cyclopedia::CombatS
 TPlayerSkillStats::TPlayerSkillStats(QObject* parent)
     : cip::tibia::game::TPlayerSkillStats(parent)
 {
-}
-
-TPlayerSkillStats* TPlayerSkillStats::liveInstance()
-{
-    return g_livePlayerSkillStats;
-}
-
-void TPlayerSkillStats::setLiveInstance(TPlayerSkillStats* stats)
-{
-    g_livePlayerSkillStats = stats;
 }
 
 void TPlayerSkillStats::commit(const cyclopedia::CombatStats& next)

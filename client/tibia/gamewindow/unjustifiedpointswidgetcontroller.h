@@ -7,7 +7,12 @@
 
 #include <QPointer>
 
+#include <memory>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace config {
@@ -27,6 +32,8 @@ public:
     TUnjustifiedPointsWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's own creature binds the skull display (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     float progressDay() const override;
     uint fullKillsToNextSkullDay() const override;
@@ -75,7 +82,7 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
-    /// The active game session's storage connection.
+    /// The game session's creature storage connection.
     QMetaObject::Connection m_playerAdded;
     void refresh();
 
@@ -94,11 +101,14 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+    /// The widget follows `GameSession` (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TUnjustifiedPointsWidgetController> m_controller;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

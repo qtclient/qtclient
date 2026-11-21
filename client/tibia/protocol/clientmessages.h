@@ -20,8 +20,6 @@ namespace tibia::protocol::gameclient {
 
 /// Product transport (extended opcode), written outside the protocol queue.
 void sendExtendedOpcode(uint8_t opcode, const std::string& buffer);
-/// Product same-socket character switch (C 0x0D); the server answers with S 0x0D.
-void sendCharacterSwitch(const std::string& characterName);
 
 void sendEnterGame();
 void sendLogout();

@@ -6,7 +6,6 @@
 #include <tibia/assets/things.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
@@ -189,10 +188,6 @@ TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogControll
     m_showSocket = true;
     m_direction = LookDir::SOUTH;
     m_selectedIndex = -1;
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        dialog()->destroy();
-    });
 }
 
 void TConfigureCreaturePodiumDialogController::open(const Outfit& selected, const uint16_t selectedRace, const bool bossPodium,

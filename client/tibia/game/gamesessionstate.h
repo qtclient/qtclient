@@ -80,7 +80,6 @@ public:
 
     // channel related
 
-    static void processEditGuildMessage(std::string_view text);
 
     // vip related
 
@@ -344,8 +343,6 @@ public:
     void setFollowingCreatureId(uint32_t creatureId);
 
     bool m_playerPresent{ false };
-    bool m_marketAvailable{ false };
-    bool m_supplyStashAvailable{ false };
     std::unique_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };

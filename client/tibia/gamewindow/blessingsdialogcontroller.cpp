@@ -1,6 +1,7 @@
 #include "blessingsdialogcontroller.h"
 
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/staticdata.h>
@@ -155,18 +156,20 @@ QString TQmlBlessingDialogData::promotionText() const
 TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("BlessingsDialog.qml"), parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBlessDialog", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<BlessDialogData>(&args[0]))
-            showDialog(*data);
-        return std::any{};
-    });
 }
 
+/// The dialog closes; the session's blessings handler opens it with its data.
 void TBlessingsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     closeDialog();
     m_gameSessionConnections.disconnectAll();
     m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.add(connect(session->blessingsProtocolMessageHandler().get(),
+                                         &game::TBlessingsProtocolMessageHandler::requestBlessingsDialog, this,
+                                         &TBlessingsDialogController::showDialog));
 }
 
 /// The client's premium time: a change refreshes the shown data's premium

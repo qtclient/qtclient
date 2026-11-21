@@ -10,6 +10,8 @@
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
@@ -965,13 +967,27 @@ TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), parent)
 {
     s_instance = this;
-    // Look/inspect packets publish onParseCharacterInspection.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCharacterInspection", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterInspection>(&args[0]);
-        if (data)
-            showPlayer(*data);
-        return std::any{};
-    });
+}
+
+void TInspectObjectDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSession = GameSession;
+}
+
+void TInspectPlayerDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
+                                               &game::TGameProtocolMessageHandler::requestOpenInspectPlayerDialog, this,
+                                               &TInspectPlayerDialogController::showPlayer));
 }
 
 TInspectPlayerDialogController* TInspectPlayerDialogController::instance()

@@ -9,7 +9,12 @@
 
 #include <QDateTime>
 
+#include <memory>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -51,6 +56,9 @@ public:
     /// The dialogType of a report type.
     static QString typeName(EType type);
     void onRuleViolationReportConfirmedByServer();
+    /// CIP connector: the dialog closes; the session's rule violation handler
+    /// confirms the reports.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     bool handleAction(const input::IGameAction& action);
@@ -60,7 +68,8 @@ private:
     uint32_t m_id = 0;
     int m_reasonId = -1;
     QDateTime m_lastReport;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

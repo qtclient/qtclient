@@ -40,18 +40,6 @@ TUnjustifiedPointsWidgetController::TUnjustifiedPointsWidgetController(QQuickIte
         refresh();
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        refresh();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage);
-    tibia::game::onEachGameSession(this, [this] {
-        disconnect(m_playerAdded);
-        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-            m_playerAdded = connect(storage, &creatures::TCreatureStorage::playerAdded, this,
-                                    [this](std::weak_ptr<creatures::TCreature>) { onPlayerCreatureAddedToCreatureStorage(); });
-        }
-    });
     connectPlayerKillerModeChangedToDisplayDataChanged();
     widget()->createItem(QStringLiteral("unjustifiedpointswidget.qml"));
     if (QQuickItem* item = quickItem())
@@ -178,11 +166,29 @@ TUnjustifiedPointsWidgetManager::TUnjustifiedPointsWidgetManager(QQuickItem* gam
 
 TUnjustifiedPointsWidgetManager::~TUnjustifiedPointsWidgetManager() { delete m_controller; }
 
+void TUnjustifiedPointsWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    if (m_controller)
+        m_controller->connectToGameSession(m_gameSession);
+}
+
+void TUnjustifiedPointsWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    disconnect(m_playerAdded);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    if (session)
+        m_playerAdded = connect(session->creatureStorage().get(), &creatures::TCreatureStorage::playerAdded, this,
+                                [this](std::weak_ptr<creatures::TCreature>) { onPlayerCreatureAddedToCreatureStorage(); });
+    refresh();
+}
+
 TSidebarWidget* TUnjustifiedPointsWidgetManager::open(config::TSidebarOptions* options)
 {
     if (!m_controller) {
         m_controller = new TUnjustifiedPointsWidgetController(m_gameWindowItem, m_engine);
         m_controller->setSidebarOptions(options);
+        m_controller->connectToGameSession(m_gameSession);
     }
     return m_controller->widget();
 }

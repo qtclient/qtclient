@@ -215,22 +215,6 @@ void TInformationDialogs::hookTextDialogs()
                             argInt(args, 5), choices ? *choices : none);
         return std::any{};
     });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditText", [this](GameObject*, const Args& args) {
-        m_editText->showItemText(argInt(args, 0), argInt(args, 1), argInt(args, 2), argString(args, 3), argString(args, 4),
-                                 argString(args, 5), client::gamecore::argBool(args, 6));
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditGuildMessage", [this](GameObject*, const Args& args) {
-        m_editText->showEditGuildMessageDialog(argString(args, 0));
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditList", [this](GameObject*, const Args& args) {
-        m_editText->showEditList(argInt(args, 0), argInt(args, 1), argString(args, 2));
-        return std::any{};
-    });
 }
 
 void TInformationDialogs::hookQuestLog()

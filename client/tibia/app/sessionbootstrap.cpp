@@ -175,6 +175,11 @@ void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWin
     });
 }
 
+void TSessionBootstrap::closeConnectingDialog()
+{
+    m_loginWait->close();
+}
+
 void TSessionBootstrap::openCreateAccount()
 {
     if (auto* stack = gamewindow::TDialogStackController::instance())

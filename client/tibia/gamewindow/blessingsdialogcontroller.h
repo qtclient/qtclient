@@ -88,7 +88,6 @@ private:
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

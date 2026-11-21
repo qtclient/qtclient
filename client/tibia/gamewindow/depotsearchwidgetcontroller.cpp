@@ -6,6 +6,7 @@
 #include "container/containerciptypes.h"
 #include "exaltation/exaltationstorage.h"
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/iteminfodialogcontroller.h"
 #include "gamewindow/marketcontroller.h"
@@ -68,9 +69,11 @@ TAppearanceType* typeOf(const uint16_t typeId)
     return type && type->getId() != 0 ? type : nullptr;
 }
 
+/// The current session's forge tiers.
 exaltation::TExaltationStorage* exaltationStorage()
 {
-    return exaltation::TExaltationStorage::instance();
+    const game::TGameSessionBase* session = game::currentGameSession();
+    return session ? session->exaltationStorage().get() : nullptr;
 }
 
 /// The type list rows of the cyclopedia types: one per type, or one per
@@ -145,7 +148,7 @@ std::pair<int, int> tierSelection(const bool enabled, const std::pair<int, int>&
 TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_searchModel([](const uint16_t typeId, const uint8_t tier) {
-        const game::TGameSessionBase* session = game::TGameSessionBase::active();
+        const game::TGameSessionBase* session = game::currentGameSession();
         return session ? static_cast<int>(session->objectCountStorage()->count(typeId, tier)) : 0;
     })
     , m_searchProxy(&m_searchModel)
@@ -186,7 +189,6 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindo
     if (QQuickItem* item = widget()->quickItem())
         m_focus.setClickArea(item);
     connect(&m_focus, &TUiFocusManager::focusChanged, this, &TDepotSearchWidgetController::focusChanged);
-    tibia::game::onEachGameSession(this, [this] { setGameSession(game::TGameSessionBase::active()); });
 }
 
 TDepotSearchWidgetController::~TDepotSearchWidgetController() = default;
@@ -738,7 +740,9 @@ void TDepotSearchWidgetManager::connectToGameSession(const std::shared_ptr<game:
     for (const QMetaObject::Connection& connection : m_gameSessionConnections)
         disconnect(connection);
     m_gameSessionConnections.clear();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    auto* session = dynamic_cast<game::TGameSessionBase*>(GameSession.get());
+    // The widget's lists follow the session's storages.
+    m_controller->setGameSession(session);
     container::TContainerProtocolMessageHandler* handler = session ? session->containerProtocolMessageHandler().get() : nullptr;
     if (!handler)
         return;

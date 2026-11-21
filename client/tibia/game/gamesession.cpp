@@ -477,18 +477,6 @@ void processTeamFinderList(const bool rateLimited, const std::vector<TeamFinderL
 {
     tibia::game::notify("onTeamFinderList", rateLimited, entries);
 }
-void processDepotSearchResults()
-{
-    tibia::game::notify("onDepotSearchResults");
-}
-void processDepotSearchDetail()
-{
-    tibia::game::notify("onDepotSearchDetail");
-}
-void processCloseDepotSearch()
-{
-    tibia::game::notify("onCloseDepotSearch");
-}
 void processTutorialHint(const uint8_t id)
 {
     tibia::game::notify("onTutorialHint", id);
@@ -515,14 +503,6 @@ void processOwnTrade(std::string_view name, const std::vector<::tibia::container
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
     gameSessionState().processCounterTrade(name, items);
-}
-void processEditText(const uint32_t id, const uint32_t itemId, const uint16_t maxLength, const std::string_view text, const std::string_view writer, const std::string_view date, const bool recentlyTraded)
-{
-    tibia::game::notify("onEditText", id, itemId, maxLength, text, writer, date, recentlyTraded);
-}
-void processEditList(const uint32_t id, const uint8_t doorId, const std::string_view text)
-{
-    tibia::game::notify("onEditList", id, doorId, text);
 }
 
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,

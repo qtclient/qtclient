@@ -10,8 +10,6 @@ namespace tibia::game {
 
 namespace {
 
-TCooldownStorage* g_instance = nullptr;
-
 /// The spell groups the cooldown bar shows, in its order (5 has no slot).
 constexpr uint8_t CooldownBarSpellGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
 
@@ -58,21 +56,7 @@ TCooldownStorage::TCooldownStorage(QObject* parent)
     }
 }
 
-TCooldownStorage::~TCooldownStorage()
-{
-    if (g_instance == this)
-        g_instance = nullptr;
-}
-
-TCooldownStorage* TCooldownStorage::instance()
-{
-    return g_instance;
-}
-
-void TCooldownStorage::setInstance(TCooldownStorage* storage)
-{
-    g_instance = storage;
-}
+TCooldownStorage::~TCooldownStorage() = default;
 
 qint64 TCooldownStorage::now()
 {

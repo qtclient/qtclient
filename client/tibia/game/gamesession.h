@@ -161,8 +161,6 @@ uint16_t localPlayerBlessings();
 uint32_t localPlayerBaseCapacity();
 uint32_t localPlayerTotalCapacity();
 bool localPlayerHasEquippedItemId(uint16_t itemId, uint8_t tier = 0);
-bool localPlayerIsMarketAvailable();
-bool localPlayerIsSupplyStashAvailable();
 bool localPlayerIsStoreExpBoostPurchasable();
 
 /// Instance channel / soft-death peels.
@@ -290,10 +288,6 @@ void processReadyForSecondaryConnection(std::string_view token);
 void processOutfitMemorial(const OutfitMemorialData& data);
 void processWalkCancel(tibia::client::Direction direction);
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
-/// The depot search widget shows (results and detail lists are in the session storages).
-void processDepotSearchResults();
-void processDepotSearchDetail();
-void processCloseDepotSearch();
 void processTutorialHint(uint8_t id);
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
@@ -303,9 +297,6 @@ void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
-void processEditText(uint32_t id, uint32_t itemId, uint16_t maxLength, std::string_view text, std::string_view writer,
-                     std::string_view date, bool recentlyTraded = false);
-void processEditList(uint32_t id, uint8_t doorId, std::string_view text);
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
                         const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority);
@@ -320,8 +311,6 @@ void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
 void processBosstiarySlots(const BosstiarySlotsData& data);
 
 
-void localPlayerSetMarketAvailable(bool available);
-void localPlayerSetSupplyStashAvailable(bool available);
 
 /// Protocol vitals/resources: TPlayerData authority (gamesession setters). Combat: TPlayerSkillStats.
 void localPlayerSetHealth(uint32_t health, uint32_t maxHealth);

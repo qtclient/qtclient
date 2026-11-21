@@ -20,16 +20,6 @@ void playerDataAuthorityWrite(WriteData&& writeData)
 
 } // namespace
 
-void localPlayerSetMarketAvailable(const bool available)
-{
-    gameSessionState().m_marketAvailable = available;
-}
-
-void localPlayerSetSupplyStashAvailable(const bool available)
-{
-    gameSessionState().m_supplyStashAvailable = available;
-}
-
 void localPlayerSetHealth(const uint32_t health, const uint32_t maxHealth)
 {
     playerDataAuthorityWrite([&](TPlayerData& data) { data.updateHealth(health, maxHealth); });
@@ -500,16 +490,6 @@ bool localPlayerHasEquippedItemId(const uint16_t itemId, const uint8_t tier)
             return true;
     }
     return false;
-}
-
-bool localPlayerIsMarketAvailable()
-{
-    return hasLocalPlayer() && gameSessionState().m_marketAvailable;
-}
-
-bool localPlayerIsSupplyStashAvailable()
-{
-    return hasLocalPlayer() && gameSessionState().m_supplyStashAvailable;
 }
 
 bool localPlayerIsStoreExpBoostPurchasable()

@@ -1,4 +1,5 @@
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include <stdexcept>
 #include "game/gamesessionstate.h"
 #include "game/gameactionrouter.h"
@@ -205,7 +206,7 @@ void TGameSessionState::createMovementIntent()
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();
     // CIP: the session's movement intent handler publishes through the session's router.
-    if (auto* session = dynamic_cast<TGameserverGameSession*>(TGameSessionBase::active()))
+    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
         QObject::connect(intent, &TPlayerMovementIntentHandler::publishGameAction, session->gameActionRouter()->internalRouter(),
                          &TInternalGameActionRouter::handleGameActionInternal);
     QObject::connect(tibia::app::ClientOptionsNotifier::instance(), &tibia::app::ClientOptionsNotifier::optionChanged, intent,
@@ -271,9 +272,7 @@ void TGameSessionState::resetGameStates()
     }
     m_movementIntent.reset();
     m_playerPresent = false;
-    m_marketAvailable = false;
-    m_supplyStashAvailable = false;
-    if (TGameSessionBase* session = TGameSessionBase::active())
+    if (TGameSessionBase* session = currentGameSession())
         session->objectCountStorage()->clear();
     m_pingSent = 0;
     m_pingReceived = 0;
@@ -545,10 +544,6 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
 
 
 
-void TGameSessionState::processEditGuildMessage(const std::string_view text)
-{
-    tibia::game::notify("onEditGuildMessage", text);
-}
 
 
 

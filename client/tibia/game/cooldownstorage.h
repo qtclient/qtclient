@@ -61,10 +61,6 @@ public:
     explicit TCooldownStorage(QObject* parent = nullptr);
     ~TCooldownStorage() override;
 
-    /// Host shim for the IdleOT pack: the current game session's storage
-    /// (each session owns one; the game client sets it).
-    static TCooldownStorage* instance();
-    static void setInstance(TCooldownStorage* storage);
     /// Monotonic milliseconds; every end time is on this clock.
     static qint64 now();
 

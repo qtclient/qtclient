@@ -8,6 +8,7 @@
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
+#include <client/staticdata.h>
 
 #include <QByteArray>
 #include <QJsonArray>
@@ -130,7 +131,11 @@ class TBlessingsProtocolMessageHandler final : public cip::tibia::game::TBlessin
 public:
     using cip::tibia::game::TBlessingsProtocolMessageHandler::TBlessingsProtocolMessageHandler;
 
-    static void handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& message);
+    void handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& message);
+
+Q_SIGNALS:
+    /// CIP requestBlessingsDialog: the blessings dialog's data.
+    void requestBlessingsDialog(const BlessDialogData& BlessingDialogData);
 };
 
 /// What an update of the boss difficulty dialog carries: the selected
@@ -179,11 +184,20 @@ class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditText
 public:
     using cip::tibia::game::TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler;
     /// A text to read or edit (books, letters, signs).
-    static void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
+    void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
     /// A list to edit (house access lists).
-    static void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
+    void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
     /// The guild message to edit.
-    static void handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& message);
+    void handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& message);
+
+Q_SIGNALS:
+    /// CIP requestEditTextDialog: the text with its edit id, the item's type,
+    /// the longest text allowed, its author and date and whether it was traded
+    /// recently.
+    void requestEditTextDialog(uint32_t EditIdentifier, uint ItemTypeId, int MaximumTextLength, const QString& Text,
+                               const QString& TextAuthor, const QString& TextDate, bool RecentlyTraded);
+    /// CIP requestEditListDialog: the list with its edit id and list type.
+    void requestEditListDialog(uint32_t EditIdentifier, uint8_t EditListType, const QString& Text);
 };
 
 class TGameEventProtocolMessageHandler final : public cip::tibia::game::TGameEventProtocolMessageHandler
@@ -237,6 +251,12 @@ public:
     void handlePingMessage(const ::tibia::protobuf::protocol::GameserverMessagePing& message);
     void handlePingBackMessage(const ::tibia::protobuf::protocol::GameserverMessagePingBack& message);
     void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
+
+Q_SIGNALS:
+    /// CIP inspectObjectDataReceived: an inspected object's details.
+    void inspectObjectDataReceived(const ItemInspectionData& InspectObjectData);
+    /// CIP requestOpenInspectPlayerDialog: an inspected player's equipment and details.
+    void requestOpenInspectPlayerDialog(const CyclopediaCharacterInspection& InspectedPlayer);
 };
 
 class TGameWorldVolumeStorage final : public ::tibia::CipTyped {

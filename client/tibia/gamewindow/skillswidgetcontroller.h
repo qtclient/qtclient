@@ -10,7 +10,12 @@
 #include <QSet>
 #include <QTimer>
 
+#include <memory>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace config {
@@ -39,6 +44,8 @@ public:
 
     /// skillsWidgetOptions: size, hidden bars and the stat blocks.
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's skill stats fill the widget (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP moc property getters (live members filled by row / combat updates).
     QList<QObject*> skillsModel() const override;

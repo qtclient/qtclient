@@ -81,6 +81,13 @@
 #include "gamewindow/premiumpanelcontroller.h"
 #include "gamewindow/questlogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
+#include "gamewindow/configurecreaturepodiumdialogcontroller.h"
+#include "gamewindow/editminimapmarkerdialogcontroller.h"
+#include "gamewindow/outfitdialogcontroller.h"
+#include "gamewindow/vocationselectiondialogcontroller.h"
+#include "gamewindow/whiteblacklistdialogcontroller.h"
+#include "minimap/minimapmarkerstorage.h"
+#include "gamewindow/edittextcontroller.h"
 #include "gamewindow/reportviolationcontroller.h"
 #include "gamewindow/rewardwalldialogcontroller.h"
 #include "gamewindow/selectobjectamountdialogcontroller.h"
@@ -998,7 +1005,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // start() activated the session before the controllers above created their
     // protocol message handlers (chat, store, market, trades, ...): link them now,
     // and connect the controllers made after it to it.
-    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
         session->relinkProtocolMessageHandlers();
     // A replay's session starts before the game window: the controllers made
     // here connect to it now.
@@ -1043,15 +1050,12 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.analyserStorages->connectToGameSession(GameSession);
         if (session)
             session->itemTrackingStorage()->setChatStorage(session->chatChannelStorage().get());
+        // The registered widget managers (kill tracker, VIP, trackers, ...)
+        // connect through the sidebar widgets manager.
         if (g.sidebarWidgets)
             g.sidebarWidgets->connectToGameSession(GameSession);
-        // Host: the kill tracker's task rows (CipSoft: TSidebarWidgetsManager's connector).
-        if (g.preyWidget)
-            g.preyWidget->connectToGameSession(GameSession);
-        // Host: the VIP and trade widgets, which CipSoft's sidebar widgets
-        // manager connects in its connector.
-        if (g.vipWidget)
-            g.vipWidget->connectToGameSession(GameSession);
+        // Host: the player trade widget, which CipSoft's sidebar widgets
+        // manager opens and closes from the session's player trade storage.
         if (g.playerTrade)
             g.playerTrade->connectToGameSession(GameSession);
         if (g.sidebarPanels)
@@ -1062,6 +1066,10 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
         if (m_messageIgnoreList)
             m_messageIgnoreList->setGameSession(GameSession);
+        if (g.reportViolation)
+            g.reportViolation->connectToGameSession(GameSession);
+        if (g.informationDialogs)
+            g.informationDialogs->editText()->connectToGameSession(GameSession);
         if (g.storeDialog)
             g.storeDialog->connectToGameSession(GameSession);
         // CIP: the button bar connects its store button.
@@ -1072,13 +1080,14 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         if (g.informationDialogs)
             if (gamewindow::TPreyDialogController* prey = g.informationDialogs->prey())
                 prey->connectToGameSession(GameSession);
-        // Host: the prey widget follows the session's prey storage.
-        if (g.preyWidget)
-            g.preyWidget->setPreyStorage(session ? session->preyStorage().get() : nullptr);
         if (g.imbuingDialog) {
             g.imbuingDialog->connectToGameSession(GameSession);
             g.imbuingDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
         }
+        if (gamewindow::TInspectObjectDialogController* inspectObject = gamewindow::TInspectObjectDialogController::instance())
+            inspectObject->connectToGameSession(GameSession);
+        if (gamewindow::TInspectPlayerDialogController* inspectPlayer = gamewindow::TInspectPlayerDialogController::instance())
+            inspectPlayer->connectToGameSession(GameSession);
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
         if (g.blessingsDialog) {
@@ -1129,6 +1138,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.storeBalance->connectToGameSession(GameSession);
         if (g.skillWheel)
             g.skillWheel->connectToGameSession(GameSession);
+        if (g.weaponProficiencyDialog)
+            g.weaponProficiencyDialog->connectToGameSession(GameSession);
         if (g.weaponProficiencyShapeDialog)
             g.weaponProficiencyShapeDialog->connectToGameSession(GameSession);
         if (g.weaponProficiencyReshapeDialog)
@@ -1169,11 +1180,34 @@ void TGameClient::onGameSessionDisconnected()
     // Host: the packs' session-end hook (notify_api subscribe_session_end), while the
     // disconnected session is still the current one (CIP currentGamesessionDisconnected).
     tibia::world::notifySessionEnd();
-    // CIP: the dialogs that only make sense during the session close.
-    if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
-        offlineTraining->dialog()->close();
-    if (m_gameWindow && m_gameWindow->weaponProficiencyShapeOptionsDialog)
-        m_gameWindow->weaponProficiencyShapeOptionsDialog->dialog()->close();
+    // CIP: the dialogs that only make sense during the session close, in
+    // CipSoft's order: connecting, minimap marker, outfit, creature podium,
+    // white/blacklist, move to stash, tutorial hint, vocation selection,
+    // offline training and the proficiency shape options.
+    if (m_gameWindow) {
+        TGameWindow& g = *m_gameWindow;
+        if (g.sessionBootstrap)
+            g.sessionBootstrap->closeConnectingDialog();
+        if (m_minimap)
+            if (gamewindow::TEditMinimapMarkerDialogController* marker = m_minimap->markerStorage()->editMinimapMarkerDialog())
+                marker->dialog()->close();
+        if (g.informationDialogs) {
+            g.informationDialogs->outfitDialog()->dialog()->close();
+            g.informationDialogs->podiumDialog()->dialog()->close();
+        }
+        if (g.chat)
+            g.chat->whiteBlacklistDialog().close();
+        if (g.stashDialog)
+            g.stashDialog->confirmMoveObjectToStashDialog()->dialog()->close();
+        if (g.tutorialShell) {
+            g.tutorialShell->hint()->dialog()->close();
+            g.tutorialShell->vocation()->dialog()->close();
+        }
+        if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
+            offlineTraining->closeDialog();
+        if (g.weaponProficiencyShapeOptionsDialog)
+            g.weaponProficiencyShapeOptionsDialog->closeDialog();
+    }
     // Host: the world is left (minimap and character options written, start screen).
     onWorldLeft();
     if (!m_gameSessionMetaInfoQueue.empty()) {

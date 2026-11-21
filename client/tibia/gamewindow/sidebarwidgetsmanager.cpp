@@ -83,6 +83,7 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
                                     connect(m_skills, &TSkillsWidgetController::publishGameAction, this,
                                             &TSidebarWidgetsManager::publishGameAction);
                                     m_skills->setSidebarOptions(m_options);
+                                    m_skills->connectToGameSession(m_gameSession);
                                 }
                                 return m_skills->widget();
                             },
@@ -139,6 +140,9 @@ void TSidebarWidgetsManager::registerWidget(const int widgetType, WidgetHooks ho
 
 void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    m_gameSession = GameSession;
+    if (m_skills)
+        m_skills->connectToGameSession(m_gameSession);
     for (const auto& [widgetType, hooks] : m_widgets) {
         if (hooks.connectToGameSession)
             hooks.connectToGameSession(GameSession);

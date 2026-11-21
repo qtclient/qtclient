@@ -6,6 +6,7 @@
 #include "clockservice.h"
 #include "protocol/protocolciptypes.h"
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "sound/soundstorage.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -82,7 +83,7 @@ void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const Gameserv
     }
     // The message's sound effects play together (CIP: TSoundStorage).
     if (!sounds.empty()) {
-        if (game::TGameSessionBase* session = game::TGameSessionBase::active(); session && session->soundStorage())
+        if (game::TGameSessionBase* session = game::currentGameSession(); session && session->soundStorage())
             session->soundStorage()->setSoundsToPlay(std::move(sounds), now);
     }
 }

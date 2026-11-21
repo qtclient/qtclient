@@ -102,11 +102,6 @@ public:
     explicit TExaltationStorage(QObject* parent = nullptr);
     ~TExaltationStorage() override;
 
-    /// Host shim for the code that has no session yet: the current game
-    /// session's storage, or null.
-    static TExaltationStorage* instance();
-    static void setInstance(TExaltationStorage* storage);
-
     /// Slot 12: adds the prices (keeps the ones the data does not name).
     void setBaseData(const TExaltationBaseData& data);
     /// Slots 13, 14: the dust limit as the server sends it (increases bought).

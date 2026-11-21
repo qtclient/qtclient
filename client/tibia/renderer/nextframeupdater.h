@@ -4,6 +4,10 @@
 
 #include <QtGlobal>
 
+namespace tibia::game {
+class TCooldownStorage;
+}
+
 namespace tibia {
 namespace chat {
 class TTextStorage;
@@ -36,7 +40,8 @@ namespace renderer {
 class TNextFrameUpdater : public ::tibia::CipTyped
 {
 public:
-    TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts);
+    /// `cooldowns`: the session's cooldown storage, whose ended cooldowns drop.
+    TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts, game::TCooldownStorage* cooldowns);
 
     /// CIP v2 — advance all frame-dependent systems to `timestampMs`.
     void v2(qint64 timestampMs);
@@ -44,6 +49,7 @@ public:
 private:
     qmlcomponents::TWorldMapRenderProvider& m_provider;
     chat::TTextStorage& m_texts;
+    game::TCooldownStorage* m_cooldowns;
 };
 
 }

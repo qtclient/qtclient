@@ -83,15 +83,6 @@ TSkillsWidgetController::TSkillsWidgetController(QQuickItem* gameWindowItem, QQm
     }
     onPlayerDataChanged();
 
-    // Each game session has its own skill stats.
-    tibia::game::onEachGameSession(this, [this] {
-        m_skillStats = game::TPlayerSkillStats::liveInstance();
-        if (m_skillStats) {
-            connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this,
-                    &TSkillsWidgetController::onPlayerSkillStatsChanged, Qt::UniqueConnection);
-        }
-        onPlayerSkillStatsChanged();
-    });
 
     widget()->createItem(QStringLiteral("skillswidget.qml"));
     if (QQuickItem* item = quickItem()) {
@@ -134,6 +125,17 @@ void TSkillsWidgetController::setCursorToResizeVertical(const bool Enabled)
     widget()->setCursorToResizeVertical(Enabled);
 }
 void TSkillsWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
+
+void TSkillsWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_skillStats)
+        disconnect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this, &TSkillsWidgetController::onPlayerSkillStatsChanged);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_skillStats = session ? session->playerSkillStats().get() : nullptr;
+    if (m_skillStats)
+        connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this, &TSkillsWidgetController::onPlayerSkillStatsChanged);
+    onPlayerSkillStatsChanged();
+}
 
 void TSkillsWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {

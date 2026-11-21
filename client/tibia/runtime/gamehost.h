@@ -62,10 +62,9 @@ public:
     virtual qint64 worldmapRaycastRoofsNs() const = 0;
 
     virtual void toggleCharacterSelectionForSwitch() = 0;
+    /// Another character while online: CIP logs this one out and logs the new
+    /// one in with a new game session.
     virtual bool requestCharacterSwitch(const QString& characterName) = 0;
-    /// Picking another character while online: CIP logs out and logs the new
-    /// character in. A product may switch on the same connection instead.
-    virtual void setSameSocketCharacterSwitch(bool enabled) = 0;
     /// Account character names (login list); empty before login.
     virtual QStringList characterNames() const = 0;
     /// Live session or sessiondump logout.

@@ -47,17 +47,6 @@ void sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
     processor->writeProductFrame(w.out);
 }
 
-void sendCharacterSwitch(const std::string& characterName)
-{
-    auto* processor = network::TGameserverNetworkPacketProcessor::live();
-    if (!processor)
-        return;
-    ClassicWriter w;
-    w.u8(Proto::ClientCharacterSwitch);
-    w.string(characterName);
-    processor->writeProductFrame(w.out);
-}
-
 void sendSecondaryLogin(const std::string_view token)
 {
     auto message = tibia::protocol::newGameclientMessage(Proto::ClientSecondaryLogin);

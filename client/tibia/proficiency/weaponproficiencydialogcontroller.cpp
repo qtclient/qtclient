@@ -4,6 +4,10 @@
 
 #include "app/clientoptions.h"
 #include "analysers/itempricestorage.h"
+#include "exaltation/exaltationstorage.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -338,45 +342,6 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     };
     connect(this, &TWeaponProficiencyDialogController::currentTypeIdChanged, this, onSourceChanged);
     connect(this, &TWeaponProficiencyDialogController::proficiencyModelChanged, this, onSourceChanged);
-    connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) {
-        m_model.onObjectProficiencyXPChanged();
-        onProficiencyDataChanged(static_cast<uint16_t>(typeId));
-    });
-    connect(m_storage, &TProficiencyStorage::proficiencyXPChanged, this, [this] {
-        m_model.onObjectProficiencyXPChanged();
-        Q_EMIT decorativeSourceChanged();
-        Q_EMIT xpInformationChanged();
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
-        if (data && dialog()->isShown() && m_currentTypeId != 0)
-            onInspectObjectDataReceived(*data);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStatesChange", [this](GameObject*, const Args&) {
-        onPlayerDataChanged();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this](qint64, qint64, int type) {
-        if (type == static_cast<int>(tibia::client::RESOURCE_FORGE_DUST))
-            onExaltedCurrencyBalanceChanged();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_onAccept = m_onDiscard = nullptr;
-        m_confirm->dialog()->hide();
-        if (dialog()->isShown())
-            dialog()->close();
-        m_currentTypeId = 0;
-        m_local = {};
-        m_pendingReset = false;
-        m_currentInspectText.clear();
-        for (QObject* level : std::exchange(m_proficiencyModel, {}))
-            level->deleteLater();
-        Q_EMIT proficiencyModelChanged();
-        m_model.rebuild();
-    });
 
     // CIP : the character info dialog passes the type, the button
     // bar and the context menus the object.
@@ -387,6 +352,37 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
 }
 
 int TWeaponProficiencyDialogController::maxProficiencyLevels() const { return MaxProficiencyLevels; }
+
+void TWeaponProficiencyDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    // Host: qtclient's weapons list reads the appearances and the proficiency
+    // storage itself.
+    m_model.rebuild();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyXPChanged, this, [this] {
+        m_model.onObjectProficiencyXPChanged();
+        Q_EMIT decorativeSourceChanged();
+        Q_EMIT xpInformationChanged();
+    }));
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) {
+        m_model.onObjectProficiencyXPChanged();
+        onProficiencyDataChanged(static_cast<uint16_t>(typeId));
+    }));
+    m_gameSessionConnections.add(connect(session->gameProtocolMessageHandler().get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived,
+                                         this, [this](const ItemInspectionData& data) {
+                                             if (dialog()->isShown() && m_currentTypeId != 0)
+                                                 onInspectObjectDataReceived(data);
+                                         }));
+    m_gameSessionConnections.add(
+        connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &TWeaponProficiencyDialogController::onPlayerDataChanged));
+    m_gameSessionConnections.add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
+                                         &TWeaponProficiencyDialogController::onExaltedCurrencyBalanceChanged));
+}
 
 TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController()
 {

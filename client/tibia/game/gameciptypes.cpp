@@ -263,7 +263,7 @@ void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMe
                 data.outfit = row->outfit();
         }
         data.playerDescriptions = details(m.player_details());
-        tibia::game::notify("onParseCharacterInspection", data);
+        Q_EMIT requestOpenInspectPlayerDialog(data);
     } else if (m.objects_size() > 0) {
         const auto& o = m.objects(0);
         ItemInspectionData data;
@@ -273,6 +273,9 @@ void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMe
         fill(data, o.item());
         data.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
         data.descriptions = details(o.details());
+        Q_EMIT inspectObjectDataReceived(data);
+        // Host: the object inspection and item info dialogs still follow the
+        // notify hook (their connectors are not ported).
         tibia::game::processItemDetail(data);
     }
 }
@@ -811,18 +814,18 @@ void ownProductSurface(QObject* parent)
 void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMessageEditText& m)
 {
     const auto item = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.object());
-    tibia::game::processEditText(m.edit_id(), item.typeId, static_cast<uint16_t>(m.max_length()), m.text(), m.author(), m.date(),
-                                 m.recently_traded());
+    Q_EMIT requestEditTextDialog(m.edit_id(), item.typeId, static_cast<uint16_t>(m.max_length()), QString::fromStdString(m.text()),
+                                 QString::fromStdString(m.author()), QString::fromStdString(m.date()), m.recently_traded());
 }
 
 void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMessageEditList& m)
 {
-    tibia::game::processEditList(m.list_id(), static_cast<uint8_t>(m.list_type()), m.text());
+    Q_EMIT requestEditListDialog(m.list_id(), static_cast<uint8_t>(m.list_type()), QString::fromStdString(m.text()));
 }
 
 void TEditTextProtocolMessageHandler::handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& m)
 {
-    tibia::game::notify("onEditGuildMessage", m.text());
+    Q_EMIT requestEditGuildMessageDialog(QString::fromStdString(m.text()));
 }
 
 namespace {
@@ -933,7 +936,7 @@ void TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage(const ::tibi
     data.aol = m.amulet_of_loss() ? 1 : 0;
     for (const auto& h : m.history())
         data.logs.push_back({ .timestamp = h.timestamp(), .colorMessage = static_cast<uint8_t>(h.color()), .historyMessage = h.text() });
-    tibia::game::notify("onUpdateBlessDialog", data);
+    Q_EMIT requestBlessingsDialog(data);
 }
 
 void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& m)

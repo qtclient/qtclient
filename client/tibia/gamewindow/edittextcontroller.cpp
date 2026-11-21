@@ -1,5 +1,7 @@
 #include "edittextcontroller.h"
 
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
@@ -51,6 +53,25 @@ TEditTextController::TEditTextController(QObject* parent)
     : TDialogController(QStringLiteral("EditTextDialog.qml"), parent)
 {
     m_modelData = &m_data;
+}
+
+void TEditTextController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    dialog()->close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    game::TEditTextProtocolMessageHandler* handler = session->editTextProtocolMessageHandler().get();
+    m_gameSessionConnections.push_back(
+        connect(handler, &game::TEditTextProtocolMessageHandler::requestEditTextDialog, this, &TEditTextController::showItemText));
+    m_gameSessionConnections.push_back(
+        connect(handler, &game::TEditTextProtocolMessageHandler::requestEditListDialog, this, &TEditTextController::showEditList));
+    m_gameSessionConnections.push_back(connect(handler, &game::TEditTextProtocolMessageHandler::requestEditGuildMessageDialog, this,
+                                               &TEditTextController::showEditGuildMessageDialog));
 }
 
 void TEditTextController::showItemText(const uint32_t id, const uint itemId, const int maxLength, const QString& text, const QString& author,

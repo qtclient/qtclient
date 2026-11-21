@@ -19,9 +19,6 @@ class TPlayerSkillStats final : public cip::tibia::game::TPlayerSkillStats
 public:
     explicit TPlayerSkillStats(QObject* parent = nullptr);
 
-    static TPlayerSkillStats* liveInstance();
-    static void setLiveInstance(TPlayerSkillStats* stats);
-
     const cyclopedia::CombatStats& combatStats() const { return m_stats; }
 
     void setFlatDamageHealing(uint16_t flatBonus);

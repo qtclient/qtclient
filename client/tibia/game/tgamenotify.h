@@ -37,8 +37,6 @@ public:
     std::any publish(std::string_view field, const Args& args);
 
     void emitGameStarted();
-    /// Another game session became the one being played (or none is).
-    void emitGameSessionChanged();
     void emitGameEnded();
     void emitCharacterSwitched(const QString& name);
     void emitConnectionFailing(bool failing);
@@ -48,7 +46,6 @@ public:
     void emitServerError(int code, const QString& message);
 
 Q_SIGNALS:
-    void gameSessionChanged();
     void gameStarted();
     void gameEnded();
     void characterSwitched(const QString& name);

@@ -28,6 +28,8 @@ public:
 
     /// CIP : the flags and both lists from the TWhiteBlacklist, then shown.
     void open();
+    /// CIP: the lists are released and the dialog closes.
+    void close();
 
     Q_INVOKABLE void addNewBlacklistEntry() override;
     Q_INVOKABLE void addNewWhitelistEntry() override;
@@ -50,8 +52,6 @@ private:
     /// CIP.
     static void clear(Entries& entries);
     void publish(const char* property, const Entries& entries);
-    /// CIP .
-    void close();
 
     chat::TWhiteBlacklist& m_lists;
     Entries m_blacklistEntries;

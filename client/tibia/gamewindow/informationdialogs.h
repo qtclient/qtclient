@@ -50,6 +50,9 @@ public:
     ~TInformationDialogs() override;
 
     TPreyDialogController* prey() const { return m_prey; }
+    TSelectOutfitDialogController* outfitDialog() const { return m_outfitDialog; }
+    TEditTextController* editText() const { return m_editText; }
+    TConfigureCreaturePodiumDialogController* podiumDialog() const { return m_podiumDialog; }
     TQuestLogController* questLog() const { return m_questLog; }
     TCyclopediaButtonController* cyclopediaButton() const { return m_cyclopediaButton; }
     TCyclopediaDialogController* cyclopedia() const { return m_cyclopedia; }

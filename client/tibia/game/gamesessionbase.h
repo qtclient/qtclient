@@ -209,9 +209,8 @@ namespace tibia::game {
 
 /// CIP game::TGameSessionBase: a game session (live or replayed) owns its
 /// storages, protocol message handlers and providers, and hands them out by
-/// type. Each login builds a new one; the game client's current session is
-/// the active one, whose storages are their classes' instance(). Everything
-/// holding a storage rebinds on TGameNotify::gameSessionChanged.
+/// type. Each login builds a new one; the game client connects its
+/// controllers to the current one.
 class TGameSessionBase : public IGameSession
 {
     Q_OBJECT
@@ -223,13 +222,9 @@ public:
     /// from its configuration.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
 
-    /// The game client's current session, or null.
-    static TGameSessionBase* active();
-    bool isActive() const { return active() == this; }
-    /// The game client makes this its current session (or stops it being
-    /// one): its storages become their classes' instance(), and
-    /// gameSessionChanged announces it.
-    void install(bool installed);
+    /// Host: the world map's session state (aware range, pruning) starts once
+    /// the session's map storage is its class's instance().
+    void initializeWorldMapSessionState();
     /// Re-links the protocol queue to the handlers that exist now. The game
     /// window creates most handlers after a replay given on the command line
     /// started.
@@ -539,6 +534,9 @@ protected:
     /// CIP: what draws the world (the world map's frame, its picker and HUD
     /// anchors) and advances it before each frame.
     void createRenderProviders();
+    /// CIP: the object sounds and the session's sound provider, when the
+    /// client plays sound.
+    void createSoundProviders();
     /// CIP: the game action providers (what is offered where) and handlers.
     void createGameActionProvidersAndHandlers();
     /// CIP: connects the session's message queue to its handlers' typed slots.
@@ -682,13 +680,5 @@ private:
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
 };
 
-/// Calls `bind` now and each time the active game session changes, for code
-/// that connects to a session storage's signals.
-template<typename Bind>
-void onEachGameSession(QObject* context, Bind bind)
-{
-    bind();
-    QObject::connect(TGameNotify::instance(), &TGameNotify::gameSessionChanged, context, bind);
-}
 
 }

@@ -88,6 +88,8 @@ public:
     void setTraderFilterIndex(int index) override;
     void setSortOrder(int order) override;
     int sortOrder() const override { return m_proxy.sortOrder(); }
+    /// The confirmation before an object is moved into the stash.
+    TConfirmMoveObjectToStashDialogController* confirmMoveObjectToStashDialog() const { return m_confirmStow; }
 
 public Q_SLOTS:
     /// CIP .

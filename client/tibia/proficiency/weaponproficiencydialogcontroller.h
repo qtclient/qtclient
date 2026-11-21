@@ -4,6 +4,7 @@
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "proficiency/proficiencystorage.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -11,8 +12,13 @@
 #include <QPointer>
 
 #include <functional>
+#include <memory>
 #include <set>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 struct ItemInspectionData;
 
@@ -147,6 +153,10 @@ public:
 
     /// CIP .
     void showDialog(uint16_t typeId);
+    /// CIP connector: the dialog closes; the weapons list, the proficiency
+    /// storage, the session's inspection replies, player data and forge dust
+    /// follow the session (null: none).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QString currentTypeName() const override;
     bool currentIsUseRestricted() const override;
@@ -206,7 +216,8 @@ private:
     gamewindow::TMessageDialogController* m_confirm;
     std::function<void()> m_onAccept;
     std::function<void()> m_onDiscard;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

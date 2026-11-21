@@ -51,6 +51,8 @@ public:
     void installCreateCharacter(gamewindow::TCreateCharacterDialogController* controller);
 
     void openCreateAccount();
+    /// CIP's connecting dialog closes (the game session disconnected).
+    void closeConnectingDialog();
 
 private:
     void showError(const QString& message);

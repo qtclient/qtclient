@@ -13,6 +13,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -105,7 +106,7 @@ TContainerController::TContainerController(const int containerId, container::TCo
         if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
             readExpireOptions();
     });
-    if (const game::TGameSessionBase* session = game::TGameSessionBase::active())
+    if (const game::TGameSessionBase* session = game::currentGameSession())
         m_model.setObjectCountStorage(session->objectCountStorage().get());
     m_clockTimer.setInterval(1000);
     connect(&m_clockTimer, &QTimer::timeout, &m_model, &TAppearanceInstanceListModel::refreshClocks);

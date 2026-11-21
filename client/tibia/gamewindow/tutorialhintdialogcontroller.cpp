@@ -9,7 +9,6 @@
 
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -192,10 +191,6 @@ TTutorialShell::TTutorialShell(QObject* parent)
         if (!args.empty())
             handleTutorialHintId(static_cast<int>(client::gamecore::argInt(args, 0)));
         return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_hint->dialog()->destroy();
-        m_vocation->dialog()->destroy();
     });
 
     m_gameActions.on(A::SHOW_TUTORIAL_HINT, [this](const input::TGameActionShowTutorialHint& action) {

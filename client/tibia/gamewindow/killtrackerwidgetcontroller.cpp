@@ -311,6 +311,9 @@ TSidebarWidget* TKillTrackerWidgetManager::current() const { return m_controller
 void TKillTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_gameSession = GameSession;
+    // The widget shows the session's prey slots.
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    setPreyStorage(session ? session->preyStorage().get() : nullptr);
     if (m_controller)
         m_controller->connectToGameSession(m_gameSession);
 }

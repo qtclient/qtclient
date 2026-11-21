@@ -54,6 +54,9 @@ Q_SIGNALS:
     void startSavingMinimapMarkerFileContentToDisk(
         std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> fileContent);
 
+    /// The dialog that edits a marker.
+    gamewindow::TEditMinimapMarkerDialogController* editMinimapMarkerDialog() const { return m_dialog.get(); }
+
 public Q_SLOTS:
     /// Writes the markers when they changed.
     void onDelayedCallback() override;

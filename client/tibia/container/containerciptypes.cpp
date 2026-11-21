@@ -1,4 +1,5 @@
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "container/containerciptypes.h"
 #include "container/objectappearanceinstanceinfostorage.h"
 #include "input/gameaction.h"
@@ -148,7 +149,7 @@ void TContainerProtocolMessageHandler::handleDeleteInventoryMessage(
 void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
     const GameserverMessageSpecialContainersAvailable& SpecialContainersAvailableMessage)
 {
-    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
     if (!session)
         return;
     const bool stash = SpecialContainersAvailableMessage.stash() != 0;
@@ -162,7 +163,7 @@ void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
 
 void TContainerProtocolMessageHandler::handleStashMessage(const GameserverMessageStash& StashMessage)
 {
-    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
     if (!session)
         return;
     // A type listed twice keeps its last amount.
@@ -207,7 +208,7 @@ void TContainerProtocolMessageHandler::handleDepotSearchDetailListMessage(const 
     // A type listed twice keeps its last amount.
     for (const auto& entry : message.stash())
         stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] = entry.amount();
-    if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
         session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), message.depot_count(),
                                                                std::move(inboxObjects), message.inbox_count(), stash);
     Q_EMIT requestOpenDepotSearchWidget();
@@ -221,7 +222,7 @@ void TContainerProtocolMessageHandler::handleCloseDepotSearchMessage(const ::tib
 void TContainerProtocolMessageHandler::handleObjectInfoMessage(const GameserverMessageObjectInfo& ObjectInfoMessage)
 {
     using appearances::TObjectAppearanceInstanceTypeID;
-    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
     if (!session)
         return;
     for (const auto& object : ObjectInfoMessage.objects()) {
@@ -241,7 +242,7 @@ void TContainerProtocolMessageHandler::handleObjectInfoMessage(const GameserverM
 
 void TContainerProtocolMessageHandler::handleDepotSearchResultMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult& DepotSearchResultMessage)
 {
-    tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active();
+    tibia::game::TGameSessionBase* session = tibia::game::currentGameSession();
     if (!session)
         return;
     // The locker's counts by type and tier; a type listed twice keeps its last count.
@@ -352,7 +353,7 @@ void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibi
         entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
     }
     if (tibia::game::hasLocalPlayer()) {
-        if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+        if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession())
             session->objectCountStorage()->setCounts(counts);
         tibia::game::notify("updateInventoryItems");
     }

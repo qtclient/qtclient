@@ -1,5 +1,6 @@
 #include "assignactiondialogs.h"
 
+#include "game/currentgamesession.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/smoothfiltering.h"
@@ -359,13 +360,15 @@ TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(QObject* 
     setSourceModel(m_model);
     setDynamicSortFilter(true);
     sort(0);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TSpellListDataModelSortFilterProxy::onGameSessionChanged);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this,
-            &TSpellListDataModelSortFilterProxy::onGameSessionChanged);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
-            &TSpellListDataModelSortFilterProxy::onPlayerDataChanged);
+    // Host: the proxies of the spell list widget, the magical archive and the
+    // action assignment follow the game client's current session.
+    m_gameSessionListener = tibia::game::subscribeCurrentGameSessionChanged([this] { onGameSessionChanged(); });
     onGameSessionChanged();
+}
+
+TSpellListDataModelSortFilterProxy::~TSpellListDataModelSortFilterProxy()
+{
+    tibia::game::unsubscribeCurrentGameSessionChanged(m_gameSessionListener);
 }
 
 void TSpellListDataModelSortFilterProxy::onGameSessionChanged()

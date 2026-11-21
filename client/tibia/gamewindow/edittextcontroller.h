@@ -4,6 +4,13 @@
 
 #include <cip_gen.h>
 
+#include <memory>
+#include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -27,6 +34,10 @@ class TEditTextController final : public TDialogController<cip::tibia::gamewindo
 public:
     explicit TEditTextController(QObject* parent = nullptr);
 
+    /// CIP connector: the dialog closes; the session's edit text handler opens
+    /// the text, list and guild message dialogs.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
     /// CIP : a writable or readable item's text.
     void showItemText(uint32_t id, uint itemId, int maxLength, const QString& text, const QString& author, const QString& date,
                       bool recentlyTraded);
@@ -49,6 +60,8 @@ private:
     uint32_t m_id = 0;
     uint8_t m_doorId = 0;
     QString m_author;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 }

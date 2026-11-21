@@ -1,8 +1,8 @@
 #include "playerguidewidgetcontroller.h"
 
 #include "config/sidebaroptions.h"
+#include "game/igamesession.h"
 #include "game/playerdata.h"
-#include "game/tgamenotify.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -169,8 +169,6 @@ TPlayerGuideWidgetController::TPlayerGuideWidgetController(news::TNewsStorage* n
     widget()->createItem(QStringLiteral("PlayerGuideWidget.qml"));
     if (m_newsStorage)
         connect(m_newsStorage, &news::TNewsStorage::contentsChanged, this, &TPlayerGuideWidgetController::onNewsStorageContentsChanged);
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameStarted, this, &TPlayerGuideWidgetController::onGameSessionChanged);
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TPlayerGuideWidgetController::onGameSessionChanged);
     if (tibia::game::isOnline())
         onGameSessionChanged();
 }
@@ -411,8 +409,23 @@ TPlayerGuideWidgetManager::TPlayerGuideWidgetManager(QQuickItem* gameWindowItem,
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameStarted, this, &TPlayerGuideWidgetManager::onGameStarted);
-    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TPlayerGuideWidgetManager::onGameStarted);
+}
+
+void TPlayerGuideWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    if (!m_gameSession)
+        return;
+    const auto onWorldEntered = [this] {
+        onGameStarted();
+        if (m_controller)
+            m_controller->onGameSessionChanged();
+    };
+    m_gameSessionConnections.push_back(connect(m_gameSession.get(), &game::IGameSession::worldEntered, this, onWorldEntered));
+    onWorldEntered();
 }
 
 TPlayerGuideWidgetManager::~TPlayerGuideWidgetManager() { delete m_controller; }

@@ -24,7 +24,12 @@
 #include <QVariant>
 
 #include <cstdint>
+#include <memory>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 class QQuickItem;
 class QQmlEngine;
@@ -442,6 +447,8 @@ public:
     explicit TInspectObjectDialogController(QObject* parent = nullptr);
     static TInspectObjectDialogController* instance();
     bool clientSettingSmoothFiltering() const override;
+    /// CIP connector: the dialog closes and keeps the session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     void closeDialog() override;
@@ -452,6 +459,7 @@ public Q_SLOTS:
 private:
     void showObject(const ItemInspectionData& data);
     static TInspectObjectDialogController* s_instance;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
@@ -462,6 +470,9 @@ public:
     explicit TInspectPlayerDialogController(QObject* parent = nullptr);
     static TInspectPlayerDialogController* instance();
     bool clientSettingSmoothFiltering() const override;
+    /// CIP connector: the dialog closes; the session's game handler opens it
+    /// with an inspected player.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// Also drops the pointing hand and the rows.
@@ -477,7 +488,8 @@ public Q_SLOTS:
 private:
     void showPlayer(const CyclopediaCharacterInspection& data);
     static TInspectPlayerDialogController* s_instance;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     uint32_t m_inspectedPlayerId = 0;
 };
 

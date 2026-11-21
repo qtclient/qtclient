@@ -48,7 +48,7 @@ void TRuleViolationProtocolMessageHandler::handleTextForReportMessage(const ::ti
 void TRuleViolationProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message)
 {
     if (message.mode() == MessageModeReport)
-        tibia::game::notify("onRuleViolationReportConfirmed");
+        Q_EMIT ruleViolationReportConfirmed();
 }
 
 } // namespace tibia::reporting

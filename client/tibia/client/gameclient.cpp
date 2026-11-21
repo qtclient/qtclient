@@ -56,6 +56,7 @@
 #include "minimap/minimapmarkerstorage.h"
 #include "chat/textstorage.h"
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "input/genericgameactionhandler.h"
 #include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
@@ -76,7 +77,6 @@
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
 #include "game/sessiondumpgamesession.h"
-#include <QSettings>
 #include "protocol/protocolmessagequeue.h"
 #include "game/tutorialsessiondumpgamesessionmetainfo.h"
 #include "game/sessiondumpgamesessionmetainfo.h"
@@ -152,6 +152,23 @@ void unlinkGameActionRouters(game::TGameActionRouter& client, game::TGameSession
                         &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
     QObject::disconnect(other, &game::TInternalGameActionRouter::publishGameActionBetweenRouters, own,
                         &game::TInternalGameActionRouter::handleGameActionFromOtherRouter);
+}
+
+/// The session setSessionInstances installed: from before its controllers
+/// connect until it is released.
+game::TGameSessionBase* g_sessionInstances = nullptr;
+
+/// Host shim: the classes whose instance() host and pack code still read
+/// resolve to `session`'s members (null: none).
+void setSessionInstances(game::TGameSessionBase* session)
+{
+    g_sessionInstances = session;
+    worldmap::TWorldMapStorage::setInstance(session ? session->worldMapStorage().get() : nullptr);
+    creatures::TCreatureStorage::setInstance(session ? session->creatureStorage().get() : nullptr);
+    container::TContainerStorage::setInstance(session ? session->containerStorage().get() : nullptr);
+    container::TInventoryContainer::setInstance(session ? session->inventoryContainer().get() : nullptr);
+    effects::TEffectStorage::setInstance(session ? session->effectStorage().get() : nullptr);
+    game::TPlayerData::setLiveInstance(session ? session->playerData().get() : nullptr);
 }
 
 /// Set while the client shuts down: a released session is deleted at once.
@@ -236,11 +253,6 @@ public:
         return m_client->requestCharacterSwitch(characterName);
     }
 
-    void setSameSocketCharacterSwitch(const bool enabled) override
-    {
-        m_client->setSameSocketCharacterSwitch(enabled);
-    }
-
     QStringList characterNames() const override
     {
         QStringList names;
@@ -264,19 +276,11 @@ public:
         return m_client->opcodes();
     }
 
-    /// Host shim for the pack ABI until packs re-read the provider: the
-    /// current session's provider, kept alive past its session because a
-    /// pack may hold on to the pointer it got.
+    /// The current session's world map frame (packs read it each frame); null
+    /// between sessions.
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const override
     {
-        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_client->currentGameSession().get());
-        if (!session)
-            return nullptr;
-        if (!session->worldMapRenderProvider())
-            return nullptr;
-        if (m_packRenderProviders.empty() || m_packRenderProviders.back() != session->worldMapRenderProvider())
-            m_packRenderProviders.push_back(session->worldMapRenderProvider());
-        return m_packRenderProviders.back().get();
+        return m_client->worldMapRenderProvider();
     }
 
 private:
@@ -286,7 +290,6 @@ private:
     }
 
     TGameClient* m_client = nullptr;
-    mutable std::vector<std::shared_ptr<qmlcomponents::TWorldMapRenderProvider>> m_packRenderProviders;
 };
 
 }
@@ -568,7 +571,7 @@ namespace {
 
 game::TGameSessionBase* activeSession()
 {
-    return game::TGameSessionBase::active();
+    return g_sessionInstances;
 }
 
 }
@@ -678,7 +681,6 @@ void TGameClient::login()
 
 void TGameClient::abortPendingEnter()
 {
-    m_suppressConnectError = true;
     m_login->abort();
     if (!tibia::game::isOnline()) {
         if (game::TGameserverGameSession* live = session())
@@ -686,7 +688,6 @@ void TGameClient::abortPendingEnter()
         else if (game::TSessiondumpGameSession* dump = sessiondump())
             dump->disconnectNow();
     }
-    QTimer::singleShot(0, this, [this] { m_suppressConnectError = false; });
 }
 
 void TGameClient::submitCredentials(const QString& account, const QString& password)
@@ -784,14 +785,12 @@ void TGameClient::ensureLoginSurface()
 
 bool TGameClient::requestCharacterSwitch(const QString& characterName)
 {
-    if (characterName.isEmpty() || !tibia::game::isOnline())
+    if (characterName.isEmpty() || !tibia::game::isOnline() || m_pendingCharacter)
         return false;
-    // Same character is allowed: CIP would logout+login; IdleOT re-enters on the same socket.
-    if (tibia::game::isSwitchingCharacter())
-        return false;
-    if (!tibia::network::TGameserverNetworkPacketProcessor::live())
-        return false;
-    tibia::protocol::gameclient::sendCharacterSwitch(characterName.toStdString());
+    // CIP: this character logs out; the chosen one logs in, in a new game
+    // session, once it left the world.
+    m_pendingCharacter = characterName;
+    tibia::game::safeLogout();
     Q_EMIT characterSwitchRequested(characterName);
     return true;
 }
@@ -821,11 +820,6 @@ void TGameClient::onCharacterChosen(const QString& characterName)
     m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CharacterLoginRequested);
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
-        if (m_sameSocketCharacterSwitch) {
-            if (!requestCharacterSwitch(characterName))
-                fail(tr("Could not switch to %1.").arg(characterName));
-            return;
-        }
         // CIP: log this character out; the chosen one logs in once it left the world.
         m_pendingCharacter = characterName;
         tibia::game::safeLogout();
@@ -897,11 +891,8 @@ std::vector<std::shared_ptr<game::TGameSessionMetaInfo>> TGameClient::createGame
     setGameSessionSettings(*gameserver);
     {
         const QString movement = QStringLiteral("MOVEMENT");
-        QSettings settings;
-        settings.beginGroup(movement);
         gameserver->playerMovementIntentHandlerConfiguration->minPercentageOfCurrentMovementBeforeSendNext =
-            settings.value(QStringLiteral("minPercentageOfCurrentMovementBeforeSendNext"), 1.0).toDouble();
-        settings.endGroup();
+            config::clientSettingReal(movement, QStringLiteral("minPercentageOfCurrentMovementBeforeSendNext"), 1.0);
         gameserver->playerMovementIntentHandlerConfiguration->maxMillisecondsToFinishCurrentMovementBeforeSendNext =
             config::clientSetting(movement, QStringLiteral("maxMillisecondsToFinishCurrentMovementBeforeSendNext"), 0);
     }
@@ -995,17 +986,18 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
             m_minimap->setProtocolHandler(nullptr);
         if (previous)
             previous->setWhiteBlacklist(nullptr);
-        // Host shim until the storages are reached through the session: the
-        // classes' instance() stop resolving to this session.
-        if (previous)
-            previous->install(false);
+        // Host shim: the classes' instance() stop resolving to this session.
+        setSessionInstances(nullptr);
         // Pack-facing accessors stop resolving to the retired session.
         game::setCurrentGameSession(nullptr);
         m_currentGameSession.reset();
     }
-    // Host shim: the controllers below still read the classes' instance().
-    if (auto* next = dynamic_cast<game::TGameSessionBase*>(GameSession.get()))
-        next->install(true);
+    // Host shim: host and pack code still read these classes' instance(); they
+    // are the new session's members before its controllers connect.
+    if (auto* next = dynamic_cast<game::TGameSessionBase*>(GameSession.get())) {
+        setSessionInstances(next);
+        next->initializeWorldMapSessionState();
+    }
     connectGameWindowControllersToGameSession(GameSession);
     m_currentGameSession = GameSession;
     // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
@@ -1221,7 +1213,7 @@ void TGameClient::tick()
     if (m_soundController) {
         // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
         const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
-        if (game::TGameSessionBase* session = game::TGameSessionBase::active()) {
+        if (game::TGameSessionBase* session = game::currentGameSession()) {
             session->soundStorage()->update(now);
             if (session->objectSoundController())
                 session->objectSoundController()->updateObjectCounts(
@@ -1275,8 +1267,6 @@ bool TGameClient::frameSlotReached(qint64 now)
 
 void TGameClient::fail(const QString& message)
 {
-    if (m_suppressConnectError)
-        return;
     Q_EMIT showErrorAsPopupAndCriticalLog(message);
     if (!m_options.autoCharacter.isEmpty() || !m_options.replay.isEmpty() || m_options.playForSeconds > 0)
         QCoreApplication::exit(2);

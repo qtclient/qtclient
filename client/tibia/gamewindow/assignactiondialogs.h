@@ -87,6 +87,7 @@ class TSpellListDataModelSortFilterProxy final : public cip::tibia::gamewindow::
     Q_OBJECT
 public:
     explicit TSpellListDataModelSortFilterProxy(QObject* parent = nullptr);
+    ~TSpellListDataModelSortFilterProxy() override;
 
     /// Checks every box except "only current level", clears the search words.
     void resetFilter() override;
@@ -135,6 +136,7 @@ private:
     uint8_t m_playerVocation = 0;
     uint16_t m_playerLevel = 0;
     std::set<uint16_t> m_knownSpells;
+    int m_gameSessionListener = 0;
 };
 
 /// The button a bar's assign dialog edits (CIP TAssignActionDialogControllerBase

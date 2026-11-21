@@ -1,7 +1,9 @@
 #include "reportviolationcontroller.h"
 
 #include "chat/chatchannel.h"
+#include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
+#include "reporting/reportingciptypes.h"
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
@@ -28,10 +30,21 @@ TReportViolationController::TReportViolationController(QObject* parent)
 {
     for (const A type : Handled)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRuleViolationReportConfirmed", [this](GameObject*, const std::vector<std::any>&) {
-        onRuleViolationReportConfirmedByServer();
-        return std::any{};
-    });
+}
+
+void TReportViolationController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    dialog()->close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->ruleViolationProtocolMessageHandler().get(),
+                                               &reporting::TRuleViolationProtocolMessageHandler::ruleViolationReportConfirmed, this,
+                                               &TReportViolationController::onRuleViolationReportConfirmedByServer));
 }
 
 TReportViolationController::~TReportViolationController()

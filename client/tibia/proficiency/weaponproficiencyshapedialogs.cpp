@@ -1,5 +1,7 @@
 #include "proficiency/weaponproficiencyshapedialogs.h"
 
+#include "exaltation/exaltationstorage.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -246,10 +248,12 @@ void TWeaponProficiencyShapeDialogController::connectToGameSession(const std::sh
     // The session's proficiency storage is the client's.
     m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this,
                                          [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); }));
-    // Host: the storage also reports the forge dust (CipSoft: the session's
-    // exaltation storage's exaltedCurrencyBalanceChanged).
     m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::resourceBalanceChanged, this,
                                          &TWeaponProficiencyShapeDialogController::onResourceBalanceChanged));
+    // The forge dust the session's exaltation storage holds.
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get()))
+        m_gameSessionConnections.add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged,
+                                             this, &TWeaponProficiencyShapeDialogController::onResourceBalanceChanged));
     onProficiencyDataChanged(m_typeId);
     onProficiencyDataChanged(m_typeId);
 }

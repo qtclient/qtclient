@@ -12,6 +12,7 @@
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "network/gameserverpacketprocessor.h"
 #include "network/gameserverconnection.h"
 #include "rsahelper.h"
@@ -1946,7 +1947,7 @@ TProtobufClientMessageTranslator* clientMessageTranslator()
 
 TProtocolMessageQueue* protocolMessageQueue()
 {
-    const game::TGameSessionBase* session = game::TGameSessionBase::active();
+    const game::TGameSessionBase* session = game::currentGameSession();
     return session ? session->protocolMessageQueue().get() : nullptr;
 }
 

@@ -276,6 +276,8 @@ public:
     /// Optional PvP world.
     bool exivaOptionsAvailable() const override;
     int chatMode() const override { return m_mode.chatMode(); }
+    /// The white/blacklist dialog the chat opens.
+    TWhiteBlacklistDialogController& whiteBlacklistDialog() { return m_whiteBlacklistDialog; }
 
     /// The current session's channels, or null.
     chat::TChatChannelStorage* storage() const { return m_chatChannelStorage.get(); }

@@ -101,8 +101,8 @@ container::TInventoryContainer* currentInventoryContainer()
 
 TCooldownStorage* currentCooldownStorage()
 {
-    // Client-wide until the cooldown storage is a session member (CIP TGameSessionBase +0xf8).
-    return TCooldownStorage::instance();
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->cooldownStorage().get() : nullptr;
 }
 
 quickloot::TQuickLootBlackWhitelistStorage* currentQuickLootBlackWhitelistStorage()

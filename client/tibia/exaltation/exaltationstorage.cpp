@@ -57,14 +57,6 @@ std::vector<TTransferGroup> transferGroupsOf(const std::vector<ForgeTransferData
 
 }
 
-namespace {
-TExaltationStorage* s_instance = nullptr;
-}
-
-TExaltationStorage* TExaltationStorage::instance() { return s_instance; }
-
-void TExaltationStorage::setInstance(TExaltationStorage* storage) { s_instance = storage; }
-
 TExaltationStorage::TExaltationStorage(QObject* parent)
     : cip::tibia::exaltation::TExaltationStorage(parent)
 {
@@ -173,11 +165,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
 }
 
-TExaltationStorage::~TExaltationStorage()
-{
-    if (s_instance == this)
-        s_instance = nullptr;
-}
+TExaltationStorage::~TExaltationStorage() = default;
 
 /// Dust, slivers and cores (resource types 70 to 72), as 16 bits.
 void TExaltationStorage::handleResourceBalanceMessage(const int type, const qint64 balance)
