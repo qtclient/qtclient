@@ -83,6 +83,8 @@ class TPassiveAbilityListDataModel;
 namespace tibia {
 namespace game {
 
+class TCooldownStorage;
+
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
@@ -196,9 +198,6 @@ class TGameProtocolMessageHandler final : public cip::tibia::game::TGameProtocol
     Q_OBJECT
 public:
     explicit TGameProtocolMessageHandler(QObject* parent = nullptr);
-
-    static TGameProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TGameProtocolMessageHandler* handler);
 
     /// CIP slot: SessionDumpStart (S 0x04 / 4) — native Q→H apply.
     void handleSessionDumpStartMessage(
@@ -317,12 +316,10 @@ class TPlayerProtocolMessageHandler final : public cip::tibia::game::TPlayerProt
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler;
+    /// Spell, spell group, multi-use and passive ability delays go to
+    /// `cooldownStorage` (the session's).
+    explicit TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, QObject* parent = nullptr);
 
-    static TPlayerProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TPlayerProtocolMessageHandler* handler);
-
-public:
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
     void handlePlayerSkillsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message);
     void handlePlayerDataCurrentMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message);
@@ -344,6 +341,9 @@ public:
     void handleSnapBackMessage(const ::tibia::protobuf::protocol::GameserverMessageSnapBack& message);
     void handleStopMessage(const ::tibia::protobuf::protocol::GameserverMessageStop& message);
     void handleHirelingNameChangeMessage(const ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange& message);
+
+private:
+    TCooldownStorage* m_cooldownStorage = nullptr;
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
@@ -411,8 +411,6 @@ class TSpellBookProtocolMessageHandler final : public cip::tibia::game::TSpellBo
     Q_OBJECT
 public:
     explicit TSpellBookProtocolMessageHandler(QObject* parent = nullptr);
-    ~TSpellBookProtocolMessageHandler() override;
-    static TSpellBookProtocolMessageHandler* liveInstance();
 
 public Q_SLOTS:
     /// Only the spell book dialog type: its text and the book's appearance.

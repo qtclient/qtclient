@@ -93,6 +93,7 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     createStorages();
     createProtocolMessageHandlers();
+    createGameActionHandlers();
     connectProtocolMessageHandlers();
 }
 

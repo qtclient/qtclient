@@ -21,6 +21,9 @@ class QQuickItemGrabResult;
 class QQuickWindow;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace shared {
 class TTibiaFileSystemHelper;
 }
@@ -86,7 +89,9 @@ public:
     /// qtclient wiring: `rootItem` is grabbed for full screenshots, `mapWindow`
     /// when only the game window is wanted.
     void configure(QQuickWindow* window, QQuickItem* mapWindow);
-    void setGameSessionActive(bool active);
+    /// Drops the backlog and follows the session (none without one): the
+    /// backlog only records during a session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// TAKE_MANUAL_SCREENSHOT / TAKE_AUTOMATIC_SCREENSHOT.
@@ -115,7 +120,7 @@ private:
     QTimer m_backlogTimer;
     /// CIP circular buffer of 5 images: the oldest is dropped when full.
     std::deque<QImage> m_backlog;
-    bool m_gameSessionActive = false;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 
     static TScreenshotManager* s_instance;
 };

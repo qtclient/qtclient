@@ -1,6 +1,7 @@
 #include "actionbuttoncontroller.h"
 
 #include "gamewindow/actionbarcontroller.h"
+#include "gamewindow/actionbarmanager.h"
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
@@ -353,7 +354,7 @@ void TActionButtonController::refreshObject()
 
 game::TCooldown TActionButtonController::currentCooldown() const
 {
-    const game::TCooldownStorage* storage = game::TCooldownStorage::instance();
+    const game::TCooldownStorage* storage = m_bar ? m_bar->manager()->cooldownStorage() : nullptr;
     if (!storage)
         return {};
     if (m_type == SPELL)
@@ -385,7 +386,7 @@ bool TActionButtonController::isUsable() const
 
 qint64 TActionButtonController::remainingCooldown(const qint64 now) const
 {
-    const game::TCooldownStorage* storage = game::TCooldownStorage::instance();
+    const game::TCooldownStorage* storage = m_bar ? m_bar->manager()->cooldownStorage() : nullptr;
     if (!storage)
         return 0;
     game::TCooldown cooldown;

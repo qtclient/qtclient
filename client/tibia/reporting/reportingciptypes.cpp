@@ -11,24 +11,12 @@
 namespace tibia::reporting {
 
 namespace {
-TBugReportProtocolMessageHandler* g_liveBugReportProtocolHandler = nullptr;
-
 using ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed;
 } // namespace
 
 TBugReportProtocolMessageHandler::TBugReportProtocolMessageHandler(QObject* parent)
     : cip::tibia::reporting::TBugReportProtocolMessageHandler(parent)
 {
-}
-
-TBugReportProtocolMessageHandler* TBugReportProtocolMessageHandler::liveInstance()
-{
-    return g_liveBugReportProtocolHandler;
-}
-
-void TBugReportProtocolMessageHandler::setLiveInstance(TBugReportProtocolMessageHandler* handler)
-{
-    g_liveBugReportProtocolHandler = handler;
 }
 
 void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
@@ -41,16 +29,6 @@ void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
         return;
     tibia::game::setBugReportState(static_cast<int>(state));
     tibia::game::setCanReportBugs(state == 0);
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    auto* handler = new TBugReportProtocolMessageHandler(parent);
-    TBugReportProtocolMessageHandler::setLiveInstance(handler);
 }
 
 namespace {

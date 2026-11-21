@@ -25,18 +25,12 @@ class GameserverMessageBugReportsAllowed;
 namespace tibia {
 namespace reporting {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
 /// CIP `reporting::TBugReportProtocolMessageHandler` — native Q→H for BugReportsAllowed.
 class TBugReportProtocolMessageHandler final : public cip::tibia::reporting::TBugReportProtocolMessageHandler
 {
     Q_OBJECT
 public:
     explicit TBugReportProtocolMessageHandler(QObject* parent = nullptr);
-
-    static TBugReportProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TBugReportProtocolMessageHandler* handler);
 
     /// CIP slot: BugReportsAllowed (S 0x1A / 26) — native Q→H apply.
     void handleBugReportsAllowedMessage(

@@ -7,6 +7,7 @@
 #include <QString>
 
 #include <array>
+#include <memory>
 
 namespace tibia {
 namespace analysers {
@@ -55,6 +56,7 @@ public:
     };
 
     /// The session's character configuration storages; a null one is left out.
+    /// The manager holds the sidebar, action bar and status bar options.
     struct TStorages
     {
         analysers::TItemPriceStorage* itemPrice = nullptr;
@@ -66,9 +68,9 @@ public:
         analysers::TProgressStorage* progress = nullptr;
         analysers::THuntingSessionStorage* huntingSession = nullptr;
         quickloot::TQuickLootBlackWhitelistStorage* quickLootBlackWhitelist = nullptr;
-        TSidebarOptions* sidebar = nullptr;
-        TActionBarOptions* actionBar = nullptr;
-        game::TStatusbarStorage* statusbar = nullptr;
+        std::shared_ptr<TSidebarOptions> sidebar;
+        std::shared_ptr<TActionBarOptions> actionBar;
+        std::shared_ptr<game::TStatusbarStorage> statusbar;
         cyclopedia::TCyclopediaMapCharacterConfigurationStorage* cyclopediaMap = nullptr;
         game::TOutfitDialogStorage* outfitDialog = nullptr;
         skillwheel::TSkillWheelStorage* skillWheel = nullptr;
@@ -93,9 +95,9 @@ public:
     analysers::TProgressStorage* progressStorage() const { return m_storages.progress; }
     analysers::THuntingSessionStorage* huntingSessionStorage() const { return m_storages.huntingSession; }
     quickloot::TQuickLootBlackWhitelistStorage* quickLootBlackWhitelistStorage() const { return m_storages.quickLootBlackWhitelist; }
-    TSidebarOptions* sidebarOptions() const { return m_storages.sidebar; }
-    TActionBarOptions* actionBarOptions() const { return m_storages.actionBar; }
-    game::TStatusbarStorage* statusbarStorage() const { return m_storages.statusbar; }
+    TSidebarOptions* sidebarOptions() const { return m_storages.sidebar.get(); }
+    TActionBarOptions* actionBarOptions() const { return m_storages.actionBar.get(); }
+    game::TStatusbarStorage* statusbarStorage() const { return m_storages.statusbar.get(); }
     cyclopedia::TCyclopediaMapCharacterConfigurationStorage* cyclopediaMapCharacterConfigurationStorage() const
     {
         return m_storages.cyclopediaMap;

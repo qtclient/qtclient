@@ -1,6 +1,7 @@
 #include "cooldownbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "game/gamesessionbase.h"
 #include "imageproviders/imagestripimageprovider.h"
 #include "spells/spellinfostorage.h"
 
@@ -99,8 +100,24 @@ TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObje
     m_nextFrame.setSingleShot(true);
     m_nextFrame.setInterval(0);
     connect(&m_nextFrame, &QTimer::timeout, this, [this] { update(game::TCooldownStorage::now()); });
-    if (game::TCooldownStorage* storage = game::TCooldownStorage::instance())
-        connect(storage, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TCooldownBarController::markDirty);
+}
+
+void TCooldownBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_cooldownStorage.reset();
+    showIdleSpellGroups();
+    if (m_bar)
+        m_bar->setProperty("spellCooldowns", QVariantList());
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_cooldownStorage = session->cooldownStorage();
+    m_gameSessionConnections.push_back(connect(m_cooldownStorage.get(), &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this,
+                                               &TCooldownBarController::markDirty));
 }
 
 void TCooldownBarController::showIdleSpellGroups()
@@ -122,7 +139,7 @@ QString TCooldownBarController::spellTooltip(const int spellId)
 
 void TCooldownBarController::update(const qint64 now)
 {
-    game::TCooldownStorage* storage = game::TCooldownStorage::instance();
+    game::TCooldownStorage* storage = m_cooldownStorage.get();
     if (!m_dirty || !m_bar || !storage)
         return;
 

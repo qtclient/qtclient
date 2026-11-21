@@ -21,6 +21,7 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <vector>
 
 class QQmlEngine;
 class QQuickItem;
@@ -53,7 +54,8 @@ public:
     bool chatOn() const;
     /// The character's action bar scroll positions (CIP: the session's TActionBarOptions).
     config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions; }
-    void setActionBarOptions(config::TActionBarOptions* options) { m_actionBarOptions = options; }
+    /// The session's cooldowns the buttons show; null without a session.
+    const game::TCooldownStorage* cooldownStorage() const { return m_cooldownStorage.get(); }
 
     /// The default use of an object on a button (CIP): Equip
     /// for wearable non-multi-use objects, SelectUseTarget for multi-use,
@@ -65,7 +67,9 @@ public Q_SLOTS:
     /// The character's configuration was loaded: every bar reads its first visible button.
     void onCharacterConfigurationLoaded();
     /// Character entered the world: auto-switch preset, fresh counts.
-    /// CIP connector: the bars' object counts follow the session's containers.
+    /// CIP connector: the bars' object counts follow the session's containers,
+    /// their cooldowns its cooldown storage and their scroll positions its
+    /// character configuration.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void onWorldEntered();
     void onWorldLeft();
@@ -78,8 +82,9 @@ public Q_SLOTS:
     void onReceivedUnlockedSpell(int spellId);
 
 private:
-    /// The active game session's storage connection.
+    /// The active game session's storage connections.
     QMetaObject::Connection m_containerUpdated;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     /// CIP .
     bool onActionButtonTriggered(const input::TGameActionActionButtonTriggered& action);
     void execute(const config::TActionSetting& setting);
@@ -97,9 +102,9 @@ private:
     QQmlEngine* m_engine;
     std::function<int()> m_chatMode;
     config::TActionBarsOptionsPage m_displayOptions;
-    game::TCooldownStorage m_cooldowns;
     std::array<std::unique_ptr<TActionBarGroup>, 3> m_groups;
     config::TActionBarOptions* m_actionBarOptions = nullptr;
+    std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
     QTimer m_cooldownTimer;
     QTimer m_objectsTimer;
     std::vector<client::gamecore::Hook> m_hooks;

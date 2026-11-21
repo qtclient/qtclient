@@ -7,9 +7,15 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <memory>
+#include <vector>
+
 class QQuickItem;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 /// One cooldown icon for CooldownBar.qml (CIP: TCooldownProgressDataForQML).
@@ -34,6 +40,9 @@ public:
     void update(qint64 now);
     /// The cooldowns changed: rebuild on the next update.
     void markDirty();
+    /// Shows the bar idle and follows the session's cooldown storage (none
+    /// without a session).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     /// Shows every bar group idle.
@@ -43,6 +52,9 @@ private:
     /// Option 0x77 cooldownBarEnabled; CIP's game window controller does this.
 
     QPointer<QQuickItem> m_bar;
+    std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     bool m_dirty = false;
     /// The host's stand-in for CIP's per-frame update call.
     QTimer m_nextFrame;

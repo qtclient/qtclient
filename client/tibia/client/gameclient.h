@@ -227,20 +227,20 @@ public:
     /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
     void setMessageIgnoreList(chat::TWhiteBlacklist* list);
         effects::TEffectStorage* effectStorage() const;
-    /// The character's sidebars.json, loaded on entering the world.
-    config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
-    /// The character's statusBarData.json, loaded on entering the world.
-    game::TStatusbarStorage* statusbarStorage() const { return m_statusbarStorage.get(); }
-    /// The character's actionbars.json.
-    config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions.get(); }
+    /// Host shim until the game window's widgets connect to the session: the
+    /// current session's sidebars.json, statusBarData.json and actionbars.json
+    /// (its character configuration manager holds them); null without one.
+    config::TSidebarOptions* sidebarOptions() const;
+    game::TStatusbarStorage* statusbarStorage() const;
+    config::TActionBarOptions* actionBarOptions() const;
     /// The character's outfit presets.
     game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
     /// CIP TGameClientBase's game action router: the game window's controllers
     /// publish into its internal router and its handlers listen to it. Throws
     /// std::logic_error before it exists.
     std::shared_ptr<game::TGameActionRouter> gameActionRouter() const;
-    /// Null until the game window exists.
-    config::TCharacterConfigurationManager* characterConfigurationManager() const { return m_characterConfigurationManager.get(); }
+    /// The current session's; null without one.
+    config::TCharacterConfigurationManager* characterConfigurationManager() const;
     /// The session's minimap; null outside the world.
     minimap::TMinimapManager* minimap() const { return m_minimap.get(); }
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
@@ -318,9 +318,6 @@ private:
         void operator()(TGameWindow* gameWindow) const;
     };
 
-    /// Builds the manager of every character configuration storage: the game client's own
-    /// (sidebars, action bars, statusbar, outfit presets) and the given ones.
-    void createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages);
     /// Logs the session out; without one, shows the start screen when given.
     void requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen);
     /// CIP TGameClientBase: the sound configuration, engine, players and controllers.
@@ -411,11 +408,10 @@ private:
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
-    std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
-    std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
-    std::unique_ptr<config::TActionBarOptions> m_actionBarOptions;
     std::unique_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
-    std::unique_ptr<config::TCharacterConfigurationManager> m_characterConfigurationManager;
+    /// Host shim: the character configuration storages the game window still
+    /// owns; each new session's manager takes them.
+    config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
     std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;

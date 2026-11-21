@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config/characterconfigurationmanager.h"
 #include "game/igamesession.h"
 #include "game/tgamenotify.h"
 
@@ -23,10 +24,39 @@ class TCreatureMovementSpeedCalculator;
 class TCreatureStorage;
 }
 namespace game {
+class TBlessingsProtocolMessageHandler;
+class TCooldownStorage;
+class TEditTextProtocolMessageHandler;
 class TGameActionRouter;
+class TGameEventProtocolMessageHandler;
+class TGameProtocolMessageHandler;
 class TOutfitDialogStorage;
 class TPlayerData;
+class TPlayerGameActionHandler;
+class TPlayerProtocolMessageHandler;
 class TPlayerSkillStats;
+class TPremiumProtocolMessageHandler;
+class TServerModalDialogProtocolMessageHandler;
+class TSpellBookProtocolMessageHandler;
+}
+namespace creatures {
+class TCreaturesGameActionHandler;
+class TUnjustifiedPointsProtocolMessageHandler;
+}
+namespace input {
+class TCrossHairSpellGameActionHandler;
+class TGenericGameActionHandler;
+class TUseWithGameActionHandler;
+}
+namespace news {
+class TNewsProtocolMessageHandler;
+}
+namespace reporting {
+class TBugReportProtocolMessageHandler;
+class TRuleViolationProtocolMessageHandler;
+}
+namespace tutorial {
+class TTutorialProtocolMessageHandler;
 }
 namespace protocol {
 class TProtocolMessageQueue;
@@ -136,6 +166,61 @@ public:
     {
         return m_effectProtocolMessageHandler;
     }
+    const std::shared_ptr<TCooldownStorage>& cooldownStorage() const { return m_cooldownStorage; }
+    /// Loads and saves the character's configuration storages (sidebars,
+    /// action bars, status bar, analysers, ...), which it holds.
+    const std::shared_ptr<config::TCharacterConfigurationManager>& characterConfigurationManager() const
+    {
+        return m_characterConfigurationManager;
+    }
+    const std::shared_ptr<TPlayerProtocolMessageHandler>& playerProtocolMessageHandler() const { return m_playerProtocolMessageHandler; }
+    const std::shared_ptr<TGameProtocolMessageHandler>& gameProtocolMessageHandler() const { return m_gameProtocolMessageHandler; }
+    const std::shared_ptr<TSpellBookProtocolMessageHandler>& spellBookProtocolMessageHandler() const
+    {
+        return m_spellBookProtocolMessageHandler;
+    }
+    const std::shared_ptr<TServerModalDialogProtocolMessageHandler>& serverModalDialogProtocolMessageHandler() const
+    {
+        return m_serverModalDialogProtocolMessageHandler;
+    }
+    const std::shared_ptr<reporting::TRuleViolationProtocolMessageHandler>& ruleViolationProtocolMessageHandler() const
+    {
+        return m_ruleViolationProtocolMessageHandler;
+    }
+    const std::shared_ptr<reporting::TBugReportProtocolMessageHandler>& bugReportProtocolMessageHandler() const
+    {
+        return m_bugReportProtocolMessageHandler;
+    }
+    const std::shared_ptr<TEditTextProtocolMessageHandler>& editTextProtocolMessageHandler() const
+    {
+        return m_editTextProtocolMessageHandler;
+    }
+    const std::shared_ptr<news::TNewsProtocolMessageHandler>& newsProtocolMessageHandler() const { return m_newsProtocolMessageHandler; }
+    const std::shared_ptr<TPremiumProtocolMessageHandler>& premiumProtocolMessageHandler() const
+    {
+        return m_premiumProtocolMessageHandler;
+    }
+    const std::shared_ptr<tutorial::TTutorialProtocolMessageHandler>& tutorialProtocolMessageHandler() const
+    {
+        return m_tutorialProtocolMessageHandler;
+    }
+    const std::shared_ptr<TBlessingsProtocolMessageHandler>& blessingsProtocolMessageHandler() const
+    {
+        return m_blessingsProtocolMessageHandler;
+    }
+    const std::shared_ptr<TGameEventProtocolMessageHandler>& gameEventProtocolMessageHandler() const
+    {
+        return m_gameEventProtocolMessageHandler;
+    }
+    const std::shared_ptr<input::TGenericGameActionHandler>& genericGameActionHandler() const { return m_genericGameActionHandler; }
+
+    /// Host shim until the analysers, quick loot, Cyclopedia map and skill
+    /// wheel storages are the session's: the game client hands in its own
+    /// before initialize(), and the character configuration manager takes them.
+    void setCharacterConfigurationStorages(const config::TCharacterConfigurationManager::TStorages& storages)
+    {
+        m_characterConfigurationStorages = storages;
+    }
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -144,6 +229,8 @@ protected:
     void createProtocolMessageHandlers();
     /// CIP: connects the session's message queue to its handlers' typed slots.
     void connectProtocolMessageHandlers();
+    /// CIP: the game action handlers, on the session's game action router.
+    void createGameActionHandlers();
 
 private:
     void releaseStorages();
@@ -177,6 +264,27 @@ private:
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    std::shared_ptr<TCooldownStorage> m_cooldownStorage;
+    std::shared_ptr<config::TCharacterConfigurationManager> m_characterConfigurationManager;
+    std::shared_ptr<input::TGenericGameActionHandler> m_genericGameActionHandler;
+    std::shared_ptr<creatures::TCreaturesGameActionHandler> m_creaturesGameActionHandler;
+    std::shared_ptr<input::TUseWithGameActionHandler> m_useWithGameActionHandler;
+    std::shared_ptr<input::TCrossHairSpellGameActionHandler> m_crossHairSpellGameActionHandler;
+    std::shared_ptr<TPlayerGameActionHandler> m_playerGameActionHandler;
+    std::shared_ptr<TGameProtocolMessageHandler> m_gameProtocolMessageHandler;
+    std::shared_ptr<TPlayerProtocolMessageHandler> m_playerProtocolMessageHandler;
+    std::shared_ptr<TServerModalDialogProtocolMessageHandler> m_serverModalDialogProtocolMessageHandler;
+    std::shared_ptr<reporting::TRuleViolationProtocolMessageHandler> m_ruleViolationProtocolMessageHandler;
+    std::shared_ptr<reporting::TBugReportProtocolMessageHandler> m_bugReportProtocolMessageHandler;
+    std::shared_ptr<TEditTextProtocolMessageHandler> m_editTextProtocolMessageHandler;
+    std::shared_ptr<creatures::TUnjustifiedPointsProtocolMessageHandler> m_unjustifiedPointsProtocolMessageHandler;
+    std::shared_ptr<news::TNewsProtocolMessageHandler> m_newsProtocolMessageHandler;
+    std::shared_ptr<TPremiumProtocolMessageHandler> m_premiumProtocolMessageHandler;
+    std::shared_ptr<tutorial::TTutorialProtocolMessageHandler> m_tutorialProtocolMessageHandler;
+    std::shared_ptr<TBlessingsProtocolMessageHandler> m_blessingsProtocolMessageHandler;
+    std::shared_ptr<TGameEventProtocolMessageHandler> m_gameEventProtocolMessageHandler;
+    std::shared_ptr<TSpellBookProtocolMessageHandler> m_spellBookProtocolMessageHandler;
+    config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
 };
 
 /// Calls `bind` now and each time the active game session changes, for code

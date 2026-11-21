@@ -277,9 +277,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TCooldownBarController> cooldownBar;
     std::unique_ptr<input::TPlayerMovementGameActionHandler> playerMovementActions;
     std::unique_ptr<input::TClipboardGameActionHandler> clipboardActions;
-    std::unique_ptr<input::TUseWithGameActionHandler> useWithActions;
-    std::unique_ptr<input::TCrossHairSpellGameActionHandler> crossHairSpellActions;
-    std::unique_ptr<input::TGenericGameActionHandler> genericActions;
     std::unique_ptr<input::TGatherAllGameActionHandler> gatherAllActions;
     std::unique_ptr<input::TGatherAllProtocolMessageHandler> gatherAllProtocol;
     std::unique_ptr<trade::TNPCTradeStorage> npcTrade;
@@ -742,9 +739,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.actionBars = std::make_unique<gamewindow::TActionBarManager>(gameWindowItem, mapWindowPane, engine, [chat] { return chat->chatMode(); });
     gamewindow::TActionBarManager* actionBars = g.actionBars.get();
     connect(chat, &gamewindow::TChatController::chatModeChanged, actionBars, &gamewindow::TActionBarManager::onChatModeChanged);
-    actionBars->setActionBarOptions(actionBarOptions());
     {
-        config::TCharacterConfigurationManager::TStorages storages;
+        // Host shim: the session's character configuration manager takes the
+        // storages the game window still owns.
+        config::TCharacterConfigurationManager::TStorages& storages = m_characterConfigurationStorages;
         storages.itemPrice = analysers::TItemPriceStorage::instance();
         storages.questLog = informationDialogs->questLog() ? informationDialogs->questLog()->questLogStorage() : nullptr;
         storages.gainWaste = g.analyserStorages->gainWaste();
@@ -757,20 +755,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
             storages.cyclopediaMap = cyclopedia->mapDialog()->characterConfiguration();
         storages.skillWheel = g.skillWheel->storage();
-        createCharacterConfigurationManager(storages);
-        config::TCharacterConfigurationManager* manager = characterConfigurationManager();
-        connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, actionBars,
-                &gamewindow::TActionBarManager::onCharacterConfigurationLoaded);
-        connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g.analyserStorages.get(),
-                &analysers::TAnalyserStorages::onCharacterConfigurationLoaded);
-        if (gamewindow::TCyclopediaDialogController* cyclopedia = informationDialogs->cyclopedia())
-            connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
-                    &gamewindow::TCyclopediaMapDialogController::showDialogTab);
-        if (gamewindow::TQuestLogController* questLog = informationDialogs->questLog())
-            connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
-                    &gamewindow::TQuestLogController::onCharacterConfigurationLoaded);
+        storages.outfitDialog = outfitDialogStorage();
     }
-    // After the action bars, so TCooldownStorage::instance exists.
     g.cooldownBar = std::make_unique<gamewindow::TCooldownBarController>(gameWindowItem);
     // The bindings and walk keys follow the chat mode.
     connect(chat, &gamewindow::TChatController::chatModeChanged, g.keyboardShortcuts.get(),
@@ -787,12 +773,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(g.playerMovement.get(), &input::TPlayerMovementInputInterpreter::publishGameAction, gameActionRouter()->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
     g.clipboardActions = std::make_unique<input::TClipboardGameActionHandler>();
-    g.genericActions = std::make_unique<input::TGenericGameActionHandler>();
-    input::TGenericGameActionHandler* genericActions = g.genericActions.get();
-    connect(genericActions, &input::TGenericGameActionHandler::publishGameAction,
-            gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
-    connect(gameActionRouter()->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
-            genericActions, &input::TGenericGameActionHandler::handleGameAction);
     game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.playerMovementActions.get(),
             &input::TPlayerMovementGameActionHandler::handleGameAction);
@@ -801,29 +781,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.clipboardActions.get(),
             &input::TClipboardGameActionHandler::handleGameAction);
     connect(g.clipboardActions.get(), &input::TClipboardGameActionHandler::publishGameAction, router,
-            &game::TInternalGameActionRouter::handleGameActionInternal);
-    g.useWithActions = std::make_unique<input::TUseWithGameActionHandler>();
-    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.useWithActions.get(),
-            &input::TUseWithGameActionHandler::handleGameAction);
-    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::publishGameAction, router,
-            &game::TInternalGameActionRouter::handleGameActionInternal);
-    // CIP connects the messages to the session's protocol queue.
-    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::sendUseTwoObjects, this,
-            [](const tibia::protobuf::protocol::GameclientMessageUseTwoObjects& message) {
-                if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
-                    queue && tibia::game::canPerformGameAction())
-                    queue->sendUseTwoObjects(message);
-            });
-    connect(g.useWithActions.get(), &input::TUseWithGameActionHandler::sendUseOnCreature, this,
-            [](const tibia::protobuf::protocol::GameclientMessageUseOnCreature& message) {
-                if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
-                    queue && tibia::game::canPerformGameAction())
-                    queue->sendUseOnCreature(message);
-            });
-    g.crossHairSpellActions = std::make_unique<input::TCrossHairSpellGameActionHandler>();
-    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.crossHairSpellActions.get(),
-            &input::TCrossHairSpellGameActionHandler::handleGameAction);
-    connect(g.crossHairSpellActions.get(), &input::TCrossHairSpellGameActionHandler::publishGameAction, router,
             &game::TInternalGameActionRouter::handleGameActionInternal);
     // The controllers' publishGameAction reach the router.
     const auto publishToRouter = [router](auto* publisher) {
@@ -884,10 +841,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
                 &game::TInternalGameActionRouter::handleGameActionInternal, Qt::UniqueConnection);
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.openWebsiteActions.get(),
             &input::TOpenWebsiteGameActionHandler::handleGameAction);
-    connect(genericActions, &input::TGenericGameActionHandler::sendQuitGame, this,
-            [this] { requestLogoutOrShowStartScreen(nullptr); });
-    connect(genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
-            [this] { openCharacterSelectionForSwitch(); });
     g.gatherAllActions = std::make_unique<input::TGatherAllGameActionHandler>();
     connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.gatherAllActions.get(),
             &input::TGatherAllGameActionHandler::handleGameAction);
@@ -1139,8 +1092,12 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.chat->connectToGameSession(GameSession);
         if (g.sidebarPanels)
             g.sidebarPanels->connectToGameSession(GameSession);
+        if (g.cooldownBar)
+            g.cooldownBar->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
             g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
+        if (g.bugReport)
+            g.bugReport->connectToGameSession(GameSession);
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
         if (g.informationDialogs) {
@@ -1151,11 +1108,29 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             // Host: the Cyclopedia's houses and map pages draw the session's light.
             g.informationDialogs->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
         }
+        if (g.informationDialogs)
+            if (auto* spellBook = g.informationDialogs->findChild<gamewindow::TShowSpellBookDialogController*>())
+                spellBook->connectToGameSession(GameSession);
         if (g.stashDialog)
             g.stashDialog->connectToGameSession(GameSession);
+        if (g.screenshotManager)
+            g.screenshotManager->connectToGameSession(GameSession);
         if (g.informationDialogs)
             if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
                 highscores->connectToGameSession(GameSession);
+        // Host shim until these controllers connect to the session themselves:
+        // they follow the session's character configuration being loaded.
+        if (config::TCharacterConfigurationManager* manager = session ? session->characterConfigurationManager().get() : nullptr) {
+            if (g.analyserStorages)
+                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g.analyserStorages.get(),
+                        &analysers::TAnalyserStorages::onCharacterConfigurationLoaded, Qt::UniqueConnection);
+            if (gamewindow::TCyclopediaDialogController* cyclopedia = g.informationDialogs ? g.informationDialogs->cyclopedia() : nullptr)
+                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, cyclopedia->mapDialog(),
+                        &gamewindow::TCyclopediaMapDialogController::showDialogTab, Qt::UniqueConnection);
+            if (gamewindow::TQuestLogController* questLog = g.informationDialogs ? g.informationDialogs->questLog() : nullptr)
+                connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, questLog,
+                        &gamewindow::TQuestLogController::onCharacterConfigurationLoaded, Qt::UniqueConnection);
+        }
     }
     if (m_soundController)
         m_soundController->connectToGameSession(GameSession);

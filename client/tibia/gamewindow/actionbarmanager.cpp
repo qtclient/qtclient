@@ -63,7 +63,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     , m_engine(engine)
     , m_chatMode(std::move(chatMode))
     , m_displayOptions(config::actionBarsBindings(), this)
-    , m_cooldowns(this)
     , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(
           [this](const input::TGameActionActionButtonTriggered& action) { onActionButtonTriggered(action); }))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
@@ -96,9 +95,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
 
     m_cooldownTimer.setInterval(CooldownTickMs);
     connect(&m_cooldownTimer, &QTimer::timeout, this, &TActionBarManager::refreshCooldowns);
-    connect(&m_cooldowns, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TActionBarManager::refreshCooldowns);
-    connect(&m_cooldowns, &game::TCooldownStorage::multiUseCooldownChanged, this, &TActionBarManager::refreshCooldowns);
-    connect(&m_cooldowns, &game::TCooldownStorage::passiveAbilityCooldownChanged, this, &TActionBarManager::refreshCooldowns);
 
     m_objectsTimer.setSingleShot(true);
     m_objectsTimer.setInterval(0);
@@ -340,8 +336,26 @@ bool TActionBarManager::toggleActionBars(const input::IGameAction& action)
 void tibia::gamewindow::TActionBarManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     disconnect(m_containerUpdated);
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     if (container::TContainerStorage* storage = session ? session->containerStorage().get() : nullptr)
         m_containerUpdated = connect(storage, &container::TContainerStorage::containerUpdated, this,
                                      [this](container::TContainerID, bool) { scheduleObjectRefresh(); });
+    m_cooldownStorage = session ? session->cooldownStorage() : nullptr;
+    if (game::TCooldownStorage* cooldowns = m_cooldownStorage.get()) {
+        m_gameSessionConnections.push_back(
+            connect(cooldowns, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TActionBarManager::refreshCooldowns));
+        m_gameSessionConnections.push_back(
+            connect(cooldowns, &game::TCooldownStorage::multiUseCooldownChanged, this, &TActionBarManager::refreshCooldowns));
+        m_gameSessionConnections.push_back(
+            connect(cooldowns, &game::TCooldownStorage::passiveAbilityCooldownChanged, this, &TActionBarManager::refreshCooldowns));
+    }
+    config::TCharacterConfigurationManager* manager = session ? session->characterConfigurationManager().get() : nullptr;
+    m_actionBarOptions = manager ? manager->actionBarOptions() : nullptr;
+    if (manager)
+        m_gameSessionConnections.push_back(connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                                   &TActionBarManager::onCharacterConfigurationLoaded));
+    refreshCooldowns();
 }
