@@ -6,6 +6,8 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameactionhandlers.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "quickloot/managedcontainerstorage.h"
 #include "quickloot/quicklootciptypes.h"
 
@@ -20,7 +22,6 @@
 #include <set>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
@@ -123,7 +124,6 @@ void TLootContainerQMLInfo::onOpenObtainContainerClicked() { Q_EMIT requestOpenO
 TManageLootContainerDialogController::TManageLootContainerDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), parent)
     , m_lootBlackWhitelist(analysers::TAnalyserStorages::instance() ? analysers::TAnalyserStorages::instance()->lootBlackWhitelist() : nullptr)
-    , m_containers(quickloot::TManagedContainerStorage::instance())
     , m_listModel([](uint16_t, uint8_t) { return 1; }, this)
     , m_listProxy(&m_listModel, this)
 {
@@ -150,17 +150,7 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
 
     if (m_lootBlackWhitelist) {
         m_blackWhiteListType = m_lootBlackWhitelist->listType();
-        connect(m_lootBlackWhitelist, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this, [this] {
-            if (!m_lootBlackWhitelist)
-                return;
-            if (m_blackWhiteListType != m_lootBlackWhitelist->listType()) {
-                m_blackWhiteListType = m_lootBlackWhitelist->listType();
-                Q_EMIT lootBlackWhitelistChanged();
-            }
-            rebuildListItems();
-        });
         analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
-        connect(storages, &analysers::TAnalyserStorages::premiumTimeChanged, this, &TManageLootContainerDialogController::onPremiumTimeChanged);
         connect(storages, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
             if (!m_lootBlackWhitelist)
                 return;
@@ -170,22 +160,6 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
             syncPremium();
         });
     }
-    if (m_containers) {
-        connect(m_containers, &quickloot::TManagedContainerStorage::managedContainersUpdated, this,
-                &TManageLootContainerDialogController::onLootContainersUpdated);
-        connect(m_containers, &quickloot::TManagedContainerStorage::useMainBackpackAsFallbackChanged, this,
-                &TManageLootContainerDialogController::syncFallback);
-        syncFallback();
-    }
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
-        syncPremium();
-        rebuildListItems();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        cancelPick();
-        dialog()->close();
-    });
 
     rebuildListItems();
     syncPremium();
@@ -339,15 +313,54 @@ void TManageLootContainerDialogController::showItemDetails(const int AppearanceT
 
 void TManageLootContainerDialogController::onPremiumTimeChanged() { syncPremium(); }
 
+void TManageLootContainerDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_listModel.reset({});
+    m_gameSession = GameSession;
+    m_containers.reset();
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        m_containers = session->managedContainerStorage();
+        using Self = TManageLootContainerDialogController;
+        m_gameSessionConnections.add(
+            connect(m_containers.get(), &quickloot::TManagedContainerStorage::managedContainersUpdated, this, &Self::onLootContainersUpdated));
+        m_gameSessionConnections.add(
+            connect(m_containers.get(), &quickloot::TManagedContainerStorage::useMainBackpackAsFallbackChanged, this, &Self::syncFallback));
+        // Host: the loot list is still the client's (TAnalyserStorages).
+        if (m_lootBlackWhitelist)
+            m_gameSessionConnections.add(connect(m_lootBlackWhitelist, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput,
+                                                 this, &Self::onLootBlackWhitelisteChanged));
+        rebuildListItems();
+    }
+    onLootContainersUpdated();
+}
+
+void TManageLootContainerDialogController::connectToPremiumTimeStorage(game::TPremiumTimeStorage* storage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TManageLootContainerDialogController::onPremiumTimeChanged);
+    m_premiumTimeStorage = storage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TManageLootContainerDialogController::onPremiumTimeChanged);
+}
+
+void TManageLootContainerDialogController::onLootBlackWhitelisteChanged()
+{
+    if (m_lootBlackWhitelist)
+        m_blackWhiteListType = m_lootBlackWhitelist->listType();
+    rebuildListItems();
+    Q_EMIT lootBlackWhitelistChanged();
+}
+
 void TManageLootContainerDialogController::onLootContainersUpdated()
 {
-    if (!m_containers)
-        return;
     for (QObject* object : m_lootContainers) {
         auto* row = qobject_cast<TLootContainerQMLInfo*>(object);
         if (!row)
             continue;
-        const auto assignment = m_containers->assignment(static_cast<int>(row->category()));
+        const auto assignment =
+            m_containers ? m_containers->assignment(static_cast<int>(row->category())) : quickloot::TManagedContainerStorage::Assignment{};
         row->setLootContainer(assignment.lootContainerId);
         row->setObtainContainer(assignment.obtainContainerId);
     }

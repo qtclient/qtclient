@@ -14,7 +14,6 @@ namespace {
 
 using namespace ::tibia::protobuf::protocol;
 
-TMarketProtocolMessageHandler* s_live = nullptr;
 
 QString toQString(const std::string& text)
 {
@@ -50,32 +49,14 @@ std::vector<TMarketOffer> offersFrom(const google::protobuf::RepeatedPtrField<Pr
 
 }
 
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
 
 TMarketProtocolMessageHandler::TMarketProtocolMessageHandler(TMarketStorage* storage, QObject* parent)
     : cip::tibia::market::TMarketProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-    s_live = this;
 }
 
-TMarketProtocolMessageHandler::~TMarketProtocolMessageHandler()
-{
-    if (s_live == this)
-        s_live = nullptr;
-}
-
-TMarketProtocolMessageHandler* TMarketProtocolMessageHandler::instance()
-{
-    return s_live;
-}
+TMarketProtocolMessageHandler::~TMarketProtocolMessageHandler() = default;
 
 void TMarketProtocolMessageHandler::sendBrowseItem(const uint16_t typeId, const std::optional<uint8_t> tier)
 {

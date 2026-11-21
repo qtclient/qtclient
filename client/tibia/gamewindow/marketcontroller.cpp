@@ -2,6 +2,7 @@
 
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -310,11 +311,9 @@ bool TQmlObjectCategory::isHandWeaponCategory()
     return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier) && m_categoryIdentifier != 0x10;
 }
 
-TMarketController::TMarketController(market::TMarketStorage* storage, market::TMarketProtocolMessageHandler* messages, QObject* parent)
+TMarketController::TMarketController(QObject* parent)
     : TDialogController(QStringLiteral("market.qml"), parent)
-    , m_storage(storage)
-    , m_messages(messages)
-    , m_model([storage](const uint16_t typeId, const uint8_t tier) { return storage ? static_cast<int>(storage->count(typeId, tier)) : 0; })
+    , m_model([this](const uint16_t typeId, const uint8_t tier) { return m_storage ? static_cast<int>(m_storage->count(typeId, tier)) : 0; })
     , m_proxy(&m_model)
     , m_message(new TMessageDialogController(this))
 {
@@ -330,21 +329,6 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
     connect(options, &config::TClientOptions::marketOtpionsChanged, this, &TMarketController::onMarketOptionsChagend);
     connect(&m_proxy, &cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy::showLockerOnlyChanged, this,
             &TMarketController::onShowLockerOnlyChanged);
-    connect(messages, &market::TMarketProtocolMessageHandler::requestOpenMarketDialog, this, &TMarketController::showDialog);
-    connect(messages, &market::TMarketProtocolMessageHandler::requestCloseMarketDialog, this, &TMarketController::closeDialog);
-    connect(messages, &market::TMarketProtocolMessageHandler::requestMarketMessageDialog, this, &TMarketController::showMarketMessage);
-    connect(storage, &market::TMarketStorage::marketItemDetailsChanged, this, &TMarketController::onMarketItemDetailsChanged);
-    connect(storage, &market::TMarketStorage::marketOffersChanged, this, &TMarketController::onMarketOffersChanged);
-    connect(storage, &market::TMarketStorage::marketHistoryChanged, this, &TMarketController::onMarketHistoryChanged);
-    connect(storage, &market::TMarketStorage::marketOwnOffersChanged, this, &TMarketController::onMarketOwnOffersChanged);
-    connect(storage, &market::TMarketStorage::activeOfferCountChanged, this, &TMarketController::onActiveOfferCountChanged);
-    connect(storage, &market::TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged);
-    connect(storage, &market::TMarketStorage::classificationsChanged, this, [this] {
-        if (dialog()->item())
-            rebuildEntries();
-        Q_EMIT availableClassificationsChanged();
-        Q_EMIT availableTiersChanged();
-    });
 
     // CIP : browse the object's type, with its tier when it has one.
     m_gameActions.on(input::EGameAction::MARKET_BROWSE, [this](const input::gameactions::TGameActionMarketBrowse& browse) {
@@ -375,6 +359,52 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
         m_messages->sendBrowseItem(typeId, browsed && browsed->getClassification() > 0 ? std::optional<uint8_t>(tier) : std::nullopt);
         return true;
     });
+}
+
+void TMarketController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    destroyDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_storage = nullptr;
+    m_messages = nullptr;
+    m_proxy.resetEntries({});
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    using Self = TMarketController;
+    using market::TMarketStorage;
+    using market::TMarketProtocolMessageHandler;
+    m_storage = session->marketStorage().get();
+    TMarketStorage* storage = m_storage;
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketItemDetailsChanged, this, &Self::onMarketItemDetailsChanged));
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketOffersChanged, this, &Self::onMarketOffersChanged));
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketHistoryChanged, this, &Self::onMarketHistoryChanged));
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketOwnOffersChanged, this, &Self::onMarketOwnOffersChanged));
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::activeOfferCountChanged, this, &Self::onActiveOfferCountChanged));
+    // Host: the depot counts and the forge's classifications reach the list.
+    m_gameSessionConnections.add(
+        connect(storage, &TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged));
+    m_gameSessionConnections.add(connect(storage, &TMarketStorage::classificationsChanged, this, [this] {
+        if (dialog()->item())
+            rebuildEntries();
+        Q_EMIT availableClassificationsChanged();
+        Q_EMIT availableTiersChanged();
+    }));
+    m_messages = session->marketProtocolMessageHandler().get();
+    TMarketProtocolMessageHandler* messages = m_messages;
+    m_gameSessionConnections.add(connect(messages, &TMarketProtocolMessageHandler::requestOpenMarketDialog, this, &Self::showDialog));
+    m_gameSessionConnections.add(connect(messages, &TMarketProtocolMessageHandler::requestCloseMarketDialog, this, &Self::destroyDialog));
+    m_gameSessionConnections.add(
+        connect(messages, &TMarketProtocolMessageHandler::requestMarketMessageDialog, this, &Self::showMarketMessage));
+    rebuildEntries();
+    m_enableTierAndClassificationSelection = false;
+    Q_EMIT enableTierAndClassificationSelectionChanged();
+    Q_EMIT availableClassificationsChanged();
+    Q_EMIT availableTiersChanged();
+    Q_EMIT enableTierAndClassificationSelectionChanged();
+    Q_EMIT availableTiersChanged();
+    Q_EMIT availableClassificationsChanged();
 }
 
 TMarketController::~TMarketController()

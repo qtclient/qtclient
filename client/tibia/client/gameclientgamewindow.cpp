@@ -114,7 +114,6 @@
 #include "proficiency/weaponproficiencydialogcontroller.h"
 #include "proficiency/weaponproficiencyshapedialogs.h"
 #include "qmlcomponents/soundhelper.h"
-#include "quickloot/managedcontainerstorage.h"
 #include "screenshot/screenshotciptypes.h"
 #include "skillwheel/skillwheelmanager.h"
 #include "store/dynamicallyloadedimage.h"
@@ -221,11 +220,8 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TStoreAndResourceBalanceHelperController> storeBalance;
     std::unique_ptr<gamewindow::TStoreDialogController> storeDialog;
     std::unique_ptr<gamewindow::TStoreButtonController> storeButton;
-    std::unique_ptr<market::TMarketStorage> marketStorage;
-    std::unique_ptr<market::TMarketProtocolMessageHandler> marketMessages;
     std::unique_ptr<gamewindow::TMarketController> marketController;
     std::unique_ptr<gamewindow::TStashDialogController> stashDialog;
-    std::unique_ptr<quickloot::TManagedContainerStorage> managedContainers;
     std::unique_ptr<gamewindow::TManageLootContainerDialogController> manageLootDialog;
     std::unique_ptr<imbuing::TImbuingStorage> imbuingStorage;
     std::unique_ptr<gamewindow::TImbuingDialogController> imbuingDialog;
@@ -280,8 +276,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<input::TUseWithGameActionHandler> useWithActions;
     std::unique_ptr<input::TCrossHairSpellGameActionHandler> crossHairSpellActions;
     std::unique_ptr<input::TGenericGameActionHandler> genericActions;
-    std::unique_ptr<input::TGatherAllGameActionHandler> gatherAllActions;
-    std::unique_ptr<input::TGatherAllProtocolMessageHandler> gatherAllProtocol;
     std::unique_ptr<trade::TNPCTradeStorage> npcTrade;
     std::unique_ptr<trade::TNPCTradeProtocolMessageHandler> npcTradeMessages;
     std::unique_ptr<gamewindow::TNpcDialogController> npcDialog;
@@ -546,14 +540,10 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>(g.storeStorage.get(), g.storeMessages.get());
     gamewindow::TStoreDialogController* storeDialog = g.storeDialog.get();
     g.storeButton = std::make_unique<gamewindow::TStoreButtonController>(storeDialog);
-    g.marketStorage = std::make_unique<market::TMarketStorage>();
-    g.marketMessages = std::make_unique<market::TMarketProtocolMessageHandler>(g.marketStorage.get());
-    g.storeMessages->setMarketStorage(g.marketStorage.get());
-    g.marketController = std::make_unique<gamewindow::TMarketController>(g.marketStorage.get(), g.marketMessages.get());
+    g.marketController = std::make_unique<gamewindow::TMarketController>();
     g.stashDialog = std::make_unique<gamewindow::TStashDialogController>();
     connect(g.marketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
-    g.managedContainers = std::make_unique<quickloot::TManagedContainerStorage>();
     g.manageLootDialog = std::make_unique<gamewindow::TManageLootContainerDialogController>();
     connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
@@ -756,6 +746,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         storages.skillWheel = g.skillWheel->storage();
         createCharacterConfigurationManager(storages);
         config::TCharacterConfigurationManager* manager = characterConfigurationManager();
+        g.containers->setCharacterConfigurationManager(manager);
         connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, actionBars,
                 &gamewindow::TActionBarManager::onCharacterConfigurationLoaded);
         connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, g.analyserStorages.get(),
@@ -885,10 +876,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             [this] { requestLogoutOrShowStartScreen(nullptr); });
     connect(genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
             [this] { openCharacterSelectionForSwitch(); });
-    g.gatherAllActions = std::make_unique<input::TGatherAllGameActionHandler>();
-    connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, g.gatherAllActions.get(),
-            &input::TGatherAllGameActionHandler::handleGameAction);
-    g.gatherAllProtocol = std::make_unique<input::TGatherAllProtocolMessageHandler>();
     g.eventFilterManager->enableDiscardingUnhandledMouseButtons();
 
     g.npcTrade = std::make_unique<trade::TNPCTradeStorage>();
@@ -1119,14 +1106,29 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
             g.fpsLatency->setRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
         if (g.containers)
             g.containers->connectToGameSession(GameSession);
+        if (g.splitStackDialog)
+            g.splitStackDialog->connectToGameSession(GameSession);
         if (g.chat)
             g.chat->connectToGameSession(GameSession);
+        if (g.marketController)
+            g.marketController->connectToGameSession(GameSession);
+        // Host: the store's handler is still the client's; the coins it learns
+        // go to the session's market.
+        if (g.storeMessages)
+            g.storeMessages->setMarketStorage(session ? session->marketStorage().get() : nullptr);
+        // Host: the depot search widget follows the session's container handler.
+        if (g.depotSearchWidget)
+            g.depotSearchWidget->connectToGameSession(GameSession);
         if (g.sidebarPanels)
             g.sidebarPanels->connectToGameSession(GameSession);
         if (g.gameSessionDisconnectReaction)
             g.gameSessionDisconnectReaction->connectToGameSession(GameSession);
         if (g.actionBars)
             g.actionBars->connectToGameSession(GameSession);
+        if (g.manageLootDialog) {
+            g.manageLootDialog->connectToGameSession(GameSession);
+            g.manageLootDialog->connectToPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+        }
         if (g.informationDialogs) {
             if (gamewindow::TCyclopediaDialogController* cyclopedia = g.informationDialogs->cyclopedia()) {
                 cyclopedia->connectToGameSession(GameSession);

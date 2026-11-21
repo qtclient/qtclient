@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "input/gameactiondispatch.h"
+#include "qtconnectionmanager.h"
 #include <cip_gen.h>
 
 #include <client/declarations.h>
@@ -23,7 +24,11 @@ class IGameSession;
 
 namespace tibia {
 namespace config {
+class TCharacterConfigurationManager;
 class TSidebarOptions;
+}
+namespace container {
+class TContainerStorage;
 }
 }
 
@@ -53,7 +58,12 @@ public:
     void setControlScheme(int controlScheme);
     void setLootScheme(int lootScheme);
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// CIP connector: follows the session's container storage.
+    /// Host: the client's character configuration manager, whose loaded
+    /// configuration updates the widgets (CIP reaches it through the session).
+    void setCharacterConfigurationManager(config::TCharacterConfigurationManager* manager) { m_characterConfigurationManager = manager; }
+    /// CIP connector: drops the previous session's container widgets and
+    /// follows the session's ramp-up, its container storage and the options
+    /// the widgets show.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// A place waiting for its container: the sidebar, the index in its
@@ -82,6 +92,10 @@ public:
 
 public Q_SLOTS:
     void onLoginRampUpFinished() override;
+    /// CIP: the options changed; every container widget updates.
+    void onOptionsChanged();
+    /// CIP: the manual sort mode changed; every container widget shows it.
+    void onManualSortModeChanged();
 
 Q_SIGNALS:
     /// Fired when a container widget is added or removed (product floats them in fullscreen).
@@ -95,6 +109,10 @@ private:
     void addQueuedWidgets();
     void clear();
 
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<container::TContainerStorage> m_containerStorage;
+    QPointer<config::TCharacterConfigurationManager> m_characterConfigurationManager;
     TSidebarManager* m_sidebars;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;

@@ -192,9 +192,6 @@ class TContainerProtocolMessageHandler final : public cip::tibia::container::TCo
 public:
     explicit TContainerProtocolMessageHandler(QObject* parent = nullptr);
 
-    static TContainerProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TContainerProtocolMessageHandler* handler);
-
     /// CIP slot: CloseContainer (S 0x6F / 111) — native Q→H apply.
     void handleCloseContainerMessage(
         const ::tibia::protobuf::protocol::GameserverMessageCloseContainer& CloseContainerMessage);

@@ -15,7 +15,6 @@
 #include "skillwheel/skillwheelciptypes.h"
 #include "screenshot/screenshotciptypes.h"
 #include "reporting/reportingciptypes.h"
-#include "quickloot/quicklootciptypes.h"
 #include "questlog/questlogciptypes.h"
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
@@ -24,7 +23,6 @@
 
 #include <algorithm>
 #include "network/networkciptypes.h"
-#include "market/marketciptypes.h"
 #include "imbuing/imbuingciptypes.h"
 #include "highscores/highscoresciptypes.h"
 #include "gameWidnow/gameWidnowciptypes.h"
@@ -367,14 +365,12 @@ TGameClient::TGameClient(QObject* parent)
     gameWidnow::ownProductSurface(this);
     highscores::ownProductSurface(this);
     imbuing::ownProductSurface(this);
-    market::ownProductSurface(this);
     network::ownProductSurface(this);
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
     protocol::ownProductSurface(this);
     tutorial::ownProductSurface(this);
     questlog::ownProductSurface(this);
-    quickloot::ownProductSurface(this);
     reporting::ownProductSurface(this);
     screenshot::ownProductSurface(this);
     skillwheel::ownProductSurface(this);
@@ -396,11 +392,7 @@ TGameClient::TGameClient(QObject* parent)
         };
         publishToRouter(creatures::TVipStorage::instance());
         publishChildrenToRouter(static_cast<game::TPlayerProtocolMessageHandler*>(nullptr));
-        publishChildrenToRouter(static_cast<quickloot::TQuickLootGameActionHandler*>(nullptr));
         // Their game actions.
-        for (auto* handler : findChildren<quickloot::TQuickLootGameActionHandler*>(QString(), Qt::FindDirectChildrenOnly))
-            connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
-                    qOverload<const input::IGameActionPtr&>(&quickloot::TQuickLootGameActionHandler::handleGameAction));
         for (auto* handler : creatures::TVipStorage::instance()->findChildren<creatures::TVipGameActionHandler*>())
             connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
                     qOverload<const input::IGameActionPtr&>(&creatures::TVipGameActionHandler::handleGameAction));

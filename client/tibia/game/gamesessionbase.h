@@ -12,12 +12,26 @@ class TGameMessageHandler;
 class TTextStorage;
 }
 namespace container {
+class TContainerProtocolMessageHandler;
 class TContainerStorage;
 class TInventoryContainer;
 class TDepotSearchDetailListStorage;
 class TObjectAppearanceInstanceInfoStorage;
 class TObjectCountStorage;
 class TStashStorage;
+}
+namespace input {
+class TGatherAllGameActionHandler;
+class TGatherAllProtocolMessageHandler;
+}
+namespace market {
+class TMarketProtocolMessageHandler;
+class TMarketStorage;
+}
+namespace quickloot {
+class TManagedContainerStorage;
+class TManagedContainersProtocolMessageHandler;
+class TQuickLootGameActionHandler;
 }
 namespace creatures {
 class TCreatureMovementSpeedCalculator;
@@ -130,6 +144,22 @@ public:
     {
         return m_objectAppearanceInstanceInfoStorage;
     }
+    /// The market's depot counts, offers and item details.
+    const std::shared_ptr<market::TMarketStorage>& marketStorage() const { return m_marketStorage; }
+    /// The quick-loot container assignments.
+    const std::shared_ptr<quickloot::TManagedContainerStorage>& managedContainerStorage() const { return m_managedContainerStorage; }
+    const std::shared_ptr<container::TContainerProtocolMessageHandler>& containerProtocolMessageHandler() const
+    {
+        return m_containerProtocolMessageHandler;
+    }
+    const std::shared_ptr<market::TMarketProtocolMessageHandler>& marketProtocolMessageHandler() const
+    {
+        return m_marketProtocolMessageHandler;
+    }
+    const std::shared_ptr<quickloot::TManagedContainersProtocolMessageHandler>& managedContainersProtocolMessageHandler() const
+    {
+        return m_managedContainersProtocolMessageHandler;
+    }
     const std::shared_ptr<sound::TSoundStorage>& soundStorage() const { return m_soundStorage; }
     const std::shared_ptr<sound::TGameSessionSoundProvider>& gameSessionSoundProvider() const
     {
@@ -206,6 +236,14 @@ private:
     std::shared_ptr<container::TObjectCountStorage> m_objectCountStorage;
     std::shared_ptr<container::TDepotSearchDetailListStorage> m_depotSearchDetailListStorage;
     std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> m_objectAppearanceInstanceInfoStorage;
+    std::shared_ptr<market::TMarketStorage> m_marketStorage;
+    std::shared_ptr<quickloot::TManagedContainerStorage> m_managedContainerStorage;
+    std::shared_ptr<container::TContainerProtocolMessageHandler> m_containerProtocolMessageHandler;
+    std::shared_ptr<market::TMarketProtocolMessageHandler> m_marketProtocolMessageHandler;
+    std::shared_ptr<quickloot::TManagedContainersProtocolMessageHandler> m_managedContainersProtocolMessageHandler;
+    std::shared_ptr<input::TGatherAllProtocolMessageHandler> m_gatherAllProtocolMessageHandler;
+    std::shared_ptr<quickloot::TQuickLootGameActionHandler> m_quickLootGameActionHandler;
+    std::shared_ptr<input::TGatherAllGameActionHandler> m_gatherAllGameActionHandler;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;

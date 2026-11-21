@@ -35,7 +35,10 @@ class TContainerController final : public TSidebarWidgetController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    TContainerController(int containerId, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// `messages` is the session's container protocol handler the widget's
+    /// requests go to.
+    TContainerController(int containerId, container::TContainerProtocolMessageHandler* messages, QQuickItem* gameWindowItem,
+                         QQmlEngine* engine, QObject* parent = nullptr);
     ~TContainerController() override;
 
     int containerId() const { return m_containerId; }
@@ -47,6 +50,8 @@ public:
     /// CIP : the container's state from TContainerStorage; the scroll
     /// view resets when it shows another container (replace-open).
     void update(bool resetScrollView);
+    /// The live filter and manual sort properties.
+    void refreshViewOptions();
 
     /// CIP moc property getters (live members filled by update / setIcon).
     QVariant appearanceTypeListModel() const override;
@@ -128,8 +133,6 @@ private:
     void readExpireOptions();
     /// Manual sort mode is on and this container can be sorted.
     bool manualSortModeActive() const;
-    /// The live filter and manual sort properties.
-    void refreshViewOptions();
     /// Asks the server to sort the content (confirms a recursive sort first).
     void sortContainer(int sortType);
     /// Asks the server to move the content to the managed containers
@@ -141,6 +144,7 @@ private:
     void setIcon(const container::TInventorySlot& slot);
 
     int m_containerId;
+    QPointer<container::TContainerProtocolMessageHandler> m_messages;
     TAppearanceInstanceListModel m_model;
     input::TGameActionMapper m_mapper;
     QPointer<config::TSidebarOptions> m_options;

@@ -1752,16 +1752,23 @@ game::TGameSessionBase::v33	7899fca3d46201ff	ported	game/gamesessionbase.h:TGame
 game::TGameSessionBase::v40	df3836b85f1025ce	ported	game/gamesessionbase.h:TGameSessionBase::playerSkillStats
 game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGameSessionBase::creatureMovementSpeedCalculator
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
+game::TGameSessionBase::v44	c525baa43835ff20	ported	game/gamesessionbase.h:TGameSessionBase::stashStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
 game::TGameSessionBase::v46	1596e60ccbfcf871	ported	game/gamesessionbase.h:TGameSessionBase::depotSearchDetailListStorage
 game::TGameSessionBase::v50	bee5eb4f7921e05d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapGameActionProvider
+game::TGameSessionBase::v52	ee9175bf9f1c3705	ported	game/gamesessionbase.h:TGameSessionBase::containerProtocolMessageHandler
+game::TGameSessionBase::v54	648a2e7b5489d4f3	ported	game/gamesessionbase.h:TGameSessionBase::marketStorage
+game::TGameSessionBase::v55	dda9bd72e2a087f0	ported	game/gamesessionbase.h:TGameSessionBase::marketProtocolMessageHandler
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
 game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::v105	e439d9922541aa1f	ported	game/gameservergamesession.cpp:TGameserverGameSession::clockService
+game::TGameserverGameSession::v106	e7b8722c53d1b756	ported	game/gamesessionbase.h:TGameSessionBase::managedContainerStorage
+game::TGameserverGameSession::v107	b0a0e9c27a34c51a	ported	game/gamesessionbase.h:TGameSessionBase::managedContainersProtocolMessageHandler
 game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
+game::TGameserverGameSession::v94	48782a4fe5d37463	ported	game/gamesessionbase.h:TGameSessionBase::objectAppearanceInstanceInfoStorage
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSessionMetaInfo::v0	8ed40c591c5325d3	skip	generated: compiler-generated destructor pair (member teardown)
@@ -2426,6 +2433,8 @@ gamewindow::TContainerController::v37	4d5def0d20be6381	ported	gamewindow/contain
 gamewindow::TContainerController::v38	1fdb103969af56ad	ported	gamewindow/containercontroller.cpp:TContainerController::onWidgetOptionsChanged
 gamewindow::TContainerController::~TContainerController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TContainerController::~TContainerController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+gamewindow::TContainerStorageController::onManualSortModeChanged	c0b90a38d157f679	ported	gamewindow/containerstoragecontroller.cpp:TContainerStorageController::onManualSortModeChanged
+gamewindow::TContainerStorageController::onOptionsChanged	9fbea96499059134	ported	gamewindow/containerstoragecontroller.cpp:TContainerStorageController::onOptionsChanged
 gamewindow::TContainerStorageController::~TContainerStorageController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TContainerStorageController::~TContainerStorageController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TContextMenuController::handleGameAction	1fa5c09d9618d7d1	ported	gamewindow/contextmenucontroller.h:TContextMenuController::setEnabled
@@ -3059,6 +3068,7 @@ gamewindow::TManageLootContainerDialogController::closeButtonClicked	21e4e90e3f1
 gamewindow::TManageLootContainerDialogController::getPremiumClicked	c161f29540504184	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::getPremiumClicked
 gamewindow::TManageLootContainerDialogController::handleGameAction	b497879c0a2d615d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::handleGameAction
 gamewindow::TManageLootContainerDialogController::onClearItemBlackWhitelistConfirmed	4665ca8995e3164a	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onClearItemBlackWhitelistConfirmed
+gamewindow::TManageLootContainerDialogController::onLootBlackWhitelisteChanged	347fafb20e09cef9	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onLootBlackWhitelisteChanged
 gamewindow::TManageLootContainerDialogController::onLootContainersUpdated	e01d1a93d39b9538	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onLootContainersUpdated
 gamewindow::TManageLootContainerDialogController::onRequestClearLootContainer	c9b9ce7c19a7958d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
 gamewindow::TManageLootContainerDialogController::onRequestClearObtainContainer	4cd83a4fd7931c06	ported	gamewindow/managelootcontainerdialogcontroller.cpp:containerAction
@@ -3553,6 +3563,7 @@ gamewindow::TRewardWallDialogController::~TRewardWallDialogController	097457dc45
 gamewindow::TRewardWallDialogController::~TRewardWallDialogController_deleting	79674512666b34e2	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::~TRewardWallDialogController
 gamewindow::TSelectObjectAmountDialogController::handleGameAction	5d28aa2a613e6474	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::handleStash
 gamewindow::TSelectObjectAmountDialogController::okButtonClicked	1ff30edf48645030	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::okButtonClicked
+gamewindow::TSelectObjectAmountDialogController::onStashNoLongerAvailable	c473cd3d3e71c0b5	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::onStashNoLongerAvailable
 gamewindow::TSelectObjectAmountDialogController::setCurrentAmount	69784c2e78409005	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::setCurrentAmount
 gamewindow::TSelectObjectAmountDialogController::v14	ea00d18cfdc6a90c	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::finish
 gamewindow::TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController	c3acb35dca5ad564	skip	generated: compiler-generated destructor pair
@@ -5530,7 +5541,7 @@ quickloot::TManagedContainerStorage::v14	ce5c475a5dc8be57	ported	quickloot/manag
 quickloot::TManagedContainerStorage::v15	11cbc82f1ebca5f6	ported	quickloot/managedcontainerstorage.h:TManagedContainerStorage::useMainBackpackAsFallback
 quickloot::TManagedContainerStorage::~TManagedContainerStorage	191033395676e4c3	skip	generated: compiler-generated destructor pair
 quickloot::TManagedContainerStorage::~TManagedContainerStorage_deleting	0a8cd9d469a18ea2	skip	generated: compiler-generated destructor pair
-quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage	20fbb4694ee5e7b8	ported	quickloot/quicklootciptypes.cpp:handleUpdateManagedContainersMessage
+quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage	20fbb4694ee5e7b8	ported	quickloot/quicklootciptypes.cpp:TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage
 quickloot::TManagedContainersProtocolMessageHandler::v12	092c8197c38ad666	ported	quickloot/quicklootciptypes.cpp:TManagedContainersProtocolMessageHandler::quickLoot
 quickloot::TManagedContainersProtocolMessageHandler::v13	7861f0dc4ecd8950	ported	quickloot/quicklootciptypes.cpp:TManagedContainersProtocolMessageHandler::quickLootAreaAtPlayer
 quickloot::TManagedContainersProtocolMessageHandler::v14	ed10814801ed0ed4	ported	quickloot/quicklootciptypes.cpp:TManagedContainersProtocolMessageHandler::sendManagedContainer
@@ -7325,6 +7336,7 @@ sub_0613a1653dbc#2	0613a1653dbc5318	skip	generated: moc property getters (parame
 sub_0613a1653dbc#3	0613a1653dbc5318	skip	generated: moc property getter, provided by the generated cip base
 sub_0613a1653dbc#4	0613a1653dbc5318	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::activityList
 sub_0614d1f4fe76	0614d1f4fe76305a	skip	generated: implicit struct destructor (map and QString members)
+sub_061c8eff7185	061c8eff71850fab	ported	gamewindow/marketcontroller.cpp:TMarketController::connectToGameSession
 sub_061ee3464a55	061ee3464a5544f8	skip	generated: compiler-generated destructor of a value struct (vectors, shared_ptr)
 sub_0623c08fc50a	0623c08fc50a1ce3	ported	cyclopedia/combatstatsqmldata.cpp:TMiscStatsQmlData::currentBlessings
 sub_062c80567369	062c805673690d77	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::TDepotSearchWidgetController
@@ -15981,6 +15993,7 @@ sub_8a37ee32ec10#4	8a37ee32ec10ed3d	skip	library: SFML/miniaudio library interna
 sub_8a37ee32ec10#5	8a37ee32ec10ed3d	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_8a37ee32ec10#6	8a37ee32ec10ed3d	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_8a48f80eefc1	8a48f80eefc1949d	ported	chat/textstorage.cpp:highlightKeywords
+sub_8a4baebf6b62	8a4baebf6b620193	ported	gamewindow/containerstoragecontroller.cpp:TContainerStorageController::connectToGameSession
 sub_8a5035bbf41a	8a5035bbf41abe60	ported	config/optionspages.cpp:THotkeysOptionsPage::resetToDefault
 sub_8a57a9f7490a	8a57a9f7490aacea	skip	library: Abseil runtime internals (statically linked library range)
 sub_8a685bb5da3d	8a685bb5da3d4220	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::applySpellModifications
@@ -16260,7 +16273,7 @@ sub_8d5c1a9ba2e2	8d5c1a9ba2e2bae5	skip	library: libc++ std::vector<T> assign/ope
 sub_8d5e136b4322	8d5e136b43224ea5	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::reset	test=tests/client/sharednet_test.cpp
 sub_8d7a8e36e8e0	8d7a8e36e8e0c274	inlined	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::onPresetNameEntered
 sub_8d80c76f3a94	8d80c76f3a948e25	skip	library: miniaudio library
-sub_8d824b8f99d9	8d824b8f99d92b41	inlined	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::installHandlers
+sub_8d824b8f99d9	8d824b8f99d92b41	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::connectToPremiumTimeStorage
 sub_8da0fa16ad97	8da0fa16ad975c38	skip	library: libc++ std::map/std::deque/std::vector/shared_ptr instantiations of the effect storage
 sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 sub_8db954679786	8db954679786c36a	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
@@ -17505,6 +17518,7 @@ sub_a4d0da615306	a4d0da615306c7ac	skip	library: libc++abi Itanium demangler (__c
 sub_a4d1aa143e60	a4d1aa143e605f08	inlined	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::showContextMenuForCharacterTitleID
 sub_a4d760741cfd	a4d760741cfd2a2b	skip	data: static initializer of a translation unit's file-scope constants (vocation names, folder names, filter keys, version string) registered with __cxa_atexit; no callers
 sub_a4e1e48d67a8	a4e1e48d67a8743a	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
+sub_a4e1ff8cc4ef	a4e1ff8cc4efaea9	ported	gamewindow/selectobjectamountdialogcontroller.cpp:TSelectObjectAmountDialogController::connectToGameSession
 sub_a4edcef63462	a4edcef6346256a6	skip	library: libc++ std::vector<{QString,qint64}>::assign instantiation; the static-initialiser tail is a decompiler fall-through after the noreturn length_error
 sub_a4f309058732	a4f3090587329aa6	skip	library: std::variant visitation / map<QString> insert / QMap detach / protobuf RepeatedField / absl btree internals
 sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTranslator::v195
@@ -17697,6 +17711,7 @@ sub_a7158262e0b7	a7158262e0b7cec8	ported	gamewindow/magicalarchivedialogcontroll
 sub_a71db33ed3ae	a71db33ed3ae0fb0	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_a7245aa95c71#2	a7245aa95c71e808	inlined	protocol::TProtobufServerMessageTranslator::v136
 sub_a725fe60453e	a725fe60453e5c59	inlined	worldmap/worldmapgameactionprovider.cpp:TWorldMapGameActionProvider::actionsAt
+sub_a73471b61039	a73471b6103932d5	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::connectToGameSession
 sub_a7440bd52bec	a7440bd52bec186a	ported	sound/activesoundplayer.cpp:TActiveSoundPlayer::updateVolume
 sub_a7440bd52bec#2	a7440bd52bec186a	ported	sound/activesoundplayer.cpp:TActiveSoundPlayer::updateDistanceModifier
 sub_a74593825f3b	a74593825f3befc5	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
@@ -21632,7 +21647,7 @@ sub_e8ae339233d1#2	e8ae339233d10cde	skip	library: QMap/QList template instantiat
 sub_e8c30171827e	e8c30171827eac31	skip	data: translation-unit static initializer (constant QStrings, JSON keys, vocation names, time zone, read)
 sub_e8c75365f757	e8c75365f7575af5	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_e8d4d9bfc857	e8d4d9bfc857a648	inlined	gamewindow/marketcontroller.cpp:TMarketController::displayOffers
-sub_e8d64169f895	e8d64169f895a467	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::installHandlers
+sub_e8d64169f895	e8d64169f895a467	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::connectToGameSession
 sub_e8d70c9b09a9	e8d70c9b09a98670	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::TDepotSearchWidgetController
 sub_e8d85596ce88	e8d85596ce887521	ported	cyclopedia/cyclopediamapcharacterconfigurationstorage.cpp:TCyclopediaMapCharacterConfigurationStorage::setSurfaceView
 sub_e8e27b51e4e7	e8e27b51e4e7fbcd	ported	chat/chatchannel.cpp:consoleColor

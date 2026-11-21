@@ -25,10 +25,6 @@ class ProtocolMarketOffer;
 }
 namespace market {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
-
 class TMarketGameActionHandler final : public cip::tibia::market::TMarketGameActionHandler
 {
     Q_OBJECT
@@ -44,9 +40,6 @@ class TMarketProtocolMessageHandler final : public cip::tibia::market::TMarketPr
 public:
     explicit TMarketProtocolMessageHandler(TMarketStorage* storage, QObject* parent = nullptr);
     ~TMarketProtocolMessageHandler() override;
-
-    /// The live handler (the session owns one).
-    static TMarketProtocolMessageHandler* instance();
 
     /// CIP: browses the type's offers (with its tier when it has one).
     void sendBrowseItem(uint16_t typeId, std::optional<uint8_t> tier);
