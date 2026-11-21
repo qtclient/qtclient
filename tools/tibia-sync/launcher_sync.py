@@ -214,7 +214,8 @@ def markers(strings: list[str]) -> list[str]:
 def image_refs(hints: list) -> list[str]:
     names: set[str] = set()
     for hint in hints:
-        for src in re.findall(r'src="([^"]+)"', hint.get("richText", "")):
+        # CIP richText mixes src="…" and src='…'.
+        for src in re.findall(r"""src=['"]([^'"]+)['"]""", hint.get("richText", "")):
             names.add(src.rstrip("/").split("/")[-1])
     return sorted(names)
 

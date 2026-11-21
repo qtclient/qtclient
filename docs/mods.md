@@ -47,10 +47,12 @@ transitions):
 
 `{assetBase}/images/launcher/BackgroundImage.jpg`
 
-Resolution: pack `mods/<id>/images/launcher/` (local F5) → tip CDN file → RCC
-(`qrc:/images/title.jpg` / `:/images/launcher/…`). Product rebrand = replace
-the tip file; stock / unchanged tip keeps CipSoft art. Do not put UI chrome
-(`/images/background.png`, skin buttons) on the CDN — splash/marketing only.
+Resolution: pack `mods/<id>/images/launcher/` (local F5) → tip CDN
+(`{assetBase}/images/launcher/…`, local tip is `:9080` — not portal `/cdn`) →
+RCC (`qrc:/images/title.jpg` / `:/images/launcher/…`). Product rebrand =
+replace the tip file; stock / unchanged tip keeps CipSoft art. Do not put UI
+chrome (`/images/background.png`, skin buttons) on the CDN — splash/marketing
+only.
 
 ## Pack format (desktop + WASM — same tree)
 

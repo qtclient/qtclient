@@ -171,7 +171,11 @@ template <class T>
 void TDialogStackController::showDialogOfType()
 {
     for (TDialog* dialog : m_dialogs) {
-        if (dialog && dialog->controller() && typeid(*dialog->controller()) == typeid(T)) {
+        if (!dialog)
+            continue;
+        // Cache before typeid: polymorphic typeid evaluates its operand.
+        TDialog::Controller* const controller = dialog->controller();
+        if (controller && typeid(*controller) == typeid(T)) {
             show(dialog);
             return;
         }

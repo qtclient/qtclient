@@ -107,7 +107,10 @@ QString hintHtml(const Hint& hint, const QString& cdnBase)
     while (base.endsWith(u'/'))
         base.chop(1);
     QString html = hint.richText;
+    // CIP richText uses both quote styles on <img src=…>; rewrite both so Qt
+    // does not resolve a bare /images/… path as file:///images/….
     html.replace(QStringLiteral("\"/images/"), QStringLiteral("\"") + base + QStringLiteral("/images/"));
+    html.replace(QStringLiteral("'/images/"), QStringLiteral("'") + base + QStringLiteral("/images/"));
     html.replace(QStringLiteral("https://static.tibia.com"), base);
     html.replace(QStringLiteral("http://static.tibia.com"), base);
     return html;

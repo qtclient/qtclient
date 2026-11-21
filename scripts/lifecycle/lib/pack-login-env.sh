@@ -6,5 +6,7 @@
 # Optional tip/CDN helpers for local tooling only (not login paths):
 # shellcheck shell=bash
 export QTCLIENT_PORTAL_URL="${QTCLIENT_PORTAL_URL:-http://127.0.0.1:5173}"
-export QTCLIENT_CDN_URL="${QTCLIENT_CDN_URL:-$QTCLIENT_PORTAL_URL/cdn}"
+# Tip host is local nginx (:9080), not a portal /cdn proxy (removed — see
+# check-play-release-invariants.sh).
+export QTCLIENT_CDN_URL="${QTCLIENT_CDN_URL:-http://127.0.0.1:9080}"
 export QTCLIENT_ASSET_BASE="${QTCLIENT_ASSET_BASE:-$QTCLIENT_CDN_URL}"

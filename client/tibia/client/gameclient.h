@@ -300,7 +300,7 @@ Q_SIGNALS:
 public Q_SLOTS:
     /// CIP: takes the next meta info off the queue, builds its game session,
     /// makes it the current session and starts it.
-    void autoconnectNextGameSessionInQueue();
+    void autoconnectNextGameSessionInQueue() override;
     /// CIP: the current session disconnected (or failed to connect): the
     /// dialogs that only make sense in a session close; the next queued
     /// session connects, or with none left there is no current session (and
