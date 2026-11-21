@@ -195,6 +195,10 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
                 if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
                     processor->writeClientFrame(frame);
             });
+    // The server answered with its login challenge: the connection is up (the
+    // disconnect reaction tells a lost connection from a failed connect by it).
+    connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedLoginChallengeMessage, this,
+            [this] { Q_EMIT gameLoginChallengeMessage(); });
     m_loginData = gameserverMetaInfo->loginData;
     connectProtocolMessageHandlers();
 }
