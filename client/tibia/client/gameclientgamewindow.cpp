@@ -5,6 +5,7 @@
 #include "client/gameclient.h"
 #include "game/gameactionrouter.h"
 #include "game/gamesessionbase.h"
+#include "game/sessionhooks.h"
 
 #include "analysers/analyserstorages.h"
 #include "analysers/analyserwidgets.h"
@@ -1165,6 +1166,9 @@ void TGameClient::onGameSessionDisconnected()
 {
     if (!m_currentGameSession)
         return;
+    // Host: the packs' session-end hook (notify_api subscribe_session_end), while the
+    // disconnected session is still the current one (CIP currentGamesessionDisconnected).
+    tibia::world::notifySessionEnd();
     // CIP: the dialogs that only make sense during the session close.
     if (gamewindow::TMultiOfflineTrainingDialogController* offlineTraining = gamewindow::TMultiOfflineTrainingDialogController::instance())
         offlineTraining->dialog()->close();

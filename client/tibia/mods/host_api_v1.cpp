@@ -13,6 +13,7 @@
 #include "app/clientoptions.h"
 
 #include "game/creaturesession.h"
+#include "game/currentgamesession.h"
 #include "game/gamesession.h"
 #include "game/mapsession.h"
 #include "game/thingsession.h"
@@ -1062,6 +1063,14 @@ int sessSetItemThingShape(uint16_t item_id, const char* shape_name_utf8)
     return tibia::game::setItemThingShape(item_id, std::string_view(shape_name_utf8)) ? 1 : 0;
 }
 
+// The current game session's objects (opaque to the ABI; the pack casts them back).
+void* sessContainerStorage() { return tibia::game::currentContainerStorage(); }
+void* sessInventoryContainer() { return tibia::game::currentInventoryContainer(); }
+void* sessCreatureStorage() { return tibia::game::currentCreatureStorage(); }
+void* sessCooldownStorage() { return tibia::game::currentCooldownStorage(); }
+void* sessQuickLootBlackWhitelistStorage() { return tibia::game::currentQuickLootBlackWhitelistStorage(); }
+int sessCharacterConfigurationLoaded() { return tibia::game::currentCharacterConfigurationLoaded() ? 1 : 0; }
+
 const QtClientSessionApiV1 g_sessionApi = {
     .is_online = &sessIsOnline,
     .is_dead = &sessIsDead,
@@ -1183,6 +1192,13 @@ const QtClientSessionApiV1 g_sessionApi = {
     .local_player_direction = &sessLpDirection,
     .local_player_hold_direction = &sessHoldDirection,
     .local_player_release_direction = &sessReleaseDirection,
+
+    .container_storage = &sessContainerStorage,
+    .inventory_container = &sessInventoryContainer,
+    .creature_storage = &sessCreatureStorage,
+    .cooldown_storage = &sessCooldownStorage,
+    .quick_loot_black_white_list_storage = &sessQuickLootBlackWhitelistStorage,
+    .character_configuration_loaded = &sessCharacterConfigurationLoaded,
 };
 
 // --- Notify nested API ---
@@ -1247,6 +1263,15 @@ int notifySubSessionEnd(void (*fn)(void* user), void* user)
 
 void notifyUnsubSessionEnd(int id) { tibia::game::unsubscribeSessionEnd(id); }
 
+int notifySubSessionChanged(void (*fn)(void* user), void* user)
+{
+    if (!fn)
+        return 0;
+    return tibia::game::subscribeCurrentGameSessionChanged([fn, user]() { fn(user); });
+}
+
+void notifyUnsubSessionChanged(int id) { tibia::game::unsubscribeCurrentGameSessionChanged(id); }
+
 int notifyArgString(void* tip_args, size_t index, char* buf, size_t buf_len)
 {
     if (!tip_args || !buf || buf_len == 0)
@@ -1291,6 +1316,8 @@ const QtClientNotifyApiV1 g_notifyApi = {
     .arg_int = &notifyArgInt,
     .arg_bool = &notifyArgBool,
     .emit_int_string = &notifyEmitIntString,
+    .subscribe_session_changed = &notifySubSessionChanged,
+    .unsubscribe_session_changed = &notifyUnsubSessionChanged,
 };
 
 // --- Options nested API ---

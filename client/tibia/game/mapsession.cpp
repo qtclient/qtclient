@@ -1,4 +1,6 @@
 #include "mapsession.h"
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include <client/position.h>
 #include <QPoint>
@@ -26,6 +28,9 @@ MapUseHit fromFieldHit(const tibia::worldmap::TWorldMapField::TFieldItemHit& hit
 
 TWorldMapSessionState& sessionOverlay()
 {
+    // The current session's map; between sessions the storage's stand-in.
+    if (TGameSessionBase* session = currentGameSession(); session && session->worldMapStorage())
+        return session->worldMapStorage()->sessionState();
     return tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState();
 }
 

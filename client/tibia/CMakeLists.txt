@@ -498,6 +498,7 @@ if(TIBIA_WITH_GAMECORE)
     game/tutorialsessiondumpgamesessionmetainfo.cpp game/tutorialsessiondumpgamesessionmetainfo.h
     game/playermovementintenthandlerconfiguration.h
     game/gamesessionbase.cpp game/gamesessionbase.h
+    game/currentgamesession.cpp game/currentgamesession.h
     game/gameservergamesession.cpp game/gameservergamesession.h
     game/sessiondumpgamesession.cpp game/sessiondumpgamesession.h
     game/sessiondumpdmpd.cpp game/sessiondumpdmpd.h

@@ -1,4 +1,5 @@
 #include "thingsession.h"
+#include "game/currentgamesession.h"
 #include "cyclopedia/staticcontentinformation.h"
 
 #include <tibia/assets/things.h>
@@ -181,7 +182,7 @@ void attachCreatureEffect(const uint32_t creatureId, const uint16_t effectId)
     const AttachedEffectPtr& effect = g_attachedEffects.getById(effectId);
     if (!effect)
         return;
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+    if (tibia::creatures::TCreatureStorage* storage = currentCreatureStorage()) {
         if (const auto row = storage->creatureAt(creatureId)) {
             for (const auto& attached : row->attachedEffects()) {
                 if (attached && attached->getId() == effectId)

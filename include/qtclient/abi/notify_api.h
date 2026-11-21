@@ -24,6 +24,7 @@ typedef struct QtClientNotifyApiV1 {
 
     int (*subscribe_world_time)(void (*fn)(void* user, int hour, int minute), void* user);
     void (*unsubscribe_world_time)(int id);
+    /** `fn` runs when the current game session disconnected, while it is still current. */
     int (*subscribe_session_end)(void (*fn)(void* user), void* user);
     void (*unsubscribe_session_end)(int id);
 
@@ -34,6 +35,13 @@ typedef struct QtClientNotifyApiV1 {
 
     /** Emit on the CIP field bus (e.g. onTextMessage): a0 = MessageMode as int64, a1 = UTF-8. */
     int (*emit_int_string)(const char* field, int64_t a0, const char* a1);
+
+    /** Host API v5+ (read only when api_version >= 5): `fn` runs each time the game client's
+     *  current session changes (a login, replay or tutorial began, or the session went away).
+     *  session->container_storage() and the other current-session getters then return the new
+     *  session's objects (or null). */
+    int (*subscribe_session_changed)(void (*fn)(void* user), void* user);
+    void (*unsubscribe_session_changed)(int id);
 } QtClientNotifyApiV1;
 
 #ifdef __cplusplus

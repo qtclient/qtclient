@@ -1,4 +1,5 @@
 #include "gamesession.h"
+#include "game/currentgamesession.h"
 
 #include "game/gameciptypes.h"
 #include "game/playerdata.h"
@@ -13,7 +14,7 @@ namespace {
 template<typename WriteData>
 void playerDataAuthorityWrite(WriteData&& writeData)
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         writeData(*data);
 }
 
@@ -173,78 +174,78 @@ void localPlayerSetBaseCapacity(const uint32_t baseCapacity)
 
 void localPlayerSetFlatDamageHealing(const uint16_t flatBonus)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setFlatDamageHealing(flatBonus);
 }
 
 void localPlayerSetAttackInfo(const uint16_t attackValue, const uint8_t attackElement)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setAttackInfo(attackValue, attackElement);
 }
 
 void localPlayerSetConvertedDamage(const double convertedDamage, const uint8_t convertedElement)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setConvertedDamage(convertedDamage, convertedElement);
 }
 
 void localPlayerSetImbuements(const double lifeLeech, const double manaLeech, const double critChance,
                               const double critDamage, const double onslaught)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setImbuements(lifeLeech, manaLeech, critChance, critDamage, onslaught);
 }
 
 void localPlayerSetDefenseInfo(const uint16_t defense, const uint16_t armor, const uint16_t mantra,
                                const double mitigation, const double dodge, const uint16_t damageReflection)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setDefenseInfo(defense, armor, mantra, mitigation, dodge, damageReflection);
 }
 
 void localPlayerSetCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setCombatAbsorbValues(absorbValues);
 }
 
 void localPlayerSetForgeBonuses(const double momentum, const double transcendence, const double amplification)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setForgeBonuses(momentum, transcendence, amplification);
 }
 
 void localPlayerSetSpecialMagicLevels(std::vector<std::pair<int, int>> boosts)
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         stats->setSpecialMagicLevels(std::move(boosts));
 }
 
 std::vector<std::pair<int, int>> localPlayerSpecialMagicLevels()
 {
-    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
         return stats->specialMagicLevels();
     return {};
 }
 
 uint32_t localPlayerManaShield()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->manaShield();
     return 0;
 }
 
 uint32_t localPlayerMaxManaShield()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->maxManaShield();
     return 0;
 }
 
 uint64_t localPlayerExperience()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->experience();
     return 0;
 }
@@ -258,35 +259,35 @@ bool localPlayerIsPremium()
 
 bool localPlayerIsMagicShieldVocation()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->magicShieldVocation();
     return false;
 }
 
 uint8_t localPlayerHarmony()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->harmony();
     return 0;
 }
 
 bool localPlayerIsSerene()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->serene();
     return false;
 }
 
 uint64_t localPlayerResourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->resourceBalance(type);
     return 0;
 }
 
 bool localPlayerHasResourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->hasResourceBalance(type);
     return false;
 }
@@ -295,7 +296,7 @@ uint16_t localPlayerSkillLevel(const tibia::client::Skill skill)
 {
     if (skill >= tibia::client::LastSkill)
         return 0;
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->skillLevel(skill);
     return 0;
 }
@@ -304,7 +305,7 @@ uint16_t localPlayerSkillBaseLevel(const tibia::client::Skill skill)
 {
     if (skill >= tibia::client::LastSkill)
         return 0;
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->skillBaseLevel(skill);
     return 0;
 }
@@ -313,7 +314,7 @@ uint16_t localPlayerSkillLoyaltyLevel(const tibia::client::Skill skill)
 {
     if (skill >= tibia::client::LastSkill)
         return 0;
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->skillLoyaltyLevel(skill);
     return 0;
 }
@@ -322,126 +323,126 @@ uint16_t localPlayerSkillPercentHundredths(const tibia::client::Skill skill)
 {
     if (skill >= tibia::client::LastSkill)
         return 0;
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->skillPercentHundredths(skill);
     return 0;
 }
 
 uint16_t localPlayerMagicLevelLoyalty()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->magicLevelLoyalty();
     return 0;
 }
 
 uint16_t localPlayerMagicLevelPercentHundredths()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->magicLevelPercentHundredths();
     return 0;
 }
 
 uint16_t localPlayerLevelPercentHundredths()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->levelPercentRaw();
     return 0;
 }
 
 uint16_t localPlayerExperienceRate(const tibia::client::ExperienceRate_t type)
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->experienceRate(type);
     return 0;
 }
 
 uint16_t localPlayerSpeed()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->speed();
     return 0;
 }
 
 uint16_t localPlayerBaseSpeed()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->baseSpeed();
     return 0;
 }
 
 uint16_t localPlayerRegenerationTime()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->regenerationTime();
     return 0;
 }
 
 uint16_t localPlayerOfflineTrainingTime()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->offlineTrainingTime();
     return 0;
 }
 
 uint16_t localPlayerStoreExpBoostTime()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->storeExpBoostTime();
     return 0;
 }
 
 uint16_t localPlayerDailyRewardExpBoostTime()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->dailyRewardExpBoostTime();
     return 0;
 }
 
 uint8_t localPlayerRottenBloodState()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->rottenBloodState();
     return 0;
 }
 
 uint64_t localPlayerStates()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->states().flags.to_ullong();
     return 0;
 }
 
 uint8_t localPlayerSoul()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->soul();
     return 0;
 }
 
 uint16_t localPlayerMagicLevel()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->magicLevel();
     return 0;
 }
 
 uint16_t localPlayerBaseMagicLevel()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->baseMagicLevel();
     return 0;
 }
 
 uint16_t localPlayerMagicLevelPercent()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->magicLevelPercent();
     return 0;
 }
 
 std::vector<uint16_t> localPlayerSpells()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->spells();
     return {};
 }
@@ -469,28 +470,28 @@ uint8_t localPlayerSkull()
 
 uint16_t localPlayerBlessings()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->blessings();
     return 0;
 }
 
 uint32_t localPlayerBaseCapacity()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->baseCapacity();
     return 0;
 }
 
 uint32_t localPlayerTotalCapacity()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->totalCapacity();
     return 0;
 }
 
 bool localPlayerHasEquippedItemId(const uint16_t itemId, const uint8_t tier)
 {
-    tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance();
+    tibia::container::TInventoryContainer* inventory = currentInventoryContainer();
     if (!hasLocalPlayer() || !inventory)
         return false;
     for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
@@ -513,7 +514,7 @@ bool localPlayerIsSupplyStashAvailable()
 
 bool localPlayerIsStoreExpBoostPurchasable()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->storeExpBoostPurchasable();
     return false;
 }

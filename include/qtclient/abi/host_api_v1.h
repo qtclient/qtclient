@@ -58,8 +58,12 @@ enum {
      * v2: nested session/notify/options; pack_host C wiring (additive tail).
      * v3: add_world_overlay_factory takes QtClientWorldOverlayFactory* (C vtable), not opaque C++.
      * v4: pack_host->game_action_router (additive tail of QtClientPackHostApiV1).
+     * v5: session->container_storage .. character_configuration_loaded (current game session
+     *     objects) and notify->subscribe_session_changed (additive tails); session_end fires when
+     *     the current session disconnects. pack_host getters of per-session objects (chat_storage,
+     *     imbuing_storage, store_messages) resolve at call time: re-read them on session change.
      */
-    QTCLIENT_HOST_API_V1_VERSION = 4,
+    QTCLIENT_HOST_API_V1_VERSION = 5,
 };
 
 /**
