@@ -16,7 +16,6 @@
 #include "renderer/mapscale.h"
 #include "renderer/worldmapquickitem.h"
 #include "worldmap/creaturehudcontroller.h"
-#include "worldmap/worldmapgameactionhandler.h"
 #include "worldmap/worldmapgameactionprovider.h"
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
@@ -44,7 +43,6 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
     : cip::tibia::gamewindow::TMapWindowController(parent)
     , m_pane(pane)
     , m_softwareRenderer(softwareRenderer)
-    , m_actionHandler(new worldmap::TWorldMapGameActionHandler(this))
 {
     // The pane knows its controller; its items are found by objectName.
     if (pane) {
@@ -54,6 +52,11 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         m_numericalEffects = pane->findChild<qmlcomponents::TNumericalEffectOverlayQuickItem*>(QStringLiteral("numericalEffectOverlay"));
         m_speechBubbles = pane->findChild<qmlcomponents::TSpeechBubbleOverlayQuickItem*>(QStringLiteral("speechBubbleOverlay"));
         m_lightMap = pane->findChild<qmlcomponents::TLightmapPaintedItem*>(QStringLiteral("lightmap"));
+        // The overlays follow the game session the controller is connected to.
+        if (auto* overlay = pane->findChild<QQuickItem*>(QStringLiteral("worldmapCreatureHUDOverlay")))
+            m_creatureHuds = new worldmap::TCreatureHUDController(overlay, nullptr, this);
+        if (auto* tutorialOverlay = pane->findChild<QQuickItem*>(QStringLiteral("tutorialMarkerOverlay")))
+            m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
     }
 
     const QJsonObject options = app::ClientOptions::load().options();
@@ -129,52 +132,6 @@ void TMapWindowController::applyTargetHighlightOption()
                                           || options.value(QLatin1String("gameWindowShowTargetHighlight")).toBool(true));
 }
 
-void TMapWindowController::bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects)
-{
-    if (!m_provider)
-        return;
-    if (!m_bound) {
-        m_bound = true;
-        // The session's view the map handler centres; a provider without one gets a view of its own.
-        m_viewport = m_provider->viewport() ? m_provider->viewport() : new worldmap::TWorldMapViewport(this);
-        m_actions = std::make_unique<worldmap::TWorldMapGameActionProvider>(*m_provider, *m_viewport);
-        applyTargetHighlightOption();
-        // The drawn volume is sized for the visible fields.
-        const auto sizeViewport = [this] {
-            if (m_viewport && m_provider)
-                m_viewport->setSize(m_provider->visibleWidth() * TWorldMapRenderProvider::FieldSize,
-                                    m_provider->visibleHeight() * TWorldMapRenderProvider::FieldSize);
-        };
-        sizeViewport();
-        connect(m_provider, &TWorldMapRenderProvider::visibleFieldsChanged, this, sizeViewport);
-        if (m_worldMap)
-            m_worldMap->setRenderProvider(m_provider);
-        if (m_lightMap)
-            m_lightMap->setRenderProvider(m_provider);
-        if (m_pane) {
-            if (auto* overlay = m_pane->findChild<QQuickItem*>(QStringLiteral("worldmapCreatureHUDOverlay")))
-                m_creatureHuds = new worldmap::TCreatureHUDController(overlay, m_provider, this);
-            if (auto* tutorialOverlay = m_pane->findChild<QQuickItem*>(QStringLiteral("tutorialMarkerOverlay"))) {
-                m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
-                m_tutorialMarkers->setRenderProvider(m_provider);
-            }
-        }
-        // The world moves under a resting mouse.
-        connect(m_provider, &TWorldMapRenderProvider::overlaysAdvanced, this, &TMapWindowController::updateMouseTarget);
-        connect(m_provider, &TWorldMapRenderProvider::overlaysAdvanced, this, &TMapWindowController::updateTrackedUseAtMouseCursor);
-    }
-    if (worldmap::TWorldMapViewport* viewport = m_provider->viewport(); viewport && viewport != m_viewport) {
-        m_viewport = viewport;
-        m_actions = std::make_unique<worldmap::TWorldMapGameActionProvider>(*m_provider, *m_viewport);
-        m_viewport->setSize(m_provider->visibleWidth() * TWorldMapRenderProvider::FieldSize,
-                            m_provider->visibleHeight() * TWorldMapRenderProvider::FieldSize);
-    }
-    if (m_speechBubbles)
-        m_speechBubbles->setSources(texts ? m_provider : nullptr, texts);
-    if (m_numericalEffects)
-        m_numericalEffects->setSources(effects ? m_provider : nullptr, effects);
-}
-
 void TMapWindowController::updateTrackedUseAtMouseCursor()
 {
     // A use at the mouse no handler took: on the second frame the status line says so.
@@ -193,12 +150,6 @@ void TMapWindowController::trackUseAtMouseCursorGameAction()
 void TMapWindowController::clearTrackedUseAtMouseCursorGameAction()
 {
     m_unhandledAtMouseFrames = -1;
-}
-
-void TMapWindowController::setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider)
-{
-    m_provider = provider;
-    syncFov();
 }
 
 bool TMapWindowController::classicView() const
@@ -297,23 +248,7 @@ void TMapWindowController::unbind()
     }
     m_mapPressActive = false;
     m_mapDragStarted = false;
-    if (m_provider) {
-        disconnect(m_provider, nullptr, this, nullptr);
-        m_provider->setMouseTargetObject(0, {}, -1);
-        m_provider->setMouseHighlightField({});
-    }
-    m_provider = nullptr;
-    m_actions.reset();
-    if (m_worldMap)
-        m_worldMap->setRenderProvider(nullptr);
-    if (m_lightMap)
-        m_lightMap->setRenderProvider(nullptr);
-    if (m_creatureHuds)
-        m_creatureHuds->setRenderProvider(nullptr);
-    if (m_speechBubbles)
-        m_speechBubbles->setSources(nullptr, nullptr);
-    if (m_numericalEffects)
-        m_numericalEffects->setSources(nullptr, nullptr);
+    connectToGameSession(nullptr);
 }
 
 void TMapWindowController::ensureWindowPointerFilter()
@@ -791,12 +726,56 @@ void TMapWindowController::handleGameActionCastSpellAtMouseCursor(const input::T
     tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode()), 0, action.words().toStdString());
 }
 
+void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    // The previous session lives until its pieces are unset everywhere.
+    const std::shared_ptr<game::IGameSession> previous = std::move(m_gameSession);
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    TWorldMapRenderProvider* provider = session ? session->worldMapRenderProvider().get() : nullptr;
+    if (m_provider) {
+        disconnect(m_provider, nullptr, this, nullptr);
+        m_provider->setMouseTargetObject(0, {}, -1);
+        m_provider->setMouseHighlightField({});
+    }
+    // The pane's items draw the session's world, texts and numerical effects.
+    if (m_worldMap)
+        m_worldMap->setRenderProvider(provider);
+    if (m_lightMap)
+        m_lightMap->setRenderProvider(provider);
+    if (m_creatureHuds)
+        m_creatureHuds->setRenderProvider(provider);
+    if (m_speechBubbles)
+        m_speechBubbles->setSources(provider, session ? session->textStorage().get() : nullptr);
+    if (m_numericalEffects)
+        m_numericalEffects->setSources(provider, session ? session->effectStorage().get() : nullptr);
+    if (m_tutorialMarkers)
+        m_tutorialMarkers->setRenderProvider(provider);
+    if (!session) {
+        m_viewport = nullptr;
+        m_actions.reset();
+        m_provider = nullptr;
+        return;
+    }
+    m_viewport = session->worldMapViewport().get();
+    m_actions = session->worldMapGameActionProvider();
+    m_provider = provider;
+    // The session's frame is the map window's size and scale; its view covers
+    // the visible fields.
+    syncFov();
+    m_provider->setVisibleFields(m_fovWidth, m_fovHeight);
+    m_provider->setViewScale(m_viewScale);
+    const auto sizeViewport = [this] {
+        if (m_viewport && m_provider)
+            m_viewport->setSize(m_provider->visibleWidth() * TWorldMapRenderProvider::FieldSize,
+                                m_provider->visibleHeight() * TWorldMapRenderProvider::FieldSize);
+    };
+    sizeViewport();
+    connect(m_provider, &TWorldMapRenderProvider::visibleFieldsChanged, this, sizeViewport);
+    applyTargetHighlightOption();
+    // The world moves under a resting mouse.
+    connect(m_provider, &TWorldMapRenderProvider::overlaysAdvanced, this, &TMapWindowController::updateMouseTarget);
+    connect(m_provider, &TWorldMapRenderProvider::overlaysAdvanced, this, &TMapWindowController::updateTrackedUseAtMouseCursor);
 }
 
-void tibia::gamewindow::TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    if (!m_bound)
-        return;
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    bindSession(session ? session->textStorage().get() : nullptr, session ? session->effectStorage().get() : nullptr);
 }

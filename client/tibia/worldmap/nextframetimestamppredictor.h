@@ -5,9 +5,16 @@
 #include <QElapsedTimer>
 #include <QMutex>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
+namespace shared {
+class IClockService;
+}
 namespace worldmap {
 
 /// How long the last frames took from the GUI tick (afterAnimating) to the swap
@@ -35,20 +42,29 @@ private:
     bool m_started = false;
 };
 
-/// The time the next frame will be shown: now plus the recent tick-to-swap
-/// time (CIP: worldmap::TNextFrameTimestampPredictor).
+/// The time the next frame will be shown: now on the current game session's
+/// clock plus the recent tick-to-swap time (CIP:
+/// worldmap::TNextFrameTimestampPredictor).
 class TNextFrameTimestampPredictor : public ::tibia::CipTyped
 {
 public:
-    /// Milliseconds on the engine clock (CIP: v2).
+    /// `clockService` is read while no game session gives a clock of its own.
+    explicit TNextFrameTimestampPredictor(std::shared_ptr<shared::IClockService> clockService);
+
+    /// The next frame's time in milliseconds: the clock's microseconds plus
+    /// the offset.
     qint64 predict() const;
-    qint64 v2() const { return predict(); }
-    /// CIP: v3.
+    /// How far after now the next frame is shown, in microseconds.
     void setOffset(qint64 micros) { m_offsetMicros = micros; }
-    void v3(qint64 micros) { setOffset(micros); }
+    /// CIP connector: the clock follows `GameSession`'s; without a session the
+    /// default clock is read again.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
+    std::shared_ptr<shared::IClockService> m_defaultClockService;
+    std::shared_ptr<shared::IClockService> m_clockService;
     qint64 m_offsetMicros = 0;
+    std::shared_ptr<game::IGameSession> m_gameSession;
 };
 
 }

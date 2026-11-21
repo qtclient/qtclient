@@ -5,6 +5,7 @@
 #include "sessiondump/sessiondumpasyncloader.h"
 #include "sessiondump/sessiondumpplayer.h"
 #include "sessiondump/sessiondumpprogressclockservice.h"
+#include "clockservice.h"
 #include "tutorial/sessiondumphintsprocessor.h"
 
 #include "game/tgamenotify.h"
@@ -93,6 +94,8 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     createStorages();
     createProtocolMessageHandlers();
+    createRenderProviders();
+    createGameActionProvidersAndHandlers();
     connectProtocolMessageHandlers();
 }
 
@@ -295,6 +298,11 @@ void TSessiondumpGameSession::disconnectNow()
     stopReplay();
     stopHints();
     hubDisconnectNow();
+}
+
+std::shared_ptr<shared::IClockService> TSessiondumpGameSession::clockService() const
+{
+    return shared::TClockService::process();
 }
 
 bool TSessiondumpGameSession::isOnline() const

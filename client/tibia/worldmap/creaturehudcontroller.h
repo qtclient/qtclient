@@ -16,11 +16,10 @@ namespace tibia {
 namespace worldmap {
 
 class TCreatureHUDOverlayController;
-class TCreatureHUDRenderProvider;
 
-/// Owns the map's creature HUD overlay path (CIP: TCreatureHUDController ctor
-/// at — incubator + overlay; product keeps placement in
-/// TCreatureHUDOverlayController and record fill in TCreatureHUDRenderProvider).
+/// Owns the map's creature HUD overlay (CIP: TCreatureHUDController: incubator
+/// and overlay); placement is TCreatureHUDOverlayController's. The HUD anchors
+/// (TCreatureHUDRenderProvider) belong to the game session.
 class TCreatureHUDController final : public cip::tibia::worldmap::TCreatureHUDController
 {
     Q_OBJECT
@@ -31,12 +30,9 @@ public:
     void setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider);
 
     TCreatureHUDOverlayController* overlayController() const { return m_overlay; }
-    TCreatureHUDRenderProvider* renderProvider() const { return m_renderProvider; }
 
 private:
     TCreatureHUDOverlayController* m_overlay = nullptr;
-    TCreatureHUDRenderProvider* m_renderProvider = nullptr;
-    QMetaObject::Connection m_frameConnection;
 };
 
 }

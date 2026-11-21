@@ -54,9 +54,9 @@
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/highscoresdialogcontroller.h"
 #include "chat/gamemessagehandler.h"
-#include "renderer/nextframeupdater.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "sound/soundcontroller.h"
+#include "worldmap/nextframetimestamppredictor.h"
 #include "worldmap/worldmapviewport.h"
 #include "gamewindow/imbuementtrackerwidgetcontroller.h"
 #include "gamewindow/imbuingdialogcontroller.h"
@@ -485,7 +485,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     const bool softwareRenderer = window->rendererInterface()->graphicsApi() == QSGRendererInterface::Software;
     g.mapWindowController = new gamewindow::TMapWindowController(mapWindowPane, softwareRenderer, mapWindowPane);
     gamewindow::TMapWindowController* mapWindowController = g.mapWindowController;
-    mapWindowController->setRenderProvider(worldMapRenderProvider());
     mapWindowController->syncFov();
     connect(mapWindowController, &gamewindow::TMapWindowController::unusedWidthChanged, sidebarManager,
             &gamewindow::TSidebarManager::onUnusedWidthChanged);
@@ -612,7 +611,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     containers->setLootScheme(lootScheme);
     sidebarWidgets->setContainerStorage(containers);
     sidebarWidgets->setControlScheme(controlScheme);
-    sidebarWidgets->battleLists()->setWorldMapRenderProvider(worldMapRenderProvider());
     g.vipWidget = std::make_unique<gamewindow::TVipWidgetManager>(gameWindowItem, engine);
     gamewindow::TVipWidgetManager* vipWidget = g.vipWidget.get();
     vipWidget->setControlScheme(controlScheme);
@@ -722,7 +720,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.fpsLatency = std::make_unique<gamewindow::TFPSLatencyIndicatorController>();
     g.fpsLatency->setWindow(window);
     g.fpsLatency->setFrameDurations(frameDurations());
-    g.fpsLatency->setRenderProvider(worldMapRenderProvider());
     g.fpsLatency->setWidgetItem(gameWindowController->gameWindowChild(QStringLiteral("tibiaFpsLatencyIndicator")));
 
     g.chat = std::make_unique<gamewindow::TChatController>(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), *this);
@@ -1040,7 +1037,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         // leave the login mask hidden and the game window still off.
         g.gameWindowController->showGameScreen();
         try {
-            g.mapWindowController->bindSession(textStorage(), effectStorage());
             g.vipWidget->setSidebarOptions(sidebarOptions());
             g.vipWidget->setWorldType(worldType());
             g.sidebarWidgets->setSidebarOptions(sidebarOptions());
@@ -1095,9 +1091,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // and connect the controllers made after it to it.
     if (game::TGameSessionBase* session = game::TGameSessionBase::active())
         session->relinkProtocolMessageHandlers();
-    // Host: a replay's session starts before the game window; only the
-    // controllers made here still need connecting (the client's world map
-    // updater keeps following the running session).
+    // A replay's session starts before the game window: the controllers made
+    // here connect to it now.
     if (m_currentGameSession)
         connectGameWindowControllersToGameSession(m_currentGameSession);
     return true;
@@ -1108,23 +1103,6 @@ gamewindow::TGameSessionDisconnectReactionController* TGameClient::gameSessionDi
     return m_gameWindow ? m_gameWindow->gameSessionDisconnectReaction.get() : nullptr;
 }
 
-void TGameClient::connectGameWindowToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    // Host: the client still holds the world map's render provider, frame
-    // updater and message handler; they follow the session here until the
-    // session owns them.
-    m_updater.reset();
-    m_messageHandler.reset();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
-    if (session) {
-        m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
-        m_messageHandler->setOptions(app::ClientOptions::load().options());
-        m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage());
-    }
-    connectGameWindowControllersToGameSession(GameSession);
-}
-
 void TGameClient::connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
@@ -1133,6 +1111,12 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         TGameWindow& g = *m_gameWindow;
         if (g.mapWindowController)
             g.mapWindowController->connectToGameSession(GameSession);
+        // Host: the battle lists' mouse target and the FPS indicator's build
+        // times are the session's world map frame's.
+        if (g.sidebarWidgets)
+            g.sidebarWidgets->battleLists()->setWorldMapRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
+        if (g.fpsLatency)
+            g.fpsLatency->setRenderProvider(session ? session->worldMapRenderProvider().get() : nullptr);
         if (g.containers)
             g.containers->connectToGameSession(GameSession);
         if (g.chat)
@@ -1153,6 +1137,7 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         }
         if (g.stashDialog)
             g.stashDialog->connectToGameSession(GameSession);
+        m_predictor->connectToGameSession(GameSession);
         if (g.informationDialogs)
             if (gamewindow::THighscoresDialogController* highscores = g.informationDialogs->highscores())
                 highscores->connectToGameSession(GameSession);

@@ -19,15 +19,8 @@ class IGameSession;
 }
 
 namespace tibia {
-namespace chat {
-class TTextStorage;
-}
-namespace effects {
-class TEffectStorage;
-}
 namespace worldmap {
 class TCreatureHUDController;
-class TWorldMapGameActionHandler;
 class TWorldMapGameActionProvider;
 class TWorldMapTutorialMarkerOverlayController;
 class TWorldMapViewport;
@@ -47,7 +40,7 @@ namespace gamewindow {
 /// MapWindowPane's mapWindowController (CIP: TMapWindowController): binds the
 /// pane's items (worldmap, lightmap, worldmapCreatureHUDOverlay,
 /// tutorialMarkerOverlay, speechBubbleOverlay, numericalEffectOverlay and
-/// mapWindow, by objectName) to the world provider, turns the pane's mouse
+/// mapWindow, by objectName) to the game session's world, turns the pane's mouse
 /// input into game actions, keeps the hovered thing and cursor shape per frame,
 /// and holds the render options and the pane's unused width.
 class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowController
@@ -66,13 +59,10 @@ public:
     TMapWindowController(QQuickItem* pane, bool softwareRenderer, QObject* parent = nullptr);
     ~TMapWindowController() override;
 
-    void setRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider);
-    /// The game session's texts, numerical effects and view; the first call
-    /// binds the pane's items to the provider.
-    void bindSession(const chat::TTextStorage* texts, const effects::TEffectStorage* effects);
-    /// Unsets the provider everywhere; call before the provider goes away.
+    /// Drops the window's pointer filter and the game session.
     void unbind();
-    /// CIP connector: once bound, the map draws `GameSession`'s texts and effects.
+    /// CIP connector: the pane's items draw `GameSession`'s world, texts and
+    /// numerical effects, and the mouse picks in its view; null unsets them.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// False when the pane lacks the world map.
     bool isBound() const { return m_worldMap != nullptr; }
@@ -159,14 +149,14 @@ private:
     QPointer<qmlcomponents::TLightmapPaintedItem> m_lightMap;
     worldmap::TCreatureHUDController* m_creatureHuds = nullptr;
     worldmap::TWorldMapTutorialMarkerOverlayController* m_tutorialMarkers = nullptr;
+    /// The game session the map shows; its pieces below.
+    std::shared_ptr<game::IGameSession> m_gameSession;
     qmlcomponents::TWorldMapRenderProvider* m_provider = nullptr;
-    /// The session's view (the provider's): the picker reads the player's
-    /// floor and visible area from it.
+    /// The session's view: the picker reads the player's floor and visible
+    /// area from it.
     worldmap::TWorldMapViewport* m_viewport = nullptr;
-    std::unique_ptr<worldmap::TWorldMapGameActionProvider> m_actions;
-    worldmap::TWorldMapGameActionHandler* m_actionHandler = nullptr;
+    std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_actions;
     input::TGameActionMapper m_mapper;
-    bool m_bound = false;
     bool m_softwareRenderer = false;
     int m_fovWidth = 15;
     int m_fovHeight = 11;

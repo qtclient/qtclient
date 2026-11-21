@@ -9,6 +9,9 @@
 namespace tibia::creatures {
 class TCreature;
 }
+namespace tibia::shared {
+class IClockService;
+}
 
 namespace tibia::game {
 
@@ -34,6 +37,9 @@ public:
     /// Ends the session's connection or playback now; the session then
     /// reports disconnected.
     virtual void disconnectNow() = 0;
+    /// The clock the session's frames run on: the next frame's predicted
+    /// time is read from it.
+    virtual std::shared_ptr<shared::IClockService> clockService() const = 0;
 
 Q_SIGNALS:
     void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);

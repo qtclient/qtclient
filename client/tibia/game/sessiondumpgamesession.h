@@ -58,6 +58,9 @@ public:
     void replay(const QString& file);
     /// Drops the replay without waiting for the recording to finish.
     void disconnectNow() override;
+    /// Host: the replay runs on the process clock (CipSoft gives the session
+    /// a clock of its own).
+    std::shared_ptr<shared::IClockService> clockService() const override;
     /// No server logout in replay; same as disconnectNow for UI wiring.
     void requestLogout();
 

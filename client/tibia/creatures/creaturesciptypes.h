@@ -17,6 +17,9 @@ namespace tibia {
 namespace exivaoptions {
 class TExivaOptionsStorage;
 }
+namespace worldmap {
+class TWorldMapStorage;
+}
 namespace creatures {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
@@ -35,15 +38,13 @@ public:
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 
 /// Applies the creature messages to the session's creature storage: moves,
-/// whole creatures and single attributes, marks and the player's id.
+/// whole creatures and single attributes, marks and the player's id. One per
+/// game session; creatures move on the session's world map.
 class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCreatureProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    explicit TCreatureProtocolMessageHandler(QObject* parent = nullptr);
-
-    static TCreatureProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TCreatureProtocolMessageHandler* handler);
+    explicit TCreatureProtocolMessageHandler(worldmap::TWorldMapStorage* worldMapStorage, QObject* parent = nullptr);
 
     void handleMoveCreatureMessage(const ::tibia::protobuf::protocol::GameserverMessageMoveCreature& message);
     void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
@@ -69,6 +70,8 @@ private:
     /// The server changed the attack or follow target the sequence names.
     void applyUpdateTarget(uint32_t sequence, uint32_t target);
 
+    /// The session's world map.
+    worldmap::TWorldMapStorage* m_worldMapStorage = nullptr;
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };
 };
