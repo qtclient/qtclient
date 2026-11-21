@@ -1,7 +1,7 @@
 #include "logging.h"
 
 #include <spdlog/logger.h>
-#include <spdlog/sinks/ansicolor_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
 #include <cstdlib>
@@ -46,7 +46,7 @@ void setUpLogging(const QString& logFilePath, const std::size_t maxFileSize)
 {
     auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
         logFilePath.toStdString(), maxFileSize, MaxLogFiles, false);
-    auto consoleSink = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>(spdlog::color_mode::automatic);
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>(spdlog::color_mode::automatic);
     g_logger = std::make_shared<spdlog::logger>("tibia", spdlog::sinks_init_list{ fileSink, consoleSink });
     g_logger->set_pattern(LogPattern, spdlog::pattern_time_type::local);
     g_logger->set_level(spdlog::level::trace);
