@@ -373,6 +373,8 @@ CMakeUserPresets.json
 **/__pycache__/
 *.pyc
 out/
+# npm install for the browser contract tests (tests/browser/*/README.md)
+node_modules/
 
 # qtclient engine Makefile (CMake also emits a Makefile — keep the root one)
 !/Makefile
