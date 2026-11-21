@@ -96,6 +96,7 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     createProtocolMessageHandlers();
     createRenderProviders();
     createGameActionProvidersAndHandlers();
+    createGameActionHandlers();
     connectProtocolMessageHandlers();
 }
 

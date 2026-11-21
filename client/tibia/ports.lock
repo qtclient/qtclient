@@ -1744,6 +1744,7 @@ game::TGameEventProtocolMessageHandler::~TGameEventProtocolMessageHandler_deleti
 game::TGameProtocolMessageHandler::~TGameProtocolMessageHandler	2ba80da131de11b4	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameProtocolMessageHandler::~TGameProtocolMessageHandler_deleting	cf00265be555234a	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::v143	c4d2f6d9a13090ba	ported	game/gamesessionbase.h:TGameSessionBase::protocolMessageQueue
+game::TGameSessionBase::v22	946e476cd43d748b	ported	game/gamesessionbase.h:TGameSessionBase::characterConfigurationManager
 game::TGameSessionBase::v25	ea9461ede806184d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapViewport
 game::TGameSessionBase::v28	e9d87c96dd8d9443	ported	game/gamesessionbase.h:TGameSessionBase::worldMapStorage
 game::TGameSessionBase::v29	e306596705eadfac	ported	game/gamesessionbase.h:TGameSessionBase::ambientLightStorage
@@ -1752,6 +1753,7 @@ game::TGameSessionBase::v33	7899fca3d46201ff	ported	game/gamesessionbase.h:TGame
 game::TGameSessionBase::v36	74d27625b68c3382	ported	game/gamesessionbase.h:TGameSessionBase::chatChannelStorage
 game::TGameSessionBase::v40	df3836b85f1025ce	ported	game/gamesessionbase.h:TGameSessionBase::playerSkillStats
 game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGameSessionBase::creatureMovementSpeedCalculator
+game::TGameSessionBase::v42	0c2bf91a1cb16b4c	ported	game/gamesessionbase.h:TGameSessionBase::playerProtocolMessageHandler
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
 game::TGameSessionBase::v44	c525baa43835ff20	ported	game/gamesessionbase.h:TGameSessionBase::stashStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
@@ -1766,6 +1768,7 @@ game::TGameSessionBase::v58	2b9e076b88709e8b	ported	game/gamesessionbase.h:TGame
 game::TGameSessionBase::v59	22f87d84f7d53911	ported	game/gamesessionbase.h:TGameSessionBase::playerTradeProtocolMessageHandler
 game::TGameSessionBase::v60	ce5366b54cee3c3e	ported	game/gamesessionbase.h:TGameSessionBase::characterTradeStorage
 game::TGameSessionBase::v65	b30d596ae2d839df	ported	game/gamesessionbase.h:TGameSessionBase::chatGameActionHandler
+game::TGameSessionBase::v48	febaa8c9e67c2068	ported	game/gamesessionbase.h:TGameSessionBase::genericGameActionHandler
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
 game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
@@ -1819,6 +1822,19 @@ game::TGameserverGameSession::v57	88d48c9cb41c4a0f	ported	game/gamesessionbase.h
 game::TGameserverGameSession::v67	42d2474c407b6483	ported	game/gamesessionbase.h:TGameSessionBase::vipStorage
 game::TGameserverGameSession::v71	39bd8aa2de07db33	ported	game/gamesessionbase.h:TGameSessionBase::friendsProtocolMessageHandler
 game::TGameserverGameSession::v82	dfde89f252bfa553	ported	game/gamesessionbase.h:TGameSessionBase::unjustifiedPointsStorage
+game::TGameserverGameSession::v109	63153f65640125a2	ported	game/gamesessionbase.h:TGameSessionBase::gameEventProtocolMessageHandler
+game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
+game::TGameserverGameSession::v70	594133309873abd0	ported	game/gamesessionbase.h:TGameSessionBase::cooldownStorage
+game::TGameserverGameSession::v75	4ed45f81cb5ef5e1	ported	game/gamesessionbase.h:TGameSessionBase::serverModalDialogProtocolMessageHandler
+game::TGameserverGameSession::v76	ba27aedb7e18e74b	ported	game/gamesessionbase.h:TGameSessionBase::ruleViolationProtocolMessageHandler
+game::TGameserverGameSession::v77	0b15c1c67a5630d1	ported	game/gamesessionbase.h:TGameSessionBase::bugReportProtocolMessageHandler
+game::TGameserverGameSession::v79	92549b5d51393a74	ported	game/gamesessionbase.h:TGameSessionBase::editTextProtocolMessageHandler
+game::TGameserverGameSession::v80	328ee60e4fc1d57f	ported	game/gamesessionbase.h:TGameSessionBase::spellBookProtocolMessageHandler
+game::TGameserverGameSession::v81	189b1331d30c2163	ported	game/gamesessionbase.h:TGameSessionBase::gameProtocolMessageHandler
+game::TGameserverGameSession::v85	b1142f2f99ec1b67	ported	game/gamesessionbase.h:TGameSessionBase::newsProtocolMessageHandler
+game::TGameserverGameSession::v86	ddeaeebf56bd40e3	ported	game/gamesessionbase.h:TGameSessionBase::premiumProtocolMessageHandler
+game::TGameserverGameSession::v87	d5009751e31adb9f	ported	game/gamesessionbase.h:TGameSessionBase::tutorialProtocolMessageHandler
+game::TGameserverGameSession::v95	aa30ce0d32b759ea	ported	game/gamesessionbase.h:TGameSessionBase::blessingsProtocolMessageHandler
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSessionMetaInfo::v0	8ed40c591c5325d3	skip	generated: compiler-generated destructor pair (member teardown)
@@ -13753,7 +13769,7 @@ sub_5ecbf7928af1	5ecbf7928af1211a	skip	library: libc++ std::vector/std::map inst
 sub_5edc1cae4fab	5edc1cae4fab8f1e	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_5ee0f7516590	5ee0f75165907013	skip	generated: Qt slot-object impl (template-generated) (same code as sub_5ee0f7516590#3)
 sub_5ee0f7516590#3	5ee0f75165907013	skip	generated: Qt slot-object impl (template-generated)
-sub_5ee245e67469	5ee245e67469bd18	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::setGameSessionActive
+sub_5ee245e67469	5ee245e67469bd18	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::connectToGameSession
 sub_5ee7460cc33f	5ee7460cc33f88d9	skip	generated: compiler-generated defaulted comparison (operator==/!=/<=> of option structs)
 sub_5ee9bfea5484	5ee9bfea5484a8a2	ported	controllers/characterselectioncontroller.cpp:sortCharacterList
 sub_5eeb1ff66040	5eeb1ff66040a01c	ported	input/gameaction.h:TGameActionSendChatMessageWithRecipient::TGameActionSendChatMessageWithRecipient
@@ -14021,7 +14037,7 @@ sub_637bf54a3cfb	637bf54a3cfb9080	skip	library: libc++ vector insert/assign/eras
 sub_637c1debb260	637c1debb260b7c7	skip	library: libc++ std::sort instantiation (introsort/insertion/sort3-5 with an inlined QString comparator)
 sub_637d6fa92d99	637d6fa92d999846	skip	library: std::vector/shared_ptr template instantiations
 sub_6386fee18600	6386fee186003ed7	skip	generated: moc property setter, provided by the generated cip base
-sub_639902e32a47	639902e32a476d1c	ported	gamewindow/remainingdialogs.cpp:TShowSpellBookDialogController::onGameSessionChanged
+sub_639902e32a47	639902e32a476d1c	ported	gamewindow/remainingdialogs.cpp:TShowSpellBookDialogController::connectToGameSession
 sub_639c55887bb7#2	639c55887bb7c6a8	skip	generated: protobuf message constructor / moc signal emitter
 sub_639c55887bb7#6	639c55887bb7c6a8	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_639fddc39b4b	639fddc39b4b4f2c	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
@@ -22425,6 +22441,7 @@ sub_f37ce2b709e1	f37ce2b709e1c96a	inlined	gamewindow/gamewindowciptypes.cpp:TIns
 sub_f38248dc6d6f	f38248dc6d6f43a3	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbility
 sub_f387390b47a0	f387390b47a07123	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::syncFov
 sub_f38a9a0b72a7	f38a9a0b72a739c1	inlined	store/qmlstoreobjects.cpp:TQmlStoreOffer::description
+sub_f39c0dc0ff2c	f39c0dc0ff2c9c09	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::connectToGameSession
 sub_f39d2cd2ccb6	f39d2cd2ccb6ae44	tested	shared/src/singlethreadedlowpriorityexecutor.cpp:TSingleThreadedLowPriorityExecutor::TSingleThreadedLowPriorityExecutor	test=tests/client/sharednet_test.cpp
 sub_f3a945222a28	f3a945222a280089	skip	data: static initializer of unrelated inbox filter strings (misattributed)
 sub_f3a956d44781	f3a956d44781192a	ported	gamewindow/monsterdialogcontroller.cpp:TQmlLoot::isSecretOrUnknown
@@ -22883,6 +22900,7 @@ sub_fd6d8d45a887	fd6d8d45a8871b3c	ported	gamewindow/draganddropcontroller.cpp:TD
 sub_fd6da358e2e5	fd6da358e2e5e60e	skip	library: libc++ unordered_map/map internals (try_emplace, assign, node insert, find, equality, destroy, node holder)
 sub_fd875f4626c1	fd875f4626c19351	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_fd8a45b3849d	fd8a45b3849d5b3c	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)
+sub_fd8ef1a53649	fd8ef1a536494916	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::connectToGameSession
 sub_fd91a632265e	fd91a632265e81fa	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyObject
 sub_fd91ead0bdc8	fd91ead0bdc8c31d	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setNumber
 sub_fd94a633a9de	fd94a633a9deb20e	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::TSpellInfoStorage

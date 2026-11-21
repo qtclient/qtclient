@@ -14,24 +14,12 @@ struct CipTypedKeep {
 };
 CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
 
-TTutorialProtocolMessageHandler* g_liveTutorialProtocolHandler = nullptr;
-
 using ::tibia::protobuf::protocol::GameserverMessageTutorialHint;
 } // namespace
 
 TTutorialProtocolMessageHandler::TTutorialProtocolMessageHandler(QObject* parent)
     : cip::tibia::tutorial::TTutorialProtocolMessageHandler(parent)
 {
-}
-
-TTutorialProtocolMessageHandler* TTutorialProtocolMessageHandler::liveInstance()
-{
-    return g_liveTutorialProtocolHandler;
-}
-
-void TTutorialProtocolMessageHandler::setLiveInstance(TTutorialProtocolMessageHandler* handler)
-{
-    g_liveTutorialProtocolHandler = handler;
 }
 
 void TTutorialProtocolMessageHandler::handleTutorialHintMessage(
@@ -48,8 +36,7 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)typedKeep();
-    auto* handler = new TTutorialProtocolMessageHandler(parent);
-    TTutorialProtocolMessageHandler::setLiveInstance(handler);
+    (void)parent;
 }
 
 } // namespace tibia::tutorial

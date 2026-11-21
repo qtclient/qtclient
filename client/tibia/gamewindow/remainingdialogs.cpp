@@ -1300,19 +1300,21 @@ void TShowImageDialogController::closeDialog()
 TShowSpellBookDialogController::TShowSpellBookDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ShowSpellBookDialog.qml"), parent)
 {
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
-            &TShowSpellBookDialogController::onGameSessionChanged);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this,
-            &TShowSpellBookDialogController::onGameSessionChanged);
-    onGameSessionChanged();
 }
 
-void TShowSpellBookDialogController::onGameSessionChanged()
+void TShowSpellBookDialogController::connectToGameSession(const std::shared_ptr<tibia::game::IGameSession>& GameSession)
 {
     dialog()->close();
-    if (auto* handler = tibia::game::TSpellBookProtocolMessageHandler::liveInstance())
-        connect(handler, &tibia::game::TSpellBookProtocolMessageHandler::requestShowSpellBookDialog, this,
-                &TShowSpellBookDialogController::showSpellBookDialog, Qt::UniqueConnection);
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const tibia::game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->spellBookProtocolMessageHandler().get(),
+                                               &tibia::game::TSpellBookProtocolMessageHandler::requestShowSpellBookDialog, this,
+                                               &TShowSpellBookDialogController::showSpellBookDialog));
 }
 
 void TShowSpellBookDialogController::showSpellBookDialog(const QString& Text, const int AppearanceID)

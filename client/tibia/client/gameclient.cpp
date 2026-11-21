@@ -56,6 +56,7 @@
 #include "minimap/minimapmarkerstorage.h"
 #include "chat/textstorage.h"
 #include "game/gamesessionbase.h"
+#include "input/genericgameactionhandler.h"
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
@@ -293,9 +294,6 @@ TGameClient::TGameClient(QObject* parent)
     : cip::tibia::client::TGameClient(parent)
     , m_login(std::make_unique<authentication::TLoginRequestUploader>())
     , m_characterSelection(std::make_unique<gamewindow::TCharacterSelectionController>())
-    , m_sidebarOptions(std::make_unique<config::TSidebarOptions>())
-    , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
-    , m_actionBarOptions(std::make_unique<config::TActionBarOptions>())
     , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
@@ -367,7 +365,6 @@ TGameClient::TGameClient(QObject* parent)
     protocol::ownProductSurface(this);
     tutorial::ownProductSurface(this);
     questlog::ownProductSurface(this);
-    reporting::ownProductSurface(this);
     screenshot::ownProductSurface(this);
     spells::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
@@ -480,9 +477,10 @@ TGameClient::TGameClient(QObject* parent)
 
 TGameClient::~TGameClient()
 {
-    // The manager saves the character's configuration on destruction, through
-    // storages the game window owns: it goes first.
-    m_characterConfigurationManager.reset();
+    // The session's manager saves the character's configuration through
+    // storages the game window owns: save before the game window goes.
+    if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
+        manager->saveConfiguration();
     m_gameWindow.reset();
     shutdown();
     qmlcomponents::TSoundHelperService::setInstance(nullptr);
@@ -938,6 +936,7 @@ void TGameClient::autoconnectNextGameSessionInQueue()
         if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
             reaction->disableReconnectionAttempts();
         const auto dump = createGameSession<game::TSessiondumpGameSession>();
+        dump->setCharacterConfigurationStorages(m_characterConfigurationStorages);
         dump->initialize(metaInfo);
         setCurrentGameSession(dump);
         dump->startSession();
@@ -947,6 +946,7 @@ void TGameClient::autoconnectNextGameSessionInQueue()
         return;
     setCurrentGameSession(nullptr);
     const auto live = createGameSession<game::TGameserverGameSession>();
+    live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
     live->initialize(metaInfo);
     setCurrentGameSession(live);
     const auto& loginData = std::static_pointer_cast<const game::TGameserverGameSessionMetaInfo>(metaInfo)->loginData;
@@ -960,6 +960,10 @@ void TGameClient::connectToCurrentGameSession()
 {
     game::IGameSession* current = m_currentGameSession.get();
     connect(current, &game::IGameSession::worldEntered, this, &TGameClient::onWorldEntered);
+    connect(current, &game::IGameSession::showCharacterSelectionDialog, this, [this] { openCharacterSelectionForSwitch(); });
+    if (auto* base = dynamic_cast<game::TGameSessionBase*>(current))
+        connect(base->genericGameActionHandler().get(), &input::TGenericGameActionHandler::sendQuitGame, this,
+                [this] { requestLogoutOrShowStartScreen(nullptr); });
     const auto outOfDate = [this] {
         Q_EMIT clientOutOfDate();
         fail(tr("The game server needs a newer client."));
@@ -1037,8 +1041,9 @@ void TGameClient::onWorldEntered()
 {
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
-    if (const uint32_t playerId = tibia::game::localPlayerId(); playerId != 0 && m_characterConfigurationManager)
-        m_characterConfigurationManager->onPlayerCreatureLoaded(playerId);
+    if (config::TCharacterConfigurationManager* manager = characterConfigurationManager();
+        manager && tibia::game::localPlayerId() != 0)
+        manager->onPlayerCreatureLoaded(tibia::game::localPlayerId());
     const std::string assets = gamecore::assetsRoot(ClientVersion);
     // CipSoft: Resources/minimap is a sibling of Resources/assets (assetsRoot adds
     // Resources as a search path so short name `minimap/` resolves). Prefer that
@@ -1112,13 +1117,28 @@ void TGameClient::onWorldEntered()
     }
 }
 
-void TGameClient::createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages)
+config::TCharacterConfigurationManager* TGameClient::characterConfigurationManager() const
 {
-    storages.sidebar = m_sidebarOptions.get();
-    storages.actionBar = m_actionBarOptions.get();
-    storages.statusbar = m_statusbarStorage.get();
-    storages.outfitDialog = m_outfitDialogStorage.get();
-    m_characterConfigurationManager = std::make_unique<config::TCharacterConfigurationManager>(storages);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
+    return session ? session->characterConfigurationManager().get() : nullptr;
+}
+
+config::TSidebarOptions* TGameClient::sidebarOptions() const
+{
+    config::TCharacterConfigurationManager* manager = characterConfigurationManager();
+    return manager ? manager->sidebarOptions() : nullptr;
+}
+
+game::TStatusbarStorage* TGameClient::statusbarStorage() const
+{
+    config::TCharacterConfigurationManager* manager = characterConfigurationManager();
+    return manager ? manager->statusbarStorage() : nullptr;
+}
+
+config::TActionBarOptions* TGameClient::actionBarOptions() const
+{
+    config::TCharacterConfigurationManager* manager = characterConfigurationManager();
+    return manager ? manager->actionBarOptions() : nullptr;
 }
 
 void TGameClient::onWorldLeft()
@@ -1127,8 +1147,8 @@ void TGameClient::onWorldLeft()
         m_dualConnection->reset();
     tibia::game::clearWaypointCostFactory();
     m_minimap.reset();
-    if (m_characterConfigurationManager)
-        m_characterConfigurationManager->saveConfiguration();
+    if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
+        manager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
     if (m_soundController)

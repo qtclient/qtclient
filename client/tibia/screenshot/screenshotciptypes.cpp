@@ -119,8 +119,6 @@ void TScreenshotManager::configure(QQuickWindow* window, QQuickItem* mapWindow)
     if (window)
         connect(window, &QQuickWindow::frameSwapped, this, &TScreenshotManager::takeScreenshotIfEventIsWainting,
                 Qt::UniqueConnection);
-    // qtclient: the manager lives for one game session.
-    setGameSessionActive(true);
 }
 
 bool TScreenshotManager::isScreenshotEnabled(const int event)
@@ -189,7 +187,7 @@ void TScreenshotManager::clearBacklog()
 
 void TScreenshotManager::startBacklogTimerIfNeeded()
 {
-    if (!m_backlogTimer.isActive() && m_gameSessionActive && optionEnabled(O::screenshotsUseBacklog))
+    if (!m_backlogTimer.isActive() && m_gameSession && optionEnabled(O::screenshotsUseBacklog))
         m_backlogTimer.start();
 }
 
@@ -204,10 +202,10 @@ void TScreenshotManager::onScreenshotMangerOptionsChanged()
     startBacklogTimerIfNeeded();
 }
 
-void TScreenshotManager::setGameSessionActive(const bool active)
+void TScreenshotManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     clearBacklog();
-    m_gameSessionActive = active;
+    m_gameSession = GameSession;
     startBacklogTimerIfNeeded();
 }
 
@@ -222,7 +220,7 @@ bool TScreenshotManager::takeScreenshotIfEventIsWainting()
 {
     bool taken = false;
     bool deferred = false;
-    if ((m_pendingEvent == EVENT_DEATH_PVE || m_pendingEvent == EVENT_DEATH_PVP) && m_gameSessionActive)
+    if ((m_pendingEvent == EVENT_DEATH_PVE || m_pendingEvent == EVENT_DEATH_PVP) && m_gameSession)
         deferred = isDeathScreenshotDeferred();
     if (m_heldEvent != EVENT_NONE) {
         grabScreenshot(m_heldEvent);
@@ -293,7 +291,7 @@ void TScreenshotManager::saveScreenshots(const std::vector<QImage>& images, cons
     const QString part = QStringLiteral("_%1");
     QString fileName = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd_hhmmsszzz%1%2%3.png"));
     QString characterPart;
-    if (m_gameSessionActive) {
+    if (m_gameSession) {
         const std::string characterName = game::localPlayerName();
         if (!characterName.empty())
             characterPart = part.arg(QString::fromStdString(characterName));

@@ -91,6 +91,15 @@ void TBugReportDialogController::show()
     dialog()->show();
 }
 
+void TBugReportDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+}
+
 void TBugReportDialogController::closeDialog()
 {
     dialog()->close();

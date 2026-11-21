@@ -112,8 +112,6 @@ CipTypedKeep& typedKeep()
     return keep;
 }
 
-TGameProtocolMessageHandler* g_liveGameProtocolHandler = nullptr;
-
 using Args = std::vector<std::any>;
 using client::gamecore::argBool;
 using client::gamecore::argInt;
@@ -157,16 +155,6 @@ using ::tibia::protobuf::protocol::GameserverMessageWorldEntered;
 TGameProtocolMessageHandler::TGameProtocolMessageHandler(QObject* parent)
     : cip::tibia::game::TGameProtocolMessageHandler(parent)
 {
-}
-
-TGameProtocolMessageHandler* TGameProtocolMessageHandler::liveInstance()
-{
-    return g_liveGameProtocolHandler;
-}
-
-void TGameProtocolMessageHandler::setLiveInstance(TGameProtocolMessageHandler* handler)
-{
-    g_liveGameProtocolHandler = handler;
 }
 
 void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
@@ -454,18 +442,10 @@ TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::instance()
     return s_instance;
 }
 
-namespace {
-TPlayerProtocolMessageHandler* g_livePlayerProtocolHandler = nullptr;
-}
-
-TPlayerProtocolMessageHandler* TPlayerProtocolMessageHandler::liveInstance()
+TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, QObject* parent)
+    : cip::tibia::game::TPlayerProtocolMessageHandler(parent)
+    , m_cooldownStorage(cooldownStorage)
 {
-    return g_livePlayerProtocolHandler;
-}
-
-void TPlayerProtocolMessageHandler::setLiveInstance(TPlayerProtocolMessageHandler* handler)
-{
-    g_livePlayerProtocolHandler = handler;
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
@@ -602,7 +582,7 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
 void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageSpellDelay& message)
 {
-    TCooldownStorage* storage = TCooldownStorage::instance();
+    TCooldownStorage* storage = m_cooldownStorage;
     if (!storage)
         return;
     const auto spellId = static_cast<uint16_t>(message.spell_id());
@@ -617,7 +597,7 @@ void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
 void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageSpellGroupDelay& message)
 {
-    if (TCooldownStorage* storage = TCooldownStorage::instance()) {
+    if (TCooldownStorage* storage = m_cooldownStorage) {
         const qint64 now = TCooldownStorage::now();
         storage->setSpellGroupCooldown(static_cast<uint8_t>(message.group_id()), now, now + message.delay());
     }
@@ -626,7 +606,7 @@ void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
 void TPlayerProtocolMessageHandler::handleMultiUseDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message)
 {
-    if (TCooldownStorage* storage = TCooldownStorage::instance()) {
+    if (TCooldownStorage* storage = m_cooldownStorage) {
         const qint64 now = TCooldownStorage::now();
         storage->setMultiUseCooldown(now, now + message.delay());
     }
@@ -657,7 +637,7 @@ void TPlayerProtocolMessageHandler::handleResourceBalanceMessage(
 void TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePassiveAbilityData& message)
 {
-    TCooldownStorage* storage = TCooldownStorage::instance();
+    TCooldownStorage* storage = m_cooldownStorage;
     if (!storage)
         return;
     const auto ability = static_cast<uint8_t>(message.ability());
@@ -823,21 +803,9 @@ void ownProductSurface(QObject* parent)
     // Session-parented qtclient twin (QApp already exists). Dialog stack binds later.
     if (!g_qtclientFpsDropsLogger)
         g_qtclientFpsDropsLogger = new FPSDropsLogger(parent);
-    // Empty-moc / session-owned CIP QObject surfaces (live under the game session).
-    new TBlessingsProtocolMessageHandler(parent);
-    new TEditTextProtocolMessageHandler(parent);
-    new TGameEventProtocolMessageHandler(parent);
-    {
-        auto* handler = new TGameProtocolMessageHandler(parent);
-        TGameProtocolMessageHandler::setLiveInstance(handler);
-    }
+    // The game session builds its protocol message and game action handlers.
     new TPassiveAbilityInfoStorage(parent);
-    new TPlayerGameActionHandler(parent);
-    TPlayerProtocolMessageHandler::setLiveInstance(new TPlayerProtocolMessageHandler(parent));
-    new TPremiumProtocolMessageHandler(parent);
     new TPremiumTimeStorage(parent);
-    new TServerModalDialogProtocolMessageHandler(parent);
-    new TSpellBookProtocolMessageHandler(parent);
 }
 
 void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMessageEditText& m)
@@ -1015,7 +983,6 @@ void TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelecti
 }
 
 namespace {
-TSpellBookProtocolMessageHandler* g_spellBookProtocolMessageHandler = nullptr;
 /// The message dialog type that shows a spell book.
 constexpr uint32_t SpellBookMessageDialogType = 80;
 }
@@ -1023,16 +990,7 @@ constexpr uint32_t SpellBookMessageDialogType = 80;
 TSpellBookProtocolMessageHandler::TSpellBookProtocolMessageHandler(QObject* parent)
     : cip::tibia::game::TSpellBookProtocolMessageHandler(parent)
 {
-    g_spellBookProtocolMessageHandler = this;
 }
-
-TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler()
-{
-    if (g_spellBookProtocolMessageHandler == this)
-        g_spellBookProtocolMessageHandler = nullptr;
-}
-
-TSpellBookProtocolMessageHandler* TSpellBookProtocolMessageHandler::liveInstance() { return g_spellBookProtocolMessageHandler; }
 
 void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
     const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& Message)

@@ -26,8 +26,13 @@
 #include <functional>
 #include <memory>
 #include <utility>
+#include <vector>
 #include <tuple>
 #include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
 
 namespace tibia {
 namespace game {
@@ -572,14 +577,19 @@ class TShowSpellBookDialogController final : public TDialogController<cip::tibia
 public:
     explicit TShowSpellBookDialogController(QObject* parent = nullptr);
 
-    /// Closes the dialog and follows the new session's spell book handler.
-    void onGameSessionChanged();
+    /// Closes the dialog and follows the session's spell book handler (none
+    /// without a session).
+    void connectToGameSession(const std::shared_ptr<tibia::game::IGameSession>& GameSession);
 
     Q_INVOKABLE void openCyclopedia() override;
     Q_INVOKABLE void requestClose() override;
 
 public Q_SLOTS:
     void showSpellBookDialog(const QString& Text, int AppearanceID);
+
+private:
+    std::shared_ptr<tibia::game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 /// CIP TSoulSealsDialogController — taskboard/SoulSealsDialog.qml.

@@ -88,6 +88,14 @@
 #include "cyclopedia/cyclopediamapdata.h"
 #include "cyclopedia/housesstorage.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "config/actionbaroptions.h"
+#include "config/sidebaroptions.h"
+#include "game/cooldownstorage.h"
+#include "game/statusbarstorage.h"
+#include "input/crosshairgameactionhandlers.h"
+#include "input/genericgameactionhandler.h"
+
+#include <tibia/game/gamesession.h>
 
 namespace tibia::game {
 
@@ -147,6 +155,7 @@ void TGameSessionBase::createStorages()
     m_exivaOptionsStorage = std::make_shared<exivaoptions::TExivaOptionsStorage>();
     m_characterTradeStorage = std::make_shared<trade::TCharacterTradeStorage>();
     m_teamFinderStorage = std::make_shared<teamfinder::TTeamFinderStorage>();
+    m_cooldownStorage = std::make_shared<TCooldownStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>(100);
     // CIP: the client's sound reaches the session through its provider and
     // its object sound counts.
@@ -194,6 +203,20 @@ void TGameSessionBase::createStorages()
     m_imbuementDurationsStorage = std::make_shared<imbuing::TImbuementDurationsStorage>();
     m_dailyRewardStorage = std::make_shared<dailyreward::TDailyRewardStorage>();
     m_exaltationStorage = std::make_shared<exaltation::TExaltationStorage>();
+    // CIP: the manager saves the session's analysers, Cyclopedia map and own
+    // option storages with the character, next to the game window's.
+    config::TCharacterConfigurationManager::TStorages characterConfiguration = m_characterConfigurationStorages;
+    characterConfiguration.itemTracking = m_itemTrackingStorage.get();
+    characterConfiguration.gainWaste = m_gainWasteStorage.get();
+    characterConfiguration.impact = m_impactStorage.get();
+    characterConfiguration.damageInput = m_damageInputStorage.get();
+    characterConfiguration.progress = m_progressStorage.get();
+    characterConfiguration.huntingSession = m_huntingSessionStorage.get();
+    characterConfiguration.cyclopediaMap = m_cyclopediaMapCharacterConfigurationStorage.get();
+    characterConfiguration.sidebar = std::make_shared<config::TSidebarOptions>();
+    characterConfiguration.actionBar = std::make_shared<config::TActionBarOptions>();
+    characterConfiguration.statusbar = std::make_shared<TStatusbarStorage>();
+    m_characterConfigurationManager = std::make_shared<config::TCharacterConfigurationManager>(characterConfiguration);
 }
 
 void TGameSessionBase::createProtocolMessageHandlers()
@@ -219,6 +242,23 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_teamFinderProtocolMessageHandler = std::make_shared<teamfinder::TTeamFinderProtocolMessageHandler>(m_teamFinderStorage.get());
     m_friendsProtocolMessageHandler = std::make_shared<friends::TFriendsProtocolMessageHandler>(m_friendsStorage.get());
     m_characterTradeProtocolMessageHandler = std::make_shared<trade::TCharacterTradeProtocolMessageHandler>(m_characterTradeStorage.get());
+    m_playerProtocolMessageHandler = std::make_shared<TPlayerProtocolMessageHandler>(m_cooldownStorage.get());
+    m_gameProtocolMessageHandler = std::make_shared<TGameProtocolMessageHandler>();
+    m_spellBookProtocolMessageHandler = std::make_shared<TSpellBookProtocolMessageHandler>();
+    m_serverModalDialogProtocolMessageHandler = std::make_shared<TServerModalDialogProtocolMessageHandler>();
+    m_ruleViolationProtocolMessageHandler = std::make_shared<reporting::TRuleViolationProtocolMessageHandler>();
+    connect(m_ruleViolationProtocolMessageHandler.get(), &reporting::TRuleViolationProtocolMessageHandler::publishGameAction,
+            m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
+    m_bugReportProtocolMessageHandler = std::make_shared<reporting::TBugReportProtocolMessageHandler>();
+    m_editTextProtocolMessageHandler = std::make_shared<TEditTextProtocolMessageHandler>();
+    m_unjustifiedPointsProtocolMessageHandler = std::make_shared<creatures::TUnjustifiedPointsProtocolMessageHandler>();
+    m_newsProtocolMessageHandler = std::make_shared<news::TNewsProtocolMessageHandler>();
+    m_premiumProtocolMessageHandler = std::make_shared<TPremiumProtocolMessageHandler>();
+    m_tutorialProtocolMessageHandler = std::make_shared<tutorial::TTutorialProtocolMessageHandler>();
+    m_blessingsProtocolMessageHandler = std::make_shared<TBlessingsProtocolMessageHandler>();
+    m_gameEventProtocolMessageHandler = std::make_shared<TGameEventProtocolMessageHandler>();
+    connect(m_gameEventProtocolMessageHandler.get(), &TGameEventProtocolMessageHandler::publishGameAction,
+            m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal);
     m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
     m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>();
     m_taskboardProtocolMessageHandler = std::make_unique<taskboard::TTaskboardProtocolMessageHandler>(
@@ -349,6 +389,51 @@ void TGameSessionBase::onPrepareNextFrameToRender(const qint64 NextFramePredicte
         m_nextFrameUpdater->v2(NextFramePredictedTimestamp);
 }
 
+void TGameSessionBase::createGameActionHandlers()
+{
+    TInternalGameActionRouter* router = m_gameActionRouter->internalRouter();
+    m_genericGameActionHandler = std::make_shared<input::TGenericGameActionHandler>();
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_genericGameActionHandler.get(),
+            &input::TGenericGameActionHandler::handleGameAction);
+    connect(m_genericGameActionHandler.get(), &input::TGenericGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_genericGameActionHandler.get(), &input::TGenericGameActionHandler::showCharacterSelectionDialog, this,
+            &IGameSession::showCharacterSelectionDialog);
+    m_creaturesGameActionHandler = std::make_shared<creatures::TCreaturesGameActionHandler>();
+    m_playerGameActionHandler = std::make_shared<TPlayerGameActionHandler>();
+    m_useWithGameActionHandler = std::make_shared<input::TUseWithGameActionHandler>();
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_useWithGameActionHandler.get(),
+            &input::TUseWithGameActionHandler::handleGameAction);
+    connect(m_useWithGameActionHandler.get(), &input::TUseWithGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    // The use-with messages go out through the session's message queue.
+    connect(m_useWithGameActionHandler.get(), &input::TUseWithGameActionHandler::sendUseTwoObjects, this,
+            [this](const ::tibia::protobuf::protocol::GameclientMessageUseTwoObjects& message) {
+                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
+                    m_protocolMessageQueue->sendUseTwoObjects(message);
+            });
+    connect(m_useWithGameActionHandler.get(), &input::TUseWithGameActionHandler::sendUseOnCreature, this,
+            [this](const ::tibia::protobuf::protocol::GameclientMessageUseOnCreature& message) {
+                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
+                    m_protocolMessageQueue->sendUseOnCreature(message);
+            });
+    m_crossHairSpellGameActionHandler = std::make_shared<input::TCrossHairSpellGameActionHandler>();
+    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_crossHairSpellGameActionHandler.get(),
+            &input::TCrossHairSpellGameActionHandler::handleGameAction);
+    connect(m_crossHairSpellGameActionHandler.get(), &input::TCrossHairSpellGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_playerGameActionHandler.get(), &TPlayerGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_creaturesGameActionHandler.get(), &creatures::TCreaturesGameActionHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_playerProtocolMessageHandler.get(), &TPlayerProtocolMessageHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_tutorialProtocolMessageHandler.get(), &tutorial::TTutorialProtocolMessageHandler::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_characterConfigurationManager.get(), &config::TCharacterConfigurationManager::publishGameAction, router,
+            &TInternalGameActionRouter::handleGameActionInternal);
+}
+
 TGameSessionBase::~TGameSessionBase()
 {
     if (isActive())
@@ -387,6 +472,7 @@ void TGameSessionBase::install(const bool installed)
     TPlayerData::setLiveInstance(installed ? m_playerData.get() : nullptr);
     TPlayerSkillStats::setLiveInstance(installed ? m_playerSkillStats.get() : nullptr);
     exaltation::TExaltationStorage::setInstance(installed ? m_exaltationStorage.get() : nullptr);
+    TCooldownStorage::setInstance(installed ? m_cooldownStorage.get() : nullptr);
     // The map's session state needs its storage installed (aware range, pruning).
     if (installed && !m_worldInitialized) {
         m_worldMapStorage->sessionState().init();
@@ -474,10 +560,12 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedBuddyStatusChangeMessage, vip, &TVipProtocolMessageHandler::handleBuddyStatusChange);
     link(&Queue::receivedBuddyGroupDataMessage, vip, &TVipProtocolMessageHandler::handleBuddyGroupData);
     using creatures::TUnjustifiedPointsProtocolMessageHandler;
-    link(&Queue::receivedUnjustifiedPointsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints);
-    link(&Queue::receivedPvpSituationsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations);
+    auto* unjustifiedPoints = m_unjustifiedPointsProtocolMessageHandler.get();
+    link(&Queue::receivedUnjustifiedPointsMessage, unjustifiedPoints, &TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints);
+    link(&Queue::receivedPvpSituationsMessage, unjustifiedPoints, &TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations);
 
-    if (auto* player = TPlayerProtocolMessageHandler::liveInstance()) {
+    {
+        auto* player = m_playerProtocolMessageHandler.get();
         link(&Queue::receivedPlayerDataBasicMessage, player, &TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage);
         link(&Queue::receivedPlayerDataCurrentMessage, player, &TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage);
         link(&Queue::receivedVocationSpecificPlayerDataMessage, player,
@@ -507,7 +595,8 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     // The spell modifications the server announces.
     link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);
 
-    if (auto* game = TGameProtocolMessageHandler::liveInstance()) {
+    {
+        auto* game = m_gameProtocolMessageHandler.get();
         link(&Queue::receivedLoginSuccessMessage, game, &TGameProtocolMessageHandler::handleLoginSuccessMessage);
         link(&Queue::receivedSessionEndInformationMessage, game, &TGameProtocolMessageHandler::handleSessionEndInformationMessage);
         link(&Queue::receivedSessionDumpStartMessage, game, &TGameProtocolMessageHandler::handleSessionDumpStartMessage);
@@ -608,15 +697,17 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
     link(&Queue::receivedTrackedQuestFlagsMessage, this, &TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage);
 
-    link(&Queue::receivedShowModalDialogMessage, this, &TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage);
+    link(&Queue::receivedShowModalDialogMessage, m_serverModalDialogProtocolMessageHandler.get(),
+         &TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage);
     using reporting::TRuleViolationProtocolMessageHandler;
-    auto* ruleViolation = sessionHandler(static_cast<TRuleViolationProtocolMessageHandler*>(nullptr));
+    auto* ruleViolation = m_ruleViolationProtocolMessageHandler.get();
     link(&Queue::receivedMessageMessage, ruleViolation, &TRuleViolationProtocolMessageHandler::handleMessageMessage);
     link(&Queue::receivedTextForReportMessage, ruleViolation, &TRuleViolationProtocolMessageHandler::handleTextForReportMessage);
 
-    link(&Queue::receivedEditTextMessage, this, &TEditTextProtocolMessageHandler::handleEditTextMessage);
-    link(&Queue::receivedEditListMessage, this, &TEditTextProtocolMessageHandler::handleEditListMessage);
-    link(&Queue::receivedEditGuildMessageMessage, this, &TEditTextProtocolMessageHandler::handleEditGuildMessageMessage);
+    auto* editText = m_editTextProtocolMessageHandler.get();
+    link(&Queue::receivedEditTextMessage, editText, &TEditTextProtocolMessageHandler::handleEditTextMessage);
+    link(&Queue::receivedEditListMessage, editText, &TEditTextProtocolMessageHandler::handleEditListMessage);
+    link(&Queue::receivedEditGuildMessageMessage, editText, &TEditTextProtocolMessageHandler::handleEditGuildMessageMessage);
 
     using store::TStoreProtocolMessageHandler;
     {
@@ -636,13 +727,14 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedTransactionDetailsMessage, store, &TStoreProtocolMessageHandler::handleTransactionDetailsMessage);
     }
 
-    link(&Queue::receivedShowGameNewsMessage, this, &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
+    link(&Queue::receivedShowGameNewsMessage, m_newsProtocolMessageHandler.get(), &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
 
-    link(&Queue::receivedPlayerDataBasicMessage, this, &TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage);
-    link(&Queue::receivedPremiumTriggerMessage, this, &TPremiumProtocolMessageHandler::handlePremiumTriggerMessage);
+    auto* premium = m_premiumProtocolMessageHandler.get();
+    link(&Queue::receivedPlayerDataBasicMessage, premium, &TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage);
+    link(&Queue::receivedPremiumTriggerMessage, premium, &TPremiumProtocolMessageHandler::handlePremiumTriggerMessage);
 
-    if (auto* tutorial = tutorial::TTutorialProtocolMessageHandler::liveInstance())
-        link(&Queue::receivedTutorialHintMessage, tutorial, &tutorial::TTutorialProtocolMessageHandler::handleTutorialHintMessage);
+    link(&Queue::receivedTutorialHintMessage, m_tutorialProtocolMessageHandler.get(),
+         &tutorial::TTutorialProtocolMessageHandler::handleTutorialHintMessage);
 
     using prey::TPreyProtocolMessageHandler;
     auto* preyHandler = m_preyProtocolMessageHandler.get();
@@ -662,7 +754,8 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedDeadMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleDeadMessage);
     link(&Queue::receivedImbuementDurationsMessage, imbuingHandler, &TImbuingProtocolMessageHandler::handleImbuementDurationsMessage);
 
-    link(&Queue::receivedBlessingsDialogMessage, this, &TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage);
+    link(&Queue::receivedBlessingsDialogMessage, m_blessingsProtocolMessageHandler.get(),
+         &TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage);
 
     using dailyreward::TDailyRewardProtocolMessageHandler;
     auto* dailyReward = m_dailyRewardProtocolMessageHandler.get();
@@ -726,8 +819,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
     link(&Queue::receivedFriendSystemDataMessage, m_friendsProtocolMessageHandler.get(),
          &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
-    link(&Queue::receivedGameEventMessage, sessionHandler(static_cast<TGameEventProtocolMessageHandler*>(nullptr)),
-         &TGameEventProtocolMessageHandler::handleGameEventMessage);
+    link(&Queue::receivedGameEventMessage, m_gameEventProtocolMessageHandler.get(), &TGameEventProtocolMessageHandler::handleGameEventMessage);
     link(&Queue::receivedHighscoresMessage, m_highscoresProtocolMessageHandler.get(),
          &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
@@ -755,16 +847,15 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedExaltationHistoryMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleExaltationHistoryMessage);
     link(&Queue::receivedExaltationResultMessage, exaltationHandler, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
 
-    if (auto* bugReport = reporting::TBugReportProtocolMessageHandler::liveInstance())
-        link(&Queue::receivedBugReportsAllowedMessage, bugReport,
-             &reporting::TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage);
+    link(&Queue::receivedBugReportsAllowedMessage, m_bugReportProtocolMessageHandler.get(),
+         &reporting::TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage);
 
     link(&Queue::receivedSoundTriggerMessage, m_soundProtocolMessageHandler.get(),
          &sound::TSoundProtocolMessageHandler::handleSoundTriggerMessage);
 
     using proficiency::TProficiencyProtocolMessageHandler;
-    if (auto* spellBook = TSpellBookProtocolMessageHandler::liveInstance())
-        link(&Queue::receivedShowMessageDialogMessage, spellBook, &TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedShowMessageDialogMessage, m_spellBookProtocolMessageHandler.get(),
+         &TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage);
 
     using skillwheel::TSkillWheelProtocolMessageHandler;
     auto* skillWheel = m_skillWheelProtocolMessageHandler.get();

@@ -1,7 +1,6 @@
 #include "cooldownstorage.h"
 
 #include "spells/spellinfostorage.h"
-#include "game/tgamenotify.h"
 
 #include <QElapsedTimer>
 
@@ -53,13 +52,10 @@ void joinCooldown(TCooldown& result, const TCooldown& other)
 TCooldownStorage::TCooldownStorage(QObject* parent)
     : cip::tibia::game::TCooldownStorage(parent)
 {
-    g_instance = this;
     for (uint8_t group = 1; group <= 11; ++group) {
         m_spellGroupCooldownStarts[group] = 0;
         m_spellGroupCooldownEnds[group] = 0;
     }
-    // The storage outlives the game session here; start every session empty.
-    connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] { reset(); });
 }
 
 TCooldownStorage::~TCooldownStorage()
@@ -71,6 +67,11 @@ TCooldownStorage::~TCooldownStorage()
 TCooldownStorage* TCooldownStorage::instance()
 {
     return g_instance;
+}
+
+void TCooldownStorage::setInstance(TCooldownStorage* storage)
+{
+    g_instance = storage;
 }
 
 qint64 TCooldownStorage::now()
@@ -263,22 +264,6 @@ TCooldown TCooldownStorage::passiveCooldown() const
 int TCooldownStorage::passiveAbilityId() const
 {
     return m_passiveAbilityCooldowns.empty() ? 0 : m_passiveAbilityCooldowns.begin()->first;
-}
-
-void TCooldownStorage::reset()
-{
-    m_spellCooldownEnds.clear();
-    for (auto& [groupId, start] : m_spellGroupCooldownStarts)
-        start = 0;
-    for (auto& [groupId, end] : m_spellGroupCooldownEnds)
-        end = 0;
-    m_multiUseCooldownStart = 0;
-    m_multiUseCooldownEnd = 0;
-    m_passiveAbilityCooldowns.clear();
-    m_passiveAbilityCounters.clear();
-    Q_EMIT spellOrSpellGroupCooldownChanged();
-    Q_EMIT multiUseCooldownChanged();
-    Q_EMIT passiveAbilityCooldownChanged();
 }
 
 }

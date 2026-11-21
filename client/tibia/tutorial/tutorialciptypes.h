@@ -50,9 +50,6 @@ class TTutorialProtocolMessageHandler final : public cip::tibia::tutorial::TTuto
 public:
     explicit TTutorialProtocolMessageHandler(QObject* parent = nullptr);
 
-    static TTutorialProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TTutorialProtocolMessageHandler* handler);
-
     /// CIP slot: TutorialHint (S 0xDC / 220) — native Q→H apply (skips classic bridge).
     void handleTutorialHintMessage(
         const ::tibia::protobuf::protocol::GameserverMessageTutorialHint& TutorialHintMessage);

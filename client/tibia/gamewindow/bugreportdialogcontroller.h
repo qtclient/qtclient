@@ -8,7 +8,13 @@
 
 #include <client/position.h>
 
+#include <memory>
+#include <vector>
+
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 /// The bug report, BugReportDialog.qml, opened by the game actions
@@ -35,6 +41,8 @@ public:
     QStringList classifications() const override;
     /// The reason the server refuses reports, empty if it takes them.
     QString notAllowedReason() const override;
+    /// A new session (or none) closes the dialog.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     void showReportOtherDialog() override;
@@ -53,6 +61,8 @@ private:
     void show();
 
     ECategory m_category = Other;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     Position m_position;
     QString m_speaker;
     QString m_text;

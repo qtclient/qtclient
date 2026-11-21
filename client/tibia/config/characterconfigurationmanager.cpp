@@ -53,8 +53,8 @@ TCharacterConfigurationManager::TCharacterConfigurationManager(const TStorages& 
                         configuration(storages.questLog),      configuration(storages.gainWaste),
                         configuration(storages.impact),        configuration(storages.damageInput),
                         configuration(storages.progress),      configuration(storages.huntingSession),
-                        configuration(storages.quickLootBlackWhitelist), configuration(storages.sidebar),
-                        configuration(storages.actionBar),     configuration(storages.statusbar),
+                        configuration(storages.quickLootBlackWhitelist), configuration(storages.sidebar.get()),
+                        configuration(storages.actionBar.get()), configuration(storages.statusbar.get()),
                         configuration(storages.cyclopediaMap), configuration(storages.outfitDialog),
                         configuration(storages.skillWheel) }
 {
