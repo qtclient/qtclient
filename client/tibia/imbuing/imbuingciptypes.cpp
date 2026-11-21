@@ -45,11 +45,22 @@ TImbuement imbuementFromProtocol(const ::tibia::protobuf::protocol::ProtocolImbu
 
 }
 
+TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler(TImbuingStorage* imbuingStorage,
+                                                               TImbuementDurationsStorage* imbuementDurationsStorage, QObject* parent)
+    : cip::tibia::imbuing::TImbuingProtocolMessageHandler(parent)
+    , m_imbuingStorage(imbuingStorage)
+    , m_imbuementDurationsStorage(imbuementDurationsStorage)
+{
+}
+
 void TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseImbuingDialog&)
 {
-    using namespace ::tibia::protobuf::protocol;
-    if (TImbuingStorage* storage = TImbuingStorage::instance())
-        Q_EMIT storage->requestCloseImbuingDialog();
+    Q_EMIT requestCloseImbuingDialog();
+}
+
+void TImbuingProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead&)
+{
+    Q_EMIT requestCloseImbuingDialog();
 }
 
 void TImbuingProtocolMessageHandler::handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage)
@@ -84,9 +95,7 @@ void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::t
     // product: the pack refreshes its gold-token material status when the choice window opens.
     if (message.window_type() == tibia::client::IMBUEMENT_WINDOW_CHOICE)
         tibia::game::notify("onOpenImbuementWindow", static_cast<uint16_t>(0), static_cast<uint32_t>(0));
-    TImbuingStorage* storage = TImbuingStorage::instance();
-    if (!storage)
-        return;
+    TImbuingStorage* storage = m_imbuingStorage;
     std::vector<TImbuementSlot> slots;
     slots.reserve(static_cast<size_t>(message.slots_size()));
     for (int index = 0; index < message.slots_size(); ++index) {
@@ -113,15 +122,14 @@ void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::t
         tier = static_cast<uint8_t>(message.tier());
     storage->setImbuingData(message.window_type(), message.flag(), static_cast<uint16_t>(message.object_id()), tier, std::move(slots),
                             std::move(imbuements), std::move(ownedObjects));
-    Q_EMIT storage->requestShowOrRefreshImbuingDialog();
+    Q_EMIT requestShowOrRefreshImbuingDialog();
 }
 
 void TImbuingProtocolMessageHandler::handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)
 {
-    TImbuingStorage* storage = TImbuingStorage::instance();
     const uint32_t type = message.dialog_type();
-    if (storage && type < 12 && (0xc0fu >> type & 1) != 0)
-        Q_EMIT storage->requestShowResultDialog(QString::fromStdString(message.message()));
+    if (type < 12 && (0xc0fu >> type & 1) != 0)
+        Q_EMIT requestShowResultDialog(QString::fromStdString(message.message()));
 }
 
 } // namespace tibia::imbuing

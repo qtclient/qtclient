@@ -3,12 +3,21 @@
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "imbuing/imbuingstorage.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
 
+#include <memory>
 #include <vector>
+
+namespace tibia {
+namespace game {
+class IGameSession;
+class TPremiumTimeStorage;
+}
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -94,7 +103,10 @@ class TImbuingDialogController final : public TDialogController<cip::tibia::game
 {
     Q_OBJECT
 public:
-    explicit TImbuingDialogController(imbuing::TImbuingStorage* storage, QObject* parent = nullptr);
+    explicit TImbuingDialogController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    void connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
     bool clientSettingSmoothFiltering() const override;
 
     bool itemSelectionValid() const override;
@@ -146,7 +158,10 @@ private:
     void selectImbuement(uint32_t imbuementId);
     void replaceObject(QObject*& member, QObject* object);
 
-    imbuing::TImbuingStorage* m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<imbuing::TImbuingStorage> m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
     imbuing::TAvailableImbuementsListModel* m_available;
     imbuing::TImbuementSlotsListModel* m_slotsModel;
     TMessageDialogController* m_resultMessage;
@@ -155,7 +170,6 @@ private:
     bool m_picking = false;
     /// The imbuement tier listed: 0 basic, 1 intricate, 2 powerful.
     uint32_t m_filter = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

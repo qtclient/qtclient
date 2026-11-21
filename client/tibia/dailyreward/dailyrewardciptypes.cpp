@@ -19,8 +19,6 @@ struct CipTypedKeep {
 };
 CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
 
-TDailyRewardStorage* g_storage = nullptr;
-
 using A = input::EGameAction;
 
 } // namespace
@@ -54,21 +52,9 @@ TDailyRewardFixedItems::TDailyRewardFixedItems(const int preyWildcards, const qi
 TDailyRewardStorage::TDailyRewardStorage(QObject* parent)
     : cip::tibia::dailyreward::TDailyRewardStorage(parent)
 {
-    g_storage = this;
-    // The storage outlives the game session here; start every session empty.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] { reset(); });
 }
 
-TDailyRewardStorage::~TDailyRewardStorage()
-{
-    if (g_storage == this)
-        g_storage = nullptr;
-}
-
-TDailyRewardStorage* TDailyRewardStorage::instance()
-{
-    return g_storage;
-}
+TDailyRewardStorage::~TDailyRewardStorage() = default;
 
 void TDailyRewardStorage::setInstantRewardAccessAmount(const int amount)
 {
@@ -210,28 +196,6 @@ QString TDailyRewardStorage::rewardStreakInfoText() const
     return qtTrId("rewardwall_reward_streak_current_bonus").arg(currentRewardStreakBonus());
 }
 
-void TDailyRewardStorage::reset()
-{
-    m_instantRewardAccessAmount = 0;
-    m_dailyRewardJokerAmount = 0;
-    m_cosmeticTokenCount = 0;
-    m_bountyTaskRerollTokenCount = 0;
-    m_rewardStreakBonuses.clear();
-    m_rewards.clear();
-    m_pendingReward = TRewardPair{};
-    m_rewardStreakLength = 0;
-    m_rewardStreakEndTime = 0;
-    m_history.clear();
-    m_nextDailyRewardPosition = 0;
-    m_nextRewardTime = 0;
-    m_isUsingRewardShrine = false;
-    m_collectState = 0;
-    m_collectMessage.clear();
-    m_jokersNeededForCollecting = 0;
-    m_dailyRewardStreakState = 3;
-    m_dailyRewardReadyToPickUp = false;
-}
-
 // ---------------------------------------------------------------------------
 // TDailyRewardGameActionHandler
 
@@ -304,6 +268,12 @@ void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& c
 
 } // namespace
 
+TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler(TDailyRewardStorage* storage, QObject* parent)
+    : cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+}
+
 void TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)
 {
     tibia::game::notify("onRestingAreaState", message.in_resting_area());
@@ -315,10 +285,7 @@ void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const Games
     tibia::game::notify("onOpenRewardWall", static_cast<uint8_t>(message.from_shrine() ? 1 : 0), message.next_reward_time(),
                         static_cast<uint8_t>(message.day_streak_day()), static_cast<uint8_t>(message.collected()), message.message(),
                         static_cast<uint16_t>(message.jokers()), message.time_left(), static_cast<uint16_t>(message.streak_level()));
-    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
-    if (!instance)
-        return;
-    TDailyRewardStorage& storage = *instance;
+    TDailyRewardStorage& storage = *m_storage;
     storage.setNextDailyRewardPosition(static_cast<uint8_t>(message.day_streak_day()));
     storage.setNextRewardTime(message.next_reward_time());
     storage.setUsingRewardShrine(message.from_shrine());
@@ -357,16 +324,12 @@ void TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage(const Game
 
 void TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
 {
-    if (TDailyRewardStorage* const storage = TDailyRewardStorage::instance())
-        storage->setRewardStreakLength(static_cast<uint16_t>(message.daily_reward_streak_length()));
+    m_storage->setRewardStreakLength(static_cast<uint16_t>(message.daily_reward_streak_length()));
 }
 
 void TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage(const GameserverMessageResourceBalance& message)
 {
-    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
-    if (!instance)
-        return;
-    TDailyRewardStorage& storage = *instance;
+    TDailyRewardStorage& storage = *m_storage;
     switch (message.resource_type()) {
     case tibia::client::RESOURCE_DAILYREWARD_STREAK:
         storage.setInstantRewardAccessAmount(static_cast<int>(message.value()));
@@ -387,10 +350,7 @@ void TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage(const Game
 
 void TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage(const GameserverMessageDailyRewardBasic& message)
 {
-    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
-    if (!instance)
-        return;
-    TDailyRewardStorage& storage = *instance;
+    TDailyRewardStorage& storage = *m_storage;
     storage.clearRewardStreakBonuses();
     for (const uint32_t bonus : message.streak_bonus_thresholds())
         storage.addRewardStreakBonus(static_cast<int>(bonus));
@@ -405,10 +365,7 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage(const Gam
 
 void TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage(const GameserverMessageDailyRewardHistory& message)
 {
-    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
-    if (!instance)
-        return;
-    TDailyRewardStorage& storage = *instance;
+    TDailyRewardStorage& storage = *m_storage;
     std::vector<TDailyRewardHistoryEntry> history;
     history.reserve(static_cast<size_t>(message.entries_size()));
     for (const ProtocolDailyRewardHistoryEntry& entry : message.entries())
@@ -419,10 +376,7 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage(const G
 
 void TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage(const GameserverMessageDailyRewardCollectionState& message)
 {
-    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
-    if (!instance)
-        return;
-    TDailyRewardStorage& storage = *instance;
+    TDailyRewardStorage& storage = *m_storage;
     Q_EMIT publishGameAction(input::makeGameAction(message.collected() ? A::DAILY_REWARD_READY_TO_PICK_UP : A::DAILY_REWARD_NOT_COLLECTABLE));
     storage.setDailyRewardReadyToPickUp(message.collected());
 }

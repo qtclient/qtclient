@@ -1,5 +1,6 @@
 #include "storeandresourcebalancehelpercontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "store/qmlstoreobjects.h"
 
 #include <QLocale>
@@ -39,20 +40,13 @@ int intBalance(const tibia::client::ResourceTypes_t type)
 
 }
 
-TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperController(store::TStoreStorage* storage, QObject* parent)
+TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperController(QObject* parent)
     : cip::tibia::gamewindow::TStoreAndResourceBalanceHelperController(parent)
-    , m_storage(storage)
 {
     m_exaltedDustMaximum = 100;
-    m_storeBalance = new store::TQmlStoreBalance(*storage, this);
-    connect(storage, &store::TStoreStorage::balanceChanged, this, &TStoreAndResourceBalanceHelperController::updateStoreBalance);
-    connect(storage, &store::TStoreStorage::balanceUpdatingChanged, this, &TStoreAndResourceBalanceHelperController::updateStoreBalance);
+    m_storeBalance = new store::TQmlStoreBalance(std::nullopt, false, this);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this]() {
-        updateGold();
-        updateResources();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         updateGold();
         updateResources();
     });
@@ -60,12 +54,27 @@ TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperControll
     updateResources();
 }
 
-void TStoreAndResourceBalanceHelperController::setExaltationStorage(exaltation::TExaltationStorage* storage)
+void TStoreAndResourceBalanceHelperController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    m_exaltation = storage;
-    connect(storage, &exaltation::TExaltationStorage::currentDustLimitChanged, this, &TStoreAndResourceBalanceHelperController::updateResources);
-    connect(storage, &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
-            &TStoreAndResourceBalanceHelperController::updateResources);
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_storage = session ? session->storeStorage().get() : nullptr;
+    m_exaltation = session ? session->exaltationStorage().get() : nullptr;
+    if (m_storage) {
+        m_gameSessionConnections.add(connect(m_storage, &store::TStoreStorage::balanceChanged, this,
+                                             &TStoreAndResourceBalanceHelperController::updateStoreBalance));
+        m_gameSessionConnections.add(connect(m_storage, &store::TStoreStorage::balanceUpdatingChanged, this,
+                                             &TStoreAndResourceBalanceHelperController::updateStoreBalance));
+    }
+    if (m_exaltation) {
+        m_gameSessionConnections.add(connect(m_exaltation, &exaltation::TExaltationStorage::currentDustLimitChanged, this,
+                                             &TStoreAndResourceBalanceHelperController::updateResources));
+        m_gameSessionConnections.add(connect(m_exaltation, &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
+                                             &TStoreAndResourceBalanceHelperController::updateResources));
+    }
+    updateGold();
+    updateStoreBalance();
     updateResources();
 }
 
@@ -109,10 +118,8 @@ void TStoreAndResourceBalanceHelperController::updateGold()
 
 void TStoreAndResourceBalanceHelperController::updateStoreBalance()
 {
-    if (!m_storage)
-        return;
     QObject* previous = m_storeBalance;
-    m_storeBalance = new store::TQmlStoreBalance(*m_storage, this);
+    m_storeBalance = m_storage ? new store::TQmlStoreBalance(*m_storage, this) : new store::TQmlStoreBalance(std::nullopt, false, this);
     Q_EMIT storeBalanceChanged();
     if (previous)
         previous->deleteLater();

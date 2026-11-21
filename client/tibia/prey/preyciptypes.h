@@ -12,6 +12,7 @@ namespace tibia::protobuf::protocol {
 class GameserverMessagePreyData;
 class GameserverMessagePreyPrices;
 class GameserverMessagePreyTimeLeft;
+class GameserverMessageShowMessageDialog;
 }
 
 namespace tibia {
@@ -39,6 +40,8 @@ public:
     /// One slot's state; every state also carries the next free reroll and the option.
     static void handlePreyDataMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyData& message);
     static void handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message);
+    /// Message dialog types 20 and 21 are the prey dialog's messages.
+    void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
 
     /// The PreyAction requests of one slot (action 0 list reroll, 1 bonus
     /// reroll, 2 list choice, 3 bestiary list, 4 bestiary choice, 5 automatic

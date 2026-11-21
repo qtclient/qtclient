@@ -1,5 +1,6 @@
 #include "blessingsdialogcontroller.h"
 
+#include "game/gameciptypes.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/staticdata.h>
@@ -159,13 +160,26 @@ TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
             showDialog(*data);
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
-        onPremiumStatusChanged();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        dialog()->destroy();
-    });
+}
+
+void TBlessingsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+}
+
+/// The client's premium time: a change refreshes the shown data's premium
+/// status.
+void TBlessingsDialogController::connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TBlessingsDialogController::onPremiumStatusChanged);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                &TBlessingsDialogController::onPremiumStatusChanged);
 }
 
 void TBlessingsDialogController::showDialog(const BlessDialogData& data)

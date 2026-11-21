@@ -153,8 +153,12 @@ class TKillTrackerWidgetManager final : public QObject
 {
     Q_OBJECT
 public:
-    TKillTrackerWidgetManager(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TKillTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TKillTrackerWidgetManager() override;
+
+    /// Host: the game session's prey storage (CIP hands it over in the sidebar
+    /// widgets' session connector).
+    void setPreyStorage(prey::TPreyStorage* storage);
 
     /// Makes the widget (if needed) with the session's sidebar options and returns it.
     TSidebarWidget* open(config::TSidebarOptions* options);
@@ -168,7 +172,7 @@ Q_SIGNALS:
     void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
-    prey::TPreyStorage* m_storage;
+    prey::TPreyStorage* m_storage = nullptr;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TKillTrackerWidgetController> m_controller;

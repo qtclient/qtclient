@@ -256,18 +256,27 @@ void TKillTrackerWidgetController::onWidgetOptionsChanged()
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
 }
 
-TKillTrackerWidgetManager::TKillTrackerWidgetManager(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                     QObject* parent)
+TKillTrackerWidgetManager::TKillTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : QObject(parent)
-    , m_storage(storage)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {}
 
 TKillTrackerWidgetManager::~TKillTrackerWidgetManager() { delete m_controller; }
 
+void TKillTrackerWidgetManager::setPreyStorage(prey::TPreyStorage* storage)
+{
+    if (storage == m_storage)
+        return;
+    // The widget shows the slots of the storage it was made with.
+    close();
+    m_storage = storage;
+}
+
 TSidebarWidget* TKillTrackerWidgetManager::open(config::TSidebarOptions* options)
 {
+    if (!m_storage)
+        return nullptr;
     if (!m_controller) {
         m_controller = new TKillTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
         connect(m_controller, &TKillTrackerWidgetController::publishGameAction, this, &TKillTrackerWidgetManager::publishGameAction);

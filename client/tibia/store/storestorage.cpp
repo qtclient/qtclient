@@ -148,21 +148,6 @@ TStoreStorage::TStoreStorage(QObject* parent)
     store::ownProductSurface(this);
     m_categoriesTimer.setSingleShot(true);
     connect(&m_categoriesTimer, &QTimer::timeout, this, &TStoreStorage::categoriesChanged);
-    // Host: the storage outlives the game session.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_categories.clear();
-        m_offers.clear();
-        m_banners.clear();
-        m_filterTags.clear();
-        m_activeFilterTag.clear();
-        m_transactionHistory = {};
-        m_currentCategory = nullptr;
-        m_categoriesLoaded = false;
-        m_balance.reset();
-        m_balanceUpdating = false;
-        Q_EMIT categoriesChanged();
-        Q_EMIT balanceChanged();
-    });
 }
 
 bool TStoreStorage::categoriesLoaded() const
@@ -432,12 +417,10 @@ void TStoreStorage::sortOffers(const int order)
     std::sort(m_offers.begin(), m_offers.end(), TOfferSortPredicate{ order });
 }
 
-TStoreProtocolMessageHandler* TStoreProtocolMessageHandler::s_live = nullptr;
-
-TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
+TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(TStoreStorage* storage, QObject* parent)
     : cip::tibia::store::TStoreProtocolMessageHandler(parent)
+    , m_storage(storage)
 {
-    s_live = this;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onHirelingNameChange", [this](GameObject*, const Args& args) {
         Q_EMIT hirelingNameChangeRequested(static_cast<quint32>(client::gamecore::argInt(args, 0)),
                                            static_cast<quint32>(client::gamecore::argInt(args, 1)));
@@ -445,11 +428,7 @@ TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
     });
 }
 
-TStoreProtocolMessageHandler::~TStoreProtocolMessageHandler()
-{
-    if (s_live == this)
-        s_live = nullptr;
-}
+TStoreProtocolMessageHandler::~TStoreProtocolMessageHandler() = default;
 
 qint64 TStoreProtocolMessageHandler::creditPacketSize() const
 {
@@ -971,11 +950,6 @@ void TStoreProtocolMessageHandler::handleStoreButtonIndicatorsMessage(const Game
 void TStoreProtocolMessageHandler::handleOfferDescriptionMessage(const GameserverMessageOfferDescription& message)
 {
     Q_EMIT storeOfferDescriptionReceived(static_cast<int>(message.offer_id()), toQString(message.description()));
-}
-
-TStoreProtocolMessageHandler* TStoreProtocolMessageHandler::instance()
-{
-    return s_live;
 }
 
 }

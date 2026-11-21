@@ -1,5 +1,7 @@
 #include "rewardwalldialogcontroller.h"
 
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -18,7 +20,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 using A = input::EGameAction;
 using StreakState = cip::tibia::qmlcomponents::enums::EDailyRewardStreakState;
 using dailyreward::TDailyReward;
@@ -113,9 +114,8 @@ TQmlRewardStreakBonus::TQmlRewardStreakBonus(const uint neededStreak, const bool
     m_isLockedByRewardStreakLength = lockedByStreak;
 }
 
-TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewardStorage* storage, QObject* parent)
+TRewardWallDialogController::TRewardWallDialogController(QObject* parent)
     : TDialogController(QStringLiteral("RewardWallDialog.qml"), parent)
-    , m_storage(storage)
     , m_infoDialog(new TMessageDialogController(this))
     , m_confirmDialog(new TMessageDialogController(this))
     , m_warningDialog(new TMessageDialogController(this))
@@ -128,33 +128,46 @@ TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewa
     m_warningDialog->setCloseOnButtonClicked(true);
     connect(m_warningDialog, &TMessageDialogController::acceptClicked, this, [this](bool) { onConfirmedPartialCollect(); });
 
-    // The storage's signals.
-    connect(m_storage, &dailyreward::TDailyRewardStorage::instantRewardAccessAmountChanged, this,
-            &TRewardWallDialogController::instantRewardAccessAmountChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardHistoryChanged, this,
-            &TRewardWallDialogController::onDailyRewardHistoryChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardJokerAmountChanged, this,
-            &TRewardWallDialogController::dailyRewardJokerAmountChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::cosmeticTokenCountChanged, this,
-            &TRewardWallDialogController::cosmeticTokenCountChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::bountyTaskRerollTokenCountChanged, this,
-            &TRewardWallDialogController::bountyTaskRerollTokenCountChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::jokersNeededForCollectingChanged, this,
-            &TRewardWallDialogController::jokersNeededForCollectingChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardStreakStateChanged, this, &TRewardWallDialogController::timeChanged);
-    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardStreakStateChanged, this,
-            &TRewardWallDialogController::dailyRewardStreakStateChanged);
-    // The player's premium status.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
-        onPremiumTimeChanged();
-        return std::any{};
-    });
-    // The session's end.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] { closeDialog(); });
-
     for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
                           A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
+}
+
+/// The session's daily reward storage: closes the dialog and follows the new
+/// session's storage (none without a session).
+void TRewardWallDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_storage = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_storage = session->dailyRewardStorage().get();
+    using Storage = dailyreward::TDailyRewardStorage;
+    using Self = TRewardWallDialogController;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(m_storage, &Storage::instantRewardAccessAmountChanged, this, &Self::instantRewardAccessAmountChanged));
+    add(connect(m_storage, &Storage::dailyRewardHistoryChanged, this, &Self::onDailyRewardHistoryChanged));
+    add(connect(m_storage, &Storage::dailyRewardJokerAmountChanged, this, &Self::dailyRewardJokerAmountChanged));
+    add(connect(m_storage, &Storage::cosmeticTokenCountChanged, this, &Self::cosmeticTokenCountChanged));
+    add(connect(m_storage, &Storage::bountyTaskRerollTokenCountChanged, this, &Self::bountyTaskRerollTokenCountChanged));
+    add(connect(m_storage, &Storage::jokersNeededForCollectingChanged, this, &Self::jokersNeededForCollectingChanged));
+    add(connect(m_storage, &Storage::dailyRewardStreakStateChanged, this, &Self::timeChanged));
+    add(connect(m_storage, &Storage::dailyRewardStreakStateChanged, this, &Self::dailyRewardStreakStateChanged));
+}
+
+/// The client's premium time.
+void TRewardWallDialogController::connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TRewardWallDialogController::onPremiumTimeChanged);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                &TRewardWallDialogController::onPremiumTimeChanged);
 }
 
 TRewardWallDialogController::~TRewardWallDialogController()

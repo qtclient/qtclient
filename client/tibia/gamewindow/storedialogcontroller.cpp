@@ -9,6 +9,7 @@
 #include "store/dynamicallyloadedimage.h"
 #include "store/qmlstoreobjects.h"
 #include "store/storeciptypes.h"
+#include "game/gamesessionbase.h"
 
 #include <client/const.h>
 
@@ -239,10 +240,8 @@ void THirelingConfigurationDialogController::requestHireling(const QString& Hire
     dialog()->close();
 }
 
-TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, store::TStoreProtocolMessageHandler* handler, QObject* parent)
+TStoreDialogController::TStoreDialogController(QObject* parent)
     : TDialogController(QStringLiteral("StoreDialog.qml"), parent)
-    , m_storage(storage)
-    , m_messages(handler)
     , m_imageManager(new store::TDynamicallyLoadedImageManager(this))
     , m_descriptionManager(new store::TStoreDescriptionManager(this))
     , m_confirmationDialog(m_imageManager)
@@ -271,9 +270,6 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     connect(&m_confirmationDialog, &TStorePurchaseConfirmationDialogController::confirmPurchase, this,
             &TStoreDialogController::onPurchaseConfirmed);
     connect(&m_viewEventTimer, &QTimer::timeout, this, &TStoreDialogController::onViewEventTimeoutElapsed);
-    if (m_storage)
-        connect(m_storage, &store::TStoreStorage::transactionDetailsLoaded, m_transactionDetailsDialog,
-                [this] { m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails()); });
     connect(m_extraConfirmationDialog, &TMessageDialogController::acceptClicked, this, &TStoreDialogController::onExtraConfirmDialogClickedOK);
     connect(m_extraConfirmationDialog, &TMessageDialogController::discardClicked, this,
             &TStoreDialogController::onExtraConfirmDialogClickedNotOK);
@@ -290,49 +286,6 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     m_hirelingNameDialog->setMaxInputLength(21);
     connect(m_hirelingNameDialog, &TGenericEnterTextDialogController::textEntered, this,
             &TStoreDialogController::onHirelingNameChangeEntered);
-
-    // CIP connects these when the game session starts; the storage and the
-    // handler outlive the sessions here.
-    if (handler && storage && !handler->storage())
-        handler->setStorage(storage);
-    m_descriptionManager->setMessageHandler(handler);
-    if (handler) {
-        m_imageManager->setBaseUrl(handler->imageBaseUrl());
-        connect(handler, &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this, &TStoreDialogController::onRequestOpenStoreDialog);
-        connect(handler, &store::TStoreProtocolMessageHandler::storeImageBaseUrlChanged, this,
-                &TStoreDialogController::onStoreImageBaseUrlChanged);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestCharacterNameChangeInputDialog, this,
-                &TStoreDialogController::onNewCharacterNameRequested);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestHirelingInputDialog, this,
-                &TStoreDialogController::onHirelingConfigurationRequested);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestConfirmationDialog, this,
-                &TStoreDialogController::onConfirmationDialogRequested);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseSuccessNotification, this,
-                &TStoreDialogController::onPurchaseSuccessNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestTransferSuccessNotification, this,
-                &TStoreDialogController::onTransferSuccessNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseErrorNotification, this,
-                &TStoreDialogController::onPurchaseErrorNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestTransferErrorNotification, this,
-                &TStoreDialogController::onTransferErrorNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestTransactionHistoryErrorNotification, this,
-                &TStoreDialogController::onTransactionHistoryErrorNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::requestInformationNotification, this,
-                &TStoreDialogController::onInformationNotification);
-        connect(handler, &store::TStoreProtocolMessageHandler::hirelingNameChangeRequested, this,
-                &TStoreDialogController::onHirelingNameChangeRequested);
-    }
-    if (storage) {
-        connect(storage, &store::TStoreStorage::offersChanged, this, &TStoreDialogController::onOffersChanged);
-        connect(storage, &store::TStoreStorage::homePageChanged, this, &TStoreDialogController::onHomePageChanged);
-        connect(storage, &store::TStoreStorage::searchResultsChanged, this, &TStoreDialogController::onSearchResultsChanged);
-        connect(storage, &store::TStoreStorage::emptySearchResultReceived, this, &TStoreDialogController::onEmptySearchResultReceived);
-        connect(storage, &store::TStoreStorage::transactionHistoryChanged, this, &TStoreDialogController::onTransactionHistoryChanged);
-        connect(storage, &store::TStoreStorage::sortOrderChanged, this, &TStoreDialogController::selectedSortOrderIndexChanged);
-        connect(storage, &store::TStoreStorage::activeFilterTagChanged, this, &TStoreDialogController::rebuildAvailableOffers);
-    }
-    // Host: the session ending closes the store (CIP: the new session's setup).
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TStoreDialogController::closeDialog);
 
     m_gameActions.on(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
         m_messageDialog->dialog()->close();
@@ -398,9 +351,49 @@ void TStoreDialogController::openStore(const store::TStoreOpenParameters& parame
         m_messages->openStore(parameters);
 }
 
-void TStoreDialogController::onRequestOpenStoreDialog()
+/// The session's store handler and storage: closes the store and connects
+/// to the new session's (none without a session).
+void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    showDialog();
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_storage = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_messages = session ? session->storeProtocolMessageHandler().get() : nullptr;
+    m_descriptionManager->setMessageHandler(m_messages);
+    if (!session)
+        return;
+    store::TStoreProtocolMessageHandler* handler = m_messages;
+    using Handler = store::TStoreProtocolMessageHandler;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(handler, &Handler::requestOpenStoreDialog, this, &TStoreDialogController::showDialog));
+    add(connect(handler, &Handler::storeImageBaseUrlChanged, this, &TStoreDialogController::onStoreImageBaseUrlChanged));
+    add(connect(handler, &Handler::requestCharacterNameChangeInputDialog, this, &TStoreDialogController::onNewCharacterNameRequested));
+    add(connect(handler, &Handler::requestHirelingInputDialog, this, &TStoreDialogController::onHirelingConfigurationRequested));
+    add(connect(handler, &Handler::requestConfirmationDialog, this, &TStoreDialogController::onConfirmationDialogRequested));
+    add(connect(handler, &Handler::requestPurchaseSuccessNotification, this, &TStoreDialogController::onPurchaseSuccessNotification));
+    add(connect(handler, &Handler::requestTransferSuccessNotification, this, &TStoreDialogController::onTransferSuccessNotification));
+    add(connect(handler, &Handler::requestPurchaseErrorNotification, this, &TStoreDialogController::onPurchaseErrorNotification));
+    add(connect(handler, &Handler::requestTransferErrorNotification, this, &TStoreDialogController::onTransferErrorNotification));
+    add(connect(handler, &Handler::requestTransactionHistoryErrorNotification, this,
+                &TStoreDialogController::onTransactionHistoryErrorNotification));
+    add(connect(handler, &Handler::requestInformationNotification, this, &TStoreDialogController::onInformationNotification));
+    // Host: the hireling rename prompt.
+    add(connect(handler, &Handler::hirelingNameChangeRequested, this, &TStoreDialogController::onHirelingNameChangeRequested));
+
+    m_storage = session->storeStorage().get();
+    store::TStoreStorage* storage = m_storage;
+    using Storage = store::TStoreStorage;
+    add(connect(storage, &Storage::offersChanged, this, &TStoreDialogController::onOffersChanged));
+    add(connect(storage, &Storage::homePageChanged, this, &TStoreDialogController::onHomePageChanged));
+    add(connect(storage, &Storage::searchResultsChanged, this, &TStoreDialogController::onSearchResultsChanged));
+    add(connect(storage, &Storage::emptySearchResultReceived, this, &TStoreDialogController::onEmptySearchResultReceived));
+    add(connect(storage, &Storage::transactionHistoryChanged, this, &TStoreDialogController::onTransactionHistoryChanged));
+    add(connect(storage, &Storage::sortOrderChanged, this, &TStoreDialogController::selectedSortOrderIndexChanged));
+    add(connect(storage, &Storage::activeFilterTagChanged, this, &TStoreDialogController::rebuildAvailableOffers));
+    add(connect(storage, &Storage::transactionDetailsLoaded, m_transactionDetailsDialog,
+                [this] { m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails()); }));
 }
 
 void TStoreDialogController::showDialog()
@@ -1090,19 +1083,24 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
     : cip::tibia::gamewindow::TStoreButtonController(parent)
     , m_dialog(dialog)
 {
-    if (dialog && dialog->messages()) {
-        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::storeButtonIndicatorsChanged, this,
-                &TStoreButtonController::onStoreButtonIndicatorsChanged);
-        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this,
-                &TStoreButtonController::onRequestOpenStoreDialog);
-        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, this,
-                &TStoreButtonController::onStoreDeeplinkChanged);
-    }
-
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { clearDeeplink(); });
+}
+
+/// The session's store handler's deep link, open requests and indicators.
+void TStoreButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& pGameSession)
+{
+    m_gameSession = pGameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    store::TStoreProtocolMessageHandler* handler = session->storeProtocolMessageHandler().get();
+    connect(handler, &store::TStoreProtocolMessageHandler::storeButtonDeeplinkChanged, this, &TStoreButtonController::onStoreDeeplinkChanged);
+    connect(handler, &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this, &TStoreButtonController::onRequestOpenStoreDialog);
+    connect(handler, &store::TStoreProtocolMessageHandler::storeButtonIndicatorsChanged, this,
+            &TStoreButtonController::onStoreButtonIndicatorsChanged);
 }
 
 void TStoreButtonController::onOpenStoreButtonClicked()

@@ -6,7 +6,9 @@
 
 #include "qmlcomponents/texthelper.h"
 
+#include "game/gamesessionbase.h"
 #include "input/gameactionhandlers.h"
+#include "prey/preyciptypes.h"
 
 #include <client/outfit.h>
 #include <tibia/assets/things.h>
@@ -276,13 +278,6 @@ void TPreyStorage::setSlotWildcardSelection(const int preyId, const TPreyBonus& 
         data->setWildcardSelection(bonus, std::move(races));
         markReceived(preyId);
     }
-}
-
-void TPreyStorage::reset()
-{
-    m_pendingSlots.clear();
-    for (int i = 0; i < SlotCount; ++i)
-        m_pendingSlots.insert(i);
 }
 
 void TPreyStorage::setPrices(const int listReroll, const int bonusReroll, const int choosePrey)
@@ -733,9 +728,8 @@ void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter)
 
 bool TPreyPreyPageController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
 
-TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent)
+TPreyPreyPageController::TPreyPreyPageController(QObject* parent)
     : cip::tibia::gamewindow::TPreyPreyPageController(parent)
-    , m_storage(storage)
     , m_bonusReroll(new TMessageDialogController(this))
     , m_listReroll(new TMessageDialogController(this))
     , m_choosePrey(new TMessageDialogController(this))
@@ -757,16 +751,29 @@ TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QO
         for (QObject* info : std::as_const(m_renderInfos))
             Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
     });
+}
 
-    connect(storage, &prey::TPreyStorage::listRerollPriceChanged, this, [this] {
+/// The session's prey storage: its prices and wildcards.
+void TPreyPreyPageController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeMessages();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_storage = session ? session->preyStorage().get() : nullptr;
+    if (!m_storage)
+        return;
+    prey::TPreyStorage* storage = m_storage;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(storage, &prey::TPreyStorage::listRerollPriceChanged, this, [this] {
         Q_EMIT listRerollPriceChanged();
         Q_EMIT listRerollTooExpensiveChanged();
-    });
-    connect(storage, &prey::TPreyStorage::bonusRerollPriceChanged, this, &TPreyPreyPageController::bonusRerollPriceChanged);
-    connect(storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TPreyPreyPageController::bonusRerollTooExpensiveChanged);
-    connect(storage, &prey::TPreyStorage::choosePreyPriceChanged, this, &TPreyPreyPageController::choosePreyPriceChanged);
-    connect(storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TPreyPreyPageController::choosePreyTooExpensiveChanged);
-    connect(storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyPreyPageController::preyWildcardAmountChanged);
+    }));
+    add(connect(storage, &prey::TPreyStorage::bonusRerollPriceChanged, this, &TPreyPreyPageController::bonusRerollPriceChanged));
+    add(connect(storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TPreyPreyPageController::bonusRerollTooExpensiveChanged));
+    add(connect(storage, &prey::TPreyStorage::choosePreyPriceChanged, this, &TPreyPreyPageController::choosePreyPriceChanged));
+    add(connect(storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TPreyPreyPageController::choosePreyTooExpensiveChanged));
+    add(connect(storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyPreyPageController::preyWildcardAmountChanged));
 }
 
 QString TPreyPreyPageController::preyWildcards() const { return english(m_storage->preyWildcards()); }
@@ -928,8 +935,7 @@ void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGame
 
 TPreyDialogController::TPreyDialogController(QObject* parent)
     : TDialogController(QStringLiteral("prey/PreyDialog.qml"), parent)
-    , m_storage(new prey::TPreyStorage(this))
-    , m_page(new TPreyPreyPageController(m_storage, this))
+    , m_page(new TPreyPreyPageController(this))
     , m_notOnMain(new TMessageDialogController(this))
     , m_info(new TMessageDialogController(this))
 {
@@ -937,26 +943,39 @@ TPreyDialogController::TPreyDialogController(QObject* parent)
     connect(m_page, &TPreyPreyPageController::publishGameAction, this, &TPreyDialogController::publishGameAction);
     m_notOnMain->setCloseOnButtonClicked(true);
     m_info->setCloseOnButtonClicked(true);
-    connect(m_storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyDialogController::preyWildcardAmountChanged);
 }
 
 TPreyDialogController::~TPreyDialogController() = default;
 
-int TPreyDialogController::preyWildcards() const { return m_storage->preyWildcards(); }
+/// The session's prey storage and handler: the dialog and its messages close,
+/// the creatures page follows the session.
+void TPreyDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    m_notOnMain->dialog()->close();
+    m_info->dialog()->close();
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_storage = nullptr;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_storage = session->preyStorage().get();
+    m_page->connectToGameSession(m_gameSession);
+    m_gameSessionConnections.add(
+        connect(m_storage, &prey::TPreyStorage::preyWildcardAmountChanged, this, &TPreyDialogController::preyWildcardAmountChanged));
+    m_gameSessionConnections.add(connect(session->preyProtocolMessageHandler().get(), &prey::TPreyProtocolMessageHandler::requestShowMessageDialog,
+                                         this, &TPreyDialogController::onRequestShowMessageDialog));
+}
+
+int TPreyDialogController::preyWildcards() const { return m_storage ? m_storage->preyWildcards() : 0; }
 
 void TPreyDialogController::onBalanceChanged()
 {
+    if (!m_storage)
+        return;
     m_storage->setPreyWildcards(wildcardBalance());
     m_page->onBalanceChanged();
-}
-
-void TPreyDialogController::clear()
-{
-    closeDialog();
-    m_page->closeMessages();
-    m_notOnMain->dialog()->close();
-    m_info->dialog()->close();
-    m_storage->reset();
 }
 
 void TPreyDialogController::showDialog()
@@ -967,7 +986,7 @@ void TPreyDialogController::showDialog()
         m_notOnMain->showMessage(qtTrId("prey_need_to_reach_main_caption"), qtTrId("prey_need_to_reach_main_text"));
         return;
     }
-    if (!m_storage->allDataReceived()) {
+    if (!m_storage || !m_storage->allDataReceived()) {
         auto action = std::make_shared<input::TGameActionSetStatusLine>(qtTrId("prey_information_not_available"));
         Q_EMIT publishGameAction(action);
         return;

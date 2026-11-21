@@ -2,14 +2,22 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
+#include <QPointer>
+
+#include <memory>
 #include <vector>
 
 struct BlessDialogData;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
 /// One blessing row (CIP: game::TQmlBlessingWithCharges; name ,
@@ -57,6 +65,10 @@ class TBlessingsDialogController final : public TDialogController<cip::tibia::ga
 public:
     explicit TBlessingsDialogController(QObject* parent = nullptr);
 
+    /// Closes the dialog; the session's blessings dialog message opens it.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    void connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
+
 public Q_SLOTS:
     void closeDialog() override;
     /// CIP .
@@ -73,6 +85,9 @@ private:
     /// so an open dialog is rebuilt instead.
     void showDialog(const BlessDialogData& data);
 
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

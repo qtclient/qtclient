@@ -4,14 +4,20 @@
 #include "client/gamecore.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
+#include <QPointer>
 #include <QTimer>
 
 #include <memory>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -47,7 +53,10 @@ class TRewardWallDialogController final : public TDialogController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    explicit TRewardWallDialogController(dailyreward::TDailyRewardStorage* storage, QObject* parent = nullptr);
+    explicit TRewardWallDialogController(QObject* parent = nullptr);
+
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    void connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
     ~TRewardWallDialogController() override;
 
     bool isPremium() const override;
@@ -109,12 +118,14 @@ private:
     qint64 secondsUntilStreakEnd() const;
     qint64 secondsUntilNextReward() const;
 
-    dailyreward::TDailyRewardStorage* m_storage;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<dailyreward::TDailyRewardStorage> m_storage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     TMessageDialogController* m_infoDialog;
     TMessageDialogController* m_confirmDialog;
     TMessageDialogController* m_warningDialog;
     QTimer m_timer;
-    std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

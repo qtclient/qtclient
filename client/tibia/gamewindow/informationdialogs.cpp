@@ -190,7 +190,6 @@ void TInformationDialogs::hookOutfitDialog()
         m_outfitDialog->setWindowOptions({});
         m_questLog->clear();
         m_highscores->clear();
-        m_prey->clear();
     });
 }
 
@@ -425,12 +424,6 @@ void TInformationDialogs::hookPrey()
             [this]() {
         m_prey->onBalanceChanged();
     });
-    // CIP : ShowMessageDialog types 0x14 and 0x15 are the prey info box.
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
-            [this](int code, const QString& message) {
-                if ((code & ~1) == 0x14)
-                    m_prey->onRequestShowMessageDialog(message);
-            });
 }
 
 
