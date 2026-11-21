@@ -23,6 +23,7 @@ class TCreatureMovementSpeedCalculator;
 class TCreatureStorage;
 }
 namespace game {
+class TBossDifficultySelectionProtocolMessageHandler;
 class TGameActionRouter;
 class TOutfitDialogStorage;
 class TPlayerData;
@@ -33,6 +34,17 @@ class TProtocolMessageQueue;
 }
 namespace questlog {
 class TQuestLogStorage;
+}
+namespace skillwheel {
+class TSkillWheelGameActionHandler;
+class TSkillWheelProtocolMessageHandler;
+}
+namespace taskboard {
+class TTaskboardBountyTasksStorage;
+class TTaskboardCurrenciesStorage;
+class TTaskboardProtocolMessageHandler;
+class TTaskboardShopStorage;
+class TTaskboardWeeklyTasksStorage;
 }
 namespace effects {
 class TEffectGameActionHandler;
@@ -136,6 +148,33 @@ public:
     {
         return m_effectProtocolMessageHandler;
     }
+    /// The task board's bounty points, hunting task tokens and soul seals.
+    const std::shared_ptr<taskboard::TTaskboardCurrenciesStorage>& taskboardCurrenciesStorage() const
+    {
+        return m_taskboardCurrenciesStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardBountyTasksStorage>& taskboardBountyTasksStorage() const
+    {
+        return m_taskboardBountyTasksStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage>& taskboardWeeklyTasksStorage() const
+    {
+        return m_taskboardWeeklyTasksStorage;
+    }
+    const std::shared_ptr<taskboard::TTaskboardShopStorage>& taskboardShopStorage() const { return m_taskboardShopStorage; }
+    const std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler>& skillWheelProtocolMessageHandler() const
+    {
+        return m_skillWheelProtocolMessageHandler;
+    }
+    taskboard::TTaskboardProtocolMessageHandler* taskboardProtocolMessageHandler() const { return m_taskboardProtocolMessageHandler.get(); }
+    TBossDifficultySelectionProtocolMessageHandler* bossDifficultySelectionProtocolMessageHandler() const
+    {
+        return m_bossDifficultySelectionProtocolMessageHandler.get();
+    }
+    const std::shared_ptr<skillwheel::TSkillWheelGameActionHandler>& skillWheelGameActionHandler() const
+    {
+        return m_skillWheelGameActionHandler;
+    }
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -177,6 +216,14 @@ private:
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
     std::shared_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    std::shared_ptr<taskboard::TTaskboardCurrenciesStorage> m_taskboardCurrenciesStorage;
+    std::shared_ptr<taskboard::TTaskboardBountyTasksStorage> m_taskboardBountyTasksStorage;
+    std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage> m_taskboardWeeklyTasksStorage;
+    std::shared_ptr<taskboard::TTaskboardShopStorage> m_taskboardShopStorage;
+    std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler> m_skillWheelProtocolMessageHandler;
+    std::unique_ptr<taskboard::TTaskboardProtocolMessageHandler> m_taskboardProtocolMessageHandler;
+    std::unique_ptr<TBossDifficultySelectionProtocolMessageHandler> m_bossDifficultySelectionProtocolMessageHandler;
+    std::shared_ptr<skillwheel::TSkillWheelGameActionHandler> m_skillWheelGameActionHandler;
 };
 
 /// Calls `bind` now and each time the active game session changes, for code

@@ -1,10 +1,9 @@
 #include "bossdifficultyselectiondialogcontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "protocol/protocolciptypes.h"
 
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/tgamenotify.h>
 
 #include <protocol.pb.h>
 
@@ -13,8 +12,6 @@
 namespace tibia::gamewindow {
 
 namespace {
-
-using Args = std::vector<std::any>;
 
 enum EBossDifficultyAction : uint32_t { Start = 0, Cancel = 1, Preview = 2 };
 
@@ -36,25 +33,22 @@ TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogControll
     m_previewTimer.setInterval(500);
     m_previewTimer.setSingleShot(true);
     connect(&m_previewTimer, &QTimer::timeout, this, [this] { sendSelection(Preview, true); });
+}
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultySelection", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<game::TBossDifficultySelectionDialogData>(&args[0]))
-            showDialog(*data);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyUpdate", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<game::TBossDifficultySelectionDialogUpdateData>(&args[0]))
-            updateDialog(*data);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyClose", [this](GameObject*, const Args&) {
-        dialog()->close();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_previewTimer.stop();
-        dialog()->destroy();
-    });
+void TBossDifficultySelectionDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    dialog()->close();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    game::TBossDifficultySelectionProtocolMessageHandler* handler = session->bossDifficultySelectionProtocolMessageHandler();
+    using Handler = game::TBossDifficultySelectionProtocolMessageHandler;
+    using Self = TBossDifficultySelectionDialogController;
+    m_gameSessionConnections.add(connect(handler, &Handler::openBossDifficultySelectionDialog, this, &Self::showDialog));
+    m_gameSessionConnections.add(connect(handler, &Handler::updateBossDifficultySelectionDialog, this, &Self::updateDialog));
+    m_gameSessionConnections.add(connect(handler, &Handler::closeBossDifficultySelectionDialog, this, [this] { dialog()->close(); }));
 }
 
 void TBossDifficultySelectionDialogController::showDialog(const game::TBossDifficultySelectionDialogData& data)

@@ -10,9 +10,7 @@
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "friends/friendsciptypes.h"
-#include "taskboard/taskboardciptypes.h"
 #include "spells/spellsciptypes.h"
-#include "skillwheel/skillwheelciptypes.h"
 #include "screenshot/screenshotciptypes.h"
 #include "reporting/reportingciptypes.h"
 #include "quickloot/quicklootciptypes.h"
@@ -375,9 +373,7 @@ TGameClient::TGameClient(QObject* parent)
     quickloot::ownProductSurface(this);
     reporting::ownProductSurface(this);
     screenshot::ownProductSurface(this);
-    skillwheel::ownProductSurface(this);
     spells::ownProductSurface(this);
-    taskboard::ownProductSurface(this);
     teamfinder::ownProductSurface(this);
     trade::ownProductSurface(this);
     // The process' storages and handlers above publish to the client's router.
@@ -402,7 +398,6 @@ TGameClient::TGameClient(QObject* parent)
         for (auto* handler : creatures::TVipStorage::instance()->findChildren<creatures::TVipGameActionHandler*>())
             connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, handler,
                     qOverload<const input::IGameActionPtr&>(&creatures::TVipGameActionHandler::handleGameAction));
-        publishChildrenToRouter(static_cast<skillwheel::TSkillWheelProtocolMessageHandler*>(nullptr));
     }
 
 

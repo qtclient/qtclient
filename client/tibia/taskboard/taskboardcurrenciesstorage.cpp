@@ -1,21 +1,11 @@
 #include "taskboard/taskboardcurrenciesstorage.h"
 
-#include <QCoreApplication>
-
 namespace tibia::taskboard {
 
 TTaskboardCurrenciesStorage::TTaskboardCurrenciesStorage(QObject* parent)
     : cip::tibia::taskboard::TTaskboardCurrenciesStorage(parent)
 {
 }
-
-const std::shared_ptr<TTaskboardCurrenciesStorage>& TTaskboardCurrenciesStorage::shared()
-{
-    static const std::shared_ptr<TTaskboardCurrenciesStorage> s_instance = std::make_shared<TTaskboardCurrenciesStorage>();
-    return s_instance;
-}
-
-TTaskboardCurrenciesStorage* TTaskboardCurrenciesStorage::instance() { return shared().get(); }
 
 /// Bounty points report every balance message, also an unchanged one.
 void TTaskboardCurrenciesStorage::setBountyPoints(const int value)

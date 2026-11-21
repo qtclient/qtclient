@@ -41,9 +41,6 @@ public:
     explicit TSkillWheelStorage(QObject* parent = nullptr);
     ~TSkillWheelStorage() override;
 
-    /// The storage of the running client (the skill wheel manager's).
-    static TSkillWheelStorage* liveInstance();
-
     QString configurationName() const override;
     QJsonObject configurationToJson() const override;
     void configurationFromJson(const QJsonObject& json) override;

@@ -1,16 +1,19 @@
 #pragma once
 
-#include "client/gamecore.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QTimer>
 
-#include <vector>
+#include <memory>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 /// BossDifficultySelectionDialog.qml (CIP: gamewindow::TBossDifficultySelectionDialogController).
@@ -29,6 +32,9 @@ public:
 
     /// Takes the open message's data and shows the dialog.
     void showDialog(const game::TBossDifficultySelectionDialogData& data);
+    /// Closes the dialog and follows the session's boss difficulty selection
+    /// handler: it opens, updates and closes the dialog.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// Answers "cancel" with the selection context.
@@ -43,7 +49,8 @@ private:
     /// Sends the boss difficulty selection client message.
     void sendSelection(uint32_t action, bool withDifficulty) const;
 
-    std::vector<client::gamecore::Hook> m_hooks;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     /// The last update part, compared against the next update.
     game::TBossDifficultySelectionDialogUpdateData m_updateData;
     uint32_t m_context = 0;

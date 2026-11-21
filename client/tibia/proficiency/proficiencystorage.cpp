@@ -207,22 +207,16 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
     g_instance = this;
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int) { Q_EMIT resourceBalanceChanged(); });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_data.clear();
-        m_reshapeOffers.reset();
-        m_listRequested = false;
-        m_currentProficiencyXP = 0;
-        m_unspentPerk = false;
-        m_lunarAscensionOrbs = 0;
-        m_tables.clear();
-        m_tablesLoaded = false;
-        Q_EMIT proficiencyXPChanged();
-        Q_EMIT currentProficiencyProgressChanged();
-        Q_EMIT unspentPerkChanged();
-        // CipSoft moc: notify listeners the offers are gone. Do not emit qtclient
-        // reshapeOffersChanged — that alias opens WeaponProficiencyReshapeDialog.
-        Q_EMIT shapedPerkReshapeOffersChanged();
-    });
+}
+
+void TProficiencyStorage::clear()
+{
+    m_currentProficiencyXP = 0;
+    m_unspentPerk = false;
+    m_data.clear();
+    m_listRequested = false;
+    m_lunarAscensionOrbs = 0;
+    Q_EMIT unspentPerkChanged();
 }
 
 TProficiencyStorage::~TProficiencyStorage()
@@ -243,7 +237,6 @@ void TProficiencyStorage::setProficiencyData(const uint16_t typeId, TProficiency
 void TProficiencyStorage::setReshapeOffers(TReshapeOffers offers)
 {
     m_reshapeOffers = std::move(offers);
-    Q_EMIT reshapeOffersChanged();
     Q_EMIT shapedPerkReshapeOffersChanged();
 }
 

@@ -54,10 +54,6 @@ class TTaskboardShopStorage final : public cip::tibia::taskboard::TTaskboardShop
 public:
     explicit TTaskboardShopStorage(QObject* parent = nullptr);
 
-    /// qtclient host: the storage the taskboard handler and the dialogs share.
-    static const std::shared_ptr<TTaskboardShopStorage>& shared();
-    static TTaskboardShopStorage* instance();
-
     void setShopRewardData(const std::vector<TShopRewardData>& data);
     const std::vector<TShopRewardData>& shopRewardData() const { return m_data; }
 

@@ -10,7 +10,6 @@
 
 #include <protocol.pb.h>
 
-#include <QCoreApplication>
 
 #include <stdexcept>
 
@@ -155,17 +154,6 @@ TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler(std::shared_p
     , m_shop(std::move(shop))
 {}
 
-TTaskboardProtocolMessageHandler* TTaskboardProtocolMessageHandler::instance()
-{
-    static TTaskboardProtocolMessageHandler* s_instance = [] {
-        auto* handler = new TTaskboardProtocolMessageHandler(TTaskboardCurrenciesStorage::shared(), TTaskboardWeeklyTasksStorage::shared(),
-                                                             TTaskboardBountyTasksStorage::shared(), TTaskboardShopStorage::shared());
-        handler->setParent(QCoreApplication::instance());
-        return handler;
-    }();
-    return s_instance;
-}
-
 void TTaskboardProtocolMessageHandler::handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage)
 {
     const int boardType = checkedEnumValue(TaskboardMessage.board_type(), 2);
@@ -306,15 +294,6 @@ void TTaskboardProtocolMessageHandler::assignAvoidedMonster(const int slotIndex,
     command.set_slot_index(static_cast<uint32_t>(slotIndex));
     command.set_race_id(static_cast<uint32_t>(raceId));
     sendCommand(command);
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
 }
 
 } // namespace tibia::taskboard

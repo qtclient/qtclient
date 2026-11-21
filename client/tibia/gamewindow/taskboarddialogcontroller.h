@@ -3,15 +3,20 @@
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace taskboard {
 struct TBountyTaskData;
 struct TWeeklyTaskData;
@@ -39,6 +44,14 @@ public:
     explicit TTaskboardDialogController(QObject* parent = nullptr);
     ~TTaskboardDialogController() override;
 
+    /// The session's task board currencies.
+    QString bountyPointsString() const override;
+    QString preyHuntingTaskTokensString() const override;
+    QString soulSealsString() const override;
+    /// Closes the dialog and follows the session's task board currencies; its
+    /// tabs follow the session too.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+
 public Q_SLOTS:
     void showDialog(const DialogTab& Tab) override;
     void closeDialog() override;
@@ -47,14 +60,17 @@ public Q_SLOTS:
 
 private:
     void switchToTab(DialogTab tab);
-    void refreshCurrencies();
+    /// Host: the tabs are not ported with their own session connectors; the
+    /// dialog feeds them from the session's task board storages.
+    void connectTabsToGameSession();
     void refreshFromResourceBalance();
 
     TBountyTasksController* m_bounty = nullptr;
     TWeeklyTasksController* m_weekly = nullptr;
     TTaskboardShopController* m_shop = nullptr;
     TMessageDialogController* m_notOnMain = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     /// True while TaskboardDialog.qml (and nested tab Loaders) are being created.
     /// Resource-balance slots must not emit into incubating QML — that corrupts the heap.
     bool m_dialogCreating = false;

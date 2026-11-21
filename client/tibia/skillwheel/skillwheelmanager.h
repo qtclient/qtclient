@@ -8,14 +8,17 @@
 #include <QObject>
 #include <QTimer>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace skillwheel {
 
-/// The Wheel of Destiny: its storage and dialog, and the game actions 306..313
-/// (CIP: TSkillWheelGameActionHandler and the dialog's handler
-/// ).
+/// The Wheel of Destiny: its storage and dialog, and the dialog's game
+/// actions (the session's TSkillWheelGameActionHandler asks the server).
 class TSkillWheelManager final : public QObject
 {
     Q_OBJECT
@@ -25,15 +28,16 @@ public:
 
     TSkillWheelStorage* storage() const { return m_storage; }
     TSkillWheelDialogController* dialog() const { return m_dialog; }
-    TSkillWheelGameActionHandler* actions() { return &m_actions; }
 
-    /// The login session's premium flag (CIP TPremiumTimeStorage::isPremium).
-    void setSessionPremium(bool premium) { m_actions.setSessionPremium(premium); }
+    /// Host: CipSoft's skill wheel storage belongs to the session (its
+    /// character configuration manager) and the dialog's pages follow the
+    /// session. Until they do, the client's storage starts over for each
+    /// session and the session's handler fills it.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     void clearSkipNextOwnOpen();
 
-    TSkillWheelGameActionHandler m_actions;
     TSkillWheelStorage* m_storage;
     TSkillWheelDialogController* m_dialog;
     std::vector<client::gamecore::Hook> m_hooks;

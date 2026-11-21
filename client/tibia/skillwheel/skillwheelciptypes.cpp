@@ -27,7 +27,6 @@
 namespace tibia::skillwheel {
 
 namespace {
-TSkillWheelProtocolMessageHandler* g_liveSkillWheelProtocolHandler = nullptr;
 
 using ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed;
 using ::tibia::protobuf::protocol::GameserverMessageSkillWheel;
@@ -84,21 +83,16 @@ void TSkillWheelProtocolMessageHandler::enhanceModGrade(const int modType, const
     tibia::game::gemAction(4, static_cast<uint16_t>(static_cast<uint8_t>(modType)), static_cast<uint8_t>(modId));
 }
 
+void TSkillWheelProtocolMessageHandler::setSkillWheelStorage(TSkillWheelStorage* storage)
+{
+    m_storage = storage;
+}
+
 TSkillWheelProtocolMessageHandler::TSkillWheelProtocolMessageHandler(QObject* parent)
     : cip::tibia::skillwheel::TSkillWheelProtocolMessageHandler(parent)
 {
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](const qint64 value, qint64, const int type) { handleResourceBalanceMessage(type, value); });
-}
-
-TSkillWheelProtocolMessageHandler* TSkillWheelProtocolMessageHandler::liveInstance()
-{
-    return g_liveSkillWheelProtocolHandler;
-}
-
-void TSkillWheelProtocolMessageHandler::setLiveInstance(TSkillWheelProtocolMessageHandler* handler)
-{
-    g_liveSkillWheelProtocolHandler = handler;
 }
 
 namespace {
@@ -224,6 +218,12 @@ void TSkillWheelGameActionHandler::handleGameAction(const input::IGameAction& ac
     }
 }
 
+void TSkillWheelGameActionHandler::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction)
+        handleGameAction(*pGameAction);
+}
+
 void TSkillWheelGameActionHandler::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<creatures::TCreature> pPlayerWeak)
 {
     const std::shared_ptr<creatures::TCreature> player = pPlayerWeak.lock();
@@ -256,17 +256,6 @@ void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
     const bool hasVocation = profession >= 1 && profession <= VocationCount;
     Q_EMIT publishGameAction(input::makeGameAction(hasVocation ? input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                  : input::EGameAction::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE));
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    auto* handler = new TSkillWheelProtocolMessageHandler(parent);
-    handler->setSkillWheelStorage(TSkillWheelStorage::liveInstance());
-    TSkillWheelProtocolMessageHandler::setLiveInstance(handler);
 }
 
 } // namespace tibia::skillwheel

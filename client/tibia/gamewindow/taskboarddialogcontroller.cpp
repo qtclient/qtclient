@@ -6,7 +6,9 @@
 #include "gamewindow/taskboardshopcontroller.h"
 #include "gamewindow/weeklytaskscontroller.h"
 #include "input/gameactionhandlers.h"
+#include "game/gamesessionbase.h"
 #include "taskboard/taskboardbountytasksstorage.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
 #include "taskboard/taskboardshopstorage.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
 
@@ -24,7 +26,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -38,11 +39,6 @@ using U32Map = std::map<std::string, uint32_t>;
 using U32MapList = std::vector<U32Map>;
 using StrMap = std::map<std::string, std::string>;
 using StrMapList = std::vector<StrMap>;
-
-uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
-{
-    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
-}
 
 QString formatBalance(const uint64_t value)
 {
@@ -290,29 +286,10 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
     m_weeklyTaskController = m_weekly;
     connect(m_weekly, &TWeeklyTasksController::publishGameAction, this, &TTaskboardDialogController::publishGameAction);
     m_rewardShopController = m_shop;
-    new TSoulSealsDialogController(this);
     new TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(this);
 
-    connect(taskboard::TTaskboardBountyTasksStorage::instance(), &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged,
-            this, [this](const taskboard::TBountyTaskData& data) {
-                m_bounty->applyBountyData(bountyHeader(data), taskboardBountyMonsterRows(data), bountyTalismans(data));
-                refreshCurrencies();
-                m_bounty->applyPreferredData(bountyPreferredSlots(data), allMonsterRaceIds());
-            });
-    connect(taskboard::TTaskboardWeeklyTasksStorage::instance(), &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged,
-            this, [this](const taskboard::TWeeklyTaskData& data) {
-                m_weekly->applyWeeklyData(weeklyHeader(data), taskboardWeeklyMonsterRows(data), weeklyItems(data));
-                refreshCurrencies();
-            });
-    connect(taskboard::TTaskboardShopStorage::instance(), &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this, [this]() {
-        m_shop->applyShopData(shopOffers(taskboard::TTaskboardShopStorage::instance()->shopRewardData()));
-        refreshCurrencies();
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this]() { refreshFromResourceBalance(); });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        dialog()->destroy();
-    });
 
     m_notOnMain->setCloseOnButtonClicked(true);
     // The action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
@@ -329,6 +306,65 @@ TTaskboardDialogController::~TTaskboardDialogController()
 {
 }
 
+void TTaskboardDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_notOnMain->dialog()->close();
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get())) {
+        taskboard::TTaskboardCurrenciesStorage* currencies = session->taskboardCurrenciesStorage().get();
+        using Currencies = taskboard::TTaskboardCurrenciesStorage;
+        using Self = TTaskboardDialogController;
+        m_gameSessionConnections.add(connect(currencies, &Currencies::bountyPointsChanged, this, &Self::bountyPointsChanged));
+        m_gameSessionConnections.add(
+            connect(currencies, &Currencies::preyHuntingTaskTokensAmountChanged, this, &Self::preyHuntingTaskTokensChanged));
+        m_gameSessionConnections.add(connect(currencies, &Currencies::soulSealsAmountChanged, this, &Self::soulSealsChanged));
+    }
+    connectTabsToGameSession();
+}
+
+void TTaskboardDialogController::connectTabsToGameSession()
+{
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.add(connect(session->taskboardBountyTasksStorage().get(),
+                                         &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                         [this](const taskboard::TBountyTaskData& data) {
+                                             m_bounty->applyBountyData(bountyHeader(data), taskboardBountyMonsterRows(data),
+                                                                       bountyTalismans(data));
+                                             m_bounty->applyPreferredData(bountyPreferredSlots(data), allMonsterRaceIds());
+                                         }));
+    m_gameSessionConnections.add(connect(session->taskboardWeeklyTasksStorage().get(),
+                                         &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
+                                         [this](const taskboard::TWeeklyTaskData& data) {
+                                             m_weekly->applyWeeklyData(weeklyHeader(data), taskboardWeeklyMonsterRows(data),
+                                                                       weeklyItems(data));
+                                         }));
+    taskboard::TTaskboardShopStorage* shop = session->taskboardShopStorage().get();
+    m_gameSessionConnections.add(connect(shop, &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this,
+                                         [this, shop]() { m_shop->applyShopData(shopOffers(shop->shopRewardData())); }));
+}
+
+QString TTaskboardDialogController::bountyPointsString() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->bountyPoints()) : 0);
+}
+
+QString TTaskboardDialogController::preyHuntingTaskTokensString() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->preyHuntingTaskTokensAmount()) : 0);
+}
+
+QString TTaskboardDialogController::soulSealsString() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return formatBalance(session ? static_cast<uint64_t>(session->taskboardCurrenciesStorage()->soulSealsAmount()) : 0);
+}
+
 /// Reopens the dialog on `Tab`; before the character reached the main land
 /// it only explains why there is no task board.
 void TTaskboardDialogController::showDialog(const DialogTab& Tab)
@@ -340,7 +376,6 @@ void TTaskboardDialogController::showDialog(const DialogTab& Tab)
         m_notOnMain->showMessage(qtTrId("taskboard_need_to_reach_main_caption"), qtTrId("taskboard_need_to_reach_main_text"));
         return;
     }
-    refreshCurrencies();
     m_dialogCreating = true;
     dialog()->show();
     m_dialogCreating = false;
@@ -413,32 +448,12 @@ void TTaskboardDialogController::switchToTab(const DialogTab tab)
     }
 }
 
-void TTaskboardDialogController::refreshCurrencies()
-{
-    const QString bounty = formatBalance(resourceBalance(tibia::client::RESOURCE_BOUNTY_POINTS));
-    if (bounty != m_bountyPointsString) {
-        m_bountyPointsString = bounty;
-        Q_EMIT bountyPointsChanged();
-    }
-    const QString tokens = formatBalance(resourceBalance(tibia::client::RESOURCE_TASK_HUNTING));
-    if (tokens != m_preyHuntingTaskTokensString) {
-        m_preyHuntingTaskTokensString = tokens;
-        Q_EMIT preyHuntingTaskTokensChanged();
-    }
-    const QString seals = formatBalance(resourceBalance(tibia::client::RESOURCE_SOULSEALS));
-    if (seals != m_soulSealsString) {
-        m_soulSealsString = seals;
-        Q_EMIT soulSealsChanged();
-    }
-}
-
 void TTaskboardDialogController::refreshFromResourceBalance()
 {
     if (m_dialogCreating) {
         m_pendingResourceRefresh = true;
         return;
     }
-    refreshCurrencies();
     if (m_bounty)
         m_bounty->refreshBountyPoints();
     if (m_shop)

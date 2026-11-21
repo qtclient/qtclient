@@ -22,7 +22,9 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "game/gamesessionbase.h"
 #include "taskboard/taskboardciptypes.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
 
 #include <client/outfit.h>
 #include <client/staticdata.h>
@@ -1359,30 +1361,46 @@ std::vector<TSoulSealsMonsterListModel::Entry> soulSealsMonsterEntries(const std
 
 }
 
-TSoulSealsDialogController* TSoulSealsDialogController::s_instance = nullptr;
-
 TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("taskboard/SoulSealsDialog.qml"), parent)
     , m_allMonsters(new TSoulSealsMonsterListModel(this))
     , m_visibleMonsters(new TSoulSealsMonsterListModel(this))
 {
-    s_instance = this;
     m_monsterList = m_visibleMonsters;
     m_availableMonsterDifficulties = QStringList{ QStringLiteral("All"), QStringLiteral("Easy"), QStringLiteral("Medium"),
                                                   QStringLiteral("Hard"), QStringLiteral("Expert") };
     m_indexOfSelectedDifficulty = 0;
-
-    connect(taskboard::TTaskboardProtocolMessageHandler::instance(), &taskboard::TTaskboardProtocolMessageHandler::openSoulSealsDialog,
-            this, [this](const std::vector<uint16_t>& animusMasteryRaceIds) {
-                applyEntries(soulSealsMonsterEntries(animusMasteryRaceIds));
-                dialog()->create();
-                dialog()->show();
-            });
 }
 
-TSoulSealsDialogController* TSoulSealsDialogController::instance()
+void TSoulSealsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    return s_instance;
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.add(connect(session->taskboardCurrenciesStorage().get(),
+                                         &taskboard::TTaskboardCurrenciesStorage::soulSealsAmountChanged, this,
+                                         &TSoulSealsDialogController::soulSealsChanged));
+    m_gameSessionConnections.add(connect(session->taskboardProtocolMessageHandler(),
+                                         &taskboard::TTaskboardProtocolMessageHandler::openSoulSealsDialog, this,
+                                         [this](const std::vector<uint16_t>& animusMasteryRaceIds) {
+                                             applyEntries(soulSealsMonsterEntries(animusMasteryRaceIds));
+                                             dialog()->create();
+                                             dialog()->show();
+                                         }));
+}
+
+int TSoulSealsDialogController::availableSoulSeals() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->taskboardCurrenciesStorage()->soulSealsAmount() : 0;
+}
+
+QString TSoulSealsDialogController::soulSealsString() const
+{
+    return QLocale(QLocale::English).toString(availableSoulSeals());
 }
 
 void TSoulSealsDialogController::applyEntries(std::vector<TSoulSealsMonsterListModel::Entry> entries)

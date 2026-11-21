@@ -8,6 +8,7 @@
 #include "client/gamecore.h"
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
+#include "qtconnectionmanager.h"
 #include "store/storestorage.h"
 #include "trade/charactertrademodels.h"
 #include "trade/tradeciptypes.h"
@@ -23,11 +24,15 @@
 #include <QSet>
 #include <QString>
 #include <functional>
+#include <memory>
 #include <utility>
 #include <tuple>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace input {
 class IGameAction;
 }
@@ -574,9 +579,14 @@ class TSoulSealsDialogController final : public TDialogController<cip::tibia::ga
     Q_OBJECT
 public:
     explicit TSoulSealsDialogController(QObject* parent = nullptr);
-    static TSoulSealsDialogController* instance();
 
+    /// The session's soul seals.
+    QString soulSealsString() const override;
+    int availableSoulSeals() const override;
     void setSelectedMonsterRaceID(int v) override;
+    /// Closes the dialog and follows the session's soul seals and its task
+    /// board handler, which opens the dialog.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void setIndexOfSelectedDifficulty(int v) override;
     void setMonstersNameFilter(const QString& v) override;
 
@@ -589,7 +599,8 @@ private:
     void applyEntries(std::vector<TSoulSealsMonsterListModel::Entry> entries);
     void refreshSelection();
     void rebuildVisible();
-    static TSoulSealsDialogController* s_instance;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     TSoulSealsMonsterListModel* m_allMonsters = nullptr;
     TSoulSealsMonsterListModel* m_visibleMonsters = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;

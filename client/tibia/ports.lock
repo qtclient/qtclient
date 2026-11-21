@@ -1757,6 +1757,14 @@ game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compi
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::v124	6012063d0b353165	ported	game/gamesessionbase.h:TGameSessionBase::skillWheelProtocolMessageHandler
+game::TGameserverGameSession::v125	b7223b571625b50a	ported	game/gamesessionbase.h:TGameSessionBase::skillWheelGameActionHandler
+game::TGameserverGameSession::v129	dcf3ed168c5cdd57	ported	game/gamesessionbase.h:TGameSessionBase::taskboardCurrenciesStorage
+game::TGameserverGameSession::v130	6120435b28ea3b6f	ported	game/gamesessionbase.h:TGameSessionBase::taskboardBountyTasksStorage
+game::TGameserverGameSession::v131	26660a8ff167c45b	ported	game/gamesessionbase.h:TGameSessionBase::taskboardWeeklyTasksStorage
+game::TGameserverGameSession::v132	5eab1eff9a133bb1	ported	game/gamesessionbase.h:TGameSessionBase::taskboardShopStorage
+game::TGameserverGameSession::v133	646c3d0e85c59178	ported	game/gamesessionbase.h:TGameSessionBase::taskboardProtocolMessageHandler
+game::TGameserverGameSession::v134	72dd46b15252930d	ported	game/gamesessionbase.h:TGameSessionBase::bossDifficultySelectionProtocolMessageHandler
 game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
@@ -3951,6 +3959,7 @@ gamewindow::TWeaponProficiencyDialogController::v14	437cac582d0e15bb	ported	prof
 gamewindow::TWeaponProficiencyDialogController::weaponObjectSelected	442e11952131e8ed	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::weaponObjectSelected
 gamewindow::TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+gamewindow::TWeaponProficiencyReshapeDialogController::v14	9bf549f32c7b8a78	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyReshapeDialogController::closeDialog
 gamewindow::TWeaponProficiencyReshapeDialogController::~TWeaponProficiencyReshapeDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyReshapeDialogController::~TWeaponProficiencyReshapeDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyShapeDialogController::handleGameAction	72946952c89bccda	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::handleGameAction
@@ -7176,6 +7185,7 @@ sub_035740061b11#2	035740061b116b7a	ported	gamewindow/cyclopediamapdialogcontrol
 sub_035740061b11#3	035740061b116b7a	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::setShowAreaAndSubAreaInfoPanel
 sub_036dff5beaf0	036dff5beaf04141	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::hasPremiumStatus
 sub_036fc29b76c1	036fc29b76c1ab08	ported	creatures/creaturestorage.h:TCreature::hasInspectionState
+sub_037c2cf1757e	037c2cf1757e8cd4	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::connectToGameSession
 sub_038aadcc86c4	038aadcc86c46ba4	skip	library: statically linked SFML audio / miniaudio code and its libc++ instantiations (address range with only sf::/std:: symbols), misattributed
 sub_038ac0b6e46b#2	038ac0b6e46b5fbe	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TMinimapMarker>> emplace / erase / tree destroy
 sub_038ac0b6e46b#4	038ac0b6e46b5fbe	skip	library: std::map<TWorldMapCoordinate, shared_ptr<TWorldMapField>> emplace / erase instantiations
@@ -12879,6 +12889,7 @@ sub_537a89f51688	537a89f51688c1f3	inlined	gamewindow/contextmenucontroller.cpp:T
 sub_537c3749525f	537c3749525fc70e	skip	data: translation-unit static initializer (misattributed)
 sub_537c700358f1	537c700358f15157	ported	cyclopedia/staticcontentinformation.cpp:setMonsterRaces
 sub_537c700358f1#2	537c700358f15157	ported	cyclopedia/staticcontentinformation.cpp:setBossRaces
+sub_537e281d742d	537e281d742d9718	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyReshapeDialogController::connectToGameSession
 sub_5382fa7c50ff#2	5382fa7c50ffd32b	ported	input/gameaction.cpp:TGameActionOpenCyclopedia::setCategory
 sub_538ca5c40fa0	538ca5c40fa06d89	ported	shared/src/singlethreadedlowpriorityexecutor.cpp:TSingleThreadedLowPriorityExecutor::~TSingleThreadedLowPriorityExecutor
 sub_53a11b4f2f64	53a11b4f2f64d411	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::toParameters
@@ -15480,6 +15491,7 @@ sub_81b6cb7a0be8	81b6cb7a0be84d4b	inlined	cyclopedia/cyclopediamapdata.cpp:TCycl
 sub_81b87d5e2ba9	81b87d5e2ba967a4	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationResultDialogController::dustCost
 sub_81b8b6327d0a	81b8b6327d0a3de6	ported	news/newsstorage.h:TNewsStorage::hasEntries
 sub_81c1640bbb63	81c1640bbb63dca4	skip	library: libc++ vector/split-buffer/optional/shared_ptr destroy or implicit struct destructor instantiation (destruction only, read)
+sub_81c17475ca88	81c17475ca88074c	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::clear
 sub_81c9aea46d07	81c9aea46d07cb29	skip	library: miniaudio library
 sub_81ca564e13b9	81ca564e13b95e94	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_81d62984b9c9	81d62984b9c9b840	skip	library: libc++/Qt/protobuf template instantiation (QString/shared_ptr copy, std::set copy/init-list ctor, vector operator=, bitset::test, comparator, list destroy, protobuf arena/string, std exception ctors)

@@ -104,6 +104,10 @@ public:
     explicit TProficiencyStorage(QObject* parent = nullptr);
     ~TProficiencyStorage() override;
     static TProficiencyStorage* instance();
+    /// The game client's new session (or none) starts without the weapons'
+    /// records, the wielded weapon's progress, the unspent perk, the list
+    /// request and the orbs; the perk tables stay.
+    void clear();
 
     /// CIP : the perk table of the type's proficiency, or null.
     const TProficiencyInfo* info(uint16_t typeId) const;
@@ -150,8 +154,6 @@ public:
 Q_SIGNALS:
     void proficiencyDataChanged(uint typeId);
     void proficiencyXPChanged();
-    /// CIP 's notification (qtclient alias of shapedPerkReshapeOffersChanged).
-    void reshapeOffersChanged();
     /// CIP moc currentProficiencyProgressChanged — XP / level progress for the open weapon.
     void currentProficiencyProgressChanged();
     /// CIP moc resourceBalanceChanged — forge dust / lunar orbs used by reshape UI.

@@ -17,9 +17,6 @@ class GameserverMessageTaskboard;
 namespace tibia {
 namespace taskboard {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
 /// Fills the task board storages from the board, resource balance and soul
 /// seal messages, and builds the task board commands.
 class TTaskboardBountyTasksStorage;
@@ -35,9 +32,6 @@ public:
                                      std::shared_ptr<TTaskboardWeeklyTasksStorage> weeklyTasks,
                                      std::shared_ptr<TTaskboardBountyTasksStorage> bountyTasks,
                                      std::shared_ptr<TTaskboardShopStorage> shop);
-
-    /// qtclient host: the handler over the shared storages.
-    static TTaskboardProtocolMessageHandler* instance();
 
     /// Board type 2 replaces the shop offers, 1 the weekly tasks, 0 the bounty tasks.
     void handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage);

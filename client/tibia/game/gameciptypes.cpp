@@ -825,7 +825,6 @@ void ownProductSurface(QObject* parent)
         g_qtclientFpsDropsLogger = new FPSDropsLogger(parent);
     // Empty-moc / session-owned CIP QObject surfaces (live under the game session).
     new TBlessingsProtocolMessageHandler(parent);
-    new TBossDifficultySelectionProtocolMessageHandler(parent);
     new TEditTextProtocolMessageHandler(parent);
     new TGameEventProtocolMessageHandler(parent);
     {
@@ -1008,9 +1007,9 @@ void TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelecti
         data.proModifiers.assign(m.green_entries().begin(), m.green_entries().end());
     }
     switch (m.state()) {
-        case 2: tibia::game::notify("onBossDifficultyUpdate", static_cast<const TBossDifficultySelectionDialogUpdateData&>(data)); break;
-        case 1: tibia::game::notify("onBossDifficultyClose"); break;
-        case 0: tibia::game::notify("onBossDifficultySelection", data); break;
+        case 2: Q_EMIT updateBossDifficultySelectionDialog(data); break;
+        case 1: Q_EMIT closeBossDifficultySelectionDialog(); break;
+        case 0: Q_EMIT openBossDifficultySelectionDialog(data); break;
         default: break;
     }
 }

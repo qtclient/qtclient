@@ -79,19 +79,6 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
     m_message->setMessageDialogTextFormat(gamewindow::TMessageDialogController::RICH_TEXT);
     connect(m_message, &gamewindow::TMessageDialogController::acceptClicked, this,
             &TWeaponProficiencyShapeDialogController::onMessageDialogAccept);
-    connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); });
-
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this](qint64, qint64, int type) {
-        if (type == static_cast<int>(DustResource) || type == static_cast<int>(LunarAscensionOrbsResource))
-            onResourceBalanceChanged();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_message->dialog()->hide();
-        if (dialog()->isShown())
-            dialog()->close();
-        m_typeId = 0;
-    });
 
     m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeDialog& action) {
         handleGameAction(action);
@@ -243,7 +230,29 @@ void TWeaponProficiencyShapeDialogController::showDialog()
 
 void TWeaponProficiencyShapeDialogController::requestClose() { closeDialog(); }
 
-void TWeaponProficiencyShapeDialogController::closeDialog() { dialog()->close(); }
+void TWeaponProficiencyShapeDialogController::closeDialog()
+{
+    m_message->dialog()->close();
+    dialog()->close();
+}
+
+void TWeaponProficiencyShapeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    if (!m_gameSession)
+        return;
+    // The session's proficiency storage is the client's.
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this,
+                                         [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); }));
+    // Host: the storage also reports the forge dust (CipSoft: the session's
+    // exaltation storage's exaltedCurrencyBalanceChanged).
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::resourceBalanceChanged, this,
+                                         &TWeaponProficiencyShapeDialogController::onResourceBalanceChanged));
+    onProficiencyDataChanged(m_typeId);
+    onProficiencyDataChanged(m_typeId);
+}
 
 void TWeaponProficiencyShapeDialogController::confirm(const EConfirm action, const QString& caption, const QString& text)
 {
@@ -317,24 +326,32 @@ TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogContro
             &TWeaponProficiencyReshapeDialogController::onMessageDialogAccept);
     connect(m_shape, &TWeaponProficiencyShapeDialogController::perkInformationChanged, this,
             &TWeaponProficiencyReshapeDialogController::currentPerkChanged);
-    // CIP : open only when the server delivered reshape offers.
-    // Clearing offers (gameEnded) must not create the QML with a null currentPerk —
-    // WeaponProficiencyReshapeDialog.qml binds controller.currentPerk.* without guards.
-    connect(m_storage, &TProficiencyStorage::reshapeOffersChanged, this, [this] {
-        rebuildOffers();
-        m_message->dialog()->hide();
-        if (m_storage->reshapeOffers() && currentPerk()) {
-            dialog()->show();
-            return;
-        }
-        if (dialog()->isShown())
-            dialog()->close();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_message->dialog()->hide();
-        if (dialog()->isShown())
-            dialog()->close();
-    });
+}
+
+void TWeaponProficiencyReshapeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    if (!m_gameSession)
+        return;
+    // The session's proficiency storage is the client's.
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::shapedPerkReshapeOffersChanged, this,
+                                         &TWeaponProficiencyReshapeDialogController::onShapedPerkReshapeOffersChanged));
+}
+
+void TWeaponProficiencyReshapeDialogController::onShapedPerkReshapeOffersChanged()
+{
+    rebuildOffers();
+    m_message->dialog()->hide();
+    // Host: WeaponProficiencyReshapeDialog.qml binds controller.currentPerk.*
+    // without guards, so the dialog only shows offers with the shape dialog's perk.
+    if (m_storage->reshapeOffers() && currentPerk()) {
+        dialog()->show();
+        return;
+    }
+    if (dialog()->isShown())
+        dialog()->close();
 }
 
 QObject* TWeaponProficiencyReshapeDialogController::currentPerk() const { return m_shape->selectedPerk(); }
@@ -376,7 +393,11 @@ void TWeaponProficiencyReshapeDialogController::showDialog()
     dialog()->show();
 }
 
-void TWeaponProficiencyReshapeDialogController::closeDialog() { dialog()->close(); }
+void TWeaponProficiencyReshapeDialogController::closeDialog()
+{
+    m_message->dialog()->close();
+    dialog()->close();
+}
 
 void TWeaponProficiencyReshapeDialogController::onMessageDialogAccept()
 {
@@ -479,10 +500,6 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
     : TDialogController(QStringLiteral("WeaponProficiencyShapeOptionsDialog.qml"), parent)
 {
     m_perkOptionsModel = &m_proxy;
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        if (dialog()->isShown())
-            dialog()->close();
-    });
     m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
         const int profession = action.profession();
         if (profession >= 1 && profession <= 5) {
