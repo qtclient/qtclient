@@ -42,6 +42,8 @@ public:
     void requestLogout();
     /// Drops the connection without waiting for the server.
     void disconnectNow() override;
+    /// The game client's clock.
+    std::shared_ptr<shared::IClockService> clockService() const override;
 
     bool isOnline() const;
     QString characterName() const;

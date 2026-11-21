@@ -44,16 +44,12 @@ class TWorldMapStorage;
 class TWorldMapViewport;
 
 /// CIP name for map/ambient protocol ingress (TWorldmapProtocolMessageHandler).
-/// Tile-description apply (clean + addThing) is routed here when live.
+/// Tile-description apply (clean + addThing) goes to the session's map.
 class TWorldmapProtocolMessageHandler final : public cip::tibia::worldmap::TWorldmapProtocolMessageHandler
 {
     Q_OBJECT
 public:
     explicit TWorldmapProtocolMessageHandler(TWorldMapStorage* storage, QObject* parent = nullptr);
-
-    /// Live handler while GameClient is up.
-    static TWorldmapProtocolMessageHandler* liveInstance();
-    static void setLiveInstance(TWorldmapProtocolMessageHandler* handler);
 
     TWorldMapStorage* storage() const { return m_storage; }
     /// The minimap the handler keeps current: its floor and unseen fields

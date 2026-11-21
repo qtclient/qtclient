@@ -33,11 +33,6 @@ class QQuickItem;
 class QQuickWindow;
 
 namespace tibia {
-namespace renderer {
-class TNextFrameUpdater;
-}
-}
-namespace tibia {
 namespace authentication {
 class TCloudflareChallengeController;
 struct TCloudflareChallengeClearanceInfo;
@@ -109,7 +104,6 @@ class TWorldmapProtocolMessageHandler;
 }
 namespace tibia {
 namespace chat {
-class TGameMessageHandler;
 class TChatProtocolMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
@@ -208,7 +202,8 @@ public:
     /// The current session when it replays a sessiondump (`--replay`, the tutorial); null otherwise.
     game::TSessiondumpGameSession* sessiondump() const;
     network::ExtendedOpcodeRouter* opcodes() const { return m_opcodes.get(); }
-    qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const { return m_worldMapRenderProvider.get(); }
+    /// The current game session's world map frame; null between sessions.
+    qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const;
     /// The view the world map shows: centred by the full map, read by the picker.
     worldmap::TWorldMapViewport* worldMapViewport() const;
     /// Pack-facing façade (signals + peels). Same instance for the process lifetime.
@@ -354,10 +349,8 @@ private:
     /// qtclient's own reactions to the current session (world entry, an
     /// outdated client), until the game client's CipSoft slots replace them.
     void connectToCurrentGameSession();
-    /// The game window's controllers follow the current session (CipSoft's
+    /// The game window controllers' connectors, in CipSoft's order (the
     /// connector calls of setCurrentGameSession); in gameclientgamewindow.cpp.
-    void connectGameWindowToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-    /// The game window controllers' connectors, in CipSoft's order.
     void connectGameWindowControllersToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Logs the last chosen character in again (after a login wait, or when the
     /// player logged out to log in again).
@@ -383,7 +376,6 @@ private:
     QTimer m_fpsSampleTimer;
     QTimer m_fpsUploadTimer;
     std::unique_ptr<worldmap::TNextFrameTimestampPredictor> m_predictor;
-    std::unique_ptr<renderer::TNextFrameUpdater> m_updater;
     bool m_frameRateLimitEnabled = false;
     /// Guards against nested afterAnimating/tick while NFU holds the predicted clock.
     bool m_inTick = false;
@@ -410,7 +402,6 @@ private:
     shared::TQtConnectionWrapper m_gameSessionDisconnected{ 1, true };
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
-    std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
     std::unique_ptr<config::TActionBarOptions> m_actionBarOptions;
@@ -419,7 +410,6 @@ private:
     std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
-    std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;

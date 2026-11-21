@@ -8,6 +8,7 @@
 
 namespace tibia {
 namespace chat {
+class TGameMessageHandler;
 class TTextStorage;
 }
 namespace container {
@@ -20,6 +21,7 @@ class TStashStorage;
 }
 namespace creatures {
 class TCreatureMovementSpeedCalculator;
+class TCreatureProtocolMessageHandler;
 class TCreatureStorage;
 }
 namespace game {
@@ -30,6 +32,12 @@ class TPlayerSkillStats;
 }
 namespace protocol {
 class TProtocolMessageQueue;
+}
+namespace qmlcomponents {
+class TWorldMapRenderProvider;
+}
+namespace renderer {
+class TNextFrameUpdater;
 }
 namespace questlog {
 class TQuestLogStorage;
@@ -48,6 +56,9 @@ class TObjectSoundController;
 }
 namespace worldmap {
 class TAmbientLightStorage;
+class TCreatureHUDRenderProvider;
+class TWorldMapGameActionHandler;
+class TWorldMapGameActionProvider;
 class TWorldMapStorage;
 class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
@@ -136,12 +147,36 @@ public:
     {
         return m_effectProtocolMessageHandler;
     }
+    /// The world's frame: sprites, light and the creatures' HUD anchors.
+    const std::shared_ptr<qmlcomponents::TWorldMapRenderProvider>& worldMapRenderProvider() const
+    {
+        return m_worldMapRenderProvider;
+    }
+    /// The creature HUD anchors of the last frame.
+    const std::shared_ptr<worldmap::TCreatureHUDRenderProvider>& creatureHUDRenderProvider() const
+    {
+        return m_creatureHUDRenderProvider;
+    }
+    /// The actions offered at a point of the world map.
+    const std::shared_ptr<worldmap::TWorldMapGameActionProvider>& worldMapGameActionProvider() const
+    {
+        return m_worldMapGameActionProvider;
+    }
+
+public Q_SLOTS:
+    /// Advances everything that moves to the time the next frame is shown.
+    void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
     void createStorages();
     /// CIP: the protocol message handlers that fill them.
     void createProtocolMessageHandlers();
+    /// CIP: what draws the world (the world map's frame, its picker and HUD
+    /// anchors) and advances it before each frame.
+    void createRenderProviders();
+    /// CIP: the game action providers (what is offered where) and handlers.
+    void createGameActionProvidersAndHandlers();
     /// CIP: connects the session's message queue to its handlers' typed slots.
     void connectProtocolMessageHandlers();
 
@@ -159,8 +194,10 @@ private:
     std::shared_ptr<questlog::TQuestLogStorage> m_questLogStorage;
     std::shared_ptr<TOutfitDialogStorage> m_outfitDialogStorage;
     std::shared_ptr<TGameActionRouter> m_gameActionRouter;
+    std::shared_ptr<worldmap::TWorldMapGameActionHandler> m_worldMapGameActionHandler;
     std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
     std::shared_ptr<worldmap::TAmbientLightStorage> m_ambientLightStorage;
+    std::shared_ptr<creatures::TCreatureProtocolMessageHandler> m_creatureProtocolMessageHandler;
     std::shared_ptr<worldmap::TWorldmapProtocolMessageHandler> m_worldmapProtocolMessageHandler;
     std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
     std::shared_ptr<container::TContainerStorage> m_containerStorage;
@@ -172,7 +209,13 @@ private:
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<sound::TObjectSoundController> m_objectSoundController;
+    std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
+    std::shared_ptr<worldmap::TCreatureHUDRenderProvider> m_creatureHUDRenderProvider;
     std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
+    std::shared_ptr<renderer::TNextFrameUpdater> m_nextFrameUpdater;
+    std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_worldMapGameActionProvider;
+    /// qtclient's status line and centre messages go to the session's texts.
+    std::shared_ptr<chat::TGameMessageHandler> m_gameMessageHandler;
     std::shared_ptr<chat::TTextStorage> m_textStorage;
     std::shared_ptr<effects::TEffectStorage> m_effectStorage;
     std::shared_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;

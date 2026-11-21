@@ -57,7 +57,6 @@
 #include "app/bootstrap.h"
 #include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
-#include "chat/gamemessagehandler.h"
 #include "minimap/minimapmarkerstorage.h"
 #include "chat/textstorage.h"
 #include "game/gamesessionbase.h"
@@ -101,7 +100,6 @@
 #include "sound/soundmetadatamanager.h"
 #include "sound/soundplayermanager.h"
 #include "sound/soundstorage.h"
-#include "renderer/nextframeupdater.h"
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/nextframetimestamppredictor.h"
@@ -268,9 +266,19 @@ public:
         return m_client->opcodes();
     }
 
+    /// Host shim for the pack ABI until packs re-read the provider: the
+    /// current session's provider, kept alive past its session because a
+    /// pack may hold on to the pointer it got.
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const override
     {
-        return m_client->worldMapRenderProvider();
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_client->currentGameSession().get());
+        if (!session)
+            return nullptr;
+        if (!session->worldMapRenderProvider())
+            return nullptr;
+        if (m_packRenderProviders.empty() || m_packRenderProviders.back() != session->worldMapRenderProvider())
+            m_packRenderProviders.push_back(session->worldMapRenderProvider());
+        return m_packRenderProviders.back().get();
     }
 
 private:
@@ -280,6 +288,7 @@ private:
     }
 
     TGameClient* m_client = nullptr;
+    mutable std::vector<std::shared_ptr<qmlcomponents::TWorldMapRenderProvider>> m_packRenderProviders;
 };
 
 }
@@ -288,13 +297,12 @@ TGameClient::TGameClient(QObject* parent)
     : cip::tibia::client::TGameClient(parent)
     , m_login(std::make_unique<authentication::TLoginRequestUploader>())
     , m_characterSelection(std::make_unique<gamewindow::TCharacterSelectionController>())
-    , m_worldMapRenderProvider(std::make_unique<qmlcomponents::TWorldMapRenderProvider>())
     , m_sidebarOptions(std::make_unique<config::TSidebarOptions>())
     , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
     , m_actionBarOptions(std::make_unique<config::TActionBarOptions>())
     , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
-    , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
+    , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
     , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
           1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
 {
@@ -329,12 +337,6 @@ TGameClient::TGameClient(QObject* parent)
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);
     connect(soundHelper, &qmlcomponents::TSoundHelperService::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
-    // The active session's game message handler (status line, map messages).
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
-            [this](const input::IGameActionPtr& action) {
-                if (m_messageHandler)
-                    m_messageHandler->handleGameAction(action);
-            });
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
             &TGameClient::sendCrashReport);
@@ -592,6 +594,12 @@ game::TGameSessionBase* activeSession()
 
 }
 
+qmlcomponents::TWorldMapRenderProvider* TGameClient::worldMapRenderProvider() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_currentGameSession.get());
+    return session ? session->worldMapRenderProvider().get() : nullptr;
+}
+
 worldmap::TWorldMapViewport* TGameClient::worldMapViewport() const
 {
     return activeSession() ? activeSession()->worldMapViewport().get() : nullptr;
@@ -662,8 +670,6 @@ void TGameClient::shutdown()
     // on quit Exit).
     gamecore::terminate();
     tibia::game::cleanMap();
-    m_updater.reset();
-    m_messageHandler.reset();
     m_opcodes.reset();
     m_dualConnection.reset();
     // The session goes now, not on the next event loop pass: the engine is down.
@@ -1010,7 +1016,7 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
     // Host shim: the controllers below still read the classes' instance().
     if (auto* next = dynamic_cast<game::TGameSessionBase*>(GameSession.get()))
         next->install(true);
-    connectGameWindowToGameSession(GameSession);
+    connectGameWindowControllersToGameSession(GameSession);
     m_currentGameSession = GameSession;
     if (!m_currentGameSession)
         return;
@@ -1226,8 +1232,9 @@ void TGameClient::tick()
     const qint64 offsetMicros = m_frameDurations->averageNs() / 1000;
     m_frameDurations->start();
     m_predictor->setOffset(offsetMicros);
-    if (m_updater && m_started)
-        m_updater->v2(m_predictor->predict());
+    if (m_started)
+        if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
+            session->onPrepareNextFrameToRender(m_predictor->predict());
     m_inTick = false;
 }
 

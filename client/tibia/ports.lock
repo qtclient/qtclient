@@ -1747,16 +1747,20 @@ game::TGameSessionBase::v143	c4d2f6d9a13090ba	ported	game/gamesessionbase.h:TGam
 game::TGameSessionBase::v25	ea9461ede806184d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapViewport
 game::TGameSessionBase::v28	e9d87c96dd8d9443	ported	game/gamesessionbase.h:TGameSessionBase::worldMapStorage
 game::TGameSessionBase::v29	e306596705eadfac	ported	game/gamesessionbase.h:TGameSessionBase::ambientLightStorage
+game::TGameSessionBase::v31	cf56fc64a86cd1d7	ported	game/gamesessionbase.h:TGameSessionBase::worldMapRenderProvider
+game::TGameSessionBase::v33	7899fca3d46201ff	ported	game/gamesessionbase.h:TGameSessionBase::creatureHUDRenderProvider
 game::TGameSessionBase::v40	df3836b85f1025ce	ported	game/gamesessionbase.h:TGameSessionBase::playerSkillStats
 game::TGameSessionBase::v41	9e3c2e50f94c1be6	ported	game/gamesessionbase.h:TGameSessionBase::creatureMovementSpeedCalculator
 game::TGameSessionBase::v43	c221e3b4752b63e2	ported	game/gamesessionbase.h:TGameSessionBase::containerStorage
 game::TGameSessionBase::v45	d35070bd31528e02	ported	game/gamesessionbase.h:TGameSessionBase::objectCountStorage
 game::TGameSessionBase::v46	1596e60ccbfcf871	ported	game/gamesessionbase.h:TGameSessionBase::depotSearchDetailListStorage
+game::TGameSessionBase::v50	bee5eb4f7921e05d	ported	game/gamesessionbase.h:TGameSessionBase::worldMapGameActionProvider
 game::TGameSessionBase::v66	fcb26c0b585ba7c5	ported	game/gamesessionbase.h:TGameSessionBase::creatureStorage
 game::TGameSessionBase::~TGameSessionBase	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionBase::~TGameSessionBase_deleting	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameSessionMetaInfo::v1	7382774637cec697	skip	generated: compiler-generated destructor pair (member teardown)
+game::TGameserverGameSession::v105	e439d9922541aa1f	ported	game/gameservergamesession.cpp:TGameserverGameSession::clockService
 game::TGameserverGameSession::v18	872d4faac408f6d5	ported	game/gameservergamesession.cpp:TGameserverGameSession::startSession
 game::TGameserverGameSession::~TGameserverGameSession	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (member teardown)
 game::TGameserverGameSession::~TGameserverGameSession_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (member teardown)
@@ -9744,7 +9748,7 @@ sub_1f40f66b4b9e	1f40f66b4b9e5f59	skip	library: std::vector copy / growth of sto
 sub_1f43d4364320	1f43d43643204620	skip	data: static initialiser: constructs file-scope constants and registers their destructors with __cxa_atexit
 sub_1f4552e53248	1f4552e532489c50	ported	skillwheel/skillwheeldata.cpp:perkLevelName
 sub_1f48c3c6cb1a	1f48c3c6cb1ada5c	skip	library: libc++ std::vector push_back/emplace_back slow path, reserve or range assign (read: size/capacity arithmetic, length_error, relocate)
-sub_1f68861fdef1	1f68861fdef1b4ea	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::bindSession
+sub_1f68861fdef1	1f68861fdef1b4ea	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::connectToGameSession
 sub_1f6fbbc4402e	1f6fbbc4402e385a	ported	skillwheel/skillwheeldata.cpp:basicStatName
 sub_1f7c84bc6f87	1f7c84bc6f872da5	skip	generated: moc property getter, provided by the generated cip base
 sub_1f7c84bc6f87#2	1f7c84bc6f872da5	skip	generated: moc property getter, provided by the generated cip base
@@ -10748,6 +10752,8 @@ sub_289aac716131	289aac71613109f0	skip	library: Qt/std container template code
 sub_28a426e04dcf	28a426e04dcf3fd6	ported	gamewindow/loottrackingwidgetcontroller.cpp:TQmlTrackedItem::dropCountString
 sub_28a84f521ea9	28a84f521ea99dea	skip	library: Qt/std container template code
 sub_28b5d14b5614	28b5d14b5614dddc	tested	shared/src/logging.cpp:setLogMessageCallback	test=tests/client/logging_test.cpp
+sub_28baaa94dc5f	28baaa94dc5f7390	ported	worldmap/nextframetimestamppredictor.cpp:TNextFrameTimestampPredictor::TNextFrameTimestampPredictor
+sub_28baaa94dc5f#2	28baaa94dc5f7390	ported	worldmap/nextframetimestamppredictor.cpp:TNextFrameTimestampPredictor::TNextFrameTimestampPredictor
 sub_28c609222921	28c609222921d06c	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::setTradeStorage
 sub_28ce43924415	28ce439244157ef8	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_28ce88cf6b7a	28ce88cf6b7a0f09	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::resetInspect
@@ -19110,7 +19116,7 @@ sub_baf48d85a74e	baf48d85a74e1a1a	inlined	gamewindow/spelllistwidgetcontroller.c
 sub_baf7e68f3470	baf7e68f347050ad	ported	cyclopedia/creaturetrackerstorage.cpp:TCreatureTrackerStorage::isBossTracked
 sub_bb05252db500	bb05252db50065bf	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_bb093f35fcad	bb093f35fcadf1a0	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::pushBacklog
-sub_bb169a817fa7	bb169a817fa77200	inlined	gamewindow/mapwindowcontroller.cpp:TMapWindowController::handleGameActionAtMouseCursor
+sub_bb169a817fa7	bb169a817fa77200	inlined	gamewindow/mapwindowcontroller.cpp:TMapWindowController::connectToGameSession
 sub_bb1ae2becb48	bb1ae2becb4863ef	ported	sound/soundconfiguration.cpp:TSoundConfiguration::creatureDeathSoundsEnabled
 sub_bb2253c516b2	bb2253c516b249fc	ported	gamewindow/createcharacterdialogcontroller.cpp:worldCreationDateText
 sub_bb37e23725d5	bb37e23725d5796c	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController
@@ -20446,6 +20452,7 @@ sub_d5effa9579cd	d5effa9579cd48a4	skip	data: translation-unit static initializer
 sub_d5fdbb377e04	d5fdbb377e04a925	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_d61644c39360	d61644c3936013b2	skip	generated: moc property setter, provided by the generated cip base
 sub_d618c1883e63	d618c1883e63a171	ported	gamewindow/killtrackerwidgetcontroller.cpp:TKillTrackerWidgetController::~TKillTrackerWidgetController
+sub_d619b40bbecc	d619b40bbeccea54	ported	worldmap/nextframetimestamppredictor.cpp:TNextFrameTimestampPredictor::connectToGameSession
 sub_d61c8844b807	d61c8844b807881a	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
 sub_d61db0e682c0	d61db0e682c00f8b	inlined	gamewindow/gamewindowciptypes.cpp:TOutfitQMLInformation::TOutfitQMLInformation
 sub_d621dfa059ac	d621dfa059ac4641	ported	input/eventfiltermanager.cpp:TEventFilterManager::installDiscardAllKeyboardInput
@@ -23098,6 +23105,10 @@ worldmap::TLightMap::v6	933d86c380b01241	tested	worldmap/lightmap.cpp:TLightMap:
 worldmap::TLightMap::v7	d9e0d26da781bf6b	tested	worldmap/lightmap.cpp:TLightMap::lightnessAt	test=tests/client/lightmap_test.cpp
 worldmap::TLightMap::v8	cb11dfd12f91d5c3	tested	worldmap/lightmap.cpp:TLightMap::colorAt	test=tests/client/lightmap_test.cpp
 worldmap::TLightMap::v9	1a727e4d08863ab4	tested	worldmap/lightmap.cpp:TLightMap::setColorAt	test=tests/client/lightmap_test.cpp
+worldmap::TNextFrameTimestampPredictor::v0	21dfdb86ae68bec8	skip	generated: destructor pair (member teardown)
+worldmap::TNextFrameTimestampPredictor::v1	07b6ddc1b0bf1afb	skip	generated: destructor pair (member teardown)
+worldmap::TNextFrameTimestampPredictor::v2	7b70baff21385a65	ported	worldmap/nextframetimestamppredictor.cpp:TNextFrameTimestampPredictor::predict
+worldmap::TNextFrameTimestampPredictor::v3	e0343935e58d85f3	ported	worldmap/nextframetimestamppredictor.h:TNextFrameTimestampPredictor::setOffset
 worldmap::TWorldMapCoordinate::v0	872d4faac408f6d5	skip	generated: destructor variants
 worldmap::TWorldMapCoordinate::v1	e9caf669ab302182	skip	generated: destructor variants
 worldmap::TWorldMapExtent::v0	872d4faac408f6d5	skip	generated: same code as the skipped family: compiler-generated destructor pair

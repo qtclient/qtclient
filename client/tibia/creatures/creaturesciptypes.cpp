@@ -38,8 +38,6 @@ CipTypedKeep& typedKeep()
     return keep;
 }
 
-TCreatureProtocolMessageHandler* g_liveCreatureProtocolHandler = nullptr;
-
 using ::tibia::protobuf::protocol::GameserverMessageCreatureData;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureHealth;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureLight;
@@ -101,8 +99,9 @@ void updateCreature(const uint32_t creatureId, Apply&& apply)
 
 } // namespace
 
-TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(QObject* parent)
+TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler(worldmap::TWorldMapStorage* worldMapStorage, QObject* parent)
     : cip::tibia::creatures::TCreatureProtocolMessageHandler(parent)
+    , m_worldMapStorage(worldMapStorage)
     , m_showAttackAnimation(showAttackAnimationOption())
 {
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -163,16 +162,6 @@ void TCreatureProtocolMessageHandler::applyUpdateTarget(const uint32_t sequence,
         storage->setFollowID(target);
 }
 
-TCreatureProtocolMessageHandler* TCreatureProtocolMessageHandler::liveInstance()
-{
-    return g_liveCreatureProtocolHandler;
-}
-
-void TCreatureProtocolMessageHandler::setLiveInstance(TCreatureProtocolMessageHandler* handler)
-{
-    g_liveCreatureProtocolHandler = handler;
-}
-
 void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const GameserverMessageMoveCreature& message)
 {
     if (tibia::game::isSceneFrozen())
@@ -194,10 +183,8 @@ void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const Gameserver
     if (!creatureId || !message.has_to_pos())
         return;
     const Position newPos = positionFromPb(message.to_pos());
-    tibia::worldmap::TWorldmapProtocolMessageHandler* const worldmapHandler =
-        tibia::worldmap::TWorldmapProtocolMessageHandler::liveInstance();
     tibia::worldmap::TWorldMapStorage* const mapStorage =
-        worldmapHandler ? worldmapHandler->storage() : tibia::worldmap::TWorldMapStorage::ensureStorage();
+        m_worldMapStorage ? m_worldMapStorage : tibia::worldmap::TWorldMapStorage::ensureStorage();
     (void)mapStorage->applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId);
 }
 
@@ -355,8 +342,7 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)typedKeep();
-    auto* handler = new TCreatureProtocolMessageHandler(parent);
-    TCreatureProtocolMessageHandler::setLiveInstance(handler);
+    (void)parent;
 }
 
 } // namespace tibia::creatures

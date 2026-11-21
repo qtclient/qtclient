@@ -8,7 +8,9 @@
 
 #include <protocol.pb.h>
 
+#include "app/clientoptions.h"
 #include "chat/chatprotocolmessagehandler.h"
+#include "chat/gamemessagehandler.h"
 #include "chat/textstorage.h"
 #include "container/containerciptypes.h"
 #include "container/objectappearanceinstanceinfostorage.h"
@@ -50,7 +52,12 @@
 #include "sound/objectsoundcontroller.h"
 #include "sound/soundcontroller.h"
 #include "sound/soundstorage.h"
+#include "renderer/nextframeupdater.h"
+#include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
+#include "worldmap/creaturehudrenderprovider.h"
+#include "worldmap/worldmapgameactionhandler.h"
+#include "worldmap/worldmapgameactionprovider.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "worldmap/worldmapstorage.h"
 #include "worldmap/worldmapviewport.h"
@@ -112,6 +119,7 @@ void TGameSessionBase::createStorages()
 
 void TGameSessionBase::createProtocolMessageHandlers()
 {
+    m_creatureProtocolMessageHandler = std::make_shared<creatures::TCreatureProtocolMessageHandler>(m_worldMapStorage.get());
     m_worldmapProtocolMessageHandler = std::make_shared<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
     m_worldmapProtocolMessageHandler->setViewport(m_worldMapViewport.get());
     m_effectProtocolMessageHandler = std::make_shared<effects::TEffectProtocolMessageHandler>();
@@ -119,6 +127,40 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_effectGameActionHandler.get(),
             &effects::TEffectGameActionHandler::handleGameAction);
+}
+
+void TGameSessionBase::createRenderProviders()
+{
+    m_worldMapRenderProvider = std::make_shared<qmlcomponents::TWorldMapRenderProvider>();
+    // The view the map handler centres; the picker reads the player's floor from it.
+    m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
+    // The provider builds the frame the updater advances to.
+    m_nextFrameUpdater = std::make_shared<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *m_textStorage);
+    m_creatureHUDRenderProvider = std::make_shared<worldmap::TCreatureHUDRenderProvider>();
+    connect(m_worldMapRenderProvider.get(), &qmlcomponents::TWorldMapRenderProvider::overlaysAdvanced, m_creatureHUDRenderProvider.get(),
+            [hud = m_creatureHUDRenderProvider.get(), provider = m_worldMapRenderProvider.get()] { hud->syncFrom(*provider); });
+    // qtclient's status line and centre messages (TGameMessageHandler) write
+    // into the session's texts.
+    m_gameMessageHandler = std::make_shared<chat::TGameMessageHandler>(*m_textStorage);
+    m_gameMessageHandler->setOptions(app::ClientOptions::load().options());
+    connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, this,
+            [this](const input::IGameActionPtr& action) {
+                if (m_gameMessageHandler)
+                    m_gameMessageHandler->handleGameAction(action);
+            });
+}
+
+void TGameSessionBase::createGameActionProvidersAndHandlers()
+{
+    m_worldMapGameActionProvider =
+        std::make_shared<worldmap::TWorldMapGameActionProvider>(*m_worldMapRenderProvider, *m_worldMapViewport);
+    m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>();
+}
+
+void TGameSessionBase::onPrepareNextFrameToRender(const qint64 NextFramePredictedTimestamp)
+{
+    if (m_nextFrameUpdater)
+        m_nextFrameUpdater->v2(NextFramePredictedTimestamp);
 }
 
 TGameSessionBase::~TGameSessionBase()
@@ -155,7 +197,6 @@ void TGameSessionBase::install(const bool installed)
     creatures::TCreatureStorage::setInstance(installed ? m_creatureStorage.get() : nullptr);
     container::TContainerStorage::setInstance(installed ? m_containerStorage.get() : nullptr);
     container::TInventoryContainer::setInstance(installed ? m_inventoryContainer.get() : nullptr);
-    worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(installed ? m_worldmapProtocolMessageHandler.get() : nullptr);
     effects::TEffectStorage::setInstance(installed ? m_effectStorage.get() : nullptr);
     TPlayerData::setLiveInstance(installed ? m_playerData.get() : nullptr);
     TPlayerSkillStats::setLiveInstance(installed ? m_playerSkillStats.get() : nullptr);
@@ -220,7 +261,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedTibiaTimeMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTibiaTimeMessage);
 
     using creatures::TCreatureProtocolMessageHandler;
-    if (auto* creatures = TCreatureProtocolMessageHandler::liveInstance()) {
+    if (auto* creatures = m_creatureProtocolMessageHandler.get()) {
         link(&Queue::receivedMoveCreatureMessage, creatures, &TCreatureProtocolMessageHandler::handleMoveCreatureMessage);
         link(&Queue::receivedLoginSuccessMessage, creatures, &TCreatureProtocolMessageHandler::handleLoginSuccessMessage);
         link(&Queue::receivedSessionDumpStartMessage, creatures, &TCreatureProtocolMessageHandler::handleSessionDumpStartMessage);
@@ -520,7 +561,15 @@ void TGameSessionBase::connectProtocolMessageHandlers()
 
 void TGameSessionBase::releaseStorages()
 {
-    // Effects and texts refer to the map; the map handler to its storage.
+    // The render providers refer to the map, its view and the texts; effects
+    // and texts to the map; the map handlers to its storage.
+    m_gameMessageHandler.reset();
+    m_worldMapGameActionProvider.reset();
+    m_worldMapGameActionHandler.reset();
+    m_nextFrameUpdater.reset();
+    m_creatureHUDRenderProvider.reset();
+    m_worldMapRenderProvider.reset();
+    m_creatureProtocolMessageHandler.reset();
     m_effectProtocolMessageHandler.reset();
     m_effectGameActionHandler.reset();
     m_effectStorage.reset();

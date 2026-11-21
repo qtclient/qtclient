@@ -24,8 +24,6 @@ namespace tibia::worldmap {
 
 namespace {
 
-TWorldmapProtocolMessageHandler* g_liveWorldmapProtocolHandler = nullptr;
-
 using namespace ::tibia::protobuf::protocol;
 
 Position positionOf(const ProtocolCoordinate& c)
@@ -34,16 +32,6 @@ Position positionOf(const ProtocolCoordinate& c)
 }
 
 } // namespace
-
-TWorldmapProtocolMessageHandler* TWorldmapProtocolMessageHandler::liveInstance()
-{
-    return g_liveWorldmapProtocolHandler;
-}
-
-void TWorldmapProtocolMessageHandler::setLiveInstance(TWorldmapProtocolMessageHandler* handler)
-{
-    g_liveWorldmapProtocolHandler = handler;
-}
 
 void TWorldmapProtocolMessageHandler::clearField(const Position& position)
 {

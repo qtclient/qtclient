@@ -6,6 +6,8 @@
 #include "network/gameserverpacketprocessor.h"
 #include "protocol/protocolmessagequeue.h"
 
+#include "clockservice.h"
+
 #include <stdexcept>
 
 #include <QtGlobal>
@@ -187,6 +189,8 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     createStorages();
     createProtocolMessageHandlers();
+    createRenderProviders();
+    createGameActionProvidersAndHandlers();
     // The session's network stack: its encoded client messages go to the game connection.
     connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::clientMessageEnqueued, this,
             [](int, const QByteArray& frame) {
@@ -228,6 +232,11 @@ void TGameserverGameSession::requestLogout()
 void TGameserverGameSession::disconnectNow()
 {
     hubDisconnectNow();
+}
+
+std::shared_ptr<shared::IClockService> TGameserverGameSession::clockService() const
+{
+    return shared::TClockService::process();
 }
 
 bool TGameserverGameSession::isOnline() const
