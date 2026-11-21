@@ -57,6 +57,7 @@
 #include "chat/textstorage.h"
 #include "game/gamesessionbase.h"
 #include "input/genericgameactionhandler.h"
+#include "game/currentgamesession.h"
 #include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
@@ -998,6 +999,8 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         // classes' instance() stop resolving to this session.
         if (previous)
             previous->install(false);
+        // Pack-facing accessors stop resolving to the retired session.
+        game::setCurrentGameSession(nullptr);
         m_currentGameSession.reset();
     }
     // Host shim: the controllers below still read the classes' instance().
@@ -1005,6 +1008,8 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         next->install(true);
     connectGameWindowControllersToGameSession(GameSession);
     m_currentGameSession = GameSession;
+    // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
+    game::setCurrentGameSession(m_currentGameSession);
     if (!m_currentGameSession)
         return;
     if (auto* current = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get())) {

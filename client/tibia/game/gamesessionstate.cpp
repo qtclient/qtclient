@@ -422,7 +422,6 @@ void TGameSessionState::endSession()
 
 void TGameSessionState::processGameEnd()
 {
-    tibia::world::notifySessionEnd();
     // FPS fixed at 60 for when UI is rendering alone.
     tibia::host::app().setTargetFps(60u);
 

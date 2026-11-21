@@ -1,4 +1,5 @@
 #include "game/gamesessionbase.h"
+#include "game/currentgamesession.h"
 #include "gamesession.h"
 
 #include "game/gamesessionstate.h"
@@ -154,7 +155,7 @@ std::shared_ptr<tibia::creatures::TCreature> localPlayerCreature()
 {
     if (!hasLocalPlayer())
         return nullptr;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = currentCreatureStorage();
     return storage ? storage->player() : nullptr;
 }
 
@@ -427,7 +428,7 @@ void processOpenContainer(uint8_t containerId, const ::tibia::container::TInvent
 }
 void processCloseContainer(const uint8_t containerId)
 {
-    if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance())
+    if (tibia::container::TContainerStorage* storage = currentContainerStorage())
         storage->closeContainer(containerId);
 }
 
@@ -657,7 +658,7 @@ void useInventoryItemOnCreature(const uint16_t itemId, const uint32_t creatureId
 }
 std::optional<TObjectReference> findPlayerItem(const uint32_t itemId, const int subType)
 {
-    if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
+    if (tibia::container::TInventoryContainer* inventory = currentInventoryContainer()) {
         for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
             const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
             if (row.empty() || row.typeId != itemId)
@@ -765,7 +766,7 @@ MapPos localPlayerMapPos()
 
 std::string localPlayerName()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance(); data && !data->characterName().empty())
+    if (TPlayerData* data = currentPlayerData(); data && !data->characterName().empty())
         return data->characterName();
     if (hasLocalPlayer())
         return gameSessionState().getCharacterName();
@@ -776,55 +777,55 @@ uint32_t localPlayerId()
 {
     if (!hasLocalPlayer())
         return 0;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = currentCreatureStorage();
     return storage ? storage->playerID() : 0;
 }
 
 int localPlayerLevel()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return static_cast<int>(data->level());
     return 0;
 }
 
 uint16_t localPlayerLevelPercent()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return static_cast<uint16_t>(data->levelPercent());
     return 0;
 }
 
 uint32_t localPlayerHealth()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->health();
     return 0;
 }
 
 uint32_t localPlayerMaxHealth()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->maxHealth();
     return 0;
 }
 
 uint32_t localPlayerMana()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->mana();
     return 0;
 }
 
 uint32_t localPlayerMaxMana()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->maxMana();
     return 0;
 }
 
 uint16_t localPlayerStamina()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->stamina();
     return 0;
 }
@@ -832,7 +833,7 @@ uint16_t localPlayerStamina()
 uint8_t localPlayerVocation()
 {
     // The classic vocation id: promoted vocations count from 11.
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return static_cast<uint8_t>(data->vocation() + (data->promoted() ? 10 : 0));
     return 0;
 }
@@ -846,28 +847,28 @@ uint8_t localPlayerShield()
 
 bool localPlayerHasReachedMain()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->hasReachedMain();
     return false;
 }
 
 uint64_t localPlayerTotalMoney()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->totalMoney();
     return 0;
 }
 
 uint32_t localPlayerFreeCapacity()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->freeCapacity();
     return 0;
 }
 
 uint32_t localPlayerFreeCapacityHundredths()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->freeCapacityHundredths();
     return 0;
 }
@@ -882,7 +883,7 @@ uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
     if (!hasLocalPlayer())
         return 0;
     // The server's count of everything the player carries, else the open containers.
-    if (const TGameSessionBase* session = TGameSessionBase::active(); session && !session->objectCountStorage()->counts().empty()) {
+    if (const TGameSessionBase* session = currentGameSession(); session && !session->objectCountStorage()->counts().empty()) {
         const auto& counts = session->objectCountStorage();
         const auto it = counts->counts().find({ itemId, tier });
         if (it != counts->counts().end())
@@ -893,11 +894,11 @@ uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
         if (!slot.empty() && slot.typeId == itemId && slot.tier == tier)
             total += slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
     };
-    if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
+    if (tibia::container::TInventoryContainer* inventory = currentInventoryContainer()) {
         for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot)
             add(inventory->slotAt(slot));
     }
-    if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance()) {
+    if (tibia::container::TContainerStorage* storage = currentContainerStorage()) {
         for (const tibia::container::TContainerID containerId : storage->openIds()) {
             if (const tibia::container::TStoredContainer* row = storage->containerAt(containerId)) {
                 for (const tibia::container::TInventorySlot& slot : row->items)
@@ -911,7 +912,7 @@ uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
 InventorySlotInfo localPlayerInventorySlot(const tibia::client::InventorySlot slot)
 {
     InventorySlotInfo info;
-    tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance();
+    tibia::container::TInventoryContainer* inventory = currentInventoryContainer();
     if (hasLocalPlayer() && inventory) {
         const tibia::container::TInventorySlot& row = inventory->slotAt(static_cast<int>(slot));
         info.empty = row.empty();
@@ -964,7 +965,7 @@ bool localPlayerHasAutoWalkDirs()
 
 bool localPlayerIsWalking()
 {
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = currentCreatureStorage();
     const auto row = storage ? storage->creatureAt(localPlayerId()) : nullptr;
     return row && row->isMoving();
 }
@@ -1041,7 +1042,7 @@ void localPlayerCancelWalk(const tibia::client::Direction direction)
 
 uint8_t localPlayerBlessVisualState()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
+    if (TPlayerData* data = currentPlayerData())
         return data->blessVisualState();
     return 0;
 }
@@ -1066,7 +1067,7 @@ void localPlayerSetSoftDead(const bool softDead)
     row->setSoftDead(softDead);
     if (softDead)
         localPlayerSetHealth(0, localPlayerMaxHealth());
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+    if (tibia::creatures::TCreatureStorage* storage = currentCreatureStorage())
         storage->publishCreatureUpdated(row);
 }
 

@@ -258,6 +258,24 @@ typedef struct QtClientSessionApiV1 {
      *  direction is held (touch joysticks). */
     void (*local_player_hold_direction)(int direction);
     void (*local_player_release_direction)(void);
+
+    /** --- Current game session objects (host API v5+; read only when api_version >= 5) ---
+     *  Opaque tip pointers into the game client's current session (one per login, replay or
+     *  tutorial); null between sessions. Resolve them at call time and never keep them: the
+     *  next login builds new ones. Rebind signal connections on notify->subscribe_session_changed. */
+    /** container::TContainerStorage* (<qtclient/container/containerciptypes.h>). */
+    void* (*container_storage)(void);
+    /** container::TInventoryContainer* (<qtclient/container/containerciptypes.h>). */
+    void* (*inventory_container)(void);
+    /** creatures::TCreatureStorage* (<qtclient/creatures/creaturestorage.h>). */
+    void* (*creature_storage)(void);
+    /** game::TCooldownStorage* (<qtclient/cooldown.h>). */
+    void* (*cooldown_storage)(void);
+    /** quickloot::TQuickLootBlackWhitelistStorage* (<qtclient/quickloot/quicklootblackwhiteliststorage.h>). */
+    void* (*quick_loot_black_white_list_storage)(void);
+    /** Non-zero once the session read the character's configuration (quick-loot and analyser
+     *  lists hold the character's), zero before that and after the game ended. */
+    int (*character_configuration_loaded)(void);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

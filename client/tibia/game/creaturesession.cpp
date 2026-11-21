@@ -1,4 +1,5 @@
 #include "creaturesession.h"
+#include "game/currentgamesession.h"
 
 #include <client/position.h>
 #include "protocol/protocolcodes.h"
@@ -56,7 +57,7 @@ std::vector<CreatureSnapshot> spectatorsNear(const MapPos center, const bool mul
                                              const int right, const int top, const int bottom)
 {
     std::vector<CreatureSnapshot> out;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = currentCreatureStorage();
     if (!storage)
         return out;
     for (const auto& creature :
@@ -71,7 +72,7 @@ CreatureSnapshot creatureAt(const uint32_t id)
 {
     if (id == 0)
         return {};
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = currentCreatureStorage();
     if (!storage)
         return {};
     const auto creature = storage->creatureAt(id);
