@@ -41,7 +41,7 @@ void registerAttachedEffectByThing(uint16_t id, std::string_view note, uint16_t 
 void attachCreatureEffect(uint32_t creatureId, uint16_t effectId);
 void detachCreatureEffect(uint32_t creatureId, uint16_t effectId);
 
-/// Race catalog peels (expedition / lobby / teamfinder name lookup).
+/// Race catalog peels (expedition / team / teamfinder name lookup).
 std::string raceName(uint32_t raceId);
 bool raceExists(uint32_t raceId);
 /// True when the race catalog marks this id as a boss (Team Finder boss list).
@@ -51,7 +51,7 @@ std::vector<uint32_t> raceIdsByName(const std::string& search);
 /// All race catalog ids (`tibia::appearances::TAppearancesManager::instance().getAllRaces`, raceId != 0).
 std::vector<uint32_t> allRaceIds();
 
-/// Pack-facing race outfit peel (expedition detail / lobby). No Outfit / RaceType in the header.
+/// Pack-facing race outfit peel (expedition detail / team). No Outfit / RaceType in the header.
 struct RaceOutfitInfo {
     bool exists{ false };
     bool isObject{ false }; ///< looktype from aux id (item look) rather than creature looktype
