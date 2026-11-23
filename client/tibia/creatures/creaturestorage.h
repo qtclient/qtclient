@@ -3,6 +3,7 @@
 #include "animation/animator.h"
 #include "animation/movingoutfitanimator.h"
 #include "appearances/appearanceinstance.h"
+#include "appearances/creatureplaceholderappearanceinstance.h"
 #include "creatures/creaturemovementtween.h"
 #include "creatures/movementdirection.h"
 #include "worldmap/coordinates.h"
@@ -26,6 +27,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -102,12 +104,25 @@ struct TCreatureMarks
 };
 
 /// CIP live creature row (protocol + field stack hold outfit appearance + creature id).
-class TCreature final : public cip::tibia::creatures::TCreature
+class TCreature final : public cip::tibia::creatures::TCreature, public std::enable_shared_from_this<TCreature>
 {
     Q_OBJECT
 
 public:
     explicit TCreature(TCreatureID id = 0, QObject* parent = nullptr);
+
+    /// A new creature with the placeholder that stands for it on the map.
+    static std::shared_ptr<TCreature> create(TCreatureID id = 0);
+    /// Makes the placeholder that stands for the creature on the map (needs the
+    /// creature to be owned by a shared pointer).
+    void createPlaceholderAppearance();
+    /// The placeholder that stands for the creature on the map.
+    const std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance>& placeholderAppearance() const
+    {
+        return m_placeholderAppearance;
+    }
+    /// The creature's offset within its current step.
+    worldmap::TWorldMapSubfieldExtent movementOffset() const { return m_movementTween.drawOffset(); }
 
     const TCreatureMovementTween& movementTween() const { return m_movementTween; }
 
@@ -157,6 +172,9 @@ public:
     /// The party shares experience (active or not).
     bool isSharingExperience() const { return static_cast<uint8_t>(m_shield - 5) < 6; }
     uint8_t emblem() const { return m_emblem; }
+    /// The creature's guild is at war: the green, red, blue and "other" emblems
+    /// (1, 2, 3 and 5).
+    bool isInGuildWar() const { return m_emblem < 6 && ((0x2eu >> m_emblem) & 1u) != 0; }
     const Outfit& outfit() const { return m_outfit; }
     const Position& position() const { return m_position; }
     appearances::TAppearanceInstancePtr outfitAppearance() const { return m_outfitAppearance; }
@@ -194,11 +212,8 @@ public:
     static void setMarkOptions(const TCreatureMarkOptions& options);
     /// The step's elevation while moving, the field's otherwise.
     int drawElevation() const;
-    /// The local player holds a movement intent other than Stop; keeps the
-    /// walking sprite briefly between steps.
-    void setHoldsMovementIntent(bool holds) { m_holdsMovementIntent = holds; }
     uint8_t patternX() const { return m_patternX; }
-    /// The walking sprite is drawn shown.
+    /// The walking sprite is drawn: the placeholder shows the moving sprites.
     bool showsMovingSprite() const;
     /// The look the outfit is drawn with: the step's look for the walking
     /// sprite, the creature's look for the standing one.
@@ -212,8 +227,10 @@ public:
     /// the mount is drawn under it.
     bool isMounted() const { return m_mounted; }
     void setMounted(bool mounted) { m_mounted = mounted; }
-    uint16_t animationPhase() const { return m_animationPhase; }
-    uint16_t mountAnimationPhase() const { return m_mountAnimationPhase; }
+    /// The outfit's / the mount's phase to draw: the walking cycle while the
+    /// moving sprites show, the standing sequence's phase otherwise.
+    uint16_t animationPhase() const;
+    uint16_t mountAnimationPhase() const;
     /// The standing sequence's phase (an outfit shown as an object, too).
     int idleAnimationPhase() const { return m_outfitIdleAnimator ? m_outfitIdleAnimator->phase() : 0; }
     QPoint displacement() const { return m_displacement; }
@@ -334,6 +351,7 @@ private:
     uint8_t m_emblem{ 0 };
     Outfit m_outfit;
     Position m_position;
+    std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance> m_placeholderAppearance;
     appearances::TAppearanceInstancePtr m_outfitAppearance;
     uint8_t m_direction{ 2 };
     uint16_t m_speed{ 0 };
@@ -351,15 +369,9 @@ private:
     bool m_drawOutfitColor{ true };
     TCreatureMarks m_marks;
     bool m_placedOnField{ false };
-    qint64 m_lastFrameMs{ 0 };
-    qint64 m_lastMovingFrameMs{ 0 };
-    bool m_suppressMovingSprite{ false };
-    bool m_holdsMovementIntent{ false };
     uint8_t m_patternX{ 2 };
     uint8_t m_movementLook{ 0 };
     bool m_mounted{ false };
-    uint16_t m_animationPhase{ 0 };
-    uint16_t m_mountAnimationPhase{ 0 };
     QPoint m_displacement;
 
     uint8_t m_creatureType{ 0 };
@@ -434,6 +446,10 @@ public:
     std::vector<std::shared_ptr<TCreature>> spectatorsNear(const Position& center, bool multiFloor,
                                                            int left, int right, int top, int bottom) const;
 
+    /// The creatures the battle list shows, by id: every creature except the
+    /// player and the dead; party members wherever they are, the others only
+    /// when they stand on a field inside `view` (sheared onto its first floor).
+    std::map<TCreatureID, std::shared_ptr<TCreature>> battleListCreatures(const worldmap::TWorldMapCuboid& view) const;
     /// All registered creature ids (iteration authority for walk advance).
     QList<TCreatureID> creatureIds() const;
 

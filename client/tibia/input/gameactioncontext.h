@@ -410,5 +410,20 @@ uint16_t appearanceTypeIdOf(const IGameActionContext* object);
 /// The creature of an object context (0 for an appearance type or none).
 uint32_t creatureIdOf(const IGameActionContext* object);
 
+/// CIP: two appearance type objects are equal when they are the same kind, have the
+/// same liquid or tier, and have the same appearance type. A deco kit counts as plain.
+bool objectApperanceTypeContextsEqual(const TObjectApperanceTypeGameActionContext& first,
+                                      const TObjectApperanceTypeGameActionContext& second);
+/// CIP: two contexts are equal when they are the same kind with the same fields. A battle
+/// list or world map location always equals another of its kind. An unknown, NPC trade,
+/// player trade, action button or tutorial hint dialog location never does.
+bool gameActionContextsEqual(const IGameActionContext& first, const IGameActionContext& second);
+/// CIP: two contexts mean the same place or object when one of these holds:
+/// - one is a field with a stack position, the other a field without one, on the same
+///   coordinate;
+/// - both are appearance type objects of the same type;
+/// - they are equal (gameActionContextsEqual).
+bool gameActionContextsMatch(const IGameActionContext& first, const IGameActionContext& second);
+
 }
 }

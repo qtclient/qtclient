@@ -22,6 +22,7 @@ namespace input {
 class IGameAction;
 namespace gameactions {
 class TGameActionOpenWeaponProficiencyShapeDialog;
+class TGameActionOpenWeaponProficiencyShapeOptionsDialog;
 }
 }
 namespace gamewindow {
@@ -79,6 +80,7 @@ private:
     void updateReshape(const std::optional<TShapedSlot>& slot);
     /// CIP : the shown slot as the server has it.
     std::optional<TShapedSlot> shapedSlot() const;
+    void resetShapeData();
     void confirm(EConfirm action, const QString& caption, const QString& text);
     void sendSlotAction(uint8_t type) const;
 
@@ -114,6 +116,8 @@ class TWeaponProficiencyReshapeDialogController final
 public:
     TWeaponProficiencyReshapeDialogController(TProficiencyStorage* storage, TWeaponProficiencyShapeDialogController* shape,
                                               QObject* parent = nullptr);
+    /// Closes the confirmation and the dialog.
+    ~TWeaponProficiencyReshapeDialogController() override;
 
     /// CIP : the shape dialog's perk.
     QObject* currentPerk() const override;
@@ -130,8 +134,8 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
-    /// The server's reshape offers: the offer list is rebuilt and the dialog
-    /// shows them (it needs the shape dialog's perk).
+    /// The server's reshape offers: the offer list is rebuilt, the
+    /// confirmation hidden and the dialog opened unless it is there.
     void onShapedPerkReshapeOffersChanged();
     /// CIP .
     void rebuildOffers();
@@ -186,7 +190,8 @@ class TShapedPerkOptionsSortFilterProxyModel final : public cip::TShapedPerkOpti
 public:
     explicit TShapedPerkOptionsSortFilterProxyModel(QObject* parent = nullptr);
 
-    void setPerks(std::vector<TProficiencyPerk> perks) { m_model.setPerks(std::move(perks)); }
+    /// New perks; the filter string is cleared.
+    void setPerks(std::vector<TProficiencyPerk> perks);
     void setFilterString(const QString& filter);
 
 Q_SIGNALS:
@@ -218,6 +223,8 @@ public:
     void setFilterString(const QString& Filter) override;
     void showDialog() override;
     void closeDialog() override;
+    /// OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG.
+    void handleGameAction(const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action);
 
 private:
     TShapedPerkOptionsSortFilterProxyModel m_proxy;

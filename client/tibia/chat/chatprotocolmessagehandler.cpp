@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <tuple>
+#include <utility>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/worldmap/worldmapstorage.h>
@@ -293,7 +294,8 @@ void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistA
     setAllowVips(allowVips);
 }
 
-TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, QObject* parent)
+TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
+                                                         std::weak_ptr<::tibia::creatures::TCreature> pPlayer, QObject* parent)
     : cip::tibia::chat::TChatProtocolMessageHandler(parent)
     , m_storage(storage)
     , m_chatStorage(chatStorage)
@@ -308,6 +310,7 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
                 }
             });
     onChatProtocolMessageHandlerOptionsChanged();
+    onPlayerCreatureAddedToCreatureStorage(std::move(pPlayer));
 }
 
 TChatProtocolMessageHandler::~TChatProtocolMessageHandler() = default;
@@ -345,7 +348,7 @@ void TChatProtocolMessageHandler::onChatProtocolMessageHandlerOptionsChanged()
 void TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage(
     std::weak_ptr<::tibia::creatures::TCreature> pPlayer)
 {
-    // : store lower-cased own name for filter / arrived-sound checks.
+    // The own name, lower-cased, tells the player's own messages apart.
     if (const auto player = pPlayer.lock())
         m_storage.setOwnName(player->name());
 }

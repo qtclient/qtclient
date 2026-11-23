@@ -310,9 +310,7 @@ bool TRewardWallDialogController::handleGameAction(const input::IGameAction& act
     switch (action.gameActionType()) {
     case A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG: {
         const bool open = dialog()->item() != nullptr;
-        updateDailyRewards();
-        onDailyRewardHistoryChanged();
-        Q_EMIT dailyRewardStreakStateChanged();
+        refreshDailyRewards();
         if (!open) {
             dialog()->create();
             dialog()->show();
@@ -379,19 +377,23 @@ void TRewardWallDialogController::onDailyRewardHistoryChanged()
     Q_EMIT historyChanged();
 }
 
-void TRewardWallDialogController::onPremiumTimeChanged()
+/// The cells, the history and the streak state again.
+void TRewardWallDialogController::refreshDailyRewards()
 {
     updateDailyRewards();
     onDailyRewardHistoryChanged();
     Q_EMIT dailyRewardStreakStateChanged();
+}
+
+void TRewardWallDialogController::onPremiumTimeChanged()
+{
+    refreshDailyRewards();
     Q_EMIT premiumStatusChanged();
 }
 
 void TRewardWallDialogController::showDialog()
 {
-    updateDailyRewards();
-    onDailyRewardHistoryChanged();
-    Q_EMIT dailyRewardStreakStateChanged();
+    refreshDailyRewards();
     dialog()->create();
     dialog()->show();
     m_timer.start();

@@ -1,13 +1,15 @@
 #include "spelllistwidgetcontroller.h"
 
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <QJsonObject>
 #include <QQuickItem>
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -17,47 +19,35 @@ namespace tibia::gamewindow {
 
 namespace {
 
-constexpr auto OptionsKey = "spellListWidgetOptions";
 using Proxy = TSpellListDataModelSortFilterProxy;
+using Options = config::TSpellListWidgetOptions;
 
-/// The filter boxes the widget options keep (not the rune and instant boxes).
-const std::vector<std::pair<const char*, bool (Proxy::*)() const>>& filterBoxes()
+/// A filter box the widget options keep (not the rune and instant boxes):
+/// its options field and the proxy's getter and setter, in the options' order.
+struct TFilterBox
 {
-    static const std::vector<std::pair<const char*, bool (Proxy::*)() const>> boxes = {
-        { "showOnlyCurrentVocation", &Proxy::showOnlyCurrentVocation },
-        { "showOnlyCurrentLevel", &Proxy::showOnlyCurrentLevel },
-        { "showUnkownSpells", &Proxy::showUnkownSpells },
-        { "showDruidSpells", &Proxy::showDruidSpells },
-        { "showKnightSpells", &Proxy::showKnightSpells },
-        { "showPaladinSpells", &Proxy::showPaladinSpells },
-        { "showSorcererSpells", &Proxy::showSorcererSpells },
-        { "showMonkSpells", &Proxy::showMonkSpells },
-        { "showAttackSpellGroup", &Proxy::showAttackSpellGroup },
-        { "showHealingSpellGroup", &Proxy::showHealingSpellGroup },
-        { "showSupportSpellGroup", &Proxy::showSupportSpellGroup },
-        { "showPremiumOnlySpells", &Proxy::showPremiumOnlySpells },
-        { "showFreeSpells", &Proxy::showFreeSpells },
-    };
-    return boxes;
-}
+    bool Options::*field;
+    bool (Proxy::*get)() const;
+    void (Proxy::*set)(bool);
+};
 
-const std::vector<std::pair<const char*, void (Proxy::*)(bool)>>& filterBoxSetters()
+const std::array<TFilterBox, 13>& filterBoxes()
 {
-    static const std::vector<std::pair<const char*, void (Proxy::*)(bool)>> boxes = {
-        { "showOnlyCurrentVocation", &Proxy::setShowOnlyCurrentVocation },
-        { "showOnlyCurrentLevel", &Proxy::setShowOnlyCurrentLevel },
-        { "showUnkownSpells", &Proxy::setShowUnkownSpells },
-        { "showDruidSpells", &Proxy::setShowDruidSpells },
-        { "showKnightSpells", &Proxy::setShowKnightSpells },
-        { "showPaladinSpells", &Proxy::setShowPaladinSpells },
-        { "showSorcererSpells", &Proxy::setShowSorcererSpells },
-        { "showMonkSpells", &Proxy::setShowMonkSpells },
-        { "showAttackSpellGroup", &Proxy::setShowAttackSpellGroup },
-        { "showHealingSpellGroup", &Proxy::setShowHealingSpellGroup },
-        { "showSupportSpellGroup", &Proxy::setShowSupportSpellGroup },
-        { "showPremiumOnlySpells", &Proxy::setShowPremiumOnlySpells },
-        { "showFreeSpells", &Proxy::setShowFreeSpells },
-    };
+    static const std::array<TFilterBox, 13> boxes = { {
+        { &Options::showOnlyCurrentVocation, &Proxy::showOnlyCurrentVocation, &Proxy::setShowOnlyCurrentVocation },
+        { &Options::showOnlyCurrentLevel, &Proxy::showOnlyCurrentLevel, &Proxy::setShowOnlyCurrentLevel },
+        { &Options::showUnknownSpells, &Proxy::showUnkownSpells, &Proxy::setShowUnkownSpells },
+        { &Options::showDruidSpells, &Proxy::showDruidSpells, &Proxy::setShowDruidSpells },
+        { &Options::showKnightSpells, &Proxy::showKnightSpells, &Proxy::setShowKnightSpells },
+        { &Options::showPaladinSpells, &Proxy::showPaladinSpells, &Proxy::setShowPaladinSpells },
+        { &Options::showSorcererSpells, &Proxy::showSorcererSpells, &Proxy::setShowSorcererSpells },
+        { &Options::showMonkSpells, &Proxy::showMonkSpells, &Proxy::setShowMonkSpells },
+        { &Options::showAttackSpellGroup, &Proxy::showAttackSpellGroup, &Proxy::setShowAttackSpellGroup },
+        { &Options::showHealingSpellGroup, &Proxy::showHealingSpellGroup, &Proxy::setShowHealingSpellGroup },
+        { &Options::showSupportSpellGroup, &Proxy::showSupportSpellGroup, &Proxy::setShowSupportSpellGroup },
+        { &Options::showPremiumOnlySpells, &Proxy::showPremiumOnlySpells, &Proxy::setShowPremiumOnlySpells },
+        { &Options::showFreeSpells, &Proxy::showFreeSpells, &Proxy::setShowFreeSpells },
+    } };
     return boxes;
 }
 
@@ -76,12 +66,6 @@ TSpellListWidgetController::TSpellListWidgetController(QQuickItem* gameWindowIte
     }
     connect(&m_focus, &TUiFocusManager::focusChanged, this, &TSpellListWidgetController::focusChanged);
     connect(m_proxy, &TSpellListDataModelSortFilterProxy::configChanged, this, &TSpellListWidgetController::saveWidgetOptions);
-}
-
-void TSpellListWidgetController::setSidebarOptions(config::TSidebarOptions* options)
-{
-    m_options = options;
-    onWidgetOptionsChanged();
 }
 
 QQuickItem* TSpellListWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -150,30 +134,44 @@ void TSpellListWidgetController::onShowMoreForSpell(const int SpellID)
     Q_EMIT publishGameAction(action);
 }
 
+void TSpellListWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_options = nullptr;
+    m_gameSession = GameSession;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        if (config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get())
+            m_options = configuration->sidebarOptions();
+        if (m_options) {
+            m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::spellListWidgetOptionsChanged, this,
+                                                 &TSpellListWidgetController::onWidgetOptionsChanged));
+            onWidgetOptionsChanged();
+        }
+    }
+    m_proxy->onGameSessionChanged();
+}
+
 void TSpellListWidgetController::saveWidgetOptions()
 {
     if (!m_options || m_applyingOptions)
         return;
-    QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
-    json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
-    for (const auto& [key, getter] : filterBoxes())
-        json.insert(QLatin1String(key), (m_proxy->*getter)());
-    m_options->setSection(QLatin1String(OptionsKey), json);
+    config::TSpellListWidgetOptions options;
+    options.setContentHeightAndMaximized(widget()->maximizedContentHeight(), widget()->isMaximized());
+    for (const TFilterBox& box : filterBoxes())
+        options.*box.field = (m_proxy->*box.get)();
+    m_options->setSpellListWidgetOptions(options);
 }
 
 void TSpellListWidgetController::onWidgetOptionsChanged()
 {
     if (!m_options)
         return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
-    // Every box defaults to ticked; applying them does not store them back.
+    const config::TSpellListWidgetOptions& options = m_options->spellListWidgetOptions();
+    widget()->setInitialContentHeightAndMaximized(options.contentHeight, options.contentMaximized);
+    // Host: the proxy's configChanged saves the options; applying them does not.
     m_applyingOptions = true;
-    for (const auto& [key, setter] : filterBoxSetters())
-        (m_proxy->*setter)(json.value(QLatin1String(key)).toBool(true));
+    for (const TFilterBox& box : filterBoxes())
+        (m_proxy->*box.set)(options.*box.field);
     m_applyingOptions = false;
 }
 
@@ -220,14 +218,20 @@ TSpellListWidgetManager::TSpellListWidgetManager(QQuickItem* gameWindowItem, QQm
 
 TSpellListWidgetManager::~TSpellListWidgetManager() { delete m_controller; }
 
-TSidebarWidget* TSpellListWidgetManager::open(config::TSidebarOptions* options)
+TSidebarWidget* TSpellListWidgetManager::open(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     if (!m_controller) {
         m_controller = new TSpellListWidgetController(m_gameWindowItem, m_engine);
         connect(m_controller, &TSpellListWidgetController::publishGameAction, this, &TSpellListWidgetManager::publishGameAction);
-        m_controller->setSidebarOptions(options);
+        m_controller->connectToGameSession(GameSession);
     }
     return m_controller->widget();
+}
+
+void TSpellListWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_controller)
+        m_controller->connectToGameSession(GameSession);
 }
 
 void TSpellListWidgetManager::close(const bool saveWidgetOptions)

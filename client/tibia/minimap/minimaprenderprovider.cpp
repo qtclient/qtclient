@@ -1,6 +1,5 @@
 #include "minimaprenderprovider.h"
 
-#include "minimap/minimapciptypes.h"
 #include "minimap/minimaptilestorage.h"
 #include "minimap/minimapvisiblearea.h"
 
@@ -13,10 +12,6 @@ TMinimapRenderProvider::TMinimapRenderProvider(TMinimapTileStorage* storage, con
 
 std::vector<TMinimapRenderProvider::TileRenderInfo> TMinimapRenderProvider::renderInfos() const
 {
-    // CIP TMinimapMarkerRenderProvider / scenegraph draw-command provider sit
-    // beside tile colour blit when markers are drawn into the same frame.
-    (void)TMinimapMarkerRenderProvider();
-    (void)TMinimapRendererScenegraphDrawCommandProvider();
     std::vector<TileRenderInfo> infos;
     if (!m_storage || !m_area)
         return infos;

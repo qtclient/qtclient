@@ -32,7 +32,7 @@ TCreatureMarkAppearanceInstanceSpriteInfo::TCreatureMarkAppearanceInstanceSprite
 {
 }
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TCreatureMarkAppearanceInstanceSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TCreatureMarkAppearanceInstanceSpriteInfo::clone() const
 {
     return std::make_shared<TCreatureMarkAppearanceInstanceSpriteInfo>(m_colors);
 }
@@ -105,7 +105,7 @@ TSpritesheetAppearanceInstanceSpriteInfo::TSpritesheetAppearanceInstanceSpriteIn
 {
 }
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TSpritesheetAppearanceInstanceSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TSpritesheetAppearanceInstanceSpriteInfo::clone() const
 {
     return std::make_shared<TSpritesheetAppearanceInstanceSpriteInfo>(m_sprite, m_boundingBox);
 }
@@ -128,7 +128,13 @@ bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearance
 }
 
 TOutfitColors::TOutfitColors(const uint8_t head, const uint8_t body, const uint8_t legs, const uint8_t feet)
-    : colors{ tibia::shared::outfitColor(head), tibia::shared::outfitColor(body), tibia::shared::outfitColor(legs), tibia::shared::outfitColor(feet) }
+    : TOutfitColors(tibia::shared::outfitColor(head), tibia::shared::outfitColor(body), tibia::shared::outfitColor(legs),
+                    tibia::shared::outfitColor(feet))
+{
+}
+
+TOutfitColors::TOutfitColors(const QColor& head, const QColor& body, const QColor& legs, const QColor& feet)
+    : colors{ head, body, legs, feet }
 {
     hash = colors[3].rgba() * 13 ^ colors[2].rgba() * 11 ^ colors[1].rgba() * 7 ^ colors[0].rgba();
 }
@@ -157,7 +163,7 @@ TMaskedAppearanceInstanceSpriteInfo::TMaskedAppearanceInstanceSpriteInfo(const u
 {
 }
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TMaskedAppearanceInstanceSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TMaskedAppearanceInstanceSpriteInfo::clone() const
 {
     return std::make_shared<TMaskedAppearanceInstanceSpriteInfo>(m_sprite, m_mask, m_colors, m_boundingBox);
 }
@@ -183,7 +189,7 @@ TLayeredAppearanceInstanceSpriteInfo::TLayeredAppearanceInstanceSpriteInfo(std::
 {
 }
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TLayeredAppearanceInstanceSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TLayeredAppearanceInstanceSpriteInfo::clone() const
 {
     return std::make_shared<TLayeredAppearanceInstanceSpriteInfo>(m_layers, m_boundingBox);
 }
@@ -213,7 +219,7 @@ QSize TLayeredAppearanceInstanceSpriteInfo::spriteSize() const
     return m_layers.front()->spriteSize();
 }
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TDummyAppearanceInstanceSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TDummyAppearanceInstanceSpriteInfo::clone() const
 {
     return std::make_shared<TDummyAppearanceInstanceSpriteInfo>();
 }

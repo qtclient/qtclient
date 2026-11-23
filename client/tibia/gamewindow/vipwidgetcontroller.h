@@ -3,6 +3,8 @@
 #include "input/gameactiondispatch.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "gamewindow/viprenderinfo.h"
+#include "qtconnectionmanager.h"
 #include "creatures/creaturesciptypes.h"
 #include "creatures/vipstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
@@ -12,11 +14,10 @@
 
 #include <QHash>
 #include <QPointer>
-#include <QSet>
-
-#include <memory>
 
 #include <functional>
+#include <map>
+#include <memory>
 #include <vector>
 
 class QTimer;
@@ -44,14 +45,13 @@ class TGenericEnterTextDialogController;
 class TMessageDialogController;
 class TSidebarWidget;
 
-/// One row per (VIP, group) pair; an ungrouped VIP has one row in
-/// "vip_ungrouped_group_name" (CIP: TVipWidgetDataModel, rows built by
-/// ). Rebuilt whenever the storage changes.
+/// The VIP list rows (CIP: TVipWidgetDataModel): one TVipRenderInfo per
+/// (VIP, group) pair; an ungrouped VIP has one row in
+/// "vip_ungrouped_group_name". Rebuilt whenever a VIP or the groups change.
 class TVipWidgetDataModel final : public cip::tibia::gamewindow::TVipWidgetDataModel
 {
     Q_OBJECT
 public:
-    /// CIP .
     enum Role
     {
         VipNameRole = 0x101,
@@ -59,47 +59,44 @@ public:
         VipHighlightedRole,
         VipIconIdRole,
         GroupNameRole,
-        /// The VIP's first row: shown when groups are hidden.
+        /// The VIP's first row: shown when groups are hidden (no role name).
         PrimaryRole,
     };
 
-    explicit TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent = nullptr);
-    /// The rows follow another session's VIP list.
-    void setStorage(creatures::TVipStorage* storage);
+    explicit TVipWidgetDataModel(QObject* parent = nullptr);
+
+    /// The rows follow the session's VIP storage (none without a session).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Drops the old storage's connections, connects the new one's changes
+    /// and rebuilds the rows.
+    void setVipStorage(const std::shared_ptr<creatures::TVipStorage>& VipStorage);
 
     int rowCount(const QModelIndex& parent = {}) const override;
-    /// CIP .
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
 public Q_SLOTS:
-    /// CIP .
-    void onVipGroupDataChanged() override;
-    /// CIP moc private rebuild hooks (qtclient rebuilds the full row list).
     void onVipDataChangedOrAdded();
-    void onVipRemoved(uint32_t characterId);
-    void onVipRenderInfoChanged(uint32_t characterId);
+    /// A state change stops the rows' highlight timers; going from offline
+    /// (0, 5) to online (1, 4) highlights them for the timer's interval.
+    void onVipStateChanged(uint32_t CharacterID, int State);
+    void onVipRemoved(uint32_t CharacterID);
+    void onVipRenderInfoChanged(uint32_t CharacterID);
+    void onVipGroupDataChanged() override;
 
 private:
-    struct Row
-    {
-        uint32_t id;
-        QString name;
-        int state;
-        int iconId;
-        QString groupName;
-        bool primary;
-    };
+    /// Removes every row, then adds the storage's VIPs with its groups.
+    void rebuild();
+    void removeAllRows();
+    /// Each VIP's rows: one per group (the first one is the VIP's first
+    /// entry), or one in the ungrouped group.
+    void addVips(const std::vector<creatures::TVipStorage::Vip>& Vips);
+    void addVipRenderInfo(const creatures::TVipStorage::Vip& VipData, const QString& GroupName, bool FirstGroupEntry);
 
-    /// CIP : a state change stops the VIP's highlight timer; going
-    /// from offline (0, 5) to online (1, 4) highlights it again for the
-    /// timer's 1000 ms (TVipRenderInfo , cleared by).
-    void onVipStateChanged(uint32_t id, int state);
-
-    creatures::TVipStorage* m_storage;
-    std::vector<Row> m_rows;
-    QHash<uint32_t, TVipRenderInfo*> m_renderInfos;
-    QSet<uint32_t> m_highlighted;
+    std::vector<std::shared_ptr<TVipRenderInfo>> m_vipRenderInfos;
+    std::shared_ptr<creatures::TVipStorage> m_vipStorage;
+    shared::TQtConnectionManager m_connectionManager;
+    std::map<uint8_t, creatures::TVipStorage::Group> m_groups;
 };
 
 /// Sorting and filtering of the VIP list (CIP:
@@ -153,7 +150,7 @@ class TVipWidgetController final : public TSidebarWidgetController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    TVipWidgetController(creatures::TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TVipWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TVipWidgetController() override;
 
     /// vipWidgetOptions: size, sort order, hidden offline VIPs, groups.
@@ -162,8 +159,10 @@ public:
     /// The exiva whitelist entries' data (CIP TVipWidgetGameActionProvider
     /// +0x18 the exiva options storage, +0x38 the world type).
     void setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, int worldType);
-    /// The widget follows another session's VIP list (its dialogs close).
-    void setVipStorage(creatures::TVipStorage* storage);
+    /// The widget follows `GameSession`'s VIP list: the add-VIP, add-group
+    /// and edit-VIP dialogs close, the old session's connections drop, the
+    /// options are read again and the list model follows the session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// CIP : the widget's dialogs, sorting and filters.
     bool handleAction(const input::IGameAction& action);
 
@@ -226,7 +225,10 @@ private:
     void openEditGroupDialog(const QString& groupName);
     void readOptions();
 
-    creatures::TVipStorage* m_storage;
+    shared::TQtConnectionManager m_connectionManager;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    /// The session's VIP storage (the dialogs and the action provider read it).
+    creatures::TVipStorage* m_storage = nullptr;
     TVipWidgetDataModel* m_model;
     TVipWidgetDataModelSortFilterProxy* m_proxy;
     TGenericEnterTextDialogController* m_addVipDialog;
@@ -279,6 +281,7 @@ Q_SIGNALS:
 private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<creatures::TVipStorage> m_storage;
     QPointer<exivaoptions::TExivaOptionsStorage> m_exivaOptions;
     QPointer<TVipWidgetController> m_controller;

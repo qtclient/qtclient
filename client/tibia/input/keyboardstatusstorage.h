@@ -22,9 +22,22 @@ class TKeyboardStatusStorage final : public cip::tibia::input::TKeyboardStatusSt
 public:
     struct TKey
     {
+        TKey() = default;
+        /// A key of the main keyboard, or of the keypad.
+        TKey(int key, bool keypad = false)
+            : key(key)
+            , keypad(keypad)
+        {
+        }
         int key = 0;
         bool keypad = false;
+        /// The Qt key.
+        int keyCode() const { return key; }
+        /// The key is on the keypad.
+        bool isKeypad() const { return keypad; }
         bool operator==(const TKey&) const = default;
+        /// The main keyboard's key `qtKey`; a keypad key never is one.
+        bool operator==(int qtKey) const { return !keypad && key == qtKey; }
     };
 
     explicit TKeyboardStatusStorage(QObject* parent = nullptr);

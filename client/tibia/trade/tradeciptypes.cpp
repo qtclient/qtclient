@@ -1,4 +1,11 @@
 #include "trade/tradeciptypes.h"
+#include "chat/chatchannel.h"
+#include "creatures/creaturestorage.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+#include "protocol/clientmessages.h"
+
+#include <QPointer>
 #include "game/worldtype.h"
 #include <stdexcept>
 #include <tuple>
@@ -116,6 +123,12 @@ void TNPCTradeProtocolMessageHandler::sendLook(const TNPCTradeGood& good)
 {
     if (good.typeId() != 0)
         tibia::game::inspectNpcTrade(good.typeId(), good.countOrSubType());
+}
+
+void TNPCTradeProtocolMessageHandler::sendInspect(const TNPCTradeGood& good)
+{
+    if (good.typeId() != 0)
+        tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, good.typeId(), good.countOrSubType());
 }
 
 void TNPCTradeProtocolMessageHandler::sendBuy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity,
@@ -306,6 +319,80 @@ void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMes
     default:
         break;
     }
+}
+
+TPlayerTradeGameActionHandler::TPlayerTradeGameActionHandler(creatures::TCreatureStorage* pCreatureStorage, QObject* parent)
+    : cip::tibia::trade::TPlayerTradeGameActionHandler(parent)
+    , m_pCreatureStorage(pCreatureStorage)
+{
+}
+
+TPlayerTradeGameActionHandler::~TPlayerTradeGameActionHandler()
+{
+    // Host: the map's selection callback must not outlive the handler.
+    if (m_pPendingAction && input::isSelectingTarget())
+        input::finishTargetSelection(nullptr);
+}
+
+void TPlayerTradeGameActionHandler::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (!pGameAction)
+        return;
+    switch (pGameAction->gameActionType()) {
+        case input::EGameAction::TRADE_ITEM:
+            handleTradeItemGameAction(std::dynamic_pointer_cast<const input::TGameActionPlayerTradeItem>(pGameAction));
+            return;
+        case input::EGameAction::TARGET_SELECTED:
+            handleTargetSelectedGameAction(std::dynamic_pointer_cast<const input::TGameActionTargetSelected>(pGameAction));
+            return;
+        default:
+            return;
+    }
+}
+
+void TPlayerTradeGameActionHandler::handleTradeItemGameAction(const std::shared_ptr<const input::TGameActionPlayerTradeItem>& pAction)
+{
+    if (!pAction)
+        return;
+    if (pAction->targetCreatureId() == 0) {
+        m_pPendingAction = pAction;
+        // Host: the world map hands its click to the selection callback; it
+        // comes back as the TARGET_SELECTED every window publishes.
+        QPointer<TPlayerTradeGameActionHandler> self(this);
+        input::startTargetSelection([self](const input::TTargetSelectedPtr& pTarget) {
+            if (!self)
+                return;
+            if (pTarget)
+                Q_EMIT self->publishGameAction(pTarget);
+            else
+                self->m_pPendingAction.reset();
+        });
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionStartTargetSelection>());
+        return;
+    }
+    const int stackPosition = pAction->stackPosition();
+    protocol::gameclient::sendRequestTrade(pAction->position(), pAction->objectClientId(),
+                                           static_cast<uint8_t>(stackPosition < 0 ? 0 : stackPosition), pAction->targetCreatureId());
+}
+
+void TPlayerTradeGameActionHandler::handleTargetSelectedGameAction(const std::shared_ptr<const input::TGameActionTargetSelected>& pTarget)
+{
+    if (!m_pPendingAction)
+        return;
+    const std::shared_ptr<const input::TGameActionPlayerTradeItem> pending = std::move(m_pPendingAction);
+    m_pPendingAction.reset();
+    const input::TGameActionContextPtr& object = pTarget ? pTarget->object() : input::TGameActionContextPtr();
+    if (!object || object->gameActionContextType() != input::EGameActionContextType::OBJECT_CREATURE) {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("player_trade_select_player_to_trade"), chat::systemWhite()));
+        return;
+    }
+    const uint32_t creatureId = pTarget->creatureId();
+    const std::shared_ptr<creatures::TCreature> creature = m_pCreatureStorage ? m_pCreatureStorage->creatureAt(creatureId) : nullptr;
+    if (!creature || !creature->isPlayer() || creature->isLocalPlayer()) {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(qtTrId("player_trade_select_player_to_trade"), chat::systemWhite()));
+        return;
+    }
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionPlayerTradeItem>(pending->context(), creatureId));
 }
 
 } // namespace tibia::trade

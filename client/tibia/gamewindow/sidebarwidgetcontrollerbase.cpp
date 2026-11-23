@@ -36,6 +36,16 @@ TSidebarWidget::TSidebarWidget(Controller* controller, QQuickItem* gameWindowIte
     connect(controller, SIGNAL(contentSizeChanged()), controller, SLOT(saveWidgetOptions()), Qt::QueuedConnection);
 }
 
+TSidebarWidget::~TSidebarWidget()
+{
+    m_contentSizeTimer.stop();
+    if (m_item) {
+        m_item->setVisible(false);
+        m_item->deleteLater();
+        m_item = nullptr;
+    }
+}
+
 void TSidebarWidget::createItem(const QString& qmlFile)
 {
     createItemFromUrl(QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/") + qmlFile));

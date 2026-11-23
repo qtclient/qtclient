@@ -55,7 +55,6 @@ TFPSLatencyIndicatorController::TFPSLatencyIndicatorController(QObject* parent)
     : cip::tibia::gamewindow::TFPSLatencyIndicatorController(parent)
 {
     m_currentFrameRate = QStringLiteral("0");
-    m_currentFrameCount = QStringLiteral("0");
     m_currentLatencyState = QStringLiteral("low");
     m_visible = app::ClientOptions::load().options().value(ShowFpsOption).toBool(false);
     syncOptimizedConnectionStability();
@@ -140,7 +139,7 @@ void TFPSLatencyIndicatorController::tick()
 void TFPSLatencyIndicatorController::update(const double frameRate, const qint64 latencyMs, const bool latencyMeasured,
                                             const bool optimizedConnectionStability, const int frameCount)
 {
-    m_currentFrameCount = QString::number(frameCount);
+    m_frameCount = frameCount;
     if (m_frameRate != frameRate) {
         m_frameRate = frameRate;
         m_currentFrameRate = formatFps(frameRate);
@@ -162,10 +161,13 @@ void TFPSLatencyIndicatorController::update(const double frameRate, const qint64
     }
 }
 
+/// The frame count is formatted when it is read.
+QString TFPSLatencyIndicatorController::currentFrameCount() const { return QString::number(m_frameCount); }
+
 void TFPSLatencyIndicatorController::syncOptimizedConnectionStability()
 {
     m_stabilityOption = app::ClientOptions::load().options().value(StabilityOption).toBool(true);
-    update(m_frameRate, m_currentLatency, m_latencyMeasured, m_stabilityOption, m_currentFrameCount.toInt());
+    update(m_frameRate, m_currentLatency, m_latencyMeasured, m_stabilityOption, m_frameCount);
 }
 
 void TFPSLatencyIndicatorController::setWidgetItem(QQuickItem* item)

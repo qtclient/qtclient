@@ -16,6 +16,12 @@
 #include <tuple>
 #include <vector>
 
+#include <memory>
+
+namespace tibia::input {
+class IGameActionContext;
+}
+
 namespace tibia {
 namespace game {
 
@@ -51,8 +57,6 @@ void clearImbuement(uint8_t slot);
 
 void closeById(int containerId);
 
-void closeDepotSearchRequest();
-
 void closeImbuingWindow();
 
 void closeNpcChannel();
@@ -71,8 +75,6 @@ void editList(uint32_t id, uint8_t doorId, std::string_view text);
 
 void editText(uint32_t id, std::string_view text);
 
-void equipItemId(const uint16_t itemId, const uint8_t tier);
-
 void excludeFromOwnChannel(std::string_view name);
 
 void follow(uint32_t creatureId);
@@ -83,23 +85,17 @@ void gatherAll(const Position& pos, uint16_t itemId, uint8_t stackpos);
 
 void gemAction(uint8_t actionType, uint16_t param, uint8_t pos);
 
-void greetNpc(uint32_t npcId);
-
-void inspectCharacter(const uint32_t creatureId, const uint8_t tab);
-
 void inspectNpcTrade(uint16_t typeId, uint8_t count);
 
 void inspectTrade(bool counterOffer, uint8_t index);
 
-void inspectionNormalObject(const Position& position);
+void inspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location);
 
 void inspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
 
 void inviteToOwnChannel(std::string_view name);
 
 bool isFollowing();
-
-void joinAggression(uint32_t creatureId);
 
 void joinChannel(uint16_t channelId);
 
@@ -111,17 +107,7 @@ void lookCreature(uint32_t creatureId, bool isBattleList = false);
 
 void lookMapObject(const Position& position, uint16_t itemId, int stackPos);
 
-void mount(bool mount);
-
-void moveMapObject(const Position& from, uint16_t itemId, int stackPos, const Position& toPos, int count);
-
-void openDepotSearch();
-
 void openOwnChannel();
-
-void openParentById(int containerId);
-
-void openParentContainerFromDepotSearch(const Position& pos);
 
 void openStore(uint8_t serviceType = 0, std::string_view category = "");
 
@@ -129,16 +115,6 @@ void openTransactionHistory(uint8_t entriesPerPage);
 
 
 void partyDisband();
-
-void partyInvite(uint32_t creatureId);
-
-void partyLeave();
-
-void partyPassLeadership(uint32_t creatureId);
-
-void partyRevokeInvitation(uint32_t creatureId);
-
-void partyShareExperience(bool active);
 
 void preyAction(uint8_t slot, uint8_t actionType, uint16_t index);
 
@@ -163,8 +139,6 @@ void requestBosstiaryInfo();
 void requestChannels();
 
 void requestCharacterTradeConfiguration(uint8_t action);
-
-void requestDepotSearchItem(uint16_t itemId, uint8_t tier = 0);
 
 void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
 
@@ -200,8 +174,6 @@ void requestTradeAt(const Position& position, uint16_t itemId, int stackPos, uin
 void requestTransactionDetails(uint32_t transactionId);
 
 void requestTransactionHistory(uint32_t page, uint32_t entriesPerPage);
-
-void retrieveDepotSearch(uint16_t itemId, uint8_t tier, uint8_t type);
 
 void rotateMapObject(const Position& position, uint16_t itemId, int stackPos);
 
@@ -248,8 +220,6 @@ void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool au
 
 void sendRequestUsefulThings(const uint8_t serviceType);
 
-void sendSetHirelingName(std::string_view name);
-
 void sendStartOfflineTraining(const uint8_t skillType);
 
 void sendTeleport(const Position& pos);
@@ -270,19 +240,7 @@ void setHirelingOutfit(const Outfit& outfit, uint32_t hirelingCreatureId);
 
 void setShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, uint16_t itemId, uint8_t stackpos, uint8_t direction, uint8_t podiumVisible);
 
-void setTactics(tibia::client::ChaseModes chaseMode, bool safeFight, tibia::client::PVPModes pvpMode);
-
-tibia::client::ChaseModes getChaseMode();
-
-bool isSafeFight();
-
-tibia::client::PVPModes getPVPMode();
-
 void soulsealFightAction(uint16_t raceId);
-
-void stashStowItem(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action);
-
-void stashWithdraw(uint16_t itemId, uint32_t count, uint8_t stackpos);
 
 void stop();
 
@@ -323,14 +281,6 @@ void setWalkMaxSteps(const uint8_t v);
 int getBugReportState();
 
 void setBugReportState(const int state);
-
-UnjustifiedPoints getUnjustifiedPoints();
-
-void setUnjustifiedPoints(const UnjustifiedPoints unjustifiedPoints);
-
-uint32_t getOpenPvpSituations();
-
-void setOpenPvpSituations(const uint8_t openPvpSituations);
 
 uint16_t getServerBeat();
 

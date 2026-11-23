@@ -416,8 +416,6 @@ int main(int argc, char** argv)
 #ifdef TIBIA_WITH_GAMECORE
     client::TGameClient gameClient;
     gameClient.setWindow(window);
-    if (!preview)
-        controller = gameClient.characterSelection();
 
     client::TGameClient::TGameWindowSetup setup;
     setup.engine = engine.get();

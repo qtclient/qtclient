@@ -100,8 +100,13 @@ void TNewsDialogController::handleGameAction(const input::IGameAction& action)
             }
             return;
         case A::OPEN_NEWS_DIALOG:
-            if (const auto* open = input::gameActionAs<input::TGameActionOpenNewsDialog>(&action); open && open->newsId())
-                selectEntryForOpening(*open->newsId());
+            // The second optional entry wins; the first one only when set and non-zero.
+            if (const auto* open = input::gameActionAs<input::TGameActionOpenNewsDialog>(&action)) {
+                if (open->category())
+                    selectEntryForOpening(*open->category());
+                else if (open->newsId() && *open->newsId() != 0)
+                    selectEntryForOpening(*open->newsId());
+            }
             showDialog();
             return;
         default:
@@ -308,14 +313,12 @@ TNewsButtonController::TNewsButtonController(QObject* parent)
     : cip::tibia::gamewindow::TNewsButtonController(parent)
 {
     s_instance = this;
-    m_highlightTimer.setSingleShot(true);
-    m_highlightTimer.setInterval(600000);
-    connect(&m_highlightTimer, &QTimer::timeout, this, &TNewsButtonController::changed);
+    connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TNewsButtonController::changed);
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onGameNews", [this](GameObject*, const std::vector<std::any>& args) {
         const int newsType = static_cast<int>(client::gamecore::argInt(args, 0));
         const bool notificationOnly = args.size() > 1 && client::gamecore::argBool(args, 1);
-        onShowGameNews(newsType, notificationOnly);
+        onShowGameNewsMessage(newsType, notificationOnly);
         return std::any{};
     });
 }
@@ -333,51 +336,30 @@ TNewsButtonController* TNewsButtonController::instance()
 
 void TNewsButtonController::onOpenNewsButtonClicked()
 {
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
-    stopHighlight();
+    Q_EMIT publishGameAction(input::TGameActionOpenNewsDialog::withNews(static_cast<uint32_t>(m_newsType)));
+    m_highlightTimer.stop(false);
+    m_newsType = 0;
 }
 
 void TNewsButtonController::onHighlightNewsButtonEnds()
 {
-    stopHighlight();
+    m_highlightTimer.stop(false);
+    m_newsType = 0;
 }
 
 void TNewsButtonController::highlight()
 {
-    m_highlightTimer.start();
-    Q_EMIT changed();
+    m_highlightTimer.start(false);
 }
 
-void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
+void TNewsButtonController::onShowGameNewsMessage(const int newsType, const bool notificationOnly)
 {
-    // CIP onShowGameNewsMessage: no news query here (the news uploader refreshes once the
-    // cached compendium is older than the last server save, and the dialog forces one).
-    if (notificationOnly) {
-        highlight();
-        return;
+    m_newsType = newsType;
+    m_highlightTimer.start(false);
+    if (!notificationOnly && m_newsType != 0) {
+        onOpenNewsButtonClicked();
+        m_newsType = 0;
     }
-    using ENewsTab = cip::tibia::gamewindow::TNewsDialogController::EDialogTab;
-    int category = int(ENewsTab::NoTabInitialState);
-    switch (newsType) {
-    case int(ENewsTab::ClientFeatures):
-    case int(ENewsTab::UsefulInfo):
-    case int(ENewsTab::PlayerGuide):
-    case int(ENewsTab::MajorUpdates):
-    case int(ENewsTab::Support):
-        category = newsType;
-        break;
-    default:
-        break;
-    }
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialogWithCategory>(category));
-}
-
-void TNewsButtonController::stopHighlight()
-{
-    if (!m_highlightTimer.isActive())
-        return;
-    m_highlightTimer.stop();
-    Q_EMIT changed();
 }
 
 }

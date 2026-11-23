@@ -2,7 +2,10 @@
 
 #include "minimap/minimapciptypes.h"
 #include "minimap/minimapdiskio.h"
+#include "minimap/minimapimageschache.h"
 #include "minimap/minimapmarkerstorage.h"
+#include "minimap/minimaprenderinfostorage.h"
+#include "minimap/minimaptilemanager.h"
 #include "minimap/minimaptilestorage.h"
 #include "minimap/minimapworldfeed.h"
 #include "worldmap/coordinates.h"
@@ -35,7 +38,9 @@ public:
     explicit TMinimapManager(const QString& defaultTilesDir, QObject* parent = nullptr);
     ~TMinimapManager() override;
 
-    TMinimapTileStorage* tileStorage() { return &m_storage; }
+    TMinimapTileStorage* tileStorage() { return m_storage.get(); }
+    /// The tiles the renderer draws; its game actions go through the session's router.
+    TMinimapTileManager* tileManager() { return m_tileManager.get(); }
     TMinimapMarkerStorage* markerStorage() { return m_markers.get(); }
     /// The map handler keeps the tile storage current: it sets the floor, marks
     /// unseen fields and records every field it applies. A handler that already
@@ -51,21 +56,15 @@ public:
 
 private:
     QString m_defaultTilesDir;
-    TMinimapTileStorage m_storage;
+    std::shared_ptr<TMinimapTileStorage> m_storage;
     QPointer<worldmap::TWorldmapProtocolMessageHandler> m_protocolHandler;
-    TMinimapDiskIOAsync m_diskIO;
-    TMinimapDiskIOMemoryOnly m_diskIOMemoryOnly;
-    TMinimapDiskIOSynchronous m_diskIOSynchronous;
+    std::shared_ptr<TMinimapDiskIOAsync> m_diskIO;
     TMinimapImagesChache m_imagesCache;
-    TMinimapMarkerController m_markerController;
     TMinimapMarkerGameActionHandler m_markerGameActionHandler;
-    TMinimapMarkerOverlayController m_markerOverlayController;
-    TMinimapMarkerQmlRenderInfo m_markerQmlRenderInfo;
-    TMinimapMarkerRenderProvider m_markerRenderProvider;
     TMinimapProtocolMessageHandler m_protocolMessageHandler;
     TMinimapRenderInfoStorage m_renderInfoStorage;
     TMinimapRendererScenegraphDrawCommandProvider m_scenegraphDrawCommands;
-    TMinimapTileManager m_tileManager;
+    std::shared_ptr<TMinimapTileManager> m_tileManager;
     std::unique_ptr<TMinimapWorldFeed> m_worldFeed;
     std::unique_ptr<TMinimapMarkerStorage> m_markers;
 };

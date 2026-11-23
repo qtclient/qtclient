@@ -46,12 +46,17 @@ public:
     uint8_t waypointAt(const Position& coord) const;
     /// Each of these marks the tile changed only when the field's value changes.
     void setColorIndex(const Position& coord, uint8_t colorIndex);
+    /// Records `color` as its eight-bit palette index (setColorIndex).
+    void setColor(const Position& coord, const QColor& color);
     /// Costs above 250 clamp to 250; blocked fields cost 0xff.
     void setWaypoint(const Position& coord, uint8_t cost, bool blocked);
     void setField(const Position& coord, uint8_t colorIndex, uint8_t cost, bool blocked);
 
     const QImage& colorImage() const { return m_colors; }
     const QImage& waypointImage() const { return m_waypoints; }
+    /// The fields the minimap has not seen (colour 0) opaque black, all others
+    /// transparent; made from the colours on first use and kept from then on.
+    QImage unexploredMask();
 
     /// Fills the fields this tile has not seen (colour 0, waypoint 0xfe) from
     /// `loaded`, then counts as loaded and changed.
@@ -61,6 +66,7 @@ public:
     void setLoaded(bool loaded) { m_loaded = loaded; }
     /// Written since it was read from disk.
     bool isChanged() const { return m_changed; }
+    void setChanged() { m_changed = true; }
 
 private:
     QPoint pixelOf(const Position& coord) const { return QPoint(coord.x - m_id.x, coord.y - m_id.y); }
@@ -68,6 +74,7 @@ private:
     Position m_id;
     QImage m_colors;
     QImage m_waypoints;
+    QImage m_unexploredMask;
     bool m_loaded = false;
     bool m_changed = false;
 };

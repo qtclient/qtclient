@@ -49,12 +49,5 @@ private:
     QHash<TOfferID, QString> m_descriptions;
 };
 
-class TStoreGameActionHandler final : public cip::tibia::store::TStoreGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::store::TStoreGameActionHandler::TStoreGameActionHandler;
-};
-
 }
 }

@@ -25,13 +25,6 @@ class ProtocolMarketOffer;
 }
 namespace market {
 
-class TMarketGameActionHandler final : public cip::tibia::market::TMarketGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::market::TMarketGameActionHandler::TMarketGameActionHandler;
-};
-
 /// CIP: TMarketProtocolMessageHandler. Fills the market storage from the
 /// server's market messages and sends the market requests.
 class TMarketProtocolMessageHandler final : public cip::tibia::market::TMarketProtocolMessageHandler

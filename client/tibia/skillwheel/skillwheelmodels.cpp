@@ -11,6 +11,19 @@ namespace tibia::skillwheel {
 
 namespace {
 
+/// A row as a map from role name to data: empty for a negative row or column or an index without
+/// a model.
+QVariantMap modelRowData(const QAbstractItemModel& model, const QModelIndex& index)
+{
+    QVariantMap row;
+    if (index.row() < 0 || index.column() < 0 || !index.model())
+        return row;
+    const QHash<int, QByteArray> roles = model.roleNames();
+    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
+        row[QString::fromUtf8(it.value())] = model.data(index, it.key());
+    return row;
+}
+
 bool socketedIn(const TWheel& wheel, const int gemId) { return vesselOfGem(wheel, gemId).has_value(); }
 
 QString itemName(const int typeId)
@@ -25,7 +38,7 @@ QString itemName(const int typeId)
 QString supremeModText(const int mod, const int grade)
 {
     const QString effect = supremeModEffect(mod, grade);
-    if ((supremeModCategory(mod) & ~1) == 4)
+    if (showsModName(mod))
         return supremeModName(mod, false, false) + u'\n' + effect;
     return effect;
 }
@@ -158,6 +171,8 @@ int TInventoryGemListModel::rowOfGem(const int gemId) const
     return it != m_gems.end() ? static_cast<int>(it - m_gems.begin()) : -1;
 }
 
+QVariantMap TInventoryGemListModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }
+
 TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryGemListModel* source, QObject* parent)
     : cip::tibia::skillwheel::TInventoryGemSortFilterProxyModel(parent)
     , m_source(source)
@@ -166,7 +181,7 @@ TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryG
     m_filterModName = QString();
     m_filterGemQuality = -1;
     m_showLockedOnly = false;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
     setSourceModel(source);
 }
@@ -174,8 +189,19 @@ TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryG
 void TInventoryGemSortFilterProxyModel::refilter()
 {
     beginFilterChange();
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
+}
+
+QModelIndex TInventoryGemSortFilterProxyModel::indexOfGem(const int gemId) const
+{
+    const QVariant id(static_cast<int>(static_cast<uint16_t>(gemId)));
+    for (int row = 0; row < rowCount(); ++row) {
+        const QModelIndex index = this->index(row, 0);
+        if (data(index, TInventoryGemListModel::GemId) == id)
+            return index;
+    }
+    return {};
 }
 
 void TInventoryGemSortFilterProxyModel::setFilterModName(const QString& v)
@@ -234,16 +260,7 @@ bool TInventoryGemSortFilterProxyModel::filterAcceptsRow(const int sourceRow, co
     return gem && accepts(*gem);
 }
 
-QVariantMap TInventoryGemSortFilterProxyModel::rowData(const QModelIndex& Index)
-{
-    QVariantMap row;
-    if (!Index.isValid() || Index.model() != this)
-        return row;
-    const QHash<int, QByteArray> roles = roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        row.insert(QString::fromUtf8(it.value()), data(Index, it.key()));
-    return row;
-}
+QVariantMap TInventoryGemSortFilterProxyModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }
 
 TModListModel::TModListModel(QObject* parent)
     : cip::tibia::skillwheel::TModListModel(parent)
@@ -310,7 +327,7 @@ QVariant TModListModel::data(const QModelIndex& index, const int role) const
             if (e->basic)
                 return basicModEffect(e->mod, vocationIndex(), e->grade);
             const QString effect = supremeModEffect(e->mod, e->grade);
-            if ((supremeModCategory(e->mod) & ~1) == 4)
+            if (showsModName(e->mod))
                 return supremeModName(e->mod, false, false) + u'\n' + effect;
             return effect;
         }
@@ -328,16 +345,7 @@ const TModListEntry* TModListModel::entry(const int row) const
     return row >= 0 && row < static_cast<int>(m_mods.size()) ? &m_mods[static_cast<size_t>(row)] : nullptr;
 }
 
-QVariantMap TModListModel::rowData(const QModelIndex& Index)
-{
-    QVariantMap row;
-    if (!Index.isValid() || Index.model() != this)
-        return row;
-    const QHash<int, QByteArray> roles = roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        row.insert(QString::fromUtf8(it.value()), data(Index, it.key()));
-    return row;
-}
+QVariantMap TModListModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }
 
 
 QModelIndex TModListSortFilterProxyModel::indexOfSupremeMod(const int modId) const
@@ -367,7 +375,7 @@ TModListSortFilterProxyModel::TModListSortFilterProxyModel(TModListModel* source
     beginFilterChange();
     m_filterModName = QString();
     m_filterMods = 0;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
     setSourceModel(source);
 }
@@ -378,7 +386,7 @@ void TModListSortFilterProxyModel::setFilterModName(const QString& v)
         return;
     beginFilterChange();
     m_filterModName = v;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
 }
 
@@ -388,20 +396,11 @@ void TModListSortFilterProxyModel::setFilterMods(const int v)
         return;
     beginFilterChange();
     m_filterMods = v;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
 }
 
-QVariantMap TModListSortFilterProxyModel::rowData(const QModelIndex& Index)
-{
-    QVariantMap row;
-    if (!Index.isValid() || Index.model() != this)
-        return row;
-    const QHash<int, QByteArray> roles = roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        row.insert(QString::fromUtf8(it.value()), data(Index, it.key()));
-    return row;
-}
+QVariantMap TModListSortFilterProxyModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }
 
 bool TModListSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {

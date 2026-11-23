@@ -1,7 +1,9 @@
 #include "socialdialogcontroller.h"
+#include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 
 #include "friends/friendsciptypes.h"
+#include "teamfinder/teamfinderciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -72,6 +74,10 @@ void TSocialDialogController::connectToGameSession(const std::shared_ptr<game::I
     m_config->connectToGameSession(GameSession);
     m_join->setGameSession(GameSession);
     m_assemble->connectToGameSession(GameSession);
+    m_button->connectToGameSession(GameSession);
+    // Host: the game client hands CipSoft's dialog the premium storage; here
+    // it is the live instance.
+    setPremiumTimeStorage(GameSession ? game::TPremiumTimeStorage::liveInstance() : nullptr);
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
@@ -143,7 +149,19 @@ bool TSocialDialogController::refreshButtonVisible() const
 /// The local player's premium state, false without a player.
 bool TSocialDialogController::hasPremium() const
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    return m_premiumTimeStorage ? m_premiumTimeStorage->isPremium() : false;
+}
+
+void TSocialDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSocialDialogController::premiumTimeChanged);
+    m_join->setPremiumStorage(PremiumTimeStorage);
+    m_assemble->setPremiumStorage(PremiumTimeStorage);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (m_premiumTimeStorage)
+        connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSocialDialogController::premiumTimeChanged);
+    Q_EMIT premiumTimeChanged();
 }
 
 cip::tibia::gamewindow::IDialogTabPage* TSocialDialogController::page(const EDialogTab tab) const
@@ -186,8 +204,7 @@ void TSocialDialogController::closeTabs()
 
 void TSocialDialogController::showErrorMessage(const QString& message)
 {
-    m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                         QKeySequence(QStringLiteral("Return"))) });
+    m_errorDialog->setButtons(okDialogButtons());
     m_errorDialog->showMessage(qtTrId("error"), message);
 }
 
@@ -249,8 +266,19 @@ void TSocialDialogController::signalBackButtonClicked()
 
 void TSocialDialogController::onRefreshButtonClicked()
 {
-    if (auto* current = page(m_dialogTab))
-        current->showDialogTab();
+    // A premium account asks the server for the team list again.
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !hasPremium())
+        return;
+    if (teamfinder::TTeamFinderProtocolMessageHandler* handler = session->teamFinderProtocolMessageHandler().get())
+        handler->requestTeamList();
+}
+
+void TSocialDialogController::beforeShow()
+{
+    // Shown again on the account search: the shown character is asked for anew.
+    if (m_dialogTab == AccountSearch && m_search->showCharacterInfo())
+        m_search->refreshCurrentCharacterInfo();
 }
 
 void TSocialDialogController::onShowBackButton(const bool Value)

@@ -8,6 +8,8 @@
 
 #include "trade/tradeciptypes.h"
 
+#include "iclockservice.h"
+
 #include "chat/chatchannel.h"
 #include "gamewindow/chatcontroller.h"
 
@@ -74,7 +76,11 @@ void TNpcDialogOutfit::setOutfit(const Outfit& outfit)
 
 TNpcDialogController::TNpcDialogController(QObject* parent)
     : TDialogControllerWithFocusHandlingBase(QStringLiteral("NpcDialog.qml"), parent)
+    , m_chat(this)
+    , m_filter(&m_chat, this)
 {
+    connect(&m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
+    m_chatChannelModel = QVariant::fromValue<QObject*>(&m_filter);
     m_tradeController = &m_trade;
     m_npcOutfit = &m_outfit;
     m_keywordButtonsModel = &m_keywordButtons;
@@ -86,8 +92,7 @@ TNpcDialogController::TNpcDialogController(QObject* parent)
     // CIP / : while the trade has the keyboard the dialog's chat input lets go of it.
     m_tradeFocus.setActive(false);
     connect(&m_tradeFocus, &TUiFocusManager::focusChanged, this, [this] {
-        m_tradeHasFocus = m_tradeFocus.hasFocus();
-        setFocusAllowed(!m_tradeHasFocus);
+        setFocusAllowed(!m_tradeFocus.hasFocus());
         Q_EMIT tradeFocusChanged();
     });
     connect(this, &cip::tibia::gamewindow::TDialogControllerWithFocusHandlingBase::focusChanged, this,
@@ -105,8 +110,8 @@ void TNpcDialogController::connectToGameSession(const std::shared_ptr<game::IGam
     m_gameSessionConnections.clear();
     m_talkPartners.clear();
     m_gameSession = GameSession;
-    if (m_chat && !m_gameSession)
-        m_chat->resetChannel();
+    if (!m_gameSession)
+        m_chat.resetChannel();
     m_trade.connectToGameSession(m_gameSession);
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_storage = session ? session->npcTradeStorage().get() : nullptr;
@@ -149,8 +154,7 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
     m_talkPartners = npcIds;
     m_keywordButtons.setItems(buttons);
     if (npcIds.empty()) {
-        setShowTrade(false);
-        dialog()->close();
+        closeButtonPressed();
         return;
     }
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
@@ -159,6 +163,18 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
     }
     setTalkPartnerNames(partnerNamesOf(npcIds));
     postTalkingTo(m_talkPartnerNames);
+    showDialog();
+}
+
+void TNpcDialogController::showDialog()
+{
+    if (dialog()->item())
+        return;
+    if (m_gameSession) {
+        if (const std::shared_ptr<shared::IClockService> clock = m_gameSession->clockService())
+            m_filter.setMinimumTime(clock->currentDateTime().addMSecs(-500));
+    }
+    dialog()->create();
     dialog()->show();
 }
 
@@ -199,6 +215,7 @@ void TNpcDialogController::resetConversation()
 {
     setShowTrade(false);
     m_outfit.setOutfit(Outfit());
+    m_filter.clearMinimumTime();
     m_keywordButtons.setItems({});
 }
 
@@ -222,10 +239,10 @@ bool TNpcDialogController::handleGameAction(const input::IGameAction& action)
     case input::EGameAction::CHAT_CHANNEL_SELECT_ALL: {
         // The NPCs channel's select-all marks the conversation.
         const auto* channel = input::gameActionAs<input::TGameActionChatChannel>(&action);
-        if (!dialog()->isShown() || !channel || channel->chatChannelIdentifier().type != chat::TChatChannelIdentifier::Npc || !m_chat)
+        if (!dialog()->isShown() || !channel)
             return false;
-        m_chat->selectAll();
-        return true;
+        selectAllInChannelOfType(static_cast<int>(channel->chatChannelIdentifier().type));
+        return channel->chatChannelIdentifier().type == chat::TChatChannelIdentifier::Npc;
     }
     case input::EGameAction::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: {
         const auto* text = input::gameActionAs<input::TGameActionSetCurrentChatChannelInputText>(&action);
@@ -255,13 +272,22 @@ void TNpcDialogController::selectAllText()
     if (!item)
         return;
     if (item->property("currentChatInput").toString().isEmpty()) {
-        if (m_chat)
-            m_chat->selectAll();
+        m_chat.selectAllSince(m_filter.minimumTime());
         return;
     }
-    if (m_chat)
-        m_chat->startNewSelection(0, 0);
+    m_chat.startNewSelection(0, 0);
     QMetaObject::invokeMethod(item, "selectAllChatInput");
+}
+
+void TNpcDialogController::selectAllInChannelOfType(const int channelType)
+{
+    if (channelType == chat::TChatChannelIdentifier::Npc)
+        m_chat.selectAllSince(m_filter.minimumTime());
+}
+
+int TNpcDialogController::chatMode() const
+{
+    return m_chatControl ? m_chatControl->chatMode() : 0;
 }
 
 void TNpcDialogController::copySelectedText()
@@ -271,8 +297,8 @@ void TNpcDialogController::copySelectedText()
         return;
     const QString selected = item->property("currentChatInputSelectedText").toString();
     if (selected.isEmpty()) {
-        if (m_chat && m_chat->hasSelection()) {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(m_chat->selectedText()));
+        if (m_chat.hasSelection()) {
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionCopyTextToClipboard>(m_chat.selectedText()));
         }
         return;
     }
@@ -282,7 +308,7 @@ void TNpcDialogController::copySelectedText()
 QString TNpcDialogController::sendChatMessage(const QString& Message, const bool EnforceWritesToLocalChat)
 {
     // CIP : the chat controller's send with the conversation pane's channel.
-    if (chat::TChatChannel* channel = m_chat ? m_chat->channel() : nullptr; m_chatControl && (channel || EnforceWritesToLocalChat))
+    if (chat::TChatChannel* channel = m_chat.channel(); m_chatControl && (channel || EnforceWritesToLocalChat))
         return m_chatControl->sendChatMessageTo(channel, Message, EnforceWritesToLocalChat);
     const QString text = Message.trimmed();
     if (text.isEmpty())
@@ -367,16 +393,13 @@ void TNpcDialogController::setChatController(TChatController* controller)
     m_chatControl = controller;
     m_chatController = controller;
     controller->setNpcDialog(this);
-    m_chat = new TChatChannelController(this);
-    connect(m_chat, &TChatChannelController::publishGameAction, this, &TNpcDialogController::publishGameAction);
-    m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
     bindNpcChannel();
 }
 
 void TNpcDialogController::bindNpcChannel()
 {
-    if (m_chat && m_chatStorage)
-        m_chat->setChannel(m_chatStorage->find({ chat::TChatChannelIdentifier::Npc }));
+    if (m_chatStorage)
+        m_chat.setChannel(m_chatStorage->find({ chat::TChatChannelIdentifier::Npc }));
 }
 
 void TNpcDialogController::openRemoteSession(TRemoteNpcSession session)

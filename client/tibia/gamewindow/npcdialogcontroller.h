@@ -2,6 +2,8 @@
 
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "gamewindow/chatchannelfiltercontroller.h"
+#include "gamewindow/chatcontroller.h"
 #include "gamewindow/dialogcontrollerwithfocushandlingbase.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
@@ -32,9 +34,6 @@ class IGameSession;
 
 namespace tibia {
 namespace gamewindow {
-
-class TChatChannelController;
-class TChatController;
 
 /// NpcDialog.qml's npcOutfit (CIP: the QObject at vtable made in
 /// TNpcDialogController's ctor).
@@ -86,7 +85,8 @@ struct TRemoteNpcSession
 /// TNpcDialogController, ctor , vtable). The NPC chat
 /// window message (talk partners and keyword buttons) opens and closes it;
 /// without one it opens and closes with the trade. The conversation pane
-/// shows the NPCs channel. product remote sessions bring their own keyword
+/// shows the NPCs channel through a time filter: opening the dialog hides what
+/// was said before it (half a second of margin). product remote sessions bring their own keyword
 /// buttons. Focus: TDialogControllerWithFocusHandlingBase (taken when the dialog
 /// shows and on a click inside it, given back on a click elsewhere). The trade
 /// pane has its own TUiFocusManager (+0x160), active while the trade shows; while
@@ -110,6 +110,10 @@ public:
     bool isShown() const { return dialog()->isShown(); }
     /// CIP: more than one talk partner.
     bool isMultiNpcTalk() const override { return m_talkPartners.size() > 1; }
+    /// CIP: the trade pane's focus manager has the keyboard.
+    bool tradeHasFocus() const override { return m_tradeFocus.hasFocus(); }
+    /// CIP: the chat controller's chat mode (0 without one).
+    int chatMode() const override;
     /// CIP (PRESS_ENTER_IN_CHAT while focused,): sends the input
     /// and keeps what the chat leaves of it.
     void pressEnter();
@@ -131,6 +135,9 @@ public:
 public Q_SLOTS:
     /// CIP (v14): closes the trade and the dialog.
     void closeButtonPressed() override;
+    /// CIP: when the dialog is not created yet, the conversation pane starts
+    /// half a second before now (session clock); then the dialog is created and shown.
+    void showDialog() override;
     QString sendChatMessage(const QString& Message, bool EnforceWritesToLocalChat) override;
     QString sendChatMessage(const QString& Message) override;
     void sendKeyword(const QString& Keyword) override;
@@ -164,6 +171,8 @@ private:
     void onFocusChanged();
     /// REQUEST_SELECT_ALL_TEXT: an empty input selects the conversation, else the input.
     void selectAllText();
+    /// CIP: the NPCs channel (type 2) selects the conversation since the filter's start.
+    void selectAllInChannelOfType(int channelType);
     /// REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD: the input's selection, else the conversation's.
     void copySelectedText();
     void setTalkPartnerNames(const QString& names);
@@ -187,9 +196,12 @@ private:
     TUiFocusManager m_tradeFocus;
     TNpcDialogOutfit m_outfit;
     TNpcKeywordButtonModel m_keywordButtons;
+    /// CIP +0x70: the NPCs channel.
+    TChatChannelController m_chat;
+    /// CIP +0x110: the conversation pane's model, m_chat from the dialog's opening on.
+    TChatChannelFilterController m_filter;
     QPointer<TChatController> m_chatControl;
     QPointer<chat::TChatChannelStorage> m_chatStorage;
-    TChatChannelController* m_chat = nullptr;
     std::optional<TRemoteNpcSession> m_remote;
     int m_savedChatMode = 0;
 

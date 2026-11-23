@@ -68,13 +68,6 @@ constexpr const char* SortMenuEntries[] = {
 using TCreature = creatures::TCreature;
 using TCreaturePtr = std::shared_ptr<TCreature>;
 
-/// The party shields of members and leaders (3..10), as in the game action provider.
-bool isPartyMember(const TCreature& creature)
-{
-    const uint8_t shield = creature.shield();
-    return shield >= 3 && shield <= 10;
-}
-
 /// The protocol's vocation without its promotion.
 int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
 
@@ -1133,21 +1126,10 @@ std::vector<TCreaturePtr> TBattleListControllerStorage::battleListCreatures() co
         return result;
     const Position center = tibia::game::localPlayerPosition();
     const auto ar = tibia::game::awareRange();
-    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
-    for (const TCreaturePtr& creature : storage->spectatorsNear(center, true, range.left, range.right, range.top, range.bottom)) {
-        if (!creature || creature->isLocalPlayer() || creature->isDead())
-            continue;
-        // Party members wherever they are, the others only inside the view
-        // and placed on a field.
-        if (!isPartyMember(*creature)) {
-            const Position pos = creature->position();
-            if (pos.z != center.z || std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
-                continue;
-            if (!creature->isPlacedOnField())
-                continue;
-        }
+    const worldmap::TWorldMapCuboid view(worldmap::TWorldMapCoordinate(center.x - ar.left + 1, center.y - ar.top + 1, center.z),
+                                         2 * ar.left - 1, 2 * ar.top - 1);
+    for (const auto& [id, creature] : storage->battleListCreatures(view))
         result.push_back(creature);
-    }
     return result;
 }
 

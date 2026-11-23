@@ -15,6 +15,9 @@
 #include <optional>
 #include <vector>
 
+namespace tibia::chat {
+class TTextStorage;
+}
 namespace tibia::creatures {
 class TCreature;
 }
@@ -25,7 +28,6 @@ class TWorldMapStorage;
 namespace tibia::input {
 
 creatures::EMovementDirection toMovementDirection(tibia::client::Direction direction);
-tibia::client::Direction toClientDirection(creatures::EMovementDirection direction);
 
 /// Turns the player's movement intents into steps.
 ///
@@ -57,7 +59,8 @@ public:
         std::function<void()> stopChaseAndFollow;
         std::function<void()> stopFollowing;
         std::function<bool(const worldmap::TWorldMapCoordinate&)> isInView;
-        std::function<void(const QString& textId)> showFailure;
+        /// The session's text storage: the status line shows why a walk failed.
+        std::function<chat::TTextStorage*()> textStorage;
         /// qtclient pack extension, not CipSoft: a map target (no entering an unwalkable goal)
         /// the planner refuses may be taken over (planner result; true: no failure message).
         std::function<bool(const worldmap::TWorldMapCoordinate&, int result)> claimUnreachable;
@@ -110,9 +113,13 @@ private:
     bool advance();
     bool resetAfterRejectedStep(creatures::ECreatureLookDirection direction);
     void clearPath();
+    /// The steps of the planned path.
+    int pathLength() const { return static_cast<int>(m_path.size()); }
     void sendPath();
     void sendStep(creatures::EMovementDirection direction);
     void sendRotate(creatures::ECreatureLookDirection direction);
+    /// The status line shows `text` in the overlay colour of message mode 21.
+    void showStatusMessage(const QString& text);
     qint64 nextStepDelay(const worldmap::TWorldMapCoordinate& from, const worldmap::TWorldMapCoordinate& to) const;
     EFieldState fieldState(const worldmap::TWorldMapCoordinate& coordinate) const;
     bool canStepTowards(creatures::EMovementDirection direction) const;

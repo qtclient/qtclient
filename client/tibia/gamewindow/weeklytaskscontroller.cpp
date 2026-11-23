@@ -1,27 +1,38 @@
 #include "weeklytaskscontroller.h"
 
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "gamewindow/messagedialogcontroller.h"
+#include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "game/gamesessionbase.h"
 #include "taskboard/taskboardciptypes.h"
+#include "taskboard/taskboardweeklytasksstorage.h"
 
 #include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
+#include <QDateTime>
 #include <QString>
 
 #include <algorithm>
+#include <iterator>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
 namespace {
 
-uint32_t mapU32(const std::map<std::string, uint32_t>& map, const char* key, const uint32_t fallback = 0)
-{
-    const auto it = map.find(key);
-    return it == map.end() ? fallback : it->second;
-}
+/// The weekly task tiers: from this many finished tasks on, the hunting task
+/// points are multiplied by the factor. 18 tasks is the last count.
+constexpr std::pair<int, double> RewardTiers[] = { { 0, 1.0 }, { 4, 2.0 }, { 8, 3.0 }, { 12, 5.0 }, { 16, 8.0 } };
+constexpr int LastRewardCount = 18;
+/// Hunting task points per kill task by difficulty, and per delivery task.
+constexpr std::pair<int, int> PointsPerKillTask[] = { { 0, 25 }, { 1, 50 }, { 2, 100 }, { 3, 110 } };
+constexpr int PointsPerDeliverTask = 75;
+/// The level each difficulty needs (difficulties 1 to 3).
+constexpr int RequiredLevels[] = { 30, 150, 400 };
 
 QString raceCaption(const uint16_t raceId)
 {
@@ -56,161 +67,286 @@ TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
     : cip::tibia::gamewindow::TWeeklyTasksController(parent)
     , m_killModel(new taskboard::TMonsterKillTasksListModel(this))
     , m_deliveryModel(new taskboard::TDeliveryTasksListModel(this))
+    , m_deliverTaskConfirmationDialog(new TMessageDialogController(this))
 {
     m_monsterKillTasks = m_killModel;
     m_deliveryTasks = m_deliveryModel;
-    m_taskRewardFactors = getTaskRewardFactors();
-    m_taskRewardCounts = getTaskRewardCounts();
-    m_huntingTaskPointsPerDeliverTask = 75;
-    m_huntingTaskPointsMultiplicatorForFinishedTasks = 1.0;
+    for (const auto& [count, factor] : RewardTiers) {
+        m_taskRewardFactors.append(factor);
+        m_taskRewardCounts.append(count);
+    }
+    m_taskRewardCounts.append(LastRewardCount);
+}
+
+void TWeeklyTasksController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    hideDialogTab();
+    disconnect(m_storageConnection);
+    m_gameSession = GameSession;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    taskboard::TTaskboardWeeklyTasksStorage* storage = session ? session->taskboardWeeklyTasksStorage().get() : nullptr;
+    if (!storage)
+        return;
+    // A weekly board message: the "any creature" kill task (when it has a
+    // goal) comes first, then the race kill tasks; the delivery tasks as sent.
+    m_storageConnection = connect(storage, &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
+            [this](const taskboard::TWeeklyTaskData& data) {
+                QVector<taskboard::MonsterKillTaskRow> killRows;
+                if (data.anyCreatureRequiredKills != 0) {
+                    taskboard::MonsterKillTaskRow row;
+                    row.raceId = 0;
+                    row.requiredAmount = data.anyCreatureRequiredKills;
+                    row.currentKillAmount = data.anyCreatureCurrentKills;
+                    row.caption = raceCaption(0);
+                    killRows.push_back(std::move(row));
+                }
+                for (const taskboard::TWeeklyKillTask& task : data.killTasks) {
+                    taskboard::MonsterKillTaskRow row;
+                    row.raceId = task.raceId;
+                    row.requiredAmount = task.requiredKills;
+                    row.currentKillAmount = task.currentKills;
+                    row.caption = raceCaption(task.raceId);
+                    killRows.push_back(std::move(row));
+                }
+                m_killModel->setRows(std::move(killRows));
+                QVector<taskboard::DeliveryTaskRow> deliveryRows;
+                for (const taskboard::TWeeklyDeliveryTask& task : data.deliveryTasks) {
+                    taskboard::DeliveryTaskRow row;
+                    row.taskIndex = task.slotIndex;
+                    row.typeId = task.objectTypeId;
+                    row.availableAmount = static_cast<int>(task.availableAmount);
+                    row.requiredAmount = static_cast<int>(task.requiredAmount);
+                    row.delivered = task.state != 0;
+                    row.caption = itemCaption(task.objectTypeId);
+                    deliveryRows.push_back(std::move(row));
+                }
+                m_deliveryModel->setRows(std::move(deliveryRows));
+                m_requestPending = false;
+                Q_EMIT weeklyTaskDataChanged();
+            });
+}
+
+const taskboard::TWeeklyTaskData* TWeeklyTasksController::weeklyTaskData() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const taskboard::TTaskboardWeeklyTasksStorage* storage = session ? session->taskboardWeeklyTasksStorage().get() : nullptr;
+    return storage ? &storage->weeklyTaskData() : nullptr;
+}
+
+uint32_t TWeeklyTasksController::remainingSeconds() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    if (!data)
+        return 0;
+    const auto now = static_cast<uint32_t>(QDateTime::currentSecsSinceEpoch());
+    return data->resetTime > now ? data->resetTime - now : 0;
+}
+
+bool TWeeklyTasksController::displayResults() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data && data->progressFinished == 1;
+}
+
+bool TWeeklyTasksController::showPermanentWeeklyTaskExpansionUnlockButton() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return !data || !data->permanentExpansion;
+}
+
+int TWeeklyTasksController::rewardHuntingTaskPoints() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->rewardHuntingTaskPoints) : 0;
+}
+
+int TWeeklyTasksController::rewardSoulSeals() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->rewardSoulSeals) : 0;
+}
+
+int TWeeklyTasksController::rewardXPPerKillTask() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->rewardExperiencePerKillTask) : 0;
+}
+
+int TWeeklyTasksController::rewardXPPerDeliveryTask() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->rewardExperiencePerDeliveryTask) : 0;
+}
+
+int TWeeklyTasksController::showResultsInResultsPanel() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data && data->progressFinished == 1 && !data->killTasks.empty() && !data->deliveryTasks.empty();
+}
+
+int TWeeklyTasksController::maxDifficultyLevel() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? data->maxUnlockedDifficulty : 0;
+}
+
+int TWeeklyTasksController::monsterKillTasksCompleted() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->completedKillTasks) : 0;
+}
+
+int TWeeklyTasksController::monsterKillTasksCount() const
+{
+    // The race kill tasks and the "any creature" one.
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->killTasks.size()) + 1 : 0;
+}
+
+int TWeeklyTasksController::deliveryTasksCompleted() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->completedDeliveryTasks) : 0;
+}
+
+int TWeeklyTasksController::deliveryTasksCount() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->deliveryTasks.size()) : 0;
+}
+
+int TWeeklyTasksController::finishedMonsterKillTasks() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->completedKillTasks) : 0;
+}
+
+int TWeeklyTasksController::huntingTaskPointsPerMonsterKillTask() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    if (!data)
+        return 0;
+    for (const auto& [difficulty, points] : PointsPerKillTask) {
+        if (difficulty == data->difficulty)
+            return points;
+    }
+    return 0;
+}
+
+int TWeeklyTasksController::finishedDeliverTasks() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    return data ? static_cast<int>(data->completedDeliveryTasks) : 0;
+}
+
+int TWeeklyTasksController::huntingTaskPointsPerDeliverTask() const { return PointsPerDeliverTask; }
+
+double TWeeklyTasksController::huntingTaskPointsMultiplicatorForFinishedTasks() const
+{
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    if (!data)
+        return 0.0;
+    // The tier whose count range holds the finished tasks; the last tier
+    // from its count on.
+    const uint64_t finished = static_cast<uint64_t>(data->completedDeliveryTasks) + data->completedKillTasks;
+    constexpr size_t TierCount = std::size(RewardTiers);
+    for (size_t i = 0; i + 1 < TierCount; ++i) {
+        if (static_cast<uint64_t>(RewardTiers[i].first) <= finished && finished < static_cast<uint64_t>(RewardTiers[i + 1].first))
+            return RewardTiers[i].second;
+    }
+    return RewardTiers[TierCount - 1].second;
+}
+
+QVariantList TWeeklyTasksController::taskRewardFactors() const { return m_taskRewardFactors; }
+QVariantList TWeeklyTasksController::taskRewardCounts() const { return m_taskRewardCounts; }
+
+QString TWeeklyTasksController::remainingTimeString() const
+{
+    const uint32_t seconds = remainingSeconds();
+    if (seconds == 0)
+        return qtTrId("taskboard_weekly_tasks_remaining_hours").arg(0);
+    if (seconds < 86400)
+        return qtTrId("taskboard_weekly_tasks_remaining_hours").arg(seconds / 3600);
+    return qtTrId("taskboard_weekly_tasks_remaining_days").arg(seconds / 86400);
+}
+
+bool TWeeklyTasksController::remainingTimeLessThanOneDayLeft() const
+{
+    const uint32_t seconds = remainingSeconds();
+    return seconds - 1U < 86399U;
 }
 
 void TWeeklyTasksController::showDialogTab()
 {
+    if (!m_gameSession || m_requestPending)
+        return;
     taskboard::TTaskboardProtocolMessageHandler::requestWeeklyTasks();
+    m_requestPending = true;
 }
 
-void TWeeklyTasksController::hideDialogTab() {}
-
-int TWeeklyTasksController::htpPerKillTask(const int cipDifficulty)
+void TWeeklyTasksController::hideDialogTab()
 {
-    switch (std::clamp(cipDifficulty, 0, 3)) {
-    case 1:
-        return 50;
-    case 2:
-        return 100;
-    case 3:
-        return 110;
-    default:
-        return 25;
-    }
+    m_deliverTaskConfirmationDialog->dialog()->close();
+    m_deliverTaskConfirmationConnections.disconnectAll();
 }
-
-int TWeeklyTasksController::htpMultiplier(const int completedTasks)
-{
-    if (completedTasks >= 17)
-        return 8;
-    if (completedTasks >= 13)
-        return 5;
-    if (completedTasks >= 9)
-        return 3;
-    if (completedTasks >= 5)
-        return 2;
-    return 1;
-}
-
-void TWeeklyTasksController::applyWeeklyData(const std::map<std::string, uint32_t>& header,
-                                               const std::vector<std::map<std::string, uint32_t>>& monsters,
-                                               const std::vector<std::map<std::string, uint32_t>>& items)
-{
-    const int luaDifficulty = static_cast<int>(mapU32(header, "difficulty"));
-    const bool weeklyFinished = mapU32(header, "weeklyProgressFinished") != 0;
-    const bool needsDifficultyPick = luaDifficulty == 0 || weeklyFinished;
-    // unlockedDifficulty is stored as Lua 1..4 by the parser.
-    const int unlockedLua = static_cast<int>(std::clamp<uint32_t>(mapU32(header, "unlockedDifficulty", 1), 1, 4));
-    const int cipDifficulty = luaDifficulty > 0 ? std::clamp(luaDifficulty - 1, 0, 3) : 0;
-
-    m_displayResults = needsDifficultyPick;
-    m_showResultsInResultsPanel = weeklyFinished ? 1 : 0;
-    m_maxDifficultyLevel = unlockedLua - 1;
-    m_showPermanentWeeklyTaskExpansionUnlockButton = mapU32(header, "extraSlot") == 0;
-
-    m_rewardXPPerKillTask = static_cast<int>(mapU32(header, "maxExperience"));
-    m_rewardXPPerDeliveryTask = static_cast<int>(mapU32(header, "maxDeliveryExperience"));
-    m_rewardHuntingTaskPoints = static_cast<int>(mapU32(header, "pointsEarned"));
-    m_rewardSoulSeals = static_cast<int>(mapU32(header, "soulsealsEarned"));
-
-    m_finishedMonsterKillTasks = static_cast<int>(mapU32(header, "completedKillTasks"));
-    m_finishedDeliverTasks = static_cast<int>(mapU32(header, "completedDeliveryTasks"));
-    m_monsterKillTasksCompleted = m_finishedMonsterKillTasks;
-    m_deliveryTasksCompleted = m_finishedDeliverTasks;
-
-    m_huntingTaskPointsPerMonsterKillTask = htpPerKillTask(cipDifficulty);
-    m_huntingTaskPointsPerDeliverTask = 75;
-    m_huntingTaskPointsMultiplicatorForFinishedTasks =
-        static_cast<double>(htpMultiplier(m_finishedMonsterKillTasks + m_finishedDeliverTasks));
-
-    const int remainingDays = static_cast<int>(mapU32(header, "remainingDays"));
-    m_remainingTimeLessThanOneDayLeft = remainingDays <= 0;
-    m_remainingTimeString = m_remainingTimeLessThanOneDayLeft
-        ? QStringLiteral("Less than one day")
-        : (remainingDays == 1 ? QStringLiteral("1 day") : QStringLiteral("%1 days").arg(remainingDays));
-
-    QVector<taskboard::MonsterKillTaskRow> killRows;
-    killRows.reserve(static_cast<int>(monsters.size()));
-    for (const auto& monster : monsters) {
-        taskboard::MonsterKillTaskRow row;
-        row.raceId = static_cast<int>(mapU32(monster, "raceId"));
-        row.currentKillAmount = static_cast<int>(mapU32(monster, "current"));
-        row.requiredAmount = static_cast<int>(mapU32(monster, "total"));
-        row.caption = raceCaption(static_cast<uint16_t>(row.raceId));
-        killRows.push_back(std::move(row));
-    }
-    m_killModel->setRows(std::move(killRows));
-    m_monsterKillTasksCount = m_killModel->rowCount();
-
-    QVector<taskboard::DeliveryTaskRow> deliveryRows;
-    deliveryRows.reserve(static_cast<int>(items.size()));
-    for (const auto& item : items) {
-        taskboard::DeliveryTaskRow row;
-        row.taskIndex = static_cast<int>(mapU32(item, "slotIndex"));
-        row.typeId = static_cast<int>(mapU32(item, "itemId"));
-        row.availableAmount = static_cast<int>(mapU32(item, "current"));
-        row.requiredAmount = static_cast<int>(mapU32(item, "total"));
-        row.delivered = mapU32(item, "claimed") != 0;
-        row.caption = itemCaption(static_cast<uint16_t>(row.typeId));
-        deliveryRows.push_back(std::move(row));
-    }
-    m_deliveryModel->setRows(std::move(deliveryRows));
-    m_deliveryTasksCount = m_deliveryModel->rowCount();
-
-    m_taskRewardFactors = getTaskRewardFactors();
-    m_taskRewardCounts = getTaskRewardCounts();
-    notifyChanged();
-}
-
-void TWeeklyTasksController::notifyChanged() { Q_EMIT weeklyTaskDataChanged(); }
 
 void TWeeklyTasksController::openPermanentWeeklyTaskExpansionUnlockStore()
 {
-    // OPEN_STORE open-action 4 jumps to the offer id (Crystal SubActions.WEEKLY_TASK_EXPANSION).
-    auto action = std::make_shared<input::TGameActionOpenStore>(4, 16);
-    Q_EMIT publishGameAction(action);
+    // Open action 3 (useful thing), useful thing 13.
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(3, 13));
 }
 
 void TWeeklyTasksController::deliverTask(const int taskIndex)
 {
-    taskboard::TTaskboardProtocolMessageHandler::deliverWeeklyTask(std::max(0, taskIndex));
+    const taskboard::TWeeklyTaskData* data = weeklyTaskData();
+    if (!data)
+        return;
+    // Host: an index outside the delivery tasks is ignored.
+    if (taskIndex < 0 || static_cast<size_t>(taskIndex) >= data->deliveryTasks.size())
+        return;
+    const taskboard::TWeeklyDeliveryTask& task = data->deliveryTasks[static_cast<size_t>(taskIndex)];
+    m_deliverTaskConfirmationDialog->setMessageDialogTextFormat(TMessageDialogController::RICH_TEXT);
+    qmlcomponents::TAppearanceTypeHelperQmlService appearanceTypeHelper;
+    const QString itemName = cyclopedia::capitalizeWords(
+        QString::fromStdString(appearanceTypeHelper.getObjectAppearanceTypeNameForID(task.objectTypeId).toStdString()));
+    const QString caption = qtTrId("taskboard_deliver_task_confirmation_caption");
+    const QString text = qtTrId("taskboard_deliver_task_confirmation_text").arg(task.requiredAmount).arg(itemName);
+    m_deliverTaskConfirmationDialog->setButtons(okCancelDialogButtons());
+    m_deliverTaskConfirmationDialog->showMessage(caption, text);
+    m_deliverTaskConfirmationConnections.add(
+        connect(m_deliverTaskConfirmationDialog, &TMessageDialogController::acceptClicked, this, [this, taskIndex](bool) {
+            m_deliverTaskConfirmationDialog->dialog()->close();
+            m_deliverTaskConfirmationConnections.disconnectAll();
+            if (!m_gameSession || m_requestPending)
+                return;
+            taskboard::TTaskboardProtocolMessageHandler::deliverWeeklyTask(taskIndex);
+            m_requestPending = true;
+        }));
+    m_deliverTaskConfirmationConnections.add(connect(m_deliverTaskConfirmationDialog, &TMessageDialogController::discardClicked, this, [this](bool) {
+        m_deliverTaskConfirmationConnections.disconnectAll();
+        m_deliverTaskConfirmationDialog->dialog()->close();
+    }));
 }
 
 void TWeeklyTasksController::selectDifficulty(const int difficulty)
 {
-    taskboard::TTaskboardProtocolMessageHandler::selectWeeklyTaskDifficulty(std::clamp(difficulty, 0, 3));
+    if (!m_gameSession || m_requestPending)
+        return;
+    taskboard::TTaskboardProtocolMessageHandler::selectWeeklyTaskDifficulty(difficulty);
+    m_requestPending = true;
 }
 
 int TWeeklyTasksController::getRequiredLevelForDifficulty(const int difficulty)
 {
-    switch (std::clamp(difficulty, 0, 3)) {
-    case 1:
-        return 30;
-    case 2:
-        return 150;
-    case 3:
-        return 300;
-    default:
-        return 8;
-    }
+    const auto index = static_cast<uint8_t>(static_cast<uint8_t>(difficulty) - 1U);
+    if (!m_gameSession || index >= std::size(RequiredLevels))
+        return 0;
+    return RequiredLevels[index];
 }
 
-QVariantList TWeeklyTasksController::getTaskRewardFactors()
-{
-    return { 1, 2, 3, 5, 8 };
-}
+QVariantList TWeeklyTasksController::getTaskRewardFactors() { return m_taskRewardFactors; }
 
-QVariantList TWeeklyTasksController::getTaskRewardCounts()
-{
-    return { 0, 4, 8, 12, 16, 18 };
-}
+QVariantList TWeeklyTasksController::getTaskRewardCounts() { return m_taskRewardCounts; }
 
 void TWeeklyTasksController::onDeliveryItemClicked(int, int, int) {}
 

@@ -38,18 +38,27 @@ public:
     int largePerkId() const override;
 };
 
-/// A vessel of the gem atelier (CIP).
+/// A vessel of the gem atelier (CIP): the vessel index, the configuration's vocation index and the
+/// gem socketed in the vessel, if any.
 class TQmlSocketedGem final : public cip::tibia::skillwheel::TQmlSocketedGem
 {
     Q_OBJECT
 public:
-    TQmlSocketedGem(int gemId, int modSlotCount, int vesselQuality, const QUrl& bezel, QObject* parent);
+    /// Throws std::invalid_argument for a vessel index outside 0..7.
+    TQmlSocketedGem(int vesselIndex, int vocationIndex, const std::optional<TGem>& gem, QObject* parent);
 
-    /// CIP moc property getters.
-    int gemId() const override { return m_gemId; }
-    int modSlotCount() const override { return m_modSlotCount; }
-    int vesselQuality() const override { return m_vesselQuality; }
-    QUrl socketBezelSource() const override { return m_socketBezelSource; }
+    /// The socketed gem's id, -1 for an empty vessel.
+    int gemId() const override;
+    /// The socketed gem's mod count; an empty vessel's quality decides it (lesser 1, regular 2, greater 3).
+    int modSlotCount() const override;
+    int vesselQuality() const override;
+    /// The bezel of the socketed gem's vocation and mod count, or the empty bezel of the mod count.
+    QUrl socketBezelSource() const override;
+
+private:
+    int m_vesselIndex = 0;
+    int m_vocationIndex = 0;
+    std::optional<TGem> m_gem;
 };
 
 /// The Wheel tab, SkillWheelPage.qml (CIP: TSkillWheelPageController).

@@ -1,5 +1,7 @@
 #include "containerslotinformation.h"
 
+#include "qmlcomponents/texthelper.h"
+
 #include <QLocale>
 #include <QStringList>
 
@@ -59,7 +61,7 @@ QString categoriesText(const char* captionId, const uint32_t flags)
         if (flags & (1u << category))
             names.append(qtTrId(categoryNameId(category)));
     }
-    names.sort();
+    names.sort(Qt::CaseInsensitive);
     return qtTrId(captionId) + names.join(QStringLiteral("<br>"));
 }
 
@@ -129,20 +131,7 @@ QString durationLongText(const qint64 seconds)
 
 QString durationShortText(const qint64 seconds)
 {
-    const auto twoDigits = [](const qint64 value) { return QStringLiteral("%1").arg(value, 2, 10, QLatin1Char('0')); };
-    if (seconds >= 864000)
-        return QStringLiteral("%1d").arg(seconds / 86400);
-    if (seconds >= 86400) // CIP shows the day's minutes after the days
-        return QStringLiteral("%1d").arg(seconds / 86400) + twoDigits(seconds % 86400 / 60);
-    if (seconds >= 36000)
-        return QStringLiteral("%1h").arg(seconds / 3600);
-    if (seconds >= 3600)
-        return QStringLiteral("%1h").arg(seconds / 3600) + twoDigits(seconds % 3600 / 60);
-    if (seconds >= 600)
-        return QStringLiteral("%1m").arg(seconds / 60);
-    if (seconds >= 60)
-        return QStringLiteral("%1m").arg(seconds / 60) + twoDigits(seconds % 60);
-    return QStringLiteral("%1s").arg(seconds);
+    return qmlcomponents::ultraShortDurationString(seconds);
 }
 
 QString slotText(const TInventorySlot& slot, const bool showExpire, const bool whenUnused)
@@ -231,6 +220,31 @@ void TContainerSlotQmlInformation::assign(const TSlotInfo& info)
         m_managedContainerTooltip = info.managedContainerTooltip;
         Q_EMIT managedContainerTooltipChanged();
     }
+}
+
+TSlotInfo TContainerRenderProvider::inventorySlotInfo(const int slotId, const bool showExpire,
+                                                     const bool showExpireWhenUnused)
+{
+    TSlotInfo info;
+    info.slotId = static_cast<uint>(slotId);
+    if (const TInventoryContainer* inventory = TInventoryContainer::instance()) {
+        info.appearance = inventory->slotAt(slotId);
+        info.tutorialMarkerId = inventory->tutorialMarker(slotId);
+    }
+    info.text = slotText(info.appearance, showExpire, showExpireWhenUnused);
+    info.acceptsDrop = true;
+    info.isUpdatable = !info.appearance.empty();
+    info.managedContainerTooltip = managedContainerTooltip(info.appearance);
+    return info;
+}
+
+std::map<uint32_t, TSlotInfo> TContainerRenderProvider::inventorySlotInfos(const bool showExpire,
+                                                                         const bool showExpireWhenUnused)
+{
+    std::map<uint32_t, TSlotInfo> infos;
+    for (int slotId = 0; slotId < TInventoryContainer::SlotCount; ++slotId)
+        infos[static_cast<uint32_t>(slotId)] = inventorySlotInfo(slotId, showExpire, showExpireWhenUnused);
+    return infos;
 }
 
 }

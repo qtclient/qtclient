@@ -9,6 +9,7 @@
 #include "game/serversave.h"
 
 #include "qmlcomponents/worldmapcameraviewport.h"
+#include "qmlcomponents/worldmapqmltypes.h"
 
 #include "client/gameclient.h"
 #include "client/gamecore.h"
@@ -549,10 +550,9 @@ TCyclopediaDialogContext THousesInfoDialogController::captureContext() const
     THousesInfoCyclopediaContext context{ m_proxy->townFilter(), m_proxy->stateFilter(), m_proxy->houseTypeFilter(),
                                           m_proxy->sortOrder(), m_currentHouseId, {}, 1.0f };
     // The preview camera's centre and zoom, while there is one.
-    if (m_houseCamera) {
-        if (const auto* center = m_houseCamera->centerSubfieldCoordinate())
-            context.cameraCenter = worldmap::TWorldMapSubfieldCoordinate(center->subfieldX(), center->subfieldY(), center->z());
-        context.cameraZoom = m_houseCamera->scaleFactor();
+    if (const auto* viewport = qobject_cast<const qmlcomponents::TWorldMapCameraViewportQmlType*>(m_houseCamera.data())) {
+        context.cameraCenter = viewport->cameraViewport().centerSubfieldCoordinate();
+        context.cameraZoom = viewport->cameraViewport().scaleFactor();
     }
     return context;
 }
@@ -567,9 +567,9 @@ void THousesInfoDialogController::restoreContext(const TCyclopediaDialogContext&
     m_proxy->setSortOrder(context.sortOrder);
     selectHouse(context.houseId);
     // The preview camera where it was, after the house selection centred it.
-    if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
-        viewport->centerAtSubfield(context.cameraCenter.subfieldX, context.cameraCenter.subfieldY, context.cameraCenter.z);
-        viewport->setScaleFactor(context.cameraZoom);
+    if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewportQmlType*>(m_houseCamera.data())) {
+        viewport->cameraViewport().setCenterSubfieldCoordinate(context.cameraCenter);
+        viewport->cameraViewport().setScaleFactor(context.cameraZoom);
     }
     setDisableQmlSelect(false);
 }
@@ -758,16 +758,36 @@ void THousesInfoDialogController::ensureTownAndHouseSelection()
 
 void THousesInfoDialogController::centerHouse() { onHouseViewportChanged(); }
 
+void THousesInfoDialogController::makeHouseVisible(const uint HouseId)
+{
+    if (HouseId == 0)
+        return;
+    const THouseInformation* house = m_storage ? m_storage->house(HouseId) : nullptr;
+    if (!house)
+        return;
+    const THousesInfoCyclopediaContext context{
+        house->town,
+        5,
+        house->isGuildHall ? 1 : 0,
+        0,
+        HouseId,
+        worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(house->x, house->y, house->z), 0, 0),
+        0.5f,
+    };
+    restoreContext(context);
+}
+
 void THousesInfoDialogController::onHouseViewportChanged()
 {
     const THouseInformation* house = m_storage ? m_storage->house(m_currentHouseId) : nullptr;
     if (!house || !m_houseCamera)
         return;
-    if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
+    if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewportQmlType*>(m_houseCamera.data())) {
         // CIP: a house under ground shows layers 8..15, else 0..7.
         const bool underground = house->z > 7;
-        viewport->setTopAndBottomLayer(underground ? 8 : 0, underground ? 15 : 7);
-        viewport->centerAtField(house->x, house->y, house->z);
+        viewport->cameraViewport().setTopAndBottomLayer(underground ? 8 : 0, underground ? 15 : 7);
+        viewport->cameraViewport().setCenterSubfieldCoordinate(
+            worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(house->x, house->y, house->z)));
     } else {
         auto* center = m_houseCamera->centerSubfieldCoordinate();
         if (!center) {

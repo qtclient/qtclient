@@ -14,6 +14,7 @@
 #include <QString>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <vector>
@@ -24,34 +25,16 @@ class GameserverMessageQuestLine;
 class GameserverMessageTrackQuestFlags;
 }
 
+namespace tibia::shared {
+class IClockService;
+}
+
 namespace tibia {
 namespace questlog {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-
-class TQuestLogGameActionHandler final : public cip::tibia::questlog::TQuestLogGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::questlog::TQuestLogGameActionHandler::TQuestLogGameActionHandler;
-};
-
-class TQuestLogProtocolMessageHandler final : public cip::tibia::questlog::TQuestLogProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::questlog::TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler;
-
-    /// The quest lines of the quest log, handed to the storage ("onQuestLog").
-    static void handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message);
-    /// The parts of one quest line ("onQuestLine": quest line id, parts).
-    static void handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message);
-    /// The tracked quest flags, stamped with the current time ("onQuestTracker": flags,
-    /// timestamp, full list, and on a full list whether more flags can be tracked).
-    static void handleTrackedQuestFlagsMessage(const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message);
-};
 
 using TQuestLineID = int;
 using TQuestFlagID = quint16;
@@ -175,6 +158,28 @@ private:
     std::set<TQuestLineID> m_pinnedQuestLines;
 };
 
-}
-}
+/// The session's handler of the quest log messages (CIP:
+/// questlog::TQuestLogProtocolMessageHandler). It hands what the server sent to
+/// the session's quest log storage; tracked flags are stamped with the
+/// session clock's time.
+class TQuestLogProtocolMessageHandler final : public cip::tibia::questlog::TQuestLogProtocolMessageHandler
+{
+    Q_OBJECT
+public:
+    TQuestLogProtocolMessageHandler(std::shared_ptr<TQuestLogStorage> questLogStorage,
+                                    std::shared_ptr<shared::IClockService> clockService);
 
+    /// The quest lines of the quest log.
+    void handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message);
+    /// The parts (missions) of one quest line.
+    void handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message);
+    /// The tracked quest flags; a full list also says whether more flags can be tracked.
+    void handleTrackedQuestFlagsMessage(const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message);
+
+private:
+    std::shared_ptr<shared::IClockService> m_clockService;
+    std::shared_ptr<TQuestLogStorage> m_questLogStorage;
+};
+
+}
+}

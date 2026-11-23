@@ -11,6 +11,24 @@
 #include "protocol/clientmessages.h"
 
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+
+#include "config/characterconfigurationmanager.h"
+#include "container/containerciptypes.h"
+#include "gamewindow/bosstrackerwidgetcontroller.h"
+#include "gamewindow/creaturetrackerwidgetcontroller.h"
+#include "gamewindow/depotsearchwidgetcontroller.h"
+#include "gamewindow/imbuementtrackerwidgetcontroller.h"
+#include "gamewindow/killtrackerwidgetcontroller.h"
+#include "gamewindow/loottrackingwidgetcontroller.h"
+#include "gamewindow/playerguidewidgetcontroller.h"
+#include "gamewindow/playertradecontroller.h"
+#include "gamewindow/questtrackerwidgetcontroller.h"
+#include "gamewindow/spelllistwidgetcontroller.h"
+#include "gamewindow/unjustifiedpointswidgetcontroller.h"
+#include "gamewindow/vipwidgetcontroller.h"
+#include "trade/tradeciptypes.h"
 
 #include <QJsonObject>
 #include <QQuickItem>
@@ -54,17 +72,17 @@ constexpr std::pair<int, const char*> WidgetTypeNames[] = {
 
 }
 
-TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                               analysers::TAnalyserStorages* analyserStorages, QObject* parent)
     : cip::tibia::gamewindow::TSidebarWidgetsManager(parent)
     , m_sidebars(sidebars)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
     , m_battleLists(std::make_unique<TBattleListControllerStorage>(sidebars, gameWindowItem, engine))
 {
-    // CIP sidebar base carriers (tracker widgets register via managers in main).
+    // CIP sidebar base carriers.
     new TSidebarWidgetControllerBase(gameWindowItem, engine, this);
     new TSidebarWidgetControllerWithFocusHandling(gameWindowItem, engine, this);
-    // CipSoft DepotSearchWidget is owned by TDepotSearchWidgetManager (main.cpp).
     connect(new TInspectObjectDialogController(this), &TInspectObjectDialogController::publishGameAction, this,
             &TSidebarWidgetsManager::publishGameAction);
     connect(new TInspectPlayerDialogController(this), &TInspectPlayerDialogController::publishGameAction, this,
@@ -76,20 +94,62 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
             &TSidebarWidgetsManager::publishGameAction);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetVisible, this, &TSidebarWidgetsManager::widgetVisible);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetHidden, this, &TSidebarWidgetsManager::widgetHidden);
+    connect(m_battleLists.get(), &TBattleListControllerStorage::battleListRemovedFromStorage, this,
+            &TSidebarWidgetsManager::saveCurrentOpenWidgets);
 
     registerWidget(Skills, { [this]() -> TSidebarWidget* {
                                 if (!m_skills) {
                                     m_skills = new TSkillsWidgetController(m_gameWindowItem, m_engine);
                                     connect(m_skills, &TSkillsWidgetController::publishGameAction, this,
                                             &TSidebarWidgetsManager::publishGameAction);
-                                    m_skills->setSidebarOptions(m_options);
                                     m_skills->connectToGameSession(m_gameSession);
+                                    m_skills->setPremiumTimeStorage(m_premiumTimeStorage);
                                 }
                                 return m_skills->widget();
                             },
                              [this] { closeSkills(true); },
                              [this]() -> TSidebarWidget* { return m_skills ? m_skills->widget() : nullptr; },
                              [this] { closeSkills(false); } });
+
+    // The widgets kept by type. CipSoft makes each controller when it opens;
+    // qtclient's per-widget managers do that, and their game actions reach
+    // the manager's publishGameAction (CIP connects every controller's).
+    const auto publish = [this](auto* manager) {
+        connect(manager, &std::remove_pointer_t<decltype(manager)>::publishGameAction, this, &TSidebarWidgetsManager::publishGameAction);
+    };
+    m_vip = std::make_unique<TVipWidgetManager>(gameWindowItem, engine);
+    publish(m_vip.get());
+    registerWidget(Vip, hooksFor(*m_vip, [vip = m_vip.get()] { return vip->open(); }));
+    m_killTracker = std::make_unique<TKillTrackerWidgetManager>(gameWindowItem, engine);
+    publish(m_killTracker.get());
+    registerWidget(KillTracker, hooksFor(*m_killTracker, [this, w = m_killTracker.get()] { return w->open(m_options); }));
+    m_questTracker = std::make_unique<TQuestTrackerWidgetManager>(gameWindowItem, engine);
+    publish(m_questTracker.get());
+    registerWidget(QuestTracker, hooksFor(*m_questTracker, [this, w = m_questTracker.get()] { return w->open(m_gameSession); }));
+    m_lootTracking = std::make_unique<TLootTrackingWidgetManager>(analyserStorages, gameWindowItem, engine);
+    publish(m_lootTracking.get());
+    registerWidget(LootTracker, hooksFor(*m_lootTracking, [this, w = m_lootTracking.get()] { return w->open(m_options); }));
+    m_spellList = std::make_unique<TSpellListWidgetManager>(gameWindowItem, engine);
+    publish(m_spellList.get());
+    registerWidget(SpellList, hooksFor(*m_spellList, [this, w = m_spellList.get()] { return w->open(m_gameSession); }));
+    m_unjustifiedPoints = std::make_unique<TUnjustifiedPointsWidgetManager>(gameWindowItem, engine);
+    registerWidget(UnjustifiedPoints, hooksFor(*m_unjustifiedPoints, [this, w = m_unjustifiedPoints.get()] { return w->open(m_options); }));
+    m_imbuementTracker = std::make_unique<TImbuementTrackerWidgetManager>(gameWindowItem, engine);
+    registerWidget(ImbuementTracker, hooksFor(*m_imbuementTracker, [this, w = m_imbuementTracker.get()] { return w->open(m_options); }));
+    // The trackers take the session's tracker storages when they connect.
+    using CreatureMode = TCreatureTrackerWidgetController::EWidgetMode;
+    m_bestiaryTracker = std::make_unique<TCreatureTrackerWidgetManager>(CreatureMode::Bestiary, nullptr, nullptr, gameWindowItem, engine);
+    publish(m_bestiaryTracker.get());
+    registerWidget(BestiaryTracker, hooksFor(*m_bestiaryTracker, [this, w = m_bestiaryTracker.get()] { return w->open(m_options); }));
+    m_bosstiaryTracker = std::make_unique<TCreatureTrackerWidgetManager>(CreatureMode::Bosstiary, nullptr, nullptr, gameWindowItem, engine);
+    publish(m_bosstiaryTracker.get());
+    registerWidget(BosstiaryTracker, hooksFor(*m_bosstiaryTracker, [this, w = m_bosstiaryTracker.get()] { return w->open(m_options); }));
+    m_bossTracker = std::make_unique<TBossTrackerWidgetManager>(nullptr, gameWindowItem, engine);
+    publish(m_bossTracker.get());
+    registerWidget(BossCooldowns, hooksFor(*m_bossTracker, [this, w = m_bossTracker.get()] { return w->open(m_options); }));
+    m_playerGuide = std::make_unique<TPlayerGuideWidgetManager>(gameWindowItem, engine);
+    publish(m_playerGuide.get());
+    registerWidget(PlayerGuide, hooksFor(*m_playerGuide, [this, w = m_playerGuide.get()] { return w->open(m_options); }));
 
     connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
     connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
@@ -104,7 +164,24 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
 TSidebarWidgetsManager::~TSidebarWidgetsManager()
 {
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
     delete m_skills;
+    m_skills = nullptr;
+    m_battleLists.reset();
+    delete m_depotSearch.data();
+    delete m_playerTrade.data();
+    m_playerGuide.reset();
+    m_imbuementTracker.reset();
+    m_bossTracker.reset();
+    m_bosstiaryTracker.reset();
+    m_bestiaryTracker.reset();
+    m_questTracker.reset();
+    m_lootTracking.reset();
+    m_spellList.reset();
+    m_killTracker.reset();
+    m_unjustifiedPoints.reset();
+    m_vip.reset();
 }
 
 void TSidebarWidgetsManager::setSidebarOptions(config::TSidebarOptions* options)
@@ -117,8 +194,9 @@ void TSidebarWidgetsManager::setSidebarOptions(config::TSidebarOptions* options)
     closeAll();
     m_options = options;
     m_battleLists->setSidebarOptions(options);
-    if (m_skills)
-        m_skills->setSidebarOptions(options);
+    m_vip->setSidebarOptions(options);
+    if (m_depotSearch)
+        m_depotSearch->setSidebarOptions(options);
     if (!options)
         return;
     connect(options, &config::TSidebarOptions::sidebarWidgetsManagerOptionsChanged, this,
@@ -126,12 +204,23 @@ void TSidebarWidgetsManager::setSidebarOptions(config::TSidebarOptions* options)
     restoreSidebarConfigurationFromOptions();
 }
 
-void TSidebarWidgetsManager::setContainerStorage(TContainerStorageController* containers) { m_containers = containers; }
+void TSidebarWidgetsManager::setContainerStorage(TContainerStorageController* containers)
+{
+    if (m_containers)
+        disconnect(m_containers, &TContainerStorageController::containerRemovedFromStorage, this,
+                   &TSidebarWidgetsManager::saveCurrentOpenWidgets);
+    m_containers = containers;
+    // CIP (constructor): a container that leaves the storage saves the open widgets.
+    if (m_containers)
+        connect(m_containers, &TContainerStorageController::containerRemovedFromStorage, this,
+                &TSidebarWidgetsManager::saveCurrentOpenWidgets);
+}
 
 void TSidebarWidgetsManager::setControlScheme(const int controlScheme)
 {
     m_controlScheme = controlScheme;
     m_battleLists->setControlScheme(controlScheme);
+    m_vip->setControlScheme(controlScheme);
 }
 
 void TSidebarWidgetsManager::onLoginRampUpFinished() { m_battleLists->onLoginRampUpFinished(); }
@@ -140,13 +229,135 @@ void TSidebarWidgetsManager::registerWidget(const int widgetType, WidgetHooks ho
 
 void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    // CIP: the old options go first, so closing every widget saves nothing.
+    if (m_options)
+        disconnect(m_options, nullptr, this, nullptr);
+    m_options = nullptr;
     m_gameSession = GameSession;
+    closeAll();
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (session) {
+        config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+        m_options = configuration ? configuration->sidebarOptions() : nullptr;
+        using Self = TSidebarWidgetsManager;
+        if (trade::TPlayerTradeProtocolMessageHandler* trades = session->playerTradeProtocolMessageHandler().get()) {
+            m_gameSessionConnections.push_back(connect(trades, &trade::TPlayerTradeProtocolMessageHandler::requestOpenPlayerTradeWidget,
+                                                       this, &Self::onPlayerTradeWidgetOpenRequest));
+            m_gameSessionConnections.push_back(connect(trades, &trade::TPlayerTradeProtocolMessageHandler::requestClosePlayerTradeWidget,
+                                                       this, &Self::onPlayerTradeWidgetCloseRequest));
+        }
+        if (configuration)
+            m_gameSessionConnections.push_back(connect(configuration, &config::TCharacterConfigurationManager::configurationLoadedForCharacter,
+                                                       this, &Self::restoreSidebarConfigurationFromOptions));
+        if (m_options)
+            m_gameSessionConnections.push_back(connect(m_options.data(), &config::TSidebarOptions::sidebarWidgetsManagerOptionsChanged, this,
+                                                       &Self::restoreSidebarConfigurationFromOptions));
+        if (container::TContainerProtocolMessageHandler* containers = session->containerProtocolMessageHandler().get()) {
+            m_gameSessionConnections.push_back(connect(containers, &container::TContainerProtocolMessageHandler::requestOpenDepotSearchWidget,
+                                                       this, &Self::onDepotSearchWidgetOpenRequest));
+            m_gameSessionConnections.push_back(connect(containers, &container::TContainerProtocolMessageHandler::requestCloseDepotSearchWidget,
+                                                       this, &Self::onDepotSearchWidgetCloseRequest));
+        }
+    }
+    // Host: the battle lists and the VIP widget keep the options themselves.
+    m_battleLists->setSidebarOptions(m_options);
+    m_vip->setSidebarOptions(m_options);
+    if (m_playerTrade)
+        m_playerTrade->setGameSession(session ? session->playerTradeStorage().get() : nullptr,
+                                      session ? session->playerTradeProtocolMessageHandler().get() : nullptr);
+    if (m_depotSearch)
+        m_depotSearch->setGameSession(session);
     if (m_skills)
         m_skills->connectToGameSession(m_gameSession);
     for (const auto& [widgetType, hooks] : m_widgets) {
         if (hooks.connectToGameSession)
             hooks.connectToGameSession(GameSession);
     }
+    setPremiumTimeStorage(GameSession ? game::TPremiumTimeStorage::liveInstance() : nullptr);
+}
+
+void TSidebarWidgetsManager::onPlayerTradeWidgetOpenRequest()
+{
+    onPlayerTradeWidgetCloseRequest();
+    m_playerTrade = new TPlayerTradeController(m_gameWindowItem, m_engine);
+    connect(m_playerTrade, &TPlayerTradeController::widgetClosed, this, &TSidebarWidgetsManager::onPlayerTradeWidgetCloseRequest,
+            Qt::QueuedConnection);
+    connect(m_playerTrade, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::publishGameAction, this,
+            &TSidebarWidgetsManager::publishGameAction);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_playerTrade->setGameSession(session ? session->playerTradeStorage().get() : nullptr,
+                                  session ? session->playerTradeProtocolMessageHandler().get() : nullptr);
+    if (session && session->isLoginRampUpFinished())
+        m_playerTrade->widget()->maximize();
+    if (!m_sidebars)
+        return;
+    m_sidebars->addWidget(m_playerTrade->widget());
+    m_playerTrade->widget()->show();
+}
+
+void TSidebarWidgetsManager::onPlayerTradeWidgetCloseRequest()
+{
+    TPlayerTradeController* playerTrade = m_playerTrade;
+    m_playerTrade = nullptr;
+    if (!playerTrade)
+        return;
+    playerTrade->widget()->hide();
+    playerTrade->deleteLater();
+}
+
+void TSidebarWidgetsManager::onDepotSearchWidgetOpenRequest()
+{
+    if (m_depotSearch)
+        return;
+    m_depotSearch = new TDepotSearchWidgetController(m_gameWindowItem, m_engine);
+    connect(m_depotSearch, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
+            &TSidebarWidgetsManager::onDepotSearchWidgetCloseRequest, Qt::QueuedConnection);
+    connect(m_depotSearch, &TDepotSearchWidgetController::publishGameAction, this, &TSidebarWidgetsManager::publishGameAction);
+    // Host: the widget keeps its options in the character's sidebar options.
+    m_depotSearch->setSidebarOptions(m_options);
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    m_depotSearch->setGameSession(session);
+    if (session && session->isLoginRampUpFinished())
+        m_depotSearch->widget()->maximize();
+    if (!m_sidebars)
+        return;
+    m_sidebars->addWidget(m_depotSearch->widget());
+    m_depotSearch->widget()->show();
+}
+
+void TSidebarWidgetsManager::onDepotSearchWidgetCloseRequest()
+{
+    TDepotSearchWidgetController* depotSearch = m_depotSearch;
+    m_depotSearch = nullptr;
+    if (!depotSearch)
+        return;
+    depotSearch->saveWidgetOptions();
+    depotSearch->widget()->hide();
+    depotSearch->deleteLater();
+}
+
+void TSidebarWidgetsManager::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TSidebarWidgetsManager::onPremiumTimeChanged);
+    m_premiumTimeStorage = premiumTimeStorage;
+    if (m_skills)
+        m_skills->setPremiumTimeStorage(premiumTimeStorage);
+    if (!m_premiumTimeStorage)
+        return;
+    connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSidebarWidgetsManager::onPremiumTimeChanged);
+    onPremiumTimeChanged();
+}
+
+void TSidebarWidgetsManager::onPremiumTimeChanged()
+{
+    if (!m_premiumTimeStorage || m_premiumTimeStorage->isPremium() || !currentWidget(HuntingSessionAnalyser))
+        return;
+    onWidgetClosed(HuntingSessionAnalyser, false);
 }
 
 TSidebarWidget* TSidebarWidgetsManager::currentWidget(const int widgetType) const
@@ -483,6 +694,9 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
 void TSidebarWidgetsManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     m_gameActions.handle(pGameAction);
+    // CIP: the VIP widget, while open, then the battle lists.
+    if (m_vip)
+        m_vip->handleGameAction(pGameAction);
     if (m_battleLists)
         m_battleLists->handleGameAction(pGameAction);
 }

@@ -1,11 +1,14 @@
 #include "input/playermovementintenthandler.h"
 
+#include "chat/chatchannel.h"
+#include "chat/textstorage.h"
 #include "creatures/creaturestorage.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <algorithm>
 #include <cstdlib>
+#include <stdexcept>
 #include <utility>
 
 namespace tibia::input {
@@ -25,6 +28,17 @@ TWorldMapCoordinate offsetBy(const TWorldMapCoordinate& c, const int dx, const i
     return { c.x + dx, c.y + dy, c.z };
 }
 
+/// The look direction a step faces: north and south as they are, every
+/// eastward step east, every westward step west.
+creatures::ECreatureLookDirection lookDirectionOfStep(const EMovementDirection direction)
+{
+    constexpr quint8 Looks[8] = { 0, 1, 1, 1, 2, 3, 3, 3 };
+    const auto step = static_cast<unsigned>(direction);
+    if (step < 8)
+        return static_cast<creatures::ECreatureLookDirection>(Looks[step]);
+    throw std::logic_error("missing case for ECreatureMoveDirection");
+}
+
 }
 
 EMovementDirection toMovementDirection(const tibia::client::Direction direction)
@@ -39,21 +53,6 @@ EMovementDirection toMovementDirection(const tibia::client::Direction direction)
     case tibia::client::West: return EMovementDirection::West;
     case tibia::client::NorthWest: return EMovementDirection::NorthWest;
     default: return EMovementDirection::None;
-    }
-}
-
-tibia::client::Direction toClientDirection(const EMovementDirection direction)
-{
-    switch (direction) {
-    case EMovementDirection::North: return tibia::client::North;
-    case EMovementDirection::NorthEast: return tibia::client::NorthEast;
-    case EMovementDirection::East: return tibia::client::East;
-    case EMovementDirection::SouthEast: return tibia::client::SouthEast;
-    case EMovementDirection::South: return tibia::client::South;
-    case EMovementDirection::SouthWest: return tibia::client::SouthWest;
-    case EMovementDirection::West: return tibia::client::West;
-    case EMovementDirection::NorthWest: return tibia::client::NorthWest;
-    default: return tibia::client::InvalidDirection;
     }
 }
 
@@ -127,8 +126,10 @@ void TPlayerMovementIntentHandler::clearGoal()
 
 void TPlayerMovementIntentHandler::noteIntent(const TMovementIntentKind kind)
 {
-    if (creatures::TCreature* player = m_env.player())
-        player->setHoldsMovementIntent(kind != TMovementIntentKind::Stop);
+    if (creatures::TCreature* player = m_env.player()) {
+        if (const auto& placeholder = player->placeholderAppearance())
+            placeholder->setHoldsMovementIntent(kind != TMovementIntentKind::Stop);
+    }
 }
 
 EMovementDirection TPlayerMovementIntentHandler::directionOfLook(const creatures::ECreatureLookDirection look)
@@ -212,15 +213,15 @@ int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bo
         if (turnOption) {
             const auto current = static_cast<creatures::ECreatureLookDirection>(
                 player->isMoving() ? player->movementLook() : player->patternX());
-            const auto look = creatures::lookDirectionAfter(current, direction);
+            const auto look = lookDirectionOfStep(direction);
             if (look != current) {
                 turned = true;
                 sendRotate(look);
             }
         }
         if (!canStep) {
-            if (!turned && m_env.showFailure)
-                m_env.showFailure(QStringLiteral("sorry_not_possible"));
+            if (!turned)
+                showStatusMessage(qtTrId("sorry_not_possible"));
             m_goal.reset();
             return 0;
         }
@@ -228,7 +229,7 @@ int TPlayerMovementIntentHandler::goTo(const TWorldMapCoordinate& goal, const bo
 
     if (m_replan)
         return 0;
-    if (m_path.empty())
+    if (pathLength() == 0)
         return plan();
     if (!turned && m_stepsTaken < static_cast<int>(m_path.size())) {
         m_replan = true;
@@ -271,8 +272,8 @@ int TPlayerMovementIntentHandler::plan()
     case PathGoUpstairs: message = "first_go_upstairs"; break;
     default: break;
     }
-    if (message && m_env.showFailure)
-        m_env.showFailure(QString::fromLatin1(message));
+    if (message)
+        showStatusMessage(qtTrId(message));
     return 0;
 }
 
@@ -478,6 +479,12 @@ void TPlayerMovementIntentHandler::sendRotate(const creatures::ECreatureLookDire
     case creatures::ECreatureLookDirection::South: Q_EMIT sendRotateSouth(); break;
     case creatures::ECreatureLookDirection::West: Q_EMIT sendRotateWest(); break;
     }
+}
+
+void TPlayerMovementIntentHandler::showStatusMessage(const QString& text)
+{
+    if (chat::TTextStorage* texts = m_env.textStorage ? m_env.textStorage() : nullptr)
+        texts->setStatusMessage(text, chat::overlayColor(21), false);
 }
 
 TPlayerMovementIntentHandler::EFieldState TPlayerMovementIntentHandler::fieldState(const TWorldMapCoordinate& coordinate) const

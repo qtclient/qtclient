@@ -39,6 +39,55 @@ message ProtocolCoordinate {
   optional uint32 z = 3;
 }
 
+// CIP WorldmapObjectPosition: an object on a map field (no stack position: the field).
+message WorldmapObjectPosition {
+  optional ProtocolCoordinate coordinate = 1;
+  optional uint32 stack_position = 2;
+}
+
+// CIP InventoryObjectPosition: an inventory slot.
+message InventoryObjectPosition {
+  optional uint32 slot = 1;
+}
+
+// CIP ContainerObjectPosition: a slot of an open container (classic slots 0xfe and 0xff are flags).
+message ContainerObjectPosition {
+  optional uint32 container_id = 1;
+  oneof slot_oneof {
+    uint32 slot = 2;
+    bool special_slot_fe = 3;
+    bool special_slot_ff = 4;
+  }
+}
+
+// CIP DepotSearchDepotObjectPosition: an item of the depot search's depot list.
+message DepotSearchDepotObjectPosition {
+  optional uint32 index = 1;
+}
+
+// CIP DepotSearchInboxObjectPosition: an item of the depot search's inbox list.
+message DepotSearchInboxObjectPosition {
+  optional uint32 index = 1;
+}
+
+// CIP ObjectPosition: where a client message's object is (filled from a game action location).
+message ObjectPosition {
+  oneof position_oneof {
+    WorldmapObjectPosition worldmap_position = 1;
+    InventoryObjectPosition inventory_position = 2;
+    ContainerObjectPosition container_position = 3;
+    DepotSearchDepotObjectPosition depot_search_depot_position = 4;
+    DepotSearchInboxObjectPosition depot_search_inbox_position = 5;
+    bool unknown_position = 6;
+  }
+}
+
+// CIP ObjectIdentifier: an object's appearance type and its liquid or tier (filled from a game action object).
+message ObjectIdentifier {
+  optional uint32 type_id = 1;
+  optional uint32 data = 2;
+}
+
 // RE from tip classic ProtocolGame::getInventorySlot — not invented CIP ProtocolObject names. Reusable for container/tile item opcodes later.
 message ProtocolInventoryItem {
   optional uint32 item_id = 1;
@@ -4984,10 +5033,11 @@ message GameclientMessageSeekInContainer {
 // client opcode 0xCD (205) — InspectObject
 // CIP TProtobufClientMessageTranslator::v19.
 message GameclientMessageInspectObject {
-  optional uint32 inspection_type = 1;
-  optional ProtocolCoordinate position = 2;
-  optional uint32 object_id = 3;
-  optional uint32 count = 4;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
+  optional uint32 inspection_type = 3;
+  optional uint32 trade_side = 4;
+  optional uint32 trade_index = 5;
   extend GameclientMessage {
     optional GameclientMessageInspectObject gameclient_message_inspect_object = 205;
   }

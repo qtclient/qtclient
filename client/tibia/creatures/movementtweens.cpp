@@ -22,8 +22,10 @@ void advanceAllMovementTweens(const int64_t timestampMs)
     }
 
     for (const TCreatureID id : storage->creatureIds()) {
-        if (const std::shared_ptr<TCreature> row = storage->creatureAt(id))
-            row->update(timestampMs);
+        if (const std::shared_ptr<TCreature> row = storage->creatureAt(id)) {
+            if (const auto& placeholder = row->placeholderAppearance())
+                placeholder->updateAnimation(timestampMs);
+        }
     }
 
     s_inAdvance = false;

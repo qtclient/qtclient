@@ -1,5 +1,6 @@
 #include "premiumpanelcontroller.h"
 
+#include "game/gameciptypes.h"
 #include "store/storestorage.h"
 
 #include "input/gameactionhandlers.h"
@@ -87,17 +88,7 @@ TPremiumPanelController::TPremiumPanelController()
             onNewPremiumFeatureList(*features);
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumExpiration", [this](GameObject*, const Args& args) {
-        const auto* premium = args.size() < 2 ? nullptr : std::any_cast<bool>(&args[0]);
-        const auto* expiration = args.size() < 2 ? nullptr : std::any_cast<uint32_t>(&args[1]);
-        if (premium && expiration)
-            setPremiumTime(*premium, *expiration);
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        resetPremiumTime();
-        applySessionVisibility();
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { applySessionVisibility(); });
 
     m_gameActions.on(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::IGameAction&) {
         togglePanel();
@@ -124,33 +115,27 @@ void TPremiumPanelController::createPremiumMessages()
         m_messages[id] = new TPremiumMessage(id, this);
 }
 
-int TPremiumPanelController::premiumDaysLeft() const
-{
-    if (m_premiumTimeSetAt > m_premiumExpiration || m_premiumExpiration == m_premiumTimeSetAt)
-        return 0;
-    return static_cast<int>((m_premiumExpiration - m_premiumTimeSetAt) / 86400);
-}
+bool TPremiumPanelController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
+bool TPremiumPanelController::hasUnlimitedPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->hasUnlimitedPremium(); }
+bool TPremiumPanelController::hasPremiumTime() const { return m_premiumTimeStorage && m_premiumTimeStorage->hasPremiumRecord(); }
+bool TPremiumPanelController::isFreeAccount() const { return !m_premiumTimeStorage || m_premiumTimeStorage->isFreeAccount(); }
+int TPremiumPanelController::premiumDaysLeft() const { return m_premiumTimeStorage ? m_premiumTimeStorage->remainingDays() : 0; }
 
-void TPremiumPanelController::setPremiumTime(const bool premium, const uint32_t expiration)
+void TPremiumPanelController::setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
 {
-    m_premium = premium;
-    m_premiumExpiration = expiration;
-    m_premiumTimeSetAt = static_cast<uint32_t>(QDateTime::currentSecsSinceEpoch());
+    // Host: the old storage's connection goes with it.
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TPremiumPanelController::onPremiumTimeChanged);
+    m_premiumTimeStorage = PremiumTimeStorage;
+    if (!m_premiumTimeStorage)
+        return;
     onPremiumTimeChanged();
+    connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TPremiumPanelController::onPremiumTimeChanged);
 }
 
-void TPremiumPanelController::onSessionStarted(const bool premium, const qint64 premiumUntil)
+void TPremiumPanelController::onSessionStarted()
 {
-    setPremiumTime(premium, static_cast<uint32_t>(std::max<qint64>(premiumUntil, 0)));
     applySessionVisibility();
-}
-
-void TPremiumPanelController::resetPremiumTime()
-{
-    m_premium = false;
-    m_premiumExpiration = 0;
-    m_premiumTimeSetAt = 0;
-    onPremiumTimeChanged();
 }
 
 bool TPremiumPanelController::advertisePremium() const

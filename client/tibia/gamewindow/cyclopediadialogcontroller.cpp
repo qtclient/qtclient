@@ -253,7 +253,7 @@ void TCyclopediaDialogController::hookActions()
             case 5:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses);
                 if (const uint houseId = action.houseId())
-                    m_houses->selectHouse(houseId);
+                    m_houses->makeHouseVisible(houseId);
                 break;
             case 6:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Bosstiary);

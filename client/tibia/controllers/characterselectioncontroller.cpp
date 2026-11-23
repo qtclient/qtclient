@@ -2,6 +2,7 @@
 #include "gamewindow/smoothfiltering.h"
 #include "game/serversave.h"
 #include "game/worldtype.h"
+#include "gamewindow/gamewindowciptypes.h"
 
 #include "config/clientoptions.h"
 #include "input/gameaction.h"
@@ -10,6 +11,7 @@
 #include "hashhelper.h"
 
 #include <QColor>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QTimeZone>
 
@@ -50,18 +52,48 @@ bool TCharacterSelectionController::clientSettingSmoothFiltering() const { retur
 
 TCharacterSelectionController::TCharacterSelectionController(QObject* parent)
     : cip::tibia::gamewindow::TCharacterSelectionController(parent)
+    , m_preventAutoCloseEventFilter(new TPreventAutoCloseEventFilter(this))
 {
     m_lastServerSaveCheck = uint(QDateTime::currentSecsSinceEpoch());
-    m_recoverySetupComplete = true;
+    m_recoverySetupComplete = false;
     m_collator.setNumericMode(true);
     m_collator.setCaseSensitivity(Qt::CaseInsensitive);
-    m_serverSaveTimer.setInterval(1000);
-    connect(&m_serverSaveTimer, &QTimer::timeout, this, &TCharacterSelectionController::checkServerSave);
-    m_serverSaveTimer.start();
+    m_autocloseTimer.setSingleShot(true);
+    m_autocloseTimer.setInterval(30000);
+    connect(&m_autocloseTimer, &QTimer::timeout, this, &TCharacterSelectionController::onAutocloseTimer);
+    connect(m_preventAutoCloseEventFilter, &TPreventAutoCloseEventFilter::preventAutoClose, this,
+            &TCharacterSelectionController::onPreventAutoclose);
     connect(options(), &config::TClientOptions::characterSelectionControllerOptionsChanged, this,
             &TCharacterSelectionController::onOptionsChanged);
+    m_serverSaveTimer.setInterval(1000);
+    connect(&m_serverSaveTimer, &QTimer::timeout, this, &TCharacterSelectionController::checkServerSave);
     onOptionsChanged();
 }
+
+void TCharacterSelectionController::open()
+{
+    m_autocloseTimer.start();
+    m_serverSaveTimer.start();
+    if (QCoreApplication* application = QCoreApplication::instance())
+        application->installEventFilter(m_preventAutoCloseEventFilter);
+}
+
+void TCharacterSelectionController::close()
+{
+    if (QCoreApplication* application = QCoreApplication::instance())
+        application->removeEventFilter(m_preventAutoCloseEventFilter);
+    m_autocloseTimer.stop();
+    m_serverSaveTimer.stop();
+}
+
+void TCharacterSelectionController::onAutocloseTimer()
+{
+    Q_EMIT publishGameAction(input::makeGameAction(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE));
+    close();
+    Q_EMIT abort();
+}
+
+void TCharacterSelectionController::onPreventAutoclose() { m_autocloseTimer.start(); }
 
 QString TCharacterSelectionController::accountStatusText(const int accountState, const int premiumType, const int premiumDays)
 {

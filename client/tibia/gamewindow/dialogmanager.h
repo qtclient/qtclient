@@ -20,9 +20,8 @@ namespace gamewindow {
 
 class TDialog;
 
-/// CIP's TDialogStackController (ctor , the one instance made at
-/// start-up, global DAT_1077b25a0): the dialogs on screen, of which only the
-/// top one shows. Also where dialogs are made: the QML engine and the game
+/// CIP's TDialogStackController (the one instance made at start-up): the
+/// dialogs on screen, of which only the top one shows. Also where dialogs are made: the QML engine and the game
 /// window's dialogPlaceholder.
 class TDialogStackController final : public cip::tibia::gamewindow::TDialogStackController
 {
@@ -48,6 +47,14 @@ public:
     template <class T>
     void showDialogOfType();
     bool isEmpty() const { return m_dialogs.empty(); }
+    /// CIP: whether any dialog is stacked.
+    bool hasDialogs() const { return !m_dialogs.empty(); }
+    /// CIP: the stack exists and holds a dialog.
+    static bool isAnyDialogStacked()
+    {
+        const TDialogStackController* dialogs = instance();
+        return dialogs && dialogs->hasDialogs();
+    }
     /// Hides every dialog (leaving the world).
     void hideAll();
     /// Escape: closes the topmost shown dialog with a personal mouse shield;

@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include "taskboard/monsterlistmodelsortfilterproxy.h"
+
 #include <QAbstractListModel>
 #include <QHash>
 #include <QString>
@@ -211,51 +213,6 @@ public:
 
 private:
     QVector<PreferredMonsterSlotRow> m_rows;
-};
-
-struct MonsterRaceRow {
-    int raceId = 0;
-    QString name;
-};
-
-/// Source model for the preferred-monster race picker.
-class TMonsterListFilterModel final : public cip::tibia::taskboard::TMonsterListFilterModel
-{
-    Q_OBJECT
-public:
-    enum Roles {
-        RaceIdRole = Qt::UserRole + 1,
-        RaceIDRole,
-        NameRole,
-    };
-
-    explicit TMonsterListFilterModel(QObject* parent = nullptr);
-
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
-
-    void setRows(QVector<MonsterRaceRow> rows);
-    int raceIdAt(int row) const;
-
-private:
-    QVector<MonsterRaceRow> m_rows;
-};
-
-class TMonsterListModelSortFilterProxy final : public cip::tibia::taskboard::TMonsterListModelSortFilterProxy
-{
-    Q_OBJECT
-public:
-    explicit TMonsterListModelSortFilterProxy(QObject* parent = nullptr);
-
-    Q_INVOKABLE void setNameFilter(const QString& NameFilter) override;
-    Q_INVOKABLE QVariant getRaceIDAtIndex(int RowIndex) override;
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-
-private:
-    QString m_nameFilter;
 };
 
 }

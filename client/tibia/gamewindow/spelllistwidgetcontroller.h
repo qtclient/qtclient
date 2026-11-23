@@ -4,16 +4,21 @@
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -29,7 +34,9 @@ class TSpellListWidgetController final
 public:
     TSpellListWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
-    void setSidebarOptions(config::TSidebarOptions* options);
+    /// Follows the session's spell list widget options (applied at once) and
+    /// hands the session to the spell list.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP moc property getters.
     QQuickItem* gameWindowQuickItem() const override;
@@ -79,6 +86,8 @@ private:
     TSpellListDataModelSortFilterProxy* m_proxy;
     bool m_applyingOptions = false;
     TUiFocusManager m_focus;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
     QPointer<config::TSidebarOptions> m_options;
 };
 
@@ -89,7 +98,9 @@ public:
     TSpellListWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TSpellListWidgetManager() override;
 
-    TSidebarWidget* open(config::TSidebarOptions* options);
+    TSidebarWidget* open(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// An open widget follows the new session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
 

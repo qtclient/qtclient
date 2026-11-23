@@ -2,12 +2,37 @@
 
 #include <cip_gen.h>
 
-#include <QHash>
-#include <QPointer>
 #include <QSGNode>
+
+#include <vector>
 
 namespace tibia {
 namespace qmlcomponents {
+
+/// Every live tutorial marker item, the shared debug-overlay flag and the
+/// marker id counter (process-wide, like CipSoft's static).
+class TTutorialMarkerRegistry
+{
+public:
+    static TTutorialMarkerRegistry& instance();
+
+    /// Ids start at 1.
+    int nextUniqueMarkerID();
+    void registerMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item);
+    void unregisterMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item);
+    /// The first registered marker with `markerID`, else null.
+    cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* find(int markerID) const;
+    /// Pushes a changed flag to every registered marker.
+    void setDebugOverlayVisible(bool visible);
+    static bool debugOverlayVisible();
+    /// Every registered marker, in registration order.
+    const std::vector<cip::tibia::qmlcomponents::TTutorialMarkerQuickItem*>& markers() const { return m_markers; }
+
+private:
+    std::vector<cip::tibia::qmlcomponents::TTutorialMarkerQuickItem*> m_markers;
+    static inline int s_nextMarkerID = 1;
+    static inline bool s_debugOverlayVisible = false;
+};
 
 /// QML singleton TutorialHelper (CIP: TTutorialHelperQmlService).
 /// Not `final`: QML registration subclasses via QQmlElement.
@@ -23,17 +48,9 @@ public:
     Q_INVOKABLE void setDebugOverlayVisible(bool Visible) override;
     Q_INVOKABLE cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* findTutorialMarkerQuickItemWithID(int ID) override;
     Q_INVOKABLE QJSValue findSpellInfoForSpell(const QString& SpellName) override;
-
-    void registerMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item);
-    void unregisterMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item);
-
-private:
-    int m_nextId = 1;
-    bool m_debugOverlay = false;
-    QHash<int, QPointer<cip::tibia::qmlcomponents::TTutorialMarkerQuickItem>> m_markers;
 };
 
-/// Registers / unregisters with TutorialHelper when markerID is set.
+/// Registers itself with TTutorialMarkerRegistry for its lifetime.
 /// qtclient paints a CIP-style highlight plate until the full arrow material lands.
 /// Not `final`: QML registration subclasses via QQmlElement.
 class TTutorialMarkerQuickItem : public cip::tibia::qmlcomponents::TTutorialMarkerQuickItem

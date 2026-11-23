@@ -525,8 +525,6 @@ void THudOptionsPage::load(const TClientOptions& options)
     TBoundOptionsPage::load(options);
     const QJsonObject& section = options.specialConditionsOptions();
     m_specialConditions = !section.isEmpty() ? SpecialConditionsOptions::fromJson(section) : SpecialConditionsOptions::defaults();
-    m_specialConditionsShowInHUDEnabled = m_specialConditions.showInHUD;
-    m_specialConditionsShowInBarEnabled = m_specialConditions.showInBar;
     Q_EMIT changed();
     rebuildSpecialConditionsModel();
 }
@@ -534,10 +532,33 @@ void THudOptionsPage::load(const TClientOptions& options)
 void THudOptionsPage::apply(TClientOptions& options) const
 {
     TBoundOptionsPage::apply(options);
-    SpecialConditionsOptions conditions = m_specialConditions;
-    conditions.showInHUD = m_specialConditionsShowInHUDEnabled;
-    conditions.showInBar = m_specialConditionsShowInBarEnabled;
-    options.setSpecialConditionsOptions(conditions.toJson());
+    options.setSpecialConditionsOptions(m_specialConditions.toJson());
+}
+
+bool THudOptionsPage::specialConditionsShowInHUDEnabled() const
+{
+    return m_specialConditions.showInHUD;
+}
+
+void THudOptionsPage::setSpecialConditionsShowInHUDEnabled(const bool enabled)
+{
+    if (m_specialConditions.showInHUD == enabled)
+        return;
+    m_specialConditions.showInHUD = enabled;
+    Q_EMIT changed();
+}
+
+bool THudOptionsPage::specialConditionsShowInBarEnabled() const
+{
+    return m_specialConditions.showInBar;
+}
+
+void THudOptionsPage::setSpecialConditionsShowInBarEnabled(const bool enabled)
+{
+    if (m_specialConditions.showInBar == enabled)
+        return;
+    m_specialConditions.showInBar = enabled;
+    Q_EMIT changed();
 }
 
 void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialConditionIndex, const bool Enabled)
@@ -973,23 +994,36 @@ void TButtonBarOptionsPage::moveEnabledButtonDown(const QString& ButtonName)
 
 void TSoundOptionsPage::refreshSoundDevices()
 {
-    const QString autoLabel = qtTrId("optionsmenu_sound_used_sound_device_auto");
-    QStringList model{ autoLabel };
-    sound::TSoundEngine& engine = sound::TSoundEngine::instance();
-    engine.updateAvailableDevices();
-    m_soundEngineInitialized = engine.isInitialized();
-    model += engine.availableSoundDevices();
-    if (m_soundDeviceListModel != model)
-        m_soundDeviceListModel = std::move(model);
-    if (!m_soundDevice.isEmpty() && !m_soundDeviceListModel.contains(m_soundDevice))
-        m_soundDevice = autoLabel;
+    sound::TSoundEngine::instance().updateAvailableDevices();
+    if (!m_soundDevice.isEmpty() && !soundDeviceListModel().contains(m_soundDevice))
+        m_soundDevice = qtTrId("optionsmenu_sound_used_sound_device_auto");
 }
 
 TSoundOptionsPage::TSoundOptionsPage(QObject* parent)
     : TBoundOptionsPage(SoundBindings, parent)
 {
-    m_soundDevice = qtTrId("optionsmenu_sound_used_sound_device_auto");
-    refreshSoundDevices();
+    m_masterVolume = 100;
+    m_musicVolume = 100;
+    m_anthemEnabled = true;
+    m_ambienceVolume = 100;
+    m_itemsVolume = 100;
+    m_eatingEnabled = true;
+    m_moveItemEnabled = true;
+    m_eventsVolume = 100;
+    connect(&sound::TSoundEngine::instance(), &sound::TSoundEngine::availableSoundDevicesChanged, this,
+            &TSoundOptionsPage::changed);
+}
+
+bool TSoundOptionsPage::soundEngineInitialized() const
+{
+    return sound::TSoundEngine::instance().isInitialized();
+}
+
+QStringList TSoundOptionsPage::soundDeviceListModel() const
+{
+    QStringList devices = sound::TSoundEngine::instance().availableSoundDevices();
+    devices.insert(0, qtTrId("optionsmenu_sound_used_sound_device_auto"));
+    return devices;
 }
 
 void TSoundOptionsPage::load(const TClientOptions& options)
@@ -1015,7 +1049,7 @@ void TSoundOptionsPage::apply(TClientOptions& options) const
 
 bool TSoundOptionsPage::soundEnabled() const
 {
-    return m_soundEngineInitialized && m_masterVolume != 0;
+    return soundEngineInitialized() && m_masterVolume != 0;
 }
 
 namespace {
@@ -1270,6 +1304,21 @@ void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
 
 namespace {
 
+/// Hotkey order: the shorter sequence first; of equally long ones, the first
+/// differing key decides by its key code without modifiers.
+bool hotkeySequenceLess(const QKeySequence& a, const QKeySequence& b)
+{
+    if (a.count() != b.count())
+        return a.count() < b.count();
+    for (int i = 0; i < a.count(); ++i) {
+        const quint32 aKey = static_cast<quint32>(a[i].toCombined());
+        const quint32 bKey = static_cast<quint32>(b[i].toCombined());
+        if (aKey != bKey)
+            return (aKey & 0x1ffffff) < (bKey & 0x1ffffff);
+    }
+    return false;
+}
+
 /// CIP's hotkeys page sort: custom settings first, by first
 /// then second key (rows without keys last), then the action buttons, then the
 /// other static actions, both by description.
@@ -1296,12 +1345,12 @@ bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
     if (!(aStatic || aButton || !bButton))
         return true;
     if (a->first == b->first)
-        return a->second < b->second;
+        return hotkeySequenceLess(a->second, b->second);
     if (a->first.isEmpty())
         return false;
     if (b->first.isEmpty())
         return true;
-    return a->first < b->first;
+    return hotkeySequenceLess(a->first, b->first);
 }
 
 }
@@ -1475,6 +1524,26 @@ void THotkeysOptionsPage::onMessageDialogConfirmed()
     rebuildModel();
 }
 
+void THotkeysOptionsPage::clearActionBarMappings(const uint8_t actionBarId)
+{
+    if (THotkeySet* set = m_options.set(currentSetName()))
+        std::erase_if(set->mappings, [actionBarId](const auto& entry) { return entry.first.first == actionBarId; });
+}
+
+void THotkeysOptionsPage::closeDialogs()
+{
+    const auto close = [](auto* controller) {
+        if (controller->dialog()->item())
+            controller->dialog()->close();
+    };
+    for (auto* prompt : findChildren<gamewindow::TGenericEnterTextDialogController*>(Qt::FindDirectChildrenOnly))
+        close(prompt);
+    for (auto* message : findChildren<gamewindow::TMessageDialogController*>(Qt::FindDirectChildrenOnly))
+        close(message);
+    for (auto* record : findChildren<gamewindow::TRecordKeyboardShortcutDialogController*>(Qt::FindDirectChildrenOnly))
+        close(record);
+}
+
 void THotkeysOptionsPage::resetToDefault()
 {
     static const QStringList Vocations{ QStringLiteral("Knight"), QStringLiteral("Paladin"), QStringLiteral("Sorcerer"), QStringLiteral("Druid"),
@@ -1586,6 +1655,20 @@ void THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting(
         return;
     edited->sync();
     commitRows(true);
+}
+
+void TActionBarsOptionsPage::load(const TClientOptions& options)
+{
+    loadBindings(this, actionBarsBindings(), options);
+    resetClearFlags();
+}
+
+void TActionBarsOptionsPage::resetClearFlags()
+{
+    m_clearBottomActionBar1 = m_clearBottomActionBar2 = m_clearBottomActionBar3 = false;
+    m_clearLeftActionBar1 = m_clearLeftActionBar2 = m_clearLeftActionBar3 = false;
+    m_clearRightActionBar1 = m_clearRightActionBar2 = m_clearRightActionBar3 = false;
+    Q_EMIT changed();
 }
 
 std::span<const TOptionBinding> actionBarsBindings() { return ActionBarsBindings; }

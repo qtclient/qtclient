@@ -13,6 +13,8 @@
 
 #include <tibia/game/gamesession.h>
 #include <tibia/appearances/appearancetype.h>
+#include "game/currentgamesession.h"
+#include "game/playerdata.h"
 
 #include <QGuiApplication>
 #include <QQuickItem>
@@ -122,9 +124,10 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
         return std::any{};
     });
     // CIP: the player's data-changed signal refreshes everything the panel shows.
-    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange",
-                               "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
+    for (const char* event : { "onSoulChange", "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange", "onBlessingsChange" })
         m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::onPlayerDataChanged));
+    m_gameSessionListener = tibia::game::subscribeCurrentGameSessionChanged([this] { onGameSessionChanged(); });
+    onGameSessionChanged();
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
     });
@@ -167,6 +170,15 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
 
 TPlayerInventoryAndStatusController::~TPlayerInventoryAndStatusController()
 {
+    tibia::game::unsubscribeCurrentGameSessionChanged(m_gameSessionListener);
+}
+
+void TPlayerInventoryAndStatusController::onGameSessionChanged()
+{
+    if (game::TPlayerData* player = tibia::game::currentPlayerData())
+        connect(player, &game::TPlayerData::playerDataChanged, this, &TPlayerInventoryAndStatusController::onPlayerDataChanged,
+                Qt::UniqueConnection);
+    onPlayerDataChanged();
 }
 
 void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* panel)
@@ -224,7 +236,8 @@ void TPlayerInventoryAndStatusController::applyPlayerTacticsAndInventorySizeFrom
     Q_EMIT inventoryMinimizedChanged();
     Q_EMIT chaseModeChanged();
     // CIP's login carries the tactics; CIP's server keeps its own until told.
-    if (tibia::game::isOnline() && m_chaseEnabled != (tibia::game::getChaseMode() == tibia::client::ChaseOpponent))
+    const game::TPlayerData* player = tibia::game::currentPlayerData();
+    if (tibia::game::isOnline() && player && m_chaseEnabled != player->chaseOpponents())
         publishTactics();
 }
 
@@ -251,13 +264,8 @@ void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    const container::TInventorySlot appearance = slotAppearance(slotId);
-    container::TSlotInfo info;
-    info.slotId = static_cast<uint>(slotId);
-    info.appearance = appearance;
-    info.text = container::slotText(appearance, m_showExpire, m_showExpireWhenUnused);
-    info.managedContainerTooltip = container::managedContainerTooltip(appearance);
-    m_slots[slotId]->assign(info);
+    m_slots[slotId]->assign(
+        container::TContainerRenderProvider::inventorySlotInfo(slotId, m_showExpire, m_showExpireWhenUnused));
 }
 
 void TPlayerInventoryAndStatusController::onInventoryChanged()
@@ -352,9 +360,12 @@ void TPlayerInventoryAndStatusController::refreshBlessings()
 
 void TPlayerInventoryAndStatusController::refreshTactics()
 {
-    const bool chase = tibia::game::getChaseMode() == tibia::client::ChaseOpponent;
-    const bool secure = tibia::game::isSafeFight();
-    const int pvpMode = tibia::game::getPVPMode();
+    const game::TPlayerData* player = tibia::game::currentPlayerData();
+    if (!player)
+        return;
+    const bool chase = player->chaseOpponents();
+    const bool secure = player->secureMode();
+    const int pvpMode = player->pvpMode();
     if (chase != m_chaseEnabled) {
         m_chaseEnabled = chase;
         Q_EMIT chaseModeChanged();

@@ -10,6 +10,7 @@
 
 namespace tibia::protobuf::protocol {
 class GameserverMessageSpellDataModification;
+class GameserverMessageUnlockedSpells;
 }
 
 namespace tibia {
@@ -19,14 +20,25 @@ namespace spells {
 void ownProductSurface(QObject* parent);
 
 
+class TSpellInfoStorage;
+
+/// The session's handler of the spell messages: the spell data modifications
+/// go to the spell info storage, each unlocked spell is announced
+/// (receivedUnlockedSpell, the action bars follow it).
 class TSpellsProtocolMessageHandler final : public cip::tibia::spells::TSpellsProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::spells::TSpellsProtocolMessageHandler::TSpellsProtocolMessageHandler;
+    explicit TSpellsProtocolMessageHandler(TSpellInfoStorage* spellInfoStorage);
+
     /// The server's spell data modifications, grouped by spell, replace the
     /// storage's whole set.
-    static void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
+    void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
+    /// receivedUnlockedSpell for every spell of the message, in its order.
+    void handleUnlockedSpellsMessage(const ::tibia::protobuf::protocol::GameserverMessageUnlockedSpells& message);
+
+private:
+    TSpellInfoStorage* m_spellInfoStorage = nullptr;
 };
 
 }

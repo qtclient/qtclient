@@ -5,6 +5,7 @@
 #include "protocol/clientmessages.h"
 
 #include "network/gameserverpacketprocessor.h"
+#include "protocol/gameactioncontexthelper.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolclassicwire.h"
 #include "protocol/protocolcodes.h"
@@ -970,12 +971,12 @@ void sendSeekInContainer(const uint8_t containerId, const uint16_t index)
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void sendInspectionNormalObject(const Position& position)
+void sendInspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location)
 {
     auto message = tibia::protocol::newGameclientMessage(205);
     auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
     m->set_inspection_type(tibia::client::INSPECT_NORMALOBJECT);
-    setCoordinate(m->mutable_position(), position);
+    tibia::protocol::TGameActionContextHelper().fillObjectPosition(location, m->mutable_object_position());
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -989,8 +990,8 @@ void sendInspectionObject(const tibia::client::InspectObjectTypes inspectionType
     auto message = tibia::protocol::newGameclientMessage(205);
     auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
     m->set_inspection_type(inspectionType);
-    m->set_object_id(itemId);
-    m->set_count(itemCount);
+    m->mutable_object_identifier()->set_type_id(itemId);
+    m->mutable_object_identifier()->set_data(itemCount);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1600,31 +1601,11 @@ void sendStashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void sendStashReopen()
-{
-    auto message = tibia::protocol::newGameclientMessage(40);
-    auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
-    m->set_action(4);
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
 void sendGreet(const uint32_t npcId)
 {
     auto message = tibia::protocol::newGameclientMessage(238);
     auto* m = message->MutableExtension(GameclientMessageGreet::gameclient_message_greet);
     m->set_creature_id(npcId);
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
-void sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action)
-{
-    auto message = tibia::protocol::newGameclientMessage(40);
-    auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
-    m->set_action(action);
-    setCoordinate(m->mutable_position(), position);
-    m->set_object_id(itemId);
-    m->set_stack_position(stackpos);
-    m->set_count(std::min<uint32_t>(count, 0xff));
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 

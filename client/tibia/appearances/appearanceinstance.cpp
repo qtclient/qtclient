@@ -22,6 +22,7 @@
 #include "client/magiceffectopacity.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <iterator>
 #include <tibia/game/thingsession_forward.h>
@@ -34,6 +35,15 @@ namespace {
 bool hasPatterns(const TAppearanceType& type)
 {
     return type.getNumPatternX() > 1 || type.getNumPatternY() > 1 || type.getNumPatternZ() > 1;
+}
+
+/// A type without flags whose only frame group is an empty initial one (one
+/// pattern, one layer, no sprites).
+std::unique_ptr<TAppearanceType> emptyAppearanceType()
+{
+    auto type = std::make_unique<TAppearanceType>();
+    type->addFrameGroup(EFixedFrameGroup::ObjectInitial, TAppearanceTypeSpriteInfo());
+    return type;
 }
 
 } // namespace
@@ -97,9 +107,13 @@ void objectPatternsFor(TAppearanceType* type, const int countOrSubType, int& pat
 }
 
 
-TAppearanceInstance::TAppearanceInstance(TAppearanceType* type)
+TAppearanceInstance::TAppearanceInstance(TAppearanceType* type, const qint64 animationStartMs)
     : m_type(type)
+    , m_animationStartMs(animationStartMs)
 {
+    // Host: instances are made on worker threads too.
+    static std::atomic<int> nextSerialNumber{ 0 };
+    m_serialNumber = nextSerialNumber++;
     // The instance draws its type's initial frame group, an outfit's idle one
     // when it has none (CIP: the type's sprites info of frame group 0).
     if (!type)
@@ -111,13 +125,30 @@ TAppearanceInstance::TAppearanceInstance(TAppearanceType* type)
     // The types live as long as the appearances: the sequence refers to the group.
     const std::shared_ptr<const TAppearanceTypeSpriteInfo> spritesInfo(std::shared_ptr<void>(), &type->frameGroup(group));
     m_spriteSequence = std::make_shared<TAppearanceInstanceSpriteSequence>(spritesInfo, false);
-    m_spriteSequence->setPattern({}, m_animationStartMs);
+    m_spriteSequence->setPattern({}, m_animationStartMs, TOutfitAppearanceInstance::reverseAddonsOf(type));
 }
 
 void TAppearanceInstance::setSpritePattern(const TAppearancePattern& pattern)
 {
     if (m_spriteSequence)
         m_spriteSequence->setPattern(pattern, m_animationStartMs);
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TAppearanceInstance::currentSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_spriteSequence ? m_spriteSequence->currentSpriteInfo() : none;
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TAppearanceInstance::firstSpriteInfo() const
+{
+    static const TAppearanceInstanceSpriteInfoPtr none;
+    return m_spriteSequence ? m_spriteSequence->firstSpriteInfo() : none;
+}
+
+worldmap::TWorldMapSubfieldExtent TAppearanceInstance::displacement() const
+{
+    return { m_type->getDisplacementX(), m_type->getDisplacementY(), elevation() };
 }
 
 uint16_t TAppearanceInstance::id() const
@@ -251,6 +282,19 @@ TAppearanceInstanceSpriteInfoPtr TOutfitAppearanceInstance::spriteInfoAtPhase(co
     const auto moving = m_movingSequence ? m_movingSequence->spriteInfos() : std::vector<TAppearanceInstanceSpriteInfoPtr>{};
     const size_t index = static_cast<size_t>(phase) - idle.size();
     return index < moving.size() ? moving[index] : nullptr;
+}
+
+TObjectOutfitAppearanceInstance::TObjectOutfitAppearanceInstance(TAppearanceType* type)
+    : TOutfitAppearanceInstance(type)
+{
+    m_idleSequence = m_spriteSequence;
+    m_movingSequence = m_spriteSequence;
+    updatePreviewSpriteInfo();
+}
+
+void TObjectOutfitAppearanceInstance::updatePreviewSpriteInfo()
+{
+    m_previewSpriteInfo = m_spriteSequence ? m_spriteSequence->currentSpriteInfo() : nullptr;
 }
 
 void TOutfitAppearanceInstance::updatePreviewSpriteInfo()
@@ -414,12 +458,11 @@ void TEffectInstance::setSource(const tibia::client::MagicEffectSources source)
     m_opacity = spellEffectOpacityFor(source);
 }
 
-void TEffectInstance::start(const Position& field, const qint64 nowMs, const qint64 delayMs)
+void TEffectInstance::start(const Position& field, const qint64 nowMs)
 {
     m_fieldPosition = field;
     m_startMs = nowMs;
     m_nowMs = nowMs;
-    m_delayMs = std::max<qint64>(0, delayMs);
     // The pattern follows the field's coordinate; the sequence's animation
     // starts now.
     if (m_type) {
@@ -433,10 +476,65 @@ void TEffectInstance::start(const Position& field, const qint64 nowMs, const qin
 void TEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
-    if (m_delayMs == 0)
-        updateAnimation(nowMs);
-    else if (m_startMs + m_delayMs < nowMs)
-        updateAnimation(nowMs - m_delayMs);
+    updateAnimation(nowMs);
+}
+
+TDelayedEffectInstance::TDelayedEffectInstance(std::shared_ptr<TEffectInstance> effect, const qint64 createdMs,
+                                               const qint64 delayMs)
+    : TEffectInstance(effect->thingType())
+    , m_effect(std::move(effect))
+    , m_emptyType(emptyAppearanceType())
+    , m_delayMs(delayMs)
+    , m_createdMs(createdMs)
+    , m_currentMs(createdMs)
+{
+    m_fieldPosition = m_effect->field();
+    m_emptyInstance = std::make_shared<TAppearanceInstance>(m_emptyType.get());
+    m_emptySpriteInfo = std::make_shared<TDummyAppearanceInstanceSpriteInfo>();
+    // Host: the renderer draws an effect's sprite sequence and pattern, and
+    // reads its source and variant from the instance it holds.
+    m_spriteSequence = m_effect->spriteSequence();
+    m_patternX = m_effect->patternX();
+    m_patternY = m_effect->patternY();
+    m_startMs = createdMs;
+    m_nowMs = createdMs;
+    setSource(m_effect->source());
+    setVariantId(m_effect->variantId());
+    setUnderCreatures(m_effect->underCreatures());
+}
+
+TDelayedEffectInstance::~TDelayedEffectInstance() = default;
+
+TAppearanceType* TDelayedEffectInstance::thingType() const
+{
+    if (isShown())
+        return m_effect->thingType();
+    return m_emptyInstance->thingType();
+}
+
+const TAppearanceInstanceSpriteInfoPtr& TDelayedEffectInstance::currentSpriteInfo() const
+{
+    if (isShown())
+        return m_effect->currentSpriteInfo();
+    return m_emptySpriteInfo;
+}
+
+bool TDelayedEffectInstance::updateAnimation(const qint64 nowMs)
+{
+    m_currentMs = nowMs;
+    if (!isShown())
+        return false;
+    return m_effect->updateAnimation(nowMs - m_delayMs);
+}
+
+const Position& TDelayedEffectInstance::field() const
+{
+    return m_effect->field();
+}
+
+bool TDelayedEffectInstance::isFinished() const
+{
+    return m_effect->isFinished();
 }
 
 const animation::TAnimator* TEffectInstance::animator() const
@@ -478,13 +576,18 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_fieldPosition = from;
     m_startMs = nowMs;
     m_nowMs = nowMs;
-    m_delta = QPoint(to.x - from.x, to.y - from.y);
+    const QPoint delta(to.x - from.x, to.y - from.y);
     // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
     static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
-    const double distance = std::sqrt(static_cast<double>(m_delta.x() * m_delta.x() + m_delta.y() * m_delta.y()));
+    const double distance = std::sqrt(static_cast<double>(delta.x() * delta.x() + delta.y() * delta.y()));
     m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
-    directionPattern(fieldDirection(m_delta.x(), m_delta.y()), m_patternX, m_patternY);
-    m_delta *= tibia::config::spriteSize();
+    // The path runs between the top-left sub-fields of both fields (no elevation:
+    // the host passes no elevation for either end).
+    m_tween = std::make_shared<tibia::animation::TWorldMapLinearMovementTween>(
+        nowMs, nowMs + static_cast<qint64>(m_flightDuration),
+        tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(from), 0),
+        tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(to), 0));
+    directionPattern(fieldDirection(delta.x(), delta.y()), m_patternX, m_patternY);
     m_animationStartMs = nowMs;
     setSpritePattern(TAppearancePattern{ m_patternX, m_patternY, 0 });
     return m_flightDuration;
@@ -493,13 +596,21 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
 void TMissileEffectInstance::update(const qint64 nowMs)
 {
     m_nowMs = nowMs;
+    if (m_tween)
+        m_tween->advance(nowMs);
     updateAnimation(nowMs);
 }
 
 QPoint TMissileEffectInstance::flightOffset() const
 {
-    const tibia::animation::TWorldMapLinearMovementTween tween(m_delta, m_flightDuration);
-    return tween.offsetAt(static_cast<float>(std::max<qint64>(0, m_nowMs - m_startMs)));
+    if (!m_tween)
+        return {};
+    const auto from =
+        tibia::worldmap::TWorldMapSubfieldCoordinate::fromFieldElevated(tibia::worldmap::TWorldMapCoordinate(m_pathFrom), 0);
+    const auto& position = m_tween->position();
+    // 32 sub-fields per field; the host draws a field `spriteSize()` pixels wide.
+    const int spriteSize = tibia::config::spriteSize();
+    return { (position.subfieldX - from.subfieldX) * spriteSize / 32, (position.subfieldY - from.subfieldY) * spriteSize / 32 };
 }
 
 int fieldDirection(const int dx, const int dy)
@@ -623,7 +734,7 @@ bool TAppearanceInstanceFactory::hasAppearanceType(const ThingCategory category,
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(TAppearanceType* type)
 {
     if (!type || type->isNull())
-        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TWorldMapAppearanceInstance>(type);
 
     switch (type->getCategory()) {
         case ThingCategoryCreature:
@@ -684,12 +795,11 @@ TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int6
 }
 
 std::shared_ptr<TFieldEffectInstance> TAppearanceInstanceFactory::createFieldEffect(const uint16_t id, const Position& field,
-                                                                                   const uint8_t source, const qint64 nowMs,
-                                                                                   const qint64 delayMs)
+                                                                                   const uint8_t source, const qint64 nowMs)
 {
     auto effect = makeTracked<TFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
     effect->setSource(static_cast<tibia::client::MagicEffectSources>(source));
-    effect->start(field, nowMs, delayMs);
+    effect->start(field, nowMs);
     return effect;
 }
 
@@ -829,8 +939,9 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outf
         return makeTracked<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())
         return makeTracked<TEffectInstance>(type);
+    // Host: an outfit without a known appearance (invisible) draws nothing.
     if (!type || type->isNull())
-        return makeTracked<TCreaturePlaceholderAppearanceInstance>(type);
+        return makeTracked<TWorldMapAppearanceInstance>(type);
     return createOutfit(type, outfit, 2);
 }
 

@@ -29,8 +29,6 @@ constexpr auto OptionsKey = "vipWidgetOptions";
 constexpr int VipWidgetContext = 7;
 /// CIP : the add/edit name dialogs' input length.
 constexpr uint MaxNameLength = 29;
-/// CIP : TVipRenderInfo's single-shot highlight timer.
-constexpr int HighlightMs = 1000;
 
 /// CIP 's context menu order.
 constexpr A ContextMenuOrder[] = {
@@ -64,79 +62,124 @@ int statusRank(const int state)
 
 }
 
-TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent)
+TVipWidgetDataModel::TVipWidgetDataModel(QObject* parent)
     : cip::tibia::gamewindow::TVipWidgetDataModel(parent)
-    , m_storage(storage)
 {
-    connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded);
-    connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
-    connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
-    onVipGroupDataChanged();
 }
 
-void TVipWidgetDataModel::setStorage(creatures::TVipStorage* storage)
+void TVipWidgetDataModel::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (m_storage)
-        disconnect(m_storage, nullptr, this, nullptr);
-    m_storage = storage;
-    if (storage) {
-        connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded);
-        connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
-        connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-        connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    setVipStorage(session ? session->vipStorage() : nullptr);
+}
+
+void TVipWidgetDataModel::setVipStorage(const std::shared_ptr<creatures::TVipStorage>& VipStorage)
+{
+    m_connectionManager.disconnectAll();
+    m_vipStorage = VipStorage;
+    m_groups.clear();
+    if (creatures::TVipStorage* storage = m_vipStorage.get()) {
+        m_connectionManager.add(
+            connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded));
+        m_connectionManager.add(connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged));
+        m_connectionManager.add(connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved));
+        m_connectionManager.add(
+            connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged));
     }
-    onVipGroupDataChanged();
+    rebuild();
 }
 
-/// A VIP's rows take the new state; coming online from offline highlights them
-/// until the highlight timer ends.
-void TVipWidgetDataModel::onVipStateChanged(const uint32_t id, const int state)
+void TVipWidgetDataModel::rebuild()
 {
-    const auto it = std::find_if(m_rows.begin(), m_rows.end(), [id](const Row& row) { return row.id == id; });
-    if (it == m_rows.end() || it->state == state)
+    removeAllRows();
+    if (!m_vipStorage)
         return;
-    TVipRenderInfo*& info = m_renderInfos[id];
-    if (!info) {
-        info = new TVipRenderInfo(id, this);
-        connect(info, &TVipRenderInfo::vipRenderInfoChanged, this, [this](const uint32_t characterId) {
-            if (TVipRenderInfo* render = m_renderInfos.value(characterId); !render || !render->highlighted())
-                m_highlighted.remove(characterId);
-            onVipRenderInfoChanged(characterId);
-        });
-    }
-    info->clearHighlight();
-    if (isOffline(it->state) && isOnline(state)) {
-        m_highlighted.insert(id);
-        info->startHighlight(HighlightMs);
-    }
-    for (Row& row : m_rows) {
-        if (row.id == id)
-            row.state = state;
-    }
-    onVipRenderInfoChanged(id);
+    m_groups = m_vipStorage->groupMap();
+    addVips(m_vipStorage->vips());
 }
 
-int TVipWidgetDataModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_rows.size()); }
+void TVipWidgetDataModel::removeAllRows()
+{
+    if (rowCount() == 0)
+        return;
+    beginRemoveRows({}, 0, rowCount() - 1);
+    m_vipRenderInfos.clear();
+    endRemoveRows();
+}
+
+void TVipWidgetDataModel::addVips(const std::vector<creatures::TVipStorage::Vip>& Vips)
+{
+    for (const creatures::TVipStorage::Vip& vip : Vips) {
+        if (vip.groups.empty()) {
+            beginInsertRows({}, rowCount(), rowCount());
+            addVipRenderInfo(vip, ungroupedName(), true);
+        } else {
+            // The announced range is one row longer than the rows added.
+            beginInsertRows({}, rowCount(), rowCount() + static_cast<int>(vip.groups.size()));
+            bool firstGroupEntry = true;
+            for (const uint8_t groupId : vip.groups) {
+                QString groupName = ungroupedName();
+                if (const auto it = m_groups.find(groupId); it != m_groups.end())
+                    groupName = it->second.name;
+                addVipRenderInfo(vip, groupName, firstGroupEntry);
+                firstGroupEntry = false;
+            }
+        }
+        endInsertRows();
+    }
+}
+
+void TVipWidgetDataModel::addVipRenderInfo(const creatures::TVipStorage::Vip& VipData, const QString& GroupName, const bool FirstGroupEntry)
+{
+    const auto renderInfo = std::make_shared<TVipRenderInfo>(VipData, GroupName, FirstGroupEntry);
+    m_vipRenderInfos.push_back(renderInfo);
+    connect(renderInfo.get(), &TVipRenderInfo::vipRenderInfoChanged, this, &TVipWidgetDataModel::onVipRenderInfoChanged);
+}
+
+void TVipWidgetDataModel::onVipStateChanged(const uint32_t CharacterID, const int State)
+{
+    std::vector<std::shared_ptr<TVipRenderInfo>> renderInfos;
+    for (const std::shared_ptr<TVipRenderInfo>& renderInfo : m_vipRenderInfos) {
+        if (renderInfo->m_characterId == CharacterID)
+            renderInfos.push_back(renderInfo);
+    }
+    for (const std::shared_ptr<TVipRenderInfo>& renderInfo : renderInfos) {
+        if (!renderInfo || renderInfo->m_state == State)
+            continue;
+        renderInfo->m_highlightedTimer.stop();
+        if (isOffline(renderInfo->m_state) && isOnline(State)) {
+            renderInfo->m_highlighted = true;
+            renderInfo->m_highlightedTimer.start();
+        }
+        renderInfo->m_state = State;
+        Q_EMIT renderInfo->vipRenderInfoChanged(renderInfo->m_characterId);
+    }
+}
+
+int TVipWidgetDataModel::rowCount(const QModelIndex& parent) const
+{
+    Q_UNUSED(parent);
+    return static_cast<int>(m_vipRenderInfos.size());
+}
 
 QVariant TVipWidgetDataModel::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= rowCount())
+    if (index.row() < 0 || index.column() < 0 || !index.model() || index.row() >= rowCount())
         return {};
-    const Row& row = m_rows[static_cast<size_t>(index.row())];
+    const std::shared_ptr<TVipRenderInfo> renderInfo = m_vipRenderInfos[static_cast<size_t>(index.row())];
     switch (role) {
         case VipNameRole:
-            return row.name;
+            return renderInfo->name();
         case VipStateRole:
-            return row.state;
+            return renderInfo->state();
         case VipHighlightedRole:
-            return m_highlighted.contains(row.id);
+            return renderInfo->highlighted();
         case VipIconIdRole:
-            return row.iconId;
+            return static_cast<int>(renderInfo->iconId());
         case GroupNameRole:
-            return row.groupName;
+            return renderInfo->groupName();
         case PrimaryRole:
-            return row.primary;
+            return renderInfo->firstGroupEntry();
         default:
             return {};
     }
@@ -145,59 +188,44 @@ QVariant TVipWidgetDataModel::data(const QModelIndex& index, const int role) con
 QHash<int, QByteArray> TVipWidgetDataModel::roleNames() const
 {
     QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
-    roles.insert({
-        { VipNameRole, "vipName" },   { VipStateRole, "vipState" },     { VipHighlightedRole, "vipHighlighted" },
-        { VipIconIdRole, "vipIconId" }, { GroupNameRole, "groupName" },
-    });
+    roles[VipNameRole] = "vipName";
+    roles[VipStateRole] = "vipState";
+    roles[VipHighlightedRole] = "vipHighlighted";
+    roles[VipIconIdRole] = "vipIconId";
+    roles[GroupNameRole] = "groupName";
     return roles;
 }
 
-void TVipWidgetDataModel::onVipGroupDataChanged()
-{
-    beginResetModel();
-    m_rows.clear();
-    const std::vector<creatures::TVipStorage::Group>& groups = m_storage->groups();
-    for (const creatures::TVipStorage::Vip& vip : m_storage->vips()) {
-        if (vip.groups.empty()) {
-            m_rows.push_back({ vip.id, vip.name, vip.state, vip.iconId, ungroupedName(), true });
-            continue;
-        }
-        bool primary = true;
-        for (const uint8_t groupId : vip.groups) {
-            QString groupName = ungroupedName();
-            const auto it = std::find_if(groups.begin(), groups.end(), [groupId](const creatures::TVipStorage::Group& group) { return group.id == groupId; });
-            if (it != groups.end())
-                groupName = it->name;
-            m_rows.push_back({ vip.id, vip.name, vip.state, vip.iconId, groupName, primary });
-            primary = false;
-        }
-    }
-    endResetModel();
-}
+void TVipWidgetDataModel::onVipGroupDataChanged() { rebuild(); }
 
-void TVipWidgetDataModel::onVipDataChangedOrAdded() { onVipGroupDataChanged(); }
+void TVipWidgetDataModel::onVipDataChangedOrAdded() { rebuild(); }
 
-void TVipWidgetDataModel::onVipRemoved(const uint32_t characterId)
+void TVipWidgetDataModel::onVipRemoved(const uint32_t CharacterID)
 {
     for (;;) {
-        const auto it = std::find_if(m_rows.begin(), m_rows.end(), [characterId](const Row& row) { return row.id == characterId; });
-        if (it == m_rows.end())
+        const auto it = std::find_if(m_vipRenderInfos.begin(), m_vipRenderInfos.end(),
+                                     [CharacterID](const std::shared_ptr<TVipRenderInfo>& renderInfo) { return renderInfo->m_characterId == CharacterID; });
+        if (it == m_vipRenderInfos.end())
             return;
-        const int row = static_cast<int>(it - m_rows.begin());
+        const int row = static_cast<int>(it - m_vipRenderInfos.begin());
         beginRemoveRows({}, row, row);
-        m_rows.erase(it);
+        m_vipRenderInfos.erase(it);
         endRemoveRows();
     }
 }
 
-/// Every row of the VIP changed.
-void TVipWidgetDataModel::onVipRenderInfoChanged(const uint32_t characterId)
+/// Every row of the VIP changed: name, highlight, state, icon and group.
+void TVipWidgetDataModel::onVipRenderInfoChanged(const uint32_t CharacterID)
 {
-    for (size_t row = 0; row < m_rows.size(); ++row) {
-        if (m_rows[row].id == characterId) {
-            const QModelIndex changed = index(static_cast<int>(row), 0);
-            Q_EMIT dataChanged(changed, changed);
-        }
+    static const QList<int> ChangedRoles = { VipNameRole, VipHighlightedRole, VipStateRole, VipIconIdRole, GroupNameRole };
+    std::vector<int> rows;
+    for (size_t row = 0; row < m_vipRenderInfos.size(); ++row) {
+        if (m_vipRenderInfos[row]->m_characterId == CharacterID)
+            rows.push_back(static_cast<int>(row));
+    }
+    for (const int row : rows) {
+        const QModelIndex changed = createIndex(row, 0);
+        Q_EMIT dataChanged(changed, changed, ChangedRoles);
     }
 }
 
@@ -298,20 +326,18 @@ bool TVipWidgetDataModelSortFilterProxy::lessThan(const QModelIndex& left, const
     return false;
 }
 
-TVipWidgetController::TVipWidgetController(creatures::TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TVipWidgetController::TVipWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
-    , m_model(new TVipWidgetDataModel(storage, this))
+    , m_model(new TVipWidgetDataModel(this))
     , m_proxy(new TVipWidgetDataModelSortFilterProxy(this))
     , m_addVipDialog(new TGenericEnterTextDialogController(this))
     , m_addGroupDialog(new TGenericEnterTextDialogController(this))
     , m_editGroupDialog(new TGenericEnterTextDialogController(this))
     , m_editVipDialog(new TEditVipDialogController(this))
     , m_messageDialog(new TMessageDialogController(this))
-    , m_provider(storage, nullptr)
+    , m_provider(nullptr, nullptr)
 {
     connect(m_editVipDialog, &TEditVipDialogController::vipDataUpdated, this, &TVipWidgetController::onVipDataEdited);
-    connect(storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this, &TVipWidgetController::onLoginOrLogoutStateUpdate);
     m_proxy->setSourceModel(m_model);
 
     m_addVipDialog->setCaption(qtTrId("add_new_vip_caption"));
@@ -402,18 +428,24 @@ void TVipWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TVipWidgetController::setVipStorage(creatures::TVipStorage* storage)
+/// Host: the sidebar options come from the sidebar widgets manager
+/// (setSidebarOptions), which also re-reads them when they change.
+void TVipWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     m_addVipDialog->dialog()->close();
     m_addGroupDialog->dialog()->close();
-    m_editGroupDialog->dialog()->close();
     m_editVipDialog->dialog()->close();
-    if (m_storage)
-        disconnect(m_storage, nullptr, this, nullptr);
-    m_storage = storage;
-    if (storage)
-        connect(storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this, &TVipWidgetController::onLoginOrLogoutStateUpdate);
-    m_model->setStorage(storage);
+    m_connectionManager.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_storage = session ? session->vipStorage().get() : nullptr;
+    if (m_gameSession) {
+        if (m_storage)
+            m_connectionManager.add(connect(m_storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this,
+                                            &TVipWidgetController::onLoginOrLogoutStateUpdate));
+        readOptions();
+    }
+    m_model->connectToGameSession(GameSession);
 }
 
 void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, const int worldType)
@@ -596,20 +628,22 @@ void TVipWidgetManager::setWorldType(const int worldType)
 
 void TVipWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_storage = session ? session->vipStorage().get() : nullptr;
     m_exivaOptions = session ? session->exivaOptionsStorage().get() : nullptr;
     if (!m_controller)
         return;
-    m_controller->setVipStorage(m_storage);
+    m_controller->connectToGameSession(GameSession);
     m_controller->setExivaOptions(m_exivaOptions, m_worldType);
 }
 
 TSidebarWidget* TVipWidgetManager::open()
 {
     if (!m_controller) {
-        m_controller = new TVipWidgetController(m_storage, m_gameWindowItem, m_engine);
+        m_controller = new TVipWidgetController(m_gameWindowItem, m_engine);
         connect(m_controller, &TVipWidgetController::publishGameAction, this, &TVipWidgetManager::publishGameAction);
+        m_controller->connectToGameSession(m_gameSession);
         m_controller->setControlScheme(m_controlScheme);
         m_controller->setExivaOptions(m_exivaOptions, m_worldType);
         m_controller->setSidebarOptions(m_options);

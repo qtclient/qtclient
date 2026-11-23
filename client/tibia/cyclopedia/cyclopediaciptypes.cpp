@@ -1048,7 +1048,7 @@ void TCyclopediaProtocolMessageHandler::sendInspectCyclopediaObject(const uint16
     auto message = protocol::newGameclientMessage(205);
     auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
     m->set_inspection_type(tibia::client::INSPECT_CYCLOPEDIA);
-    m->set_object_id(objectId);
+    m->mutable_object_identifier()->set_type_id(objectId);
     protocol::sendGameclientMessage(std::move(message));
 }
 

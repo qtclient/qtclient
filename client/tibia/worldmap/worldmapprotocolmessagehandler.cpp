@@ -305,19 +305,17 @@ void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const Gameserver
     const auto intensity = static_cast<uint8_t>(AmbientLightMessage.intensity());
     const auto color = static_cast<uint8_t>(AmbientLightMessage.color());
     tibia::game::applyWorldLight(intensity, color);
-    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance()) {
-        // The 6x6x6 palette; indices past 215 are black.
-        QColor rgb = QColor::fromRgb(0, 0, 0, 255);
-        if (color <= 215)
-            rgb = QColor::fromRgb(color / 36 * 51, color / 6 % 6 * 51, color % 6 * 51, 255);
-        ambient->setLight({ intensity, rgb });
-    }
+    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance())
+        ambient->setLight(TAmbientLight(intensity, color));
 }
 
 void TWorldmapProtocolMessageHandler::handleTibiaTimeMessage(const GameserverMessageTibiaTime& TibiaTimeMessage)
 {
     const auto hour = static_cast<uint8_t>(TibiaTimeMessage.hour());
     const auto minute = static_cast<uint8_t>(TibiaTimeMessage.minute());
+    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance())
+        ambient->setNormalizedTibiaTimeOfDay(static_cast<float>(TibiaTimeMessage.hour()) / 24.0f
+                                             + static_cast<float>(TibiaTimeMessage.minute()) / 1440.0f);
     tibia::world::setWorldTime(hour, minute);
     tibia::game::notify("onChangeWorldTime", hour, minute);
 }

@@ -11,15 +11,12 @@ CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
 
 void ownProductSurface(QObject* parent)
 {
+    Q_UNUSED(parent);
     static bool owned = false;
     if (owned)
         return;
     owned = true;
     (void)typedKeep();
-    // CIP TAuthenticationProcessController keep-alive. Live login remains on
-    // TGameClient's TLoginRequestUploader; bindLoginUploader is opt-in.
-    if (parent)
-        new TAuthenticationProcessController(parent);
 }
 
 } // namespace tibia::authentication

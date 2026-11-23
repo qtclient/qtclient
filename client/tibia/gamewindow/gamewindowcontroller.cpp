@@ -15,7 +15,6 @@
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "gamewindow/calendardialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
-#include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/newsdialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -691,6 +690,21 @@ void TGameWindowController::closeOpenMultiActionButtons()
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
 }
 
+void TGameWindowController::onGameWindowClosed()
+{
+    Q_EMIT gameWindowClosed();
+}
+
+void TGameWindowController::onRequestBindFocusToChatInput()
+{
+    Q_EMIT bindFocusToChatInput();
+}
+
+void TGameWindowController::onRequestReleaseFocusFromChatInput()
+{
+    Q_EMIT releaseFocusFromChatInput();
+}
+
 void TGameWindowController::setShowCreateAccountOption(const bool show)
 {
     if (m_showCreateAccountOption == show)
@@ -743,36 +757,6 @@ void TGameWindowController::manageClientsPressed()
 void TGameWindowController::quitPressed()
 {
     Q_EMIT gameExitRequested();
-}
-
-void TGameWindowController::handleGameExitRequest()
-{
-    // Exit / Logout / Cancel only while a character is in the world.
-    // The login mask and the character list close with the window.
-    if (!tibia::game::isOnline()) {
-        Q_EMIT quitGameExitRequested();
-        return;
-    }
-    using Button = TMessageDialogController::Button;
-    if (!m_quitDialog) {
-        m_quitDialog = new TMessageDialogController(this);
-        m_quitDialog->setCloseOnButtonClicked(true);
-        m_quitDialog->setButtons({
-            new TMessageDialogButton(qtTrId("quit_game_exit_button"), Button::OK, QKeySequence(), this),
-            new TMessageDialogButton(qtTrId("quit_game_logout_button"), Button::USER_DEFINED, QKeySequence(), this),
-            new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc")), this),
-        });
-        connect(m_quitDialog, &TMessageDialogController::acceptClicked, this, [this](bool) {
-            m_allowWindowClose = true;
-            Q_EMIT quitGameExitRequested();
-        });
-        connect(m_quitDialog, &TMessageDialogController::buttonClicked, this,
-                [this](Button id, bool) {
-                    if (id == Button::USER_DEFINED)
-                        Q_EMIT quitGameLogoutRequested();
-                });
-    }
-    m_quitDialog->showMessage(qtTrId("warning"), qtTrId("quit_game_logout_warning"));
 }
 
 void TGameWindowController::optionsPressed()

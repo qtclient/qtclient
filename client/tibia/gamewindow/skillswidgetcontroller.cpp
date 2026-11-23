@@ -1,20 +1,20 @@
 #include "skillswidgetcontroller.h"
-#include "game/gamesessionbase.h"
 
 #include "analysers/analyserstorages.h"
-#include "client/gamecore.h"
-#include "config/sidebaroptions.h"
+#include "config/characterconfigurationmanager.h"
+#include "creatures/creaturestorage.h"
 #include "cyclopedia/combatstatsqmldata.h"
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <QJsonArray>
-#include <QJsonObject>
 #include <QQuickItem>
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
+
+#include <iterator>
 
 namespace tibia::gamewindow {
 
@@ -23,9 +23,7 @@ namespace {
 using game::SkillType;
 using Separator = game::SkillsWidgetEntry::Separator;
 
-constexpr auto OptionsKey = "skillsWidgetOptions";
-
-/// CIP 's entry list: (type, separator) pairs.
+/// The widget's rows, top to bottom: (type, separator).
 constexpr std::pair<SkillType, Separator> Entries[] = {
     { SkillType::Level, Separator::NONE },
     { SkillType::Experience, Separator::NONE },
@@ -50,47 +48,24 @@ constexpr std::pair<SkillType, Separator> Entries[] = {
     { SkillType::Fishing, Separator::NONE },
 };
 
-constexpr const char* PlayerEvents[] = {
-    "onHealthChange",      "onManaChange",          "onSkillChange",        "onBaseSkillChange",      "onMagicLevelChange",
-    "onBaseMagicLevelChange", "onExperienceChange", "onLevelChange",        "onSoulChange",           "onFreeCapacityChange",
-    "onTotalCapacityChange", "onBaseCapacityChange", "onStaminaChange",     "onRegenerationChange",   "onOfflineTrainingChange",
-    "onSpeedChange",       "onBaseSpeedChange",     "onExperienceRateChange", "onPremiumChange",
-    "onStoreExpBoostPurchasableChange",
-};
+bool isHidden(const config::TSkillsWidgetOptions& options, const SkillType type)
+{
+    return options.invisibleProgressBars.count(static_cast<int>(type)) != 0;
+}
 
 }
 
 TSkillsWidgetController::TSkillsWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
+    , m_entries(std::begin(Entries), std::end(Entries))
 {
-    for (const auto& [type, separator] : Entries) {
-        auto* data = new game::TSkillsWidgetEntryData(this);
-        m_rows.push_back({ type, separator, data });
-        m_skillsModel.append(data);
-    }
-    m_showOffenceStats = true;
-    m_showDefenceStats = true;
-    m_showMiscStats = true;
-
-    m_updateTimer.setSingleShot(true);
-    m_updateTimer.setInterval(0);
-    connect(&m_updateTimer, &QTimer::timeout, this, &TSkillsWidgetController::onPlayerDataChanged);
-    for (const char* event : PlayerEvents) {
-        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
-            m_updateTimer.start();
-            return std::any{};
-        });
-    }
-    onPlayerDataChanged();
-
-
     widget()->createItem(QStringLiteral("skillswidget.qml"));
+    createEntries();
     if (QQuickItem* item = quickItem()) {
-        connect(item, SIGNAL(requestContextMenu()), this, SLOT(onRequestContextMenu()));
-        connect(item, SIGNAL(beforeTooltipShow()), this, SLOT(onBeforeTooltipShow()));
-        connect(item, SIGNAL(openStoreWithXpBoost()), this, SLOT(onStoreXpBoostButtonClicked()));
-        connect(item, SIGNAL(openMoreStatDetails()), this, SLOT(onMoreStatDetailsClicked()));
-        connect(item, &QObject::destroyed, this, &TSkillsWidgetController::onWidgetQuickItemDestroyed);
+        m_connections.add(connect(item, SIGNAL(requestContextMenu()), this, SLOT(onRequestContextMenu())));
+        m_connections.add(connect(item, SIGNAL(beforeTooltipShow()), this, SLOT(onBeforeTooltipShow())));
+        m_connections.add(connect(item, SIGNAL(openStoreWithXpBoost()), this, SLOT(onStoreXpBoostButtonClicked())));
+        m_connections.add(connect(item, SIGNAL(openMoreStatDetails()), this, SLOT(onMoreStatDetailsClicked())));
     }
 }
 
@@ -100,9 +75,9 @@ QList<QObject*> TSkillsWidgetController::skillsModel() const { return m_skillsMo
 QObject* TSkillsWidgetController::offenceStats() const { return m_offenceStats; }
 QObject* TSkillsWidgetController::defenceStats() const { return m_defenceStats; }
 QObject* TSkillsWidgetController::miscStats() const { return m_miscStats; }
-bool TSkillsWidgetController::showOffenceStats() const { return m_showOffenceStats; }
-bool TSkillsWidgetController::showDefenceStats() const { return m_showDefenceStats; }
-bool TSkillsWidgetController::showMiscStats() const { return m_showMiscStats; }
+bool TSkillsWidgetController::showOffenceStats() const { return m_widgetOptions.offenceStatsVisible; }
+bool TSkillsWidgetController::showDefenceStats() const { return m_widgetOptions.defenceStatsVisible; }
+bool TSkillsWidgetController::showMiscStats() const { return m_widgetOptions.miscStatsVisible; }
 
 QQuickItem* TSkillsWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 
@@ -126,88 +101,146 @@ void TSkillsWidgetController::setCursorToResizeVertical(const bool Enabled)
 }
 void TSkillsWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 
+void TSkillsWidgetController::createEntries()
+{
+    m_skillsModel.clear();
+    m_skillsModel.reserve(static_cast<qsizetype>(m_entries.size()));
+    for (const auto& [type, separator] : m_entries) {
+        auto* data = new game::TSkillsWidgetEntryData(this);
+        m_skillsModel.append(data);
+        game::SkillsWidgetEntry initial;
+        initial.separatorType = separator;
+        if (separator == Separator::NONE) {
+            initial.progressBarVisible = !isHidden(m_widgetOptions, type);
+            data->assign(initial);
+            m_entriesByType[type] = data;
+        } else {
+            data->assign(initial);
+            m_separatorEntries.emplace_back(type, data);
+        }
+    }
+    Q_EMIT skillsModelChanged();
+}
+
+game::TSkillsWidgetEntryData* TSkillsWidgetController::entry(const SkillType type) const
+{
+    const auto it = m_entriesByType.find(type);
+    return it != m_entriesByType.end() ? it->second : nullptr;
+}
+
 void TSkillsWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
-    if (m_skillStats)
-        disconnect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this, &TSkillsWidgetController::onPlayerSkillStatsChanged);
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_skillStats = session ? session->playerSkillStats().get() : nullptr;
-    if (m_skillStats)
-        connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this, &TSkillsWidgetController::onPlayerSkillStatsChanged);
+    m_gameSessionConnections.disconnectAll();
+    m_options = nullptr;
+    m_skillStats = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session) {
+        if (config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get())
+            m_options = configuration->sidebarOptions();
+        if (game::TPlayerData* playerData = session->playerData().get())
+            m_gameSessionConnections.add(
+                connect(playerData, &game::TPlayerData::playerDataChanged, this, &TSkillsWidgetController::onPlayerDataChanged));
+        m_skillStats = session->playerSkillStats().get();
+        if (m_skillStats)
+            m_gameSessionConnections.add(connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this,
+                                                 &TSkillsWidgetController::onPlayerSkillStatsChanged));
+        if (m_options) {
+            m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::skillsWidgetOptionsChanged, this,
+                                                 &TSkillsWidgetController::onWidgetOptionsChanged));
+            onWidgetOptionsChanged();
+        }
+    }
     onPlayerSkillStatsChanged();
-}
-
-void TSkillsWidgetController::setSidebarOptions(config::TSidebarOptions* options)
-{
-    m_options = options;
-    readOptions();
-}
-
-void TSkillsWidgetController::readOptions()
-{
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    m_invisibleProgressBars.clear();
-    for (const QJsonValue& value : json.value(QLatin1String("invisibleProgressBars")).toArray())
-        m_invisibleProgressBars.insert(value.toString());
-    m_showOffenceStats = json.value(QLatin1String("offenceStatsVisible")).toBool(true);
-    m_showDefenceStats = json.value(QLatin1String("defenceStatsVisible")).toBool(true);
-    m_showMiscStats = json.value(QLatin1String("miscStatsVisible")).toBool(true);
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
-    Q_EMIT widgetOptionsChanged();
     onPlayerDataChanged();
 }
 
-void TSkillsWidgetController::writeOptions()
+void TSkillsWidgetController::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    if (m_premiumTimeStorage)
+        disconnect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this,
+                   &TSkillsWidgetController::onPlayerDataChanged);
+    m_premiumTimeStorage = premiumTimeStorage;
+    if (!m_premiumTimeStorage)
+        return;
+    connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSkillsWidgetController::onPlayerDataChanged);
+    onPlayerDataChanged();
+}
+
+void TSkillsWidgetController::saveWidgetOptions()
 {
     if (!m_options)
         return;
-    QJsonArray invisible;
-    for (const auto& [type, separator] : Entries) {
-        const QString key = game::progressBarKey(type);
-        if (separator == Separator::NONE && !key.isEmpty() && m_invisibleProgressBars.contains(key))
-            invisible.append(key);
-    }
-    QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
-    json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
-    json.insert(QStringLiteral("invisibleProgressBars"), invisible);
-    json.insert(QStringLiteral("offenceStatsVisible"), m_showOffenceStats);
-    json.insert(QStringLiteral("defenceStatsVisible"), m_showDefenceStats);
-    json.insert(QStringLiteral("miscStatsVisible"), m_showMiscStats);
-    m_options->setSection(QLatin1String(OptionsKey), json);
+    m_widgetOptions.setContentHeightAndMaximized(widget()->maximizedContentHeight(), widget()->isMaximized());
+    m_options->setSkillsWidgetOptions(m_widgetOptions);
 }
 
-void TSkillsWidgetController::saveWidgetOptions() { writeOptions(); }
+void TSkillsWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    m_widgetOptions = m_options->skillsWidgetOptions();
+    widget()->setInitialContentHeightAndMaximized(m_widgetOptions.contentHeight, m_widgetOptions.contentMaximized);
+    applyProgressBarVisibilityFromOptions();
+}
+
+void TSkillsWidgetController::applyProgressBarVisibilityFromOptions()
+{
+    const std::set<int> hidden = m_widgetOptions.invisibleProgressBars;
+    for (const auto& [type, separator] : m_entries) {
+        if (separator == Separator::NONE && game::skillHasProgressBar(type))
+            setProgressBarVisible(type, hidden.count(static_cast<int>(type)) == 0);
+    }
+}
+
+void TSkillsWidgetController::setProgressBarVisible(const SkillType type, const bool visible)
+{
+    std::set<int> hidden = m_widgetOptions.invisibleProgressBars;
+    if (visible)
+        hidden.erase(static_cast<int>(type));
+    else
+        hidden.insert(static_cast<int>(type));
+    const bool changed = hidden != m_widgetOptions.invisibleProgressBars;
+    m_widgetOptions.invisibleProgressBars = hidden;
+    // The entry's bar follows the options' set (the entry is rebuilt with it).
+    if (entry(type))
+        refreshEntry(type);
+    if (changed)
+        saveWidgetOptions();
+}
+
+void TSkillsWidgetController::refreshEntry(const SkillType type)
+{
+    game::TSkillsWidgetEntryData* data = entry(type);
+    if (!data)
+        return;
+    game::SkillsWidgetEntry built = game::buildSkillsWidgetEntry(type);
+    built.progressBarVisible = built.progressBarVisible && !isHidden(m_widgetOptions, type);
+    built.separatorType = Separator::NONE;
+    data->assign(built);
+}
 
 void TSkillsWidgetController::onBeforeTooltipShow() { onPlayerDataChanged(); }
 
-void TSkillsWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
-
-void TSkillsWidgetController::onWidgetQuickItemDestroyed() {}
-
 void TSkillsWidgetController::onPlayerDataChanged()
 {
-    const bool xpBoostPurchasable = tibia::game::isOnline() && tibia::game::localPlayerIsStoreExpBoostPurchasable();
-    for (const Row& row : m_rows) {
-        game::SkillsWidgetEntry entry;
-        if (row.separator == Separator::NONE) {
-            entry = game::buildSkillsWidgetEntry(row.type);
-            if (entry.progressBarVisible && m_invisibleProgressBars.contains(game::progressBarKey(row.type)))
-                entry.progressBarVisible = false;
-        } else {
-            // The experience gain's separator carries the store button
-            // while PlayerStats says XP boosts can be bought (TPlayerData
-            // slot 69, +0xe0).
-            entry.showButton = row.type == SkillType::ExperienceGain && xpBoostPurchasable;
-        }
-        entry.separatorType = row.separator;
-        row.data->assign(entry);
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    game::TPlayerData* playerData = session->playerData().get();
+    if (!playerData)
+        return;
+    if (const std::shared_ptr<creatures::TCreature> player = session->playerCreature().lock())
+        playerData->setSpeed(player->speed());
+    for (const auto& [type, data] : m_entriesByType)
+        refreshEntry(type);
+    for (const auto& [type, data] : m_separatorEntries) {
+        game::SkillsWidgetEntry separator;
+        separator.separatorType = data->separatorType();
+        separator.tooltip = QString();
+        separator.showButton = type == SkillType::ExperienceGain && playerData->storeXpBoostPurchasable();
+        data->assign(separator);
     }
-    Q_EMIT skillsModelChanged();
 }
 
 void TSkillsWidgetController::onPlayerSkillStatsChanged()
@@ -238,77 +271,65 @@ void TSkillsWidgetController::onMoreStatDetailsClicked()
     Q_EMIT publishGameAction(action);
 }
 
-void TSkillsWidgetController::setProgressBarVisible(const SkillType type, const bool visible)
-{
-    const QString key = game::progressBarKey(type);
-    if (key.isEmpty())
-        return;
-    if (visible)
-        m_invisibleProgressBars.remove(key);
-    else
-        m_invisibleProgressBars.insert(key);
-}
-
-void TSkillsWidgetController::setStatsVisible(bool& member, const bool visible)
-{
-    member = visible;
-    Q_EMIT widgetOptionsChanged();
-}
-
 void TSkillsWidgetController::onRequestContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    // CIP : resets the XP analyser's progress storage.
-    connect(menu->addCustomEntry(qtTrId("rest_exp_counter")), &TContextMenuEntryItem::triggered, this, [] {
-        if (analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance())
-            storages->progress()->reset();
+    // Resets the experience counter: the character configuration's progress
+    // storage.
+    connect(menu->addCustomEntry(qtTrId("rest_exp_counter")), &TContextMenuEntryItem::triggered, this, [this] {
+        const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+        if (!session)
+            return;
+        if (config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get()) {
+            if (analysers::TProgressStorage* progress = configuration->progressStorage())
+                progress->reset();
+        }
     });
     menu->addCustomSeparator();
 
     bool allVisible = true;
-    for (const auto& [type, separator] : Entries) {
+    for (const auto& [type, separator] : m_entries) {
         if (separator != Separator::NONE || !game::skillHasProgressBar(type))
             continue;
-        const bool visible = !m_invisibleProgressBars.contains(game::progressBarKey(type));
+        game::TSkillsWidgetEntryData* data = entry(type);
+        const bool visible = data && data->progressBarVisible();
         allVisible &= visible;
-        TContextMenuEntryItem* entry = menu->addCustomEntry(game::skillName(type).section(QChar(0x9c), 0, 0));
-        entry->setCheckable(true);
-        entry->setChecked(visible);
-        connect(entry, &TContextMenuEntryItem::triggered, this, [this, type = type, visible] {
-            setProgressBarVisible(type, !visible);
-            onPlayerDataChanged();
-            writeOptions();
-        });
+        TContextMenuEntryItem* item = menu->addCustomEntry(game::skillName(type).section(QChar(0x9c), 0, 0));
+        item->setCheckable(true);
+        item->setChecked(visible);
+        connect(item, &TContextMenuEntryItem::toggled, this,
+                [this, type = type](const bool checked) { setProgressBarVisible(type, checked); });
     }
     menu->addCustomSeparator();
 
-    const auto addStats = [&](const char* label, bool& member) {
-        TContextMenuEntryItem* entry = menu->addCustomEntry(qtTrId(label));
-        entry->setCheckable(true);
-        entry->setChecked(member);
-        connect(entry, &TContextMenuEntryItem::triggered, this, [this, &member] {
-            setStatsVisible(member, !member);
-            writeOptions();
+    // The stat blocks: the options copy takes the box's state, is saved and
+    // the widget re-reads showOffenceStats / showDefenceStats / showMiscStats.
+    const auto addStats = [&](const char* label, bool config::TSkillsWidgetOptions::*member) {
+        TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(label));
+        item->setCheckable(true);
+        item->setChecked(m_widgetOptions.*member);
+        connect(item, &TContextMenuEntryItem::toggled, this, [this, member](const bool checked) {
+            m_widgetOptions.*member = checked;
+            saveWidgetOptions();
+            Q_EMIT widgetOptionsChanged();
         });
     };
-    addStats("skills_show_offence_stats", m_showOffenceStats);
-    addStats("skills_show_defence_stats", m_showDefenceStats);
-    addStats("skills_show_misc_stats", m_showMiscStats);
+    addStats("skills_show_offence_stats", &config::TSkillsWidgetOptions::offenceStatsVisible);
+    addStats("skills_show_defence_stats", &config::TSkillsWidgetOptions::defenceStatsVisible);
+    addStats("skills_show_misc_stats", &config::TSkillsWidgetOptions::miscStatsVisible);
     menu->addCustomSeparator();
 
     TContextMenuEntryItem* all = menu->addCustomEntry(qtTrId("show_all_skill_bars"));
     all->setCheckable(true);
     all->setChecked(allVisible);
-    connect(all, &TContextMenuEntryItem::triggered, this, [this, allVisible] {
-        for (const auto& [type, separator] : Entries) {
+    connect(all, &TContextMenuEntryItem::toggled, this, [this](const bool checked) {
+        for (const auto& [type, separator] : m_entries) {
             if (separator == Separator::NONE && game::skillHasProgressBar(type))
-                setProgressBarVisible(type, !allVisible);
+                setProgressBarVisible(type, checked);
         }
-        onPlayerDataChanged();
-        writeOptions();
     });
     menu->showCustomMenu();
 }

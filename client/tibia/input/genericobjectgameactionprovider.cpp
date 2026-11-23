@@ -2,6 +2,9 @@
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
 #include "genericobjectgameactionprovider.h"
+#include "input/genericchatgameactionprovider.h"
+#include "chat/chatchannel.h"
+#include "chat/chatprotocolmessagehandler.h"
 
 #include "appearances/appearanceinstance.h"
 #include "app/clientoptions.h"
@@ -31,34 +34,6 @@ using A = EGameAction;
 bool isPartyMemberShield(const uint8_t shield)
 {
     return shield >= 3 && shield <= 10;
-}
-
-bool isVipName(const QString& name)
-{
-    // The provider is not a session member yet: the current session's list.
-    const game::TGameSessionBase* session = game::currentGameSession();
-    if (!session || !session->vipStorage())
-        return false;
-    for (const tibia::creatures::TVipStorage::Vip& vip : session->vipStorage()->vips()) {
-        if (vip.name.compare(name, Qt::CaseInsensitive) == 0)
-            return true;
-    }
-    return false;
-}
-
-bool isIgnoredName(const QString& name)
-{
-    const QJsonArray names = app::ClientOptions::load()
-                                 .root()
-                                 .value(QLatin1String("whiteBlacklistOptions"))
-                                 .toObject()
-                                 .value(QLatin1String("blacklistedNames"))
-                                 .toArray();
-    for (const QJsonValue& entry : names) {
-        if (entry.toString().compare(name, Qt::CaseInsensitive) == 0)
-            return true;
-    }
-    return false;
 }
 
 }
@@ -105,16 +80,13 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     }
 
     if (stored->isPlayer() && !own) {
-        // TGenericChatGameActionProvider, then the bot report by name.
-        actions.push_back(std::make_shared<TGameActionOpenMessageToChatChannel>(name));
-        actions.push_back(std::make_shared<TGameActionInvitePlayerToPrivateChatChannel>(0, name));
-        actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_NAME, name));
-        if (isIgnoredName(name))
-            actions.push_back(std::make_shared<TGameActionUnignoreName>(name));
-        else
-            actions.push_back(std::make_shared<TGameActionIgnoreName>(name));
-        if (!isVipName(name))
-            actions.push_back(std::make_shared<TGameActionAddNewVip>(name));
+        // The chat actions on the name, then the bot report by name.
+        if (const game::TGameSessionBase* session = game::currentGameSession()) {
+            TGenericChatGameActionProvider chatActions(session->chatChannelStorage().get(), session->vipStorage().get());
+            if (const auto& chat = session->chatProtocolMessageHandler())
+                chatActions.setWhiteBlacklist(chat->whiteBlacklist());
+            chatActions.appendGameActions(actions, name);
+        }
         actions.push_back(std::make_shared<TGameActionReportCharacter>(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
@@ -189,11 +161,11 @@ TGameActionContextPtr locationOf(const Position& position, const int stackPositi
     auto flagged = std::make_shared<TLocationContainerWithSlotGameActionContext>(*slot);
     const container::TContainerStorage* storage = container::TContainerStorage::instance();
     if (const container::TStoredContainer* row = storage ? storage->containerAt(slot->containerId()) : nullptr) {
-        const container::TInventorySlot& item = row->containerItem;
+        const container::TInventorySlot& item = row->containerItem();
         const TAppearanceType* type = item.appearance ? item.appearance->thingType()
                                                 : (item.typeId ? tibia::game::rawThingType(item.typeId, ThingCategoryItem) : nullptr);
         flagged->setContainerIsLootCorpse(isLootCorpse(type));
-        flagged->setContainerIsBrowseField(row->name == QLatin1String("Browse Field"));
+        flagged->setContainerIsBrowseField(row->name() == QLatin1String("Browse Field"));
     }
     return flagged;
 }

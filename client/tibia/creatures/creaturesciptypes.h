@@ -13,6 +13,9 @@
 #include <QByteArray>
 #include <QObject>
 
+#include <cstdint>
+#include <memory>
+
 namespace tibia {
 namespace exivaoptions {
 class TExivaOptionsStorage;
@@ -76,28 +79,55 @@ private:
     bool m_showAttackAnimation{ true };
 };
 
-class TCreaturesGameActionHandler final : public cip::tibia::creatures::TCreaturesGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::creatures::TCreaturesGameActionHandler::TCreaturesGameActionHandler;
-};
-
-class TUnjustifiedPointsProtocolMessageHandler final : public cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler::TUnjustifiedPointsProtocolMessageHandler;
-
-    static void handleUnjustifiedPoints(const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage);
-    static void handlePvpSituations(const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage);
-};
-
+/// CIP creatures::TUnjustifiedPointsStorage: the player's unjustified kill
+/// progress (per day, week and month: the percentage towards the next skull and
+/// the kills left), the skull's remaining duration and the open PvP situations.
+/// Every change emits unjustifiedPointsDataChanged.
 class TUnjustifiedPointsStorage final : public cip::tibia::creatures::TUnjustifiedPointsStorage
 {
     Q_OBJECT
 public:
     using cip::tibia::creatures::TUnjustifiedPointsStorage::TUnjustifiedPointsStorage;
+
+    uint8_t progressDay() const { return m_progressDay; }
+    uint8_t fullKillsToNextSkullDay() const { return m_fullKillsToNextSkullDay; }
+    uint8_t progressWeek() const { return m_progressWeek; }
+    uint8_t fullKillsToNextSkullWeek() const { return m_fullKillsToNextSkullWeek; }
+    uint8_t progressMonth() const { return m_progressMonth; }
+    uint8_t fullKillsToNextSkullMonth() const { return m_fullKillsToNextSkullMonth; }
+    uint8_t skullDuration() const { return m_skullDuration; }
+    uint8_t openPvpSituations() const { return m_openPvpSituations; }
+
+    void setUnjustifiedPoints(uint8_t progressDay, uint8_t fullKillsToNextSkullDay, uint8_t progressWeek,
+                              uint8_t fullKillsToNextSkullWeek, uint8_t progressMonth, uint8_t fullKillsToNextSkullMonth,
+                              uint8_t skullDuration);
+    void setOpenPvpSituations(uint8_t openPvpSituations);
+
+private:
+    uint8_t m_progressDay = 0;
+    uint8_t m_fullKillsToNextSkullDay = 0;
+    uint8_t m_progressWeek = 0;
+    uint8_t m_fullKillsToNextSkullWeek = 0;
+    uint8_t m_progressMonth = 0;
+    uint8_t m_fullKillsToNextSkullMonth = 0;
+    uint8_t m_skullDuration = 0;
+    uint8_t m_openPvpSituations = 0;
+};
+
+/// CIP creatures::TUnjustifiedPointsProtocolMessageHandler: the server's
+/// unjustified points and PvP situations go into the session's storage.
+class TUnjustifiedPointsProtocolMessageHandler final : public cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler
+{
+    Q_OBJECT
+public:
+    explicit TUnjustifiedPointsProtocolMessageHandler(std::shared_ptr<TUnjustifiedPointsStorage> unjustifiedPointsStorage);
+
+public Q_SLOTS:
+    void handleUnjustifiedPoints(const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage);
+    void handlePvpSituations(const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage);
+
+private:
+    std::shared_ptr<TUnjustifiedPointsStorage> m_unjustifiedPointsStorage;
 };
 
 class TVipStorage;

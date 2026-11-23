@@ -32,19 +32,22 @@ bool visible(const uint32_t source)
     return client::magicEffectOpacity(static_cast<client::MagicEffectSources>(source)) >= 0.01f;
 }
 
-/// Effect `effectId` on `field` (a pack effect variant draws its base effect).
-std::shared_ptr<appearances::TFieldEffectInstance> makeEffect(const uint16_t effectId, const Position& field,
-                                                              const uint8_t source, const qint64 now, const qint64 delay)
+/// Effect `effectId` on `field` (a pack effect variant draws its base effect);
+/// an effect with a delay is wrapped and draws once the delay has passed.
+std::shared_ptr<appearances::TEffectInstance> makeEffect(const uint16_t effectId, const Position& field,
+                                                         const uint8_t source, const qint64 now, const qint64 delay)
 {
     const uint16_t drawId = game::resolveEffectId(effectId);
     if (!game::isValidDatId(drawId, ThingCategoryEffect))
         return nullptr;
-    auto effect = appearances::TAppearanceInstanceFactory::createFieldEffect(drawId, field, source, now, delay);
+    auto effect = appearances::TAppearanceInstanceFactory::createFieldEffect(drawId, field, source, now);
     if (const auto* variant = game::findEffectVariant(effectId)) {
         effect->setUnderCreatures(variant->underCreatures);
         effect->setVariantId(effectId);
     }
-    return effect;
+    if (delay == 0)
+        return effect;
+    return std::make_shared<appearances::TDelayedEffectInstance>(effect, now, delay);
 }
 
 }

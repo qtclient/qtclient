@@ -247,7 +247,7 @@ void TDragAndDropController::updateIcon(const uint16_t objectClientId, const Pos
         if (position.y & 0x40) {
             if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
                 if (const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F))
-                    slot = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + std::max(0, stackPosition));
+                    slot = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + std::max(0, stackPosition));
             }
         } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
             slot = inventory->slotAt(position.y);

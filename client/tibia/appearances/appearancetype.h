@@ -77,6 +77,14 @@ public:
     uint32_t patternHeight() const { return m_patternHeight; }
     uint32_t patternDepth() const { return m_patternDepth; }
     uint32_t layers() const { return m_layers; }
+    /// The sprites of one phase: one per pattern and layer.
+    uint32_t spritesPerPhase() const { return m_patternWidth * m_patternHeight * m_patternDepth * m_layers; }
+    /// The index of a sprite in a group of `width` × `height` × `depth`
+    /// patterns and `layers` layers: phases outermost, then z, y, x and layer.
+    static int spriteIndex(int width, int height, int depth, int layers, int x, int y, int z, int layer, int phase)
+    {
+        return (((phase * depth + z) * height + y) * width + x) * layers + layer;
+    }
     /// The bounding box per direction (one per x pattern at least).
     const std::vector<QRect>& boundingBoxes() const { return m_boundingBoxes; }
     const std::vector<uint32_t>& spriteIds() const { return m_spriteIds; }

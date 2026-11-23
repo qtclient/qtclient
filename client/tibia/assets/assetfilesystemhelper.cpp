@@ -1,6 +1,7 @@
 #include "assets/assetfilesystemhelper.h"
 
 #include "filesystemhelper.h"
+#include "localfileinfo.h"
 #include "readonlymemoryblob.h"
 
 namespace tibia::assets {
@@ -21,6 +22,11 @@ TAssetFileSystemHelper::TAssetFileSystemHelper(const QDir& assetsDirectory, cons
 {
 }
 
+void TAssetFileSystemHelper::removeAssetFile(const QString& fileName) const
+{
+    fileSystem().removeFile(m_assetsDirectory.filePath(fileName));
+}
+
 QString TAssetFileSystemHelper::getFilePath(const TAsset& asset) const
 {
     return getFilePath(asset.type(), asset.file());
@@ -36,6 +42,33 @@ QString TAssetFileSystemHelper::getFilePath(const TAsset::EType type, const QStr
         if (fileSystem().fileExists(packed))
             path = packed;
     }
+    return path;
+}
+
+void TAssetFileSystemHelper::forEachLocalFileDecideWhetherItShouldBeRetained(
+    std::function<bool(const QString&)> shouldBeRetained) const
+{
+    fileSystem().forEachFileInDirectory(assetsDirectory().absolutePath(),
+                                        [&shouldBeRetained, this](const tibia::shared::TLocalFileInfo& file) {
+                                            if (!shouldBeRetained(file.getFileName()))
+                                                removeAssetFile(file.getFileName());
+                                        });
+}
+
+void TAssetFileSystemHelper::removeAsset(const TAsset& asset) const
+{
+    removeAssetFile(asset.file());
+}
+
+QByteArray TAssetFileSystemHelper::readAsset(const TAsset& asset) const
+{
+    return fileSystem().readFile(getFilePath(asset));
+}
+
+QString TAssetFileSystemHelper::writeAsset(const TAsset& asset, const QByteArray& data) const
+{
+    QString path = getFilePath(asset);
+    fileSystem().writeFile(path, data);
     return path;
 }
 

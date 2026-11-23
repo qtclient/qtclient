@@ -1,5 +1,6 @@
 #include "highlightedspritenode.h"
 
+#include <QMatrix4x4>
 #include <QSGTexture>
 
 #include <cstring>
@@ -12,30 +13,26 @@ TSpriteDrawCommandHighlightShader::TSpriteDrawCommandHighlightShader()
     setShaderFileName(FragmentStage, QStringLiteral(":/shaders/worldmap-highlight.frag.qsb"));
 }
 
-// UniformBufferObject: qt_Matrix (0), qt_Opacity (64), highlightColor (80).
 bool TSpriteDrawCommandHighlightShader::updateUniformData(RenderState& state, QSGMaterial* newMaterial,
                                                           QSGMaterial* oldMaterial)
 {
+    auto* material = static_cast<TSpriteDrawCommandHighlightMaterial*>(newMaterial);
+    if (!state.isMatrixDirty() && oldMaterial == newMaterial && !state.isOpacityDirty()
+        && !static_cast<TSpriteDrawCommandHighlightMaterial*>(oldMaterial)->dirty)
+        return false;
+
+    const QMatrix4x4 matrix = state.combinedMatrix();
+    const float opacity = state.opacity();
+    const QColor premultiplied(material->color.rgba64().premultiplied());
+    const float color[4] = { premultiplied.redF(), premultiplied.greenF(), premultiplied.blueF(),
+                             premultiplied.alphaF() };
     QByteArray* buffer = state.uniformData();
-    bool changed = false;
-    if (state.isMatrixDirty()) {
-        std::memcpy(buffer->data(), state.combinedMatrix().constData(), 64);
-        changed = true;
-    }
-    if (state.isOpacityDirty()) {
-        const float opacity = state.opacity();
-        std::memcpy(buffer->data() + 64, &opacity, 4);
-        changed = true;
-    }
-    const auto* material = static_cast<TSpriteDrawCommandHighlightMaterial*>(newMaterial);
-    const auto* previous = static_cast<TSpriteDrawCommandHighlightMaterial*>(oldMaterial);
-    if (!previous || previous->color != material->color) {
-        const float color[4] = { material->color.redF(), material->color.greenF(), material->color.blueF(),
-                                 material->color.alphaF() };
-        std::memcpy(buffer->data() + 80, color, 16);
-        changed = true;
-    }
-    return changed;
+    char* data = buffer->data();
+    std::memcpy(data, matrix.constData(), 64);
+    std::memcpy(data + 64, &opacity, 4);
+    std::memcpy(data + 80, color, 16);
+    material->dirty = false;
+    return true;
 }
 
 void TSpriteDrawCommandHighlightShader::updateSampledImage(RenderState& state, const int binding, QSGTexture** texture,
@@ -44,17 +41,14 @@ void TSpriteDrawCommandHighlightShader::updateSampledImage(RenderState& state, c
     if (binding != 1)
         return;
     auto* material = static_cast<TSpriteDrawCommandHighlightMaterial*>(newMaterial);
-    if (material->texture) {
-        material->texture->setFiltering(material->smooth ? QSGTexture::Linear : QSGTexture::Nearest);
-        material->texture->commitTextureOperations(state.rhi(), state.resourceUpdateBatch());
-    }
     *texture = material->texture;
+    // Host: the sprite textures come from QQuickWindow::createTextureFromImage
+    // and upload on commit; a sprite may be highlighted before any other node drew it.
+    if (material->texture)
+        material->texture->commitTextureOperations(state.rhi(), state.resourceUpdateBatch());
 }
 
-TSpriteDrawCommandHighlightMaterial::TSpriteDrawCommandHighlightMaterial()
-{
-    setFlag(Blending);
-}
+TSpriteDrawCommandHighlightMaterial::TSpriteDrawCommandHighlightMaterial() = default;
 
 QSGMaterialType* TSpriteDrawCommandHighlightMaterial::type() const
 {
@@ -67,48 +61,61 @@ QSGMaterialShader* TSpriteDrawCommandHighlightMaterial::createShader(QSGRenderer
     return new TSpriteDrawCommandHighlightShader;
 }
 
-int TSpriteDrawCommandHighlightMaterial::compare(const QSGMaterial* other) const
-{
-    const auto* material = static_cast<const TSpriteDrawCommandHighlightMaterial*>(other);
-    const qint64 a = texture ? texture->comparisonKey() : 0;
-    const qint64 b = material->texture ? material->texture->comparisonKey() : 0;
-    if (a != b)
-        return a < b ? -1 : 1;
-    if (smooth != material->smooth)
-        return smooth ? 1 : -1;
-    const QRgb x = color.rgba(), y = material->color.rgba();
-    return x == y ? 0 : (x < y ? -1 : 1);
-}
-
 THighlightedSpriteScenegraphNode::THighlightedSpriteScenegraphNode()
-    : m_geometry(QSGGeometry::defaultAttributes_TexturedPoint2D(), 4)
 {
-    m_geometry.setDrawingMode(QSGGeometry::DrawTriangleStrip);
-    setGeometry(&m_geometry);
-    setMaterial(&m_material);
+    setFlag(UsePreprocess);
+    updateMaterial();
+    updateGeometry();
 }
 
-void THighlightedSpriteScenegraphNode::set(QSGTexture* texture, const QRectF& rect, const QColor& color, const bool smooth)
+void THighlightedSpriteScenegraphNode::setRect(const QRectF& rect)
 {
+    if (rect == m_rect)
+        return;
     m_rect = rect;
-    const QRectF source = texture ? texture->normalizedTextureSubRect() : QRectF();
-    QSGGeometry::updateTexturedRectGeometry(&m_geometry, rect, source);
-    markDirty(DirtyGeometry);
-    if (m_material.texture != texture || m_material.color != color || m_material.smooth != smooth) {
-        m_material.texture = texture;
-        m_material.color = color;
-        m_material.smooth = smooth;
-        markDirty(DirtyMaterial);
-    }
+    updateGeometry();
 }
 
 void THighlightedSpriteScenegraphNode::setTexture(QSGTexture* texture)
 {
-    const QRectF source = texture ? texture->normalizedTextureSubRect() : QRectF(0, 0, 1, 1);
-    QSGGeometry::updateTexturedRectGeometry(&m_geometry, m_rect, source);
-    markDirty(DirtyGeometry);
-    m_material.texture = texture;
+    m_texture = texture;
+    m_sourceRect = texture ? texture->normalizedTextureSubRect() : QRectF(0.0, 0.0, 1.0, 1.0);
+    updateMaterial();
+    updateGeometry();
+}
+
+void THighlightedSpriteScenegraphNode::setColor(const QColor& color)
+{
+    m_color = color;
+    updateMaterial();
+}
+
+void THighlightedSpriteScenegraphNode::updateMaterial()
+{
+    if (!material()) {
+        auto* created = new TSpriteDrawCommandHighlightMaterial;
+        setMaterial(created);
+        created->setFlag(QSGMaterial::Blending);
+        setFlag(OwnsMaterial);
+    }
+    auto* highlight = static_cast<TSpriteDrawCommandHighlightMaterial*>(material());
+    highlight->texture = m_texture;
+    highlight->color = m_color;
+    highlight->dirty = true;
     markDirty(DirtyMaterial);
+}
+
+void THighlightedSpriteScenegraphNode::updateGeometry()
+{
+    if (!geometry()) {
+        auto* created = new QSGGeometry(QSGGeometry::defaultAttributes_TexturedPoint2D(), 4, 0,
+                                        QSGGeometry::UnsignedShortType);
+        created->setDrawingMode(QSGGeometry::DrawTriangleStrip);
+        setGeometry(created);
+        setFlag(OwnsGeometry);
+    }
+    QSGGeometry::updateTexturedRectGeometry(geometry(), m_rect, m_sourceRect);
+    markDirty(DirtyGeometry);
 }
 
 }

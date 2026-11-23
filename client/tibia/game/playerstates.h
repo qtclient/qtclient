@@ -55,6 +55,7 @@ public:
 
     /// Resizes the rows to fit, then refreshes them all (CIP: vtable slot 49).
     void setEntries(const QList<PlayerStateDisplayInfo>& entries);
+    const QList<PlayerStateDisplayInfo>& entries() const { return m_entries; }
 
 private:
     QList<PlayerStateDisplayInfo> m_entries;

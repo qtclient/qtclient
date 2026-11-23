@@ -37,6 +37,14 @@ public:
     Q_INVOKABLE void requestClose() override;
     Q_INVOKABLE QQuickItem* mapWindowPane() override;
 
+    /// The player's position on the tutorial island's map image (its
+    /// world position minus 31616, 30720); (0, 0) without a player.
+    QPoint youAreHereCoordianteWithinImage() const override;
+
+    /// A shown hint (a caption or caption image, an image and a hint id 1..14)
+    /// is confirmed; the hint data is cleared and the dialog closes.
+    void closeDialog();
+
 private:
     /// The hint shown (CONFIRM_TUTORIAL_HINT carries it).
     int m_tutorialHintId = 0;

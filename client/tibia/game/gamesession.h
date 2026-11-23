@@ -251,26 +251,18 @@ void safeLogout();
 
 /// Login / world side effects (game connection + TGameProtocolMessageHandler).
 /// Prefer over raw `g_game` in protocol translators.
-void processLogin();
 void processGameStart();
-void processPendingGame();
 void processWorldEntered();
 void processPing();
 void processPingBack();
-void processDeath(uint8_t deathType, uint8_t penality);
 void processLoginError(std::string_view error);
 void processLoginAdvice(std::string_view message);
 void processLoginWait(std::string_view message, uint8_t time);
-void processSessionEnd(uint8_t reason);
 
 /// Server message side effects — thin forwards until storages own the paths.
 void processCharacterSwitch(std::string_view characterName);
 void processPlayerHelpers(uint16_t helpers);
 void processUpdateTarget(uint32_t seq, uint32_t targetId);
-/// CIP 15.33 SetTactics: chase, secure and PvP mode (no fight mode on the wire).
-void processPlayerTactics(tibia::client::ChaseModes chaseMode, bool safeMode, tibia::client::PVPModes pvpMode);
-void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
-                        tibia::client::PVPModes pvpMode);
 void processTeamFinderLeader(const TeamFinderLeaderData& data);
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                           std::string_view name, uint8_t capacity, bool hasParent,
@@ -282,10 +274,8 @@ void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibi
 void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem);
 /// Server message side effects — thin hub forwards.
 void processUpdateNeeded(std::string_view signature);
-void processSessionDumpStart(std::string_view sessionKey);
 void processSessionDumpMarker(std::string_view marker);
 void processReadyForSecondaryConnection(std::string_view token);
-void processOutfitMemorial(const OutfitMemorialData& data);
 void processWalkCancel(tibia::client::Direction direction);
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
 void processTutorialHint(uint8_t id);

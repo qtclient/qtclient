@@ -1,5 +1,6 @@
 #include "outfittypes.h"
 #include "colorhelper.h"
+#include "jsonvalidator.h"
 
 #include "qmlcomponents/worldmapqmltypes.h"
 
@@ -35,9 +36,14 @@ const QString KeyOutfit = QStringLiteral("outfit");
 const QString KeyMount = QStringLiteral("mount");
 const QString KeySummon = QStringLiteral("summon");
 
+/// The highest outfit colour index.
+constexpr uint8_t MaxColorIndex = 133;
+
+/// An outfit colour index as a byte, capped at the highest one.
 int clampIndex(const int v)
 {
-    return v >= 0 && v < outfitpalette::Count ? v : 0;
+    const auto index = static_cast<uint8_t>(v);
+    return index < MaxColorIndex ? index : MaxColorIndex;
 }
 
 }
@@ -74,18 +80,20 @@ TOutfitColorQmlType::TOutfitColorQmlType(const int head, const int torso, const 
     m_torsoColorIndex = clampIndex(torso);
     m_legsColorIndex = clampIndex(legs);
     m_detailColorIndex = clampIndex(detail);
-    m_headColor = outfitpalette::color(m_headColorIndex);
-    m_torsoColor = outfitpalette::color(m_torsoColorIndex);
-    m_legsColor = outfitpalette::color(m_legsColorIndex);
-    m_detailColor = outfitpalette::color(m_detailColorIndex);
+    m_headColor = tibia::shared::outfitColor(m_headColorIndex);
+    m_torsoColor = tibia::shared::outfitColor(m_torsoColorIndex);
+    m_legsColor = tibia::shared::outfitColor(m_legsColorIndex);
+    m_detailColor = tibia::shared::outfitColor(m_detailColorIndex);
 }
 
+/// Changes one index when the byte differs from it (the stored value is
+/// capped, so an index past the palette always counts as a change).
 bool TOutfitColorQmlType::setIndex(int& index, QColor& color, const int v)
 {
-    if (index == v)
+    if (index == static_cast<uint8_t>(v))
         return false;
-    index = v;
-    color = outfitpalette::color(v);
+    index = clampIndex(v);
+    color = tibia::shared::outfitColor(index);
     return true;
 }
 
@@ -94,7 +102,7 @@ void TOutfitColorQmlType::setTorsoColor(const QColor& v) { setTorsoColorIndex(ou
 void TOutfitColorQmlType::setLegsColor(const QColor& v) { setLegsColorIndex(outfitpalette::index(v)); }
 void TOutfitColorQmlType::setDetailColor(const QColor& v) { setDetailColorIndex(outfitpalette::index(v)); }
 
-/// CIP ..: emits only on a change.
+/// Each index emits colorChanged only on a change.
 void TOutfitColorQmlType::setHeadColorIndex(const int v)
 {
     if (setIndex(m_headColorIndex, m_headColor, v))
@@ -119,7 +127,7 @@ void TOutfitColorQmlType::setDetailColorIndex(const int v)
         Q_EMIT colorChanged();
 }
 
-/// CIP .
+/// The four indices of `pOther`, then one colorChanged.
 void TOutfitColorQmlType::copyFrom(cip::tibia::qmlcomponents::TOutfitColorQmlType* pOther)
 {
     if (!pOther)
@@ -128,14 +136,13 @@ void TOutfitColorQmlType::copyFrom(cip::tibia::qmlcomponents::TOutfitColorQmlTyp
     m_torsoColorIndex = pOther->torsoColorIndex();
     m_legsColorIndex = pOther->legsColorIndex();
     m_detailColorIndex = pOther->detailColorIndex();
-    m_headColor = outfitpalette::color(m_headColorIndex);
-    m_torsoColor = outfitpalette::color(m_torsoColorIndex);
-    m_legsColor = outfitpalette::color(m_legsColorIndex);
-    m_detailColor = outfitpalette::color(m_detailColorIndex);
+    m_headColor = tibia::shared::outfitColor(m_headColorIndex);
+    m_torsoColor = tibia::shared::outfitColor(m_torsoColorIndex);
+    m_legsColor = tibia::shared::outfitColor(m_legsColorIndex);
+    m_detailColor = tibia::shared::outfitColor(m_detailColorIndex);
     Q_EMIT colorChanged();
 }
 
-/// CIP .
 QJsonObject TOutfitColorQmlType::toJsonObject()
 {
     QJsonObject json;
@@ -146,7 +153,7 @@ QJsonObject TOutfitColorQmlType::toJsonObject()
     return json;
 }
 
-/// CIP .
+/// Every index through its setter (one colorChanged per changed index).
 void TOutfitColorQmlType::fromJsonObject(const QJsonObject& JsonObject)
 {
     if (!canBeFilledFromJsonObject(JsonObject))
@@ -157,28 +164,25 @@ void TOutfitColorQmlType::fromJsonObject(const QJsonObject& JsonObject)
     setLegsColorIndex(JsonObject[KeyLegs].toInt());
 }
 
-/// CIP .
 bool TOutfitColorQmlType::canBeFilledFromJsonObject(const QJsonObject& JsonObject)
 {
-    for (const QString& key : { KeyHead, KeyTorso, KeyLegs, KeyDetail }) {
-        if (!JsonObject[key].isDouble())
-            return false;
-    }
-    return true;
+    shared::TJsonObjectValidator validator(JsonObject, true);
+    return validator.value(KeyHead).isInt().isValid() && validator.value(KeyTorso).isInt().isValid()
+        && validator.value(KeyDetail).isInt().isValid() && validator.value(KeyLegs).isInt().isValid();
 }
 
-/// CIP .
+/// Four random indices below the highest one, then one colorChanged.
 void TOutfitColorQmlType::randomizeColors()
 {
-    auto* random = QRandomGenerator::global();
-    m_headColorIndex = static_cast<int>(random->bounded(outfitpalette::Count));
-    m_torsoColorIndex = static_cast<int>(random->bounded(outfitpalette::Count));
-    m_legsColorIndex = static_cast<int>(random->bounded(outfitpalette::Count));
-    m_detailColorIndex = static_cast<int>(random->bounded(outfitpalette::Count));
-    m_headColor = outfitpalette::color(m_headColorIndex);
-    m_torsoColor = outfitpalette::color(m_torsoColorIndex);
-    m_legsColor = outfitpalette::color(m_legsColorIndex);
-    m_detailColor = outfitpalette::color(m_detailColorIndex);
+    auto* random = QRandomGenerator64::global();
+    m_headColorIndex = clampIndex(static_cast<int>(random->generate() % MaxColorIndex));
+    m_torsoColorIndex = clampIndex(static_cast<int>(random->generate() % MaxColorIndex));
+    m_legsColorIndex = clampIndex(static_cast<int>(random->generate() % MaxColorIndex));
+    m_detailColorIndex = clampIndex(static_cast<int>(random->generate() % MaxColorIndex));
+    m_headColor = tibia::shared::outfitColor(m_headColorIndex);
+    m_torsoColor = tibia::shared::outfitColor(m_torsoColorIndex);
+    m_legsColor = tibia::shared::outfitColor(m_legsColorIndex);
+    m_detailColor = tibia::shared::outfitColor(m_detailColorIndex);
     Q_EMIT colorChanged();
 }
 
@@ -231,7 +235,7 @@ void TOutfitPresetQmlType::setIsObjectOutfit(const bool v)
         cip::tibia::qmlcomponents::TOutfitPresetQmlType::setIsObjectOutfit(v);
 }
 
-/// CIP : {name, outfit {id, firstAddOn, secondAddOn, color}, mount {id, color}, summon {id}}.
+/// {name, outfit {id, firstAddOn, secondAddOn, color}, mount {id, color}, summon {id}}.
 QJsonObject TOutfitPresetQmlType::toJsonObject()
 {
     QJsonObject json;
@@ -252,58 +256,74 @@ QJsonObject TOutfitPresetQmlType::toJsonObject()
     return json;
 }
 
-/// CIP : fills the fields without notifying (copyFrom notifies).
+/// Fills the fields without notifying (copyFrom notifies); the ids are 16 bit.
 void TOutfitPresetQmlType::fromJsonObject(const QJsonObject& JsonObject)
 {
     if (!canBeFilledFromJsonObject(JsonObject))
         return;
     m_name = JsonObject[KeyName].toString();
     const QJsonObject outfit = JsonObject[KeyOutfit].toObject();
-    m_outfitID = outfit[KeyId].toInt();
+    m_outfitID = static_cast<uint16_t>(outfit[KeyId].toInt());
     m_outfitFirstAddOn = outfit[KeyFirstAddOn].toBool();
     m_outfitSecondAddOn = outfit[KeySecondAddOn].toBool();
     m_outfitColor->fromJsonObject(outfit[KeyColor].toObject());
     const QJsonObject mount = JsonObject[KeyMount].toObject();
-    m_mountID = mount[KeyId].toInt();
+    m_mountID = static_cast<uint16_t>(mount[KeyId].toInt());
     m_mountColor->fromJsonObject(mount[KeyColor].toObject());
-    m_summonID = JsonObject[KeySummon].toObject()[KeyId].toInt();
+    m_summonID = static_cast<uint16_t>(JsonObject[KeySummon].toObject()[KeyId].toInt());
 }
 
-/// CIP : through the JSON form.
+/// Through the JSON form (isObjectOutfit is not part of it and stays), then presetChanged.
 void TOutfitPresetQmlType::copyFrom(cip::tibia::qmlcomponents::TOutfitPresetQmlType* pOther)
 {
     if (!pOther)
         return;
     fromJsonObject(pOther->toJsonObject());
-    m_isObjectOutfit = pOther->isObjectOutfit();
     Q_EMIT presetChanged();
 }
 
-/// CIP .
 bool TOutfitPresetQmlType::canBeFilledFromJsonObject(const QJsonObject& JsonObject)
 {
-    if (!JsonObject[KeyName].isString())
+    shared::TJsonObjectValidator validator(JsonObject, true);
+    if (!validator.value(KeyName).isString().isValid() || !validator.value(KeyOutfit).isObject().isValid())
         return false;
     const QJsonObject outfit = JsonObject[KeyOutfit].toObject();
+    shared::TJsonObjectValidator outfitValidator(outfit, true);
+    if (!outfitValidator.value(KeyId).isInt().isValid() || !outfitValidator.value(KeyFirstAddOn).isBool().isValid()
+        || !outfitValidator.value(KeySecondAddOn).isBool().isValid() || !outfitValidator.value(KeyColor).isObject().isValid())
+        return false;
+    if (!m_outfitColor->canBeFilledFromJsonObject(outfit[KeyColor].toObject()))
+        return false;
+    if (!validator.value(KeyMount).isObject().isValid())
+        return false;
     const QJsonObject mount = JsonObject[KeyMount].toObject();
-    if (!outfit[KeyId].isDouble() || !outfit[KeyFirstAddOn].isBool() || !outfit[KeySecondAddOn].isBool())
+    shared::TJsonObjectValidator mountValidator(mount, true);
+    if (!mountValidator.value(KeyId).isInt().isValid() || !mountValidator.value(KeyColor).isObject().isValid())
         return false;
-    if (!mount[KeyId].isDouble() || !JsonObject[KeySummon].toObject()[KeyId].isDouble())
+    if (!m_mountColor->canBeFilledFromJsonObject(mount[KeyColor].toObject()))
         return false;
-    return m_outfitColor->canBeFilledFromJsonObject(outfit[KeyColor].toObject())
-        && m_mountColor->canBeFilledFromJsonObject(mount[KeyColor].toObject());
+    if (!validator.value(KeySummon).isObject().isValid())
+        return false;
+    shared::TJsonObjectValidator summonValidator(JsonObject[KeySummon].toObject(), true);
+    return summonValidator.value(KeyId).isInt().isValid();
 }
 
-/// CIP .
+/// Name, both colours (two missing colours count as equal), the ids, the
+/// addons and isObjectOutfit.
 bool TOutfitPresetQmlType::isEqual(cip::tibia::qmlcomponents::TOutfitPresetQmlType* pOther)
 {
     if (!pOther)
         return false;
-    QJsonObject mine = toJsonObject();
-    QJsonObject theirs = pOther->toJsonObject();
-    mine.remove(KeyName);
-    theirs.remove(KeyName);
-    return mine == theirs;
+    const auto sameColor = [](cip::tibia::qmlcomponents::TOutfitColorQmlType* a, cip::tibia::qmlcomponents::TOutfitColorQmlType* b) {
+        if (!a || !b)
+            return !a && !b;
+        return a->headColorIndex() == b->headColorIndex() && a->torsoColorIndex() == b->torsoColorIndex()
+            && a->legsColorIndex() == b->legsColorIndex() && a->detailColorIndex() == b->detailColorIndex();
+    };
+    return m_name == pOther->name() && sameColor(m_outfitColor, pOther->outfitColor()) && sameColor(m_mountColor, pOther->mountColor())
+        && m_outfitID == pOther->outfitID() && m_mountID == pOther->mountID() && m_summonID == pOther->summonID()
+        && m_outfitFirstAddOn == pOther->outfitFirstAddOn() && m_outfitSecondAddOn == pOther->outfitSecondAddOn()
+        && m_isObjectOutfit == pOther->isObjectOutfit();
 }
 
 cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* TTibiaObjectCreatorQmlService::worldMapSubfieldCoordinate(const int x, const int y, const int z)
@@ -406,7 +426,6 @@ QVariant THelperProxyModel::sourceItemDataByRowIndex(const int RowIndex)
     return sourceItemData(source->index(RowIndex, 0));
 }
 
-/// CIP .
 QObject* TAbstractItemModelHelper::wrapInHelperProxyModel(QAbstractItemModel* pAbstractItemModel)
 {
     if (!pAbstractItemModel)
@@ -417,7 +436,6 @@ QObject* TAbstractItemModelHelper::wrapInHelperProxyModel(QAbstractItemModel* pA
     return proxy;
 }
 
-/// CIP .
 QObject* TAbstractItemModelHelper::createDynamicAbstractListModel(const QStringList& Columns)
 {
 #ifdef TIBIA_WITH_GAMECORE
@@ -431,18 +449,20 @@ QObject* TAbstractItemModelHelper::createDynamicAbstractListModel(const QStringL
 #endif
 }
 
-/// CIP .
 QObject* TAbstractItemModelHelper::createSortProxyModel(QAbstractItemModel* pAbstractListModel)
 {
     if (!pAbstractListModel)
         return nullptr;
+#ifdef TIBIA_WITH_GAMECORE
+    auto* proxy = new TQmlSortFilterProxyModel;
+#else
     auto* proxy = new QSortFilterProxyModel;
+#endif
     QJSEngine::setObjectOwnership(proxy, QJSEngine::JavaScriptOwnership);
     proxy->setSourceModel(pAbstractListModel);
     return proxy;
 }
 
-/// CIP .
 QString TAbstractItemModelHelper::loadStringFromResource(const QString& ResourcePath)
 {
     QFile file(ResourcePath);
@@ -450,10 +470,9 @@ QString TAbstractItemModelHelper::loadStringFromResource(const QString& Resource
         qWarning() << "Failed to open" << ResourcePath;
         return {};
     }
-    return QString::fromUtf8(file.readAll());
+    return QString::fromLocal8Bit(file.readAll());
 }
 
-/// CIP .
 QJSValue TAbstractItemModelHelper::loadJsonFromResource(const QString& ResourcePath)
 {
     QFile file(ResourcePath);
@@ -461,10 +480,16 @@ QJSValue TAbstractItemModelHelper::loadJsonFromResource(const QString& ResourceP
         qWarning() << "Failed to open" << ResourcePath;
         return QJSValue(QJSValue::UndefinedValue);
     }
-    QJSEngine* engine = qjsEngine(this);
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse JSON:" << error.errorString();
+        return QJSValue(QJSValue::UndefinedValue);
+    }
+    QQmlEngine* engine = qmlEngine(this);
     if (!engine)
         return QJSValue(QJSValue::UndefinedValue);
-    return engine->toScriptValue(QJsonDocument::fromJson(file.readAll()).toVariant());
+    return engine->toScriptValue(document.toVariant());
 }
 
 }

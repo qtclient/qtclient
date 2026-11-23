@@ -108,40 +108,120 @@ struct TInventorySlot
 
 /// An open container (CIP: TContainer): its metadata and the slots of the page
 /// shown. A slot number counts over all pages; the page holds `capacity` slots.
+/// The protocol handler builds a container through the setters.
 class TContainer
 {
 public:
-    TContainerID id = 0;
-    uint8_t capacity = 0;
-    QString name;
-    TInventorySlot containerItem;
-    bool hasParent = false;
-    bool unlocked = true;
-    bool hasPages = false;
-    /// CIP open-container ≥1281: show depot-search button on this widget.
-    bool showSearch = false;
-    uint16_t size = 0;
-    uint16_t firstIndex = 0;
-    std::vector<TInventorySlot> items;
-    /// The view filter: the category shown, and the categories the server offers by id.
-    uint32_t filterCategory = 0;
-    std::map<uint32_t, std::string> filterCategories;
+    TContainer& setId(uint8_t containerId)
+    {
+        m_id = containerId;
+        return *this;
+    }
+    /// Also sets the capitalised name and whether this is the browse field.
+    TContainer& setName(const QString& containerName);
+    TContainer& setCapacity(uint32_t slots)
+    {
+        m_capacity = static_cast<uint8_t>(slots);
+        return *this;
+    }
+    /// A size of 0xffff or more means there may be more pages.
+    void setSize(uint32_t objects);
+    TContainer& setFirstIndex(uint32_t index)
+    {
+        m_firstIndex = static_cast<uint16_t>(index);
+        return *this;
+    }
+    /// The server's category; the category shown becomes it as well.
+    TContainer& setServerFilterCategory(uint32_t category)
+    {
+        m_serverFilterCategory = category;
+        m_filterCategory = category;
+        return *this;
+    }
+    TContainer& setHasPages(bool value)
+    {
+        m_hasPages = value;
+        return *this;
+    }
+    TContainer& setUnlocked(bool value)
+    {
+        m_unlocked = value;
+        return *this;
+    }
+    TContainer& setHasParent(bool value)
+    {
+        m_hasParent = value;
+        return *this;
+    }
+    TContainer& setShowSearch(bool value)
+    {
+        m_showSearch = value;
+        return *this;
+    }
+    TContainer& setContainerItem(const TInventorySlot& item)
+    {
+        m_containerItem = item;
+        return *this;
+    }
+    TContainer& setSortable(bool value)
+    {
+        m_sortable = value;
+        return *this;
+    }
+    TContainer& setContentMovableToManagedContainers(bool value)
+    {
+        m_contentMovableToManagedContainers = value;
+        return *this;
+    }
+    /// Adds a category the server offers; an id already known keeps its name.
+    TContainer& addFilterCategory(uint32_t categoryId, const std::string& categoryName)
+    {
+        m_filterCategories.try_emplace(categoryId, categoryName);
+        return *this;
+    }
+    /// Host concern: qtclient's storage updates the view of an open container in
+    /// place, so it drops the categories before adding the server's again.
+    void clearFilterCategories() { m_filterCategories.clear(); }
+
+    TContainerID id() const { return m_id; }
+    const TInventorySlot& containerItem() const { return m_containerItem; }
+    const QString& name() const { return m_name; }
+    uint32_t capacity() const { return m_capacity; }
+    bool hasParent() const { return m_hasParent; }
+    bool showSearch() const { return m_showSearch; }
+    bool isUnlocked() const { return m_unlocked; }
+    bool hasPages() const { return m_hasPages; }
+    uint32_t size() const { return m_size; }
+    uint32_t firstIndex() const { return m_firstIndex; }
+    /// The objects of the page shown.
+    const std::vector<TInventorySlot>& items() const { return m_items; }
+    /// The categories the server offers, by id.
+    const std::map<uint32_t, std::string>& filterCategories() const { return m_filterCategories; }
+    /// The category shown.
+    uint32_t filterCategory() const { return m_filterCategory; }
     /// The server sorts this container's content on request.
-    bool sortable = false;
+    bool isSortable() const { return m_sortable; }
     /// The server moves this container's content to the managed containers on request.
-    bool contentMovableToManagedContainers = false;
+    bool isContentMovableToManagedContainers() const { return m_contentMovableToManagedContainers; }
 
-    /// Tutorial markers by slot index.
-    std::map<uint32_t, int> tutorialMarkers;
+    void setFilterCategory(uint32_t category) { m_filterCategory = category; }
+    /// The category shown is not the one the server sent.
+    bool isFilterCategoryChanged() const { return m_filterCategory != m_serverFilterCategory; }
+    bool isBrowseField() const { return m_browseField; }
+    bool hasPossiblyMorePages() const { return m_possiblyMorePages; }
+    const QString& displayName() const { return m_capitalizedName; }
 
+    /// Puts tutorial marker `markerId` on slot `index`.
+    void setTutorialMarker(int markerId, uint32_t index) { m_tutorialMarkers[index] = markerId; }
     /// The tutorial marker on slot `index`, 0 for none.
     int tutorialMarkerAt(uint32_t index) const
     {
-        const auto it = tutorialMarkers.find(index);
-        return it == tutorialMarkers.end() ? 0 : it->second;
+        const auto it = m_tutorialMarkers.find(index);
+        return it == m_tutorialMarkers.end() ? 0 : it->second;
     }
+    void clearTutorialMarkers() { m_tutorialMarkers.clear(); }
     /// The position of slot `slot` in the page.
-    size_t slotIndex(uint32_t slot) const { return capacity != 0 ? slot % capacity : slot; }
+    size_t slotIndex(uint32_t slot) const { return m_capacity != 0 ? slot % m_capacity : slot; }
     /// The object in slot `slot`, empty outside the page.
     TInventorySlot itemAt(uint32_t slot) const;
     /// Replaces the object in slot `slot`.
@@ -151,10 +231,10 @@ public:
     /// Inserts an object at slot `slot`; the page keeps `capacity` slots. One object more in total.
     void insertItem(uint32_t slot, const TInventorySlot& item);
     /// Adds an object at the end of the page.
-    void appendItem(const TInventorySlot& item) { items.push_back(item); }
-    size_t itemCount() const { return items.size(); }
-    void increaseSize() { ++size; }
-    void decreaseSize() { --size; }
+    void appendItem(const TInventorySlot& item) { m_items.push_back(item); }
+    size_t itemCount() const { return m_items.size(); }
+    void increaseSize() { ++m_size; }
+    void decreaseSize() { --m_size; }
     /// Pages of a paged container, 1 otherwise.
     uint32_t pageCount() const;
     /// The page shown, from 1.
@@ -162,26 +242,47 @@ public:
     bool isLastPage() const { return currentPage() == pageCount(); }
     bool isFirstPage() const { return currentPage() == 1; }
     /// The first slot of the next page (this page's when it is the last).
-    uint32_t nextPageFirstIndex() const { return (isLastPage() ? 0 : capacity) + firstIndex; }
+    uint32_t nextPageFirstIndex() const { return (isLastPage() ? 0 : m_capacity) + m_firstIndex; }
     /// The first slot of the previous page (0 on the first).
-    uint32_t previousPageFirstIndex() const { return isFirstPage() ? 0 : firstIndex - capacity; }
+    uint32_t previousPageFirstIndex() const { return isFirstPage() ? 0 : m_firstIndex - m_capacity; }
 
-    bool hasFilterCategories() const { return !filterCategories.empty(); }
+    bool hasFilterCategories() const { return !m_filterCategories.empty(); }
     /// The widget shows its configuration button.
     bool hasConfigurationOptions() const
     {
-        return hasFilterCategories() || sortable || contentMovableToManagedContainers;
+        return hasFilterCategories() || m_sortable || m_contentMovableToManagedContainers;
     }
+
+private:
+    TContainerID m_id = 0;
+    TInventorySlot m_containerItem;
+    QString m_name;
+    /// The name with every word capitalised.
+    QString m_capitalizedName;
+    uint8_t m_capacity = 0;
+    /// The container is the browse field (its name is "Browse Field").
+    bool m_browseField = false;
+    bool m_hasParent = false;
+    /// Show the depot search button on this widget.
+    bool m_showSearch = false;
+    bool m_unlocked = true;
+    bool m_hasPages = false;
+    /// The server's size did not fit (0xffff or more): there may be more pages.
+    bool m_possiblyMorePages = false;
+    uint16_t m_size = 0;
+    uint16_t m_firstIndex = 0;
+    std::vector<TInventorySlot> m_items;
+    /// Tutorial markers by slot index.
+    std::map<uint32_t, int> m_tutorialMarkers;
+    std::map<uint32_t, std::string> m_filterCategories;
+    /// The category the server last sent.
+    uint32_t m_serverFilterCategory = 0;
+    uint32_t m_filterCategory = 0;
+    bool m_sortable = false;
+    bool m_contentMovableToManagedContainers = false;
 };
 
 using TStoredContainer = TContainer;
-
-class TContainerGameActionHandler final : public cip::tibia::container::TContainerGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::container::TContainerGameActionHandler::TContainerGameActionHandler;
-};
 
 /// CIP `container::TContainerProtocolMessageHandler`: the container, inventory,
 /// stash and depot search messages, applied to the active session's storages.
@@ -283,11 +384,21 @@ struct TContainerProperties
     QList<int> tutorialMarkerIDs;
 };
 
+struct TSlotInfo;
+
 class TContainerRenderProvider final : public ::tibia::CipTyped
 {
 public:
-    /// The properties of open container `id`; nothing when it is not open.
+    /// The properties of container `id`; a container that is not open is
+    /// captioned container_not_found and has no slots.
     static std::optional<TContainerProperties> containerProperties(TContainerID id, bool resetScrollView);
+    /// What every inventory slot shows, by slot. `showExpire` and
+    /// `showExpireWhenUnused` are the options showExpireInInventory and
+    /// showExpireWhenUnused.
+    static std::map<uint32_t, TSlotInfo> inventorySlotInfos(bool showExpire, bool showExpireWhenUnused);
+    /// What inventory slot `slotId` shows: its object, the object's text, the
+    /// managed container tooltip; a slot without an object is not updatable.
+    static TSlotInfo inventorySlotInfo(int slotId, bool showExpire, bool showExpireWhenUnused);
 };
 
 /// Session open-containers storage (CIP: TContainerStorage). Installed while TGameClient is live.
@@ -319,8 +430,20 @@ public:
     TInventorySlot slotAt(TContainerID id, int slotId) const;
     QList<TContainerID> openIds() const;
     bool hasContainer(TContainerID id) const;
-    /// First free container window id (0..).
+    /// The lowest free container window id, at most MaxContainerId.
     int findEmptyId() const;
+    /// The page navigation of container `id` (0 when it is not open).
+    uint32_t nextPageFirstIndex(TContainerID id) const;
+    uint32_t previousPageFirstIndex(TContainerID id) const;
+    uint32_t slotIndex(TContainerID id, uint32_t slot) const;
+    /// Tutorial marker `markerId` on inventory slot `slotId`.
+    void setInventoryTutorialMarker(int markerId, int slotId);
+    /// Tutorial marker `markerId` on slot `slot` (0xff: the first) of
+    /// container `id`; containerUpdated(id, false).
+    void setContainerTutorialMarker(int markerId, TContainerID id, int slot);
+    /// Clears the inventory's and every container's markers; containerUpdated
+    /// for each container.
+    void clearAllTutorialMarkers();
     void clear();
 
     /// The category the container shows, 0 for all.
@@ -344,6 +467,8 @@ private:
     TStoredContainer* mutableAt(TContainerID id);
     void emitUpdated(TContainerID id, bool isNew);
 
+    /// The highest container window id.
+    static constexpr int MaxContainerId = 31;
     /// Ordered by id, as CIP keeps them.
     QMap<TContainerID, TStoredContainer> m_containers;
     bool m_stashAvailable = false;
@@ -370,6 +495,16 @@ public:
 
     const TInventorySlot& slotAt(int slotId) const;
     bool hasSlot(int slotId) const;
+    /// An equipment slot (head .. ammo) holds an object of `typeId`; for a
+    /// classified type only with tier `tier`, and never without one.
+    bool isObjectEquipped(uint16_t typeId, std::optional<uint8_t> tier) const;
+
+    /// Puts tutorial marker `markerId` on slot `slotId`; inventoryChanged.
+    void setTutorialMarker(int markerId, int slotId);
+    /// The tutorial marker on slot `slotId`, 0 for none.
+    int tutorialMarker(int slotId) const;
+    /// inventoryChanged.
+    void clearTutorialMarkers();
 
 Q_SIGNALS:
     // Re-emit CIP inventoryChanged with slot id for UI refresh (base has void inventoryChanged()).
@@ -378,6 +513,7 @@ Q_SIGNALS:
 private:
     std::array<TInventorySlot, SlotCount> m_slots{};
     TInventorySlot m_empty;
+    std::map<int, int> m_tutorialMarkers;
 };
 
 /// Object counts keyed by type and tier: the player's inventory counts (the

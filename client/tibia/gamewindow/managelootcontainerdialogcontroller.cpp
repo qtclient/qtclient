@@ -157,12 +157,10 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
             m_blackWhiteListType = m_lootBlackWhitelist->listType();
             Q_EMIT lootBlackWhitelistChanged();
             rebuildListItems();
-            syncPremium();
         });
     }
 
     rebuildListItems();
-    syncPremium();
     onLootContainersUpdated();
     installHandlers();
 }
@@ -219,7 +217,6 @@ void TManageLootContainerDialogController::setFilterString(const QString& v)
 
 void TManageLootContainerDialogController::showDialog()
 {
-    syncPremium();
     syncFallback();
     if (m_lootBlackWhitelist) {
         const int listType = m_lootBlackWhitelist->listType();
@@ -311,7 +308,7 @@ void TManageLootContainerDialogController::showItemDetails(const int AppearanceT
     Q_EMIT publishGameAction(action);
 }
 
-void TManageLootContainerDialogController::onPremiumTimeChanged() { syncPremium(); }
+void TManageLootContainerDialogController::onPremiumTimeChanged() { Q_EMIT premiumStatusChanged(); }
 
 void TManageLootContainerDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
@@ -396,13 +393,9 @@ void TManageLootContainerDialogController::applyListFilter()
     m_listProxy.setNameFilter(m_filterString, false, false, false, false, {}, false);
 }
 
-void TManageLootContainerDialogController::syncPremium()
+bool TManageLootContainerDialogController::isPremium() const
 {
-    const bool premium = tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
-    if (m_isPremium == premium)
-        return;
-    m_isPremium = premium;
-    Q_EMIT premiumStatusChanged();
+    return m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
 }
 
 void TManageLootContainerDialogController::syncFallback()

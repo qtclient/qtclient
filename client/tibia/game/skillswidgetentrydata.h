@@ -38,6 +38,23 @@ public:
 
     void assign(const SkillsWidgetEntry& entry);
 
+    // The QML properties, one plain read each.
+    QString caption() const override { return m_caption; }
+    QString valueString() const override { return m_valueString; }
+    EValueColorType valueStringColor() const override { return m_valueStringColor; }
+    QString tooltip() const override { return m_tooltip; }
+    QColor progressBarColor() const override { return m_progressBarColor; }
+    double progressBarValue() const override { return m_progressBarValue; }
+    ESeparatorType separatorType() const override { return m_separatorType; }
+    bool changeHighlight() const override { return m_changeHighlight; }
+    bool showButton() const override { return m_showButton; }
+    QString iconSource() const override { return m_iconSource; }
+    QString iconTooltip() const override { return m_iconTooltip; }
+    QString additionalValueString() const override { return m_additionalValueString; }
+    bool entryVisible() const override { return m_entryVisible; }
+    /// Shows or hides the row; announces changed every time.
+    void setEntryVisible(bool EntryVisible);
+
 private:
     SkillsWidgetEntry m_entry;
 };

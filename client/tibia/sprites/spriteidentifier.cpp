@@ -19,6 +19,11 @@ bool sameSpriteIdentifier(const ISpriteIdentifier& a, const ISpriteIdentifier& b
     return typeid(a) == typeid(b) && a.identifierKind() == b.identifierKind() && a.equals(b);
 }
 
+std::shared_ptr<ISpriteIdentifier> TAssetSpritesheetIdentifier::clone() const
+{
+    return std::make_shared<TAssetSpritesheetIdentifier>(m_spritesheetId, m_scale);
+}
+
 bool TAssetSpritesheetIdentifier::equals(const ISpriteIdentifier& other) const
 {
     return m_spritesheetId == static_cast<const TAssetSpritesheetIdentifier&>(other).m_spritesheetId;
@@ -27,6 +32,11 @@ bool TAssetSpritesheetIdentifier::equals(const ISpriteIdentifier& other) const
 size_t TAssetSpritesheetIdentifier::hash() const
 {
     return hashCombine(0, qHash(m_spritesheetId));
+}
+
+std::shared_ptr<ISpriteIdentifier> TEffectWrapperSpritesheetIdentifier::clone() const
+{
+    return std::make_shared<TEffectWrapperSpritesheetIdentifier>(m_wrapped->clone(), m_effect, m_color);
 }
 
 bool TEffectWrapperSpritesheetIdentifier::equals(const ISpriteIdentifier& other) const

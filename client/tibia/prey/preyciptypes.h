@@ -8,10 +8,13 @@
 
 #include <QObject>
 
+#include "input/gameaction.h"
+
 namespace tibia::protobuf::protocol {
 class GameserverMessagePreyData;
 class GameserverMessagePreyPrices;
 class GameserverMessagePreyTimeLeft;
+class GameserverMessageResourceBalance;
 class GameserverMessageShowMessageDialog;
 }
 
@@ -22,11 +25,22 @@ namespace prey {
 void ownProductSurface(QObject* parent);
 
 
+/// Turns the prey dialog's game actions into the slot's PreyAction requests.
 class TPreyGameActionHandler final : public cip::tibia::prey::TPreyGameActionHandler
 {
     Q_OBJECT
 public:
     using cip::tibia::prey::TPreyGameActionHandler::TPreyGameActionHandler;
+
+public Q_SLOTS:
+    /// The router's game actions (connected to publishGameActionInternal).
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    void handleRequestListRerollGameAction(const ::tibia::input::TGameActionPreySystem& gameAction);
+    void handleSelectMonsterFromListGameAction(const ::tibia::input::TGameActionSelectPreyMonsterFromList& gameAction);
+    void handleRequestBonusRerollGameAction(const ::tibia::input::TGameActionPreySystem& gameAction);
+    void handleRequestFreezeAndShowBestiaryMonstersGameAction(const ::tibia::input::TGameActionPreySystem& gameAction);
+    void handleSelectPreyMonsterFromBestiaryGameAction(const ::tibia::input::TGameActionSelectPreyMonsterFromBestiary& gameAction);
+    void handleRequestChangeAutoPreyExtendTypeGameAction(const ::tibia::input::TGameActionChangeAutoPreyExtendType& gameAction);
 };
 
 class TPreyProtocolMessageHandler final : public cip::tibia::prey::TPreyProtocolMessageHandler
@@ -42,6 +56,8 @@ public:
     static void handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message);
     /// Message dialog types 20 and 21 are the prey dialog's messages.
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
+    /// The prey wildcards balance goes to the session's prey storage.
+    void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
 
     /// The PreyAction requests of one slot (action 0 list reroll, 1 bonus
     /// reroll, 2 list choice, 3 bestiary list, 4 bestiary choice, 5 automatic

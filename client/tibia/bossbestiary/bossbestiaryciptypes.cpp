@@ -4,6 +4,7 @@
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
+#include "input/gameaction.h"
 #include <tibia/game/gamenotify.h>
 #include <protocol.pb.h>
 
@@ -40,6 +41,16 @@ void TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage(const
     }
     storage->setKillsForStage(kills);
     storage->setPointsForStage(points);
+}
+
+void TBossBestiaryProtocolMessageHandler::handleShowMessageDialogMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& ShowMessageDialogMessage)
+{
+    constexpr uint32_t FreePodiumDialogType = 60;
+    if (ShowMessageDialogMessage.dialog_type() != FreePodiumDialogType)
+        return;
+    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionShowBosstiaryFreePodiumDialog>(
+        QString::fromStdString(ShowMessageDialogMessage.message())));
 }
 
 void TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage(const ::tibia::protobuf::protocol::GameserverMessageBossSlots& BossSlotsMessage)

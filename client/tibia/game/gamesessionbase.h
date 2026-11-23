@@ -19,6 +19,7 @@ class TWhiteBlacklist;
 }
 namespace container {
 class TContainerProtocolMessageHandler;
+class TContainerGameActionHandler;
 class TContainerStorage;
 class TInventoryContainer;
 class TDepotSearchDetailListStorage;
@@ -27,10 +28,12 @@ class TObjectCountStorage;
 class TStashStorage;
 }
 namespace input {
+class TActionButtonGameActionHandler;
 class TGatherAllGameActionHandler;
 class TGatherAllProtocolMessageHandler;
 }
 namespace market {
+class TMarketGameActionHandler;
 class TMarketProtocolMessageHandler;
 class TMarketStorage;
 }
@@ -153,6 +156,7 @@ class TImbuingStorage;
 }
 namespace prey {
 class TPreyProtocolMessageHandler;
+class TPreyGameActionHandler;
 class TPreyStorage;
 }
 namespace protocol {
@@ -163,13 +167,22 @@ class TWorldMapRenderProvider;
 }
 namespace renderer {
 class TNextFrameUpdater;
+class TRenderVolumeProvider;
 }
 namespace questlog {
+class TQuestLogGameActionHandler;
+class TQuestLogProtocolMessageHandler;
 class TQuestLogStorage;
 }
 namespace skillwheel {
 class TSkillWheelGameActionHandler;
 class TSkillWheelProtocolMessageHandler;
+}
+namespace spells {
+class TSpellsProtocolMessageHandler;
+}
+namespace proficiency {
+class TProficiencyProtocolMessageHandler;
 }
 namespace taskboard {
 class TTaskboardBountyTasksStorage;
@@ -185,6 +198,7 @@ class TEffectStorage;
 class TEffectGameActionHandler;
 }
 namespace store {
+class TStoreGameActionHandler;
 class TStoreProtocolMessageHandler;
 class TStoreStorage;
 }
@@ -234,6 +248,7 @@ public:
     const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo() const { return m_metaInfo; }
 
     const std::shared_ptr<worldmap::TWorldMapViewport>& worldMapViewport() const { return m_worldMapViewport; }
+    const std::shared_ptr<renderer::TRenderVolumeProvider>& renderVolumeProvider() const { return m_renderVolumeProvider; }
     const std::shared_ptr<creatures::TCreatureMovementSpeedCalculator>& creatureMovementSpeedCalculator() const
     {
         return m_creatureMovementSpeedCalculator;
@@ -400,6 +415,10 @@ public:
         return m_taskboardWeeklyTasksStorage;
     }
     const std::shared_ptr<taskboard::TTaskboardShopStorage>& taskboardShopStorage() const { return m_taskboardShopStorage; }
+    const std::shared_ptr<spells::TSpellsProtocolMessageHandler>& spellsProtocolMessageHandler() const
+    {
+        return m_spellsProtocolMessageHandler;
+    }
     const std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler>& skillWheelProtocolMessageHandler() const
     {
         return m_skillWheelProtocolMessageHandler;
@@ -447,6 +466,10 @@ public:
     const std::shared_ptr<teamfinder::TTeamFinderProtocolMessageHandler>& teamFinderProtocolMessageHandler() const
     {
         return m_teamFinderProtocolMessageHandler;
+    }
+    const std::shared_ptr<questlog::TQuestLogProtocolMessageHandler>& questLogProtocolMessageHandler() const
+    {
+        return m_questLogProtocolMessageHandler;
     }
     const std::shared_ptr<friends::TFriendsProtocolMessageHandler>& friendsProtocolMessageHandler() const
     {
@@ -522,9 +545,33 @@ public:
         m_characterConfigurationStorages = storages;
     }
 
+    /// The world's type the server sent at login (open, optional or hardcore
+    /// PvP); -1 before.
+    cip::tibia::qmlcomponents::enums::EWorldType worldType() const { return m_worldType; }
+    /// True once the first player data of the session arrived: the login's
+    /// burst of messages is over.
+    bool isLoginRampUpFinished() const { return m_loginRampUpFinished; }
+    /// The server's setting hint: whether the player may change the PvP frame
+    /// setting.
+    bool canChangePvPFrameSetting() const { return m_canChangePvPFrameSetting; }
+    /// The own creature, once the creature storage added it.
+    std::weak_ptr<creatures::TCreature> playerCreature() const { return m_playerCreature; }
+
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.
     void onPrepareNextFrameToRender(qint64 NextFramePredictedTimestamp);
+
+protected Q_SLOTS:
+    /// Keeps the own creature and announces it.
+    virtual void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer);
+    virtual void onSettingHintsFromServerChanged(bool CanChangePvPFrameSetting);
+    /// The first player data message ends the login ramp-up: stops listening
+    /// for it and announces loginRampUpFinished.
+    virtual void onMessageAtEndOfLoginRampUpReceived();
+    /// Keeps the world type and announces worldTypeSet.
+    virtual void onWorldTypeReceived(cip::tibia::qmlcomponents::enums::EWorldType WorldType);
+    /// Nothing for the base session.
+    virtual void onCharacterConfigurationLoaded() const {}
 
 protected:
     /// CIP: the session's storages (world map, creatures, containers, ...).
@@ -547,6 +594,11 @@ protected:
 private:
     void releaseStorages();
 
+    bool m_loginRampUpFinished = false;
+    /// -1 until the server sent the world type.
+    cip::tibia::qmlcomponents::enums::EWorldType m_worldType = static_cast<cip::tibia::qmlcomponents::enums::EWorldType>(-1);
+    bool m_canChangePvPFrameSetting = false;
+    std::weak_ptr<creatures::TCreature> m_playerCreature;
     bool m_worldInitialized = false;
     std::vector<QMetaObject::Connection> m_queueConnections;
     std::shared_ptr<const TGameSessionMetaInfo> m_metaInfo;
@@ -574,18 +626,25 @@ private:
     std::shared_ptr<market::TMarketStorage> m_marketStorage;
     std::shared_ptr<quickloot::TManagedContainerStorage> m_managedContainerStorage;
     std::shared_ptr<container::TContainerProtocolMessageHandler> m_containerProtocolMessageHandler;
+    std::shared_ptr<container::TContainerGameActionHandler> m_containerGameActionHandler;
     std::shared_ptr<market::TMarketProtocolMessageHandler> m_marketProtocolMessageHandler;
+    std::shared_ptr<market::TMarketGameActionHandler> m_marketGameActionHandler;
     std::shared_ptr<quickloot::TManagedContainersProtocolMessageHandler> m_managedContainersProtocolMessageHandler;
     std::shared_ptr<input::TGatherAllProtocolMessageHandler> m_gatherAllProtocolMessageHandler;
     std::shared_ptr<quickloot::TQuickLootGameActionHandler> m_quickLootGameActionHandler;
     std::shared_ptr<input::TGatherAllGameActionHandler> m_gatherAllGameActionHandler;
+    std::shared_ptr<input::TActionButtonGameActionHandler> m_actionButtonGameActionHandler;
     std::shared_ptr<prey::TPreyStorage> m_preyStorage;
     std::shared_ptr<imbuing::TImbuingStorage> m_imbuingStorage;
     std::shared_ptr<imbuing::TImbuementDurationsStorage> m_imbuementDurationsStorage;
     std::shared_ptr<dailyreward::TDailyRewardStorage> m_dailyRewardStorage;
     std::shared_ptr<exaltation::TExaltationStorage> m_exaltationStorage;
     std::shared_ptr<store::TStoreProtocolMessageHandler> m_storeProtocolMessageHandler;
+    std::shared_ptr<store::TStoreGameActionHandler> m_storeGameActionHandler;
+    std::shared_ptr<questlog::TQuestLogProtocolMessageHandler> m_questLogProtocolMessageHandler;
+    std::shared_ptr<questlog::TQuestLogGameActionHandler> m_questLogGameActionHandler;
     std::shared_ptr<prey::TPreyProtocolMessageHandler> m_preyProtocolMessageHandler;
+    std::shared_ptr<prey::TPreyGameActionHandler> m_preyGameActionHandler;
     std::shared_ptr<imbuing::TImbuingProtocolMessageHandler> m_imbuingProtocolMessageHandler;
     std::shared_ptr<dailyreward::TDailyRewardProtocolMessageHandler> m_dailyRewardProtocolMessageHandler;
     std::shared_ptr<exaltation::TExaltationProtocolMessageHandler> m_exaltationProtocolMessageHandler;
@@ -596,6 +655,7 @@ private:
     std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::shared_ptr<worldmap::TCreatureHUDRenderProvider> m_creatureHUDRenderProvider;
     std::shared_ptr<sound::TGameSessionSoundProvider> m_gameSessionSoundProvider;
+    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     std::shared_ptr<renderer::TNextFrameUpdater> m_nextFrameUpdater;
     std::shared_ptr<worldmap::TWorldMapGameActionProvider> m_worldMapGameActionProvider;
     /// qtclient's status line and centre messages go to the session's texts.
@@ -630,6 +690,8 @@ private:
     std::shared_ptr<taskboard::TTaskboardWeeklyTasksStorage> m_taskboardWeeklyTasksStorage;
     std::shared_ptr<taskboard::TTaskboardShopStorage> m_taskboardShopStorage;
     std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler> m_skillWheelProtocolMessageHandler;
+    std::shared_ptr<spells::TSpellsProtocolMessageHandler> m_spellsProtocolMessageHandler;
+    std::shared_ptr<proficiency::TProficiencyProtocolMessageHandler> m_proficiencyProtocolMessageHandler;
     std::unique_ptr<taskboard::TTaskboardProtocolMessageHandler> m_taskboardProtocolMessageHandler;
     std::unique_ptr<TBossDifficultySelectionProtocolMessageHandler> m_bossDifficultySelectionProtocolMessageHandler;
     std::shared_ptr<skillwheel::TSkillWheelGameActionHandler> m_skillWheelGameActionHandler;

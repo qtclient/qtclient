@@ -1,12 +1,13 @@
 #include "qmlcomponents/qmlcomponentsciptypes.h"
-#include "client/eightbitcolor.h"
 
 #include "qmlcomponents/outfitpalette.h"
+#include "colorhelper.h"
 
 #include <QColor>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/game/thingsession_forward.h>
 
+#include <QDebug>
 #include <QDir>
 #include <QEvent>
 #include <QFile>
@@ -21,34 +22,29 @@
 
 namespace tibia::qmlcomponents {
 
-namespace {
-
-/// Same thresholds as TCreature::informationColorForHealthPercent (0..100).
-QColor healthColor(const uint8_t healthPercent)
+/// The bar colour of a health fraction: dark red below 4 %, red below 10 %,
+/// light red below 30 %, yellow below 60 %, light green below 95 %, else green.
+QColor colorForHealthPercent(const float healthPercentNormalized)
 {
-    static const QColor
-        COLOR1(0x00, 0xBC, 0x00),
-        COLOR2(0x50, 0xA1, 0x50),
-        COLOR3(0xA1, 0xA1, 0x00),
-        COLOR4(0xBF, 0x0A, 0x0A),
-        COLOR5(0x91, 0x0F, 0x0F),
-        COLOR6(0x85, 0x0C, 0x0C);
-    if (healthPercent > 92)
-        return COLOR1;
-    if (healthPercent > 60)
-        return COLOR2;
-    if (healthPercent > 30)
-        return COLOR3;
-    if (healthPercent > 8)
-        return COLOR4;
-    if (healthPercent > 3)
-        return COLOR5;
-    return COLOR6;
+    if (healthPercentNormalized < 0.04f)
+        return QColor(0x60, 0x00, 0x00);
+    if (healthPercentNormalized < 0.1f)
+        return QColor(0xC0, 0x00, 0x00);
+    if (healthPercentNormalized < 0.3f)
+        return QColor(0xC0, 0x30, 0x30);
+    if (healthPercentNormalized < 0.6f)
+        return QColor(0xC0, 0xC0, 0x00);
+    if (healthPercentNormalized < 0.95f)
+        return QColor(0x60, 0xC0, 0x60);
+    return QColor(0x00, 0xC0, 0x00);
 }
+
+namespace {
 
 TAppearanceType* objectType(const int id)
 {
-    if (id <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(id), ThingCategoryItem))
+    // The id is cut to 16 bit.
+    if (!tibia::game::isValidDatId(static_cast<uint16_t>(id), ThingCategoryItem))
         return nullptr;
     return tibia::game::rawThingType(static_cast<uint16_t>(id), ThingCategoryItem);
 }
@@ -66,23 +62,22 @@ void ownProductSurface(QObject* parent)
 
 QColor TColorHelperQmlService::createColorFromEightBitHSV(const int ColorValue)
 {
-    return outfitpalette::color(ColorValue);
+    return tibia::shared::outfitColor(static_cast<uint8_t>(ColorValue));
 }
 
 QColor TColorHelperQmlService::createColorFromEightBitRGB(const int ColorValue)
 {
-    return tibia::client::colorFromEightBit(ColorValue);
+    return tibia::shared::colorFromEightBit(static_cast<uint8_t>(ColorValue));
 }
 
 QColor TColorHelperQmlService::createColorForHealthPercent(const float HealthPercentNormalized)
 {
-    const float clamped = std::clamp(HealthPercentNormalized, 0.f, 1.f);
-    return healthColor(static_cast<uint8_t>(std::lround(clamped * 100.f)));
+    return colorForHealthPercent(HealthPercentNormalized);
 }
 
 QColor TColorHelperQmlService::createColorFromName(const QString& Name)
 {
-    return QColor(Name);
+    return QColor::fromString(Name);
 }
 
 QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeNameForID(const int ID)
@@ -101,12 +96,9 @@ QString TAppearanceTypeHelperQmlService::getObjectAppearanceTypeDescriptionForID
 
 int TAppearanceTypeHelperQmlService::getObjectAppearanceTypeIDByName(const QString& Name)
 {
-    if (Name.isEmpty())
-        return 0;
-    const QString needle = Name.trimmed();
     int found = 0;
     tibia::appearances::TAppearancesManager::instance().forEachAppearanceType([&](const TAppearanceType& type) {
-        if (!type.isItem() || type.getId() == 0 || type.name().compare(needle, Qt::CaseInsensitive) != 0)
+        if (!type.isItem() || type.name().compare(Name, Qt::CaseInsensitive) != 0)
             return true;
         found = static_cast<int>(type.getId());
         return false;
@@ -128,10 +120,11 @@ QVariant TQmlDynamicAbstractListModel::data(const QModelIndex& index, const int 
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_rows.size()))
         return {};
-    const auto it = m_roles.constFind(role);
-    if (it == m_roles.cend())
+    const int column = role - (Qt::UserRole + 1);
+    const QVariantList& row = m_rows[static_cast<size_t>(index.row())];
+    if (column < 0 || column >= row.size())
         return {};
-    return m_rows[static_cast<size_t>(index.row())].value(QString::fromUtf8(it.value()));
+    return row.at(column);
 }
 
 QHash<int, QByteArray> TQmlDynamicAbstractListModel::roleNames() const
@@ -153,42 +146,56 @@ void TQmlDynamicAbstractListModel::setColumns(const QStringList& v)
 
 QVariantMap TQmlDynamicAbstractListModel::rowData(const int Index)
 {
-    return mapAt(Index);
+    return rowData(index(Index, 0));
 }
 
+/// Every role of the row by its name.
 QVariantMap TQmlDynamicAbstractListModel::rowData(const QModelIndex& Index)
 {
-    return Index.isValid() ? mapAt(Index.row()) : QVariantMap{};
+    QVariantMap row;
+    if (!Index.isValid())
+        return row;
+    const QHash<int, QByteArray> roles = roleNames();
+    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
+        row[QString::fromUtf8(it.value())] = data(Index, it.key());
+    return row;
 }
 
+/// One value per column, looked up by the column's name (invalid when missing).
 void TQmlDynamicAbstractListModel::appendRow(const QVariantMap& ColumnData)
 {
-    const int row = static_cast<int>(m_rows.size());
-    beginInsertRows({}, row, row);
-    m_rows.push_back(ColumnData);
-    m_count = static_cast<int>(m_rows.size());
+    QVariantList row;
+    for (const QString& column : std::as_const(m_columns))
+        row.append(ColumnData.value(column));
+    const int first = static_cast<int>(m_rows.size());
+    beginInsertRows({}, first, first);
+    m_rows.push_back(row);
     endInsertRows();
     Q_EMIT rowCountChanged();
 }
 
+/// One value per column in order; columns past the array stay invalid.
 void TQmlDynamicAbstractListModel::appendRowArray(const QVariantList& RowData)
 {
-    QVariantMap map;
-    for (int i = 0; i < m_columns.size() && i < RowData.size(); ++i)
-        map.insert(m_columns.at(i), RowData.at(i));
-    appendRow(map);
+    QVariantList row;
+    for (qsizetype i = 0; i < m_columns.size(); ++i)
+        row.append(i < RowData.size() ? RowData.at(i) : QVariant());
+    const int first = static_cast<int>(m_rows.size());
+    beginInsertRows({}, first, first);
+    m_rows.push_back(row);
+    endInsertRows();
+    Q_EMIT rowCountChanged();
 }
 
+/// Overwrites the row's leading columns with the array's values; the rest keep theirs.
 void TQmlDynamicAbstractListModel::overwriteRowArrayByIndex(const QVariantList& RowData, const int Index)
 {
     if (Index < 0 || Index >= static_cast<int>(m_rows.size()))
         return;
-    QVariantMap map;
-    for (int i = 0; i < m_columns.size() && i < RowData.size(); ++i)
-        map.insert(m_columns.at(i), RowData.at(i));
-    m_rows[static_cast<size_t>(Index)] = map;
-    const QModelIndex idx = index(Index, 0);
-    Q_EMIT dataChanged(idx, idx);
+    QVariantList& row = m_rows[static_cast<size_t>(Index)];
+    for (qsizetype i = 0; i < m_columns.size() && i < RowData.size() && i < row.size(); ++i)
+        row[i] = RowData.at(i);
+    Q_EMIT dataChanged(index(Index, 0), index(Index, 0));
 }
 
 void TQmlDynamicAbstractListModel::removeRowByIndex(const int Index)
@@ -197,19 +204,19 @@ void TQmlDynamicAbstractListModel::removeRowByIndex(const int Index)
         return;
     beginRemoveRows({}, Index, Index);
     m_rows.erase(m_rows.begin() + Index);
-    m_count = static_cast<int>(m_rows.size());
     endRemoveRows();
     Q_EMIT rowCountChanged();
 }
 
+/// Always reports the count, also when there was nothing to remove.
 void TQmlDynamicAbstractListModel::clear()
 {
-    if (m_rows.empty())
-        return;
-    beginResetModel();
-    m_rows.clear();
-    m_count = 0;
-    endResetModel();
+    const int count = rowCount();
+    if (count > 0) {
+        beginRemoveRows({}, 0, count - 1);
+        m_rows.clear();
+        endRemoveRows();
+    }
     Q_EMIT rowCountChanged();
 }
 
@@ -221,67 +228,130 @@ void TQmlDynamicAbstractListModel::rebuildRoles()
         m_roles.insert(role++, column.toUtf8());
 }
 
-QVariantMap TQmlDynamicAbstractListModel::mapAt(const int row) const
+/// The value at a '/'-separated path of nested objects (empty parts skipped);
+/// `fallback` when a part is missing.
+QJsonValue jsonValueAtPath(const QJsonObject& root, const QString& path, const QJsonValue& fallback)
 {
-    if (row < 0 || row >= static_cast<int>(m_rows.size()))
-        return {};
-    return m_rows[static_cast<size_t>(row)];
+    const QStringList parts = path.split(u'/', Qt::SkipEmptyParts);
+    QJsonObject object = root;
+    for (qsizetype i = 0; i < parts.size(); ++i) {
+        if (!object.contains(parts.at(i)))
+            break;
+        if (i == parts.size() - 1)
+            return object.value(parts.at(i));
+        object = object.value(parts.at(i)).toObject();
+    }
+    return fallback;
+}
+
+/// `root` with `value` at a '/'-separated path, creating the objects on the way
+/// (a part holding no object becomes one).
+QJsonObject jsonObjectWithValueAtPath(const QJsonObject& root, const QString& path, const QJsonValue& value)
+{
+    const QStringList parts = path.split(u'/', Qt::SkipEmptyParts);
+    if (parts.isEmpty())
+        return root;
+    std::vector<QJsonObject> objects{ root };
+    for (qsizetype i = 0; i + 1 < parts.size(); ++i) {
+        QJsonObject& top = objects.back();
+        if (!top.contains(parts.at(i)))
+            top[parts.at(i)] = QJsonObject();
+        objects.push_back(top[parts.at(i)].toObject());
+    }
+    objects.back()[parts.last()] = value;
+    QJsonObject result = objects.back();
+    objects.pop_back();
+    for (qsizetype i = parts.size() - 2; i >= 0; --i) {
+        QJsonObject parent = objects.back();
+        objects.pop_back();
+        parent[parts.at(i)] = result;
+        result = parent;
+    }
+    return result;
 }
 
 TQmlJsonSettingsService::TQmlJsonSettingsService(QObject* parent)
-    : cip::tibia::qmlcomponents::TQmlJsonSettingsService(parent)
+    : TQmlJsonSettingsService(QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation))
+                                  .filePath(QStringLiteral("qml-json-settings.json")),
+                              parent)
 {
-    m_saveTimer.setSingleShot(true);
-    m_saveTimer.setInterval(250);
-    connect(&m_saveTimer, &QTimer::timeout, this, &TQmlJsonSettingsService::onSaveJsonTimerTimeout);
-    onReloadSettingsFromDisk();
 }
 
+TQmlJsonSettingsService::TQmlJsonSettingsService(const QString& settingsFilePath, QObject* parent)
+    : cip::tibia::qmlcomponents::TQmlJsonSettingsService(parent)
+    , m_settingsFilePath(settingsFilePath)
+{
+    onReloadSettingsFromDisk();
+    m_saveJsonTimer.setInterval(500);
+    m_saveJsonTimer.setSingleShot(true);
+    connect(&m_saveJsonTimer, &QTimer::timeout, this, &TQmlJsonSettingsService::onSaveJsonTimerTimeout);
+    m_fileSystemWatcher.addPath(m_settingsFilePath);
+    connect(&m_fileSystemWatcher, &QFileSystemWatcher::fileChanged, this, &TQmlJsonSettingsService::onReloadSettingsFromDisk);
+}
+
+/// Ignored until the settings were read; a change restarts the save timer.
 void TQmlJsonSettingsService::save(const QString& Setting, const QJsonValue& Value)
 {
-    if (Setting.isEmpty())
+    if (!m_settingsValid)
         return;
-    m_root.insert(Setting, Value);
-    scheduleSave();
+    const QJsonObject changed = jsonObjectWithValueAtPath(m_settings.object(), Setting, Value);
+    if (changed == m_settings.object())
+        return;
+    m_settings.setObject(changed);
     Q_EMIT settingsChanged();
+    if (m_saveJsonTimer.isActive())
+        m_saveJsonTimer.stop();
+    m_saveJsonTimer.start();
 }
 
 QJsonValue TQmlJsonSettingsService::load(const QString& Setting, const QJsonValue& Default)
 {
-    if (Setting.isEmpty() || !m_root.contains(Setting))
+    if (!m_settingsValid)
         return Default;
-    return m_root.value(Setting);
+    return jsonValueAtPath(m_settings.object(), Setting, Default);
 }
 
+/// The watcher stops watching while the file is written, so writing does not reload.
 void TQmlJsonSettingsService::onSaveJsonTimerTimeout()
 {
-    QFile file(filePath());
+    const QStringList watched = m_fileSystemWatcher.files();
+    if (!watched.isEmpty())
+        m_fileSystemWatcher.removePaths(watched);
+    // Host: written through QFile (CipSoft goes through its file-system service).
+    QFile file(m_settingsFilePath);
     QDir().mkpath(QFileInfo(file).absolutePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        return;
-    file.write(QJsonDocument(m_root).toJson(QJsonDocument::Compact));
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        file.write(m_settings.toJson(QJsonDocument::Indented));
+    if (!watched.isEmpty())
+        m_fileSystemWatcher.addPaths(watched);
 }
 
+/// A missing file starts empty settings; a file that cannot be read or parsed
+/// (or is empty) blocks saving until the next reload.
 void TQmlJsonSettingsService::onReloadSettingsFromDisk()
 {
-    QFile file(filePath());
-    if (file.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        m_root = doc.isObject() ? doc.object() : QJsonObject{};
+    qDebug() << "reloading" << m_settingsFilePath;
+    const QJsonDocument previous = m_settings;
+    if (!QFileInfo(m_settingsFilePath).exists()) {
+        qDebug() << m_settingsFilePath << "could not be found. creating new settings file";
+        m_settings = QJsonDocument();
+        m_settingsValid = true;
     } else {
-        m_root = {};
+        QFile file(m_settingsFilePath);
+        QJsonParseError error{};
+        error.error = QJsonParseError::NoError;
+        QJsonDocument read;
+        const bool opened = file.open(QIODevice::ReadOnly);
+        if (opened)
+            read = QJsonDocument::fromJson(file.readAll(), &error);
+        m_settings = read;
+        m_settingsValid = opened && error.error == QJsonParseError::NoError && !m_settings.isEmpty();
+        if (!m_settingsValid)
+            qDebug() << m_settingsFilePath << "could not be read or parsed";
     }
     Q_EMIT settingsReloaded();
-}
-
-QString TQmlJsonSettingsService::filePath() const
-{
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QStringLiteral("qml-json-settings.json"));
-}
-
-void TQmlJsonSettingsService::scheduleSave()
-{
-    m_saveTimer.start();
+    if (previous != m_settings)
+        Q_EMIT settingsChanged();
 }
 
 TQmlSortFilterProxyModel::TQmlSortFilterProxyModel(QObject* parent)
@@ -295,22 +365,39 @@ TQmlSortFilterProxyModel::TQmlSortFilterProxyModel(QObject* parent)
 
 void TQmlSortFilterProxyModel::setFilterCallback(const QJSValue& v)
 {
-    cip::tibia::qmlcomponents::TQmlSortFilterProxyModel::setFilterCallback(v);
     beginFilterChange();
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    m_filterCallback = v;
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    Q_EMIT callbackChanged();
     refreshCount();
 }
 
+/// Re-sorts the first column ascending with the new callback.
 void TQmlSortFilterProxyModel::setSortCallback(const QJSValue& v)
 {
-    cip::tibia::qmlcomponents::TQmlSortFilterProxyModel::setSortCallback(v);
-    invalidate();
+    m_sortCallback = v;
+    sort(0, Qt::AscendingOrder);
+    Q_EMIT callbackChanged();
     refreshCount();
 }
 
+void TQmlSortFilterProxyModel::invalidateFilter(const QSortFilterProxyModel::Direction direction)
+{
+    beginFilterChange();
+    endFilterChange(direction);
+}
+
+/// Every role of the proxy row by its name; empty outside the rows.
 QVariantMap TQmlSortFilterProxyModel::get(const int index)
 {
-    return rowMap(this->index(index, 0));
+    QVariantMap row;
+    if (index < 0 || index >= rowCount())
+        return row;
+    const QHash<int, QByteArray> roles = roleNames();
+    const QModelIndex proxyIndex = this->index(index, 0);
+    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
+        row[QString::fromUtf8(it.value())] = data(proxyIndex, it.key());
+    return row;
 }
 
 bool TQmlSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -369,20 +456,6 @@ void TQmlSortFilterProxyModel::refreshCount()
         return;
     m_count = next;
     Q_EMIT rowCountChanged();
-}
-
-QVariantMap TQmlSortFilterProxyModel::rowMap(const QModelIndex& index) const
-{
-    QVariantMap row;
-    if (!index.isValid())
-        return row;
-    const QAbstractItemModel* model = index.model();
-    if (!model)
-        return row;
-    const QHash<int, QByteArray> roles = model->roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        row.insert(QString::fromUtf8(it.value()), model->data(index, it.key()));
-    return row;
 }
 
 

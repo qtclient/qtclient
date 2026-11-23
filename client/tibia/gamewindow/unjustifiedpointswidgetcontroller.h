@@ -13,6 +13,9 @@
 namespace tibia::game {
 class IGameSession;
 }
+namespace tibia::creatures {
+class TUnjustifiedPointsStorage;
+}
 
 namespace tibia {
 namespace config {
@@ -84,6 +87,9 @@ private Q_SLOTS:
 private:
     /// The game session's creature storage connection.
     QMetaObject::Connection m_playerAdded;
+    /// The game session's unjustified points (CIP: the widget reads the storage).
+    std::shared_ptr<creatures::TUnjustifiedPointsStorage> m_unjustifiedPointsStorage;
+    QMetaObject::Connection m_unjustifiedPointsChanged;
     void refresh();
 
     std::vector<client::gamecore::Hook> m_hooks;

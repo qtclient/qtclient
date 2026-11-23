@@ -11,7 +11,7 @@
 namespace tibia::minimap {
 
 TMinimapDiskIOAsync::TMinimapDiskIOAsync(const QString& dir, QObject* parent)
-    : cip::tibia::minimap::TMinimapDiskIO(parent)
+    : TMinimapDiskIO(parent)
     , m_dir(dir)
 {
     m_pool.setMaxThreadCount(1);

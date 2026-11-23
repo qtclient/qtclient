@@ -548,7 +548,7 @@ void TDepotSearchWidgetController::requestSearch()
 {
     if (m_selectedTypeId == 0)
         return;
-    auto action = std::make_shared<input::TGameActionRequestSearchTypeInDepot>(static_cast<uint16_t>(m_selectedTypeId), static_cast<uint16_t>(m_selectedTier.value_or(0)));
+    auto action = std::make_shared<input::TGameActionRequestSearchTypeInDepot>(static_cast<uint16_t>(m_selectedTypeId), m_selectedTier);
     Q_EMIT publishGameAction(action);
 }
 
@@ -617,7 +617,7 @@ void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int Stora
 {
     if (StorageLocation < Depot || StorageLocation > Inbox || !m_session || !m_detailList)
         return;
-    auto action = std::make_shared<input::TGameActionDepotSearchRetrieve>(static_cast<uint16_t>(m_detailList->typeId()), static_cast<uint16_t>(m_detailList->tier().value_or(0)), StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot);
+    auto action = std::make_shared<input::TGameActionDepotSearchRetrieve>(static_cast<uint16_t>(m_detailList->typeId()), m_detailList->tier(), StorageLocation == Inbox ? RetrieveFromInbox : RetrieveFromDepot);
     Q_EMIT publishGameAction(action);
 }
 
@@ -716,50 +716,6 @@ void TDepotSearchWidgetController::slotTargetSelected(const int StorageLocation,
     const input::TGameActionList candidates = input::filterActions(slotActions(StorageLocation, SlotIDRaw), { A::TARGET_SELECTED });
     if (!candidates.empty())
         Q_EMIT publishGameAction(candidates.front());
-}
-
-TDepotSearchWidgetManager::TDepotSearchWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                     QObject* parent)
-    : QObject(parent)
-    , m_sidebars(sidebars)
-    , m_controller(new TDepotSearchWidgetController(gameWindowItem, engine, this))
-{
-    connect(m_controller, &TDepotSearchWidgetController::publishGameAction, this, &TDepotSearchWidgetManager::publishGameAction);
-    connect(m_controller, &cip::tibia::gamewindow::TSidebarWidgetControllerBase::widgetClosed, this,
-            [this] { m_controller->widget()->hide(); });
-}
-
-TDepotSearchWidgetManager::~TDepotSearchWidgetManager() = default;
-
-void TDepotSearchWidgetManager::setSidebarOptions(config::TSidebarOptions* options) { m_controller->setSidebarOptions(options); }
-
-TSidebarWidget* TDepotSearchWidgetManager::current() const { return m_controller->widget(); }
-
-void TDepotSearchWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
-        disconnect(connection);
-    m_gameSessionConnections.clear();
-    auto* session = dynamic_cast<game::TGameSessionBase*>(GameSession.get());
-    // The widget's lists follow the session's storages.
-    m_controller->setGameSession(session);
-    container::TContainerProtocolMessageHandler* handler = session ? session->containerProtocolMessageHandler().get() : nullptr;
-    if (!handler)
-        return;
-    using Handler = container::TContainerProtocolMessageHandler;
-    m_gameSessionConnections.push_back(connect(handler, &Handler::requestOpenDepotSearchWidget, this, &TDepotSearchWidgetManager::show));
-    m_gameSessionConnections.push_back(
-        connect(handler, &Handler::requestCloseDepotSearchWidget, this, [this] { m_controller->widget()->hide(); }));
-}
-
-void TDepotSearchWidgetManager::show()
-{
-    TSidebarWidget* widget = m_controller->widget();
-    if (!m_sidebars || !widget->quickItem())
-        return;
-    if (widget->parentSidebarId() == TSidebarWidget::NoSidebar)
-        m_sidebars->addWidget(widget);
-    widget->show();
 }
 
 } // namespace tibia::gamewindow

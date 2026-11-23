@@ -14,7 +14,7 @@ namespace imageproviders {
 
 /// A horizontal strip of equally wide cells; image://<name>/<index> is cell <index>.
 /// Cells are as wide as the image is high unless a cell width is given.
-/// An index outside the strip yields a transparent cell.
+/// An index outside the strip yields a red cell.
 class TImagestrip
 {
 public:

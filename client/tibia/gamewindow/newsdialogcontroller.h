@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "highlighttimer.h"
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
 #include "news/newsentrymodels.h"
@@ -83,7 +84,9 @@ private:
     bool m_userChoseCategory = false;
 };
 
-/// Button bar Compendium / News button (CIP: TNewsButtonController).
+/// Button bar Compendium / News button (CIP: TNewsButtonController). A game
+/// news message keeps the button highlighted and remembers the news it names;
+/// a click opens the news dialog on that entry.
 class TNewsButtonController final : public cip::tibia::gamewindow::TNewsButtonController
 {
     Q_OBJECT
@@ -93,20 +96,21 @@ public:
 
     static TNewsButtonController* instance();
 
-    bool highlighted() const override { return m_highlightTimer.isActive(); }
+    bool highlighted() const override { return m_highlightTimer.isHighlighted(); }
+    /// Opens the news dialog on the remembered news, then drops the highlight.
     void onOpenNewsButtonClicked() override;
     void onHighlightNewsButtonEnds() override;
 
-    /// Highlight for ten minutes (CIP ShowGameNews / unread push).
+    /// Highlights the button (the news dialog's unread entry check).
     void highlight();
-    /// CIP onShowGameNewsMessage — open dialog or highlight from S 0x98 / onGameNews.
-    void onShowGameNews(int newsType, bool notificationOnly);
+    /// Remembers the news and highlights; unless it is a notification only, a
+    /// named news opens the dialog at once.
+    void onShowGameNewsMessage(int newsType, bool notificationOnly);
 
 private:
-    void stopHighlight();
-
     static TNewsButtonController* s_instance;
-    QTimer m_highlightTimer;
+    shared::THighlightTimer m_highlightTimer{ 600000 };
+    int m_newsType = 0;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

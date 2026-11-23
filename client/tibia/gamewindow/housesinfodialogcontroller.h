@@ -196,6 +196,10 @@ public:
     void onActionAcceptTransferClicked() override;
     void onActionRejectTransferClicked() override;
     void centerHouse() override;
+    /// CIP: the list and the preview show house `HouseId`: its town, every state, its type
+    /// (guildhall or not), the default order, the house selected and the camera on its
+    /// position at half zoom. 0 does nothing.
+    void makeHouseVisible(uint HouseId);
 
 private:
     void onRequestHouseActionResultDialog(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);

@@ -389,12 +389,13 @@ void TButtonBarController::setSidebarOptions(config::TSidebarOptions* options)
 
 void TButtonBarController::onDropdownButtonClicked()
 {
-    setShortcutsVisible(!m_shortcutsVisible);
+    m_shortcutsVisible = !m_shortcutsVisible;
     if (m_options) {
         config::SidebarPanelsOptions o = m_options->sidebarPanelsOptions();
         o.controlButtonsVisible = m_shortcutsVisible;
         m_options->setSidebarPanelsOptions(o);
     }
+    Q_EMIT shortcutsVisibleChanged();
 }
 
 void TButtonBarController::toggleWidget(const int widgetType)
@@ -432,9 +433,16 @@ void TButtonBarController::onLogoutButtonClicked()
         m_logoutQuestion = new TMessageDialogController(this);
         m_logoutQuestion->setCloseOnButtonClicked(true);
         m_logoutQuestion->setYesNoButtons();
-        connect(m_logoutQuestion, &TMessageDialogController::acceptClicked, this, &TButtonBarController::logoutRequested);
+        connect(m_logoutQuestion, &TMessageDialogController::buttonClicked, this,
+                &TButtonBarController::onLogoutRequestConfirmedOrCanceled);
     }
     m_logoutQuestion->showMessage(qtTrId("warning"), qtTrId("buttonbar_logout_warning"));
+}
+
+void TButtonBarController::onLogoutRequestConfirmedOrCanceled(const TMessageDialogButton::EMessageDialogButtonIdentifier Button)
+{
+    if (Button == TMessageDialogButton::EMessageDialogButtonIdentifier::YES)
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionQuitGame>(true));
 }
 
 void TButtonBarController::onRewardWallButtonClicked() { Q_EMIT publishGameAction(input::makeGameAction(A::REQUEST_OPEN_REWARD_WALL)); }

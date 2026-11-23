@@ -2,9 +2,11 @@
 
 #include "worldmap/coordinates.h"
 
+#include <QDebug>
 #include <QtGlobal>
 
 #include <stdexcept>
+#include <ostream>
 #include <string>
 
 namespace tibia::creatures {
@@ -112,6 +114,82 @@ inline ECreatureLookDirection lookDirectionAfter(const ECreatureLookDirection cu
     if (d < 13 && ((0x1effu >> d) & 1u) != 0)
         return static_cast<ECreatureLookDirection>(table[d]);
     return current;
+}
+
+/// A one-field step (not a teleport or turn).
+inline bool isStep(const EMovementDirection direction)
+{
+    return static_cast<unsigned>(direction) < 8;
+}
+
+/// The step direction a look direction faces.
+inline EMovementDirection movementDirectionOfLook(const ECreatureLookDirection look)
+{
+    const auto l = static_cast<unsigned>(look);
+    if (l < 4)
+        return static_cast<EMovementDirection>(l * 2);
+    throw std::logic_error("missing case for ECreatureLookDirection");
+}
+
+/// CipSoft's name of a look direction; nullptr for an unknown value.
+inline const char* lookDirectionName(const ECreatureLookDirection look)
+{
+    switch (look) {
+    case ECreatureLookDirection::North: return "NORTH";
+    case ECreatureLookDirection::East: return "EAST";
+    case ECreatureLookDirection::South: return "SOUTH";
+    case ECreatureLookDirection::West: return "WEST";
+    }
+    return nullptr;
+}
+
+/// CipSoft's name of a movement direction (8..12 are its teleports); nullptr
+/// for an unknown value.
+inline const char* movementDirectionName(const EMovementDirection direction)
+{
+    switch (direction) {
+    case EMovementDirection::North: return "NORTH";
+    case EMovementDirection::NorthEast: return "NORTHEAST";
+    case EMovementDirection::East: return "EAST";
+    case EMovementDirection::SouthEast: return "SOUTHEAST";
+    case EMovementDirection::South: return "SOUTH";
+    case EMovementDirection::SouthWest: return "SOUTHWEST";
+    case EMovementDirection::West: return "WEST";
+    case EMovementDirection::NorthWest: return "NORTHWEST";
+    case EMovementDirection::None: return "TELEPORT_UP_OR_DOWN";
+    case EMovementDirection::TurnNorth: return "TELEPORT_NORTH";
+    case EMovementDirection::TurnEast: return "TELEPORT_EAST";
+    case EMovementDirection::TurnSouth: return "TELEPORT_SOUTH";
+    case EMovementDirection::TurnWest: return "TELEPORT_WEST";
+    }
+    return nullptr;
+}
+
+/// The name; nothing for an unknown value.
+inline std::ostream& operator<<(std::ostream& stream, const ECreatureLookDirection look)
+{
+    if (const char* name = lookDirectionName(look))
+        stream << name;
+    return stream;
+}
+inline std::ostream& operator<<(std::ostream& stream, const EMovementDirection direction)
+{
+    if (const char* name = movementDirectionName(direction))
+        stream << name;
+    return stream;
+}
+/// The name without quotes; nothing for an unknown value.
+inline QDebug operator<<(QDebug debug, const ECreatureLookDirection look)
+{
+    if (const char* name = lookDirectionName(look))
+        debug << name;
+    return debug;
+}
+inline QDebug operator<<(QDebug debug, const EMovementDirection direction)
+{
+    if (const char* name = movementDirectionName(direction))
+        debug << name;
+    return debug;
 }
 
 }

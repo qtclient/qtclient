@@ -10,6 +10,7 @@
 #include "store/qmlstoreobjects.h"
 #include "store/storeciptypes.h"
 #include "game/gamesessionbase.h"
+#include "creatures/creaturestorage.h"
 
 #include <client/const.h>
 
@@ -246,11 +247,13 @@ TStoreDialogController::TStoreDialogController(QObject* parent)
     , m_descriptionManager(new store::TStoreDescriptionManager(this))
     , m_confirmationDialog(m_imageManager)
     , m_newCharacterNameDialog(new TGenericEnterTextDialogController(this))
+    , m_worldTransferDialog(new TCharacterWorldTransferDialogController(this))
+    , m_mainCharChangeDialog(new TMainCharacterChangeDialogController(this))
     , m_extraConfirmationDialog(new TMessageDialogController(this))
     , m_messageDialog(new TMessageDialogController(this))
     , m_searchMessageDialog(new TMessageDialogController(this))
     , m_transactionDetailsDialog(new TMarketCoinTransactionDetailsDialogController(this))
-    , m_hirelingNameDialog(new TGenericEnterTextDialogController(this))
+    , m_hirelingNameChange(new THirelingNameChangeController(this))
 {
     m_dynamicallyLoadedImageManager = m_imageManager;
     m_searchResultCategory = new store::TQmlStoreCategory(qtTrId("store_search_result_catergory_name"), {}, {}, this);
@@ -263,6 +266,12 @@ TStoreDialogController::TStoreDialogController(QObject* parent)
     m_newCharacterNameDialog->setMaxInputLength(29);
     connect(m_newCharacterNameDialog, &TGenericEnterTextDialogController::textEntered, this,
             &TStoreDialogController::onNewCharacterNameEntered);
+    connect(m_worldTransferDialog, &TCharacterWorldTransferDialogController::targetWorldConfirmed, this,
+            &TStoreDialogController::onCharacterWorldTransferWorldEntered);
+    connect(m_mainCharChangeDialog, &TMainCharacterChangeDialogController::mainCharChangeConfirmed, this,
+            [this](const uint32_t offerId, const QString& characterName) {
+                onMainCharChangeConfigurationFinished(static_cast<int>(offerId), characterName);
+            });
     connect(&m_hirelingDialog, &THirelingConfigurationDialogController::hirelingConfigured, this,
             &TStoreDialogController::onHirelingConfigurationFinished);
     connect(&m_transferDialog, &TTransferCreditsDialogController::transferRequested, this,
@@ -279,65 +288,24 @@ TStoreDialogController::TStoreDialogController(QObject* parent)
     m_viewEventTimer.setInterval(2000);
     m_viewEventTimer.setSingleShot(true);
 
-    // Host: the hireling rename prompt (CIP THirelingNameChangeController).
-    new THirelingNameChangeController(this);
-    m_hirelingNameDialog->setCaption(qtTrId("request_hireling_name_change_caption"));
-    m_hirelingNameDialog->setDescription(qtTrId("request_hireling_name_change_text"));
-    m_hirelingNameDialog->setMaxInputLength(21);
-    connect(m_hirelingNameDialog, &TGenericEnterTextDialogController::textEntered, this,
-            &TStoreDialogController::onHirelingNameChangeEntered);
+    // The hireling rename prompt's SET_HIRELING_NAME goes to the router (the session's player game action handler sends it).
+    connect(m_hirelingNameChange, &THirelingNameChangeController::publishGameAction, this,
+            &TStoreDialogController::publishGameAction);
 
     m_gameActions.on(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
         m_messageDialog->dialog()->close();
-        return true;
-    });
-    m_gameActions.on(input::EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE, [this](const input::TGameActionBuyHirelingNameOrSexChange& action) {
-        openWith(action.storeOpenParameters().openAction, action.storeOpenParameters().detail);
-        return true;
-    });
-    m_gameActions.on(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameActionSetHirelingName& action) {
-        if (!action.name().isEmpty())
-            tibia::game::sendSetHirelingName(action.name().toStdString());
         return true;
     });
 }
 
 TStoreDialogController::~TStoreDialogController()
 {
+    closeDialog();
 }
 
 void TStoreDialogController::open()
 {
     openWith(openParameters(store::OPEN_HOME, 0));
-}
-
-void TStoreDialogController::openWith(const int openAction, const int detail, const QString& text)
-{
-    store::TStoreOpenParameters parameters;
-    switch (openAction) {
-        case store::OPEN_PREMIUM_OR_BOOSTS:
-            parameters.openAction = openAction;
-            parameters.premiumDetail = detail;
-            break;
-        case store::OPEN_CATEGORY:
-            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
-            parameters.category = text;
-            break;
-        case store::OPEN_USEFUL_THING:
-            parameters.openAction = openAction;
-            parameters.usefulThing = detail;
-            break;
-        case store::OPEN_OFFER:
-            parameters.openAction = openAction;
-            parameters.offerId = static_cast<store::TOfferID>(detail);
-            break;
-        case store::OPEN_SEARCH:
-            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
-            parameters.category = text;
-            break;
-        default: parameters.openAction = store::OPEN_HOME; break;
-    }
-    openWith(parameters);
 }
 
 void TStoreDialogController::openWith(const store::TStoreOpenParameters& parameters)
@@ -359,6 +327,7 @@ void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IG
     m_gameSessionConnections.disconnectAll();
     m_storage = nullptr;
     m_gameSession = GameSession;
+    m_hirelingNameChange->connectToGameSession(m_gameSession);
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_messages = session ? session->storeProtocolMessageHandler().get() : nullptr;
     m_descriptionManager->setMessageHandler(m_messages);
@@ -370,6 +339,9 @@ void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IG
     add(connect(handler, &Handler::requestOpenStoreDialog, this, &TStoreDialogController::showDialog));
     add(connect(handler, &Handler::storeImageBaseUrlChanged, this, &TStoreDialogController::onStoreImageBaseUrlChanged));
     add(connect(handler, &Handler::requestCharacterNameChangeInputDialog, this, &TStoreDialogController::onNewCharacterNameRequested));
+    add(connect(handler, &Handler::requestCharacterWorldChangeInputDialog, this,
+                &TStoreDialogController::onCharacterWorldTransferWorldRequested));
+    add(connect(handler, &Handler::requestMainCharacterChangeInputDialog, this, &TStoreDialogController::onMainCharChangeRequested));
     add(connect(handler, &Handler::requestHirelingInputDialog, this, &TStoreDialogController::onHirelingConfigurationRequested));
     add(connect(handler, &Handler::requestConfirmationDialog, this, &TStoreDialogController::onConfirmationDialogRequested));
     add(connect(handler, &Handler::requestPurchaseSuccessNotification, this, &TStoreDialogController::onPurchaseSuccessNotification));
@@ -379,8 +351,6 @@ void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IG
     add(connect(handler, &Handler::requestTransactionHistoryErrorNotification, this,
                 &TStoreDialogController::onTransactionHistoryErrorNotification));
     add(connect(handler, &Handler::requestInformationNotification, this, &TStoreDialogController::onInformationNotification));
-    // Host: the hireling rename prompt.
-    add(connect(handler, &Handler::hirelingNameChangeRequested, this, &TStoreDialogController::onHirelingNameChangeRequested));
 
     m_storage = session->storeStorage().get();
     store::TStoreStorage* storage = m_storage;
@@ -392,8 +362,16 @@ void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IG
     add(connect(storage, &Storage::transactionHistoryChanged, this, &TStoreDialogController::onTransactionHistoryChanged));
     add(connect(storage, &Storage::sortOrderChanged, this, &TStoreDialogController::selectedSortOrderIndexChanged));
     add(connect(storage, &Storage::activeFilterTagChanged, this, &TStoreDialogController::rebuildAvailableOffers));
-    add(connect(storage, &Storage::transactionDetailsLoaded, m_transactionDetailsDialog,
-                [this] { m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails()); }));
+    add(connect(storage, &Storage::transactionDetailsLoaded, this, &TStoreDialogController::onTransactionDetailsChanged));
+}
+
+void TStoreDialogController::onTransactionDetailsChanged()
+{
+    if (!m_storage)
+        return;
+    // Only the details of the transaction the dialog asked for.
+    if (m_transactionDetailsId == static_cast<int>(m_storage->transactionDetails().transactionId))
+        m_transactionDetailsDialog->setTransactionDetails(m_storage->transactionDetails());
 }
 
 void TStoreDialogController::showDialog()
@@ -430,6 +408,8 @@ void TStoreDialogController::closeDialog()
     dialog()->close();
     m_confirmationDialog.dialog()->close();
     m_newCharacterNameDialog->dialog()->close();
+    m_worldTransferDialog->closeDialog();
+    m_mainCharChangeDialog->closeDialog();
     m_hirelingDialog.dialog()->close();
     m_transferDialog.dialog()->close();
     m_messageDialog->dialog()->close();
@@ -566,6 +546,30 @@ void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(m_offerIdForNameChange)))
         m_confirmationDialog.showDialog(m_offerIdForNameChange, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
                                         m_buyWithCosmeticTokens);
+}
+
+void TStoreDialogController::onCharacterWorldTransferWorldRequested(const int offerId,
+                                                                    const store::TWorldTransferInformation& worldTransferInformation,
+                                                                    const bool buyWithCosmeticTokens)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_messageDialog->dialog()->close();
+    m_buyWithCosmeticTokens = buyWithCosmeticTokens;
+    const std::shared_ptr<creatures::TCreature> player = session->playerCreature().lock();
+    m_worldTransferDialog->showDialog(offerId, player ? player->name() : QString(), worldTransferInformation);
+}
+
+void TStoreDialogController::onMainCharChangeRequested(const int offerId,
+                                                       const std::vector<store::TPossibleMainCharacterInformation>& possibleMainCharInfo,
+                                                       const bool buyWithCosmeticTokens)
+{
+    if (!m_gameSession)
+        return;
+    m_messageDialog->dialog()->close();
+    m_buyWithCosmeticTokens = buyWithCosmeticTokens;
+    m_mainCharChangeDialog->showDialog(static_cast<uint32_t>(offerId), possibleMainCharInfo);
 }
 
 void TStoreDialogController::onCharacterWorldTransferWorldEntered(const int offerId, const QString& worldName)
@@ -722,23 +726,6 @@ void TStoreDialogController::onExtraConfirmDialogClickedOK()
 void TStoreDialogController::onExtraConfirmDialogClickedNotOK()
 {
     m_extraConfirmationDialog->dialog()->close();
-}
-
-void TStoreDialogController::onHirelingNameChangeRequested(const quint32 creatureId, const quint32 objectId)
-{
-    Q_UNUSED(creatureId);
-    Q_UNUSED(objectId);
-    m_messageDialog->dialog()->close();
-    m_hirelingNameDialog->setText({});
-    m_hirelingNameDialog->dialog()->destroy();
-    m_hirelingNameDialog->dialog()->show();
-}
-
-void TStoreDialogController::onHirelingNameChangeEntered(const QString& name)
-{
-    if (name.trimmed().isEmpty() || !tibia::game::isOnline())
-        return;
-    tibia::game::sendSetHirelingName(name.trimmed().toStdString());
 }
 
 QStringList TStoreDialogController::sortOrderModel() const
@@ -1083,9 +1070,8 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
     : cip::tibia::gamewindow::TStoreButtonController(parent)
     , m_dialog(dialog)
 {
-    m_highlightTimer.setSingleShot(true);
-    m_highlightTimer.setInterval(600000);
-    connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
+    connect(&m_highlightTimer, &shared::THighlightTimer::changed, this, &TStoreButtonController::changed);
+    connect(&m_highlightTimer, &shared::THighlightTimer::timeout, this, &TStoreButtonController::onHighlightStoreButtonEnds);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { clearDeeplink(); });
 }
 
@@ -1106,7 +1092,7 @@ void TStoreButtonController::connectToGameSession(const std::shared_ptr<game::IG
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
     // The open action carries the link's detail, or its category / search
-    // text.
+    // text. The deep link stays until the store asks to open its dialog.
     int detail = m_deeplink.premiumDetail;
     switch (m_deeplink.openAction) {
         case store::OPEN_USEFUL_THING: detail = m_deeplink.usefulThing; break;
@@ -1115,37 +1101,45 @@ void TStoreButtonController::onOpenStoreButtonClicked()
     }
     auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplink.openAction, detail, m_deeplink.category);
     Q_EMIT publishGameAction(action);
-    onRequestOpenStoreDialog();
 }
 
 void TStoreButtonController::onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink)
 {
     m_deeplink = StoreDeeplink;
-    if (m_deeplink.openAction == 0) {
-        clearDeeplink();
+    if (m_deeplink.openAction != 0) {
+        m_highlightTimer.start(false);
         return;
     }
-    m_highlightTimer.start();
-    Q_EMIT changed();
+    m_highlightTimer.stop(false);
+    m_deeplink = {};
 }
 
-void TStoreButtonController::onHighlightStoreButtonEnds(bool)
+void TStoreButtonController::onHighlightStoreButtonEnds(const bool Protected)
 {
-    clearDeeplink();
+    m_highlightTimer.stop(Protected);
+    m_deeplink = {};
 }
 
 void TStoreButtonController::clearDeeplink()
 {
-    m_highlightTimer.stop();
+    m_highlightTimer.stop(true);
     m_deeplink = {};
-    Q_EMIT changed();
 }
 
 void TStoreButtonController::onStoreButtonIndicatorsChanged(const bool SaleFlag, const bool NewFlag)
 {
-    m_saleFlag = SaleFlag;
-    m_newFlag = NewFlag;
-    Q_EMIT changed();
+    if (m_saleFlag != SaleFlag) {
+        m_saleFlag = SaleFlag;
+        Q_EMIT changed();
+    }
+    if (m_saleFlag)
+        m_highlightTimer.start(true);
+    if (m_newFlag != NewFlag) {
+        m_newFlag = NewFlag;
+        Q_EMIT changed();
+    }
+    if (m_newFlag)
+        m_highlightTimer.start(true);
 }
 
 void TStoreButtonController::onRequestOpenStoreDialog()

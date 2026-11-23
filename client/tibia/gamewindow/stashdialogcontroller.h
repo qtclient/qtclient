@@ -148,7 +148,8 @@ private:
     TMessageDialogController* m_info;
     TConfirmMoveObjectToStashDialogController* m_confirmStow;
     input::TGameActionMapper m_mapper;
-    input::TMoveObjectPtr m_pendingStow;
+    /// The move or stow waiting for the confirmation.
+    input::IGameActionPtr m_pendingStow;
     bool m_reopenAfterMarket = false;
     bool m_reopenAfterManageLoot = false;
 

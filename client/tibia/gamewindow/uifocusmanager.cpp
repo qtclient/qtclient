@@ -59,11 +59,12 @@ void TUiFocusManager::takeFocus()
 
 void TUiFocusManager::releaseFocus()
 {
+    // Unblocking gives the keyboard back to the chat input; its
+    // releaseElementFocus signal drops the focus (onFocusTakenByEventFilterManager).
     if (!m_hasFocus)
         return;
     if (input::TEventFilterManager* eventFilters = input::TEventFilterManager::instance())
         eventFilters->unblock();
-    onFocusTakenByEventFilterManager();
 }
 
 void TUiFocusManager::onFocusTakenByEventFilterManager()

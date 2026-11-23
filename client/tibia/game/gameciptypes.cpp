@@ -34,10 +34,13 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/worldmap/worldmapstorage.h>
+#include "systemsurvey/systemsurveyvalueretriever.h"
+#include "creatures/creaturemovementspeedcalculator.h"
 
 #include <protocol.pb.h>
 
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -149,70 +152,108 @@ using ::tibia::protobuf::protocol::GameserverMessageSnapBack;
 using ::tibia::protobuf::protocol::GameserverMessageSpellDataModification;
 using ::tibia::protobuf::protocol::GameserverMessageStop;
 using ::tibia::protobuf::protocol::GameserverMessageWorldEntered;
+using ::tibia::protobuf::protocol::GameclientMessageClientDetails;
+using ::tibia::protobuf::protocol::GameclientMessageEnterWorld;
 
 } // namespace
 
-TGameProtocolMessageHandler::TGameProtocolMessageHandler(QObject* parent)
+TGameProtocolMessageHandler::TGameProtocolMessageHandler(
+    std::shared_ptr<tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator, QObject* parent)
     : cip::tibia::game::TGameProtocolMessageHandler(parent)
+    , m_speedCalculator(std::move(SpeedCalculator))
 {
 }
 
-void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
-    const GameserverMessageSessionDumpStart& SessionDumpStartMessage)
+int TGameProtocolMessageHandler::toSessionEndInformation(const uint32_t Reason)
 {
-    const std::string key =
-        SessionDumpStartMessage.has_session_key() ? SessionDumpStartMessage.session_key() : std::string();
-    tibia::game::notify("onSessionDumpStart", key);
-}
-
-void TGameProtocolMessageHandler::handlePendingStateEnteredMessage(
-    const GameserverMessagePendingStateEntered& /*PendingStateEnteredMessage*/)
-{
-    tibia::game::notify("onPendingGame");
-    if (network::TGameserverNetworkPacketProcessor::live())
-        protocol::gameclient::sendEnterGame();
-}
-
-void TGameProtocolMessageHandler::handleSessionEndInformationMessage(
-    const GameserverMessageSessionEndInformation& Message)
-{
-    tibia::game::notify("onSessionEnd", static_cast<uint8_t>(Message.reason()));
-}
-
-void TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage(
-    const GameserverMessageShowMultiOfflineTrainingDialog& /*Message*/)
-{
-    tibia::game::notify("onMultiOfflineTrainingDialog");
+    switch (Reason) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 99:
+    case 100:
+        return static_cast<int>(Reason);
+    default:
+        throw std::runtime_error("unhandled enum value");
+    }
 }
 
 void TGameProtocolMessageHandler::handleLoginSuccessMessage(
     const GameserverMessageLoginSuccess& LoginSuccessMessage)
 {
-    const uint32_t playerId = LoginSuccessMessage.player_id();
-    const uint16_t serverBeat = static_cast<uint16_t>(LoginSuccessMessage.beat_duration());
+    const auto serverBeat = static_cast<uint16_t>(LoginSuccessMessage.beat_duration());
+    m_speedCalculator->setSpeedFormula(LoginSuccessMessage.speed_a(), LoginSuccessMessage.speed_b(),
+                                       LoginSuccessMessage.speed_c());
+    m_speedCalculator->setServerBeat(serverBeat);
+    // CipSoft's message carries the hint as a bool (field 7); the classic login
+    // packet's PvP frame byte lands in pvp_frame.
+    Q_EMIT settingHintsFromServer(LoginSuccessMessage.pvp_frame() != 0);
+    // Host: the classic login packet has no world type (CipSoft's field 12, here
+    // exiva_options, carries the exiva byte), so worldTypeReceived is not
+    // emitted; the client takes the world type from the login service.
+    Q_EMIT loginSuccess();
+    sendClientDetailsMessage(::tibia::systemsurvey::TSystemSurveyValueRetriever());
+}
 
-    tibia::creatures::TCreatureMovementSpeedCalculator& speedCalculator =
-        tibia::worldmap::TWorldMapStorage::ensureStorage()->speedCalculator();
-    speedCalculator.setSpeedFormula(LoginSuccessMessage.speed_a(), LoginSuccessMessage.speed_b(),
-                                    LoginSuccessMessage.speed_c());
-    speedCalculator.setServerBeat(serverBeat);
+void TGameProtocolMessageHandler::sendClientDetailsMessage(
+    const ::tibia::systemsurvey::TSystemSurveyValueRetriever& ValueRetriever)
+{
+    GameclientMessageClientDetails message;
+    message.set_details(ValueRetriever.getOperatingSystemInformation().name.toStdString());
+    Q_EMIT sendClientDetails(message);
+}
 
-    bool canReportBugs = false;
+void TGameProtocolMessageHandler::handleSessionEndInformationMessage(
+    const GameserverMessageSessionEndInformation& Message)
+{
+    Q_EMIT sessionEndInformation(toSessionEndInformation(Message.reason()));
+}
 
-    setExpertPvpMode(LoginSuccessMessage.expert_pvp() != 0);
+void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
+    const GameserverMessageSessionDumpStart& SessionDumpStartMessage)
+{
+    const auto serverBeat = static_cast<uint16_t>(SessionDumpStartMessage.beat_duration());
+    m_speedCalculator->setSpeedFormula(SessionDumpStartMessage.speed_a(), SessionDumpStartMessage.speed_b(),
+                                       SessionDumpStartMessage.speed_c());
+    m_speedCalculator->setServerBeat(serverBeat);
+}
 
-    const std::string url =
-        LoginSuccessMessage.has_store_url() ? LoginSuccessMessage.store_url() : std::string();
-    tibia::game::notify("onStoreInit", url,
-                        static_cast<uint16_t>(LoginSuccessMessage.coins_packet_size()));
+void TGameProtocolMessageHandler::handlePendingStateEnteredMessage(
+    const GameserverMessagePendingStateEntered& /*PendingStateEnteredMessage*/)
+{
+    if (m_enterWorldOnPendingState)
+        emitSendEnterWorldMessage();
+}
 
-    setCanExivaOptions(LoginSuccessMessage.exiva_options() != 0);
+void TGameProtocolMessageHandler::emitSendEnterWorldMessage()
+{
+    m_enterWorldOnPendingState = true;
+    Q_EMIT sendEnterWorldMessage(GameclientMessageEnterWorld());
+}
 
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-        storage->setPlayerID(playerId);
-    setServerBeat(serverBeat);
-    setCanReportBugs(canReportBugs);
-    tibia::game::notify("onLogin");
+void TGameProtocolMessageHandler::handleDeadMessage(const GameserverMessageDead& DeadMessage)
+{
+    m_enterWorldOnPendingState = false;
+    int deathType = 0;
+    uint32_t fairFightFactor = 0;
+    if (DeadMessage.death_type() == 2) {
+        deathType = 3;
+    } else if (DeadMessage.death_type() == 1) {
+        deathType = 2;
+    } else if (DeadMessage.has_penalty() && DeadMessage.penalty() < 100) {
+        deathType = 1;
+        fairFightFactor = DeadMessage.penalty();
+    }
+    Q_EMIT deadMessage();
+    Q_EMIT requestOpenDeathDialog(deathType, static_cast<int>(fairFightFactor & 0xff), DeadMessage.death_redemption());
+}
+
+void TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage(
+    const GameserverMessageShowMultiOfflineTrainingDialog& /*Message*/)
+{
+    Q_EMIT requestShowMultiOfflineTrainingDialog();
 }
 
 void TGameProtocolMessageHandler::handleLoginAdviceMessage(const GameserverMessageLoginAdvice& m)
@@ -224,13 +265,6 @@ void TGameProtocolMessageHandler::handleLoginWaitMessage(const GameserverMessage
 {
     tibia::game::notify("onLoginWait", m.has_message() ? m.message() : std::string(),
                 static_cast<uint8_t>(m.time()));
-}
-
-void TGameProtocolMessageHandler::handleDeadMessage(const GameserverMessageDead& m)
-{
-    // The penalty is only sent for a regular death; otherwise it stays 100.
-    tibia::game::processDeath(static_cast<uint8_t>(m.death_type()),
-                              m.has_penalty() ? static_cast<uint8_t>(m.penalty()) : uint8_t(100));
 }
 
 void TGameProtocolMessageHandler::handleReadyForSecondaryConnectionMessage(const GameserverMessageReadyForSecondaryConnection& m)
@@ -274,14 +308,15 @@ void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMe
         data.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
         data.descriptions = details(o.details());
         Q_EMIT inspectObjectDataReceived(data);
-        // Host: the object inspection and item info dialogs still follow the
-        // notify hook (their connectors are not ported).
+        // Host: the item info dialog still follows the notify hook (its
+        // connector is not ported).
         tibia::game::processItemDetail(data);
     }
 }
 
-void TGameProtocolMessageHandler::handleOutfitMemorialMessage(const GameserverMessageOutfitMemorial& m)
+void TGameProtocolMessageHandler::handleOutfitMemorialMessage(const GameserverMessageOutfitMemorial& OutfitMemorialMessage)
 {
+    const GameserverMessageOutfitMemorial& m = OutfitMemorialMessage;
     const auto names = [](const auto& list) { return std::vector<std::string>(list.begin(), list.end()); };
     OutfitMemorialData data;
     data.baseGoldenOutfitCost = m.base_golden_cost();
@@ -299,16 +334,7 @@ void TGameProtocolMessageHandler::handleOutfitMemorialMessage(const GameserverMe
     data.baseTokenOutfitOwners = names(m.base_token_owners());
     data.oneAddonTokenOutfitOwners = names(m.one_addon_token_owners());
     data.fullTokenOutfitOwners = names(m.full_token_owners());
-    tibia::game::processOutfitMemorial(data);
-}
-
-void TGameProtocolMessageHandler::handleUnlockedSpellsMessage(const GameserverMessageUnlockedSpells& m)
-{
-    std::vector<uint16_t> spellIds;
-    for (const uint32_t id : m.spell_ids())
-        spellIds.push_back(static_cast<uint16_t>(id));
-    spells::TSpellInfoStorage::instance()->setUnlockedSpells(spellIds);
-    tibia::game::notify("onUnlockedSpells", spellIds);
+    Q_EMIT requestOpenOutfitMemorialDialog(data);
 }
 
 void TGameProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& m)
@@ -406,43 +432,6 @@ void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMe
         tibia::game::notify("onClientEvent", type, value);
         break;
     }
-}
-
-TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::s_instance = nullptr;
-
-TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
-    : cip::tibia::game::TPassiveAbilityInfoStorage(parent)
-    , m_model(new gamewindow::TPassiveAbilityListDataModel(this))
-{
-    s_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
-        // onPassiveData(abilityId, remainingMs, totalMs, decaying) — cooldown
-        // also lands in TCooldownStorage for action-bar overlays.
-        const int abilityId = int(argInt(args, 0));
-        m_currentCooldown = static_cast<uint32_t>(argInt(args, 1));
-        m_maxCooldown = static_cast<uint32_t>(argInt(args, 2));
-        m_canDecay = argBool(args, 3);
-        std::vector<gamewindow::TPassiveAbilityListDataModel::Entry> entries;
-        gamewindow::TPassiveAbilityListDataModel::Entry entry;
-        entry.id = abilityId > 0 ? abilityId : 1;
-        entry.name = abilityId == 1 ? QStringLiteral("Gift of Life") : QStringLiteral("Passive Ability");
-        entry.iconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(entry.id);
-        entry.usableByCurrentVocation = true;
-        entries.push_back(std::move(entry));
-        m_model->setEntries(std::move(entries));
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_currentCooldown = 0;
-        m_maxCooldown = 0;
-        m_canDecay = false;
-        m_model->setEntries({});
-    });
-}
-
-TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::instance()
-{
-    return s_instance;
 }
 
 TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, QObject* parent)
@@ -578,8 +567,6 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
         data->setSecureMode(message.secure_mode());
         data->setPvpMode(static_cast<int>(message.pvp_mode()));
     }
-    tibia::game::processPlayerTactics(message.chase_opponents() ? tibia::client::ChaseOpponent : tibia::client::DontChase,
-                                      message.secure_mode(), static_cast<tibia::client::PVPModes>(message.pvp_mode()));
 }
 
 void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
@@ -769,7 +756,7 @@ void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessag
     // The server refused the step: the walk plan cancels, or without one the
     // player stops where it is and faces `direction`.
     const auto direction = static_cast<uint8_t>(m.direction());
-    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+    if (tibia::input::TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.data()) {
         intent->onCancelWalk(static_cast<creatures::ECreatureLookDirection>(direction));
         return;
     }
@@ -783,7 +770,7 @@ void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageSto
 {
     // The server stopped the player: the walk plan clears, or without one the
     // player's step stops.
-    if (tibia::input::TPlayerMovementIntentHandler* intent = gameSessionState().movementIntent()) {
+    if (tibia::input::TPlayerMovementIntentHandler* intent = m_playerMovementIntentHandler.data()) {
         intent->clearGoal();
         return;
     }
@@ -791,9 +778,105 @@ void TPlayerProtocolMessageHandler::handleStopMessage(const GameserverMessageSto
         player->resetMovement();
 }
 
+void TPlayerProtocolMessageHandler::setPlayerMovementIntentHandler(tibia::input::TPlayerMovementIntentHandler* Handler)
+{
+    m_playerMovementIntentHandler = Handler;
+}
+
+void TPlayerProtocolMessageHandler::goNorth()
+{
+    Q_EMIT sendGoNorth(::tibia::protobuf::protocol::GameclientMessageGoNorth());
+}
+
+void TPlayerProtocolMessageHandler::goEast()
+{
+    Q_EMIT sendGoEast(::tibia::protobuf::protocol::GameclientMessageGoEast());
+}
+
+void TPlayerProtocolMessageHandler::goSouth()
+{
+    Q_EMIT sendGoSouth(::tibia::protobuf::protocol::GameclientMessageGoSouth());
+}
+
+void TPlayerProtocolMessageHandler::goWest()
+{
+    Q_EMIT sendGoWest(::tibia::protobuf::protocol::GameclientMessageGoWest());
+}
+
+void TPlayerProtocolMessageHandler::stop()
+{
+    Q_EMIT sendStop(::tibia::protobuf::protocol::GameclientMessageStop());
+}
+
+void TPlayerProtocolMessageHandler::cancel()
+{
+    Q_EMIT sendCancel(::tibia::protobuf::protocol::GameclientMessageCancel());
+}
+
+void TPlayerProtocolMessageHandler::goNorthEast()
+{
+    Q_EMIT sendGoNorthEast(::tibia::protobuf::protocol::GameclientMessageGoNorthEast());
+}
+
+void TPlayerProtocolMessageHandler::goSouthEast()
+{
+    Q_EMIT sendGoSouthEast(::tibia::protobuf::protocol::GameclientMessageGoSouthEast());
+}
+
+void TPlayerProtocolMessageHandler::goSouthWest()
+{
+    Q_EMIT sendGoSouthWest(::tibia::protobuf::protocol::GameclientMessageGoSouthWest());
+}
+
+void TPlayerProtocolMessageHandler::goNorthWest()
+{
+    Q_EMIT sendGoNorthWest(::tibia::protobuf::protocol::GameclientMessageGoNorthWest());
+}
+
+void TPlayerProtocolMessageHandler::goPath(const std::vector<creatures::EMovementDirection>& Path)
+{
+    ::tibia::protobuf::protocol::GameclientMessageGoPath message;
+    for (const creatures::EMovementDirection direction : Path) {
+        uint32_t step = 0;
+        switch (direction) {
+        case creatures::EMovementDirection::North: step = 3; break;
+        case creatures::EMovementDirection::NorthEast: step = 2; break;
+        case creatures::EMovementDirection::East: step = 1; break;
+        case creatures::EMovementDirection::SouthEast: step = 8; break;
+        case creatures::EMovementDirection::South: step = 7; break;
+        case creatures::EMovementDirection::SouthWest: step = 6; break;
+        case creatures::EMovementDirection::West: step = 5; break;
+        case creatures::EMovementDirection::NorthWest: step = 4; break;
+        default: throw std::invalid_argument("Invalid direction");
+        }
+        message.add_directions(step);
+    }
+    Q_EMIT sendGoPath(message);
+}
+
+void TPlayerProtocolMessageHandler::rotateNorth()
+{
+    Q_EMIT sendRotateNorth(::tibia::protobuf::protocol::GameclientMessageRotateNorth());
+}
+
+void TPlayerProtocolMessageHandler::rotateEast()
+{
+    Q_EMIT sendRotateEast(::tibia::protobuf::protocol::GameclientMessageRotateEast());
+}
+
+void TPlayerProtocolMessageHandler::rotateSouth()
+{
+    Q_EMIT sendRotateSouth(::tibia::protobuf::protocol::GameclientMessageRotateSouth());
+}
+
+void TPlayerProtocolMessageHandler::rotateWest()
+{
+    Q_EMIT sendRotateWest(::tibia::protobuf::protocol::GameclientMessageRotateWest());
+}
+
 void TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage(const GameserverMessageHirelingNameChange& m)
 {
-    tibia::game::notify("onHirelingNameChange", m.creature_id(), m.object_id());
+    Q_EMIT showHirelingNameChangeConfiguration(m.creature_id(), m.object_id());
 }
 
 void ownProductSurface(QObject* parent)
@@ -820,7 +903,14 @@ void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMess
 
 void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMessageEditList& m)
 {
-    Q_EMIT requestEditListDialog(m.list_id(), static_cast<uint8_t>(m.list_type()), QString::fromStdString(m.text()));
+    Q_EMIT requestEditListDialog(m.list_id(), editListType(m.list_type()), QString::fromStdString(m.text()));
+}
+
+uint8_t TEditTextProtocolMessageHandler::editListType(const uint32_t value)
+{
+    if (value < 4)
+        return static_cast<uint8_t>(value);
+    throw std::invalid_argument("Invalid enum value");
 }
 
 void TEditTextProtocolMessageHandler::handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& m)
@@ -1022,5 +1112,36 @@ TOutfitDialogStorage* TOutfitDialogStorage::instance() { return g_outfitDialogSt
 void TOutfitDialogStorage::setInstance(TOutfitDialogStorage* storage) { g_outfitDialogStorage = storage; }
 
 void TOutfitDialogStorage::announcePresetsChanged() { Q_EMIT configurationChangedFromUserInput(); }
+
+QString TOutfitDialogStorage::configurationName() const
+{
+    return QStringLiteral("outfitdialog");
+}
+
+QJsonObject TOutfitDialogStorage::configurationToJson() const
+{
+    QJsonObject json;
+    json.insert(QStringLiteral("customiseCharacterPresets"), m_presets);
+    json.insert(QStringLiteral("configureShowOffSocketPresets"), m_showOffPresets);
+    return json;
+}
+
+void TOutfitDialogStorage::configurationFromJson(const QJsonObject& json)
+{
+    const auto objectsOf = [&json](const QString& key) {
+        QJsonArray objects;
+        if (!json.contains(key))
+            return objects;
+        for (const QJsonValue& value : json.value(key).toArray()) {
+            if (value.isObject())
+                objects.append(value);
+        }
+        return objects;
+    };
+    m_presets = objectsOf(QStringLiteral("customiseCharacterPresets"));
+    Q_EMIT customizeCharacterPresetsChanged();
+    m_showOffPresets = objectsOf(QStringLiteral("configureShowOffSocketPresets"));
+    Q_EMIT configureShowOffSocketPresetsChanged();
+}
 
 } // namespace tibia::game

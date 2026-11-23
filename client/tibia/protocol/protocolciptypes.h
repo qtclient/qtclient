@@ -29,11 +29,6 @@ namespace protocol {
 
 void ownProductSurface(QObject* parent);
 
-class TGameActionContextHelper final : public ::tibia::CipTyped {
-public:
-    TGameActionContextHelper() = default;
-};
-
 class TProtobufServerMessageTranslator final : public ::tibia::CipTyped {
 public:
     TProtobufServerMessageTranslator() = default;
@@ -50,11 +45,6 @@ public:
 
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameclientMessage& message) const;
-};
-
-class TProtobufObjectPositionHelper final : public ::tibia::CipTyped {
-public:
-    TProtobufObjectPositionHelper() = default;
 };
 
 class TProtocolClientMessageProcessor final : public ::tibia::CipTyped {

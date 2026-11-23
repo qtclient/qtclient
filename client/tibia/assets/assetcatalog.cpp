@@ -43,4 +43,25 @@ QString TAssetCatalog::fileOf(const TAsset::EType type) const
     return it == m_assets.end() ? QString() : it->file();
 }
 
+std::vector<TAsset>::const_iterator TAssetCatalog::findAsset(const std::function<bool(const TAsset&)>& predicate) const
+{
+    return std::find_if(m_assets.begin(), m_assets.end(), predicate);
+}
+
+std::vector<TAsset>::const_iterator TAssetCatalog::findIteratorForAssetIdentifiedByFilename(const QString& filename) const
+{
+    return findAsset([filename](const TAsset& asset) { return asset.file() == filename; });
+}
+
+TAsset TAssetCatalog::findAssetIdentifiedByFilename(const QString& filename) const
+{
+    const auto it = findAsset([filename](const TAsset& asset) { return asset.file() == filename; });
+    return it == m_assets.end() ? TAsset() : *it;
+}
+
+bool TAssetCatalog::containsAssetIdentifiedByFilename(const QString& filename) const
+{
+    return findIteratorForAssetIdentifiedByFilename(filename) != m_assets.end();
+}
+
 }

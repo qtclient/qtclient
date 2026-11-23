@@ -8,8 +8,10 @@
 #include "client/gamecore.h"
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "qtconnectionmanager.h"
 #include "store/storestorage.h"
+#include "taskboard/monsterlistmodelsortfilterproxy.h"
 #include "trade/charactertrademodels.h"
 #include "trade/tradeciptypes.h"
 
@@ -44,39 +46,6 @@ class IGameAction;
 namespace gamewindow {
 
 class TQMLCharacterData;
-
-/// CipSoft SoulSealsDialog.qml monster table.
-class TSoulSealsMonsterListModel final : public QAbstractListModel
-{
-    Q_OBJECT
-public:
-    enum Role {
-        RaceIdRole = Qt::UserRole + 1,
-        RaceIDRole,
-        NameRole,
-        AnimusMasteryCompletedRole,
-        SoulPitFightPriceRole,
-        TotalAmountRole,
-        CategoryRole
-    };
-    struct Entry {
-        int raceId = 0;
-        QString name;
-        bool animusMasteryCompleted = false;
-        int soulPitFightPrice = 0;
-        int category = 0;
-    };
-    explicit TSoulSealsMonsterListModel(QObject* parent = nullptr);
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
-    void setEntries(std::vector<Entry> entries);
-    Q_INVOKABLE int getRaceIDAtIndex(int rowIndex) const;
-    const Entry* entryForRace(int raceId) const;
-
-private:
-    std::vector<Entry> m_entries;
-};
 
 /// CIP TCharacterAuctionConfiguration (metaObject).
 class TCharacterAuctionConfiguration final : public cip::tibia::gamewindow::TCharacterAuctionConfiguration
@@ -316,49 +285,7 @@ public Q_SLOTS:
     void onNoClicked() override;
 };
 
-/// CIP THirelingNameChangeController (v3) — empty moc; store rename owner.
-class THirelingNameChangeController final : public cip::tibia::gamewindow::THirelingNameChangeController
-{
-    Q_OBJECT
-public:
-    explicit THirelingNameChangeController(QObject* parent = nullptr);
-    static THirelingNameChangeController* instance();
 
-private:
-    static THirelingNameChangeController* s_instance;
-};
-
-/// CIP TInfoBannerController (v3) — tutorial/InfoBanner*.qml.
-class TInfoBannerController final : public cip::tibia::gamewindow::TInfoBannerController
-{
-    Q_OBJECT
-public:
-    explicit TInfoBannerController(QQuickItem* mapWindowPane = nullptr, QObject* parent = nullptr);
-
-    Q_INVOKABLE QQuickItem* mapWindowPane() override;
-    void enqueue(cip::tibia::qmlcomponents::enums::EInfoBannerType type, const QJsonValue& extra = {});
-    void clearQueue();
-
-private:
-    QPointer<QQuickItem> m_mapWindowPane;
-};
-
-/// CIP TLinkCopyWarningDialogController (names.txt TLinkCopyWarningDialogController).
-class TLinkCopyWarningDialogController final : public cip::tibia::gamewindow::TLinkCopyWarningDialogController
-{
-    Q_OBJECT
-public:
-    explicit TLinkCopyWarningDialogController(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void onButtonClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
-    void onYesClicked() override;
-    void onNoClicked() override;
-
-Q_SIGNALS:
-    void copyConfirmed();
-    void copyRejected();
-};
 
 /// CIP TLoginConfirmationCodeEnterTextDialogController — LoginConfirmationCodeEnterDialog.qml:
 /// the login confirmation code, the method to (re)send it with and where it goes.
@@ -406,15 +333,6 @@ private:
     EMethod m_method = EmailPrimary;
 };
 
-/// One character the store offers as the new main character (CIP:
-/// store::TPossibleMainCharacterInformation).
-struct TPossibleMainCharacterInformation {
-    QString characterName;
-    QString worldName;
-    QString vocation;
-    int level = 0;
-};
-
 /// MainCharacterChangeDialog.qml (CIP: TMainCharacterChangeDialogController):
 /// the store's characters that can become the main character of the account.
 class TMainCharacterChangeDialogController final
@@ -427,7 +345,7 @@ public:
 
 public Q_SLOTS:
     /// CIP: closes the dialog, keeps the offer and the characters and shows them.
-    void showDialog(uint32_t OfferIDForMainCharChange, std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo);
+    void showDialog(uint32_t OfferIDForMainCharChange, std::vector<store::TPossibleMainCharacterInformation> PossibleMainCharInfo);
     /// CIP: closes the dialog and deletes the character entries.
     void closeDialog() override;
     void requestClose() override;
@@ -442,7 +360,7 @@ private:
     void createMainCharInfos();
 
     uint32_t m_offerId = 0;
-    std::vector<TPossibleMainCharacterInformation> m_possibleMainChars;
+    std::vector<store::TPossibleMainCharacterInformation> m_possibleMainChars;
 };
 
 /// CIP TMarketCoinTransactionDetailsDialogController — MarketCoinTransactionDetails.qml.
@@ -479,6 +397,8 @@ public:
     void showSkillsDialog();
     /// CIP: closes the dialog and deletes the skill entries.
     void closeDialog();
+    /// CIP: closes the dialog; the session's game protocol handler shows it.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QList<QObject*> skillsModel() const override;
 
@@ -491,7 +411,8 @@ private:
     void clearSkillsModel();
 
     static TMultiOfflineTrainingDialogController* s_instance;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 /// CIP TOutfitMemorialDialogController — OutfitMemorialDialog.qml.
@@ -503,12 +424,15 @@ public:
     static TOutfitMemorialDialogController* instance();
 
     void showMemorial(const OutfitMemorialData& data);
+    /// CIP: the session's game protocol handler opens the memorial.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     Q_INVOKABLE void requestClose() override;
 
 private:
     static TOutfitMemorialDialogController* s_instance;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
 /// CIP TReturnerRewardDialogController — ReturnerRewardNotificationDialog.qml.
@@ -549,6 +473,7 @@ public:
     };
 
     explicit TShowImageDialogController(QObject* parent = nullptr);
+    ~TShowImageDialogController() override;
     static TShowImageDialogController* instance();
 
     /// CIP handleShowImageDialogGameAction: takes the data and opens the dialog.
@@ -592,52 +517,77 @@ private:
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
 };
 
-/// CIP TSoulSealsDialogController — taskboard/SoulSealsDialog.qml.
+/// CIP TSoulSealsDialogController — taskboard/SoulSealsDialog.qml: the
+/// soul pit races (common and uncommon bestiary monsters) filtered by
+/// difficulty and name; fighting one asks for confirmation first.
 class TSoulSealsDialogController final : public TDialogController<cip::tibia::gamewindow::TSoulSealsDialogController>
 {
     Q_OBJECT
 public:
     explicit TSoulSealsDialogController(QObject* parent = nullptr);
 
-    /// The session's soul seals.
+    /// Closes the dialogs and follows the session's soul seals, the task
+    /// board handler (which opens the dialog) and the fight confirmation.
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
+
+    void setSelectedMonsterRaceID(int v) override;
+    QString selectedMonstername() const override;
+    int selectedFightPrice() const override;
     QString soulSealsString() const override;
     int availableSoulSeals() const override;
-    void setSelectedMonsterRaceID(int v) override;
-    /// Closes the dialog and follows the session's soul seals and its task
-    /// board handler, which opens the dialog.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    QStringList availableMonsterDifficulties() const override;
     void setIndexOfSelectedDifficulty(int v) override;
     void setMonstersNameFilter(const QString& v) override;
+    QObject* monsterList() const override;
 
 public Q_SLOTS:
+    /// Marks the races whose animus mastery is completed; a dialog that is not
+    /// open yet opens with every difficulty and no name filter.
+    void showDialog(const std::vector<uint16_t>& AnimusMasteryRaceIds);
     void closeDialog() override;
     void requestClose() override;
     void fightselectedMonster() override;
 
 private:
-    void applyEntries(std::vector<TSoulSealsMonsterListModel::Entry> entries);
-    void refreshSelection();
-    void rebuildVisible();
-    shared::TQtConnectionManager m_gameSessionConnections;
+    void onFightConfirmed();
+    void onFightDiscarded();
+
     std::shared_ptr<game::IGameSession> m_gameSession;
-    TSoulSealsMonsterListModel* m_allMonsters = nullptr;
-    TSoulSealsMonsterListModel* m_visibleMonsters = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
+    shared::TQtConnectionManager m_gameSessionConnections;
+    std::vector<taskboard::TMonsterDifficultyFilter> m_difficultyFilters;
+    taskboard::TMonsterListModelSortFilterProxy m_monsterListProxy;
+    TMessageDialogController m_fightConfirmation;
 };
 
 /// CIP TSurveyInvitationDialogController — SurveyInvitatioDialog.qml.
+/// CIP TSurveyInvitationDialogController (SurveyInvitatioDialog.qml): the
+/// invitation (id, text, token, date) and the client options' survey status.
+/// Yes opens the survey; yes and no answer it (status 2), ask later leaves it
+/// open (status 1).
 class TSurveyInvitationDialogController final : public TDialogController<cip::tibia::gamewindow::TSurveyInvitationDialogController>
 {
     Q_OBJECT
 public:
     explicit TSurveyInvitationDialogController(QObject* parent = nullptr);
 
-    void showInvitation(const QString& text, const QString& date, bool askLater);
+    /// qtclient: fills the invitation and shows the dialog.
+    void showInvitation(int surveyId, const QString& text, const QString& token, quint32 date, bool askLater);
+
+    /// The invitation's date, "MMMM d, yyyy" in British English.
+    QString dateString() const override;
 
 public Q_SLOTS:
     void onYesClicked() override;
     void onNoClicked() override;
     void onAskLaterClicked() override;
+
+private:
+    /// Stores `status` in the client options' survey invitation.
+    void setSurveyStatus(int status);
+
+    int m_surveyId = 0;
+    QString m_token;
+    quint32 m_date = 0;
 };
 
 /// CIP TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController.
@@ -657,24 +607,21 @@ Q_SIGNALS:
     void purchaseAccepted(int optionalId);
 };
 
-/// CIP TTutorialOverlayController (v3) — tutorial/TutorialOverlayTemplate.qml.
-class TTutorialOverlayController final : public TDialogController<cip::tibia::gamewindow::TTutorialOverlayController>
-{
-    Q_OBJECT
-public:
-    explicit TTutorialOverlayController(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void onMouseFilterAreaEntered() override;
-    void onMouseFilterAreaExited() override;
-};
-
 /// CIP TTutorialOverlayItemController.
 class TTutorialOverlayItemController final : public cip::tibia::gamewindow::TTutorialOverlayItemController
 {
     Q_OBJECT
 public:
     explicit TTutorialOverlayItemController(QObject* parent = nullptr);
+    /// CIP: the controller of a tutorial overlay item; it owns the item.
+    explicit TTutorialOverlayItemController(QQuickItem* item);
+    /// The item loses its parent and is deleted later.
+    ~TTutorialOverlayItemController() override;
+
+    QQuickItem* item() const { return m_item; }
+
+private:
+    QQuickItem* m_item = nullptr;
 };
 
 /// CIP TTutorialOverlayMouseFilterController.
@@ -683,15 +630,15 @@ class TTutorialOverlayMouseFilterController final : public cip::tibia::gamewindo
     Q_OBJECT
 public:
     explicit TTutorialOverlayMouseFilterController(QObject* parent = nullptr);
-};
+    /// CIP: the controller of a tutorial overlay item; it owns the item.
+    explicit TTutorialOverlayMouseFilterController(QQuickItem* item);
+    /// The item loses its parent and is deleted later.
+    ~TTutorialOverlayMouseFilterController() override;
 
-/// CIP TTutorialOverlayMouseTrailAnimationController.
-class TTutorialOverlayMouseTrailAnimationController final
-    : public cip::tibia::gamewindow::TTutorialOverlayMouseTrailAnimationController
-{
-    Q_OBJECT
-public:
-    explicit TTutorialOverlayMouseTrailAnimationController(QObject* parent = nullptr);
+    QQuickItem* item() const { return m_item; }
+
+private:
+    QQuickItem* m_item = nullptr;
 };
 
 /// CIP TTwoFactorCodeEnterTextDialogController — TwoFactorTextEnterDialog.qml.
@@ -708,14 +655,13 @@ public Q_SLOTS:
     void onButtonClicked() override;
     void onControllerFinished() override;
     bool getIsTrustedDevice() override;
+    /// Sets the flag without a change signal.
     void setIsTrustedDevice(bool TrustedDevice) override;
     ETwoFactorMethod getTwoFactorMethod() override;
+    /// Sets the method without a change signal.
+    void setTwoFactorMethod(ETwoFactorMethod Method) override;
     QString getAdditionalInfoText() override;
     uint getMaxInputLength() override;
-
-Q_SIGNALS:
-    void codeEntered(const QString& code, bool trustedDevice);
-    void emailResendRequested();
 };
 
 }

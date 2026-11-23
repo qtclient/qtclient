@@ -291,9 +291,6 @@ void TWorldMapRenderProvider::advance()
 
     QElapsedTimer cost;
     cost.start();
-    // The stored fields' animations advance to this frame before it is built.
-    if (tibia::worldmap::TWorldMapStorage* storage = tibia::worldmap::TWorldMapStorage::ensureStorage())
-        storage->updateAnimations(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     m_frame.valid = build();
     m_buildNs = cost.nsecsElapsed();
     // The view follows the drawn frame's field, so the picker's floor and
@@ -351,13 +348,12 @@ bool TWorldMapRenderProvider::build()
     frame.camera = QPoint((CenterX - (m_visibleWidth - 1) / 2) * FieldSize + walk.x(),
                           (CenterY - (m_visibleHeight - 1) / 2) * FieldSize + walk.y());
 
-    // firstVisibleFloor on camera step or opaque cover change .
+    // The render volume is recomputed on a camera step or an opaque cover change.
     // No hysteresis — delayed hide left upper floors stuck on.
     uint8_t first;
     uint8_t last;
     if (!m_floorsCached || cameraTileMoved || coverDirty) {
-        first = firstVisibleFloor();
-        last = std::max(first, lastVisibleFloor());
+        updateVisibleFloors(first, last);
         m_cachedFirstFloor = first;
         m_cachedLastFloor = last;
         m_floorsCached = true;
@@ -759,19 +755,22 @@ void TWorldMapRenderProvider::addLight(const QPoint& center, const uint8_t inten
         m_lights.push_back({ QPoint(center.x(), center.y()), intensity, color, static_cast<uint8_t>(m_floor) });
 }
 
-/// TRenderVolumeProvider::v10 : floors above are hidden from the
-/// lowest one that covers the camera's field or a field next to it (the plus
-/// shape), unless that field blocks the view itself. A floor covers a field
-/// with a bank or bottom object drawn over it, or a bank right above it;
-/// dont_hide objects never cover. CIP hides them at once, without a fade.
-uint8_t TWorldMapRenderProvider::firstVisibleFloor() const
+void TWorldMapRenderProvider::updateVisibleFloors(uint8_t& first, uint8_t& last)
 {
-    return renderer::TRenderVolumeProvider::firstVisibleFloor(m_camera);
-}
-
-uint8_t TWorldMapRenderProvider::lastVisibleFloor() const
-{
-    return renderer::TRenderVolumeProvider::lastVisibleFloor(m_camera);
+    if (!m_renderVolumeProvider || !m_viewport) {
+        first = last = m_camera.z;
+        return;
+    }
+    // The view centres on the camera's field before the volume is taken from it.
+    m_viewport->setCenter(worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(m_camera), 0, 0));
+    m_renderVolumeProvider->updateRenderVolume();
+    const worldmap::TShearedWorldMapCuboid volume = m_renderVolumeProvider->renderVolume();
+    if (volume.getExtent().depth <= 0) {
+        first = last = m_camera.z;
+        return;
+    }
+    first = static_cast<uint8_t>(volume.getOrigin().z);
+    last = static_cast<uint8_t>(volume.lastFloorOrigin().z);
 }
 
 QPoint TWorldMapRenderProvider::toScreen(const Position& pos) const

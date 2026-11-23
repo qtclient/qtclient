@@ -344,7 +344,7 @@ TMarketController::TMarketController(QObject* parent)
                 if (action.position().y & 0x40) {
                     if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
                         if (const container::TStoredContainer* row = storage->containerAt(action.position().y & 0x3F))
-                            slotTier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition()).tier;
+                            slotTier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + action.stackPosition()).tier;
                     }
                 } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
                     slotTier = inventory->slotAt(action.position().y).tier;

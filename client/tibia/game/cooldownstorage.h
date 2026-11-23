@@ -92,6 +92,10 @@ public:
     TCooldown multiUseCooldown() const { return multiUseCooldown(now()); }
     /// Spell id → own cooldown of every spell with an end time.
     std::map<int, TCooldown> spellCooldowns() const;
+    /// The server's cooldown and counter of a passive ability the client
+    /// knows; all zero for one without data or an unknown id.
+    TPassiveAbilityCooldown passiveAbilityCooldown(uint8_t abilityId) const;
+    TPassiveAbilityCounter passiveAbilityCounter(uint8_t abilityId) const;
     /// The cooldown of the first passive ability with data (Gift of Life).
     TCooldown passiveCooldown() const;
     int passiveAbilityId() const;

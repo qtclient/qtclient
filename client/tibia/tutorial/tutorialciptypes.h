@@ -1,12 +1,7 @@
 #pragma once
 
-// CIP-named tutorial surfaces (promoted from cipwire).
-
-#include "shared/cip_typed.h"
-
 #include <cip_gen.h>
 
-#include <QByteArray>
 #include <QObject>
 
 namespace tibia {
@@ -20,42 +15,19 @@ class GameserverMessageTutorialHint;
 namespace tibia {
 namespace tutorial {
 
-/// Own CIP-named types under `parent` (live session / feature owner).
-void ownProductSurface(QObject* parent);
-
-
-class TSessiondumpHintBase final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintClearOldestMessage final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintCondition final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintConditionShowTutorialHint final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintPublishGameAction final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintSkipTo final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintSwitchChannel final : public ::tibia::CipTyped {};
-
-class TSessiondumpHintTutorialProgress final : public ::tibia::CipTyped {};
-
-class TSessiondumpHints final : public ::tibia::CipTyped {};
-
-
-/// CIP `tutorial::TTutorialProtocolMessageHandler` — native Q→H for TutorialHint.
+/// CIP `tutorial::TTutorialProtocolMessageHandler`: turns the server's
+/// TutorialHint into a tutorial hint dialog (SHOW_TUTORIAL_HINT).
 class TTutorialProtocolMessageHandler final : public cip::tibia::tutorial::TTutorialProtocolMessageHandler
 {
     Q_OBJECT
 public:
     explicit TTutorialProtocolMessageHandler(QObject* parent = nullptr);
 
-    /// CIP slot: TutorialHint (S 0xDC / 220) — native Q→H apply (skips classic bridge).
+    /// Shows hint 1..14 (others are ignored). Before hints 7 to 10 and 12,
+    /// the default minimap tiles are loaded from the resources.
     void handleTutorialHintMessage(
         const ::tibia::protobuf::protocol::GameserverMessageTutorialHint& TutorialHintMessage);
-
 };
-
 
 }
 }

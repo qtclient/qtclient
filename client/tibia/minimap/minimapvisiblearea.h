@@ -40,6 +40,17 @@ public:
     Position center() const;
     void setCenter(const Position& center);
     void setViewportSizePx(int width, int height);
+    /// The field past the area's bottom-right corner: top-left plus size.
+    Position bottomRight() const
+    {
+        return Position(m_topLeft.x + m_size.width(), m_topLeft.y + m_size.height(), m_topLeft.z);
+    }
+    /// Whether `coord` lies on the area's floor within five fields of the area.
+    bool isNearArea(const Position& coord) const
+    {
+        return coord.z == m_topLeft.z && m_topLeft.x <= coord.x + 5 && coord.x - 5 <= m_topLeft.x + m_size.width()
+            && m_topLeft.y <= coord.y + 5 && coord.y - 5 <= m_topLeft.y + m_size.height();
+    }
 
     /// Whether the 256x256 tile at `id` overlaps the area.
     bool intersectsTile(const Position& id) const;

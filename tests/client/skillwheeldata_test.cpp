@@ -15,8 +15,11 @@ const TSpellInfo* TSpellInfoStorage::spell(int) const { return nullptr; }
 using tibia::skillwheel::canDecrease;
 using tibia::skillwheel::isUnlocked;
 using tibia::skillwheel::isValid;
-using tibia::skillwheel::maxPoints;
 using tibia::skillwheel::SlotCount;
+
+namespace {
+int maxPoints(const int tile) { return tibia::skillwheel::gridConfiguration().maxPoints(tile); }
+}
 
 namespace {
 
@@ -103,7 +106,7 @@ TPoints vesselSlices(const int count)
     TPoints points{};
     int filled = 0;
     for (int slot = 0; slot < SlotCount && filled < count; ++slot) {
-        if (tibia::skillwheel::isVesselPerk(tibia::skillwheel::mediumPerk(slot, 0))) {
+        if (tibia::skillwheel::isVesselPerk(tibia::skillwheel::gridConfiguration().mediumPerk(slot, 0))) {
             points[slot] = maxPoints(slot);
             ++filled;
         }

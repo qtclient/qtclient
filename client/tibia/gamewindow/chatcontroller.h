@@ -102,6 +102,8 @@ public:
     void startNewSelection(int entryIndex, int cursorPosition) override;
     void updateSelection(int entryIndex, int cursorPosition) override;
     void selectAll() override;
+    /// Selects the newest rows whose entries are not older than `since`.
+    void selectAllSince(const QDateTime& since);
     void selectTextPassage(int entryIndex, int passageStart, int passageEnd) override;
     void setChatWidth(int width) override;
     void setChatFont(const QFont& font) override;
@@ -111,7 +113,10 @@ public:
     void onChannelClicked(int entryId, int mouseButtonRaw, int keyboardModifiersRaw) override;
 
 Q_SIGNALS:
+    /// CIP requestCloseChannel.
     void closeRequested(chat::TChatChannel* channel);
+    /// CIP requestSubscribeToServerLog.
+    void subscribeToServerLogRequested(bool subscribe, chat::TChatChannel* channel);
     void entryClicked(int row, int mouseButton, int keyboardModifiers);
 
 private:
@@ -149,6 +154,8 @@ private:
     QVariant tutorialMarkerOf(const Row& row) const;
     QSize sizeOf(const QString& html) const;
     void emitSelectionChanged(int firstRow, int lastRow);
+    /// Clears the selected rows and forgets the selection.
+    void clearSelection();
     void invalidateSizes();
 
     QPointer<chat::TChatChannel> m_channel;
@@ -276,6 +283,8 @@ public:
     /// Optional PvP world.
     bool exivaOptionsAvailable() const override;
     int chatMode() const override { return m_mode.chatMode(); }
+    /// The chat's mode manager (the action bars follow its chat mode).
+    chat::TChatModeManager& chatModeManager() { return m_mode; }
     /// The white/blacklist dialog the chat opens.
     TWhiteBlacklistDialogController& whiteBlacklistDialog() { return m_whiteBlacklistDialog; }
 
@@ -365,6 +374,10 @@ private:
     void pressEnter();
     void setInputText(const QString& text, bool sendDirectly);
     void closeChannel(chat::TChatChannel* channel);
+    /// CIP: a channel controller's close request becomes CLOSE_CHAT_CHANNEL.
+    void onRequestCloseChannel(chat::TChatChannel* channel);
+    /// CIP: CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG or CHAT_CHANNEL_UNSUBSCRIBE_SERVER_LOG.
+    void onRequestSubscribeToServerLog(bool subscribe, chat::TChatChannel* channel);
     void setSecondary(chat::TChatChannel* channel);
     void sayInChannel(chat::TChatChannel* channel, const QString& text, int volume, int spellCastType = 0);
     void sendPrivate(const QString& recipient, const QString& text, bool gamemaster);
@@ -390,7 +403,6 @@ private:
     void onPlayerNameToExcludeFromChatChannelReceived(const QString& playerName);
     /// CIP .
     void showRecentlyTraded(const QString& name);
-    void addLogMessage(const QString& text);
 
     QPointer<QQuickItem> m_chatItem;
     chat::TWhiteBlacklist m_blacklist;

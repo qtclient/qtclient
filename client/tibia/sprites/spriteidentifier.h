@@ -28,6 +28,8 @@ public:
     virtual ~ISpriteIdentifier() = default;
     /// CIP v2.
     virtual int identifierKind() const = 0;
+    /// CIP v3: a copy of this identifier.
+    virtual std::shared_ptr<ISpriteIdentifier> clone() const = 0;
     /// CIP v4: callers compare only identifiers of the same dynamic type and kind.
     virtual bool equals(const ISpriteIdentifier& other) const = 0;
     /// CIP v5.
@@ -53,6 +55,7 @@ public:
     }
 
     int identifierKind() const override { return AssetSpritesheetIdentifier; }
+    std::shared_ptr<ISpriteIdentifier> clone() const override;
     bool equals(const ISpriteIdentifier& other) const override;
     size_t hash() const override;
 
@@ -86,6 +89,8 @@ public:
     }
 
     int identifierKind() const override { return EffectWrapperIdentifier; }
+    /// A copy holding a copy of the wrapped identifier.
+    std::shared_ptr<ISpriteIdentifier> clone() const override;
     bool equals(const ISpriteIdentifier& other) const override;
     size_t hash() const override;
 

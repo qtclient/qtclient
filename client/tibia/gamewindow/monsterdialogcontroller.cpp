@@ -11,6 +11,7 @@
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
@@ -700,8 +701,27 @@ void TMonsterDialogController::connectToGameSession(const std::shared_ptr<game::
         m_sessionConnections.push_back(connect(tracker, &cyclopedia::TCreatureTrackerStorage::canTrackMoreMonstersChanged, this,
                                                &TMonsterDialogController::qmlCanTrackMoreMonstersChanged));
     }
+    if (session && session->playerData())
+        m_sessionConnections.push_back(
+            connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &TMonsterDialogController::onPlayerDataChanged));
     Q_EMIT qmlIsMonsterTrackedChanged();
     Q_EMIT qmlCanTrackMoreMonstersChanged();
+}
+
+void TMonsterDialogController::requestOpenBestiaryTrackerWidget()
+{
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionToggleWidget>(11));
+}
+
+void TMonsterDialogController::onPlayerDataChanged()
+{
+    onSelectedCharmChanged();
+}
+
+void TMonsterDialogController::onSelectedCharmChanged()
+{
+    if (TQmlMonsterRace* race = singleRace())
+        race->updateCanAfford();
 }
 
 TCyclopediaDialogContext TMonsterDialogController::captureContext() const
@@ -954,7 +974,7 @@ void TMonsterDialogController::rebuildSingleMonster()
     }
     auto* race = new TQmlMonsterRace(m_details->id, m_details->currentLevel, m_details->AnimusMasteryBonus / 1000.0,
                                      m_details->AnimusMasteryPoints, &*m_details, std::move(charms), this);
-    connect(race, &TQmlMonsterRace::selectedCharmChanged, race, &TQmlMonsterRace::updateCanAfford);
+    connect(race, &TQmlMonsterRace::selectedCharmChanged, this, &TMonsterDialogController::onSelectedCharmChanged);
     m_singleMonster = race;
     Q_EMIT qmlSingleMonsterChanged();
     Q_EMIT qmlIsMonsterTrackedChanged();

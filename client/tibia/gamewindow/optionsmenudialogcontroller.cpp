@@ -9,6 +9,7 @@
 #include "config/clientoptiondefaults.h"
 #include "config/hotkeyoptions.h"
 #include "gamewindow/aboutdialogcontroller.h"
+#include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "minimap/minimapmanager.h"
 #include "input/gameaction.h"
@@ -124,6 +125,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     auto* battleSounds = new config::TBattleSoundsOptionsPage(config::battleSoundsBindings(), this);
     auto* uiSounds = new config::TUISoundsOptionsPage(config::uiSoundsBindings(), this);
 
+    m_actionBars = actionBars;
     m_actionBarsOptions = actionBars;
     m_buttonBarOptions = buttonBar;
     m_consoleOptions = console;
@@ -160,9 +162,11 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
         { UISounds, uiSounds },
     };
 
+    m_ruleViolationsMessage = makeMessageDialog();
+    m_restartMessage = makeMessageDialog();
+    m_rotationKeysMessage = makeMessageDialog();
     m_resetPageMessage = makeMessageDialog();
     m_resetAllMessage = makeMessageDialog();
-    m_restartMessage = makeMessageDialog();
     m_infoMessage = makeMessageDialog();
     m_importMessage = makeMessageDialog();
     m_about = new TAboutDialogController(this);
@@ -172,7 +176,6 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
     connect(m_restartMessage, &TMessageDialogController::buttonClicked, this, &TOptionsMenuDialogController::onResartMessageControllerClicked);
     connect(this, &cip::tibia::gamewindow::TOptionsMenuDialogController::dialogClosed, this, &TOptionsMenuDialogController::closeSubDialogs);
-    m_gameActions.on(EGameAction::START_TARGET_SELECTION, [this](const input::IGameAction& action) { onHotkeyPageGameAction(action); });
     m_gameActions.on(EGameAction::TARGET_SELECTION_FINISHED, [this](const input::IGameAction& action) { handleGameAction(action); });
     m_gameActions.on(EGameAction::OPEN_OPTIONS_MENU_DIALOG, [this](const input::IGameAction& action) { handleGameAction(action); });
 
@@ -237,23 +240,24 @@ bool TOptionsMenuDialogController::handleGameAction(const input::IGameAction& ac
     return false;
 }
 
-bool TOptionsMenuDialogController::onHotkeyPageGameAction(const input::IGameAction& action)
+void TOptionsMenuDialogController::processAndPublishGameActions(const input::IGameActionPtr& action)
 {
-    // Only the options dialog's own pages start a target selection while it is shown.
-    if (action.gameActionType() == EGameAction::START_TARGET_SELECTION && dialog()->item() && dialog()->item()->isVisible()) {
+    if (action->gameActionType() == EGameAction::START_TARGET_SELECTION) {
         dialog()->hide();
         m_hiddenForTargetSelection = true;
     }
-    return false;
+    Q_EMIT publishGameAction(action);
 }
 
 void TOptionsMenuDialogController::closeSubDialogs()
 {
-    for (TMessageDialogController* message : { m_resetPageMessage, m_resetAllMessage, m_restartMessage, m_infoMessage, m_importMessage })
+    for (TMessageDialogController* message : { m_ruleViolationsMessage, m_resetPageMessage, m_resetAllMessage, m_infoMessage, m_importMessage })
         if (message->dialog()->item())
             message->dialog()->close();
     if (m_about->dialog()->item())
         m_about->dialog()->close();
+    m_hotkeys->closeDialogs();
+    config::TClientOptions::instance()->saveToJsonFile();
 }
 
 TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()
@@ -390,26 +394,28 @@ void TOptionsMenuDialogController::applyButtonClicked()
 {
     const config::TClientOptions& current = *config::TClientOptions::instance();
 
-    // 
+    // The server learns the "allow all to inspect" switch.
     if (m_gameplay->allowAllToInspectPlayer() != current.boolOption(O::inspectPlayerAllowAllEnabled))
         Q_EMIT publishGameAction(simpleAction(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
 
-    // 
+    // The server learns "always turn towards the move direction" when it changes.
+    if (m_controls->alwaysTurnTowardsMoveDirection() != current.boolOption(O::alwaysTurnTowardsMoveDirection))
+        sendTurnTowardsMoveDirection(m_controls->alwaysTurnTowardsMoveDirection());
+
+    // No rotation key left.
     if (!m_controls->rotateWithAlt() && !m_controls->rotateWithCtrl() && !m_controls->rotateWithShift()) {
-        m_infoMessage->setButtons(okButton());
-        m_infoMessage->showMessage(qtTrId("warning"), qtTrId("optionsmenu_keys_for_rotation_no_key_warning"));
+        m_rotationKeysMessage->setButtons(okButton());
+        m_rotationKeysMessage->showMessage(qtTrId("warning"), qtTrId("optionsmenu_keys_for_rotation_no_key_warning"));
     }
 
+    clearMarkedActionBars();
+
+    // Every page into the options, in CipSoft's order.
     const std::unique_ptr<config::TClientOptions> pending = pendingOptions();
 
+    // A renderer, vsync or font renderer change needs a restart.
     const TRendererOptions currentRenderer(current);
     const bool restartNeeded = TRendererOptions(*pending) != currentRenderer;
-
-    // : the server learns the option when it changes.
-    const bool turnTowards = pending->boolOption(O::alwaysTurnTowardsMoveDirection);
-    if (turnTowards != current.boolOption(O::alwaysTurnTowardsMoveDirection))
-        sendTurnTowardsMoveDirection(turnTowards);
-
     if (restartNeeded) {
         // Keep the previous graphics trio so keep_renderer_after_restart can revert.
         app::graphicsrestart::markPendingConfirm(currentRenderer.renderer, currentRenderer.vSync, currentRenderer.freetype);
@@ -423,6 +429,25 @@ void TOptionsMenuDialogController::applyButtonClicked()
         m_restartMessage->showMessage(qtTrId("graphics_setting_requires_restart_caption"),
                                       qtTrId("graphics_setting_requires_restart_text"));
     }
+}
+
+void TOptionsMenuDialogController::clearMarkedActionBars()
+{
+    const std::pair<bool, EActionBarOption> bars[] = {
+        { m_actionBars->clearBottomActionBar1(), EActionBarOption::ShowBottomBar1 },
+        { m_actionBars->clearBottomActionBar2(), EActionBarOption::ShowBottomBar2 },
+        { m_actionBars->clearBottomActionBar3(), EActionBarOption::ShowBottomBar3 },
+        { m_actionBars->clearLeftActionBar1(), EActionBarOption::ShowLeftBar1 },
+        { m_actionBars->clearLeftActionBar2(), EActionBarOption::ShowLeftBar2 },
+        { m_actionBars->clearLeftActionBar3(), EActionBarOption::ShowLeftBar3 },
+        { m_actionBars->clearRightActionBar1(), EActionBarOption::ShowRightBar1 },
+        { m_actionBars->clearRightActionBar2(), EActionBarOption::ShowRightBar2 },
+        { m_actionBars->clearRightActionBar3(), EActionBarOption::ShowRightBar3 },
+    };
+    for (const auto& [clear, option] : bars)
+        if (clear)
+            m_hotkeys->clearActionBarMappings(TActionBarGroup::barOfShowOption(option));
+    m_actionBars->resetClearFlags();
 }
 
 void TOptionsMenuDialogController::sendTurnTowardsMoveDirection(const bool enabled)
@@ -445,8 +470,8 @@ void TOptionsMenuDialogController::activateLensehelp()
 
 void TOptionsMenuDialogController::showRuleViolationsText()
 {
-    m_infoMessage->setButtons(okButton());
-    m_infoMessage->showMessage(qtTrId("howtoruleviolationreport_caption"), qtTrId("howtoruleviolationreport_text"));
+    m_ruleViolationsMessage->setButtons(okButton());
+    m_ruleViolationsMessage->showMessage(qtTrId("howtoruleviolationreport_caption"), qtTrId("howtoruleviolationreport_text"));
 }
 
 void TOptionsMenuDialogController::openManuelUrl()

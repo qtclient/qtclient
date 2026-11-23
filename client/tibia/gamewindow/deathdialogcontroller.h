@@ -6,6 +6,13 @@
 
 #include <QVariant>
 
+#include <memory>
+#include <vector>
+
+namespace tibia::game {
+class IGameSession;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -14,17 +21,19 @@ namespace gamewindow {
 using TDeathMessageDialog = ::tibia::gamewindow::TMessageDialogController;
 
 /// Stock "You are dead" dialog (CIP: TDeathDialogController, ctor —
-/// MessageDialog with close-on-click + centered text). OT servers deliver death
-/// via opcode 0x28 → tibia::game::processDeath → TGameNotify::death; CIP's
-/// GameserverMessageDead / EDeathType + TFairFightFactor are cipgen-skipped, so
-/// qtclient slots take ints. Live QML path: composed TDeathMessageDialog →
-/// TibiaMessageDialog.qml (main.cpp keeps a stack instance).
+/// MessageDialog with close-on-click + centered text). The session's game
+/// protocol handler requests it (requestOpenDeathDialog); CIP's EDeathType and
+/// TFairFightFactor are cipgen-skipped, so qtclient slots take ints. Live QML
+/// path: composed TDeathMessageDialog → TibiaMessageDialog.qml.
 class TDeathDialogController final : public cip::tibia::gamewindow::TDeathDialogController
 {
     Q_OBJECT
 public:
     explicit TDeathDialogController(QObject* parent = nullptr);
     ~TDeathDialogController() override;
+
+    /// CIP: closes the dialog and connects the session's death dialog request.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
     /// CIP showDeadMessage — EDeathType / TFairFightFactor skipped in cipgen.
@@ -50,6 +59,8 @@ private:
     void closeBox();
 
     TDeathMessageDialog* m_box = nullptr;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
     bool m_finishing = false;
     bool m_openStoreOnWorldEntered = false;
 };

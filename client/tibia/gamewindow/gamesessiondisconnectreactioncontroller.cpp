@@ -107,6 +107,25 @@ void TGameSessionDisconnectReactionController::resetShowCharacterSelectionOnDisc
     m_showCharacterSelectionOnDisconnect = false;
 }
 
+void TGameSessionDisconnectReactionController::ignoreNextDisconnect()
+{
+    m_ignoreConnectionError = true;
+    m_showCharacterSelectionOnDisconnect = false;
+}
+
+void TGameSessionDisconnectReactionController::resetReconnectRequested()
+{
+    m_reconnectRequested = false;
+}
+
+void TGameSessionDisconnectReactionController::onGameSessionConnected()
+{
+    m_connected = true;
+    m_ignoreConnectionError = false;
+    m_showCharacterSelectionOnDisconnect = true;
+    m_reconnectionAttempts = 0;
+}
+
 void TGameSessionDisconnectReactionController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
     if (!pGameAction || pGameAction->gameActionType() != input::EGameAction::QUIT_GAME)

@@ -1,37 +1,51 @@
 #pragma once
 
+#include "input/gameaction.h"
+
 #include <cip_gen.h>
 
-#include <QJsonObject>
 #include <QString>
-#include <QTimer>
-#include <QVector>
+
+#include <cstdint>
+#include <memory>
 
 namespace tibia {
 namespace tutorial {
 
-/// Drives CIP `tutorial-sessiondump.hints` sidecar actions during a dmpd replay
-/// (CIP: TSessiondumpHintsProcessor). Timestamps are milliseconds from dump start.
+class TSessiondumpHints;
+class TSessiondumpHintBase;
+
+/// CIP `tutorial::TSessiondumpHintsProcessor`: runs the hints of a tutorial
+/// dump as the replay reaches them. It keeps the first unfinished hint. The
+/// session processes the hints due at the replay's progress, and the
+/// processor publishes their game actions. A hint that is not done yet (a
+/// condition waiting for the player) stays the current one, and the replay
+/// waits at it. The router's game actions reach the current condition. A
+/// sessiondump skip drops the hints before its target.
 class TSessiondumpHintsProcessor : public cip::tibia::tutorial::TSessiondumpHintsProcessor
 {
     Q_OBJECT
 public:
-    explicit TSessiondumpHintsProcessor(QObject* parent = nullptr);
+    explicit TSessiondumpHintsProcessor(std::shared_ptr<TSessiondumpHints> hints);
     ~TSessiondumpHintsProcessor() override;
 
-    /// Load `path` (`.hints` JSON). No-op when missing / invalid.
-    bool load(const QString& hintsPath);
-    /// Arm timers relative to now (call when PacketPlayer starts).
-    void start();
-    void stop();
+    /// The current hint's timestamp; INT64_MAX when every hint is done.
+    int64_t nextHintTimestamp() const;
+    /// There is a current hint due at `timestamp`.
+    bool hasHintToProcess(const int64_t& timestamp) const;
+    /// Runs the hints due at `timestamp` and publishes their actions, up to
+    /// the first one that is not done afterwards.
+    void processHints(const int64_t& timestamp);
+
+public Q_SLOTS:
+    virtual void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
 
 private:
-    void fireBucket(qint64 timestampMs);
-    void dispatchAction(const QJsonObject& action);
+    /// The current hint becomes the first unfinished one.
+    void updateCurrentHint();
 
-    QJsonObject m_actionsByTs;
-    QVector<QTimer*> m_timers;
-    bool m_running = false;
+    std::shared_ptr<TSessiondumpHints> m_hints;
+    std::shared_ptr<TSessiondumpHintBase> m_currentHint;
 };
 
 /// Sibling path of a `.dmp` → `.hints` when present.

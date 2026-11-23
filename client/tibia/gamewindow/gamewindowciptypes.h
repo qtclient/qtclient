@@ -76,30 +76,6 @@ private:
     bool m_filtering = false;
 };
 
-/// CIP TVipRenderInfo (ctor) — VIP highlight timer.
-class TVipRenderInfo final : public cip::tibia::gamewindow::TVipRenderInfo
-{
-    Q_OBJECT
-public:
-    explicit TVipRenderInfo(uint32_t characterId, QObject* parent = nullptr);
-
-    uint32_t characterId() const { return m_characterId; }
-    bool highlighted() const { return m_highlighted; }
-    void startHighlight(int milliseconds = 1000);
-    void clearHighlight();
-
-public Q_SLOTS:
-    void onHighlightedTimerTimeout();
-
-Q_SIGNALS:
-    void vipRenderInfoChanged(uint32_t characterId);
-
-private:
-    uint32_t m_characterId = 0;
-    bool m_highlighted = false;
-    QTimer m_timer;
-};
-
 /// CIP TWhiteBlacklistQmlEntry — one ignore-list row.
 class TWhiteBlacklistQmlEntry final : public cip::tibia::gamewindow::TWhiteBlacklistQmlEntry
 {
@@ -356,17 +332,6 @@ private:
     QHash<uint32_t, int> m_creatureMarkers;
 };
 
-class TAssignActionDialogControllerBase : public cip::tibia::gamewindow::TAssignActionDialogControllerBase
-{
-    Q_OBJECT
-public:
-    explicit TAssignActionDialogControllerBase(QObject* parent = nullptr);
-    void bindActionButton(TActionBarController* bar, int buttonId);
-
-public Q_SLOTS:
-    void onCloseClicked() override;
-};
-
 /// CipSoft TDialogControllerBase signal surface (abort / dialogClosed).
 /// Live dialogs still use cip::…::TDialogControllerBase via TDialogController<>;
 /// qtclient twin owns the moc NOTIFY names for inventory (TDialog::close emits dialogClosed).
@@ -451,6 +416,10 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 public Q_SLOTS:
+    /// CIP: INSPECT_OBJECT (with a game session) shows the next inspection
+    /// result and asks for it: a player trade item through the trade handler,
+    /// anything else as an InspectObject message of its location.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
     void closeDialog() override;
     void okButtonClicked() override;
     void copyToClipboarClicked() override;
@@ -459,8 +428,9 @@ public Q_SLOTS:
 private:
     void showObject(const ItemInspectionData& data);
     static TInspectObjectDialogController* s_instance;
+    /// The inspection results reach showObject (CIP +0x40).
+    QMetaObject::Connection m_inspectionConnection;
     std::shared_ptr<game::IGameSession> m_gameSession;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 class TInspectPlayerDialogController final : public TDialogController<cip::tibia::gamewindow::TInspectPlayerDialogController>

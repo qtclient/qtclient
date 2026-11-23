@@ -6,6 +6,7 @@
 #include "sessiondump/sessiondumpplayer.h"
 #include "sessiondump/sessiondumpprogressclockservice.h"
 #include "clockservice.h"
+#include "tutorial/sessiondumphints.h"
 #include "tutorial/sessiondumphintsprocessor.h"
 
 #include "game/tgamenotify.h"
@@ -14,9 +15,13 @@
 
 #include <protocol.pb.h>
 
+#include <QDebug>
 #include <QFile>
+#include <QJsonDocument>
 #include <QUrl>
 
+#include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <stdexcept>
 #include <tibia/game/gamesession.h>
@@ -42,6 +47,7 @@ SoftHook gameHook(const char* field, F&& f)
 
 TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
     : TGameSessionBase(parent)
+    , m_sessiondumpProgressClock(std::make_shared<sessiondump::TSessiondumpProgressClockService>(shared::TClockService::process()))
 {
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);
@@ -51,7 +57,6 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
         Q_EMIT connected();
         return std::any{};
     });
-    m_hooks.push_back(gameHook("onLogin", [this](const Args&) { Q_EMIT gameLoginSuccessful(); }));
     connect(TGameNotify::instance(), &TGameNotify::gameStarted, this, [this] { Q_EMIT worldEntered(); });
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
         onSessiondumpFinished();
@@ -69,12 +74,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
         Q_EMIT gameLoginWaitMessage(argString(a, 0), static_cast<int>(argInt(a, 1)));
     }));
     m_hooks.push_back(gameHook("onConnectionError", [this](const Args& a) { Q_EMIT connectionError(argString(a, 0)); }));
-    m_hooks.push_back(gameHook("onSessionEnd", [this](const Args& a) { Q_EMIT sessionEndInformation(static_cast<int>(argInt(a, 0))); }));
-    connect(TGameNotify::instance(), &TGameNotify::death, this, [this](int, int) { Q_EMIT deadMessage(); });
     m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
-    m_hooks.push_back(gameHook("onSessionDumpStart", [this](const Args& a) {
-        Q_EMIT sessionDumpStart(argString(a, 0));
-    }));
     m_hooks.push_back(gameHook("onSessionDumpMarker", [this](const Args& a) {
         Q_EMIT sessionDumpMarker(argString(a, 0));
     }));
@@ -125,10 +125,9 @@ void TSessiondumpGameSession::replay(const QString& file)
 
 void TSessiondumpGameSession::replayDmpd(const QString& file)
 {
-    // Host wiring of CipSoft's v158: a loader for the file, a progress clock and
-    // a player whose published messages reach the replay bridge.
+    // Host wiring of CipSoft's v158: a loader for the file and a player on the
+    // session's progress clock whose published messages reach the replay bridge.
     m_sessiondumpLoader = std::make_shared<sessiondump::TSessiondumpAsyncLoader>(QUrl::fromLocalFile(file));
-    m_sessiondumpProgressClock = std::make_shared<sessiondump::TSessiondumpProgressClockService>();
     m_sessiondumpPlayer = std::make_shared<sessiondump::TSessiondumpPlayer>(m_sessiondumpLoader, m_sessiondumpProgressClock);
     auto converter = std::make_shared<TDmpdClassicConverter>(QByteArray());
     sessiondump::TSessiondumpPlayer* player = m_sessiondumpPlayer.get();
@@ -259,7 +258,6 @@ void TSessiondumpGameSession::stopReplay()
     stopDmpd();
     m_sessiondumpPlayer.reset();
     m_sessiondumpLoader.reset();
-    m_sessiondumpProgressClock.reset();
     m_replaying = false;
     m_replayTimer.stop();
     m_replayPackets.clear();
@@ -269,25 +267,49 @@ void TSessiondumpGameSession::stopReplay()
 void TSessiondumpGameSession::startHintsForDump(const QString& dumpPath)
 {
     const QString hintsPath = tutorial::hintsPathForDump(dumpPath);
-    if (hintsPath.isEmpty()) {
+    if (hintsPath.isEmpty())
+        return;
+    QFile file(hintsPath);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    std::shared_ptr<tutorial::TSessiondumpHints> hints;
+    try {
+        hints = std::make_shared<tutorial::TSessiondumpHints>(QJsonDocument::fromJson(file.readAll()));
+    } catch (const std::exception& e) {
+        qWarning() << "Invalid sessiondump hints" << hintsPath << e.what();
         return;
     }
-    m_hints = std::make_unique<tutorial::TSessiondumpHintsProcessor>(this);
+    m_hints = std::make_unique<tutorial::TSessiondumpHintsProcessor>(hints);
     connect(m_hints.get(), &tutorial::TSessiondumpHintsProcessor::publishGameAction, gameActionRouter()->internalRouter(),
             &TInternalGameActionRouter::handleGameActionInternal);
-    if (!m_hints->load(hintsPath)) {
-        m_hints.reset();
-        return;
+    connect(gameActionRouter()->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal, m_hints.get(),
+            &tutorial::TSessiondumpHintsProcessor::handleGameAction);
+    // CipSoft's tutorial session tick: the dump pauses at the next hint until the
+    // hints due by then are processed (a condition stays due until it is met).
+    connect(&m_sessiondumpTimer, &QTimer::timeout, m_hints.get(), [this] {
+        if (!m_hints || !m_sessiondumpPlayer)
+            return;
+        m_sessiondumpPlayer->setPauseAt(m_hints->nextHintTimestamp());
+        const int64_t progress = m_sessiondumpPlayer->progress();
+        if (m_hints->hasHintToProcess(progress)) {
+            m_sessiondumpPlayer->pause();
+            m_hints->processHints(progress);
+        }
+        if (!m_hints->hasHintToProcess(progress) && !m_sessiondumpPlayer->isRunning())
+            m_sessiondumpPlayer->resume();
+    });
+    if (!m_sessiondumpPlayer) {
+        // Text dumps: no player to pause; the hints follow the replay clock.
+        connect(&m_replayTimer, &QTimer::timeout, m_hints.get(), [this] {
+            if (m_hints && m_replaying)
+                m_hints->processHints(m_replayClock.elapsed());
+        });
     }
-    m_hints->start();
 }
 
 void TSessiondumpGameSession::stopHints()
 {
-    if (m_hints) {
-        m_hints->stop();
-        m_hints.reset();
-    }
+    m_hints.reset();
 }
 
 void TSessiondumpGameSession::requestLogout()
@@ -304,7 +326,7 @@ void TSessiondumpGameSession::disconnectNow()
 
 std::shared_ptr<shared::IClockService> TSessiondumpGameSession::clockService() const
 {
-    return shared::TClockService::process();
+    return m_sessiondumpProgressClock;
 }
 
 bool TSessiondumpGameSession::isOnline() const

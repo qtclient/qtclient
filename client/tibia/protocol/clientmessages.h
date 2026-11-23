@@ -11,10 +11,15 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <vector>
+
+namespace tibia::input {
+class IGameActionContext;
+}
 
 namespace tibia::protocol::gameclient {
 
@@ -146,10 +151,7 @@ void sendOpenRewardWall();
 void sendOpenRewardHistory();
 void sendGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items);
 void sendStashWithdraw(uint16_t itemId, uint32_t count, uint8_t stackpos);
-/// Asks the server for the stash's content again (stash action 4).
-void sendStashReopen();
 void sendGreet(uint32_t npcId);
-void sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action);
 void sendTaskBoardAction(const uint8_t option, const uint16_t value = 0, const uint16_t extraValue = 0);
 void sendImbuementDurations(bool isOpen = false);
 void sendStartOfflineTraining(const uint8_t skillType);
@@ -191,7 +193,7 @@ void sendStatusTrackerBestiary(uint16_t raceId, bool status);
 void sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos);
 void requestQuickLootBlackWhiteList(uint8_t filter, uint16_t size, const std::vector<uint16_t>& listedItems);
 void openContainerQuickLoot(uint8_t action, uint8_t category, const Position& pos, uint16_t itemId, uint8_t stackpos, bool useMainAsFallback);
-void sendInspectionNormalObject(const Position& position);
+void sendInspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location);
 void sendInspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
 void sendInspectCharacter(uint32_t creatureId, uint8_t tab);
 void sendOpenWheel(uint32_t playerId);

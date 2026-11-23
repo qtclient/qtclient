@@ -170,7 +170,11 @@ QVariant TPlayerStateDisplayInfoModel::data(const QModelIndex& index, const int 
 
 QHash<int, QByteArray> TPlayerStateDisplayInfoModel::roleNames() const
 {
-    return { { ImageSourceRole, "imageSource" }, { TooltipRole, "tooltip" }, { SortOrderRole, "sortOrder" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[ImageSourceRole] = "imageSource";
+    roles[TooltipRole] = "tooltip";
+    roles[SortOrderRole] = "sortOrder";
+    return roles;
 }
 
 void TPlayerStateDisplayInfoModel::setEntries(const QList<PlayerStateDisplayInfo>& entries)

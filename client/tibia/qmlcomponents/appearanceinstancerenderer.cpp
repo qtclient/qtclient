@@ -5,6 +5,7 @@
 #include "animation/movingoutfitanimator.h"
 #include "appearances/appearanceinstance.h"
 #include "appearances/spriteinfo.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "qmlcomponents/outfittypes.h"
 
@@ -170,8 +171,6 @@ TAppearanceInstanceRenderer::TAppearanceInstanceRenderer(QQuickItem* parent)
     new TAppearanceTypeHelperQmlService(this);
     new TColorHelperQmlService(this);
     new TGlobalConstantsService(this);
-    new TCachedOutlineTextTextureManager(this);
-    new TOffscreenOutlineTextToImageService(this);
     m_scaleFactor = 1.f;
     setFlag(ItemHasContents);
     m_sinceLayout.start();
@@ -212,14 +211,10 @@ InstanceBase* TAppearanceInstanceRenderer::createAppearanceInstanceByRaceID(cons
     return instance;
 }
 
+/// The race id is cut to 16 bit.
 QString TAppearanceInstanceRenderer::getRaceName(const int RaceID)
 {
-    if (RaceID <= 0)
-        return {};
-    QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(RaceID)).name);
-    if (!name.isEmpty())
-        name[0] = name[0].toUpper();
-    return name;
+    return cyclopedia::monsterRaceName(static_cast<uint16_t>(RaceID));
 }
 
 TAppearanceInstanceRenderer::~TAppearanceInstanceRenderer() = default;

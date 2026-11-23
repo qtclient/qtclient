@@ -1,8 +1,8 @@
 #include "qmlcomponents/worldmapqmltypes.h"
 
-#include <QQmlEngine>
+#include <QJSEngine>
 
-#include <cstdlib>
+#include <cmath>
 
 namespace tibia::qmlcomponents {
 
@@ -11,24 +11,56 @@ TWorldMapCoordinateQmlType::TWorldMapCoordinateQmlType(QObject* parent)
 {
 }
 
+TWorldMapCoordinateQmlType::TWorldMapCoordinateQmlType(const worldmap::TWorldMapCoordinate& coordinate, QObject* parent)
+    : cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType(parent)
+{
+    m_x = coordinate.x;
+    m_y = coordinate.y;
+    m_z = coordinate.z;
+}
+
+TWorldMapCoordinateQmlType* TWorldMapCoordinateQmlType::create(const worldmap::TWorldMapCoordinate& coordinate)
+{
+    auto* qmlCoordinate = new TWorldMapCoordinateQmlType(coordinate);
+    QJSEngine::setObjectOwnership(qmlCoordinate, QJSEngine::JavaScriptOwnership);
+    return qmlCoordinate;
+}
+
 bool TWorldMapCoordinateQmlType::equals(cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* pOther)
 {
     return pOther && x() == pOther->x() && y() == pOther->y() && z() == pOther->z();
 }
 
+/// The straight-line distance on the map plane, truncated; the floors do not count.
 int TWorldMapCoordinateQmlType::distanceTo(cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* pOther)
 {
     if (!pOther)
         return 0;
-    const int dx = std::abs(x() - pOther->x());
-    const int dy = std::abs(y() - pOther->y());
-    const int dz = std::abs(z() - pOther->z());
-    return dx + dy + dz;
+    const double dx = pOther->x() - x();
+    const double dy = pOther->y() - y();
+    return static_cast<int>(std::sqrt(dx * dx + dy * dy));
 }
 
 TWorldMapSubfieldCoordinateQmlType::TWorldMapSubfieldCoordinateQmlType(QObject* parent)
     : cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType(parent)
 {
+}
+
+TWorldMapSubfieldCoordinateQmlType::TWorldMapSubfieldCoordinateQmlType(const worldmap::TWorldMapSubfieldCoordinate& coordinate,
+                                                                       QObject* parent)
+    : cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType(parent)
+{
+    m_subfieldX = coordinate.subfieldX;
+    m_subfieldY = coordinate.subfieldY;
+    m_z = coordinate.z;
+}
+
+TWorldMapSubfieldCoordinateQmlType*
+TWorldMapSubfieldCoordinateQmlType::create(const worldmap::TWorldMapSubfieldCoordinate& coordinate)
+{
+    auto* qmlCoordinate = new TWorldMapSubfieldCoordinateQmlType(coordinate);
+    QJSEngine::setObjectOwnership(qmlCoordinate, QJSEngine::JavaScriptOwnership);
+    return qmlCoordinate;
 }
 
 bool TWorldMapSubfieldCoordinateQmlType::equals(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* pOther)
@@ -39,47 +71,43 @@ bool TWorldMapSubfieldCoordinateQmlType::equals(cip::tibia::qmlcomponents::TWorl
 TWorldMapCuboidQmlType::TWorldMapCuboidQmlType(QObject* parent)
     : cip::tibia::qmlcomponents::TWorldMapCuboidQmlType(parent)
 {
-    m_highestTopLeftCoordinate = new TWorldMapCoordinateQmlType(this);
-    m_lowestBottomRightCoordinate = new TWorldMapCoordinateQmlType(this);
-    m_extent = new TWorldMapCoordinateQmlType(this);
 }
 
-void TWorldMapCuboidQmlType::setFromFieldBox(const int topLeftX, const int topLeftY, const int topZ,
-                                            const int bottomRightX, const int bottomRightY, const int bottomZ)
+TWorldMapCuboidQmlType::TWorldMapCuboidQmlType(const worldmap::TWorldMapCuboid& cuboid, QObject* parent)
+    : cip::tibia::qmlcomponents::TWorldMapCuboidQmlType(parent)
+    , m_cuboid(cuboid)
 {
-    m_highestTopLeftCoordinate->setX(topLeftX);
-    m_highestTopLeftCoordinate->setY(topLeftY);
-    m_highestTopLeftCoordinate->setZ(topZ);
-    m_lowestBottomRightCoordinate->setX(bottomRightX);
-    m_lowestBottomRightCoordinate->setY(bottomRightY);
-    m_lowestBottomRightCoordinate->setZ(bottomZ);
-    m_extent->setX(bottomRightX - topLeftX + 1);
-    m_extent->setY(bottomRightY - topLeftY + 1);
-    m_extent->setZ(topZ - bottomZ + 1);
+}
+
+TWorldMapCuboidQmlType* TWorldMapCuboidQmlType::create(const worldmap::TWorldMapCuboid& cuboid)
+{
+    auto* qmlCuboid = new TWorldMapCuboidQmlType(cuboid);
+    QJSEngine::setObjectOwnership(qmlCuboid, QJSEngine::JavaScriptOwnership);
+    return qmlCuboid;
+}
+
+cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* TWorldMapCuboidQmlType::highestTopLeftCoordinate() const
+{
+    return TWorldMapCoordinateQmlType::create(m_cuboid.getOrigin());
+}
+
+cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* TWorldMapCuboidQmlType::lowestBottomRightCoordinate() const
+{
+    return TWorldMapCoordinateQmlType::create(m_cuboid.getEnd());
+}
+
+cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* TWorldMapCuboidQmlType::extent() const
+{
+    const worldmap::TWorldMapExtent extent = m_cuboid.getExtent();
+    return TWorldMapCoordinateQmlType::create(worldmap::TWorldMapCoordinate(extent.width, extent.height, extent.depth));
 }
 
 cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType*
 TWorldMapCuboidQmlType::calculateWorldMapCoordinateForIndexByColumnFirstAndSkyToGroundIncludingShearing(const int index)
 {
-    const int width = m_extent->x();
-    const int height = m_extent->y();
-    const int depth = m_extent->z();
-    if (width <= 0 || height <= 0 || depth <= 0 || index < 0 || index >= width * height * depth)
-        return nullptr;
-
-    // Column-first (x), then y; within a column walk sky→ground (z descending).
-    // Shearing: each floor below the top shifts +1,+1 in field space (CIP isometric).
-    const int perColumn = height * depth;
-    const int x = index / perColumn;
-    const int rem = index % perColumn;
-    const int y = rem / depth;
-    const int skyOffset = rem % depth;
-    auto* coordinate = new TWorldMapCoordinateQmlType;
-    QQmlEngine::setObjectOwnership(coordinate, QQmlEngine::JavaScriptOwnership);
-    coordinate->setX(m_highestTopLeftCoordinate->x() + x + skyOffset);
-    coordinate->setY(m_highestTopLeftCoordinate->y() + y + skyOffset);
-    coordinate->setZ(m_highestTopLeftCoordinate->z() - skyOffset);
-    return coordinate;
+    // The index is widened with its sign, as the box's own walk takes it.
+    return TWorldMapCoordinateQmlType::create(m_cuboid.coordinateForIndexByColumnFirstAndSkyToGroundIncludingShearing(
+        static_cast<std::size_t>(static_cast<long>(index))));
 }
 
 }

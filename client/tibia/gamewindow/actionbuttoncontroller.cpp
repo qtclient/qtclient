@@ -1,7 +1,7 @@
 #include "actionbuttoncontroller.h"
 
 #include "gamewindow/actionbarcontroller.h"
-#include "gamewindow/actionbarmanager.h"
+#include "game/gamesessionbase.h"
 #include "input/gameaction.h"
 #include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
@@ -24,18 +24,6 @@ using Base = cip::tibia::gamewindow::TActionButtonController;
 using Setting = config::TActionSetting;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 using A = input::EGameAction;
-
-QString objectDisplayName(const int objectId, const std::optional<int>& tier)
-{
-    QString name;
-    if (const TAppearanceTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
-        name = QString::fromStdString(type->getName());
-    if (name.isEmpty())
-        name = qtTrId("actionbar_tooltip_object_name_dummy");
-    if (tier && *tier > 0)
-        name = qtTrId("actionbar_tooltip_object_name_with_tier").arg(name).arg(*tier);
-    return name;
-}
 
 bool isMultiUse(const int objectId)
 {
@@ -72,13 +60,20 @@ TActionButtonController::TActionButtonController(TActionBarController* bar, cons
     m_isEnabled = true;
 }
 
-template <class T>
-void TActionButtonController::set(T& member, const T& value, bool& changed)
+void TActionButtonController::setCastType(const int castType)
 {
-    if (member == value)
+    if (m_castType == castType)
         return;
-    member = value;
-    changed = true;
+    m_castType = castType;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setTutorialMarkerID(const int tutorialMarkerID)
+{
+    if (m_tutorialMarkerID == tutorialMarkerID)
+        return;
+    m_tutorialMarkerID = tutorialMarkerID;
+    Q_EMIT tutorialMarkerIDChanged();
 }
 
 void TActionButtonController::reset()
@@ -94,6 +89,7 @@ void TActionButtonController::reset()
     m_sendAutomatically = false;
     m_castType = 0;
     m_objectID = 0;
+    m_objectInstance = {};
     m_objectUpgradeTier = 0;
     m_liquidType = Info::ELiquidType::EMPTY;
     m_hookDirection = Info::EHookDirection::NONE;
@@ -141,6 +137,7 @@ void TActionButtonController::createMultiActions(const int count)
     reset();
     for (int i = 0; i < count; ++i) {
         auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
+        child->connectToGameSession(m_gameSession);
         connect(child, &Base::publishGameAction, this, &Base::publishGameAction);
         connect(child, &Base::changed, this, &Base::changed);
         connect(child, &Base::cooldownRemainingPercentChanged, this, &Base::cooldownRemainingPercentChanged);
@@ -151,6 +148,15 @@ void TActionButtonController::createMultiActions(const int count)
         m_multiActions << child;
     }
     Q_EMIT changed();
+}
+
+void TActionButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    m_cooldownStorage = session ? session->cooldownStorage() : nullptr;
+    for (TActionButtonController* child : m_children)
+        child->connectToGameSession(m_gameSession);
 }
 
 void TActionButtonController::setSpell(const int spellId, const QString& parameters, const int castType)
@@ -183,17 +189,20 @@ void TActionButtonController::setText(const QString& text, const bool sendAutoma
     Q_EMIT changed();
 }
 
-void TActionButtonController::setObject(const int objectId, const int upgradeTier, const int liquidType, const config::EUseType useType,
+void TActionButtonController::setObject(const appearances::TObjectAppearanceInstanceTypeID& objectInstance, const config::EUseType useType,
                                         const bool useEquipSmartMode)
 {
-    const bool sameObject = m_type == OBJECT && m_objectID == uint(objectId) && m_objectUpgradeTier == uint(upgradeTier)
-                            && m_liquidType == Info::ELiquidType(liquidType);
+    const int upgradeTier = objectInstance.hasTier() ? objectInstance.tier : 0;
+    const int liquidType = objectInstance.hasLiquid() ? int(objectInstance.liquid) : 0;
+    const bool sameObject = m_type == OBJECT && m_objectInstance.typeId == objectInstance.typeId && m_objectInstance.kind == objectInstance.kind
+                            && m_objectInstance.liquid == objectInstance.liquid && m_objectInstance.tier == objectInstance.tier;
     if (sameObject && m_useType == useType && m_useEquipSmartMode == useEquipSmartMode)
         return;
     reset();
     clearMultiActions();
     m_type = OBJECT;
-    m_objectID = uint(objectId);
+    m_objectInstance = objectInstance;
+    m_objectID = uint(objectInstance.typeId);
     m_objectUpgradeTier = uint(upgradeTier);
     m_liquidType = Info::ELiquidType(liquidType);
     m_useType = useType;
@@ -201,6 +210,34 @@ void TActionButtonController::setObject(const int objectId, const int upgradeTie
     m_isEquipeAction = useType == config::EUseType::Equip;
     Q_EMIT changed();
     Q_EMIT appearanceChanged();
+}
+
+void TActionButtonController::setObjectCount(const uint objectCount)
+{
+    if (m_objectCount == objectCount)
+        return;
+    m_objectCount = objectCount;
+    Q_EMIT changed();
+    Q_EMIT appearanceChanged();
+}
+
+void TActionButtonController::setObjectInfoName(const QString& objectInfoName)
+{
+    if (m_type != OBJECT || m_text == objectInfoName)
+        return;
+    m_text = objectInfoName;
+    Q_EMIT changed();
+}
+
+QString TActionButtonController::objectTooltipName() const
+{
+    const TActionButtonController* slot = shown();
+    if (slot->m_type != OBJECT || slot->m_text.isEmpty())
+        return qtTrId("actionbar_tooltip_object_name_dummy");
+    const int tier = slot->m_objectInstance.hasTier() ? slot->m_objectInstance.tier : 0;
+    if (tier == 0)
+        return slot->m_text;
+    return qtTrId("actionbar_tooltip_object_name_with_tier").arg(slot->m_text).arg(tier);
 }
 
 void TActionButtonController::setPassiveAbility(const int passiveAbility)
@@ -303,7 +340,7 @@ QString TActionButtonController::tooltipRows() const
             actionId = "actionbar_tooltip_use_object_at_mousecursor";
             break;
         }
-        const QString action = actionId ? qtTrId(actionId).arg(objectDisplayName(int(m_objectID), int(m_objectUpgradeTier))) : QString();
+        const QString action = actionId ? qtTrId(actionId).arg(objectTooltipName()) : QString();
         rows += row("actionbar_tooltip_label_action", action);
         rows += row("actionbar_tooltip_label_amount", QString::number(m_objectCount));
         break;
@@ -327,34 +364,25 @@ QString TActionButtonController::tooltipRows() const
     return rows;
 }
 
-void TActionButtonController::refreshObject()
+void TActionButtonController::setIsEnabled(const bool isEnabled)
 {
-    for (TActionButtonController* child : m_children)
-        child->refreshObject();
-    if (!m_children.empty())
-        refreshShownSlot(game::TCooldownStorage::now());
-    if (m_type != OBJECT)
+    if (m_isEnabled == isEnabled)
         return;
-    uint count = 0;
-    bool equipped = false;
-    if (tibia::game::isOnline()) {
-        const uint8_t tier = uint8_t(m_objectUpgradeTier);
-        count = tibia::game::localPlayerInventoryCount(uint16_t(m_objectID), tier);
-        equipped = tibia::game::localPlayerHasEquippedItemId(uint16_t(m_objectID), tier);
-    }
-    bool changedAppearance = false;
-    bool changedState = false;
-    set(m_objectCount, count, changedAppearance);
-    set(m_objectIsEquiped, equipped, changedState);
-    if (changedAppearance)
-        Q_EMIT appearanceChanged();
-    if (changedAppearance || changedState)
-        Q_EMIT changed();
+    m_isEnabled = isEnabled;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setObjectIsEquiped(const bool objectIsEquiped)
+{
+    if (m_objectIsEquiped == objectIsEquiped)
+        return;
+    m_objectIsEquiped = objectIsEquiped;
+    Q_EMIT changed();
 }
 
 game::TCooldown TActionButtonController::currentCooldown() const
 {
-    const game::TCooldownStorage* storage = m_bar ? m_bar->manager()->cooldownStorage() : nullptr;
+    const game::TCooldownStorage* storage = m_cooldownStorage.get();
     if (!storage)
         return {};
     if (m_type == SPELL)
@@ -386,7 +414,7 @@ bool TActionButtonController::isUsable() const
 
 qint64 TActionButtonController::remainingCooldown(const qint64 now) const
 {
-    const game::TCooldownStorage* storage = m_bar ? m_bar->manager()->cooldownStorage() : nullptr;
+    const game::TCooldownStorage* storage = m_cooldownStorage.get();
     if (!storage)
         return 0;
     game::TCooldown cooldown;

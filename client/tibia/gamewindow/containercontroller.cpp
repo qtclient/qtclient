@@ -32,7 +32,7 @@ using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
 constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
 
-/// CIP DAT_10278d408: a container slot's context menu.
+/// CIP: a container slot's context menu.
 constexpr A ContextMenuOrder[] = {
     A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::USE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW,
     A::OPEN_PARENT_CONTAINER, A::QUICK_LOOT, A::WRAP, A::UNWRAP, A::CONTEXT_MENU_SEPARATOR, A::MOVE_UP, A::ROTATE_OBJECT,
@@ -215,8 +215,8 @@ void TContainerController::onShowConfigurationMenu()
         all->setCheckable(true);
         all->setChecked(current == 0);
         // The server's categories by name; "others" comes last.
-        std::vector<std::pair<uint32_t, std::string>> categories(row->filterCategories.begin(),
-                                                                 row->filterCategories.end());
+        std::vector<std::pair<uint32_t, std::string>> categories(row->filterCategories().begin(),
+                                                                 row->filterCategories().end());
         std::sort(categories.begin(), categories.end(),
                   [](const auto& left, const auto& right) { return left.second < right.second; });
         for (const auto& [id, name] : categories) {
@@ -227,17 +227,17 @@ void TContainerController::onShowConfigurationMenu()
             item->setCheckable(true);
             item->setChecked(id == current);
         }
-        if (row->filterCategories.contains(OtherFilterCategory)) {
+        if (row->filterCategories().contains(OtherFilterCategory)) {
             TContextMenuEntryItem* others = addEntry(qtTrId("inventory_store_inbox_filtername_others"),
                                                      [setFilter] { setFilter(OtherFilterCategory); });
             others->setCheckable(true);
             others->setChecked(current == OtherFilterCategory);
         }
     }
-    if (row->hasFilterCategories() && (row->sortable || row->contentMovableToManagedContainers))
+    if (row->hasFilterCategories() && (row->isSortable() || row->isContentMovableToManagedContainers()))
         menu->addCustomSeparator();
 
-    if (row->sortable) {
+    if (row->isSortable()) {
         for (const auto& [sortType, name] : SortTypes) {
             const QByteArray label = QStringLiteral("container_sortoptions_by_%1").arg(QLatin1String(name)).toUtf8();
             addEntry(qtTrId(label.constData()), [this, sortType = sortType] { sortContainer(static_cast<int>(sortType)); });
@@ -258,8 +258,8 @@ void TContainerController::onShowConfigurationMenu()
         manualSort->setChecked(manualSortModeActive());
     }
 
-    if (row->contentMovableToManagedContainers) {
-        if (row->sortable)
+    if (row->isContentMovableToManagedContainers()) {
+        if (row->isSortable())
             menu->addCustomSeparator();
         addEntry(qtTrId("container_move_content_to_managed_containers"), [this] { moveContentToManagedContainers(); });
         TContextMenuEntryItem* recursive =
@@ -321,7 +321,7 @@ void TContainerController::moveContentToManagedContainers()
 bool TContainerController::manualSortModeActive() const
 {
     const container::TStoredContainer* row = stored();
-    return row && row->sortable && container::TContainerStorage::manualSortMode();
+    return row && row->isSortable() && container::TContainerStorage::manualSortMode();
 }
 
 void TContainerController::refreshViewOptions()
@@ -506,7 +506,7 @@ void TContainerController::onSlotDragDropped(const int slotId)
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
-    const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex) : AnySlot;
+    const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex()) : AnySlot;
     const Position destination = slotPosition(pageSlot);
     Q_EMIT publishGameAction(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }

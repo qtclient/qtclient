@@ -421,11 +421,6 @@ TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(TStoreStorage* storag
     : cip::tibia::store::TStoreProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onHirelingNameChange", [this](GameObject*, const Args& args) {
-        Q_EMIT hirelingNameChangeRequested(static_cast<quint32>(client::gamecore::argInt(args, 0)),
-                                           static_cast<quint32>(client::gamecore::argInt(args, 1)));
-        return std::any{};
-    });
 }
 
 TStoreProtocolMessageHandler::~TStoreProtocolMessageHandler() = default;
@@ -681,34 +676,40 @@ TStoreVisualisation TStoreProtocolMessageHandler::visualisation(const ProtocolSt
 
 TStoreOpenParameters TStoreProtocolMessageHandler::openParameters(const ProtocolStoreOpenParameters& parameters)
 {
+    // Every value goes through its checked enum (an unknown one throws); an
+    // unknown action opens the home page, and the sort order is always read.
     TStoreOpenParameters result;
     switch (parameters.open_action()) {
         case OPEN_PREMIUM_OR_BOOSTS:
+            result.serviceType = serviceTypeEnum(parameters.service_type());
             result.openAction = OPEN_PREMIUM_OR_BOOSTS;
-            result.premiumDetail = static_cast<int>(parameters.detail());
+            result.premiumDetail = premiumDetailEnum(static_cast<int>(parameters.detail()));
             break;
         case OPEN_CATEGORY:
+            result.serviceType = serviceTypeEnum(parameters.service_type());
             result.openAction = OPEN_CATEGORY;
             result.category = toQString(parameters.category());
             result.subcategory = toQString(parameters.sub_category());
             break;
         case OPEN_USEFUL_THING:
+            result.serviceType = serviceTypeEnum(parameters.service_type());
             result.openAction = OPEN_USEFUL_THING;
-            result.usefulThing = static_cast<int>(parameters.detail());
+            result.usefulThing = usefulThingEnum(static_cast<int>(parameters.detail()));
             break;
         case OPEN_OFFER:
+            result.serviceType = serviceTypeEnum(parameters.service_type());
             result.openAction = OPEN_OFFER;
             result.offerId = parameters.offer_id();
             break;
         case OPEN_SEARCH:
+            result.serviceType = serviceTypeEnum(parameters.service_type());
             result.openAction = OPEN_SEARCH;
             result.category = toQString(parameters.search_text());
             break;
         default:
-            return result;
+            break;
     }
-    result.serviceType = static_cast<int>(parameters.service_type());
-    result.sortOrder = static_cast<int>(parameters.sort_order());
+    result.sortOrder = sortOrderEnum(parameters.sort_order());
     return result;
 }
 

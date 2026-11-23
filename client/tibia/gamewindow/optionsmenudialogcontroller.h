@@ -57,6 +57,9 @@ public:
     bool handleGameAction(const input::IGameAction& action);
     /// The game session (CIP +0xc08) began or ended.
     void setInGame(bool inGame);
+    /// CIP: how the pages publish game actions. START_TARGET_SELECTION hides
+    /// the dialog until TARGET_SELECTION_FINISHED.
+    void processAndPublishGameActions(const input::IGameActionPtr& action);
     /// The window whose frames currentFrameRate counts (CipSoft +0xbe0).
     void setWindow(QQuickWindow* window);
     /// Tick-to-swap ring for Options Graphics FPS (CipSoft).
@@ -125,6 +128,7 @@ private:
 
     /// The pages in CIP's apply order .
     std::vector<Page> m_pages;
+    config::TActionBarsOptionsPage* m_actionBars;
     config::TGameplayOptionsPage* m_gameplay;
     config::TControlsOptionsPage* m_controls;
     config::THotkeysOptionsPage* m_hotkeys;
@@ -142,9 +146,12 @@ private:
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
     /// CIP : GameclientMessageSetClientOptions with alwaysTurnTowardsMoveDirection.
     void sendTurnTowardsMoveDirection(bool enabled);
-    /// CIP: a hotkey page action; START_TARGET_SELECTION hides the dialog until the selection ends.
-    bool onHotkeyPageGameAction(const input::IGameAction& action);
-    /// CIP v14: closing the dialog closes its message dialogs and the about dialog.
+    /// The hotkey page loses the button mappings of every action bar whose
+    /// clear flag the action bar page set; the flags are reset after.
+    void clearMarkedActionBars();
+    /// CIP v14: closing the dialog closes its message dialogs (not the restart
+    /// and rotation key messages Apply shows), the about dialog and the hotkey
+    /// page's dialogs, then saves the options file.
     void closeSubDialogs();
     /// CIP: the shown frame rate from the frame timing, set when it changed.
     void onBeforeRenderFrame();
@@ -155,9 +162,13 @@ private:
     config::TOptionPageQMLWrapperBase m_optionPageQmlWrapperBase;
     config::TConfigBackupReader::TConfigBackupException m_configBackupException;
 
+    /// CIP's message dialogs in layout order.
+    TMessageDialogController* m_ruleViolationsMessage;
+    TMessageDialogController* m_restartMessage;
+    TMessageDialogController* m_rotationKeysMessage;
     TMessageDialogController* m_resetPageMessage;
     TMessageDialogController* m_resetAllMessage;
-    TMessageDialogController* m_restartMessage;
+    /// The export and import results.
     TMessageDialogController* m_infoMessage;
     TMessageDialogController* m_importMessage;
     TAboutDialogController* m_about;

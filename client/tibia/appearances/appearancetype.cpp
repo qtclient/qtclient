@@ -138,7 +138,7 @@ TAppearanceTypeSpriteInfo TAppearanceTypeSpriteInfo::fromProtobuf(const tibia::p
 
 bool TAppearanceTypeSpriteInfo::isValid() const
 {
-    const uint32_t frame = m_patternHeight * m_patternWidth * m_patternDepth * m_layers;
+    const uint32_t frame = spritesPerPhase();
     if (frame == 0)
         return false;
     return m_spriteIds.size() % frame == 0;
@@ -167,8 +167,8 @@ std::optional<uint32_t> TAppearanceTypeSpriteInfo::spriteId(const int layer, con
     const int clampedPhase = std::min(phase, phaseCount() - 1);
     if (clampedX < 0 || clampedY < 0 || clampedZ < 0 || layer < 0 || layer >= layers || clampedPhase < 0)
         return std::nullopt;
-    const size_t index = static_cast<size_t>(
-        (((clampedPhase * depth + clampedZ) * height + clampedY) * width + clampedX) * layers + layer);
+    const size_t index =
+        static_cast<size_t>(spriteIndex(width, height, depth, layers, clampedX, clampedY, clampedZ, layer, clampedPhase));
     if (index >= m_spriteIds.size())
         return std::nullopt;
     return m_spriteIds[index];

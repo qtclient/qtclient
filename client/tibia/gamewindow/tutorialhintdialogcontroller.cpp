@@ -9,6 +9,7 @@
 
 #include <QQuickItem>
 #include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -176,8 +177,31 @@ void TTutorialHintDialogController::emitDisplay() { Q_EMIT displayDataChanged();
 
 void TTutorialHintDialogController::requestClose()
 {
+    closeDialog();
+}
+
+void TTutorialHintDialogController::closeDialog()
+{
+    if ((!m_caption.isEmpty() || !m_captionImagePath.isEmpty()) && !m_imagePath.isEmpty() && m_tutorialHintId >= 1
+        && m_tutorialHintId <= 14)
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
+    m_tutorialHintId = 0;
+    m_caption.clear();
+    m_captionImagePath.clear();
+    m_imagePath.clear();
+    m_mapImagePath.clear();
+    m_imageButtonText.clear();
+    m_hasBevelFrame = false;
+    m_tutorialMarkerID = 0;
     dialog()->close();
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialHintConfirmed>(m_tutorialHintId));
+}
+
+QPoint TTutorialHintDialogController::youAreHereCoordianteWithinImage() const
+{
+    if (!tibia::game::hasLocalPlayer())
+        return {};
+    const Position position = tibia::game::localPlayerPosition();
+    return { int(position.x) - 0x7b80, int(position.y) - 0x7800 };
 }
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }
@@ -196,13 +220,6 @@ TTutorialShell::TTutorialShell(QObject* parent)
     m_gameActions.on(A::SHOW_TUTORIAL_HINT, [this](const input::TGameActionShowTutorialHint& action) {
         if (action.tutorialHintId() > 0)
             handleTutorialHintId(action.tutorialHintId());
-        return true;
-    });
-    m_gameActions.on(A::ADD_HINT_AT_TUTORIAL_MARKER, [this](const input::TGameActionAddHintAtTutorialMarker& action) {
-        m_hint->showHint(action.text(), action.image(), action.caption(), action.markerId(), true);
-        return true;
-    });
-    m_gameActions.on(A::ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER, [](const input::TGameActionAddMouseTrailHintAtTutorialMarker&) {
         return true;
     });
     m_gameActions.on(A::CONFIRM_TUTORIAL_HINT, [this](const input::IGameAction&) {
@@ -262,7 +279,7 @@ TTutorialShell::~TTutorialShell()
 void TTutorialShell::handleTutorialHintId(const int hintId)
 {
     if (hintId == 2) {
-        m_vocation->showDialog();
+        m_vocation->handleGameAction(std::make_shared<input::TGameActionShowTutorialHint>(hintId));
         return;
     }
     m_hint->showHintById(hintId);

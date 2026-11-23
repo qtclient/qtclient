@@ -1,6 +1,7 @@
 #include "renderer/spritetextureprovider.h"
 
 #include "appearances/spriteinfo.h"
+#include "input/gameaction.h"
 #include "mods/registry.h"
 #include "sprites/hdscale.h"
 #include "sprites/sprite.h"
@@ -14,6 +15,7 @@
 #include <QSGTexture>
 
 #include <cmath>
+#include <utility>
 
 namespace tibia::renderer {
 
@@ -206,6 +208,16 @@ QSGTexture* TSpriteTextureProvider::highlightedTexture(const SpriteIdentifier& i
     return texture(highlighted).texture;
 }
 
+void TSpriteTextureProvider::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction->gameActionType() != input::EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE)
+        return;
+    const auto* remove = input::gameActionAs<input::TGameActionRemoveSpriteIdentifierFromCache>(pGameAction);
+    if (!remove)
+        return;
+    m_cache->remove(SpriteIdentifier{ remove->spriteIdentifier(), 0 });
+}
+
 void TSpriteTextureProvider::onBeforeRenderNewFrame()
 {
     m_cache->beginFrame();
@@ -239,6 +251,16 @@ TSpriteTextureProvider& TSpriteTextureProviderManager::sharedProvider(QQuickWind
         }, Qt::DirectConnection);
     }
     return *provider;
+}
+
+void TSpriteTextureProviderManager::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction->gameActionType() != input::EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE)
+        return;
+    auto& state = sharedProviders();
+    const QMutexLocker lock(&state.mutex);
+    for (TSpriteTextureProvider* provider : std::as_const(state.byWindow))
+        provider->handleGameAction(pGameAction);
 }
 
 }

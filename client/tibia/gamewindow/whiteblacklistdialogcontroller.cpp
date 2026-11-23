@@ -30,6 +30,12 @@ TWhiteBlacklistDialogController::~TWhiteBlacklistDialogController()
     clear(m_whitelistEntries);
 }
 
+void TWhiteBlacklistDialogController::handleGameAction(const input::IGameAction& action)
+{
+    if (action.gameActionType() == input::EGameAction::OPEN_WHITEBLACKLIST_DIALOG)
+        open();
+}
+
 void TWhiteBlacklistDialogController::open()
 {
     m_blacklistActive = m_lists.blacklistActive();

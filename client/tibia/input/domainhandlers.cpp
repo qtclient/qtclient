@@ -28,22 +28,11 @@ using A = EGameAction;
 
 }
 
-TActionButtonGameActionHandler::TActionButtonGameActionHandler(Handler handler, QObject* parent)
-    : cip::tibia::input::TActionButtonGameActionHandler(parent)
-    , m_handler(std::move(handler))
-{
-}
-
-TActionButtonGameActionHandler::~TActionButtonGameActionHandler() = default;
-
-void TActionButtonGameActionHandler::handleGameAction(const tibia::input::IGameActionPtr& pGameAction)
-{
-    if (const auto* triggered = gameActionAs<TGameActionActionButtonTriggered>(pGameAction); triggered && m_handler)
-        m_handler(*triggered);
-}
-
 TClipboardGameActionHandler::TClipboardGameActionHandler(QObject* parent)
     : cip::tibia::input::TClipboardGameActionHandler(parent)
+    // Host: CipSoft receives the game client's helper instances.
+    , m_clipboardHelper(std::make_shared<shared::TTibiaClipboardHelper>(std::make_shared<shared::TClipboardHelper>(),
+                                                                         std::make_shared<shared::TTibiaUrlTools>()))
 {
 }
 
@@ -76,17 +65,19 @@ void TClipboardGameActionHandler::handleCopyTextToClipboardGameAction(
         Q_EMIT publishGameAction(std::make_shared<TGameActionRequestConformationForCopyingTextToClipboard>(pGameAction->text()));
         return;
     }
-    QGuiApplication::clipboard()->setText(pGameAction->text());
+    m_clipboardHelper->setTextInClipboard(pGameAction->text());
 }
 
 void TClipboardGameActionHandler::handleCopyTrustedTextToClipboardGameAction(
     const std::shared_ptr<const TGameActionCopyTextToClipboard> pGameAction)
 {
-    QGuiApplication::clipboard()->setText(pGameAction->text());
+    m_clipboardHelper->setTextInClipboard(pGameAction->text());
 }
 
-TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)
+TGatherAllGameActionHandler::TGatherAllGameActionHandler(std::shared_ptr<TGatherAllProtocolMessageHandler> protocolMessageHandler,
+                                                         QObject* parent)
     : cip::tibia::input::TGatherAllGameActionHandler(parent)
+    , m_protocolMessageHandler(std::move(protocolMessageHandler))
 {
 }
 
@@ -96,16 +87,31 @@ void TGatherAllGameActionHandler::handleGameAction(const tibia::input::IGameActi
 {
     if (!pGameAction || pGameAction->gameActionType() != A::GATHER_ALL)
         return;
-    const std::optional<TObjectGameActionContext> object = objectContextOf(*pGameAction);
-    if (object && object->objectClientId() != 0) {
-        const uint8_t stackpos = object->stackPosition() >= 0 ? static_cast<uint8_t>(object->stackPosition()) : 0;
-        tibia::game::gatherAll(object->position(), object->objectClientId(), stackpos);
-    }
+    handleGatherAllAction(std::dynamic_pointer_cast<const gameactions::TGameActionGatherAll>(pGameAction));
+}
+
+void TGatherAllGameActionHandler::handleGatherAllAction(const std::shared_ptr<const gameactions::TGameActionGatherAll> pAction) const
+{
+    m_protocolMessageHandler->requestGatherAll(pAction->context());
 }
 
 TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* parent)
     : cip::tibia::input::TGatherAllProtocolMessageHandler(parent)
 {}
+
+void TGatherAllProtocolMessageHandler::requestGatherAll(const TObjectGameActionContext& object)
+{
+    ::tibia::protobuf::protocol::GameclientMessageGatherAll message;
+    // Without a location the object is anywhere the player has it.
+    const Position position = object.location() ? object.position() : Position(UINT16_MAX, 0, 0);
+    const int stackPosition = object.location() ? object.stackPosition() : 0;
+    message.mutable_position()->set_x(position.x);
+    message.mutable_position()->set_y(position.y);
+    message.mutable_position()->set_z(position.z);
+    message.set_object_id(object.objectClientId());
+    message.set_stack_position(static_cast<uint32_t>(std::max(stackPosition, 0)));
+    Q_EMIT sendGatherAll(message);
+}
 
 namespace {
 

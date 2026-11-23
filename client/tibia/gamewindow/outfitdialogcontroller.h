@@ -54,7 +54,7 @@ public:
         int otherGenderId = 0;
     };
 
-    using cip::TCustomiseCharacterModel::TCustomiseCharacterModel;
+    explicit TCustomiseCharacterModel(QObject* parent = nullptr);
 
     void setEntries(QList<Entry> entries);
     const QList<Entry>& entries() const { return m_entries; }
@@ -99,7 +99,7 @@ class TOutfitPresetsModel final : public cip::TOutfitPresetsModel
 public:
     enum ERole { JsonDataRole = Qt::UserRole + 1, EverythingOwnedRole };
 
-    using cip::TOutfitPresetsModel::TOutfitPresetsModel;
+    explicit TOutfitPresetsModel(QObject* parent = nullptr);
 
     void setPresets(QList<QJsonObject> presets, QList<bool> owned);
 

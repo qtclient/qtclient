@@ -20,6 +20,13 @@ public:
 
     TChatChannelController* source() const;
 
+    /// The first time shown; an invalid time shows everything.
+    QDateTime minimumTime() const;
+    /// Re-filters when the time changes.
+    void setMinimumTime(const QDateTime& time);
+    /// Back to an invalid time (everything shown); re-filters when it was set.
+    void clearMinimumTime();
+
     bool canSubscribeToServerLog() const override;
     bool isSubscribedToServerLog() const override;
     bool writesToLocalChat() const override;

@@ -6,6 +6,8 @@
 #include "cyclopedia/cyclopediamapdata.h"
 #include "gamewindow/edittextcontroller.h"
 #include "gamewindow/highscoresdialogcontroller.h"
+#include "gamewindow/infobannercontroller.h"
+#include "gamewindow/linkcopywarningdialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/preydialogcontroller.h"
 #include "prey/preyciptypes.h"
@@ -77,7 +79,10 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     new TEmergencyDialogController(this);
     new TCinematicSessiondumpPlayerController(this);
     new TGenericConfirmWithDontShowAgainDialogController(this);
-    forward(new TLinkCopyWarningDialogController(this));
+    auto* linkCopyWarning = new TLinkCopyWarningDialogController(this);
+    forward(linkCopyWarning);
+    m_gameActions.on(A::REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD,
+                     [linkCopyWarning](const input::IGameAction& action) { linkCopyWarning->handleGameAction(action); });
     new TLoginConfirmationCodeEnterTextDialogController(this);
     new TTwoFactorCodeEnterTextDialogController(this);
     new TMultiOfflineTrainingDialogController(this);
@@ -87,10 +92,6 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     forward(new TShowSpellBookDialogController(this));
     forward(new TSurveyInvitationDialogController(this));
     new TInfoBannerController(nullptr, this);
-    forward(new TTutorialOverlayController(this));
-    new TTutorialOverlayItemController(this);
-    new TTutorialOverlayMouseFilterController(this);
-    new TTutorialOverlayMouseTrailAnimationController(this);
 
     hookOutfitDialog();
     hookCreaturePodium();
@@ -224,34 +225,6 @@ void TInformationDialogs::hookQuestLog()
         return true;
     });
 
-    // The quest log protocol handler hands the storage what the server sent.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLog", [this](GameObject*, const Args& args) {
-        if (const auto* lines = arg<std::vector<questlog::TQuestLine>>(args, 0))
-            m_questLog->questLogStorage()->setQuestLines(*lines);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLine", [this](GameObject*, const Args& args) {
-        const auto* questLineId = arg<questlog::TQuestLineID>(args, 0);
-        const auto* parts = arg<std::vector<questlog::TQuestLinePart>>(args, 1);
-        if (questLineId && parts)
-            m_questLog->questLogStorage()->setQuestLineParts(*questLineId, *parts);
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestTracker", [this](GameObject*, const Args& args) {
-        const auto* flags = arg<std::map<questlog::TQuestFlagID, questlog::TQuestFlagData>>(args, 0);
-        const auto* timestamp = arg<qint64>(args, 1);
-        const auto* fullList = arg<bool>(args, 2);
-        const auto* canTrack = arg<std::optional<bool>>(args, 3);
-        if (!flags || !timestamp || !fullList || !canTrack)
-            return std::any{};
-        questlog::TQuestLogStorage* storage = m_questLog->questLogStorage();
-        if (*canTrack)
-            storage->setCanTrackAdditionalQuestFlags(**canTrack);
-        storage->setTrackedQuestFlags(*flags, *timestamp, *fullList);
-        return std::any{};
-    });
 }
 
 void TInformationDialogs::hookHighscores()
@@ -312,31 +285,6 @@ void TInformationDialogs::hookPrey()
         m_prey->showDialog();
         return true;
     });
-    // CIP TPreyGameActionHandler: the PreyAction message (0 list reroll,
-    // 1 bonus reroll, 2 list choice, 3 bestiary list, 4 bestiary choice,
-    // 5 automatic extension).
-    using PreyMessages = prey::TPreyProtocolMessageHandler;
-    const auto preyAction = [this](const A type, void (*send)(int, int)) {
-        m_gameActions.on(type, [send](const input::TGameActionPreySystem& action) {
-            int value = 0;
-            if (const auto* list = input::gameActionAs<input::TGameActionSelectPreyMonsterFromList>(&action))
-                value = list->listIndex();
-            else if (const auto* bestiary = input::gameActionAs<input::TGameActionSelectPreyMonsterFromBestiary>(&action))
-                value = bestiary->raceId();
-            else if (const auto* extend = input::gameActionAs<input::TGameActionChangeAutoPreyExtendType>(&action))
-                value = static_cast<int>(extend->extendType());
-            send(static_cast<int>(action.preyId()), value);
-            return true;
-        });
-    };
-    preyAction(A::PREY_REQUEST_LIST_REROLL, [](const int preyId, int) { PreyMessages::requestListReroll(preyId); });
-    preyAction(A::PREY_REQUEST_BONUS_REROLL, [](const int preyId, int) { PreyMessages::requestBonusReroll(preyId); });
-    preyAction(A::PREY_SELECT_MONSTER_FROM_LIST, &PreyMessages::selectMonsterFromList);
-    preyAction(A::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS,
-               [](const int preyId, int) { PreyMessages::requestFreezeAndShowBestiaryMonsters(preyId); });
-    preyAction(A::PREY_SELECT_MONSTER_FROM_BESTIARY, &PreyMessages::selectMonsterFromBestiary);
-    preyAction(A::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE, &PreyMessages::setAutomaticExtendType);
-
     // Every slot state ends with the free list reroll (seconds from now) and
     // the automatic extension option (CIP's "wildcards" outside the
     // active state).
@@ -406,8 +354,6 @@ void TInformationDialogs::handleGameAction(const ::tibia::input::IGameActionPtr&
     m_gameActions.handle(pGameAction);
     if (m_cyclopedia)
         m_cyclopedia->handleGameAction(pGameAction);
-    if (m_questLog)
-        m_questLog->handleGameAction(pGameAction);
 }
 
 }

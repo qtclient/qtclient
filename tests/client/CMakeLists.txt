@@ -49,6 +49,11 @@ else()
 endif()
 
 qtclient_add_port_test(client_durationtween_tests durationtween_test.cpp)
+qtclient_add_port_test(client_worldmaplinearmovementtween_tests
+    worldmaplinearmovementtween_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/worldmaplinearmovementtween.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/coordinates.cpp
+)
 # The meta infos a game session is built from.
 qtclient_add_port_test(client_gamesessionmetainfo_tests
     gamesessionmetainfo_test.cpp
@@ -69,14 +74,18 @@ qtclient_add_port_test(client_creaturemovement_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
 )
 # CIP TAuthenticationProcessController: the login state machine against a fake login connection.
-find_package(Qt6 REQUIRED COMPONENTS Network Test)
+find_package(Qt6 REQUIRED COMPONENTS Network Test Gui Qml Quick)
 qtclient_add_port_test(client_authenticationprocesscontroller_tests
     authenticationprocesscontroller_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.h
 )
 set_target_properties(client_authenticationprocesscontroller_tests PROPERTIES AUTOMOC ON)
-target_link_libraries(client_authenticationprocesscontroller_tests PRIVATE Qt6::Network Qt6::Test)
+target_link_libraries(client_authenticationprocesscontroller_tests PRIVATE Qt6::Network Qt6::Test Qt6::Gui Qt6::Qml Qt6::Quick qtclient_shared)
 qtclient_add_port_test(client_experiencecalculator_tests
     experiencecalculator_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/game/experiencecalculator.cpp
@@ -219,21 +228,35 @@ qtclient_add_port_test(client_jsonvalidator_tests
 
 # CIP tutorial::TSessiondumpHints and its publish-game-action hints (game actions need the generated headers).
 if(Qt6_FOUND AND TARGET tibia)
+    # The processor's generated CipSoft base class (moc'd here). cip_gen_08 refers
+    # to bases of the other generated units, so the test takes all of them.
+    set(_cipgenall)
+    foreach(_i 00 01 02 03 04 05 06 07 08 09 10 11)
+        list(APPEND _cipgenall ${CMAKE_BINARY_DIR}/client/tibia/cipgen/cip_gen_${_i}.cpp)
+    endforeach()
+    set_source_files_properties(${_cipgenall} PROPERTIES GENERATED TRUE)
     add_executable(client_sessiondumphints_tests
         sessiondumphints_test.cpp
+        ${_cipgenall}
+        sessiondumphintcondition_test.cpp
         ${CMAKE_SOURCE_DIR}/shared/src/jsonvalidator.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/input/gameactioncontext.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintbase.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintpublishgameaction.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintcondition.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintconditionshowtutorialhint.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphints.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintsprocessor.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintsprocessor.h
     )
-    set_target_properties(client_sessiondumphints_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    set_target_properties(client_sessiondumphints_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
     target_include_directories(client_sessiondumphints_tests PRIVATE
         ${CMAKE_SOURCE_DIR}/client/tibia
         ${CMAKE_SOURCE_DIR}/client
         ${CMAKE_SOURCE_DIR}/include
         $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
     )
-    target_link_libraries(client_sessiondumphints_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui)
+    target_link_libraries(client_sessiondumphints_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
     target_compile_definitions(client_sessiondumphints_tests PRIVATE
         $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>
         QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
@@ -391,7 +414,9 @@ target_link_libraries(client_spritesheetmanager_tests PRIVATE qtclient_shared Qt
 set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)
 
 # CIP worldmap coordinate helpers and cuboids.
-qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp)
+qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/coordinates.cpp
+)
 
 # CIP cyclopedia::TCyclopediaMapStaticDataStorage: map.dat areas, files and masks.
 qtclient_add_port_test(client_cyclopediamapstaticdatastorage_tests
@@ -409,6 +434,7 @@ if(Qt6_FOUND AND TARGET tibia AND TARGET ZLIB::ZLIB)
     add_executable(client_skillwheeldata_tests
         skillwheeldata_test.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/skillwheel/skillwheeldata.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/skillwheel/gridconfiguration.cpp
     )
     set_target_properties(client_skillwheeldata_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
     target_include_directories(client_skillwheeldata_tests PRIVATE
@@ -448,3 +474,82 @@ if(Qt6_FOUND AND TARGET tibia)
     add_dependencies(client_soundplayer_tests cip_codegen_tibia)
     gtest_discover_tests(client_soundplayer_tests)
 endif()
+
+# Wave 1 ports (CipSoft classes; see tools/re/port.py).
+qtclient_add_port_test(client_dualconnectionurlinfo_tests
+    dualconnectionurlinfo_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/dualconnectionurlinfo.cpp
+)
+qtclient_add_port_test(client_coderequestuploaders_tests
+    coderequestuploaders_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.h
+)
+set_target_properties(client_coderequestuploaders_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_coderequestuploaders_tests PRIVATE Qt6::Network qtclient_shared)
+qtclient_add_port_test(client_worldmapcuboidops_tests worldmapcuboidops_test.cpp)
+qtclient_add_port_test(client_animationinfo_tests animationinfo_test.cpp)
+qtclient_add_port_test(client_movementdirectionnames_tests movementdirectionnames_test.cpp)
+qtclient_add_port_test(client_movementintent_tests movementintent_test.cpp)
+qtclient_add_port_test(client_resourcespriteidentifier_tests
+    resourcespriteidentifier_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/imageresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/staticminimapmarkersymbolresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/minimaptilespritesheetidentifier.cpp
+)
+target_link_libraries(client_resourcespriteidentifier_tests PRIVATE Qt6::Gui)
+
+# Wave 2 ports.
+qtclient_add_port_test(client_worldmapcuboidcontains_tests worldmapcuboidcontains_test.cpp)
+qtclient_add_port_test(client_assetfilesystemhelper_tests
+    assetfilesystemhelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetfilesystemhelper.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
+)
+target_link_libraries(client_assetfilesystemhelper_tests PRIVATE qtclient_shared)
+
+# Wave 3 ports.
+qtclient_add_port_test(client_renderedvolume_tests renderedvolume_test.cpp)
+qtclient_add_port_test(client_gameactioncontexthelper_tests
+    gameactioncontexthelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/gameactioncontexthelper.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/protocol/protobufobjectpositionhelper.cpp
+)
+target_link_libraries(client_gameactioncontexthelper_tests PRIVATE protobuf)
+# protocol.pb.h has fields named "slots" (same as the tibia target).
+target_compile_definitions(client_gameactioncontexthelper_tests PRIVATE QT_NO_KEYWORDS)
+qtclient_add_port_test(client_experiencegainchangetracker_tests experiencegainchangetracker_test.cpp)
+
+# Wave 4 ports.
+qtclient_add_port_test(client_authenticationprocesscontrollercoderequests_tests
+    authenticationprocesscontrollercoderequests_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationprocesscontroller.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/emailcoderequestuploader.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginconfirmationcoderequestuploader.h
+)
+set_target_properties(client_authenticationprocesscontrollercoderequests_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_authenticationprocesscontrollercoderequests_tests PRIVATE Qt6::Network Qt6::Gui Qt6::Qml Qt6::Quick qtclient_shared)
+qtclient_add_port_test(client_spriteidentifierclone_tests
+    spriteidentifierclone_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/imageresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/staticminimapmarkersymbolresourcespriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spriteidentifier.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/minimaptilespritesheetidentifier.cpp
+)
+target_link_libraries(client_spriteidentifierclone_tests PRIVATE Qt6::Gui)
+
+# Wave 5 ports.
+qtclient_add_port_test(client_gridconfiguration_tests
+    gridconfiguration_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/skillwheel/gridconfiguration.cpp
+)
+qtclient_add_port_test(client_worldmapcuboidprint_tests
+    worldmapcuboidprint_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/coordinates.cpp
+)

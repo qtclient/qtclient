@@ -270,29 +270,27 @@ int TExaltationStorage::currentDustLimit() const
 
 uint64_t TExaltationStorage::fusionPrice(const int classification, const int tier) const
 {
-    const auto it = m_classPrices.find(static_cast<uint8_t>(classification));
-    if (it == m_classPrices.end())
-        return 0;
-    const auto price = it->second.find(static_cast<uint8_t>(tier));
-    return price == it->second.end() ? 0 : price->second;
+    return m_classPrices.at(static_cast<uint8_t>(classification)).at(static_cast<uint8_t>(tier));
 }
 
 uint64_t TExaltationStorage::convergenceFusionPrice(const int tier) const
 {
-    const auto it = m_convergenceFusionPrices.find(static_cast<uint8_t>(tier));
-    return it == m_convergenceFusionPrices.end() ? 0 : it->second;
+    return m_convergenceFusionPrices.at(static_cast<uint8_t>(tier));
+}
+
+uint64_t TExaltationStorage::transferPrice(const int classification, const int tier) const
+{
+    return m_classPrices.at(static_cast<uint8_t>(classification)).at(static_cast<uint8_t>(tier - 1));
 }
 
 uint64_t TExaltationStorage::convergenceTransferPrice(const int tier) const
 {
-    const auto it = m_convergenceTransferPrices.find(static_cast<uint8_t>(tier));
-    return it == m_convergenceTransferPrices.end() ? 0 : it->second;
+    return m_convergenceTransferPrices.at(static_cast<uint8_t>(tier));
 }
 
 uint16_t TExaltationStorage::transferCoreCost(const int tier) const
 {
-    const auto it = m_transferCoreCosts.find(static_cast<uint8_t>(tier));
-    return it == m_transferCoreCosts.end() ? 0 : it->second;
+    return m_transferCoreCosts.at(static_cast<uint8_t>(tier));
 }
 
 std::vector<uint8_t> TExaltationStorage::classifications() const

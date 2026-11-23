@@ -137,16 +137,21 @@ public:
     }
 };
 
-/// CIP: TDeathQmlData .
+/// CIP: TDeathQmlData. It keeps the death's time and formats it when read.
 class TDeathQmlData final : public cip::tibia::gamewindow::TDeathQmlData
 {
 public:
     TDeathQmlData(const RecentDeathEntry& entry, QObject* parent)
         : cip::tibia::gamewindow::TDeathQmlData(parent)
+        , m_time(entry.timestamp)
     {
-        m_timestamp = formatDateTime(entry.timestamp);
         m_description = qstr(entry.cause);
     }
+
+    QString timestamp() const override { return formatDateTime(m_time); }
+
+private:
+    uint32_t m_time = 0;
 };
 
 /// CIP: TKillQmlData .

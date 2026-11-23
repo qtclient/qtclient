@@ -6,6 +6,7 @@
 
 #include "input/gameactionptr.h"
 
+#include <QImage>
 #include <QObject>
 #include <QTimer>
 
@@ -13,6 +14,9 @@
 #include <memory>
 
 namespace tibia {
+namespace minimap {
+class TMinimapTileManager;
+}
 namespace appearances {
 class TAppearanceInstanceSpriteInfo;
 class TCreatureMarkAppearanceInstanceSpriteInfo;
@@ -23,6 +27,8 @@ struct TOutfitColors;
 }
 namespace sprites {
 
+class TImageResourceSpriteIdentifier;
+class TMinimapTileSpritesheetIdentifier;
 class TSprite;
 class TSpritesheetManager;
 
@@ -33,17 +39,27 @@ class TSpriteResolver : public QObject
 public:
     explicit TSpriteResolver(std::shared_ptr<TSpritesheetManager> spritesheets, QObject* parent = nullptr);
 
+    /// The session's minimap tiles (CIP takes them at construction; qtclient's
+    /// resolver outlives sessions, so the minimap installs and removes them).
+    void setMinimapTileManager(std::shared_ptr<minimap::TMinimapTileManager> tileManager);
+
     /// The sprite of an appearance, cut from its spritesheet; null while the
     /// spritesheet is not decompressed yet.
     virtual std::shared_ptr<TSprite> resolveSpritesheetSprite(const TSpriteFromSpritesheetInfo& info) const;
     /// A whole asset spritesheet as one sprite drawn at `scale`, not cached; null
     /// while it is not decompressed yet.
     virtual std::shared_ptr<TSprite> resolveAssetSpritesheet(const TSpritesheetID& spritesheetId, float scale) const;
-    /// CIP v12: the sprite of an identifier by its kind: sprite infos (marked as
-    /// sprites of a resource), asset spritesheets and effect wrappers; resource
-    /// and minimap tile identifiers are not resolved (none are made yet). Null
-    /// while a spritesheet is not decompressed yet.
+    /// CIP v12: the sprite of an identifier by its kind: image resources and
+    /// sprite infos (both marked as sprites of a resource), asset spritesheets,
+    /// minimap tiles and effect wrappers; other resources give null. Null while
+    /// a spritesheet is not decompressed yet.
     std::shared_ptr<TSprite> resolve(const ISpriteIdentifier& identifier) const;
+    /// CIP v21: the tile's colour image or unexplored mask at the identifier's
+    /// scale; a black 256x256 image while the tile is not there yet.
+    virtual std::shared_ptr<TSprite> resolveMinimapTile(const TMinimapTileSpritesheetIdentifier& identifier) const;
+    /// CIP v19: the identifier's rectangle cut out of its image file, at scale 1
+    /// (a missing file gives an empty sprite).
+    virtual std::shared_ptr<TSprite> resolveImageResource(const TImageResourceSpriteIdentifier& identifier) const;
     /// CIP v22: the wrapped identifier's sprite with its effect applied, keeping
     /// its scale and flags.
     std::shared_ptr<TSprite> resolveEffectWrapper(const TEffectWrapperSpritesheetIdentifier& identifier) const;
@@ -85,7 +101,10 @@ private:
     /// made now; the others are tried again on the next event loop pass.
     void resolvePendingSprites();
 
+    /// What a minimap tile shows until it is loaded.
+    QImage m_emptyMinimapTileImage;
     std::shared_ptr<TSpritesheetManager> m_spritesheets;
+    std::shared_ptr<minimap::TMinimapTileManager> m_minimapTileManager;
     QTimer m_retryTimer;
     /// A list: publishing a resolved sprite may queue another identifier.
     std::list<ISpriteIdentifierPtr> m_pendingIdentifiers;

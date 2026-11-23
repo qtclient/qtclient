@@ -50,9 +50,17 @@ public:
     /// CIP: the player chose to log out and log in again (QUIT_GAME without
     /// leaving the game); the client then reconnects on disconnect.
     bool reconnectRequested() const { return m_reconnectRequested; }
+    /// CIP: the client closes the session for a failed client check: no
+    /// connection error message and no character selection afterwards.
+    void ignoreNextDisconnect();
+    /// CIP: connecting to the game server was aborted: no reconnect.
+    void resetReconnectRequested();
 
 public Q_SLOTS:
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    /// The game server accepted the connection: a fresh reconnection count,
+    /// connection errors are reported and the character selection follows.
+    void onGameSessionConnected();
 
 private Q_SLOTS:
     void onGameSessionLoginSuccessful();

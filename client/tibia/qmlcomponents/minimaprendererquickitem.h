@@ -98,6 +98,8 @@ public:
     void set(const QString& caption, const QColor& color, bool improvedRespawnActive);
     /// CIP : emits clicked with the caption's area.
     void onClicked() override;
+    /// Hovering a caption does nothing.
+    void onHovered() override {}
     /// QML must not call onClicked (Qt treats that name as a signal handler).
     Q_INVOKABLE void activate();
 

@@ -1,24 +1,37 @@
 #pragma once
 
 #include "authentication/cloudflarechallengetypes.h"
+#include "input/gameactionptr.h"
 
 #include <QObject>
 #include <QString>
 
 #include <deque>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
 namespace tibia {
+namespace gamewindow {
+class TCharacterSelectionController;
+struct TCharacterLoginData;
+}
 namespace authentication {
 
-/// CIP `ELoginConfirmationMethod` (moc arg on onRequestNewLoginConfirmationCode).
+class TCloudflareChallengeController;
+class TEmailCodeRequestUploader;
+class TLoginConfirmationCodeRequestUploader;
+class TLoginRequestUploader;
+
+/// CIP `ELoginConfirmationMethod` (moc arg on onRequestNewLoginConfirmationCode):
+/// where a login confirmation code is sent. The login service names them
+/// emailPrimary, emailSecondary and sms.
 enum ELoginConfirmationMethod : int
 {
-    LoginConfirmationMethodUnknown = 0,
-    LoginConfirmationMethodEmail = 1,
-    LoginConfirmationMethodApp = 2,
+    LoginConfirmationMethodEmailPrimary = 0,
+    LoginConfirmationMethodEmailSecondary = 1,
+    LoginConfirmationMethodSms = 2,
 };
 
 /// The account login as a state machine (CIP: TAuthenticationProcessController,
@@ -27,6 +40,9 @@ enum ELoginConfirmationMethod : int
 /// leaves the active state (its exited slot), then enters the target (its
 /// entered slot); triggers raised while a transition runs are queued and
 /// handled after it; a final top-level state stops the machine.
+///
+/// It owns the login's parts: the character selection, the login request
+/// uploader, the two code request uploaders and the Cloudflare challenge.
 class TAuthenticationProcessController final : public QObject
 {
     Q_OBJECT
@@ -108,8 +124,25 @@ public:
         std::function<void()> resetSessionData;
     };
 
-    explicit TAuthenticationProcessController(QObject* parent = nullptr);
+    explicit TAuthenticationProcessController(
+        std::shared_ptr<gamewindow::TCharacterSelectionController> CharacterSelectionController = {},
+        std::shared_ptr<TLoginRequestUploader> LoginRequestUploader = {},
+        std::shared_ptr<TEmailCodeRequestUploader> EMailCodeRequestUploader = {},
+        std::shared_ptr<TLoginConfirmationCodeRequestUploader> LoginConfirmationCodeRequestUploader = {},
+        std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController = {}, QObject* parent = nullptr);
     ~TAuthenticationProcessController() override;
+
+    gamewindow::TCharacterSelectionController* characterSelectionController() const
+    {
+        return m_pCharacterSelectionController.get();
+    }
+    TLoginRequestUploader* loginRequestUploader() const { return m_pLoginRequestUploader.get(); }
+    TCloudflareChallengeController* cloudflareChallengeController() const
+    {
+        return m_pCloudflareChallengeController.get();
+    }
+    /// The account the login requests and the code requests are made for.
+    void setLoginCredentials(const QString& EMail, const QString& Password);
 
     void setHost(THost host) { m_host = std::move(host); }
 
@@ -142,7 +175,6 @@ public:
     bool loginWaitingDialogVisible() const { return m_loginWaitingDialogVisible; }
     bool characterSelectionVisible() const { return m_characterSelectionVisible; }
     bool waitingForAssets() const { return m_waitingForAssets; }
-    ELoginConfirmationMethod pendingConfirmationMethod() const { return m_pendingConfirmationMethod; }
 
 public Q_SLOTS:
     void onLoginStateMachineStartedShortcutToCharacterSelection();
@@ -187,9 +219,9 @@ public Q_SLOTS:
     void onSolveCloudflareChallengeStateEntered();
     void onShowCloudflareChallengeFailedStateEntered();
     void onCloudflareSolverSuccess(tibia::authentication::TCloudflareChallengeClearanceInfo CloudflareClearanceInfo);
-    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient skips the
-    /// shared_ptr arg (same pattern as friends search page).
-    void handleGameAction();
+    /// A character finished the tutorial: the character selection and the login
+    /// answer forget its tutorial flag, and the pending login data is read again.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
 
 Q_SIGNALS:
     void advanceStateMachine();
@@ -227,6 +259,17 @@ private:
     void setFpsTrackingActive(bool value);
     void setOptionsTrackingActive(bool value);
 
+    std::shared_ptr<gamewindow::TCharacterSelectionController> m_pCharacterSelectionController;
+    std::shared_ptr<TLoginRequestUploader> m_pLoginRequestUploader;
+    std::shared_ptr<TEmailCodeRequestUploader> m_pEMailCodeRequestUploader;
+    std::shared_ptr<TLoginConfirmationCodeRequestUploader> m_pLoginConfirmationCodeRequestUploader;
+    /// The login data's account.
+    QString m_eMail;
+    QString m_password;
+    /// What the character selection handed on for the game server login.
+    std::vector<gamewindow::TCharacterLoginData> m_characterLoginData;
+    std::shared_ptr<TCloudflareChallengeController> m_pCloudflareChallengeController;
+
     THost m_host;
     std::vector<TTransition> m_transitions;
     std::vector<std::pair<EState, void (TAuthenticationProcessController::*)()>> m_entered;
@@ -246,7 +289,6 @@ private:
     bool m_waitingForAssets = false;
     QString m_confirmationToken;
     bool m_hasPendingConfirmationCode = false;
-    ELoginConfirmationMethod m_pendingConfirmationMethod = LoginConfirmationMethodUnknown;
 };
 
 template<typename Uploader>

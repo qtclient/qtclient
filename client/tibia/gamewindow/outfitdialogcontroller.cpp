@@ -77,6 +77,14 @@ void applyOffers(Entries& entries, const QList<int>& offers)
 
 }
 
+/// CIP: the count follows the inserted and removed rows.
+TCustomiseCharacterModel::TCustomiseCharacterModel(QObject* parent)
+    : cip::TCustomiseCharacterModel(parent)
+{
+    connect(this, &QAbstractItemModel::rowsInserted, this, &TCustomiseCharacterModel::rowCountChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &TCustomiseCharacterModel::rowCountChanged);
+}
+
 void TCustomiseCharacterModel::setEntries(QList<Entry> entries)
 {
     beginResetModel();
@@ -203,6 +211,14 @@ bool TCustomizeCharacterSortProxyModel::filterAcceptsRow(const int sourceRow, co
         && !index.data(TCustomiseCharacterModel::OutfitNameRole).toString().contains(m_outfitNameFilter, Qt::CaseInsensitive))
         return false;
     return true;
+}
+
+/// CIP: the count follows the inserted and removed rows.
+TOutfitPresetsModel::TOutfitPresetsModel(QObject* parent)
+    : cip::TOutfitPresetsModel(parent)
+{
+    connect(this, &QAbstractItemModel::rowsInserted, this, &TOutfitPresetsModel::rowCountChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &TOutfitPresetsModel::rowCountChanged);
 }
 
 void TOutfitPresetsModel::setPresets(QList<QJsonObject> presets, QList<bool> owned)

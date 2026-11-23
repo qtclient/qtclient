@@ -6,6 +6,7 @@
 #include "input/gameactionhandlers.h"
 
 #include <algorithm>
+#include <array>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
@@ -29,7 +30,7 @@ constexpr auto StatusBarEnabled = "statusBarEnabled";
 /// Option 0x72: the hit point and mana panel in the sidebar.
 constexpr auto StatusPanelEnabled = "statusPanelEnabled";
 
-/// CIP 's entries: positions and styles (the current one is left
+/// The context menu's entries: positions and styles (the current one is left
 /// out), then the skills in Storage::Entry order.
 constexpr std::pair<int, const char*> PositionEntries[] = {
     { Storage::Top, "statusbar_position_top" },
@@ -63,9 +64,7 @@ TStatusBarController::TStatusBarController(QObject* parent)
     : cip::tibia::gamewindow::TStatusBarController(parent)
     , m_states(config::SpecialConditionsFilter::Bar)
 {
-    m_playerStates = m_states.model();
-    for (size_t i = 0; i < m_entries.size(); ++i)
-        m_entries[i] = new game::TSkillsWidgetEntryData(this);
+    m_xpEntry = new game::TSkillsWidgetEntryData(this);
     connect(&m_states, &game::TPlayerStatesTracker::restingAreaChanged, this, &TStatusBarController::onRestingAreaChanged);
     connect(&m_states, &game::TPlayerStatesTracker::optionsChanged, this, [this] {
         if (m_states.options().showInBar == m_showPlayerStatesInBar)
@@ -118,8 +117,7 @@ void TStatusBarController::applyStorage()
             anchor = Top;
         }
     }
-    const int style = m_storage->style();
-    setAnchorAndStyle(anchor, style >= Compact && style <= Parallel ? style : Default, true);
+    setAnchorAndStyle(anchor, styleFromStorage(m_storage->style()), true);
 }
 
 void TStatusBarController::onStorageChanged()
@@ -127,9 +125,47 @@ void TStatusBarController::onStorageChanged()
     if (!m_storage)
         return;
     rebuildSkillLists();
-    const int position = m_storage->position();
-    const int style = m_storage->style();
-    setAnchorAndStyle(position <= Right ? position : Invalid, style >= Compact && style <= Parallel ? style : Default, false);
+    setDialogAnchor(anchorFromPosition(m_storage->position()));
+    setDialogStyle(styleFromStorage(m_storage->style()));
+}
+
+void TStatusBarController::setDialogAnchor(const DialogAnchor anchor)
+{
+    if (m_dialogAnchor == anchor)
+        return;
+    m_dialogAnchor = anchor;
+    Q_EMIT dialogAnchorChanged();
+}
+
+void TStatusBarController::setDialogStyle(const DialogStyle style)
+{
+    if (m_dialogStyle == style)
+        return;
+    m_dialogStyle = style;
+    Q_EMIT dialogStyleChanged();
+}
+
+TStatusBarController::DialogAnchor TStatusBarController::anchorFromPosition(const int position)
+{
+    return static_cast<unsigned>(position) < 5 ? static_cast<DialogAnchor>(position) : Invalid;
+}
+
+TStatusBarController::DialogStyle TStatusBarController::styleFromStorage(const int style)
+{
+    return static_cast<unsigned>(style - 1) < 3 ? static_cast<DialogStyle>(style) : Default;
+}
+
+bool TStatusBarController::isSkillShown(const int index) const
+{
+    if (!m_storage || index < 0 || index >= Storage::EntryCount)
+        return false;
+    return m_storage->shown(static_cast<Storage::Entry>(index));
+}
+
+void TStatusBarController::setSkillShown(const int index, const bool shown)
+{
+    if (m_storage && index >= 0 && index < Storage::EntryCount)
+        m_storage->setShown(static_cast<Storage::Entry>(index), shown);
 }
 
 void TStatusBarController::setAnchorAndStyle(const int anchor, const int style, const bool forceAnchorSignal)
@@ -141,38 +177,55 @@ void TStatusBarController::setAnchorAndStyle(const int anchor, const int style, 
         m_dialogAnchor = static_cast<DialogAnchor>(anchor);
         Q_EMIT dialogAnchorChanged();
     }
-    m_dialogStyle = static_cast<DialogStyle>(style);
-    Q_EMIT dialogStyleChanged();
+    setDialogStyle(static_cast<DialogStyle>(style));
 }
 
 void TStatusBarController::rebuildSkillLists()
 {
-    refreshSkills();
+    int count = 0;
+    for (int i = 1; i < Storage::EntryCount; ++i)
+        count += isSkillShown(i) ? 1 : 0;
+    m_oddSkillCount = (count & 1) != 0;
+
+    const QList<QObject*> oldEntries = m_skillList;
+    QObject* const oldRemaining = m_remainingSkill;
     m_skillList.clear();
+    m_skillTypes.clear();
     m_remainingSkill = nullptr;
-    if (m_storage) {
-        int remaining = 0;
-        for (int i = 1; i < Storage::EntryCount; ++i)
-            remaining += m_storage->shown(static_cast<Storage::Entry>(i)) ? 1 : 0;
-        // An odd count leaves the last skill alone on its row.
-        const bool odd = (remaining & 1) != 0;
-        for (int i = 1; i < Storage::EntryCount; ++i) {
-            if (!m_storage->shown(static_cast<Storage::Entry>(i)))
-                continue;
-            if (--remaining == 0 && odd)
-                m_remainingSkill = m_entries[i];
-            else
-                m_skillList.append(m_entries[i]);
+
+    for (int i = 0; i < Storage::EntryCount; ++i) {
+        if (!isSkillShown(i))
+            continue;
+        if (i == Storage::Experience) {
+            m_xpEntry->assign(game::buildSkillEntry(SkillType::Experience));
+            continue;
         }
+        const SkillType type = EntryTypes[static_cast<size_t>(i)];
+        auto* entry = new game::TSkillsWidgetEntryData(this);
+        entry->assign(game::buildSkillEntry(type));
+        if (!m_oddSkillCount || count != 1) {
+            m_skillList.append(entry);
+            m_skillTypes.append(type);
+        } else {
+            m_remainingSkill = entry;
+            m_remainingSkillType = type;
+        }
+        --count;
     }
-    m_xpSkill = m_storage && m_storage->shown(Storage::Experience) ? m_entries[Storage::Experience] : nullptr;
     Q_EMIT skillsChanged();
+    for (QObject* entry : oldEntries)
+        delete entry;
+    delete oldRemaining;
 }
 
 void TStatusBarController::refreshSkills()
 {
-    for (size_t i = 0; i < m_entries.size(); ++i)
-        m_entries[i]->assign(game::buildSkillEntry(EntryTypes[i]));
+    if (isSkillShown(Storage::Experience))
+        m_xpEntry->assign(game::buildSkillEntry(SkillType::Experience));
+    for (qsizetype i = 0; i < m_skillList.size(); ++i)
+        static_cast<game::TSkillsWidgetEntryData*>(m_skillList[i])->assign(game::buildSkillEntry(m_skillTypes[i]));
+    if (m_oddSkillCount && m_remainingSkill)
+        static_cast<game::TSkillsWidgetEntryData*>(m_remainingSkill)->assign(game::buildSkillEntry(m_remainingSkillType));
 }
 
 void TStatusBarController::updateFromPlayer()
@@ -216,7 +269,15 @@ bool TStatusBarController::isSerene() const
 {
     return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsSerene();
 }
-bool TStatusBarController::showPlayerStatesInBar() const { return m_showPlayerStatesInBar; }
+bool TStatusBarController::showPlayerStatesInBar() const { return m_states.options().showInBar; }
+QAbstractListModel* TStatusBarController::playerStates() const
+{
+    return const_cast<game::TPlayerStatesTracker&>(m_states).model();
+}
+QObject* TStatusBarController::xpSkill() const
+{
+    return isSkillShown(Storage::Experience) ? m_xpEntry : nullptr;
+}
 
 void TStatusBarController::onClickedOpenStoreXPBoost()
 {
@@ -256,10 +317,7 @@ void TStatusBarController::requestContextMenu()
         const auto entry = static_cast<Storage::Entry>(index);
         TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(EntryLabels[static_cast<size_t>(index)]));
         // The entry flips what the storage holds when it is picked.
-        connect(item, &TContextMenuEntryItem::triggered, this, [this, entry] {
-            if (m_storage)
-                m_storage->setShown(entry, !m_storage->shown(entry));
-        });
+        connect(item, &TContextMenuEntryItem::triggered, this, [this, index] { setSkillShown(index, !isSkillShown(index)); });
         item->setCheckable(true);
         item->setChecked(m_storage->shown(entry));
     }

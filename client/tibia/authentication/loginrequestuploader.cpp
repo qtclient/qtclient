@@ -1,6 +1,13 @@
 #include "loginrequestuploader.h"
 
+#include "appearances/appearanceinstance.h"
+#include "appearances/appearancetype.h"
+#include "creatures/creaturestorage.h"
+#include "dailyreward/dailyrewardciptypes.h"
 #include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+#include "game/playerdata.h"
+#include "teamfinder/teamfinderciptypes.h"
 
 #include <QDateTime>
 #include <QFile>
@@ -218,6 +225,56 @@ void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonD
     }
 
     Q_EMIT loginSuccessful(LoginResult{ m_session, m_worlds, m_characters });
+}
+
+void TLoginRequestUploader::setPlayData(const TCharacterList& Characters, const TWorldList& Worlds)
+{
+    m_characters = Characters;
+    m_worlds = Worlds;
+}
+
+void TLoginRequestUploader::setTutorialFinished(const QString& CharacterName)
+{
+    for (TCharacter& character : m_characters) {
+        if (character.name == CharacterName)
+            character.tutorial = false;
+    }
+}
+
+void TLoginRequestUploader::setGameSession(const std::shared_ptr<game::TGameSessionBase>& GameSession)
+{
+    if (!GameSession)
+        updateCharactersFromGameSession();
+    m_gameSession = GameSession;
+}
+
+void TLoginRequestUploader::updateCharactersFromGameSession()
+{
+    if (!m_gameSession)
+        return;
+    const std::shared_ptr<creatures::TCreature> player = m_gameSession->playerCreature().lock();
+    const std::shared_ptr<game::TPlayerData> playerData = m_gameSession->playerData();
+    for (TCharacter& character : m_characters) {
+        if (!player || !playerData || player->name() != character.name)
+            continue;
+        const auto outfit =
+            std::dynamic_pointer_cast<appearances::TCustomizableOutfitAppearanceInstance>(player->outfitAppearance());
+        if (outfit) {
+            character.outfitId = outfit->thingType()->getId();
+            const appearances::TOutfitCustomization& customization = outfit->customization();
+            character.headColor = customization.head;
+            character.torsoColor = customization.body;
+            character.legsColor = customization.legs;
+            character.detailColor = customization.feet;
+            character.firstAddOn = customization.firstAddon;
+            character.secondAddOn = customization.secondAddon;
+        }
+        character.level = playerData->level();
+        character.vocation = teamfinder::vocationName(playerData->vocation(), playerData->hasReachedMain());
+        const std::shared_ptr<dailyreward::TDailyRewardStorage>& dailyReward = m_gameSession->dailyRewardStorage();
+        if (dailyReward && character.dailyRewardState != 2)
+            character.dailyRewardState = dailyReward->dailyRewardReadyToPickUp() ? 1 : 0;
+    }
 }
 
 LoginResult TLoginRequestUploader::parse(const QJsonObject& reply)

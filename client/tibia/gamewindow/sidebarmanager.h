@@ -58,12 +58,16 @@ public:
     int remainingHeight() const;
     /// CIP .
     void setAcceptsWidgetDrops(bool accepts);
+    /// The sidebar item's triggerCheckBoundsEnabled.
+    void setTriggerCheckBoundsEnabled(bool enabled);
 
 private:
     QPointer<QQuickItem> m_item;
     QPointer<QQuickItem> m_upperPane;
     QPointer<QQuickItem> m_lowerPane;
+    /// The next widget's and the next panel's identifiers (two counters).
     uint m_nextIdentifier = 1;
+    uint m_nextPanelIdentifier = 1;
 };
 
 /// The sidebar columns on both sides of the game window (CIP: TSidebarManager,
@@ -88,6 +92,10 @@ public:
     void addPanel(cip::tibia::gamewindow::TSidebarPanelControllerBase* controller, QQuickItem* panel);
     /// CIP .
     void movePanelToEnd(QQuickItem* panel);
+    /// Every sidebar checks its widgets against the window bounds.
+    void emitCheckBounds();
+    /// Every sidebar's triggerCheckBoundsEnabled.
+    void setTriggerCheckBoundsEnabled(bool enabled);
 
     /// CIP .
     bool hasSidebar(uint sidebarId) const { return m_sidebars.contains(sidebarId); }

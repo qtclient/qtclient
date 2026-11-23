@@ -195,8 +195,6 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         Q_EMIT premiumTimeChanged();
         return std::any{};
     });
-    m_timer.setInterval(TickIntervalMs);
-    connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
 }
 
 void TAnalyserStorages::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -207,10 +205,8 @@ void TAnalyserStorages::connectToGameSession(const std::shared_ptr<game::IGameSe
         Q_EMIT configurationLoadedForCharacter();
     }
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    if (!session) {
-        m_timer.stop();
+    if (!session)
         return;
-    }
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();
@@ -224,7 +220,6 @@ void TAnalyserStorages::connectToGameSession(const std::shared_ptr<game::IGameSe
     m_sessionConnections.push_back(connect(m_impact.get(), &TImpactStorage::publishGameAction, this, &TAnalyserStorages::publishGameAction));
     m_sessionConnections.push_back(connect(m_itemTracking.get(), &cyclopedia::TItemTrackingStorage::publishGameAction, this,
                                            &TAnalyserStorages::publishGameAction));
-    m_timer.start();
 }
 
 TAnalyserStorages::~TAnalyserStorages()
@@ -240,19 +235,6 @@ TItemPriceStorage* TAnalyserStorages::prices() { return TItemPriceStorage::insta
 qint64 TAnalyserStorages::nowMs()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
-void TAnalyserStorages::tick()
-{
-    if (!m_progress)
-        return;
-    const qint64 now = nowMs();
-    m_huntingSession->tick(now);
-    m_progress->tick(now);
-    m_gainWaste->tick(now);
-    m_impact->tick(now);
-    m_damageInput->update(now);
-    m_itemTracking->update(now);
 }
 
 void TAnalyserStorages::onCharacterConfigurationLoaded()

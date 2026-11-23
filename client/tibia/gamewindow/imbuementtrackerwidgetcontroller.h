@@ -77,13 +77,20 @@ public:
         int iconId[3] = {};
         QString name[3];
         qint64 remainingMs[3] = {};
+        /// The slot holds an imbuement.
+        bool hasImbuement[3] = {};
+        /// Its time runs (the object is worn).
+        bool running[3] = {};
         int filledSlots = 0;
     };
 
 private:
     friend class TImbuedObjectsSortFilterProxyModel;
+    friend class TImbuementTrackerWidgetController;
 
     std::vector<Row> m_rows;
+    /// CIP +0x38: the timestamp of the last countdown step.
+    qint64 m_lastUpdate = 0;
 };
 
 /// Filters imbued-object rows by sidebar show* flags (CIP: TImbuedObjectsSortFilterProxyModel).
@@ -142,6 +149,10 @@ public Q_SLOTS:
     void onLevelUpClicked() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
+    /// CIP (the sidebar widgets' frame update): once a second or more since the last
+    /// step, the running imbuements count down by the time passed (not below 0) and
+    /// their rows' time roles change.
+    void updateWithTimestamp(qint64 timestampMilliseconds);
 
 Q_SIGNALS:
     /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.

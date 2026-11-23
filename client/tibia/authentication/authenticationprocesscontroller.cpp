@@ -1,4 +1,9 @@
 #include "authentication/authenticationprocesscontroller.h"
+#include "authentication/emailcoderequestuploader.h"
+#include "authentication/loginconfirmationcoderequestuploader.h"
+#include "authentication/loginrequestuploader.h"
+#include "controllers/characterselectioncontroller.h"
+#include "input/gameaction.h"
 
 #include <algorithm>
 
@@ -7,8 +12,18 @@ namespace tibia::authentication {
 using EState = TAuthenticationProcessController::EState;
 using ETrigger = TAuthenticationProcessController::ETrigger;
 
-TAuthenticationProcessController::TAuthenticationProcessController(QObject* parent)
+TAuthenticationProcessController::TAuthenticationProcessController(
+    std::shared_ptr<gamewindow::TCharacterSelectionController> CharacterSelectionController,
+    std::shared_ptr<TLoginRequestUploader> LoginRequestUploader,
+    std::shared_ptr<TEmailCodeRequestUploader> EMailCodeRequestUploader,
+    std::shared_ptr<TLoginConfirmationCodeRequestUploader> LoginConfirmationCodeRequestUploader,
+    std::shared_ptr<TCloudflareChallengeController> CloudflareChallengeController, QObject* parent)
     : QObject(parent)
+    , m_pCharacterSelectionController(std::move(CharacterSelectionController))
+    , m_pLoginRequestUploader(std::move(LoginRequestUploader))
+    , m_pEMailCodeRequestUploader(std::move(EMailCodeRequestUploader))
+    , m_pLoginConfirmationCodeRequestUploader(std::move(LoginConfirmationCodeRequestUploader))
+    , m_pCloudflareChallengeController(std::move(CloudflareChallengeController))
 {
     buildStateMachine();
 }
@@ -111,6 +126,32 @@ void TAuthenticationProcessController::buildStateMachine()
             [this] { trigger(T::AdvanceDirectlyToCharacterSelection); });
     connect(this, &C::advanceStateMachineToWaitForAssetCompletion, this,
             [this] { trigger(T::AdvanceToWaitForAssetCompletion); });
+
+    // The code request uploaders' answers.
+    if (m_pEMailCodeRequestUploader) {
+        TEmailCodeRequestUploader* uploader = m_pEMailCodeRequestUploader.get();
+        connect(uploader, &TEmailCodeRequestUploader::tooManyEmailCodeRequests, this, &C::onTooManyEMailCodeRequests);
+        connect(uploader, &TEmailCodeRequestUploader::alreadyRequestedEMailCodeRecently, this,
+                &C::onAlreadyRequestedEmailCodeRecently);
+        connect(uploader, &TEmailCodeRequestUploader::emailCodeRequestCompleted, this, &C::onEMailCodeRequestCompleted);
+    }
+    if (m_pLoginConfirmationCodeRequestUploader) {
+        TLoginConfirmationCodeRequestUploader* uploader = m_pLoginConfirmationCodeRequestUploader.get();
+        connect(uploader, &TLoginConfirmationCodeRequestUploader::tooManyLoginConfirmationCodeRequests, this,
+                &C::onTooManyLoginConfirmationCodeRequests);
+        connect(uploader, &TLoginConfirmationCodeRequestUploader::alreadyRequestedLoginConfirmationCodeRecently, this,
+                &C::onAlreadyRequestedLoginConfirmationCodeRecently);
+        connect(uploader, &TLoginConfirmationCodeRequestUploader::invalidLoginConfirmationToken, this,
+                &C::onInvalidLoginConfirmationToken);
+        connect(uploader, &TLoginConfirmationCodeRequestUploader::loginConfirmationCodeRequestSuccessful, this,
+                &C::onLoginConfirmationCodeRequestSuccessful);
+    }
+}
+
+void TAuthenticationProcessController::setLoginCredentials(const QString& EMail, const QString& Password)
+{
+    m_eMail = EMail;
+    m_password = Password;
 }
 
 bool TAuthenticationProcessController::isPostLoginDialog(const EState state)
@@ -335,15 +376,27 @@ void TAuthenticationProcessController::onShowCharacterSelectionStateEntered()
 {
     m_characterSelectionVisible = true;
     setAuthenticated(true);
+    if (m_pCharacterSelectionController)
+        m_pCharacterSelectionController->open();
 }
 
 void TAuthenticationProcessController::onShowCharacterSelectionStateLeft()
 {
     m_characterSelectionVisible = false;
+    if (m_pCharacterSelectionController)
+        m_pCharacterSelectionController->close();
 }
 
 void TAuthenticationProcessController::onStartGameServerLoginStateEntered()
 {
+    // The character selection's choice; its first character becomes the one
+    // the selection preselects next time. (The standalone tests run the
+    // machine without a character selection.)
+    if (m_pCharacterSelectionController) {
+        m_characterLoginData = m_pCharacterSelectionController->loginData();
+        if (!m_characterLoginData.empty())
+            m_pCharacterSelectionController->setLastSelectedCharacterName(m_characterLoginData.front().characterName);
+    }
     // The character's game server login waits for the assets.
     if (!m_host.assetsComplete || m_host.assetsComplete()) {
         Q_EMIT requestCharacterGameserverLogin();
@@ -423,12 +476,14 @@ void TAuthenticationProcessController::onBeginPatchClientStateEntered()
 
 void TAuthenticationProcessController::onRequestNewEMailCode()
 {
-    // CIP → TEmailCodeRequestUploader; qtclient has no live email-code path yet.
+    m_pEMailCodeRequestUploader->requestEmailCode(m_eMail, m_password);
 }
 
 void TAuthenticationProcessController::onRequestNewLoginConfirmationCode(const ELoginConfirmationMethod Method)
 {
-    m_pendingConfirmationMethod = Method;
+    // The refused login's confirmation token goes with the request.
+    m_pLoginConfirmationCodeRequestUploader->requestLoginConfirmationCode(m_eMail, m_password, m_confirmationToken,
+                                                                          Method);
 }
 
 void TAuthenticationProcessController::onTooManyEMailCodeRequests()
@@ -495,6 +550,15 @@ void TAuthenticationProcessController::onCloudflareSolverSuccess(const TCloudfla
     Q_EMIT advanceStateMachineToLoginUpload();
 }
 
-void TAuthenticationProcessController::handleGameAction() {}
+void TAuthenticationProcessController::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction->gameActionType() != input::EGameAction::FINISHED_TUTORIAL_FOR_CHARACTER)
+        return;
+    const auto* action = input::gameActionAs<input::TGameActionFinishedTutorialForCharacter>(pGameAction);
+    const QString characterName = action->characterName();
+    m_pCharacterSelectionController->clearTutorialFlag(characterName);
+    m_pLoginRequestUploader->setTutorialFinished(characterName);
+    m_characterLoginData = m_pCharacterSelectionController->loginData();
+}
 
 } // namespace tibia::authentication

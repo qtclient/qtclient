@@ -104,6 +104,7 @@ public:
 
     /// Host: the handler's look / buy / sell / close requests.
     void look(const TNPCTradeGood& good) const;
+    void inspect(const TNPCTradeGood& good) const;
     void buy(const TNPCTradeGood& good, int amount, bool ignoreCapacity, bool withBackpacks) const;
     void sell(const TNPCTradeGood& good, int amount, bool ignoreEquipped) const;
     void close();

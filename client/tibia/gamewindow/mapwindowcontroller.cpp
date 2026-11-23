@@ -15,7 +15,8 @@
 #include "renderer/lightmappainteditem.h"
 #include "renderer/mapscale.h"
 #include "renderer/worldmapquickitem.h"
-#include "worldmap/creaturehudcontroller.h"
+#include "worldmap/creaturehudoverlaycontroller.h"
+#include "worldmap/creaturehudrenderprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
@@ -54,7 +55,7 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
         m_lightMap = pane->findChild<qmlcomponents::TLightmapPaintedItem*>(QStringLiteral("lightmap"));
         // The overlays follow the game session the controller is connected to.
         if (auto* overlay = pane->findChild<QQuickItem*>(QStringLiteral("worldmapCreatureHUDOverlay")))
-            m_creatureHuds = new worldmap::TCreatureHUDController(overlay, nullptr, this);
+            m_creatureHuds = new worldmap::TCreatureHUDOverlayController(overlay, this);
         if (auto* tutorialOverlay = pane->findChild<QQuickItem*>(QStringLiteral("tutorialMarkerOverlay")))
             m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
     }
@@ -744,7 +745,7 @@ void TMapWindowController::connectToGameSession(const std::shared_ptr<game::IGam
     if (m_lightMap)
         m_lightMap->setRenderProvider(provider);
     if (m_creatureHuds)
-        m_creatureHuds->setRenderProvider(provider);
+        m_creatureHuds->setRenderProviders(session ? session->creatureHUDRenderProvider() : nullptr, provider);
     if (m_speechBubbles)
         m_speechBubbles->setSources(provider, session ? session->textStorage().get() : nullptr);
     if (m_numericalEffects)

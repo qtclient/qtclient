@@ -58,6 +58,9 @@ public:
     const qmlcomponents::TSpriteTextureCache& cache() const { return *m_cache; }
 
 public Q_SLOTS:
+    /// REMOVE_SPRITEIDENTIFIER_FROM_CACHE: the cached texture of the action's
+    /// sprite identifier is dropped.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
     void onBeforeRenderNewFrame();
     void onSceneGraphInvalidated();
 
@@ -83,6 +86,9 @@ public:
     /// dropped with its scene graph. Eviction is off: holders may skip asking for
     /// idle sprites.
     static TSpriteTextureProvider& sharedProvider(QQuickWindow* window);
+    /// REMOVE_SPRITEIDENTIFIER_FROM_CACHE goes to every provider. Host: the
+    /// providers live in a process-wide registry, so this is static.
+    static void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 };
 
 }

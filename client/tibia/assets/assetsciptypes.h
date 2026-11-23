@@ -29,8 +29,6 @@ public:
     using cip::tibia::assets::TAssetManager::TAssetManager;
 };
 
-class TSoundCatalog final : public ::tibia::CipTyped {};
-
 }
 }
 

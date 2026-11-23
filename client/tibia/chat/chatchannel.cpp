@@ -541,6 +541,14 @@ int chatMessageMode(const uint32_t protocolMode)
     throw std::runtime_error(QStringLiteral("EChatmessageMode %1 couldn't be converted").arg(protocolMode).toStdString());
 }
 
+uint32_t protocolMessageMode(const int chatMode)
+{
+    const auto mode = static_cast<uint8_t>(chatMode);
+    if (mode < 0x37 && ((0x7f1dffffffffffULL >> mode) & 1) != 0)
+        return mode;
+    throw std::runtime_error(QStringLiteral("EChatmessageMode %1 couldn't be converted").arg(mode).toStdString());
+}
+
 QColor consoleColor(const int mode)
 {
     const unsigned index = static_cast<unsigned>(mode - 1);

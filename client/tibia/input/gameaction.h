@@ -125,6 +125,23 @@ private:
     std::shared_ptr<const sprites::ISpriteIdentifier> m_identifier;
 };
 
+/// CIP input::TGameActionRemoveSpriteIdentifierFromCache
+/// (REMOVE_SPRITEIDENTIFIER_FROM_CACHE): the sprites made for an identifier are
+/// stale and leave the caches.
+class TGameActionRemoveSpriteIdentifierFromCache final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionRemoveSpriteIdentifierFromCache(std::shared_ptr<const sprites::ISpriteIdentifier> identifier)
+        : TGameActionSimple(EGameAction::REMOVE_SPRITEIDENTIFIER_FROM_CACHE)
+        , m_identifier(std::move(identifier))
+    {
+    }
+    const std::shared_ptr<const sprites::ISpriteIdentifier>& spriteIdentifier() const { return m_identifier; }
+
+private:
+    std::shared_ptr<const sprites::ISpriteIdentifier> m_identifier;
+};
+
 /// CIP input::TGameActionSpriteResolved (SPRITE_RESOLVED): the sprite of an
 /// identifier a RESOLVE_SPRITE asked for.
 class TGameActionSpriteResolved final : public gameactions::TGameActionSimple
@@ -853,16 +870,20 @@ private:
 class TGameActionSendChatMessageWithSpeechVolume final : public TGameActionSendChatMessage
 {
 public:
-    TGameActionSendChatMessageWithSpeechVolume(QString text, int speechVolume)
+    TGameActionSendChatMessageWithSpeechVolume(QString text, int speechVolume, int spellCastOptionalTargetType = 0)
         : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME)
         , m_speechVolume(speechVolume)
+        , m_spellCastOptionalTargetType(spellCastOptionalTargetType)
     {
     }
+    /// ESpeechVolume: 0 whisper, 1 say, 2 yell.
     int speechVolume() const { return m_speechVolume; }
+    /// ESpellCastOptionalTargetType of a spell's words (0 none).
+    int spellCastOptionalTargetType() const { return m_spellCastOptionalTargetType; }
 
 private:
     int m_speechVolume;
-    int m_reserved = 0; // CIP +0x2c, zeroed by the ctor
+    int m_spellCastOptionalTargetType;
 };
 
 /// CIP input::TGameActionSendChatMessageWithChannelID (SEND_CHAT_MESSAGE_WITH_CHANNEL_ID).
@@ -876,7 +897,8 @@ public:
     {
     }
     uint16_t channelId() const { return m_channelId; }
-    /// CIP +0x2a (meaning not read yet).
+    /// CIP +0x2a: a gamemaster's red channel message (EChatmessageMode 14
+    /// instead of 7).
     bool flag() const { return m_flag; }
 
 private:
@@ -889,38 +911,46 @@ private:
 class TGameActionSendChatMessageWithRecipient final : public TGameActionSendChatMessage
 {
 public:
-    TGameActionSendChatMessageWithRecipient(QString text, QString recipient, QString second, uint16_t channelId, int mode)
+    TGameActionSendChatMessageWithRecipient(QString text, QString recipient, QString speakerName, uint16_t speakerLevel, int recipientType)
         : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_WITH_RECIPIENT)
         , m_recipient(std::move(recipient))
-        , m_second(std::move(second))
-        , m_channelId(channelId)
-        , m_mode(mode)
+        , m_speakerName(std::move(speakerName))
+        , m_speakerLevel(speakerLevel)
+        , m_recipientType(recipientType)
     {
     }
     const QString& recipient() const { return m_recipient; }
+    /// The player's name and level, for the own line in the conversation.
+    const QString& speakerName() const { return m_speakerName; }
+    uint16_t speakerLevel() const { return m_speakerLevel; }
+    /// 1: a gamemaster's red private message (its own line goes to the local
+    /// chat); else a private message.
+    int recipientType() const { return m_recipientType; }
 
 private:
     QString m_recipient;
-    QString m_second;
-    uint16_t m_channelId;
-    int m_mode;
+    QString m_speakerName;
+    uint16_t m_speakerLevel;
+    int m_recipientType;
 };
 
 /// CIP input::TGameActionSendChatMessageToNpc (SEND_CHAT_MESSAGE_TO_NPC).
 class TGameActionSendChatMessageToNpc final : public TGameActionSendChatMessage
 {
 public:
-    TGameActionSendChatMessageToNpc(QString text, QString npcName, uint16_t channelId)
+    TGameActionSendChatMessageToNpc(QString text, QString speakerName, uint16_t speakerLevel)
         : TGameActionSendChatMessage(std::move(text), EGameAction::SEND_CHAT_MESSAGE_TO_NPC)
-        , m_npcName(std::move(npcName))
-        , m_channelId(channelId)
+        , m_speakerName(std::move(speakerName))
+        , m_speakerLevel(speakerLevel)
     {
     }
-    const QString& npcName() const { return m_npcName; }
+    /// The player's name and level, for the own line in the NPCs channel.
+    const QString& speakerName() const { return m_speakerName; }
+    uint16_t speakerLevel() const { return m_speakerLevel; }
 
 private:
-    QString m_npcName;
-    uint16_t m_channelId;
+    QString m_speakerName;
+    uint16_t m_speakerLevel;
 };
 
 // ---------------------------------------------------------------------------
@@ -2061,58 +2091,76 @@ private:
     QUrl m_url;
 };
 
-/// CIP input::TGameActionAddGUITutorialMarker (ADD_GUI_TUTORIAL_MARKER). qtclient
-/// carries the marker id, the field and the creature its world map overlay marks
-/// (CIP: an item reference and a rectangle; not read yet).
+/// CIP input::TGameActionAddGUITutorialMarker (ADD_GUI_TUTORIAL_MARKER): marks a
+/// location (+0x10) and, when set, an object there (+0x20) with a GUI tutorial
+/// marker. Its id (+0x30) is the marker registry's next unique id; CipSoft draws it in
+/// the constructor, qtclient's callers pass it.
 class TGameActionAddGUITutorialMarker final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionAddGUITutorialMarker(int markerId, const Position& position, uint32_t creatureId)
+    TGameActionAddGUITutorialMarker(TGameActionContextPtr location, TGameActionContextPtr object, int markerId)
         : TGameActionSimple(EGameAction::ADD_GUI_TUTORIAL_MARKER)
+        , m_location(std::move(location))
+        , m_object(std::move(object))
         , m_markerId(markerId)
-        , m_position(position)
-        , m_creatureId(creatureId)
     {
     }
+    const TGameActionContextPtr& location() const { return m_location; }
+    const TGameActionContextPtr& object() const { return m_object; }
     int markerId() const { return m_markerId; }
-    const Position& position() const { return m_position; }
-    uint32_t creatureId() const { return m_creatureId; }
+    /// qtclient's readers: the field of a world map location (invalid for any other).
+    Position position() const
+    {
+        if (const auto* field = dynamic_cast<const TLocationWorldMapCoordinateContext*>(m_location.get()))
+            return field->coordinate();
+        if (const auto* field = dynamic_cast<const TLocationWorldMapCoordinateWithStackPositionContext*>(m_location.get()))
+            return field->coordinate();
+        return {};
+    }
+    /// qtclient's readers: the marked creature (0 when the object is none or not a creature).
+    uint32_t creatureId() const { return creatureIdOf(m_object.get()); }
 
 private:
+    TGameActionContextPtr m_location;
+    TGameActionContextPtr m_object;
     int m_markerId;
-    Position m_position;
-    uint32_t m_creatureId;
 };
 
-/// CIP input::TGameActionAddHintAtTutorialMarker (ADD_HINT_AT_TUTORIAL_MARKER). qtclient
-/// carries the hint dialog's text, image and caption at a marker (CIP's hint struct is
-/// not read yet).
+/// CIP input::TGameActionAddHintAtTutorialMarker (ADD_HINT_AT_TUTORIAL_MARKER): a
+/// text hint (+0x10) at a GUI tutorial marker.
 class TGameActionAddHintAtTutorialMarker final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionAddHintAtTutorialMarker(QString text, QString image, QString caption, int markerId)
+    /// CIP's hint: the marker (+0x0), the translated text (+0x20), where the text
+    /// sits at the marker (+0x38, e.g. "topLeft", "bottomCenter") and whether the
+    /// hint has a border (+0x50).
+    struct THint
+    {
+        int markerId = 0;
+        QString text;
+        QString textAnchor;
+        bool border = false;
+    };
+
+    TGameActionAddHintAtTutorialMarker()
         : TGameActionSimple(EGameAction::ADD_HINT_AT_TUTORIAL_MARKER)
-        , m_text(std::move(text))
-        , m_image(std::move(image))
-        , m_caption(std::move(caption))
-        , m_markerId(markerId)
     {
     }
-    const QString& text() const { return m_text; }
-    const QString& image() const { return m_image; }
-    const QString& caption() const { return m_caption; }
-    int markerId() const { return m_markerId; }
+    explicit TGameActionAddHintAtTutorialMarker(THint hint)
+        : TGameActionSimple(EGameAction::ADD_HINT_AT_TUTORIAL_MARKER)
+        , m_hint(std::move(hint))
+    {
+    }
+    const THint& hint() const { return m_hint; }
 
 private:
-    QString m_text;
-    QString m_image;
-    QString m_caption;
-    int m_markerId;
+    THint m_hint;
 };
 
 /// CIP input::TGameActionAddMouseTrailHintAtTutorialMarker
-/// (ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER): three values at +0xc, +0x10, +0x14
-/// (CIP ctor order: +0x14, +0xc, +0x10; meaning not read yet).
+/// (ADD_MOUSE_TRAIL_HINT_AT_TUTORIAL_MARKER): the source marker (+0xc), the
+/// destination marker (+0x10) and the animation type (+0x14: 1 drag and drop,
+/// 2 multi-use). CIP ctor order: type, source, destination.
 class TGameActionAddMouseTrailHintAtTutorialMarker final : public gameactions::TGameActionSimple
 {
 public:
@@ -2124,6 +2172,9 @@ public:
     {
     }
     int markerId() const { return m_valueC; }
+    int sourceMarkerId() const { return m_valueC; }
+    int destinationMarkerId() const { return m_value10; }
+    int animationType() const { return m_value14; }
 
 private:
     int m_valueC;
@@ -2188,6 +2239,10 @@ public:
     {
     }
     const QString& name() const { return m_name; }
+    /// The first id after the name on the wire (+0x28).
+    int value28() const { return m_value28; }
+    /// The second id after the name on the wire (+0x2c).
+    int value2c() const { return m_value2c; }
 
 private:
     QString m_name;
@@ -2562,18 +2617,19 @@ public:
 class TGameActionRequestSearchTypeInDepot final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionRequestSearchTypeInDepot(uint16_t typeId, uint16_t tier = 0)
+    /// The tier only for a classified type.
+    explicit TGameActionRequestSearchTypeInDepot(uint16_t typeId, std::optional<uint8_t> tier = std::nullopt)
         : TGameActionSimple(EGameAction::REQUEST_SEARCH_TYPE_IN_DEPOT)
         , m_typeId(typeId)
         , m_tier(tier)
     {
     }
     uint16_t typeId() const { return m_typeId; }
-    uint16_t tier() const { return m_tier; }
+    const std::optional<uint8_t>& tier() const { return m_tier; }
 
 private:
     uint16_t m_typeId;
-    uint16_t m_tier;
+    std::optional<uint8_t> m_tier;
 };
 
 /// CIP input::TGameActionDepotSearchRetrieve (DEPOT_SERACH_RETRIEVE): the type,
@@ -2581,7 +2637,8 @@ private:
 class TGameActionDepotSearchRetrieve final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionDepotSearchRetrieve(uint16_t typeId, uint16_t tier, int location)
+    /// The tier only for a classified type.
+    TGameActionDepotSearchRetrieve(uint16_t typeId, std::optional<uint8_t> tier, int location)
         : TGameActionSimple(EGameAction::DEPOT_SERACH_RETRIEVE)
         , m_typeId(typeId)
         , m_tier(tier)
@@ -2589,12 +2646,12 @@ public:
     {
     }
     uint16_t typeId() const { return m_typeId; }
-    uint16_t tier() const { return m_tier; }
+    const std::optional<uint8_t>& tier() const { return m_tier; }
     int location() const { return m_location; }
 
 private:
     uint16_t m_typeId;
-    uint16_t m_tier;
+    std::optional<uint8_t> m_tier;
     int m_location;
 };
 
@@ -2806,29 +2863,25 @@ private:
 };
 
 /// CIP input::TGameActionActionButtonTriggered (ACTION_BUTTON_TRIGGERED): bar
-/// (+0xc), button (+0x10), held key repeat (+0x14). qtclient also carries the
-/// multi action slot clicked (-1: the button's current slot).
+/// (+0xc), button (+0x10), held key repeat (+0x14).
 class TGameActionActionButtonTriggered final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionActionButtonTriggered(uint8_t actionBarId, int actionButtonId, bool autoRepeat = false, int multiActionIndex = -1)
+    TGameActionActionButtonTriggered(uint8_t actionBarId, int actionButtonId, bool autoRepeat = false)
         : TGameActionSimple(EGameAction::ACTION_BUTTON_TRIGGERED)
         , m_actionBarId(actionBarId)
         , m_actionButtonId(actionButtonId)
         , m_autoRepeat(autoRepeat)
-        , m_multiActionIndex(multiActionIndex)
     {
     }
     uint8_t actionBarId() const { return m_actionBarId; }
     int actionButtonId() const { return m_actionButtonId; }
     bool autoRepeat() const { return m_autoRepeat; }
-    int multiActionIndex() const { return m_multiActionIndex; }
 
 private:
     uint8_t m_actionBarId;
     int m_actionButtonId;
     bool m_autoRepeat;
-    int m_multiActionIndex;
 };
 
 /// CIP input::TGameActionPlayerMovementIntent (SET_PLAYER_MOVEMENT_INTENT): walk to a
@@ -2942,8 +2995,17 @@ private:
 class TGameActionPlayerTradeItem final : public TObjectGameAction
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
+    explicit TGameActionPlayerTradeItem(const TObjectGameActionContext& object, uint32_t targetCreatureId = 0)
+        : TObjectGameAction(object)
+        , m_targetCreatureId(targetCreatureId)
+    {
+    }
     EGameAction gameActionType() const override { return EGameAction::TRADE_ITEM; }
+    /// The player to trade with; 0 until one is picked.
+    uint32_t targetCreatureId() const { return m_targetCreatureId; }
+
+private:
+    uint32_t m_targetCreatureId;
 };
 
 /// CIP input::TGameActionCrossHairSpell / TGameActionSpellAtMouseCursor: a spell (+0x38)
@@ -3017,11 +3079,17 @@ public:
     const std::optional<Position>& destination() const { return m_destination; }
     bool moveAll() const { return m_moveAll; }
     int amount() const { return m_amount; }
+    /// CIP +0x40: the move needs no stash confirmation any more. The container
+    /// handler sets it on the move it sends; the confirmation dialog sets it on
+    /// the move it lets through.
+    bool isStashConfirmed() const { return m_stashConfirmed; }
+    void setStashConfirmed(bool confirmed) const { m_stashConfirmed = confirmed; }
 
 private:
     std::optional<Position> m_destination;
     bool m_moveAll;
     int m_amount;
+    mutable bool m_stashConfirmed = false;
 };
 using TMoveObjectPtr = std::shared_ptr<const TGameActionMoveObject>;
 
@@ -3042,18 +3110,22 @@ private:
 };
 
 /// CIP input::TGameActionShowConfirmMoveObjectToStashDialog (SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG).
+/// The action that waits for the confirmation: a move onto the supply stash or
+/// a stow of a container's content.
 class TGameActionShowConfirmMoveObjectToStashDialog final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionShowConfirmMoveObjectToStashDialog(TMoveObjectPtr moveObject)
+    explicit TGameActionShowConfirmMoveObjectToStashDialog(IGameActionPtr gameAction)
         : TGameActionSimple(EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG)
-        , m_moveObject(std::move(moveObject))
+        , m_gameAction(std::move(gameAction))
     {
     }
-    const TMoveObjectPtr& moveObject() const { return m_moveObject; }
+    const IGameActionPtr& gameAction() const { return m_gameAction; }
+    /// The move it waits for, null when it waits for a stow.
+    TMoveObjectPtr moveObject() const { return std::dynamic_pointer_cast<const TGameActionMoveObject>(m_gameAction); }
 
 private:
-    TMoveObjectPtr m_moveObject;
+    IGameActionPtr m_gameAction;
 };
 
 /// CIP input::TGameActionStashStowType (STASH_STOW_TYPE).
@@ -3070,6 +3142,12 @@ class TGameActionStashStowContainerContent final : public TObjectGameAction
 public:
     using TObjectGameAction::TObjectGameAction;
     EGameAction gameActionType() const override { return EGameAction::STASH_STOW_CONTAINER_CONTENT; }
+    /// CIP +0x30: the stow needs no confirmation any more (set on the stow sent).
+    bool isStashConfirmed() const { return m_stashConfirmed; }
+    void setStashConfirmed(bool confirmed) const { m_stashConfirmed = confirmed; }
+
+private:
+    mutable bool m_stashConfirmed = false;
 };
 
 /// CIP input::TGameActionStashStowStack (STASH_STOW_STACK): a stack and how many
@@ -3090,24 +3168,25 @@ private:
 };
 
 /// CIP input::TGameActionStashRetrieve (STASH_RETRIEVE): type (+0xc), amount (+0x10)
-/// and +0x14 (qtclient: 0).
+/// and where it is retrieved from (+0x14, CIP EStashRetrieveSource: 0 or 1).
 class TGameActionStashRetrieve final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionStashRetrieve(uint16_t typeId, int amount, int value14 = 0)
+    TGameActionStashRetrieve(uint16_t typeId, int amount, int source = 0)
         : TGameActionSimple(EGameAction::STASH_RETRIEVE)
         , m_typeId(typeId)
         , m_amount(amount)
-        , m_value14(value14)
+        , m_source(source)
     {
     }
     uint16_t typeId() const { return m_typeId; }
     int amount() const { return m_amount; }
+    int source() const { return m_source; }
 
 private:
     uint16_t m_typeId;
     int m_amount;
-    int m_value14;
+    int m_source;
 };
 
 /// CIP input::TGameActionStashOpenStowStackDialog (STASH_OPEN_STOW_STACK_DIALOG).

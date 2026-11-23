@@ -23,6 +23,7 @@
 #include <tibia/game/gamesession_forward.h>
 
 #include <stdexcept>
+#include <utility>
 
 namespace tibia::skillwheel {
 
@@ -205,12 +206,19 @@ void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
     Q_EMIT publishGameAction(std::make_shared<input::gameactions::TSelectAtelierGemGameAction>(static_cast<uint16_t>(Message.gem_id())));
 }
 
+TSkillWheelGameActionHandler::TSkillWheelGameActionHandler(std::shared_ptr<TSkillWheelProtocolMessageHandler> pProtocolMessageHandler,
+                                                           const std::weak_ptr<creatures::TCreature>& pPlayerWeak)
+    : m_pProtocolMessageHandler(std::move(pProtocolMessageHandler))
+{
+    onPlayerCreatureAddedToCreatureStorage(pPlayerWeak);
+}
+
 void TSkillWheelGameActionHandler::handleGameAction(const input::IGameAction& action)
 {
     switch (action.gameActionType()) {
         case input::EGameAction::SAVE_SKILL_WHEEL:
             if (const auto* save = input::gameActionAs<input::gameactions::TGameActionSaveSkillWheel>(&action))
-                TSkillWheelProtocolMessageHandler::saveSkillWheel(save->wheel());
+                handleSaveSkillWheelGameAction(save->wheel());
             return;
         case input::EGameAction::REQUEST_OWN_SKILL_WHEEL: handleRequestOnwSkillWheelGameAction(); return;
         case input::EGameAction::REQUEST_SKILL_WHEEL: handleCreatureGameAction(input::creatureIdOf(action)); return;
@@ -236,20 +244,20 @@ void TSkillWheelGameActionHandler::handleCreatureGameAction(const uint32_t creat
         handleRequestOnwSkillWheelGameAction();
         return;
     }
-    TSkillWheelProtocolMessageHandler::requestSkillWheel(creatureId);
+    m_pProtocolMessageHandler->requestSkillWheel(creatureId);
 }
 
 void TSkillWheelGameActionHandler::handleSaveSkillWheelGameAction(const TWheel& wheel)
 {
-    TSkillWheelProtocolMessageHandler::saveSkillWheel(wheel);
+    m_pProtocolMessageHandler->saveSkillWheel(wheel);
 }
 
 void TSkillWheelGameActionHandler::handleRequestOnwSkillWheelGameAction()
 {
-    if (!tibia::game::hasLocalPlayer() || tibia::game::localPlayerId() == 0)
+    if (m_playerId == 0 || !tibia::game::hasLocalPlayer())
         return;
     if (tibia::game::localPlayerLevel() > RequiredLevel - 1 && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
-        TSkillWheelProtocolMessageHandler::requestSkillWheel(tibia::game::localPlayerId());
+        m_pProtocolMessageHandler->requestSkillWheel(m_playerId);
         return;
     }
     const int profession = tibia::game::localPlayerVocation() % 10;

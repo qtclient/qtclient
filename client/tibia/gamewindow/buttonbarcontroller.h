@@ -134,8 +134,10 @@ public Q_SLOTS:
     void onOptionsButtonClicked() override;
     /// product: open CIP Change Character (same as Ctrl+G / HUD top bar).
     void onSwitchCharacterButtonClicked();
-    /// CIP : asks first.
+    /// Asks first; the answer goes to onLogoutRequestConfirmedOrCanceled.
     void onLogoutButtonClicked() override;
+    /// "Yes" quits the game.
+    void onLogoutRequestConfirmedOrCanceled(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier Button);
     void onRewardWallButtonClicked() override;
     void onAnalyticsSelectorWidgetButtonClicked() override;
     void onLenshelpButtonClicked() override;
@@ -161,8 +163,6 @@ public Q_SLOTS:
     void onWidgetHidden(int widgetType);
 
 Q_SIGNALS:
-    /// The player confirmed the logout question.
-    void logoutRequested();
     void buttonControllersChanged();
 
 private:

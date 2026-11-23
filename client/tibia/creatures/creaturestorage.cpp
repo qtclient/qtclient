@@ -77,6 +77,20 @@ void TCreature::renewUniqueId()
     m_uniqueId = g_nextCreatureUniqueId++;
 }
 
+std::shared_ptr<TCreature> TCreature::create(const TCreatureID id)
+{
+    auto creature = std::make_shared<TCreature>(id);
+    creature->createPlaceholderAppearance();
+    return creature;
+}
+
+void TCreature::createPlaceholderAppearance()
+{
+    if (const std::shared_ptr<TCreature> self = weak_from_this().lock())
+        m_placeholderAppearance = std::make_shared<appearances::TCreaturePlaceholderAppearanceInstance>(
+            std::weak_ptr<TCreature>(self));
+}
+
 const QString& TCreature::name() const
 {
     return isPlayer() ? m_name : m_formattedName;
@@ -197,7 +211,8 @@ void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::T
 void TCreature::resetMovement()
 {
     m_movementTween = TCreatureMovementTween();
-    m_suppressMovingSprite = true;
+    if (m_placeholderAppearance)
+        m_placeholderAppearance->setMovingSpriteSuppressed(true);
     refreshWalkAnimators();
     updateCoveredField();
 }
@@ -205,11 +220,6 @@ void TCreature::resetMovement()
 void TCreature::update(const qint64 nowMs)
 {
     m_movementTween.advance(nowMs);
-    m_lastFrameMs = nowMs;
-    if (isMoving()) {
-        m_lastMovingFrameMs = nowMs;
-        m_suppressMovingSprite = false;
-    }
     if (m_outfitWalkAnimator)
         m_outfitWalkAnimator->update(nowMs);
     if (m_mountWalkAnimator)
@@ -219,8 +229,6 @@ void TCreature::update(const qint64 nowMs)
     if (m_mountIdleAnimator)
         m_mountIdleAnimator->update(nowMs);
     updateOutfitPatterns();
-    m_animationPhase = animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
-    m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
 }
@@ -238,10 +246,17 @@ uint16_t TCreature::animationPhaseFor(const TAppearanceType* type,
 
 bool TCreature::showsMovingSprite() const
 {
-    if (!m_isLocalPlayer)
-        return isMoving();
-    const bool recentlyMoving = m_lastFrameMs <= m_lastMovingFrameMs + 75 && m_holdsMovementIntent;
-    return (isMoving() || recentlyMoving) && !m_suppressMovingSprite;
+    return m_placeholderAppearance && m_placeholderAppearance->showsMovingSprite();
+}
+
+uint16_t TCreature::animationPhase() const
+{
+    return animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
+}
+
+uint16_t TCreature::mountAnimationPhase() const
+{
+    return animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
 }
 
 int TCreature::drawElevation() const
@@ -597,7 +612,7 @@ std::shared_ptr<TCreature> TCreatureStorage::getOrCreate(const TCreatureID id)
     if (it != m_creatures.end())
         return it.value();
 
-    auto created = std::make_shared<TCreature>(id);
+    auto created = TCreature::create(id);
     m_creatures.insert(id, created);
     return created;
 }
@@ -609,7 +624,7 @@ std::shared_ptr<TCreature> TCreatureStorage::creatureAt(const TCreatureID id) co
 
 std::shared_ptr<TCreature> TCreatureStorage::createCreature(const TCreatureID id)
 {
-    auto creature = std::make_shared<TCreature>(id);
+    auto creature = TCreature::create(id);
     add(creature);
     return creature;
 }
@@ -751,6 +766,24 @@ std::vector<std::shared_ptr<TCreature>> TCreatureStorage::spectatorsNear(const P
         if (pos.x < startX || pos.x > endX || pos.y < startY || pos.y > endY)
             continue;
         result.push_back(creature);
+    }
+    return result;
+}
+
+std::map<TCreatureID, std::shared_ptr<TCreature>> TCreatureStorage::battleListCreatures(
+    const worldmap::TWorldMapCuboid& view) const
+{
+    std::map<TCreatureID, std::shared_ptr<TCreature>> result;
+    for (auto it = m_creatures.cbegin(); it != m_creatures.cend(); ++it) {
+        const std::shared_ptr<TCreature>& creature = it.value();
+        if (!creature)
+            continue;
+        bool shown = creature->creatureId() != m_playerID && !creature->isDead();
+        if (!creature->isPartyMember())
+            shown = shown && view.containsSheared(worldmap::TWorldMapCoordinate(creature->position()))
+                    && creature->isPlacedOnField();
+        if (shown)
+            result.emplace(it.key(), creature);
     }
     return result;
 }

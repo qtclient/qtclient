@@ -12,12 +12,16 @@
 #include <QVariantList>
 
 #include <functional>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
 #include <vector>
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace mods {
 class MissionBackend;
 }
@@ -142,13 +146,12 @@ public:
     /// CIP showDialog(optional<TQuestFlagID>): with the 0x10000 bit, the low 16
     /// bits are a quest flag to select along with its quest line.
     void showDialog(int parameter = 0);
-    questlog::TQuestLogStorage* questLogStorage() { return &m_storage; }
-    /// The tracked missions, shared with the quest tracker widget.
-    TQuestTrackerStorage* tracker() { return &m_tracker; }
+    /// CIP: the dialog shows the session's quest log storage.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// Loads the per-character file when the logged-in character changed.
     void clear();
-    /// The character's questtracking configuration was loaded: the tracker reads it and the
-    /// tracked flags go to the server.
+    /// The character's questtracking configuration was loaded: the tracked
+    /// flags go to the server.
     void onCharacterConfigurationLoaded();
 
     bool canTrackAdditionalQuestFlags() const override;
@@ -196,25 +199,13 @@ private:
     QString selectedPartName() const;
 
     QTimer m_questLinesChangedTimer;
-    questlog::TQuestLogStorage m_storage;
-    TQuestTrackerStorage m_tracker;
+    std::shared_ptr<questlog::TQuestLogStorage> m_storage;
     TQuestLinesModel m_lines;
     TQuestLinesSortFilterProxyModel m_linesProxy;
     TQuestLinePartsModel m_parts;
     TQuestLinePartsSortFilterProxyModel m_partsProxy;
     QPointer<mods::MissionBackend> m_missionBackend;
     std::function<void(const QString&)> m_browseOpener;
-
-public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

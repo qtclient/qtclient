@@ -51,6 +51,7 @@ public:
                           const TGrades& basicGrades, const TGrades& supremeGrades);
     const TGem* gem(int row) const;
     int rowOfGem(int gemId) const;
+    Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
     bool hasConfiguration() const { return m_configuration.has_value(); }
     /// The configuration's vocation index, 0 without one.
     int vocationIndex() const;
@@ -77,6 +78,8 @@ public:
     void setFilterGemQuality(int v) override;
     void setShowLockedOnly(bool v) override;
     bool accepts(const TGem& gem) const;
+    /// The row showing the gem, invalid when the filters hide it.
+    QModelIndex indexOfGem(int gemId) const;
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
 
 protected:

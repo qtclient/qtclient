@@ -2,35 +2,18 @@
 
 #include "app/launcherenv.h"
 #include "gameactionhandlers.h"
+#include "shared/tibiaclipboardhelper.h"
 
 #include <cip_gen.h>
+#include <protocol.pb.h>
 
 #include <QUrl>
 
 #include <functional>
+#include <memory>
 
 namespace tibia {
 namespace input {
-
-/// CIP input::TActionButtonGameActionHandler: ACTION_BUTTON_TRIGGERED goes to
-/// the action bars (`handler`).
-class TActionButtonGameActionHandler final : public cip::tibia::input::TActionButtonGameActionHandler
-{
-    Q_OBJECT
-public:
-    using Handler = std::function<void(const TGameActionActionButtonTriggered& action)>;
-    explicit TActionButtonGameActionHandler(Handler handler, QObject* parent = nullptr);
-    ~TActionButtonGameActionHandler() override;
-    TActionButtonGameActionHandler(const TActionButtonGameActionHandler&) = delete;
-    TActionButtonGameActionHandler& operator=(const TActionButtonGameActionHandler&) = delete;
-
-public Q_SLOTS:
-    /// Connected to the router's publishGameActionInternal.
-    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    Handler m_handler;
-};
 
 /// CIP input::TClipboardGameActionHandler: the copy actions. Text and chat
 /// entries ask first (REQUEST_CONFORMATION_FOR_COPYING_TEXT_TO_CLIPBOARD) when
@@ -55,31 +38,46 @@ public Q_SLOTS:
     void handleGameAction(tibia::input::IGameActionPtr pGameAction);
     void handleCopyTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
     void handleCopyTrustedTextToClipboardGameAction(std::shared_ptr<const tibia::input::TGameActionCopyTextToClipboard> pGameAction);
+
+private:
+    std::shared_ptr<shared::TTibiaClipboardHelper> m_clipboardHelper;
 };
 
-/// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
-class TGatherAllGameActionHandler final : public cip::tibia::input::TGatherAllGameActionHandler
-{
-    Q_OBJECT
-public:
-    explicit TGatherAllGameActionHandler(QObject* parent = nullptr);
-    ~TGatherAllGameActionHandler() override;
-    TGatherAllGameActionHandler(const TGatherAllGameActionHandler&) = delete;
-    TGatherAllGameActionHandler& operator=(const TGatherAllGameActionHandler&) = delete;
-
-public Q_SLOTS:
-    /// CIP handleGameAction: acts on the actions of its types; connected to the
-    /// router's publishGameActionInternal.
-    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
-};
-
-/// CIP input::TGatherAllProtocolMessageHandler: ClientGatherAll (0xFF) send
-/// path used by TGatherAllGameActionHandler / tibia::game::gatherAll.
+/// CIP input::TGatherAllProtocolMessageHandler: sends the gather all request
+/// (ClientGatherAll) of an object.
 class TGatherAllProtocolMessageHandler final : public cip::tibia::input::TGatherAllProtocolMessageHandler
 {
     Q_OBJECT
 public:
     explicit TGatherAllProtocolMessageHandler(QObject* parent = nullptr);
+
+    /// v12: the object's location (position and stack position) and type.
+    void requestGatherAll(const TObjectGameActionContext& object);
+
+Q_SIGNALS:
+    void sendGatherAll(const ::tibia::protobuf::protocol::GameclientMessageGatherAll& Message);
+};
+
+/// CIP input::TGatherAllGameActionHandler: GATHER_ALL goes to the gather all
+/// protocol message handler.
+class TGatherAllGameActionHandler final : public cip::tibia::input::TGatherAllGameActionHandler
+{
+    Q_OBJECT
+public:
+    explicit TGatherAllGameActionHandler(std::shared_ptr<TGatherAllProtocolMessageHandler> protocolMessageHandler,
+                                         QObject* parent = nullptr);
+    ~TGatherAllGameActionHandler() override;
+    TGatherAllGameActionHandler(const TGatherAllGameActionHandler&) = delete;
+    TGatherAllGameActionHandler& operator=(const TGatherAllGameActionHandler&) = delete;
+
+public Q_SLOTS:
+    /// CIP handleGameAction: acts on GATHER_ALL; connected to the router's
+    /// publishGameActionInternal.
+    void handleGameAction(tibia::input::IGameActionPtr pGameAction);
+    void handleGatherAllAction(std::shared_ptr<const tibia::input::gameactions::TGameActionGatherAll> pAction) const;
+
+private:
+    std::shared_ptr<TGatherAllProtocolMessageHandler> m_protocolMessageHandler;
 };
 
 /// CIP input::TOpenWebsiteGameActionHandler: opens the website page of an

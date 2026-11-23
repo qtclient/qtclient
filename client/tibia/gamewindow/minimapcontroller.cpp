@@ -4,6 +4,10 @@
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameactionhandlers.h"
+#include "minimap/minimapmarkeroverlaycontroller.h"
+#include "minimap/minimapmarkerqmlrenderinfo.h"
+#include "minimap/minimapmarkerrenderprovider.h"
+#include "minimap/minimapmarkerstorage.h"
 #include "minimap/minimaprenderprovider.h"
 #include "minimap/minimaptilestorage.h"
 #include "qmlcomponents/minimapquickitem.h"
@@ -11,6 +15,7 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <QGuiApplication>
+#include <QQmlEngine>
 #include <QQuickItem>
 
 #include <cmath>
@@ -85,6 +90,31 @@ void TMinimapController::setTileStorage(minimap::TMinimapTileStorage* storage)
     refresh();
 }
 
+void TMinimapController::setMarkerStorage(minimap::TMinimapMarkerStorage* storage)
+{
+    if (m_markerStorage)
+        disconnect(m_markerStorage, nullptr, this, nullptr);
+    m_markerStorage = storage;
+    m_markerOverlayController.reset();
+    m_markerRenderProvider = storage ? std::make_shared<minimap::TMinimapMarkerRenderProvider>(&m_area, storage) : nullptr;
+    createMarkerOverlay();
+    if (storage)
+        connect(storage, &minimap::TMinimapMarkerStorage::markersChanged, this, &TMinimapController::onMinimapDataChanged);
+    refresh();
+}
+
+void TMinimapController::createMarkerOverlay()
+{
+    m_markerOverlayController.reset();
+    QQuickItem* overlay = m_panel ? m_panel->findChild<QQuickItem*>(QStringLiteral("minimapMarkerOverlay")) : nullptr;
+    if (!m_markerRenderProvider || !overlay || !qmlEngine(overlay))
+        return;
+    m_markerOverlayController =
+        std::make_shared<minimap::TMinimapMarkerOverlayController>(overlay, m_markerRenderProvider, &m_area);
+    // The overlay item goes with the panel; its controller must not outlive it.
+    connect(overlay, &QObject::destroyed, this, [this] { m_markerOverlayController.reset(); });
+}
+
 void TMinimapController::setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight)
 {
     if (m_ambientLight)
@@ -118,6 +148,7 @@ void TMinimapController::setPanelItem(QQuickItem* panel)
         connect(m_minimap, &QQuickItem::heightChanged, this, &TMinimapController::updateMinimapVisibleAreaFromQuickitemSize);
         m_minimap->setRenderProvider(m_renderProvider.get());
     }
+    createMarkerOverlay();
     updateMinimapVisibleAreaFromQuickitemSize();
     updateTimeDisplay();
 }
@@ -267,12 +298,16 @@ void TMinimapController::onMinimapClick(const int x, const int y, const int trig
                   FieldContextMenuOrder);
 }
 
-void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRenderInfo*/, const int TriggeringMouseButton,
+void TMinimapController::onMinimapMarkerClick(QObject* pMinimapMarkerQmlRenderInfo, const int TriggeringMouseButton,
                                               const Qt::KeyboardModifiers Modifiers)
 {
-    // There is no marker overlay that reports a hovered marker, so this
-    // takes the field under the mouse.
-    dispatchClick(actionsAtMouse(), TriggeringMouseButton, static_cast<int>(Modifiers), MarkerContextMenuOrder);
+    // The clicked marker's actions; the context menu lists edit, then delete.
+    const auto* info = qobject_cast<minimap::TMinimapMarkerQmlRenderInfo*>(pMinimapMarkerQmlRenderInfo);
+    if (!info)
+        return;
+    const minimap::TMinimapMarker marker = info->marker();
+    dispatchClick(m_actions.markerActions(marker.coordinate.toPosition()), TriggeringMouseButton, static_cast<int>(Modifiers),
+                  MarkerContextMenuOrder);
 }
 
 void TMinimapController::onMinimapMouseMoved(const int x, const int y)
@@ -362,6 +397,8 @@ void TMinimapController::refresh()
         m_minimap->setProperty("crosshairVisible", crosshairVisible);
         m_minimap->update();
     }
+    if (m_markerOverlayController)
+        m_markerOverlayController->update();
     updateMouseCursor();
     Q_EMIT currentLayerChanged();
 }

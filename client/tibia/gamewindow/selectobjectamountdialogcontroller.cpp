@@ -43,7 +43,7 @@ int storageSlotCount(const Position& position, const int stackPosition)
         if (!row)
             return 1;
         const container::TInventorySlot slot =
-            storage->slotAt(row->id, static_cast<int>(row->firstIndex) + std::max(0, stackPosition));
+            storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + std::max(0, stackPosition));
         return slot.stackable ? std::max<int>(1, slot.count) : 1;
     }
     container::TInventoryContainer* inventory = container::TInventoryContainer::instance();
@@ -150,7 +150,7 @@ void TSelectObjectAmountDialogController::okButtonClicked()
         else if (const auto* stow = input::gameActionAs<input::TGameActionStashStowStack>(m_inner))
             Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashStowStack>(stow->context(), amount));
         else if (const auto* retrieve = input::gameActionAs<input::TGameActionStashRetrieve>(m_inner))
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashRetrieve>(retrieve->typeId(), amount));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionStashRetrieve>(retrieve->typeId(), amount, retrieve->source()));
     }
     finish();
 }

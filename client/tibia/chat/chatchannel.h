@@ -61,17 +61,21 @@ struct TChatChannelIdentifier
     /// channels the same id, for server, private and own channels the same
     /// name (case sensitive).
     bool sameChannel(const TChatChannelIdentifier& other) const;
+    /// The kind of channel the identifier names.
+    Type identifierType() const { return type; }
+    /// A server channel whose id is in [first, last].
+    bool isChannelIdInRange(uint16_t first, uint16_t last) const { return first <= id && id <= last; }
     /// Every channel but Local Chat and the Server Log can be closed.
     bool canBeClosed() const { return type != Local && type != ServerLog; }
 
     /// Server channel 7 (the help channel).
     bool isHelpChannel() const { return id == 7; }
     /// Server channels 5 and 6 (the advertising channels).
-    bool isAdvertisingChannel() const { return static_cast<uint16_t>(id - 5) < 2; }
+    bool isAdvertisingChannel() const { return isChannelIdInRange(5, 6); }
     /// Ids 10-9999 are the players' private channels.
-    bool isPrivateChannelId() const { return static_cast<uint16_t>(id - 10) < 9990; }
+    bool isPrivateChannelId() const { return isChannelIdInRange(10, 9999); }
     /// Ids 20000-29999 are Team Finder channels.
-    bool isTeamFinderChannel() const { return static_cast<uint16_t>(id - 20000) < 10000; }
+    bool isTeamFinderChannel() const { return isChannelIdInRange(20000, 29999); }
     /// Guild channels: ids 10000-19999 (Crystal's CHANNEL_GUILD is 0).
     bool isGuildChannel() const
     {
@@ -338,6 +342,9 @@ private:
 /// CIP's chat message mode of a protocol mode (the same numbers; 41 and
 /// 45..47 and anything above 54 are invalid and throw).
 int chatMessageMode(uint32_t protocolMode);
+/// The protocol's mode of a chat message mode, for client messages (the same
+/// numbers; the modes chatMessageMode refuses throw).
+uint32_t protocolMessageMode(int chatMode);
 /// CIP's console colour of a chat message mode (throws for a mode without one).
 QColor consoleColor(int mode);
 /// CIP's colour of a mode's text over the game window (throws for a mode

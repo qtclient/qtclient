@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "qtconnectionmanager.h"
 #include "questlog/questlogciptypes.h"
 
 #include <cip_gen.h>
@@ -13,12 +14,17 @@
 #include <QVariantList>
 
 #include <functional>
+#include <memory>
+#include <vector>
 
 class QJsonObject;
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -30,61 +36,6 @@ class MissionBackend;
 
 namespace tibia {
 namespace gamewindow {
-
-/// The tracked quest flags as the quest tracker widget reads them: a view of the
-/// quest-tracking half of questlog::TQuestLogStorage plus the server's remaining
-/// capacity and the request that sends the tracked list.
-class TQuestTrackerStorage final : public QObject
-{
-    Q_OBJECT
-public:
-    struct Entry
-    {
-        int questFlagId = 0;
-        int questLineId = 0;
-        QString questLineName;
-        QString questLinePart;
-        QString description;
-        bool pinned = false;
-        qint64 lastUpdateTimestamp = 0;
-    };
-
-    explicit TQuestTrackerStorage(questlog::TQuestLogStorage* storage, QObject* parent = nullptr);
-
-    const QList<Entry>& entries() const { return m_entries; }
-    QSet<int> trackedIds() const;
-    QList<int> completedIds() const;
-    /// The quest line a tracked flag belongs to, 0 if it is not tracked.
-    int questLineOf(int questFlagId) const;
-
-    bool autoTrackNewQuests() const;
-    bool autoUntrackCompletedQuests() const;
-
-    void setPinned(int questFlagId, bool pinned);
-    /// Adds (or removes) the flags and sends the new list.
-    void changeTrackedQuestFlags(const QList<int>& ids, bool remove);
-    /// Option 0 auto-tracks new quests, 1 auto-untracks completed ones; sends the
-    /// list with the new options.
-    void setOption(int option, bool value);
-    /// Sends the stored flags; the server answers with the full list and the
-    /// remaining capacity.
-    void sendStored() const { sendTracked(trackedIds()); }
-    void clear();
-    /// Re-reads the storage's flags (after the configuration was loaded).
-    void reload();
-
-Q_SIGNALS:
-    void entriesChanged();
-    void storageChanged();
-    void trackedQuestFlagsChanged(bool added, bool removed);
-
-private:
-    void rebuildEntries();
-    void sendTracked(const QSet<int>& ids) const;
-
-    questlog::TQuestLogStorage* m_storage;
-    QList<Entry> m_entries;
-};
 
 /// The quest tracker rows (CIP: list model vtable , roleNames
 /// , data).
@@ -125,8 +76,8 @@ public:
         QVariantList choices;
     };
 
-    /// CIP : keeps the rows that stay.
-    void setEntries(QList<TQuestTrackerStorage::Entry> entries, const QList<MissionAction>& actions);
+    /// The storage's tracked quest flags as rows; keeps the rows that stay.
+    void setEntries(std::vector<questlog::TQuestFlag> flags, const QList<MissionAction>& actions);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -135,7 +86,7 @@ public:
 private:
     struct Row
     {
-        TQuestTrackerStorage::Entry entry;
+        questlog::TQuestFlag flag;
         QString missionCta;
         QString missionProgress;
         QString missionBrowseFilter;
@@ -159,29 +110,31 @@ protected:
 };
 
 /// The quest tracker widget, questtrackerwidget.qml (CIP:
-/// TQuestTrackerWidgetController, ctor , storage hookup
-/// ).
+/// TQuestTrackerWidgetController). It shows the tracked quest flags of the
+/// session's quest log storage.
 class TQuestTrackerWidgetController final : public TSidebarWidgetController<cip::tibia::gamewindow::TQuestTrackerWidgetController>
 {
     Q_OBJECT
 public:
-    TQuestTrackerWidgetController(TQuestTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TQuestTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
-    /// questTrackerWidgetOptions: contentHeight, contentMaximized.
-    void setSidebarOptions(config::TSidebarOptions* options);
+    /// The session's quest log storage and sidebar options: tracked flag
+    /// changes refresh the list (with a sound), option changes resize the
+    /// widget; both are applied at once.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QObject* questTrackerList() const override;
 
     QQuickItem* gameWindowQuickItem() const override;
 
-    /// CIP : show in quest log, remove from the tracker.
+    /// Context menu: show in quest log, remove from the tracker.
     void onShowContextMenuForQuestFlag(int QuestFlagIDRaw) override;
-    /// CIP: OPEN_QUESTLOG_DIALOG for the flag (, flag | 0x10000).
+    /// OPEN_QUESTLOG_DIALOG for the flag (flag | 0x10000).
     void onShowQuestInQuestLog(int QuestFlagIDRaw) override;
     void onPinnedChanged(int QuestFlagID, bool checked) override;
     /// OPEN_QUESTLOG_DIALOG.
     void requestOpenQuestLogDialog() override;
-    /// CIP : remove all, remove completed, auto add, auto remove.
+    /// Context menu: remove all, remove completed, auto add, auto remove.
     void requestConfigurationContextMenu() override;
 
     /// product: run the mission action on the tracked quest flag.
@@ -214,20 +167,25 @@ Q_SIGNALS:
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
 
 private Q_SLOTS:
-    /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
+    /// Applies the stored content height / maximized state.
     void onWidgetOptionsChanged();
-    /// CIP : SOUND_TRIGGER QUEST_TRACKER_ADD (0xb26) when flags were
-    /// added, else QUEST_TRACKER_REMOVE (0xb27) when some were dropped.
+    /// Refills the list from the storage, then SOUND_TRIGGER QUEST_TRACKER_ADD
+    /// (0xb26) when flags were added, else QUEST_TRACKER_REMOVE (0xb27) when
+    /// some were dropped.
     void onTrackedQuestFlagsChanged(bool added, bool removed);
     void onWidgetQuickItemDestroyed();
 
 private:
+    /// The list's rows from the storage's tracked flags.
     void refresh();
+    std::vector<questlog::TQuestFlag> trackedQuestFlags() const;
 
-    TQuestTrackerStorage* m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    QPointer<config::TSidebarOptions> m_options;
+    std::shared_ptr<questlog::TQuestLogStorage> m_questLogStorage;
     TQuestTrackerListModel m_list;
     TQuestTrackerSortFilterProxyModel m_proxy;
-    QPointer<config::TSidebarOptions> m_options;
+    shared::TQtConnectionManager m_gameSessionConnections;
     QList<TQuestTrackerListModel::MissionAction> m_actions;
     std::function<void(const QString&, const QString&, int)> m_missionInvoker;
     std::function<void(const QString&)> m_browseOpener;
@@ -239,10 +197,12 @@ class TQuestTrackerWidgetManager final : public QObject
 {
     Q_OBJECT
 public:
-    TQuestTrackerWidgetManager(TQuestTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TQuestTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TQuestTrackerWidgetManager() override;
 
-    TSidebarWidget* open(config::TSidebarOptions* options);
+    TSidebarWidget* open(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The open widget follows the session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
     void setMissionBackend(mods::MissionBackend* storage);
@@ -256,7 +216,6 @@ Q_SIGNALS:
 private:
     void applyMissions();
 
-    TQuestTrackerStorage* m_storage;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TQuestTrackerWidgetController> m_controller;

@@ -60,10 +60,7 @@ private:
     struct HighlightBinding
     {
         renderer::THighlightedSpriteScenegraphNode* node = nullptr;
-        QSGTexture* texture = nullptr;
-        QRectF rect;
         QColor color;
-        bool smooth = false;
     };
     std::vector<HighlightBinding> m_highlights;
     /// Nodes taken off the tree (a tile slide, an opacity group, an HD flip) are reused.

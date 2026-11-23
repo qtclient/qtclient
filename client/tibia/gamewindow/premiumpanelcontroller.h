@@ -17,6 +17,9 @@ namespace tibia {
 namespace store {
 struct TStoreOpenParameters;
 }
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
 /// One premium feature line (CIP: game::TPremiumMessage, ctor):
@@ -50,9 +53,7 @@ private:
 /// toggled by TOGGLE_PREMIUM_PANEL (74) and hidden while the tutorial mode is
 /// on (CHANGE_TUTORIAL_MODE_ENABLED, 223).
 ///
-/// The premium time is CIP's game::TPremiumTimeStorage (vtable),
-/// fed from the player basic data (premium flag and expiration; CIP's
-/// The PlayerDataBasic handler publishes onPremiumExpiration on the notify bus).
+/// The premium time comes from the account's game::TPremiumTimeStorage.
 class TPremiumPanelController final : public cip::tibia::gamewindow::TPremiumPanelController
 {
     Q_OBJECT
@@ -71,10 +72,12 @@ public Q_SLOTS:
     void onIsVisibleChanged() override;
 
 public:
-    /// CIP (session set): CIP's premium time storage already holds
-    /// the login service's premium state here; the in-game premium packet
-    /// arrives after the game start.
-    void onSessionStarted(bool premium, qint64 premiumUntil);
+    /// The account's premium time: its changes update the renew line (applied
+    /// at once).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
+    /// The premium time storage already holds the login service's premium
+    /// state here; the in-game premium packet arrives after the game start.
+    void onSessionStarted();
 
     /// The store button deep link: a link to anything but the home page or
     /// the XP boost (detail 1) highlights the maximize button for 10 minutes.
@@ -97,21 +100,12 @@ private:
     void startHighlight(int minimumMs);
     void setHighlight(bool highlight);
 
-    /// CIP TPremiumTimeStorage v0x60 .
-    bool isPremium() const { return m_premium; }
-    /// v0x68 : premium without an expiration.
-    bool hasUnlimitedPremium() const { return m_premiumExpiration == 0 && m_premium; }
-    /// v0x70 : premium, or an expiration is known.
-    bool hasPremiumTime() const { return m_premiumExpiration != 0 || m_premium; }
-    /// v0x78 : the state (v0x88, : 2 unlimited,
-    /// else the premium flag) is 0.
-    bool isFreeAccount() const { return !hasUnlimitedPremium() && !m_premium; }
-    /// v0x80 : whole days from when the time was set to the
-    /// expiration.
+    /// The storage's state (all false / 0 without a storage).
+    bool isPremium() const;
+    bool hasUnlimitedPremium() const;
+    bool hasPremiumTime() const;
+    bool isFreeAccount() const;
     int premiumDaysLeft() const;
-    /// v0x90 / v0x98 .
-    void setPremiumTime(bool premium, uint32_t expiration);
-    void resetPremiumTime();
 
     /// CIP (inlined in and): a free
     /// account that never had premium, or premium ending in under 4 days.
@@ -129,9 +123,7 @@ private:
     void showCollapsed();
     void setPanelVisible(bool visible);
 
-    bool m_premium = false;
-    uint32_t m_premiumExpiration = 0;
-    uint32_t m_premiumTimeSetAt = 0;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::map<int, cip::tibia::game::TPremiumMessage*> m_messages;
     TPremiumMessageRenewPremium* m_renewPremium = nullptr;
     QPointer<QQuickItem> m_item;

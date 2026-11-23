@@ -20,6 +20,9 @@ public:
     /// CIP: the entry of `event`.
     TEventQMLEntry(const TEventInformation& event, bool startsOrEndsThatDay, QObject* parent = nullptr);
 
+    QColor primaryColor() const override { return m_primaryColor; }
+    QColor secondaryColor() const override { return m_secondaryColor; }
+    bool startsOrEndsThatDay() const override { return m_startsOrEndsThatDay; }
     const QString& description() const { return m_description; }
     int displayPriority() const { return m_displayPriority; }
 

@@ -184,7 +184,7 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
     // CIP: the sidebar widgets' frame update gives the model the time.
     const auto followFrames = [this](QQuickWindow* window) {
         if (window)
-            connect(window, &QQuickWindow::afterAnimating, this, [this] { m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch()); });
+            connect(window, &QQuickWindow::afterAnimating, this, &TBossTrackerWidgetController::updateWithTimestamp);
     };
     if (gameWindowItem) {
         followFrames(gameWindowItem->window());
@@ -210,6 +210,8 @@ void TBossTrackerWidgetController::setStorage(bossbestiary::TBossTrackerStorage*
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
 
 bool TBossTrackerWidgetController::hasUnlockedAnyBosses() const { return m_storage && m_storage->hasUnlockedAnyBosses(); }
+
+void TBossTrackerWidgetController::updateWithTimestamp() { m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch()); }
 
 QQuickItem* TBossTrackerWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 bool TBossTrackerWidgetController::hasFocus() const { return m_focus.hasFocus(); }

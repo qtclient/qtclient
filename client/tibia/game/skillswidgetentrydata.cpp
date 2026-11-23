@@ -124,6 +124,13 @@ void TSkillsWidgetEntryData::assign(const SkillsWidgetEntry& entry)
     Q_EMIT changed();
 }
 
+void TSkillsWidgetEntryData::setEntryVisible(const bool EntryVisible)
+{
+    m_entryVisible = EntryVisible;
+    m_entry.entryVisible = EntryVisible;
+    Q_EMIT changed();
+}
+
 QString skillName(const SkillType type)
 {
     switch (type) {
@@ -187,7 +194,7 @@ QString skillIconSource(const SkillType type)
         case SkillType::Axe: index = 6; break;
         case SkillType::Fist: index = 0; break;
         case SkillType::Fishing: index = 8; break;
-        default: break;
+        default: return QString(); // no icon for the other types
     }
     return QStringLiteral("image://skills-icons/%1").arg(index);
 }

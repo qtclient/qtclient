@@ -46,13 +46,15 @@ TEST(SessiondumpHints, ParsesOutfitsAndSortsHintsByTimestamp)
     EXPECT_EQ(hints.outfit(false).detail, 4);
 
     const auto all = hints.hints();
-    ASSERT_EQ(all.size(), 4u);
+    ASSERT_EQ(all.size(), 5u);
     EXPECT_EQ(all[0]->timestamp(), 0);
     EXPECT_EQ(all[0]->type(), TSessiondumpHintBase::TutorialProgress);
     EXPECT_EQ(all[1]->type(), TSessiondumpHintBase::SkipTo);
-    EXPECT_EQ(all[2]->timestamp(), 750);
-    EXPECT_EQ(all[2]->type(), TSessiondumpHintBase::SwitchChannel);
-    EXPECT_EQ(all[3]->type(), TSessiondumpHintBase::ClearOldestMessage);
+    EXPECT_EQ(all[2]->timestamp(), 199);
+    EXPECT_EQ(all[2]->type(), TSessiondumpHintBase::Condition);
+    EXPECT_EQ(all[3]->timestamp(), 750);
+    EXPECT_EQ(all[3]->type(), TSessiondumpHintBase::SwitchChannel);
+    EXPECT_EQ(all[4]->type(), TSessiondumpHintBase::ClearOldestMessage);
 
     using tibia::input::gameActionAs;
     const auto progress = all[0]->execute();
@@ -66,13 +68,14 @@ TEST(SessiondumpHints, ParsesOutfitsAndSortsHintsByTimestamp)
     const auto* skip = gameActionAs<tibia::input::TGameActionSessiondumpSkipTo>(skipActions[0]);
     ASSERT_TRUE(skip);
     EXPECT_EQ(skip->timestamp(), 12);
-    const auto channelActions = all[2]->execute();
+    const auto channelActions = all[3]->execute();
     const auto* channel = gameActionAs<tibia::input::TGameActionChatChannel>(channelActions[0]);
     ASSERT_TRUE(channel);
     EXPECT_EQ(channel->gameActionType(), EGameAction::OPEN_CHAT_CHANNEL);
     EXPECT_EQ(channel->chatChannelIdentifier().type, tibia::chat::TChatChannelIdentifier::ServerLog);
 
-    EXPECT_EQ(hints.firstUnfinishedHint(), all[3]);
+    // The condition was never run.
+    EXPECT_EQ(hints.firstUnfinishedHint(), all[2]);
 }
 
 TEST(SessiondumpHints, SkipsHintsBeforeATimestamp)
@@ -106,6 +109,6 @@ TEST(SessiondumpHints, ReadsTheTutorialHints)
         GTEST_SKIP() << "no tutorial hints";
     TSessiondumpHints hints(QJsonDocument::fromJson(file.readAll()));
     EXPECT_EQ(hints.outfit(true).lookType, 129);
-    // Everything but the conditions.
-    EXPECT_EQ(hints.hints().size(), 24u);
+    // 24 hints plus 18 conditions (every condition type of the file is known).
+    EXPECT_EQ(hints.hints().size(), 42u);
 }

@@ -26,6 +26,8 @@
 
 #include <QDebug>
 
+#include <utility>
+
 namespace tibia::creatures {
 
 namespace {
@@ -349,23 +351,49 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::creatures {
 
-void TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints(const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage)
+void TUnjustifiedPointsStorage::setUnjustifiedPoints(const uint8_t progressDay, const uint8_t fullKillsToNextSkullDay,
+                                                     const uint8_t progressWeek, const uint8_t fullKillsToNextSkullWeek,
+                                                     const uint8_t progressMonth, const uint8_t fullKillsToNextSkullMonth,
+                                                     const uint8_t skullDuration)
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto& m = UnjustifiedPointsMessage;
-    tibia::game::setUnjustifiedPoints({ .killsDay = static_cast<uint8_t>(m.day().progress()),
-                                        .killsDayRemaining = static_cast<uint8_t>(m.day().remaining()),
-                                        .killsWeek = static_cast<uint8_t>(m.week().progress()),
-                                        .killsWeekRemaining = static_cast<uint8_t>(m.week().remaining()),
-                                        .killsMonth = static_cast<uint8_t>(m.month().progress()),
-                                        .killsMonthRemaining = static_cast<uint8_t>(m.month().remaining()),
-                                        .skullTime = static_cast<uint8_t>(m.skull_duration()) });
+    m_progressDay = progressDay;
+    m_fullKillsToNextSkullDay = fullKillsToNextSkullDay;
+    m_progressWeek = progressWeek;
+    m_fullKillsToNextSkullWeek = fullKillsToNextSkullWeek;
+    m_progressMonth = progressMonth;
+    m_fullKillsToNextSkullMonth = fullKillsToNextSkullMonth;
+    m_skullDuration = skullDuration;
+    Q_EMIT unjustifiedPointsDataChanged();
 }
 
-void TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations(const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage)
+void TUnjustifiedPointsStorage::setOpenPvpSituations(const uint8_t openPvpSituations)
 {
-    using namespace ::tibia::protobuf::protocol;
-tibia::game::setOpenPvpSituations(static_cast<uint8_t>(PvpSituationsMessage.open_situations()));
+    m_openPvpSituations = openPvpSituations;
+    Q_EMIT unjustifiedPointsDataChanged();
+}
+
+TUnjustifiedPointsProtocolMessageHandler::TUnjustifiedPointsProtocolMessageHandler(
+    std::shared_ptr<TUnjustifiedPointsStorage> unjustifiedPointsStorage)
+    : cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler(nullptr)
+    , m_unjustifiedPointsStorage(std::move(unjustifiedPointsStorage))
+{
+}
+
+void TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints(
+    const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage)
+{
+    const auto& m = UnjustifiedPointsMessage;
+    m_unjustifiedPointsStorage->setUnjustifiedPoints(
+        static_cast<uint8_t>(m.day().progress()), static_cast<uint8_t>(m.day().remaining()),
+        static_cast<uint8_t>(m.week().progress()), static_cast<uint8_t>(m.week().remaining()),
+        static_cast<uint8_t>(m.month().progress()), static_cast<uint8_t>(m.month().remaining()),
+        static_cast<uint8_t>(m.skull_duration()));
+}
+
+void TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations(
+    const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage)
+{
+    m_unjustifiedPointsStorage->setOpenPvpSituations(static_cast<uint8_t>(PvpSituationsMessage.open_situations()));
 }
 
 }

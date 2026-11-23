@@ -8,6 +8,8 @@
 
 #include <QAbstractListModel>
 #include <QColor>
+#include <QFileSystemWatcher>
+#include <QJsonDocument>
 #include <QHash>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -27,6 +29,9 @@ namespace qmlcomponents {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
+
+/// The bar colour of a health fraction (0..1).
+QColor colorForHealthPercent(float healthPercentNormalized);
 
 
 class TAppearanceInstanceInfoQmlType final : public cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType
@@ -55,13 +60,6 @@ public:
     Q_INVOKABLE int getObjectAppearanceTypeIDByName(const QString& Name) override;
 };
 
-class TCachedOutlineTextTextureManager final : public cip::tibia::qmlcomponents::TCachedOutlineTextTextureManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TCachedOutlineTextTextureManager::TCachedOutlineTextTextureManager;
-};
-
 /// QML singleton ColorHelper — outfit HSV palette, RGB 6³, health, named colors.
 class TColorHelperQmlService final : public cip::tibia::qmlcomponents::TColorHelperQmlService
 {
@@ -80,13 +78,6 @@ class TGlobalConstantsService final : public cip::tibia::qmlcomponents::TGlobalC
     Q_OBJECT
 public:
     using cip::tibia::qmlcomponents::TGlobalConstantsService::TGlobalConstantsService;
-};
-
-class TOffscreenOutlineTextToImageService final : public cip::tibia::qmlcomponents::TOffscreenOutlineTextToImageService
-{
-    Q_OBJECT
-public:
-    using cip::tibia::qmlcomponents::TOffscreenOutlineTextToImageService::TOffscreenOutlineTextToImageService;
 };
 
 class TOutfitQmlModel final : public cip::tibia::qmlcomponents::TOutfitQmlModel
@@ -126,24 +117,24 @@ public:
 
 private:
     void rebuildRoles();
-    QVariantMap mapAt(int row) const;
 
     QHash<int, QByteArray> m_roles;
-    std::vector<QVariantMap> m_rows;
+    /// One value per column, in column order.
+    std::vector<QVariantList> m_rows;
 };
 
-class TQmlIncubatorWithCallbackOnReady final : public ::tibia::CipTyped
-{
-public:
-    TQmlIncubatorWithCallbackOnReady() = default;
-};
+QJsonValue jsonValueAtPath(const QJsonObject& root, const QString& path, const QJsonValue& fallback);
+QJsonObject jsonObjectWithValueAtPath(const QJsonObject& root, const QString& path, const QJsonValue& value);
 
-/// Debounced JSON key/value store (CIP TQmlJsonSettingsService).
+/// QML JsonSettings: settings in one JSON file, addressed by '/'-separated
+/// paths; saved 500 ms after the last change, reloaded when the file changes.
 class TQmlJsonSettingsService final : public cip::tibia::qmlcomponents::TQmlJsonSettingsService
 {
     Q_OBJECT
 public:
+    /// Host: QML creates it without a path; it uses the app data location.
     explicit TQmlJsonSettingsService(QObject* parent = nullptr);
+    TQmlJsonSettingsService(const QString& settingsFilePath, QObject* parent);
 
     Q_INVOKABLE void save(const QString& Setting, const QJsonValue& Value) override;
     Q_INVOKABLE QJsonValue load(const QString& Setting, const QJsonValue& Default) override;
@@ -153,11 +144,11 @@ private Q_SLOTS:
     void onReloadSettingsFromDisk();
 
 private:
-    QString filePath() const;
-    void scheduleSave();
-
-    QJsonObject m_root;
-    QTimer m_saveTimer;
+    bool m_settingsValid = false;
+    QJsonDocument m_settings;
+    QString m_settingsFilePath;
+    QTimer m_saveJsonTimer;
+    QFileSystemWatcher m_fileSystemWatcher;
 };
 
 /// Sort/filter proxy with JS callbacks + row `get(index)` for QML.
@@ -171,6 +162,7 @@ public:
     void setSortCallback(const QJSValue& v) override;
 
     Q_INVOKABLE QVariantMap get(int index) override;
+    void invalidateFilter(QSortFilterProxyModel::Direction direction = QSortFilterProxyModel::Direction::Rows);
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -178,7 +170,6 @@ protected:
 
 private:
     void refreshCount();
-    QVariantMap rowMap(const QModelIndex& index) const;
 };
 
 class TScenegraphDrawCommandsRendererQuickItem final : public cip::tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem
@@ -227,9 +218,8 @@ public:
     using cip::tibia::qmlcomponents::TTextureAtlasViewerController::TTextureAtlasViewerController;
 };
 
-/// CIP QML type names (product camera type: `TWorldMapCamera` in minimaprendererquickitem.h).
+/// CIP QML type name (product camera type: `TWorldMapCamera` in minimaprendererquickitem.h).
 using TWorldMapCameraQmlType = cip::tibia::qmlcomponents::TWorldMapCameraQmlType;
-using TWorldMapCameraViewportQmlType = cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType;
 
 }
 }

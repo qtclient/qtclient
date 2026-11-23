@@ -9,12 +9,17 @@
 #include <cip_gen.h>
 
 #include <QObject>
+#include <QPointer>
 #include <QString>
+#include <QWindow>
 
 #include <cstddef>
 
 namespace tibia {
 namespace client {
+
+class TGameClient;
+class TPreventCloseEventFilter;
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -70,6 +75,13 @@ class TGameApplication final : public TGameApplicationBase
     Q_OBJECT
 public:
     explicit TGameApplication(QObject* parent = nullptr);
+    /// The game client the application slots reach (CipSoft's application
+    /// creates it; qtclient's client owns its application).
+    void setGameClient(TGameClient* GameClient) { m_pGameClient = GameClient; }
+    /// The client window (clientwindow.qml) the window slots act on; its size
+    /// changes reach windowSizeChanged, and its close events are held back
+    /// for the client's exit confirmation (onRequestClose).
+    void setClientWindow(QWindow* ClientWindow);
 
     /// CIP: the process log `client.log` in the log directory (1 MiB, one
     /// backup); every message is also kept for crash reports.
@@ -89,7 +101,11 @@ public:
 
 public Q_SLOTS:
     void showErrorAsPopupAndCriticalLog(QString ErrorMessage);
+    /// CIP: the client is ready to close: close events pass again, the client
+    /// window closes and the application quits.
     void onClientPluginReadyToClose();
+    /// CIP: the client window's close was held back: the client asks for
+    /// confirmation.
     void onRequestClose();
     void onAboutToQuit();
     void startClientWindowChangedReactionTimer();
@@ -98,22 +114,12 @@ public Q_SLOTS:
     void onNumberOfSidebarsChanged(std::size_t NewNumber);
     void onLeftAndRightStatusActionBarWidthChanged(int NewWidth);
     void windowSizeChanged();
-};
 
-class TGameClientBase final : public cip::tibia::client::TGameClientBase
-{
-    Q_OBJECT
-public:
-    using cip::tibia::client::TGameClientBase::TGameClientBase;
-};
-
-class TPreventCloseEventFilter final : public cip::tibia::client::TPreventCloseEventFilter
-{
-    Q_OBJECT
-public:
-    using cip::tibia::client::TPreventCloseEventFilter::TPreventCloseEventFilter;
-
-    bool eventFilter(QObject* watched, QEvent* event) override;
+private:
+    TGameClient* m_pGameClient = nullptr;
+    QPointer<QWindow> m_clientWindow;
+    /// Holds back the client window's close events (child of the application).
+    TPreventCloseEventFilter* m_pPreventCloseEventFilter = nullptr;
 };
 
 }

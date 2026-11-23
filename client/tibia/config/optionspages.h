@@ -88,9 +88,6 @@ void TBoundOptionsPage<Base>::apply(TClientOptions& options) const
     applyBindings(this, m_bindings, options);
 }
 
-/// CIP. The clear-bar buttons belong to the action
-/// bar storage (hotkey page,).
-using TActionBarsOptionsPage = TBoundOptionsPage<TActionBarsQMLOptionsPage>;
 /// CIP.
 using TConsoleOptionsPage = TBoundOptionsPage<TConsoleQMLOptionsPage>;
 /// CIP.
@@ -112,6 +109,37 @@ std::span<const TOptionBinding> gameplayBindings();
 std::span<const TOptionBinding> screenshotsBindings();
 std::span<const TOptionBinding> battleSoundsBindings();
 std::span<const TOptionBinding> uiSoundsBindings();
+
+/// CIP `TActionBarsQMLOptionsPage`: the bound options plus one "clear" flag per
+/// action bar. The clear buttons toggle their flag; loading the page resets
+/// them. The options dialog reads the flags when it applies.
+class TActionBarsOptionsPage final : public TBoundOptionsPage<TActionBarsQMLOptionsPage>
+{
+    Q_OBJECT
+public:
+    using TBoundOptionsPage<TActionBarsQMLOptionsPage>::TBoundOptionsPage;
+
+    void load(const TClientOptions& options) override;
+    /// Every clear flag off, then changed.
+    void resetClearFlags();
+
+    void onClearBottomActionBar1Clicked() override { toggleClearFlag(m_clearBottomActionBar1); }
+    void onClearBottomActionBar2Clicked() override { toggleClearFlag(m_clearBottomActionBar2); }
+    void onClearBottomActionBar3Clicked() override { toggleClearFlag(m_clearBottomActionBar3); }
+    void onClearLeftActionBar1Clicked() override { toggleClearFlag(m_clearLeftActionBar1); }
+    void onClearLeftActionBar2Clicked() override { toggleClearFlag(m_clearLeftActionBar2); }
+    void onClearLeftActionBar3Clicked() override { toggleClearFlag(m_clearLeftActionBar3); }
+    void onClearRightActionBar1Clicked() override { toggleClearFlag(m_clearRightActionBar1); }
+    void onClearRightActionBar2Clicked() override { toggleClearFlag(m_clearRightActionBar2); }
+    void onClearRightActionBar3Clicked() override { toggleClearFlag(m_clearRightActionBar3); }
+
+private:
+    void toggleClearFlag(bool& flag)
+    {
+        flag = !flag;
+        Q_EMIT changed();
+    }
+};
 
 /// CIP; the loot style list is .
 class TInterfaceOptionsPage final : public TBoundOptionsPage<TInterfaceQMLOptionsPage>
@@ -148,6 +176,13 @@ public:
 
     void load(const TClientOptions& options) override;
     void apply(TClientOptions& options) const override;
+
+    /// Whether the HUD and the bar show special conditions at all (kept in the
+    /// special conditions options).
+    bool specialConditionsShowInHUDEnabled() const override;
+    void setSpecialConditionsShowInHUDEnabled(bool enabled) override;
+    bool specialConditionsShowInBarEnabled() const override;
+    void setSpecialConditionsShowInBarEnabled(bool enabled) override;
 
     /// CIP.
     void setSpecialConditionShowInHUDEnabled(int SpecialConditionIndex, bool Enabled) override;
@@ -287,6 +322,9 @@ public:
     /// The sound pages are enabled while the sound engine runs and the master
     /// volume is above 0.
     bool soundEnabled() const override;
+    bool soundEngineInitialized() const override;
+    /// The sound engine's devices after the "auto" entry.
+    QStringList soundDeviceListModel() const override;
 
 private:
     void refreshSoundDevices();
@@ -316,6 +354,11 @@ public:
     /// The current set's keys of the current chat mode back to the built-in
     /// ones of its vocation (GlobalShortcuts for other names).
     void resetToDefault();
+    /// The current set loses every button mapping of the action bar (the
+    /// options dialog's Apply, for the bars marked for clearing).
+    void clearActionBarMappings(uint8_t actionBarId);
+    /// Closes the page's text, message and key recording dialogs.
+    void closeDialogs();
 
     Q_INVOKABLE void requestAddPreset() override;
     Q_INVOKABLE void requestRenameCurrentPreset() override;

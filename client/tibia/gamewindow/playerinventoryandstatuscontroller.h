@@ -52,6 +52,8 @@ public:
 public Q_SLOTS:
     /// CIP : the cursor a left click on the hovered slot would show.
     void updateMouseCursorForCurrentSlot() override;
+    /// CIP on every slot: counting-down texts.
+    void refreshClocks();
     /// CIP : chase mode and the inventory's size from the options.
     void applyPlayerTacticsAndInventorySizeFromOptions() override;
     void specialConditionsOptionsChanged() override;
@@ -85,10 +87,10 @@ private:
     input::TGameActionList slotActions(int slotId) const;
     void refreshSlot(int slotId);
     void onInventoryChanged();
-    /// CIP on every slot: counting-down texts.
-    void refreshClocks();
     /// CIP: every player value the panel shows, each emitted when it changed.
     void onPlayerDataChanged();
+    /// Host: connects the current session's player data (playerDataChanged).
+    void onGameSessionChanged();
     void refreshSoul();
     void refreshCapacity();
     void refreshBlessings();
@@ -117,6 +119,7 @@ private:
     bool m_autoChaseEnabled = false;
     int m_pvpMode = 0;
     std::vector<client::gamecore::Hook> m_hooks;
+    int m_gameSessionListener = 0;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

@@ -17,11 +17,7 @@ namespace tibia::shared {
 
 namespace {
 struct CipTypedKeep {
-    TExperienceGainChangeTracker tExperienceGainChangeTracker;
     TImagestripResponse tImagestripResponse;
-    TNullExperienceGainChangeTracker tNullExperienceGainChangeTracker;
-    TNullExperiencePerHourProvider tNullExperiencePerHourProvider;
-    TTibiaClipboardHelper tTibiaClipboardHelper;
     TClockService tClockService;
     TCoordinate tCoordinate;
 };

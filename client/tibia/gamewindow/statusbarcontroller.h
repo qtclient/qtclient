@@ -9,18 +9,15 @@
 
 #include <QPointer>
 
-#include <array>
+#include <QList>
 
 namespace tibia {
 namespace gamewindow {
 
-/// StatusBar's controller (CIP: TStatusBarController; reads ..
-/// ): the player's hit points, mana and magic shield, the XP bar
-/// and the skills the character chose, the special-condition icons and a
-/// Monk's harmony and serenity. The bar sits at the storage's position.
-/// Context menu is ported. The store XP boost button is the one
-/// in CIP StatusBar.qml. Not yet: proficiency progress and the magic level
-/// boost lines.
+/// StatusBar's controller (CIP: TStatusBarController): the player's hit
+/// points, mana and magic shield, the XP bar and the skills the character
+/// chose, the special-condition icons and a Monk's harmony and serenity. The
+/// bar sits at the storage's position. Not yet: proficiency progress.
 class TStatusBarController final : public cip::tibia::gamewindow::TStatusBarController
 {
     Q_OBJECT
@@ -29,6 +26,9 @@ public:
 
     /// The character's storage; null outside the world.
     void setStorage(game::TStatusbarStorage* storage);
+
+    DialogAnchor dialogAnchor() const override { return m_dialogAnchor; }
+    DialogStyle dialogStyle() const override { return m_dialogStyle; }
 
     int maxHitpoints() const override;
     int currentHitpoints() const override;
@@ -42,29 +42,52 @@ public:
     bool showCombopointsAndSerene() const override;
     int comboPoints() const override;
     bool isSerene() const override;
+    bool showManaShield() const override { return m_showManaShield; }
+    QAbstractListModel* playerStates() const override;
+    /// The XP bar's entry while the storage shows it.
+    QObject* xpSkill() const override;
+    QList<QObject*> skillList() const override { return m_skillList; }
+    /// The last skill alone on its row; only with an odd number of skills.
+    QObject* remainingSkill() const override { return m_oddSkillCount ? m_remainingSkill : nullptr; }
     bool showPlayerStatesInBar() const override;
 
     /// CIP : the other positions and styles, the shown skills and
     /// options 0x71 statusBarEnabled / 0x72 statusPanelEnabled.
+    /// The other positions and styles, the shown skills and options 0x71
+    /// statusBarEnabled / 0x72 statusPanelEnabled.
     Q_INVOKABLE void requestContextMenu() override;
     Q_INVOKABLE void onClickedOpenStoreXPBoost() override;
 
 private:
-    /// CIP : on entering the world.
+    /// On entering the world.
     void applyStorage();
-    /// CIP : the storage changed.
+    /// The storage changed.
     void onStorageChanged();
-    /// CIP : which entries show, and where.
+    /// New entries for the shown skills; an odd count leaves the last one alone.
     void rebuildSkillLists();
-    /// CIP .
+    /// The shown entries' values.
     void refreshSkills();
-    /// CIP .
     void updateFromPlayer();
     void setAnchorAndStyle(int anchor, int style, bool forceAnchorSignal);
+    void setDialogAnchor(DialogAnchor anchor);
+    void setDialogStyle(DialogStyle style);
+    /// The storage's position as an anchor: anything past Right is Invalid.
+    static DialogAnchor anchorFromPosition(int position);
+    /// The storage's style: anything but Compact, Large and Parallel is Default.
+    static DialogStyle styleFromStorage(int style);
+    /// Whether the storage shows the entry at `index` (Storage::Entry order).
+    bool isSkillShown(int index) const;
+    void setSkillShown(int index, bool shown);
 
     QPointer<game::TStatusbarStorage> m_storage;
     game::TPlayerStatesTracker m_states;
-    std::array<game::TSkillsWidgetEntryData*, game::TStatusbarStorage::EntryCount> m_entries{};
+    /// The XP bar's entry lives as long as the controller; the skills' are
+    /// made anew on each rebuild.
+    game::TSkillsWidgetEntryData* m_xpEntry = nullptr;
+    /// The skill type of each m_skillList entry, then of m_remainingSkill.
+    QList<game::SkillType> m_skillTypes;
+    game::SkillType m_remainingSkillType = game::SkillType::Experience;
+    bool m_oddSkillCount = false;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

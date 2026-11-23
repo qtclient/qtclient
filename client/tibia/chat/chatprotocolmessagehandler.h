@@ -156,7 +156,10 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
 {
     Q_OBJECT
 public:
-    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, QObject* parent = nullptr);
+    /// Reads the console options and keeps the own name of `pPlayer` when the
+    /// player is already known.
+    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
+                                std::weak_ptr<::tibia::creatures::TCreature> pPlayer, QObject* parent = nullptr);
     ~TChatProtocolMessageHandler() override;
 
     /// : the console options by CIP name.
@@ -167,6 +170,7 @@ public:
     void setEffectStorage(effects::TEffectStorage* effects) { m_effects = effects; }
     /// CIP +0x98: the client's ignore and white lists (null filters nothing).
     void setWhiteBlacklist(TWhiteBlacklist* whiteBlacklist) { m_whiteBlacklist = whiteBlacklist; }
+    TWhiteBlacklist* whiteBlacklist() const { return m_whiteBlacklist; }
     /// CIP slots (protobuf args; empty layouts → classic notify remains live apply).
     void handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage);

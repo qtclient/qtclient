@@ -5,6 +5,7 @@
 
 #include "app/launcherenv.h"
 #include "authentication/authenticationprocesscontroller.h"
+#include "client/gameclientbase.h"
 #include "authentication/loginrequestuploader.h"
 #include "config/characterconfigurationmanager.h"
 #include "game/gameservergamesession.h"
@@ -17,6 +18,7 @@
 #include <QString>
 #include <QStringList>
 #include <QTimer>
+#include <QUrl>
 
 #include <deque>
 #include <memory>
@@ -132,8 +134,9 @@ namespace tibia {
 namespace client {
 
 /// The client's top level (CIP: TGameClient): engine pump, assets, account
-/// login, character selection and the game server session.
-class TGameClient final : public cip::tibia::client::TGameClient
+/// login, character selection and the game server session. CipSoft's
+/// TGameClientBase members live in TGameClientBase.
+class TGameClient final : public cip::tibia::client::TGameClient, public ::tibia::client::TGameClientBase
 {
     Q_OBJECT
 public:
@@ -194,7 +197,12 @@ public:
     /// dialog stack exists.
     void checkForCrashDump();
 
-    gamewindow::TCharacterSelectionController* characterSelection() const { return m_characterSelection.get(); }
+    /// The login's character selection (the authentication process controller's);
+    /// null before the game window is built.
+    gamewindow::TCharacterSelectionController* characterSelection() const
+    {
+        return m_authentication ? m_authentication->characterSelectionController() : nullptr;
+    }
     /// The current game session: one per login, replay or tutorial; null between them.
     const std::shared_ptr<game::IGameSession>& currentGameSession() const { return m_currentGameSession; }
     /// The current session when it is a live one; null otherwise.
@@ -230,10 +238,6 @@ public:
     config::TActionBarOptions* actionBarOptions() const;
     /// The character's outfit presets.
     game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
-    /// CIP TGameClientBase's game action router: the game window's controllers
-    /// publish into its internal router and its handlers listen to it. Throws
-    /// std::logic_error before it exists.
-    std::shared_ptr<game::TGameActionRouter> gameActionRouter() const;
     /// The current session's; null without one.
     config::TCharacterConfigurationManager* characterConfigurationManager() const;
     /// The session's minimap; null outside the world.
@@ -273,6 +277,10 @@ public:
     bool requestCharacterSwitch(const QString& characterName);
     /// End a tutorial sessiondump cinematic and connect to the pending live world.
     void finishTutorialCinematic();
+    /// CIP: the player wants to leave the client. Without a game session it
+    /// closes right away; in the tutorial it asks Exit / Cancel, in any other
+    /// session Exit / Logout / Cancel.
+    void exitClient();
 
 Q_SIGNALS:
     /// The login service or the game server wants a newer client.
@@ -306,6 +314,15 @@ public Q_SLOTS:
     /// [FPSHISTORY] sampleRateMsec and uploads the history every uploadRateSec
     /// (and when the session ends or the client closes); off drops both.
     void onFpsTrackingActiveChanged(bool FpsTrackingActive);
+    /// CIP: the client window changed its size: every open multi action list
+    /// of the action bars closes.
+    void onWindowSizeChanged() override;
+    /// CIP: the game window's Quit.
+    void onExitClientRequested();
+    /// CIP: the exit confirmation's answer. The dialog closes; Logout logs the
+    /// character out (QUIT_GAME), Exit closes the client, Cancel stays.
+    void onConfirmOrCancelExitGame(
+        cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier);
 
 private:
     struct TGameWindow;
@@ -316,8 +333,9 @@ private:
 
     /// Logs the session out; without one, shows the start screen when given.
     void requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen);
-    /// CIP TGameClientBase: the sound configuration, engine, players and controllers.
-    void initializeSound();
+    /// CIP TGameClientBase's sound system, plus the connections qtclient
+    /// makes with it here (the router, the sound metadata, the title music).
+    void initializeSound() override;
     /// CIP: (re)arms the FPS sample and upload timers for the current history.
     void startFpsHistoryTimers(qint64 sampleRateMsec, qint64 uploadRateSec);
     /// CIP: posts the pending crash report to the configured crashReportUrl
@@ -327,6 +345,10 @@ private:
     void onLoginSuccessful(const authentication::LoginResult& result);
     /// The character list with the account's premium state.
     void showAccount(const authentication::TCharacterList& characters);
+    /// CIP: makes the authentication process controller and its parts for the
+    /// login service at `LoginUrl`, then connects the game client to them.
+    void createAuthenticationProcessController(const QUrl& LoginUrl);
+    authentication::TLoginRequestUploader* loginRequestUploader() const;
     void onCharacterChosen(const QString& characterName);
     void onWorldEntered();
     /// Writes the session's minimap and character options.
@@ -382,12 +404,10 @@ private:
     qint64 m_frameGridBase = 0;
     qint64 m_frameSlot = 0;
     qint64 m_frameInterval = 0;
-    std::unique_ptr<authentication::TLoginRequestUploader> m_login;
-    std::unique_ptr<authentication::TCloudflareChallengeController> m_cloudflareChallenge;
-    /// The account login's state machine; the game client still performs the
-    /// login steps it enters.
+    /// The account login's state machine with its character selection,
+    /// uploaders and Cloudflare challenge (CIP: made with the game window); the
+    /// game client still performs the login steps it enters.
     std::shared_ptr<authentication::TAuthenticationProcessController> m_authentication;
-    std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
     /// True while CharacterSelection is open for an in-game Change Character switch.
     bool m_characterSelectionOpen = false;
     /// CIP: the sessions to play next, in order.
@@ -403,18 +423,11 @@ private:
     /// Host shim: the character configuration storages the game window still
     /// owns; each new session's manager takes them.
     config::TCharacterConfigurationManager::TStorages m_characterConfigurationStorages;
-    std::shared_ptr<game::TGameActionRouter> m_pGameActionRouter;
     /// The chat pane's ignore list, applied to each session's message handler.
     chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
-    // CIP TGameClientBase's sound (initializeSound).
-    std::shared_ptr<sound::TSoundConfiguration> m_soundConfiguration;
-    std::shared_ptr<sound::TSoundMetadataManager> m_soundMetadataManager;
-    std::shared_ptr<sound::TSoundManager> m_soundManager;
-    std::shared_ptr<sound::TSoundPlayerManager> m_soundPlayerManager;
-    std::shared_ptr<sound::TSoundController> m_soundController;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
     int m_worldType = -1;

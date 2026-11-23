@@ -3,6 +3,7 @@
 #include "protocol/clientmessages.h"
 #include "game/gameciptypes.h"
 #include "game/tgamenotify.h"
+#include "input/playermovementintenthandler.h"
 #include "network/gameserverpacketprocessor.h"
 #include "protocol/protocolmessagequeue.h"
 
@@ -31,11 +32,6 @@ namespace {
 /// CIP's TClientSessiondumpRecorder keep time (a constant in initialize).
 constexpr int64_t SessiondumpKeepSeconds = 10;
 
-void wireProcessLoginImpl()
-{
-    tibia::game::notify("onLogin");
-}
-
 void wireProcessLoginErrorImpl(const std::string_view error)
 {
     tibia::game::notify("onLoginError", error);
@@ -51,17 +47,7 @@ void wireProcessLoginWaitImpl(const std::string_view message, const uint8_t time
     tibia::game::notify("onLoginWait", message, time);
 }
 
-void wireProcessSessionEndImpl(const uint8_t reason)
-{
-    tibia::game::notify("onSessionEnd", reason);
-}
-
 } // namespace
-
-void TGameserverGameSession::wireProcessLogin()
-{
-    wireProcessLoginImpl();
-}
 
 void TGameserverGameSession::wireProcessLoginError(const std::string_view error)
 {
@@ -78,11 +64,6 @@ void TGameserverGameSession::wireProcessLoginWait(const std::string_view message
     wireProcessLoginWaitImpl(message, time);
 }
 
-void TGameserverGameSession::wireProcessSessionEnd(const uint8_t reason)
-{
-    wireProcessSessionEndImpl(reason);
-}
-
 void TGameserverGameSession::wireProcessWorldEntered()
 {
     TGameSessionState& hub = gameSessionState();
@@ -93,16 +74,13 @@ void TGameserverGameSession::wireProcessWorldEntered()
     }
 }
 
-void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uint8_t penality)
+void TGameserverGameSession::wireProcessDeath()
 {
     TGameSessionState& hub = gameSessionState();
     hub.m_dead = true;
     if (hub.m_playerPresent)
         tibia::game::localPlayerStopWalk();
     setSceneFrozen(true);
-
-    tibia::game::notify("onDeath", deathType, penality);
-    tibia::game::TGameNotify::instance()->emitDeath(deathType, penality);
 }
 
 void TGameserverGameSession::wireProcessPing()
@@ -157,7 +135,6 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
         Q_EMIT connected();
         return std::any{};
     });
-    m_hooks.push_back(gameHook("onLogin", [this](const Args&) { Q_EMIT gameLoginSuccessful(); }));
     // CIP typed lifecycle (TGameNotify) — prefer over string SoftHook for start/end/fail.
     connect(TGameNotify::instance(), &TGameNotify::gameStarted, this, [this] { Q_EMIT worldEntered(); });
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
@@ -179,8 +156,6 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
         Q_EMIT gameLoginWaitMessage(argString(a, 0), static_cast<int>(argInt(a, 1)));
     }));
     m_hooks.push_back(gameHook("onConnectionError", [this](const Args& a) { Q_EMIT connectionError(argString(a, 0)); }));
-    m_hooks.push_back(gameHook("onSessionEnd", [this](const Args& a) { Q_EMIT sessionEndInformation(static_cast<int>(argInt(a, 0))); }));
-    connect(TGameNotify::instance(), &TGameNotify::death, this, [this](int, int) { Q_EMIT deadMessage(); });
     m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
 }
 
@@ -194,6 +169,11 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     createStorages();
     createProtocolMessageHandlers();
+    // The game handler's client messages go out through the session's queue.
+    connect(gameProtocolMessageHandler().get(), &TGameProtocolMessageHandler::sendEnterWorldMessage,
+            protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::sendEnterWorld);
+    connect(gameProtocolMessageHandler().get(), &TGameProtocolMessageHandler::sendClientDetails,
+            protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::sendClientDetails);
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
@@ -272,6 +252,29 @@ QString TGameserverGameSession::characterName() const
 QString TGameserverGameSession::worldName() const
 {
     return QString::fromStdString(getWorldName());
+}
+
+void TGameserverGameSession::connectPlayerMovementIntentHandler(input::TPlayerMovementIntentHandler* Handler)
+{
+    using H = TPlayerProtocolMessageHandler;
+    using I = input::TPlayerMovementIntentHandler;
+    H* player = playerProtocolMessageHandler().get();
+    connect(Handler, &I::sendGoNorth, player, &H::goNorth);
+    connect(Handler, &I::sendGoEast, player, &H::goEast);
+    connect(Handler, &I::sendGoSouth, player, &H::goSouth);
+    connect(Handler, &I::sendGoWest, player, &H::goWest);
+    connect(Handler, &I::sendGoNorthEast, player, &H::goNorthEast);
+    connect(Handler, &I::sendGoSouthEast, player, &H::goSouthEast);
+    connect(Handler, &I::sendGoSouthWest, player, &H::goSouthWest);
+    connect(Handler, &I::sendGoNorthWest, player, &H::goNorthWest);
+    connect(Handler, &I::sendStop, player, &H::stop);
+    connect(Handler, &I::sendCancel, player, &H::cancel);
+    connect(Handler, &I::sendGoPath, player, &H::goPath);
+    connect(Handler, &I::sendRotateNorth, player, &H::rotateNorth);
+    connect(Handler, &I::sendRotateEast, player, &H::rotateEast);
+    connect(Handler, &I::sendRotateSouth, player, &H::rotateSouth);
+    connect(Handler, &I::sendRotateWest, player, &H::rotateWest);
+    player->setPlayerMovementIntentHandler(Handler);
 }
 
 }

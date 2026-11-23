@@ -400,27 +400,6 @@ struct PartyMemberName
         : memberID(id), memberName(name) {}
 };
 
-struct UnjustifiedPoints
-{
-    bool operator==(const UnjustifiedPoints& other) const
-    {
-        return killsDay == other.killsDay &&
-            killsDayRemaining == other.killsDayRemaining &&
-            killsWeek == other.killsWeek &&
-            killsWeekRemaining == other.killsWeekRemaining &&
-            killsMonth == other.killsMonth &&
-            killsMonthRemaining == other.killsMonthRemaining &&
-            skullTime == other.skullTime;
-    }
-    uint8_t killsDay;
-    uint8_t killsDayRemaining;
-    uint8_t killsWeek;
-    uint8_t killsWeekRemaining;
-    uint8_t killsMonth;
-    uint8_t killsMonthRemaining;
-    uint8_t skullTime;
-};
-
 struct BlessData
 {
     uint16_t blessBitwise;

@@ -59,41 +59,12 @@ constexpr int SupremeModCount = static_cast<int>(std::size(SupremeCategories));
 
 const QChar MultiStringSeparator(0x9c);
 
-constexpr std::array<int, SlotCount> MaxPoints = {
-    200, 150, 100, 100, 150, 200,
-    150, 100, 75, 75, 100, 150,
-    100, 75, 50, 50, 75, 100,
-    100, 75, 50, 50, 75, 100,
-    150, 100, 75, 75, 100, 150,
-    200, 150, 100, 100, 150, 200,
-};
-
-constexpr std::array<int, SlotCount> SmallPerks = {
-    2, 4, 0, 1, 0, 2,
-    4, 0, 1, 3, 1, 0,
-    0, 1, 3, 4, 3, 1,
-    4, 0, 1, 0, 4, 3,
-    3, 4, 0, 4, 3, 1,
-    2, 3, 4, 3, 1, 2,
-};
-
 /// Life / mana / capacity per point by vocation index (CIP and siblings).
 constexpr int LifePerPoint[VocationCount] = { 3, 2, 1, 1, 2 };
 constexpr int ManaPerPoint[VocationCount] = { 1, 3, 6, 6, 2 };
 constexpr int CapacityPerPoint[VocationCount] = { 5, 4, 2, 2, 5 };
-/// CIP DAT_1017dc404.
+/// Mitigation per point.
 constexpr float MitigationPerPoint = 0.075f;
-
-/// The conviction perk of each slice by vocation index (knight, paladin, sorcerer,
-/// druid, monk).
-constexpr std::array<std::array<int, VocationCount>, SlotCount> MediumPerks = { {
-    { 8, 17, 35, 28, 39 }, { 5, 5, 5, 5, 5 }, { 14, 21, 26, 32, 42 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 12, 22, 27, 29, 44 },
-    { 37, 37, 37, 37, 37 }, { 46, 46, 46, 46, 46 }, { 6, 6, 6, 6, 6 }, { 37, 37, 37, 37, 37 }, { 46, 46, 46, 46, 46 }, { 5, 5, 5, 5, 5 },
-    { 11, 19, 25, 30, 45 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 10, 18, 24, 31, 41 }, { 6, 6, 6, 6, 6 }, { 13, 20, 36, 33, 43 },
-    { 13, 20, 36, 33, 43 }, { 5, 5, 5, 5, 5 }, { 12, 22, 27, 29, 44 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 14, 21, 26, 32, 42 },
-    { 6, 6, 6, 6, 6 }, { 46, 46, 46, 46, 46 }, { 37, 37, 37, 37, 37 }, { 5, 5, 5, 5, 5 }, { 46, 46, 46, 46, 46 }, { 37, 37, 37, 37, 37 },
-    { 10, 18, 24, 31, 41 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 11, 19, 25, 30, 45 }, { 6, 6, 6, 6, 6 }, { 9, 16, 23, 35, 38 },
-} };
 
 constexpr std::array<std::array<int, 9>, DomainCount> DomainSlots = { {
     { 14, 13, 12, 8, 7, 6, 2, 1, 0 },
@@ -102,15 +73,6 @@ constexpr std::array<std::array<int, 9>, DomainCount> DomainSlots = { {
     { 21, 22, 23, 27, 28, 29, 33, 34, 35 },
 } };
 
-constexpr std::array<std::array<int, VocationCount>, DomainCount> LargePerks = { {
-    { 0, 0, 0, 0, 0 },
-    { 1, 4, 7, 11, 13 },
-    { 2, 5, 8, 10, 14 },
-    { 3, 6, 9, 12, 15 },
-} };
-
-constexpr std::array<int, 4> CentreSlots = { 14, 15, 20, 21 };
-
 /// Neighbours across the domain borders that are not orthogonal grid neighbours.
 constexpr std::pair<int, int> ExtraLinks[] = {
     { 1, 6 }, { 2, 7 }, { 3, 10 }, { 4, 11 }, { 6, 1 }, { 7, 2 }, { 7, 12 }, { 8, 13 }, { 9, 16 }, { 10, 3 }, { 10, 17 },
@@ -118,6 +80,7 @@ constexpr std::pair<int, int> ExtraLinks[] = {
     { 25, 18 }, { 25, 32 }, { 26, 19 }, { 27, 22 }, { 28, 23 }, { 28, 33 }, { 29, 34 }, { 31, 24 }, { 32, 25 }, { 33, 28 }, { 34, 29 },
 };
 
+/// The revelation points each stage needs.
 constexpr int Thresholds[] = { 0, 250, 500, 1000 };
 constexpr int RevelationMasteryBonus[] = { 150, 165, 180, 225 };
 
@@ -128,7 +91,7 @@ constexpr std::pair<int, int> RevelationMasteryPerks[] = {
 };
 
 /// Cooldown augmentations that also grant momentum.
-constexpr int MomentumMods[] = { 6, 7, 0x18, 0x19, 0x24, 0x25, 0x2a, 0x2b, 0x3b, 0x3c, 0x4c, 0x58, 0x59 };
+constexpr int MomentumMods[] = { 6, 7, 0x18, 0x19, 0x24, 0x25, 0x2a, 0x2b, 0x3b, 0x3c, 0x4c, 0x58, 0x59, 0x61 };
 constexpr double MomentumByGrade[] = { 0, 0.33, 0.66, 1.0 };
 
 constexpr double DodgeByGrade[] = { 0.28, 0.31, 0.34, 0.42 };
@@ -202,21 +165,6 @@ const char* mediumPerkId(const int perk)
 
 QString multi(const QString& longText, const QString& shortText) { return longText + MultiStringSeparator + shortText; }
 
-/// CIP : up to `decimals` decimals, trailing zeros dropped.
-QString trimmedNumber(const double value, const int decimals)
-{
-    QString text = QLocale(QLocale::English).toString(value, 'f', decimals);
-    if (text.contains(u'.')) {
-        while (text.endsWith(u'0'))
-            text.chop(1);
-        if (text.endsWith(u'.'))
-            text.chop(1);
-    }
-    return text;
-}
-
-QString sign(const double value) { return value > 0.0 ? QStringLiteral("+") : QString(); }
-
 /// A signed number in English grouping, then its " k"/"k", " kk"/"kk" and
 /// " kkk"/"kkk" forms from 1,000 on, as a multi string.
 QString shortenedNumber(const int value)
@@ -249,20 +197,6 @@ QString perkDamageTypeName(const int element)
         case 5: return qtTrId("damagetype_holy");
         case 6: return qtTrId("damagetype_death");
         default: return qtTrId("damagetype_physical");
-    }
-}
-
-/// CIP : a mod value (scaled by 100) in the given format.
-QString formatModValue(const qint64 value, const int format)
-{
-    switch (format) {
-        case 1: return sign(static_cast<double>(value)) + englishNumber(value);
-        case 4: {
-            const double v = static_cast<double>(value) * 0.0001 * 100.0;
-            return QStringLiteral("%1%").arg(sign(v) + trimmedNumber(v, 2));
-        }
-        case 6: return QStringLiteral("%1%").arg(QLocale(QLocale::English).toString(static_cast<double>(value) * 0.0001 * 100.0, 'f', 2));
-        default: return qtTrId("dummy_unknown");
     }
 }
 
@@ -428,7 +362,7 @@ private:
         return tile;
     }
     bool hasPoints(const int tile) const { return m_points[checkedTile(tile)] > 0; }
-    bool isFull(const int tile) const { return m_points[checkedTile(tile)] == maxPoints(checkedTile(tile)); }
+    bool isFull(const int tile) const { return m_points[checkedTile(tile)] == gridConfiguration().maxPoints(checkedTile(tile)); }
 
     void clearFlags(const unsigned mask)
     {
@@ -449,7 +383,8 @@ private:
             m_flags[tile] |= HasPoints;
         m_visited[tile] |= Visited;
         if (m_flags[tile] & HasPoints) {
-            if (std::ranges::find(centreSlots(), tile) != centreSlots().end() || (m_flags[tile] & Connected)) {
+            const std::array<int, 4>& centre = gridConfiguration().centreTiles();
+            if (std::ranges::find(centre, tile) != centre.end() || (m_flags[tile] & Connected)) {
                 path.finished = path.connected = true;
                 return;
             }
@@ -495,17 +430,6 @@ QString percentNumberTrimmed(const double value, const int minDecimals, const in
 }
 
 
-int maxPoints(const int slot) { return slot >= 0 && slot < SlotCount ? MaxPoints[slot] : 0; }
-
-ESmallPerk smallPerk(const int slot) { return static_cast<ESmallPerk>(slot >= 0 && slot < SlotCount ? SmallPerks[slot] : 0); }
-
-int mediumPerk(const int slot, const int vocationIndex)
-{
-    if (slot < 0 || slot >= SlotCount || vocationIndex < 0 || vocationIndex >= VocationCount)
-        return 0;
-    return MediumPerks[slot][vocationIndex];
-}
-
 bool isVesselPerk(const int perk) { return perk == VesselNodePerk; }
 
 bool isMasteryIncreasePerk(const int perk) { return perk == MasteryIncreasePerk; }
@@ -519,7 +443,7 @@ int unlockedVesselCount(const std::array<int, SlotCount>& points, const int voca
 {
     int n = 0;
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (isVesselPerk(mediumPerk(slot, vocationIndex)) && points[slot] >= MaxPoints[slot])
+        if (isVesselPerk(gridConfiguration().mediumPerk(slot, vocationIndex)) && points[slot] >= gridConfiguration().maxPoints(slot))
             ++n;
     return std::min(n, VesselCount);
 }
@@ -536,20 +460,11 @@ int domainOfSlot(const int slot)
     return 0;
 }
 
-int largePerk(const int domain, const int vocationIndex)
-{
-    if (domain < 0 || domain >= DomainCount || vocationIndex < 0 || vocationIndex >= VocationCount)
-        return 0;
-    return LargePerks[domain][vocationIndex];
-}
-
-const std::array<int, 4>& centreSlots() { return CentreSlots; }
-
 /// CIP: no tile above its maximum, and every tile with points connected to the centre.
 bool isValid(const std::array<int, SlotCount>& points)
 {
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (points[slot] > MaxPoints[slot])
+        if (points[slot] > gridConfiguration().maxPoints(slot))
             return false;
     TGridPathSolver solver(points);
     solver.solve();
@@ -561,13 +476,13 @@ bool isUnlocked(const std::array<int, SlotCount>& points, const int slot)
     if (points[slot] > 0)
         return true;
     auto filled = points;
-    filled[slot] = MaxPoints[slot];
+    filled[slot] = gridConfiguration().maxPoints(slot);
     return isValid(filled);
 }
 
 bool canDecrease(const std::array<int, SlotCount>& points, const int slot)
 {
-    if (points[slot] < MaxPoints[slot])
+    if (points[slot] < gridConfiguration().maxPoints(slot))
         return points[slot] > 0;
     auto cleared = points;
     cleared[slot] = 0;
@@ -585,11 +500,11 @@ int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, const in
     int total = 0;
     for (const int slot : domainSlots(domain)) {
         total += wheel.points[slot];
-        if (isMasteryIncreasePerk(mediumPerk(slot, vocationIndex)) && wheel.points[slot] >= MaxPoints[slot])
+        if (isMasteryIncreasePerk(gridConfiguration().mediumPerk(slot, vocationIndex)) && wheel.points[slot] >= gridConfiguration().maxPoints(slot))
             total += MasteryIncreasePoints;
     }
     // Greater gems in unlocked vessels of their quality: supreme Revelation Mastery mods.
-    const int perk = largePerk(domain, vocationIndex);
+    const int perk = gridConfiguration().largePerk(domain, vocationIndex);
     const int unlocked = unlockedVesselCount(wheel.points, vocationIndex);
     for (int v = 0; v < unlocked; ++v) {
         const std::optional<TGem>& gem = wheel.vessels[v];
@@ -599,14 +514,6 @@ int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, const in
         total += revelationMasteryBonus(grade != supremeGrades.end() ? grade->second : 0);
     }
     return std::clamp(total, 0, 1000);
-}
-
-int revelationStage(const int points)
-{
-    int stage = 0;
-    while (stage < 3 && points >= Thresholds[stage + 1])
-        ++stage;
-    return stage;
 }
 
 int revelationThreshold(const int stage) { return Thresholds[std::clamp(stage, 0, 3)]; }
@@ -769,7 +676,7 @@ int mediumPerkCount(const std::array<int, SlotCount>& points, const int perk, co
 {
     int count = 0;
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (mediumPerk(slot, vocationIndex) == perk && points[slot] >= MaxPoints[slot])
+        if (gridConfiguration().mediumPerk(slot, vocationIndex) == perk && points[slot] >= gridConfiguration().maxPoints(slot))
             ++count;
     return count;
 }
@@ -1213,27 +1120,40 @@ TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TG
     return mods;
 }
 
+namespace {
+
+/// One effect of a basic mod: "<value> <stat name>". Resistances (0..8) are percents of the value
+/// * 100, mitigation (9) a fixed two-decimal percent, life, mana and capacity (10..12) whole
+/// numbers; an unknown stat shows no value. A vocation index outside 0..4 has the value 0.
+QString basicEffectLine(const TBasicEffect& effect, const int vocationIndex, const int grade)
+{
+    const double v = vocationIndex >= 0 && vocationIndex < VocationCount ? effect.values[vocationIndex][std::clamp(grade, 0, 3)] : 0.0;
+    qint64 value = 0;
+    int format = 0;
+    if (effect.stat >= 0 && effect.stat <= 8) {
+        value = std::lround(v * 100.0);
+        format = 4;
+    } else if (effect.stat == 9) {
+        value = std::lround(v * 100.0);
+        format = 6;
+    } else if (effect.stat >= 10 && effect.stat <= 12) {
+        value = static_cast<int>(v);
+        format = 1;
+    }
+    return QStringLiteral("%1 %2").arg(formatValue(value, format), basicStatName(effect.stat));
+}
+
+}
+
 QString basicModEffect(const int mod, const int vocationIndex, const int grade)
 {
-    if (mod < 0 || mod >= BasicModCount || BasicMods[mod].count == 0)
+    if (mod < 0 || mod >= BasicModCount)
+        throw std::out_of_range("array::at");
+    if (BasicMods[mod].count == 0)
         return qtTrId("dummy_unknown");
-    const int voc = std::clamp(vocationIndex, 0, VocationCount - 1);
-    const int g = std::clamp(grade, 0, 3);
     QStringList lines;
-    for (int i = 0; i < BasicMods[mod].count; ++i) {
-        const TBasicEffect& effect = BasicMods[mod].effects[i];
-        const double v = effect.values[voc][g];
-        qint64 value = 0;
-        int format = 0;
-        if (effect.stat >= 10 && effect.stat <= 12) {
-            value = static_cast<int>(v);
-            format = 1;
-        } else {
-            value = std::lround(v * 100.0);
-            format = effect.stat == 9 ? 6 : 4;
-        }
-        lines << QStringLiteral("%1 %2").arg(formatModValue(value, format), basicStatName(effect.stat));
-    }
+    for (int i = 0; i < BasicMods[mod].count; ++i)
+        lines << basicEffectLine(BasicMods[mod].effects[i], vocationIndex, grade);
     return lines.join(u'\n');
 }
 
@@ -1269,30 +1189,29 @@ QString supremeModEffect(const int mod, const int grade)
 {
     if (mod < 0 || mod >= SupremeModCount)
         return qtTrId("dummy_unknown");
-    const int g = std::clamp(grade, 0, 3);
-    const auto percent = [&](const double v) { return QStringLiteral("%1 %2").arg(formatModValue(static_cast<int>(v * 100.0), 4), supremeModName(mod, false, false)); };
+    const auto checkedGrade = [grade] {
+        if (grade < 0 || grade > 3)
+            throw std::out_of_range("array::at");
+        return grade;
+    };
+    const auto percent = [&](const double v) {
+        return QStringLiteral("%1 %2").arg(formatValue(static_cast<int>(v * 100.0), 4), supremeModName(mod, false, false));
+    };
     switch (SupremeCategories[mod]) {
-        case 0: return percent(DodgeByGrade[g]);
-        case 1: return percent(CriticalByGrade[g]);
-        case 2: return percent(LifeLeechByGrade[g]);
-        case 3: return percent(ManaLeechByGrade[g]);
+        case 0: return percent(DodgeByGrade[checkedGrade()]);
+        case 1: return percent(CriticalByGrade[checkedGrade()]);
+        case 2: return percent(LifeLeechByGrade[checkedGrade()]);
+        case 3: return percent(ManaLeechByGrade[checkedGrade()]);
         case 4: {
+            const bool hasMomentum = std::ranges::find(MomentumMods, mod) != std::end(MomentumMods);
+            const double momentum = hasMomentum ? MomentumByGrade[checkedGrade()] : 0.0;
             const TSupremeAugmentation& aug = SupremeAugmentations[mod];
-            const double v = aug.values[g];
-            switch (aug.augType) {
-                case 2: return qtTrId("augmentation_description_percentage_damage").arg(v * 100.0);
-                case 3: return qtTrId("augmentation_description_percentage_healing").arg(v * 100.0);
-                case 6: {
-                    const bool momentum = std::ranges::find(MomentumMods, mod) != std::end(MomentumMods);
-                    if (momentum && MomentumByGrade[g] > 0.0)
-                        return qtTrId("augmentation_description_cooldown_with_momentum").arg(v).arg(MomentumByGrade[g]);
-                    return qtTrId("augmentation_description_cooldown").arg(v);
-                }
-                case 16: return qtTrId("augmentation_description_critical_damage_short").arg(v * 100.0);
-                default: return qtTrId("dummy_unknown");
-            }
+            return augmentationDescription(aug.values[checkedGrade()], aug.spellId, aug.augType, momentum, hasMomentum, true);
         }
-        case 5: return qtTrId("skillwheel_gem_mod_revelation_mastery").arg(largePerkName(revelationMasteryPerk(mod))).arg(revelationMasteryBonus(g));
+        case 5:
+            return qtTrId("skillwheel_gem_mod_revelation_mastery")
+                .arg(largePerkName(revelationMasteryPerk(mod)))
+                .arg(RevelationMasteryBonus[checkedGrade()]);
         default: return qtTrId("dummy_unknown");
     }
 }
@@ -1312,14 +1231,6 @@ QUrl imageUrl(const char* provider, const int index) { return QUrl(QStringLitera
 QUrl gemImage(const TGem& gem, const int vocationIndex)
 {
     return imageUrl("icons-skillwheel-gemvariants", gem.quality + std::clamp(vocationIndex, 0, VocationCount - 1) * 12 + gem.domain * 3);
-}
-
-QUrl socketBezel(const int domain, const int resonance, const int quality, const bool hasGem)
-{
-    if (resonance <= 0)
-        return {};
-    const bool match = hasGem && quality + 1 == resonance;
-    return imageUrl("icons-skillwheel-sockets", resonance + domain * 3 + (match ? 0 : 12));
 }
 
 QUrl domainAffinityImage(const int domain) { return imageUrl("icons-skillwheel-gem-domainaffinity", domain); }
@@ -1405,7 +1316,7 @@ qint64 smallPerkTotal(const std::array<int, SlotCount>& points, const ESmallPerk
 {
     int sum = 0;
     for (int slot = 0; slot < SlotCount; ++slot) {
-        const ESmallPerk p = smallPerk(slot);
+        const ESmallPerk p = static_cast<ESmallPerk>(gridConfiguration().smallPerk(slot, vocationIndex));
         if (p == perk || (p == ESmallPerk::LifeAndMana && (perk == ESmallPerk::Life || perk == ESmallPerk::Mana)))
             sum += points[slot];
     }
@@ -1430,6 +1341,8 @@ bool hasBasicMod(const int mod) { return mod >= 0 && mod < BasicModCount && Basi
 bool isAugmentationMod(const int mod) { return mod >= 0 && mod < SupremeModCount && SupremeCategories[mod] == 4; }
 
 int supremeModCategory(const int mod) { return mod >= 0 && mod < SupremeModCount ? SupremeCategories[mod] : -1; }
+
+bool showsModName(const int mod) { return (supremeModCategory(mod) & ~1) == 4; }
 
 bool supremeModForVocation(const int mod, const int vocationIndex)
 {

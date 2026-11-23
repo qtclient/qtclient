@@ -749,10 +749,14 @@ TPreyPreyPageController::TPreyPreyPageController(QObject* parent)
     m_preyListTimer.setSingleShot(true);
     connect(&m_preyListTimer, &QTimer::timeout, this, &TPreyPreyPageController::preyListChanged);
     m_freeRerollTimer.setInterval(FreeListRerollRefreshMs);
-    connect(&m_freeRerollTimer, &QTimer::timeout, this, [this] {
-        for (QObject* info : std::as_const(m_renderInfos))
-            Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
-    });
+    connect(&m_freeRerollTimer, &QTimer::timeout, this, &TPreyPreyPageController::onAdvanceTimeUntilFreeListReroll);
+}
+
+/// Every slot's free list reroll countdown is shown anew.
+void TPreyPreyPageController::onAdvanceTimeUntilFreeListReroll()
+{
+    for (QObject* info : std::as_const(m_renderInfos))
+        Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
 }
 
 /// The session's prey storage: its prices and wildcards.

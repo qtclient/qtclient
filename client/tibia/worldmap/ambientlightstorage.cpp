@@ -2,7 +2,6 @@
 
 #include "config/clientsettings.h"
 
-#include <tibia/game/sessionhooks.h>
 
 #include <algorithm>
 
@@ -50,16 +49,10 @@ TAmbientLightStorage::TAmbientLightStorage(QObject* parent)
     m_interpolationTimer.setInterval(InterpolationIntervalMs);
     connect(&m_interpolationTimer, &QTimer::timeout, this, &TAmbientLightStorage::interpolatedTibiaTimeOfDayChanged);
     m_interpolationTimer.start();
-
-    // CIP's world-time message (0xef): hour / 24 + minute / 1440.
-    m_worldTimeHook = tibia::world::subscribeWorldTime([this](const int hour, const int minute) {
-        setNormalizedTibiaTimeOfDay(static_cast<float>(hour) / 24.0f + static_cast<float>(minute) / 1440.0f);
-    });
 }
 
 TAmbientLightStorage::~TAmbientLightStorage()
 {
-    tibia::world::unsubscribeWorldTime(m_worldTimeHook);
     if (g_instance == this)
         g_instance = nullptr;
 }

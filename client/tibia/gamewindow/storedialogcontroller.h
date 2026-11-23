@@ -2,7 +2,9 @@
 
 #include "input/gameactiondispatch.h"
 #include "gamewindow/dialogmanager.h"
+#include "gamewindow/hirelingnamechangecontroller.h"
 #include "store/storestorage.h"
+#include "highlighttimer.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -28,7 +30,9 @@ class TQmlStoreOffer;
 namespace tibia {
 namespace gamewindow {
 
+class TCharacterWorldTransferDialogController;
 class TGenericEnterTextDialogController;
+class TMainCharacterChangeDialogController;
 class TMarketCoinTransactionDetailsDialogController;
 class TMessageDialogController;
 
@@ -135,11 +139,6 @@ public:
 
     /// Host: the store button and the market's "get coins" open the home page.
     void open();
-    /// Host: OPEN_STORE with the open action and its detail (CIP's
-    /// TStoreGameActionHandler hands the action's TStoreOpenParameters to the
-    /// message handler): 1 premium time / boosts, 2 the category `text`, 3 the
-    /// useful thing, 4 the offer, 5 search for `text`, anything else home.
-    void openWith(int openAction, int detail, const QString& text = {});
     void openWith(const store::TStoreOpenParameters& parameters);
 
     QStringList sortOrderModel() const override;
@@ -201,8 +200,16 @@ private:
     void onSearchResultsChanged(bool moreResultsAvailable);
     void onEmptySearchResultReceived();
     void onTransactionHistoryChanged();
+    /// The storage's transaction details, shown when they are the requested ones.
+    void onTransactionDetailsChanged();
     void onNewCharacterNameRequested(int offerId, bool buyWithCosmeticTokens);
     void onNewCharacterNameEntered(const QString& name);
+    /// The world transfer dialog for the own character and the offer.
+    void onCharacterWorldTransferWorldRequested(int offerId, const store::TWorldTransferInformation& worldTransferInformation,
+                                                bool buyWithCosmeticTokens);
+    /// The main character dialog with the offer's possible characters.
+    void onMainCharChangeRequested(int offerId, const std::vector<store::TPossibleMainCharacterInformation>& possibleMainCharInfo,
+                                   bool buyWithCosmeticTokens);
     /// The world transfer dialog chose a world: confirm the offer for it.
     void onCharacterWorldTransferWorldEntered(int offerId, const QString& worldName);
     /// The main character dialog chose a character: confirm the offer for it.
@@ -225,9 +232,6 @@ private:
     void onViewEventTimeoutElapsed();
     void onExtraConfirmDialogClickedOK();
     void onExtraConfirmDialogClickedNotOK();
-    /// Host: HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
-    void onHirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
-    void onHirelingNameChangeEntered(const QString& name);
 
     /// The offers of the active filter tag, the first one selected.
     void rebuildAvailableOffers();
@@ -251,6 +255,8 @@ private:
     store::TStoreDescriptionManager* m_descriptionManager;
     TStorePurchaseConfirmationDialogController m_confirmationDialog;
     TGenericEnterTextDialogController* m_newCharacterNameDialog;
+    TCharacterWorldTransferDialogController* m_worldTransferDialog;
+    TMainCharacterChangeDialogController* m_mainCharChangeDialog;
     THirelingConfigurationDialogController m_hirelingDialog;
     /// The server's extra confirmation (OK / Cancel).
     TMessageDialogController* m_extraConfirmationDialog;
@@ -277,8 +283,8 @@ private:
     bool m_buyWithCosmeticTokens = false;
     TMarketCoinTransactionDetailsDialogController* m_transactionDetailsDialog;
     int m_transactionDetailsId = 0;
-    /// Host: hireling renaming outside the store.
-    TGenericEnterTextDialogController* m_hirelingNameDialog;
+    /// Host: the hireling rename prompt lives with the store (CIP creates it with the game client).
+    THirelingNameChangeController* m_hirelingNameChange;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to
@@ -302,28 +308,30 @@ class TStoreButtonController final : public cip::tibia::gamewindow::TStoreButton
 public:
     explicit TStoreButtonController(TStoreDialogController* dialog, QObject* parent = nullptr);
 
-    bool highlighted() const override { return m_highlightTimer.isActive(); }
+    bool highlighted() const override { return m_highlightTimer.isHighlighted(); }
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& pGameSession);
 
 public Q_SLOTS:
     /// OPEN_STORE with the deep link (the home page without one).
     void onOpenStoreButtonClicked() override;
+    /// A sale or a new offer highlights the button (protected).
     void onStoreButtonIndicatorsChanged(bool SaleFlag, bool NewFlag) override;
     void onHighlightStoreButtonEnds(bool Protected) override;
-    /// The store opened; the deep link is used up.
+    /// The store opened: the highlight stops (even a protected one) and the
+    /// deep link is used up.
     void onRequestOpenStoreDialog() override;
 
 private:
     /// The server's deep link: kept for the next click; any link but the home
-    /// page highlights the button.
+    /// page highlights the button, the home page ends an unprotected highlight.
     void onStoreDeeplinkChanged(const store::TStoreOpenParameters& StoreDeeplink);
     void clearDeeplink();
 
     QPointer<TStoreDialogController> m_dialog;
     std::shared_ptr<game::IGameSession> m_gameSession;
-    /// The highlight (600000 ms, single shot).
-    QTimer m_highlightTimer;
+    /// The highlight (600000 ms).
+    shared::THighlightTimer m_highlightTimer{ 600000 };
     store::TStoreOpenParameters m_deeplink;
 };
 

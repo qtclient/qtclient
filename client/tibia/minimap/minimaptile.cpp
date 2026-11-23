@@ -1,6 +1,9 @@
 #include "minimaptile.h"
 
+#include "colorhelper.h"
+
 #include <algorithm>
+#include <vector>
 
 namespace tibia::minimap {
 
@@ -39,6 +42,20 @@ QImage blankImage(const QList<QRgb>& palette, const uint8_t fill)
     image.setColorTable(palette);
     image.fill(fill);
     return image;
+}
+
+/// Unseen fields (colour 0) opaque black, seen fields transparent.
+QImage unexploredMaskFrom(const QImage& colors)
+{
+    QImage mask(colors.size(), QImage::Format_ARGB32_Premultiplied);
+    const uchar* bits = colors.constScanLine(0);
+    const std::vector<uchar> indices(bits, bits + colors.width() * colors.height());
+    const QRgb seen = QColor(0, 0, 0, 0).rgba();
+    const QRgb unseen = QColor(0, 0, 0, 255).rgba();
+    for (int y = 0; y < mask.height(); ++y)
+        for (int x = 0; x < mask.width(); ++x)
+            mask.setPixel(x, y, indices[y * colors.width() + x] == 0 ? unseen : seen);
+    return mask;
 }
 
 }
@@ -89,7 +106,24 @@ void TMinimapTile::setColorIndex(const Position& coord, const uint8_t colorIndex
     if (m_colors.pixelIndex(p) == colorIndex)
         return;
     m_colors.setPixel(p, colorIndex);
-    m_changed = true;
+    setChanged();
+}
+
+void TMinimapTile::setColor(const Position& coord, const QColor& color)
+{
+    const QPoint p = pixelOf(coord);
+    const uint8_t colorIndex = shared::eightBitFromColor(color);
+    if (m_colors.pixelIndex(p) == colorIndex)
+        return;
+    m_colors.setPixel(p, colorIndex);
+    setChanged();
+}
+
+QImage TMinimapTile::unexploredMask()
+{
+    if (m_unexploredMask.isNull())
+        m_unexploredMask = unexploredMaskFrom(m_colors);
+    return m_unexploredMask;
 }
 
 void TMinimapTile::setWaypoint(const Position& coord, const uint8_t cost, const bool blocked)

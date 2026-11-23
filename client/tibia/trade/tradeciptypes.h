@@ -3,6 +3,7 @@
 // CIP-named trade surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
+#include "input/gameactionptr.h"
 #include "trade/npctradestorage.h"
 #include "trade/playertradestorage.h"
 #include "shared/cip_typed.h"
@@ -14,6 +15,7 @@
 #include <QString>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -33,6 +35,13 @@ class GameserverMessageResourceBalance;
 }
 
 namespace tibia {
+namespace creatures {
+class TCreatureStorage;
+}
+namespace input {
+class TGameActionPlayerTradeItem;
+class TGameActionTargetSelected;
+}
 namespace trade {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
@@ -148,6 +157,8 @@ public:
     /// CIP: closes the trade; the trader's goods are dropped.
     void sendClose();
     void sendLook(const TNPCTradeGood& good);
+    /// The good's object goes to the inspection window (NPC trade inspection).
+    void sendInspect(const TNPCTradeGood& good);
     void sendBuy(const TNPCTradeGood& good, int amount, bool ignoreCapacity, bool withBackpacks);
     void sendSell(const TNPCTradeGood& good, int amount, bool ignoreEquipped);
 
@@ -164,11 +175,32 @@ private:
     TNPCTradeStorage* m_storage = nullptr;
 };
 
+/// The player trade game actions: TRADE_ITEM without a player waits for the
+/// player to be picked (target selection); with one it asks the server to
+/// trade the object with that player.
 class TPlayerTradeGameActionHandler final : public cip::tibia::trade::TPlayerTradeGameActionHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::trade::TPlayerTradeGameActionHandler::TPlayerTradeGameActionHandler;
+    explicit TPlayerTradeGameActionHandler(creatures::TCreatureStorage* pCreatureStorage, QObject* parent = nullptr);
+    ~TPlayerTradeGameActionHandler() override;
+
+public Q_SLOTS:
+    /// TRADE_ITEM and TARGET_SELECTED; other actions are ignored.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+Q_SIGNALS:
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+
+private:
+    void handleTradeItemGameAction(const std::shared_ptr<const input::TGameActionPlayerTradeItem>& pAction);
+    /// The picked creature gets the waiting trade when it is another player;
+    /// anything else asks (status line) to select a player. The waiting
+    /// trade is dropped either way.
+    void handleTargetSelectedGameAction(const std::shared_ptr<const input::TGameActionTargetSelected>& pTarget);
+
+    creatures::TCreatureStorage* m_pCreatureStorage;
+    std::shared_ptr<const input::TGameActionPlayerTradeItem> m_pPendingAction;
 };
 
 /// The player trade messages: fills TPlayerTradeStorage from the server's

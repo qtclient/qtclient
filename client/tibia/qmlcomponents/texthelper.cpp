@@ -63,8 +63,9 @@ QString ultraShortDurationString(const qint64 seconds)
     const QChar zero(u'0');
     if (seconds >= 864000)
         return QStringLiteral("%1d").arg(seconds / 86400);
+    // The day form's second part is the minutes into the day, not the hours.
     if (seconds >= 86400)
-        return QStringLiteral("%1d%2").arg(seconds / 86400).arg((seconds % 86400) / 3600, 2, 10, zero);
+        return QStringLiteral("%1d%2").arg(seconds / 86400).arg((seconds % 86400) / 60, 2, 10, zero);
     if (seconds >= 36000)
         return QStringLiteral("%1h").arg(seconds / 3600);
     if (seconds >= 3600)
@@ -76,30 +77,34 @@ QString ultraShortDurationString(const qint64 seconds)
     return QStringLiteral("%1s").arg(seconds);
 }
 
+QString hoursMinutesSecondsString(const qint64 seconds)
+{
+    const QString hoursMinutes = QStringLiteral("%1:%2").arg(seconds / 3600, 2, 10, QChar(u'0')).arg((seconds / 60) % 60, 2, 10, QChar(u'0'));
+    return QStringLiteral("%1:%2").arg(hoursMinutes).arg(seconds % 60, 2, 10, QChar(u'0'));
+}
+
 QString thousandShortcutsMultiString(const qlonglong number, const bool withPlus)
 {
     return shortcutVariants(number, withPlus).join(MultiStringSeparator);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatNumberWithThousandSeparators(const qlonglong Number)
 {
     return grouped(Number);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(const qlonglong Number)
 {
-    return shortcutVariants(Number, false).join(MultiStringSeparator);
+    return thousandShortcutsMultiString(Number, false);
 }
 
 QString TTextHelperQmlService::formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(const qlonglong Number,
                                                                                                   const bool WithPlusForPositiveValues)
 {
-    return shortcutVariants(Number, WithPlusForPositiveValues).join(MultiStringSeparator);
+    return thousandShortcutsMultiString(Number, WithPlusForPositiveValues);
 }
 
-/// CIP : every pairing of the two numbers' variants.
+/// Every pairing of the two numbers' variants.
 QString TTextHelperQmlService::formatTwoNumbersWithThousandSeparatorsAndThousandShortcutsAsMultiString(
     const QString& FormatString, const qlonglong FirstNumber, const qlonglong SecondNumber, const bool WithPlusForPositiveValues)
 {
@@ -113,7 +118,6 @@ QString TTextHelperQmlService::formatTwoNumbersWithThousandSeparatorsAndThousand
     return variants.join(MultiStringSeparator);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatNumberWithThousandShortcutsAsMultiString(const qlonglong Number)
 {
     QStringList variants{ grouped(Number) };
@@ -127,7 +131,6 @@ QString TTextHelperQmlService::formatNumberWithThousandShortcutsAsMultiString(co
     return variants.join(MultiStringSeparator);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatNumberWithThousandSeparatorsShortestShortcut(const qlonglong Number)
 {
     if (Number >= 1000000 || Number <= -1000000)
@@ -137,7 +140,6 @@ QString TTextHelperQmlService::formatNumberWithThousandSeparatorsShortestShortcu
     return grouped(Number / 1000) + QStringLiteral(" k");
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatNumberToShortStringWithMax999k(const qlonglong Number)
 {
     const auto value = static_cast<uint>(Number);
@@ -148,37 +150,24 @@ QString TTextHelperQmlService::formatNumberToShortStringWithMax999k(const qlongl
     return QString::number(value);
 }
 
-/// CIP (below an hour , else).
+/// Up to an hour (inclusive) minutes and seconds, then hours and minutes, days from a day on.
 QString TTextHelperQmlService::formatSecondsToShortDaysHoursMinOrHoursMinOrMinSecondsOrSecondsTimeString(const int Seconds)
 {
-    const qlonglong s = Seconds;
-    if (s < 3600) {
-        if (s < 60)
-            return qtTrId("time_second_short").arg(s);
-        if (s % 60 == 0)
-            return qtTrId("time_minutes_short").arg(s / 60);
-        return qtTrId("time_minutes_and_seconds_short").arg(s / 60).arg(s % 60);
-    }
-    const qlonglong minutes = s / 60;
-    if (minutes <= 1440)
-        return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
-    return qtTrId("time_days_hours_and_minutes_short").arg(minutes / 1440).arg((minutes % 1440) / 60).arg(minutes % 60);
+    return shortDurationString(Seconds);
 }
 
-/// CIP : "HH:MM:SS".
+/// "HH:MM:SS".
 QString TTextHelperQmlService::formatSecondsToShortHoursMinutesSecondsTimeString(const qlonglong Seconds)
 {
-    const QString hoursMinutes = QStringLiteral("%1:%2").arg(Seconds / 3600, 2, 10, QChar(u'0')).arg((Seconds / 60) % 60, 2, 10, QChar(u'0'));
-    return QStringLiteral("%1:%2").arg(hoursMinutes).arg(Seconds % 60, 2, 10, QChar(u'0'));
+    return hoursMinutesSecondsString(Seconds);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatSecondsToUltraShortDaysOrHoursOrMinsOrSecondsTimeString(const qlonglong Seconds)
 {
     return ultraShortDurationString(Seconds);
 }
 
-/// CIP (on minutes).
+/// On whole minutes.
 QString TTextHelperQmlService::formatSecondsToCompactHoursMinutesTimeString(const qlonglong Seconds)
 {
     const qlonglong minutes = Seconds / 60;
@@ -189,7 +178,6 @@ QString TTextHelperQmlService::formatSecondsToCompactHoursMinutesTimeString(cons
     return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatSecondsToMinutesTimeString(const qlonglong Seconds)
 {
     if (Seconds < 60)
@@ -197,7 +185,6 @@ QString TTextHelperQmlService::formatSecondsToMinutesTimeString(const qlonglong 
     return qtTrId("time_minutes").arg(QString::number((Seconds + 30) / 60));
 }
 
-/// CIP .
 QString TTextHelperQmlService::capitalizeEachWordInString(const QString& Text)
 {
     if (Text.isEmpty())
@@ -208,13 +195,12 @@ QString TTextHelperQmlService::capitalizeEachWordInString(const QString& Text)
     return words.join(u' ');
 }
 
-/// CIP / : "{#rrggbb|text}" -> font tags.
+/// "{#rrggbb|text}" -> font tags.
 QString TTextHelperQmlService::replaceColorCodingsWithHtmlTags(const QString& TextWithColorCodings)
 {
     return chat::replaceColorCodingsWithHtmlTags(TextWithColorCodings);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatDateTime(const int Timestamp, const bool WithSeconds)
 {
     QString format = QStringLiteral("yyyy-MM-dd, HH:mm");
@@ -228,7 +214,6 @@ QString TTextHelperQmlService::formatDateTime(const int Timestamp)
     return formatDateTime(Timestamp, true);
 }
 
-/// CIP .
 QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timestamp, const bool WithSeconds)
 {
     QString format = QStringLiteral("yyyy-MM-dd, HH:mm");
@@ -249,7 +234,7 @@ QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timest
     const bool summer = utc >= switchAt(3) && utc < switchAt(10);
     const QDateTime berlin = utc.toOffsetFromUtc(summer ? 7200 : 3600);
 #endif
-    return QStringLiteral("%1 %2").arg(berlin.toString(format), summer ? QStringLiteral("CEST") : QStringLiteral("CET"));
+    return qtTrId("%1 %2").arg(berlin.toString(format), summer ? QStringLiteral("CEST") : QStringLiteral("CET"));
 }
 
 QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timestamp)
@@ -257,7 +242,6 @@ QString TTextHelperQmlService::formatDateTimeWithTimeZoneBerlin(const int Timest
     return formatDateTimeWithTimeZoneBerlin(Timestamp, false);
 }
 
-/// CIP .
 QString TTextHelperQmlService::createQmlMultiString(const QString& LongString, const QString& ShortString)
 {
     return QStringList{ LongString, ShortString }.join(MultiStringSeparator);

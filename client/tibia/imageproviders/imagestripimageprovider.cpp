@@ -17,20 +17,22 @@ namespace {
 
 int g_spellIconCount = 0;
 
-class StripImageResponse final : public QQuickImageResponse
+/// CIP `shared::TImagestripResponse`: the cell of an asynchronous request,
+/// handed over and reported finished from the event loop.
+class TImagestripResponse final : public QQuickImageResponse
 {
 public:
-    explicit StripImageResponse(QImage image) : m_image(std::move(image))
+    explicit TImagestripResponse(const QImage& image)
     {
-        // requestImageResponse runs on the scene-graph thread. Keep this QObject
-        // on the app thread so finished() does not create children under
-        // QQmlEngine from QSGRenderThread.
-        if (QCoreApplication* app = QCoreApplication::instance()) {
+        // Host: requestImageResponse runs on the scene-graph thread. Keep this
+        // QObject on the app thread so finished() does not create children
+        // under QQmlEngine from QSGRenderThread.
+        if (QCoreApplication* app = QCoreApplication::instance())
             moveToThread(app->thread());
-            QMetaObject::invokeMethod(this, [this] { Q_EMIT finished(); }, Qt::QueuedConnection);
-        } else {
-            QTimer::singleShot(0, this, [this] { Q_EMIT finished(); });
-        }
+        QTimer::singleShot(0, this, [this, image] {
+            m_image = image;
+            Q_EMIT finished();
+        });
     }
 
     QQuickTextureFactory* textureFactory() const override { return QQuickTextureFactory::textureFactoryForImage(m_image); }
@@ -101,10 +103,11 @@ QImage TImagestrip::cell(const QString& id) const
     const uint index = id.toUInt(&ok);
     if (ok && !m_animationFrames.empty() && index < m_animationFrames.size())
         return m_animationFrames[static_cast<size_t>(index)];
-    if (ok && m_cellWidth > 0 && (qint64(index) + 1) * m_cellWidth <= m_image.width())
-        return m_image.copy(int(index) * m_cellWidth, 0, m_cellWidth, m_cellHeight);
-    QImage empty(std::max(m_cellWidth, 0), m_cellHeight, QImage::Format_ARGB32_Premultiplied);
-    empty.fill(Qt::transparent);
+    if (ok && (int(index) + 1) * m_cellWidth <= m_image.width())
+        return m_image.copy(QRect(int(index) * m_cellWidth, 0, m_cellWidth, m_cellHeight));
+    // A cell that is not in the strip shows red.
+    QImage empty(QSize(m_cellWidth, m_cellHeight), QImage::Format_ARGB32_Premultiplied);
+    empty.fill(QColor(Qt::red));
     return empty;
 }
 
@@ -126,7 +129,7 @@ QImage TImagestripImageProvider::requestImage(const QString& id, QSize* size, co
 
 QQuickImageResponse* TImagestripRichTextImageProvider::requestImageResponse(const QString& id, const QSize&)
 {
-    return new StripImageResponse(m_strip.cell(id));
+    return new TImagestripResponse(m_strip.cell(id));
 }
 
 void registerImageProviders(QQmlEngine* engine)

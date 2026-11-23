@@ -222,14 +222,30 @@ bool TAnalyticsSelectorWidgetController::huntingSessionAnalyserVisible() const {
 bool TAnalyticsSelectorWidgetController::partyHuntAnalyserVisible() const { return m_partyHuntAnalyserVisible; }
 bool TAnalyticsSelectorWidgetController::bossTrackerVisible() const { return m_bossTrackerVisible; }
 
-void TAnalyticsSelectorWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, SelectorOptionsKey); }
+/// The selector keeps only its maximized state; the content height is stored as 0.
+void TAnalyticsSelectorWidgetController::saveWidgetOptions()
+{
+    if (!m_options)
+        return;
+    QJsonObject json = readOptions(m_options, SelectorOptionsKey);
+    json.insert(QStringLiteral("contentHeight"), 0);
+    json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
+    m_options->setSection(QLatin1String(SelectorOptionsKey), json);
+}
 
 void TAnalyticsSelectorWidgetController::onWidgetVisible(const int WidgetType) { onWidgetVisibility(WidgetType, true); }
 
 void TAnalyticsSelectorWidgetController::onWidgetHidden(const int WidgetType) { onWidgetVisibility(WidgetType, false); }
 
 /// CIP: the stored widget options are applied (saving is saveWidgetOptions).
-void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged() { applyContentHeight(widget(), m_options, SelectorOptionsKey); }
+void TAnalyticsSelectorWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const QJsonObject json = readOptions(m_options, SelectorOptionsKey);
+    if (json.contains(QLatin1String("contentMaximized")))
+        widget()->setMaximized(json.value(QLatin1String("contentMaximized")).toBool());
+}
 
 void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType, const bool visible)
 {
@@ -1111,8 +1127,7 @@ void TLootAndWasteWidgetController::showTargetDialog()
         connect(m_targetDialog, &gamewindow::TGenericEnterTextDialogController::textEntered, this,
                 &TLootAndWasteWidgetController::onGaugeTargetValueChanged);
     }
-    m_targetDialog->setText(QString::number(static_cast<int>(m_storage->gaugeTarget(m_side))));
-    m_targetDialog->dialog()->show();
+    m_targetDialog->showWithText(QString::number(static_cast<int>(m_storage->gaugeTarget(m_side))));
 }
 
 // ----------------------------------------------------------------------------------------------

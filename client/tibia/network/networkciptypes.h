@@ -17,7 +17,6 @@ void ownProductSurface(QObject* parent);
 
 class TDualConnectionInfo final : public ::tibia::CipTyped {};
 
-class TDualConnectionUrlInfo final : public ::tibia::CipTyped {};
 
 class TGameserverNetworkPacketRawDataProcessor final : public ::tibia::CipTyped {};
 

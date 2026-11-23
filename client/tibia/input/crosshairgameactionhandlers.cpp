@@ -1,5 +1,6 @@
 #include "crosshairgameactionhandlers.h"
 
+#include "chat/chatchannel.h"
 #include "gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
@@ -55,78 +56,6 @@ bool isUseTwoObjectsTarget(const EGameActionContextType type)
     }
 }
 
-/// The field a crosshair spell aims at: a world map object's, or the
-/// creature's when the target is one (CIP: the battle list's).
-Position spellTargetPosition(const TObjectGameActionContext& target)
-{
-    if (target.locationType() == EGameActionContextType::LOCATION_WORLD_MAP_COORDINATE_WITH_STACK_POSITION)
-        return target.position();
-    if (target.locationType() != EGameActionContextType::LOCATION_BATTLE_LIST && target.location())
-        return {};
-    if (const uint32_t creatureId = target.creatureId()) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId))
-                return row->position();
-        }
-    }
-    return {};
-}
-
-void castAtTarget(const TGameActionTargetedSpell& spell, const TObjectGameActionContext& target)
-{
-    const Position position = spellTargetPosition(target);
-    if (!position.isValid() || spell.words().isEmpty())
-        return;
-    tibia::game::setNextTalkAim(position);
-    tibia::game::setNextTalkAimMode(1);
-    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(spell.talkMode()), 0, spell.words().toStdString());
-}
-
-}
-
-void say(const tibia::client::MessageMode mode, const QString& text, const int spellCastType,
-         const std::function<void(const IGameActionPtr&)>& publish)
-{
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spellOfText(text);
-    if (spell && spell->crossHairTarget) {
-        switch (static_cast<CastType>(spellCastType)) {
-        case CastType::AtMousePosition:
-        case CastType::None:
-        case CastType::Crosshair:
-            if (static_cast<CastType>(spellCastType) == CastType::AtMousePosition)
-                publish(std::make_shared<TGameActionSpellAtMouseCursor>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
-            else
-                publish(std::make_shared<TGameActionCrossHairSpell>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
-            return;
-        case CastType::AtTargetOrSelf:
-            tibia::game::setNextTalkAimMode(3);
-            break;
-        }
-    } else if (spell && spell->aimAtTarget) {
-        // Wave/beam towards mouse or attack target (server needDirection + aim tile).
-        switch (static_cast<CastType>(spellCastType)) {
-        case CastType::AtMousePosition:
-            publish(std::make_shared<TGameActionSpellAtMouseCursor>(static_cast<uint16_t>(spell->id), text, mode, spellCastType));
-            return;
-        case CastType::AtTargetOrSelf: {
-            const uint32_t targetId = tibia::game::attackingCreatureId();
-            if (targetId) {
-                if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-                    if (const auto creature = storage->creatureAt(targetId)) {
-                        tibia::game::setNextTalkAim(creature->position());
-                        tibia::game::setNextTalkAimMode(2);
-                    }
-                }
-            } else {
-                tibia::game::setNextTalkAimMode(3);
-            }
-            break;
-        }
-        default:
-            break;
-        }
-    }
-    tibia::game::talkChannel(mode, 0, text.toStdString());
 }
 
 TUseWithGameActionHandler::TUseWithGameActionHandler(QObject* parent)
@@ -285,7 +214,26 @@ void TCrossHairSpellGameActionHandler::handleCrossHairSpell(const std::shared_pt
         Q_EMIT publishGameAction(std::make_shared<TGameActionStartTargetSelection>());
         return;
     }
-    castAtTarget(*action, *action->target());
+    TObjectGameActionContext target = *action->target();
+    switch (target.locationType()) {
+    case EGameActionContextType::LOCATION_WORLD_MAP_COORDINATE_WITH_STACK_POSITION:
+        break;
+    case EGameActionContextType::LOCATION_BATTLE_LIST:
+        if (target.object() && target.object()->gameActionContextType() == EGameActionContextType::OBJECT_CREATURE) {
+            tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+            if (const std::shared_ptr<tibia::creatures::TCreature> creature = storage ? storage->creatureAt(target.creatureId()) : nullptr)
+                target = TObjectGameActionContext(std::make_shared<TLocationWorldMapCoordinateContext>(creature->position()), target.object());
+        }
+        break;
+    default:
+        return;
+    }
+    tibia::protobuf::protocol::GameclientMessageTalk message;
+    message.set_text(action->words().toStdString());
+    message.set_aim_mode(1);
+    message.set_mode(chat::protocolMessageMode(action->talkMode()));
+    setCoordinate(message.mutable_aim_position(), target.position());
+    Q_EMIT sendTalkMessage(message);
 }
 
 void TCrossHairSpellGameActionHandler::handleTargetSelected(const TTargetSelectedPtr& target)

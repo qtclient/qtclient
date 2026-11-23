@@ -17,6 +17,9 @@
 namespace tibia::sessiondump {
 class TClientSessiondumpRecorder;
 }
+namespace tibia::input {
+class TPlayerMovementIntentHandler;
+}
 
 namespace tibia {
 namespace game {
@@ -55,16 +58,21 @@ public:
     QString characterName() const;
     QString worldName() const;
 
+    /// The player's movement intent handler sends through the session's player
+    /// protocol message handler, which hands it its snap backs and stops.
+    /// qtclient: the intent handler belongs to the session state, which calls
+    /// this for each new one.
+    void connectPlayerMovementIntentHandler(input::TPlayerMovementIntentHandler* Handler);
+
     /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
     /// sessiondump / headless paths working without `g_game` bodies in game.cpp.
-    static void wireProcessLogin();
     static void wireProcessLoginError(std::string_view error);
     static void wireProcessLoginAdvice(std::string_view message);
     static void wireProcessLoginWait(std::string_view message, uint8_t time);
-    static void wireProcessSessionEnd(uint8_t reason);
     static void wireProcessWorldEntered();
-    static void wireProcessDeath(uint8_t deathType, uint8_t penality);
+    /// Host: a death stops the own walk and freezes the scene.
+    static void wireProcessDeath();
     static void wireProcessPing();
     static void wireProcessPingBack();
 

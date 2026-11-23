@@ -11,6 +11,12 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 
+#include "clockservice.h"
+
+#include <QQuickWindow>
+
+#include <algorithm>
+
 namespace tibia::gamewindow {
 
 namespace {
@@ -163,6 +169,8 @@ void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
             row.iconId[slotIndex] = slot.iconId;
             row.name[slotIndex] = QString::fromStdString(slot.name);
             row.remainingMs[slotIndex] = qint64(slot.duration) * 1000;
+            row.hasImbuement[slotIndex] = true;
+            row.running[slotIndex] = slot.state;
             ++row.filledSlots;
         }
         m_rows.push_back(std::move(row));
@@ -231,6 +239,46 @@ TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem*
     widget()->createItem(QStringLiteral("ImbuementTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TImbuementTrackerWidgetController::onWidgetQuickItemDestroyed);
+    // Host: the frame clock starts at the wall clock, so the countdown starts from now; each
+    // rendered frame of the game window is the sidebar widgets' frame update.
+    m_model->m_lastUpdate = shared::TClockService::frameMillis();
+    const auto followFrames = [this](QQuickWindow* window) {
+        if (window)
+            connect(window, &QQuickWindow::afterAnimating, this,
+                    [this] { updateWithTimestamp(shared::TClockService::frameMillis()); });
+    };
+    if (gameWindowItem) {
+        followFrames(gameWindowItem->window());
+        connect(gameWindowItem, &QQuickItem::windowChanged, this, followFrames);
+    }
+}
+
+void TImbuementTrackerWidgetController::updateWithTimestamp(const qint64 timestampMilliseconds)
+{
+    TImbuedObjectsModel& model = *m_model;
+    const qint64 elapsed = timestampMilliseconds - model.m_lastUpdate;
+    if (elapsed < 1000)
+        return;
+    model.m_lastUpdate = timestampMilliseconds;
+    for (size_t row = 0; row < model.m_rows.size(); ++row) {
+        TImbuedObjectsModel::Row& entry = model.m_rows[row];
+        bool changed = false;
+        for (int slot = 0; slot < 3; ++slot) {
+            if (!entry.hasImbuement[slot] || !entry.running[slot] || entry.remainingMs[slot] <= 0)
+                continue;
+            entry.remainingMs[slot] = std::max<qint64>(0, entry.remainingMs[slot] - elapsed);
+            changed = true;
+        }
+        if (!changed)
+            continue;
+        const QModelIndex index = model.index(static_cast<int>(row), 0);
+        Q_EMIT model.dataChanged(index, index,
+                                 { TImbuedObjectsModel::Imbuement1RemainingTimeStringRole, TImbuedObjectsModel::Imbuement1RemainingTimeMsRole,
+                                   TImbuedObjectsModel::Imbuement1VisualizationRole, TImbuedObjectsModel::Imbuement2RemainingTimeStringRole,
+                                   TImbuedObjectsModel::Imbuement2RemainingTimeMsRole, TImbuedObjectsModel::Imbuement2VisualizationRole,
+                                   TImbuedObjectsModel::Imbuement3RemainingTimeStringRole, TImbuedObjectsModel::Imbuement3RemainingTimeMsRole,
+                                   TImbuedObjectsModel::Imbuement3VisualizationRole });
+    }
 }
 
 TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController() { m_model->setItems({}); }

@@ -36,6 +36,11 @@ public:
     ~TExivaOptionsStorage() override;
 
     bool allowEveryone() const { return m_options.allowAll; }
+    bool allowOwnGuild() const { return m_options.allowOwnGuild; }
+    bool allowOwnParty() const { return m_options.allowOwnParty; }
+    bool allowVipList() const { return m_options.allowVipList; }
+    bool allowCharacterWhitelist() const { return m_options.allowPlayerWhitelist; }
+    bool allowGuildWhitelist() const { return m_options.allowGuildWhitelist; }
     /// Notifies only when the flag changes.
     void setAllowEveryone(bool allow);
     /// The five group flags at once; notifies when any of them changes.

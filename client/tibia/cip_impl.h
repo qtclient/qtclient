@@ -3,7 +3,8 @@
 // Handwritten classes QML instantiates instead of the generated cip:: bases
 // (included by the generated cip_registration.cpp).
 
-#include "qmlcomponents/outlinetext.h"
+#include "qmlcomponents/cachedoutlinetextquickitem.h"
+#include "qmlcomponents/outlinetextquickitem.h"
 #include "renderer/renderdriver.h"
 
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TRenderDriver, ::tibia::qmlcomponents::TRenderDriver);
@@ -52,7 +53,7 @@ CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TSoundHelperService, ::tibia::qmlcomp
 
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TMinimapQuickItem, ::tibia::qmlcomponents::TMinimapQuickItem);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TMinimapRendererQuickItem, ::tibia::qmlcomponents::TMinimapRendererQuickItem);
-CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType, ::tibia::qmlcomponents::TWorldMapCameraViewport);
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType, ::tibia::qmlcomponents::TWorldMapCameraViewportQmlType);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType, ::tibia::qmlcomponents::TWorldMapCoordinateQmlType);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TWorldMapCuboidQmlType, ::tibia::qmlcomponents::TWorldMapCuboidQmlType);
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType,

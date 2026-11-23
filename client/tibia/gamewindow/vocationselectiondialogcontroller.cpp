@@ -32,9 +32,20 @@ TVocationSelectionDialogController::TVocationSelectionDialogController(QObject* 
     m_stage = 0;
 }
 
-void TVocationSelectionDialogController::showDialog()
+void TVocationSelectionDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    setStage(0);
+    const auto* hint = input::gameActionAs<input::TGameActionShowTutorialHint>(pGameAction);
+    if (!hint || hint->tutorialHintId() != 2)
+        return;
+    // Opens anew on the first page with the spell list unfiltered but for the
+    // current vocation.
+    dialog()->close();
+    m_stage = 0;
+    if (auto* spells = qobject_cast<TSpellListDataModelSortFilterProxy*>(m_spellListModel)) {
+        spells->resetFilter();
+        spells->setShowOnlyCurrentVocation(false);
+    }
+    dialog()->create();
     dialog()->show();
 }
 
@@ -54,15 +65,7 @@ void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcom
 void TVocationSelectionDialogController::nextPageClicked()
 {
     // Stage 0 = Welcome to Newhaven; stage 1 = vocation cards (CIP QML).
-    if (m_stage == 0)
-        setStage(1);
-}
-
-void TVocationSelectionDialogController::setStage(const uint stage)
-{
-    if (m_stage == stage)
-        return;
-    m_stage = stage;
+    ++m_stage;
     Q_EMIT stageChanged();
 }
 

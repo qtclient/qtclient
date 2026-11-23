@@ -14,6 +14,7 @@
 #include <cip_gen.h>
 
 #include <QObject>
+#include <QPointer>
 
 #include <memory>
 #include <vector>
@@ -21,6 +22,7 @@
 namespace tibia {
 namespace game {
 class IGameSession;
+class TPremiumTimeStorage;
 }
 namespace input {
 class IGameAction;
@@ -45,6 +47,9 @@ public:
     /// CIP connector: the dialog closes, its pages follow `GameSession`, and
     /// the session's friend system errors show here.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The account's premium state: hasPremium follows it, and both team
+    /// pages get it.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
 
     TSocialButtonController* socialButton() const { return m_button; }
     TFriendsFriendListPageController* friendListPage() const { return m_friends; }
@@ -66,6 +71,7 @@ public:
     bool backButtonVisible() const override;
     bool refreshButtonVisible() const override;
     bool hasPremium() const override;
+    void beforeShow() override;
 
 public Q_SLOTS:
     void showDialog(EDialogTab Tab) override;
@@ -100,6 +106,7 @@ private:
     TTeamAssemblePageController* m_assemble = nullptr;
     TSocialButtonController* m_button = nullptr;
     TMessageDialogController* m_errorDialog = nullptr;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     /// CIP +0x40: the current session; +0x60: its connections.
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;

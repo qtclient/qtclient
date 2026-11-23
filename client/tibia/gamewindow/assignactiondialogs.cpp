@@ -35,12 +35,6 @@ namespace {
 using Setting = config::TActionSetting;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
-/// "Action Button <bar>.<button>", the button with two digits.
-QString actionButtonName(const int actionBarId, const int buttonId)
-{
-    return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
-}
-
 TAppearanceTypePtr itemType(const int objectId)
 {
     return objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
@@ -551,17 +545,13 @@ int TSpellListDataModelSortFilterProxy::rowOfSpell(const int spellId) const
     return -1;
 }
 
-void TAssignActionDialogState::bind(const TActionBarController* bar, const uint buttonId, const int multiActionIndex)
+QString actionButtonName(const int actionBarId, const int buttonId)
 {
-    this->multiActionIndex = multiActionIndex;
-    this->buttonId = buttonId;
-    actionBarId = bar ? uint(bar->actionBarId()) : 0;
-    buttonName = bar ? actionButtonName(bar->actionBarId(), int(buttonId)) : QString();
+    return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
 }
 
-TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBarController* bar, QObject* parent)
-    : TDialogController(QStringLiteral("AssignSpellActionDialog.qml"), parent)
-    , m_bar(bar)
+TAssignSpellActionDialogController::TAssignSpellActionDialogController(const uint8_t actionBarId, QObject* parent)
+    : TAssignActionDialogControllerBase(QStringLiteral("AssignSpellActionDialog.qml"), actionBarId, parent)
 {
     m_spellListModel = QVariant::fromValue<QObject*>(&m_proxy);
     m_showOnlyKnownSpells = true;
@@ -578,11 +568,7 @@ void TAssignSpellActionDialogController::showDialog(const uint ButtonId, const i
                                                     const QString& Parameters, const ECastType CastType)
 {
     dialog()->close();
-    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
-    m_actionBarId = m_assign.actionBarId;
-    m_buttonId = m_assign.buttonId;
-    m_buttonName = m_assign.buttonName;
-    m_showActionBarTarget = m_assign.showActionBarTarget;
+    setActionButton(ButtonId, MultiActionIndex);
     m_spellId = SpellId;
     m_spellParameters = Parameters;
     m_currentSpellCastType = CastType;
@@ -594,10 +580,6 @@ void TAssignSpellActionDialogController::showDialog(const uint ButtonId, const i
     dialog()->show();
 }
 
-uint TAssignSpellActionDialogController::actionBarId() const { return m_assign.actionBarId; }
-uint TAssignSpellActionDialogController::buttonId() const { return m_assign.buttonId; }
-QString TAssignSpellActionDialogController::buttonName() const { return m_assign.buttonName; }
-bool TAssignSpellActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
 uint TAssignSpellActionDialogController::spellListIndex() const { return uint(m_proxy.rowOfSpell(m_spellId)); }
 QString TAssignSpellActionDialogController::spellParameters() const { return m_spellParameters; }
 bool TAssignSpellActionDialogController::showOnlyKnownSpells() const { return m_showOnlyKnownSpells; }
@@ -625,7 +607,7 @@ void TAssignSpellActionDialogController::onApplyClicked(const QString& Parameter
     m_spellParameters = Parameters;
     m_currentSpellCastType = CastType;
     Q_EMIT selectedSpellChanged();
-    Q_EMIT requestAssignSpell(m_assign.buttonId, m_assign.multiActionIndex, m_spellId, Parameters, CastType);
+    Q_EMIT requestAssignSpell(m_buttonId, m_multiActionIndex, m_spellId, Parameters, CastType);
 }
 
 void TAssignSpellActionDialogController::spellSelected(const uint SpellEnumId)
@@ -643,16 +625,15 @@ void TAssignSpellActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignObjectActionDialogController::TAssignObjectActionDialogController(TActionBarController* bar, QObject* parent)
-    : TDialogController(QStringLiteral("AssignObjectActionDialog.qml"), parent)
-    , m_bar(bar)
+TAssignObjectActionDialogController::TAssignObjectActionDialogController(const uint8_t actionBarId, QObject* parent)
+    : TAssignActionDialogControllerBase(QStringLiteral("AssignObjectActionDialog.qml"), actionBarId, parent)
 {
     m_useObjectType = uint(config::EUseType::SelectUseTarget);
 }
 
 void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const int MultiActionIndex)
 {
-    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
+    setActionButton(ButtonId, MultiActionIndex);
     startTargetSelection();
 }
 
@@ -661,11 +642,7 @@ void TAssignObjectActionDialogController::showDialog(const uint ButtonId, const 
                                                      const bool SmartModeEnabled, const bool assignWithoutDialog)
 {
     dialog()->close();
-    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
-    m_actionBarId = m_assign.actionBarId;
-    m_buttonId = m_assign.buttonId;
-    m_buttonName = m_assign.buttonName;
-    m_showActionBarTarget = m_assign.showActionBarTarget;
+    setActionButton(ButtonId, MultiActionIndex);
     setObject(ObjectId, UpgradeTier);
     m_liquidType = Info::ELiquidType(LiquidType);
     setUseObjectType(uint(UseType));
@@ -715,14 +692,10 @@ void TAssignObjectActionDialogController::setSmartModeEnabled(const bool enabled
 
 void TAssignObjectActionDialogController::emitRequestAssignObject()
 {
-    Q_EMIT requestAssignObject(m_assign.buttonId, m_assign.multiActionIndex, int(m_objectID), int(m_upgradeTier), int(m_liquidType),
+    Q_EMIT requestAssignObject(m_buttonId, m_multiActionIndex, int(m_objectID), int(m_upgradeTier), int(m_liquidType),
                                config::EUseType(m_useObjectType), m_smartModeEnabled);
 }
 
-uint TAssignObjectActionDialogController::actionBarId() const { return m_assign.actionBarId; }
-uint TAssignObjectActionDialogController::buttonId() const { return m_assign.buttonId; }
-QString TAssignObjectActionDialogController::buttonName() const { return m_assign.buttonName; }
-bool TAssignObjectActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
 uint TAssignObjectActionDialogController::objectID() const { return m_objectID; }
 uint TAssignObjectActionDialogController::objectCount() const { return m_objectCount; }
 uint TAssignObjectActionDialogController::upgradeTier() const { return m_upgradeTier; }
@@ -782,13 +755,13 @@ void TAssignObjectActionDialogController::startTargetSelection()
                 if (target->position().y & 0x40) {
                     if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
                         if (const container::TStoredContainer* row = storage->containerAt(target->position().y & 0x3F))
-                            tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + target->stackPosition()).tier;
+                            tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + target->stackPosition()).tier;
                     }
                 } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
                     tier = inventory->slotAt(target->position().y).tier;
                 }
             }
-            self->showDialogForObject(self->m_assign.buttonId, self->m_assign.multiActionIndex, target->objectClientId(), tier, false);
+            self->showDialogForObject(self->m_buttonId, self->m_multiActionIndex, target->objectClientId(), tier, false);
         }
         // The selection ended: a hidden dialog shows again.
         self->m_selectingTarget = false;
@@ -802,9 +775,8 @@ void TAssignObjectActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignTextActionDialogController::TAssignTextActionDialogController(TActionBarController* bar, QObject* parent)
-    : TDialogController(QStringLiteral("AssignTextActionDialog.qml"), parent)
-    , m_bar(bar)
+TAssignTextActionDialogController::TAssignTextActionDialogController(const uint8_t actionBarId, QObject* parent)
+    : TAssignActionDialogControllerBase(QStringLiteral("AssignTextActionDialog.qml"), actionBarId, parent)
 {
     m_sendAutomatically = true;
 }
@@ -818,21 +790,13 @@ void TAssignTextActionDialogController::showDialog(const uint ButtonId, const in
                                                    const bool SendAutomatically)
 {
     dialog()->close();
-    m_assign.bind(m_bar, ButtonId, MultiActionIndex);
-    m_actionBarId = m_assign.actionBarId;
-    m_buttonId = m_assign.buttonId;
-    m_buttonName = m_assign.buttonName;
-    m_showActionBarTarget = m_assign.showActionBarTarget;
+    setActionButton(ButtonId, MultiActionIndex);
     m_text = Text;
     m_sendAutomatically = SendAutomatically;
     dialog()->create();
     dialog()->show();
 }
 
-uint TAssignTextActionDialogController::actionBarId() const { return m_assign.actionBarId; }
-uint TAssignTextActionDialogController::buttonId() const { return m_assign.buttonId; }
-QString TAssignTextActionDialogController::buttonName() const { return m_assign.buttonName; }
-bool TAssignTextActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
 QString TAssignTextActionDialogController::text() const { return m_text; }
 bool TAssignTextActionDialogController::sendAutomatically() const { return m_sendAutomatically; }
 
@@ -847,7 +811,7 @@ void TAssignTextActionDialogController::onApplyClicked(const QString& Text, cons
     m_text = Text;
     m_sendAutomatically = SendAutomatically;
     Q_EMIT changed();
-    Q_EMIT requestAssignText(m_assign.buttonId, m_assign.multiActionIndex, Text, SendAutomatically);
+    Q_EMIT requestAssignText(m_buttonId, m_multiActionIndex, Text, SendAutomatically);
 }
 
 void TAssignTextActionDialogController::onCloseClicked()
@@ -855,9 +819,8 @@ void TAssignTextActionDialogController::onCloseClicked()
     dialog()->close();
 }
 
-TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(TActionBarController* bar, QObject* parent)
-    : TDialogController(QStringLiteral("AssignPassiveAbilityActionDialog.qml"), parent)
-    , m_bar(bar)
+TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController(const uint8_t actionBarId, QObject* parent)
+    : TAssignActionDialogControllerBase(QStringLiteral("AssignPassiveAbilityActionDialog.qml"), actionBarId, parent)
 {
     m_passiveAbilityListIndex = uint(-1);
     m_model = new TPassiveAbilityListDataModel(this);
@@ -895,21 +858,13 @@ void TAssignPassiveAbilityActionDialogController::showDialog(const uint ButtonId
 {
     dialog()->close();
     reloadAbilities();
-    m_assign.bind(m_bar, ButtonId, -1);
-    m_actionBarId = m_assign.actionBarId;
-    m_buttonId = m_assign.buttonId;
-    m_buttonName = m_assign.buttonName;
-    m_showActionBarTarget = m_assign.showActionBarTarget;
+    setActionButton(ButtonId, -1);
     m_passiveAbility = PassiveAbility;
     refreshSelectedPassive();
     dialog()->create();
     dialog()->show();
 }
 
-uint TAssignPassiveAbilityActionDialogController::actionBarId() const { return m_assign.actionBarId; }
-uint TAssignPassiveAbilityActionDialogController::buttonId() const { return m_assign.buttonId; }
-QString TAssignPassiveAbilityActionDialogController::buttonName() const { return m_assign.buttonName; }
-bool TAssignPassiveAbilityActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
 uint TAssignPassiveAbilityActionDialogController::passiveAbilityListIndex() const { return m_passiveAbilityListIndex; }
 QString TAssignPassiveAbilityActionDialogController::passiveAbilityName() const { return m_passiveAbilityName; }
 QString TAssignPassiveAbilityActionDialogController::passiveAbilityIconUrl() const { return m_passiveAbilityIconUrl; }
@@ -946,7 +901,7 @@ void TAssignPassiveAbilityActionDialogController::onOkClicked()
 
 void TAssignPassiveAbilityActionDialogController::onApplyClicked()
 {
-    Q_EMIT requestAssignPassiveAbility(m_assign.buttonId, m_passiveAbility);
+    Q_EMIT requestAssignPassiveAbility(m_buttonId, m_passiveAbility);
 }
 
 void TAssignPassiveAbilityActionDialogController::passiveAbilitySelected(const uint PassiveAbilityEnumId)

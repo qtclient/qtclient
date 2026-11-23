@@ -24,6 +24,9 @@ class TSidebarOptions;
 }
 namespace tibia {
 namespace minimap {
+class TMinimapMarkerOverlayController;
+class TMinimapMarkerRenderProvider;
+class TMinimapMarkerStorage;
 class TMinimapRenderProvider;
 class TMinimapTileStorage;
 }
@@ -56,6 +59,8 @@ public:
 
     /// CIP : the minimap data to show; null shows nothing.
     void setTileStorage(minimap::TMinimapTileStorage* storage);
+    /// The markers the panel's marker overlay shows; null shows none.
+    void setMarkerStorage(minimap::TMinimapMarkerStorage* storage);
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// The character's options the zoom lives in.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -97,8 +102,11 @@ public Q_SLOTS:
     void onCyclopediaMapButtonClicked() override;
 
 private:
-    /// CIP : area to the storage, crosshair, repaint, cursor.
+    /// CIP : area to the storage, crosshair, repaint, markers, cursor.
     void refresh();
+    /// The marker overlay of the panel's "minimapMarkerOverlay" item, when
+    /// there are a panel and a marker storage.
+    void createMarkerOverlay();
     void onPlayerPositionChanged(const Position& position);
     /// Fields one rose click or scroll hotkey moves: round(12 / scale).
     int scrollStep() const;
@@ -126,6 +134,10 @@ private:
     /// The last mouse position on the rose, normalised to 0..1 (unset: NaN).
     QPointF m_roseMouseNormalized{ qSNaN(), qSNaN() };
     client::gamecore::Hook m_positionHook;
+    QPointer<minimap::TMinimapMarkerStorage> m_markerStorage;
+    std::shared_ptr<minimap::TMinimapMarkerRenderProvider> m_markerRenderProvider;
+    /// Declared after m_area: it keeps a pointer to the area.
+    std::shared_ptr<minimap::TMinimapMarkerOverlayController> m_markerOverlayController;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

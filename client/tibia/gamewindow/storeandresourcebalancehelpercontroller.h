@@ -1,55 +1,65 @@
 #pragma once
 
-#include "client/gamecore.h"
-#include "exaltation/exaltationstorage.h"
 #include "store/storestorage.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
-#include <QPointer>
-
 #include <memory>
-#include <vector>
+#include <optional>
 
 namespace tibia {
 namespace game {
 class IGameSession;
 }
+namespace skillwheel {
+class TSkillWheelStorage;
+}
 namespace gamewindow {
 
 /// The `storeAndResourceBalanceHelper` context property (CIP:
-/// TStoreAndResourceBalanceHelperController, ctor , metacall
-/// ): the gold, coins and other currencies the dialogs show. Read
-/// from CIP's resource balances (guild bank = ResourceBalance type 0x02).
-/// The store balance and the dust maximum follow the game session's store
-/// and exaltation storages (none: no balance, a maximum of 100).
+/// TStoreAndResourceBalanceHelperController): the gold, coins and other
+/// currencies the dialogs show, each one read from the game session's storage
+/// that holds it when that storage reports a change.
 class TStoreAndResourceBalanceHelperController final : public cip::tibia::gamewindow::TStoreAndResourceBalanceHelperController
 {
     Q_OBJECT
 public:
     explicit TStoreAndResourceBalanceHelperController(QObject* parent = nullptr);
 
-    /// CIP .
+    /// The bank and the carried gold pay for it.
     Q_INVOKABLE bool canAffordWithTotalGoldBalance(int Price) override;
 
-    /// The session's store and exaltation storages; the balances are read
-    /// again.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Follows the session's storages and reads every balance (no session:
+    /// nothing changes).
+    void connectToGameSession(std::shared_ptr<game::IGameSession> GameSession);
+
+    /// Host: CipSoft reaches the skill wheel storage through the session;
+    /// qtclient's belongs to the skill wheel manager.
+    void setSkillWheelStorage(skillwheel::TSkillWheelStorage* storage) { m_skillWheelStorage = storage; }
+
+    qulonglong totalGoldBalance() const override;
+    QString totalGoldBalanceString() const override;
+    QString bankGoldBalanceString() const override;
+    QString inventoryGoldBalanceString() const override;
+
+public Q_SLOTS:
+    void onStoreBalanceChanged();
+    void onGoldBalanceChanged();
+    void onPreyWildcardsChanged();
+    void onPreyHuntingTaskTokensChanged();
+    void onExaltedCurrencyBalanceChanged();
+    void onLesserFragmentsChanged();
+    void onGreaterFragmentsChanged();
+    void onLunarAscensionOrbsAmountChanged();
+    void onCosmeticTokenCountChanged();
 
 private:
-    /// CIP .
-    void updateGold();
-    /// CIP .
-    void updateStoreBalance();
-    /// CIP / / /.
-    void updateResources();
-
     std::shared_ptr<game::IGameSession> m_gameSession;
     shared::TQtConnectionManager m_gameSessionConnections;
-    QPointer<store::TStoreStorage> m_storage;
-    QPointer<exaltation::TExaltationStorage> m_exaltation;
-    std::vector<client::gamecore::Hook> m_hooks;
+    /// The store balance the shown balance object was made from.
+    std::optional<store::TStoreBalance> m_storeBalanceValue;
+    skillwheel::TSkillWheelStorage* m_skillWheelStorage = nullptr;
 };
 
 }

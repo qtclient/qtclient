@@ -65,4 +65,9 @@ void TSpritesheetsMetadataManager::clear()
     m_lastLookup = TSpritesheetMetadata::invalid();
 }
 
+TSpritesheetID TSpritesheetsMetadataManager::getSpritesheetIdForSprite(const uint32_t spriteId)
+{
+    return getMetadataForSprite(spriteId).spritesheetId;
+}
+
 }

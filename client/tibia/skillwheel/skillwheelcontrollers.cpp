@@ -6,9 +6,11 @@
 #include "spells/spellinfostorage.h"
 
 #include <QCollator>
+#include <QJSEngine>
 #include <QQuickWindow>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
 
@@ -31,16 +33,6 @@ using Button = TMessageDialogController::Button;
 using EManageMode = cip::tibia::gamewindow::TSkillWheelPresetManagmentDialogController::EManageMode;
 
 /// Socketed gem image and vessel bezel for atelier vessel index 0..7.
-std::pair<QUrl, QUrl> vesselImages(const TSkillWheelStorage* storage, const int vesselIndex)
-{
-    const TWheel& wheel = storage->currentWheel();
-    const int quality = vesselQualityAt(vesselIndex);
-    const std::optional<TGem>& gem = wheel.vessels[vesselIndex];
-    // Bezel domain index is visual only (cycles 0..3); resonance gate removed.
-    return { gem ? gemImage(*gem, storage->vocationIndex()) : QUrl(),
-             socketBezel(vesselIndex % DomainCount, quality + 1, quality, gem.has_value()) };
-}
-
 /// The icon of a conviction perk; Revelation Mastery has one per revelation perk.
 QUrl mediumPerkImage(const int perk, const std::optional<int> largePerk)
 {
@@ -125,13 +117,33 @@ double TSkillWheelCornerQMLInfo::fillPercent() const { return m_fillPercent; }
 int TSkillWheelCornerQMLInfo::level() const { return m_level; }
 int TSkillWheelCornerQMLInfo::largePerkId() const { return m_largePerkId; }
 
-TQmlSocketedGem::TQmlSocketedGem(const int gemId, const int modSlotCount, const int vesselQuality, const QUrl& bezel, QObject* parent)
+TQmlSocketedGem::TQmlSocketedGem(const int vesselIndex, const int vocationIndex, const std::optional<TGem>& gem, QObject* parent)
     : cip::tibia::skillwheel::TQmlSocketedGem(parent)
+    , m_vesselIndex(vesselIndex)
+    , m_vocationIndex(vocationIndex)
+    , m_gem(gem)
 {
-    m_gemId = gemId;
-    m_modSlotCount = modSlotCount;
-    m_vesselQuality = vesselQuality;
-    m_socketBezelSource = bezel;
+    if (vesselIndex < 0 || vesselIndex >= VesselCount)
+        throw std::invalid_argument("TVessels::Index: value out of range");
+    QJSEngine::setObjectOwnership(this, QJSEngine::CppOwnership);
+}
+
+int TQmlSocketedGem::gemId() const { return m_gem ? m_gem->id : -1; }
+
+int TQmlSocketedGem::modSlotCount() const
+{
+    if (m_gem)
+        return hasSupreme(*m_gem) ? 3 : (hasBasic2(*m_gem) ? 2 : 1);
+    const int quality = VesselQualities[m_vesselIndex];
+    return quality == 2 ? 3 : (quality == 1 ? 2 : 1);
+}
+
+int TQmlSocketedGem::vesselQuality() const { return VesselQualities[m_vesselIndex]; }
+
+QUrl TQmlSocketedGem::socketBezelSource() const
+{
+    const int slots = modSlotCount();
+    return imageUrl("icons-skillwheel-sockets", m_gem ? m_vocationIndex * 3 + slots - 1 : slots + 14);
 }
 
 // ---------------------------------------------------------------------------
@@ -436,27 +448,27 @@ void TSkillWheelPageController::updateParameters()
         std::array<int, SlotCount> slots{};
         for (int slot = 0; slot < SlotCount; ++slot)
             slots[slot] = slot;
-        std::sort(slots.begin(), slots.end(), [](const int a, const int b) { return maxPoints(a) < maxPoints(b); });
+        std::sort(slots.begin(), slots.end(), [](const int a, const int b) { return gridConfiguration().maxPoints(a) < gridConfiguration().maxPoints(b); });
         for (const int slot : slots) {
             const int points = wheel.points[slot];
-            const double fill = std::clamp(static_cast<double>(points) / maxPoints(slot), 0.0, 1.0);
+            const double fill = std::clamp(static_cast<double>(points) / gridConfiguration().maxPoints(slot), 0.0, 1.0);
             const bool unlocked = points > 0 || isUnlocked(wheel.points, slot);
-            const int medium = mediumPerk(slot, voc);
+            const int medium = gridConfiguration().mediumPerk(slot, voc);
             const std::optional<int> large =
-                isMasteryIncreasePerk(medium) ? std::optional<int>(largePerk(domainOfSlot(slot), voc)) : std::nullopt;
-            m_skillParameters.append(new TSkillWheelTileQMLInfo(slot, fill, unlocked, medium, static_cast<int>(smallPerk(slot)),
+                isMasteryIncreasePerk(medium) ? std::optional<int>(gridConfiguration().largePerk(domainOfSlot(slot), voc)) : std::nullopt;
+            m_skillParameters.append(new TSkillWheelTileQMLInfo(slot, fill, unlocked, medium, gridConfiguration().smallPerk(slot, voc),
                                                                 mediumPerkImage(medium, large), this));
         }
         for (int d = 0; d < DomainCount; ++d) {
             const int points = revelationPoints(wheel, m_storage->supremeGrades(), d, voc);
-            const int stage = revelationStage(points);
+            const int stage = gridConfiguration().revelationStage(points);
             const int next = stage < -1 ? 0 : std::min(stage + 1, 3);
             const double from = stage >= 1 && stage <= 3 ? revelationThreshold(stage) : 0.0;
             const double to = next >= 1 && next <= 3 ? revelationThreshold(next) : 0.0;
             double fill = 1.0;
             if (stage < next)
                 fill = std::clamp((points - from) / (to - from), 0.0, 1.0);
-            m_cornerParameters.append(new TSkillWheelCornerQMLInfo(d, fill, stage, largePerk(d, voc), this));
+            m_cornerParameters.append(new TSkillWheelCornerQMLInfo(d, fill, stage, gridConfiguration().largePerk(d, voc), this));
         }
     }
     Q_EMIT dataChanged();
@@ -490,9 +502,9 @@ void TSkillWheelPageController::updateSummaries()
     int bonus = 0;
     QList<TPerkInfo> perks;
     for (int d = 0; d < DomainCount; ++d) {
-        const int stage = revelationStage(revelationPoints(wheel, m_storage->supremeGrades(), d, voc));
+        const int stage = gridConfiguration().revelationStage(revelationPoints(wheel, m_storage->supremeGrades(), d, voc));
         bonus += largePerkExtraDamageHealing(stage);
-        perks.append({ largePerkName(largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(largePerk(d, voc), stage), QUrl(), false });
+        perks.append({ largePerkName(gridConfiguration().largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(gridConfiguration().largePerk(d, voc), stage), QUrl(), false });
     }
     std::ranges::sort(perks, [](const TPerkInfo& a, const TPerkInfo& b) { return a.label < b.label; });
     if (hasData) {
@@ -547,10 +559,10 @@ void TSkillWheelPageController::updateSummaries()
     for (int d = 0; d < DomainCount; ++d) {
         int filled = 0;
         for (const int slot : domainSlots(d))
-            if (isMasteryIncreasePerk(mediumPerk(slot, voc)) && wheel.points[slot] >= maxPoints(slot))
+            if (isMasteryIncreasePerk(gridConfiguration().mediumPerk(slot, voc)) && wheel.points[slot] >= gridConfiguration().maxPoints(slot))
                 ++filled;
         if (filled > 0)
-            masteryGroup.append(mediumEntry(mediumPerkName(MasteryIncreasePerk, largePerk(d, voc)), MasteryIncreasePerk, false));
+            masteryGroup.append(mediumEntry(mediumPerkName(MasteryIncreasePerk, gridConfiguration().largePerk(d, voc)), MasteryIncreasePerk, false));
     }
     byLabel(masteryGroup);
     QList<TPerkInfo> medium;
@@ -652,7 +664,7 @@ void TSkillWheelPageController::updateSummaries()
 
     int mitigationPoints = 0;
     for (int slot = 0; slot < SlotCount; ++slot)
-        if (smallPerk(slot) == ESmallPerk::Mitigation)
+        if (static_cast<ESmallPerk>(gridConfiguration().smallPerk(slot, voc)) == ESmallPerk::Mitigation)
             mitigationPoints += wheel.points[slot];
     const std::pair<int, double> statTotals[] = {
         { 10, static_cast<int>(mods.basicStat(10)) + smallPerkTotal(wheel.points, ESmallPerk::Life, voc) },
@@ -745,9 +757,9 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
     const int points = wheel.points[slot];
-    const int max = maxPoints(slot);
-    const ESmallPerk smallPerkId = smallPerk(slot);
-    const int medium = mediumPerk(slot, voc);
+    const int max = gridConfiguration().maxPoints(slot);
+    const ESmallPerk smallPerkId = static_cast<ESmallPerk>(gridConfiguration().smallPerk(slot, voc));
+    const int medium = gridConfiguration().mediumPerk(slot, voc);
     info->setCurrentSkillPoints(points);
     info->setMaximumSkillPoints(max);
     // The grid alone decides: a full slice can be emptied, and a slice can be
@@ -764,7 +776,7 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
     const QStringList lines = mediumPerkDescriptions(medium);
     const QStringList iconLines = withAugmentationIcons(lines, medium, count);
     info->setMediumPerkUnlocked(points == max);
-    info->setMediumPerkInfo(mediumPerkEffect(medium, largePerk(domainOfSlot(slot), voc)));
+    info->setMediumPerkInfo(mediumPerkEffect(medium, gridConfiguration().largePerk(domainOfSlot(slot), voc)));
     info->setMediumPerkHover(qtTrId("skill_wheel_dialog_unlock_medium_perk_info") + QStringLiteral("<br><br>")
                              + qtTrId(augmented ? "skill_wheel_dialog_how_augmentatios_unlock_info" : "skill_wheel_dialog_medium_perk_more_than_once_info"));
     info->setMediumPerkCount(count);
@@ -791,14 +803,14 @@ void TSkillWheelPageController::fillLargePerk(cip::tibia::gamewindow::TLargePerk
     }
     const int voc = m_storage->vocationIndex();
     const int points = revelationPoints(m_storage->currentWheel(), m_storage->supremeGrades(), domain, voc);
-    const int stage = revelationStage(points);
+    const int stage = gridConfiguration().revelationStage(points);
     info->setCurrentSkillPoints(points);
     info->setNextSkillPointThreshold(revelationThreshold(std::min(stage + 1, 3)));
     info->setCurrentLevel(stage);
     info->setCurrentLevelName(perkLevelName(stage));
-    info->setPerkName(largePerkName(largePerk(domain, voc)));
-    info->setShortInformation(largePerkShortInformation(largePerk(domain, voc)));
-    info->setDetailedInformation(largePerkDetailedInformation(largePerk(domain, voc), stage));
+    info->setPerkName(largePerkName(gridConfiguration().largePerk(domain, voc)));
+    info->setShortInformation(largePerkShortInformation(gridConfiguration().largePerk(domain, voc)));
+    info->setDetailedInformation(largePerkDetailedInformation(gridConfiguration().largePerk(domain, voc), stage));
     info->setLargePerkHover(qtTrId("skill_wheel_dialog_unlock_large_perk_info")
                                 .arg(revelationThreshold(1))
                                 .arg(revelationThreshold(2))
@@ -821,7 +833,7 @@ void TSkillWheelPageController::changePoints(const int slot, const int delta)
     if (slot < 0 || slot >= SlotCount || delta == 0)
         return;
     TWheel wheel = m_storage->currentWheel();
-    wheel.points[slot] = std::clamp(wheel.points[slot] + delta, 0, maxPoints(slot));
+    wheel.points[slot] = std::clamp(wheel.points[slot] + delta, 0, gridConfiguration().maxPoints(slot));
     if (!isValid(wheel.points))
         return;
     m_storage->setCurrentSkillWheel(wheel);
@@ -843,7 +855,7 @@ void TSkillWheelPageController::fillSkill(const int GridTileQML)
     if (!m_storage->hasData() || !canBeIncreased() || GridTileQML < 0 || GridTileQML >= SlotCount
         || !isUnlocked(m_storage->currentWheel().points, GridTileQML))
         return;
-    changePoints(GridTileQML, std::min(maxPoints(GridTileQML), std::max(0, m_storage->freePoints())));
+    changePoints(GridTileQML, std::min(gridConfiguration().maxPoints(GridTileQML), std::max(0, m_storage->freePoints())));
 }
 
 /// CIP .
@@ -872,7 +884,7 @@ void TSkillWheelPageController::onGridTileRightClicked(const int GridTileQML, co
         return;
     const auto& points = m_storage->currentWheel().points;
     const int current = points[GridTileQML];
-    const int max = maxPoints(GridTileQML);
+    const int max = gridConfiguration().maxPoints(GridTileQML);
     const int free = m_storage->freePoints();
     if (current < max && isUnlocked(points, GridTileQML) && free > 0) {
         if (KeyboardModifiers == 0)
@@ -1217,11 +1229,8 @@ void TGemAtelierPageController::updateSockets()
     for (int v = 0; v < VesselCount; ++v) {
         const TWheel& wheel = m_storage->currentWheel();
         const std::optional<TGem>& gem = wheel.vessels[v];
-        const int gemId = gem ? gem->id : -1;
-        const int quality = vesselQualityAt(v);
-        const auto [_, bezel] = vesselImages(m_storage, v);
         QObject* old = m_sockets[v];
-        m_sockets[v] = new TQmlSocketedGem(gemId, gem ? modCount(*gem) : 0, quality, bezel, this);
+        m_sockets[v] = new TQmlSocketedGem(v, wheel.vocation - 1, gem, this);
         if (old)
             old->deleteLater();
         if (v < unlocked && !gem)
@@ -1327,20 +1336,22 @@ QVariantMap TGemAtelierPageController::gemDataForId(const int GemId)
 
 void TGemAtelierPageController::selectGem(const int GemId) { selectGem(GemId, false); }
 
-/// Shows the gem: with `NarrowDownFilters` the filters are cleared if they hide it.
+/// Shows the gem: with `NarrowDownFilters` the quality filter becomes the gem's; when the filters
+/// still hide it, the mod name and locked-only filters are cleared.
 void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDownFilters)
 {
     m_selectedGemId = GemId;
     const std::optional<TGem> gem = m_storage->gem(GemId);
     if (!gem)
         return;
-    if (NarrowDownFilters && !m_filter->accepts(*gem)) {
+    if (NarrowDownFilters)
+        m_filter->setFilterGemQuality(hasBasic2(*gem) ? (hasSupreme(*gem) ? 2 : 1) : 0);
+    QModelIndex filtered = m_filter->indexOfGem(GemId);
+    if (!filtered.isValid()) {
         m_filter->setFilterModName(QString());
-        m_filter->setFilterGemQuality(-1);
         m_filter->setShowLockedOnly(false);
+        filtered = m_filter->indexOfGem(GemId);
     }
-    const int row = m_list->rowOfGem(GemId);
-    const QModelIndex filtered = row < 0 ? QModelIndex() : m_filter->mapFromSource(m_list->index(row, 0));
     if (filtered.isValid())
         setSelectedGemIndex(m_pages->showSourceRow(filtered.row()));
     Q_EMIT selectedGemIndexChanged();

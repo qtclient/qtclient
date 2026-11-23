@@ -111,6 +111,8 @@ public Q_SLOTS:
     /// CIP .
     void showItemDetails(int AppearanceTypeIDRaw) override;
     void onPremiumTimeChanged() override;
+    /// The premium time storage's state (false without one).
+    bool isPremium() const override;
     /// CIP .
     void onLootContainersUpdated() override;
     /// CIP: the loot list changed; the dialog shows it again.
@@ -124,7 +126,6 @@ private:
     bool handleGameAction(const input::IGameAction& action);
     void rebuildListItems();
     void applyListFilter();
-    void syncPremium();
     void syncFallback();
     void startContainerPick(int category, bool lootColumn);
     void finishPick(const input::TTargetSelectedPtr& target);

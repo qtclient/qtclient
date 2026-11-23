@@ -1,6 +1,5 @@
 #pragma once
 
-#include "input/gameactiondispatch.h"
 #include "shared/cip_typed.h"
 
 #include "client/gamecore.h"
@@ -20,9 +19,9 @@ namespace chat {
 class TTextStorage;
 class TWhiteBlacklist;
 
-/// The game window's client-side lines: SET_STATUS_LINE, the beneath-middle
-/// message and pack status lines. The server's talk and text messages go
-/// through chat::TChatProtocolMessageHandler.
+/// The pack's status lines (an IdleOT host extension). The status line and
+/// centre message game actions are chat::TChatGameActionHandler's; the
+/// server's talk and text messages go through chat::TChatProtocolMessageHandler.
 class TGameMessageHandler : public ::tibia::CipTyped
 {
 public:
@@ -41,17 +40,6 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 
     bool m_showMessages = true;
-
-public:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

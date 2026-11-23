@@ -48,6 +48,8 @@ public:
     void setSelectedBonusEffectId(int v) override { setSelectedBonusEffectFromIndex(v); }
     void setTemporarySelectedMonsterRaceID(int v) override;
     void setUnassignedMonstersNameFilter(const QString& v) override;
+    /// No tooltip with unlimited charm slots.
+    bool showStoreButtonTooltip() const override;
 
     void showDialogTab() override;
     /// Forgets the selected charm.

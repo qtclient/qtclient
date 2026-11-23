@@ -13,6 +13,8 @@
 namespace tibia {
 namespace gamewindow {
 
+class TPreventAutoCloseEventFilter;
+
 /// What CipSoft's character selection hands on for a login: the character and
 /// how to reach its world (CIP TCharacterLoginData).
 struct TCharacterLoginData
@@ -31,12 +33,18 @@ struct TCharacterLoginData
 /// CharacterSelection.qml's controller (CIP TCharacterSelectionController).
 /// It keeps the account's characters and worlds; sorting, the hidden
 /// characters, the outfits and the pinned characters are client options.
-class TCharacterSelectionController final : public cip::tibia::gamewindow::TCharacterSelectionController
+class TCharacterSelectionController : public cip::tibia::gamewindow::TCharacterSelectionController
 {
     Q_OBJECT
 public:
     explicit TCharacterSelectionController(QObject* parent = nullptr);
     bool clientSettingSmoothFiltering() const override;
+
+    /// The selection is shown: the auto-close and server save timers run, and
+    /// the application's input events keep it open.
+    virtual void open();
+    /// The selection is hidden: its timers stop and input is no longer watched.
+    virtual void close();
 
     /// CIP: the account line - frozen (state 1), suspended (state 2), else
     /// free, free premium (type 2) or premium with the days left, red under 14.
@@ -52,12 +60,12 @@ public:
     void setAccountState(int accountState);
     void setRecoverySetupComplete(bool complete);
     /// The character the table preselects.
-    void setLastSelectedCharacterName(const QString& name);
+    virtual void setLastSelectedCharacterName(const QString& name);
     QString lastSelectedCharacterName() const { return m_lastSelectedCharacterName; }
     /// Logs in with the row named `name` (the first row when there is none).
     void selectCharacter(const QString& name);
     /// The character finished the tutorial.
-    void clearTutorialFlag(const QString& name);
+    virtual void clearTutorialFlag(const QString& name);
     /// What the last confirmation handed on, one entry per selected row.
     std::vector<TCharacterLoginData> loginData() const { return m_loginData; }
 
@@ -92,6 +100,13 @@ public:
     /// was collected can collect again.
     void checkServerSave();
 
+public Q_SLOTS:
+    /// Thirty seconds without input: CHARACER_SELECTION_AUTO_CLOSE is
+    /// published, the selection closes and aborts.
+    void onAutocloseTimer();
+    /// An input event: the auto-close countdown starts again.
+    void onPreventAutoclose();
+
 Q_SIGNALS:
     void requestCharacterLogin(const tibia::gamewindow::TCharacterLoginData& LoginData);
 
@@ -109,7 +124,11 @@ private:
     authentication::TCharacterList m_characters;
     QString m_lastSelectedCharacterName;
     authentication::TWorldList m_worlds;
+    /// Watches the application's input while the selection is open.
+    TPreventAutoCloseEventFilter* m_preventAutoCloseEventFilter;
     QCollator m_collator;
+    /// Single shot: closes the selection after thirty seconds without input.
+    QTimer m_autocloseTimer;
     QTimer m_serverSaveTimer;
     std::vector<TCharacterLoginData> m_loginData;
     uint m_lastServerSaveCheck = 0;

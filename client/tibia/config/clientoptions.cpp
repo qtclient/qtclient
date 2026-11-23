@@ -6,6 +6,8 @@
 #include "config/specialconditionsoptions.h"
 #include "shared/tibiafilesystemhelper.h"
 
+#include "jsonhelper.h"
+
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -808,6 +810,12 @@ void TClientOptions::readStringOptions(const QJsonObject& options)
         value = readString(options, optionName(id));
 }
 
+void TClientOptions::readDateOptions(const QJsonObject& options)
+{
+    for (auto& [id, value] : m_dates)
+        value = shared::jsonDateTime(options, optionName(id));
+}
+
 void TClientOptions::writeBoolOptions(QJsonObject& options) const
 {
     for (const auto& [id, value] : m_bools)
@@ -830,6 +838,12 @@ void TClientOptions::writeStringOptions(QJsonObject& options) const
 {
     for (const auto& [id, value] : m_strings)
         options.insert(optionName(id), value);
+}
+
+void TClientOptions::writeDateOptions(QJsonObject& options) const
+{
+    for (const auto& [id, value] : m_dates)
+        options.insert(optionName(id), int(value.toSecsSinceEpoch()));
 }
 
 void TClientOptions::fromJson(const QJsonObject& json)
@@ -863,6 +877,7 @@ void TClientOptions::fromJson(const QJsonObject& json)
         readIntOptions(options);
         readFloatOptions(options);
         readStringOptions(options);
+        readDateOptions(options);
         // Host: options no CIP option names stay as stored.
         for (auto it = options.begin(); it != options.end(); ++it) {
             EClientOption id;
@@ -904,6 +919,7 @@ QJsonDocument TClientOptions::toJson() const
     writeIntOptions(options);
     writeFloatOptions(options);
     writeStringOptions(options);
+    writeDateOptions(options);
     root.insert(QStringLiteral("options"), options);
     root.insert(QStringLiteral("rendererChangeConfirmationRequired"), m_rendererChangeConfirmationRequired);
     root.insert(QLatin1String(VersionKey), clientoptionsmigration::CurrentVersion);

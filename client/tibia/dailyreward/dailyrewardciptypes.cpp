@@ -10,6 +10,7 @@
 #include <protocol.pb.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace tibia::dailyreward {
 
@@ -130,11 +131,11 @@ void TDailyRewardStorage::clearPendingReward()
     m_pendingReward = TRewardPair{};
 }
 
-/// Adds the pending day once it has both rewards (CIP throws otherwise).
+/// Adds the pending day; it must have both rewards.
 void TDailyRewardStorage::finishAddReward()
 {
     if (!m_pendingReward.first || !m_pendingReward.second)
-        return;
+        throw std::runtime_error("Both free and premium reward must be set before finishAddReward");
     m_rewards.push_back(m_pendingReward);
     m_pendingReward = TRewardPair{};
 }

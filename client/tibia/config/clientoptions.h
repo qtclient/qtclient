@@ -241,10 +241,13 @@ private:
     void readIntOptions(const QJsonObject& options);
     void readFloatOptions(const QJsonObject& options);
     void readStringOptions(const QJsonObject& options);
+    void readDateOptions(const QJsonObject& options);
     void writeBoolOptions(QJsonObject& options) const;
     void writeIntOptions(QJsonObject& options) const;
     void writeFloatOptions(QJsonObject& options) const;
     void writeStringOptions(QJsonObject& options) const;
+    /// Seconds since the epoch.
+    void writeDateOptions(QJsonObject& options) const;
 
     std::unordered_map<EClientOption, bool> m_bools;
     std::unordered_map<EClientOption, int> m_ints;

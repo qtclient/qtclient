@@ -64,17 +64,21 @@ QString TSpecialConditionObject::name(const SpecialCondition& condition)
                 return status(key, "name");
             return QStringLiteral("Unknown");
         case C::PlayerStateClient:
-            return condition.value == C::Hungry ? qtTrId("playerstatus_client_hungry_name") : qtTrId("playerstatus_client_restingarea_group_name");
+            if (condition.value == C::Hungry)
+                return qtTrId("playerstatus_client_hungry_name");
+            if (condition.value == 0)
+                return qtTrId("playerstatus_client_restingarea_group_name");
+            return QStringLiteral("Unknown");
         case C::RottenBloodState:
             return qtTrId("playerstatus_rottenblood_group_name");
         case C::PlayerKillerFlag:
             if (const char* key = at(PlayerKillerKeys, condition.value - 1))
                 return trId(QStringLiteral("playerstatus_pkflag_%1_name").arg(QLatin1StringView(key)));
-            return {};
+            return QStringLiteral("Unknown");
         case C::Generic:
             if (const char* key = at(GenericKeys, condition.value))
                 return status(key, "name");
-            return {};
+            return QStringLiteral("Unknown");
     }
     return {};
 }
@@ -95,11 +99,11 @@ QString TSpecialConditionObject::tooltip(const SpecialCondition& condition)
         case C::PlayerKillerFlag:
             if (const char* key = at(PlayerKillerKeys, condition.value - 1))
                 return trId(QStringLiteral("playerstatus_pkflag_%1_description_tooltip").arg(QLatin1StringView(key)));
-            return {};
+            return QStringLiteral("Unknown");
         case C::Generic:
             if (const char* key = at(GenericTooltipKeys, condition.value))
                 return status(key, "description_tooltip");
-            return {};
+            return QStringLiteral("Unknown");
     }
     return {};
 }
@@ -118,6 +122,9 @@ QString TSpecialConditionObject::icon(const SpecialCondition& condition)
         case C::RottenBloodState:
             return image("playerstate-flags-rottenblood", 8);
         case C::PlayerKillerFlag:
+            // No flag (0) has no icon.
+            if (condition.value == 0)
+                return {};
             return image("playerstate-playerkiller-flags", condition.value - 1);
         case C::Generic:
             switch (condition.value) {
@@ -127,7 +134,7 @@ QString TSpecialConditionObject::icon(const SpecialCondition& condition)
                 case C::RestingArea: return image("playerstate-flags-client", 0);
                 case C::ManaShield: return image("playerstate-flags", 26);
             }
-            return {};
+            return QStringLiteral("Unknown");
     }
     return {};
 }

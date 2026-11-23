@@ -32,6 +32,10 @@
 #include <limits>
 #include <map>
 
+namespace tibia::cyclopedia {
+QString capitalizeWords(const QString& name);
+}
+
 namespace tibia::container {
 
 namespace {
@@ -301,7 +305,7 @@ void TContainerProtocolMessageHandler::requestUpdateContainer(const TContainerID
 {
     const TContainerStorage* storage = TContainerStorage::instance();
     const TStoredContainer* container = storage ? storage->containerAt(ContainerID) : nullptr;
-    Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->firstIndex : 0));
+    Q_EMIT sendSeekInContainerMessage(seekMessage(ContainerID, container ? container->firstIndex() : 0));
 }
 
 void TContainerProtocolMessageHandler::requestGetObjectsInfo(
@@ -343,6 +347,22 @@ void TContainerProtocolMessageHandler::requestMoveContentToManagedContainers(con
 
 void TContainerProtocolMessageHandler::handlePlayerInventoryMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerInventory& message)
 {
+    using appearances::TObjectAppearanceInstanceTypeID;
+    if (tibia::game::TGameSessionBase* session = tibia::game::currentGameSession()) {
+        if (TObjectAppearanceInstanceInfoStorage* infos = session->objectAppearanceInstanceInfoStorage().get()) {
+            infos->resetCounts();
+            for (const auto& e : message.entries()) {
+                const auto typeId = static_cast<uint16_t>(e.object_id());
+                const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+                TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
+                if (type && (type->isSplash() || type->isFluidContainer()))
+                    instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, e.tier());
+                else if (type && type->hasUpgradeClassification())
+                    instance = TObjectAppearanceInstanceTypeID::withTier(typeId, static_cast<uint8_t>(e.tier()));
+                infos->setCount(instance, static_cast<int>(e.count()));
+            }
+        }
+    }
     // Counts per (object, tier); the tier only counts for tiered objects.
     std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
     for (const auto& e : message.entries()) {
@@ -539,17 +559,18 @@ void TContainerStorage::applyOpen(const TContainerID id, const uint8_t capacity,
                                   const uint16_t size, const uint16_t firstIndex, const std::vector<TInventorySlot>& items)
 {
     TStoredContainer row;
-    row.id = id;
-    row.capacity = capacity;
-    row.name = std::move(name);
-    row.containerItem = std::move(containerItem);
-    row.hasParent = hasParent;
-    row.unlocked = unlocked;
-    row.hasPages = hasPages;
-    row.showSearch = showSearch;
-    row.size = size;
-    row.firstIndex = firstIndex;
-    row.items = items;
+    row.setId(static_cast<uint8_t>(id))
+        .setName(name)
+        .setCapacity(capacity)
+        .setHasPages(hasPages)
+        .setUnlocked(unlocked)
+        .setHasParent(hasParent)
+        .setShowSearch(showSearch)
+        .setContainerItem(containerItem)
+        .setFirstIndex(firstIndex);
+    row.setSize(size);
+    for (const TInventorySlot& item : items)
+        row.appendItem(item);
     m_containers.insert(id, std::move(row));
     // Open and replace-open both pass isNew=true so UI creates or resets scroll in place.
     emitUpdated(id, true);
@@ -562,10 +583,12 @@ void TContainerStorage::applyView(const TContainerID id, const uint32_t filterCa
     TStoredContainer* row = mutableAt(id);
     if (!row)
         return;
-    row->filterCategory = filterCategory;
-    row->filterCategories = std::move(filterCategories);
-    row->sortable = sortable;
-    row->contentMovableToManagedContainers = contentMovableToManagedContainers;
+    row->setServerFilterCategory(filterCategory)
+        .setSortable(sortable)
+        .setContentMovableToManagedContainers(contentMovableToManagedContainers);
+    row->clearFilterCategories();
+    for (const auto& [categoryId, categoryName] : filterCategories)
+        row->addFilterCategory(categoryId, categoryName);
     emitUpdated(id, false);
 }
 
@@ -574,33 +597,35 @@ std::optional<TContainerProperties> TContainerRenderProvider::containerPropertie
 {
     const TContainerStorage* storage = TContainerStorage::instance();
     const TStoredContainer* row = storage ? storage->containerAt(id) : nullptr;
-    if (!row)
-        return std::nullopt;
+    // A container that is not open shows as "not found", without slots.
     TContainerProperties properties;
-    const uint32_t capacity = row->capacity;
-    properties.caption = row->name;
-    if (row->hasPages && capacity != 0) {
+    properties.caption = qtTrId("container_not_found");
+    if (!row)
+        return properties;
+    const uint32_t capacity = row->capacity();
+    properties.caption = row->name();
+    if (row->hasPages() && capacity != 0) {
         // Rounded up, at least one page.
-        properties.numberOfPages = std::max<uint32_t>(1, (row->size + capacity - 1) / capacity);
-        properties.currentPage = row->firstIndex / capacity + 1;
+        properties.numberOfPages = std::max<uint32_t>(1, (row->size() + capacity - 1) / capacity);
+        properties.currentPage = row->firstIndex() / capacity + 1;
     }
     properties.numberOfContainerSlots = capacity;
     properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->itemCount());
-    properties.levelUpButtonVisible = row->hasParent;
-    properties.searchButtonVisible = row->showSearch;
-    properties.isUpdatable = row->unlocked;
+    properties.levelUpButtonVisible = row->hasParent();
+    properties.searchButtonVisible = row->showSearch();
+    properties.isUpdatable = row->isUnlocked();
     properties.resetScrollView = resetScrollView;
-    properties.hasPossiblyMorePages = row->size >= 0xffff;
-    properties.objects = row->items;
-    properties.indexOfFirstVisibleObject = row->firstIndex;
+    properties.hasPossiblyMorePages = row->hasPossiblyMorePages();
+    properties.objects = row->items();
+    properties.indexOfFirstVisibleObject = row->firstIndex();
     properties.configButtonVisible = row->hasConfigurationOptions();
-    properties.containerItem = row->containerItem;
+    properties.containerItem = row->containerItem();
     // The markers of the visible slots, only when one of them has one.
     QList<int> markers;
     markers.reserve(static_cast<qsizetype>(capacity));
     bool anyMarker = false;
     for (uint32_t index = 0; index < capacity; ++index) {
-        const int marker = row->tutorialMarkerAt(row->firstIndex + index);
+        const int marker = row->tutorialMarkerAt(row->firstIndex() + index);
         markers.append(marker);
         anyMarker = anyMarker || marker != 0;
     }
@@ -612,13 +637,13 @@ std::optional<TContainerProperties> TContainerRenderProvider::containerPropertie
 uint32_t TContainerStorage::filterCategory(const TContainerID id) const
 {
     const TStoredContainer* row = containerAt(id);
-    return row ? row->filterCategory : 0;
+    return row ? row->filterCategory() : 0;
 }
 
 void TContainerStorage::setFilterCategory(const TContainerID id, const uint32_t category)
 {
     if (TStoredContainer* row = mutableAt(id))
-        row->filterCategory = category;
+        row->setFilterCategory(category);
 }
 
 namespace {
@@ -645,50 +670,65 @@ void TContainerStorage::closeContainer(const TContainerID id)
     Q_EMIT containerRemoved(id);
 }
 
+TContainer& TContainer::setName(const QString& containerName)
+{
+    m_name = containerName;
+    m_capitalizedName = tibia::cyclopedia::capitalizeWords(containerName);
+    m_browseField = containerName == QStringLiteral("Browse Field");
+    return *this;
+}
+
+void TContainer::setSize(const uint32_t objects)
+{
+    m_size = static_cast<uint16_t>(objects);
+    if (objects > 0xfffe)
+        m_possiblyMorePages = true;
+}
+
 TInventorySlot TContainer::itemAt(const uint32_t slot) const
 {
     const size_t index = slotIndex(slot);
-    return index < items.size() ? items[index] : TInventorySlot{};
+    return index < m_items.size() ? m_items[index] : TInventorySlot{};
 }
 
 void TContainer::setItem(const uint32_t slot, const TInventorySlot& item)
 {
     const size_t index = slotIndex(slot);
-    if (index < items.size())
-        items[index] = item;
+    if (index < m_items.size())
+        m_items[index] = item;
 }
 
 void TContainer::removeItem(const uint32_t slot)
 {
-    if (firstIndex <= slot && slot < static_cast<uint32_t>(firstIndex) + capacity) {
+    if (m_firstIndex <= slot && slot < static_cast<uint32_t>(m_firstIndex) + m_capacity) {
         const size_t index = slotIndex(slot);
-        if (index < items.size())
-            items.erase(items.begin() + static_cast<std::ptrdiff_t>(index));
+        if (index < m_items.size())
+            m_items.erase(m_items.begin() + static_cast<std::ptrdiff_t>(index));
     }
     decreaseSize();
 }
 
 void TContainer::insertItem(const uint32_t slot, const TInventorySlot& item)
 {
-    const size_t index = std::min(slotIndex(slot), items.size());
-    items.insert(items.begin() + static_cast<std::ptrdiff_t>(index), item);
-    while (items.size() > capacity)
-        items.pop_back();
+    const size_t index = std::min(slotIndex(slot), m_items.size());
+    m_items.insert(m_items.begin() + static_cast<std::ptrdiff_t>(index), item);
+    while (m_items.size() > m_capacity)
+        m_items.pop_back();
     increaseSize();
 }
 
 uint32_t TContainer::pageCount() const
 {
-    if (!hasPages || capacity == 0)
+    if (!m_hasPages || m_capacity == 0)
         return 1;
-    return std::max<uint32_t>(1, static_cast<uint32_t>(std::ceil(static_cast<float>(size) / static_cast<float>(capacity))));
+    return std::max<uint32_t>(1, static_cast<uint32_t>(std::ceil(static_cast<float>(m_size) / static_cast<float>(m_capacity))));
 }
 
 uint32_t TContainer::currentPage() const
 {
-    if (!hasPages || capacity == 0)
+    if (!m_hasPages || m_capacity == 0)
         return 1;
-    return firstIndex / capacity + 1;
+    return m_firstIndex / m_capacity + 1;
 }
 
 void TContainerStorage::applyAddItem(const TContainerID id, const TInventorySlot& item, const uint16_t slot)
@@ -752,9 +792,54 @@ bool TContainerStorage::hasContainer(const TContainerID id) const
 int TContainerStorage::findEmptyId() const
 {
     int id = 0;
-    while (m_containers.contains(id))
+    while (id <= MaxContainerId && m_containers.contains(id))
         ++id;
-    return id;
+    return std::min(id, MaxContainerId);
+}
+
+uint32_t TContainerStorage::nextPageFirstIndex(const TContainerID id) const
+{
+    const TStoredContainer* row = containerAt(id);
+    return row ? row->nextPageFirstIndex() : 0;
+}
+
+uint32_t TContainerStorage::previousPageFirstIndex(const TContainerID id) const
+{
+    const TStoredContainer* row = containerAt(id);
+    return row ? row->previousPageFirstIndex() : 0;
+}
+
+uint32_t TContainerStorage::slotIndex(const TContainerID id, const uint32_t slot) const
+{
+    const TStoredContainer* row = containerAt(id);
+    return row ? static_cast<uint32_t>(row->slotIndex(slot)) : 0;
+}
+
+void TContainerStorage::setInventoryTutorialMarker(const int markerId, const int slotId)
+{
+    // Host concern: CipSoft's storage owns the inventory; qtclient's session
+    // keeps it apart and installs it as the instance.
+    if (TInventoryContainer* inventory = TInventoryContainer::instance())
+        inventory->setTutorialMarker(markerId, slotId);
+}
+
+void TContainerStorage::setContainerTutorialMarker(const int markerId, const TContainerID id, const int slot)
+{
+    TStoredContainer* row = mutableAt(id);
+    if (!row)
+        return;
+    row->setTutorialMarker(markerId, static_cast<uint32_t>(slot != 0xff ? slot : 0));
+    emitUpdated(id, false);
+}
+
+void TContainerStorage::clearAllTutorialMarkers()
+{
+    if (TInventoryContainer* inventory = TInventoryContainer::instance())
+        inventory->clearTutorialMarkers();
+    for (auto it = m_containers.begin(); it != m_containers.end(); ++it) {
+        it.value().clearTutorialMarkers();
+        emitUpdated(it.key(), false);
+    }
 }
 
 void TContainerStorage::clear()
@@ -822,6 +907,39 @@ const TInventorySlot& TInventoryContainer::slotAt(const int slotId) const
 bool TInventoryContainer::hasSlot(const int slotId) const
 {
     return slotId >= 0 && slotId < SlotCount && !m_slots[static_cast<size_t>(slotId)].empty();
+}
+
+bool TInventoryContainer::isObjectEquipped(const uint16_t typeId, const std::optional<uint8_t> tier) const
+{
+    // The equipment slots, head to ammo; the first one holding the type decides.
+    for (int slotId = tibia::client::InventorySlotHead; slotId <= tibia::client::InventorySlotAmmo; ++slotId) {
+        const TInventorySlot& slot = slotAt(slotId);
+        if (slot.empty() || slot.typeId != typeId)
+            continue;
+        const TAppearanceType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        if (!type || !type->hasUpgradeClassification())
+            return true;
+        return tier.has_value() && slot.tier == *tier;
+    }
+    return false;
+}
+
+void TInventoryContainer::setTutorialMarker(const int markerId, const int slotId)
+{
+    m_tutorialMarkers[slotId] = markerId;
+    Q_EMIT inventoryChanged();
+}
+
+int TInventoryContainer::tutorialMarker(const int slotId) const
+{
+    const auto it = m_tutorialMarkers.find(slotId);
+    return it == m_tutorialMarkers.end() ? 0 : it->second;
+}
+
+void TInventoryContainer::clearTutorialMarkers()
+{
+    m_tutorialMarkers.clear();
+    Q_EMIT inventoryChanged();
 }
 
 TDepotSearchDetailListStorage::TDepotSearchDetailListStorage(QObject* parent)

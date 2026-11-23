@@ -1,24 +1,13 @@
-#include "sessiondumphintsprocessor.h"
+#include "tutorial/sessiondumphintsprocessor.h"
 
-#include "tutorial/tutorialciptypes.h"
-#include "input/gameaction.h"
-#include "input/gameactionhandlers.h"
+#include "tutorial/sessiondumphintcondition.h"
+#include "tutorial/sessiondumphints.h"
 
-#include <QFile>
 #include <QFileInfo>
-#include <QJsonArray>
-#include <QJsonDocument>
 
-#include <algorithm>
-#include <memory>
+#include <limits>
 
 namespace tibia::tutorial {
-
-namespace {
-
-using A = input::EGameAction;
-
-}
 
 QString hintsPathForDump(const QString& dumpPath)
 {
@@ -29,108 +18,55 @@ QString hintsPathForDump(const QString& dumpPath)
     return QFileInfo::exists(sibling) ? sibling : QString{};
 }
 
-TSessiondumpHintsProcessor::TSessiondumpHintsProcessor(QObject* parent)
-    : cip::tibia::tutorial::TSessiondumpHintsProcessor(parent)
+TSessiondumpHintsProcessor::TSessiondumpHintsProcessor(std::shared_ptr<TSessiondumpHints> hints)
+    : cip::tibia::tutorial::TSessiondumpHintsProcessor(nullptr)
+    , m_hints(std::move(hints))
 {
-    tutorial::ownProductSurface(this);
+    updateCurrentHint();
 }
 
-TSessiondumpHintsProcessor::~TSessiondumpHintsProcessor() { stop(); }
+TSessiondumpHintsProcessor::~TSessiondumpHintsProcessor() = default;
 
-bool TSessiondumpHintsProcessor::load(const QString& hintsPath)
+void TSessiondumpHintsProcessor::updateCurrentHint() { m_currentHint = m_hints->firstUnfinishedHint(); }
+
+int64_t TSessiondumpHintsProcessor::nextHintTimestamp() const
 {
-    stop();
-    m_actionsByTs = {};
-    if (hintsPath.isEmpty())
-        return false;
-    QFile file(hintsPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return false;
-    }
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (!doc.isObject()) {
-        return false;
-    }
-    m_actionsByTs = doc.object().value(QLatin1String("actions")).toObject();
-    return !m_actionsByTs.isEmpty();
+    if (m_currentHint)
+        return m_currentHint->timestamp();
+    return std::numeric_limits<int64_t>::max();
 }
 
-void TSessiondumpHintsProcessor::start()
+bool TSessiondumpHintsProcessor::hasHintToProcess(const int64_t& timestamp) const
 {
-    stop();
-    if (m_actionsByTs.isEmpty())
-        return;
-    m_running = true;
-    for (auto it = m_actionsByTs.begin(); it != m_actionsByTs.end(); ++it) {
-        bool ok = false;
-        const qint64 ts = it.key().toLongLong(&ok);
-        if (!ok)
-            continue;
-        auto* timer = new QTimer(this);
-        timer->setSingleShot(true);
-        timer->setInterval(static_cast<int>(std::max<qint64>(0, ts)));
-        connect(timer, &QTimer::timeout, this, [this, ts] { fireBucket(ts); });
-        m_timers.append(timer);
-        timer->start();
-    }
+    return m_currentHint && m_currentHint->timestamp() <= timestamp;
 }
 
-void TSessiondumpHintsProcessor::stop()
+void TSessiondumpHintsProcessor::processHints(const int64_t& timestamp)
 {
-    m_running = false;
-    for (QTimer* timer : m_timers) {
-        timer->stop();
-        timer->deleteLater();
-    }
-    m_timers.clear();
-}
-
-void TSessiondumpHintsProcessor::fireBucket(const qint64 timestampMs)
-{
-    if (!m_running)
-        return;
-    const QJsonArray bucket = m_actionsByTs.value(QString::number(timestampMs)).toArray();
-    for (const QJsonValue& value : bucket) {
-        if (value.isObject())
-            dispatchAction(value.toObject());
-    }
-}
-
-void TSessiondumpHintsProcessor::dispatchAction(const QJsonObject& action)
-{
-    const QString type = action.value(QLatin1String("type")).toString();
-    if (type == QLatin1String("TUTORIAL_PROGRESS")) {
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialProgress>(action.value(QLatin1String("tutorialprogress")).toString()));
-        return;
-    }
-    if (type == QLatin1String("SKIP_TO")) {
-        // 0 is a no-op / restart cue in CIP sidecars, not the end.
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSessiondumpSkipTo>(
-            static_cast<int64_t>(action.value(QLatin1String("skiptotimestamp")).toDouble())));
-        return;
-    }
-    if (type == QLatin1String("CONDITION")) {
-        const QString condition = action.value(QLatin1String("conditiontype")).toString();
-        const QJsonObject data = action.value(QLatin1String("conditiondata")).toObject();
-        if (condition == QLatin1String("SHOW_TUTORIAL_HINT") || data.contains(QLatin1String("showtutorialhintid"))) {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowTutorialHint>(data.value(QLatin1String("showtutorialhintid")).toInt()));
+    updateCurrentHint();
+    while (m_currentHint && m_currentHint->timestamp() <= timestamp) {
+        for (const input::IGameActionPtr& action : m_currentHint->execute())
+            Q_EMIT publishGameAction(action);
+        if (!m_currentHint || !m_currentHint->isDone())
             return;
-        }
-        // Text-hint conditions: surface as status-line style tutorial progress until overlays land.
-        const QJsonObject textHint = data.value(QLatin1String("texthint")).toObject();
-        if (!textHint.isEmpty()) {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionTutorialProgress>(textHint.value(QLatin1String("text")).toString()));
-        }
-        return;
+        updateCurrentHint();
     }
-    if (type == QLatin1String("SWITCH_CHANNEL") || type == QLatin1String("CLEAR_OLDEST_MESSAGE")
-        || type == QLatin1String("FINISHED_TUTORIAL")) {
-        if (type == QLatin1String("FINISHED_TUTORIAL")) {
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionFinishedTutorialForCharacter>(QString()));
+}
+
+void TSessiondumpHintsProcessor::handleGameAction(const tibia::input::IGameActionPtr& pGameAction)
+{
+    if (pGameAction->gameActionType() == input::EGameAction::SESSIONDUMP_SKIP_TO) {
+        const auto* skipTo = input::gameActionAs<input::TGameActionSessiondumpSkipTo>(pGameAction);
+        if (!skipTo)
             return;
-        }
+        m_hints->skipHintsBefore(skipTo->timestamp());
+        updateCurrentHint();
         return;
     }
+    if (!m_currentHint || m_currentHint->type() != TSessiondumpHintBase::Condition)
+        return;
+    if (auto condition = std::dynamic_pointer_cast<TSessiondumpHintCondition>(m_currentHint))
+        condition->handleGameAction(pGameAction);
 }
 
 }

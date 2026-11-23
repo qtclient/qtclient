@@ -38,11 +38,16 @@ class TSkillWheelStorage;
 /// The skill wheel game actions (CIP: skillwheel::TSkillWheelGameActionHandler):
 /// another player's wheel, the own wheel or the no-wheel / preview message,
 /// and saving the edited wheel.
+class TSkillWheelProtocolMessageHandler;
+
 class TSkillWheelGameActionHandler final : public cip::tibia::skillwheel::TSkillWheelGameActionHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::skillwheel::TSkillWheelGameActionHandler::TSkillWheelGameActionHandler;
+    /// The session's skill wheel protocol handler sends the requests; the own
+    /// player's id is read from the player creature when it already exists.
+    TSkillWheelGameActionHandler(std::shared_ptr<TSkillWheelProtocolMessageHandler> pProtocolMessageHandler,
+                                 const std::weak_ptr<creatures::TCreature>& pPlayerWeak);
 
     /// The login session's premium flag (CIP: the premium time storage).
     void setSessionPremium(bool premium) { m_sessionPremium = premium; }
@@ -66,8 +71,9 @@ public Q_SLOTS:
     void handleRequestOnwSkillWheelGameAction() override;
 
 private:
-    bool m_sessionPremium = false;
+    std::shared_ptr<TSkillWheelProtocolMessageHandler> m_pProtocolMessageHandler;
     uint32_t m_playerId = 0;
+    bool m_sessionPremium = false;
 };
 
 /// CIP `skillwheel::TSkillWheelProtocolMessageHandler` — native Q→H for GemAtelierGemRevealed.

@@ -90,11 +90,6 @@ void TGameNotify::emitResourcesBalanceChanged(qint64 value, qint64 oldBalance, i
     Q_EMIT resourcesBalanceChanged(value, oldBalance, type);
 }
 
-void TGameNotify::emitDeath(int deathType, int penality)
-{
-    Q_EMIT death(deathType, penality);
-}
-
 void TGameNotify::emitServerError(int code, const QString& message)
 {
     Q_EMIT serverError(code, message);

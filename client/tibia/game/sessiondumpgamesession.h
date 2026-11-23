@@ -40,7 +40,7 @@ namespace game {
 /// - Sibling `.hints` JSON via `TSessiondumpHintsProcessor` (tutorial cues)
 ///
 /// Live `--record` writes the decoded stream from the primary game connection.
-class TSessiondumpGameSession final : public TGameSessionBase
+class TSessiondumpGameSession : public TGameSessionBase
 {
     Q_OBJECT
 public:
@@ -58,9 +58,16 @@ public:
     void replay(const QString& file);
     /// Drops the replay without waiting for the recording to finish.
     void disconnectNow() override;
-    /// Host: the replay runs on the process clock (CipSoft gives the session
-    /// a clock of its own).
+    /// The session runs on the dump's progress clock: it stands still while the
+    /// dump is paused and follows the playback speed.
     std::shared_ptr<shared::IClockService> clockService() const override;
+    /// The clock of the dump's progress (CipSoft's session clock).
+    const std::shared_ptr<sessiondump::TSessiondumpProgressClockService>& sessiondumpProgressClock() const
+    {
+        return m_sessiondumpProgressClock;
+    }
+    /// The player of the session's dump.
+    const std::shared_ptr<sessiondump::TSessiondumpPlayer>& sessiondumpPlayer() const { return m_sessiondumpPlayer; }
     /// No server logout in replay; same as disconnectNow for UI wiring.
     void requestLogout();
 

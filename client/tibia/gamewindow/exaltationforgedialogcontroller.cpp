@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::exaltation {
@@ -267,8 +268,13 @@ qulonglong TExaltationForgeFusionPageController::fusionGoldCost() const
     const std::optional<int> classification = classificationOf(m_fusionObjectTypeId);
     if (!classification)
         return 0;
-    return m_convergenceFusionEnabled ? m_storage->convergenceFusionPrice(m_fusionObjectUpgradeTier)
-                                      : m_storage->fusionPrice(*classification, m_fusionObjectUpgradeTier);
+    // Host: the storage throws for a tier the server sent no price for.
+    try {
+        return m_convergenceFusionEnabled ? m_storage->convergenceFusionPrice(m_fusionObjectUpgradeTier)
+                                          : m_storage->fusionPrice(*classification, m_fusionObjectUpgradeTier);
+    } catch (const std::out_of_range&) {
+        return 0;
+    }
 }
 
 ushort TExaltationForgeFusionPageController::fusionObjectTypeId() const
@@ -479,15 +485,23 @@ qulonglong TExaltationForgeTransferPageController::transferGoldCost() const
     const std::optional<int> classification = classificationOf(m_sourceObjectTypeId);
     if (!classification)
         return 0;
-    return m_convergenceTransferEnabled ? m_storage->convergenceTransferPrice(m_sourceObjectUpgradeTier)
-                                        : m_storage->transferPrice(*classification, m_sourceObjectUpgradeTier);
+    try {
+        return m_convergenceTransferEnabled ? m_storage->convergenceTransferPrice(m_sourceObjectUpgradeTier)
+                                            : m_storage->transferPrice(*classification, m_sourceObjectUpgradeTier);
+    } catch (const std::out_of_range&) {
+        return 0;
+    }
 }
 
 ushort TExaltationForgeTransferPageController::transferCoreCost() const
 {
     if (m_sourceObjectTypeId == 0 || m_targetObjectUpgradeTier == 0)
         return 0;
-    return m_storage->transferCoreCost(m_targetObjectUpgradeTier);
+    try {
+        return m_storage->transferCoreCost(m_targetObjectUpgradeTier);
+    } catch (const std::out_of_range&) {
+        return 0;
+    }
 }
 
 ushort TExaltationForgeTransferPageController::sourceObjectTypeId() const
@@ -578,7 +592,7 @@ void TExaltationForgeTransferPageController::sourceSelected(const int TypeID, co
         for (const exaltation::TExaltationObject& receiver : group.receivers) {
             counts[{ receiver.typeId, receiver.tier }] = receiver.count;
             if (classificationOf(receiver.typeId))
-                objects.emplace_back(receiver.typeId, 0);
+                objects.emplace_back(receiver.typeId, receiver.tier);
         }
     }
     m_targetObjects->setObjects(std::move(objects));
@@ -789,7 +803,7 @@ void TExaltationForgeHistoryPageController::requestNextPage()
 void TExaltationForgeHistoryPageController::onHistoryChanged()
 {
     std::vector<exaltation::THistoryEntry> entries = m_storage->history();
-    std::ranges::stable_sort(entries, std::greater<>{}, &exaltation::THistoryEntry::timestamp);
+    std::ranges::sort(entries, std::greater<>{}, &exaltation::THistoryEntry::timestamp);
     m_history->setItems(entries);
     Q_EMIT historyChanged();
 }
@@ -819,7 +833,13 @@ uchar TExaltationResultDialogController::dustCost() const
 qulonglong TExaltationResultDialogController::goldCost() const
 {
     const std::optional<int> classification = classificationOf(m_inputObjectTypeId);
-    return classification && m_storage ? m_storage->fusionPrice(*classification, m_inputObjectUpgradeTier) : 0;
+    if (!classification || !m_storage)
+        return 0;
+    try {
+        return m_storage->fusionPrice(*classification, m_inputObjectUpgradeTier);
+    } catch (const std::out_of_range&) {
+        return 0;
+    }
 }
 
 void TExaltationResultDialogController::showDialog(const exaltation::TExaltationResult& result)

@@ -24,10 +24,11 @@ bool TClickAreaEventFilter::eventFilter(QObject* watched, QEvent* event)
     default:
         return QObject::eventFilter(watched, event);
     }
-    if (!m_area)
+    const auto* pointEvent = dynamic_cast<const QSinglePointEvent*>(event);
+    if (!m_area || !pointEvent)
         return false;
     const QRectF area(m_area->mapToScene(QPointF()), m_area->boundingRect().size());
-    if (area.contains(static_cast<const QSinglePointEvent*>(event)->scenePosition()))
+    if (area.contains(pointEvent->scenePosition()))
         Q_EMIT clickedInside();
     else
         Q_EMIT clickedOutside();

@@ -59,6 +59,8 @@ public:
     /// The spritesheet that holds a sprite: the first one whose last sprite id is
     /// not below it (remembered for the next lookup), or invalid() past the last one.
     virtual TSpritesheetMetadata getMetadataForSprite(uint32_t spriteId);
+    /// The file of the spritesheet that holds a sprite (that of invalid() past the last one).
+    virtual TSpritesheetID getSpritesheetIdForSprite(uint32_t spriteId);
 
     void clear();
 

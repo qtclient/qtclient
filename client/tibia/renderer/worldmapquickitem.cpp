@@ -160,7 +160,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         for (HighlightBinding& highlight : m_highlights) {
             QColor color = highlight.color;
             color.setAlphaF(strength);
-            highlight.node->set(highlight.texture, highlight.rect, color, highlight.smooth);
+            highlight.node->setColor(color);
         }
         return oldNode;
     }
@@ -293,15 +293,12 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
             const QColor base = renderer::TScenegraphNodeProvider::highlightColor(record.highlight);
             QColor color = base;
             color.setAlphaF(frame.highlightStrength);
-            const bool smooth = m_smoothTextureFiltering;
             auto* node = reuse.operator()<renderer::THighlightedSpriteScenegraphNode>(
-                *parent, [this, texture, rect, color, smooth] {
-                    renderer::THighlightedSpriteScenegraphNode* created = m_nodes->highlightedSpriteNode();
-                    created->set(texture, rect, color, smooth);
-                    return created;
-                });
-            node->set(texture, rect, color, smooth);
-            m_highlights.push_back({ node, texture, rect, base, smooth });
+                *parent, [this] { return m_nodes->highlightedSpriteNode(); });
+            node->setRect(rect);
+            node->setTexture(texture);
+            node->setColor(color);
+            m_highlights.push_back({ node, base });
             continue;
         }
         if (record.highlight != SpriteRecord::NoHighlight && bakeHighlight) {

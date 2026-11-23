@@ -1,6 +1,9 @@
 #include "socialbuttoncontroller.h"
 
+#include "friends/friendsciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/socialdialogcontroller.h"
+#include "teamfinder/teamfinderciptypes.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
@@ -14,59 +17,86 @@ TSocialButtonController::TSocialButtonController(TSocialDialogController* dialog
 
 bool TSocialButtonController::highlighted() const
 {
-    return m_highlighted;
+    return m_state != EState::None;
 }
 
-void TSocialButtonController::setState(const EState state)
+bool TSocialButtonController::isDialogInStack() const
 {
-    m_state = state;
-    const bool highlighted = state != EState::None;
-    if (highlighted == m_highlighted)
+    return m_dialog && m_dialog->dialog()->isInStack();
+}
+
+void TSocialButtonController::notify(const EState state)
+{
+    if (m_state == state || isDialogInStack())
         return;
-    m_highlighted = highlighted;
+    m_state = state;
     Q_EMIT changed();
 }
 
 void TSocialButtonController::onSocialButtonClicked()
 {
-    // CIP : invite → Invites (param 1), friendship → friend list (0),
-    // else team finder JoinTeam (param 5).
-    auto action = std::make_shared<input::TGameActionOpenSocialDialog>(m_state == EState::InviteReceived           ? 1
-                        : m_state == EState::FriendshipEstablished ? 0
-                        : m_state == EState::OwnTeamUpdate         ? 6
-                                                                   : 5);
-    setState(EState::None);
-    Q_EMIT publishGameAction(action);
+    // Invite -> invites (1), friendship -> friend list (0), own team -> own
+    // team (6), otherwise the team finder (5). The highlight ends unless the
+    // dialog is already up.
+    int page = 5;
+    switch (m_state) {
+        case EState::InviteReceived: page = 1; break;
+        case EState::FriendshipEstablished: page = 0; break;
+        case EState::OwnTeamUpdate: page = 6; break;
+        default: page = 5; break;
+    }
+    if (m_state != EState::None && !isDialogInStack()) {
+        m_state = EState::None;
+        Q_EMIT changed();
+    }
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenSocialDialog>(page));
+}
+
+void TSocialButtonController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_state != EState::None && !isDialogInStack()) {
+        m_state = EState::None;
+        Q_EMIT changed();
+    }
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    if (friends::TFriendsProtocolMessageHandler* friendsHandler = session->friendsProtocolMessageHandler().get()) {
+        m_gameSessionConnections.push_back(connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::newFriendInviteReceived, this,
+                                                   &TSocialButtonController::onFriendsInviteReceived));
+        m_gameSessionConnections.push_back(connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::newFriendshipReceived, this,
+                                                   &TSocialButtonController::onFriendshipEstablishedReceived));
+    }
+    if (teamfinder::TTeamFinderProtocolMessageHandler* teamFinder = session->teamFinderProtocolMessageHandler().get()) {
+        m_gameSessionConnections.push_back(connect(teamFinder, &teamfinder::TTeamFinderProtocolMessageHandler::ownTeamUpdateAvailable, this,
+                                                   &TSocialButtonController::onOwnTeamUpdateAvailable));
+        m_gameSessionConnections.push_back(connect(teamFinder, &teamfinder::TTeamFinderProtocolMessageHandler::teamLisUpdateAvailable, this,
+                                                   &TSocialButtonController::onTeamLisUpdateAvailable));
+    }
 }
 
 void TSocialButtonController::onFriendsInviteReceived()
 {
-    // CIP .
-    if (m_state != EState::None || !m_dialog || m_dialog->dialog()->isShown())
-        return;
-    setState(EState::InviteReceived);
+    notify(EState::InviteReceived);
 }
 
 void TSocialButtonController::onFriendshipEstablishedReceived()
 {
-    // CIP .
-    if (!m_dialog || m_dialog->dialog()->isShown())
-        return;
-    setState(EState::FriendshipEstablished);
+    notify(EState::FriendshipEstablished);
 }
 
 void TSocialButtonController::onOwnTeamUpdateAvailable()
 {
-    // CIP .
-    if (m_state != EState::None || !m_dialog || m_dialog->dialog()->isShown())
-        return;
-    setState(EState::OwnTeamUpdate);
+    notify(EState::OwnTeamUpdate);
 }
 
 void TSocialButtonController::onTeamLisUpdateAvailable()
 {
-    // CIP — same highlight latch as own-team update.
-    onOwnTeamUpdateAvailable();
+    notify(EState::TeamListUpdate);
 }
 
 }

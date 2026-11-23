@@ -1,6 +1,8 @@
 #include "questlogcontroller.h"
 
+#include "game/gamesessionbase.h"
 #include "mods/mission_backend.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <QDir>
@@ -280,7 +282,6 @@ bool TQuestLinePartsSortFilterProxyModel::lessThan(const QModelIndex& left, cons
 /// CIP: the quest lines model is rebuilt from the storage through a single-shot timer.
 TQuestLogController::TQuestLogController(QObject* parent)
     : TDialogController(QStringLiteral("QuestlogDialog.qml"), parent)
-    , m_tracker(&m_storage)
     , m_linesProxy(&m_lines)
     , m_partsProxy(&m_parts)
 {
@@ -291,27 +292,36 @@ TQuestLogController::TQuestLogController(QObject* parent)
     connect(&m_questLinesChangedTimer, &QTimer::timeout, this, &TQuestLogController::onQuestLinesChanged);
     connect(this, &TQuestLogController::selectedQuestLineChanged, this, &TQuestLogController::selectedQuestFlagChanged);
 
-    // CIP connects these when the game session is set.
-    auto* timer = &m_questLinesChangedTimer;
-    connect(&m_storage, &questlog::TQuestLogStorage::questLinesChanged, timer, qOverload<>(&QTimer::start));
-    connect(&m_storage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, timer, qOverload<>(&QTimer::start));
-    connect(&m_storage, &questlog::TQuestLogStorage::pinnedQuesLinesChanged, timer, qOverload<>(&QTimer::start));
-    connect(&m_storage, &questlog::TQuestLogStorage::questLinesChanged, this, &TQuestLogController::completedQuestLinesCountChanged);
-    connect(&m_storage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, this, &TQuestLogController::hiddenQuestLinesCountChanged);
-    connect(&m_storage, &questlog::TQuestLogStorage::questLinePartsChanged, this, &TQuestLogController::onQuestLinePartsChanged);
-    connect(&m_storage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this] { Q_EMIT trackingChanged(); });
-    connect(&m_storage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
     onFilterOptionChanged();
+}
 
-    m_gameActions.on(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameActionChangeQuesttrackerOptions& action) {
-        m_tracker.setOption(action.option(), action.enabled());
-        return true;
-    });
-    m_gameActions.on(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, [this](const input::TGameActionChangeTrackedQuestFlags& action) {
-        if (!action.questIds().empty())
-            m_tracker.changeTrackedQuestFlags(QList<int>(action.questIds().begin(), action.questIds().end()), !action.track());
-        return true;
-    });
+void TQuestLogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    std::shared_ptr<questlog::TQuestLogStorage> storage = session ? session->questLogStorage() : nullptr;
+    if (storage == m_storage)
+        return;
+    if (m_storage) {
+        disconnect(m_storage.get(), nullptr, this, nullptr);
+        disconnect(m_storage.get(), nullptr, &m_questLinesChangedTimer, nullptr);
+    }
+    m_storage = std::move(storage);
+    if (m_storage) {
+        questlog::TQuestLogStorage* questLogStorage = m_storage.get();
+        auto* timer = &m_questLinesChangedTimer;
+        connect(questLogStorage, &questlog::TQuestLogStorage::questLinesChanged, timer, qOverload<>(&QTimer::start));
+        connect(questLogStorage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, timer, qOverload<>(&QTimer::start));
+        connect(questLogStorage, &questlog::TQuestLogStorage::pinnedQuesLinesChanged, timer, qOverload<>(&QTimer::start));
+        connect(questLogStorage, &questlog::TQuestLogStorage::questLinesChanged, this, &TQuestLogController::completedQuestLinesCountChanged);
+        connect(questLogStorage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, this, &TQuestLogController::hiddenQuestLinesCountChanged);
+        connect(questLogStorage, &questlog::TQuestLogStorage::questLinePartsChanged, this, &TQuestLogController::onQuestLinePartsChanged);
+        connect(questLogStorage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this] { Q_EMIT trackingChanged(); });
+        connect(questLogStorage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
+    }
+    m_questLinesChangedTimer.start();
+    onFilterOptionChanged();
+    Q_EMIT completedQuestLinesCountChanged();
+    Q_EMIT trackingChanged();
 }
 
 TQuestLogController::~TQuestLogController()
@@ -321,7 +331,7 @@ TQuestLogController::~TQuestLogController()
 
 bool TQuestLogController::canTrackAdditionalQuestFlags() const
 {
-    return m_storage.canTrackAdditionalQuestFlags();
+    return !m_storage || m_storage->canTrackAdditionalQuestFlags();
 }
 
 /// CIP: whether the selected quest flag is tracked.
@@ -333,29 +343,31 @@ bool TQuestLogController::isTracked() const
 std::set<questlog::TQuestFlagID> TQuestLogController::trackedQuestFlagIds() const
 {
     std::set<questlog::TQuestFlagID> ids;
-    for (const questlog::TQuestFlag& flag : m_storage.trackedQuestFlags())
+    if (!m_storage)
+        return ids;
+    for (const questlog::TQuestFlag& flag : m_storage->trackedQuestFlags())
         ids.insert(flag.id);
     return ids;
 }
 
 qulonglong TQuestLogController::completedQuestLinesCount() const
 {
-    return m_storage.completedQuestLinesCount();
+    return m_storage ? m_storage->completedQuestLinesCount() : 0;
 }
 
 bool TQuestLogController::showCompleted() const
 {
-    return m_storage.showCompleted();
+    return !m_storage || m_storage->showCompleted();
 }
 
 qulonglong TQuestLogController::hiddenQuestLinesCount() const
 {
-    return m_storage.hiddenQuestLinesCount();
+    return m_storage ? m_storage->hiddenQuestLinesCount() : 0;
 }
 
 bool TQuestLogController::showHidden() const
 {
-    return m_storage.showHidden();
+    return m_storage && m_storage->showHidden();
 }
 
 /// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
@@ -369,7 +381,9 @@ void TQuestLogController::showDialog(const int parameter)
         m_partsProxy.invalidate();
     } else {
         const questlog::TQuestFlagID questFlagId = parameter & 0xffff;
-        if (const std::optional<questlog::TQuestLineID> questLineId = m_storage.questLineIdOfQuestFlag(questFlagId)) {
+        const std::optional<questlog::TQuestLineID> questLineId =
+            m_storage ? m_storage->questLineIdOfQuestFlag(questFlagId) : std::nullopt;
+        if (questLineId) {
             if (m_selectedQuestFlagId != questFlagId) {
                 m_selectedQuestFlagId = questFlagId;
                 Q_EMIT trackingChanged();
@@ -384,22 +398,28 @@ void TQuestLogController::showDialog(const int parameter)
 void TQuestLogController::clear()
 {
     dialog()->close();
-    m_storage.clearQuestLines();
-    m_storage.setTrackedQuestFlags({}, 0, true);
+    if (m_storage) {
+        m_storage->clearQuestLines();
+        m_storage->setTrackedQuestFlags({}, 0, true);
+    }
     m_lines.setLines({});
     m_parts.setParts({});
-    m_tracker.clear();
 }
 
 /// CIP: the quest lines model from the storage; keeps the selected quest line
 /// when it is still listed, else selects the first one.
 void TQuestLogController::onQuestLinesChanged()
 {
-    const std::set<questlog::TQuestLineID> hidden = m_storage.hiddenQuestLines();
-    const std::set<questlog::TQuestLineID> pinned = m_storage.pinnedQuestLines();
+    if (!m_storage) {
+        m_lines.setLines({});
+        Q_EMIT hiddenQuestLinesCountChanged();
+        return;
+    }
+    const std::set<questlog::TQuestLineID> hidden = m_storage->hiddenQuestLines();
+    const std::set<questlog::TQuestLineID> pinned = m_storage->pinnedQuestLines();
     QList<TQuestLinesModel::Line> lines;
-    lines.reserve(int(m_storage.questLines().size()));
-    for (const auto& [id, line] : m_storage.questLines()) {
+    lines.reserve(int(m_storage->questLines().size()));
+    for (const auto& [id, line] : m_storage->questLines()) {
         lines.append({ .id = line.id,
                        .name = line.name,
                        .completed = line.completed,
@@ -408,9 +428,9 @@ void TQuestLogController::onQuestLinesChanged()
     }
     m_lines.setLines(std::move(lines));
     if (dialog()->isShown()) {
-        if (m_storage.questLines().empty())
+        if (m_storage->questLines().empty())
             requestQuestLineDetails(0);
-        else if (!m_storage.questLines().contains(m_selectedQuestLineId))
+        else if (!m_storage->questLines().contains(m_selectedQuestLineId))
             requestQuestLineDetailsFirstInList();
     }
     Q_EMIT hiddenQuestLinesCountChanged();
@@ -422,7 +442,8 @@ void TQuestLogController::onQuestLinePartsChanged(const int questLineId)
 {
     if (m_selectedQuestLineId != questLineId)
         return;
-    const std::vector<questlog::TQuestLinePart> parts = m_storage.questLine(m_selectedQuestLineId).parts;
+    const std::vector<questlog::TQuestLinePart> parts =
+        m_storage ? m_storage->questLine(m_selectedQuestLineId).parts : std::vector<questlog::TQuestLinePart>{};
     QList<TQuestLinePartsModel::Part> rows;
     rows.reserve(int(parts.size()));
     for (const questlog::TQuestLinePart& part : parts)
@@ -452,18 +473,17 @@ void TQuestLogController::onQuestLinePartsChanged(const int questLineId)
 /// CIP: sends the stored tracked flags once the character's configuration is in.
 void TQuestLogController::onCharacterConfigurationLoaded()
 {
-    m_tracker.reload();
     onQuestLinesChanged();
-    QList<int> ids;
-    for (const questlog::TQuestFlag& flag : m_storage.trackedQuestFlags())
-        ids.append(flag.id);
-    m_tracker.changeTrackedQuestFlags(ids, false);
+    std::vector<int> ids;
+    for (const questlog::TQuestFlagID id : trackedQuestFlagIds())
+        ids.push_back(id);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::move(ids), true));
     onFilterOptionChanged();
 }
 
 void TQuestLogController::onFilterOptionChanged()
 {
-    m_linesProxy.setFilterOptions(m_storage.showCompleted(), m_storage.showHidden());
+    m_linesProxy.setFilterOptions(showCompleted(), showHidden());
     Q_EMIT filterOptionsChanged();
 }
 
@@ -525,19 +545,23 @@ void TQuestLogController::questTrackerButtonPressed()
 
 void TQuestLogController::setShowCompleted(const bool Show)
 {
-    m_storage.setShowCompleted(Show);
+    if (m_storage)
+        m_storage->setShowCompleted(Show);
 }
 
 void TQuestLogController::setShowHidden(const bool Show)
 {
-    m_storage.setShowHidden(Show);
+    if (m_storage)
+        m_storage->setShowHidden(Show);
 }
 
 /// CIP: hiding a quest line while hidden lines are filtered out moves the
 /// selection to the next listed line (or the previous one).
 void TQuestLogController::setHidden(const int QuestLineId, const bool IsHidden)
 {
-    if (IsHidden && !m_storage.showHidden()) {
+    if (!m_storage)
+        return;
+    if (IsHidden && !m_storage->showHidden()) {
         int row = 0;
         for (; row < m_linesProxy.rowCount(); ++row) {
             if (int(m_linesProxy.index(row, 0).data(TQuestLinesModel::IdRole).toUInt()) == QuestLineId)
@@ -550,20 +574,22 @@ void TQuestLogController::setHidden(const int QuestLineId, const bool IsHidden)
             questLineId = int(m_linesProxy.index(row - 1, 0).data(TQuestLinesModel::IdRole).toUInt());
         requestQuestLineDetails(questLineId);
     }
-    m_storage.setHidden(QuestLineId, IsHidden);
+    m_storage->setHidden(QuestLineId, IsHidden);
     Q_EMIT selectedQuestLineChanged();
 }
 
 void TQuestLogController::setPinned(const int QuestLineId, const bool IsPinned)
 {
-    m_storage.setPinned(QuestLineId, IsPinned);
+    if (!m_storage)
+        return;
+    m_storage->setPinned(QuestLineId, IsPinned);
     Q_EMIT selectedQuestLineChanged();
 }
 
 /// CIP: TGameActionChangeTrackedQuestFlags with the one flag.
 void TQuestLogController::setTrackingOfQuestFlag(const int QuestFlagId, const bool IsTracked)
 {
-    m_tracker.changeTrackedQuestFlags({ QuestFlagId }, !IsTracked);
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::vector<int>{ QuestFlagId }, IsTracked));
 }
 
 void TQuestLogController::setMissionBackend(mods::MissionBackend* storage)

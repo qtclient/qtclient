@@ -25,6 +25,46 @@ Millis textDuration(const QString& text);
 Millis privateTextDuration(const QString& text);
 Millis npcTextDuration(const QString& text);
 
+/// A text shown until it runs out: the status and look lines, the shown text
+/// of a queue and every line of a speech bubble.
+class TFleetingText
+{
+public:
+    /// Empty, white, not visible.
+    TFleetingText();
+    /// Shown from `start` for `duration`.
+    TFleetingText(const QString& text, Millis start, Millis duration, const QColor& color, bool isHtml);
+
+    /// Shows `text` from `start` for `duration`.
+    void set(const QString& text, Millis start, Millis duration, const QColor& color, bool isHtml);
+    /// Visible while `now` is before the expiry.
+    void update(Millis now) { m_visible = now < m_expiry; }
+    /// Empties the text and makes it white again.
+    void clear();
+    /// The same text, expiry and colour.
+    bool operator==(const TFleetingText& other) const;
+
+    const QString& text() const { return m_text; }
+    bool isVisible() const { return m_visible; }
+    const QColor& color() const { return m_color; }
+    bool isHtml() const { return m_html; }
+    Millis start() const { return m_start; }
+    Millis expiry() const { return m_expiry; }
+
+private:
+    friend class TTextStorage;
+    friend class TFleetingTextQueue;
+    friend class TNpcSpeechBubble;
+    friend class TCreatureSpeechBubble;
+
+    QString m_text;
+    Millis m_expiry = 0;
+    Millis m_start = 0;
+    bool m_visible = false;
+    QColor m_color;
+    bool m_html = false;
+};
+
 /// Texts shown one after the other, each for its own time (CIP: chat::TFleetingTextQueue).
 class TFleetingTextQueue : public ::tibia::CipTyped
 {
@@ -35,10 +75,16 @@ public:
     /// Shows the next text once the current one has run out (CIP:).
     void update(Millis now);
 
-    bool isVisible() const { return m_visible; }
-    const QString& text() const { return m_text; }
-    const QColor& color() const { return m_color; }
-    Millis start() const { return m_start; }
+    bool isVisible() const { return m_current.isVisible(); }
+    const QString& text() const { return m_current.text(); }
+    const QColor& color() const { return m_current.color(); }
+    Millis start() const { return m_current.start(); }
+    /// The texts still waiting.
+    size_t waitingCount() const { return m_queue.size(); }
+    /// The next waiting text; empty when none waits.
+    QString nextText() const;
+    /// Empties the shown text and makes it white again.
+    void clearText() { m_current.clear(); }
 
 protected:
     /// Clears the shown text of a queue it owns (hotkey ClearOldestMessage).
@@ -46,17 +92,15 @@ protected:
 
     struct Entry
     {
+        Entry(const QString& text, Millis duration, const QColor& color) : text(text), duration(duration), color(color) {}
+
         QString text;
         Millis duration = 0;
         QColor color;
     };
 
     std::deque<Entry> m_queue;
-    QString m_text;
-    Millis m_expiry = 0;
-    Millis m_start = 0;
-    bool m_visible = false;
-    QColor m_color = Qt::white;
+    TFleetingText m_current;
 };
 
 /// A fleeting queue of at most `max` waiting texts (CIP: chat::TTextMessageQueue).
@@ -68,6 +112,8 @@ public:
     /// Drops the oldest waiting text when full; a text arriving while none is
     /// shown stays twice as long.
     void push(const QString& text, Millis duration, const QColor& color) override;
+    /// The most waiting texts.
+    size_t maxSize() const { return m_max; }
 
 private:
     size_t m_max;
@@ -89,6 +135,8 @@ public:
     QString bubbleText() const;
 
     const QString& name() const { return m_name; }
+    /// "Name:" for the NPC.
+    const QString& header() const { return m_header; }
     const QColor& bubbleColor() const { return m_bubbleColor; }
     const Position& coordinate() const { return m_coordinate; }
 
@@ -118,7 +166,7 @@ public:
     void clearFirstLine();
     bool isEmpty() const { return m_lines.empty(); }
     /// When the oldest line was said.
-    Millis firstLineStart() const { return m_lines.front().start; }
+    Millis firstLineStart() const { return m_lines.front().start(); }
     /// The header and the lines, one per row.
     QString text() const;
     const QColor& color() const { return m_color; }
@@ -126,22 +174,13 @@ public:
     Millis expiry() const { return m_expiry; }
 
 private:
-    struct Line
-    {
-        QString text;
-        Millis expiry = 0;
-        Millis start = 0;
-        bool visible = false;
-        QColor color = Qt::white;
-    };
-
     QString m_speaker;
     int m_volume;
     QColor m_color;
     Position m_coordinate;
     size_t m_maxLines;
     QString m_header;
-    std::deque<Line> m_lines;
+    std::deque<TFleetingText> m_lines;
     Millis m_expiry = 0;
 };
 
@@ -164,10 +203,10 @@ public:
 
     /// The bottom status line, shown 5 s.
     void setStatusMessage(const QString& text, const QColor& color, bool isHtml = false);
-    bool isStatusVisible() const { return m_statusVisible; }
-    const QString& statusText() const { return m_statusText; }
-    const QColor& statusColor() const { return m_statusColor; }
-    bool isStatusHtml() const { return m_statusHtml; }
+    bool isStatusVisible() const { return m_status.isVisible(); }
+    const QString& statusText() const { return m_status.text(); }
+    const QColor& statusColor() const { return m_status.color(); }
+    bool isStatusHtml() const { return m_status.isHtml(); }
 
     /// Hotkey ClearOldestMessage: blanks the oldest of the look line, the shown
     /// centre and private messages, the NPC answers and the creature lines.
@@ -175,10 +214,10 @@ public:
 
     /// The look line above the centre; `isHtml` for loot.
     void setLookMessage(const QString& text, const QColor& color, bool isHtml);
-    bool isLookVisible() const { return m_lookVisible; }
-    const QString& lookText() const { return m_lookText; }
-    const QColor& lookColor() const { return m_lookColor; }
-    bool isLookHtml() const { return m_lookHtml; }
+    bool isLookVisible() const { return m_look.isVisible(); }
+    const QString& lookText() const { return m_look.text(); }
+    const QColor& lookColor() const { return m_look.color(); }
+    bool isLookHtml() const { return m_look.isHtml(); }
 
     /// Centre messages and private messages, "Name:\ntext" for a speaker.
     void addCenterMessage(const QString& text, const QColor& color);
@@ -212,18 +251,8 @@ private:
     std::weak_ptr<::tibia::creatures::TCreature> m_player;
     size_t m_maxCreatureBubbles;
     size_t m_maxQueuedMessages;
-    QString m_statusText;
-    Millis m_statusExpiry = 0;
-    Millis m_statusStart = 0;
-    bool m_statusVisible = false;
-    QColor m_statusColor = Qt::white;
-    bool m_statusHtml = false;
-    QString m_lookText;
-    Millis m_lookExpiry = 0;
-    Millis m_lookStart = 0;
-    bool m_lookVisible = false;
-    QColor m_lookColor = Qt::white;
-    bool m_lookHtml = false;
+    TFleetingText m_status;
+    TFleetingText m_look;
     TTextMessageQueue m_center;
     TTextMessageQueue m_private;
     std::deque<TNpcSpeechBubble> m_npcBubbles;

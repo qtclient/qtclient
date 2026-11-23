@@ -5,6 +5,7 @@
 #include "appearances/genericstorage.h"
 #include "shared/cip_typed.h"
 #include "tibia/client/outfit.h"
+#include "worldmap/coordinates.h"
 
 #include <client/const.h>
 #include <client/declarations.h>
@@ -59,10 +60,15 @@ int hookPattern(uint8_t hookState, uint8_t width);
 class TAppearanceInstance : public ::tibia::CipTyped
 {
 public:
-    explicit TAppearanceInstance(TAppearanceType* type);
+    /// An instance of `type` whose animation starts at `animationStartMs`.
+    explicit TAppearanceInstance(TAppearanceType* type, qint64 animationStartMs = 0);
     virtual ~TAppearanceInstance() = default;
 
-    TAppearanceType* thingType() const { return m_type; }
+    /// The instance's number: instances are numbered in the order they are made.
+    int serialNumber() const { return m_serialNumber; }
+
+    /// The appearance type the instance draws (CIP v2).
+    virtual TAppearanceType* thingType() const { return m_type; }
     uint16_t id() const;
     ThingCategory category() const;
     bool isNull() const;
@@ -76,14 +82,26 @@ public:
     const std::shared_ptr<TAppearanceInstanceSpriteSequence>& spriteSequence() const { return m_spriteSequence; }
     /// Draws `pattern` from now on (CIP v11).
     void setSpritePattern(const TAppearancePattern& pattern);
+    /// The sprite the sequence draws now (CIP v3); null without a sequence.
+    virtual const TAppearanceInstanceSpriteInfoPtr& currentSpriteInfo() const;
+    /// The sequence's first sprite (CIP v4); null without a sequence.
+    virtual const TAppearanceInstanceSpriteInfoPtr& firstSpriteInfo() const;
     /// Advances the sprite sequence's animation to `nowMs`; true when the drawn
     /// phase changed (CIP v5).
     virtual bool updateAnimation(qint64 nowMs) { return m_spriteSequence && m_spriteSequence->update(nowMs); }
+    /// The type's displacement, with the instance's elevation as depth (CIP v8).
+    virtual worldmap::TWorldMapSubfieldExtent displacement() const;
+    /// The offset of a moving creature drawn by this instance; objects and
+    /// effects do not move (CIP v9).
+    virtual worldmap::TWorldMapSubfieldExtent movementOffset() const { return { 0, 0, 0 }; }
+    /// The instance draws a creature: an outfit or a creature placeholder (CIP v10).
+    virtual bool isCreature() const { return false; }
 
 protected:
     TAppearanceType* m_type = nullptr;
     std::shared_ptr<TAppearanceInstanceSpriteSequence> m_spriteSequence;
     uint8_t m_elevation = 0;
+    int m_serialNumber = 0;
     tibia::creatures::TCreatureID m_creatureId = 0;
     /// When the instance's animation starts (objects: time 0).
     qint64 m_animationStartMs = 0;
@@ -94,7 +112,11 @@ using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 class TObjectAppearanceInstance : public TAppearanceInstance
 {
 public:
-    using TAppearanceInstance::TAppearanceInstance;
+    /// An object of `type` whose animation starts at `animationStartMs`.
+    explicit TObjectAppearanceInstance(TAppearanceType* type, qint64 animationStartMs = 0)
+        : TAppearanceInstance(type, animationStartMs)
+    {
+    }
 
     uint16_t count() const { return m_count; }
     uint8_t subType() const { return m_subType; }
@@ -321,6 +343,7 @@ public:
     /// The look the instance was made for (host: the HUD and lighting read it).
     void setOutfit(const Outfit& outfit) { m_outfit = outfit; }
 
+    bool isCreature() const override { return true; }
     /// CIP v12: the idle sequence draws (direction, 0, z), the moving one
     /// (movingDirection, 0, z); only on a change unless `force`.
     virtual void setPatterns(uint8_t direction, uint8_t movingDirection, uint8_t z, bool force);
@@ -386,16 +409,20 @@ private:
     TOutfitCustomization m_customization;
 };
 
+/// An object worn as an outfit: it draws its own sequence while idle and
+/// moving, in every direction.
 class TObjectOutfitAppearanceInstance final : public TOutfitAppearanceInstance
 {
 public:
-    explicit TObjectOutfitAppearanceInstance(TAppearanceType* type) : TOutfitAppearanceInstance(type) {}
-};
+    /// CIP: the object's sequence is the idle and the moving one; then v21.
+    explicit TObjectOutfitAppearanceInstance(TAppearanceType* type);
 
-class TCreaturePlaceholderAppearanceInstance final : public TAppearanceInstance
-{
-public:
-    using TAppearanceInstance::TAppearanceInstance;
+    /// CIP v12: an object keeps its pattern.
+    void setPatterns(uint8_t, uint8_t, uint8_t, bool) override {}
+
+protected:
+    /// CIP v21: the preview is the sequence's current sprite.
+    void updatePreviewSpriteInfo() override;
 };
 
 class TWorldMapAppearanceInstance final : public TAppearanceInstance
@@ -409,17 +436,20 @@ class TEffectInstance : public TAppearanceInstance
 public:
     using TAppearanceInstance::TAppearanceInstance;
 
-    /// Place the effect on `field`, created at `nowMs` and shown `delayMs` later.
-    void start(const Position& field, qint64 nowMs, qint64 delayMs = 0);
-    /// Advance to `nowMs`; a delayed effect runs `delayMs` behind the clock.
+    /// Place the effect on `field`, created at `nowMs`.
+    void start(const Position& field, qint64 nowMs);
+    /// Advance to `nowMs`: the clock, then the animation (updateAnimation).
     virtual void update(qint64 nowMs);
     /// The animation played its cycles, or there is none (TFieldEffectInstance::v14).
     virtual bool isFinished() const;
-    /// The delay has passed, so the effect draws (TDelayedEffectInstance::v3).
-    bool isShown() const { return m_startMs + m_delayMs < m_nowMs || m_delayMs == 0; }
+    /// The effect draws now; a delayed effect draws once its delay has passed.
+    virtual bool isShown() const { return true; }
     /// The phase and the pattern of the field to draw.
     bool getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const;
-    const Position& field() const { return m_fieldPosition; }
+    /// The field the effect is on (TFieldEffectInstance::v13).
+    virtual const Position& field() const { return m_fieldPosition; }
+    int patternX() const { return m_patternX; }
+    int patternY() const { return m_patternY; }
     /// The animation's phase, 0 without one.
     int phase() const;
     bool underCreatures() const { return m_underCreatures; }
@@ -437,7 +467,6 @@ protected:
     const animation::TAnimator* animator() const;
 
     qint64 m_startMs{ 0 };
-    qint64 m_delayMs{ 0 };
     qint64 m_nowMs{ 0 };
     uint16_t m_variantId{ 0 };
     tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
@@ -469,20 +498,47 @@ public:
     void update(qint64 nowMs) override;
     /// The flight is over (TMissileEffectInstance::v14).
     bool isFinished() const override { return m_nowMs >= m_startMs + static_cast<qint64>(m_flightDuration); }
-    int patternX() const { return m_patternX; }
-    int patternY() const { return m_patternY; }
 
 private:
     Position m_pathFrom;
     Position m_pathTo;
-    QPoint m_delta;
+    std::shared_ptr<animation::TWorldMapLinearMovementTween> m_tween;
     float m_flightDuration{ 0.f };
 };
 
+/// An effect shown after a delay. Until the delay has passed it draws an empty
+/// appearance of its own; then it draws the effect it wraps, which runs
+/// `delay` behind the clock.
 class TDelayedEffectInstance final : public TEffectInstance
 {
 public:
-    using TEffectInstance::TEffectInstance;
+    /// `effect`, created at `createdMs`, shown `delayMs` later.
+    TDelayedEffectInstance(std::shared_ptr<TEffectInstance> effect, qint64 createdMs, qint64 delayMs);
+    ~TDelayedEffectInstance() override;
+
+    /// CIP v2: the effect's type once shown, the empty type before.
+    TAppearanceType* thingType() const override;
+    /// CIP v3: the effect's sprite once shown, an empty sprite before.
+    const TAppearanceInstanceSpriteInfoPtr& currentSpriteInfo() const override;
+    /// CIP v5: remembers `nowMs`; once shown, advances the effect to `nowMs`
+    /// minus the delay and reports whether its phase changed.
+    bool updateAnimation(qint64 nowMs) override;
+    /// CIP v13: the wrapped effect's field.
+    const Position& field() const override;
+    /// CIP v14: the wrapped effect finished.
+    bool isFinished() const override;
+    /// The delay has passed since the effect was created.
+    bool isShown() const override { return m_delayMs + m_createdMs < m_currentMs; }
+
+private:
+    std::shared_ptr<TEffectInstance> m_effect;
+    /// The empty appearance drawn before the delay has passed.
+    std::unique_ptr<TAppearanceType> m_emptyType;
+    std::shared_ptr<TAppearanceInstance> m_emptyInstance;
+    qint64 m_delayMs{ 0 };
+    qint64 m_createdMs{ 0 };
+    qint64 m_currentMs{ 0 };
+    TAppearanceInstanceSpriteInfoPtr m_emptySpriteInfo;
 };
 
 /// The eight directions of a vector on the map (y grows southwards), as the
@@ -545,9 +601,9 @@ public:
     /// upgradeable, deco item kit, else a plain object (a hangable one takes
     /// the hook state of a hangable kind).
     static TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
-    /// Effect `id` on `field` from `source`, created at `nowMs` and shown `delayMs` later (CIP v7).
+    /// Effect `id` on `field` from `source`, created at `nowMs` (CIP v7).
     static std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
-                                                                   qint64 nowMs, qint64 delayMs = 0);
+                                                                   qint64 nowMs);
     /// Effect `id` on `field` drawn towards `direction` (CIP v8).
     static std::shared_ptr<TDirectionalFieldEffectInstance> createDirectionalFieldEffect(uint16_t id, const Position& field,
                                                                                          int direction, qint64 nowMs);

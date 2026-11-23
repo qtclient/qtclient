@@ -8,6 +8,9 @@
 #include <tibia/game/gamenotify.h>
 #include <protocol.pb.h>
 #include <tibia/game/gamesession_forward.h>
+#include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
+#include "gamewindow/preydialogcontroller.h"
 
 #include <stdexcept>
 
@@ -130,10 +133,88 @@ void TPreyProtocolMessageHandler::handleShowMessageDialogMessage(const ::tibia::
         Q_EMIT requestShowMessageDialog(QString::fromStdString(message.message()));
 }
 
+void TPreyProtocolMessageHandler::handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
+{
+    if (message.resource_type() != tibia::client::RESOURCE_PREY_WILDCARDS)
+        return;
+    if (game::TGameSessionBase* session = game::currentGameSession(); session && session->preyStorage())
+        session->preyStorage()->setPreyWildcards(static_cast<int>(message.value()));
+}
+
 void TPreyProtocolMessageHandler::handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message)
 {
     tibia::game::notify("onPreyRerollPrice", message.reroll_price(), static_cast<uint8_t>(message.wildcard_price()),
                         static_cast<uint8_t>(message.selection_price()));
+}
+
+}
+
+namespace tibia::prey {
+
+using input::EGameAction;
+
+void TPreyGameActionHandler::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (!pGameAction)
+        return;
+    switch (pGameAction->gameActionType()) {
+    case EGameAction::PREY_REQUEST_LIST_REROLL:
+        if (const auto* action = input::gameActionAs<input::TGameActionPreySystem>(pGameAction))
+            handleRequestListRerollGameAction(*action);
+        return;
+    case EGameAction::PREY_SELECT_MONSTER_FROM_LIST:
+        if (const auto* action = input::gameActionAs<input::TGameActionSelectPreyMonsterFromList>(pGameAction))
+            handleSelectMonsterFromListGameAction(*action);
+        return;
+    case EGameAction::PREY_REQUEST_BONUS_REROLL:
+        if (const auto* action = input::gameActionAs<input::TGameActionPreySystem>(pGameAction))
+            handleRequestBonusRerollGameAction(*action);
+        return;
+    case EGameAction::PREY_REQUEST_CHANGE_AUTO_EXPAND_TYPE:
+        if (const auto* action = input::gameActionAs<input::TGameActionChangeAutoPreyExtendType>(pGameAction))
+            handleRequestChangeAutoPreyExtendTypeGameAction(*action);
+        return;
+    case EGameAction::PREY_REQUEST_FREEZE_AND_SHOW_BESTIARY_MONSTERS:
+        if (const auto* action = input::gameActionAs<input::TGameActionPreySystem>(pGameAction))
+            handleRequestFreezeAndShowBestiaryMonstersGameAction(*action);
+        return;
+    case EGameAction::PREY_SELECT_MONSTER_FROM_BESTIARY:
+        if (const auto* action = input::gameActionAs<input::TGameActionSelectPreyMonsterFromBestiary>(pGameAction))
+            handleSelectPreyMonsterFromBestiaryGameAction(*action);
+        return;
+    default:
+        return;
+    }
+}
+
+void TPreyGameActionHandler::handleRequestListRerollGameAction(const input::TGameActionPreySystem& gameAction)
+{
+    TPreyProtocolMessageHandler::requestListReroll(gameAction.preyId());
+}
+
+void TPreyGameActionHandler::handleSelectMonsterFromListGameAction(const input::TGameActionSelectPreyMonsterFromList& gameAction)
+{
+    TPreyProtocolMessageHandler::selectMonsterFromList(gameAction.preyId(), gameAction.listIndex());
+}
+
+void TPreyGameActionHandler::handleRequestBonusRerollGameAction(const input::TGameActionPreySystem& gameAction)
+{
+    TPreyProtocolMessageHandler::requestBonusReroll(gameAction.preyId());
+}
+
+void TPreyGameActionHandler::handleRequestFreezeAndShowBestiaryMonstersGameAction(const input::TGameActionPreySystem& gameAction)
+{
+    TPreyProtocolMessageHandler::requestFreezeAndShowBestiaryMonsters(gameAction.preyId());
+}
+
+void TPreyGameActionHandler::handleSelectPreyMonsterFromBestiaryGameAction(const input::TGameActionSelectPreyMonsterFromBestiary& gameAction)
+{
+    TPreyProtocolMessageHandler::selectMonsterFromBestiary(gameAction.preyId(), gameAction.raceId());
+}
+
+void TPreyGameActionHandler::handleRequestChangeAutoPreyExtendTypeGameAction(const input::TGameActionChangeAutoPreyExtendType& gameAction)
+{
+    TPreyProtocolMessageHandler::setAutomaticExtendType(gameAction.preyId(), gameAction.extendType());
 }
 
 }

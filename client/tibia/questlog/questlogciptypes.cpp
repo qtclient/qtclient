@@ -1,13 +1,13 @@
 #include "questlog/questlogciptypes.h"
 
 #include "protocol/protocolciptypes.h"
-#include <tibia/game/gamesession.h>
+#include "iclockservice.h"
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include <tibia/game/gamenotify.h>
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -376,6 +376,14 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler(std::shared_ptr<TQuestLogStorage> questLogStorage,
+                                                                 std::shared_ptr<shared::IClockService> clockService)
+    : cip::tibia::questlog::TQuestLogProtocolMessageHandler(nullptr)
+    , m_clockService(std::move(clockService))
+    , m_questLogStorage(std::move(questLogStorage))
+{
+}
+
 void TQuestLogProtocolMessageHandler::handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message)
 {
     std::vector<TQuestLine> questLines;
@@ -385,7 +393,7 @@ void TQuestLogProtocolMessageHandler::handleQuestLogMessage(const ::tibia::proto
                                .name = QString::fromStdString(quest.name()),
                                .completed = quest.completed(),
                                .parts = {} });
-    tibia::game::notify("onQuestLog", questLines);
+    m_questLogStorage->setQuestLines(questLines);
 }
 
 void TQuestLogProtocolMessageHandler::handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message)
@@ -395,24 +403,23 @@ void TQuestLogProtocolMessageHandler::handleQuestLineMessage(const ::tibia::prot
     for (const auto& mission : message.missions())
         parts.emplace_back(static_cast<TQuestFlagID>(mission.mission_id()), QString::fromStdString(mission.name()),
                            QString::fromStdString(mission.description()));
-    tibia::game::notify("onQuestLine", static_cast<TQuestLineID>(message.quest_id()), parts);
+    m_questLogStorage->setQuestLineParts(static_cast<TQuestLineID>(message.quest_id()), parts);
 }
 
 void TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage(
     const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message)
 {
-    const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+    const qint64 timestamp = m_clockService->nowMillis();
     // Only a full list says whether more flags can be tracked.
-    std::optional<bool> canTrackAdditionalQuestFlags;
     if (message.full_list())
-        canTrackAdditionalQuestFlags = static_cast<uint8_t>(message.remaining()) != 0;
+        m_questLogStorage->setCanTrackAdditionalQuestFlags(static_cast<uint8_t>(message.remaining()) != 0);
     std::map<TQuestFlagID, TQuestFlagData> questFlags;
     for (const auto& mission : message.missions())
         questFlags[static_cast<TQuestFlagID>(mission.mission_id())] = { .questLineId = static_cast<TQuestLineID>(mission.quest_id()),
                                                                          .questLineName = QString::fromStdString(mission.quest_name()),
                                                                          .questFlagName = QString::fromStdString(mission.mission_name()),
                                                                          .description = QString::fromStdString(mission.description()) };
-    tibia::game::notify("onQuestTracker", questFlags, timestamp, message.full_list(), canTrackAdditionalQuestFlags);
+    m_questLogStorage->setTrackedQuestFlags(questFlags, timestamp, message.full_list());
 }
 
 } // namespace tibia::questlog

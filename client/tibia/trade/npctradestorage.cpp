@@ -194,15 +194,16 @@ uint32_t TNPCTradeStorage::ownedCount(const TNPCTradeGood& good, const bool incl
     uint32_t count = it == m_playerGoods.end() ? 0 : it->second;
     if (includeEquipped)
         return count;
-    uint32_t equipped = 0;
+    // Without the "sell equipped" option one piece is held back when the type
+    // is equipped (whatever the stack size).
+    bool equipped = false;
     if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-        for (int slot = tibia::client::InventorySlotHead; slot <= tibia::client::InventorySlotAmmo; ++slot) {
+        for (int slot = tibia::client::InventorySlotHead; slot <= tibia::client::InventorySlotAmmo && !equipped; ++slot) {
             const container::TInventorySlot& row = inventory->slotAt(slot);
-            if (!row.empty() && row.typeId == type)
-                equipped += row.stackable ? std::max<uint16_t>(1, row.count) : 1;
+            equipped = !row.empty() && row.typeId == type;
         }
     }
-    return count > equipped ? count - equipped : 0;
+    return static_cast<uint16_t>(count - (equipped ? 1 : 0));
 }
 
 uint64_t TNPCTradeStorage::money() const
@@ -230,6 +231,12 @@ void TNPCTradeStorage::look(const TNPCTradeGood& good) const
 {
     if (m_protocolMessageHandler)
         m_protocolMessageHandler->sendLook(good);
+}
+
+void TNPCTradeStorage::inspect(const TNPCTradeGood& good) const
+{
+    if (m_protocolMessageHandler)
+        m_protocolMessageHandler->sendInspect(good);
 }
 
 void TNPCTradeStorage::buy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity, const bool withBackpacks) const

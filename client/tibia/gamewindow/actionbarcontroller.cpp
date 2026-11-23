@@ -1,9 +1,13 @@
 #include "actionbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "chat/chatmodemanager.h"
 #include "config/actionbaroptions.h"
 #include "container/containerciptypes.h"
-#include "gamewindow/actionbarmanager.h"
+#include "container/objectappearanceinstanceinfostorage.h"
+#include "game/gamesessionbase.h"
+#include "game/passiveabilityinfostorage.h"
+#include "game/playerdata.h"
 #include "gamewindow/actionbuttoncontroller.h"
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -13,12 +17,16 @@
 
 #include <client/position.h>
 #include <tibia/appearances/appearancetype.h>
+#include <tibia/game/thingsession_forward.h>
 
 #include <QQmlComponent>
 #include <QQmlEngine>
 #include <QQuickItem>
 
+#include <QVariant>
+
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 
 namespace tibia::gamewindow {
@@ -122,47 +130,117 @@ void setActionBarOptionEnabled(const EActionBarOption option, const bool enabled
 
 namespace {
 
+/// The setting of a bar's button or of one of its multi-action slots.
+Setting settingOf(const int actionBarId, const int buttonId, const int multiActionIndex)
+{
+    const Setting setting = config::THotkeyOptions::instance()->mapping(actionBarId, buttonId);
+    if (multiActionIndex < 0)
+        return setting;
+    if (setting.kind == Setting::MULTI_ACTION && multiActionIndex < int(setting.multiActions.size()))
+        return setting.multiActions[size_t(multiActionIndex)];
+    return {};
+}
+
+/// Writes a setting of a bar's button or slot to the current hotkey set.
+void assignTo(const int actionBarId, const int buttonId, const int multiActionIndex, const Setting& setting)
+{
+    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    if (multiActionIndex < 0) {
+        hotkeys->setMapping(actionBarId, buttonId, setting);
+        return;
+    }
+    Setting multi = hotkeys->mapping(actionBarId, buttonId);
+    if (multi.kind != Setting::MULTI_ACTION)
+        return;
+    if (int(multi.multiActions.size()) <= multiActionIndex)
+        multi.multiActions.resize(size_t(multiActionIndex + 1));
+    multi.multiActions[size_t(multiActionIndex)] = setting;
+    hotkeys->setMapping(actionBarId, buttonId, multi);
+}
+
+/// The client option of an action bar option.
+config::EClientOption clientOptionOf(const EActionBarOption option)
+{
+    config::EClientOption id{};
+    config::TClientOptions::optionId(QLatin1String(ActionBarOptionKeys[size_t(option)]), id);
+    return id;
+}
 
 }
 
-TActionBarController::TActionBarController(TActionBarManager* manager, const int actionBarId, const EActionBarPosition position, QObject* buttonsDisplayOptions,
-                                           QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* parent)
+TActionBarController::TActionBarController(const uint8_t actionBarId, const EActionBarPosition position,
+                                           const config::EClientOption lockedOption, config::TClientOptions* clientOptions,
+                                           chat::TChatModeManager* chatModeManager, const int buttonCount, QQmlEngine* engine,
+                                           QQuickItem* container, QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* parent)
     : cip::tibia::gamewindow::TActionBarController(parent)
-    , m_manager(manager)
+    , m_lockedOption(lockedOption)
+    , m_buttonsDisplayOptionsPage(config::actionBarsBindings(), nullptr)
+    , m_clientOptions(clientOptions)
+    , m_chatModeManager(chatModeManager)
 {
     m_actionBarId = actionBarId;
     m_position = position;
     m_vertical = position != P::ActionBarPositionBottom;
-    m_buttonsDisplayOptions = buttonsDisplayOptions;
+    m_buttonsDisplayOptions = &m_buttonsDisplayOptionsPage;
     m_gameWindowQuickItem = gameWindowItem;
     m_mapWindowPane = mapWindowPane;
-    for (int id = 1; id <= ButtonCount; ++id) {
+    m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(actionBarId);
+    m_objectDialog = std::make_unique<TAssignObjectActionDialogController>(actionBarId);
+    m_textDialog = std::make_unique<TAssignTextActionDialogController>(actionBarId);
+    m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(actionBarId);
+    m_hotkeyDialog = std::make_unique<TRecordKeyboardShortcutDialogController>();
+    m_buttons.reserve(size_t(std::max(buttonCount, 0)));
+    m_objectInfosTimer.setInterval(0);
+    m_objectInfosTimer.setSingleShot(true);
+    for (int id = 1; id <= buttonCount; ++id) {
         auto* button = new TActionButtonController(this, id, -1, this);
-        connect(button, &TActionButtonController::publishGameAction, this, &TActionBarController::publishGameAction);
-        connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu);
+        m_connections.add(connect(button, &TActionButtonController::publishGameAction, this, &TActionBarController::publishGameAction));
+        m_connections.add(connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu));
         m_buttons.push_back(button);
         m_actionButtonModel << button;
     }
-    m_spellDialog = std::make_unique<TAssignSpellActionDialogController>(this);
-    m_objectDialog = std::make_unique<TAssignObjectActionDialogController>(this);
-    connect(m_objectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this, &TActionBarController::publishGameAction);
-    m_textDialog = std::make_unique<TAssignTextActionDialogController>(this);
-    m_passiveAbilityDialog = std::make_unique<TAssignPassiveAbilityActionDialogController>(this);
-    m_hotkeyDialog = std::make_unique<TRecordKeyboardShortcutDialogController>();
-    connect(m_spellDialog.get(), &TAssignSpellActionDialogController::requestAssignSpell, this,
-            [this](const uint id, const int index, const int spell, const QString& parameters, const ECastType castType) {
-                onRequestAssignSpell(id, index, spell, parameters, int(castType));
-            });
-    connect(m_objectDialog.get(), &TAssignObjectActionDialogController::requestAssignObject, this,
-            &TActionBarController::onRequestAssignObject);
-    connect(m_textDialog.get(), &TAssignTextActionDialogController::requestAssignText, this, &TActionBarController::onRequestAssignText);
-    connect(m_passiveAbilityDialog.get(), &TAssignPassiveAbilityActionDialogController::requestAssignPassiveAbility, this,
-            &TActionBarController::onRequestAssignPassiveAbility);
-    connect(m_hotkeyDialog.get(), &TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
-            &TActionBarController::onAssignSelectedKeySequenceToActionButton);
+    m_connections.add(connect(m_spellDialog.get(), &TAssignSpellActionDialogController::requestAssignSpell, this,
+                              [this](const uint id, const int index, const int spell, const QString& parameters, const ECastType castType) {
+                                  onRequestAssignSpell(id, index, spell, parameters, int(castType));
+                              }));
+    m_connections.add(connect(m_objectDialog.get(), &TAssignObjectActionDialogController::requestAssignObject, this,
+                              &TActionBarController::onRequestAssignObject));
+    m_connections.add(connect(m_objectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this,
+                              &TActionBarController::publishGameAction));
+    m_connections.add(connect(m_textDialog.get(), &TAssignTextActionDialogController::requestAssignText, this,
+                              &TActionBarController::onRequestAssignText));
+    m_connections.add(connect(m_passiveAbilityDialog.get(), &TAssignPassiveAbilityActionDialogController::requestAssignPassiveAbility, this,
+                              &TActionBarController::onRequestAssignPassiveAbility));
+    if (m_clientOptions) {
+        m_connections.add(connect(m_clientOptions, &config::TClientOptions::actionBarsOptionsChanged, this, &TActionBarController::lockedChanged));
+        m_connections.add(connect(m_clientOptions, &config::TClientOptions::hotkeyOptionsChanged, this, &TActionBarController::onActionBarOptionsChanged));
+        m_connections.add(connect(m_clientOptions, &config::TClientOptions::hotkeyOptionsChanged, this, &TActionBarController::onHotkeyOptionsChanged));
+    }
+    if (m_chatModeManager)
+        m_connections.add(connect(m_chatModeManager, &chat::TChatModeManager::chatModeChanged, this, &TActionBarController::onHotkeyOptionsChanged));
+    if (m_clientOptions)
+        m_connections.add(connect(m_clientOptions, &config::TClientOptions::actionBarsOptionsChanged, this,
+                                  &TActionBarController::onActionBarsOptionsChanged));
+    m_connections.add(connect(&m_objectInfosTimer, &QTimer::timeout, this, &TActionBarController::onRequestGetObjectInfos));
+    m_connections.add(connect(m_hotkeyDialog.get(), &TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
+                              &TActionBarController::onAssignSelectedKeySequenceToActionButton));
+    if (m_clientOptions)
+        m_buttonsDisplayOptionsPage.load(*m_clientOptions);
+    Q_EMIT buttonsDisplayOptionsChanged();
+    createItem(engine, container);
 }
 
-TActionBarController::~TActionBarController() = default;
+TActionBarController::~TActionBarController()
+{
+    if (m_item) {
+        m_item->setProperty("controller", QVariant::fromValue<QObject*>(nullptr));
+        m_item->setVisible(false);
+    }
+    m_connections.disconnectAll();
+    m_actionButtonModel.clear();
+    m_buttons.clear();
+    m_objectInfoRequests.clear();
+}
 
 TActionButtonController* TActionBarController::button(const int buttonId) const
 {
@@ -228,10 +306,21 @@ void TActionBarController::applySetting(TActionButtonController* button, const S
             button->setSpell(spell->id, setting.text.trimmed().mid(spell->words.size()).trimmed(), setting.spellCastType);
         break;
     }
-    case Setting::OBJECT:
-        button->setObject(setting.objectId, setting.upgradeTier.value_or(0), setting.liquidType.value_or(0), setting.useType,
-                          setting.useEquipSmartMode);
+    case Setting::OBJECT: {
+        // Objects are shown only with a session (their instance and amount
+        // come from its storages).
+        if (!m_gameSession)
+            break;
+        const TObjectInstance object = objectInstanceOfSetting(setting);
+        if (button->isMultiActionChild()) {
+            button->setObject(object.instance, setting.useType, setting.useEquipSmartMode);
+            button->setObjectCount(object.count);
+        } else {
+            button->setObjectCount(object.count);
+            button->setObject(object.instance, setting.useType, setting.useEquipSmartMode);
+        }
         break;
+    }
     case Setting::ACTION:
         button->setText(setting.action, false);
         break;
@@ -261,28 +350,71 @@ void TActionBarController::applySetting(TActionButtonController* button, const S
 void TActionBarController::onActionBarOptionsChanged()
 {
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    m_objectInfoRequests.clear();
     for (int id = 1; id <= int(m_buttons.size()); ++id)
         if (TActionButtonController* button = buttonController(id, -1))
             applySetting(button, hotkeys->mapping(m_actionBarId, id));
-    refreshObjects();
+    onObjectInfosChanged();
+    onInventoryChanged();
+    onEnableConditionsChanged();
+    if (!m_objectInfoRequests.empty())
+        m_objectInfosTimer.start();
 }
 
-void TActionBarController::onCharacterConfigurationLoaded()
+TActionBarController::TObjectInstance TActionBarController::objectInstanceOfSetting(const Setting& setting)
 {
-    config::TActionBarOptions* options = m_manager->actionBarOptions();
+    using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
+    TObjectInstance object;
+    const auto typeId = static_cast<uint16_t>(setting.objectId);
+    const auto* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+    TObjectAppearanceInstanceTypeID instance = TObjectAppearanceInstanceTypeID::plain(typeId);
+    if (setting.liquidType.has_value() && typeId != 0) {
+        instance = TObjectAppearanceInstanceTypeID::withLiquid(typeId, uint32_t(*setting.liquidType));
+    } else if (type && type->hasUpgradeClassification()) {
+        instance = TObjectAppearanceInstanceTypeID::withTier(typeId, uint8_t(setting.upgradeTier.value_or(0)));
+    } else if (type && type->isStackable() && m_objectInfoStorage) {
+        // A stackable object shows how many the character has, its expire
+        // counterpart's included.
+        uint count = uint(m_objectInfoStorage->count(instance));
+        if (const std::optional<uint16_t> counterpart = type->expireCounterpart())
+            count += uint(m_objectInfoStorage->count(TObjectAppearanceInstanceTypeID::plain(*counterpart)));
+        object.count = count;
+    }
+    object.instance = instance;
+    if (m_objectInfoStorage && m_objectInfoStorage->name(instance).isEmpty())
+        m_objectInfoRequests.insert(instance);
+    return object;
+}
+
+void TActionBarController::onActionBarCharacterOptionsChanged()
+{
+    m_actionBarCharacterOptionsChanged = true;
+}
+
+void TActionBarController::onActionBarCharacterOptionsChangedAsync()
+{
+    config::TActionBarOptions* options = m_actionBarOptions;
     const int first = options ? options->firstVisibleButton(static_cast<uint8_t>(m_actionBarId)) : 0;
-    if (first == m_firstVisibleButtonId)
-        return;
-    m_firstVisibleButtonId = first;
-    if (options && m_firstVisibleCanBeSaved)
-        options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), first);
-    Q_EMIT firstVisibleButtonIdChanged();
+    if (first != m_firstVisibleButtonId) {
+        m_firstVisibleButtonId = first;
+        if (options && m_firstVisibleButtonIdCanBeSaved)
+            options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), first);
+        Q_EMIT firstVisibleButtonIdChanged();
+    }
+    m_actionBarCharacterOptionsChanged = false;
+}
+
+void TActionBarController::onActionBarsOptionsChanged()
+{
+    if (m_clientOptions)
+        m_buttonsDisplayOptionsPage.load(*m_clientOptions);
+    Q_EMIT buttonsDisplayOptionsChanged();
 }
 
 void TActionBarController::onHotkeyOptionsChanged()
 {
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    const bool chatOn = m_manager->chatOn();
+    const bool chatOn = this->chatOn();
     for (TActionButtonController* button : m_buttons)
         button->setHotkeys(hotkeys->allButtonKeys(m_actionBarId, int(button->actionButtonID()), chatOn));
 }
@@ -292,7 +424,7 @@ void TActionBarController::setFirstVisibleButtonId(const int v)
     if (v == m_firstVisibleButtonId)
         return;
     m_firstVisibleButtonId = v;
-    if (config::TActionBarOptions* options = m_manager->actionBarOptions(); options && m_firstVisibleCanBeSaved)
+    if (config::TActionBarOptions* options = m_actionBarOptions; options && m_firstVisibleButtonIdCanBeSaved)
         options->setFirstVisibleButton(static_cast<uint8_t>(m_actionBarId), v);
     Q_EMIT firstVisibleButtonIdChanged();
 }
@@ -320,52 +452,271 @@ bool TActionBarController::insertSpell(const int spellId, const bool newlyUnlock
     return false;
 }
 
-void TActionBarController::refreshObjects()
-{
-    for (TActionButtonController* button : m_buttons)
-        button->refreshObject();
-}
+bool TActionBarController::locked() const { return m_clientOptions && m_clientOptions->boolOption(m_lockedOption); }
 
-bool TActionBarController::refreshCooldowns(const qint64 now)
-{
-    bool running = false;
-    for (TActionButtonController* button : m_buttons)
-        running = button->refreshCooldown(now) || running;
-    return running;
-}
-
-void TActionBarController::setLocked(const bool locked)
-{
-    if (locked == m_locked)
-        return;
-    m_locked = locked;
-    Q_EMIT lockedChanged();
-}
+bool TActionBarController::chatOn() const { return m_chatModeManager && m_chatModeManager->chatMode() != 0; }
 
 Setting TActionBarController::settingAt(const int buttonId, const int multiActionIndex) const
 {
-    const Setting setting = config::THotkeyOptions::instance()->mapping(m_actionBarId, buttonId);
-    if (multiActionIndex < 0)
-        return setting;
-    if (setting.kind == Setting::MULTI_ACTION && multiActionIndex < int(setting.multiActions.size()))
-        return setting.multiActions[size_t(multiActionIndex)];
-    return {};
+    return settingOf(m_actionBarId, buttonId, multiActionIndex);
 }
 
 void TActionBarController::assign(const int buttonId, const int multiActionIndex, const Setting& setting)
 {
-    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    if (multiActionIndex < 0) {
-        hotkeys->setMapping(m_actionBarId, buttonId, setting);
+    assignTo(m_actionBarId, buttonId, multiActionIndex, setting);
+}
+
+void TActionBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeAllDialogs();
+    m_gameSessionConnections.disconnectAll();
+    m_gameLoginSuccessful = false;
+    m_objectInfoStorage.reset();
+    m_inventory.reset();
+    m_playerData.reset();
+    m_actionBarOptions = nullptr;
+    m_gameSession = GameSession;
+    for (TActionButtonController* button : m_buttons) {
+        button->reset();
+        button->clearMultiActions();
+    }
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        m_objectInfoStorage = session->objectAppearanceInstanceInfoStorage();
+        if (m_objectInfoStorage) {
+            m_gameSessionConnections.add(connect(m_objectInfoStorage.get(), &container::TObjectAppearanceInstanceInfoStorage::objectInfosChanged,
+                                                 this, &TActionBarController::onObjectInfosChanged));
+            m_gameSessionConnections.add(connect(m_objectInfoStorage.get(), &container::TObjectAppearanceInstanceInfoStorage::objectInfosChanged,
+                                                 this, &TActionBarController::onEnableConditionsChanged));
+        }
+        m_inventory = session->inventoryContainer();
+        if (m_inventory)
+            m_gameSessionConnections.add(connect(m_inventory.get(), &container::TInventoryContainer::inventoryChanged, this,
+                                                 &TActionBarController::onInventoryChanged));
+        m_playerData = session->playerData();
+        if (m_playerData)
+            m_gameSessionConnections.add(
+                connect(m_playerData.get(), &game::TPlayerData::playerDataChanged, this, &TActionBarController::onEnableConditionsChanged));
+        if (config::TCharacterConfigurationManager* manager = session->characterConfigurationManager().get()) {
+            m_actionBarOptions = manager->actionBarOptions();
+            m_gameSessionConnections.add(connect(manager, &config::TCharacterConfigurationManager::configurationLoadedForCharacter, this,
+                                                 &TActionBarController::onActionBarCharacterOptionsChanged));
+            if (m_actionBarOptions)
+                m_gameSessionConnections.add(connect(m_actionBarOptions.data(), &config::TActionBarOptions::configurationChangedFromUserInput, this,
+                                                     &TActionBarController::onActionBarCharacterOptionsChanged));
+        }
+        m_gameSessionConnections.add(
+            connect(m_gameSession.get(), &game::IGameSession::gameLoginSuccessful, this, &TActionBarController::onGameLoginSuccessful));
+        onObjectInfosChanged();
+        onInventoryChanged();
+        onEnableConditionsChanged();
+    }
+    onActionBarOptionsChanged();
+    m_actionBarCharacterOptionsChanged = true;
+    onHotkeyOptionsChanged();
+    for (TActionButtonController* button : m_buttons)
+        button->connectToGameSession(m_gameSession);
+}
+
+void TActionBarController::tick(const qint64 now)
+{
+    if (!m_gameSession)
+        return;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->cooldownStorage())
+        return;
+    for (TActionButtonController* button : m_buttons)
+        button->refreshCooldown(now);
+    if (!m_actionBarCharacterOptionsChanged)
+        return;
+    onActionBarCharacterOptionsChangedAsync();
+}
+
+void TActionBarController::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    if (!pGameAction)
+        return;
+    switch (pGameAction->gameActionType()) {
+    case input::EGameAction::REMOVE_ALL_TUTORIAL_MARKERS:
+        for (TActionButtonController* button : m_buttons)
+            button->setTutorialMarkerID(0);
+        return;
+    case input::EGameAction::ASSIGN_SPELL_TO_ACTION_BUTTON:
+        if (const auto* assign = input::gameActionAs<input::TGameActionAssignSpellToActionButton>(pGameAction);
+            assign && int(assign->actionBarId()) == m_actionBarId)
+            onSpellIconDropped(uint(assign->actionButtonId()), assign->spellId(), std::max(-1, assign->multiActionIndex()));
+        return;
+    case input::EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS:
+        if (const auto* close = input::gameActionAs<input::TGameActionCloseAllMultiActionButtons>(pGameAction))
+            closeOpenMultiActionButtons(close->actionBarId(), close->actionButtonId());
+        return;
+    case input::EGameAction::ACTION_BUTTON_TRIGGERED:
+        if (auto triggered = std::dynamic_pointer_cast<const input::TGameActionActionButtonTriggered>(pGameAction))
+            handleActionButtonTriggeredGameAction(triggered);
+        return;
+    default:
         return;
     }
-    Setting multi = hotkeys->mapping(m_actionBarId, buttonId);
-    if (multi.kind != Setting::MULTI_ACTION)
+}
+
+void TActionBarController::handleActionButtonTriggeredGameAction(const std::shared_ptr<const input::TGameActionActionButtonTriggered>& pGameAction)
+{
+    if (int(pGameAction->actionBarId()) != m_actionBarId)
         return;
-    if (int(multi.multiActions.size()) <= multiActionIndex)
-        multi.multiActions.resize(size_t(multiActionIndex + 1));
-    multi.multiActions[size_t(multiActionIndex)] = setting;
-    hotkeys->setMapping(m_actionBarId, buttonId, multi);
+    if (TActionButtonController* button = buttonController(pGameAction->actionButtonId(), -1))
+        button->setIsNewlyUnlocked(false);
+}
+
+void TActionBarController::onObjectInfosChanged()
+{
+    if (!m_objectInfoStorage)
+        return;
+    for (TActionButtonController* button : m_buttons) {
+        std::vector<TActionButtonController*> controllers{ button };
+        for (int index = 0; TActionButtonController* slot = button->multiAction(index); ++index)
+            controllers.push_back(slot);
+        for (TActionButtonController* controller : controllers)
+            if (controller->type() == TActionButtonController::OBJECT)
+                controller->setObjectInfoName(m_objectInfoStorage->name(controller->objectInstance()));
+    }
+}
+
+std::vector<TActionButtonController*> TActionBarController::actionsOf(TActionButtonController* button)
+{
+    if (!button->isMultiAction())
+        return { button };
+    std::vector<TActionButtonController*> multiActions;
+    for (int index = 0; TActionButtonController* slot = button->multiAction(index); ++index)
+        multiActions.push_back(slot);
+    return multiActions;
+}
+
+void TActionBarController::onEnableConditionsChanged()
+{
+    using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
+    if (!m_objectInfoStorage || !m_playerData)
+        return;
+    const game::TPlayerData& player = *m_playerData;
+    const spells::TSpellInfoStorage* spellStorage = spells::TSpellInfoStorage::instance();
+    // The vocation, promotion and powerless rules a spell and a rune share.
+    const auto castAllowed = [&player](const spells::TSpellCastParameters& cast) {
+        if (!cast.vocations.contains(player.vocation()))
+            return false;
+        return !player.isPowerless() || !cast.aggressive;
+    };
+    const double magicLevel = player.magicLevel();
+    for (TActionButtonController* button : m_buttons) {
+        for (TActionButtonController* action : actionsOf(button)) {
+            switch (action->type()) {
+            case TActionButtonController::SPELL: {
+                const spells::TSpellInfo spell = spellStorage->spellInfoAt(action->spellId());
+                const spells::TSpellCastParameters& cast = spell.cast;
+                const bool enabled = uint32_t(player.mana()) >= uint32_t(cast.mana) && player.knownSpells().contains(uint16_t(action->spellId()))
+                                     && player.level() >= cast.minimumLevel && (player.hasReachedMain() || !cast.onlyPromoted)
+                                     && castAllowed(cast);
+                action->setIsEnabled(enabled);
+                break;
+            }
+            case TActionButtonController::OBJECT: {
+                if (action->objectID() == 0)
+                    break;
+                const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
+                const auto* type = tibia::game::rawThingType(instance.typeId, ThingCategoryItem);
+                uint count = uint(m_objectInfoStorage->count(instance));
+                if (const std::optional<uint16_t> counterpart = type ? type->expireCounterpart() : std::nullopt)
+                    count += uint(m_objectInfoStorage->count(TObjectAppearanceInstanceTypeID::plain(*counterpart)));
+                // qtclient's instance id has no amount; the button carries it.
+                if (count != action->objectCount())
+                    action->setObjectCount(count);
+                bool enabled = true;
+                if (const std::optional<spells::TSpellInfo> rune = spellStorage->runeSpellInfo(int(instance.typeId)); rune && rune->rune) {
+                    const spells::TSpellCastParameters& cast = rune->rune->cast;
+                    enabled = uint32_t(player.mana()) >= uint32_t(cast.mana) && player.level() >= cast.minimumLevel
+                              && rune->rune->useMagicLevel <= magicLevel && castAllowed(cast);
+                }
+                action->setIsEnabled(count != 0 && enabled);
+                break;
+            }
+            case TActionButtonController::PASSIVEABILITY: {
+                const auto ability = uint8_t(action->passiveAbility());
+                bool enabled = false;
+                const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+                if (const game::TCooldownStorage* cooldowns = session ? session->cooldownStorage().get() : nullptr) {
+                    const game::TPassiveAbilityInfo info = game::TPassiveAbilityInfoStorage::instance()->info(ability);
+                    // An ability with a counter needs its maximum, one with a
+                    // cooldown its duration.
+                    enabled = info.flag ? cooldowns->passiveAbilityCounter(ability).maximum != 0
+                                        : cooldowns->passiveAbilityCooldown(ability).total != 0;
+                    enabled = enabled && info.vocations.contains(player.vocation());
+                }
+                action->setIsEnabled(enabled);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+}
+
+void TActionBarController::onInventoryChanged()
+{
+    using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
+    if (!m_gameSession || !m_inventory)
+        return;
+    for (TActionButtonController* button : m_buttons) {
+        for (TActionButtonController* action : actionsOf(button)) {
+            if (action->type() != TActionButtonController::OBJECT || action->useType() != config::EUseType::Equip)
+                continue;
+            const TObjectAppearanceInstanceTypeID instance = action->objectInstance();
+            const auto* type = action->objectID() != 0 ? tibia::game::rawThingType(instance.typeId, ThingCategoryItem) : nullptr;
+            if (!type)
+                continue;
+            const std::optional<uint8_t> tier = instance.hasTier() ? std::optional<uint8_t>(instance.tier) : std::nullopt;
+            bool equipped = m_inventory->isObjectEquipped(instance.typeId, tier);
+            const std::optional<uint16_t> counterpartId = type->expireCounterpart();
+            if (action->useEquipSmartMode() && counterpartId) {
+                const auto* shown = type;
+                if (!equipped) {
+                    const auto* counterpart = tibia::game::rawThingType(*counterpartId, ThingCategoryItem);
+                    equipped = m_inventory->isObjectEquipped(*counterpartId, tier);
+                    if (counterpart)
+                        shown = counterpart;
+                    if (!equipped) {
+                        // Neither is worn: the variant that is not animated.
+                        const bool animated = std::ranges::any_of(type->frameGroups(), [](const auto& group) { return group.second.isAnimated(); });
+                        shown = animated && counterpart ? counterpart : type;
+                    }
+                }
+                const uint16_t shownId = shown->getId();
+                TObjectAppearanceInstanceTypeID shownInstance = TObjectAppearanceInstanceTypeID::plain(shownId);
+                if (shown->isSplash() || shown->isFluidContainer())
+                    shownInstance = TObjectAppearanceInstanceTypeID::withLiquid(shownId, instance.hasLiquid() ? instance.liquid : 0);
+                else if (shown->hasUpgradeClassification())
+                    shownInstance = TObjectAppearanceInstanceTypeID::withTier(shownId, instance.hasTier() ? instance.tier : 0);
+                // A stackable object's amount stays on the button (qtclient's
+                // instance id has no amount).
+                action->setObject(shownInstance, config::EUseType::Equip, action->useEquipSmartMode());
+            }
+            action->setObjectIsEquiped(equipped);
+        }
+    }
+}
+
+void TActionBarController::onRequestGetObjectInfos()
+{
+    if (!m_gameSession || !m_gameLoginSuccessful || m_objectInfoRequests.empty())
+        return;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !session->containerProtocolMessageHandler())
+        return;
+    const std::vector<appearances::TObjectAppearanceInstanceTypeID> objects(m_objectInfoRequests.begin(), m_objectInfoRequests.end());
+    session->containerProtocolMessageHandler()->requestGetObjectsInfo(objects);
+}
+
+void TActionBarController::onGameLoginSuccessful()
+{
+    m_gameLoginSuccessful = true;
+    m_objectInfosTimer.start();
 }
 
 void TActionBarController::onRequestContextMenu(const uint ButtonId, const int MultiActionChild)
@@ -540,7 +891,7 @@ void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
 void TActionBarController::onAssignHotkey(const uint ButtonId)
 {
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    const bool chatOn = m_manager->chatOn();
+    const bool chatOn = this->chatOn();
     const QString action = config::THotkeyOptions::triggerActionButtonName(m_actionBarId, int(ButtonId));
     m_hotkeyButtonId = int(ButtonId);
     m_hotkeyDialog->showDialog(chatOn, false, hotkeys->buttonKeys(m_actionBarId, int(ButtonId), chatOn),
@@ -550,7 +901,7 @@ void TActionBarController::onAssignHotkey(const uint ButtonId)
 
 void TActionBarController::onAssignSelectedKeySequenceToActionButton(const QKeySequence& NewKeySequence)
 {
-    config::THotkeyOptions::instance()->setButtonKeys(m_actionBarId, m_hotkeyButtonId, m_manager->chatOn(), NewKeySequence);
+    config::THotkeyOptions::instance()->setButtonKeys(m_actionBarId, m_hotkeyButtonId, chatOn(), NewKeySequence);
 }
 
 void TActionBarController::onClearAction(const uint ButtonId, const int MultiActionChild)
@@ -573,7 +924,7 @@ void TActionBarController::onDropped(const uint ButtonId, const int MultiActionI
         if (move.position().y & 0x40) {
             if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
                 if (const container::TStoredContainer* row = storage->containerAt(move.position().y & 0x3F))
-                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move.stackPosition()).tier;
+                    tier = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + move.stackPosition()).tier;
             }
         } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
             tier = inventory->slotAt(move.position().y).tier;
@@ -590,32 +941,26 @@ void TActionBarController::onSwapActions(const uint SourceActionBarId, const uin
 {
     if (SourceActionBarId == DestinationActionBarId && SourceButtonId == DestinationButtonId && SourceMultiActionIndex == DestinationMultiActionIndex)
         return;
-    TActionBarController* source = m_manager->bar(int(SourceActionBarId));
-    TActionBarController* destination = m_manager->bar(int(DestinationActionBarId));
-    if (!source || !destination)
-        return;
-    const Setting from = source->settingAt(int(SourceButtonId), SourceMultiActionIndex);
-    const Setting to = destination->settingAt(int(DestinationButtonId), DestinationMultiActionIndex);
+    const Setting from = settingOf(int(SourceActionBarId), int(SourceButtonId), SourceMultiActionIndex);
+    const Setting to = settingOf(int(DestinationActionBarId), int(DestinationButtonId), DestinationMultiActionIndex);
     if (DestinationMultiActionIndex >= 0 && from.kind == Setting::MULTI_ACTION)
         return;
-    destination->assign(int(DestinationButtonId), DestinationMultiActionIndex, from);
-    source->assign(int(SourceButtonId), SourceMultiActionIndex, to);
+    assignTo(int(DestinationActionBarId), int(DestinationButtonId), DestinationMultiActionIndex, from);
+    assignTo(int(SourceActionBarId), int(SourceButtonId), SourceMultiActionIndex, to);
 }
 
 void TActionBarController::onSpellIconDropped(const uint ButtonId, const int SpellEnumId, const int MultiActionIndex)
 {
+    // Spell ids past the client's spell table are ignored.
+    if (SpellEnumId >= 0x142)
+        return;
     const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(SpellEnumId);
     if (!spell)
         return;
-    if (!spell->parameterHints.isEmpty()) {
+    if (spell->parameterHints.isEmpty())
+        onRequestAssignSpell(ButtonId, MultiActionIndex, SpellEnumId, QString(), 0);
+    else
         m_spellDialog->showDialog(ButtonId, MultiActionIndex, SpellEnumId, QString(), ECastType(0));
-        return;
-    }
-    Setting setting;
-    setting.kind = Setting::TEXT;
-    setting.text = spell->words;
-    setting.sendAutomatically = true;
-    assign(int(ButtonId), MultiActionIndex, setting);
 }
 
 void TActionBarController::onSpellIconDropped(const uint ButtonId, const int SpellEnumId)
@@ -635,15 +980,16 @@ void TActionBarController::setNumVisibleSlots(const int Amount)
     m_numVisibleSlots = std::min(Amount, int(m_buttons.size()));
 }
 
-TActionBarGroup::TActionBarGroup(TActionBarManager* manager, const EActionBarPosition position, QQuickItem* container, QQmlEngine* engine,
-                                 QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* buttonsDisplayOptions, QObject* parent)
+TActionBarGroup::TActionBarGroup(const EActionBarPosition position, QQuickItem* container, QQmlEngine* engine, QQuickItem* gameWindowItem,
+                                 QQuickItem* mapWindowPane, config::TClientOptions* clientOptions, chat::TChatModeManager* chatModeManager,
+                                 QObject* parent)
     : cip::tibia::gamewindow::TActionBarGroup(parent)
-    , m_manager(manager)
     , m_container(container)
     , m_engine(engine)
     , m_gameWindowItem(gameWindowItem)
     , m_mapWindowPane(mapWindowPane)
-    , m_buttonsDisplayOptions(buttonsDisplayOptions)
+    , m_clientOptions(clientOptions)
+    , m_chatModeManager(chatModeManager)
     , m_position(position)
 {
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -704,6 +1050,14 @@ EActionBarOption TActionBarGroup::showOptionOfBar(const uint8_t actionBarId)
     throw std::invalid_argument("ActionbarID is not manged by any TActionBarGroup");
 }
 
+uint8_t TActionBarGroup::barOfShowOption(const EActionBarOption option)
+{
+    for (const TBarOptions* options : { &BottomBarOptions, &LeftBarOptions, &RightBarOptions })
+        if (std::ranges::any_of(*options, [option](const auto& entry) { return entry.right == option; }))
+            return leftOf(*options, option);
+    throw std::invalid_argument("ClientOption is not manged by any TActionBarGroup");
+}
+
 bool TActionBarGroup::managesBar(const uint8_t actionBarId) const { return containsLeft(barOptionsOf(m_position), actionBarId); }
 
 bool TActionBarGroup::locked() const { return isActionBarOptionEnabled(leftOf(LockOptions, m_position)); }
@@ -713,15 +1067,12 @@ void TActionBarGroup::toggleOption(const EActionBarOption option) { setActionBar
 void TActionBarGroup::onActionBarsOptionsChanged()
 {
     const bool groupShown = isActionBarOptionEnabled(leftOf(GroupOptions, m_position));
-    const bool barsLocked = locked();
     for (const auto& [id, option] : barOptionsOf(m_position)) {
         if (groupShown && isActionBarOptionEnabled(option))
             createActionBar(id);
         else
             destroyActionBar(id);
     }
-    for (const auto& [id, bar] : m_bars)
-        bar->setLocked(barsLocked);
 }
 
 void TActionBarGroup::restoreLastAktionBarConfiguration() { onActionBarsOptionsChanged(); }
@@ -733,18 +1084,13 @@ void TActionBarGroup::createActionBar(const uint8_t actionBarId)
     QQuickItem* barContainer = m_container ? m_container->findChild<QQuickItem*>(QStringLiteral("actionBarContainer")) : nullptr;
     if (!barContainer)
         return;
-    auto bar = std::make_unique<TActionBarController>(m_manager, actionBarId, positionOfBar(actionBarId), m_buttonsDisplayOptions,
-                                                      m_gameWindowItem, m_mapWindowPane, this);
+    auto bar = std::make_unique<TActionBarController>(actionBarId, positionOfBar(actionBarId), clientOptionOf(leftOf(LockOptions, m_position)),
+                                                      m_clientOptions, m_chatModeManager, TActionBarController::ButtonCount, m_engine,
+                                                      barContainer, m_gameWindowItem, m_mapWindowPane, this);
     connect(bar.get(), &TActionBarController::publishGameAction, this, &TActionBarGroup::publishGameAction);
-    bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
-    bar->setLocked(locked());
-    bar->createItem(m_engine, barContainer);
-    if (m_manager) {
-        bar->onActionBarOptionsChanged();
-        bar->onHotkeyOptionsChanged();
-        bar->refreshObjects();
-    }
-    m_bars.emplace(actionBarId, std::move(bar));
+    TActionBarController* created = m_bars.emplace(actionBarId, std::move(bar)).first->second.get();
+    created->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
+    created->connectToGameSession(m_gameSession);
     Q_EMIT numberOfActionBarsChanged();
 }
 
@@ -769,16 +1115,33 @@ void TActionBarGroup::setFirstVisibleButtonIdCanBeSaved(const bool CanBeSaved)
         bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
 }
 
-void TActionBarGroup::handleGameAction(const input::IGameAction& action)
+void TActionBarGroup::handleGameAction(const input::IGameActionPtr& pGameAction)
 {
-    if (const auto* bars = input::gameActionAs<input::TGameActionToggleActionBars>(&action)) {
+    if (!pGameAction)
+        return;
+    if (const auto* bars = input::gameActionAs<input::TGameActionToggleActionBars>(pGameAction)) {
         if (bars->position() == static_cast<int>(m_position))
             toggleOption(leftOf(GroupOptions, m_position));
-    } else if (const auto* bar = input::gameActionAs<input::TGameActionToggleActionBar>(&action)) {
+    } else if (const auto* bar = input::gameActionAs<input::TGameActionToggleActionBar>(pGameAction)) {
         const uint8_t actionBarId = bar->actionBarId();
         if (managesBar(actionBarId))
             toggleOption(showOptionOfBar(actionBarId));
     }
+    for (const auto& [id, bar] : m_bars)
+        bar->handleGameAction(pGameAction);
+}
+
+void TActionBarGroup::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    for (const auto& [id, bar] : m_bars)
+        bar->connectToGameSession(m_gameSession);
+}
+
+void TActionBarGroup::tick(const qint64 now)
+{
+    for (const auto& [id, bar] : m_bars)
+        bar->tick(now);
 }
 
 }

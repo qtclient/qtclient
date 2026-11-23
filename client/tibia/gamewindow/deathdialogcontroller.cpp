@@ -5,6 +5,9 @@
 
 #include <QKeySequence>
 
+#include "game/gameciptypes.h"
+#include "game/gamesessionbase.h"
+
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
 
@@ -29,16 +32,27 @@ TDeathDialogController::TDeathDialogController(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
             &TDeathDialogController::onWorldEntered);
 
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::death, this,
-            [this](int deathType, int penality) {
-                onRequestOpenDeathDialog(deathType, penality, false);
-            });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         closeBox();
     });
 }
 
 TDeathDialogController::~TDeathDialogController() = default;
+
+void TDeathDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeBox();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
+                                               &game::TGameProtocolMessageHandler::requestOpenDeathDialog, this,
+                                               &TDeathDialogController::onRequestOpenDeathDialog));
+}
 
 /// The caption and, by death type, the text with the store button's hint; OK, Cancel and
 /// the store button. An unfair death names the share of the penalty that applies.

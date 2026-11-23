@@ -151,6 +151,8 @@ public:
     /// CIP, answered by .
     Q_INVOKABLE void removeSelectedCharm() override;
     Q_INVOKABLE void assignSelectedCharm(int SelectedCharmID) override;
+    /// Toggles the bestiary tracker widget.
+    Q_INVOKABLE void requestOpenBestiaryTrackerWidget() override;
 
 Q_SIGNALS:
     /// A loot item's object type to show on the items page.
@@ -167,6 +169,11 @@ private:
     void onMonsterRaceDetailsChanged();
     void rebuildSingleMonster();
     void onConfirmDialogAccepted();
+    /// The gold may have changed: whether the selected charm's removal is
+    /// affordable.
+    void onPlayerDataChanged();
+    /// Whether the gold pays the shown monster's selected charm's removal.
+    void onSelectedCharmChanged();
     TQmlMonsterRace* singleRace() const;
 
     cyclopedia::TBestiaryStorage& m_storage;

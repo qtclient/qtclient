@@ -1,5 +1,6 @@
 #include "cooldownstorage.h"
 
+#include "game/passiveabilityinfostorage.h"
 #include "spells/spellinfostorage.h"
 
 #include <QElapsedTimer>
@@ -229,6 +230,22 @@ std::map<int, TCooldown> TCooldownStorage::spellCooldowns() const
         cooldowns[spellId] = { std::max<qint64>(0, end - time), spell ? qint64(spell->cooldownSelf) * 1000 : 0, end };
     }
     return cooldowns;
+}
+
+TPassiveAbilityCooldown TCooldownStorage::passiveAbilityCooldown(const uint8_t abilityId) const
+{
+    const auto it = m_passiveAbilityCooldowns.find(abilityId);
+    if (it == m_passiveAbilityCooldowns.end() || !TPassiveAbilityInfoStorage::isKnownPassiveAbility(abilityId))
+        return {};
+    return it->second;
+}
+
+TPassiveAbilityCounter TCooldownStorage::passiveAbilityCounter(const uint8_t abilityId) const
+{
+    const auto it = m_passiveAbilityCounters.find(abilityId);
+    if (it == m_passiveAbilityCounters.end() || !TPassiveAbilityInfoStorage::isKnownPassiveAbility(abilityId))
+        return {};
+    return it->second;
 }
 
 TCooldown TCooldownStorage::passiveCooldown() const

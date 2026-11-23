@@ -2,6 +2,7 @@
 
 #include "platform/platform.h"
 
+#include "analysers/itempricestorage.h"
 #include "app/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "container/containergameactionprovider.h"
@@ -213,54 +214,24 @@ TStashDialogController::TStashDialogController(QObject* parent)
         onStashOptionsChanged();
     });
 
-    m_gameActions.on(A::STASH_RETRIEVE, [](const input::TGameActionStashRetrieve& action) {
-        if (action.typeId() == 0 || action.amount() <= 0)
-            return false;
-        tibia::game::stashWithdraw(action.typeId(), static_cast<uint32_t>(action.amount()), 0);
-        return true;
-    });
-    // The market or loot container dialog the stash made way for closed: the
-    // server sends the stash again, which shows the dialog.
-    m_gameActions.on(A::STASH_REQUEST_REOPEN, [](const input::IGameAction&) {
-        protocol::gameclient::sendStashReopen();
-        return true;
-    });
-    // CIP / / : the object's field, type
-    // and stack position; Crystal stows the whole type for STOW_STACK and
-    // the given count for STOW_ITEM.
-    const auto stow = [](const input::TObjectGameActionContext& object, const uint8_t mode, const uint32_t amount) {
-        if (object.objectClientId() == 0)
-            return false;
-        tibia::game::stashStowItem(object.position(), object.objectClientId(), amount,
-                                   static_cast<uint8_t>(std::max(object.stackPosition(), 0)), mode);
-        return true;
-    };
-    m_gameActions.on(A::STASH_STOW_TYPE, [stow](const input::TGameActionStashStowType& action) {
-        return stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
-    });
-    m_gameActions.on(A::STASH_STOW_CONTAINER_CONTENT, [stow](const input::TGameActionStashStowContainerContent& action) {
-        return stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_CONTAINER, 0);
-    });
-    m_gameActions.on(A::STASH_STOW_STACK, [stow](const input::TGameActionStashStowStack& action) {
-        return action.amount() > 0
-            && stow(action.context(), tibia::client::SUPPLY_STASH_ACTION_STOW_ITEM, static_cast<uint32_t>(action.amount()));
-    });
-    // CIP SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG → TConfirmMoveObjectToStashDialogController .
-    m_confirmStow->setConfirmHandler([this, stow](bool) {
-        if (m_pendingStow)
-            stow(m_pendingStow->context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+    // The stash's actions are the container game action handler's. A move
+    // onto the stash or a stow of a container's content it holds back for the
+    // confirmation (it asks only while stashAskBeforeStowContainerContent is
+    // on); once confirmed, the action goes out again marked as confirmed.
+    m_confirmStow->setConfirmHandler([this](bool) {
+        if (m_pendingStow) {
+            if (const auto move = std::dynamic_pointer_cast<const input::TGameActionMoveObject>(m_pendingStow))
+                move->setStashConfirmed(true);
+            else if (const auto content = std::dynamic_pointer_cast<const input::TGameActionStashStowContainerContent>(m_pendingStow))
+                content->setStashConfirmed(true);
+            Q_EMIT publishGameAction(m_pendingStow);
+        }
         m_pendingStow.reset();
     });
-    m_gameActions.on(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this, stow](const input::TGameActionShowConfirmMoveObjectToStashDialog& action) {
-        if (!action.moveObject() || action.moveObject()->objectClientId() == 0)
+    m_gameActions.on(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this](const input::TGameActionShowConfirmMoveObjectToStashDialog& action) {
+        if (!action.gameAction())
             return true;
-        m_pendingStow = action.moveObject();
-        const bool ask = app::ClientOptions::load().options().value(QLatin1String("askBeforeStowContainerContent")).toBool(true);
-        if (!ask) {
-            stow(m_pendingStow->context(), tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
-            m_pendingStow.reset();
-            return true;
-        }
+        m_pendingStow = action.gameAction();
         m_confirmStow->showDialog();
         return true;
     });
@@ -270,6 +241,7 @@ TStashDialogController::TStashDialogController(QObject* parent)
 
 TStashDialogController::~TStashDialogController()
 {
+    closeDialog();
 }
 
 int TStashDialogController::count(const uint16_t typeId) const
@@ -408,6 +380,11 @@ void TStashDialogController::saveFilter()
 
 void TStashDialogController::showDialog()
 {
+    // Host: the session's item price storage is the live instance.
+    if (m_gameSession) {
+        if (analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance(); prices && prices->hasMarketPricesForWorld())
+            prices->requestMarketPricesIfMissing();
+    }
     if (m_proxy.category() == -1)
         m_proxy.setCategory(Proxy::AllCategories);
     onStashContentChanged();

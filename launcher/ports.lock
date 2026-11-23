@@ -931,6 +931,9 @@ sub_ae93a0e94c8b	ae93a0e94c8bb0fd	ported	package.cpp:TPackage::setLocalStatus
 sub_aefd8206d1c2	aefd8206d1c2ae74	skip	library: QList<QString> detach/grow/emplace (qarraydataops.h)
 sub_af0e59da92c8	af0e59da92c887e6	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_af3aa5646a82	af3aa5646a829cac	skip	dead: throws logic_error("not implemented"); no caller and no pointer fixup
+sub_af3aa5646a82#2	af3aa5646a829cac	skip	dead: throws logic_error("not implemented"); no call, no RIP-relative reference and no pointer fixup (full disassembly and dyld fixups searched)
+sub_af3aa5646a82#3	af3aa5646a829cac	skip	dead: throws logic_error("not implemented"); no call, no RIP-relative reference and no pointer fixup (full disassembly and dyld fixups searched)
+sub_af3aa5646a82#4	af3aa5646a829cac	skip	dead: throws logic_error("not implemented"); no call, no RIP-relative reference and no pointer fixup (full disassembly and dyld fixups searched)
 sub_afe4da77c1ef	afe4da77c1efdae1	skip	library: std::map<QString, QString> template code
 sub_afe4da77c1ef#2	afe4da77c1efdae1	skip	library: std::map<QString, QString> template code
 sub_b00e40775276	b00e40775276bc16	ported	shared/src/crashreportdata.cpp:TCrashReportData::values

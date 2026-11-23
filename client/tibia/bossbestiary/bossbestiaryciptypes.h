@@ -4,6 +4,7 @@
 
 #include "bossbestiary/bosstiarystorage.h"
 #include "bossbestiary/bosstrackerstorage.h"
+#include "input/gameactionptr.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -14,6 +15,7 @@
 
 namespace tibia::protobuf::protocol {
 class GameserverMessageBossSlots;
+class GameserverMessageShowMessageDialog;
 class GameserverMessageBossTracking;
 class GameserverMessageBosstiary;
 class GameserverMessageBosstiaryHighlight;
@@ -44,9 +46,12 @@ public:
     /// The bosstiary button lights up for the boss (requestBosstiaryButtonHighlight).
     void handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage);
     static void handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage);
+    /// The free podium message (dialog type 60) opens the bosstiary's free podium dialog with its text.
+    void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& ShowMessageDialogMessage);
 
 Q_SIGNALS:
     void requestBosstiaryButtonHighlight(quint16 BossRaceID);
+    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 
 private:
     std::shared_ptr<cyclopedia::TMonsterRaceStorage> m_pMonsterRaceStorage;

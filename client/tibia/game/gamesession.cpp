@@ -21,7 +21,6 @@
 #include <limits>
 
 #include "tibia/runtime/host.h"
-#include "tibia/gamewindow/remainingdialogs.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/creatures/attachedeffect.h>
 #include "input/gameaction.h"
@@ -342,20 +341,12 @@ void safeLogout()
 
     gameclient::sendLogout();
 }
-void processLogin()
-{
-    tibia::game::TGameserverGameSession::wireProcessLogin();
-}
 
 void processGameStart()
 {
     gameSessionState().processGameStart();
 }
 
-void processPendingGame()
-{
-    gameSessionState().processPendingGame();
-}
 void processWorldEntered()
 {
     tibia::game::TGameserverGameSession::wireProcessWorldEntered();
@@ -368,10 +359,6 @@ void processPingBack()
 {
     tibia::game::TGameserverGameSession::wireProcessPingBack();
 }
-void processDeath(const uint8_t deathType, const uint8_t penality)
-{
-    tibia::game::TGameserverGameSession::wireProcessDeath(deathType, penality);
-}
 void processLoginError(const std::string_view error)
 {
     tibia::game::TGameserverGameSession::wireProcessLoginError(error);
@@ -383,10 +370,6 @@ void processLoginAdvice(const std::string_view message)
 void processLoginWait(const std::string_view message, const uint8_t time)
 {
     tibia::game::TGameserverGameSession::wireProcessLoginWait(message, time);
-}
-void processSessionEnd(const uint8_t reason)
-{
-    tibia::game::TGameserverGameSession::wireProcessSessionEnd(reason);
 }
 
 void processCharacterSwitch(std::string_view characterName)
@@ -403,17 +386,6 @@ void processUpdateTarget(const uint32_t seq, const uint32_t targetId)
     gameSessionState().processUpdateTarget(seq, targetId);
 }
 
-void processPlayerTactics(const tibia::client::ChaseModes chaseMode, const bool safeMode, const tibia::client::PVPModes pvpMode)
-{
-    auto& hub = gameSessionState();
-    hub.processPlayerModes(hub.getFightMode(), chaseMode, safeMode, pvpMode);
-}
-
-void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
-                        tibia::client::PVPModes pvpMode)
-{
-    gameSessionState().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
-}
 void processTeamFinderLeader(const TeamFinderLeaderData& data)
 {
     tibia::game::notify("onTeamFinderLeader", data);
@@ -450,10 +422,6 @@ void processUpdateNeeded(const std::string_view signature)
 {
     tibia::game::notify("onUpdateNeeded", signature);
 }
-void processSessionDumpStart(const std::string_view sessionKey)
-{
-    tibia::game::notify("onSessionDumpStart", std::string(sessionKey));
-}
 void processSessionDumpMarker(const std::string_view marker)
 {
     tibia::game::notify("onSessionDumpMarker", std::string(marker));
@@ -461,13 +429,6 @@ void processSessionDumpMarker(const std::string_view marker)
 void processReadyForSecondaryConnection(std::string_view token)
 {
     gameSessionState().processReadyForSecondaryConnection(token);
-}
-void processOutfitMemorial(const OutfitMemorialData& data)
-{
-    if (auto* dialog = tibia::gamewindow::TOutfitMemorialDialogController::instance())
-        dialog->showMemorial(data);
-    else
-        tibia::game::notify("onOutfitMemorial", data);
 }
 void processWalkCancel(const tibia::client::Direction direction)
 {
@@ -881,7 +842,7 @@ uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
     if (tibia::container::TContainerStorage* storage = currentContainerStorage()) {
         for (const tibia::container::TContainerID containerId : storage->openIds()) {
             if (const tibia::container::TStoredContainer* row = storage->containerAt(containerId)) {
-                for (const tibia::container::TInventorySlot& slot : row->items)
+                for (const tibia::container::TInventorySlot& slot : row->items())
                     add(slot);
             }
         }

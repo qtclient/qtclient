@@ -75,6 +75,8 @@ public:
     /// that FINAL property and ignores qtclient overrides.
     TSidebarWidget(Controller* controller, QQuickItem* gameWindowItem, QQmlEngine* engine,
                    std::function<void(uint)> assignParentSidebarId = {});
+    /// The pending size change is dropped; the item is hidden and deleted later.
+    ~TSidebarWidget() override;
 
     /// The item (hidden, with the controller as its widgetController), made
     /// once the controller is fully constructed: QML resolves the
@@ -167,6 +169,8 @@ public:
     void onRequestMoveToSidebar(int targetSidebar) override { m_widget->requestMoveToSidebar(targetSidebar); }
     void onSetDragActive(bool active) override { m_widget->setDragActive(active); }
     void onSidebarDestroyed() override { m_widget->onSidebarDestroyed(); }
+    /// v36: nothing in the base.
+    void onLevelUpClicked() override {}
     void setCursorToResizeVertical(bool enabled) override { m_widget->setCursorToResizeVertical(enabled); }
 
 private:

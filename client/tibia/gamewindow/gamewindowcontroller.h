@@ -129,6 +129,11 @@ public:
     void youTubeLogoPressed() override;
     /// Closes every open multi-action button (CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS).
     void closeOpenMultiActionButtons() override;
+    /// Forwards the game window's close as gameWindowClosed.
+    void onGameWindowClosed() override;
+    /// Forward the chat input focus requests to the game window.
+    void onRequestBindFocusToChatInput() override;
+    void onRequestReleaseFocusFromChatInput() override;
 
     void quitPressed() override;
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -153,25 +158,14 @@ public:
     /// CIP: after the server save the preview moves on to the new day.
     void onEventsSchedulePreviewUpdateTimerTimeout() override;
 
-    /// True while Exit was chosen — window close may proceed without re-prompt.
-    bool allowWindowClose() const { return m_allowWindowClose; }
-    void setAllowWindowClose(bool allow) { m_allowWindowClose = allow; }
     /// Graphics-engine restart and other intentional process exits. The window
     /// close that follows must not ask Exit / Logout / Cancel.
-    /// The gameExitRequested receiver: Exit / Logout / Cancel while a character
-    /// is in the world, otherwise the client exits (quitGameExitRequested).
-    void handleGameExitRequest();
-
     static void allowProcessExit();
     static bool processExitAllowed();
 
 Q_SIGNALS:
     /// The options dialog should open on `category` (OPEN_OPTIONS_MENU_DIALOG's).
     void optionsMenuRequested(int category);
-    /// Quit-game dialog: Exit (close client).
-    void quitGameExitRequested();
-    /// Quit-game dialog: Logout (leave character / return to login).
-    void quitGameLogoutRequested();
 
 private:
     void setScreen(const QString& state, bool backgroundImageVisible, const QColor& windowColor);
@@ -199,8 +193,6 @@ private:
     std::vector<news::TEventInformation> m_events;
     QTimer m_eventsSchedulePreviewTimer;
     bool m_beforeServerSave = true;
-    bool m_allowWindowClose = false;
-    class TMessageDialogController* m_quitDialog = nullptr;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
     std::shared_ptr<news::TNewsStorage> m_newsStorage;
     std::shared_ptr<news::TNewsDiskIO> m_newsDiskIO;

@@ -142,13 +142,6 @@ void closeById(const int containerId)
     gameclient::sendCloseContainer(static_cast<uint8_t>(containerId));
 }
 
-void closeDepotSearchRequest()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendCloseDepotSearch();
-}
-
 void closeImbuingWindow()
 {
     if (!canPerformGameAction())
@@ -213,18 +206,6 @@ void editText(uint32_t id, std::string_view text)
     gameclient::sendEditText(id, text);
 }
 
-void equipItemId(const uint16_t itemId, const uint8_t tier)
-{
-    if (!canPerformGameAction())
-        return;
-
-    const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem);
-    if (thing && thing->getClassification() > 0) {
-        gameclient::sendEquipItemWithTier(itemId, tier);
-        return;
-    }
-    gameclient::sendEquipItemWithCountOrSubType(itemId, tier);
-}
 void excludeFromOwnChannel(const std::string_view name)
 {
     if (!canPerformGameAction() || name.empty())
@@ -259,24 +240,6 @@ void gemAction(uint8_t actionType, uint16_t param, uint8_t pos)
     gameclient::sendWheelGemAction(actionType, param, pos);
 }
 
-void greetNpc(uint32_t npcId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendGreet(npcId);
-}
-void inspectCharacter(const uint32_t creatureId, const uint8_t tab)
-{
-    if (!canPerformGameAction())
-        return;
-
-    // CIP InspectPlayer: tab 0 is allow-all / withdraw (no creature id). Tabs 1+
-    // name a player (invite/ask/allow/revoke/open inspection).
-    if (creatureId == 0 && tab != 0)
-        return;
-
-    gameclient::sendInspectCharacter(creatureId, tab);
-}
 void inspectNpcTrade(const uint16_t typeId, const uint8_t count)
 {
     if (!canPerformGameAction() || typeId == 0)
@@ -292,11 +255,11 @@ void inspectTrade(bool counterOffer, uint8_t index)
     gameclient::sendInspectTrade(counterOffer, index);
 }
 
-void inspectionNormalObject(const Position& position)
+void inspectionNormalObject(const std::shared_ptr<const tibia::input::IGameActionContext>& location)
 {
     if (!canPerformGameAction())
         return;
-    gameclient::sendInspectionNormalObject(position);
+    gameclient::sendInspectionNormalObject(location);
 }
 
 void inspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount)
@@ -320,13 +283,6 @@ void inviteToOwnChannel(const std::string_view name)
 bool isFollowing()
 {
     return gameSessionState().isFollowing();
-}
-
-void joinAggression(uint32_t creatureId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendJoinAggression(creatureId);
 }
 
 void joinChannel(uint16_t channelId)
@@ -361,49 +317,12 @@ void lookMapObject(const Position& position, const uint16_t itemId, const int st
     gameclient::sendLook(position, itemId, static_cast<uint8_t>(stackPos));
 }
 
-void mount(bool mount)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendMountStatus(mount);
-}
-void moveMapObject(const Position& from, const uint16_t itemId, const int stackPos, const Position& toPos, int count)
-{
-    if (count <= 0)
-        count = 1;
-    if (!canPerformGameAction() || !from.isValid() || itemId == 0 || stackPos < 0 || from == toPos)
-        return;
-    gameclient::sendMove(from, itemId, static_cast<uint8_t>(stackPos), toPos, count);
-}
-
-void openDepotSearch()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendOpenDepotSearch();
-}
-
 void openOwnChannel()
 {
     if (!canPerformGameAction())
         return;
     gameclient::sendOpenOwnChannel();
 }
-void openParentById(const int containerId)
-{
-    if (!canPerformGameAction() || containerId < 0)
-        return;
-
-    gameclient::sendUpContainer(static_cast<uint8_t>(containerId));
-}
-
-void openParentContainerFromDepotSearch(const Position& pos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendOpenParentContainer(pos);
-}
-
 void openStore(uint8_t serviceType, std::string_view category)
 {
     if (!canPerformGameAction())
@@ -423,41 +342,6 @@ void partyDisband()
     if (!canPerformGameAction())
         return;
     gameclient::sendDisbandParty();
-}
-
-void partyInvite(uint32_t creatureId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendInviteToParty(creatureId);
-}
-
-void partyLeave()
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendLeaveParty();
-}
-
-void partyPassLeadership(uint32_t creatureId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendPassLeadership(creatureId);
-}
-
-void partyRevokeInvitation(uint32_t creatureId)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRevokeInvitation(creatureId);
-}
-
-void partyShareExperience(bool active)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendShareExperience(active);
 }
 
 void preyAction(uint8_t slot, uint8_t actionType, uint16_t index)
@@ -544,13 +428,6 @@ void requestCharacterTradeConfiguration(uint8_t action)
     if (!canPerformGameAction())
         return;
     gameclient::sendCharacterTradeConfigurationAction(action);
-}
-
-void requestDepotSearchItem(uint16_t itemId, uint8_t tier)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendDepotSearchType(itemId, tier);
 }
 
 void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items)
@@ -696,12 +573,6 @@ void requestTransactionHistory(uint32_t page, uint32_t entriesPerPage)
     gameclient::sendRequestTransactionHistory(page, entriesPerPage);
 }
 
-void retrieveDepotSearch(uint16_t itemId, uint8_t tier, uint8_t type)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendRetrieveDepotSearch(itemId, tier, type);
-}
 void rotateMapObject(const Position& position, const uint16_t itemId, const int stackPos)
 {
     if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
@@ -857,13 +728,6 @@ void sendRequestUsefulThings(const uint8_t serviceType)
     gameclient::sendRequestUsefulThings(serviceType);
 }
 
-void sendSetHirelingName(std::string_view name)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendSetHirelingName(name);
-}
-
 void sendStartOfflineTraining(const uint8_t skillType)
 {
     if (!canPerformGameAction())
@@ -935,25 +799,6 @@ void setShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, ui
     gameclient::sendSetShowOffSocketConfiguration(outfit, pos, itemId, stackpos, direction, podiumVisible);
 }
 
-void setTactics(tibia::client::ChaseModes chaseMode, bool safeFight, tibia::client::PVPModes pvpMode)
-{
-    gameSessionState().setTactics(chaseMode, safeFight, pvpMode);
-}
-
-tibia::client::ChaseModes getChaseMode()
-{
-    return gameSessionState().getChaseMode();
-}
-
-bool isSafeFight()
-{
-    return gameSessionState().isSafeFight();
-}
-
-tibia::client::PVPModes getPVPMode()
-{
-    return gameSessionState().getPVPMode();
-}
 void soulsealFightAction(const uint16_t raceId)
 {
     if (!canPerformGameAction() || std::cmp_equal(raceId, 0))
@@ -962,19 +807,6 @@ void soulsealFightAction(const uint16_t raceId)
     gameclient::sendSoulSealsAction(raceId);
 }
 
-void stashStowItem(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendStashStow(position, itemId, count, stackpos, action);
-}
-
-void stashWithdraw(uint16_t itemId, uint32_t count, uint8_t stackpos)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendStashWithdraw(itemId, count, stackpos);
-}
 void stop()
 {
     if (!canPerformGameAction())
@@ -1096,26 +928,6 @@ void setBugReportState(const int state)
     gameSessionState().setBugReportState(state);
 }
 
-UnjustifiedPoints getUnjustifiedPoints()
-{
-    return gameSessionState().getUnjustifiedPoints();
-}
-
-void setUnjustifiedPoints(const UnjustifiedPoints unjustifiedPoints)
-{
-    gameSessionState().setUnjustifiedPoints(unjustifiedPoints);
-}
-
-uint32_t getOpenPvpSituations()
-{
-    return gameSessionState().getOpenPvpSituations();
-}
-
-void setOpenPvpSituations(const uint8_t openPvpSituations)
-{
-    gameSessionState().setOpenPvpSituations(openPvpSituations);
-}
-
 uint16_t getServerBeat()
 {
     return gameSessionState().getServerBeat();
@@ -1170,7 +982,6 @@ void requestStop()
 {
     gameSessionState().requestStop();
 }
-
 
 } // namespace game
 } // namespace tibia

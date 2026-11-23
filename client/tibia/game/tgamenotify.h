@@ -42,7 +42,6 @@ public:
     void emitConnectionFailing(bool failing);
     void emitTextMessage(int mode, const QString& text);
     void emitResourcesBalanceChanged(qint64 value, qint64 oldBalance, int type);
-    void emitDeath(int deathType, int penality);
     void emitServerError(int code, const QString& message);
 
 Q_SIGNALS:
@@ -52,7 +51,6 @@ Q_SIGNALS:
     void connectionFailing(bool failing);
     void textMessage(int mode, const QString& text);
     void resourcesBalanceChanged(qint64 value, qint64 oldBalance, int type);
-    void death(int deathType, int penality);
     void serverError(int code, const QString& message);
 
 private:

@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include "colorhelper.h"
+
 #include <QColor>
 #include <QTimer>
 
@@ -16,6 +18,14 @@ struct TAmbientLight
 {
     uint8_t intensity = 0;
     QColor color;
+
+    TAmbientLight() = default;
+    /// The light as the server sends it: an intensity and an eight-bit palette colour.
+    TAmbientLight(const uint8_t intensity_, const uint8_t colorIndex)
+        : intensity(intensity_)
+        , color(tibia::shared::colorFromEightBit(colorIndex))
+    {
+    }
 };
 
 /// The world's light and the Tibia time of day (CIP: TAmbientLightStorage).
@@ -60,7 +70,6 @@ private:
     qint64 m_lastUpdateMs = 0;
     qint64 m_dayStartMs = 0;
     QTimer m_interpolationTimer;
-    int m_worldTimeHook = 0;
 };
 
 }

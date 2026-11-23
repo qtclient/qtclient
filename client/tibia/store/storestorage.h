@@ -452,8 +452,6 @@ Q_SIGNALS:
     void requestHirelingInputDialog(int OfferIDForHireling, bool BuyWithCosmeticTokens);
     void requestConfirmationDialog(int Offer, const QString& Message, bool BuyWithCosmeticTokens);
     void storeOfferDescriptionReceived(int OfferID, const QString& Description);
-    /// Host: CIP HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
-    void hirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
 
 
 private:

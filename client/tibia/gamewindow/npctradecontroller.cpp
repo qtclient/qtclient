@@ -546,8 +546,9 @@ void TNPCTradeController::buildContextMenu(TContextMenuController* menu, const i
                 m_storage->look(copy);
         });
         if (copy.isPickupable()) {
-            connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [copy] {
-                tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, copy.typeId(), 1);
+            connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [this, copy] {
+                if (m_storage)
+                    m_storage->inspect(copy);
             });
         }
         menu->addCustomSeparator();

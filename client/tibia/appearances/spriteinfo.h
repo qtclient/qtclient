@@ -40,7 +40,7 @@ public:
     /// CIP v2: every sprite info is identifier kind 2.
     int identifierKind() const override { return SpriteInfoIdentifier; }
     /// CIP v3.
-    virtual std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const { return nullptr; }
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override { return nullptr; }
     /// CIP v4: callers compare only infos of the same dynamic type.
     bool equals(const sprites::ISpriteIdentifier& other) const override { return this == &other; }
     /// CIP v5.
@@ -65,11 +65,15 @@ bool sameSpriteInfo(const TAppearanceInstanceSpriteInfoPtr& a, const TAppearance
 /// four QColors and a hash built from them).
 struct TOutfitColors
 {
-    std::array<QColor, 4> colors;
+    /// Head, body, legs and feet; white until set.
+    std::array<QColor, 4> colors{ QColor(Qt::white), QColor(Qt::white), QColor(Qt::white), QColor(Qt::white) };
     uint32_t hash = 0;
 
     TOutfitColors() = default;
+    /// The colours of outfit palette indices.
     TOutfitColors(uint8_t head, uint8_t body, uint8_t legs, uint8_t feet);
+    /// hash: feet * 13 ^ legs * 11 ^ body * 7 ^ head, over the RGBA values.
+    TOutfitColors(const QColor& head, const QColor& body, const QColor& legs, const QColor& feet);
     /// Host: from head | body << 8 | legs << 16 | feet << 24.
     static TOutfitColors fromPacked(uint32_t packed)
     {
@@ -77,6 +81,7 @@ struct TOutfitColors
                              static_cast<uint8_t>(packed >> 16), static_cast<uint8_t>(packed >> 24));
     }
     bool operator==(const TOutfitColors& other) const;
+    bool operator!=(const TOutfitColors& other) const { return !(*this == other); }
 };
 
 /// CIP TCreatureMarkAppearanceInstanceSpriteInfo — field mark frames from colours.
@@ -86,7 +91,7 @@ public:
     /// The frames' colours, outer to inner.
     explicit TCreatureMarkAppearanceInstanceSpriteInfo(std::vector<QColor> colors);
 
-    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override;
     bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::CreatureMark; }
@@ -113,7 +118,7 @@ public:
     /// (things drawn from a type's pattern without an instance).
     explicit TSpritesheetAppearanceInstanceSpriteInfo(uint32_t spriteId);
 
-    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override;
     bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override { return spriteId(); }
     EKind kind() const override { return EKind::Spritesheet; }
@@ -142,7 +147,7 @@ public:
     /// Host: sprite `spriteId` coloured through sprite `maskId`, the whole sprite as bounding box.
     TMaskedAppearanceInstanceSpriteInfo(uint32_t spriteId, uint32_t maskId, const TOutfitColors& colors);
 
-    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override;
     bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::Masked; }
@@ -167,7 +172,7 @@ class TLayeredAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpr
 public:
     TLayeredAppearanceInstanceSpriteInfo(std::vector<TAppearanceInstanceSpriteInfoPtr> layers, const QRect& boundingBox);
 
-    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override;
     bool equals(const sprites::ISpriteIdentifier& other) const override;
     size_t hash() const override;
     EKind kind() const override { return EKind::Layered; }
@@ -186,7 +191,7 @@ private:
 class TDummyAppearanceInstanceSpriteInfo final : public TAppearanceInstanceSpriteInfo
 {
 public:
-    std::shared_ptr<TAppearanceInstanceSpriteInfo> clone() const override;
+    std::shared_ptr<sprites::ISpriteIdentifier> clone() const override;
     bool equals(const sprites::ISpriteIdentifier&) const override { return true; }
     size_t hash() const override { return 0; }
     EKind kind() const override { return EKind::Dummy; }

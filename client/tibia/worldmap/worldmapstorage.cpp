@@ -451,6 +451,12 @@ bool TWorldMapStorage::hasBankAt(const TWorldMapCoordinate& coordinate)
     return field && field->hasBank();
 }
 
+bool TWorldMapStorage::hasCreatureAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && !field->creatures().empty();
+}
+
 bool TWorldMapStorage::hasTranslucentAt(const TWorldMapCoordinate& coordinate)
 {
     const TWorldMapField* field = fieldAt(coordinate);

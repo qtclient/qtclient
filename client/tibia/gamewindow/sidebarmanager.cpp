@@ -64,14 +64,14 @@ TSidebarController::~TSidebarController()
 
 void TSidebarController::addPanel(QQuickItem* panel)
 {
-    panel->setProperty("identifier", m_nextIdentifier++);
+    panel->setProperty("identifier", m_nextPanelIdentifier++);
     panel->setParentItem(m_upperPane);
     panel->setParent(m_upperPane);
 }
 
 void TSidebarController::movePanelToEnd(QQuickItem* panel)
 {
-    panel->setProperty("identifier", m_nextIdentifier++);
+    panel->setProperty("identifier", m_nextPanelIdentifier++);
 }
 
 void TSidebarController::addWidget(TSidebarWidget* widget, const uint identifier)
@@ -109,6 +109,12 @@ void TSidebarController::setAcceptsWidgetDrops(const bool accepts)
         return;
     m_acceptsWidgetDrops = accepts;
     Q_EMIT acceptsWidgetDropsChanged();
+}
+
+void TSidebarController::setTriggerCheckBoundsEnabled(const bool enabled)
+{
+    if (m_item)
+        m_item->setProperty("triggerCheckBoundsEnabled", enabled);
 }
 
 TSidebarManager::TSidebarManager(QQuickItem* rightPlaceholder, QObject* rightManagerItem, QQuickItem* leftPlaceholder, QObject* leftManagerItem,
@@ -184,6 +190,20 @@ void TSidebarManager::movePanelToEnd(QQuickItem* panel)
 {
     if (TSidebarController* main = sidebar(0); main && panel)
         main->movePanelToEnd(panel);
+}
+
+void TSidebarManager::emitCheckBounds()
+{
+    for (const auto& [id, sidebar] : m_sidebars)
+        if (sidebar)
+            Q_EMIT sidebar->checkBounds();
+}
+
+void TSidebarManager::setTriggerCheckBoundsEnabled(const bool enabled)
+{
+    for (const auto& [id, sidebar] : m_sidebars)
+        if (sidebar)
+            sidebar->setTriggerCheckBoundsEnabled(enabled);
 }
 
 void TSidebarManager::addWidget(TSidebarWidget* widget)

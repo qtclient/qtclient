@@ -9,7 +9,7 @@
 
 namespace tibia::appearances {
 
-std::shared_ptr<TAppearanceInstanceSpriteInfo> TWorldmapHighlightBaseplateSpriteInfo::clone() const
+std::shared_ptr<sprites::ISpriteIdentifier> TWorldmapHighlightBaseplateSpriteInfo::clone() const
 {
     return std::make_shared<TWorldmapHighlightBaseplateSpriteInfo>(m_frame);
 }
@@ -40,10 +40,11 @@ QImage TWorldmapHighlightBaseplateSpriteInfo::imageForFrame(const uint8_t frame)
             return QImage();
         return image.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
     }();
-    if (strip.isNull() || strip.width() < FrameCount * FrameSize || strip.height() < FrameSize)
+    if (strip.isNull() || strip.width() < FrameSize || strip.height() < FrameSize)
         return {};
-    const int index = static_cast<int>(frame % FrameCount);
-    return strip.copy(index * FrameSize, 0, FrameSize, FrameSize);
+    // The frame's 32-pixel cell, wrapped around the strip's width.
+    const int left = (static_cast<int>(frame) * FrameSize) % strip.width();
+    return strip.copy(left, 0, FrameSize, FrameSize);
 }
 
 }

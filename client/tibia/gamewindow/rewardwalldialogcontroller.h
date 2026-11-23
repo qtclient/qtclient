@@ -105,6 +105,7 @@ private:
     /// The confirmation to use an Instant Reward Access, or why there is none.
     void showConfirmUseOfInstantRewardAccessDialog();
     void updateDailyRewards();
+    void refreshDailyRewards();
     void clearDailyRewards();
     void clearHistory();
     /// The reward to collect now, or null while it is locked.

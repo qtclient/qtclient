@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -26,6 +27,8 @@ public:
     explicit TWhiteBlacklistDialogController(chat::TWhiteBlacklist& lists, QObject* parent = nullptr);
     ~TWhiteBlacklistDialogController() override;
 
+    /// OPEN_WHITEBLACKLIST_DIALOG opens the dialog.
+    void handleGameAction(const input::IGameAction& action);
     /// CIP : the flags and both lists from the TWhiteBlacklist, then shown.
     void open();
     /// CIP: the lists are released and the dialog closes.

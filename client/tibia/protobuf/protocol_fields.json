@@ -50,6 +50,141 @@
       ],
       "note": "CIP Coordinate nested message"
     },
+    "WorldmapObjectPosition": {
+      "fields": [
+        {
+          "name": "coordinate",
+          "type": "ProtocolCoordinate",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "stack_position",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP WorldmapObjectPosition: an object on a map field (no stack position: the field)."
+    },
+    "InventoryObjectPosition": {
+      "fields": [
+        {
+          "name": "slot",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP InventoryObjectPosition: an inventory slot."
+    },
+    "ContainerObjectPosition": {
+      "fields": [
+        {
+          "name": "container_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "oneofs": {
+        "slot_oneof": [
+          {
+            "name": "slot",
+            "type": "uint32",
+            "number": 2
+          },
+          {
+            "name": "special_slot_fe",
+            "type": "bool",
+            "number": 3
+          },
+          {
+            "name": "special_slot_ff",
+            "type": "bool",
+            "number": 4
+          }
+        ]
+      },
+      "note": "CIP ContainerObjectPosition: a slot of an open container (classic slots 0xfe and 0xff are flags)."
+    },
+    "DepotSearchDepotObjectPosition": {
+      "fields": [
+        {
+          "name": "index",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP DepotSearchDepotObjectPosition: an item of the depot search's depot list."
+    },
+    "DepotSearchInboxObjectPosition": {
+      "fields": [
+        {
+          "name": "index",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP DepotSearchInboxObjectPosition: an item of the depot search's inbox list."
+    },
+    "ObjectPosition": {
+      "fields": [],
+      "oneofs": {
+        "position_oneof": [
+          {
+            "name": "worldmap_position",
+            "type": "WorldmapObjectPosition",
+            "number": 1
+          },
+          {
+            "name": "inventory_position",
+            "type": "InventoryObjectPosition",
+            "number": 2
+          },
+          {
+            "name": "container_position",
+            "type": "ContainerObjectPosition",
+            "number": 3
+          },
+          {
+            "name": "depot_search_depot_position",
+            "type": "DepotSearchDepotObjectPosition",
+            "number": 4
+          },
+          {
+            "name": "depot_search_inbox_position",
+            "type": "DepotSearchInboxObjectPosition",
+            "number": 5
+          },
+          {
+            "name": "unknown_position",
+            "type": "bool",
+            "number": 6
+          }
+        ]
+      },
+      "note": "CIP ObjectPosition: where a client message's object is (filled from a game action location)."
+    },
+    "ObjectIdentifier": {
+      "fields": [
+        {
+          "name": "type_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "data",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP ObjectIdentifier: an object's appearance type and its liquid or tier (filled from a game action object)."
+    },
     "ProtocolInventoryItem": {
       "fields": [
         {
@@ -12923,27 +13058,33 @@
   "GameclientMessageInspectObject": {
     "fields": [
       {
-        "name": "inspection_type",
-        "type": "uint32",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "object_id",
+        "name": "inspection_type",
         "type": "uint32",
         "number": 3,
         "label": "optional"
       },
       {
-        "name": "count",
+        "name": "trade_side",
         "type": "uint32",
         "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "trade_index",
+        "type": "uint32",
+        "number": 5,
         "label": "optional"
       }
     ],

@@ -579,16 +579,13 @@ private:
 
 /// Host shim over the current game session's analyser storages (CipSoft hands them to the
 /// session's character configuration manager). The game window keeps one; widgets and the
-/// product HUD read the current session's storages through it, and it drives their ticks.
+/// product HUD read the current session's storages through it (the session's next frame
+/// updater ticks them).
 /// Until the pack ABI reaches the session, instance() stays for the pack.
 class TAnalyserStorages final : public QObject
 {
     Q_OBJECT
 public:
-    /// The storages' tick interval. CIP's driver was not found; TImpactStorage only refreshes
-    /// when more than 400 ms passed, so its ticks come faster than that.
-    static constexpr int TickIntervalMs = 100;
-
     explicit TAnalyserStorages(QObject* parent = nullptr);
     ~TAnalyserStorages() override;
 
@@ -629,8 +626,6 @@ Q_SIGNALS:
     void premiumTimeChanged();
 
 private:
-    void tick();
-
     std::shared_ptr<TProgressStorage> m_progress;
     std::shared_ptr<TGainWasteStorage> m_gainWaste;
     std::shared_ptr<TImpactStorage> m_impact;
@@ -641,7 +636,6 @@ private:
     std::unique_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_lootBlackWhitelist;
     std::vector<QMetaObject::Connection> m_sessionConnections;
     std::vector<client::gamecore::Hook> m_hooks;
-    QTimer m_timer;
     bool m_hasCharacter = false;
 };
 

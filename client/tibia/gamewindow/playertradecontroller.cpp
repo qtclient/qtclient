@@ -3,7 +3,6 @@
 
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
-#include "gamewindow/sidebarmanager.h"
 #include "input/gameactionhandlers.h"
 
 #include <creatures/creaturestorage.h>
@@ -253,84 +252,6 @@ void TPlayerTradeController::showContextMenu(const int slotIndex, const int side
     connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this,
             [this, slotIndex, side] { inspectTradeSide(slotIndex, side); });
     menu->showCustomMenu();
-}
-
-TPlayerTradeWidgetManager::TPlayerTradeWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
-    : QObject(parent)
-    , m_sidebars(sidebars)
-    , m_gameWindowItem(gameWindowItem)
-    , m_engine(engine)
-{
-    m_gameActions.on(input::EGameAction::TRADE_ITEM, [this](const input::TGameActionPlayerTradeItem& action) { return tradeItem(action); });
-}
-
-TPlayerTradeWidgetManager::~TPlayerTradeWidgetManager()
-{
-    if (input::isSelectingTarget())
-        input::finishTargetSelection(nullptr);
-}
-
-void TPlayerTradeWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
-{
-    close();
-    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
-        disconnect(connection);
-    m_gameSessionConnections.clear();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_storage = session ? session->playerTradeStorage().get() : nullptr;
-    m_handler = session ? session->playerTradeProtocolMessageHandler().get() : nullptr;
-    if (!m_handler)
-        return;
-    m_gameSessionConnections.push_back(connect(m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestOpenPlayerTradeWidget, this,
-                                               &TPlayerTradeWidgetManager::open));
-    m_gameSessionConnections.push_back(connect(m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestClosePlayerTradeWidget, this,
-                                               &TPlayerTradeWidgetManager::close));
-}
-
-void TPlayerTradeWidgetManager::open()
-{
-    if (m_controller || !m_sidebars)
-        return;
-    m_controller = new TPlayerTradeController(m_gameWindowItem, m_engine, this);
-    m_controller->setGameSession(m_storage, m_handler);
-    connect(m_controller, &TPlayerTradeController::widgetClosed, this, &TPlayerTradeWidgetManager::close);
-    m_sidebars->addWidget(m_controller->widget());
-    m_controller->widget()->show();
-}
-
-void TPlayerTradeWidgetManager::close()
-{
-    if (!m_controller)
-        return;
-    TPlayerTradeController* controller = m_controller;
-    m_controller = nullptr;
-    controller->widget()->hide();
-    controller->deleteLater();
-}
-
-/// TRADE_ITEM starts a target selection; a player picked on the map gets the
-/// trade request.
-bool TPlayerTradeWidgetManager::tradeItem(const input::TGameActionPlayerTradeItem& action)
-{
-    const uint16_t typeId = action.objectClientId();
-    if (typeId == 0)
-        return true;
-    const Position position = action.position();
-    const int stackPosition = action.stackPosition() >= 0 ? action.stackPosition() : 0;
-    if (TMouseCursorController* cursor = TMouseCursorController::instance())
-        cursor->setTargetSelection(true);
-    input::startTargetSelection([position, typeId, stackPosition](const input::TTargetSelectedPtr& target) {
-        if (TMouseCursorController* cursor = TMouseCursorController::instance())
-            cursor->setTargetSelection(false);
-        if (!target || !target->creatureId())
-            return;
-        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-        const std::shared_ptr<tibia::creatures::TCreature> row =
-            storage ? storage->creatureAt(target->creatureId()) : nullptr;
-        if (row && row->isPlayer() && !row->isLocalPlayer())
-            tibia::game::requestTradeAt(position, typeId, stackPosition, target->creatureId());
-    });
-    return true;
 }
 
 }

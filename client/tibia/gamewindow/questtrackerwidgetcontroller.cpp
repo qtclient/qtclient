@@ -1,6 +1,8 @@
 #include "questtrackerwidgetcontroller.h"
 
+#include "config/characterconfigurationmanager.h"
 #include "config/sidebaroptions.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/questlogcontroller.h"
 #include "mods/mission_backend.h"
@@ -19,7 +21,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-constexpr auto OptionsKey = "questTrackerWidgetOptions";
 /// CIP : OPEN_QUESTLOG_DIALOG's parameter carries a flag when this bit is set.
 constexpr int QuestFlagParameter = 0x10000;
 
@@ -28,122 +29,12 @@ input::IGameActionPtr openQuestLogAction(const int questFlagId)
     return std::make_shared<input::TGameActionOpenQuestLog>(QuestFlagParameter | (questFlagId & 0xffff));
 }
 
+/// The quest line a tracked flag belongs to (0 when the server sent none).
+int questLineOf(const questlog::TQuestFlag& flag) { return std::max(flag.data.questLineId, 0); }
+
 }
 
-TQuestTrackerStorage::TQuestTrackerStorage(questlog::TQuestLogStorage* storage, QObject* parent)
-    : QObject(parent)
-    , m_storage(storage)
-{
-    connect(m_storage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this](const bool added, const bool removed) {
-        rebuildEntries();
-        Q_EMIT trackedQuestFlagsChanged(added, removed);
-        Q_EMIT entriesChanged();
-    });
-    connect(m_storage, &questlog::TQuestLogStorage::configurationChangedFromUserInput, this, &TQuestTrackerStorage::storageChanged);
-}
-
-void TQuestTrackerStorage::rebuildEntries()
-{
-    m_entries.clear();
-    for (const questlog::TQuestFlag& flag : m_storage->trackedQuestFlags()) {
-        m_entries.append({ .questFlagId = flag.id,
-                           .questLineId = std::max(flag.data.questLineId, 0),
-                           .questLineName = flag.data.questLineName,
-                           .questLinePart = flag.data.questFlagName,
-                           .description = flag.data.description,
-                           .pinned = flag.pinned,
-                           .lastUpdateTimestamp = flag.lastUpdateTimestamp });
-    }
-}
-
-QSet<int> TQuestTrackerStorage::trackedIds() const
-{
-    QSet<int> ids;
-    for (const questlog::TQuestFlag& flag : m_storage->trackedQuestFlags())
-        ids.insert(flag.id);
-    return ids;
-}
-
-QList<int> TQuestTrackerStorage::completedIds() const
-{
-    QList<int> ids;
-    for (const questlog::TQuestFlagID id : m_storage->completedTrackedQuestFlagIds())
-        ids.append(id);
-    return ids;
-}
-
-int TQuestTrackerStorage::questLineOf(const int questFlagId) const
-{
-    for (const Entry& entry : m_entries) {
-        if (entry.questFlagId == questFlagId)
-            return entry.questLineId;
-    }
-    return 0;
-}
-
-bool TQuestTrackerStorage::autoTrackNewQuests() const
-{
-    return m_storage->autoTrackNewQuests();
-}
-
-bool TQuestTrackerStorage::autoUntrackCompletedQuests() const
-{
-    return m_storage->autoUntrackCompletedQuests();
-}
-
-void TQuestTrackerStorage::setPinned(const int questFlagId, const bool pinned)
-{
-    m_storage->setQuestFlagPinned(questlog::TQuestFlagID(questFlagId), pinned);
-}
-
-void TQuestTrackerStorage::changeTrackedQuestFlags(const QList<int>& ids, const bool remove)
-{
-    QSet<int> tracked = trackedIds();
-    for (const int id : ids) {
-        if (remove)
-            tracked.remove(id);
-        else
-            tracked.insert(id);
-    }
-    sendTracked(tracked);
-}
-
-void TQuestTrackerStorage::setOption(const int option, const bool value)
-{
-    if (option == 0)
-        m_storage->setAutoTrackNewQuests(value);
-    else if (option == 1)
-        m_storage->setAutoUntrackCompletedQuests(value);
-    else
-        return;
-    Q_EMIT storageChanged();
-    sendTracked(trackedIds());
-}
-
-void TQuestTrackerStorage::clear()
-{
-    m_entries.clear();
-    Q_EMIT entriesChanged();
-}
-
-void TQuestTrackerStorage::reload()
-{
-    rebuildEntries();
-    Q_EMIT entriesChanged();
-}
-
-void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
-{
-    if (!tibia::game::isOnline())
-        return;
-    std::vector<uint16_t> sorted;
-    for (const int id : ids)
-        sorted.push_back(static_cast<uint16_t>(id));
-    std::ranges::sort(sorted);
-    tibia::game::sendRequestTrackerQuestLog(sorted, autoTrackNewQuests(), autoUntrackCompletedQuests());
-}
-
-void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entries, const QList<MissionAction>& actions)
+void TQuestTrackerListModel::setEntries(std::vector<questlog::TQuestFlag> flags, const QList<MissionAction>& actions)
 {
     auto partMatchesName = [](const QString& part, const QString& matchName) {
         if (matchName.isEmpty())
@@ -163,8 +54,8 @@ void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entri
     };
 
     QSet<int> knownFlags;
-    for (const TQuestTrackerStorage::Entry& entry : entries)
-        knownFlags.insert(entry.questFlagId);
+    for (const questlog::TQuestFlag& flag : flags)
+        knownFlags.insert(flag.id);
     auto hasActionUi = [](const MissionAction& action) {
         return !action.cta.isEmpty() || !action.choices.isEmpty() || !action.browseFilter.isEmpty();
     };
@@ -178,14 +69,14 @@ void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entri
     for (int i = 0; i < actions.size(); ++i) {
         if (!hasActionUi(actions[i]) || claimedActions.contains(i) || actions[i].matchName.isEmpty())
             continue;
-        for (const TQuestTrackerStorage::Entry& entry : entries) {
-            if (hasCompletedMarker(entry.questLinePart))
+        for (const questlog::TQuestFlag& flag : flags) {
+            if (hasCompletedMarker(flag.data.questFlagName))
                 continue;
-            if (actions[i].questLineId > 0 && entry.questLineId != actions[i].questLineId)
+            if (actions[i].questLineId > 0 && questLineOf(flag) != actions[i].questLineId)
                 continue;
-            if (!partMatchesName(entry.questLinePart, actions[i].matchName))
+            if (!partMatchesName(flag.data.questFlagName, actions[i].matchName))
                 continue;
-            claim(entry.questFlagId, i);
+            claim(flag.id, i);
             break;
         }
     }
@@ -194,19 +85,19 @@ void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entri
             continue;
         if (actions[i].questFlagId > 0 || !actions[i].matchName.isEmpty())
             continue;
-        for (const TQuestTrackerStorage::Entry& entry : entries) {
-            if (entry.questLineId != actions[i].questLineId || hasCompletedMarker(entry.questLinePart))
+        for (const questlog::TQuestFlag& flag : flags) {
+            if (questLineOf(flag) != actions[i].questLineId || hasCompletedMarker(flag.data.questFlagName))
                 continue;
-            claim(entry.questFlagId, i);
+            claim(flag.id, i);
             break;
         }
     }
 
     QList<Row> rows;
-    rows.reserve(entries.size());
-    for (TQuestTrackerStorage::Entry& entry : entries) {
+    rows.reserve(qsizetype(flags.size()));
+    for (questlog::TQuestFlag& flag : flags) {
         Row row;
-        const int matched = ownerAction.value(entry.questFlagId, -1);
+        const int matched = ownerAction.value(flag.id, -1);
         if (matched >= 0) {
             const MissionAction& action = actions[matched];
             row.missionCta = action.cta;
@@ -215,7 +106,7 @@ void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entri
             row.missionChoices = action.choices;
             row.missionAction = !action.cta.isEmpty() || !action.choices.isEmpty();
         }
-        row.entry = std::move(entry);
+        row.flag = std::move(flag);
         rows.append(std::move(row));
     }
 
@@ -247,16 +138,16 @@ QVariant TQuestTrackerListModel::data(const QModelIndex& index, const int role) 
     if (!index.isValid() || index.row() >= m_rows.size())
         return {};
     const Row& row = m_rows[index.row()];
-    const TQuestTrackerStorage::Entry& entry = row.entry;
+    const questlog::TQuestFlag& flag = row.flag;
     switch (role) {
-        case QuestFlagIdRole: return entry.questFlagId;
-        case QuestLineNameRole: return entry.questLineName;
-        case QuestLinePartRole: return stripCompletedMarker(entry.questLinePart);
-        case QuestLinePartCompletedRole: return hasCompletedMarker(entry.questLinePart);
-        case DescriptionRole: return entry.description;
-        case IsPinnedRole: return entry.pinned;
-        case TooltipRole: return QStringLiteral("%1 / %2").arg(entry.questLineName, stripCompletedMarker(entry.questLinePart));
-        case LastUpdateTimestampRole: return entry.lastUpdateTimestamp;
+        case QuestFlagIdRole: return int(flag.id);
+        case QuestLineNameRole: return flag.data.questLineName;
+        case QuestLinePartRole: return stripCompletedMarker(flag.data.questFlagName);
+        case QuestLinePartCompletedRole: return hasCompletedMarker(flag.data.questFlagName);
+        case DescriptionRole: return flag.data.description;
+        case IsPinnedRole: return flag.pinned;
+        case TooltipRole: return QStringLiteral("%1 / %2").arg(flag.data.questLineName, stripCompletedMarker(flag.data.questFlagName));
+        case LastUpdateTimestampRole: return flag.lastUpdateTimestamp;
         case MissionCtaRole: return row.missionCta;
         case MissionProgressRole: return row.missionProgress;
         case MissionActionRole: return row.missionAction;
@@ -306,19 +197,36 @@ bool TQuestTrackerSortFilterProxyModel::lessThan(const QModelIndex& left, const 
            < 0;
 }
 
-TQuestTrackerWidgetController::TQuestTrackerWidgetController(TQuestTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                             QObject* parent)
+TQuestTrackerWidgetController::TQuestTrackerWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
     , m_proxy(&m_list)
 {
     m_questTrackerList = &m_proxy;
-    connect(m_storage, &TQuestTrackerStorage::entriesChanged, this, &TQuestTrackerWidgetController::refresh);
-    connect(m_storage, &TQuestTrackerStorage::trackedQuestFlagsChanged, this, &TQuestTrackerWidgetController::onTrackedQuestFlagsChanged);
-    refresh();
     widget()->createItem(QStringLiteral("questtrackerwidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TQuestTrackerWidgetController::onWidgetQuickItemDestroyed);
+}
+
+void TQuestTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_options = nullptr;
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_questLogStorage = session->questLogStorage();
+    if (config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get())
+        m_options = configuration->sidebarOptions();
+    if (m_questLogStorage)
+        m_gameSessionConnections.add(connect(m_questLogStorage.get(), &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this,
+                                             &TQuestTrackerWidgetController::onTrackedQuestFlagsChanged));
+    if (m_options)
+        m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::questTrackerWidgetOptionsChanged, this,
+                                             &TQuestTrackerWidgetController::onWidgetOptionsChanged));
+    onWidgetOptionsChanged();
+    if (m_questLogStorage)
+        refresh();
 }
 
 QObject* TQuestTrackerWidgetController::questTrackerList() const { return m_questTrackerList; }
@@ -341,9 +249,14 @@ void TQuestTrackerWidgetController::setCursorToResizeVertical(const bool Enabled
 void TQuestTrackerWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 void TQuestTrackerWidgetController::onWidgetQuickItemDestroyed() {}
 
+std::vector<questlog::TQuestFlag> TQuestTrackerWidgetController::trackedQuestFlags() const
+{
+    return m_questLogStorage ? m_questLogStorage->trackedQuestFlags() : std::vector<questlog::TQuestFlag>{};
+}
+
 void TQuestTrackerWidgetController::refresh()
 {
-    m_list.setEntries(m_storage->entries(), m_actions);
+    m_list.setEntries(trackedQuestFlags(), m_actions);
 }
 
 void TQuestTrackerWidgetController::setMissionActions(QList<TQuestTrackerListModel::MissionAction> actions)
@@ -364,11 +277,12 @@ void TQuestTrackerWidgetController::setBrowseOpener(std::function<void(const QSt
 
 void TQuestTrackerWidgetController::missionAction(const int questFlagId, const QString& taskEntryId)
 {
-    const int questLineId = m_storage->questLineOf(questFlagId);
+    int questLineId = 0;
     QString partName;
-    for (const TQuestTrackerStorage::Entry& entry : m_storage->entries()) {
-        if (entry.questFlagId == questFlagId) {
-            partName = stripCompletedMarker(entry.questLinePart);
+    for (const questlog::TQuestFlag& flag : trackedQuestFlags()) {
+        if (flag.id == questFlagId) {
+            questLineId = questLineOf(flag);
+            partName = stripCompletedMarker(flag.data.questFlagName);
             break;
         }
     }
@@ -405,23 +319,14 @@ void TQuestTrackerWidgetController::missionAction(const int questFlagId, const Q
 
 void TQuestTrackerWidgetController::onTrackedQuestFlagsChanged(const bool added, const bool removed)
 {
+    if (m_questLogStorage)
+        refresh();
     if (!added && !removed)
         return;
     auto action = std::make_shared<input::gameactions::TGameActionSoundTrigger>(input::gameactions::TGameActionSoundTrigger::TSoundEffect{
         added ? cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_ADD
               : cip::tibia::qmlcomponents::TSoundHelperService::QUEST_TRACKER_REMOVE });
     Q_EMIT publishGameAction(action);
-}
-
-void TQuestTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* options)
-{
-    m_options = options;
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
 }
 
 void TQuestTrackerWidgetController::onShowContextMenuForQuestFlag(const int QuestFlagIDRaw)
@@ -434,7 +339,10 @@ void TQuestTrackerWidgetController::onShowContextMenuForQuestFlag(const int Ques
     connect(menu->addCustomEntry(qtTrId("quest_tracker_show_in_questlog")), &TContextMenuEntryItem::triggered, this,
             [this, questFlagId] { Q_EMIT publishGameAction(openQuestLogAction(questFlagId)); });
     connect(menu->addCustomEntry(qtTrId("quest_tracker_remove_tracked")), &TContextMenuEntryItem::triggered, this,
-            [this, questFlagId] { m_storage->changeTrackedQuestFlags({ questFlagId }, true); });
+            [this, questFlagId] {
+                Q_EMIT publishGameAction(
+                    std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::vector<int>{ questFlagId }, false));
+            });
     menu->showCustomMenu();
 }
 
@@ -445,7 +353,8 @@ void TQuestTrackerWidgetController::onShowQuestInQuestLog(const int QuestFlagIDR
 
 void TQuestTrackerWidgetController::onPinnedChanged(const int QuestFlagID, const bool checked)
 {
-    m_storage->setPinned(QuestFlagID, checked);
+    if (m_questLogStorage)
+        m_questLogStorage->setQuestFlagPinned(questlog::TQuestFlagID(QuestFlagID), checked);
 }
 
 void TQuestTrackerWidgetController::requestOpenQuestLogDialog()
@@ -460,20 +369,38 @@ void TQuestTrackerWidgetController::requestConfigurationContextMenu()
         return;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("quest_tracker_remove_all")), &TContextMenuEntryItem::triggered, this,
-            [this] { m_storage->changeTrackedQuestFlags(m_storage->trackedIds().values(), true); });
+            [this] {
+                std::vector<int> ids;
+                for (const questlog::TQuestFlag& flag : trackedQuestFlags())
+                    ids.push_back(flag.id);
+                Q_EMIT publishGameAction(
+                    std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::move(ids), false));
+            });
     connect(menu->addCustomEntry(qtTrId("quest_tracker_remove_completed")), &TContextMenuEntryItem::triggered, this,
-            [this] { m_storage->changeTrackedQuestFlags(m_storage->completedIds(), true); });
+            [this] {
+                std::vector<int> ids;
+                if (m_questLogStorage) {
+                    for (const questlog::TQuestFlagID id : m_questLogStorage->completedTrackedQuestFlagIds())
+                        ids.push_back(id);
+                }
+                Q_EMIT publishGameAction(
+                    std::make_shared<input::TGameActionChangeTrackedQuestFlags>(std::move(ids), false));
+            });
     menu->addCustomSeparator();
     TContextMenuEntryItem* autoAdd = menu->addCustomEntry(qtTrId("quest_tracker_auto_add"));
     autoAdd->setCheckable(true);
-    const bool autoTrack = m_storage->autoTrackNewQuests();
+    const bool autoTrack = !m_questLogStorage || m_questLogStorage->autoTrackNewQuests();
     autoAdd->setChecked(autoTrack);
-    connect(autoAdd, &TContextMenuEntryItem::triggered, this, [this, autoTrack] { m_storage->setOption(0, !autoTrack); });
+    connect(autoAdd, &TContextMenuEntryItem::triggered, this, [this, autoTrack] {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeQuesttrackerOptions>(0, !autoTrack));
+    });
     TContextMenuEntryItem* autoRemove = menu->addCustomEntry(qtTrId("quest_tracker_auto_remove"));
     autoRemove->setCheckable(true);
-    const bool autoUntrack = m_storage->autoUntrackCompletedQuests();
+    const bool autoUntrack = !m_questLogStorage || m_questLogStorage->autoUntrackCompletedQuests();
     autoRemove->setChecked(autoUntrack);
-    connect(autoRemove, &TContextMenuEntryItem::triggered, this, [this, autoUntrack] { m_storage->setOption(1, !autoUntrack); });
+    connect(autoRemove, &TContextMenuEntryItem::triggered, this, [this, autoUntrack] {
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeQuesttrackerOptions>(1, !autoUntrack));
+    });
     menu->showCustomMenu();
 }
 
@@ -481,18 +408,21 @@ void TQuestTrackerWidgetController::saveWidgetOptions()
 {
     if (!m_options)
         return;
-    QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
-    json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
-    m_options->setSection(QLatin1String(OptionsKey), json);
+    config::TWidgetOptionsBase options;
+    options.setContentHeightAndMaximized(widget()->maximizedContentHeight(), widget()->isMaximized());
+    m_options->setQuestTrackerWidgetOptions(options);
 }
 
-void TQuestTrackerWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+void TQuestTrackerWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const config::TWidgetOptionsBase& options = m_options->questTrackerWidgetOptions();
+    widget()->setInitialContentHeightAndMaximized(options.contentHeight, options.contentMaximized);
+}
 
-TQuestTrackerWidgetManager::TQuestTrackerWidgetManager(TQuestTrackerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                                                       QObject* parent)
+TQuestTrackerWidgetManager::TQuestTrackerWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : QObject(parent)
-    , m_storage(storage)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {}
@@ -575,12 +505,12 @@ void TQuestTrackerWidgetManager::setBrowseOpener(std::function<void(const QStrin
         m_controller->setBrowseOpener(m_browseOpener);
 }
 
-TSidebarWidget* TQuestTrackerWidgetManager::open(config::TSidebarOptions* options)
+TSidebarWidget* TQuestTrackerWidgetManager::open(const std::shared_ptr<game::IGameSession>& GameSession)
 {
     if (!m_controller) {
-        m_controller = new TQuestTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
+        m_controller = new TQuestTrackerWidgetController(m_gameWindowItem, m_engine);
         connect(m_controller, &TQuestTrackerWidgetController::publishGameAction, this, &TQuestTrackerWidgetManager::publishGameAction);
-        m_controller->setSidebarOptions(options);
+        m_controller->connectToGameSession(GameSession);
         m_controller->setMissionInvoker([this](const QString& missionKey, const QString& taskEntryId, int questFlagId) {
             if (m_missionBackend)
                 m_missionBackend->missionAdvance(missionKey, taskEntryId, questFlagId);
@@ -589,6 +519,12 @@ TSidebarWidget* TQuestTrackerWidgetManager::open(config::TSidebarOptions* option
     }
     applyMissions();
     return m_controller->widget();
+}
+
+void TQuestTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_controller)
+        m_controller->connectToGameSession(GameSession);
 }
 
 void TQuestTrackerWidgetManager::close(const bool saveWidgetOptions)

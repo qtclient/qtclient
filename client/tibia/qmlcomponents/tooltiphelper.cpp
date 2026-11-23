@@ -26,7 +26,6 @@ bool TMouseHoverEventFilter::eventFilter(QObject* watched, QEvent* event)
         case QEvent::HoverMove: {
             const QPointer<QObject> guard(watched);
             const QEvent::Type type = event->type();
-            Q_EMIT hoverEvent(watched, type);
             Q_EMIT eventTriggered(watched, type);
             return watched && !guard;
         }
@@ -55,7 +54,6 @@ TTooltipHelperQmlService::TTooltipHelperQmlService(QObject* parent) :
     m_filter(new TMouseHoverEventFilter(this))
 {}
 
-/// CIP .
 cip::tibia::qmlcomponents::TTooltipEventWatcher* TTooltipHelperQmlService::registerTooltip(QQuickItem* pQuickItem)
 {
     if (!pQuickItem)
@@ -70,12 +68,13 @@ cip::tibia::qmlcomponents::TTooltipEventWatcher* TTooltipHelperQmlService::regis
     QJSEngine::setObjectOwnership(watcher, QJSEngine::JavaScriptOwnership);
     if (auto* app = QCoreApplication::instance())
         app->installEventFilter(m_filter);
-    connect(m_filter, &TMouseHoverEventFilter::hoverEvent, this, &TTooltipHelperQmlService::onHoverEvent, Qt::UniqueConnection);
-    connect(watcher, &cip::tibia::qmlcomponents::TTooltipEventWatcher::unregistered, this, &TTooltipHelperQmlService::release);
+    connect(m_filter, &TMouseHoverEventFilter::eventTriggered, this, &TTooltipHelperQmlService::onEventTriggered, Qt::UniqueConnection);
+    connect(watcher, &cip::tibia::qmlcomponents::TTooltipEventWatcher::unregistered, this,
+            &TTooltipHelperQmlService::onTooltipEventWatcherUnregistered);
     connect(watcher, &QObject::destroyed, this, [this] {
         if (m_watcher)
             return;
-        disconnect(m_filter, &TMouseHoverEventFilter::hoverEvent, this, &TTooltipHelperQmlService::onHoverEvent);
+        disconnect(m_filter, &TMouseHoverEventFilter::eventTriggered, this, &TTooltipHelperQmlService::onEventTriggered);
         if (auto* app = QCoreApplication::instance())
             app->removeEventFilter(m_filter);
         m_window = nullptr;
@@ -97,9 +96,12 @@ QQuickItem* TTooltipHelperQmlService::findWindowContentItemForQuickItem(QQuickIt
     return pQuickItem->window()->contentItem();
 }
 
-/// CIP .
-void TTooltipHelperQmlService::onHoverEvent(QObject* watched, const int type)
+/// Enter/leave of the tooltip's window track inWindow; a press refreshes and
+/// reports the press on the next turn; anything else schedules a refresh.
+void TTooltipHelperQmlService::onEventTriggered(QObject* pObject, const QEvent::Type EventType)
 {
+    QObject* const watched = pObject;
+    const QEvent::Type type = EventType;
     if (!m_watcher)
         return;
 
@@ -121,14 +123,18 @@ void TTooltipHelperQmlService::onHoverEvent(QObject* watched, const int type)
     scheduleHoverRefresh();
 }
 
-/// CIP .
+void TTooltipHelperQmlService::onTooltipEventWatcherUnregistered(cip::tibia::qmlcomponents::TTooltipEventWatcher* watcher)
+{
+    release(watcher);
+}
+
 void TTooltipHelperQmlService::release(cip::tibia::qmlcomponents::TTooltipEventWatcher* watcher)
 {
     if (!watcher || !m_watcher || m_watcher != watcher)
         return;
 
     m_watcher = nullptr;
-    disconnect(m_filter, &TMouseHoverEventFilter::hoverEvent, this, &TTooltipHelperQmlService::onHoverEvent);
+    disconnect(m_filter, &TMouseHoverEventFilter::eventTriggered, this, &TTooltipHelperQmlService::onEventTriggered);
     if (auto* app = QCoreApplication::instance())
         app->removeEventFilter(m_filter);
     m_window = nullptr;

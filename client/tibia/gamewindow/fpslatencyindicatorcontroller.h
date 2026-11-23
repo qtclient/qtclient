@@ -51,6 +51,7 @@ public:
     /// CIP: the game client's values before a frame renders; each property
     /// signals when it changed (the frame count silently).
     void update(double frameRate, qint64 latencyMs, bool latencyMeasured, bool optimizedConnectionStability, int frameCount);
+    QString currentFrameCount() const override;
 
 Q_SIGNALS:
     void worldmapBuildUsChanged();
@@ -75,6 +76,8 @@ private:
     double m_frameRate = 0.0;
     bool m_stabilityOption = false;
     bool m_latencyMeasured = true;
+    /// The frame count of the last update.
+    int m_frameCount = 0;
 };
 
 }

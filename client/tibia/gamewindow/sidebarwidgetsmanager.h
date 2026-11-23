@@ -11,13 +11,18 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <vector>
 
 class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
+namespace analysers {
+class TAnalyserStorages;
+}
 namespace game {
 class IGameSession;
+class TPremiumTimeStorage;
 }
 namespace input {
 class IGameAction;
@@ -25,16 +30,31 @@ class IGameAction;
 namespace gamewindow {
 
 class TBattleListControllerStorage;
+class TBossTrackerWidgetManager;
 class TContainerStorageController;
+class TCreatureTrackerWidgetManager;
+class TDepotSearchWidgetController;
+class TImbuementTrackerWidgetManager;
+class TKillTrackerWidgetManager;
+class TLootTrackingWidgetManager;
+class TPlayerGuideWidgetManager;
+class TPlayerTradeController;
+class TQuestTrackerWidgetManager;
 class TSidebarManager;
 class TSidebarWidget;
 class TSkillsWidgetController;
+class TSpellListWidgetManager;
+class TUnjustifiedPointsWidgetManager;
+class TVipWidgetManager;
 
 /// The widgets in the sidebars' lower panes (CIP: TSidebarWidgetsManager,
 /// ): opens, closes and toggles them (TOGGLE_WIDGET,
 /// OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR) and saves and restores which widgets
 /// each sidebar holds, in order (sidebars.json's sidebarWidgetsMangerOptions).
-/// It owns the skills widget and the battle lists; other widgets join
+/// CIP: it owns every sidebar widget it opens: the skills widget, the battle
+/// lists, the player trade and depot search widgets (opened and closed by the
+/// session's protocol handlers) and the other widget types (held here through
+/// qtclient's per-widget managers). The analysers and pack widgets join
 /// through registerWidget.
 class TSidebarWidgetsManager final : public cip::tibia::gamewindow::TSidebarWidgetsManager
 {
@@ -99,18 +119,35 @@ public:
         return hooks;
     }
 
-    TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    /// CIP: makes the battle lists and connects them; the other widgets are
+    /// made when they open. `analyserStorages` is the loot tracker's source
+    /// (host: CipSoft passes the session's storages).
+    TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                           analysers::TAnalyserStorages* analyserStorages, QObject* parent = nullptr);
+    /// CIP: deletes the widgets, the battle lists, the depot search and
+    /// player trade widgets, then the widgets kept by type.
     ~TSidebarWidgetsManager() override;
 
     /// The character's options; null while no character is in the world
     /// (every widget closes).
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// CIP connector: every widget manager connects to the session.
+    /// CIP: every widget closes without saving its options (the old options
+    /// go first); the options become the session's sidebar options, which
+    /// are restored when the character's configuration loads or they change.
+    /// The session's player trade and depot search requests open and close
+    /// those widgets; every owned widget connects to the session.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Follows the account's premium state: a free account loses the hunting
+    /// session analyser (checked at once and on every change). The widgets
+    /// read the live storage themselves.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
     void setContainerStorage(TContainerStorageController* containers);
     void setControlScheme(int controlScheme);
     void onLoginRampUpFinished();
     TBattleListControllerStorage* battleLists() const { return m_battleLists.get(); }
+    /// The widgets the manager keeps by type (host: their qtclient managers).
+    TVipWidgetManager* vipWidget() const { return m_vip.get(); }
+    TQuestTrackerWidgetManager* questTrackerWidget() const { return m_questTracker.get(); }
 
     void registerWidget(int widgetType, WidgetHooks hooks);
     bool isWidgetOpen(int widgetType) const;
@@ -173,10 +210,25 @@ public Q_SLOTS:
     void onAnalyticsSelectorWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(AnalyticsSelector, saveWidgetOptions); }
     void onPartyHuntAnalyserWidgetClosed(bool saveWidgetOptions) { onWidgetClosed(PartyHuntAnalyser, saveWidgetOptions); }
 
+    /// CIP: a new trade window replaces the open one; it follows the session,
+    /// is maximized once the login ramp-up is over and goes to the sidebars.
+    void onPlayerTradeWidgetOpenRequest() override;
+    /// CIP: the trade window is deleted.
+    void onPlayerTradeWidgetCloseRequest() override;
+    /// CIP: unless it is open, the depot search widget is made, follows the
+    /// session, is maximized once the login ramp-up is over and goes to the
+    /// sidebars.
+    void onDepotSearchWidgetOpenRequest() override;
+    /// CIP: the depot search widget saves its options and is deleted.
+    void onDepotSearchWidgetCloseRequest() override;
+
     /// CIP: the imbuement tracker widget subscribes to imbuement durations
     /// while it is shown (GameclientMessageTrackImbuements).
     void onWidgetVisible(int widgetType);
     void onWidgetHidden(int widgetType);
+    /// Without premium the hunting session analyser closes without saving
+    /// its options; the open widgets are saved and widgetHidden is emitted.
+    void onPremiumTimeChanged();
 
 Q_SIGNALS:
     void widgetVisible(int widgetType);
@@ -205,7 +257,25 @@ private:
     QPointer<TContainerStorageController> m_containers;
     std::unique_ptr<TBattleListControllerStorage> m_battleLists;
     TSkillsWidgetController* m_skills = nullptr;
+    /// CIP: the trade window and the depot search widget, while open.
+    QPointer<TPlayerTradeController> m_playerTrade;
+    QPointer<TDepotSearchWidgetController> m_depotSearch;
+    /// The widgets kept by type (CIP: the widget map and members; qtclient's
+    /// per-widget managers make and delete the controllers).
+    std::unique_ptr<TVipWidgetManager> m_vip;
+    std::unique_ptr<TKillTrackerWidgetManager> m_killTracker;
+    std::unique_ptr<TQuestTrackerWidgetManager> m_questTracker;
+    std::unique_ptr<TLootTrackingWidgetManager> m_lootTracking;
+    std::unique_ptr<TSpellListWidgetManager> m_spellList;
+    std::unique_ptr<TUnjustifiedPointsWidgetManager> m_unjustifiedPoints;
+    std::unique_ptr<TImbuementTrackerWidgetManager> m_imbuementTracker;
+    std::unique_ptr<TCreatureTrackerWidgetManager> m_bestiaryTracker;
+    std::unique_ptr<TCreatureTrackerWidgetManager> m_bosstiaryTracker;
+    std::unique_ptr<TBossTrackerWidgetManager> m_bossTracker;
+    std::unique_ptr<TPlayerGuideWidgetManager> m_playerGuide;
     std::shared_ptr<game::IGameSession> m_gameSession;
+    std::vector<QMetaObject::Connection> m_gameSessionConnections;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::map<int, WidgetHooks> m_widgets;
     std::map<int, QMetaObject::Connection> m_closeConnections;
     int m_controlScheme = 0;

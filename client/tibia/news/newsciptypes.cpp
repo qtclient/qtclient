@@ -15,7 +15,7 @@ namespace {
 void showGameNewsMessage(const int newsType, const bool notificationOnly)
 {
     if (auto* button = tibia::gamewindow::TNewsButtonController::instance())
-        button->onShowGameNews(newsType, notificationOnly);
+        button->onShowGameNewsMessage(newsType, notificationOnly);
     else
         tibia::game::notify("onGameNews", newsType, notificationOnly);
 }

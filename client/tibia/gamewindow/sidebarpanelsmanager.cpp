@@ -8,6 +8,7 @@
 #include "gamewindow/playerinventoryandstatuscontroller.h"
 #include "gamewindow/premiumpanelcontroller.h"
 #include "gamewindow/sidebarmanager.h"
+#include "gamewindow/sidebarwidgetsmanager.h"
 
 #include <QQuickItem>
 
@@ -172,13 +173,15 @@ void TSidebarPanelsManager::saveCurrentOpenPanels()
 
 void TSidebarPanelsManager::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
 {
-    m_gameActions.handle(pGameAction);
-    if (m_buttonBar)
-        m_buttonBar->handleGameAction(pGameAction);
+    // The panels in CipSoft's order: minimap, inventory, premium panel, button bar.
+    if (m_minimap)
+        m_minimap->handleGameAction(pGameAction);
     if (m_inventory)
         m_inventory->handleGameAction(pGameAction);
     if (m_premiumPanel)
         m_premiumPanel->handleGameAction(pGameAction);
+    if (m_buttonBar)
+        m_buttonBar->handleGameAction(pGameAction);
 }
 
 }
@@ -188,4 +191,30 @@ void tibia::gamewindow::TSidebarPanelsManager::connectToGameSession(const std::s
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     if (TMinimapController* minimapController = minimap())
         minimapController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::connectToSidebarWidgetsManager(TSidebarWidgetsManager* widgets)
+{
+    if (!widgets || !m_buttonBar)
+        return;
+    connect(widgets, &TSidebarWidgetsManager::widgetHidden, m_buttonBar.get(), &TButtonBarController::onWidgetHidden);
+    connect(widgets, &TSidebarWidgetsManager::widgetVisible, m_buttonBar.get(), &TButtonBarController::onWidgetVisible);
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::setTileStorage(minimap::TMinimapTileStorage* storage)
+{
+    if (m_minimap)
+        m_minimap->setTileStorage(storage);
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::updateMouseCursorForCurrentSlot()
+{
+    if (m_inventory)
+        m_inventory->updateMouseCursorForCurrentSlot();
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::refreshClocks()
+{
+    if (m_inventory)
+        m_inventory->refreshClocks();
 }

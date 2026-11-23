@@ -16,12 +16,24 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+TSpellsProtocolMessageHandler::TSpellsProtocolMessageHandler(TSpellInfoStorage* spellInfoStorage)
+    : cip::tibia::spells::TSpellsProtocolMessageHandler(nullptr)
+    , m_spellInfoStorage(spellInfoStorage)
+{
+}
+
 void TSpellsProtocolMessageHandler::handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message)
 {
     std::unordered_map<uint16_t, std::vector<TSpellInfoStorage::TSpellModification>> modifications;
     for (const auto& entry : message.entries())
         modifications[static_cast<uint16_t>(entry.spell_id())].push_back({ entry.mod(), entry.value() });
-    TSpellInfoStorage::instance()->setSpellModifications(std::move(modifications));
+    m_spellInfoStorage->setSpellModifications(std::move(modifications));
+}
+
+void TSpellsProtocolMessageHandler::handleUnlockedSpellsMessage(const ::tibia::protobuf::protocol::GameserverMessageUnlockedSpells& message)
+{
+    for (const uint32_t spellId : message.spell_ids())
+        Q_EMIT receivedUnlockedSpell(static_cast<int>(spellId));
 }
 
 } // namespace tibia::spells

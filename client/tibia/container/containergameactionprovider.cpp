@@ -100,10 +100,10 @@ TGameActionList TContainerGameActionProvider::containerSlotActions(const uint8_t
     if (slot.empty())
         return {};
     // The slot on the shown page, as the server addresses it.
-    const int pageSlot = slotId - static_cast<int>(row->firstIndex);
+    const int pageSlot = slotId - static_cast<int>(row->firstIndex());
     const Position position(UINT16_MAX, static_cast<uint16_t>(containerId | 0x40), static_cast<uint8_t>(pageSlot));
     TGameActionList actions;
-    if (row->hasParent) {
+    if (row->hasParent()) {
         const TAppearanceType* type = slot.appearance ? slot.appearance->thingType() : typeOf(slot.typeId);
         if (!type || !type->isNotMoveable())
             actions.push_back(input::makeObjectGameAction(A::MOVE_UP, position, pageSlot, slot.typeId));

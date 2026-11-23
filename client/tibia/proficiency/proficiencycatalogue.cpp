@@ -108,6 +108,7 @@ TProficiencyPerk perkAtRank(TProficiencyPerk perk, const int rank)
     case 11: perk.value = 0.002 * r + 0.005; break;
     case 14: perk.value = 0.013 * r + 0.02; break;
     case 15: perk.value = 0.017 * r + 0.03; break;
+    case 18:
     case 19: perk.value = rank + 2; break;
     case 20: perk.value = 2 * rank + 4; break;
     case 21: perk.value = 4 * rank + 10; break;

@@ -105,8 +105,35 @@ void TWeaponProficiencyShapeDialogController::handleGameAction(const input::game
     showDialog();
 }
 
-TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController()
+TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController() { closeDialog(); }
+
+/// The shown perk and the slot are forgotten; refine, maximise and reshape
+/// are reset (not possible, price -1, no texts). No change signal.
+void TWeaponProficiencyShapeDialogController::resetShapeData()
 {
+    if (QObject* perk = std::exchange(m_selectedPerk, nullptr))
+        perk->deleteLater();
+    m_typeId = 0;
+    m_level = 0;
+    m_perk = 0;
+    m_fromPerkTree = false;
+    m_refinePossible = false;
+    m_refinePrice = -1;
+    m_refinePriceToHigh = false;
+    m_refineHoverText.clear();
+    m_refineTooltip.clear();
+    m_refineGuiHelp.clear();
+    m_maximisePossible = false;
+    m_maximisePrice = -1;
+    m_maximisePriceToHigh = false;
+    m_maximiseHoverText.clear();
+    m_maximiseTooltip.clear();
+    m_maximiseGuiHelp.clear();
+    m_reshapePossible = false;
+    m_reshapePrice = -1;
+    m_reshapePriceToHigh = false;
+    m_reshapeTooltip.clear();
+    m_reshapeGuiHelp.clear();
 }
 
 std::optional<TShapedSlot> TWeaponProficiencyShapeDialogController::shapedSlot() const
@@ -236,6 +263,7 @@ void TWeaponProficiencyShapeDialogController::closeDialog()
 {
     m_message->dialog()->close();
     dialog()->close();
+    resetShapeData();
 }
 
 void TWeaponProficiencyShapeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -328,9 +356,9 @@ TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogContro
     m_message->setMessageDialogTextFormat(gamewindow::TMessageDialogController::RICH_TEXT);
     connect(m_message, &gamewindow::TMessageDialogController::acceptClicked, this,
             &TWeaponProficiencyReshapeDialogController::onMessageDialogAccept);
-    connect(m_shape, &TWeaponProficiencyShapeDialogController::perkInformationChanged, this,
-            &TWeaponProficiencyReshapeDialogController::currentPerkChanged);
 }
+
+TWeaponProficiencyReshapeDialogController::~TWeaponProficiencyReshapeDialogController() { closeDialog(); }
 
 void TWeaponProficiencyReshapeDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
@@ -348,14 +376,10 @@ void TWeaponProficiencyReshapeDialogController::onShapedPerkReshapeOffersChanged
 {
     rebuildOffers();
     m_message->dialog()->hide();
-    // Host: WeaponProficiencyReshapeDialog.qml binds controller.currentPerk.*
-    // without guards, so the dialog only shows offers with the shape dialog's perk.
-    if (m_storage->reshapeOffers() && currentPerk()) {
-        dialog()->show();
+    if (dialog()->item())
         return;
-    }
-    if (dialog()->isShown())
-        dialog()->close();
+    dialog()->create();
+    dialog()->show();
 }
 
 QObject* TWeaponProficiencyReshapeDialogController::currentPerk() const { return m_shape->selectedPerk(); }
@@ -391,9 +415,13 @@ void TWeaponProficiencyReshapeDialogController::replacePerkSelected(const int Pe
                            qtTrId("weapon_proficiency_reshape_confirm_reshape_description"));
 }
 
+/// Only while the dialog is not there yet.
 void TWeaponProficiencyReshapeDialogController::showDialog()
 {
     m_message->dialog()->hide();
+    if (dialog()->item())
+        return;
+    dialog()->create();
     dialog()->show();
 }
 
@@ -468,6 +496,12 @@ TShapedPerkOptionsSortFilterProxyModel::TShapedPerkOptionsSortFilterProxyModel(Q
     });
 }
 
+void TShapedPerkOptionsSortFilterProxyModel::setPerks(std::vector<TProficiencyPerk> perks)
+{
+    m_model.setPerks(std::move(perks));
+    setFilterString(QString());
+}
+
 void TShapedPerkOptionsSortFilterProxyModel::setFilterString(const QString& filter)
 {
     if (filter == m_filter)
@@ -504,31 +538,50 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
     : TDialogController(QStringLiteral("WeaponProficiencyShapeOptionsDialog.qml"), parent)
 {
     m_perkOptionsModel = &m_proxy;
-    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
-        const int profession = action.profession();
-        if (profession >= 1 && profession <= 5) {
-            std::vector<TProficiencyPerk> perks;
-            for (const int index : shapeOptions(profession)) {
-                if (const std::optional<TProficiencyPerk> perk = shapePerk(index))
-                    perks.push_back(*perk);
-            }
-            m_proxy.setPerks(std::move(perks));
-        }
-        showDialog();
-        return true;
-    });
+    m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG,
+                     [this](const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action) {
+                         handleGameAction(action);
+                         return true;
+                     });
 }
 
-TWeaponProficiencyShapeOptionsDialogController::~TWeaponProficiencyShapeOptionsDialogController()
+/// Only a profession 1..5 fills the options and opens the dialog.
+void TWeaponProficiencyShapeOptionsDialogController::handleGameAction(
+    const input::gameactions::TGameActionOpenWeaponProficiencyShapeOptionsDialog& action)
 {
+    const int profession = action.profession();
+    if (profession < 1 || profession > 5)
+        return;
+    std::vector<TProficiencyPerk> perks;
+    for (const int index : shapeOptions(profession)) {
+        if (const std::optional<TProficiencyPerk> perk = shapePerk(index))
+            perks.push_back(*perk);
+    }
+    m_proxy.setPerks(std::move(perks));
+    dialog()->create();
+    dialog()->show();
 }
+
+TWeaponProficiencyShapeOptionsDialogController::~TWeaponProficiencyShapeOptionsDialogController() { closeDialog(); }
 
 void TWeaponProficiencyShapeOptionsDialogController::requestClose() { closeDialog(); }
 
 void TWeaponProficiencyShapeOptionsDialogController::setFilterString(const QString& Filter) { m_proxy.setFilterString(Filter); }
 
-void TWeaponProficiencyShapeOptionsDialogController::showDialog() { dialog()->show(); }
+/// Only while the dialog is not there yet.
+void TWeaponProficiencyShapeOptionsDialogController::showDialog()
+{
+    if (dialog()->item())
+        return;
+    dialog()->create();
+    dialog()->show();
+}
 
-void TWeaponProficiencyShapeOptionsDialogController::closeDialog() { dialog()->close(); }
+/// The options are dropped with the dialog.
+void TWeaponProficiencyShapeOptionsDialogController::closeDialog()
+{
+    dialog()->close();
+    m_proxy.setPerks({});
+}
 
 }

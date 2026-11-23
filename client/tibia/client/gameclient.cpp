@@ -1,5 +1,6 @@
 #include "gameclient.h"
 #include "game/gameactionrouter.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/soundhelper.h"
 #include <stdexcept>
@@ -33,11 +34,14 @@
 #include "crashreportsender.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/gamesessiondisconnectreactioncontroller.h"
+#include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "config/configciptypes.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
 #include "authentication/authenticationciptypes.h"
 #include "authentication/cloudflarechallengecontroller.h"
+#include "authentication/emailcoderequestuploader.h"
+#include "authentication/loginconfirmationcoderequestuploader.h"
 #include "assets/assetsciptypes.h"
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
@@ -77,6 +81,7 @@
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpdmpd.h"
 #include "game/sessiondumpgamesession.h"
+#include "game/tutorialsessiondumpgamesession.h"
 #include "protocol/protocolmessagequeue.h"
 #include "game/tutorialsessiondumpgamesessionmetainfo.h"
 #include "game/sessiondumpgamesessionmetainfo.h"
@@ -296,8 +301,6 @@ private:
 
 TGameClient::TGameClient(QObject* parent)
     : cip::tibia::client::TGameClient(parent)
-    , m_login(std::make_unique<authentication::TLoginRequestUploader>())
-    , m_characterSelection(std::make_unique<gamewindow::TCharacterSelectionController>())
     , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
@@ -306,6 +309,9 @@ TGameClient::TGameClient(QObject* parent)
 {
     game::TOutfitDialogStorage::setInstance(m_outfitDialogStorage.get());
     m_pGameActionRouter = std::make_shared<game::TGameActionRouter>();
+    // CIP: the client's own game actions go through the router.
+    connect(this, &TGameClient::publishGameAction, m_pGameActionRouter->internalRouter(),
+            &game::TInternalGameActionRouter::handleGameActionInternal);
     // The actions whose CIP handler classes are not ported yet.
     auto* unported = new input::TUnportedGameActionHandler(this);
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, unported,
@@ -367,7 +373,6 @@ TGameClient::TGameClient(QObject* parent)
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
     protocol::ownProductSurface(this);
-    tutorial::ownProductSurface(this);
     questlog::ownProductSurface(this);
     screenshot::ownProductSurface(this);
     spells::ownProductSurface(this);
@@ -397,65 +402,87 @@ TGameClient::TGameClient(QObject* parent)
     connect(&m_frameLimitTimer, &QTimer::timeout, this, &TGameClient::tick);
     m_idleTick.setSingleShot(true);
     connect(&m_idleTick, &QTimer::timeout, this, &TGameClient::tick);
+}
 
-    m_authentication = std::make_shared<authentication::TAuthenticationProcessController>();
+void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
+{
+    // CIP: the character selection, the login request uploader, the email and
+    // login confirmation code uploaders (each with its own sender) and the
+    // Cloudflare challenge for the login service, handed to the controller.
+    auto pCharacterSelection = std::make_shared<gamewindow::TCharacterSelectionController>();
+    auto pLoginRequestUploader = std::make_shared<authentication::TLoginRequestUploader>();
+    auto pEMailCodeRequestUploader = std::make_shared<authentication::TEmailCodeRequestUploader>(
+        LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
+    auto pLoginConfirmationCodeRequestUploader = std::make_shared<authentication::TLoginConfirmationCodeRequestUploader>(
+        LoginUrl, std::make_shared<shared::TJsonDocumentHttpPostSender>());
+    auto pCloudflareChallenge = std::make_shared<authentication::TCloudflareChallengeController>();
+    pCloudflareChallenge->setTargetUrl(LoginUrl);
+    m_authentication = std::make_shared<authentication::TAuthenticationProcessController>(
+        pCharacterSelection, pLoginRequestUploader, pEMailCodeRequestUploader, pLoginConfirmationCodeRequestUploader,
+        pCloudflareChallenge);
     {
-        // The play session data the login machine forgets lives in the client's account.
+        // The play session data the login machine forgets lives in the client's
+        // account; the clearance goes with the next login request.
         authentication::TAuthenticationProcessController::THost host;
         host.resetSessionData = [this] { m_account.session = {}; };
+        host.applyClearance = [uploader = pLoginRequestUploader.get()](
+                                  const authentication::TCloudflareChallengeClearanceInfo& info) {
+            uploader->applyClearance(info);
+        };
         m_authentication->setHost(std::move(host));
     }
-    m_authentication->bindLoginUploader(m_login.get());
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
+    m_authentication->bindLoginUploader(pLoginRequestUploader.get());
+    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess,
+            m_authentication.get(), &authentication::TAuthenticationProcessController::onCloudflareSolverSuccess);
+    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed,
+            m_authentication.get(), [controller = m_authentication.get()] {
+                controller->trigger(authentication::TAuthenticationProcessController::ETrigger::CloudflareSolveFailed);
+            });
+
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginSuccessful, this, &TGameClient::onLoginSuccessful);
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailed, this, &TGameClient::fail);
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToMissingTwoFactorToken, this, [this] {
         fail(tr("This account needs an authenticator token."));
     });
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToInvalidServerResponse, this, [this] {
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToInvalidServerResponse, this, [this] {
         fail(tr("The login server sent an invalid response."));
     });
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedClientOutOfDate, this, [this] {
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedClientOutOfDate, this, [this] {
         // CIP enters ShowClientOutOfDate (info / client_too_old + Restart) —
         // do not also fail with a dismissible error toast.
         Q_EMIT clientOutOfDate();
     });
-    connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToCloudflareMitigation, this, [this] {
-        if (!m_cloudflareChallenge) {
-            m_cloudflareChallenge = std::make_unique<authentication::TCloudflareChallengeController>(this);
-            connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
-                    [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
-                        m_login->applyClearance(info);
-                        m_authentication->onCloudflareSolverSuccess(info);
-                        login();
-                    });
-            connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
-                    [this](authentication::TCloudflareChallengeError error) {
-                        m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::CloudflareSolveFailed);
-                        switch (error) {
-                        case authentication::TCloudflareChallengeError::Timeout:
-                            fail(qtTrId("cloudflare_challenge_error_timeout"));
-                            break;
-                        case authentication::TCloudflareChallengeError::Cancelled:
-                            fail(qtTrId("cloudflare_challenge_error_cancelled"));
-                            break;
-                        case authentication::TCloudflareChallengeError::Unknown:
-                        default:
-                            fail(qtTrId("cloudflare_challenge_error_unknown"));
-                            break;
-                        }
-                    });
-        }
-        QUrl challengeUrl = m_login->lastMitigatedUrl();
-        if (!challengeUrl.isValid())
-            challengeUrl = m_options.env.loginUrl();
-        m_cloudflareChallenge->startChallenge(challengeUrl);
-    });
+    connect(pLoginRequestUploader.get(), &authentication::TLoginRequestUploader::loginFailedDueToCloudflareMitigation, this,
+            [this, uploader = pLoginRequestUploader.get(), cloudflare = pCloudflareChallenge.get()] {
+                QUrl challengeUrl = uploader->lastMitigatedUrl();
+                if (!challengeUrl.isValid())
+                    challengeUrl = m_options.env.loginUrl();
+                cloudflare->startChallenge(challengeUrl);
+            });
+    // The clearance retries the login; a failed challenge ends it with its reason.
+    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
+            [this] { login(); });
+    connect(pCloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
+            [this](authentication::TCloudflareChallengeError error) {
+                switch (error) {
+                case authentication::TCloudflareChallengeError::Timeout:
+                    fail(qtTrId("cloudflare_challenge_error_timeout"));
+                    break;
+                case authentication::TCloudflareChallengeError::Cancelled:
+                    fail(qtTrId("cloudflare_challenge_error_cancelled"));
+                    break;
+                case authentication::TCloudflareChallengeError::Unknown:
+                default:
+                    fail(qtTrId("cloudflare_challenge_error_unknown"));
+                    break;
+                }
+            });
 
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::publishGameAction,
+    connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::publishGameAction,
             m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::handleGameActionInternal);
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
+    connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::requestCharacterLogin, this,
             [this](const gamewindow::TCharacterLoginData& data) { onCharacterChosen(data.characterName); });
-    connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
+    connect(pCharacterSelection.get(), &gamewindow::TCharacterSelectionController::abort, this, [this] {
         m_authentication->trigger(authentication::TAuthenticationProcessController::ETrigger::DialogAborted);
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
@@ -479,6 +506,11 @@ TGameClient::TGameClient(QObject* parent)
             });
 }
 
+authentication::TLoginRequestUploader* TGameClient::loginRequestUploader() const
+{
+    return m_authentication ? m_authentication->loginRequestUploader() : nullptr;
+}
+
 TGameClient::~TGameClient()
 {
     // The session's manager saves the character's configuration through
@@ -486,15 +518,10 @@ TGameClient::~TGameClient()
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
         manager->saveConfiguration();
     m_gameWindow.reset();
+    // The store balance helper follows the session and the engine's hooks.
+    m_pStoreAndResourceBalanceHelperController.reset();
     shutdown();
     qmlcomponents::TSoundHelperService::setInstance(nullptr);
-}
-
-std::shared_ptr<game::TGameActionRouter> TGameClient::gameActionRouter() const
-{
-    if (!m_pGameActionRouter)
-        throw std::logic_error("m_pGameActionRouter was not initialized yet");
-    return m_pGameActionRouter;
 }
 
 bool TGameClient::start(const QString& argv0, const QString& workDir, const Options& options)
@@ -676,12 +703,13 @@ void TGameClient::login()
     using EState = authentication::TAuthenticationProcessController::EState;
     if (!m_authentication->isRunning() || m_authentication->state() != EState::ShowLoginWaitingDialog)
         m_authentication->start();
-    m_login->login(env.loginUrl(), request, env.revision);
+    m_authentication->setLoginCredentials(request.email, request.password);
+    loginRequestUploader()->login(env.loginUrl(), request, env.revision);
 }
 
 void TGameClient::abortPendingEnter()
 {
-    m_login->abort();
+    loginRequestUploader()->abort();
     if (!tibia::game::isOnline()) {
         if (game::TGameserverGameSession* live = session())
             live->disconnectNow();
@@ -798,22 +826,23 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
 void TGameClient::showAccount(const authentication::TCharacterList& characters)
 {
     const auto [premiumType, premiumDays] = premiumTypeAndDays(m_account.session);
-    m_characterSelection->setAccountState(static_cast<int>(m_account.session.status));
-    m_characterSelection->setPremium(premiumType, premiumDays);
-    m_characterSelection->setRecoverySetupComplete(m_account.session.recoverySetupComplete);
-    m_characterSelection->setCharacters(characters, m_account.worlds);
+    gamewindow::TCharacterSelectionController* selection = characterSelection();
+    selection->setAccountState(static_cast<int>(m_account.session.status));
+    selection->setPremium(premiumType, premiumDays);
+    selection->setRecoverySetupComplete(m_account.session.recoverySetupComplete);
+    selection->setCharacters(characters, m_account.worlds);
     // Until a character logged in, the table preselects the main character.
-    if (m_characterSelection->lastSelectedCharacterName().isEmpty()) {
+    if (selection->lastSelectedCharacterName().isEmpty()) {
         for (const authentication::TCharacter& c : characters) {
             if (c.isMainCharacter)
-                m_characterSelection->setLastSelectedCharacterName(c.name);
+                selection->setLastSelectedCharacterName(c.name);
         }
     }
 }
 
 void TGameClient::onCharacterChosen(const QString& characterName)
 {
-    m_characterSelection->setLastSelectedCharacterName(characterName);
+    characterSelection()->setLastSelectedCharacterName(characterName);
     // A character switch from a running session starts at the character selection.
     if (!m_authentication->isRunning())
         m_authentication->start(true);
@@ -860,7 +889,7 @@ void TGameClient::onCharacterChosen(const QString& characterName)
 
 void TGameClient::loginAgainWithLastCharacter()
 {
-    const QString characterName = m_characterSelection->lastSelectedCharacterName();
+    const QString characterName = characterSelection()->lastSelectedCharacterName();
     if (!characterName.isEmpty())
         onCharacterChosen(characterName);
 }
@@ -927,7 +956,12 @@ void TGameClient::autoconnectNextGameSessionInQueue()
         // CIP: a replay or the tutorial never reconnects.
         if (gamewindow::TGameSessionDisconnectReactionController* reaction = gameSessionDisconnectReactionController())
             reaction->disableReconnectionAttempts();
-        const auto dump = createGameSession<game::TSessiondumpGameSession>();
+        // CIP: the tutorial's dump runs in its own session class.
+        std::shared_ptr<game::TSessiondumpGameSession> dump;
+        if (type == EType::TutorialSessiondump)
+            dump = createGameSession<game::TTutorialSessiondumpGameSession>();
+        else
+            dump = createGameSession<game::TSessiondumpGameSession>();
         dump->setCharacterConfigurationStorages(m_characterConfigurationStorages);
         dump->initialize(metaInfo);
         setCurrentGameSession(dump);
@@ -999,6 +1033,9 @@ void TGameClient::setCurrentGameSession(const std::shared_ptr<game::IGameSession
         next->initializeWorldMapSessionState();
     }
     connectGameWindowControllersToGameSession(GameSession);
+    // The login uploader's character list follows the session's player.
+    if (authentication::TLoginRequestUploader* uploader = loginRequestUploader())
+        uploader->setGameSession(std::dynamic_pointer_cast<game::TGameSessionBase>(GameSession));
     m_currentGameSession = GameSession;
     // Host: code no session is handed to (pack ABI peels, packs) resolves it here.
     game::setCurrentGameSession(m_currentGameSession);
@@ -1055,6 +1092,8 @@ void TGameClient::onWorldEntered()
     m_minimap->setProtocolHandler(worldmapProtocol());
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
             m_minimap->markerStorage(), qOverload<const input::IGameActionPtr&>(&minimap::TMinimapMarkerStorage::handleGameAction));
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal,
+            m_minimap->tileManager(), &minimap::TMinimapTileManager::handleGameAction);
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
@@ -1148,8 +1187,8 @@ void TGameClient::onWorldLeft()
         manager->saveConfiguration();
     if (chat::TTextStorage* texts = textStorage())
         texts->clear();
-    if (m_soundController)
-        m_soundController->handleSoundTrigger(true);
+    if (m_pSoundController)
+        m_pSoundController->handleSoundTrigger(true);
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
@@ -1175,29 +1214,28 @@ void TGameClient::setWindow(QQuickWindow* window)
 
 void TGameClient::initializeSound()
 {
-    const sound::TSoundSettings settings;
-    m_soundConfiguration = std::make_shared<sound::TSoundConfiguration>(settings, config::TClientOptions::instance());
-    if (!settings.noSound)
-        sound::TSoundEngine::instance().initialize(m_soundConfiguration);
-    if (!sound::TSoundEngine::instance().isInitialized())
+    ::tibia::client::TGameClientBase::initializeSound();
+    if (!m_pSoundController)
         return;
-    m_soundMetadataManager = std::make_shared<sound::TSoundMetadataManager>(nullptr, settings.ambienceDelayFactor);
-    m_soundManager = std::make_shared<sound::TSoundManager>(m_soundMetadataManager, "sounds/", settings.soundCacheSeconds);
-    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_soundManager.get(),
+    // CipSoft connects the sound metadata with the sound manager while it
+    // sets up the assets, and the sound controller with the router once the
+    // main window exists; qtclient's assets and main window do not run those
+    // steps, so the connections are made with the sound system.
+    connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_pSoundManager.get(),
             &sound::TSoundManager::onSoundMetadataChanged);
-    m_soundPlayerManager = std::make_shared<sound::TSoundPlayerManager>(settings.soundPlayerCount);
-    m_soundController = std::make_shared<sound::TSoundController>(m_soundMetadataManager, m_soundManager,
-                                                                  m_soundPlayerManager, m_soundConfiguration);
-    sound::TSoundController::setInstance(m_soundController.get());
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, m_soundController.get(),
+    sound::TSoundController::setInstance(m_pSoundController.get());
+    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, m_pSoundController.get(),
             &sound::TSoundController::handleGameAction);
-    connect(m_soundManager.get(), &sound::TSoundManager::playableSoundsChanged, m_soundPlayerManager.get(),
-            &sound::TSoundPlayerManager::onSoundManagerPlayableSoundsChanged);
     // Out of the game the title music plays once the sound bank is known.
-    connect(m_soundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
+    connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
         if (!tibia::game::isOnline())
-            m_soundController->handleSoundTrigger(true);
+            m_pSoundController->handleSoundTrigger(true);
     });
+}
+
+void TGameClient::onWindowSizeChanged()
+{
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionCloseAllMultiActionButtons>(0, 0));
 }
 
 void TGameClient::tick()
@@ -1210,17 +1248,16 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (m_soundController) {
+    if (m_pSoundController) {
         // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
         const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
         if (game::TGameSessionBase* session = game::currentGameSession()) {
-            session->soundStorage()->update(now);
             if (session->objectSoundController())
                 session->objectSoundController()->updateObjectCounts(
                     tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
         }
-        m_soundController->update(now);
-        m_soundManager->updateWithTimestamp(now);
+        m_pSoundController->update(now);
+        m_pSoundManager->updateWithTimestamp(now);
     }
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {

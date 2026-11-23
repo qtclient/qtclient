@@ -1,6 +1,10 @@
 find_package(GTest CONFIG REQUIRED)
 
 include(GoogleTest)
+# Discover each binary's tests when ctest runs, from the binary itself: post-build
+# discovery files were going stale between targets (suites listed under the wrong
+# binary, others missing).
+set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 
 # Lightweight gtest binary (no peeled qtclient_core). Prefer this over linking the tip.
 function(qtclient_add_gtest TARGET_NAME)

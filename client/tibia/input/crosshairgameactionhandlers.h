@@ -15,15 +15,6 @@
 namespace tibia {
 namespace input {
 
-/// A local say (CIP , the chat handler of
-/// SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME): crossHairTarget spells use
-/// ESpellCastOptionalTargetType (mouse → SPELL_AT_MOUSE_CURSOR, target → aim 3,
-/// else CROSSHAIR_SPELL). aimattarget waves use the same cast types toward the
-/// mouse tile or attack target (needDirection on the server). Else plain talk.
-/// The spell actions go to `publish` (the chat controller's publishGameAction).
-void say(tibia::client::MessageMode mode, const QString& text, int spellCastType,
-         const std::function<void(const IGameActionPtr&)>& publish);
-
 /// CIP input::TUseWithGameActionHandler (USE_WITH, USE_ON_CREATURE,
 /// TARGET_SELECTED, CANCEL_USE_WITH) plus USE_ON_TARGET / USE_ON_YOURSELF from
 /// TCreaturesGameActionHandler; a router slot of the game window. A use with
@@ -68,11 +59,16 @@ public:
 
 Q_SIGNALS:
     void publishGameAction(tibia::input::IGameActionPtr pGameAction);
+    /// The spell's words aimed (aim mode 1) at the target's field.
+    void sendTalkMessage(const ::tibia::protobuf::protocol::GameclientMessageTalk& TalkMessage);
 
 public Q_SLOTS:
     void handleGameAction(tibia::input::IGameActionPtr pGameAction);
 
 private:
+    /// Without a target the target is selected first. A target on the world
+    /// map is aimed at on its field, a creature in the battle list on the
+    /// creature's field; other targets are dropped.
     void handleCrossHairSpell(const std::shared_ptr<const TGameActionCrossHairSpell>& action);
     void handleTargetSelected(const TTargetSelectedPtr& target);
 

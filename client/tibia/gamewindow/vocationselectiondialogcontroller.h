@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
@@ -17,15 +18,13 @@ class TVocationSelectionDialogController final
 public:
     explicit TVocationSelectionDialogController(QObject* parent = nullptr);
 
-    void showDialog();
+    /// SHOW_TUTORIAL_HINT with hint 2 (the vocation choice) opens the dialog anew.
+    void handleGameAction(const input::IGameActionPtr& pGameAction);
 
     Q_INVOKABLE void requestClose() override;
     Q_INVOKABLE QQuickItem* mapWindowPane() override;
     Q_INVOKABLE void selectVocation(cip::tibia::qmlcomponents::enums::EVocation Vocation) override;
     Q_INVOKABLE void nextPageClicked() override;
-
-private:
-    void setStage(uint stage);
 };
 
 }

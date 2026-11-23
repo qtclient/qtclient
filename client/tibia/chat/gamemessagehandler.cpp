@@ -4,7 +4,6 @@
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/textstorage.h"
 #include "config/clientoptiondefaults.h"
-#include "input/gameactionhandlers.h"
 
 #include "protocol/protocolcodes.h"
 #include <tibia/game/gamenotify.h>
@@ -50,22 +49,6 @@ TGameMessageHandler::TGameMessageHandler(TTextStorage& texts)
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onTextMessage", [this](GameObject*, const Args& args) {
         onTextMessage(protocolMode(args, 0), argString(args, 1));
         return std::any();
-    });
-    // CIP (case 0x66 of): the status line, gated by gameWindowShowMessages.
-    m_gameActions.on(input::EGameAction::SET_STATUS_LINE, [this](const input::TGameActionSetStatusLine& action) {
-        if (m_showMessages)
-            m_texts.setStatusMessage(action.text(), action.color().isValid() ? action.color() : systemWhite());
-        return true;
-    });
-    // CIP (case 0xa0): a centre message (text storage slot 0xd0), same gate.
-    m_gameActions.on(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, [this](const input::TGameActionAddTextMessage& action) {
-        if (m_showMessages)
-            m_texts.addCenterMessage(action.text(), action.color().isValid() ? action.color() : systemWhite());
-        return true;
-    });
-    m_gameActions.on(input::EGameAction::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW, [this](const input::IGameAction&) {
-        m_texts.clearOldestMessage();
-        return true;
     });
 }
 

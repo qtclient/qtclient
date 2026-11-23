@@ -109,16 +109,17 @@ public:
     uint8_t dustLimitRaw() const { return m_dustLimitRaw; }
     /// Slot 15.
     int currentDustLimit() const;
-    /// Slot 16: a fusion's gold for the classification and tier; 0 when unknown
-    /// (CIP throws).
+    /// Slot 16: a fusion's gold for the classification and tier. Throws
+    /// std::out_of_range when the server sent no such price (CIP: map::at).
     uint64_t fusionPrice(int classification, int tier) const;
-    /// Slot 17.
+    /// Slot 17: a convergence fusion's gold for the tier (throws when unknown).
     uint64_t convergenceFusionPrice(int tier) const;
-    /// Slot 18: a transfer's gold for the classification and the source tier.
-    uint64_t transferPrice(int classification, int tier) const { return fusionPrice(classification, static_cast<uint8_t>(tier - 1)); }
-    /// Slot 19.
+    /// Slot 18: a transfer's gold for the classification and the source tier
+    /// (the fusion price of the tier below; throws when unknown).
+    uint64_t transferPrice(int classification, int tier) const;
+    /// Slot 19: a convergence transfer's gold for the tier (throws when unknown).
     uint64_t convergenceTransferPrice(int tier) const;
-    /// Slot 20: the exalted cores a transfer to `tier` costs.
+    /// Slot 20: the exalted cores a transfer to `tier` costs (throws when unknown).
     uint16_t transferCoreCost(int tier) const;
     /// Slot 21: the classifications with fusion prices, ascending.
     std::vector<uint8_t> classifications() const;

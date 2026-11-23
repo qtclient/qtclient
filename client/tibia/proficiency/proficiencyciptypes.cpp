@@ -7,6 +7,7 @@
 #include <tibia/appearances/appearancetype.h>
 #include "protocol/protocolciptypes.h"
 #include "proficiency/proficiencystorage.h"
+#include "container/containerciptypes.h"
 #include <client/const.h>
 #include <tibia/game/gamenotify.h>
 #include <protocol.pb.h>
@@ -33,11 +34,16 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::proficiency {
 
+TProficiencyProtocolMessageHandler::TProficiencyProtocolMessageHandler(TProficiencyStorage* storage,
+                                                                       std::shared_ptr<container::TInventoryContainer> inventory)
+    : cip::tibia::proficiency::TProficiencyProtocolMessageHandler(nullptr)
+    , m_storage(storage)
+    , m_inventory(std::move(inventory))
+{
+}
+
 void TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage(const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiency& message)
 {
-    TProficiencyStorage* storage = TProficiencyStorage::instance();
-    if (!storage)
-        return;
     TProficiencyData data;
     data.picks.reserve(3);
     for (const auto& perk : message.perks())
@@ -47,34 +53,32 @@ void TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage(const ::
         data.shaped.push_back({ static_cast<uint8_t>(perk.level()), static_cast<uint8_t>(perk.position()),
                                 static_cast<uint16_t>(perk.modifier()), static_cast<uint8_t>(perk.refine_level()) });
     data.xp = message.experience();
-    storage->setProficiencyData(static_cast<uint16_t>(message.object_id()), std::move(data));
+    m_storage->setProficiencyData(static_cast<uint16_t>(message.object_id()), std::move(data));
 }
 
 void TProficiencyProtocolMessageHandler::handleShapedPerkReshapeOffersMessage(const ::tibia::protobuf::protocol::GameserverMessageShapedPerkReshapeOffers& message)
 {
-    TProficiencyStorage* storage = TProficiencyStorage::instance();
-    if (!storage)
-        return;
     TReshapeOffers offers;
     offers.typeId = static_cast<uint16_t>(message.object_id());
     offers.level = static_cast<uint8_t>(message.slot().level());
     offers.perk = static_cast<uint8_t>(message.slot().position());
     for (const auto& offer : message.slot().offers())
         offers.offers.push_back({ offers.level, offers.perk, static_cast<uint16_t>(offer.modifier()), static_cast<uint8_t>(offer.refine_level()) });
-    storage->setReshapeOffers(std::move(offers));
+    m_storage->setReshapeOffers(std::move(offers));
 }
 
 void TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage(
     const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiencyNotification& message)
 {
-    TProficiencyStorage* storage = TProficiencyStorage::instance();
-    if (!storage)
-        return;
-    const bool isCurrentWeapon = tibia::game::hasLocalPlayer()
-        && message.object_id() == tibia::game::localPlayerInventoryTypeId(tibia::client::InventorySlotLeft);
-    storage->setProficiencyExperience(message.experience(), static_cast<uint16_t>(message.object_id()), isCurrentWeapon);
+    // The wielded weapon is the left hand's object; an empty hand wields none.
+    bool isCurrentWeapon = false;
+    if (m_inventory) {
+        const container::TInventorySlot& hand = m_inventory->slotAt(tibia::client::InventorySlotLeft);
+        isCurrentWeapon = !hand.empty() && message.object_id() == hand.typeId;
+    }
+    m_storage->setProficiencyExperience(message.experience(), static_cast<uint16_t>(message.object_id()), isCurrentWeapon);
     if (isCurrentWeapon || message.object_id() == 0)
-        storage->setUnspentPerk(message.unused_perk());
+        m_storage->setUnspentPerk(message.unused_perk());
     // product: the pack follows proficiency XP gains.
     tibia::game::notify("onWeaponProficiencyExperience", static_cast<uint16_t>(message.object_id()), message.experience(),
                         message.unused_perk());
@@ -84,8 +88,7 @@ void TProficiencyProtocolMessageHandler::handleResourceBalanceMessage(const ::ti
 {
     if (message.resource_type() != LunarAscensionOrbsResource)
         return;
-    if (TProficiencyStorage* storage = TProficiencyStorage::instance())
-        storage->setLunarAscensionOrbs(static_cast<uint32_t>(message.value()));
+    m_storage->setLunarAscensionOrbs(static_cast<uint32_t>(message.value()));
 }
 
 }

@@ -20,7 +20,7 @@ class IGameSession;
 
 namespace tibia {
 namespace worldmap {
-class TCreatureHUDController;
+class TCreatureHUDOverlayController;
 class TWorldMapGameActionProvider;
 class TWorldMapTutorialMarkerOverlayController;
 class TWorldMapViewport;
@@ -147,7 +147,7 @@ private:
     QPointer<qmlcomponents::TNumericalEffectOverlayQuickItem> m_numericalEffects;
     QPointer<qmlcomponents::TSpeechBubbleOverlayQuickItem> m_speechBubbles;
     QPointer<qmlcomponents::TLightmapPaintedItem> m_lightMap;
-    worldmap::TCreatureHUDController* m_creatureHuds = nullptr;
+    worldmap::TCreatureHUDOverlayController* m_creatureHuds = nullptr;
     worldmap::TWorldMapTutorialMarkerOverlayController* m_tutorialMarkers = nullptr;
     /// The game session the map shows; its pieces below.
     std::shared_ptr<game::IGameSession> m_gameSession;

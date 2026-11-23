@@ -5,6 +5,7 @@
 #include <deque>
 #include "client/gamecore.h"
 #include "config/icharacterconfiguration.h"
+#include "game/passiveabilityinfostorage.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -13,8 +14,10 @@
 #include <QByteArray>
 #include <QJsonArray>
 #include <QObject>
+#include <QPointer>
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <cstdint>
 #include <string>
@@ -71,14 +74,40 @@ class GameserverMessageWorldEntered;
 class GameserverMessageSessionDumpStart;
 class GameserverMessageSessionEndInformation;
 class GameserverMessageShowMultiOfflineTrainingDialog;
+class GameclientMessageEnterWorld;
+class GameclientMessageClientDetails;
+class GameclientMessageGoNorth;
+class GameclientMessageGoEast;
+class GameclientMessageGoSouth;
+class GameclientMessageGoWest;
+class GameclientMessageStop;
+class GameclientMessageCancel;
+class GameclientMessageGoNorthEast;
+class GameclientMessageGoSouthEast;
+class GameclientMessageGoSouthWest;
+class GameclientMessageGoNorthWest;
+class GameclientMessageGoPath;
+class GameclientMessageRotateNorth;
+class GameclientMessageRotateEast;
+class GameclientMessageRotateSouth;
+class GameclientMessageRotateWest;
 }
 }
 }
 
-namespace tibia {
-namespace gamewindow {
-class TPassiveAbilityListDataModel;
+namespace tibia::input {
+class TPlayerMovementIntentHandler;
 }
+namespace tibia::creatures {
+enum class EMovementDirection : quint8;
+}
+
+namespace tibia::systemsurvey {
+class TSystemSurveyValueRetriever;
+}
+
+namespace tibia::creatures {
+class TCreatureMovementSpeedCalculator;
 }
 
 namespace tibia {
@@ -187,6 +216,9 @@ public:
     void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
     /// A list to edit (house access lists).
     void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
+    /// The protocol's edit list type (0 to 3); throws std::invalid_argument
+    /// for any other value.
+    static uint8_t editListType(uint32_t value);
     /// The guild message to edit.
     void handleEditGuildMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageEditGuildMessage& message);
 
@@ -209,40 +241,58 @@ public:
     void handleGameEventMessage(const ::tibia::protobuf::protocol::GameserverMessageGameEvent& message);
 };
 
-/// CIP `game::TGameProtocolMessageHandler` — native Q→H for session dump/end.
+/// CIP `game::TGameProtocolMessageHandler`: the login, session end, death and
+/// dialog messages of the game server, handed on as signals the session and
+/// the game window's controllers connect.
 class TGameProtocolMessageHandler final : public cip::tibia::game::TGameProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    explicit TGameProtocolMessageHandler(QObject* parent = nullptr);
+    /// The session's speed calculator takes the login's speed formula and beat.
+    explicit TGameProtocolMessageHandler(std::shared_ptr<::tibia::creatures::TCreatureMovementSpeedCalculator> SpeedCalculator,
+                                         QObject* parent = nullptr);
 
-    /// CIP slot: SessionDumpStart (S 0x04 / 4) — native Q→H apply.
-    void handleSessionDumpStartMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart& SessionDumpStartMessage);
+    /// CIP's ESessionEndInformation of a protocol reason (0..4, 99, 100);
+    /// throws std::runtime_error("unhandled enum value") for any other.
+    static int toSessionEndInformation(uint32_t Reason);
 
-    /// CIP slot: PendingStateEntered (S 0x0A / 10) — native Q→H apply.
-    void handlePendingStateEnteredMessage(
-        const ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered& PendingStateEnteredMessage);
-
-    /// CIP slot: SessionEndInformation (S 0x18 / 24) — native Q→H apply.
-    void handleSessionEndInformationMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageSessionEndInformation& Message);
-
-    /// CIP slot: ShowMultiOfflineTrainingDialog (S 0x1B / 27) — native Q→H apply.
-    void handleShowMultiOfflineTrainingDialogMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog& Message);
-
-    /// CIP slot: LoginSuccess (S 0x17 / 23) — native Q→H apply.
+    /// The speed formula and server beat; then the PvP frame hint, the login
+    /// success and the client details (the operating system's name).
     void handleLoginSuccessMessage(
         const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& LoginSuccessMessage);
 
+    /// Emits sessionEndInformation with the message's reason.
+    void handleSessionEndInformationMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageSessionEndInformation& Message);
+
+    /// A replay's start: the speed formula and server beat it was recorded with.
+    void handleSessionDumpStartMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart& SessionDumpStartMessage);
+
+    /// Enters the world again, unless the player died since the last enter
+    /// (the death dialog decides then).
+    void handlePendingStateEnteredMessage(
+        const ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered& PendingStateEnteredMessage);
+
+    /// Stops entering the world on the next pending state; emits deadMessage and
+    /// the death dialog request with the death type, the fair fight factor
+    /// (an unfair death's penalty) and whether a subsequent blessing applies.
+    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& DeadMessage);
+
+    /// Emits requestOpenOutfitMemorialDialog with the message's costs and owners.
+    void handleOutfitMemorialMessage(const ::tibia::protobuf::protocol::GameserverMessageOutfitMemorial& OutfitMemorialMessage);
+
+    /// Emits requestShowMultiOfflineTrainingDialog.
+    void handleShowMultiOfflineTrainingDialogMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog& Message);
+
+    /// Sends an enter world message; the next pending state enters again.
+    void emitSendEnterWorldMessage() override;
+
     void handleLoginAdviceMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginAdvice& message);
     void handleLoginWaitMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginWait& message);
-    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
     void handleReadyForSecondaryConnectionMessage(const ::tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection& message);
     void handleInspectionListMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionList& message);
-    void handleOutfitMemorialMessage(const ::tibia::protobuf::protocol::GameserverMessageOutfitMemorial& message);
-    void handleUnlockedSpellsMessage(const ::tibia::protobuf::protocol::GameserverMessageUnlockedSpells& message);
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
     void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
@@ -253,10 +303,26 @@ public:
     void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 
 Q_SIGNALS:
+    void sendEnterWorldMessage(const ::tibia::protobuf::protocol::GameclientMessageEnterWorld& EnterWorldMessage);
+    void sendClientDetails(const ::tibia::protobuf::protocol::GameclientMessageClientDetails& ClientDetailsMessage);
+    /// CIP's ESessionEndInformation.
+    void sessionEndInformation(int Reason);
+    /// CIP's EDeathType (0 regular, 1 unfair, 2 adventurer's blessing, 3 no
+    /// penalty) and TFairFightFactor.
+    void requestOpenDeathDialog(int DeathType, int FairFightFactor, bool ApplicableForSubsequentBlessing);
+    void requestOpenOutfitMemorialDialog(const OutfitMemorialData& MemorialData);
     /// CIP inspectObjectDataReceived: an inspected object's details.
     void inspectObjectDataReceived(const ItemInspectionData& InspectObjectData);
     /// CIP requestOpenInspectPlayerDialog: an inspected player's equipment and details.
     void requestOpenInspectPlayerDialog(const CyclopediaCharacterInspection& InspectedPlayer);
+
+private:
+    /// Sends the client details: the retriever's operating system name.
+    void sendClientDetailsMessage(const ::tibia::systemsurvey::TSystemSurveyValueRetriever& ValueRetriever);
+
+    std::shared_ptr<::tibia::creatures::TCreatureMovementSpeedCalculator> m_speedCalculator;
+    /// Cleared by a death, set again when the world is entered.
+    bool m_enterWorldOnPendingState = true;
 };
 
 class TGameWorldVolumeStorage final : public ::tibia::CipTyped {
@@ -264,8 +330,8 @@ public:
     TGameWorldVolumeStorage() = default;
 };
 
-/// The character's outfit presets (character configuration "outfitPresets", qtclient's
-/// format {"presets": [...]}).
+/// The character's outfit presets and show-off socket presets (character
+/// configuration "outfitdialog").
 class TOutfitDialogStorage final : public cip::tibia::game::TOutfitDialogStorage, public config::ICharacterConfiguration
 {
     Q_OBJECT
@@ -278,16 +344,13 @@ public:
     static TOutfitDialogStorage* instance();
     static void setInstance(TOutfitDialogStorage* storage);
 
-    QString configurationName() const override { return QStringLiteral("outfitPresets"); }
-    QJsonObject configurationToJson() const override
-    {
-        return QJsonObject{ { QStringLiteral("presets"), m_presets }, { QStringLiteral("showOffPresets"), m_showOffPresets } };
-    }
-    void configurationFromJson(const QJsonObject& json) override
-    {
-        m_presets = json.value(QStringLiteral("presets")).toArray();
-        m_showOffPresets = json.value(QStringLiteral("showOffPresets")).toArray();
-    }
+    QString configurationName() const override;
+    /// The two preset lists under "customiseCharacterPresets" and
+    /// "configureShowOffSocketPresets".
+    QJsonObject configurationToJson() const override;
+    /// Replaces both lists with the objects found under their keys (other
+    /// values are dropped) and announces each list as changed.
+    void configurationFromJson(const QJsonObject& json) override;
     void resetConfiguration() override
     {
         m_presets = {};
@@ -304,34 +367,6 @@ public:
 private:
     QJsonArray m_presets;
     QJsonArray m_showOffPresets;
-};
-
-class TPassiveAbilityInfoStorage final : public cip::tibia::game::TPassiveAbilityInfoStorage
-{
-    Q_OBJECT
-public:
-    explicit TPassiveAbilityInfoStorage(QObject* parent = nullptr);
-    static TPassiveAbilityInfoStorage* instance();
-
-    gamewindow::TPassiveAbilityListDataModel* listModel() const { return m_model; }
-    uint32_t currentCooldown() const { return m_currentCooldown; }
-    uint32_t maxCooldown() const { return m_maxCooldown; }
-    bool canDecay() const { return m_canDecay; }
-
-private:
-    static TPassiveAbilityInfoStorage* s_instance;
-    gamewindow::TPassiveAbilityListDataModel* m_model = nullptr;
-    uint32_t m_currentCooldown = 0;
-    uint32_t m_maxCooldown = 0;
-    bool m_canDecay = false;
-    std::vector<client::gamecore::Hook> m_hooks;
-};
-
-class TPlayerGameActionHandler final : public cip::tibia::game::TPlayerGameActionHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TPlayerGameActionHandler::TPlayerGameActionHandler;
 };
 
 /// CIP `game::TPlayerProtocolMessageHandler` — native Q→H for the player's own data.
@@ -365,8 +400,51 @@ public:
     void handleStopMessage(const ::tibia::protobuf::protocol::GameserverMessageStop& message);
     void handleHirelingNameChangeMessage(const ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange& message);
 
+    /// The live session's movement intent handler: a snap back or stop goes to
+    /// it while set (CipSoft holds a shared pointer; qtclient's session state owns it).
+    void setPlayerMovementIntentHandler(::tibia::input::TPlayerMovementIntentHandler* Handler);
+
+    /// Each sends its (empty) movement message.
+    void goNorth();
+    void goEast();
+    void goSouth();
+    void goWest();
+    void stop();
+    void cancel();
+    void goNorthEast();
+    void goSouthEast();
+    void goSouthWest();
+    void goNorthWest();
+    /// Sends the steps as GoPath directions (1 east, counter-clockwise to 8
+    /// south-east); a non-step direction throws std::invalid_argument.
+    void goPath(const std::vector<::tibia::creatures::EMovementDirection>& Path);
+    void rotateNorth();
+    void rotateEast();
+    void rotateSouth();
+    void rotateWest();
+
+Q_SIGNALS:
+    void sendGoNorth(const ::tibia::protobuf::protocol::GameclientMessageGoNorth& GoNorthMessage);
+    void sendGoEast(const ::tibia::protobuf::protocol::GameclientMessageGoEast& GoEastMessage);
+    void sendGoSouth(const ::tibia::protobuf::protocol::GameclientMessageGoSouth& GoSouthMessage);
+    void sendGoWest(const ::tibia::protobuf::protocol::GameclientMessageGoWest& GoWestMessage);
+    void sendStop(const ::tibia::protobuf::protocol::GameclientMessageStop& StopMessage);
+    void sendCancel(const ::tibia::protobuf::protocol::GameclientMessageCancel& CancelMessage);
+    void sendGoNorthEast(const ::tibia::protobuf::protocol::GameclientMessageGoNorthEast& GoNorthEastMessage);
+    void sendGoSouthEast(const ::tibia::protobuf::protocol::GameclientMessageGoSouthEast& GoSouthEastMessage);
+    void sendGoSouthWest(const ::tibia::protobuf::protocol::GameclientMessageGoSouthWest& GoSouthWestMessage);
+    void sendGoNorthWest(const ::tibia::protobuf::protocol::GameclientMessageGoNorthWest& GoNorthWestMessage);
+    void sendGoPath(const ::tibia::protobuf::protocol::GameclientMessageGoPath& GoPathMessage);
+    void sendRotateNorth(const ::tibia::protobuf::protocol::GameclientMessageRotateNorth& RotateNorthMessage);
+    void sendRotateEast(const ::tibia::protobuf::protocol::GameclientMessageRotateEast& RotateEastMessage);
+    void sendRotateSouth(const ::tibia::protobuf::protocol::GameclientMessageRotateSouth& RotateSouthMessage);
+    void sendRotateWest(const ::tibia::protobuf::protocol::GameclientMessageRotateWest& RotateWestMessage);
+    /// The server asks for a hireling's name (the hireling creature, the object it was asked from).
+    void showHirelingNameChangeConfiguration(quint32 CreatureID, quint32 ObjectID);
+
 private:
     TCooldownStorage* m_cooldownStorage = nullptr;
+    QPointer<::tibia::input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
@@ -446,13 +524,6 @@ Q_SIGNALS:
 class TTraderStorage final : public ::tibia::CipTyped {
 public:
     TTraderStorage() = default;
-};
-
-class TTutorialSessiondumpGameSession final : public cip::tibia::game::TTutorialSessiondumpGameSession
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TTutorialSessiondumpGameSession::TTutorialSessiondumpGameSession;
 };
 
 }

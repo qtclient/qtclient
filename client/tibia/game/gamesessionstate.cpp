@@ -185,8 +185,12 @@ void TGameSessionState::createMovementIntent()
     env.alwaysTurnTowardsMoveDirection = [options] { return options->alwaysTurnTowardsMoveDirection; };
     env.keyboardDelayMs = [options] { return options->keyboardDelayMs; };
     env.stopChaseAndFollow = [this, options] {
-        if (!options->autoChaseEnabled && isAttacking() && m_chaseMode == tibia::client::ChaseOpponent)
-            setChaseMode(tibia::client::DontChase);
+        // Walking while attacking turns chasing off (unless auto chase is on):
+        // the player's tactics go out again with chase cleared.
+        const TPlayerData* playerData = currentPlayerData();
+        if (!options->autoChaseEnabled && isAttacking() && playerData && playerData->chaseOpponents())
+            Q_EMIT m_movementIntent->publishGameAction(std::make_shared<tibia::input::TGameActionSetTactics>(
+                tibia::input::TGameActionSetTactics::TTactics{ false, playerData->secureMode(), playerData->pvpMode() }));
         if (isFollowing()) {
             Q_EMIT m_movementIntent->publishGameAction(
                 std::make_shared<tibia::input::TGameActionCreature>(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE, 0));
@@ -202,9 +206,9 @@ void TGameSessionState::createMovementIntent()
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
     };
     env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
-    env.showFailure = [this](const QString& textId) {
-        Q_EMIT m_movementIntent->publishGameAction(
-            std::make_shared<tibia::input::TGameActionSetStatusLine>(qtTrId(textId.toLatin1().constData())));
+    env.textStorage = []() -> tibia::chat::TTextStorage* {
+        TGameSessionBase* session = currentGameSession();
+        return session ? session->textStorage().get() : nullptr;
     };
     env.claimUnreachable = [](const tibia::worldmap::TWorldMapCoordinate& goal, const int result) {
         int reason = 0;
@@ -229,36 +233,11 @@ void TGameSessionState::createMovementIntent()
                              || name == QLatin1String("autoChaseEnabled"))
                              options->load();
                      });
-    const auto wire = [this](void (*send)()) {
-        return [this, send] {
-            if (canPerformGameAction())
-                send();
-        };
-    };
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorth, intent, wire(&gameclient::sendWalkNorth));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorthEast, intent, wire(&gameclient::sendWalkNorthEast));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoEast, intent, wire(&gameclient::sendWalkEast));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouthEast, intent, wire(&gameclient::sendWalkSouthEast));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouth, intent, wire(&gameclient::sendWalkSouth));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouthWest, intent, wire(&gameclient::sendWalkSouthWest));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoWest, intent, wire(&gameclient::sendWalkWest));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorthWest, intent, wire(&gameclient::sendWalkNorthWest));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateNorth, intent, wire(&gameclient::sendTurnNorth));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateEast, intent, wire(&gameclient::sendTurnEast));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateSouth, intent, wire(&gameclient::sendTurnSouth));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateWest, intent, wire(&gameclient::sendTurnWest));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendStop, intent, wire(&gameclient::sendStop));
-    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoPath, intent,
-                     [this](const std::vector<tibia::creatures::EMovementDirection>& path) {
-                         if (!canPerformGameAction() || !m_gameConnection)
-                             return;
-                         std::vector<tibia::client::Direction> dirs;
-                         dirs.reserve(path.size());
-                         for (const auto direction : path)
-                             dirs.push_back(tibia::input::toClientDirection(direction));
-                         tibia::game::notify("onAutoWalk", tibia::game::localPlayerId(), dirs);
-                         gameclient::sendAutoWalk(dirs);
-                     });
+    // CIP (live session only): the intent handler's sends go to the session's
+    // player protocol message handler, which hands its snap backs and stops to
+    // the intent handler; its messages reach the session's queue.
+    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()))
+        session->connectPlayerMovementIntentHandler(intent);
 }
 
 void TGameSessionState::resetGameStates()
@@ -274,10 +253,6 @@ void TGameSessionState::resetGameStates()
     setCanReportBugs(false);
     setBugReportState(-1);
     setCanExivaOptions(false);
-    m_fightMode = tibia::client::FightBalanced;
-    m_chaseMode = tibia::client::DontChase;
-    m_pvpMode = tibia::client::WhiteDove;
-    m_safeFight = true;
     m_followingCreatureId = 0;
     m_attackingCreatureId = 0;
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
@@ -290,7 +265,6 @@ void TGameSessionState::resetGameStates()
         session->objectCountStorage()->clear();
     m_pingSent = 0;
     m_pingReceived = 0;
-    m_unjustifiedPoints = UnjustifiedPoints();
 
     if (m_pingEvent) {
         m_pingEvent->cancel();
@@ -354,12 +328,6 @@ void TGameSessionState::beginPlayerSession(const std::string_view characterName)
     createMovementIntent();
 }
 
-void TGameSessionState::processPendingGame()
-{
-    tibia::game::notify("onPendingGame");
-    gameclient::sendEnterGame();
-}
-
 void TGameSessionState::processEnterGame()
 {
     tibia::game::notify("onEnterGame");
@@ -370,9 +338,6 @@ void TGameSessionState::processGameStart()
 {
     m_online = true;
     tibia::host::app().resetTargetFps();
-
-    // synchronize fight modes with the server
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
 
     // An in-flight ping (kept across alt switch) reschedules the loop from processPingBack.
     if (m_pingSent == m_pingReceived) {
@@ -472,18 +437,6 @@ void TGameSessionState::processReadyForSecondaryConnection(const std::string_vie
 
 
 
-void TGameSessionState::processPlayerModes(const tibia::client::FightModes fightMode, const tibia::client::ChaseModes chaseMode, const bool safeMode, const tibia::client::PVPModes pvpMode)
-{
-    m_fightMode = fightMode;
-    m_chaseMode = chaseMode;
-    m_safeFight = safeMode;
-    m_pvpMode = pvpMode;
-
-    tibia::game::notify("onFightModeChange", fightMode);
-    tibia::game::notify("onChaseModeChange", chaseMode);
-    tibia::game::notify("onSafeFightChange", safeMode);
-    tibia::game::notify("onPVPModeChange", pvpMode);
-}
 
 
 
@@ -796,8 +749,8 @@ std::optional<TObjectReference> TGameSessionState::findItemInContainers(const ui
         const tibia::container::TStoredContainer* row = storage->containerAt(containerId);
         if (!row)
             continue;
-        for (size_t i = 0; i < row->items.size(); ++i) {
-            const tibia::container::TInventorySlot& slot = row->items[i];
+        for (size_t i = 0; i < row->items().size(); ++i) {
+            const tibia::container::TInventorySlot& slot = row->items()[i];
             if (slot.empty() || slot.typeId != itemId || slot.tier != tier)
                 continue;
             const uint8_t fluidOrSub = slot.fluidOrSplash ? slot.fluid : 0;
@@ -947,107 +900,6 @@ void TGameSessionState::changeOutfitAndMount(const Outfit& outfit, const bool mo
 
 
 
-
-void TGameSessionState::setChaseMode(const tibia::client::ChaseModes chaseMode)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (m_chaseMode == chaseMode)
-        return;
-
-    m_chaseMode = chaseMode;
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
-    tibia::game::notify("onChaseModeChange", chaseMode);
-}
-
-void TGameSessionState::setFightMode(const tibia::client::FightModes fightMode)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (m_fightMode == fightMode)
-        return;
-
-    m_fightMode = fightMode;
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
-    tibia::game::notify("onFightModeChange", fightMode);
-}
-
-void TGameSessionState::setSafeFight(const bool on)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (m_safeFight == on)
-        return;
-
-    m_safeFight = on;
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
-    tibia::game::notify("onSafeFightChange", on);
-}
-
-void TGameSessionState::setTactics(const tibia::client::ChaseModes chaseMode, const bool safeFight, tibia::client::PVPModes pvpMode)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (m_chaseMode == chaseMode && m_safeFight == safeFight && m_pvpMode == pvpMode)
-        return;
-
-    const bool chaseChanged = m_chaseMode != chaseMode;
-    const bool safeChanged = m_safeFight != safeFight;
-    const bool pvpChanged = m_pvpMode != pvpMode;
-    m_chaseMode = chaseMode;
-    m_safeFight = safeFight;
-    m_pvpMode = pvpMode;
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
-    if (chaseChanged)
-        tibia::game::notify("onChaseModeChange", chaseMode);
-    if (safeChanged)
-        tibia::game::notify("onSafeFightChange", safeFight);
-    if (pvpChanged)
-        tibia::game::notify("onPVPModeChange", pvpMode);
-}
-
-void TGameSessionState::setPVPMode(const tibia::client::PVPModes pvpMode)
-{
-    if (!canPerformGameAction())
-        return;
-
-
-    if (m_pvpMode == pvpMode)
-        return;
-
-    m_pvpMode = pvpMode;
-    gameclient::sendChangeFightModes(m_fightMode, m_chaseMode, m_safeFight, m_pvpMode);
-    tibia::game::notify("onPVPModeChange", pvpMode);
-}
-
-void TGameSessionState::setUnjustifiedPoints(const UnjustifiedPoints unjustifiedPoints)
-{
-    if (!canPerformGameAction())
-        return;
-
-
-    if (m_unjustifiedPoints == unjustifiedPoints)
-        return;
-
-    m_unjustifiedPoints = unjustifiedPoints;
-    tibia::game::notify("onUnjustifiedPointsChange", unjustifiedPoints);
-}
-
-void TGameSessionState::setOpenPvpSituations(const uint8_t openPvpSituations)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (m_openPvpSituations == openPvpSituations)
-        return;
-
-    m_openPvpSituations = openPvpSituations;
-    tibia::game::notify("onOpenPvpSituationsChange", openPvpSituations);
-}
 
 
 

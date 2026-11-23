@@ -139,18 +139,47 @@ private:
     int m_gameSessionListener = 0;
 };
 
-/// The button a bar's assign dialog edits (CIP TAssignActionDialogControllerBase
-/// +0x3c button, +0x40 multi-action slot, +0x44 showActionBarTarget).
-class TAssignActionDialogState
+/// "Action Button <bar>.<button>", the button with two digits.
+QString actionButtonName(int actionBarId, int buttonId);
+
+/// What every assign dialog of a bar shares (CIP:
+/// TAssignActionDialogControllerBase): the bar it was made for, the button
+/// and multi-action slot (-1: the button itself) it is open for, and whether
+/// it names the button. The generated dialog base holds the properties.
+template <class Base>
+class TAssignActionDialogControllerBase : public TDialogController<Base>
 {
 public:
-    void bind(const TActionBarController* bar, uint buttonId, int multiActionIndex);
+    TAssignActionDialogControllerBase(const QString& qmlFile, const uint8_t actionBarId, QObject* parent)
+        : TDialogController<Base>(qmlFile, parent)
+    {
+        this->m_actionBarId = actionBarId;
+        // Host: CipSoft's constructor leaves the flag unset; a bar's dialog names its button.
+        this->m_showActionBarTarget = true;
+    }
 
-    int multiActionIndex = -1;
-    uint actionBarId = 0;
-    uint buttonId = 0;
-    QString buttonName;
-    bool showActionBarTarget = true;
+    uint actionBarId() const override { return this->m_actionBarId; }
+    uint buttonId() const override { return this->m_buttonId; }
+    QString buttonName() const override { return actionButtonName(int(this->m_actionBarId), int(this->m_buttonId)); }
+    bool showActionBarTarget() const override { return this->m_showActionBarTarget; }
+    void setShowActionBarTarget(const bool showActionBarTarget)
+    {
+        if (this->m_showActionBarTarget == showActionBarTarget)
+            return;
+        this->m_showActionBarTarget = showActionBarTarget;
+        Q_EMIT this->showActionBarTargetChanged();
+    }
+    int multiActionIndex() const { return m_multiActionIndex; }
+
+protected:
+    /// The button and slot the dialog opens for.
+    void setActionButton(const uint buttonId, const int multiActionIndex)
+    {
+        this->m_buttonId = buttonId;
+        m_multiActionIndex = multiActionIndex;
+    }
+
+    int m_multiActionIndex = -1;
 };
 
 using ECastType = ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
@@ -158,21 +187,17 @@ using ECastType = ::cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetTy
 /// AssignSpellActionDialog.qml (CIP: TAssignSpellActionDialogController, one
 /// per action bar). OK and Apply ask the bar to assign the spell.
 class TAssignSpellActionDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TAssignSpellActionDialogController>
+    : public TAssignActionDialogControllerBase<cip::tibia::gamewindow::TAssignSpellActionDialogController>
 {
     Q_OBJECT
 public:
-    explicit TAssignSpellActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
+    explicit TAssignSpellActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
 
     /// CIP v26: the list's first spell, no parameters.
     void showDialog(uint ButtonId, int MultiActionIndex);
     /// CIP v33: a spell with its parameters and cast type.
     void showDialog(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, ECastType CastType);
 
-    uint actionBarId() const override;
-    uint buttonId() const override;
-    QString buttonName() const override;
-    bool showActionBarTarget() const override;
     uint spellListIndex() const override;
     QString spellParameters() const override;
     bool showOnlyKnownSpells() const override;
@@ -190,8 +215,6 @@ Q_SIGNALS:
     void requestAssignSpell(uint ButtonId, int MultiActionIndex, int SpellId, const QString& Parameters, ECastType CastType);
 
 private:
-    const TActionBarController* m_bar;
-    TAssignActionDialogState m_assign;
     TSpellListDataModelSortFilterProxy m_proxy;
     int m_spellId = 0;
 };
@@ -199,11 +222,11 @@ private:
 /// AssignObjectActionDialog.qml (CIP: TAssignObjectActionDialogController,
 /// one per action bar). OK and Apply ask the bar to assign the object.
 class TAssignObjectActionDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TAssignObjectActionDialogController>
+    : public TAssignActionDialogControllerBase<cip::tibia::gamewindow::TAssignObjectActionDialogController>
 {
     Q_OBJECT
 public:
-    explicit TAssignObjectActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
+    explicit TAssignObjectActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
 
     /// CIP v26: no object yet, so the next click picks one.
     void showDialog(uint ButtonId, int MultiActionIndex);
@@ -217,10 +240,6 @@ public:
     /// The smooth filtering client setting the preview uses.
     void setClientSettingSmoothFiltering(bool enabled);
 
-    uint actionBarId() const override;
-    uint buttonId() const override;
-    QString buttonName() const override;
-    bool showActionBarTarget() const override;
     uint objectID() const override;
     uint objectCount() const override;
     uint upgradeTier() const override;
@@ -251,8 +270,6 @@ private:
     void setSmartModeEnabled(bool enabled);
     void emitRequestAssignObject();
 
-    TAssignActionDialogState m_assign;
-    const TActionBarController* m_bar;
     /// A target selection runs for this dialog.
     bool m_selectingTarget = false;
 };
@@ -260,21 +277,17 @@ private:
 /// AssignTextActionDialog.qml (CIP: TAssignTextActionDialogController, one
 /// per action bar). OK and Apply ask the bar to assign the text.
 class TAssignTextActionDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TAssignTextActionDialogController>
+    : public TAssignActionDialogControllerBase<cip::tibia::gamewindow::TAssignTextActionDialogController>
 {
     Q_OBJECT
 public:
-    explicit TAssignTextActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
+    explicit TAssignTextActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
 
     /// CIP v26: an empty text, sent automatically.
     void showDialog(uint ButtonId, int MultiActionIndex);
     /// CIP v33.
     void showDialog(uint ButtonId, int MultiActionIndex, const QString& Text, bool SendAutomatically);
 
-    uint actionBarId() const override;
-    uint buttonId() const override;
-    QString buttonName() const override;
-    bool showActionBarTarget() const override;
     QString text() const override;
     bool sendAutomatically() const override;
 
@@ -287,28 +300,22 @@ Q_SIGNALS:
     void requestAssignText(uint ButtonId, int MultiActionIndex, const QString& Text, bool SendAutomatically);
 
 private:
-    const TActionBarController* m_bar;
-    TAssignActionDialogState m_assign;
 };
 
 /// AssignPassiveAbilityActionDialog.qml (CIP:
 /// TAssignPassiveAbilityActionDialogController, one per action bar).
 class TAssignPassiveAbilityActionDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TAssignPassiveAbilityActionDialogController>
+    : public TAssignActionDialogControllerBase<cip::tibia::gamewindow::TAssignPassiveAbilityActionDialogController>
 {
     Q_OBJECT
 public:
-    explicit TAssignPassiveAbilityActionDialogController(TActionBarController* bar, QObject* parent = nullptr);
+    explicit TAssignPassiveAbilityActionDialogController(uint8_t actionBarId, QObject* parent = nullptr);
 
     /// CIP v26: the list's first ability.
     void showDialog(uint ButtonId);
     /// CIP v33.
     void showDialog(uint ButtonId, int PassiveAbility);
 
-    uint actionBarId() const override;
-    uint buttonId() const override;
-    QString buttonName() const override;
-    bool showActionBarTarget() const override;
     uint passiveAbilityListIndex() const override;
     QString passiveAbilityName() const override;
     QString passiveAbilityIconUrl() const override;
@@ -328,8 +335,6 @@ private:
     /// The abilities the storage knows now.
     void reloadAbilities();
 
-    const TActionBarController* m_bar;
-    TAssignActionDialogState m_assign;
     TPassiveAbilityListDataModel* m_model = nullptr;
     TPassiveAbilityListDataModelSortFilterProxy* m_proxy = nullptr;
     int m_passiveAbility = 0;

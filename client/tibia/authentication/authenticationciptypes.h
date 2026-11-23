@@ -18,25 +18,11 @@ void ownProductSurface(QObject* parent);
 
 class TAuthenticationAndEncryptionInfo final : public ::tibia::CipTyped {};
 
-class TEmailCodeRequestUploader final : public cip::tibia::authentication::TEmailCodeRequestUploader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::authentication::TEmailCodeRequestUploader::TEmailCodeRequestUploader;
-};
-
 class TGameserverLoginProcessController final : public cip::tibia::authentication::TGameserverLoginProcessController
 {
     Q_OBJECT
 public:
     using cip::tibia::authentication::TGameserverLoginProcessController::TGameserverLoginProcessController;
-};
-
-class TLoginConfirmationCodeRequestUploader final : public cip::tibia::authentication::TLoginConfirmationCodeRequestUploader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::authentication::TLoginConfirmationCodeRequestUploader::TLoginConfirmationCodeRequestUploader;
 };
 
 class TLoginProtocolMessageHandler final : public cip::tibia::authentication::TLoginProtocolMessageHandler

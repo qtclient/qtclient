@@ -22,8 +22,6 @@ class IGameSession;
 }
 namespace gamewindow {
 
-class TSidebarManager;
-
 /// One object of a trade offer, as shown by playertrade.qml.
 class TPlayerTradeObject final : public cip::tibia::trade::TPlayerTradeObject
 {
@@ -114,46 +112,6 @@ private:
     QPointer<trade::TPlayerTradeStorage> m_storage;
     QPointer<trade::TPlayerTradeProtocolMessageHandler> m_handler;
     std::vector<QMetaObject::Connection> m_sessionConnections;
-};
-
-/// Follows the session's trade storage and protocol handler, opens the trade window when
-/// the handler asks for it and closes it when the trade ends, and handles
-/// TRADE_ITEM: the item is offered to the player picked by target selection.
-class TPlayerTradeWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TPlayerTradeWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
-    ~TPlayerTradeWidgetManager() override;
-
-    trade::TPlayerTradeStorage* storage() const { return m_storage; }
-    /// The window closes; the trade follows `GameSession`'s storage and handler.
-    /// Host: the sidebar widgets manager's connector reaches the trade window here.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-private:
-    void open();
-    void close();
-    bool tradeItem(const input::TGameActionPlayerTradeItem& action);
-
-    QPointer<TSidebarManager> m_sidebars;
-    QQuickItem* m_gameWindowItem;
-    QQmlEngine* m_engine;
-    QPointer<trade::TPlayerTradeStorage> m_storage;
-    QPointer<trade::TPlayerTradeProtocolMessageHandler> m_handler;
-    std::vector<QMetaObject::Connection> m_gameSessionConnections;
-    QPointer<TPlayerTradeController> m_controller;
-
-public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

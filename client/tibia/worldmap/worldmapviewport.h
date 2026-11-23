@@ -50,6 +50,8 @@ public:
     /// The drawn volume: its top-left field on the first drawn floor, and its size.
     TWorldMapCoordinate origin() const { return m_origin; }
     TWorldMapExtent extent() const { return m_extent; }
+    /// The drawn volume sheared at the centre's floor.
+    TShearedWorldMapCuboid volume() const { return TShearedWorldMapCuboid(m_origin, m_extent, m_center.z); }
 
     /// The floors drawn when the player stands on floor `z`: the whole surface
     /// from above it, two floors up and down underground.

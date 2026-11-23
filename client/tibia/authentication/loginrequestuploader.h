@@ -19,6 +19,9 @@ class QNetworkAccessManager;
 class QNetworkReply;
 
 namespace tibia {
+namespace game {
+class TGameSessionBase;
+}
 namespace authentication {
 
 /// A login answer: the account's characters, the worlds and the play session.
@@ -43,7 +46,9 @@ public:
 };
 
 /// POSTs the login request to the login service and reads its answer.
-class TLoginRequestUploader final : public cip::tibia::authentication::TLoginRequestUploader
+/// The authentication process controller reaches the character list updates
+/// through virtual calls (CipSoft's slots).
+class TLoginRequestUploader : public cip::tibia::authentication::TLoginRequestUploader
 {
     Q_OBJECT
 public:
@@ -79,6 +84,25 @@ public:
     /// service's answers after a character was created).
     static LoginResult parse(const QJsonObject& reply);
 
+    /// The URL the login request goes to.
+    QUrl url() const { return m_lastUrl; }
+    /// The characters and worlds of the last answer.
+    TCharacterList characters() const { return m_characters; }
+    TWorldList worlds() const { return m_worlds; }
+    /// Replaces the characters and worlds (an account change sends new ones).
+    void setPlayData(const TCharacterList& Characters, const TWorldList& Worlds);
+    TPlaySessionData playSessionData() const { return m_session; }
+    /// The cf-mitigated header of the last Cloudflare-mitigated answer.
+    std::string cloudflareMitigatedHeaderValue() const { return m_cloudflareMitigatedHeaderValue; }
+    /// The named character has finished the tutorial.
+    virtual void setTutorialFinished(const QString& CharacterName);
+    /// The game session whose player updates the character list. Clearing it
+    /// takes the player's last state into the list first.
+    void setGameSession(const std::shared_ptr<game::TGameSessionBase>& GameSession);
+    /// Copies the logged-in player's outfit, level, vocation and daily reward
+    /// state into its entry of the character list.
+    virtual void updateCharactersFromGameSession();
+
     /// Seconds since the epoch when the last answer arrived.
     int loginTimestamp() const { return m_loginTimestamp; }
     const std::optional<TSurveyData>& survey() const { return m_survey; }
@@ -105,6 +129,7 @@ private:
 
     std::unique_ptr<TAuthenticationJsonDocumentHelper> m_helper;
     ILoginRequestOptions* m_options = nullptr;
+    std::shared_ptr<game::TGameSessionBase> m_gameSession;
     TCharacterList m_characters;
     TWorldList m_worlds;
     TPlaySessionData m_session;

@@ -62,6 +62,8 @@ public:
     bool hasUnpassableObjectAt(const TWorldMapCoordinate& coordinate);
     /// The field at `coordinate` holds a bank object; false without a field.
     bool hasBankAt(const TWorldMapCoordinate& coordinate);
+    /// A creature stands on the field at `coordinate`.
+    bool hasCreatureAt(const TWorldMapCoordinate& coordinate);
     /// The field at `coordinate` holds a translucent object; false without a field.
     bool hasTranslucentAt(const TWorldMapCoordinate& coordinate);
     /// Nothing opaque covers the field from above: it lies on or above the highest

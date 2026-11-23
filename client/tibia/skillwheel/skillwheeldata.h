@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gridconfiguration.h"
+
 #include <QString>
 #include <QUrl>
 
@@ -86,11 +88,7 @@ std::optional<int> vesselOfGem(const TWheel& wheel, int gemId);
 /// Mod grades (0..3) by mod id, as the server sends them.
 using TGrades = std::map<int, int>;
 
-int maxPoints(int slot);
-ESmallPerk smallPerk(int slot);
-/// The conviction perk of a slice for a vocation index (0 knight .. 4 monk).
-/// External: VesselNode (37) unlocks gem vessels; MasteryIncrease (46) adds revelation.
-int mediumPerk(int slot, int vocationIndex);
+/// The conviction perks VesselNode (37) unlocks gem vessels; MasteryIncrease (46) adds revelation.
 bool isVesselPerk(int perk);
 bool isMasteryIncreasePerk(int perk);
 /// Fixed vessel quality for atelier socket index 0..7.
@@ -102,11 +100,7 @@ bool isAugmentedPerk(int perk);
 /// The slices of a domain, from the centre out (CIP quadrant tables).
 const std::array<int, 9>& domainSlots(int domain);
 int domainOfSlot(int slot);
-/// The revelation perk of a domain for a vocation index.
-int largePerk(int domain, int vocationIndex);
 
-/// The four centre slices every path starts from.
-const std::array<int, 4>& centreSlots();
 /// CIP grid rules: every slice with points is a centre slice or reaches one
 /// through full slices, and no slice exceeds its maximum.
 bool isValid(const std::array<int, SlotCount>& points);
@@ -122,8 +116,7 @@ int revelationPoints(const TWheel& wheel, const TGrades& supremeGrades, int doma
 /// Fragment workshop totals from all mod grades.
 int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, int vocationIndex);
 int bonusPromotionPoints(const TGrades& basicGrades, const TGrades& supremeGrades, int vocationIndex);
-/// 0 (locked) .. 3 for the revelation thresholds 250 / 500 / 1000.
-int revelationStage(int points);
+/// The revelation points a stage 0..3 needs (0 / 250 / 500 / 1000).
 int revelationThreshold(int stage);
 
 /// Mod effect grade: CipSoft Winter 2026 — each mod uses its own grade (highest wins).
@@ -236,8 +229,6 @@ int revelationMasteryBonus(int grade);
 QUrl imageUrl(const char* provider, int index);
 /// CIP gem variant image: quality + vocation * 12 + domain * 3.
 QUrl gemImage(const TGem& gem, int vocationIndex);
-/// The vessel bezel of a domain for a resonance and the socketed gem quality.
-QUrl socketBezel(int domain, int resonance, int quality, bool hasGem);
 QUrl domainAffinityImage(int domain);
 QUrl basicModImage(int mod);
 QUrl supremeModImage(int mod);
@@ -278,7 +269,9 @@ bool hasBasicMod(int mod);
 bool isAugmentationMod(int mod);
 /// The supreme mod's kind (4 augmentation, 5 revelation mastery, …); -1 for an unknown mod.
 int supremeModCategory(int mod);
-/// CIP mod list (0x101122xxx): supreme mods 0..3 and 5 suit every vocation, the rest one vocation index.
+/// The supreme mod is a spell augmentation or a revelation mastery: its name is shown above its effect.
+bool showsModName(int mod);
+/// CIP mod list: supreme mods 0..3 and 5 suit every vocation, the rest one vocation index.
 bool supremeModForVocation(int mod, int vocationIndex);
 /// CIP : the grade points a vocation can earn (23 supreme + the basic mods).
 int totalModGradePoints(int vocationIndex);

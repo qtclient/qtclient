@@ -3,11 +3,15 @@
 #include "appearances/spriteinfo.h"
 #include "appearances/worldmaphighlightbaseplate.h"
 
+#include "sprites/imageresourcespriteidentifier.h"
+#include "sprites/minimaptilespritesheetidentifier.h"
 #include "sprites/singlesprite.h"
 #include "sprites/spriteinspritesheet.h"
 #include "sprites/spritesheetmanager.h"
 
 #include "input/gameaction.h"
+
+#include "minimap/minimaptilemanager.h"
 
 #include <QPainter>
 
@@ -15,10 +19,17 @@ namespace tibia::sprites {
 
 TSpriteResolver::TSpriteResolver(std::shared_ptr<TSpritesheetManager> spritesheets, QObject* parent)
     : QObject(parent)
+    , m_emptyMinimapTileImage(QSize(256, 256), QImage::Format_ARGB32_Premultiplied)
     , m_spritesheets(std::move(spritesheets))
 {
+    m_emptyMinimapTileImage.fill(Qt::black);
     m_retryTimer.setSingleShot(true);
     connect(&m_retryTimer, &QTimer::timeout, this, &TSpriteResolver::resolvePendingSprites);
+}
+
+void TSpriteResolver::setMinimapTileManager(std::shared_ptr<minimap::TMinimapTileManager> tileManager)
+{
+    m_minimapTileManager = std::move(tileManager);
 }
 
 void TSpriteResolver::handleGameAction(tibia::input::IGameActionPtr pGameAction)
@@ -140,6 +151,16 @@ QImage TSpriteResolver::composed(const QImage& bottom, const QImage& top)
 std::shared_ptr<TSprite> TSpriteResolver::resolve(const ISpriteIdentifier& identifier) const
 {
     switch (identifier.identifierKind()) {
+    case ISpriteIdentifier::ResourceIdentifier: {
+        const auto& resource = dynamic_cast<const IResourceSpriteIdentifier&>(identifier);
+        if (resource.resourceKind() != IResourceSpriteIdentifier::ImageResource)
+            return nullptr;
+        std::shared_ptr<TSprite> sprite =
+            resolveImageResource(dynamic_cast<const TImageResourceSpriteIdentifier&>(resource));
+        if (sprite)
+            sprite->setFromResource(true);
+        return sprite;
+    }
     case ISpriteIdentifier::SpriteInfoIdentifier: {
         std::shared_ptr<TSprite> sprite =
             resolveSpriteInfo(static_cast<const appearances::TAppearanceInstanceSpriteInfo&>(identifier));
@@ -151,11 +172,34 @@ std::shared_ptr<TSprite> TSpriteResolver::resolve(const ISpriteIdentifier& ident
         const auto& asset = static_cast<const TAssetSpritesheetIdentifier&>(identifier);
         return resolveAssetSpritesheet(asset.spritesheetId(), asset.scale());
     }
+    case ISpriteIdentifier::MinimapTileIdentifier:
+        return resolveMinimapTile(static_cast<const TMinimapTileSpritesheetIdentifier&>(identifier));
     case ISpriteIdentifier::EffectWrapperIdentifier:
         return resolveEffectWrapper(static_cast<const TEffectWrapperSpritesheetIdentifier&>(identifier));
     default:
         return nullptr;
     }
+}
+
+std::shared_ptr<TSprite> TSpriteResolver::resolveMinimapTile(const TMinimapTileSpritesheetIdentifier& identifier) const
+{
+    const minimap::TMinimapTilePtr tile =
+        m_minimapTileManager ? m_minimapTileManager->getTile(identifier.tileId()) : nullptr;
+    if (!tile)
+        return std::make_shared<TSingleSprite>(identifier.scale(), m_emptyMinimapTileImage);
+    QImage image;
+    if (identifier.image() == TMinimapTileSpritesheetIdentifier::ColorImage)
+        image = tile->colorImage();
+    else if (identifier.image() == TMinimapTileSpritesheetIdentifier::UnexploredMaskImage)
+        image = tile->unexploredMask();
+    return std::make_shared<TSingleSprite>(identifier.scale(), image);
+}
+
+std::shared_ptr<TSprite> TSpriteResolver::resolveImageResource(const TImageResourceSpriteIdentifier& identifier) const
+{
+    const QImage file(identifier.path());
+    const QImage image = file.copy(identifier.rect()).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    return std::make_shared<TSingleSprite>(1.0, image);
 }
 
 std::shared_ptr<TSprite> TSpriteResolver::resolveEffectWrapper(const TEffectWrapperSpritesheetIdentifier& identifier) const

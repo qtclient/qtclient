@@ -13,8 +13,6 @@ namespace {
 
 using Args = std::vector<std::any>;
 
-/// CIP reads the creature's emblem: green, red, blue and "other" guilds are at war.
-bool emblemAtWar(const uint8_t emblem) { return emblem < 6 && ((0x2eu >> emblem) & 1u) != 0; }
 
 }
 
@@ -86,12 +84,12 @@ void TPlayerStatesTracker::refresh()
     input.inRestingArea = m_inRestingArea;
     input.restingAreaText = m_restingAreaText;
     input.playerKillerFlag = tibia::game::localPlayerSkull();
-    uint8_t emblem = 0;
+    bool guildWar = false;
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
         if (const auto row = storage->creatureAt(tibia::game::localPlayerId()))
-            emblem = row->emblem();
+            guildWar = row->isInGuildWar();
     }
-    input.guildWar = emblemAtWar(emblem);
+    input.guildWar = guildWar;
     input.rottenBlood = tibia::game::localPlayerRottenBloodState();
     input.hungry = tibia::game::localPlayerRegenerationTime() == 0;
     m_model.setEntries(buildPlayerStates(input, m_options, m_filter));

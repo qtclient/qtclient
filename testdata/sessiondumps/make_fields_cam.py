@@ -8,7 +8,8 @@ grounds 4526 and 351 (351 draws a 4x4 pattern from the field coordinate),
 backpack), the player in outfit 128 with colours, a second creature (outfit 1581
 with both addons, which it draws in reverse order looking west) that steps one
 field west 200 ms into the replay (done long before the shot),
-and effect 209 on the field west of the player.
+and effect 209 on the field west of the player. The player's stats are full
+(health and mana), so its HUD bars are full.
 The objects and outfit are single-phase. The screenshot is taken 1500 ms after
 world entry (--screenshot-delay=1500) while the effect is sent 1450 ms after the
 replay starts; world entry takes a few hundred ms, and effect 209's first phase
@@ -84,6 +85,17 @@ def login_success():
     return u8(0x17) + u32(PLAYER) + u16(50) + ot_double(857.36) + ot_double(261.29) + ot_double(-4795.01) + u8(0) + u8(0)
 
 
+def player_data_current():
+    # The player's stats (PlayerDataCurrent): full health and mana, so the
+    # player's HUD bars (read from the player data) are full.
+    return (u8(0xa0) + u32(185) + u32(185) + u32(40000)  # health, max health, free capacity
+            + struct.pack('<Q', 4200) + u16(8) + u16(0)  # experience, level, level percent
+            + u16(100) + u16(0) + u16(0) + u16(100)  # base xp gain, low level bonus, store boost, stamina factor
+            + u32(90) + u32(90) + u8(100)  # mana, max mana, soul
+            + u16(2520) + u16(220) + u16(0) + u16(0) + u16(0) + u8(0)  # stamina, base speed, regeneration, training, store boost time, purchasable
+            + u32(0) + u32(0) + u16(0) + u16(0))  # mana shield, max mana shield, daily reward boost, its time
+
+
 def walk():
     # The walker (stack position 1, after the ground) steps one field west.
     return u8(0x6d) + position(X - 1, Y - 2, Z) + u8(1) + position(X - 2, Y - 2, Z)
@@ -99,6 +111,7 @@ lines = [
     (1, u8(0x0f)),
     (2, u8(0x82) + u8(255) + u8(215)),
     (3, full_map()),
+    (4, player_data_current()),
     (200, walk()),
     (1450, effect()),
     (8000, u8(0x05) + u8(0x05) + u8(0x00) + b'smoke'),

@@ -320,6 +320,8 @@ public:
 
     /// The gold or wildcard balance changed.
     void onBalanceChanged();
+    /// The free list reroll countdowns tick.
+    void onAdvanceTimeUntilFreeListReroll();
     void closeMessages();
 
 private:

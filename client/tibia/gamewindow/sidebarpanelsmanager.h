@@ -15,6 +15,9 @@ class QQuickItem;
 namespace tibia::game {
 class IGameSession;
 }
+namespace tibia::minimap {
+class TMinimapTileStorage;
+}
 
 namespace tibia {
 namespace gamewindow {
@@ -25,6 +28,7 @@ class TMinimapController;
 class TPlayerInventoryAndStatusController;
 class TPremiumPanelController;
 class TSidebarManager;
+class TSidebarWidgetsManager;
 
 /// The panels in the main sidebar's upper pane (CIP: TSidebarPanelsManager,
 /// ctor): minimap, inventory, hit points and mana, the button bar
@@ -40,6 +44,14 @@ public:
     void setSidebarOptions(config::TSidebarOptions* options);
     /// CIP connector: the minimap panel follows the session's ambient light.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// The button bar follows the sidebar widgets being shown and hidden.
+    void connectToSidebarWidgetsManager(TSidebarWidgetsManager* widgets);
+    /// The minimap panel's tiles.
+    void setTileStorage(minimap::TMinimapTileStorage* storage);
+    /// The inventory panel's cursor for the slot under the mouse.
+    void updateMouseCursorForCurrentSlot();
+    /// The inventory panel's counting-down slot texts.
+    void refreshClocks();
 
     TMinimapController* minimap() const { return m_minimap.get(); }
     THitpointManabarController* hitpointManabar() const { return m_hitpointManabar.get(); }
@@ -78,9 +90,6 @@ public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to
     /// publishGameActionInternal).
     void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

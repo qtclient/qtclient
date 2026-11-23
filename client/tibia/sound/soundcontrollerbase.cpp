@@ -1,5 +1,7 @@
 #include "sound/soundcontrollerbase.h"
 
+#include "randomnumbergenerator.h"
+
 #include <QJSEngine>
 #include <QLoggingCategory>
 #include <QRandomGenerator>
@@ -65,6 +67,20 @@ void TSoundControllerBase::update(const int64_t nowMs)
     releaseFinishedPlayers(m_singleShots);
 }
 
+namespace {
+
+/// One of the sounds, picked at random (the only one without asking the random
+/// number generator); 0 without sounds.
+uint16_t randomSoundId(const std::vector<uint16_t>& soundIds)
+{
+    if (soundIds.size() < 2)
+        return soundIds.empty() ? 0 : soundIds.front();
+    const quint64 index = shared::TRandomNumberGenerator::instance()->getRandomUnsignedLong(0, soundIds.size() - 1);
+    return index < soundIds.size() ? soundIds[index] : 0;
+}
+
+}
+
 TSoundEffectParameters TSoundControllerBase::effectParameters(const TSoundEffectRequest& request) const
 {
     TSoundEffectParameters parameters;
@@ -74,9 +90,8 @@ TSoundEffectParameters TSoundControllerBase::effectParameters(const TSoundEffect
         return parameters;
     if (const auto* single = std::get_if<TSingleSoundEffectMetadata>(&effect->sound)) {
         parameters.soundId = single->soundId;
-    } else if (const auto* random = std::get_if<TRandomSoundMetadata>(&effect->sound); random && !random->soundIds.empty()) {
-        const auto index = static_cast<size_t>(randomBetween(int64_t{ 0 }, static_cast<int64_t>(random->soundIds.size()) - 1));
-        parameters.soundId = random->soundIds[index];
+    } else if (const auto* random = std::get_if<TRandomSoundMetadata>(&effect->sound)) {
+        parameters.soundId = randomSoundId(random->soundIds);
     }
     parameters.pitch = static_cast<float>(randomBetween(static_cast<double>(effect->pitchMin), static_cast<double>(effect->pitchMax)));
     const auto randomVolume = static_cast<float>(randomBetween(static_cast<double>(effect->volumeMin), static_cast<double>(effect->volumeMax)));

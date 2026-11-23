@@ -1,194 +1,171 @@
-#include "worldmapcameraviewport.h"
+#include "qmlcomponents/worldmapcameraviewport.h"
 
-#include <algorithm>
+#include "qmlcomponents/worldmapqmltypes.h"
 
 namespace tibia::qmlcomponents {
 
-TWorldMapCameraViewport::TWorldMapCameraViewport(QObject* parent)
+namespace {
+
+worldmap::TWorldMapSubfieldCoordinate subfieldCoordinateOf(const cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType& coordinate)
+{
+    return { coordinate.subfieldX(), coordinate.subfieldY(), coordinate.z() };
+}
+
+}
+
+TWorldMapCameraViewportQmlType::TWorldMapCameraViewportQmlType(QObject* parent)
     : cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType(parent)
+    , m_cameraViewport(nullptr)
 {
-    m_centerSubfieldCoordinate = new TWorldMapSubfieldCoordinateQmlType(this);
-    m_centerLayerTopLeftSubfieldCoordinate = new TWorldMapSubfieldCoordinateQmlType(this);
-    m_centerLayerBottomRightSubfieldCoordinate = new TWorldMapSubfieldCoordinateQmlType(this);
-    m_cuboid = new TWorldMapCuboidQmlType(this);
-    m_volume = m_cuboid;
-    m_scaleFactor = 0.5f;
-    m_topLayer = 7;
-    m_bottomLayer = 7;
-    m_centerSubfieldCoordinate->setZ(7);
-    rebuildCorners();
+    connect(&m_cameraViewport, &renderer::TWorldMapCameraViewport::viewportChanged, this,
+            &TWorldMapCameraViewportQmlType::viewportChanged);
 }
 
-void TWorldMapCameraViewport::setScaleFactor(const float v)
+float TWorldMapCameraViewportQmlType::scaleFactor() const
 {
-    if (m_scaleFactor == v)
+    return m_cameraViewport.scaleFactor();
+}
+
+void TWorldMapCameraViewportQmlType::setScaleFactor(const float v)
+{
+    m_cameraViewport.setScaleFactor(v);
+}
+
+QSize TWorldMapCameraViewportQmlType::size() const
+{
+    return m_cameraViewport.size();
+}
+
+void TWorldMapCameraViewportQmlType::setSize(const QSize& v)
+{
+    m_cameraViewport.setSize(v);
+}
+
+cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* TWorldMapCameraViewportQmlType::centerSubfieldCoordinate() const
+{
+    return TWorldMapSubfieldCoordinateQmlType::create(m_cameraViewport.centerSubfieldCoordinate());
+}
+
+void TWorldMapCameraViewportQmlType::setCenterSubfieldCoordinate(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* v)
+{
+    // Host: QML may assign null.
+    if (!v)
         return;
-    m_scaleFactor = v;
-    rebuildCorners();
-    Q_EMIT viewportChanged();
+    m_cameraViewport.setCenterSubfieldCoordinate(subfieldCoordinateOf(*v));
 }
 
-void TWorldMapCameraViewport::setSize(const QSize& v)
+cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*
+TWorldMapCameraViewportQmlType::centerLayerTopLeftSubfieldCoordinate() const
 {
-    // CIP: a size without area is 0x0.
-    const QSize size = v.width() < 1 || v.height() < 1 ? QSize(0, 0) : v;
-    if (m_size == size)
-        return;
-    m_size = size;
-    rebuildCorners();
-    Q_EMIT viewportChanged();
+    return TWorldMapSubfieldCoordinateQmlType::create(m_cameraViewport.centerLayerTopLeftSubfieldCoordinate());
 }
 
-void TWorldMapCameraViewport::setCenterSubfieldCoordinate(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* v)
+cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*
+TWorldMapCameraViewportQmlType::centerLayerBottomRightSubfieldCoordinate() const
 {
-    if (!v || v == m_centerSubfieldCoordinate)
-        return;
-    applyCenter(v->subfieldX(), v->subfieldY(), v->z());
+    return TWorldMapSubfieldCoordinateQmlType::create(m_cameraViewport.centerLayerBottomRightSubfieldCoordinate());
 }
 
-void TWorldMapCameraViewport::setTopAndBottomLayer(const int TopLayer, const int BottomLayer)
+cip::tibia::qmlcomponents::TWorldMapCuboidQmlType* TWorldMapCameraViewportQmlType::volume() const
 {
-    // The layers lie in 0..15; the bottom one is not above the top one.
-    const int top = std::clamp(TopLayer, 0, 15);
-    const int bottom = std::max(std::min(BottomLayer, 15), top);
-    m_topLayer = top;
-    m_bottomLayer = bottom;
-    // The centre moves into the new layer range.
-    applyCenter(m_centerSubfieldCoordinate->subfieldX(), m_centerSubfieldCoordinate->subfieldY(), m_centerSubfieldCoordinate->z());
-    rebuildVolume();
-    Q_EMIT viewportChanged();
+    return TWorldMapCuboidQmlType::create(m_cameraViewport.volume().cuboid());
 }
 
-void TWorldMapCameraViewport::translateToLayer(const int NewLayer)
+int TWorldMapCameraViewportQmlType::topLayer() const
 {
-    // The centre's field seen from another layer: one layer up is one field
-    // further south-east; the position inside the field stays.
-    const int x = m_centerSubfieldCoordinate->subfieldX();
-    const int y = m_centerSubfieldCoordinate->subfieldY();
-    const int z = m_centerSubfieldCoordinate->z();
-    const int fieldX = x / SubfieldsPerField + z - NewLayer;
-    const int fieldY = y / SubfieldsPerField + z - NewLayer;
-    applyCenter(fieldX * SubfieldsPerField + x % SubfieldsPerField, fieldY * SubfieldsPerField + y % SubfieldsPerField, NewLayer);
+    return m_cameraViewport.topLayer();
 }
 
-void TWorldMapCameraViewport::translateByStretchedPixelCoordinate(const QPoint& StretchedPixelCoordinate)
+void TWorldMapCameraViewportQmlType::setTopLayer(const int v)
 {
-    if (m_scaleFactor <= 0)
-        return;
-    const int dx = int(StretchedPixelCoordinate.x() / m_scaleFactor);
-    const int dy = int(StretchedPixelCoordinate.y() / m_scaleFactor);
-    applyCenter(m_centerSubfieldCoordinate->subfieldX() - dx, m_centerSubfieldCoordinate->subfieldY() - dy,
-                m_centerSubfieldCoordinate->z());
+    m_cameraViewport.setTopAndBottomLayer(v, m_cameraViewport.bottomLayer());
 }
 
-void TWorldMapCameraViewport::translateBySubfieldOffset(const QPoint& SubfieldOffset)
+int TWorldMapCameraViewportQmlType::bottomLayer() const
 {
-    applyCenter(m_centerSubfieldCoordinate->subfieldX() + SubfieldOffset.x(),
-                m_centerSubfieldCoordinate->subfieldY() + SubfieldOffset.y(), m_centerSubfieldCoordinate->z());
+    return m_cameraViewport.bottomLayer();
 }
 
-void TWorldMapCameraViewport::moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(
-    cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate, const QPoint& PixelCoordinate)
+void TWorldMapCameraViewportQmlType::setBottomLayer(const int v)
 {
-    if (!WorldMapSubfieldCoordinate || m_scaleFactor <= 0 || m_size.isEmpty())
-        return;
-    const int centerX = WorldMapSubfieldCoordinate->subfieldX() - int((PixelCoordinate.x() - m_size.width() * 0.5) / m_scaleFactor);
-    const int centerY = WorldMapSubfieldCoordinate->subfieldY() - int((PixelCoordinate.y() - m_size.height() * 0.5) / m_scaleFactor);
-    applyCenter(centerX, centerY, WorldMapSubfieldCoordinate->z());
+    m_cameraViewport.setTopAndBottomLayer(m_cameraViewport.topLayer(), v);
 }
 
-void TWorldMapCameraViewport::zoomAtPoint(const float ScaleFactor, const QPoint& StretchedPixelCoordinate)
+QPoint TWorldMapCameraViewportQmlType::centerLayerStretchedPixelOffset() const
 {
-    auto* under = convertToWorldMapSubfieldCoordinate(StretchedPixelCoordinate);
-    setScaleFactor(ScaleFactor);
-    if (under)
-        moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(under, StretchedPixelCoordinate);
+    return m_cameraViewport.centerLayerStretchedPixelOffset();
 }
 
-cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* TWorldMapCameraViewport::convertToWorldMapSubfieldCoordinate(
-    const QPoint& StretchedPixelCoordinate)
+cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*
+TWorldMapCameraViewportQmlType::convertToWorldMapSubfieldCoordinate(const QPoint& StretchedPixelCoordinate)
 {
-    return convertToWorldMapSubfieldCoordinateForLayer(StretchedPixelCoordinate, m_centerSubfieldCoordinate->z());
+    return TWorldMapSubfieldCoordinateQmlType::create(m_cameraViewport.convertToWorldMapSubfieldCoordinate(StretchedPixelCoordinate));
 }
 
-cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* TWorldMapCameraViewport::convertToWorldMapSubfieldCoordinateForLayer(
-    const QPoint& StretchedPixelCoordinate, const int Layer)
+cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*
+TWorldMapCameraViewportQmlType::convertToWorldMapSubfieldCoordinateForLayer(const QPoint& StretchedPixelCoordinate, const int Layer)
 {
-    auto* coordinate = new TWorldMapSubfieldCoordinateQmlType;
-    if (m_scaleFactor <= 0 || m_size.isEmpty()) {
-        coordinate->setSubfieldX(m_centerSubfieldCoordinate->subfieldX());
-        coordinate->setSubfieldY(m_centerSubfieldCoordinate->subfieldY());
-        coordinate->setZ(Layer);
-        return coordinate;
-    }
-    const int x = m_centerSubfieldCoordinate->subfieldX() + int((StretchedPixelCoordinate.x() - m_size.width() * 0.5) / m_scaleFactor);
-    const int y = m_centerSubfieldCoordinate->subfieldY() + int((StretchedPixelCoordinate.y() - m_size.height() * 0.5) / m_scaleFactor);
-    coordinate->setSubfieldX(x);
-    coordinate->setSubfieldY(y);
-    coordinate->setZ(Layer);
-    return coordinate;
+    return TWorldMapSubfieldCoordinateQmlType::create(
+        m_cameraViewport.convertToWorldMapSubfieldCoordinateForLayer(StretchedPixelCoordinate, Layer));
 }
 
-QPoint TWorldMapCameraViewport::convertSubfieldCoordinateToStretchedPixelCoordinate(
+QPoint TWorldMapCameraViewportQmlType::convertCoordinateToStretchedPixelCoordinate(
+    cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* WorldMapCoordinate)
+{
+    if (!WorldMapCoordinate)
+        return { -1, -1 };
+    const worldmap::TWorldMapCoordinate field(WorldMapCoordinate->x(), WorldMapCoordinate->y(), WorldMapCoordinate->z());
+    return m_cameraViewport.convertSubfieldCoordinateToStretchedPixelCoordinate(
+        worldmap::TWorldMapSubfieldCoordinate::fromField(field, 0, 0));
+}
+
+QPoint TWorldMapCameraViewportQmlType::convertSubfieldCoordinateToStretchedPixelCoordinate(
     cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate)
 {
-    if (!WorldMapSubfieldCoordinate || m_scaleFactor <= 0)
-        return {};
-    const int dx = WorldMapSubfieldCoordinate->subfieldX() - m_centerSubfieldCoordinate->subfieldX();
-    const int dy = WorldMapSubfieldCoordinate->subfieldY() - m_centerSubfieldCoordinate->subfieldY();
-    return { int(m_size.width() * 0.5 + dx * m_scaleFactor), int(m_size.height() * 0.5 + dy * m_scaleFactor) };
+    if (!WorldMapSubfieldCoordinate)
+        return { -1, -1 };
+    return m_cameraViewport.convertSubfieldCoordinateToStretchedPixelCoordinate(subfieldCoordinateOf(*WorldMapSubfieldCoordinate));
 }
 
-void TWorldMapCameraViewport::centerAtField(const int x, const int y, const int z)
+void TWorldMapCameraViewportQmlType::zoomAtPoint(const float ScaleFactor, const QPoint& StretchedPixelCoordinate)
 {
-    applyCenter(x * SubfieldsPerField + SubfieldsPerField / 2, y * SubfieldsPerField + SubfieldsPerField / 2, z);
+    m_cameraViewport.zoomAtPoint(ScaleFactor, StretchedPixelCoordinate);
 }
 
-void TWorldMapCameraViewport::applyCenter(const int subfieldX, const int subfieldY, const int z)
+void TWorldMapCameraViewportQmlType::moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(
+    cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate, const QPoint& PixelCoordinate)
 {
-    // A layer outside the camera's range moves the current centre to the
-    // nearest allowed layer instead.
-    const int layer = std::min(std::max(m_topLayer, z), m_bottomLayer);
-    if (layer != z) {
-        translateToLayer(layer);
+    if (!WorldMapSubfieldCoordinate)
         return;
-    }
-    if (m_centerSubfieldCoordinate->subfieldX() == subfieldX && m_centerSubfieldCoordinate->subfieldY() == subfieldY
-        && m_centerSubfieldCoordinate->z() == z)
-        return;
-    m_centerSubfieldCoordinate->setSubfieldX(subfieldX);
-    m_centerSubfieldCoordinate->setSubfieldY(subfieldY);
-    m_centerSubfieldCoordinate->setZ(z);
-    rebuildCorners();
-    Q_EMIT viewportChanged();
+    m_cameraViewport.moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(subfieldCoordinateOf(*WorldMapSubfieldCoordinate),
+                                                                              PixelCoordinate);
 }
 
-void TWorldMapCameraViewport::rebuildCorners()
+void TWorldMapCameraViewportQmlType::translateToLayer(const int NewLayer)
 {
-    const int halfW = m_scaleFactor > 0 && m_size.width() > 0 ? int(m_size.width() * 0.5 / m_scaleFactor) : 0;
-    const int halfH = m_scaleFactor > 0 && m_size.height() > 0 ? int(m_size.height() * 0.5 / m_scaleFactor) : 0;
-    const int cx = m_centerSubfieldCoordinate->subfieldX();
-    const int cy = m_centerSubfieldCoordinate->subfieldY();
-    const int z = m_centerSubfieldCoordinate->z();
-    m_centerLayerTopLeftSubfieldCoordinate->setSubfieldX(cx - halfW);
-    m_centerLayerTopLeftSubfieldCoordinate->setSubfieldY(cy - halfH);
-    m_centerLayerTopLeftSubfieldCoordinate->setZ(z);
-    m_centerLayerBottomRightSubfieldCoordinate->setSubfieldX(cx + halfW);
-    m_centerLayerBottomRightSubfieldCoordinate->setSubfieldY(cy + halfH);
-    m_centerLayerBottomRightSubfieldCoordinate->setZ(z);
-    rebuildVolume();
+    m_cameraViewport.translateToLayer(NewLayer);
 }
 
-void TWorldMapCameraViewport::rebuildVolume()
+void TWorldMapCameraViewportQmlType::setTopAndBottomLayer(const int TopLayer, const int BottomLayer)
 {
-    if (!m_cuboid)
-        return;
-    constexpr int SubfieldsPerField = 32;
-    const int topLeftX = m_centerLayerTopLeftSubfieldCoordinate->subfieldX() / SubfieldsPerField;
-    const int topLeftY = m_centerLayerTopLeftSubfieldCoordinate->subfieldY() / SubfieldsPerField;
-    const int bottomRightX = m_centerLayerBottomRightSubfieldCoordinate->subfieldX() / SubfieldsPerField;
-    const int bottomRightY = m_centerLayerBottomRightSubfieldCoordinate->subfieldY() / SubfieldsPerField;
-    m_cuboid->setFromFieldBox(topLeftX, topLeftY, m_topLayer, bottomRightX, bottomRightY, m_bottomLayer);
+    m_cameraViewport.setTopAndBottomLayer(TopLayer, BottomLayer);
+}
+
+void TWorldMapCameraViewportQmlType::setAdditionalColumnsAndRows(const int AdditionalColumsLeft, const int AdditionalColumsRight,
+                                                                 const int AdditionalRowsTop, const int AdditionalRowsBottom)
+{
+    m_cameraViewport.setAdditionalColumnsAndRows(AdditionalColumsLeft, AdditionalColumsRight, AdditionalRowsTop,
+                                                 AdditionalRowsBottom);
+}
+
+void TWorldMapCameraViewportQmlType::translateByStretchedPixelCoordinate(const QPoint& StretchedPixelCoordinate)
+{
+    m_cameraViewport.translateByStretchedPixelCoordinate(StretchedPixelCoordinate);
+}
+
+void TWorldMapCameraViewportQmlType::translateBySubfieldOffset(const QPoint& SubfieldOffset)
+{
+    m_cameraViewport.translateBySubfieldOffset(worldmap::TWorldMapSubfieldExtent(SubfieldOffset.x(), SubfieldOffset.y(), 0));
 }
 
 }

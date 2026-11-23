@@ -51,6 +51,45 @@ Millis textDuration(const QString& text) { return text.size() * 50 + 3000; }
 Millis privateTextDuration(const QString& text) { return text.size() * 25 + 1500; }
 Millis npcTextDuration(const QString& text) { return (text.size() * 4000 >> 8) + 4000; }
 
+TFleetingText::TFleetingText()
+    : m_color(Qt::white)
+{
+}
+
+TFleetingText::TFleetingText(const QString& text, const Millis start, const Millis duration, const QColor& color, const bool isHtml)
+    : TFleetingText()
+{
+    set(text, start, duration, color, isHtml);
+}
+
+void TFleetingText::set(const QString& text, const Millis start, const Millis duration, const QColor& color, const bool isHtml)
+{
+    m_text = text;
+    m_expiry = duration + start;
+    m_start = start;
+    m_color = color;
+    m_visible = true;
+    m_html = isHtml;
+}
+
+void TFleetingText::clear()
+{
+    m_text.clear();
+    m_color = Qt::white;
+}
+
+bool TFleetingText::operator==(const TFleetingText& other) const
+{
+    return m_text == other.m_text && m_expiry == other.m_expiry && m_color == other.m_color;
+}
+
+QString TFleetingTextQueue::nextText() const
+{
+    if (m_queue.empty())
+        return QString();
+    return m_queue.front().text;
+}
+
 void TFleetingTextQueue::push(const QString& text, const Millis duration, const QColor& color)
 {
     m_queue.push_back({ text, duration, color });
@@ -58,23 +97,19 @@ void TFleetingTextQueue::push(const QString& text, const Millis duration, const 
 
 void TFleetingTextQueue::update(const Millis now)
 {
-    m_visible = now < m_expiry;
-    if (m_visible || m_queue.empty())
+    m_current.update(now);
+    if (m_current.isVisible() || m_queue.empty())
         return;
     Entry entry = std::move(m_queue.front());
     m_queue.pop_front();
-    m_text = std::move(entry.text);
-    m_expiry = now + entry.duration;
-    m_start = now;
-    m_color = entry.color;
-    m_visible = true;
+    m_current.set(entry.text, now, entry.duration, entry.color, false);
 }
 
 void TTextMessageQueue::push(const QString& text, const Millis duration, const QColor& color)
 {
     if (!m_queue.empty() && m_queue.size() >= m_max)
         m_queue.pop_front();
-    TFleetingTextQueue::push(text, duration << (m_visible ? 0 : 1), color);
+    TFleetingTextQueue::push(text, duration << (m_current.isVisible() ? 0 : 1), color);
 }
 
 void TNpcSpeechBubble::push(const QString&, const Millis, const QColor&) {}
@@ -86,10 +121,10 @@ void TNpcSpeechBubble::setHeader(const QString& name, const QColor& color, const
     m_coordinate = coordinate;
     m_header = qtTrId("speech_npc_header").arg(m_name);
     m_queue.clear();
-    m_text.clear();
-    m_expiry = 0;
-    m_visible = false;
-    m_color = Qt::white;
+    m_current.m_text.clear();
+    m_current.m_expiry = 0;
+    m_current.m_visible = false;
+    m_current.m_color = Qt::white;
 }
 
 void TNpcSpeechBubble::addText(const QString& name, const QString& text, const Millis duration)
@@ -104,7 +139,7 @@ void TNpcSpeechBubble::addText(const QString& name, const QString& text, const M
 
 QString TNpcSpeechBubble::bubbleText() const
 {
-    return QStringLiteral("%1\n%2").arg(m_header).arg(m_text);
+    return QStringLiteral("%1\n%2").arg(m_header).arg(m_current.text());
 }
 
 TCreatureSpeechBubble::TCreatureSpeechBubble(const QString& speaker, const int volume, const QColor& color,
@@ -126,7 +161,7 @@ bool TCreatureSpeechBubble::matches(const QString& speaker, const int volume, co
 
 void TCreatureSpeechBubble::addLine(const QString& text, const Millis now, const Millis duration)
 {
-    m_lines.push_back({ m_volume == Yell ? text.toUpper() : text, now + duration, now, true, m_color });
+    m_lines.emplace_back(m_volume == Yell ? text.toUpper() : text, now, duration, m_color, false);
     while (m_lines.size() > m_maxLines)
         m_lines.pop_front();
     m_expiry = std::max(m_expiry, now + duration);
@@ -134,9 +169,9 @@ void TCreatureSpeechBubble::addLine(const QString& text, const Millis now, const
 
 void TCreatureSpeechBubble::update(const Millis now)
 {
-    for (Line& line : m_lines)
-        line.visible = now < line.expiry;
-    while (!m_lines.empty() && !m_lines.front().visible)
+    for (TFleetingText& line : m_lines)
+        line.update(now);
+    while (!m_lines.empty() && !m_lines.front().isVisible())
         m_lines.pop_front();
 }
 
@@ -144,11 +179,11 @@ void TCreatureSpeechBubble::clearFirstLine()
 {
     if (m_lines.empty())
         return;
-    Line& line = m_lines.front();
-    line.text.clear();
-    line.expiry = 0;
-    line.visible = false;
-    line.color = Qt::white;
+    TFleetingText& line = m_lines.front();
+    line.m_text.clear();
+    line.m_expiry = 0;
+    line.m_visible = false;
+    line.m_color = Qt::white;
 }
 
 QString TCreatureSpeechBubble::text() const
@@ -157,8 +192,8 @@ QString TCreatureSpeechBubble::text() const
     if (!text.isEmpty())
         text += u'\n';
     QString separator;
-    for (const Line& line : m_lines) {
-        text += separator + line.text;
+    for (const TFleetingText& line : m_lines) {
+        text += separator + line.text();
         separator = QStringLiteral("\n");
     }
     return text;
@@ -180,8 +215,8 @@ Millis TTextStorage::now()
 
 void TTextStorage::update(const Millis now)
 {
-    m_statusVisible = now < m_statusExpiry;
-    m_lookVisible = now < m_lookExpiry;
+    m_status.update(now);
+    m_look.update(now);
     m_center.update(now);
     m_private.update(now);
 
@@ -208,8 +243,8 @@ bool TTextStorage::isInNpcBubbleRange(const Position& coordinate) const
 
 void TTextStorage::clear()
 {
-    m_statusExpiry = m_lookExpiry = 0;
-    m_statusVisible = m_lookVisible = false;
+    m_status.m_expiry = m_look.m_expiry = 0;
+    m_status.m_visible = m_look.m_visible = false;
     m_center = TTextMessageQueue(m_maxQueuedMessages);
     m_private = TTextMessageQueue(m_maxQueuedMessages);
     m_npcBubbles.clear();
@@ -218,30 +253,24 @@ void TTextStorage::clear()
 
 void TTextStorage::setStatusMessage(const QString& text, const QColor& color, const bool isHtml)
 {
-    const Millis time = now();
-    m_statusText = text;
-    m_statusExpiry = time + StatusDuration;
-    m_statusStart = time;
-    m_statusColor = color;
-    m_statusVisible = true;
-    m_statusHtml = isHtml;
+    m_status.set(text, now(), StatusDuration, color, isHtml);
 }
 
 void TTextStorage::clearOldestMessage()
 {
     constexpr Millis None = std::numeric_limits<Millis>::max();
-    Millis oldest = m_lookVisible ? m_lookStart : None;
-    if (m_center.m_visible)
-        oldest = std::min(oldest, m_center.m_start);
-    if (m_private.m_visible)
-        oldest = std::min(oldest, m_private.m_start);
+    Millis oldest = m_look.isVisible() ? m_look.start() : None;
+    if (m_center.isVisible())
+        oldest = std::min(oldest, m_center.start());
+    if (m_private.isVisible())
+        oldest = std::min(oldest, m_private.start());
     TNpcSpeechBubble* oldestNpcBubble = nullptr;
     for (TNpcSpeechBubble& bubble : m_npcBubbles) {
-        if (!bubble.m_visible)
+        if (!bubble.isVisible())
             continue;
-        if (bubble.m_start < oldest)
+        if (bubble.start() < oldest)
             oldestNpcBubble = &bubble;
-        oldest = std::min(oldest, bubble.m_start);
+        oldest = std::min(oldest, bubble.start());
     }
     std::shared_ptr<TCreatureSpeechBubble> oldestCreatureBubble;
     for (const auto& bubble : m_creatureBubbles) {
@@ -253,23 +282,20 @@ void TTextStorage::clearOldestMessage()
     if (oldest == None)
         return;
 
-    const auto blank = [](TFleetingTextQueue& queue) {
-        queue.m_text.clear();
-        queue.m_expiry = 0;
-        queue.m_visible = false;
-        queue.m_color = Qt::white;
+    const auto blank = [](TFleetingText& text) {
+        text.m_text.clear();
+        text.m_expiry = 0;
+        text.m_visible = false;
+        text.m_color = Qt::white;
     };
-    if (oldest == m_lookStart) {
-        m_lookText.clear();
-        m_lookExpiry = 0;
-        m_lookVisible = false;
-        m_lookColor = Qt::white;
-    } else if (oldest == m_center.m_start) {
-        blank(m_center);
-    } else if (oldest == m_private.m_start) {
-        blank(m_private);
+    if (oldest == m_look.start()) {
+        blank(m_look);
+    } else if (oldest == m_center.start()) {
+        blank(m_center.m_current);
+    } else if (oldest == m_private.start()) {
+        blank(m_private.m_current);
     } else if (oldestNpcBubble) {
-        blank(*oldestNpcBubble);
+        blank(oldestNpcBubble->m_current);
     } else if (oldestCreatureBubble) {
         oldestCreatureBubble->clearFirstLine();
     }
@@ -278,13 +304,7 @@ void TTextStorage::clearOldestMessage()
 void TTextStorage::setLookMessage(const QString& text, const QColor& color, const bool isHtml)
 {
     const Millis duration = textDuration(text);
-    const Millis time = now();
-    m_lookText = text;
-    m_lookExpiry = duration + time;
-    m_lookStart = time;
-    m_lookColor = color;
-    m_lookVisible = true;
-    m_lookHtml = isHtml;
+    m_look.set(text, now(), duration, color, isHtml);
 }
 
 void TTextStorage::addCenterMessage(const QString& text, const QColor& color)

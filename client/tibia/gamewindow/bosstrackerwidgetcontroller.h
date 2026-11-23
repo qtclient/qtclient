@@ -100,6 +100,8 @@ public:
 
     QObject* bosses() const override;
     bool hasUnlockedAnyBosses() const override;
+    /// The sidebar widgets' frame update: the model's cooldowns follow the clock.
+    void updateWithTimestamp();
 
     QQuickItem* gameWindowQuickItem() const override;
     /// CIP TSidebarWidgetControllerWithFocusHandling.

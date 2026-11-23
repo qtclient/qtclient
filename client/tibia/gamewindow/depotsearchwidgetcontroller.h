@@ -176,33 +176,5 @@ private:
     std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
-/// Host: the controller the client keeps for its sidebar.
-class TDepotSearchWidgetManager final : public QObject
-{
-    Q_OBJECT
-public:
-    TDepotSearchWidgetManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
-    ~TDepotSearchWidgetManager() override;
-
-    void setSidebarOptions(config::TSidebarOptions* options);
-    TSidebarWidget* current() const;
-    /// The session's container protocol handler opens the widget with the
-    /// server's search results and detail lists and closes it when the search
-    /// ends.
-    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
-
-Q_SIGNALS:
-    /// The controller's publishGameAction, forwarded.
-    void publishGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
-
-private:
-    /// Results or a detail list arrived: the widget shows in a sidebar.
-    void show();
-
-    QPointer<TSidebarManager> m_sidebars;
-    TDepotSearchWidgetController* m_controller = nullptr;
-    std::vector<QMetaObject::Connection> m_gameSessionConnections;
-};
-
 }
 }

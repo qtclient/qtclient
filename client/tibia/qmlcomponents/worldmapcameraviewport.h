@@ -1,54 +1,62 @@
 #pragma once
 
-#include "qmlcomponents/worldmapqmltypes.h"
+#include "renderer/worldmapcameraviewport.h"
 
 #include <cip_gen.h>
 
 namespace tibia {
 namespace qmlcomponents {
 
-/// House-preview / Cyclopedia WorldMap camera (CIP: TWorldMapCameraViewportQmlType).
-/// Owns centre / layer corner subfield coordinates so QML never sees null `.z`.
-class TWorldMapCameraViewport : public cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType
+/// A world map camera for QML (the house preview's WorldMapCameraViewport): a
+/// view onto its renderer::TWorldMapCameraViewport. Coordinates and the volume
+/// read from it are new objects owned by the JavaScript engine.
+class TWorldMapCameraViewportQmlType : public cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType
 {
     Q_OBJECT
 public:
-    explicit TWorldMapCameraViewport(QObject* parent = nullptr);
+    explicit TWorldMapCameraViewportQmlType(QObject* parent = nullptr);
 
+    renderer::TWorldMapCameraViewport& cameraViewport() { return m_cameraViewport; }
+    const renderer::TWorldMapCameraViewport& cameraViewport() const { return m_cameraViewport; }
+
+    float scaleFactor() const override;
     void setScaleFactor(float v) override;
+    QSize size() const override;
     void setSize(const QSize& v) override;
+    cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* centerSubfieldCoordinate() const override;
     void setCenterSubfieldCoordinate(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* v) override;
-    void setTopAndBottomLayer(int TopLayer, int BottomLayer) override;
-    void translateToLayer(int NewLayer) override;
-    void translateByStretchedPixelCoordinate(const QPoint& StretchedPixelCoordinate) override;
-    void translateBySubfieldOffset(const QPoint& SubfieldOffset) override;
-    void moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(
-        cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate,
-        const QPoint& PixelCoordinate) override;
-    void zoomAtPoint(float ScaleFactor, const QPoint& StretchedPixelCoordinate) override;
+    cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* centerLayerTopLeftSubfieldCoordinate() const override;
+    cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* centerLayerBottomRightSubfieldCoordinate() const override;
+    cip::tibia::qmlcomponents::TWorldMapCuboidQmlType* volume() const override;
+    int topLayer() const override;
+    void setTopLayer(int v) override;
+    int bottomLayer() const override;
+    void setBottomLayer(int v) override;
+    QPoint centerLayerStretchedPixelOffset() const override;
+
     cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* convertToWorldMapSubfieldCoordinate(
         const QPoint& StretchedPixelCoordinate) override;
     cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* convertToWorldMapSubfieldCoordinateForLayer(
         const QPoint& StretchedPixelCoordinate, int Layer) override;
+    /// (-1, -1) without a coordinate.
+    QPoint convertCoordinateToStretchedPixelCoordinate(
+        cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* WorldMapCoordinate) override;
+    /// (-1, -1) without a coordinate.
     QPoint convertSubfieldCoordinateToStretchedPixelCoordinate(
         cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate) override;
-
-    /// Centres field (x,y,z) in the viewport (subfield = field * 32 + 16).
-    void centerAtField(int x, int y, int z);
-    /// Centres subfield (x, y) of layer z in the viewport.
-    void centerAtSubfield(int subfieldX, int subfieldY, int z) { applyCenter(subfieldX, subfieldY, z); }
-
-Q_SIGNALS:
-    /// CIP renderer::TWorldMapCameraViewport::viewportChanged — qtclient owns emit sites.
-    void viewportChanged();
+    void zoomAtPoint(float ScaleFactor, const QPoint& StretchedPixelCoordinate) override;
+    void moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(
+        cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate,
+        const QPoint& PixelCoordinate) override;
+    void translateToLayer(int NewLayer) override;
+    void setTopAndBottomLayer(int TopLayer, int BottomLayer) override;
+    void setAdditionalColumnsAndRows(int AdditionalColumsLeft, int AdditionalColumsRight, int AdditionalRowsTop,
+                                     int AdditionalRowsBottom) override;
+    void translateByStretchedPixelCoordinate(const QPoint& StretchedPixelCoordinate) override;
+    void translateBySubfieldOffset(const QPoint& SubfieldOffset) override;
 
 private:
-    void rebuildCorners();
-    void rebuildVolume();
-    void applyCenter(int subfieldX, int subfieldY, int z);
-
-    static constexpr int SubfieldsPerField = 32;
-    TWorldMapCuboidQmlType* m_cuboid = nullptr;
+    renderer::TWorldMapCameraViewport m_cameraViewport;
 };
 
 }

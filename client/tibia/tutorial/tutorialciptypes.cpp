@@ -1,42 +1,31 @@
 #include "tutorial/tutorialciptypes.h"
 
-#include "protocol/protocolciptypes.h"
-
-#include <tibia/game/gamenotify.h>
+#include "input/gameaction.h"
 
 #include <protocol.pb.h>
 
+#include <memory>
+
 namespace tibia::tutorial {
 
-namespace {
-struct CipTypedKeep {
-    TSessiondumpHintBase tSessiondumpHintBase;
-};
-CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
-
 using ::tibia::protobuf::protocol::GameserverMessageTutorialHint;
-} // namespace
 
 TTutorialProtocolMessageHandler::TTutorialProtocolMessageHandler(QObject* parent)
     : cip::tibia::tutorial::TTutorialProtocolMessageHandler(parent)
 {
 }
 
-void TTutorialProtocolMessageHandler::handleTutorialHintMessage(
-    const GameserverMessageTutorialHint& TutorialHintMessage)
+void TTutorialProtocolMessageHandler::handleTutorialHintMessage(const GameserverMessageTutorialHint& TutorialHintMessage)
 {
-    const auto id = static_cast<uint8_t>(TutorialHintMessage.hint_id());
-    tibia::game::notify("onTutorialHint", id);
-}
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
+    const int hintId = static_cast<int>(TutorialHintMessage.hint_id());
+    if (unsigned(hintId - 1) >= 14u)
         return;
-    owned = true;
-    (void)typedKeep();
-    (void)parent;
+    if (unsigned(hintId - 7) < 4u || hintId == 12) {
+        // CipSoft names the resource ":/minimap/default"; qtclient's action
+        // carries no path.
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionLoadDefaultMinimapTilesFromResources>());
+    }
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowTutorialHint>(hintId));
 }
 
-} // namespace tibia::tutorial
+}

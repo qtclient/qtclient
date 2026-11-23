@@ -12,7 +12,10 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
+#include <tibia/game/gamesession_forward.h>
 #include "input/gameaction.h"
+#include "input/gameactioncontext.h"
+#include "trade/tradeciptypes.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/outfit.h>
@@ -147,36 +150,6 @@ bool TTargetSelectionEventFilter::eventFilter(QObject* watched, QEvent* event)
     Q_EMIT targetSelectionFinished();
     Q_UNUSED(watched);
     return consume;
-}
-
-TVipRenderInfo::TVipRenderInfo(const uint32_t characterId, QObject* parent)
-    : cip::tibia::gamewindow::TVipRenderInfo(parent)
-    , m_characterId(characterId)
-{
-    m_timer.setSingleShot(true);
-    connect(&m_timer, &QTimer::timeout, this, &TVipRenderInfo::onHighlightedTimerTimeout);
-}
-
-void TVipRenderInfo::startHighlight(const int milliseconds)
-{
-    m_highlighted = true;
-    m_timer.start(milliseconds);
-    Q_EMIT vipRenderInfoChanged(m_characterId);
-}
-
-void TVipRenderInfo::clearHighlight()
-{
-    m_timer.stop();
-    if (!m_highlighted)
-        return;
-    m_highlighted = false;
-    Q_EMIT vipRenderInfoChanged(m_characterId);
-}
-
-void TVipRenderInfo::onHighlightedTimerTimeout()
-{
-    m_highlighted = false;
-    Q_EMIT vipRenderInfoChanged(m_characterId);
 }
 
 TWhiteBlacklistQmlEntry::TWhiteBlacklistQmlEntry(QString name, const bool permanently, QObject* parent)
@@ -600,27 +573,6 @@ void TBattleListGameActionHandler::handleRemoveAllTutorialMarkersGameAction()
         clearCreatureTutorialMarkers();
 }
 
-TAssignActionDialogControllerBase::TAssignActionDialogControllerBase(QObject* parent)
-    : cip::tibia::gamewindow::TAssignActionDialogControllerBase(parent)
-{}
-
-void TAssignActionDialogControllerBase::bindActionButton(TActionBarController* bar, const int buttonId)
-{
-    if (!bar)
-        return;
-    m_actionBarId = uint(bar->actionBarId());
-    m_buttonId = uint(buttonId);
-    m_buttonName = qtTrId("actionbar_button_identifier").arg(bar->actionBarId()).arg(buttonId);
-    m_showActionBarTarget = true;
-    Q_EMIT showActionBarTargetChanged();
-}
-
-void TAssignActionDialogControllerBase::onCloseClicked()
-{
-    Q_EMIT abort();
-    Q_EMIT dialogClosed();
-}
-
 TDialogControllerBase::TDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TDialogControllerBase(parent)
 {}
@@ -749,7 +701,6 @@ void TSidebarWidgetControllerWithFocusHandling::setCursorToResizeVertical(const 
 
 namespace {
 
-using Args = std::vector<std::any>;
 constexpr uint8_t CyclopediaInspectionType = 1;
 constexpr int InspectSlots = 10;
 constexpr int InspectPlayerSlot = 99;
@@ -903,13 +854,39 @@ TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)
 {
     s_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
-        if (!data || data->inspectionType == CyclopediaInspectionType)
-            return std::any{};
-        showObject(*data);
-        return std::any{};
-    });
+}
+
+void TInspectObjectDialogController::handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session || !pGameAction || pGameAction->gameActionType() != input::EGameAction::INSPECT_OBJECT)
+        return;
+    // The next inspection result opens the dialog. The protocol handler reports
+    // the Cyclopedia's item inspections the same way; those stay with the Cyclopedia.
+    disconnect(m_inspectionConnection);
+    m_inspectionConnection = connect(session->gameProtocolMessageHandler().get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived,
+                                     this, [this](const ItemInspectionData& data) {
+                                         if (data.inspectionType != CyclopediaInspectionType)
+                                             showObject(data);
+                                     });
+    const auto* inspect = dynamic_cast<const input::TGameActionInspectObject*>(pGameAction.get());
+    if (!inspect)
+        return;
+    const input::TGameActionContextPtr& location = inspect->location();
+    const input::EGameActionContextType type = location ? location->gameActionContextType() : input::EGameActionContextType::LOCATION_UNKNOWN;
+    if (type == input::EGameActionContextType::LOCATION_NPC_TRADE) {
+        // qtclient has no NPC trade location context: the trade window asks
+        // the NPC trade handler for its looks itself.
+        return;
+    }
+    if (type == input::EGameActionContextType::LOCATION_PLAYER_TRADE) {
+        if (const auto* trade = dynamic_cast<const input::TLocationPlayerTradeGameActionContext*>(location.get()))
+            session->playerTradeProtocolMessageHandler()->lookTrade(trade->index(), trade->side());
+        return;
+    }
+    // CIP: an InspectObject (type 0) whose ObjectPosition the TGameActionContextHelper fills from the location.
+    if (inspect->position().isValid())
+        tibia::game::inspectionNormalObject(location);
 }
 
 TInspectObjectDialogController* TInspectObjectDialogController::instance()

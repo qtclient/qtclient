@@ -49,7 +49,6 @@ public:
     /// Qtclient native H (WorldEntered peel) — same side effects as classic parseEnterGame
     /// (enter notify + gated processGameStart once per login).
     /// Login / session lifecycle (game connection + gamesession).
-    void processPendingGame();
     void processGameStart();
     /// Qtclient native H (SetInventory / DeleteInventory peels) — same side effects as
     /// classic parseAddInventoryItem / parseRemoveInventoryItem.
@@ -57,8 +56,6 @@ public:
     /// Server message side effects (`tibia::game::process*` in gamesession).
     void processCharacterSwitch(std::string_view characterName);
     void processUpdateTarget(uint32_t seq, uint32_t targetId);
-    void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
-                            tibia::client::PVPModes pvpMode);
     void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                               std::string_view name, uint8_t capacity, bool hasParent,
                               const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked,
@@ -184,23 +181,6 @@ public:
 
 
     // vip related
-    // fight modes related
-    void setChaseMode(tibia::client::ChaseModes chaseMode);
-    void setFightMode(tibia::client::FightModes fightMode);
-    void setSafeFight(bool on);
-    void setPVPMode(tibia::client::PVPModes pvpMode);
-    /// Chase, secure mode and PvP mode in one fight-modes message.
-    void setTactics(tibia::client::ChaseModes chaseMode, bool safeFight, tibia::client::PVPModes pvpMode);
-    tibia::client::ChaseModes getChaseMode() { return m_chaseMode; }
-    tibia::client::FightModes getFightMode() { return m_fightMode; }
-    bool isSafeFight() { return m_safeFight; }
-    tibia::client::PVPModes getPVPMode() { return m_pvpMode; }
-
-    // pvp related
-    void setUnjustifiedPoints(UnjustifiedPoints unjustifiedPoints);
-    UnjustifiedPoints getUnjustifiedPoints() { return m_unjustifiedPoints; };
-    void setOpenPvpSituations(uint8_t openPvpSituations);
-    int getOpenPvpSituations() { return m_openPvpSituations; }
 
     // npc trade related
 
@@ -349,10 +329,6 @@ public:
     /// The game connection of the running session (null when offline).
     std::shared_ptr<tibia::network::TGameserverNetworkPacketProcessor> m_gameConnection;
     tibia::shared::TFrameStopWatch m_dashTimer;
-    tibia::client::FightModes m_fightMode{ tibia::client::FightBalanced };
-    tibia::client::ChaseModes m_chaseMode{ tibia::client::DontChase };
-    tibia::client::PVPModes m_pvpMode{ tibia::client::WhiteDove };
-    UnjustifiedPoints m_unjustifiedPoints;
     tibia::schedule::TScheduledTaskPtr m_pingEvent;
     tibia::schedule::TScheduledTaskPtr m_checkConnectionEvent;
 
@@ -363,7 +339,6 @@ public:
     bool m_expertPvpMode{ false };
     bool m_connectionFailWarned{ false };
     bool m_scheduleLastWalk{ false };
-    bool m_safeFight{ true };
     bool m_canReportBugs{ false };
     int m_bugReportState{ -1 };
     bool m_CanExivaOptions{ false };
@@ -375,7 +350,6 @@ public:
     std::pair<uint16_t, tibia::shared::TFrameStopWatch> m_mapUpdateTimer = { true, tibia::shared::TFrameStopWatch{} };
 
     uint8_t m_walkMaxSteps{ 1 };
-    uint8_t m_openPvpSituations{ 0 };
     uint16_t m_serverBeat{ 50 };
     uint16_t m_pingDelay{ 1000 };
     uint16_t m_protocolVersion{ 0 };

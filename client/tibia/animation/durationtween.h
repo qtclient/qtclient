@@ -8,7 +8,7 @@ namespace tibia::animation {
 
 /// Linear progress from 0 to 1 over the time span [start, end] in milliseconds.
 /// A span that is empty or reversed is finished from the start.
-class TDurationTween final
+class TDurationTween
 {
 public:
     TDurationTween() = default;

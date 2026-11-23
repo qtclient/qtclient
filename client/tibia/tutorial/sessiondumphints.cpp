@@ -2,6 +2,7 @@
 
 #include "chat/chatchannel.h"
 #include "jsonvalidator.h"
+#include "tutorial/sessiondumphintcondition.h"
 #include "tutorial/sessiondumphintpublishgameaction.h"
 
 #include <QJsonArray>
@@ -157,12 +158,42 @@ TSessiondumpHints::THintPtr TSessiondumpHints::createSwitchChannelHint(const QJs
     return std::make_shared<TSessiondumpHintSwitchChannel>(channelType);
 }
 
-TSessiondumpHints::THintPtr TSessiondumpHints::createConditionHint(const QJsonObject&)
+TSessiondumpHints::THintPtr TSessiondumpHints::createConditionHint(const QJsonObject& object)
 {
-    // Conditions (pause the replay until the player does what the hint shows)
-    // build CipSoft game action contexts and GUI tutorial markers, which
-    // qtclient does not model yet; they are left out.
-    return nullptr;
+    using C = TSessiondumpHintCondition;
+    shared::TJsonObjectValidator validator(object);
+    if (!validator.value(QStringLiteral("conditiondata")).isObject().isValid())
+        throw std::invalid_argument(InvalidHint);
+    if (!validator.value(QStringLiteral("conditiontype")).isString().isValid())
+        throw std::invalid_argument(InvalidHint);
+    const QString type = object[QStringLiteral("conditiontype")].toString();
+    const QJsonObject data = object[QStringLiteral("conditiondata")].toObject();
+    // AUTOWALK and MOVE are tested apart from the other types; no other type
+    // matches either, so the result is the same as one chain.
+    THintPtr hint;
+    if (type == QLatin1String("AUTOWALK"))
+        hint = C::createAutowalkHintFromJsonObject(data);
+    else if (type == QLatin1String("MOVE"))
+        hint = C::createMoveHintFromJsonObject(data);
+    if (type == QLatin1String("ATTACK"))
+        hint = C::createAttackOrGreetHintFromJsonObject(data, input::EGameAction::ATTACK_CREATURE);
+    else if (type == QLatin1String("OPEN_IN_NEW_WINDOW"))
+        hint = C::createUseHintFromJsonObject(data, input::EGameAction::OPEN_IN_NEW_WINDOW);
+    else if (type == QLatin1String("GREET"))
+        hint = C::createAttackOrGreetHintFromJsonObject(data, input::EGameAction::START_TALKING_TO_NPC);
+    else if (type == QLatin1String("USE"))
+        hint = C::createUseHintFromJsonObject(data, input::EGameAction::USE);
+    else if (type == QLatin1String("TALK"))
+        hint = C::createTalkHintFromJsonObject(data);
+    else if (type == QLatin1String("USE_WITH"))
+        hint = C::createUseWithHintFromJsonObject(data);
+    else if (type == QLatin1String("QUICKLOOT"))
+        hint = C::createQuickLootHintFromJsonObject(data);
+    else if (type == QLatin1String("ACTION_BUTTON_TRIGGERED"))
+        hint = C::createActionButtonTriggeredHintFromJsonObject(data);
+    else if (type == QLatin1String("SHOW_TUTORIAL_HINT"))
+        hint = C::createShowTutorialHintFromJsonObject(data);
+    return hint;
 }
 
 TSessiondumpHints::THintPtr TSessiondumpHints::createTutorialProgressHint(const QJsonObject& object)

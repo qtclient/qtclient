@@ -4,6 +4,8 @@
 
 #include <QJsonDocument>
 
+#include <functional>
+
 #include <vector>
 
 namespace tibia {
@@ -25,6 +27,13 @@ public:
     size_t assetCount() const { return m_assets.size(); }
     /// The file of the first asset of `type`, empty without one.
     QString fileOf(TAsset::EType type) const;
+    /// The first asset `predicate` accepts, or the end.
+    std::vector<TAsset>::const_iterator findAsset(const std::function<bool(const TAsset&)>& predicate) const;
+    /// The first asset whose file is `filename`, or the end.
+    std::vector<TAsset>::const_iterator findIteratorForAssetIdentifiedByFilename(const QString& filename) const;
+    /// A copy of the first asset whose file is `filename` (an invalid asset without one).
+    TAsset findAssetIdentifiedByFilename(const QString& filename) const;
+    bool containsAssetIdentifiedByFilename(const QString& filename) const;
 
 protected:
     /// Called for every valid entry with its JSON (catalog subclasses read more of it).

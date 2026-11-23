@@ -346,8 +346,12 @@ void TMonsterBonusEffectsDialogController::updateStoreTooltip()
                                                       : qtTrId("monster_bonus_effects_no_premium_tooltip"));
     }
     m_storeButtonTooltip = lines.join(u'\n');
-    m_showStoreButtonTooltip = slots != 0xFF;
     Q_EMIT qmlStoreButtonTooltipChanged();
+}
+
+bool TMonsterBonusEffectsDialogController::showStoreButtonTooltip() const
+{
+    return m_storage.availableCharmSlots() != 0xFF;
 }
 
 void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffectID)

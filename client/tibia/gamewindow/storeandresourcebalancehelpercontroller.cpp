@@ -1,41 +1,26 @@
 #include "storeandresourcebalancehelpercontroller.h"
 
+#include "dailyreward/dailyrewardciptypes.h"
+#include "exaltation/exaltationstorage.h"
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
+#include "gamewindow/preydialogcontroller.h"
+#include "proficiency/proficiencystorage.h"
+#include "skillwheel/skillwheelstorage.h"
 #include "store/qmlstoreobjects.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
 
 #include <QLocale>
 
 #include <algorithm>
-#include <climits>
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
-#include <tibia/game/playerdata.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
-
-/// CIP keeps resource 0x49 as the proficiency storage's lunar
-/// ascension orb count (+0x94), which mirrors here.
-constexpr auto LunarAscensionOrbsResource = static_cast<tibia::client::ResourceTypes_t>(0x49);
-
-/// CIP .
-QString englishNumber(const qulonglong value)
+game::TGameSessionBase* sessionBase(const std::shared_ptr<game::IGameSession>& session)
 {
-    return QLocale(QLocale::English).toString(value);
-}
-
-uint64_t balance(const tibia::client::ResourceTypes_t type)
-{
-    return tibia::game::localPlayerResourceBalance(type);
-}
-
-int intBalance(const tibia::client::ResourceTypes_t type)
-{
-    return static_cast<int>(std::min<uint64_t>(balance(type), INT_MAX));
+    return dynamic_cast<game::TGameSessionBase*>(session.get());
 }
 
 }
@@ -43,39 +28,48 @@ int intBalance(const tibia::client::ResourceTypes_t type)
 TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperController(QObject* parent)
     : cip::tibia::gamewindow::TStoreAndResourceBalanceHelperController(parent)
 {
-    m_exaltedDustMaximum = 100;
     m_storeBalance = new store::TQmlStoreBalance(std::nullopt, false, this);
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this]() {
-        updateGold();
-        updateResources();
-    });
-    updateGold();
-    updateResources();
+    m_exaltedDustMaximum = 100;
 }
 
-void TStoreAndResourceBalanceHelperController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+void TStoreAndResourceBalanceHelperController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
 {
     m_gameSessionConnections.disconnectAll();
-    m_gameSession = GameSession;
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
-    m_storage = session ? session->storeStorage().get() : nullptr;
-    m_exaltation = session ? session->exaltationStorage().get() : nullptr;
-    if (m_storage) {
-        m_gameSessionConnections.add(connect(m_storage, &store::TStoreStorage::balanceChanged, this,
-                                             &TStoreAndResourceBalanceHelperController::updateStoreBalance));
-        m_gameSessionConnections.add(connect(m_storage, &store::TStoreStorage::balanceUpdatingChanged, this,
-                                             &TStoreAndResourceBalanceHelperController::updateStoreBalance));
+    m_gameSession = std::move(GameSession);
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session)
+        return;
+    using Self = TStoreAndResourceBalanceHelperController;
+    const auto add = [this](const QMetaObject::Connection& connection) { m_gameSessionConnections.add(connection); };
+    add(connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &Self::onGoldBalanceChanged));
+    add(connect(session->storeStorage().get(), &store::TStoreStorage::balanceChanged, this, &Self::onStoreBalanceChanged));
+    add(connect(session->storeStorage().get(), &store::TStoreStorage::balanceUpdatingChanged, this, &Self::onStoreBalanceChanged));
+    add(connect(session->preyStorage().get(), &prey::TPreyStorage::preyWildcardAmountChanged, this, &Self::onPreyWildcardsChanged));
+    add(connect(session->taskboardCurrenciesStorage().get(), &taskboard::TTaskboardCurrenciesStorage::preyHuntingTaskTokensAmountChanged,
+                this, &Self::onPreyHuntingTaskTokensChanged));
+    add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
+                &Self::onExaltedCurrencyBalanceChanged));
+    add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::currentDustLimitChanged, this,
+                &Self::onExaltedCurrencyBalanceChanged));
+    if (m_skillWheelStorage) {
+        add(connect(m_skillWheelStorage, &skillwheel::TSkillWheelStorage::lesserFragmentsChanged, this, &Self::onLesserFragmentsChanged));
+        add(connect(m_skillWheelStorage, &skillwheel::TSkillWheelStorage::greaterFragmentsChanged, this, &Self::onGreaterFragmentsChanged));
     }
-    if (m_exaltation) {
-        m_gameSessionConnections.add(connect(m_exaltation, &exaltation::TExaltationStorage::currentDustLimitChanged, this,
-                                             &TStoreAndResourceBalanceHelperController::updateResources));
-        m_gameSessionConnections.add(connect(m_exaltation, &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
-                                             &TStoreAndResourceBalanceHelperController::updateResources));
-    }
-    updateGold();
-    updateStoreBalance();
-    updateResources();
+    // Host: the proficiency storage is the client's (CipSoft: the session's).
+    if (proficiency::TProficiencyStorage* proficiencyStorage = proficiency::TProficiencyStorage::instance())
+        add(connect(proficiencyStorage, &proficiency::TProficiencyStorage::resourceBalanceChanged, this,
+                    &Self::onLunarAscensionOrbsAmountChanged));
+    add(connect(session->dailyRewardStorage().get(), &dailyreward::TDailyRewardStorage::cosmeticTokenCountChanged, this,
+                &Self::onCosmeticTokenCountChanged));
+    onGoldBalanceChanged();
+    onStoreBalanceChanged();
+    onPreyWildcardsChanged();
+    onPreyHuntingTaskTokensChanged();
+    onExaltedCurrencyBalanceChanged();
+    onLesserFragmentsChanged();
+    onGreaterFragmentsChanged();
+    onLunarAscensionOrbsAmountChanged();
+    onCosmeticTokenCountChanged();
 }
 
 bool TStoreAndResourceBalanceHelperController::canAffordWithTotalGoldBalance(const int Price)
@@ -83,89 +77,180 @@ bool TStoreAndResourceBalanceHelperController::canAffordWithTotalGoldBalance(con
     return static_cast<qulonglong>(std::max(0, Price)) <= m_bankGoldBalance + m_inventoryGoldBalance;
 }
 
-void TStoreAndResourceBalanceHelperController::updateGold()
+qulonglong TStoreAndResourceBalanceHelperController::totalGoldBalance() const
 {
-    // CIP : bank / inventory / guild from TPlayerData (+0xe8 / +0xf0 / +0xf8)
-    // and hasGuild at +0x100 (set by ResourceBalance type 0x02 → setGuild).
-    qulonglong bank = 0;
-    qulonglong inventory = 0;
-    qulonglong guild = 0;
-    bool hasGuild = false;
-    if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance()) {
-        bank = data->v72();
-        inventory = data->resourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
-        guild = data->v77();
-        hasGuild = data->v78();
-    } else {
-        bank = balance(tibia::client::RESOURCE_BANK_BALANCE);
-        inventory = balance(tibia::client::RESOURCE_GOLD_EQUIPPED);
-        guild = balance(tibia::client::RESOURCE_GUILD_BANK_BALANCE);
-        hasGuild = tibia::game::localPlayerHasResourceBalance(tibia::client::RESOURCE_GUILD_BANK_BALANCE);
-    }
-    if (bank == m_bankGoldBalance && inventory == m_inventoryGoldBalance && guild == m_guildBankGoldBalance
-        && hasGuild == m_hasGuildBankGoldBalance && !m_totalGoldBalanceString.isEmpty())
-        return;
-    m_bankGoldBalance = bank;
-    m_inventoryGoldBalance = inventory;
-    m_guildBankGoldBalance = guild;
-    m_hasGuildBankGoldBalance = hasGuild;
-    m_totalGoldBalance = bank + inventory;
-    m_totalGoldBalanceString = englishNumber(m_totalGoldBalance);
-    m_bankGoldBalanceString = englishNumber(bank);
-    m_inventoryGoldBalanceString = englishNumber(inventory);
-    Q_EMIT goldBalanceChanged();
+    return m_bankGoldBalance + m_inventoryGoldBalance;
 }
 
-void TStoreAndResourceBalanceHelperController::updateStoreBalance()
+QString TStoreAndResourceBalanceHelperController::totalGoldBalanceString() const
 {
+    return QLocale(QLocale::English).toString(totalGoldBalance());
+}
+
+QString TStoreAndResourceBalanceHelperController::bankGoldBalanceString() const
+{
+    return QLocale(QLocale::English).toString(m_bankGoldBalance);
+}
+
+QString TStoreAndResourceBalanceHelperController::inventoryGoldBalanceString() const
+{
+    return QLocale(QLocale::English).toString(m_inventoryGoldBalance);
+}
+
+void TStoreAndResourceBalanceHelperController::onGoldBalanceChanged()
+{
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session) {
+        m_bankGoldBalance = 0;
+        m_inventoryGoldBalance = 0;
+        m_guildBankGoldBalance = 0;
+        Q_EMIT goldBalanceChanged();
+        return;
+    }
+    const game::TPlayerData& data = *session->playerData();
+    const auto bank = static_cast<qulonglong>(data.bankGold());
+    const auto inventory = static_cast<qulonglong>(data.inventoryGold());
+    const auto guild = static_cast<qulonglong>(data.guildBankGold());
+    const bool hasGuild = data.isGuildBankGoldKnown();
+    bool changed = false;
+    if (m_bankGoldBalance != bank) {
+        m_bankGoldBalance = bank;
+        changed = true;
+    }
+    if (m_inventoryGoldBalance != inventory) {
+        m_inventoryGoldBalance = inventory;
+        changed = true;
+    }
+    if (m_guildBankGoldBalance != guild) {
+        m_guildBankGoldBalance = guild;
+        changed = true;
+    }
+    if (m_hasGuildBankGoldBalance != hasGuild) {
+        m_hasGuildBankGoldBalance = hasGuild;
+        changed = true;
+    }
+    if (changed)
+        Q_EMIT goldBalanceChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onStoreBalanceChanged()
+{
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session)
+        return;
+    const store::TStoreStorage& storage = *session->storeStorage();
+    const std::optional<store::TStoreBalance> balance = storage.balance();
+    if (!store::balanceDiffers(m_storeBalanceValue, balance))
+        return;
+    m_storeBalanceValue = balance;
     QObject* previous = m_storeBalance;
-    m_storeBalance = m_storage ? new store::TQmlStoreBalance(*m_storage, this) : new store::TQmlStoreBalance(std::nullopt, false, this);
-    Q_EMIT storeBalanceChanged();
+    m_storeBalance = new store::TQmlStoreBalance(m_storeBalanceValue, storage.balanceUpdating(), this);
+    // Host: QML may still read the old object in this pass.
     if (previous)
         previous->deleteLater();
+    Q_EMIT storeBalanceChanged();
 }
 
-void TStoreAndResourceBalanceHelperController::updateResources()
+void TStoreAndResourceBalanceHelperController::onPreyWildcardsChanged()
 {
-    const int wildcards = intBalance(tibia::client::RESOURCE_PREY_WILDCARDS);
-    if (wildcards != m_preyWildcards) {
-        m_preyWildcards = wildcards;
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session) {
+        m_preyWildcards = 0;
         Q_EMIT preyWildcardsChanged();
+        return;
     }
-    const int tokens = intBalance(tibia::client::RESOURCE_TASK_HUNTING);
-    if (tokens != m_preyHuntingTaskTokens) {
-        m_preyHuntingTaskTokens = tokens;
+    const int wildcards = session->preyStorage()->preyWildcards();
+    if (m_preyWildcards == wildcards)
+        return;
+    m_preyWildcards = wildcards;
+    Q_EMIT preyWildcardsChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onPreyHuntingTaskTokensChanged()
+{
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session) {
+        m_preyHuntingTaskTokens = 0;
         Q_EMIT preyHuntingTaskTokensChanged();
+        return;
     }
-    const int dust = intBalance(tibia::client::RESOURCE_FORGE_DUST);
-    const int dustMaximum = m_exaltation ? m_exaltation->currentDustLimit() : 100;
-    const int slivers = intBalance(tibia::client::RESOURCE_FORGE_SLIVER);
-    const int cores = intBalance(tibia::client::RESOURCE_FORGE_CORES);
-    if (dust != m_exaltedDustBalance || dustMaximum != m_exaltedDustMaximum || slivers != m_exaltedSliversCount
-        || cores != m_exaltedCoreCount) {
-        m_exaltedDustBalance = dust;
-        m_exaltedDustMaximum = dustMaximum;
-        m_exaltedSliversCount = slivers;
-        m_exaltedCoreCount = cores;
+    const int tokens = session->taskboardCurrenciesStorage()->preyHuntingTaskTokensAmount();
+    if (m_preyHuntingTaskTokens == tokens)
+        return;
+    m_preyHuntingTaskTokens = tokens;
+    Q_EMIT preyHuntingTaskTokensChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onExaltedCurrencyBalanceChanged()
+{
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session) {
+        m_exaltedDustBalance = 0;
+        m_exaltedDustMaximum = 100;
+        m_exaltedSliversCount = 0;
+        m_exaltedCoreCount = 0;
         Q_EMIT exaltedCurrencyBalanceChanged();
+        return;
     }
-    const int lesser = intBalance(tibia::client::RESOURCE_LESSER_FRAGMENT);
-    const int greater = intBalance(tibia::client::RESOURCE_GREATER_FRAGMENT);
-    if (lesser != m_lesserFragmentCount || greater != m_greaterFragmentCount) {
-        m_lesserFragmentCount = lesser;
-        m_greaterFragmentCount = greater;
-        Q_EMIT fragmentBalanceChanged();
-    }
-    const auto orbs = static_cast<uint>(intBalance(LunarAscensionOrbsResource));
-    if (orbs != m_lunarAscensionOrbsAmount) {
-        m_lunarAscensionOrbsAmount = orbs;
-        Q_EMIT lunarAscensionOrbsAmountChanged();
-    }
-    const auto cosmetic = static_cast<uint>(intBalance(tibia::client::RESOURCE_COSMETIC_TOKENS));
-    if (cosmetic != m_cosmeticTokenCount) {
-        m_cosmeticTokenCount = cosmetic;
-        Q_EMIT cosmeticTokenCountChanged();
-    }
+    const exaltation::TExaltationStorage& exaltation = *session->exaltationStorage();
+    const auto update = [](int& member, const int value) {
+        if (member == value)
+            return false;
+        member = value;
+        return true;
+    };
+    const bool dust = update(m_exaltedDustBalance, exaltation.dustBalance());
+    const bool maximum = update(m_exaltedDustMaximum, exaltation.currentDustLimit());
+    const bool slivers = update(m_exaltedSliversCount, exaltation.sliversBalance());
+    const bool cores = update(m_exaltedCoreCount, exaltation.coresBalance());
+    if (dust || maximum || slivers || cores)
+        Q_EMIT exaltedCurrencyBalanceChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onLesserFragmentsChanged()
+{
+    if (!m_gameSession || !m_skillWheelStorage)
+        return;
+    const int fragments = m_skillWheelStorage->lesserFragments();
+    if (fragments == m_lesserFragmentCount)
+        return;
+    m_lesserFragmentCount = fragments;
+    Q_EMIT fragmentBalanceChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onGreaterFragmentsChanged()
+{
+    if (!m_gameSession || !m_skillWheelStorage)
+        return;
+    const int fragments = m_skillWheelStorage->greaterFragments();
+    if (fragments == m_greaterFragmentCount)
+        return;
+    m_greaterFragmentCount = fragments;
+    Q_EMIT fragmentBalanceChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onLunarAscensionOrbsAmountChanged()
+{
+    const proficiency::TProficiencyStorage* proficiencyStorage = proficiency::TProficiencyStorage::instance();
+    if (!m_gameSession || !proficiencyStorage)
+        return;
+    const auto orbs = static_cast<uint>(proficiencyStorage->lunarAscensionOrbs());
+    if (orbs == m_lunarAscensionOrbsAmount)
+        return;
+    m_lunarAscensionOrbsAmount = orbs;
+    Q_EMIT lunarAscensionOrbsAmountChanged();
+}
+
+void TStoreAndResourceBalanceHelperController::onCosmeticTokenCountChanged()
+{
+    game::TGameSessionBase* session = sessionBase(m_gameSession);
+    if (!session)
+        return;
+    const auto tokens = static_cast<uint>(session->dailyRewardStorage()->cosmeticTokenCount());
+    if (tokens == m_cosmeticTokenCount)
+        return;
+    m_cosmeticTokenCount = tokens;
+    Q_EMIT cosmeticTokenCountChanged();
 }
 
 }

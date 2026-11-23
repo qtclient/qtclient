@@ -21,9 +21,6 @@ public:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 Q_SIGNALS:
-    /// Tip alias used by TTooltipHelperQmlService.
-    void hoverEvent(QObject* watched, int type);
-    /// CIP moc signal (QObject*, QEvent::Type).
     void eventTriggered(QObject* pObject, QEvent::Type EventType);
 };
 
@@ -54,7 +51,8 @@ public:
     bool inWindow() override { return m_inWindow; }
 
 private:
-    void onHoverEvent(QObject* watched, int type);
+    void onEventTriggered(QObject* pObject, QEvent::Type EventType);
+    void onTooltipEventWatcherUnregistered(cip::tibia::qmlcomponents::TTooltipEventWatcher* watcher);
     void release(cip::tibia::qmlcomponents::TTooltipEventWatcher* watcher);
     void scheduleHoverRefresh();
 

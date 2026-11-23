@@ -1,14 +1,17 @@
 #include "bountytaskscontroller.h"
 
+#include "game/gamesessionbase.h"
+#include "taskboard/taskboardbountytasksstorage.h"
 #include "taskboard/taskboardciptypes.h"
+#include "taskboard/taskboardcurrenciesstorage.h"
 
 #include <tibia/assets/things.h>
 
 #include <QString>
 
 #include <algorithm>
-#include <climits>
-#include <cmath>
+#include <limits>
+#include <vector>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -16,13 +19,44 @@ namespace tibia::gamewindow {
 
 namespace {
 
-constexpr int BountyMaxRerollTokens = 10;
+/// A talisman at this level cannot be upgraded any further.
+constexpr int TalismanMaxLevel = 355;
+/// From this many reroll tokens on no more can be gained.
+constexpr int RerollTokenLimit = 10;
 
-uint32_t mapU32(const std::map<std::string, uint32_t>& map, const char* key, const uint32_t fallback = 0)
+/// The bonus of a talisman level in per cent: 2.5% plus 0.5% per level up to
+/// level 15, 0.25% per level up to 55 and 0.1% per level up to 355.
+double talismanPerCent(const int level)
 {
-    const auto it = map.find(key);
-    return it == map.end() ? fallback : it->second;
+    const double fromFiftyFive = level >= 55 ? static_cast<double>(std::min(level, TalismanMaxLevel) - 55) * 0.001 : 0.0;
+    const double fromFifteen = level >= 15 ? static_cast<double>(std::min(level, 55) - 15) * 0.0025 : 0.0;
+    return (fromFiftyFive + static_cast<double>(std::min(level, 15)) * 0.005 + 0.025 + fromFifteen) * 100.0;
 }
+
+/// The bestiary talisman doubles the bonus of the level.
+double bestiaryTalismanPerCent(const int level)
+{
+    const double fromFiftyFive = level >= 55 ? static_cast<double>(std::min(level, TalismanMaxLevel) - 55) * 0.001 : 0.0;
+    const double fromFifteen = level >= 15 ? static_cast<double>(std::min(level, 55) - 15) * 0.0025 : 0.0;
+    const double value = fromFiftyFive + static_cast<double>(std::min(level, 15)) * 0.005 + 0.025 + fromFifteen;
+    return (value + value) * 100.0;
+}
+
+/// The races a preferred-monster slot already holds (preferred and avoided).
+std::vector<uint32_t> assignedRaceIds(const std::vector<taskboard::TBountyPreferredMonsterSlot>& slots)
+{
+    std::vector<uint32_t> raceIds;
+    for (const taskboard::TBountyPreferredMonsterSlot& slot : slots) {
+        if (slot.preferredRaceId != 0)
+            raceIds.push_back(slot.preferredRaceId);
+        if (slot.avoidedRaceId != 0)
+            raceIds.push_back(slot.avoidedRaceId);
+    }
+    return raceIds;
+}
+
+// Host: the list models below are not ported yet; they take display rows,
+// which the bounty data is turned into here.
 
 QString raceCaption(const uint16_t raceId)
 {
@@ -37,15 +71,14 @@ QString raceCaption(const uint16_t raceId)
     return name;
 }
 
-/// CIP External: shared panel chrome + per-tier badge (silver/gold/platinum).
 QString tierBackdrop()
 {
     return QStringLiteral("/images/taskboard/backdrop-bounty-tasks.png");
 }
 
-QString tierIcon(const uint8_t rarity)
+QString tierIcon(const uint8_t grade)
 {
-    switch (rarity) {
+    switch (grade) {
     case 3:
         return QStringLiteral("/images/taskboard/icon-bounty-task-platinum.png");
     case 2:
@@ -57,41 +90,73 @@ QString tierIcon(const uint8_t rarity)
     }
 }
 
-uint64_t bountyPoints()
+QVector<taskboard::BountyTaskRow> bountyTaskRows(const std::vector<taskboard::TBountyTask>& tasks)
 {
-    return tibia::game::hasLocalPlayer()
-               ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BOUNTY_POINTS)
-               : 0;
-}
-
-uint64_t rerollTokenBalance()
-{
-    return tibia::game::hasLocalPlayer()
-               ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BOUNTY_TASK_REROLL_TOKENS)
-               : 0;
-}
-
-int clampedRerollTokenBalance()
-{
-    return static_cast<int>(std::min<uint64_t>(rerollTokenBalance(), static_cast<uint64_t>(INT_MAX)));
-}
-
-/// Provisional elite Premium dust by CIP difficulty 0..3 × grade (1/2/4/8).
-/// Matches server getEliteDustReward until External dust table is RE'd.
-int eliteDustFor(const int cipDifficulty, const uint8_t rarity)
-{
-    static constexpr int kBaseByDifficulty[] = { 3, 7, 16, 27 };
-    const int base = kBaseByDifficulty[std::clamp(cipDifficulty, 0, 3)];
-    switch (rarity) {
-    case 1:
-        return base * 2;
-    case 2:
-        return base * 4;
-    case 3:
-        return base * 8;
-    default:
-        return base;
+    using taskboard::EBountyTaskClaimState;
+    QVector<taskboard::BountyTaskRow> rows;
+    rows.reserve(static_cast<int>(tasks.size()));
+    for (const taskboard::TBountyTask& task : tasks) {
+        taskboard::BountyTaskRow row;
+        row.taskIndex = task.index;
+        row.raceId = task.raceId;
+        row.killText = QStringLiteral("%1 / %2 kills").arg(static_cast<int>(task.currentKills)).arg(static_cast<int>(task.requiredKills));
+        row.rewardXp = static_cast<int>(task.rewardExperience);
+        row.rewardBountyPoints = task.rewardBountyPoints;
+        row.rewardDust = task.rewardDust;
+        const bool taken = task.claimState != EBountyTaskClaimState::Available;
+        row.canAccept = !taken && row.raceId > 0;
+        row.canClaim = taken && task.requiredKills > 0 && task.currentKills >= task.requiredKills;
+        row.caption = raceCaption(task.raceId);
+        row.taskTierImageSource = tierBackdrop();
+        row.taskTierIconSource = tierIcon(task.grade);
+        rows.push_back(std::move(row));
     }
+    return rows;
+}
+
+QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<taskboard::TBountyPreferredMonsterSlot>& slots,
+                                                              int& clearCost)
+{
+    QVector<taskboard::PreferredMonsterSlotRow> rows;
+    rows.reserve(static_cast<int>(slots.size()));
+    int unlockCost = 0;
+    clearCost = 0;
+    for (const taskboard::TBountyPreferredMonsterSlot& slot : slots) {
+        taskboard::PreferredMonsterSlotRow row;
+        // The model shows 1-based slot numbers; the commands send the 0-based slot.
+        row.slotIndex = slot.index + 1;
+        row.isUnlocked = slot.unlocked;
+        row.unlockCost = slot.unlockCost;
+        row.canBeUnlocked = slot.nextToUnlock;
+        row.preferredMonsterRaceId = static_cast<int>(slot.preferredRaceId);
+        row.avoidedMonsterRaceId = static_cast<int>(slot.avoidedRaceId);
+        row.preferredMonsterRaceName = raceCaption(static_cast<uint16_t>(slot.preferredRaceId));
+        row.avoidedMonsterRaceName = raceCaption(static_cast<uint16_t>(slot.avoidedRaceId));
+        if (slot.nextToUnlock && unlockCost == 0)
+            unlockCost = slot.unlockCost;
+        if (slot.unlocked && clearCost == 0 && slot.unlockCost > 0)
+            clearCost = slot.unlockCost;
+        rows.push_back(std::move(row));
+    }
+    if (clearCost == 0)
+        clearCost = unlockCost;
+    return rows;
+}
+
+/// The monster races the preferred-monster picker offers (no bosses).
+std::vector<uint16_t> pickableRaceIds()
+{
+    const auto& races = tibia::game::getAllRaces();
+    std::vector<uint16_t> raceIds;
+    raceIds.reserve(races.size());
+    for (const auto& race : races) {
+        if (race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
+            continue;
+        raceIds.emplace_back(static_cast<uint16_t>(race.raceId));
+    }
+    std::sort(raceIds.begin(), raceIds.end());
+    raceIds.erase(std::unique(raceIds.begin(), raceIds.end()), raceIds.end());
+    return raceIds;
 }
 
 }
@@ -99,287 +164,318 @@ int eliteDustFor(const int cipDifficulty, const uint8_t rarity)
 TBountyTasksController::TBountyTasksController(QObject* parent)
     : cip::tibia::gamewindow::TBountyTasksController(parent)
     , m_tasksModel(new taskboard::TBountyTasksListModel(this))
+    , m_monsterFilter(new taskboard::TMonsterListModelSortFilterProxy({}, this))
     , m_preferredModel(new taskboard::TBountyTasksPreferredMonsterListModel(this))
-    , m_monsterSource(new taskboard::TMonsterListFilterModel(this))
-    , m_monsterFilter(new taskboard::TMonsterListModelSortFilterProxy(this))
 {
     m_bountyTasks = m_tasksModel;
-    m_preferredSlotData = m_preferredModel;
-    m_monsterFilter->setSourceModel(m_monsterSource);
     m_monsterList = m_monsterFilter;
-    m_rerollTokenAmount = clampedRerollTokenBalance();
-    m_bountyPointsBalance = static_cast<int>(bountyPoints());
+    m_preferredSlotData = m_preferredModel;
 }
+
+void TBountyTasksController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    hideDialogTab();
+    m_gameSessionConnections.disconnectAll();
+    m_hasSelection = false;
+    m_gameSession = GameSession;
+    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    if (taskboard::TTaskboardBountyTasksStorage* storage = session->taskboardBountyTasksStorage().get())
+        m_gameSessionConnections.add(connect(storage, &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                             [this](const taskboard::TBountyTaskData& data) { onBountyTaskDataReceived(data); }));
+    taskboard::TTaskboardCurrenciesStorage* currencyStorage = session->taskboardCurrenciesStorage().get();
+    using Currencies = taskboard::TTaskboardCurrenciesStorage;
+    using Self = TBountyTasksController;
+    m_gameSessionConnections.add(connect(currencyStorage, &Currencies::bountyPointsChanged, this, &Self::bountyTaskDataChanged));
+    m_gameSessionConnections.add(
+        connect(currencyStorage, &Currencies::bountyTaskRerollTokensChanged, this, &Self::bountyTaskDataChanged));
+}
+
+void TBountyTasksController::onBountyTaskDataReceived(const taskboard::TBountyTaskData& data)
+{
+    m_tasksModel->setRows(bountyTaskRows(data.tasks));
+    int clearCost = 0;
+    QVector<taskboard::PreferredMonsterSlotRow> slotRows = preferredSlotRows(data.preferredMonsterSlots, clearCost);
+    m_preferredModel->setClearCost(clearCost);
+    m_preferredModel->setRows(std::move(slotRows));
+    // Host: the race list the picker filters (CipSoft builds it once with the proxy).
+    m_monsterFilter->monsterListFilterModel()->setRaceIds(pickableRaceIds());
+    m_monsterFilter->setExcludedRaceIds(assignedRaceIds(data.preferredMonsterSlots));
+    // The bounty data answers the pending request; its difficulty and elite
+    // mode become the selection.
+    m_selectedDifficulty = data.difficulty;
+    m_selectedElite = data.elite;
+    m_hasSelection = true;
+    m_requestPending = false;
+    Q_EMIT bountyTaskDataChanged();
+}
+
+const taskboard::TBountyTaskData* TBountyTasksController::bountyTaskData() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    const taskboard::TTaskboardBountyTasksStorage* storage = session ? session->taskboardBountyTasksStorage().get() : nullptr;
+    return storage ? &storage->bountyTaskData() : nullptr;
+}
+
+const taskboard::TTaskboardCurrenciesStorage* TBountyTasksController::currencies() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->taskboardCurrenciesStorage().get() : nullptr;
+}
+
+int TBountyTasksController::talismanLevel(const int talismanIndex) const
+{
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    return data ? data->talismans[static_cast<size_t>(talismanIndex)].level : 0;
+}
+
+bool TBountyTasksController::talismanUpgradable(const int talismanIndex) const
+{
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    return data && data->talismans[static_cast<size_t>(talismanIndex)].upgradable;
+}
+
+int TBountyTasksController::talismanUpgradeCost(const int talismanIndex) const
+{
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    return data ? data->talismans[static_cast<size_t>(talismanIndex)].upgradeCost : 0;
+}
+
+QString TBountyTasksController::disabledTalismanTooltip(const int talismanIndex) const
+{
+    if (bountyTaskData() && !talismanUpgradable(talismanIndex)) {
+        if (talismanLevel(talismanIndex) == TalismanMaxLevel)
+            return qtTrId("taskboard_tooltip_task_ring_max_level");
+        if (bountyPointsBalance() < talismanUpgradeCost(talismanIndex))
+            return qtTrId("taskboard_tooltip_no_bounty_points");
+    }
+    return QString();
+}
+
+int TBountyTasksController::bountyTaskDifficulty() const
+{
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    return data ? data->difficulty : 0;
+}
+
+bool TBountyTasksController::isElite() const
+{
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    return data && data->elite;
+}
+
+int TBountyTasksController::canRerollTasks() const
+{
+    const taskboard::TTaskboardCurrenciesStorage* storage = currencies();
+    return storage && storage->bountyTaskRerollTokens() > 0;
+}
+
+int TBountyTasksController::rerollTokenAmount() const
+{
+    const taskboard::TTaskboardCurrenciesStorage* storage = currencies();
+    return storage ? storage->bountyTaskRerollTokens() : 0;
+}
+
+bool TBountyTasksController::limitOfRerollTokensReached() const
+{
+    const taskboard::TTaskboardCurrenciesStorage* storage = currencies();
+    return storage && storage->bountyTaskRerollTokens() >= RerollTokenLimit;
+}
+
+int TBountyTasksController::bountyPointsBalance() const
+{
+    const taskboard::TTaskboardCurrenciesStorage* storage = currencies();
+    return storage ? storage->bountyPoints() : 0;
+}
+
+double TBountyTasksController::bonusDamagePerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(0)) : 0.0;
+}
+
+double TBountyTasksController::nextBonusDamagePerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(0) + 1) : 0.0;
+}
+
+bool TBountyTasksController::canUpgradeBonusDamage() const { return talismanUpgradable(0); }
+
+int TBountyTasksController::bonusDamageUpgradeCost() const { return talismanUpgradeCost(0); }
+
+QString TBountyTasksController::disabledDamagePercentTooltip() const { return disabledTalismanTooltip(0); }
+
+bool TBountyTasksController::maximumReachedBonusDamage() const
+{
+    return bountyTaskData() && talismanLevel(0) == TalismanMaxLevel;
+}
+
+double TBountyTasksController::lifeLeechPerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(1)) : 0.0;
+}
+
+double TBountyTasksController::nextLifeLeechPerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(1) + 1) : 0.0;
+}
+
+bool TBountyTasksController::canUpgradeLifeLeech() const { return talismanUpgradable(1); }
+
+int TBountyTasksController::lifeLeechUpgradeCost() const { return talismanUpgradeCost(1); }
+
+QString TBountyTasksController::disabledLifeLeechPercentTooltip() const { return disabledTalismanTooltip(1); }
+
+bool TBountyTasksController::maximumReachedBonusLifeLeech() const
+{
+    return bountyTaskData() && talismanLevel(1) == TalismanMaxLevel;
+}
+
+double TBountyTasksController::bonusLootPerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(2)) : 0.0;
+}
+
+double TBountyTasksController::nextBonusLootPerCent() const
+{
+    return bountyTaskData() ? talismanPerCent(talismanLevel(2) + 1) : 0.0;
+}
+
+bool TBountyTasksController::canUpgradeBonusLoot() const { return talismanUpgradable(2); }
+
+int TBountyTasksController::bonusLootUpgradeCost() const { return talismanUpgradeCost(2); }
+
+QString TBountyTasksController::disabledLootPercentTooltip() const { return disabledTalismanTooltip(2); }
+
+bool TBountyTasksController::maximumReachedBonusLoot() const
+{
+    return bountyTaskData() && talismanLevel(2) == TalismanMaxLevel;
+}
+
+double TBountyTasksController::doubleBestiaryChancePerCent() const
+{
+    return bountyTaskData() ? bestiaryTalismanPerCent(talismanLevel(3)) : 0.0;
+}
+
+double TBountyTasksController::nextDoubleBestiaryChancePerCent() const
+{
+    return bountyTaskData() ? bestiaryTalismanPerCent(talismanLevel(3) + 1) : 0.0;
+}
+
+bool TBountyTasksController::canUpgradeDoubleBestiaryChance() const { return talismanUpgradable(3); }
+
+int TBountyTasksController::doubleBestiaryChanceUpgradeCost() const { return talismanUpgradeCost(3); }
+
+QString TBountyTasksController::disabledBestiaryPercentTooltip() const { return disabledTalismanTooltip(3); }
+
+bool TBountyTasksController::maximumReachedBonusBestiary() const
+{
+    return bountyTaskData() && talismanLevel(3) == TalismanMaxLevel;
+}
+
+QObject* TBountyTasksController::bountyTasks() const { return m_tasksModel; }
+
+QObject* TBountyTasksController::monsterList() const { return m_monsterFilter; }
+
+QObject* TBountyTasksController::preferredSlotData() const { return m_preferredModel; }
 
 void TBountyTasksController::showDialogTab()
 {
-    refreshBountyPoints();
-    taskboard::TTaskboardProtocolMessageHandler::requestBountyTasks();
+    if (m_gameSession)
+        taskboard::TTaskboardProtocolMessageHandler::requestBountyTasks();
 }
 
-void TBountyTasksController::hideDialogTab() {}
-
-void TBountyTasksController::refreshBountyPoints()
+void TBountyTasksController::hideDialogTab()
 {
-    bool changed = false;
-    const int nextBounty = static_cast<int>(bountyPoints());
-    if (nextBounty != m_bountyPointsBalance) {
-        m_bountyPointsBalance = nextBounty;
-        changed = true;
-    }
-    // CipSoft QML binds rerollTokenAmount into the currency view next to
-    // "Reroll Task" — that is the player's 0x58 balance, not the spend cost.
-    const int nextReroll = clampedRerollTokenBalance();
-    if (nextReroll != m_rerollTokenAmount) {
-        m_rerollTokenAmount = nextReroll;
-        changed = true;
-    }
-    const bool limit = nextReroll >= BountyMaxRerollTokens;
-    if (limit != m_limitOfRerollTokensReached) {
-        m_limitOfRerollTokensReached = limit;
-        changed = true;
-    }
-    const int canReroll = (m_freeDailyReroll || nextReroll > 0) ? 1 : 0;
-    if (canReroll != m_canRerollTasks) {
-        m_canRerollTasks = canReroll;
-        changed = true;
-    }
-    if (changed)
-        notifyChanged();
+    clearNameFilter();
+    m_showPreferredList = false;
+    Q_EMIT bountyTaskDataChanged();
 }
 
-void TBountyTasksController::applyBountyData(const std::map<std::string, uint32_t>& header,
-                                              const std::vector<std::map<std::string, uint32_t>>& monsters,
-                                              const std::vector<std::map<std::string, uint32_t>>& talismans)
+void TBountyTasksController::sendRequest(const std::function<void()>& send)
 {
-    m_rerollPoints = static_cast<int>(mapU32(header, "rerollPoints"));
-    m_freeDailyReroll = mapU32(header, "claimDaily") != 0;
-    // Protocol stores Lua difficulty 1..4; CIP combo uses 0..3.
-    const int luaDifficulty = static_cast<int>(std::clamp<uint32_t>(mapU32(header, "difficulty", 1), 1, 4));
-    m_bountyTaskDifficulty = luaDifficulty - 1;
-    // Prefer ResourceBalance 0x58 (same SoT as the daily reward wall). Fall back
-    // to the bounty header when the resource packet has not landed yet.
-    int balance = clampedRerollTokenBalance();
-    if (balance == 0 && m_rerollPoints > 0)
-        balance = m_rerollPoints;
-    m_rerollTokenAmount = balance;
-    m_canRerollTasks = (m_freeDailyReroll || balance > 0) ? 1 : 0;
-    m_limitOfRerollTokensReached = balance >= BountyMaxRerollTokens;
-    m_bountyPointsBalance = static_cast<int>(bountyPoints());
-    // Do not setResourceBalance here — emitting during dialog incubation
-    // re-enters QML and can corrupt the heap.
-
-    QVector<taskboard::BountyTaskRow> rows;
-    rows.reserve(static_cast<int>(monsters.size()));
-    for (const auto& monster : monsters) {
-        taskboard::BountyTaskRow row;
-        row.taskIndex = static_cast<int>(mapU32(monster, "taskIndex"));
-        row.raceId = static_cast<int>(mapU32(monster, "raceId"));
-        const int current = static_cast<int>(mapU32(monster, "currentKills"));
-        const int total = static_cast<int>(mapU32(monster, "totalKills"));
-        row.killText = QStringLiteral("%1 / %2 kills").arg(current).arg(total);
-        row.rewardXp = static_cast<int>(mapU32(monster, "rewardXp"));
-        row.rewardBountyPoints = static_cast<int>(mapU32(monster, "rewardPoints"));
-        const uint8_t rarity = static_cast<uint8_t>(mapU32(monster, "rarity"));
-        // OTC wire has no rewardDust field; when Elite checkbox is on, show provisional
-        // dust so QML BountyTaskPanel can render (server grants dust only if elite was on at roll).
-        const int wireDust = static_cast<int>(mapU32(monster, "rewardDust"));
-        row.rewardDust = wireDust > 0 ? wireDust : (m_isElite ? eliteDustFor(m_bountyTaskDifficulty, rarity) : 0);
-        const bool isActive = mapU32(monster, "isActive") != 0;
-        const bool isCompleted = mapU32(monster, "isCompleted") != 0;
-        row.canAccept = !isActive && !isCompleted && row.raceId > 0;
-        row.canClaim = isCompleted || (isActive && total > 0 && current >= total);
-        row.caption = raceCaption(static_cast<uint16_t>(row.raceId));
-        row.taskTierImageSource = tierBackdrop();
-        row.taskTierIconSource = tierIcon(rarity);
-        // External client/RCC have no elite badge path (only silver/gold/platinum
-        // tier icons). QML hides the Image when source === "".
-        row.isEliteIconSource = {};
-        rows.push_back(std::move(row));
-    }
-    m_tasksModel->setRows(std::move(rows));
-    applyTalismans(talismans);
-    notifyChanged();
+    if (!m_gameSession || m_requestPending)
+        return;
+    send();
+    m_requestPending = true;
 }
 
-void TBountyTasksController::applyPreferredData(const std::vector<std::map<std::string, uint32_t>>& preferredSlots,
-                                                 const std::vector<uint16_t>& raceIds)
+void TBountyTasksController::selectDifficulty(const int difficulty, const bool elite)
 {
-    int clearCost = 0;
-    int unlockCost = 0;
-    bool sawLocked = false;
-    QVector<taskboard::PreferredMonsterSlotRow> rows;
-    rows.reserve(static_cast<int>(preferredSlots.size()));
-    for (size_t i = 0; i < preferredSlots.size(); ++i) {
-        const auto& slot = preferredSlots[i];
-        taskboard::PreferredMonsterSlotRow row;
-        // The model shows 1-based slot numbers; the commands send the 0-based slot.
-        row.slotIndex = static_cast<int>(mapU32(slot, "slot", static_cast<uint32_t>(i + 1)));
-        if (row.slotIndex <= 0)
-            row.slotIndex = static_cast<int>(i + 1);
-        const bool locked = mapU32(slot, "locked") != 0;
-        row.isUnlocked = !locked;
-        row.unlockCost = static_cast<int>(mapU32(slot, "price"));
-        row.preferredMonsterRaceId = static_cast<int>(mapU32(slot, "preferred"));
-        row.avoidedMonsterRaceId = static_cast<int>(mapU32(slot, "unwanted"));
-        row.preferredMonsterRaceName = raceCaption(static_cast<uint16_t>(row.preferredMonsterRaceId));
-        row.avoidedMonsterRaceName = raceCaption(static_cast<uint16_t>(row.avoidedMonsterRaceId));
-        if (locked && !sawLocked) {
-            sawLocked = true;
-            unlockCost = row.unlockCost;
-            clearCost = row.unlockCost;
-            row.canBeUnlocked = true;
-        } else {
-            row.canBeUnlocked = false;
-        }
-        if (row.isUnlocked && clearCost == 0 && row.unlockCost > 0)
-            clearCost = row.unlockCost;
-        rows.push_back(std::move(row));
-    }
-    m_preferredModel->setClearCost(clearCost > 0 ? clearCost : unlockCost);
-    m_preferredModel->setRows(std::move(rows));
-
-    QVector<taskboard::MonsterRaceRow> races;
-    races.reserve(static_cast<int>(raceIds.size()));
-    for (const uint16_t raceId : raceIds) {
-        taskboard::MonsterRaceRow race;
-        race.raceId = raceId;
-        race.name = raceCaption(raceId);
-        races.push_back(std::move(race));
-    }
-    std::sort(races.begin(), races.end(), [](const taskboard::MonsterRaceRow& a, const taskboard::MonsterRaceRow& b) {
-        return a.name.localeAwareCompare(b.name) < 0;
-    });
-    m_monsterSource->setRows(std::move(races));
-    notifyChanged();
+    if (m_hasSelection && m_selectedDifficulty == difficulty && m_selectedElite == elite)
+        return;
+    if (!m_gameSession)
+        return;
+    m_selectedDifficulty = difficulty;
+    m_selectedElite = elite;
+    m_hasSelection = true;
+    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(difficulty, elite);
 }
-
-void TBountyTasksController::applyTalismans(const std::vector<std::map<std::string, uint32_t>>& talismans)
-{
-    const auto valueAt = [&](const size_t index, const char* key) -> double {
-        if (index >= talismans.size())
-            return 0.0;
-        return static_cast<double>(mapU32(talismans[index], key)) / 100.0;
-    };
-    const auto costAt = [&](const size_t index) -> int {
-        if (index >= talismans.size())
-            return 0;
-        return static_cast<int>(mapU32(talismans[index], "upgradeCost"));
-    };
-    const auto canUpgrade = [&](const size_t index) -> bool {
-        if (index >= talismans.size())
-            return false;
-        return mapU32(talismans[index], "nextValue") > 0 && mapU32(talismans[index], "upgradeCost") > 0;
-    };
-    const auto maxed = [&](const size_t index) -> bool {
-        if (index >= talismans.size())
-            return true;
-        return mapU32(talismans[index], "nextValue") == 0;
-    };
-
-    m_bonusDamagePerCent = valueAt(0, "currentValue");
-    m_nextBonusDamagePerCent = valueAt(0, "nextValue");
-    m_bonusDamageUpgradeCost = costAt(0);
-    m_canUpgradeBonusDamage = canUpgrade(0);
-    m_maximumReachedBonusDamage = maxed(0);
-
-    m_lifeLeechPerCent = valueAt(1, "currentValue");
-    m_nextLifeLeechPerCent = valueAt(1, "nextValue");
-    m_lifeLeechUpgradeCost = costAt(1);
-    m_canUpgradeLifeLeech = canUpgrade(1);
-    m_maximumReachedBonusLifeLeech = maxed(1);
-
-    m_bonusLootPerCent = valueAt(2, "currentValue");
-    m_nextBonusLootPerCent = valueAt(2, "nextValue");
-    m_bonusLootUpgradeCost = costAt(2);
-    m_canUpgradeBonusLoot = canUpgrade(2);
-    m_maximumReachedBonusLoot = maxed(2);
-
-    m_doubleBestiaryChancePerCent = valueAt(3, "currentValue");
-    m_nextDoubleBestiaryChancePerCent = valueAt(3, "nextValue");
-    m_doubleBestiaryChanceUpgradeCost = costAt(3);
-    m_canUpgradeDoubleBestiaryChance = canUpgrade(3);
-    m_maximumReachedBonusBestiary = maxed(3);
-}
-
-void TBountyTasksController::notifyChanged() { Q_EMIT bountyTaskDataChanged(); }
 
 void TBountyTasksController::setBountyTaskDifficulty(const int Difficulty)
 {
-    if (Difficulty == m_bountyTaskDifficulty)
-        return;
-    m_bountyTaskDifficulty = std::clamp(Difficulty, 0, 3);
-    notifyChanged();
-    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(m_bountyTaskDifficulty, m_isElite);
-}
-
-void TBountyTasksController::rerollTasksAction()
-{
-    taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks();
+    // The elite mode stays the one of the current bounty data.
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    selectDifficulty(Difficulty, data && data->elite);
 }
 
 void TBountyTasksController::setElite(const bool isElite)
 {
-    if (m_isElite == isElite)
-        return;
-    m_isElite = isElite;
-    if (m_tasksModel)
-        m_tasksModel->setEliteDust(m_isElite, m_bountyTaskDifficulty);
-    notifyChanged();
-    // The elite preference travels with the difficulty.
-    taskboard::TTaskboardProtocolMessageHandler::setBountyTaskDifficulty(m_bountyTaskDifficulty, m_isElite);
+    // The difficulty stays the one of the current bounty data.
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    selectDifficulty(data ? data->difficulty : 0, isElite);
+}
+
+void TBountyTasksController::rerollTasksAction()
+{
+    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks(); });
 }
 
 void TBountyTasksController::acceptBountyTask(const int TaskIndex)
 {
-    taskboard::TTaskboardProtocolMessageHandler::acceptBountyTask(std::max(0, TaskIndex));
+    sendRequest([TaskIndex] { taskboard::TTaskboardProtocolMessageHandler::acceptBountyTask(TaskIndex); });
 }
 
 void TBountyTasksController::claimReward()
 {
-    taskboard::TTaskboardProtocolMessageHandler::claimBountyReward();
+    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::claimBountyReward(); });
 }
 
 void TBountyTasksController::upgradeBountyTalisman(const int BountyTalismanIndex)
 {
-    if (BountyTalismanIndex < 0 || BountyTalismanIndex > 3)
-        return;
-    taskboard::TTaskboardProtocolMessageHandler::upgradeBountyTalisman(BountyTalismanIndex);
+    sendRequest([BountyTalismanIndex] { taskboard::TTaskboardProtocolMessageHandler::upgradeBountyTalisman(BountyTalismanIndex); });
 }
 
-/// The server unlocks the next locked slot.
 void TBountyTasksController::unlockPreferredMonsterSlot()
 {
-    taskboard::TTaskboardProtocolMessageHandler::unlockPreferredMonsterSlot();
+    sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::unlockPreferredMonsterSlot(); });
 }
 
 void TBountyTasksController::clearPreferredMonster(const int slotIndex)
 {
-    taskboard::TTaskboardProtocolMessageHandler::clearPreferredMonster(std::max(0, slotIndex - 1));
+    sendRequest([slotIndex] { taskboard::TTaskboardProtocolMessageHandler::clearPreferredMonster(slotIndex); });
 }
 
 void TBountyTasksController::clearAvoidedMonster(const int slotIndex)
 {
-    taskboard::TTaskboardProtocolMessageHandler::clearAvoidedMonster(std::max(0, slotIndex - 1));
+    sendRequest([slotIndex] { taskboard::TTaskboardProtocolMessageHandler::clearAvoidedMonster(slotIndex); });
 }
 
 void TBountyTasksController::assignPreferredMonster(const int slotIndex, const int RaceId)
 {
-    taskboard::TTaskboardProtocolMessageHandler::assignPreferredMonster(std::max(0, slotIndex - 1), std::max(0, RaceId));
+    sendRequest([slotIndex, RaceId] { taskboard::TTaskboardProtocolMessageHandler::assignPreferredMonster(slotIndex, RaceId); });
 }
 
 void TBountyTasksController::assignAvoidedMonster(const int slotIndex, const int RaceId)
 {
-    taskboard::TTaskboardProtocolMessageHandler::assignAvoidedMonster(std::max(0, slotIndex - 1), std::max(0, RaceId));
+    sendRequest([slotIndex, RaceId] { taskboard::TTaskboardProtocolMessageHandler::assignAvoidedMonster(slotIndex, RaceId); });
 }
 
 /// Also forgets the creature picked for a preferred / avoided slot.
 void TBountyTasksController::clearNameFilter()
 {
-    if (m_monsterFilter)
-        m_monsterFilter->setNameFilter(QString());
-    if (m_preferredModel)
-        m_preferredModel->clearAssignableMonster();
+    m_monsterFilter->setNameFilter(QString());
+    m_preferredModel->clearAssignableMonster();
 }
 
 }

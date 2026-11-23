@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace tibia {
@@ -33,6 +34,9 @@ using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 namespace tibia {
 namespace creatures {
 class TCreature;
+}
+namespace renderer {
+class TRenderVolumeProvider;
 }
 namespace worldmap {
 class TWorldMapViewport;
@@ -120,6 +124,11 @@ public:
     /// picker reads the player's floor and the visible area from it.
     void setViewport(worldmap::TWorldMapViewport* viewport) { m_viewport = viewport; }
     worldmap::TWorldMapViewport* viewport() const { return m_viewport; }
+    /// The session's render volume provider: the drawn floors come from its volume.
+    void setRenderVolumeProvider(std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider)
+    {
+        m_renderVolumeProvider = std::move(renderVolumeProvider);
+    }
     /// The field at the top-left of the walked area of floor `z`.
     Position firstField(int z) const;
 
@@ -259,8 +268,9 @@ private:
     /// The colours of the frames around a creature, outer to inner; all 0
     /// when it shows none.
     std::array<uint32_t, 3> creatureMarks(const tibia::creatures::TCreature& creature) const;
-    uint8_t firstVisibleFloor() const;
-    uint8_t lastVisibleFloor() const;
+    /// Recomputes the render volume for the camera's field; first and last
+    /// drawn floor from it.
+    void updateVisibleFloors(uint8_t& first, uint8_t& last);
     QPoint toScreen(const Position& pos) const;
     /// The field drawn at light map cell (x, y) of floor z.
     Position lightField(int x, int y, int z) const;
@@ -333,6 +343,7 @@ private:
     Frame m_frame;
     Position m_camera;
     worldmap::TWorldMapViewport* m_viewport = nullptr;
+    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     int m_visibleWidth = DefaultVisibleWidth;
     int m_visibleHeight = DefaultVisibleHeight;
     double m_viewScale = 1;

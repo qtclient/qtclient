@@ -26,6 +26,8 @@
 #include "game/gamesessionbase.h"
 #include "taskboard/taskboardciptypes.h"
 #include "taskboard/taskboardcurrenciesstorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "taskboard/monsterlistfiltermodel.h"
 
 #include <client/outfit.h>
 #include <client/staticdata.h>
@@ -91,66 +93,6 @@ QObject* tradeOutfitConfiguration(const Outfit& outfit, QObject* parent)
 }
 
 } // namespace
-
-TSoulSealsMonsterListModel::TSoulSealsMonsterListModel(QObject* parent)
-    : QAbstractListModel(parent)
-{}
-
-int TSoulSealsMonsterListModel::rowCount(const QModelIndex& parent) const
-{
-    return parent.isValid() ? 0 : static_cast<int>(m_entries.size());
-}
-
-QVariant TSoulSealsMonsterListModel::data(const QModelIndex& index, const int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_entries.size()))
-        return {};
-    const Entry& e = m_entries[static_cast<size_t>(index.row())];
-    switch (role) {
-        case RaceIdRole:
-        case RaceIDRole: return e.raceId;
-        case NameRole: return e.name;
-        case AnimusMasteryCompletedRole: return e.animusMasteryCompleted;
-        case SoulPitFightPriceRole: return e.soulPitFightPrice;
-        case TotalAmountRole: return e.soulPitFightPrice;
-        case CategoryRole: return e.category;
-        default: return {};
-    }
-}
-
-QHash<int, QByteArray> TSoulSealsMonsterListModel::roleNames() const
-{
-    return { { RaceIdRole, "raceId" },
-             { RaceIDRole, "raceID" },
-             { NameRole, "name" },
-             { AnimusMasteryCompletedRole, "animusMasteryCompleted" },
-             { SoulPitFightPriceRole, "soulPitFightPrice" },
-             { TotalAmountRole, "totalAmount" },
-             { CategoryRole, "category" } };
-}
-
-void TSoulSealsMonsterListModel::setEntries(std::vector<Entry> entries)
-{
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
-}
-
-int TSoulSealsMonsterListModel::getRaceIDAtIndex(const int rowIndex) const
-{
-    if (rowIndex < 0 || rowIndex >= static_cast<int>(m_entries.size()))
-        return 0;
-    return m_entries[static_cast<size_t>(rowIndex)].raceId;
-}
-
-const TSoulSealsMonsterListModel::Entry* TSoulSealsMonsterListModel::entryForRace(const int raceId) const
-{
-    for (const Entry& e : m_entries) {
-        if (e.raceId == raceId)
-            return &e;
-    }
-    return nullptr;
-}
 
 TCharacterAuctionConfiguration::TCharacterAuctionConfiguration(QObject* parent)
     : cip::tibia::gamewindow::TCharacterAuctionConfiguration(parent)
@@ -807,65 +749,6 @@ void TGenericConfirmWithDontShowAgainDialogController::onNoClicked()
     dialog()->close();
 }
 
-THirelingNameChangeController* THirelingNameChangeController::s_instance = nullptr;
-
-THirelingNameChangeController::THirelingNameChangeController(QObject* parent)
-    : cip::tibia::gamewindow::THirelingNameChangeController(parent)
-{
-    s_instance = this;
-}
-
-THirelingNameChangeController* THirelingNameChangeController::instance()
-{
-    return s_instance;
-}
-
-TInfoBannerController::TInfoBannerController(QQuickItem* mapWindowPane, QObject* parent)
-    : cip::tibia::gamewindow::TInfoBannerController(parent)
-    , m_mapWindowPane(mapWindowPane)
-{}
-
-QQuickItem* TInfoBannerController::mapWindowPane()
-{
-    return m_mapWindowPane;
-}
-
-void TInfoBannerController::enqueue(const cip::tibia::qmlcomponents::enums::EInfoBannerType type, const QJsonValue& extra)
-{
-    if (!app::ClientOptions::load().options().value(QLatin1String("gameWindowShowInfoBanner")).toBool(true))
-        return;
-    Q_EMIT showInfoBanner(type, extra);
-    Q_EMIT displayDataChanged();
-}
-
-void TInfoBannerController::clearQueue()
-{
-    Q_EMIT clearInfoBannerQueue();
-}
-
-TLinkCopyWarningDialogController::TLinkCopyWarningDialogController(QObject* parent)
-    : cip::tibia::gamewindow::TLinkCopyWarningDialogController(parent)
-{}
-
-void TLinkCopyWarningDialogController::onButtonClicked(
-    const cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)
-{
-    using B = cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier;
-    if (ButtonIdentifier == B::YES || ButtonIdentifier == B::OK)
-        onYesClicked();
-    else
-        onNoClicked();
-}
-
-void TLinkCopyWarningDialogController::onYesClicked()
-{
-    Q_EMIT copyConfirmed();
-}
-
-void TLinkCopyWarningDialogController::onNoClicked()
-{
-    Q_EMIT copyRejected();
-}
 
 TLoginConfirmationCodeEnterTextDialogController::TLoginConfirmationCodeEnterTextDialogController(QObject* parent)
     : TDialogController(QStringLiteral("LoginConfirmationCodeEnterDialog.qml"), parent)
@@ -966,7 +849,7 @@ TMainCharacterChangeDialogController::~TMainCharacterChangeDialogController()
 }
 
 void TMainCharacterChangeDialogController::showDialog(const uint32_t OfferIDForMainCharChange,
-                                                      std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo)
+                                                      std::vector<store::TPossibleMainCharacterInformation> PossibleMainCharInfo)
 {
     closeDialog();
     m_offerId = OfferIDForMainCharChange;
@@ -980,8 +863,8 @@ void TMainCharacterChangeDialogController::showDialog(const uint32_t OfferIDForM
 
 void TMainCharacterChangeDialogController::createMainCharInfos()
 {
-    for (const TPossibleMainCharacterInformation& info : m_possibleMainChars)
-        m_mainCharInfos.append(new TQmlPossibleMainChar(info.characterName, info.worldName, info.vocation, info.level));
+    for (const store::TPossibleMainCharacterInformation& info : m_possibleMainChars)
+        m_mainCharInfos.append(new TQmlPossibleMainChar(info.name, info.world, info.vocation, info.level));
 }
 
 void TMainCharacterChangeDialogController::closeDialog()
@@ -1072,10 +955,21 @@ TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QOb
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), parent)
 {
     s_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiOfflineTrainingDialog", [this](GameObject*, const Args&) {
-        showSkillsDialog();
-        return std::any{};
-    });
+}
+
+void TMultiOfflineTrainingDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    closeDialog();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
+                                               &game::TGameProtocolMessageHandler::requestShowMultiOfflineTrainingDialog,
+                                               this, &TMultiOfflineTrainingDialogController::showSkillsDialog));
 }
 
 TMultiOfflineTrainingDialogController::~TMultiOfflineTrainingDialogController()
@@ -1149,11 +1043,21 @@ TOutfitMemorialDialogController::TOutfitMemorialDialogController(QObject* parent
     : TDialogController(QStringLiteral("OutfitMemorialDialog.qml"), parent)
 {
     s_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOutfitMemorial", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<OutfitMemorialData>(&args[0]))
-            showMemorial(*data);
-        return std::any{};
-    });
+}
+
+void TOutfitMemorialDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    dialog()->close();
+    for (const QMetaObject::Connection& connection : m_gameSessionConnections)
+        disconnect(connection);
+    m_gameSessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (!session)
+        return;
+    m_gameSessionConnections.push_back(connect(session->gameProtocolMessageHandler().get(),
+                                               &game::TGameProtocolMessageHandler::requestOpenOutfitMemorialDialog,
+                                               this, &TOutfitMemorialDialogController::showMemorial));
 }
 
 TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
@@ -1216,6 +1120,13 @@ TShowImageDialogController::TShowImageDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ShowImageDialog.qml"), parent)
 {
     s_instance = this;
+}
+
+TShowImageDialogController::~TShowImageDialogController()
+{
+    setData({});
+    if (s_instance == this)
+        s_instance = nullptr;
 }
 
 TShowImageDialogController* TShowImageDialogController::instance()
@@ -1340,57 +1251,61 @@ void TShowSpellBookDialogController::requestClose() { dialog()->close(); }
 
 namespace {
 
-/// Every race with a soul pit category, marked done when its animus mastery is
-/// complete; mastered races without a category are appended.
-std::vector<TSoulSealsMonsterListModel::Entry> soulSealsMonsterEntries(const std::vector<uint16_t>& animusMasteryRaceIds)
+/// The bestiary monsters (no bosses) of the given occurrences that carry the
+/// static data's sixth flag, in static data order.
+std::vector<uint16_t> monsterRaceIdsOfOccurrences(const std::set<int>& occurrences)
 {
-    std::unordered_set<uint16_t> mastered;
-    for (const uint16_t raceId : animusMasteryRaceIds) {
-        if (raceId != 0)
-            mastered.insert(raceId);
-    }
-    const auto entryFor = [](const uint16_t raceId, const RaceType& race, const bool done) {
-        TSoulSealsMonsterListModel::Entry entry;
-        entry.raceId = static_cast<int>(raceId);
-        entry.name = race.name.empty() ? QString::number(raceId) : QString::fromStdString(race.name);
-        entry.animusMasteryCompleted = done;
-        const uint32_t category = race.hasCategory ? race.category : 0;
-        entry.soulPitFightPrice = race.hasCategory
-            ? static_cast<int>(std::min<uint32_t>((category + 1U) * 10U, std::numeric_limits<uint16_t>::max()))
-            : 0;
-        entry.category = static_cast<int>(std::min<uint32_t>(category, std::numeric_limits<uint8_t>::max()));
-        return entry;
-    };
-    std::vector<TSoulSealsMonsterListModel::Entry> entries;
-    for (const auto& race : tibia::game::getAllRaces()) {
-        if (!race.hasCategory || race.boss || race.raceId == 0 || race.raceId > std::numeric_limits<uint16_t>::max())
+    std::vector<uint16_t> raceIds;
+    for (const RaceType& race : tibia::game::getAllRaces()) {
+        if (race.boss)
             continue;
-        const auto raceId = static_cast<uint16_t>(race.raceId);
-        entries.push_back(entryFor(raceId, race, mastered.erase(raceId) > 0));
+        if (occurrences.count(static_cast<int>(race.occurrence)) != 0 && race.category != 0)
+            raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }
-    for (const uint16_t raceId : mastered)
-        entries.push_back(entryFor(raceId, tibia::game::raceData(raceId), true));
-    return entries;
+    return raceIds;
 }
+
+/// The soul pit races: common and uncommon monsters.
+std::vector<uint16_t> soulSealsMonsterRaceIds()
+{
+    return monsterRaceIdsOfOccurrences({ 0, 1 });
+}
+
+/// The name of a bestiary difficulty (harmless .. challenging).
+QString monsterDifficultyName(const int difficulty)
+{
+    static const char* const Names[] = {
+        "monsters_difficulty_harmless", "monsters_difficulty_trivial", "monsters_difficulty_easy",
+        "monsters_difficulty_medium",   "monsters_difficulty_hard",    "monsters_difficulty_challenging",
+    };
+    if (static_cast<unsigned>(difficulty) < 6)
+        return qtTrId(Names[difficulty]);
+    return qtTrId("dummy_unknown");
+}
+
+/// The soul seals dialog's name of a difficulty filter.
+struct TDifficultyFilterName
+{
+    QString operator()(taskboard::ShowAll) const { return qtTrId("soulseals_dialog_filter_all"); }
+    QString operator()(const int difficulty) const { return monsterDifficultyName(difficulty); }
+};
 
 }
 
 TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("taskboard/SoulSealsDialog.qml"), parent)
-    , m_allMonsters(new TSoulSealsMonsterListModel(this))
-    , m_visibleMonsters(new TSoulSealsMonsterListModel(this))
+    , m_monsterListProxy(soulSealsMonsterRaceIds())
 {
-    m_monsterList = m_visibleMonsters;
-    m_availableMonsterDifficulties = QStringList{ QStringLiteral("All"), QStringLiteral("Easy"), QStringLiteral("Medium"),
-                                                  QStringLiteral("Hard"), QStringLiteral("Expert") };
-    m_indexOfSelectedDifficulty = 0;
+    m_selectedMonsterRaceID = 0;
+    m_indexOfSelectedDifficulty = -1;
+    m_difficultyFilters = { taskboard::ShowAll{}, 0, 1, 2, 3, 4, 5 };
 }
 
-void TSoulSealsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+void TSoulSealsDialogController::connectToGameSession(std::shared_ptr<game::IGameSession> GameSession)
 {
     closeDialog();
     m_gameSessionConnections.disconnectAll();
-    m_gameSession = GameSession;
+    m_gameSession = std::move(GameSession);
     auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
         return;
@@ -1399,11 +1314,96 @@ void TSoulSealsDialogController::connectToGameSession(const std::shared_ptr<game
                                          &TSoulSealsDialogController::soulSealsChanged));
     m_gameSessionConnections.add(connect(session->taskboardProtocolMessageHandler(),
                                          &taskboard::TTaskboardProtocolMessageHandler::openSoulSealsDialog, this,
-                                         [this](const std::vector<uint16_t>& animusMasteryRaceIds) {
-                                             applyEntries(soulSealsMonsterEntries(animusMasteryRaceIds));
-                                             dialog()->create();
-                                             dialog()->show();
-                                         }));
+                                         &TSoulSealsDialogController::showDialog));
+    m_gameSessionConnections.add(connect(&m_fightConfirmation, &TMessageDialogController::acceptClicked, this,
+                                         &TSoulSealsDialogController::onFightConfirmed));
+    m_gameSessionConnections.add(connect(&m_fightConfirmation, &TMessageDialogController::discardClicked, this,
+                                         &TSoulSealsDialogController::onFightDiscarded));
+}
+
+void TSoulSealsDialogController::showDialog(const std::vector<uint16_t>& AnimusMasteryRaceIds)
+{
+    m_monsterListProxy.monsterListFilterModel()->setCompletedAnimusMasteryRaceIds(AnimusMasteryRaceIds);
+    m_monsterListProxy.invalidate();
+    if (dialog()->item())
+        return;
+    dialog()->create();
+    dialog()->show();
+    if (m_indexOfSelectedDifficulty != 0) {
+        m_indexOfSelectedDifficulty = 0;
+        if (!m_difficultyFilters.empty()) {
+            m_monsterListProxy.setDifficultyFilter(m_difficultyFilters.front());
+            Q_EMIT selectedDifficultyChanged();
+        }
+    }
+    setMonstersNameFilter(QString());
+}
+
+void TSoulSealsDialogController::onFightConfirmed()
+{
+    if (!m_gameSession)
+        return;
+    tibia::game::soulsealFightAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
+    closeDialog();
+}
+
+void TSoulSealsDialogController::onFightDiscarded()
+{
+    m_fightConfirmation.dialog()->close();
+}
+
+void TSoulSealsDialogController::setIndexOfSelectedDifficulty(const int v)
+{
+    if (m_indexOfSelectedDifficulty == v)
+        return;
+    m_indexOfSelectedDifficulty = v;
+    // Host: CipSoft only checks the upper bound.
+    if (v >= 0 && v < static_cast<int>(m_difficultyFilters.size())) {
+        m_monsterListProxy.setDifficultyFilter(m_difficultyFilters[static_cast<size_t>(v)]);
+        Q_EMIT selectedDifficultyChanged();
+    }
+}
+
+void TSoulSealsDialogController::setMonstersNameFilter(const QString& v)
+{
+    if (m_monstersNameFilter == v)
+        return;
+    m_monstersNameFilter = v;
+    m_monsterListProxy.setNameFilter(m_monstersNameFilter);
+    Q_EMIT monstersNameFilterChanged();
+}
+
+void TSoulSealsDialogController::closeDialog()
+{
+    m_fightConfirmation.dialog()->close();
+    dialog()->close();
+}
+
+QString TSoulSealsDialogController::selectedMonstername() const
+{
+    return cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).name));
+}
+
+int TSoulSealsDialogController::selectedFightPrice() const
+{
+    return taskboard::soulPitFightPrice(tibia::game::raceData(static_cast<uint16_t>(m_selectedMonsterRaceID)).difficulty);
+}
+
+QString TSoulSealsDialogController::soulSealsString() const
+{
+    if (!m_gameSession)
+        return QStringLiteral("0");
+    return QLocale(QLocale::English).toString(availableSoulSeals());
+}
+
+QStringList TSoulSealsDialogController::availableMonsterDifficulties() const
+{
+    QStringList names;
+    if (!m_gameSession)
+        return names;
+    for (const taskboard::TMonsterDifficultyFilter& filter : m_difficultyFilters)
+        names.append(std::visit(TDifficultyFilterName{}, filter));
+    return names;
 }
 
 int TSoulSealsDialogController::availableSoulSeals() const
@@ -1412,51 +1412,9 @@ int TSoulSealsDialogController::availableSoulSeals() const
     return session ? session->taskboardCurrenciesStorage()->soulSealsAmount() : 0;
 }
 
-QString TSoulSealsDialogController::soulSealsString() const
+QObject* TSoulSealsDialogController::monsterList() const
 {
-    return QLocale(QLocale::English).toString(availableSoulSeals());
-}
-
-void TSoulSealsDialogController::applyEntries(std::vector<TSoulSealsMonsterListModel::Entry> entries)
-{
-    m_allMonsters->setEntries(std::move(entries));
-    rebuildVisible();
-}
-
-void TSoulSealsDialogController::rebuildVisible()
-{
-    std::vector<TSoulSealsMonsterListModel::Entry> visible;
-    // index 0 = All; CipSoft categories are 0-based Easy.. matching packet category.
-    const int difficultyFilter = m_indexOfSelectedDifficulty <= 0 ? -1 : m_indexOfSelectedDifficulty - 1;
-    const QString filter = m_monstersNameFilter.trimmed();
-    for (int i = 0; i < m_allMonsters->rowCount(); ++i) {
-        const int raceId = m_allMonsters->getRaceIDAtIndex(i);
-        const TSoulSealsMonsterListModel::Entry* entry = m_allMonsters->entryForRace(raceId);
-        if (!entry)
-            continue;
-        if (difficultyFilter >= 0 && entry->category != difficultyFilter)
-            continue;
-        if (!filter.isEmpty() && !entry->name.contains(filter, Qt::CaseInsensitive))
-            continue;
-        visible.push_back(*entry);
-    }
-    m_visibleMonsters->setEntries(std::move(visible));
-    Q_EMIT monstersListChanged();
-    refreshSelection();
-}
-
-void TSoulSealsDialogController::refreshSelection()
-{
-    const TSoulSealsMonsterListModel::Entry* entry = m_visibleMonsters->entryForRace(m_selectedMonsterRaceID);
-    if (!entry) {
-        m_selectedMonsterRaceID = 0;
-        m_selectedMonstername.clear();
-        m_selectedFightPrice = 0;
-    } else {
-        m_selectedMonstername = entry->name;
-        m_selectedFightPrice = entry->soulPitFightPrice;
-    }
-    Q_EMIT selectedMonsterRaceIDChanged();
+    return const_cast<taskboard::TMonsterListModelSortFilterProxy*>(&m_monsterListProxy);
 }
 
 void TSoulSealsDialogController::setSelectedMonsterRaceID(const int v)
@@ -1464,31 +1422,16 @@ void TSoulSealsDialogController::setSelectedMonsterRaceID(const int v)
     if (m_selectedMonsterRaceID == v)
         return;
     m_selectedMonsterRaceID = v;
-    refreshSelection();
+    Q_EMIT selectedMonsterRaceIDChanged();
 }
 
-void TSoulSealsDialogController::setIndexOfSelectedDifficulty(const int v)
+void TSoulSealsDialogController::fightselectedMonster()
 {
-    if (m_indexOfSelectedDifficulty == v)
-        return;
-    m_indexOfSelectedDifficulty = v;
-    Q_EMIT selectedDifficultyChanged();
-    rebuildVisible();
-}
-
-void TSoulSealsDialogController::setMonstersNameFilter(const QString& v)
-{
-    if (m_monstersNameFilter == v)
-        return;
-    m_monstersNameFilter = v;
-    Q_EMIT monstersNameFilterChanged();
-    rebuildVisible();
-}
-
-void TSoulSealsDialogController::closeDialog()
-{
-    dialog()->close();
-    Q_EMIT dialogClosed();
+    m_fightConfirmation.setMessageDialogTextFormat(cip::tibia::gamewindow::TMessageDialogController::RICH_TEXT);
+    const QString caption = qtTrId("soulseals_fight_confirmation_caption");
+    const QString text = qtTrId("soulseals_fight_confirmation_text").arg(selectedMonstername()).arg(selectedFightPrice());
+    m_fightConfirmation.setButtons(okCancelDialogButtons());
+    m_fightConfirmation.showMessage(caption, text);
 }
 
 void TSoulSealsDialogController::requestClose()
@@ -1496,42 +1439,64 @@ void TSoulSealsDialogController::requestClose()
     closeDialog();
 }
 
-void TSoulSealsDialogController::fightselectedMonster()
-{
-    if (m_selectedMonsterRaceID > 0)
-        tibia::game::soulsealFightAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
-    closeDialog();
-}
-
 TSurveyInvitationDialogController::TSurveyInvitationDialogController(QObject* parent)
     : TDialogController(QStringLiteral("SurveyInvitatioDialog.qml"), parent)
-{}
-
-void TSurveyInvitationDialogController::showInvitation(const QString& text, const QString& date, const bool askLater)
 {
+    m_showAskLater = true;
+}
+
+void TSurveyInvitationDialogController::showInvitation(const int surveyId, const QString& text, const QString& token, const quint32 date,
+                                                       const bool askLater)
+{
+    m_surveyId = surveyId;
     m_invitationText = text;
-    m_dateString = date;
+    m_token = token;
+    m_date = date;
     m_showAskLater = askLater;
     Q_EMIT contentChanged();
     dialog()->create();
     dialog()->show();
 }
 
+QString TSurveyInvitationDialogController::dateString() const
+{
+    const QDateTime date = QDateTime::fromSecsSinceEpoch(m_date);
+    return QLocale(QLocale::English, QLocale::UnitedKingdom).toString(date, QStringLiteral("MMMM d, yyyy"));
+}
+
+void TSurveyInvitationDialogController::setSurveyStatus(const int status)
+{
+    config::TClientOptions* options = config::TClientOptions::instance();
+    if (!options)
+        return;
+    config::TSurveyInvitationOptions survey = options->surveyInvitationOptions();
+    survey.status = status;
+    options->setSurveyInvitationOptions(survey);
+}
+
 void TSurveyInvitationDialogController::onYesClicked()
 {
     dialog()->close();
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenSurveyUrl>(m_surveyId, m_token));
+    setSurveyStatus(2);
+    Q_EMIT contentChanged();
     Q_EMIT dialogClosed();
 }
 
 void TSurveyInvitationDialogController::onNoClicked()
 {
     dialog()->close();
+    setSurveyStatus(2);
+    Q_EMIT contentChanged();
     Q_EMIT dialogClosed();
+    Q_EMIT abort();
 }
 
 void TSurveyInvitationDialogController::onAskLaterClicked()
 {
     dialog()->close();
+    setSurveyStatus(1);
+    Q_EMIT contentChanged();
     Q_EMIT dialogClosed();
 }
 
@@ -1564,33 +1529,41 @@ void TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController::closeReque
     Q_EMIT dialogClosed();
 }
 
-TTutorialOverlayController::TTutorialOverlayController(QObject* parent)
-    : TDialogController(QStringLiteral("tutorial/TutorialOverlayTemplate.qml"), parent)
-{}
-
-void TTutorialOverlayController::onMouseFilterAreaEntered()
-{
-    if (TMouseCursorController* cursor = TMouseCursorController::instance())
-        cursor->onTutorialOverlayEntered();
-}
-
-void TTutorialOverlayController::onMouseFilterAreaExited()
-{
-    if (TMouseCursorController* cursor = TMouseCursorController::instance())
-        cursor->onTutorialOverlayExited();
-}
-
 TTutorialOverlayItemController::TTutorialOverlayItemController(QObject* parent)
     : cip::tibia::gamewindow::TTutorialOverlayItemController(parent)
 {}
+
+TTutorialOverlayItemController::TTutorialOverlayItemController(QQuickItem* item)
+    : cip::tibia::gamewindow::TTutorialOverlayItemController(nullptr)
+    , m_item(item)
+{}
+
+TTutorialOverlayItemController::~TTutorialOverlayItemController()
+{
+    if (!m_item)
+        return;
+    m_item->setParent(nullptr);
+    m_item->deleteLater();
+    m_item = nullptr;
+}
 
 TTutorialOverlayMouseFilterController::TTutorialOverlayMouseFilterController(QObject* parent)
     : cip::tibia::gamewindow::TTutorialOverlayMouseFilterController(parent)
 {}
 
-TTutorialOverlayMouseTrailAnimationController::TTutorialOverlayMouseTrailAnimationController(QObject* parent)
-    : cip::tibia::gamewindow::TTutorialOverlayMouseTrailAnimationController(parent)
+TTutorialOverlayMouseFilterController::TTutorialOverlayMouseFilterController(QQuickItem* item)
+    : cip::tibia::gamewindow::TTutorialOverlayMouseFilterController(nullptr)
+    , m_item(item)
 {}
+
+TTutorialOverlayMouseFilterController::~TTutorialOverlayMouseFilterController()
+{
+    if (!m_item)
+        return;
+    m_item->setParent(nullptr);
+    m_item->deleteLater();
+    m_item = nullptr;
+}
 
 TTwoFactorCodeEnterTextDialogController::TTwoFactorCodeEnterTextDialogController(QObject* parent)
     : TDialogController(QStringLiteral("TwoFactorTextEnterDialog.qml"), parent)
@@ -1601,22 +1574,25 @@ TTwoFactorCodeEnterTextDialogController::TTwoFactorCodeEnterTextDialogController
 void TTwoFactorCodeEnterTextDialogController::onCancelClicked()
 {
     dialog()->close();
-    Q_EMIT dialogClosed();
+    Q_EMIT abort();
 }
 
+/// A code is passed on; an empty one aborts.
 void TTwoFactorCodeEnterTextDialogController::onOkClicked(const QString& EnteredText)
 {
-    m_enteredText = EnteredText;
-    Q_EMIT codeEntered(EnteredText, m_trustedDevice);
     dialog()->close();
-    Q_EMIT dialogClosed();
+    if (!EnteredText.isEmpty()) {
+        m_enteredText = EnteredText;
+        Q_EMIT textEntered(EnteredText);
+        return;
+    }
+    m_enteredText.clear();
+    Q_EMIT abort();
 }
 
 void TTwoFactorCodeEnterTextDialogController::onButtonClicked()
 {
-    // CIP TwoFactorTextEnterDialog.qml resend-email / secondary button.
-    setEmailResendPossible(false);
-    Q_EMIT emailResendRequested();
+    Q_EMIT buttonClicked();
 }
 
 void TTwoFactorCodeEnterTextDialogController::onControllerFinished()
@@ -1632,7 +1608,12 @@ bool TTwoFactorCodeEnterTextDialogController::getIsTrustedDevice()
 
 void TTwoFactorCodeEnterTextDialogController::setIsTrustedDevice(const bool TrustedDevice)
 {
-    setTrustedDevice(TrustedDevice);
+    m_trustedDevice = TrustedDevice;
+}
+
+void TTwoFactorCodeEnterTextDialogController::setTwoFactorMethod(const ETwoFactorMethod Method)
+{
+    m_twoFactorMethod = Method;
 }
 
 TTwoFactorCodeEnterTextDialogController::ETwoFactorMethod TTwoFactorCodeEnterTextDialogController::getTwoFactorMethod()

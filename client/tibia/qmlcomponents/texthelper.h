@@ -11,8 +11,10 @@ namespace qmlcomponents {
 QString thousandShortcutsMultiString(qlonglong number, bool withPlus = false);
 /// CIP: minutes and seconds up to an hour (inclusive), else hours and minutes, days from a day on.
 QString shortDurationString(qint64 seconds);
-/// CIP: "10d" / "1d05" / "12h" / "1h05" / "12m" / "1m05" / "5s".
+/// CIP: "10d" / "1d300" (minutes into the day) / "12h" / "1h05" / "12m" / "1m05" / "5s".
 QString ultraShortDurationString(qint64 seconds);
+/// "HH:MM:SS" (hours not wrapped).
+QString hoursMinutesSecondsString(qint64 seconds);
 
 /// QML singleton TextHelper (CIP: TTextHelperQmlService, metacall).
 /// Multi strings join their longest-to-shortest variants with U+009C so QML

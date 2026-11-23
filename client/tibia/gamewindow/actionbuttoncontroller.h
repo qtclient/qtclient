@@ -1,11 +1,17 @@
 #pragma once
 
+#include "appearances/objectappearanceinstancetypeid.h"
 #include "config/hotkeyoptions.h"
 #include "game/cooldownstorage.h"
 
 #include <cip_gen.h>
 
+#include <memory>
+
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 class TActionBarController;
@@ -45,8 +51,23 @@ public:
     /// The action setters: each one leaves the button as it is when nothing
     /// changes, otherwise empties it, drops its slots and shows the action.
     void setSpell(int spellId, const QString& parameters, int castType);
+    /// The spell's optional cast target type; emits changed.
+    void setCastType(int castType);
+    /// The GUI tutorial marker shown on the button (0: none).
+    void setTutorialMarkerID(int tutorialMarkerID);
     void setText(const QString& text, bool sendAutomatically);
-    void setObject(int objectId, int upgradeTier, int liquidType, config::EUseType useType, bool useEquipSmartMode);
+    /// The object instance (type, liquid or tier) and how it is used.
+    void setObject(const appearances::TObjectAppearanceInstanceTypeID& objectInstance, config::EUseType useType, bool useEquipSmartMode);
+    /// The amount shown on an object button; announces a change.
+    void setObjectCount(uint objectCount);
+    /// The server's name of the button's object (only while it holds an
+    /// object); announces a change.
+    void setObjectInfoName(const QString& objectInfoName);
+    /// The object instance of the shown slot.
+    const appearances::TObjectAppearanceInstanceTypeID& objectInstance() const { return shown()->m_objectInstance; }
+    /// The shown slot's object as the tooltip names it: the server's name
+    /// (with the tier when it has one), else a placeholder.
+    QString objectTooltipName() const;
     void setPassiveAbility(int passiveAbility);
     /// The keys of TriggerActionButton_<bar>.<button>; the first one is shown
     /// on the button.
@@ -60,9 +81,13 @@ public:
     config::EUseType useType() const { return shown()->m_useType; }
     bool useEquipSmartMode() const { return shown()->m_useEquipSmartMode; }
     int passiveAbility() const { return shown()->m_passiveAbility; }
-    /// The object's amount in the inventory and whether it is worn (CIP:
-    /// onInventoryChanged).
-    void refreshObject();
+    /// Takes the session whose cooldowns the button shows (its slots too).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
+    /// Whether the button can be used now (the bar's enable conditions);
+    /// announces a change.
+    void setIsEnabled(bool isEnabled);
+    /// Whether the equip button's object is worn; announces a change.
+    void setObjectIsEquiped(bool objectIsEquiped);
     /// CIP 's per-button part with / :
     /// the remaining cooldown at `now`. Returns whether one runs.
     bool refreshCooldown(qint64 now);
@@ -129,10 +154,10 @@ private:
     /// CIP : the cooldown left at `now` in ms.
     qint64 remainingCooldown(qint64 now) const;
     game::TCooldown currentCooldown() const;
-    template <class T>
-    void set(T& member, const T& value, bool& changed);
 
     TActionBarController* m_bar;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
     QList<QKeySequence> m_hotkeys;
     int m_spellId = 0;
     int m_passiveAbility = 0;
@@ -140,6 +165,8 @@ private:
     int m_castType = 0;
     config::EUseType m_useType = config::EUseType::SelectUseTarget;
     bool m_useEquipSmartMode = false;
+    /// The object of an object button; m_text holds its server name.
+    appearances::TObjectAppearanceInstanceTypeID m_objectInstance;
     bool m_showsCooldown = false;
     std::vector<TActionButtonController*> m_children;
     TActionButtonController* m_shownSlot = nullptr;

@@ -16,6 +16,27 @@ TChatChannelFilterController::TChatChannelFilterController(TChatChannelControlle
 
 TChatChannelController* TChatChannelFilterController::source() const { return static_cast<TChatChannelController*>(sourceModel()); }
 
+QDateTime TChatChannelFilterController::minimumTime() const { return m_minimumTime; }
+
+void TChatChannelFilterController::setMinimumTime(const QDateTime& time)
+{
+    if (m_minimumTime == time)
+        return;
+    beginFilterChange();
+    m_minimumTime = time;
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+}
+
+void TChatChannelFilterController::clearMinimumTime()
+{
+    const QDateTime none;
+    if (m_minimumTime == none)
+        return;
+    beginFilterChange();
+    m_minimumTime = none;
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+}
+
 bool TChatChannelFilterController::canSubscribeToServerLog() const { return source()->canSubscribeToServerLog(); }
 bool TChatChannelFilterController::isSubscribedToServerLog() const { return source()->isSubscribedToServerLog(); }
 bool TChatChannelFilterController::writesToLocalChat() const { return source()->writesToLocalChat(); }
@@ -32,7 +53,7 @@ void TChatChannelFilterController::updateSelection(const int EntryIndex, const i
     source()->updateSelection(EntryIndex, CursorPosition);
 }
 
-void TChatChannelFilterController::selectAll() { source()->selectAll(); }
+void TChatChannelFilterController::selectAll() { source()->selectAllSince(m_minimumTime); }
 
 void TChatChannelFilterController::selectTextPassage(const int EntryIndex, const int PassageStart, const int PassageEnd)
 {

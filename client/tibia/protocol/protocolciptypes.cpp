@@ -1,4 +1,5 @@
 #include "protocol/protocolciptypes.h"
+#include "protocol/protobufobjectpositionhelper.h"
 #include "protocol/protocolmessagequeue.h"
 #include "protocol/inventoryitemwire.h"
 #include "protocol/mapwire.h"
@@ -32,9 +33,7 @@ TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
 std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> g_lastServerMessage;
 
 struct CipTypedKeep {
-    TGameActionContextHelper tGameActionContextHelper;
     TProtobufClientMessageTranslator tProtobufClientMessageTranslator;
-    TProtobufObjectPositionHelper tProtobufObjectPositionHelper;
     TProtobufServerMessageTranslator tProtobufServerMessageTranslator;
     TProtocolClientMessageProcessor tProtocolClientMessageProcessor;
     TProtocolReader tProtocolReader;
@@ -1299,12 +1298,29 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
         const auto type = m.inspection_type();
         w.u8(static_cast<uint8_t>(type));
-        if (type == 0) {
-            writeCoordinate(w, m.position());
-        } else {
-            if (type != 2)
-                w.u16(static_cast<uint16_t>(m.object_id()));
-            w.u8(static_cast<uint8_t>(m.count()));
+        switch (type) {
+        case 0: {
+            // An object somewhere: its classic coordinate.
+            const Position coordinate = TProtobufObjectPositionHelper().toClassicCoordinate(m.object_position());
+            w.u16(static_cast<uint16_t>(coordinate.x));
+            w.u16(static_cast<uint16_t>(coordinate.y));
+            w.u8(coordinate.z);
+            break;
+        }
+        case 1:
+        case 3:
+        case 4:
+            // An object type (NPC trade, cyclopedia, proficiency): type and liquid/tier.
+            w.u16(static_cast<uint16_t>(m.object_identifier().type_id()));
+            w.u8(static_cast<uint8_t>(m.object_identifier().data()));
+            break;
+        case 2:
+            // A player trade item: the side and its index.
+            w.u8(static_cast<uint8_t>(m.trade_side()));
+            w.u8(static_cast<uint8_t>(m.trade_index()));
+            break;
+        default:
+            break;
         }
         return w.out;
     }

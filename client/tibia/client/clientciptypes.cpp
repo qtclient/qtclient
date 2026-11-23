@@ -6,13 +6,17 @@
 
 #include "app/clientoptions.h"
 #include "client/gameclient.h"
+#include "client/preventcloseeventfilter.h"
+#include "gamewindow/gamewindowcontroller.h"
 #include "crashhandler.h"
 #include "logging.h"
 #include "shared/tibiafilesystemhelper.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QEvent>
 #include <QSysInfo>
+#include <QVariant>
 
 #include <algorithm>
 #include <vector>
@@ -71,7 +75,24 @@ TGameApplicationBase::TGameApplicationBase(QObject* parent)
 
 TGameApplication::TGameApplication(QObject* parent)
     : TGameApplicationBase(parent)
+    , m_pPreventCloseEventFilter(new TPreventCloseEventFilter(this))
 {
+    connect(m_pPreventCloseEventFilter, &TPreventCloseEventFilter::preventedClose, this,
+            &TGameApplication::onRequestClose);
+}
+
+void TGameApplication::setClientWindow(QWindow* ClientWindow)
+{
+    if (m_clientWindow) {
+        disconnect(m_clientWindow, nullptr, this, nullptr);
+        m_clientWindow->removeEventFilter(m_pPreventCloseEventFilter);
+    }
+    m_clientWindow = ClientWindow;
+    if (!m_clientWindow)
+        return;
+    m_clientWindow->installEventFilter(m_pPreventCloseEventFilter);
+    connect(m_clientWindow, &QWindow::widthChanged, this, &TGameApplication::windowSizeChanged);
+    connect(m_clientWindow, &QWindow::heightChanged, this, &TGameApplication::windowSizeChanged);
 }
 
 void TGameApplication::setUpLogging()
@@ -141,11 +162,25 @@ void TGameApplication::showErrorAsPopupAndCriticalLog(QString ErrorMessage)
 
 void TGameApplication::onClientPluginReadyToClose()
 {
+    m_pPreventCloseEventFilter->setPreventClose(false);
+    if (m_pGameClient && m_clientWindow) {
+        m_clientWindow->removeEventFilter(m_pPreventCloseEventFilter);
+        m_clientWindow->close();
+    }
+    QCoreApplication::quit();
 }
 
 void TGameApplication::onRequestClose()
 {
-    // Live close/confirm stays on TGameClient / host; do not quit from here.
+    if (!m_pGameClient)
+        return;
+    // Host: a relaunch (graphics engine restart, the launcher) quits without
+    // asking.
+    if (gamewindow::TGameWindowController::processExitAllowed()) {
+        onClientPluginReadyToClose();
+        return;
+    }
+    m_pGameClient->exitClient();
 }
 
 void TGameApplication::onAboutToQuit()
@@ -158,6 +193,11 @@ void TGameApplication::startClientWindowChangedReactionTimer()
 
 void TGameApplication::screenGeometryChanged()
 {
+    // A screen change repaints the client window by toggling its opacity.
+    if (m_clientWindow) {
+        m_clientWindow->setOpacity(0.0);
+        m_clientWindow->setOpacity(1.0);
+    }
 }
 
 void TGameApplication::onDelayedCliendWindowChanged()
@@ -166,16 +206,19 @@ void TGameApplication::onDelayedCliendWindowChanged()
 
 void TGameApplication::onNumberOfSidebarsChanged(const std::size_t NewNumber)
 {
-    (void)NewNumber;
+    // clientwindow.qml's minimum width grows with each sidebar.
+    m_clientWindow->setProperty("numberOfSidebars", QVariant(static_cast<uint>(NewNumber)));
 }
 
 void TGameApplication::onLeftAndRightStatusActionBarWidthChanged(const int NewWidth)
 {
-    (void)NewWidth;
+    m_clientWindow->setProperty("leftAndRightStatusActionBarWidth", QVariant(NewWidth));
 }
 
 void TGameApplication::windowSizeChanged()
 {
+    if (m_pGameClient)
+        m_pGameClient->onWindowSizeChanged();
 }
 
 void ownProductSurface(QObject* parent)
@@ -192,11 +235,6 @@ void ownProductSurface(QObject* parent)
         new TGameApplication(nullptr);
     // Process-lifetime qtclient twin (linked below). Not GameClient session owner.
     (void)IGamesessionManager::instance();
-}
-
-bool TPreventCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
-{
-    return cip::tibia::client::TPreventCloseEventFilter::eventFilter(watched, event);
 }
 
 namespace {
