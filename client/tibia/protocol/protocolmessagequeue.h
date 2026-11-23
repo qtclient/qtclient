@@ -88,7 +88,7 @@ class GameserverMessageFieldData;
 class GameserverMessageFriendSystemData;
 class GameserverMessageFullMap;
 class GameserverMessageGameEvent;
-class GameserverMessageGemAtelierGemRevealed;
+class GameserverMessageGemAtelierGemResponse;
 class GameserverMessageGraphicalEffects;
 class GameserverMessageHighscores;
 class GameserverMessageHirelingNameChange;
@@ -572,7 +572,7 @@ Q_SIGNALS:
     void receivedDepotSearchDetailListMessage(const ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList& DepotSearchDetailListMessage);
     void receivedCloseDepotSearchMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch& CloseDepotSearchMessage);
     void receivedWeaponProficiencyMessage(const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiency& WeaponProficiencyMessage);
-    void receivedGemAtelierGemRevealedMessage(const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& GemAtelierGemRevealedMessage);
+    void receivedGemAtelierGemResponseMessage(const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse& GemAtelierGemResponseMessage);
     void receivedCyclopediaStaticHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData& CyclopediaStaticHouseDataMessage);
     void receivedCyclopediaCurrentHouseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData& CyclopediaCurrentHouseDataMessage);
     void receivedCyclopediaHouseActionResultMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& CyclopediaHouseActionResultMessage);

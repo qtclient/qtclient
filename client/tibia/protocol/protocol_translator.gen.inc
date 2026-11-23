@@ -404,7 +404,7 @@ inline bool mutableServerExtensionGenerated(::tibia::protobuf::protocol::Gameser
         msg.MutableExtension(GameserverMessageWeaponProficiency::gameserver_message_weapon_proficiency);
         return true;
     case 197:
-        msg.MutableExtension(GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed);
+        msg.MutableExtension(GameserverMessageGemAtelierGemResponse::gameserver_message_gem_atelier_gem_response);
         return true;
     case 198:
         msg.MutableExtension(GameserverMessageCyclopediaStaticHouseData::gameserver_message_cyclopedia_static_house_data);

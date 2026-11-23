@@ -47,28 +47,6 @@ QString formatBalance(const uint64_t value)
 
 }
 
-std::vector<std::map<std::string, uint32_t>> taskboardBountyMonsterRows(const taskboard::TBountyTaskData& data)
-{
-    U32MapList rows;
-    for (const auto& t : data.tasks) {
-        const bool active = t.claimState == taskboard::EBountyTaskClaimState::Active
-            || t.claimState == taskboard::EBountyTaskClaimState::Claimable;
-        rows.push_back({ { "taskIndex", t.index },
-                         { "raceId", t.raceId },
-                         { "currentKills", t.currentKills },
-                         { "totalKills", t.requiredKills },
-                         { "rewardXp", t.rewardExperience },
-                         { "rewardPoints", t.rewardBountyPoints },
-                         { "rewardReroll", 1 },
-                         { "rewardDust", t.rewardDust },
-                         { "rarity", t.grade },
-                         { "isActive", active ? 1u : 0u },
-                         { "isCompleted", 0 },
-                         { "isElite", t.elite ? 1u : 0u } });
-    }
-    return rows;
-}
-
 std::vector<std::map<std::string, uint32_t>> taskboardWeeklyMonsterRows(const taskboard::TWeeklyTaskData& w)
 {
     U32MapList rows;

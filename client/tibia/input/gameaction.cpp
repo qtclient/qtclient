@@ -13,68 +13,6 @@ namespace {
 
 constexpr EGameAction Separator = EGameAction::CONTEXT_MENU_SEPARATOR;
 
-// CIP's context menu table .
-constexpr EGameAction ContextMenuOrder[] = {
-    EGameAction::LOOK,
-    EGameAction::INSPECT_OBJECT,
-    EGameAction::OPEN_CYCLOPEDIA,
-    EGameAction::OPEN_WEAPON_PROFICIENCY_DIALOG,
-    EGameAction::USE,
-    EGameAction::USE_WITH,
-    EGameAction::OPEN_IN_NEW_WINDOW,
-    EGameAction::WRAP,
-    EGameAction::UNWRAP,
-    EGameAction::ROTATE_OBJECT,
-    EGameAction::CONFIGURE_SHOW_OFF_SOCKET,
-    EGameAction::QUICK_LOOT,
-    EGameAction::GATHER_ALL,
-    EGameAction::BROWSE_FIELD,
-    Separator,
-    EGameAction::REPORT_BUG_MAP,
-    Separator,
-    EGameAction::TRADE_ITEM,
-    Separator,
-    EGameAction::LOOT_ADD_TO_BLACKWHITELIST,
-    EGameAction::LOOT_REMOVE_FROM_BLACKWHITELIST,
-    Separator,
-    EGameAction::START_TALKING_TO_NPC,
-    EGameAction::ATTACK_CREATURE,
-    EGameAction::STOP_ATTACKING_CREATURE,
-    EGameAction::FOLLOW_CREATURE,
-    EGameAction::STOP_FOLLOWING_CREATURE,
-    Separator,
-    EGameAction::OPEN_MESSAGE_TO_CHAT_CHANNEL,
-    EGameAction::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL,
-    EGameAction::ADD_NEW_VIP,
-    EGameAction::IGNORE_NAME,
-    EGameAction::UNIGNORE_NAME,
-    EGameAction::RECENTLY_TRADED,
-    EGameAction::INVITE_TO_PARTY,
-    EGameAction::JOIN_PARTY,
-    EGameAction::REVOKE_PARTY_INVITATION,
-    EGameAction::PASS_PARTY_LEADERSHIP,
-    EGameAction::JOIN_AGGRESSION,
-    EGameAction::REQUEST_OUTFITS_FROM_SERVER,
-    EGameAction::BUY_HIRELING_NAME_OR_SEX_CHANGE,
-    EGameAction::MOUNT_PLAYER,
-    EGameAction::UNMOUNT_PLAYER,
-    EGameAction::OPEN_PREY_DIALOG,
-    EGameAction::SET_SHARED_EXPERIENCE,
-    EGameAction::LEAVE_PARTY,
-    EGameAction::INSPECT_PLAYER,
-    EGameAction::ASK_TO_INSPECT_PLAYER,
-    EGameAction::INVITE_TO_INSPECT_PLAYER,
-    EGameAction::ALLOW_INSPECT_PLAYER,
-    EGameAction::REVOKE_INSPECT_PLAYER,
-    Separator,
-    EGameAction::REPORT_NAME,
-    EGameAction::REPORT_BOT,
-    EGameAction::REPORT_HIRELING_NAME,
-    EGameAction::GET_TEXT_FOR_REPORT,
-    Separator,
-    EGameAction::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
-};
-
 const IGameActionPtr* firstOfType(const TGameActionList& candidates, const EGameAction type)
 {
     const auto it = std::find_if(candidates.begin(), candidates.end(),
@@ -520,11 +458,6 @@ TGameActionList filterActions(const TGameActionList& candidates, const std::span
             result.push_back(*action);
     }
     return result;
-}
-
-TGameActionList contextMenuActions(const TGameActionList& candidates)
-{
-    return contextMenuActions(candidates, ContextMenuOrder);
 }
 
 TGameActionList contextMenuActions(const TGameActionList& candidates, const std::span<const EGameAction> order)

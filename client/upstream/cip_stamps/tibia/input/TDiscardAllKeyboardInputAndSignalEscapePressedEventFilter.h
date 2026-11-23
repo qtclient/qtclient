@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter {
     public:
-      // b1/c152c1cb168b27fa @ 0x100e7ac40
+      // b1/3325ff1e5b6e2241 @ 0x100e81820
       void eventFilter();
     };
   } // namespace input

@@ -40,7 +40,7 @@ struct TAppearanceTypeEntry
 };
 
 /// Object types with their counts (CIP: TAppearanceTypeListModel, data
-/// with roles 0x101..0x115, roleNames).
+/// with roles 0x101..0x116, roleNames).
 class TAppearanceTypeListModel final : public shared::TSortedVectorListModel<cip::tibia::gamewindow::TAppearanceTypeListModel>
 {
     Q_OBJECT
@@ -62,6 +62,7 @@ public:
         UpgradeTier,
         MarketCategory,
         DecoItemObjectID,
+        TradeableInMarket,
         MarketAverageValue,
         NpcSellValue,
         ProficiencyXP,

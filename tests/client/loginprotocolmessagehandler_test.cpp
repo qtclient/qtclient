@@ -53,7 +53,7 @@ TEST(LoginProtocolMessageHandler, AnswersTheChallengeWithTheLogin)
     EXPECT_EQ(challenges, 1);
     EXPECT_FALSE(handler.isLoggedIn());
     EXPECT_EQ(login->client_os(), TLoginProtocolMessageHandler::clientOperatingSystem(false));
-    EXPECT_EQ(login->protocol_version(), 0x604u);
+    EXPECT_EQ(login->protocol_version(), 0x606u);
     EXPECT_EQ(login->client_version(), 1533u);
     EXPECT_EQ(QString::fromStdString(login->client_version_string()).left(5), QStringLiteral("15.33"));
     EXPECT_EQ(login->asset_identifier(), "assets");

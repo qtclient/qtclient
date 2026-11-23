@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 import qmlcomponents
@@ -16,6 +17,16 @@ Item {
     property point lastHoverPosition: Qt.point(NaN, NaN)
     property bool enabled: true
     property bool mouseContained: false
+    // By default the tooltip is shown in the window's content item, which is below all popups. Set this for tooltips
+    // inside a popup (e.g. combo box entries), so the tooltip is shown in the popup overlay instead of behind the popup.
+    property bool showAbovePopups: false
+
+    function tooltipLayer() {
+      if (showAbovePopups && root.Overlay.overlay) {
+        return root.Overlay.overlay;
+      }
+      return TooltipHelper.findWindowContentItemForQuickItem(delegateLoader);
+    }
 
     Connections {
       id: tooltipHelperConnections
@@ -102,7 +113,7 @@ Item {
         return;
       }
 
-      const window = TooltipHelper.findWindowContentItemForQuickItem(loader);
+      const window = tooltipRoot.tooltipLayer();
       if (!window) {
         return;
       }
@@ -133,13 +144,15 @@ Item {
     }
 
     function showTooltip() {
-      let window = TooltipHelper.findWindowContentItemForQuickItem(delegateLoader);
+      let window = tooltipLayer();
       if (!window) {
         return;
       }
       if (item == null) {
         delegateLoader.sourceComponent = delegate;
         delegateLoader.parent = window;
+        // Stay above the popups that share the overlay.
+        delegateLoader.z = showAbovePopups ? 1000000 : 0;
       }
       callCaculatePositionCallbackCaller(root.lastHoverPosition, true);
     }
@@ -151,7 +164,7 @@ Item {
     }
 
     function recalculatePointToFitDelegateIntoWindow(point) {
-      let window = TooltipHelper.findWindowContentItemForQuickItem(delegateLoader);
+      let window = tooltipLayer();
       if (!window) {
         return point;
       }

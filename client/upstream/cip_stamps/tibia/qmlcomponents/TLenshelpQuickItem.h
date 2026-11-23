@@ -7,10 +7,14 @@ namespace tibia {
   namespace qmlcomponents {
     class TLenshelpQuickItem {
     public:
-      // b1/6a5663c74d0066f7 @ 0x10109deb0
+      // b1/5ae35b8b084e5e4f @ 0x1010a5bc0
       void hoverEnterEvent();
-      // b1/4aed347fce8c6d16 @ 0x10109dff0
+      // b1/1a54055c6c95ac12 @ 0x1010a5d00
       void hoverLeaveEvent();
+      // b1/1c0d7a676fb8a228 @ 0x1010a59e0
+      void v0_10();
+      // b1/f03ce786eab75857 @ 0x1010a5a10
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

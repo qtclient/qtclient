@@ -7,27 +7,27 @@ namespace tibia {
   namespace creatures {
     class TCreatureMovementTween {
     public:
-      // b1/31fe0291c4362678 @ 0x100a3e140
+      // b1/0523a38d652a10e5 @ 0x100a43c00
       void v0();
-      // b1/7a49def222d05949 @ 0x100a3e100
+      // b1/7a49def222d05949 @ 0x100a43bc0
       void v12();
-      // b1/42becaf70e1782fa @ 0x100a3e290
+      // b1/eb9587b32693ddf5 @ 0x100a43d50
       void v14();
-      // b1/a6b3dfe8f87f6077 @ 0x100a3e2c0
+      // b1/4e10a3bec7487aad @ 0x100a43d80
       void v15();
-      // b1/dc37e34801d6b2eb @ 0x100a3e2f0
+      // b1/8dcdf28a73bddbec @ 0x100a43db0
       void v16();
-      // b1/77b18ab02498164d @ 0x100a3e340
+      // b1/5896300dca50417b @ 0x100a43e00
       void v17();
-      // b1/380f1539194fee7d @ 0x100a3e430
+      // b1/8e68e58376ed8bee @ 0x100a43ef0
       void v18();
-      // b1/f2a7d9a5a6dd5397 @ 0x100a3e4f0
+      // b1/1bea3ef4debe62ea @ 0x100a43fb0
       void v19();
-      // b1/3f68377b1d2bafd3 @ 0x100a3e040
+      // b1/b395477b141274b0 @ 0x100a43b00
       void v4();
-      // b1/7cee78c0d627f27e @ 0x100a3e0c0
+      // b1/7cee78c0d627f27e @ 0x100a43b80
       void v5();
-      // b1/6a40e4aff7682e7e @ 0x100a3dcd0
+      // b1/ab0e747d6e202115 @ 0x100a43790
       void v9();
     };
   } // namespace creatures

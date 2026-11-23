@@ -21,7 +21,7 @@ class IGameAction;
 }
 namespace protobuf {
 namespace protocol {
-class GameserverMessageGemAtelierGemRevealed;
+class GameserverMessageGemAtelierGemResponse;
 class GameserverMessageSkillWheel;
 }
 }
@@ -76,7 +76,7 @@ private:
     bool m_sessionPremium = false;
 };
 
-/// CIP `skillwheel::TSkillWheelProtocolMessageHandler` — native Q→H for GemAtelierGemRevealed.
+/// CIP `skillwheel::TSkillWheelProtocolMessageHandler`: the skill wheel and gem atelier messages.
 class TSkillWheelProtocolMessageHandler final : public cip::tibia::skillwheel::TSkillWheelProtocolMessageHandler
 {
     Q_OBJECT
@@ -94,13 +94,14 @@ public:
     /// ResourceBalance 80..85: the unspent points, the unrevealed gems by quality and the fragments.
     void handleResourceBalanceMessage(int type, qint64 balance);
 
-    /// GemAtelierGemRevealed: the atelier selects the revealed gem.
-    void handleGemAtelierGemRevealedMessage(
-        const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
+    /// GemAtelierGemResponse: a revealed gem (0) is selected in the atelier; the mods a reshape
+    /// attempt rolled (1) go to the storage.
+    void handleGemAtelierGemResponseMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse& Message);
 
     /// The Gem Atelier requests: dismantle (0), reveal a gem of a quality 0..2
-    /// (1), reshape one mod (2), lock or unlock (3) and enhance a fragment mod
-    /// grade (4).
+    /// (1), reshape one mod (2), lock or unlock (3), enhance a fragment mod
+    /// grade (4) and attempt a reshape (5: the server rolls the new mod).
     /// The wheel of a player.
     static void requestSkillWheel(uint32_t playerId);
     /// The character's wheel through the cyclopedia character info (the character info dialog).
@@ -110,6 +111,7 @@ public:
     static void dismantleGem(int gemId);
     static void revealGem(int quality);
     static void reshapeGem(int gemId, int modIndex);
+    static void attemptReshapeGem(int gemId, int modIndex);
     static void toggleGemLock(int gemId);
     static void enhanceModGrade(int modType, int modId);
 

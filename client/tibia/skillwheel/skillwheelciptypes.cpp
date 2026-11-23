@@ -29,7 +29,7 @@ namespace tibia::skillwheel {
 
 namespace {
 
-using ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed;
+using ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse;
 using ::tibia::protobuf::protocol::GameserverMessageSkillWheel;
 } // namespace
 
@@ -72,6 +72,11 @@ void TSkillWheelProtocolMessageHandler::revealGem(const int quality)
 void TSkillWheelProtocolMessageHandler::reshapeGem(const int gemId, const int modIndex)
 {
     tibia::game::gemAction(2, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
+}
+
+void TSkillWheelProtocolMessageHandler::attemptReshapeGem(const int gemId, const int modIndex)
+{
+    tibia::game::gemAction(5, static_cast<uint16_t>(gemId), static_cast<uint8_t>(modIndex));
 }
 
 void TSkillWheelProtocolMessageHandler::toggleGemLock(const int gemId)
@@ -200,10 +205,22 @@ void TSkillWheelProtocolMessageHandler::handleResourceBalanceMessage(const int t
     }
 }
 
-void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
-    const GameserverMessageGemAtelierGemRevealed& Message)
+void TSkillWheelProtocolMessageHandler::handleGemAtelierGemResponseMessage(const GameserverMessageGemAtelierGemResponse& Message)
 {
-    Q_EMIT publishGameAction(std::make_shared<input::gameactions::TSelectAtelierGemGameAction>(static_cast<uint16_t>(Message.gem_id())));
+    if (Message.type() == 1) {
+        if (!m_storage)
+            return;
+        const auto& gem = Message.gem();
+        TGemMods mods;
+        mods.basic1 = static_cast<int>(gem.first_modifier());
+        if (gem.has_second_modifier())
+            mods.basic2 = static_cast<int>(gem.second_modifier());
+        if (gem.has_supreme_modifier())
+            mods.supreme = static_cast<int>(gem.supreme_modifier());
+        m_storage->setTemporaryReshapedGem(mods);
+    } else if (Message.type() == 0) {
+        Q_EMIT publishGameAction(std::make_shared<input::gameactions::TSelectAtelierGemGameAction>(static_cast<uint16_t>(Message.gem_id())));
+    }
 }
 
 TSkillWheelGameActionHandler::TSkillWheelGameActionHandler(std::shared_ptr<TSkillWheelProtocolMessageHandler> pProtocolMessageHandler,

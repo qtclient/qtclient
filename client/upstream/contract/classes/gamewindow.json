@@ -3230,6 +3230,9 @@
    "clearPreferredMonster": [
     "void clearPreferredMonster(int slotIndex)"
    ],
+   "getRequiredLevelForDifficulty": [
+    "int getRequiredLevelForDifficulty(tibia::taskboard::EDifficulty Difficulty)"
+   ],
    "rerollTasksAction": [
     "void rerollTasksAction()"
    ],
@@ -3446,6 +3449,16 @@
     "notify": "bountyTaskDataChanged",
     "type": "bool"
    },
+   "maxBountyTaskDifficulty": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TBountyTasksController",
+    "notify": "maxBountyTaskDifficultyChanged",
+    "type": "tibia::taskboard::EDifficulty"
+   },
    "maximumReachedBonusBestiary": {
     "flags": [
      "READ",
@@ -3559,6 +3572,9 @@
   "signals": {
    "bountyTaskDataChanged": [
     "void bountyTaskDataChanged()"
+   ],
+   "maxBountyTaskDifficultyChanged": [
+    "void maxBountyTaskDifficultyChanged()"
    ]
   },
   "slots": {
@@ -9479,7 +9495,17 @@
   "classinfo": {},
   "enums": {},
   "invokables": {},
-  "properties": {},
+  "properties": {
+   "numberOfMinimapMarkers": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TEditMinimapMarkerDialogController",
+    "notify": null,
+    "type": "uint"
+   }
+  },
   "signals": {
    "abort": [
     "void abort()"
@@ -11841,6 +11867,9 @@
    ]
   },
   "slots": {
+   "attemptReshapeGem": [
+    "void attemptReshapeGem(int GemId, int ModIdx)"
+   ],
    "dismantleGem": [
     "void dismantleGem(int GemId)"
    ],
@@ -11878,6 +11907,75 @@
    ],
    "toggleGemLock": [
     "void toggleGemLock(int GemId)"
+   ]
+  }
+ },
+ "tibia::gamewindow::TGemAtelierReshapeModDialogController": {
+  "chain": [
+   "tibia::gamewindow::TGemAtelierReshapeModDialogController",
+   "tibia::gamewindow::TDialogControllerBase",
+   "QObject"
+  ],
+  "class": "tibia::gamewindow::TGemAtelierReshapeModDialogController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "currentMod": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGemAtelierReshapeModDialogController",
+    "notify": "dataChanged",
+    "type": "QObject*"
+   },
+   "reshapedMod": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGemAtelierReshapeModDialogController",
+    "notify": "dataChanged",
+    "type": "QObject*"
+   }
+  },
+  "signals": {
+   "abort": [
+    "void abort()"
+   ],
+   "cancelReshape": [
+    "void cancelReshape()"
+   ],
+   "confirmReshape": [
+    "void confirmReshape()"
+   ],
+   "dataChanged": [
+    "void dataChanged()"
+   ],
+   "dialogClosed": [
+    "void dialogClosed()"
+   ]
+  },
+  "slots": {
+   "chooseNewMod": [
+    "void chooseNewMod()"
+   ],
+   "closeDialog": [
+    "void closeDialog()"
+   ],
+   "getModGradeHighlightImageSource": [
+    "QString getModGradeHighlightImageSource(int ModGrade)"
+   ],
+   "getModGradeImageSource": [
+    "QString getModGradeImageSource(int ModGrade, bool IsFilled)",
+    "QString getModGradeImageSource(int ModGrade)"
+   ],
+   "requestCancel": [
+    "void requestCancel()"
+   ],
+   "showDialog": [
+    "void showDialog()"
    ]
   }
  },

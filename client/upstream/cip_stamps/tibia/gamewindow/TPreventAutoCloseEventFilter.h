@@ -7,7 +7,7 @@ namespace tibia {
   namespace gamewindow {
     class TPreventAutoCloseEventFilter {
     public:
-      // b1/acfae5baf612c44e @ 0x100b6b4a0
+      // b1/1830fcf679971b42 @ 0x100b70eb0
       void eventFilter();
     };
   } // namespace gamewindow

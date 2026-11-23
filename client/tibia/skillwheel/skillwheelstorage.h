@@ -113,6 +113,21 @@ public:
     void setLesserFragments(int fragments);
     void setGreaterFragments(int fragments);
 
+    /// The gem atelier's reshape: the gem and the mod (0 first basic, 1 second basic, 2 supreme) a
+    /// reshape attempt was sent for (-1 once the reshape is chosen), the gem's mods before the attempt
+    /// and the mods the server rolled for it.
+    int reshapeModIdx() const { return m_reshapeModIdx; }
+    void setReshapeModIdx(int modIdx) { m_reshapeModIdx = modIdx; }
+    int reshapeGemId() const { return m_reshapeGemId; }
+    void setReshapeGemId(int gemId) { m_reshapeGemId = gemId; }
+    /// The mods of the inventory gem with the reshape gem id become the mods before the reshape
+    /// (unchanged when there is no such gem).
+    void rememberGemModsBeforeReshape();
+    TGemMods gemModsBeforeReshape() const { return m_gemModsBeforeReshape; }
+    TGemMods temporaryReshapedGem() const { return m_temporaryReshapedGem; }
+    /// Emits temporaryReshapedGemChanged.
+    void setTemporaryReshapedGem(const TGemMods& mods);
+
     /// There is a server wheel.
     bool hasData() const { return m_serverSkillWheel.has_value(); }
     /// The vocation of the server wheel (1 knight .. 5 monk).
@@ -149,6 +164,10 @@ private:
     std::vector<TModListEntry> m_modList;
     int m_lesserFragments = 0;
     int m_greaterFragments = 0;
+    TGemMods m_temporaryReshapedGem;
+    TGemMods m_gemModsBeforeReshape;
+    int m_reshapeModIdx = 0;
+    int m_reshapeGemId = 0;
 };
 
 }

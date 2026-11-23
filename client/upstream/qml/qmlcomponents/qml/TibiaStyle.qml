@@ -14,6 +14,7 @@ QtObject {
   readonly property color red2: "#D33C3C" //also used in tibiacolors.h
   readonly property color red3: "#A40F0F"
   readonly property color green1: "#44AD25" //also used in tibiacolors.h
+  readonly property color green2: "#3c9921"
   readonly property color blue1: "#0E84DA"
   readonly property color blue2: "#1872C3" //for text that leads to store
   readonly property color gold1: "#F7AF48"
@@ -74,6 +75,7 @@ QtObject {
     ,"ListValue": white3
     ,"White": white4
     ,"Positive": green1
+    ,"PositiveTooltip": green2
     ,"Negative": red2
     ,"TrackedQuestHighlight": white2
     ,"WhiteCaption": white2
@@ -317,7 +319,6 @@ QtObject {
   //CHAT
   /////////////////////////////////////////////////////////////////////////////
   //MINIMAP
-  readonly property int numberOfMinimapMarkers: 20
   readonly property int numberOfMinimapMarkersPerSelectRow: 10
   readonly property int minimapViewportHeight: 111
   readonly property int minimapViewportWidth: 108

@@ -7,11 +7,9 @@ namespace tibia {
   namespace gamewindow {
     class THousesSortProxyModel {
     public:
-      // b1/0dce4520584c0a86 @ 0x100d91ca0
-      void clearFilters();
-      // b1/44aa8de4c4a21e66 @ 0x100d83750
+      // b1/f5faa621a93462fa @ 0x100d891e0
       void filterAcceptsRow();
-      // b1/7e0f593007225842 @ 0x100d82c50
+      // b1/7902448b22757106 @ 0x100d886e0
       void lessThan();
     };
   } // namespace gamewindow

@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TDiscardMouseWheelEventFilter {
     public:
-      // b1/2eed5a67b66c54d9 @ 0x100e88520
+      // b1/472a80c021f77903 @ 0x100e8f100
       void eventFilter();
     };
   } // namespace input

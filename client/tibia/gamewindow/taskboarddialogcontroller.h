@@ -18,14 +18,12 @@ namespace game {
 class IGameSession;
 }
 namespace taskboard {
-struct TBountyTaskData;
 struct TWeeklyTaskData;
 }
 namespace gamewindow {
 
 /// Rows of the task board storages in the shape the tab controllers and the
 /// kill tracker consume.
-std::vector<std::map<std::string, uint32_t>> taskboardBountyMonsterRows(const taskboard::TBountyTaskData& data);
 std::vector<std::map<std::string, uint32_t>> taskboardWeeklyMonsterRows(const taskboard::TWeeklyTaskData& data);
 bool taskboardWeeklyActive(const taskboard::TWeeklyTaskData& data);
 

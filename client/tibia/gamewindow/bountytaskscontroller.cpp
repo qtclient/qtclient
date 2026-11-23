@@ -1,6 +1,7 @@
 #include "bountytaskscontroller.h"
 
 #include "game/gamesessionbase.h"
+#include "game/playerdata.h"
 #include "taskboard/taskboardbountytasksstorage.h"
 #include "taskboard/taskboardciptypes.h"
 #include "taskboard/taskboardcurrenciesstorage.h"
@@ -23,6 +24,8 @@ namespace {
 constexpr int TalismanMaxLevel = 355;
 /// From this many reroll tokens on no more can be gained.
 constexpr int RerollTokenLimit = 10;
+/// The level the adept, expert and master difficulties need.
+constexpr int RequiredLevelForDifficulty[] = { 30, 150, 400 };
 
 /// The bonus of a talisman level in per cent: 2.5% plus 0.5% per level up to
 /// level 15, 0.25% per level up to 55 and 0.1% per level up to 355.
@@ -55,7 +58,7 @@ std::vector<uint32_t> assignedRaceIds(const std::vector<taskboard::TBountyPrefer
     return raceIds;
 }
 
-// Host: the list models below are not ported yet; they take display rows,
+// Host: the preferred-slot model is not ported yet; it takes display rows,
 // which the bounty data is turned into here.
 
 QString raceCaption(const uint16_t raceId)
@@ -69,49 +72,6 @@ QString raceCaption(const uint16_t raceId)
     if (!name.isEmpty())
         name[0] = name[0].toUpper();
     return name;
-}
-
-QString tierBackdrop()
-{
-    return QStringLiteral("/images/taskboard/backdrop-bounty-tasks.png");
-}
-
-QString tierIcon(const uint8_t grade)
-{
-    switch (grade) {
-    case 3:
-        return QStringLiteral("/images/taskboard/icon-bounty-task-platinum.png");
-    case 2:
-        return QStringLiteral("/images/taskboard/icon-bounty-task-gold.png");
-    case 1:
-        return QStringLiteral("/images/taskboard/icon-bounty-task-silver.png");
-    default:
-        return {};
-    }
-}
-
-QVector<taskboard::BountyTaskRow> bountyTaskRows(const std::vector<taskboard::TBountyTask>& tasks)
-{
-    using taskboard::EBountyTaskClaimState;
-    QVector<taskboard::BountyTaskRow> rows;
-    rows.reserve(static_cast<int>(tasks.size()));
-    for (const taskboard::TBountyTask& task : tasks) {
-        taskboard::BountyTaskRow row;
-        row.taskIndex = task.index;
-        row.raceId = task.raceId;
-        row.killText = QStringLiteral("%1 / %2 kills").arg(static_cast<int>(task.currentKills)).arg(static_cast<int>(task.requiredKills));
-        row.rewardXp = static_cast<int>(task.rewardExperience);
-        row.rewardBountyPoints = task.rewardBountyPoints;
-        row.rewardDust = task.rewardDust;
-        const bool taken = task.claimState != EBountyTaskClaimState::Available;
-        row.canAccept = !taken && row.raceId > 0;
-        row.canClaim = taken && task.requiredKills > 0 && task.currentKills >= task.requiredKills;
-        row.caption = raceCaption(task.raceId);
-        row.taskTierImageSource = tierBackdrop();
-        row.taskTierIconSource = tierIcon(task.grade);
-        rows.push_back(std::move(row));
-    }
-    return rows;
 }
 
 QVector<taskboard::PreferredMonsterSlotRow> preferredSlotRows(const std::vector<taskboard::TBountyPreferredMonsterSlot>& slots,
@@ -170,31 +130,71 @@ TBountyTasksController::TBountyTasksController(QObject* parent)
     m_bountyTasks = m_tasksModel;
     m_monsterList = m_monsterFilter;
     m_preferredSlotData = m_preferredModel;
+    m_rerollConfirmation.setCloseOnButtonClicked(true);
+    connect(&m_rerollConfirmation, &TMessageDialogController::acceptClicked, this,
+            [this] { sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks(); }); });
 }
 
 void TBountyTasksController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
 {
+    m_rerollConfirmation.dialog()->close();
     hideDialogTab();
     m_gameSessionConnections.disconnectAll();
     m_hasSelection = false;
     m_gameSession = GameSession;
-    auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get());
-    if (!session)
+    if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_gameSession.get())) {
+        if (taskboard::TTaskboardBountyTasksStorage* storage = session->taskboardBountyTasksStorage().get())
+            m_gameSessionConnections.add(connect(storage, &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                                 [this](const taskboard::TBountyTaskData& data) { onBountyTaskDataReceived(data); }));
+        taskboard::TTaskboardCurrenciesStorage* currencyStorage = session->taskboardCurrenciesStorage().get();
+        using Currencies = taskboard::TTaskboardCurrenciesStorage;
+        using Self = TBountyTasksController;
+        m_gameSessionConnections.add(connect(currencyStorage, &Currencies::bountyPointsChanged, this, &Self::bountyTaskDataChanged));
+        m_gameSessionConnections.add(
+            connect(currencyStorage, &Currencies::bountyTaskRerollTokensChanged, this, &Self::bountyTaskDataChanged));
+        if (game::TPlayerData* player = session->playerData().get())
+            m_gameSessionConnections.add(
+                connect(player, &game::TPlayerData::playerDataChanged, this, &Self::updateMaxBountyTaskDifficulty));
+    }
+    updateMaxBountyTaskDifficulty();
+}
+
+void TBountyTasksController::updateMaxBountyTaskDifficulty()
+{
+    int difficulty = 0;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (const game::TPlayerData* player = session ? session->playerData().get() : nullptr) {
+        const uint16_t level = player->level();
+        if (level >= 400)
+            difficulty = 3;
+        else if (level >= 150)
+            difficulty = 2;
+        else if (level >= 30)
+            difficulty = 1;
+    }
+    if (difficulty == m_maxBountyTaskDifficulty)
         return;
-    if (taskboard::TTaskboardBountyTasksStorage* storage = session->taskboardBountyTasksStorage().get())
-        m_gameSessionConnections.add(connect(storage, &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
-                                             [this](const taskboard::TBountyTaskData& data) { onBountyTaskDataReceived(data); }));
-    taskboard::TTaskboardCurrenciesStorage* currencyStorage = session->taskboardCurrenciesStorage().get();
-    using Currencies = taskboard::TTaskboardCurrenciesStorage;
-    using Self = TBountyTasksController;
-    m_gameSessionConnections.add(connect(currencyStorage, &Currencies::bountyPointsChanged, this, &Self::bountyTaskDataChanged));
-    m_gameSessionConnections.add(
-        connect(currencyStorage, &Currencies::bountyTaskRerollTokensChanged, this, &Self::bountyTaskDataChanged));
+    m_maxBountyTaskDifficulty = difficulty;
+    Q_EMIT maxBountyTaskDifficultyChanged();
+}
+
+int TBountyTasksController::getRequiredLevelForDifficulty(const int Difficulty)
+{
+    const unsigned index = static_cast<uint8_t>(Difficulty - 1);
+    return index < 3 ? RequiredLevelForDifficulty[index] : 0;
 }
 
 void TBountyTasksController::onBountyTaskDataReceived(const taskboard::TBountyTaskData& data)
 {
-    m_tasksModel->setRows(bountyTaskRows(data.tasks));
+    std::vector<taskboard::TBountyTask> tasks = data.tasks;
+    const auto available = [](const taskboard::TBountyTask& task) {
+        return task.claimState == taskboard::EBountyTaskClaimState::Available;
+    };
+    if (std::all_of(tasks.begin(), tasks.end(), available)) {
+        for (taskboard::TBountyTask& task : tasks)
+            task.elite = data.elite;
+    }
+    m_tasksModel->setItems(tasks);
     int clearCost = 0;
     QVector<taskboard::PreferredMonsterSlotRow> slotRows = preferredSlotRows(data.preferredMonsterSlots, clearCost);
     m_preferredModel->setClearCost(clearCost);
@@ -387,6 +387,7 @@ void TBountyTasksController::showDialogTab()
 
 void TBountyTasksController::hideDialogTab()
 {
+    m_rerollConfirmation.dialog()->close();
     clearNameFilter();
     m_showPreferredList = false;
     Q_EMIT bountyTaskDataChanged();
@@ -414,6 +415,8 @@ void TBountyTasksController::selectDifficulty(const int difficulty, const bool e
 
 void TBountyTasksController::setBountyTaskDifficulty(const int Difficulty)
 {
+    if (Difficulty > m_maxBountyTaskDifficulty)
+        return;
     // The elite mode stays the one of the current bounty data.
     const taskboard::TBountyTaskData* data = bountyTaskData();
     selectDifficulty(Difficulty, data && data->elite);
@@ -426,8 +429,20 @@ void TBountyTasksController::setElite(const bool isElite)
     selectDifficulty(data ? data->difficulty : 0, isElite);
 }
 
+/// While a task is taken the player confirms first (Yes sends the reroll).
 void TBountyTasksController::rerollTasksAction()
 {
+    if (!m_gameSession || m_requestPending)
+        return;
+    const taskboard::TBountyTaskData* data = bountyTaskData();
+    const bool taskTaken = data && std::any_of(data->tasks.begin(), data->tasks.end(), [](const taskboard::TBountyTask& task) {
+        return task.claimState == taskboard::EBountyTaskClaimState::Active;
+    });
+    if (taskTaken) {
+        m_rerollConfirmation.setYesNoButtons();
+        m_rerollConfirmation.showMessage(qtTrId("taskboard_reroll_confirmation_caption"), qtTrId("taskboard_reroll_confirmation_text"));
+        return;
+    }
     sendRequest([] { taskboard::TTaskboardProtocolMessageHandler::rerollBountyTasks(); });
 }
 

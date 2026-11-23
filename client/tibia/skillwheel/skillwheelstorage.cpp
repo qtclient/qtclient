@@ -304,6 +304,20 @@ void TSkillWheelStorage::setGreaterFragments(const int fragments)
     Q_EMIT greaterFragmentsChanged();
 }
 
+void TSkillWheelStorage::rememberGemModsBeforeReshape()
+{
+    const auto gemId = static_cast<int16_t>(m_reshapeGemId);
+    const auto it = std::ranges::find_if(m_gemInventory, [gemId](const TGem& gem) { return static_cast<int16_t>(gem.id) == gemId; });
+    if (it != m_gemInventory.end())
+        m_gemModsBeforeReshape = gemMods(*it);
+}
+
+void TSkillWheelStorage::setTemporaryReshapedGem(const TGemMods& mods)
+{
+    m_temporaryReshapedGem = mods;
+    Q_EMIT temporaryReshapedGemChanged();
+}
+
 int TSkillWheelStorage::vocation() const { return m_serverSkillWheel ? std::clamp(m_serverSkillWheel->vocation, 1, VocationCount) : 1; }
 
 TWheel TSkillWheelStorage::currentWheel() const

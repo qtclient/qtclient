@@ -247,4 +247,12 @@ QString TTextHelperQmlService::createQmlMultiString(const QString& LongString, c
     return QStringList{ LongString, ShortString }.join(MultiStringSeparator);
 }
 
+QString TTextHelperQmlService::wrapTextWithHtmlFontColor(const QString& HtmlText, const QColor& Color)
+{
+    QString text = HtmlText;
+    text.insert(0, QStringLiteral("<font color=\"%1\">").arg(Color.name()));
+    text.append(QStringLiteral("</font>"));
+    return text;
+}
+
 }

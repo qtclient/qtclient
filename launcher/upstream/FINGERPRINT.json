@@ -35,8 +35,8 @@
   "parseHints"
  ],
  "launcher_sha256": "577d142753d5a270f68e0f1e6d10d4dd602ddd2cb69eef5d5eee91a132453631",
- "client_sha256": "f7a12491b5d53664775a17703237bce952884cd65771731ee87c1997f51b3e63",
- "hints_sha256": "db79372ae0c24857baebe3fb9364b9c25d27633255ceec3890e17b38a1249839",
+ "client_sha256": "5acf1caf04e02e20a5cd40fe2c0c9de3ed039334cdf4c464080d8acc6baac6ba",
+ "hints_sha256": "f0b93eeeddfeed71a3e5e7bcc645b74193ad2b21c3fcf680f06a34199a8c4d72",
  "hint_images": [
   "11.png",
   "22.png",

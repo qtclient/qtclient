@@ -68,6 +68,8 @@ void TEditMinimapMarkerDialogController::handleGameAction(const input::IGameActi
     }
 }
 
+uint TEditMinimapMarkerDialogController::numberOfMinimapMarkers() const { return 40; }
+
 void TEditMinimapMarkerDialogController::onCancelClicked() { dialog()->close(); }
 
 void TEditMinimapMarkerDialogController::onOkClicked(const QString& Text, const int SymbolID)

@@ -7,12 +7,18 @@ namespace tibia {
   namespace qmlcomponents {
     class TAppearanceInstanceRendererBase {
     public:
-      // b1/2c8f483092d5e48c @ 0x1010bd500
+      // b1/2871a2236c251515 @ 0x1010c5270
       void componentComplete();
-      // b1/cd4f19824befa0d8 @ 0x1010bd6c0
+      // b1/02367b05dd428d25 @ 0x1010c5430
       void geometryChange();
-      // b1/7582afe595c2be78 @ 0x1010bde50
+      // b1/8228be6ef08d9689 @ 0x1010c5bc0
       void updatePolish();
+      // b1/712f8135dc4b5939 @ 0x1010c5230
+      void v0_10();
+      // b1/712f8135dc4b5939 @ 0x1010c5250
+      void v1_10();
+      // b1/49a0a4ff23aa87e4 @ 0x1010c5420
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

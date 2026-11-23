@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TKeyEventHandler {
     public:
-      // b1/65acd8b4b5380319 @ 0x100e629b0
+      // b1/99488d40b3840aec @ 0x100e69590
       void eventFilter();
     };
   } // namespace input

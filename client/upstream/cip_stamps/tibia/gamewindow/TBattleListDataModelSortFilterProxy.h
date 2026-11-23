@@ -7,9 +7,9 @@ namespace tibia {
   namespace gamewindow {
     class TBattleListDataModelSortFilterProxy {
     public:
-      // b1/46876bdcccb0a9e1 @ 0x100d33460
+      // b1/7495acd3cd1427cb @ 0x100d38e20
       void filterAcceptsRow();
-      // b1/e45137a1184e032e @ 0x100d338b0
+      // b1/a564b485b229e958 @ 0x100d39270
       void lessThan();
     };
   } // namespace gamewindow

@@ -7,8 +7,12 @@ namespace tibia {
   namespace qmlcomponents {
     class TScenegraphDrawCommandsRendererQuickItem {
     public:
-      // b1/063760aff0905cc2 @ 0x1010b55d0
+      // b1/580e2a09c396ea09 @ 0x1010bd2e0
       void updatePaintNode();
+      // b1/712f8135dc4b5939 @ 0x1010bd2b0
+      void v0_10();
+      // b1/712f8135dc4b5939 @ 0x1010bd2d0
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

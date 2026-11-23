@@ -7,14 +7,8 @@ namespace tibia {
   namespace gamewindow {
     class TOutfitMountSummonSkinsListDataModelSortFilterProxy {
     public:
-      // b1/2382a41f4faf9948 @ 0x100d0cca0
+      // b1/0acda79238471117 @ 0x100d12660
       void filterAcceptsRow();
-      // b1/b0a8be3e26736bdf @ 0x100d17cc0
-      QColor headColor() const;
-      // b1/6eac3818730bab0c @ 0x100d18110
-      void setSourceFilter(EQmlOutfitMountSourceFilter v);
-      // b1/886f3ceb0c9c0963 @ 0x100d18150
-      void setTypeFilter(EQmlOutfitMountTypeFilter v);
     };
   } // namespace gamewindow
 } // namespace tibia

@@ -600,6 +600,8 @@ if(TIBIA_WITH_GAMECORE)
     skillwheel/skillwheelcontrollers.cpp skillwheel/skillwheelcontrollers.h
     skillwheel/skillwheelmanager.cpp skillwheel/skillwheelmanager.h
     skillwheel/gridconfiguration.cpp skillwheel/gridconfiguration.h
+    skillwheel/qmlreshapemod.cpp skillwheel/qmlreshapemod.h
+    skillwheel/gematelierreshapemoddialogcontroller.cpp skillwheel/gematelierreshapemoddialogcontroller.h
     gamewindow/minimapcontroller.cpp gamewindow/minimapcontroller.h
     gamewindow/npcdialogcontroller.cpp gamewindow/npcdialogcontroller.h
     gamewindow/uifocusmanager.cpp gamewindow/uifocusmanager.h

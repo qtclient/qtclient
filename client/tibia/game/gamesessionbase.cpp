@@ -1091,7 +1091,6 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     link(&Queue::receivedDailyRewardCollectionStateMessage, dailyReward,
          &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
     link(&Queue::receivedShowMessageDialogMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
-    link(&Queue::receivedLoginSuccessMessage, dailyReward, &TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage);
 
     using cyclopedia::TCyclopediaProtocolMessageHandler;
     auto* cyclopediaHandler = m_cyclopediaProtocolMessageHandler.get();
@@ -1186,7 +1185,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     using skillwheel::TSkillWheelProtocolMessageHandler;
     auto* skillWheel = m_skillWheelProtocolMessageHandler.get();
     link(&Queue::receivedSkillWheelMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleSkillWheelMessage);
-    link(&Queue::receivedGemAtelierGemRevealedMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage);
+    link(&Queue::receivedGemAtelierGemResponseMessage, skillWheel, &TSkillWheelProtocolMessageHandler::handleGemAtelierGemResponseMessage);
     m_queueConnections.push_back(connect(skillWheel, &TSkillWheelProtocolMessageHandler::publishGameAction,
                                          m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::handleGameActionInternal));
     // The handler fills the game client's proficiency storage. Host: the game

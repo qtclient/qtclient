@@ -28,6 +28,7 @@ struct TBountyTask
     uint16_t raceId = 0;
     uint16_t requiredKills = 0;
     uint32_t rewardExperience = 0;
+    uint32_t rewardExperienceElite = 0;
     uint16_t rewardBountyPoints = 0;
     uint16_t currentKills = 0;
     EBountyTaskClaimState claimState = EBountyTaskClaimState::Available;

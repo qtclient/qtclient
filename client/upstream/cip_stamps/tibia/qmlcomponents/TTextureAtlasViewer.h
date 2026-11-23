@@ -7,8 +7,12 @@ namespace tibia {
   namespace qmlcomponents {
     class TTextureAtlasViewer {
     public:
-      // b1/e768d67ef7fe2e60 @ 0x101098380
+      // b1/d9ff6bf9310b0279 @ 0x1010a0090
       void updatePaintNode();
+      // b1/46fdd94cbe92cbed @ 0x1010a0b10
+      void v0_10();
+      // b1/359857bf5b829baf @ 0x1010a0bf0
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

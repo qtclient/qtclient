@@ -9,6 +9,7 @@ Item {
   property int slotID
   property alias slotText: slotTextItem.text
   property alias slotTooltip: itemTooltip.text
+  property alias slotTooltipUseRichText: itemTooltip.useRichText
   property alias managedContainerTooltipText: managedContainerTooltip.text
   property string slotBackgroundImageSource
   property bool showGoldenBorder: false

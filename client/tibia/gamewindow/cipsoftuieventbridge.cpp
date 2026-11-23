@@ -21,11 +21,6 @@ TCipSoftUiEventBridge::TCipSoftUiEventBridge(QObject* parent)
         Q_EMIT playerHelpersChanged();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onGemAtelierGemRevealed", [this](GameObject*, const Args& args) {
-        m_lastRevealedGemId = static_cast<quint32>(client::gamecore::argInt(args, 0));
-        Q_EMIT gemRevealed(m_lastRevealedGemId);
-        return std::any{};
-    });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onVirtuesYellowBorder", [this](GameObject*, const Args& args) {
         m_virtuesYellowBorder.clear();
         if (const auto* spellIds = args.empty() ? nullptr : std::any_cast<std::vector<uint16_t>>(&args[0])) {

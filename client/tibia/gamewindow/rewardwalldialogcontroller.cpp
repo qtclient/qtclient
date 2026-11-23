@@ -517,8 +517,6 @@ QString TRewardWallDialogController::dailyRewardDetails(const std::shared_ptr<TD
             line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumItems->cosmeticTokens());
         text += bulletPoint(line);
     }
-    if (reward.bountyRerollTokens() != 0)
-        text += bulletPoint(qtTrId("rewardwall_daily_bounty_task_reroll_token"));
     if (reward.preyWildcards() != 0) {
         QString line = reward.preyWildcards() == 1 ? qtTrId("rewardwall_daily_prey_wildcard").arg(reward.preyWildcards())
                                                    : qtTrId("rewardwall_daily_prey_wildcards").arg(reward.preyWildcards());
@@ -534,6 +532,8 @@ QString TRewardWallDialogController::dailyRewardDetails(const std::shared_ptr<TD
             line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(QStringLiteral("%1%").arg(premiumItems->xpBoostPercent()));
         text += bulletPoint(line);
     }
+    if (reward.bountyRerollTokens() != 0)
+        text += bulletPoint(qtTrId("rewardwall_daily_bounty_task_reroll_token"));
     return text;
 }
 
@@ -566,10 +566,9 @@ QString TRewardWallDialogController::dailyRewardStateHoverText(const int Index)
     text += m_storage->isUsingRewardShrine() ? qtTrId("rewardwall_daily_reward_shrine_theretfore_free")
                                              : qtTrId("rewardwall_daily_reward_shrine_makes_it_free");
     text += QStringLiteral("<br>");
+    // An expired streak adds nothing after the shrine note.
     const qint64 streakLeft = secondsUntilStreakEnd();
-    if (streakLeft < 0)
-        text += qtTrId("rewardwall_reward_streak_expired").arg(qtTrId("currency_view_daily_reward_joker_tooltip"));
-    else
+    if (streakLeft >= 0)
         text += qtTrId("rewardwall_reward_streak_running_hover_text").arg(minutesText(streakLeft / 60));
     return text;
 }

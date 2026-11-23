@@ -7,30 +7,104 @@ namespace tibia {
   namespace game {
     class TGameSessionBase {
     public:
-      // b1/a07b553300bf4bf2 @ 0x100b26000
-      void name();
-      // b1/92b7ec4975aee6f5 @ 0x100b26620
+      // b1/92b7ec4975aee6f5 @ 0x100b2bf10
       void v143();
-      // b1/7eb5001fb0dd321e @ 0x100b1d9e0
+      // b1/6021b00f94a7136b @ 0x100b23360
       void v144();
-      // b1/9d8c94826d301031 @ 0x100b25c40
+      // b1/e510527908e5b77a @ 0x100b2b530
       void v146();
-      // b1/0dc92d5dfae887b4 @ 0x100b25ca0
+      // b1/12206ced4d86cd5b @ 0x100b2b590
       void v147();
-      // b1/c69aacb3eb187361 @ 0x100b167a0
+      // b1/753cbd738d9a0ff4 @ 0x100b1c240
       void v149();
-      // b1/5e9c4c59fd26f7a5 @ 0x100b19710
+      // b1/50e9ad7073af052c @ 0x100b1f090
       void v150();
-      // b1/022fe5a4722647bb @ 0x100b1bce0
+      // b1/4d88fd94dc5bfeec @ 0x100b21660
       void v151();
-      // b1/06e0fb052d2b0c31 @ 0x100b1c540
+      // b1/d9a514d91694d4a1 @ 0x100b21ec0
       void v152();
-      // b1/48317ec1df3daef1 @ 0x100b1c6a0
+      // b1/f7102a351be49805 @ 0x100b22020
       void v153();
-      // b1/d0a9ff42e890d56f @ 0x100b1dd40
+      // b1/82ec15e2638d6be5 @ 0x100b236c0
       void v154();
-      // b1/f389c25d3941017a @ 0x100b26b10
+      // b1/b3e85bfcc288c7a8 @ 0x100b2c400
       void v155();
+      // b1/ee3e9cb66afd63e3 @ 0x100b1c1f0
+      void v22();
+      // b1/972bef958278311d @ 0x100b23450
+      void v25();
+      // b1/12b583884690472f @ 0x100b234e0
+      void v27();
+      // b1/8e706fe931e04c63 @ 0x100b23630
+      void v28();
+      // b1/efcbbfda8ec81673 @ 0x100b23660
+      void v29();
+      // b1/53917314e65fdf7f @ 0x100b2c040
+      void v30();
+      // b1/5f7a051c24cd4c34 @ 0x100b234b0
+      void v31();
+      // b1/6d79bfe18d5ad9d2 @ 0x100b23510
+      void v32();
+      // b1/27cfe4ec295edfe7 @ 0x100b23690
+      void v33();
+      // b1/cf271db06354c2a6 @ 0x100b23540
+      void v34();
+      // b1/fd4962a6d6b63689 @ 0x100b23570
+      void v35();
+      // b1/3d267e7a4e80dbab @ 0x100b235a0
+      void v36();
+      // b1/b703710bdc1d3e9e @ 0x100b2bfa0
+      void v39();
+      // b1/d4ba37b8d029059d @ 0x100b2bfd0
+      void v40();
+      // b1/5bdb43380b2fea98 @ 0x100b2c000
+      void v41();
+      // b1/8fb9bcfbaaf4b0a6 @ 0x100b23600
+      void v42();
+      // b1/bd932e280857cc19 @ 0x100b2c070
+      void v43();
+      // b1/2050e386be2ec4da @ 0x100b2c0a0
+      void v44();
+      // b1/5b59a101711b57e9 @ 0x100b2c0d0
+      void v45();
+      // b1/a687e001e54462ea @ 0x100b2c100
+      void v46();
+      // b1/fdaae18e7d31f076 @ 0x100b2c130
+      void v47();
+      // b1/0223b6c3bbaac2cb @ 0x100b2c160
+      void v48();
+      // b1/c36d21819f194ef5 @ 0x100b2c190
+      void v49();
+      // b1/fe080b64d336a536 @ 0x100b2c1c0
+      void v50();
+      // b1/1d918b7c87e79c34 @ 0x100b2c1f0
+      void v52();
+      // b1/3ed77ad909caf7d1 @ 0x100b2c220
+      void v53();
+      // b1/5836c2fa209b8773 @ 0x100b2c250
+      void v54();
+      // b1/b672edbbc3ec402b @ 0x100b2c280
+      void v55();
+      // b1/6781465cd6d5273b @ 0x100b2c2b0
+      void v56();
+      // b1/b992649259688dbb @ 0x100b2c310
+      void v58();
+      // b1/493117a22f9b60ad @ 0x100b2c340
+      void v59();
+      // b1/6477cfa7890644c3 @ 0x100b2c370
+      void v60();
+      // b1/d79614672f0f5885 @ 0x100b2c3a0
+      void v61();
+      // b1/570f292838c4481a @ 0x100b2c3d0
+      void v62();
+      // b1/f2f6e01295c7ae61 @ 0x100b2e200
+      void v63();
+      // b1/ea6020ce52ac1e1c @ 0x100b2e230
+      void v64();
+      // b1/6b801e9ccaacd63f @ 0x100b2e260
+      void v65();
+      // b1/5b4fd46a042b42f6 @ 0x100b2e290
+      void v66();
     };
   } // namespace game
 } // namespace tibia

@@ -7,9 +7,9 @@ namespace tibia {
   namespace gamewindow {
     class TWorldSelectionSortProxyModel {
     public:
-      // b1/b911cdc82bd82d0d @ 0x100e309a0
+      // b1/3ce105b961c1092c @ 0x100e37580
       void filterAcceptsRow();
-      // b1/872871bd9f7c5211 @ 0x100e2f360
+      // b1/f1439a3743d263da @ 0x100e35f40
       void lessThan();
     };
   } // namespace gamewindow

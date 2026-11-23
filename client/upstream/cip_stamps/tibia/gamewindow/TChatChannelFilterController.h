@@ -7,7 +7,7 @@ namespace tibia {
   namespace gamewindow {
     class TChatChannelFilterController {
     public:
-      // b1/ae1ce43a59186cce @ 0x100bce6b0
+      // b1/d7b11ccd5491d30f @ 0x100bd40c0
       void filterAcceptsRow();
     };
   } // namespace gamewindow

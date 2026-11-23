@@ -4470,43 +4470,49 @@
           "label": "optional"
         },
         {
-          "name": "reward_bounty_points",
+          "name": "reward_xp_elite",
           "type": "uint32",
           "number": 5,
           "label": "optional"
         },
         {
-          "name": "current_kills",
+          "name": "reward_bounty_points",
           "type": "uint32",
           "number": 6,
           "label": "optional"
         },
         {
-          "name": "claim_state",
+          "name": "current_kills",
           "type": "uint32",
           "number": 7,
           "label": "optional"
         },
         {
-          "name": "grade",
+          "name": "claim_state",
           "type": "uint32",
           "number": 8,
           "label": "optional"
         },
         {
+          "name": "grade",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
           "name": "elite",
           "type": "bool",
-          "number": 9,
+          "number": 10,
           "label": "optional"
         },
         {
           "name": "reward_dust",
           "type": "uint32",
-          "number": 10,
+          "number": 11,
           "label": "optional"
         }
       ],
-      "note": "u8 index; u16 race; u16 required kills; u32 xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust."
+      "note": "u8 index; u16 race; u16 required kills; u32 xp; u32 elite xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust."
     },
     "ProtocolBountyTalisman": {
       "fields": [
@@ -5623,17 +5629,29 @@
     "fields": [],
     "classic": "empty"
   },
-  "GameserverMessageGemAtelierGemRevealed": {
+  "GameserverMessageGemAtelierGemResponse": {
     "fields": [
+      {
+        "name": "type",
+        "type": "int32",
+        "number": 1,
+        "label": "optional"
+      },
       {
         "name": "gem_id",
         "type": "uint32",
-        "number": 1,
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "gem",
+        "type": "ProtocolWheelGem",
+        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "u16 gem_id",
-    "note": "CipSoft TProtobufServerMessageTranslator::v180: one u16 (the revealed gem's index)."
+    "classic": "u8 type; type 0 (revealed): u16 gem_id; type 1 (reshaped): u8 quality, u8 first modifier, quality 1-2: u8 second modifier, quality 2: u8 supreme modifier",
+    "note": "CipSoft TProtobufServerMessageTranslator::v180 (serializer field numbers). Field 3 is CipSoft's Gem (quality 4, first_modifier 5, second_modifier 6, supreme_modifier 7: the ProtocolWheelGem numbering)."
   },
   "GameserverMessageHirelingNameChange": {
     "fields": [
@@ -5787,15 +5805,9 @@
         "type": "int32",
         "number": 12,
         "label": "optional"
-      },
-      {
-        "name": "daily_reward_streak_length",
-        "type": "uint32",
-        "number": 13,
-        "label": "optional"
       }
     ],
-    "classic": "u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type; u8 daily reward streak length",
+    "classic": "u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type",
     "note": "CipSoft TProtobufServerMessageTranslator::v40 (serializer field numbers; field 12 is the world type, checked < 5 by its converter)."
   },
   "GameserverMessageCreatureHealth": {
@@ -10524,9 +10536,15 @@
         "type": "uint32",
         "number": 2,
         "label": "repeated"
+      },
+      {
+        "name": "reward_streak_length",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
       }
     ],
-    "classic": "u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus",
+    "classic": "u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus; u16 reward streak length",
     "note": "CIP TProtobufServerMessageTranslator::v160."
   },
   "GameserverMessageDailyRewardHistory": {
@@ -13566,7 +13584,8 @@
         "label": "optional"
       }
     ],
-    "note": "CIP TProtobufClientMessageTranslator::v90."
+    "note": "CIP TProtobufClientMessageTranslator::v90.",
+    "classic": "u8 action; actions 0 destroy, 2 reshape, 3 toggle lock, 5 attempt reshape: u16 gem id; 1 reveal, 4 improve grade: u8; actions 2, 4, 5 add u8 (mod index / slot)"
   },
   "GameclientMessageGetOfferDescription": {
     "fields": [

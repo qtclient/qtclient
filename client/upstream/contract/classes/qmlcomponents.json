@@ -2926,6 +2926,9 @@
    ],
    "replaceColorCodingsWithHtmlTags": [
     "QString replaceColorCodingsWithHtmlTags(QString TextWithColorCodings)"
+   ],
+   "wrapTextWithHtmlFontColor": [
+    "QString wrapTextWithHtmlFontColor(QString HtmlText, QColor Color)"
    ]
   },
   "properties": {},
@@ -3843,7 +3846,8 @@
     "AtMousePosition": 2,
     "AtTargetOrSelf": 3,
     "Crosshair": 1,
-    "None": 0
+    "None": 0,
+    "OnYourself": 4
    },
    "ESpellSource": {
     "SpellSourceLevelUp": 1,

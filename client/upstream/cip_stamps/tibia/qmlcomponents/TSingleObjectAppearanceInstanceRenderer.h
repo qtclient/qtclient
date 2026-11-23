@@ -7,8 +7,14 @@ namespace tibia {
   namespace qmlcomponents {
     class TSingleObjectAppearanceInstanceRenderer {
     public:
-      // b1/cce789ce251d8cb0 @ 0x1010bc470
+      // b1/21a2993044a46e15 @ 0x1010c41e0
       void componentComplete();
+      // b1/e8b0cd3459d4c8b8 @ 0x1010c4180
+      void v0_10();
+      // b1/fc96faa1c48c7072 @ 0x1010c41b0
+      void v1_10();
+      // b1/3b155a5a1e54b7c4 @ 0x1010c4240
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

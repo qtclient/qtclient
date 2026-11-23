@@ -7,7 +7,7 @@ namespace tibia {
   namespace client {
     class TPreventCloseEventFilter {
     public:
-      // b1/95257f35e515e8a9 @ 0x1008de0d0
+      // b1/c4dd2294d6192302 @ 0x1008e3940
       void eventFilter();
     };
   } // namespace client

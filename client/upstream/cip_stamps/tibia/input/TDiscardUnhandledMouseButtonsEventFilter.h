@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TDiscardUnhandledMouseButtonsEventFilter {
     public:
-      // b1/c71ce01e56a395dd @ 0x100e88340
+      // b1/340330160f1cdf86 @ 0x100e8ef20
       void eventFilter();
     };
   } // namespace input

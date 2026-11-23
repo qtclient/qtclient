@@ -15,7 +15,7 @@ using namespace ::tibia::protobuf::protocol;
 namespace {
 
 /// The protocol version the login reports.
-constexpr uint32_t ProtocolVersion = 0x604;
+constexpr uint32_t ProtocolVersion = 0x606;
 /// The client version the login reports (TGameClient::ClientVersion as text).
 const char* const ClientVersion = "15.33";
 

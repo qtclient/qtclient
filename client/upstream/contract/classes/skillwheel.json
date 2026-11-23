@@ -117,6 +117,61 @@
   },
   "slots": {}
  },
+ "tibia::skillwheel::TQmlReshapeMod": {
+  "chain": [
+   "tibia::skillwheel::TQmlReshapeMod",
+   "QObject"
+  ],
+  "class": "tibia::skillwheel::TQmlReshapeMod",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "effectString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlReshapeMod",
+    "notify": null,
+    "type": "QString"
+   },
+   "imageSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlReshapeMod",
+    "notify": null,
+    "type": "QUrl"
+   },
+   "isSupremeMod": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlReshapeMod",
+    "notify": null,
+    "type": "bool"
+   },
+   "modGrade": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlReshapeMod",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
  "tibia::skillwheel::TQmlSocketedGem": {
   "chain": [
    "tibia::skillwheel::TQmlSocketedGem",
@@ -233,8 +288,8 @@
    ]
   },
   "slots": {
-   "handleGemAtelierGemRevealedMessage": [
-    "void handleGemAtelierGemRevealedMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed Message)"
+   "handleGemAtelierGemResponseMessage": [
+    "void handleGemAtelierGemResponseMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse Message)"
    ],
    "handleResourceBalanceMessage": [
     "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance Message)"
@@ -279,6 +334,9 @@
    ],
    "serverSkillWheelChanged": [
     "void serverSkillWheelChanged()"
+   ],
+   "temporaryReshapedGemChanged": [
+    "void temporaryReshapedGemChanged()"
    ],
    "unrevealedGemsChanged": [
     "void unrevealedGemsChanged()"

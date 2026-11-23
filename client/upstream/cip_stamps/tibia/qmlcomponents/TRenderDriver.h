@@ -7,10 +7,14 @@ namespace tibia {
   namespace qmlcomponents {
     class TRenderDriver {
     public:
-      // b1/5b1ee01dedea0fcb @ 0x1010b5a10
+      // b1/5b1ee01dedea0fcb @ 0x1010bd720
       void updatePaintNode();
-      // b1/e996d84545129eb9 @ 0x1010b5a20
+      // b1/16c569cf364b0ce6 @ 0x1010bd730
       void updatePolish();
+      // b1/98b561cb93207090 @ 0x101085770
+      void v0_10();
+      // b1/6d0247b267f0be3b @ 0x101085780
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

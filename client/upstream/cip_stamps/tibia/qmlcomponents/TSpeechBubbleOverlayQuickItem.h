@@ -7,8 +7,12 @@ namespace tibia {
   namespace qmlcomponents {
     class TSpeechBubbleOverlayQuickItem {
     public:
-      // b1/eaec21475bda2889 @ 0x1010c6f60
+      // b1/a1ef33b67cd1ddc1 @ 0x1010cecd0
       void geometryChange();
+      // b1/fc85a8f851f8889c @ 0x1010ce390
+      void v0_10();
+      // b1/3097d1afb8ededc8 @ 0x1010ce3c0
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

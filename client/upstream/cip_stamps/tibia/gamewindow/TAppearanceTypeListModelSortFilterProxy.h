@@ -7,14 +7,10 @@ namespace tibia {
   namespace gamewindow {
     class TAppearanceTypeListModelSortFilterProxy {
     public:
-      // b1/c7cfbc7de54d25af @ 0x100d610f0
+      // b1/e6fa54a01ad38d17 @ 0x100d66b80
       void filterAcceptsRow();
-      // b1/7e364b709594c6ca @ 0x100d615a0
+      // b1/bc4ae501bba7f105 @ 0x100d67030
       void lessThan();
-      // b1/698e207d891ef977 @ 0x100d6daf0
-      void rowOf();
-      // b1/e8099b2d6ec825d6 @ 0x100d6d4e0
-      void setTypeFilter();
     };
   } // namespace gamewindow
 } // namespace tibia

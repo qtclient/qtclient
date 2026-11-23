@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TKeyboardShortcutHandlerEventFilter {
     public:
-      // b1/417851cf6a2fe8b1 @ 0x100e79290
+      // b1/2f94295fd11f8394 @ 0x100e7fe70
       void eventFilter();
     };
   } // namespace input

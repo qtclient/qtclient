@@ -7,8 +7,12 @@ namespace tibia {
   namespace qmlcomponents {
     class TNumericalEffectOverlayQuickItem {
     public:
-      // b1/9f69964059d7622c @ 0x1010c2480
+      // b1/01ba7da61e26f547 @ 0x1010ca1f0
       void geometryChange();
+      // b1/e8b0cd3459d4c8b8 @ 0x1010c9cb0
+      void v0_10();
+      // b1/769b389ee4f18568 @ 0x1010c9ce0
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

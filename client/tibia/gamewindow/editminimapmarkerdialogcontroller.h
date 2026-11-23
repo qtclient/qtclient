@@ -37,6 +37,8 @@ public:
     /// SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION one for the player's
     /// field (with its marker, if it has one).
     void handleGameAction(const input::IGameAction& action);
+    /// The marker icons the dialog offers: 40.
+    uint numberOfMinimapMarkers() const override;
 
 public Q_SLOTS:
     void onCancelClicked() override;

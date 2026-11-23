@@ -10,6 +10,11 @@ ComboBox {
   property var textVerticalAlignment: Text.AlignVCenter
   property int popupMaxHeight: 400
 
+  // Optional per-item callbacks (index => value). Disabled items are greyed out and cannot be picked from the popup;
+  // a non-empty tooltip text is shown when hovering the item in the popup (also when it is disabled).
+  property var isItemEnabled: function (index) { return true; }
+  property var itemTooltipText: function (index) { return ""; }
+
   implicitWidth: 200
   implicitHeight: TibiaStyle.comboBoxHeight
 
@@ -98,6 +103,7 @@ ComboBox {
     width: root.width
     padding: TibiaStyle.marginNarrow
     leftPadding: TibiaStyle.marginRelated
+    enabled: root.isItemEnabled(index)
 
     background: Rectangle {
       width: root.width
@@ -105,8 +111,17 @@ ComboBox {
     }
 
     contentItem: TibiaText {
-      color: root.highlightedIndex === index ? TibiaStyle.textFieldSelectionTextColor : TibiaStyle.textFieldTextColor
+      color: !itemDelegate.enabled ? TibiaStyle.textFieldDisabledTextColor
+                                   : root.highlightedIndex === index ? TibiaStyle.textFieldSelectionTextColor
+                                                                    : TibiaStyle.textFieldTextColor
       text: itemDelegate.model[root.textRole]
+    }
+
+    Tooltip {
+      anchors.fill: parent
+      text: root.itemTooltipText(itemDelegate.index)
+      enabled: text !== ""
+      showAbovePopups: true
     }
   } //delegate
 

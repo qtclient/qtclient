@@ -182,7 +182,7 @@ void TProtocolMessageQueue::registerServerMessages()
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list, &TProtocolMessageQueue::receivedDepotSearchDetailListMessage);
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageCloseDepotSearch::gameserver_message_close_depot_search, &TProtocolMessageQueue::receivedCloseDepotSearchMessage);
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageWeaponProficiency::gameserver_message_weapon_proficiency, &TProtocolMessageQueue::receivedWeaponProficiencyMessage);
-    registerServerMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed, &TProtocolMessageQueue::receivedGemAtelierGemRevealedMessage);
+    registerServerMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse::gameserver_message_gem_atelier_gem_response, &TProtocolMessageQueue::receivedGemAtelierGemResponseMessage);
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData::gameserver_message_cyclopedia_static_house_data, &TProtocolMessageQueue::receivedCyclopediaStaticHouseDataMessage);
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData::gameserver_message_cyclopedia_current_house_data, &TProtocolMessageQueue::receivedCyclopediaCurrentHouseDataMessage);
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result, &TProtocolMessageQueue::receivedCyclopediaHouseActionResultMessage);
@@ -1878,7 +1878,7 @@ bool isHandledServerMessage(const uint8_t opcode)
     case 196: // WeaponProficiency
         // Native: proficiency::TProficiencyProtocolMessageHandler.
         return true;
-    case 197: // GemAtelierGemRevealed
+    case 197: // GemAtelierGemResponse
         // Native: skillwheel::TSkillWheelProtocolMessageHandler.
         return true;
     case 198: // CyclopediaStaticHouseData

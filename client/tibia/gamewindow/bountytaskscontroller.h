@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/taskboardmodels.h"
 #include "qtconnectionmanager.h"
 
@@ -23,15 +24,18 @@ namespace gamewindow {
 /// The task board's bounty tab. Its properties read the session's bounty task
 /// data and task board currencies; a bounty board message refills the task,
 /// preferred-slot and monster lists. A request to the server waits for the
-/// next bounty data before another one goes out.
+/// next bounty data before another one goes out. The player's level limits
+/// the difficulties that can be selected; rerolling while a task is taken
+/// asks for confirmation first.
 class TBountyTasksController final : public cip::tibia::gamewindow::TBountyTasksController
 {
     Q_OBJECT
 public:
     explicit TBountyTasksController(QObject* parent = nullptr);
 
-    /// Takes the session; its bounty data refills the lists and its bounty
-    /// point and reroll token balances notify the properties.
+    /// Takes the session; its bounty data refills the lists, its bounty
+    /// point and reroll token balances notify the properties and its player
+    /// data updates the highest selectable difficulty.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     int bountyTaskDifficulty() const override;
@@ -73,7 +77,11 @@ public Q_SLOTS:
     void hideDialogTab() override;
 
 public:
+    /// Ignored above the highest difficulty the player's level allows.
     Q_INVOKABLE void setBountyTaskDifficulty(int Difficulty) override;
+    /// The level a difficulty needs (adept 30, expert 150, master 400; 0
+    /// otherwise).
+    Q_INVOKABLE int getRequiredLevelForDifficulty(int Difficulty) override;
     Q_INVOKABLE void setElite(bool isElite) override;
     Q_INVOKABLE void rerollTasksAction() override;
     Q_INVOKABLE void acceptBountyTask(int TaskIndex) override;
@@ -100,8 +108,12 @@ private:
     /// or too few bounty points for the upgrade.
     QString disabledTalismanTooltip(int talismanIndex) const;
     /// Applies one bounty board message: the lists, the selection, and the
-    /// answer to a pending request.
+    /// answer to a pending request. While no task is taken every task shows
+    /// the board's elite mode.
     void onBountyTaskDataReceived(const taskboard::TBountyTaskData& data);
+    /// The highest difficulty the player's level allows (level 30 adept,
+    /// 150 expert, 400 master); 0 without a session or player data.
+    void updateMaxBountyTaskDifficulty();
     /// Sends a bounty request when a session is connected and no other
     /// request waits for its answer (the next bounty data).
     void sendRequest(const std::function<void()>& send);
@@ -119,6 +131,8 @@ private:
     int m_selectedDifficulty = 0;
     bool m_selectedElite = false;
     bool m_hasSelection = false;
+    /// Asks before a reroll replaces a taken task; Yes sends the reroll.
+    TMessageDialogController m_rerollConfirmation;
 };
 
 }

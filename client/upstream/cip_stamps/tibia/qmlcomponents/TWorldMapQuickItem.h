@@ -7,8 +7,12 @@ namespace tibia {
   namespace qmlcomponents {
     class TWorldMapQuickItem {
     public:
-      // b1/643aa6071b695a15 @ 0x1010c08f0
+      // b1/8efe1d76f737ba27 @ 0x1010c8660
       void updatePaintNode();
+      // b1/cff6236908e555c3 @ 0x1010c8600
+      void v0_10();
+      // b1/4f895e9555e17bf5 @ 0x1010c8630
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

@@ -192,7 +192,7 @@ namespace Proto
         GameServerConfigureCreaturePodium = 194, // CIP ConfigureCreaturePodium (Crystal sendMonsterPodiumWindow)
         GameServerCyclopediaHouseAuctionMessage = 195,
         GameServerWeaponProficiencyInfo = 196, // TournamentInformation = 196
-        GameServerGemAtelierGemRevealed = 197, // CIP GemAtelierGemRevealed (u32 gemId)
+        GameServerGemAtelierGemResponse = 197, // CIP GemAtelierGemResponse (u8 type; 0: u16 gem id; 1: reshaped gem)
         GameServerCyclopediaHousesInfo = 198,
         GameServerCyclopediaHouseList = 199,
         GameServerChooseOutfit = 200,

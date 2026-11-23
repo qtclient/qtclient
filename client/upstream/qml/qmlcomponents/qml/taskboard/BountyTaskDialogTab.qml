@@ -51,6 +51,10 @@ TibiaFrame2PixelUpFilled {
       selectBountyTaskDifficulty: function (newValue) {
         controller.setBountyTaskDifficulty(newValue);
       }
+      maxBountyTaskDifficulty: controller.maxBountyTaskDifficulty
+      adeptLevelRequirement: controller.getRequiredLevelForDifficulty(1)
+      expertLevelRequirement: controller.getRequiredLevelForDifficulty(2)
+      masterLevelRequirement: controller.getRequiredLevelForDifficulty(3)
 
       isElite: controller.isElite
       setEliteAction: function (newValue) {
@@ -61,7 +65,9 @@ TibiaFrame2PixelUpFilled {
         controller.showPreferredList = true;
       }
 
-      canRerollTasks: controller.canRerollTasks
+      // For the external test, allow rerolling without reroll tokens.
+      canRerollTasks: true
+      //canRerollTasks: controller.canRerollTasks
       rerollTasksAction: function () {
         controller.rerollTasksAction();
       }

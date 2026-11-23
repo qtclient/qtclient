@@ -257,7 +257,7 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
     m_showNPCMarkers = true;
     m_showPassages = true;
     m_showHouses = true;
-    m_minimapMarkersFilter = QList<bool>(20, true);
+    m_minimapMarkersFilter = QList<bool>(40, true);
     ensureMarkerIcons();
     connect(m_worldCamera, &TWorldMapCamera::cameraViewportChanged, this, &TMinimapRendererQuickItem::scheduleUpdate);
     connect(this, &TMinimapRendererQuickItem::propertyChanged, this, [this] {

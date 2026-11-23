@@ -114,7 +114,7 @@ TibiaDialog {
 
       TibiaFrame1PixelDown {
         Layout.fillWidth: true
-        Layout.preferredHeight: 380
+        Layout.preferredHeight: 365
 
         ColumnLayout {
           anchors.fill: parent
@@ -202,123 +202,145 @@ TibiaDialog {
           id: targetOptionsLabel
           Layout.fillWidth: true
           text: qsTrId("assign_spell_dialog_label_target_options")
-          enabled: positionTargetingLayout.visible || waveTargetingLayout.visible
+          enabled: castOptionsStack.currentIndex != noCastOptions.StackLayout.index
         } //TibiaText
 
-        TibiaText {
-          Layout.minimumHeight: Math.max(positionTargetingLayout.height, waveTargetingLayout.height)
-          text: qsTrId("none")
-          enabled: false
-          visible: !targetOptionsLabel.enabled
-        } //TibiaText
-
-        ColumnLayout {
-          id: positionTargetingLayout
+        StackLayout {
+          id: castOptionsStack
           Layout.fillWidth: true
-          spacing: TibiaStyle.marginRelated
-          visible: root.spellIsCrossHairSpell
+          Layout.fillHeight: false
+          currentIndex: {
+            if (root.spellIsCrossHairSpell) {
+              return positionTargetingLayout.StackLayout.index;
+            } else if (root.spellIsAimAtTargetConfigurable) {
+              return waveTargetingLayout.StackLayout.index;
+            }
 
-          ButtonGroup {
-            id: targetCastTypeGroup
-            property int spellTargetTypeEnumID: TibiaEnums.ESpellCastOptionalTargetType.None
+            return noCastOptions.StackLayout.index;
+          } //currentIndex
 
-            checkedButton: {
-              if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.Crosshair) {
+          TibiaText {
+            id: noCastOptions
+            text: qsTrId("none")
+            enabled: false
+          } //TibiaText
+
+          ColumnLayout {
+            id: positionTargetingLayout
+            Layout.fillWidth: true
+            spacing: TibiaStyle.marginRelated
+
+            ButtonGroup {
+              id: targetCastTypeGroup
+              property int spellTargetTypeEnumID: TibiaEnums.ESpellCastOptionalTargetType.None
+
+              checkedButton: {
+                if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.Crosshair) {
+                  return castTypeCrossHair;
+                } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition) {
+                  return castTypeMouseCursor;
+                } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf) {
+                  return castTypeAtTargetOrSelf;
+                } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.OnYourself) {
+                  return castTypeOnYourself;
+                }
+
                 return castTypeCrossHair;
-              } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition) {
-                return castTypeMouseCursor;
-              } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf) {
-                return castTypeAtTargetOrSelf;
               }
 
-              return castTypeCrossHair;
-            }
+              onCheckedButtonChanged: {
+                if (checkedButton == castTypeCrossHair) {
+                  targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.Crosshair;
+                } else if (checkedButton == castTypeMouseCursor) {
+                  targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition;
+                } else if (checkedButton == castTypeAtTargetOrSelf) {
+                  targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf;
+                } else if (checkedButton == castTypeOnYourself) {
+                  targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.OnYourself;
+                } else {
+                  targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
+                }
+              } //onCurrentChanged
+            } //ButtonGroup
 
-            onCheckedButtonChanged: {
-              if (checkedButton == castTypeCrossHair) {
-                targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.Crosshair;
-              } else if (checkedButton == castTypeMouseCursor) {
-                targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition;
-              } else if (checkedButton == castTypeAtTargetOrSelf) {
-                targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf;
-              } else {
-                targetCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
-              }
-            } //onCurrentChanged
-          } //ButtonGroup
+            TibiaRadioButton {
+              id: castTypeCrossHair
+              text: qsTrId("assign_spell_dialog_option_crosshair")
+              ButtonGroup.group: targetCastTypeGroup
+            } //TibiaRadioButton
 
-          TibiaRadioButton {
-            id: castTypeCrossHair
-            text: qsTrId("assign_spell_dialog_option_crosshair")
-            ButtonGroup.group: targetCastTypeGroup
-          } //TibiaRadioButton
+            TibiaRadioButton {
+              id: castTypeMouseCursor
+              text: qsTrId("assign_spell_dialog_option_mousecursor")
+              ButtonGroup.group: targetCastTypeGroup
+            } //TibiaRadioButton
 
-          TibiaRadioButton {
-            id: castTypeMouseCursor
-            text: qsTrId("assign_spell_dialog_option_mousecursor")
-            ButtonGroup.group: targetCastTypeGroup
-          } //TibiaRadioButton
+            TibiaRadioButton {
+              id: castTypeAtTargetOrSelf
+              text: qsTrId("assign_spell_dialog_option_target")
+              ButtonGroup.group: targetCastTypeGroup
+            } //TibiaRadioButton
 
-          TibiaRadioButton {
-            id: castTypeAtTargetOrSelf
-            text: qsTrId("assign_spell_dialog_option_target")
-            ButtonGroup.group: targetCastTypeGroup
-          } //TibiaRadioButton
-        } // ColumnLayout
+            TibiaRadioButton {
+              id: castTypeOnYourself
+              text: qsTrId("assign_spell_dialog_option_yourself")
+              ButtonGroup.group: targetCastTypeGroup
+            } //TibiaRadioButton
+          } // ColumnLayout
 
-        ColumnLayout {
-          id: waveTargetingLayout
-          Layout.fillWidth: true
-          spacing: TibiaStyle.marginRelated
-          visible: root.spellIsAimAtTargetConfigurable
+          ColumnLayout {
+            id: waveTargetingLayout
+            Layout.fillWidth: true
+            spacing: TibiaStyle.marginRelated
 
-          ButtonGroup {
-            id: waveCastTypeGroup
-            property int spellTargetTypeEnumID: TibiaEnums.ESpellCastOptionalTargetType.None
+            ButtonGroup {
+              id: waveCastTypeGroup
+              property int spellTargetTypeEnumID: TibiaEnums.ESpellCastOptionalTargetType.None
 
-            checkedButton: {
-              if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.None) {
+              checkedButton: {
+                if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.None) {
+                  return castTypeTowardsFacing;
+                } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition) {
+                  return castTypeTowardsMouseCursor;
+                } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf) {
+                  return castTypeTowardsTarge;
+                }
+
                 return castTypeTowardsFacing;
-              } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition) {
-                return castTypeTowardsMouseCursor;
-              } else if (controller.currentSpellCastType == TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf) {
-                return castTypeTowardsTarge;
               }
 
-              return castTypeTowardsFacing;
-            }
+              onCheckedButtonChanged: {
+                if (checkedButton == castTypeTowardsFacing) {
+                  waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
+                } else if (checkedButton == castTypeTowardsMouseCursor) {
+                  waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition;
+                } else if (checkedButton == castTypeTowardsTarge) {
+                  waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf;
+                } else {
+                  waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
+                }
+              } //onCurrentChanged
+            } //ButtonGroup
 
-            onCheckedButtonChanged: {
-              if (checkedButton == castTypeTowardsFacing) {
-                waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
-              } else if (checkedButton == castTypeTowardsMouseCursor) {
-                waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtMousePosition;
-              } else if (checkedButton == castTypeTowardsTarge) {
-                waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.AtTargetOrSelf;
-              } else {
-                waveCastTypeGroup.spellTargetTypeEnumID = TibiaEnums.ESpellCastOptionalTargetType.None;
-              }
-            } //onCurrentChanged
-          } //ButtonGroup
+            TibiaRadioButton {
+              id: castTypeTowardsFacing
+              text: qsTrId("assign_spell_dialog_option_towards_facing")
+              ButtonGroup.group: waveCastTypeGroup
+            } //TibiaRadioButton
 
-          TibiaRadioButton {
-            id: castTypeTowardsFacing
-            text: qsTrId("assign_spell_dialog_option_towards_facing")
-            ButtonGroup.group: waveCastTypeGroup
-          } //TibiaRadioButton
+            TibiaRadioButton {
+              id: castTypeTowardsMouseCursor
+              text: qsTrId("assign_spell_dialog_option_towards_mousecursor")
+              ButtonGroup.group: waveCastTypeGroup
+            } //TibiaRadioButton
 
-          TibiaRadioButton {
-            id: castTypeTowardsMouseCursor
-            text: qsTrId("assign_spell_dialog_option_towards_mousecursor")
-            ButtonGroup.group: waveCastTypeGroup
-          } //TibiaRadioButton
-
-          TibiaRadioButton {
-            id: castTypeTowardsTarge
-            text: qsTrId("assign_spell_dialog_option_towards_target")
-            ButtonGroup.group: waveCastTypeGroup
-          } //TibiaRadioButton
-        } //ColumnLayout
+            TibiaRadioButton {
+              id: castTypeTowardsTarge
+              text: qsTrId("assign_spell_dialog_option_towards_target")
+              ButtonGroup.group: waveCastTypeGroup
+            } //TibiaRadioButton
+          } //ColumnLayout
+        } //StackLayout
       } //ColumnLayout
     } //ColumnLayout
 

@@ -7,16 +7,10 @@ namespace tibia {
   namespace gamewindow {
     class TVipWidgetDataModelSortFilterProxy {
     public:
-      // b1/ca45fec93b8a56e4 @ 0x100be2b50
+      // b1/9ff0be345dfb0105 @ 0x100be8570
       void filterAcceptsRow();
-      // b1/26cde54b3894f746 @ 0x100be2d80
+      // b1/44418a6d53501992 @ 0x100be87a0
       void lessThan();
-      // b1/88bb8a3e16a4e1f0 @ 0x100bec180
-      void setHideOffline();
-      // b1/5182c38bc22f500a @ 0x100bec260
-      void setSortOrder();
-      // b1/066cc1100f6aeadb @ 0x100bec310
-      void sortBy();
     };
   } // namespace gamewindow
 } // namespace tibia

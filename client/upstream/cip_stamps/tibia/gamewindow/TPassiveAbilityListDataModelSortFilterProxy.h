@@ -7,11 +7,11 @@ namespace tibia {
   namespace gamewindow {
     class TPassiveAbilityListDataModelSortFilterProxy {
     public:
-      // b1/6668b21dc8079724 @ 0x100df79f0
+      // b1/da3a954878652234 @ 0x100dfde90
       void data();
-      // b1/bfdc64ceefba0c03 @ 0x100df7c00
+      // b1/734feee50c5edec3 @ 0x100dfe0a0
       void filterAcceptsRow();
-      // b1/f49cef55b19943ba @ 0x100df7d90
+      // b1/8fc7edb1543c9029 @ 0x100dfe230
       void lessThan();
     };
   } // namespace gamewindow

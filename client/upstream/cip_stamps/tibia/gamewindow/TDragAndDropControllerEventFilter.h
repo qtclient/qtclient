@@ -7,7 +7,7 @@ namespace tibia {
   namespace gamewindow {
     class TDragAndDropControllerEventFilter {
     public:
-      // b1/390f3908ed1e4e16 @ 0x100bc7fd0
+      // b1/40ad4c07e43a53c1 @ 0x100bcd9e0
       void eventFilter();
     };
   } // namespace gamewindow

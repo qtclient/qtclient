@@ -7,14 +7,8 @@ namespace tibia {
   namespace gamewindow {
     class TGameWindowController {
     public:
-      // b1/66861743b28a1ef3 @ 0x100b5df90
+      // b1/5c7267478219b862 @ 0x100b639a0
       void eventFilter();
-      // b1/b88fef944becf502 @ 0x100b66210
-      void optionsPressed();
-      // b1/30543e5d416016bc @ 0x100b65820
-      void showGameScreen();
-      // b1/483a4f515fa05319 @ 0x100b62b80
-      void showStartScreen();
     };
   } // namespace gamewindow
 } // namespace tibia

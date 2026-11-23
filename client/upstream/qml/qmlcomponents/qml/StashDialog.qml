@@ -252,11 +252,64 @@ TibiaDialog {
             slotID: model.typeID
             mouseAreaEnabled: true
             slotText: model.countString
-            slotTooltip: model.typeName != ""
-              ? "%1x %2"
-                .arg(TextHelper.formatNumberWithThousandSeparators(model.typeCount))
-                .arg(model.typeName)
-              : ""
+            slotTooltipUseRichText: true
+            slotTooltip: {
+              let tooltip = "";
+
+              if (model.typeName != "") {
+                tooltip= "%1x %2 "
+                  .arg(TextHelper.formatNumberWithThousandSeparators(model.typeCount))
+                  .arg(model.typeName);
+
+                let npcPriceInfo = "";
+                let marketPriceInfo = "";
+
+                const priceTableRow =
+                    "<tr>"
+                  + "<td style=\"text-align:right; padding-right:5px\">%1</td>"
+                  + "<td style=\"text-align:right\">%2 " + qsTrId("gold_coin_icon") + "</td>"
+                  + "</tr>"
+
+                if (model.npcSellValue > 0) {
+                  npcPriceInfo = qsTrId("iteminfo_pricing_npc") + ":";
+                }
+
+                if (model.tradeableInMarket) {
+                  let npcPriceHigh = model.npcSellValue > model.marketAverageValue;
+                  let marketPriceHigh = model.npcSellValue > 0 && model.marketAverageValue > model.npcSellValue;
+
+                  marketPriceInfo = qsTrId("iteminfo_pricing_market") + ":";
+
+                  if (npcPriceHigh) {
+                    npcPriceInfo = TextHelper.wrapTextWithHtmlFontColor(
+                      npcPriceInfo,
+                      TibiaStyle.textColors["PositiveTooltip"]);
+                  }
+                  if (marketPriceHigh) {
+                    marketPriceInfo = TextHelper.wrapTextWithHtmlFontColor(
+                      marketPriceInfo,
+                      TibiaStyle.textColors["PositiveTooltip"]);
+                  }
+                }
+
+                if (npcPriceInfo != "" || marketPriceInfo != "") {
+                  tooltip += "<table>";
+                  if (npcPriceInfo != "") {
+                    tooltip += priceTableRow
+                      .arg(npcPriceInfo)
+                      .arg(TextHelper.formatNumberWithThousandSeparators(model.npcSellValue));
+                  }
+                  if (marketPriceInfo != "") {
+                    tooltip += priceTableRow
+                      .arg(marketPriceInfo)
+                      .arg(TextHelper.formatNumberWithThousandSeparators(model.marketAverageValue));
+                  }
+                  tooltip += "</table>";
+                }
+              }
+
+              return tooltip;
+            }
             objectAppearanceInstanceCumulativeCount: model.cumulativeCount
             lootvalueImageSourceUnderItem: model.lootvalueImageSourceUnderItem
             lootvalueImageSourceOverItem: model.lootvalueImageSourceOverItem

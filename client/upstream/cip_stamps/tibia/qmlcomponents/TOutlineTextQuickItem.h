@@ -7,10 +7,16 @@ namespace tibia {
   namespace qmlcomponents {
     class TOutlineTextQuickItem {
     public:
-      // b1/6a74c87b0f0fc9d9 @ 0x1010d1d20
+      // b1/6d476fd79c3af4ba @ 0x1010d9a90
       void componentComplete();
-      // b1/090ecbbf151666fc @ 0x1010d18f0
+      // b1/d7e1bdc4480fe823 @ 0x1010d9660
       void geometryChange();
+      // b1/fc6a4154e6424dec @ 0x1010852a0
+      void v0_10();
+      // b1/73fe75a4ee9a949e @ 0x101085300
+      void v1_10();
+      // b1/84f118643c70560c @ 0x1010d9ad0
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

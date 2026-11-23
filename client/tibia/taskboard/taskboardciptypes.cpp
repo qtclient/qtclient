@@ -110,6 +110,7 @@ TBountyTaskData bountyTaskData(const ProtocolTaskboardBounty& bounty)
         task.raceId = static_cast<uint16_t>(t.race_id());
         task.requiredKills = static_cast<uint16_t>(t.required_kills());
         task.rewardExperience = t.reward_xp();
+        task.rewardExperienceElite = t.reward_xp_elite();
         task.rewardBountyPoints = static_cast<uint16_t>(t.reward_bounty_points());
         task.currentKills = static_cast<uint16_t>(t.current_kills());
         task.claimState = static_cast<EBountyTaskClaimState>(checkedEnumValue(t.claim_state(), 2));

@@ -7,9 +7,9 @@ namespace tibia {
   namespace gamewindow {
     class TTitlesSortProxyModel {
     public:
-      // b1/e76d63a82895ef38 @ 0x100d0e870
+      // b1/240d9cd7d3d9cb9a @ 0x100d14230
       void filterAcceptsRow();
-      // b1/fa1df4dfb919f037 @ 0x100d0e580
+      // b1/a360afc8564d9dff @ 0x100d13f40
       void lessThan();
     };
   } // namespace gamewindow

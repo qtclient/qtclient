@@ -1,6 +1,7 @@
 #include "killtrackerwidgetcontroller.h"
 
 #include "config/sidebaroptions.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/preydialogcontroller.h"
 #include "gamewindow/taskboarddialogcontroller.h"
@@ -116,26 +117,20 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
         connect(item, &QObject::destroyed, this, &TKillTrackerWidgetController::onWidgetQuickItemDestroyed);
 }
 
-void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters)
+/// A single taken task becomes the one active row; otherwise the row is
+/// empty and inactive.
+void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<taskboard::TBountyTask>& tasks)
 {
     auto* model = qobject_cast<TTaskMonsterModel*>(m_bountyTasksModel);
     if (!model)
         return;
-    // One row: the one active bounty task, else an inactive empty row.
-    const std::map<std::string, uint32_t>* active = nullptr;
-    int activeCount = 0;
-    for (const auto& row : monsters) {
-        if (mapU32(row, "isActive") != 0) {
-            active = &row;
-            ++activeCount;
-        }
-    }
     TTaskMonsterModel::Entry entry;
-    if (activeCount == 1) {
-        entry.raceId = static_cast<uint16_t>(mapU32(*active, "raceId"));
-        entry.raceName = raceName(entry.raceId);
-        entry.amountToHunt = static_cast<uint16_t>(mapU32(*active, "totalKills"));
-        entry.amountHunted = static_cast<uint16_t>(mapU32(*active, "currentKills"));
+    if (tasks.size() == 1 && tasks.front().claimState != taskboard::EBountyTaskClaimState::Available) {
+        const taskboard::TBountyTask& task = tasks.front();
+        entry.raceId = task.raceId;
+        entry.raceName = cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(task.raceId).name));
+        entry.amountToHunt = task.requiredKills;
+        entry.amountHunted = task.currentKills;
         entry.isActive = true;
     }
     model->setEntries({ std::move(entry) });
@@ -175,10 +170,7 @@ void TKillTrackerWidgetController::connectToGameSession(const std::shared_ptr<ga
     // Task board storages → kill-tracker bounty/weekly rows.
     m_gameSessionConnections.add(connect(session->taskboardBountyTasksStorage().get(),
                                          &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
-                                         [this](const taskboard::TBountyTaskData& data) {
-                                             m_pendingBounty = taskboardBountyMonsterRows(data);
-                                             bountyTaskDataChanged();
-                                         }));
+                                         [this](const taskboard::TBountyTaskData& data) { applyBountyMonsters(data.tasks); }));
     m_gameSessionConnections.add(connect(session->taskboardWeeklyTasksStorage().get(),
                                          &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
                                          [this](const taskboard::TWeeklyTaskData& data) {
@@ -194,8 +186,6 @@ void TKillTrackerWidgetController::clearPreyList()
     Q_EMIT preyListChanged();
     qDeleteAll(old);
 }
-
-void TKillTrackerWidgetController::bountyTaskDataChanged() { applyBountyMonsters(m_pendingBounty); }
 
 void TKillTrackerWidgetController::weeklyTaskDataChanged() { applyWeeklyMonsters(m_pendingWeekly); }
 

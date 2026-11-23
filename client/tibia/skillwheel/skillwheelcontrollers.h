@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "skillwheel/gematelierreshapemoddialogcontroller.h"
 #include "skillwheel/skillwheelmodels.h"
 
 #include <cip_gen.h>
@@ -216,10 +217,13 @@ public:
 
     void socketOrUnsocketGem(int GemId, int VesselIndex) override;
     void dismantleGem(int GemId) override;
-    /// CIP: closes the dismantle question (the skill wheel dialog closing).
+    /// CIP: closes the reshape dialog and the dismantle question (the skill wheel dialog closing).
     void closeMessageDialog();
     void revealGem(int GemQuality) override;
+    /// The reshape the reshape dialog confirmed: the storage forgets the attempt, the server applies it.
     void reshapeGem(int GemId, int ModIdx) override;
+    /// The storage remembers the gem, the mod and the gem's mods; the server rolls the new mod.
+    void attemptReshapeGem(int GemId, int ModIdx) override;
     void selectGem(int GemId, bool NarrowDownFilters) override;
     void selectGem(int GemId) override;
     void selectVessel(int Index) override;
@@ -238,6 +242,10 @@ public:
     void onGemsChanged();
     void onWheelChanged();
     void onResourcesChanged() { Q_EMIT unrevealedGemsChanged(); }
+    /// The server rolled a reshape: the dialog shows the mod before and after.
+    void onTemporaryReshapedGemChanged();
+    /// The reshape dialog's new mod: the remembered gem and mod are reshaped.
+    void onConfirmReshape();
     /// Shows a domain's vessel gem, or the domain's gems.
     void showDomain(int domain, int gemId);
 
@@ -258,6 +266,7 @@ private:
     /// The gem socketed or unsocketed last: selected again once the gem inventory changes
     /// (dropped by a new selection or when the gem is gone).
     std::optional<int> m_gemToReselect;
+    TGemAtelierReshapeModDialogController* m_reshapeModDialog;
 };
 
 /// The Fragment Workshop tab, SkillWheelFragmentWorkshopPage.qml

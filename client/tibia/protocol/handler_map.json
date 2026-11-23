@@ -1750,7 +1750,7 @@
  {
   "dir": "server",
   "opcode": 197,
-  "name": "GemAtelierGemRevealed",
+  "name": "GemAtelierGemResponse",
   "call": "// Native: skillwheel::TSkillWheelProtocolMessageHandler."
  },
  {

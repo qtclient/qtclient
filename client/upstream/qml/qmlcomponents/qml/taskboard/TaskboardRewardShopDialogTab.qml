@@ -58,24 +58,10 @@ TibiaFrame2PixelUpFilled {
           delegate: TibiaFrame2PixelUpFilledWithCaption {
             
             id: offerFrame
-            // Qt 6 required-property role injection — more reliable than model.* for custom roles.
-            required property int index
-            required property int rewardType
-            required property int appearanceId
-            required property int optionalId
-            required property string title
-            required property string description
-            required property int cost
-            required property string costString
-            required property bool canBuy
-            required property bool alreadyOwned
-            required property string noBuyReasonString
-            required property bool addOn1
-            required property bool addOn2
             property int itemIndex: index
             width: 296
             height: 146
-            caption: title
+            caption: model.title
             
             ColumnLayout {
               id: singleRewardInfo
@@ -91,16 +77,16 @@ TibiaFrame2PixelUpFilled {
             
                 TaskboardShopOffer {
                   
-                  rewardType: offerFrame.rewardType
-                  appearanceId: offerFrame.appearanceId
-                  optionalAppearanceId: offerFrame.optionalId
-                  outfitAppearanceId: offerFrame.appearanceId
+                  rewardType: model.rewardType
+                  appearanceId: model.id
+                  optionalAppearanceId: model.optionalId
+                  outfitAppearanceId: model.id
                   headColor: controller != null ? controller.headColor : "black"
                   torsoColor: controller != null ? controller.torsoColor : "black"
                   legsColor: controller != null ? controller.legsColor : "black"
                   detailColor: controller != null ? controller.detailColor : "black"
-                  addOn1: offerFrame.addOn1
-                  addOn2: offerFrame.addOn2
+                  addOn1: model.addOn1
+                  addOn2: model.addOn2
                 }
             
                            
@@ -110,7 +96,7 @@ TibiaFrame2PixelUpFilled {
                   Layout.rightMargin: TibiaStyle.marginUnrelated*2
                 
                   TibiaText {
-                    text: offerFrame.description
+                    text: model.description
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                   } // TibiaText
@@ -131,9 +117,9 @@ TibiaFrame2PixelUpFilled {
                   text: qsTrId("buy")
                   Layout.preferredWidth: 64
                   Layout.preferredHeight: 20
-                  enabled: controller != null && (controller.huntingTaskPoints >= offerFrame.cost) && offerFrame.canBuy
-                  visible: !offerFrame.alreadyOwned
-                  tooltipText: offerFrame.noBuyReasonString
+                  enabled: controller != null && (controller.huntingTaskPoints >= model.cost) && model.canBuy
+                  visible: !model.alreadyOwned
+                  tooltipText: model.noBuyReasonString
                 
                   onClicked: {
                     if (controller != null) {
@@ -146,7 +132,7 @@ TibiaFrame2PixelUpFilled {
                 TibiaFrame1PixelDown {
                   Layout.preferredWidth: 64
                   Layout.preferredHeight: 20
-                  visible: offerFrame.alreadyOwned
+                  visible: model.alreadyOwned
                   
                   RowLayout {
                     anchors.centerIn: parent
@@ -167,7 +153,7 @@ TibiaFrame2PixelUpFilled {
                 TibiaCurrencyView {
                   Layout.preferredWidth: TibiaStyle.currencyViewWidth
                   Layout.preferredHeight: 20
-                  balance: offerFrame.costString
+                  balance: model.costString
                   rightAligned: true
                   iconId: "PreyHuntingTaskTokens"
                 } // TibiaCurrencyView
@@ -177,9 +163,9 @@ TibiaFrame2PixelUpFilled {
                 }
                 
                 Image {
-                  source: (offerFrame.rewardType === TaskboardRewardListModel.Outfit) ? "/images/taskboard/backdrop_huntingtaskpoint_shop_outfit.png" 
-                           : ( offerFrame.rewardType === TaskboardRewardListModel.Mount ? "/images/taskboard/backdrop_huntingtaskpoint_shop_Mount.png" 
-                           : ( offerFrame.rewardType === TaskboardRewardListModel.PromotionPoint ? "/images/taskboard/backdrop_huntingtaskpoint_shop_boost.png" :
+                  source: (model.rewardType == TaskboardRewardListModel.Outfit) ? "/images/taskboard/backdrop_huntingtaskpoint_shop_outfit.png" 
+                           : ( model.rewardType == TaskboardRewardListModel.Mount ? "/images/taskboard/backdrop_huntingtaskpoint_shop_Mount.png" 
+                           : ( model.rewardType == TaskboardRewardListModel.PromotionPoint ? "/images/taskboard/backdrop_huntingtaskpoint_shop_boost.png" :
                            "/images/taskboard/backdrop_huntingtaskpoint_shop_decoration.png")) 
                   Layout.alignment: Qt.AlignRight
                   

@@ -7,9 +7,9 @@ namespace tibia {
   namespace creatures {
     class TCreatureMovementSpeedCalculator {
     public:
-      // b1/99a545bdea9daa8d @ 0x100b10620
+      // b1/83905c8a794f3059 @ 0x100b160b0
       void v10();
-      // b1/732ebf229d0725dc @ 0x100b106e0
+      // b1/a8f80f8ab12e0e79 @ 0x100b16170
       void v9();
     };
   } // namespace creatures

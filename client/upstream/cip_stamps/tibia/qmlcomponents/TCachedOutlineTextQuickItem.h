@@ -7,12 +7,18 @@ namespace tibia {
   namespace qmlcomponents {
     class TCachedOutlineTextQuickItem {
     public:
-      // b1/bce36119efcba106 @ 0x1010ce5d0
+      // b1/c0f6322bdd0601fc @ 0x1010d6340
       void componentComplete();
-      // b1/aea345a5e3702e15 @ 0x1010ce880
+      // b1/a19be90977b27574 @ 0x1010d65f0
       void updatePaintNode();
-      // b1/2bbf757d3aafd2c7 @ 0x1010cdd50
+      // b1/9502c0382021c54b @ 0x1010d5ac0
       void updatePolish();
+      // b1/9e3279316d7c6ea4 @ 0x1010d5a60
+      void v0_10();
+      // b1/0cdfd2965803325a @ 0x1010d5a90
+      void v1_10();
+      // b1/f69c97e94e8ab8f8 @ 0x1010d6540
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

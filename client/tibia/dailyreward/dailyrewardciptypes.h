@@ -18,7 +18,6 @@
 #include <vector>
 
 namespace tibia::protobuf::protocol {
-class GameserverMessageLoginSuccess;
 class GameserverMessageCloseRewardWall;
 class GameserverMessageDailyRewardBasic;
 class GameserverMessageDailyRewardCollectionState;
@@ -223,15 +222,14 @@ public:
     /// Instant Reward Access (20), jokers (21), bounty reroll (88) and cosmetic
     /// tokens (89).
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
-    /// The streak bonuses, then every day's free and premium reward.
+    /// The streak bonuses, every day's free and premium reward, then the
+    /// reward streak length.
     void handleDailyRewardBasicMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardBasic& message);
     void handleDailyRewardHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardHistory& message);
     /// Lights (245) or clears (246) the button bar's reward wall button.
     void handleDailyRewardCollectionStateMessage(const ::tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState& message);
     /// Message dialog type 40 says the daily rewards are disabled.
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
-    /// The login success carries the reward streak length.
-    void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
 
 private:
     TDailyRewardStorage* m_storage;

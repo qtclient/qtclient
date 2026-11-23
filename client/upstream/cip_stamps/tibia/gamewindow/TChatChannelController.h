@@ -7,10 +7,8 @@ namespace tibia {
   namespace gamewindow {
     class TChatChannelController {
     public:
-      // b1/29013e218b952623 @ 0x100bca5f0
+      // b1/025bca384300b8de @ 0x100bd0000
       void flags();
-      // b1/9413d33dc3ad7ded @ 0x100bd4d80
-      void onEntryFormatChanged(bool ShowTimestamp, bool ShowTimestampSeconds, bool ShowLevel);
     };
   } // namespace gamewindow
 } // namespace tibia

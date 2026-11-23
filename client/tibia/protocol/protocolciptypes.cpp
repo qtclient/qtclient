@@ -215,9 +215,6 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         uint8_t worldType = 0;
         if (r.u8(worldType))
             m->set_world_type(worldType);
-        uint8_t streak = 0;
-        if (r.u8(streak))
-            m->set_daily_reward_streak_length(streak);
         return r.i;
     }
     case 24: {
@@ -580,11 +577,39 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         return r.i;
     }
     case 197: {
+        // Type 0: the revealed gem's id. Type 1: the reshaped gem's quality and mods; the quality decides
+        // whether the second (regular, greater) and the supreme (greater) mod follow.
         auto* m = msg.MutableExtension(
-            GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed);
-        uint16_t gemId = 0;
-        if (r.u16(gemId))
+            GameserverMessageGemAtelierGemResponse::gameserver_message_gem_atelier_gem_response);
+        uint8_t type = 0;
+        if (!r.u8(type))
+            return 0;
+        m->set_type(type);
+        if (type == 1) {
+            auto* gem = m->mutable_gem();
+            uint8_t quality = 0, firstMod = 0;
+            if (!r.u8(quality) || !r.u8(firstMod))
+                return 0;
+            gem->set_quality(quality);
+            gem->set_first_modifier(firstMod);
+            if (gem->quality() - 1U < 2) {
+                uint8_t secondMod = 0;
+                if (!r.u8(secondMod))
+                    return 0;
+                gem->set_second_modifier(secondMod);
+            }
+            if (gem->quality() == 2) {
+                uint8_t supremeMod = 0;
+                if (!r.u8(supremeMod))
+                    return 0;
+                gem->set_supreme_modifier(supremeMod);
+            }
+        } else if (type == 0) {
+            uint16_t gemId = 0;
+            if (!r.u16(gemId))
+                return 0;
             m->set_gem_id(gemId);
+        }
         return r.i;
     }
     case 219: {
@@ -679,7 +704,6 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         w.string(m.store_url());
         w.u16(uint16_t(m.coins_packet_size()));
         w.u8(uint8_t(m.world_type()));
-        w.u8(uint8_t(m.daily_reward_streak_length()));
         return w.out;
     }
     case 24: {
@@ -789,8 +813,19 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     }
     case 197: {
         const auto& m = msg.GetExtension(
-            GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed);
-        w.u16(uint16_t(m.gem_id()));
+            GameserverMessageGemAtelierGemResponse::gameserver_message_gem_atelier_gem_response);
+        w.u8(uint8_t(m.type()));
+        if (m.type() == 1) {
+            const auto& gem = m.gem();
+            w.u8(uint8_t(gem.quality()));
+            w.u8(uint8_t(gem.first_modifier()));
+            if (gem.quality() - 1U < 2)
+                w.u8(uint8_t(gem.second_modifier()));
+            if (gem.quality() == 2)
+                w.u8(uint8_t(gem.supreme_modifier()));
+        } else if (m.type() == 0) {
+            w.u16(uint16_t(m.gem_id()));
+        }
         return w.out;
     }
     case 219: {
@@ -1110,11 +1145,14 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameclientMessageGemAtelier::gameclient_message_gem_atelier);
         const auto action = m.action();
         w.u8(static_cast<uint8_t>(action));
-        if (action == 0 || action == 2 || action == 3)
+        // Destroy, reshape, toggle lock and attempt reshape name a gem; reveal
+        // and improve grade start with a byte. Reshape and attempt reshape add
+        // the mod index, improve grade the slot.
+        if (action == 0 || action == 2 || action == 3 || action == 5)
             w.u16(static_cast<uint16_t>(m.gem_index()));
         else
             w.u8(static_cast<uint8_t>(m.first_value()));
-        if (action == 2 || action == 4)
+        if (action == 2 || action == 4 || action == 5)
             w.u8(static_cast<uint8_t>(m.second_value()));
         return w.out;
     }

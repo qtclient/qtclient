@@ -403,8 +403,10 @@ void TChatGameActionHandler::handleSendTalkChatMessageWithSpeechVolumeGameAction
         Q_EMIT publishGameAction(std::make_shared<I::TGameActionSpellAtMouseCursor>(spellId16, pGameAction->text(), mode, castType));
         return;
     }
-    if (castType == static_cast<int>(CastType::AtTargetOrSelf) && (crossHairTarget || aimAtTarget)) {
-        send(3);
+    // At the target or on yourself: the cast type is the aim mode.
+    if ((castType == static_cast<int>(CastType::AtTargetOrSelf) || castType == static_cast<int>(CastType::OnYourself))
+        && (crossHairTarget || aimAtTarget)) {
+        send(static_cast<uint32_t>(castType));
         return;
     }
     if (crossHairTarget && (castType == static_cast<int>(CastType::None) || castType == static_cast<int>(CastType::Crosshair))) {

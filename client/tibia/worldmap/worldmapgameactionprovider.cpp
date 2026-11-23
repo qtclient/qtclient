@@ -3,7 +3,9 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/inputciptypes.h"
 #include "input/genericobjectgameactionprovider.h"
+#include "minimap/minimapmarkerstorage.h"
 #include "renderer/worldmaprenderprovider.h"
+#include "worldmap/coordinates.h"
 #include "worldmap/worldmappicker.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -157,6 +159,17 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     append(result, creatureActions);
     append(result, lootList);
     append(result, quickLootList);
+
+    // Last, the field's minimap marker: edit or delete the one there, or create one.
+    if (minimap::TMinimapMarkerStorage* markers = minimap::TMinimapMarkerStorage::active()) {
+        if (const minimap::TMinimapMarkerPtr marker = markers->markerAt(TWorldMapCoordinate(pick.position))) {
+            result.push_back(std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(
+                input::TMinimapMarkerData{ pick.position, marker->icon, marker->description }));
+            result.push_back(std::make_shared<input::TGameActionDeleteMinimapMarker>(pick.position));
+        } else {
+            result.push_back(std::make_shared<input::TGameActionShowDialogCreateMinimapMarker>(pick.position));
+        }
+    }
     return result;
 }
 

@@ -323,11 +323,6 @@ void TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage(const Game
     Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_REWARD_WALL_DIALOG));
 }
 
-void TDailyRewardProtocolMessageHandler::handleLoginSuccessMessage(const GameserverMessageLoginSuccess& message)
-{
-    m_storage->setRewardStreakLength(static_cast<uint16_t>(message.daily_reward_streak_length()));
-}
-
 void TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage(const GameserverMessageResourceBalance& message)
 {
     TDailyRewardStorage& storage = *m_storage;
@@ -362,6 +357,7 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage(const Gam
         addReward(storage, day.premium(), true);
         storage.finishAddReward();
     }
+    storage.setRewardStreakLength(static_cast<uint16_t>(message.reward_streak_length()));
 }
 
 void TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage(const GameserverMessageDailyRewardHistory& message)

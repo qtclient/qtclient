@@ -7,10 +7,16 @@ namespace tibia {
   namespace qmlcomponents {
     class TTutorialMarkerQuickItem {
     public:
-      // b1/3f4d4a70c0c070f3 @ 0x1010a02b0
+      // b1/47b7ac477207f6d1 @ 0x1010a7fc0
       void componentComplete();
-      // b1/6adb37ff3ab6eadd @ 0x1010a02a0
+      // b1/6adb37ff3ab6eadd @ 0x1010a7fb0
       void updatePaintNode();
+      // b1/d77441e87e5a9501 @ 0x1010a7e40
+      void v0_10();
+      // b1/008c78de8e29b5b9 @ 0x1010a7ee0
+      void v1_10();
+      // b1/82ec08f77ac8c830 @ 0x1010a7fd0
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

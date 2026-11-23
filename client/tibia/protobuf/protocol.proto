@@ -1190,18 +1190,19 @@ message ProtocolDailyRewardDay {
   optional ProtocolDailyRewardContent premium = 2;
 }
 
-// u8 index; u16 race; u16 required kills; u32 xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust.
+// u8 index; u16 race; u16 required kills; u32 xp; u32 elite xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust.
 message ProtocolBountyTask {
   optional uint32 task_index = 1;
   optional uint32 race_id = 2;
   optional uint32 required_kills = 3;
   optional uint32 reward_xp = 4;
-  optional uint32 reward_bounty_points = 5;
-  optional uint32 current_kills = 6;
-  optional uint32 claim_state = 7;
-  optional uint32 grade = 8;
-  optional bool elite = 9;
-  optional uint32 reward_dust = 10;
+  optional uint32 reward_xp_elite = 5;
+  optional uint32 reward_bounty_points = 6;
+  optional uint32 current_kills = 7;
+  optional uint32 claim_state = 8;
+  optional uint32 grade = 9;
+  optional bool elite = 10;
+  optional uint32 reward_dust = 11;
 }
 
 // u16 level; bool upgradable; u16 cost.
@@ -1561,7 +1562,7 @@ message GameserverMessageLoginWait {
 }
 
 // server opcode 0x17 (23) — LoginSuccess
-// classic: u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type; u8 daily reward streak length
+// classic: u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type
 // CipSoft TProtobufServerMessageTranslator::v40 (serializer field numbers; field 12 is the world type, checked < 5 by its converter).
 message GameserverMessageLoginSuccess {
   optional uint32 player_id = 1;
@@ -1574,7 +1575,6 @@ message GameserverMessageLoginSuccess {
   optional string store_url = 9;
   optional uint32 coins_packet_size = 10;
   optional int32 world_type = 12;
-  optional uint32 daily_reward_streak_length = 13;
   extend GameserverMessage {
     optional GameserverMessageLoginSuccess gameserver_message_login_success = 23;
   }
@@ -3100,13 +3100,15 @@ message GameserverMessageWeaponProficiency {
   }
 }
 
-// server opcode 0xC5 (197) — GemAtelierGemRevealed
-// classic: u16 gem_id
-// CipSoft TProtobufServerMessageTranslator::v180: one u16 (the revealed gem's index).
-message GameserverMessageGemAtelierGemRevealed {
-  optional uint32 gem_id = 1;
+// server opcode 0xC5 (197) — GemAtelierGemResponse
+// classic: u8 type; type 0 (revealed): u16 gem_id; type 1 (reshaped): u8 quality, u8 first modifier, quality 1-2: u8 second modifier, quality 2: u8 supreme modifier
+// CipSoft TProtobufServerMessageTranslator::v180 (serializer field numbers). Field 3 is CipSoft's Gem (quality 4, first_modifier 5, second_modifier 6, supreme_modifier 7: the ProtocolWheelGem numbering).
+message GameserverMessageGemAtelierGemResponse {
+  optional int32 type = 1;
+  optional uint32 gem_id = 2;
+  optional ProtocolWheelGem gem = 3;
   extend GameserverMessage {
-    optional GameserverMessageGemAtelierGemRevealed gameserver_message_gem_atelier_gem_revealed = 197;
+    optional GameserverMessageGemAtelierGemResponse gameserver_message_gem_atelier_gem_response = 197;
   }
 }
 
@@ -3565,11 +3567,12 @@ message GameserverMessageCloseRewardWall {
 }
 
 // server opcode 0xE4 (228) — DailyRewardBasic
-// classic: u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus
+// classic: u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus; u16 reward streak length
 // CIP TProtobufServerMessageTranslator::v160.
 message GameserverMessageDailyRewardBasic {
   repeated ProtocolDailyRewardDay days = 1;
   repeated uint32 streak_bonus_thresholds = 2;
+  optional uint32 reward_streak_length = 3;
   extend GameserverMessage {
     optional GameserverMessageDailyRewardBasic gameserver_message_daily_reward_basic = 228;
   }
@@ -5297,6 +5300,7 @@ message GameclientMessageBugReport {
 }
 
 // client opcode 0xE7 (231) — GemAtelier
+// classic: u8 action; actions 0 destroy, 2 reshape, 3 toggle lock, 5 attempt reshape: u16 gem id; 1 reveal, 4 improve grade: u8; actions 2, 4, 5 add u8 (mod index / slot)
 // CIP TProtobufClientMessageTranslator::v90.
 message GameclientMessageGemAtelier {
   optional uint32 action = 1;

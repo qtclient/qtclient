@@ -7,7 +7,7 @@ namespace tibia {
   namespace gamewindow {
     class TTargetSelectionEventFilter {
     public:
-      // b1/0b0c4f0958f30650 @ 0x100bd2b10
+      // b1/d89bb3c93ee0a02b @ 0x100bd8520
       void eventFilter();
     };
   } // namespace gamewindow

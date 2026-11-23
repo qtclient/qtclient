@@ -2,7 +2,9 @@
 
 #include <cip_gen.h>
 
+#include "shared/simplevectorabstractlistmodel.h"
 #include "taskboard/monsterlistmodelsortfilterproxy.h"
+#include "taskboard/taskboardbountytasksstorage.h"
 
 #include <QAbstractListModel>
 #include <QHash>
@@ -13,22 +15,9 @@
 namespace tibia {
 namespace taskboard {
 
-struct BountyTaskRow {
-    int taskIndex = 0;
-    int raceId = 0;
-    QString caption;
-    QString killText;
-    int rewardXp = 0;
-    int rewardBountyPoints = 0;
-    int rewardDust = 0;
-    bool canAccept = false;
-    bool canClaim = false;
-    QString taskTierImageSource;
-    QString taskTierIconSource;
-    QString isEliteIconSource;
-};
-
-class TBountyTasksListModel final : public cip::tibia::taskboard::TBountyTasksListModel
+/// The bounty board's tasks, one row per task of the bounty data.
+class TBountyTasksListModel final
+    : public shared::TSimpleVectorAbstractListModel<TBountyTask, cip::tibia::taskboard::TBountyTasksListModel>
 {
     Q_OBJECT
 public:
@@ -37,8 +26,14 @@ public:
         CaptionRole,
         RaceIdRole,
         KillTextRole,
+        /// The experience of the task's mode (elite or normal).
         RewardXpRole,
+        /// The elite experience; it has no role name.
+        RewardXpEliteRole,
         RewardBountyPointsRole,
+        /// The dust of the task whether it is elite or not.
+        RewardDustEliteRole,
+        /// The dust of an elite task, 0 otherwise.
         RewardDustRole,
         CanAcceptRole,
         CanClaimRole,
@@ -49,16 +44,10 @@ public:
 
     explicit TBountyTasksListModel(QObject* parent = nullptr);
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setRows(QVector<BountyTaskRow> rows);
-    /// Update rewardDust for all rows when the Elite checkbox toggles (OTC has no dust wire).
-    void setEliteDust(bool isElite, int cipDifficulty);
-
-private:
-    QVector<BountyTaskRow> m_rows;
+protected:
+    QVariant itemData(const TBountyTask& task, int role) const override;
 };
 
 struct MonsterKillTaskRow {

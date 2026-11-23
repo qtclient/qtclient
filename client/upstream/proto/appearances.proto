@@ -118,6 +118,8 @@ message AppearanceFlags {
   repeated tibia.protobuf.shared.VOCATION restrict_to_vocation = 62;
   optional uint32 minimum_level = 63;
   optional tibia.protobuf.shared.WEAPON_TYPE weapon_type = 64;
+  optional bool is_delivery_task_item = 65;
+  optional bool is_imbuement_ingredient = 66;
 }
 message AppearanceFlagImbueable {
   optional uint32 slot_count = 1;

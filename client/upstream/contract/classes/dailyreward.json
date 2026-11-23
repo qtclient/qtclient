@@ -69,9 +69,6 @@
    "handleDailyRewardHistoryMessage": [
     "void handleDailyRewardHistoryMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardHistory DailyRewardHistoryMessage)"
    ],
-   "handleLoginSuccessMessage": [
-    "void handleLoginSuccessMessage(tibia::protobuf::protocol::GameserverMessageLoginSuccess LoginSuccessMessage)"
-   ],
    "handleOpenRewardWallMessage": [
     "void handleOpenRewardWallMessage(tibia::protobuf::protocol::GameserverMessageOpenRewardWall OpenRewardWallMessage)"
    ],

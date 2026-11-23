@@ -7,11 +7,11 @@ namespace tibia {
   namespace qmlcomponents {
     class TQmlSortFilterProxyModel {
     public:
-      // b1/8001200f653fc7e7 @ 0x1010b9800
+      // b1/1d616f8dbe3514ca @ 0x1010c1570
       void filterAcceptsRow();
-      // b1/c89f0f59f0e7da49 @ 0x1010b93f0
+      // b1/70075be2a565116a @ 0x1010c1160
       void lessThan();
-      // b1/54a013d71e87112e @ 0x1010b9e60
+      // b1/ad041eaa99181d62 @ 0x1010c1bd0
       int rowCount();
     };
   } // namespace qmlcomponents

@@ -12,7 +12,7 @@ import qmlenumvalues
 Item {
   id: root
   
-  property int rewardType: TaskboardRewardListModel.Object
+  property var rewardType: TaskboardRewardListModel.Object
   property int appearanceId: 0
   property int optionalAppearanceId: 0
   property int outfitAppearanceId: 0
@@ -46,14 +46,8 @@ Item {
   
     
       Loader {
-        // Explicit size: OutfitAppearanceInstanceRenderer uses anchors.fill, and a
-        // zero-sized Loader collapses the preview (most shop offers are outfit/mount).
-        width: TibiaStyle.mapWindowPixelPerField * 2 - 2
-        height: TibiaStyle.mapWindowPixelPerField * 2 - 2
+             
         anchors.centerIn: parent
-        // Compare as int — model roles arrive as int; enum identity can fail across
-        // tip vs CIP Soft QML type registrations.
-        property int rewardTypeInt: Number(root.rewardType)
         
         Component {
           id: singleObjectComponent
@@ -79,11 +73,7 @@ Item {
           
           OutfitAppearanceInstanceRenderer {
             id: appearanceInstanceRenderer
-            width: TibiaStyle.mapWindowPixelPerField * 2 - 2
-            height: TibiaStyle.mapWindowPixelPerField * 2 - 2
-            anchors.centerIn: parent
-            shrinkToFit: true
-            showNoOutfitImage: false
+            anchors.fill: parent
           
             animated: true
             outfitId: root.outfitAppearanceId
@@ -93,8 +83,6 @@ Item {
             detailColor: root.detailColor
             firstAddOn: root.addOn1
             secondAddOn: root.addOn2
-
-            Component.onCompleted: reloadOutfitAppearance()
           } //OutfitAppearanceInstanceRenderer
           
         } // Component
@@ -106,14 +94,12 @@ Item {
           
           AppearanceInstanceRenderer {
               id: bedItemRenderer
-              width: TibiaStyle.mapWindowPixelPerField * 2 - 2
-              height: TibiaStyle.mapWindowPixelPerField * 2 - 2
-              anchors.centerIn: parent
+              anchors.fill: parent
+              //anchors.margins: parent.borderWidth
   
               smoothTextureFiltering: false
               center: true
               animated: true
-              shrinkToFit: true
   
               Component {
                 id: objectComponent
@@ -153,10 +139,10 @@ Item {
         } // Component
       
         
-        sourceComponent: (rewardTypeInt === TaskboardRewardListModel.Object) ? singleObjectComponent : 
-          (rewardTypeInt === TaskboardRewardListModel.Outfit || rewardTypeInt === TaskboardRewardListModel.Mount) ? outfitComponent : 
-           (rewardTypeInt === TaskboardRewardListModel.Bed) ? bedComponent : 
-           (rewardTypeInt === TaskboardRewardListModel.PromotionPoint) ? promotionPointComponent : 
+        sourceComponent: (root.rewardType == TaskboardRewardListModel.Object) ? singleObjectComponent : 
+          (root.rewardType == TaskboardRewardListModel.Outfit || root.rewardType == TaskboardRewardListModel.Mount) ? outfitComponent : 
+           (root.rewardType == TaskboardRewardListModel.Bed) ? bedComponent : 
+           (root.rewardType == TaskboardRewardListModel.PromotionPoint) ? promotionPointComponent : 
            undefined
         
       } // Loader

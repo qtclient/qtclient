@@ -853,7 +853,7 @@ void sendWheelGemAction(uint8_t actionType, uint16_t param, uint8_t pos)
     auto message = tibia::protocol::newGameclientMessage(231);
     auto* m = message->MutableExtension(GameclientMessageGemAtelier::gameclient_message_gem_atelier);
     m->set_action(actionType);
-    if (actionType == 0 || actionType == 2 || actionType == 3)
+    if (actionType == 0 || actionType == 2 || actionType == 3 || actionType == 5)
         m->set_gem_index(param);
     else
         m->set_first_value(static_cast<uint8_t>(param));

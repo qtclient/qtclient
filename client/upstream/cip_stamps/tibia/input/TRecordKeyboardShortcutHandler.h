@@ -7,7 +7,7 @@ namespace tibia {
   namespace input {
     class TRecordKeyboardShortcutHandler {
     public:
-      // b1/469ca00359646b13 @ 0x100e87740
+      // b1/bea944d91a5de787 @ 0x100e8e320
       void eventFilter();
     };
   } // namespace input

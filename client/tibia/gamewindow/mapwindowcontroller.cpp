@@ -37,6 +37,74 @@ namespace {
 
 using Cursor = TMouseCursorController;
 using qmlcomponents::TWorldMapRenderProvider;
+using A = input::EGameAction;
+
+constexpr A Separator = A::CONTEXT_MENU_SEPARATOR;
+
+/// The map window's context menu: the entries in this order.
+constexpr A ContextMenuOrder[] = {
+    A::LOOK,
+    A::INSPECT_OBJECT,
+    A::OPEN_CYCLOPEDIA,
+    A::OPEN_WEAPON_PROFICIENCY_DIALOG,
+    A::USE,
+    A::USE_WITH,
+    A::OPEN_IN_NEW_WINDOW,
+    A::WRAP,
+    A::UNWRAP,
+    A::ROTATE_OBJECT,
+    A::CONFIGURE_SHOW_OFF_SOCKET,
+    A::QUICK_LOOT,
+    A::GATHER_ALL,
+    A::BROWSE_FIELD,
+    Separator,
+    A::SHOW_DIALOG_CREATE_MINIMAP_MARKER,
+    A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
+    A::DELETE_MINIMAP_MARKER,
+    Separator,
+    A::TRADE_ITEM,
+    Separator,
+    A::LOOT_ADD_TO_BLACKWHITELIST,
+    A::LOOT_REMOVE_FROM_BLACKWHITELIST,
+    Separator,
+    A::START_TALKING_TO_NPC,
+    A::ATTACK_CREATURE,
+    A::STOP_ATTACKING_CREATURE,
+    A::FOLLOW_CREATURE,
+    A::STOP_FOLLOWING_CREATURE,
+    Separator,
+    A::OPEN_MESSAGE_TO_CHAT_CHANNEL,
+    A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL,
+    A::ADD_NEW_VIP,
+    A::IGNORE_NAME,
+    A::UNIGNORE_NAME,
+    A::RECENTLY_TRADED,
+    A::INVITE_TO_PARTY,
+    A::JOIN_PARTY,
+    A::REVOKE_PARTY_INVITATION,
+    A::PASS_PARTY_LEADERSHIP,
+    A::JOIN_AGGRESSION,
+    A::REQUEST_OUTFITS_FROM_SERVER,
+    A::BUY_HIRELING_NAME_OR_SEX_CHANGE,
+    A::MOUNT_PLAYER,
+    A::UNMOUNT_PLAYER,
+    A::OPEN_PREY_DIALOG,
+    A::SET_SHARED_EXPERIENCE,
+    A::LEAVE_PARTY,
+    A::INSPECT_PLAYER,
+    A::ASK_TO_INSPECT_PLAYER,
+    A::INVITE_TO_INSPECT_PLAYER,
+    A::ALLOW_INSPECT_PLAYER,
+    A::REVOKE_INSPECT_PLAYER,
+    Separator,
+    A::REPORT_BUG_MAP,
+    A::REPORT_NAME,
+    A::REPORT_BOT,
+    A::REPORT_HIRELING_NAME,
+    A::GET_TEXT_FOR_REPORT,
+    Separator,
+    A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
+};
 
 }
 
@@ -611,7 +679,7 @@ m_mapper.map(candidates, input::TGameActionMapper::WorldMapContext,
         return;
     }
     TContextMenuController* menu = TContextMenuController::instance();
-    if (const input::TGameActionList entries = input::contextMenuActions(candidates); menu && !entries.empty())
+    if (const input::TGameActionList entries = input::contextMenuActions(candidates, ContextMenuOrder); menu && !entries.empty())
         menu->showGameActions(entries, input::TGameActionMapper::WorldMapContext, m_mapper);
 }
 

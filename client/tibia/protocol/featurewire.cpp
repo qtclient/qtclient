@@ -1017,15 +1017,16 @@ bool readTaskboardBounty(ClassicReader& r, ProtocolTaskboardBounty* b)
         ProtocolBountyTask* task = b->add_tasks();
         uint8_t index = 0, claim = 0, grade = 0;
         uint16_t race = 0, required = 0, points = 0, current = 0, dust = 0;
-        uint32_t xp = 0;
+        uint32_t xp = 0, eliteXp = 0;
         bool elite = false;
-        if (!r.u8(index) || !r.u16(race) || !r.u16(required) || !r.u32(xp) || !r.u16(points) || !r.u16(current) || !r.u8(claim)
-            || !r.u8(grade) || !readBool(r, elite) || !r.u16(dust))
+        if (!r.u8(index) || !r.u16(race) || !r.u16(required) || !r.u32(xp) || !r.u32(eliteXp) || !r.u16(points) || !r.u16(current)
+            || !r.u8(claim) || !r.u8(grade) || !readBool(r, elite) || !r.u16(dust))
             return false;
         task->set_task_index(index);
         task->set_race_id(race);
         task->set_required_kills(required);
         task->set_reward_xp(xp);
+        task->set_reward_xp_elite(eliteXp);
         task->set_reward_bounty_points(points);
         task->set_current_kills(current);
         task->set_claim_state(claim);
@@ -3165,6 +3166,10 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
                 return 0;
             m->add_streak_bonus_thresholds(needed);
         }
+        uint16_t streakLength = 0;
+        if (!r.u16(streakLength))
+            return 0;
+        m->set_reward_streak_length(streakLength);
         return r.i;
     }
     case 218: {

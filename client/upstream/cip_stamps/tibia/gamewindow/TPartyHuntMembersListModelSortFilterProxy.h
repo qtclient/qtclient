@@ -7,9 +7,9 @@ namespace tibia {
   namespace gamewindow {
     class TPartyHuntMembersListModelSortFilterProxy {
     public:
-      // b1/c9e00951162b0e36 @ 0x100d8c620
+      // b1/f3857fff4984c346 @ 0x100d920b0
       void filterAcceptsRow();
-      // b1/c8e181ea3487e944 @ 0x100d8c690
+      // b1/fdb42ff53c105a9d @ 0x100d92120
       void lessThan();
     };
   } // namespace gamewindow

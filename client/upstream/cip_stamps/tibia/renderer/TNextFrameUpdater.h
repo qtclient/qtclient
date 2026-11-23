@@ -7,7 +7,7 @@ namespace tibia {
   namespace renderer {
     class TNextFrameUpdater {
     public:
-      // b1/b1d06504a316841f @ 0x100f6af60
+      // b1/b1d06504a316841f @ 0x100f71d20
       void v2();
     };
   } // namespace renderer

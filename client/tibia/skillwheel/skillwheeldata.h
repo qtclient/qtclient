@@ -61,6 +61,19 @@ struct TGem
 inline bool hasBasic2(const TGem& gem) { return gem.quality >= 1; }
 /// The gem has a supreme mod (greater gems).
 inline bool hasSupreme(const TGem& gem) { return gem.quality >= 2; }
+
+/// A gem's mods as the gem atelier's reshape keeps them: the first basic mod, the second basic mod
+/// (regular and greater gems) and the supreme mod (greater gems).
+struct TGemMods
+{
+    int basic1 = 0;
+    std::optional<int> basic2;
+    std::optional<int> supreme;
+
+    bool operator==(const TGemMods&) const = default;
+};
+/// The mods of a revealed gem.
+TGemMods gemMods(const TGem& gem);
 /// The gems have the same mods.
 bool sameMods(const TGem& a, const TGem& b);
 /// The vessels hold the same gem: its id and domain.
@@ -159,7 +172,7 @@ QStringList withAugmentationIcons(QStringList lines, int perk, int count);
 /// every part of a multi string name.
 QString mediumPerkEffect(int perk, std::optional<int> largePerk = std::nullopt);
 /// CIP : one augmentation line of a spell.
-QString augmentationDescription(double value, int spellId, int augType, double momentum, bool hasMomentum, bool shortForm);
+QString augmentationDescription(double value, int spellId, int augType, bool shortForm);
 /// CIP .
 QString largePerkName(int perk);
 /// CIP .
@@ -183,6 +196,8 @@ QString basicStatValueText(double value, int stat);
 QString basicStatInfo(int stat);
 /// CIP / : a supreme mod total in its display format.
 QString supremeModValueText(double value, int mod);
+/// CIP: an augmentation total of the summary in its augmentation type's display format.
+QString augmentationValueText(double value, int augType);
 
 /// CIP : the effects of the active mods of the socketed gems.
 struct TActiveMods
@@ -236,7 +251,6 @@ QUrl basicModImage(int mod);
 QUrl supremeModImage(int mod);
 /// CIP /.
 QString modGradeImage(int grade);
-QString modGradePotentialImage(int grade);
 QString modGradeHighlightImage(int grade);
 
 /// Fragment workshop costs of a grade step 0..2 (fragments 5 / 15 / 30; gold basic

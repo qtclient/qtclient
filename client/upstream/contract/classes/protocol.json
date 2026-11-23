@@ -232,8 +232,8 @@
    "receivedGameEventMessage": [
     "void receivedGameEventMessage(tibia::protobuf::protocol::GameserverMessageGameEvent GameEventMessage)"
    ],
-   "receivedGemAtelierGemRevealedMessage": [
-    "void receivedGemAtelierGemRevealedMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed GemAtelierGemRevealedMessage)"
+   "receivedGemAtelierGemResponseMessage": [
+    "void receivedGemAtelierGemResponseMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemResponse GemAtelierGemResponseMessage)"
    ],
    "receivedGraphicalEffectsMessage": [
     "void receivedGraphicalEffectsMessage(tibia::protobuf::protocol::GameserverMessageGraphicalEffects GraphicalEffectsMessage)"

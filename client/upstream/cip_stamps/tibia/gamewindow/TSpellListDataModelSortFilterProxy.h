@@ -7,14 +7,12 @@ namespace tibia {
   namespace gamewindow {
     class TSpellListDataModelSortFilterProxy {
     public:
-      // b1/41120c5aa24ba5b8 @ 0x100c8e940
+      // b1/a7a95fdcc8e0bf54 @ 0x100c94360
       void data();
-      // b1/f8f4ce6d311350a3 @ 0x100c8ecb0
+      // b1/b6bf9d957c30e4fe @ 0x100c946d0
       void filterAcceptsRow();
-      // b1/0df8869b61bdf66a @ 0x100c8f9c0
+      // b1/9592b17d48487ab8 @ 0x100c953e0
       void lessThan();
-      // b1/49e1daf2163ec188 @ 0x100c98d90
-      void resetFilter();
     };
   } // namespace gamewindow
 } // namespace tibia

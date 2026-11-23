@@ -7,18 +7,14 @@ namespace tibia {
   namespace qmlcomponents {
     class TDynamicallyLoadedImageQuickItem {
     public:
-      // b1/2ee08e53945cf0c4 @ 0x10109d760
+      // b1/bfecafc8409446bc @ 0x1010a5470
       void geometryChange();
-      // b1/7cc19d6c5585d0e4 @ 0x10109d720
+      // b1/afea54368927ded9 @ 0x1010a5430
       void itemChange();
-      // b1/66e8cbda2cc1a94b @ 0x1010aa5f0
-      void requestImage();
-      // b1/917e6b19fbc7810b @ 0x1010aa760
-      void setDynamicallyLoadedImageManager(QObject* v);
-      // b1/be70895f312b9aa3 @ 0x1010aa590
-      void setImageKey(QString v);
-      // b1/5d179fa27ed94412 @ 0x1010aa080
-      void showPlaceholder();
+      // b1/3fe11caab6ea4279 @ 0x101084cb0
+      void v0_10();
+      // b1/f457e8928ac86a61 @ 0x101084d50
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

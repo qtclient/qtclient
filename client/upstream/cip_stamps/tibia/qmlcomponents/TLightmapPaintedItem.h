@@ -7,8 +7,10 @@ namespace tibia {
   namespace qmlcomponents {
     class TLightmapPaintedItem {
     public:
-      // b1/ce8442578bd762c5 @ 0x1010cf2c0
-      void paint();
+      // b1/7fc271989cf6ce3a @ 0x101084f80
+      void v0_10();
+      // b1/bd901e1447dbb3b4 @ 0x101085020
+      void v1_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia

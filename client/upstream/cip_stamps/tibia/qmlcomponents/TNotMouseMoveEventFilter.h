@@ -7,7 +7,7 @@ namespace tibia {
   namespace qmlcomponents {
     class TNotMouseMoveEventFilter {
     public:
-      // b1/67676fba67f2290f @ 0x10109e1e0
+      // b1/643871cd6db7289e @ 0x1010a5ef0
       void eventFilter();
     };
   } // namespace qmlcomponents

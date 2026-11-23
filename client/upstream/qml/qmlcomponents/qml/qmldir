@@ -84,6 +84,7 @@ FriendsConfigurationPage 1.0 FriendsConfigurationPage.qml
 FriendsFriendListPage 1.0 FriendsFriendListPage.qml
 FriendsInvitesPage 1.0 FriendsInvitesPage.qml
 GamewindowSplitView 1.0 GamewindowSplitView.qml
+GemAtelierGemReshapeDialog 1.0 GemAtelierGemReshapeDialog.qml
 GenericConfirmWithDontShowAgainDialog 1.0 GenericConfirmWithDontShowAgainDialog.qml
 GenericEnterTextDialog 1.0 GenericEnterTextDialog.qml
 GoldenHighlightTibiaTextDecorator 1.0 GoldenHighlightTibiaTextDecorator.qml

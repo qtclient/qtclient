@@ -7,7 +7,7 @@ namespace tibia {
   namespace gamewindow {
     class TCreateAccountDialogController {
     public:
-      // b1/2223d72de7ae2926 @ 0x100dff780
+      // b1/2e709388a7bd5ade @ 0x100e05c20
       bool eventFilter(QObject* pObject, QEvent* pEvent);
     };
   } // namespace gamewindow

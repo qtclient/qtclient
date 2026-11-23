@@ -28,6 +28,9 @@ class IGameSession;
 namespace prey {
 class TPreyStorage;
 }
+namespace taskboard {
+struct TBountyTask;
+}
 }
 
 namespace tibia {
@@ -133,8 +136,6 @@ Q_SIGNALS:
     /// CIP preyList NOTIFY — qtclient emits after slot render-info list is built.
 
 private Q_SLOTS:
-    /// CIP bountyTaskDataChanged — qtclient fills from onBountyTaskData notify.
-    void bountyTaskDataChanged();
     /// CIP weeklyTaskDataChanged — qtclient fills from onWeeklyTaskData notify.
     void weeklyTaskDataChanged();
     /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
@@ -144,13 +145,12 @@ private Q_SLOTS:
 private:
     /// CIP: empties preyList, announces it, then deletes the old render infos.
     void clearPreyList();
-    void applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
+    void applyBountyMonsters(const std::vector<taskboard::TBountyTask>& tasks);
     void applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
 
     prey::TPreyStorage* m_storage;
     QPointer<config::TSidebarOptions> m_options;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<std::map<std::string, uint32_t>> m_pendingBounty;
     std::vector<std::map<std::string, uint32_t>> m_pendingWeekly;
     bool m_weeklyActive = true;
     shared::TQtConnectionManager m_gameSessionConnections;

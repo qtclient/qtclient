@@ -7,10 +7,136 @@ namespace tibia {
   namespace game {
     class TPlayerData {
     public:
-      // b1/25629e06a39166a2 @ 0x100ada2d0
-      void name();
-      // b1/72b0bb9e0597e9dc @ 0x100ad9ed0
+      // b1/0062449baaf1ee19 @ 0x100876530
+      void v0_10();
+      // b1/89834f7183362fd8 @ 0x100ade8d0
+      void v10_10();
+      // b1/28dec308d6a18d85 @ 0x100ade8f0
+      void v11_10();
+      // b1/51fb1dcf2edddabe @ 0x100ade770
+      void v12_10();
+      // b1/b195306e48a967ab @ 0x100adeb80
+      void v13();
+      // b1/6606fc8a6f1ba751 @ 0x100ade7d0
+      void v13_10();
+      // b1/d50c5335954dfd46 @ 0x100ade830
+      void v14_10();
+      // b1/778424954af9f92b @ 0x100adebd0
       void v15();
+      // b1/28f22a591397b94b @ 0x100adf960
+      void v15_10();
+      // b1/0a3cb6cb40205280 @ 0x100adfb80
+      void v16_10();
+      // b1/85000c6d302a8550 @ 0x100ade780
+      void v17();
+      // b1/7dc22ae292921b71 @ 0x100adea50
+      void v17_10();
+      // b1/aa0a68b60625ee14 @ 0x100adea70
+      void v18_10();
+      // b1/d744361611822679 @ 0x100ade7e0
+      void v19();
+      // b1/b1637291939a3bd2 @ 0x100adea90
+      void v19_10();
+      // b1/28416cc99e4bcf74 @ 0x100876600
+      void v1_10();
+      // b1/04fd93beeb72a998 @ 0x100adf3b0
+      void v20_10();
+      // b1/32619fd34431d23d @ 0x100ade840
+      void v21();
+      // b1/60766867f5de96ad @ 0x100adf420
+      void v21_10();
+      // b1/96b592ad111b890f @ 0x100adf490
+      void v22_10();
+      // b1/1e8c41ec9fd5f431 @ 0x100adec10
+      void v23();
+      // b1/b1e82ad347e47684 @ 0x100adec90
+      void v25();
+      // b1/7b7763ee4700ace0 @ 0x100adecf0
+      void v27();
+      // b1/e25b4165d3e18e72 @ 0x100aded40
+      void v29();
+      // b1/2e9a8c6bbab39638 @ 0x100ade730
+      void v2_10();
+      // b1/87f0777ef42b329a @ 0x100adede0
+      void v31();
+      // b1/c32d0f08051277b6 @ 0x100adee20
+      void v33();
+      // b1/c9896be5a7483c3d @ 0x100adee60
+      void v35();
+      // b1/589c70c59816ddd2 @ 0x100ade9d0
+      void v39();
+      // b1/c682797e4addaca3 @ 0x100ade750
+      void v3_10();
+      // b1/d122481d0e3d7eb0 @ 0x100adeea0
+      void v41();
+      // b1/c07eca8f633ecbe7 @ 0x100adeef0
+      void v43();
+      // b1/9daaa216244a277a @ 0x100adef40
+      void v45();
+      // b1/4fae290c1e545a10 @ 0x100adeac0
+      void v47();
+      // b1/f3baa055fd755401 @ 0x100ade910
+      void v4_10();
+      // b1/bc56f6cf506f9b45 @ 0x100adefa0
+      void v51();
+      // b1/bec9fa92c8337f5b @ 0x100adeff0
+      void v53();
+      // b1/cc4998bf1c1bbf4e @ 0x100adf050
+      void v55();
+      // b1/5f060f1991c891bd @ 0x100adf0b0
+      void v56();
+      // b1/433fbd9f5f81276b @ 0x100ade930
+      void v5_10();
+      // b1/84904c2cd3a71010 @ 0x100adf160
+      void v62();
+      // b1/d17389ce0f7c959a @ 0x100adf2f0
+      void v64();
+      // b1/8f77aa1e5a125695 @ 0x100adf350
+      void v66();
+      // b1/cd960d9e8a2d7d36 @ 0x100adf3c0
+      void v68();
+      // b1/a99db864d1577f3a @ 0x100ade950
+      void v6_10();
+      // b1/e06f9684caba86a2 @ 0x100adf430
+      void v70();
+      // b1/341e4db17ceac2a7 @ 0x100adf4a0
+      void v72();
+      // b1/29cbbe24ecb42fb3 @ 0x100adf4f0
+      void v73();
+      // b1/59391f35344180f3 @ 0x100adf550
+      void v75();
+      // b1/cbe19262056f70ae @ 0x100adf5d0
+      void v78();
+      // b1/59f070a4558b2c94 @ 0x100ade980
+      void v7_10();
+      // b1/13977f9c7dd849b8 @ 0x100adf650
+      void v82();
+      // b1/25f88b47ae3935e6 @ 0x100adf6b0
+      void v84();
+      // b1/3508fe2b6f6ea8c6 @ 0x100adf7c0
+      void v85();
+      // b1/066b8d533b3e5921 @ 0x100adf810
+      void v86();
+      // b1/f680d3eb1fc3dd07 @ 0x100adf860
+      void v87();
+      // b1/a5bec06695b4d687 @ 0x100adf8b0
+      void v88();
+      // b1/1df4ea196903ef68 @ 0x100adf900
+      void v89();
+      // b1/47376954ec282617 @ 0x100ade890
+      void v8_10();
+      // b1/c208663e4666dc78 @ 0x100adf9c0
+      void v90();
+      // b1/6cff32a900418580 @ 0x100adfb90
+      void v92();
+      // b1/f260032082b024ba @ 0x100adfc40
+      void v93();
+      // b1/5c65387e2c9d9501 @ 0x100adfca0
+      void v95();
+      // b1/3617a2433c10ed25 @ 0x100adfd00
+      void v97();
+      // b1/f7d51ad11ad140ce @ 0x100ade8b0
+      void v9_10();
     };
   } // namespace game
 } // namespace tibia

@@ -7,8 +7,32 @@ namespace tibia {
   namespace input {
     class TPlayerMovementInputInterpreter {
     public:
-      // b1/14a6290419ebe2cc @ 0x100e69730
-      void onTick();
+      // b1/277347e79c4398c4 @ 0x100e68040
+      void v12();
+      // b1/c79ca61e8acd7e03 @ 0x100e680a0
+      void v13();
+      // b1/0af231bdb31da9c3 @ 0x100e68140
+      void v14();
+      // b1/680545c89df29b08 @ 0x100e681e0
+      void v15();
+      // b1/a4fecaab5dbe98a8 @ 0x100e68280
+      void v16();
+      // b1/e2aac28cdf1fd9fd @ 0x100e68320
+      void v17();
+      // b1/05bc9dadf89ba5d0 @ 0x100e683c0
+      void v18();
+      // b1/7d03d061b26ec8f4 @ 0x100e68460
+      void v19();
+      // b1/3625b875ed376a26 @ 0x100e68500
+      void v20();
+      // b1/4924b937e14f0b4c @ 0x100e685a0
+      void v21();
+      // b1/a9129cddb2d32e10 @ 0x100e687f0
+      void v22();
+      // b1/4ab4a0611b600ffb @ 0x100e68880
+      void v23();
+      // b1/74a4330e12b4be16 @ 0x100e68910
+      void v24();
     };
   } // namespace input
 } // namespace tibia

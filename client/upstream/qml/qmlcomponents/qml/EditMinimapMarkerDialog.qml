@@ -5,11 +5,11 @@ import QtQuick.Layouts
 
 
 TibiaDialog {
-  id: enterTextDialog
+  id: root
   caption: qsTrId("editminimapmark_caption")
   width: 285
 
-  property QtObject controller: null
+  required property QtObject controller
   property alias text: enteredTextField.text
   property int symbolID: 0
 
@@ -22,7 +22,7 @@ TibiaDialog {
 
 
   onReturnPressedFunction: sendEnteredDataToController
-  onCancelPressedFunction: controller!=null ? controller.onCancelClicked : null
+  onCancelPressedFunction: controller != null ? controller.onCancelClicked : null
   initialFocusItem: enteredTextField
 
   ColumnLayout {
@@ -65,14 +65,14 @@ TibiaDialog {
       } //ButtonGroup
 
       Repeater {
-        model: TibiaStyle.numberOfMinimapMarkers
+        model: root.controller?.numberOfMinimapMarkers ?? 0
 
         delegate: TibiaIconSelectionButton {
           iconPath: "image://minimap-markers/" + modelData
           width: 16
           height: 16
-          onClicked: { symbolID = modelData; }
-          checked: (modelData == symbolID)
+          onClicked: { root.symbolID = modelData; }
+          checked: (modelData == root.symbolID)
           ButtonGroup.group: selectedMinimapMarker
         } //TibiaIconButton
       } //Repeater
@@ -102,7 +102,7 @@ TibiaDialog {
       TibiaButton {
         id: cancelButton
         text: qsTrId("cancel")
-        onClicked: controller!=null ?  controller.onCancelClicked() : undefined
+        onClicked: root.controller!=null ? root.controller.onCancelClicked() : undefined
       } //TibiaButton
     } //RowLayout
 

@@ -596,15 +596,18 @@ void TSkillWheelPageController::updateSummaries()
     QList<TPerkInfo> augmentations;
     for (const TActiveMods::TAugmentation& aug : mods.augmentations) {
         QUrl image;
-        if (aug.augType == 2 || aug.augType == 3)
-            image = QUrl(QStringLiteral("/images/skillwheel/icon-spelldamage.png"));
-        else if (aug.augType == 6)
-            image = QUrl(QStringLiteral("/images/skillwheel/icon-cooldown-reduction.png"));
-        else if (aug.augType == 16)
-            image = QUrl(QStringLiteral("/images/skillwheel/icon-crit.png"));
+        switch (aug.augType) {
+            case 2:
+            case 3: image = QUrl(QStringLiteral("/images/skillwheel/icon-spelldamage.png")); break;
+            case 5: image = QUrl(QStringLiteral("/images/skillwheel/icon-jumptargets.png")); break;
+            case 6: image = QUrl(QStringLiteral("/images/skillwheel/icon-cooldown-reduction.png")); break;
+            case 10: image = QUrl(QStringLiteral("/images/skillwheel/icon-range.png")); break;
+            case 16: image = QUrl(QStringLiteral("/images/skillwheel/icon-crit.png")); break;
+            default: break;
+        }
         const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(aug.spellId);
-        augmentations.append({ spell ? spell->name : qtTrId("dummy_unknown"), supremeModValueText(aug.value, aug.mod),
-                               augmentationDescription(aug.value, aug.spellId, aug.augType, mods.momentum, true, false), image, false });
+        augmentations.append({ spell ? spell->name : qtTrId("dummy_unknown"), augmentationValueText(aug.value, aug.augType),
+                               augmentationDescription(aug.value, aug.spellId, aug.augType, false), image, false });
     }
     // CIP .
     QList<TPerkInfo> revelations;
@@ -1168,6 +1171,7 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     , m_filter(new TInventoryGemSortFilterProxyModel(m_list, this))
     , m_pages(new TPaginationProxyModel(15, this))
     , m_dismantleConfirm(new gamewindow::TMessageDialogController(this))
+    , m_reshapeModDialog(new TGemAtelierReshapeModDialogController(this))
 {
     m_dismantleConfirm->setCloseOnButtonClicked(true);
     connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { TSkillWheelProtocolMessageHandler::dismantleGem(m_dismantleGemId); });
@@ -1188,6 +1192,8 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
         if (type == tibia::client::RESOURCE_BANK_BALANCE || type == tibia::client::RESOURCE_GOLD_EQUIPPED)
             onResourcesChanged();
     });
+    connect(m_storage, &TSkillWheelStorage::temporaryReshapedGemChanged, this, &TGemAtelierPageController::onTemporaryReshapedGemChanged);
+    connect(m_reshapeModDialog, &TGemAtelierReshapeModDialogController::confirmReshape, this, &TGemAtelierPageController::onConfirmReshape);
     m_list->setGems(m_storage->gemInventory());
     m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
                              m_storage->supremeGrades());
@@ -1291,6 +1297,7 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
 
 void TGemAtelierPageController::closeMessageDialog()
 {
+    m_reshapeModDialog->closeDialog();
     if (m_dismantleConfirm->dialog()->item())
         m_dismantleConfirm->dialog()->close();
 }
@@ -1306,7 +1313,42 @@ void TGemAtelierPageController::dismantleGem(const int GemId)
                                     qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_text"));
 }
 void TGemAtelierPageController::revealGem(const int GemQuality) { TSkillWheelProtocolMessageHandler::revealGem(GemQuality); }
-void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { TSkillWheelProtocolMessageHandler::reshapeGem(GemId, ModIdx); }
+void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx)
+{
+    if (!m_storage)
+        return;
+    m_storage->setReshapeModIdx(-1);
+    m_storage->setReshapeGemId(-1);
+    TSkillWheelProtocolMessageHandler::reshapeGem(GemId, ModIdx);
+}
+
+void TGemAtelierPageController::attemptReshapeGem(const int GemId, const int ModIdx)
+{
+    if (!m_storage)
+        return;
+    m_storage->setReshapeModIdx(ModIdx);
+    m_storage->setReshapeGemId(GemId);
+    m_storage->rememberGemModsBeforeReshape();
+    TSkillWheelProtocolMessageHandler::attemptReshapeGem(GemId, ModIdx);
+}
+
+void TGemAtelierPageController::onTemporaryReshapedGemChanged()
+{
+    if (!m_storage)
+        return;
+    const std::optional<TWheel> wheel = m_storage->currentSkillWheel();
+    const int vocationIndex = wheel ? transformCreatureToSkillWheelVocation(wheel->vocation) : 0;
+    m_reshapeModDialog->setData(m_storage->gemModsBeforeReshape(), m_storage->temporaryReshapedGem(), m_storage->reshapeModIdx(),
+                                vocationIndex, m_storage->basicGrades(), m_storage->supremeGrades());
+    m_reshapeModDialog->showDialog();
+}
+
+void TGemAtelierPageController::onConfirmReshape()
+{
+    if (!m_storage)
+        return;
+    reshapeGem(m_storage->reshapeGemId(), m_storage->reshapeModIdx());
+}
 void TGemAtelierPageController::toggleGemLock(const int GemId) { TSkillWheelProtocolMessageHandler::toggleGemLock(GemId); }
 /// CIP: an index beyond the active vessels selects none (-1).
 void TGemAtelierPageController::selectVessel(const int Index)
@@ -1317,9 +1359,10 @@ void TGemAtelierPageController::selectVessel(const int Index)
     Q_EMIT selectedVesselIndexChanged();
 }
 
+/// A filled grade shows its backdrop, an unfilled one the empty backdrop.
 QString TGemAtelierPageController::getModGradeImageSource(const int ModGrade, const bool IsFilled)
 {
-    return IsFilled ? modGradeImage(ModGrade) : modGradePotentialImage(ModGrade);
+    return IsFilled ? modGradeImage(ModGrade) : modGradeImage(8);
 }
 
 QObject* TGemAtelierPageController::socketAt(const int Index)

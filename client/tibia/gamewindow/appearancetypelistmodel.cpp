@@ -8,7 +8,9 @@
 #include <QLocale>
 
 #include <algorithm>
+#include <tibia/appearances/appearancetype.h>
 #include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -72,6 +74,11 @@ QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role
     case HookDirection:
     case DecoItemObjectID:
         return 0;
+    case TradeableInMarket: {
+        // The market trades the type under its own id.
+        const TAppearanceType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem);
+        return type != nullptr && type->isMarketable();
+    }
     case MarketAverageValue: {
         analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
         return prices ? QVariant::fromValue<quint64>(prices->marketPrice(entry.typeId)) : QVariant::fromValue<quint64>(0);
@@ -127,6 +134,7 @@ QHash<int, QByteArray> TAppearanceTypeListModel::roleNames() const
         { UpgradeTier, "upgradeTier" },
         { MarketCategory, "marketcategory" },
         { DecoItemObjectID, "decoItemObjectID" },
+        { TradeableInMarket, "tradeableInMarket" },
         { MarketAverageValue, "marketAverageValue" },
         { NpcSellValue, "npcSellValue" },
         { ProficiencyXP, "proficiencyXP" },

@@ -45,6 +45,8 @@ public:
     QString formatDateTimeWithTimeZoneBerlin(int Timestamp, bool WithSeconds) override;
     QString formatDateTimeWithTimeZoneBerlin(int Timestamp) override;
     QString createQmlMultiString(const QString& LongString, const QString& ShortString) override;
+    /// The text in a font tag of `Color` (its #rrggbb name).
+    QString wrapTextWithHtmlFontColor(const QString& HtmlText, const QColor& Color) override;
 };
 
 }

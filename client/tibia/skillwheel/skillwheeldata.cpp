@@ -91,7 +91,7 @@ constexpr std::pair<int, int> RevelationMasteryPerks[] = {
 };
 
 /// Cooldown augmentations that also grant momentum.
-constexpr int MomentumMods[] = { 6, 7, 0x18, 0x19, 0x24, 0x25, 0x2a, 0x2b, 0x3b, 0x3c, 0x4c, 0x58, 0x59, 0x61 };
+constexpr int MomentumMods[] = { 6, 7, 0x18, 0x24, 0x25, 0x2a, 0x2b, 0x3b, 0x3c, 0x4c, 0x58, 0x59 };
 constexpr double MomentumByGrade[] = { 0, 0.33, 0.66, 1.0 };
 
 constexpr double DodgeByGrade[] = { 0.28, 0.31, 0.34, 0.42 };
@@ -700,8 +700,7 @@ QString mediumPerkValueText(const std::array<int, SlotCount>& points, const int 
     }
 }
 
-QString augmentationDescription(const double value, const int spellId, const int augType, const double momentum, const bool hasMomentum,
-                                 const bool shortForm)
+QString augmentationDescription(const double value, const int spellId, const int augType, const bool shortForm)
 {
     const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
     if (!spell)
@@ -715,10 +714,7 @@ QString augmentationDescription(const double value, const int spellId, const int
             if (value != 1.0)
                 return qtTrId("augmentation_description_chain_length_plural").arg(value);
             return qtTrId("augmentation_description_chain_length_singular").arg(1.0);
-        case 6:
-            if (hasMomentum && momentum > 0.0)
-                return qtTrId("augmentation_description_cooldown_with_momentum").arg(value).arg(momentum);
-            return qtTrId("augmentation_description_cooldown").arg(value);
+        case 6: return qtTrId("augmentation_description_cooldown").arg(value);
         case 7: return qtTrId("augmentation_description_secondary_group_cooldown").arg(spellGroupName(spell->groupSecondary)).arg(value);
         case 8: case 11: return qtTrId("augmentation_description_affected_area");
         case 9: return qtTrId("augmentation_description_sap_strength").arg(value);
@@ -754,7 +750,7 @@ QStringList mediumPerkDescriptions(const int perk)
                 stopped[aug.level - 1] = true;
                 continue;
             }
-            levels[aug.level - 1].append(augmentationDescription(aug.value, aug.spellId, aug.augType, 0.0, false, false));
+            levels[aug.level - 1].append(augmentationDescription(aug.value, aug.spellId, aug.augType, false));
         }
         QString special;
         switch (perk) {
@@ -976,6 +972,16 @@ QString supremeModValueText(const double value, const int mod)
     return formatValue(static_cast<int>(value), augType == 6 ? 8 : 7);
 }
 
+QString augmentationValueText(double value, const int augType)
+{
+    // Damage, healing and critical values are fractions shown in hundredths of a percent.
+    constexpr int Formats[] = { 5, 5, 7, 1, 8, 7, 7, 7, 1, 7, 7, 7, 7, 7, 5, 5 };
+    if (augType == 2 || augType == 3 || augType == 16 || augType == 17)
+        value *= 10000.0;
+    const int format = augType >= 2 && augType < 18 ? Formats[augType - 2] : 7;
+    return formatValue(static_cast<int>(value), format);
+}
+
 double TActiveMods::basicStat(const int stat) const
 {
     const auto it = std::ranges::find(basicStats, stat, &std::pair<int, double>::first);
@@ -1067,6 +1073,9 @@ TActiveMods activeMods(const TWheel& wheel, const TGrades& basicGrades, const TG
         for (const TGem* gem : active)
             if (gem)
                 value += gemBasicStat(*gem, basicGrades, supremeGrades, stat, vocationIndex);
+        // A resistance (stats 0..8) is capped at 30%.
+        if (stat < 9 && value > 30.0)
+            value = 30.0;
         if (std::fabs(value) > 1e-5)
             mods.basicStats.emplace_back(stat, value);
     }
@@ -1167,6 +1176,9 @@ QString supremeModName(const int mod, const bool withPerk, const bool multiStrin
         case 2: return qtTrId("life_leech");
         case 3: return qtTrId("mana_leech");
         case 4: {
+            // The mod's first augmentation names the spell.
+            if (!SupremeAugmentations[mod].valid)
+                return qtTrId("dummy_unknown");
             const auto* spell = spells::TSpellInfoStorage::instance()->spell(SupremeAugmentations[mod].spellId);
             if (!spell)
                 return qtTrId("dummy_unknown");
@@ -1203,10 +1215,16 @@ QString supremeModEffect(const int mod, const int grade)
         case 2: return percent(LifeLeechByGrade[checkedGrade()]);
         case 3: return percent(ManaLeechByGrade[checkedGrade()]);
         case 4: {
+            // One line per augmentation the grade gives a value, then the momentum the mod adds.
             const bool hasMomentum = std::ranges::find(MomentumMods, mod) != std::end(MomentumMods);
             const double momentum = hasMomentum ? MomentumByGrade[checkedGrade()] : 0.0;
+            QStringList lines;
             const TSupremeAugmentation& aug = SupremeAugmentations[mod];
-            return augmentationDescription(aug.values[checkedGrade()], aug.spellId, aug.augType, momentum, hasMomentum, true);
+            if (aug.valid && aug.values[checkedGrade()] != 0.0)
+                lines << augmentationDescription(aug.values[checkedGrade()], aug.spellId, aug.augType, true);
+            if (hasMomentum && momentum > 0.0)
+                lines << qtTrId("augmentation_description_momentum").arg(momentum);
+            return lines.join(u'\n');
         }
         case 5:
             return qtTrId("skillwheel_gem_mod_revelation_mastery")
@@ -1238,7 +1256,6 @@ QUrl basicModImage(const int mod) { return imageUrl("icons-skillwheel-gem-basicm
 QUrl supremeModImage(const int mod) { return imageUrl("icons-skillwheel-gem-suprememods", mod); }
 
 QString modGradeImage(const int grade) { return imageUrl("backdrop-mod-grade", grade).toString(); }
-QString modGradePotentialImage(const int grade) { return imageUrl("overlay-mod-grade-potential", grade).toString(); }
 QString modGradeHighlightImage(const int grade) { return imageUrl("backdrop-mod-grade", grade + 4).toString(); }
 
 int fragmentCost(const int grade)
@@ -1448,6 +1465,17 @@ bool sameMods(const TGem& a, const TGem& b)
     if (a.basic1 != b.basic1 || hasBasic2(a) != hasBasic2(b) || hasSupreme(a) != hasSupreme(b))
         return false;
     return (!hasBasic2(a) || a.basic2 == b.basic2) && (!hasSupreme(a) || a.supreme == b.supreme);
+}
+
+TGemMods gemMods(const TGem& gem)
+{
+    TGemMods mods;
+    mods.basic1 = gem.basic1;
+    if (hasBasic2(gem))
+        mods.basic2 = gem.basic2;
+    if (hasSupreme(gem))
+        mods.supreme = gem.supreme;
+    return mods;
 }
 
 bool sameGem(const TGem& a, const TGem& b)

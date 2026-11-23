@@ -201,7 +201,7 @@ Item {
   }
 
   function setNewMinimapMarkerModel(array) {
-    for (var i = 0; i < TibiaStyle.numberOfMinimapMarkers; i++) {
+    for (var i = 0; i < rendererWrapper.markerSymbolsToShow.length; i++) {
       if (rendererWrapper.markerSymbolsToShow[i] != array[i]) {
         rendererWrapper.markerSymbolsToShow = array;
         break;
@@ -433,7 +433,7 @@ Item {
                             model = markerSymbolsToShow.slice(0);
                           }
 
-                          Layout.preferredHeight: 4 * cellWidth - TibiaStyle.marginRelated
+                          Layout.preferredHeight: (count / 5) * cellWidth - TibiaStyle.marginRelated
                           Layout.fillWidth: true
                           cellWidth: 16 + TibiaStyle.marginRelated
                           cellHeight: cellWidth
@@ -528,7 +528,7 @@ Item {
                         text: qsTrId("cyclopedia_map_information_panel_show_all")
                         shouldBeChecked: {
                           var allMinimapMarkers = true;
-                          for (var i = 0; i < TibiaStyle.numberOfMinimapMarkers; i++) {
+                          for (var i = 0; i < rendererWrapper.markerSymbolsToShow.length; i++) {
                             if (!rendererWrapper.markerSymbolsToShow[i]) {
                               allMinimapMarkers = false;
                               break;

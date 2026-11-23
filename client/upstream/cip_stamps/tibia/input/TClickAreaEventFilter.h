@@ -7,10 +7,8 @@ namespace tibia {
   namespace input {
     class TClickAreaEventFilter {
     public:
-      // b1/84056afb87184ad2 @ 0x100e8cb40
+      // b1/6c158deb72777705 @ 0x100e93720
       void eventFilter();
-      // b1/2126a9cefe685f9c @ 0x100e996a0
-      void setClickArea();
     };
   } // namespace input
 } // namespace tibia

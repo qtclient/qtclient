@@ -3391,10 +3391,7 @@ inline TGameActionList filterActions(const TGameActionList& candidates, std::ini
     return filterActions(candidates, std::span<const EGameAction>(types.begin(), types.size()));
 }
 
-/// The candidates in context-menu order with separators between groups
-/// (CIP:).
-TGameActionList contextMenuActions(const TGameActionList& candidates);
-/// The same with a panel's own table (CONTEXT_MENU_SEPARATOR between groups).
+/// The candidates in a panel's context-menu order (CONTEXT_MENU_SEPARATOR between groups).
 TGameActionList contextMenuActions(const TGameActionList& candidates, std::span<const EGameAction> order);
 
 /// A dragged object's drop (CIP:). Shift moves everything; a

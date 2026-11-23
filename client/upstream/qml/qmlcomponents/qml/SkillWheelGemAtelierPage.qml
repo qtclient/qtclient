@@ -561,7 +561,7 @@ ColumnLayout {
                   } // Tooltip
 
                   onClicked: {
-                    root.controller.reshapeGem(root.selectedGem.gemId, modReshapeComponent.modIdx);
+                    root.controller.attemptReshapeGem(root.selectedGem.gemId, modReshapeComponent.modIdx);
                   }
                 }
 

@@ -7,14 +7,10 @@ namespace tibia {
   namespace gamewindow {
     class TItemSummaryModelSortFilterProxy {
     public:
-      // b1/3160effeeb81a2a6 @ 0x100d0b870
+      // b1/f90a1af2cc5df084 @ 0x100d11230
       void filterAcceptsRow();
-      // b1/b3f1fc904a870a7c @ 0x100d0bd70
+      // b1/8251eec0750897b8 @ 0x100d11730
       void lessThan();
-      // b1/6ed6e4dff1e9558d @ 0x100d171d0
-      void setShowInventory(bool v);
-      // b1/51fb07b5e0632107 @ 0x100d17310
-      void updateNameFilter(QString NameFilter);
     };
   } // namespace gamewindow
 } // namespace tibia

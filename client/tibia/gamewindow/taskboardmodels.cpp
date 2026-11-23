@@ -1,5 +1,8 @@
 #include "taskboardmodels.h"
 
+#include "cyclopedia/cyclopediaciptypes.h"
+#include <tibia/game/thingsession_forward.h>
+
 #include <QSortFilterProxyModel>
 
 #include <algorithm>
@@ -7,45 +10,50 @@
 namespace tibia::taskboard {
 
 TBountyTasksListModel::TBountyTasksListModel(QObject* parent)
-    : cip::tibia::taskboard::TBountyTasksListModel(parent)
+    : TSimpleVectorAbstractListModel(parent)
 {
 }
 
-int TBountyTasksListModel::rowCount(const QModelIndex& parent) const
+QVariant TBountyTasksListModel::itemData(const TBountyTask& task, const int role) const
 {
-    return parent.isValid() ? 0 : m_rows.size();
-}
-
-QVariant TBountyTasksListModel::data(const QModelIndex& index, const int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size())
-        return {};
-    const BountyTaskRow& row = m_rows.at(index.row());
     switch (role) {
     case TaskIndexRole:
-        return row.taskIndex;
+        return uint(task.index);
     case CaptionRole:
-        return row.caption;
+        return cyclopedia::capitalizeWords(QString::fromStdString(tibia::game::raceData(task.raceId).name));
     case RaceIdRole:
-        return row.raceId;
+        return uint(task.raceId);
     case KillTextRole:
-        return row.killText;
+        return qtTrId("taskboard_kill_text_format").arg(task.currentKills).arg(task.requiredKills);
     case RewardXpRole:
-        return row.rewardXp;
+        return uint(task.elite ? task.rewardExperienceElite : task.rewardExperience);
+    case RewardXpEliteRole:
+        return uint(task.rewardExperienceElite);
     case RewardBountyPointsRole:
-        return row.rewardBountyPoints;
+        return uint(task.rewardBountyPoints);
+    case RewardDustEliteRole:
+        return uint(task.rewardDust);
     case RewardDustRole:
-        return row.rewardDust;
+        return task.elite ? uint(task.rewardDust) : 0u;
     case CanAcceptRole:
-        return row.canAccept;
+        return task.claimState == EBountyTaskClaimState::Available;
     case CanClaimRole:
-        return row.canClaim;
+        return task.claimState == EBountyTaskClaimState::Claimable;
     case TaskTierImageSourceRole:
-        return row.taskTierImageSource;
+        return QStringLiteral("/images/taskboard/backdrop-bounty-tasks.png");
     case TaskTierIconSourceRole:
-        return row.taskTierIconSource;
+        switch (task.grade) {
+        case 1:
+            return QStringLiteral("/images/taskboard/icon-bounty-task-silver.png");
+        case 2:
+            return QStringLiteral("/images/taskboard/icon-bounty-task-gold.png");
+        case 3:
+            return QStringLiteral("/images/taskboard/icon-bounty-task-platinum.png");
+        default:
+            return QString();
+        }
     case IsEliteIconSourceRole:
-        return row.isEliteIconSource;
+        return task.elite ? QStringLiteral("/images/taskboard/icon-difficulty.png") : QString();
     default:
         return {};
     }
@@ -60,6 +68,7 @@ QHash<int, QByteArray> TBountyTasksListModel::roleNames() const
         { KillTextRole, "killText" },
         { RewardXpRole, "rewardXp" },
         { RewardBountyPointsRole, "rewardBountyPoints" },
+        { RewardDustEliteRole, "rewardDustElite" },
         { RewardDustRole, "rewardDust" },
         { CanAcceptRole, "canAccept" },
         { CanClaimRole, "canClaim" },
@@ -67,42 +76,6 @@ QHash<int, QByteArray> TBountyTasksListModel::roleNames() const
         { TaskTierIconSourceRole, "taskTierIconSource" },
         { IsEliteIconSourceRole, "isEliteIconSource" },
     };
-}
-
-void TBountyTasksListModel::setRows(QVector<BountyTaskRow> rows)
-{
-    beginResetModel();
-    m_rows = std::move(rows);
-    endResetModel();
-}
-
-void TBountyTasksListModel::setEliteDust(const bool isElite, const int cipDifficulty)
-{
-    if (m_rows.isEmpty())
-        return;
-
-    static constexpr int kBaseByDifficulty[] = { 3, 7, 16, 27 };
-    const int base = kBaseByDifficulty[std::clamp(cipDifficulty, 0, 3)];
-    const auto dustForIcon = [base, isElite](const QString& icon) -> int {
-        if (!isElite)
-            return 0;
-        if (icon.contains(QStringLiteral("platinum")))
-            return base * 8;
-        if (icon.contains(QStringLiteral("gold")))
-            return base * 4;
-        if (icon.contains(QStringLiteral("silver")))
-            return base * 2;
-        return base;
-    };
-
-    for (int i = 0; i < m_rows.size(); ++i) {
-        const int next = dustForIcon(m_rows[i].taskTierIconSource);
-        if (m_rows[i].rewardDust == next)
-            continue;
-        m_rows[i].rewardDust = next;
-        const QModelIndex idx = index(i, 0);
-        Q_EMIT dataChanged(idx, idx, { RewardDustRole });
-    }
 }
 
 TMonsterKillTasksListModel::TMonsterKillTasksListModel(QObject* parent)

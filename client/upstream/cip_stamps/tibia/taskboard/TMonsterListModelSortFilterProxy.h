@@ -7,9 +7,9 @@ namespace tibia {
   namespace taskboard {
     class TMonsterListModelSortFilterProxy {
     public:
-      // b1/7b0b0abb6b7656b3 @ 0x101026e10
+      // b1/0db5ce77b1106117 @ 0x10102e5e0
       void filterAcceptsRow();
-      // b1/e5c0ae7b34032cfb @ 0x101027000
+      // b1/6695b884b2c86fd2 @ 0x10102e7d0
       void lessThan();
     };
   } // namespace taskboard

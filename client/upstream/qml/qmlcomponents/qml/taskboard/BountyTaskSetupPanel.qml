@@ -14,6 +14,10 @@ TibiaFrame2PixelUpFilledWithCaption {
   property int rerollTaskCost: 1
   required property int bountyTaskDifficulty
   required property var selectBountyTaskDifficulty
+  required property int maxBountyTaskDifficulty
+  required property int adeptLevelRequirement
+  required property int expertLevelRequirement
+  required property int masterLevelRequirement
 
   required property bool isElite
   required property var setEliteAction
@@ -82,8 +86,29 @@ TibiaFrame2PixelUpFilledWithCaption {
       ]
       
       currentIndex: bountyTaskDifficulty
- 
-      onCurrentValueChanged: selectBountyTaskDifficulty(currentIndex)
+
+      // Difficulties above the player's level are greyed out, analogous to the weekly task difficulty buttons.
+      isItemEnabled: function (index) {
+        return index <= root.maxBountyTaskDifficulty;
+      }
+      itemTooltipText: function (index) {
+        switch (index) {
+        case 0: return qsTrId("taskboard_difficulty_beginner_tooltip");
+        case 1: return qsTrId("taskboard_difficulty_adept_tooltip").arg(TextHelper.formatNumberWithThousandSeparators(root.adeptLevelRequirement));
+        case 2: return qsTrId("taskboard_difficulty_expert_tooltip").arg(TextHelper.formatNumberWithThousandSeparators(root.expertLevelRequirement));
+        case 3: return qsTrId("taskboard_difficulty_master_tooltip").arg(TextHelper.formatNumberWithThousandSeparators(root.masterLevelRequirement));
+        }
+        return "";
+      }
+
+      onCurrentValueChanged: {
+        // Mouse wheel / keyboard navigation can still land on a greyed out difficulty: revert to the selected one.
+        if (currentIndex !== root.bountyTaskDifficulty && !isItemEnabled(currentIndex)) {
+          currentIndex = Qt.binding(function () { return root.bountyTaskDifficulty; });
+          return;
+        }
+        selectBountyTaskDifficulty(currentIndex);
+      }
     }
 
     Image {

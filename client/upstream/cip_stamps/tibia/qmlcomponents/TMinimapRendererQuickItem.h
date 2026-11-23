@@ -7,14 +7,20 @@ namespace tibia {
   namespace qmlcomponents {
     class TMinimapRendererQuickItem {
     public:
-      // b1/9f3c0c4fc69347fc @ 0x1010b2d20
+      // b1/a9fb2c80d79d028a @ 0x1010baa30
       void componentComplete();
-      // b1/5e421c0c2a872897 @ 0x1010b41f0
+      // b1/56fb585523010781 @ 0x1010bbf00
       void geometryChange();
-      // b1/169caf2a8acaaf8b @ 0x1010b33c0
+      // b1/3d6ee07f0f310306 @ 0x1010bb0d0
       void updatePaintNode();
-      // b1/387ee112d0b2fb89 @ 0x1010b2be0
+      // b1/0cf94b85822b2a74 @ 0x1010ba8f0
       void updatePolish();
+      // b1/c33aa0e50d35b9f6 @ 0x1010b9470
+      void v0_10();
+      // b1/db2236d4feebb5ba @ 0x1010b94a0
+      void v1_10();
+      // b1/6bc86f4475d23f70 @ 0x1010bad10
+      void v3_10();
     };
   } // namespace qmlcomponents
 } // namespace tibia
