@@ -4,7 +4,7 @@
 #include "game/gameciptypes.h"
 #include "game/tgamenotify.h"
 #include "input/playermovementintenthandler.h"
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 #include "protocol/protocolmessagequeue.h"
 
 #include "clockservice.h"
@@ -183,7 +183,7 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
             [](int, const QByteArray& frame) {
                 if (frame.isEmpty())
                     return;
-                if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+                if (auto* processor = network::TGameserverSessionNetwork::live())
                     processor->writeClientFrame(frame);
             });
     // The server answered with its login challenge: the connection is up (the

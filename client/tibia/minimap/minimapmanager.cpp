@@ -20,7 +20,7 @@ TMinimapManager::TMinimapManager(const QString& defaultTilesDir, QObject* parent
     , m_markerGameActionHandler(this)
     , m_protocolMessageHandler(this)
 {
-    loadDefaultTilesFromResources();
+    importDefaultTiles();
 
     TMinimapTileStorage* storage = m_storage.get();
     TMinimapDiskIOAsync* diskIO = m_diskIO.get();
@@ -86,12 +86,10 @@ void TMinimapManager::flushToDisk()
     m_diskIO->waitForDone();
 }
 
-void TMinimapManager::loadDefaultTilesFromResources()
+void TMinimapManager::importDefaultTiles()
 {
     if (m_defaultTilesDir.isEmpty())
         return;
-    // CipSoft: bulk-copy Resources/minimap → AppData/minimap when empty, and
-    // wait so first reads see defaults.
     m_diskIO->importDefaultTiles(m_defaultTilesDir);
     m_diskIO->waitForDone();
 }

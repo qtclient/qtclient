@@ -15,8 +15,19 @@
 
 namespace tibia::cyclopedia {
 
+namespace {
+TCyclopediaMapStaticDataStorage* g_cyclopediaMapStaticDataStorage = nullptr;
+}
+
+void TCyclopediaMapStaticDataStorage::setInstance(TCyclopediaMapStaticDataStorage* storage)
+{
+    g_cyclopediaMapStaticDataStorage = storage;
+}
+
 TCyclopediaMapStaticDataStorage& TCyclopediaMapStaticDataStorage::instance()
 {
+    if (g_cyclopediaMapStaticDataStorage)
+        return *g_cyclopediaMapStaticDataStorage;
     static auto* storage = [] {
         auto* created = new TCyclopediaMapStaticDataStorage;
         // CIP's game client hands these requests to the asset loader.

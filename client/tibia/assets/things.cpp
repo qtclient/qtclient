@@ -131,11 +131,26 @@ std::string proficienciesFileOf(const std::string& directory)
 
 namespace tibia::appearances {
 
+namespace {
+TAppearancesManager* g_appearancesManager = nullptr;
+}
+
 TAppearancesManager& TAppearancesManager::instance()
 {
+    if (g_appearancesManager)
+        return *g_appearancesManager;
     static TAppearancesManager manager;
     return manager;
 }
+
+void TAppearancesManager::setInstance(TAppearancesManager* manager)
+{
+    g_appearancesManager = manager;
+}
+
+TAppearancesManager::TAppearancesManager() = default;
+
+TAppearancesManager::~TAppearancesManager() = default;
 
 TAppearanceInstanceTracker& TAppearancesManager::tracker()
 {

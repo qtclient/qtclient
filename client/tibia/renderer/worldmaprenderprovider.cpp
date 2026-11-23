@@ -987,7 +987,7 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
         for (int i = static_cast<int>(appearances.size()) - 1; i >= 0; --i) {
             const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
             if (!type || type->isGround() || type->isGroundBorder() || type->isOnBottom() || type->isOnTop()
-                || type->getCategory() == ThingCategoryCreature)
+                || type->getCategory() == ThingCategoryCreature || appearances[i]->isCreature())
                 continue;
             const bool castHeight = commonCast.empty()
                 || (static_cast<size_t>(i) < commonCast.size() && commonCast[static_cast<size_t>(i)]);
@@ -1025,12 +1025,11 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
     if (!row || row->isDisplaced() || row->position() != tile->getPosition())
         return;
-    appearances::TAppearanceInstancePtr appearance = tile->appearanceAt(stackIndex);
-    const uint8_t lift = appearance ? appearance->elevation() : elevation;
+    // The field lifted the creature's placeholder; the creature draws its outfit.
+    const appearances::TAppearanceInstancePtr placeholder = tile->appearanceAt(stackIndex);
+    const uint8_t lift = placeholder ? placeholder->elevation() : elevation;
     const QPoint at(dest.x() - lift, dest.y() - lift);
-    if (!appearance)
-        appearance = row->outfitAppearance();
-    addCreatureFromOutfitAppearance(appearance, *row, at, castHeight);
+    addCreatureFromOutfitAppearance(row->outfitAppearance(), *row, at, castHeight);
 }
 
 /// A creature sorts with the field its step covers (CIP: the placeholder's
@@ -1135,7 +1134,8 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
     if (!appearance)
         return;
     const TAppearanceType* type = appearance->thingType();
-    if (!type || type->getCategory() == ThingCategoryCreature)
+    // A creature's placeholder draws with the field's creatures.
+    if (!type || type->getCategory() == ThingCategoryCreature || appearance->isCreature())
         return;
 
     // Bank and clip objects are group 1 (under every object of the floor)

@@ -27,48 +27,6 @@ constexpr int HighlightMs = 600000;
 /// CIP : a new trigger restarts a highlight with less left.
 constexpr int RetriggerMs = 5000;
 
-/// CIP , by feature id (13 is TPremiumMessageRenewPremium's).
-constexpr const char* MessageIds[] = {
-    "premium_feature_areas",         "premium_feature_offlinetraining", "premium_feature_spells",
-    "premium_feature_mounts",        "premium_feature_outfits",         "premium_feature_xp_boost",
-    "premium_feature_death_penalty", "premium_feature_market",          "premium_feature_house",
-    "premium_feature_large_vip_list", "premium_feature_depot",          "premium_feature_private_chat",
-    "premium_feature_promotion",     "dummy_unknown",                   "premium_feature_arena",
-    "premium_feature_prey_slots",    "premium_feature_imbuing",         "premium_feature_daily_reward",
-    "premium_feature_analysers",     "premium_all_quests",              "premium_no_login_queue",
-    "premium_powerful_summons",      "premium_guild_management",        "premium_outfit_addons",
-    "premium_premium_only_worlds",   "premium_regenerate_faster",       "premium_loyalty_system",
-    "premium_track_more_items",      "premium_more_soul_points",        "premium_more_vip_groups",
-    "premium_track_more_quests",     "premium_refined_quick_loot",      "premium_more_charms",
-    "premium_secondary_battle_lists", "premium_use_team_finder",        "premium_use_skill_wheel",
-};
-
-/// CIP .
-QString iconUrl(const int id)
-{
-    return QStringLiteral("image://premium-icons-20x20/%1").arg(id);
-}
-
-}
-
-TPremiumMessage::TPremiumMessage(const int id, QObject* parent)
-    : cip::tibia::game::TPremiumMessage(parent)
-{
-    m_message = qtTrId(MessageIds[id]);
-    m_imageUrl = iconUrl(id);
-}
-
-TPremiumMessageRenewPremium::TPremiumMessageRenewPremium(QObject* parent)
-    : cip::tibia::game::TPremiumMessageRenewPremium(parent)
-{
-    m_imageUrl = iconUrl(RenewPremiumFeature);
-}
-
-void TPremiumMessageRenewPremium::setDaysLeft(const int days) { m_daysLeft = days; }
-
-QString TPremiumMessageRenewPremium::message() const
-{
-    return qtTrId(m_daysLeft == 1 ? "premium_time_expires" : "premium_time_expires_plural").arg(m_daysLeft);
 }
 
 TPremiumPanelController::TPremiumPanelController()
@@ -76,7 +34,7 @@ TPremiumPanelController::TPremiumPanelController()
     createPremiumMessages();
     // The renew line replaces the table's plain message for its feature.
     delete m_messages[RenewPremiumFeature];
-    m_renewPremium = new TPremiumMessageRenewPremium(this);
+    m_renewPremium = new game::TPremiumMessageRenewPremium(this);
     m_messages[RenewPremiumFeature] = m_renewPremium;
 
     m_highlightTimer.setSingleShot(true);
@@ -111,8 +69,8 @@ TPremiumPanelController::~TPremiumPanelController()
 
 void TPremiumPanelController::createPremiumMessages()
 {
-    for (int id = 0; id < static_cast<int>(std::size(MessageIds)); ++id)
-        m_messages[id] = new TPremiumMessage(id, this);
+    for (int id = 0; id <= 0x23; ++id)
+        m_messages[id] = new game::TPremiumMessage(static_cast<uint8_t>(id), false, this);
 }
 
 bool TPremiumPanelController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }

@@ -145,12 +145,5 @@ public:
 /// CIP generated options page name (product page: `THotkeysOptionsPage`).
 using THotkeysQMLOptionsPage = cip::tibia::config::THotkeysQMLOptionsPage;
 
-/// CIP `config::TTibiaHotkeyActionSettingQmlWrapper`.
-class TTibiaHotkeyActionSettingQmlWrapper final : public ::tibia::CipTyped
-{
-public:
-    TTibiaHotkeyActionSettingQmlWrapper() = default;
-};
-
 }
 }

@@ -69,8 +69,18 @@ public:
 
     /// Writes and drops loaded tiles away from the area, and loads its tiles.
     void setVisibleArea(const Position& topLeft, const QSize& size);
+    /// loadTile for the tile holding `coord`.
+    void loadTileContaining(const Position& coord);
+    /// A tile not stored yet is created empty and asked for from disk.
+    void loadTile(const Position& id);
     const Tiles& tiles() const { return m_tiles; }
     TMinimapTilePtr tileAt(const Position& coord) const;
+
+    /// LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES: every colour + waypoint pair
+    /// of Minimap_* files in `directory` (tiles named by either file, in
+    /// coordinate order) replaces the stored tile, filled from it where the
+    /// pair has no data, and is then read from disk again to merge the user's tile.
+    void loadDefaultMinimapTilesFromResources(const QString& directory);
 
     /// Disk results (CIP: slots 0xe8 / 0xf0).
     void onLoadingSucceeded(const TMinimapTilePtr& loaded);
@@ -87,7 +97,13 @@ Q_SIGNALS:
     void minimapTileChanged(const TMinimapTilePtr& tile);
 
 private:
+    /// loadTile, then the stored tile.
     TMinimapTile& ensureLoaded(const Position& id);
+    /// Stores an empty tile for `id` (replacing any) and asks for it from disk.
+    void createTile(const Position& id);
+    /// Stores `tile` in place of its stored tile (whose data fills the fields
+    /// `tile` has none for), not loaded but changed, and asks for it from disk.
+    void insertDefaultTile(const TMinimapTilePtr& tile);
     void unloadOutside(const Position& topLeft, const QSize& size);
     void notifyChangedTiles();
 

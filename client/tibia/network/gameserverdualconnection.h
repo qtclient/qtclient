@@ -1,89 +1,94 @@
 #pragma once
 
-#include <cip_gen.h>
+#include "network/dualconnectionurlinfo.h"
+#include "network/gameservernetworkpacket.h"
+#include "network/gameservernetworkpacketconnection.h"
 
-#include <tibia/game/tgamenotify.h>
-
-#include <QByteArray>
+#include <QObject>
 #include <QString>
-#include <QTimer>
+#include <QUrl>
 
-#include <array>
 #include <cstdint>
+#include <map>
 #include <memory>
-#include <string>
-
-#if defined(Q_OS_WASM)
-#include <QWebSocket>
-#else
-#include <QTcpSocket>
-#endif
 
 namespace tibia {
+namespace shared {
+class IClockService;
+}
 namespace network {
 
-/// Second connection to the same game host for CIP connection-stability optimisation
-/// (CIP: TGameserverDualConnection). Opens the socket and sends SecondaryLogin
-/// (C 0x0B) + ConnectionPingBack (C 0x1C) when the option is on and `g_game`
-/// emits `onReadyForSecondaryConnection`. Toggle via
-/// `connectionStabilityOptimizationEnabled`.
-///
-/// Desktop uses TCP (`QTcpSocket`). WASM uses a raw browser WebSocket to Crystal's
-/// `websocketGamePort` (same binary framing as primary `WebConnection`) — Qt's
-/// `QTcpSocket` wasm tunnel is not compatible with that endpoint.
-///
-/// After SecondaryLogin, XTEA keys are copied from the primary connection so
-/// this socket can decrypt frames (shared session; no second player). Crystal
-/// OT classic uses the secondary as a **stability** socket (SecondaryLogin +
-/// ConnectionPingBack); optional fan-out copies are decrypted then discarded so
-/// state is not double-applied (CIP protobuf load-split is out of scope).
-class TGameserverDualConnection final : public cip::tibia::network::TGameserverDualConnection
+class TDualConnectionInfo;
+
+/// CIP network::TGameserverDualConnection: the session's connection to the
+/// game server over up to two game server connections. The primary one
+/// connects first; with the "optimize connection stability" option on, a
+/// secondary one connects once the server allowed it. Packets for every
+/// connection carry one shared sequence number and go out on all logged-in
+/// connections; the server sends each packet on both, the client keeps the
+/// first copy (TGameserverNetworkPacketSequenceFlowProcessor).
+class TGameserverDualConnection : public QObject
 {
     Q_OBJECT
 public:
-    explicit TGameserverDualConnection(QObject* parent = nullptr);
+    TGameserverDualConnection(std::shared_ptr<TDualConnectionInfo> DualConnectionInfo,
+                              std::shared_ptr<shared::IClockService> ClockService);
     ~TGameserverDualConnection() override;
 
-    /// Game world endpoint used for the secondary socket (same as primary).
-    void setEndpoint(const QString& host, int port);
-    /// Drop token + socket (logout / leave world).
-    void reset();
+    /// Starts connecting to the URLs of `UrlInfo` for game world `WorldName`.
+    virtual void connectToGameserver(std::shared_ptr<TDualConnectionUrlInfo> UrlInfo, const QString& WorldName);
+    /// Closes every connection; no connection is made any more.
+    virtual void disconnectFromGameserver();
+    /// Reads the packets that are complete on every connection.
+    virtual void processAvailablePackets();
+    /// Writes `Packet` to the connections it is meant for.
+    virtual void sendPacket(const TGameserverNetworkPacket& Packet);
+    /// Picks the connections for `Packet` and gives it its sequence number.
+    virtual void preparePacket(TGameserverNetworkPacket& Packet);
+    /// The server allows a secondary connection.
+    virtual void allowSecondaryConnection();
+    virtual EConnectionsUsed connectionsUsed() const;
 
-    void checkForStateChange() override;
-    /// CIP slot (not yet emitted by cipgen); wired from ClientOptionsNotifier.
+Q_SIGNALS:
+    void connected(QUrl Url);
+    void secondaryConnected(QUrl Url);
+    void disconnected();
+    void connectionsUsedChanged(tibia::network::EConnectionsUsed ConnectionsUsed);
+    void error(QString ErrorDescription);
+    void packetReceived(tibia::network::TGameserverNetworkPacket NetworkPacket);
+
+public Q_SLOTS:
+    /// Handles the disconnects since the last call, then connects what may be connected.
+    void checkForStateChange();
+    void onGameserverNetworkPacketConnectionConnected(
+        std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection);
+    void onGameserverNetworkPacketConnectionDisconnected(
+        std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection);
+    void onGameserverNetworkPacketConnectionError(
+        std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection,
+        QString ErrorDescription);
+    void onGameserverNetworkPacketReceived(
+        std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection,
+        tibia::network::TGameserverNetworkPacket NetworkPacket);
+    void processDisconnectEvents();
     void onOptimizeConnectionStabilityOptionChanged();
 
 private:
-    void onReadyForSecondaryConnection(const std::string& token);
-    void openSecondaryIfNeeded();
-    void closeSecondary();
-    void writeRaw(const QByteArray& payload);
-    void sendSecondaryLogin();
-    void sendConnectionPingBack();
-    void onTransportBytes(const QByteArray& chunk);
-    void adoptPrimaryXteaKeys();
-    void processRecvBuffer();
-    void deliverSecondaryDecrypted(quint32 checksum, QByteArray body);
-    bool decryptXteaInPlace(QByteArray& body) const;
-    bool optimizationEnabled() const;
-    bool transportConnected() const;
+    /// Starts the next connection when one is due.
+    void connectNextConnection();
+    static bool optimizeConnectionStabilityOption();
 
-#if defined(Q_OS_WASM)
-    std::unique_ptr<QWebSocket> m_socket;
-#else
-    std::unique_ptr<QTcpSocket> m_socket;
-#endif
-
-    QString m_host;
-    int m_port = 0;
-    QString m_token;
-    bool m_enabled = true;
-    bool m_challengeSeen = false;
-    bool m_xteaEnabled = false;
-    std::array<uint32_t, 4> m_xteaKey{};
-    QByteArray m_recvBuffer;
-    QTimer m_pingTimer;
-    tibia::game::SoftHook m_readyHook;
+    std::shared_ptr<shared::IClockService> m_clockService;
+    QString m_worldName;
+    bool m_optimizeConnectionStability = false;
+    bool m_disconnecting = false;
+    std::shared_ptr<TDualConnectionUrlInfo> m_urlInfo;
+    std::shared_ptr<TDualConnectionInfo> m_dualConnectionInfo;
+    bool m_secondaryConnectionAllowed = false;
+    uint32_t m_nextSequenceNumber = 1;
+    bool m_wasConnected = false;
+    /// Connections lost since the last processDisconnectEvents, with their error.
+    std::map<std::shared_ptr<TGameserverNetworkPacketConnection>, QString> m_disconnectEvents;
 };
 
 }

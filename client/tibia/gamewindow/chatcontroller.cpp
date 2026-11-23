@@ -1028,20 +1028,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
         if (m_chatItem)
             QMetaObject::invokeMethod(m_chatItem, "onTriggerScrollSecondaryChatListToEnd");
     });
-    connect(&m_openDialog, &TOpenChatChannelDialogController::channelChosen, this, [this](const TChatChannelIdentifier& channel) {
-        switch (channel.type) {
-        case TChatChannelIdentifier::ChannelId:
-            tibia::game::joinChannel(channel.id);
-            break;
-        case TChatChannelIdentifier::OwnPrivateChannelToOpen:
-            tibia::game::openOwnChannel();
-            break;
-        default:
-            if (m_chatChannelStorage)
-                m_chatChannelStorage->open(channel, true, true);
-            break;
-        }
-    });
+    connect(&m_openDialog, &TOpenChatChannelDialogController::channelChosen, this, &TChatController::onRequestOpenChanel);
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
             [](const QString& name) { tibia::game::openPrivateChannel(name.toStdString()); });
 
@@ -1296,6 +1283,12 @@ void TChatController::onChannelListReceived(const std::vector<TChatChannelIdenti
 void TChatController::requestChannelList()
 {
     Q_EMIT publishGameAction(input::makeGameAction(A::GET_CHAT_CHANNEL_LIST));
+}
+
+void TChatController::onRequestOpenChanel(const TChatChannelIdentifier& ChannelIdentifier)
+{
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionChatChannel>(
+        A::OPEN_CHAT_CHANNEL, std::make_shared<const TChatChannelIdentifier>(ChannelIdentifier)));
 }
 
 void TChatController::requestChannelListFromServer()

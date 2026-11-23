@@ -40,6 +40,7 @@
 #include "gamewindow/containerstoragecontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/cooldownbarcontroller.h"
+#include "gamewindow/createaccountdialogcontroller.h"
 #include "gamewindow/createcharacterdialogcontroller.h"
 #include "gamewindow/cyclopediadialogcontroller.h"
 #include "gamewindow/cyclopediamapdialogcontroller.h"
@@ -218,7 +219,6 @@ struct TGameClient::TGameWindow
     std::unique_ptr<gamewindow::TDeathDialogController> deathDialog;
     std::unique_ptr<gamewindow::TCipSoftUiEventBridge> cipSoftUiEventBridge;
     std::unique_ptr<analysers::TAnalyserWidgets> analyserWidgets;
-    std::unique_ptr<proficiency::TProficiencyStorage> proficiencyStorage;
     std::unique_ptr<proficiency::TWeaponProficiencyDialogController> weaponProficiencyDialog;
     std::unique_ptr<proficiency::TWeaponProficiencyShapeDialogController> weaponProficiencyShapeDialog;
     std::unique_ptr<proficiency::TWeaponProficiencyReshapeDialogController> weaponProficiencyReshapeDialog;
@@ -244,6 +244,12 @@ struct TGameClient::TGameWindow
 };
 
 void TGameClient::TGameWindowDeleter::operator()(TGameWindow* gameWindow) const { delete gameWindow; }
+
+void TGameClient::beforeRenderFrameGameWindow()
+{
+    if (m_gameWindow && m_gameWindow->deathDialog)
+        m_gameWindow->deathDialog->onBeforeRenderFrame();
+}
 
 void TGameClient::requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen)
 {
@@ -288,6 +294,26 @@ void TGameClient::exitClient()
 void TGameClient::onExitClientRequested()
 {
     exitClient();
+}
+
+void TGameClient::onRequestCreateAccount()
+{
+    m_pCreateAccountDialogController->showDialog();
+}
+
+void TGameClient::onRequestCreateCharacter()
+{
+    m_pCreateCharacterDialogController->showDialog();
+}
+
+void TGameClient::setCreateCharacterDialogController(gamewindow::TCreateCharacterDialogController* Controller)
+{
+    if (!Controller || Controller == m_pCreateCharacterDialogController.get())
+        return;
+    if (m_pCreateCharacterDialogController)
+        m_pCreateCharacterDialogController.release()->deleteLater();
+    Controller->setParent(nullptr);
+    m_pCreateCharacterDialogController.reset(Controller);
 }
 
 void TGameClient::onConfirmOrCancelExitGame(
@@ -506,6 +532,16 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // dialog stack).
     if (!preview)
         checkForCrashDump();
+    // CIP: the create-account and create-character dialogs (both with the
+    // account service of the login's portal); the start screen's Create
+    // Account opens the first.
+    m_pCreateAccountDialogController = std::make_unique<gamewindow::TCreateAccountDialogController>();
+    m_pCreateAccountDialogController->setServiceUrl(g.env.createAccountUrl());
+    m_pCreateAccountDialogController->setTooltipContainer(g.dialogPlaceholder);
+    m_pCreateCharacterDialogController = std::make_unique<gamewindow::TCreateCharacterDialogController>();
+    m_pCreateCharacterDialogController->setServiceUrl(g.env.createAccountUrl());
+    connect(gameWindowController, &gamewindow::TGameWindowController::createAccountRequested, this,
+            &TGameClient::onRequestCreateAccount);
     // Session chrome (WaitDialog, errors, create account/character, keep_renderer).
     // Must run after the dialog stack so MessageDialog / WaitDialog can show.
     if (!preview)
@@ -565,11 +601,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>();
     g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>();
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
-    g.gameActions.on(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::IGameAction&) {
-        if (minimap::TMinimapManager* manager = minimap())
-            manager->loadDefaultTilesFromResources();
-        return true;
-    });
     g.screenshotManager = std::make_unique<screenshot::TScreenshotManager>();
     g.screenshotManager->configure(window, mapWindowPane);
     screenshot::TScreenshotManager* screenshotManager = g.screenshotManager.get();
@@ -617,18 +648,17 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.cipSoftUiEventBridge = std::make_unique<gamewindow::TCipSoftUiEventBridge>();
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
-    g.proficiencyStorage = std::make_unique<proficiency::TProficiencyStorage>();
-    g.weaponProficiencyDialog = std::make_unique<proficiency::TWeaponProficiencyDialogController>(g.proficiencyStorage.get());
-    g.weaponProficiencyShapeDialog = std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(g.proficiencyStorage.get());
+    g.weaponProficiencyDialog = std::make_unique<proficiency::TWeaponProficiencyDialogController>(proficiencyStorage());
+    g.weaponProficiencyShapeDialog = std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(proficiencyStorage());
     g.weaponProficiencyReshapeDialog = std::make_unique<proficiency::TWeaponProficiencyReshapeDialogController>(
-        g.proficiencyStorage.get(), g.weaponProficiencyShapeDialog.get());
+        proficiencyStorage(), g.weaponProficiencyShapeDialog.get());
     g.weaponProficiencyShapeOptionsDialog = std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>();
     g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>();
     g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>();
     g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
     g.soulSealsDialog = std::make_unique<gamewindow::TSoulSealsDialogController>();
     g.bossDifficultySelectionDialog = std::make_unique<gamewindow::TBossDifficultySelectionDialogController>();
-    g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>();
+    g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>(mapWindowPane);
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
     g.tutorialOverlay = std::make_unique<gamewindow::TTutorialOverlayController>(engine, g.dialogPlaceholder, setup.placeholder,
                                                                                  g.eventFilterManager.get());
@@ -935,7 +965,6 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             if (game::TGameserverGameSession* live = session())
                 live->skillWheelGameActionHandler()->setSessionPremium(account().session.isPremium);
             g.containers->setSidebarOptions(sidebarOptions());
-            g.containers->onLoginRampUpFinished();
             g.sidebarWidgets->onLoginRampUpFinished();
             g.statusBarController->setStorage(statusbarStorage());
             g.informationDialogs->setAmbientLightStorage(ambientLight());
@@ -1148,9 +1177,9 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
         TGameWindow& g = *m_gameWindow;
         if (g.bossDifficultySelectionDialog)
             g.bossDifficultySelectionDialog->connectToGameSession(GameSession);
-        if (g.proficiencyStorage)
-            g.proficiencyStorage->clear();
     }
+    // CIP: the proficiency storage is emptied last.
+    m_pProficiencyStorage->clear();
 }
 
 void TGameClient::onGameSessionDisconnected()

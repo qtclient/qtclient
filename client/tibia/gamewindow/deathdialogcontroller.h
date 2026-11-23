@@ -38,7 +38,7 @@ public:
 public Q_SLOTS:
     /// CIP showDeadMessage — EDeathType / TFairFightFactor skipped in cipgen.
     void showDeadMessage(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
-    /// CIP onRequestOpenDeathDialog — forwards to showDeadMessage.
+    /// Keeps the request; the dialog opens on the fifth frame after it.
     void onRequestOpenDeathDialog(int deathType, int fairFightFactor, bool applicableForSubsequentBlessing);
     /// OK (and the store button): QUIT_GAME, logging the character out.
     void onLogoutRequested() override;
@@ -54,6 +54,9 @@ public Q_SLOTS:
 
     /// A world was entered: the store opens if the store button was used.
     void onWorldEntered();
+    /// Before each frame (the client's frame tick): counts down a requested
+    /// death dialog and shows it when the count reaches 0.
+    void onBeforeRenderFrame();
 
 private:
     void closeBox();
@@ -61,6 +64,12 @@ private:
     TDeathMessageDialog* m_box = nullptr;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
+    static constexpr int FramesBeforeDeadMessage = 5;
+    /// -1: no death dialog requested.
+    int m_framesUntilDeadMessage = -1;
+    int m_requestedDeathType = 0;
+    int m_requestedFairFightFactor = 0;
+    bool m_requestedApplicableForSubsequentBlessing = false;
     bool m_finishing = false;
     bool m_openStoreOnWorldEntered = false;
 };

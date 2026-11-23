@@ -1,7 +1,6 @@
 #include "effects/effectgameactionhandler.h"
 
 #include "appearances/appearanceinstance.h"
-#include "creatures/creaturestorage.h"
 #include "effects/effectstorage.h"
 
 namespace tibia::effects {
@@ -26,14 +25,9 @@ void TEffectGameActionHandler::handleGameAction(const input::IGameActionPtr& pGa
     const auto* marker = input::gameActionAs<input::TGameActionAddGUITutorialMarker>(&action);
     if (!marker)
         return;
-    // A marker on a map field, or on the field of a creature.
-    Position field = marker->position();
-    if (marker->creatureId() != 0) {
-        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-            if (const auto creature = storage->creatureAt(marker->creatureId()))
-                field = creature->position();
-        }
-    }
+    // A marker on a map field. A marker on a creature comes again from the
+    // creatures' game action handler, located at the creature's field.
+    const Position field = marker->position();
     if (!field.isValid())
         return;
     m_storage.trackEffect(appearances::TAppearanceInstanceFactory::createTutorialFieldEffect(1, field));

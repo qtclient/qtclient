@@ -14,7 +14,6 @@
 #include <tibia/game/gamesession.h>
 #include "game/gamesessionbase.h"
 #include "game/currentgamesession.h"
-#include "network/gameserverpacketprocessor.h"
 #include "network/gameserverconnection.h"
 #include "rsahelper.h"
 #include "shared/sharedciptypes.h"
@@ -830,7 +829,15 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 11: {
         const auto& m = msg.GetExtension(GameclientMessageSecondaryLogin::gameclient_message_secondary_login);
+        w.u8(static_cast<uint8_t>(m.challenge_connection()));
+        // The rest is one RSA block; its first byte must be 0.
+        const int block = int(w.out.size());
+        w.u8(0);
+        w.string(m.first_string());
         w.string(m.token());
+        const QByteArray encrypted = tibia::network::loginRsaHelper().encrypt(w.out.mid(block));
+        w.out.truncate(block);
+        w.out.append(encrypted);
         return w.out;
     }
     case 98: {
@@ -2097,7 +2104,7 @@ void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
         return;
     }
     // Before the queue exists: straight to the wire.
-    if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+    if (auto* processor = network::TGameserverSessionNetwork::live())
         processor->writeClientFrame(wire);
 }
 

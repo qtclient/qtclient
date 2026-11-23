@@ -2,6 +2,7 @@
 
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "game/premiummessagerenewpremium.h"
 
 #include <cip_gen.h>
 
@@ -21,30 +22,6 @@ namespace game {
 class TPremiumTimeStorage;
 }
 namespace gamewindow {
-
-/// One premium feature line (CIP: game::TPremiumMessage, ctor):
-/// "premium_feature_*" / "premium_*" text and its premium-icons-20x20 cell.
-class TPremiumMessage : public cip::tibia::game::TPremiumMessage
-{
-    Q_OBJECT
-public:
-    TPremiumMessage(int id, QObject* parent);
-};
-
-/// The premium time line, feature 13 (CIP: game::TPremiumMessageRenewPremium,
-/// message : "premium_time_expires(_plural)" with the days left).
-class TPremiumMessageRenewPremium final : public cip::tibia::game::TPremiumMessageRenewPremium
-{
-    Q_OBJECT
-public:
-    explicit TPremiumMessageRenewPremium(QObject* parent);
-    /// CIP .
-    void setDaysLeft(int days);
-    QString message() const override;
-
-private:
-    int m_daysLeft = 0;
-};
 
 /// PremiumPanel.qml (CIP: gamewindow::TPremiumPanelController, ctor
 /// , item): the features the server says a free
@@ -125,7 +102,7 @@ private:
 
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::map<int, cip::tibia::game::TPremiumMessage*> m_messages;
-    TPremiumMessageRenewPremium* m_renewPremium = nullptr;
+    game::TPremiumMessageRenewPremium* m_renewPremium = nullptr;
     QPointer<QQuickItem> m_item;
     QTimer m_highlightTimer;
     std::vector<client::gamecore::Hook> m_hooks;

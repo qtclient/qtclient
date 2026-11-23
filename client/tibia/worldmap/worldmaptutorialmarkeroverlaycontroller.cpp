@@ -1,6 +1,5 @@
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 
-#include "creatures/creaturestorage.h"
 #include "qmlcomponents/tutorialhelper.h"
 #include "renderer/worldmaprenderprovider.h"
 
@@ -86,14 +85,9 @@ void TWorldMapTutorialMarkerOverlayController::handleGameAction(const input::IGa
 
 void TWorldMapTutorialMarkerOverlayController::addGuiMarker(const input::TGameActionAddGUITutorialMarker& action)
 {
-    // A marker on a map field, or on the field of a creature when it is added.
-    Position field = action.position();
-    if (action.creatureId() != 0) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> creature = storage->creatureAt(action.creatureId()))
-                field = creature->position();
-        }
-    }
+    // A marker on a map field. A marker on a creature is published again by
+    // the creatures' game action handler, located at the creature's field.
+    const Position field = action.position();
     if (field.isValid())
         m_markerFields[action.markerId()] = field;
     update();

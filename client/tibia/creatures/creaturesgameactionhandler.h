@@ -27,8 +27,6 @@ class TCreatureStorage;
 /// TEMPORARY_SELECT_CREATURE by the battle list storage), and
 /// STOP_ATTACKING_FOLLOWING_WALKING stays with input::TUnportedGameActionHandler,
 /// which also stops the walk (CipSoft's movement handler half of that action).
-/// The tutorial marker on a creature (ADD_GUI_TUTORIAL_MARKER) needs the
-/// creature's placeholder appearance, which qtclient does not have.
 /// CipSoft's slots take the typed action and read its creature id; qtclient's
 /// creature actions come in several action classes, so the slots take the
 /// action and read the id with input::creatureIdOf.
@@ -72,6 +70,9 @@ public:
     /// the status line says it is too far away.
     virtual void startTalkingToNpc(const input::IGameActionPtr& pGameAction);
     virtual void joinAggression(const input::IGameActionPtr& pGameAction);
+    /// ADD_GUI_TUTORIAL_MARKER on a creature located on the world map: the
+    /// marker is published again, located at the creature's field.
+    virtual void addGuiTutorialMarker(const input::IGameActionPtr& pGameAction);
 
 Q_SIGNALS:
     void sendAttack(tibia::protobuf::protocol::GameclientMessageAttack AttackMessage);

@@ -62,7 +62,17 @@ struct TActionSetting
     QString action;
     std::vector<TActionSetting> multiActions;
 
-    bool isEmpty() const { return kind == NONE; }
+    /// No text, action, object, passive ability or multi actions.
+    bool isEmpty() const
+    {
+        return text.isEmpty() && action.isEmpty() && objectId == 0 && kind != PASSIVE_ABILITY && multiActions.empty();
+    }
+    /// A chat text; a non-empty one drops the object, its liquid and the
+    /// multi actions.
+    void setChatText(const QString& chatText);
+    void setSendAutomatically(bool enabled) { sendAutomatically = enabled; }
+    void setUseType(EUseType type) { useType = type; }
+    void setUseEquipSmartMode(bool enabled) { useEquipSmartMode = enabled; }
     static TActionSetting fromJson(const QJsonObject& json);
     QJsonObject toJson() const;
     bool operator==(const TActionSetting& other) const;
@@ -111,6 +121,13 @@ struct THotkeyOptionsData
 
     THotkeySet* set(const QString& name);
     void setCurrentSet(const QString& name);
+    /// The set names in name order (case-sensitive).
+    QStringList hotkeySetNames() const;
+    /// The current set's index in hotkeySetNames(); -1 when it is not there.
+    int currentHotkeySetIndex() const;
+    /// The set at index of hotkeySetNames() becomes current; nothing for an
+    /// index outside the list.
+    void setCurrentHotkeySetIndex(int index);
     /// Keeps a set already named name.
     void addSet(const QString& name, const THotkeySet& set);
     void renameSet(const QString& from, const QString& to);

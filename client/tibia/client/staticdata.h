@@ -287,31 +287,6 @@ struct Imbuement
     uint32_t protectionCost;
 };
 
-struct ImbuementSlot
-{
-    ImbuementSlot(const uint8_t id) : id(id) {}
-
-    uint8_t id;
-    std::string name;
-    uint16_t iconId = 0;
-    uint32_t duration = 0;
-    bool state = false; // paused, running
-};
-
-struct ImbuementTrackerItem
-{
-    ImbuementTrackerItem() : slot(0) {}
-    ImbuementTrackerItem(const uint8_t slot) : slot(slot) {}
-
-    uint8_t slot;
-    uint8_t totalSlots = 0;
-    uint16_t typeId = 0;
-    uint16_t count = 0;
-    uint8_t tier = 0;
-    uint8_t fluidOrSubtype = 0;
-    std::map<uint8_t, ImbuementSlot> slots;
-};
-
 struct MarketData
 {
     std::string name;

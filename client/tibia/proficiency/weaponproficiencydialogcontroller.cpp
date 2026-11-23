@@ -310,7 +310,7 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     m_weaponObjectsModel = &m_proxy;
     m_selectedLevelIndex = -1;
     m_selectedPerkIndex = -1;
-    // CIP 's combo box entries, in its order.
+    // The combo box entries, in CipSoft's order.
     m_weaponTypes = {
         new TQmlWeaponTypes(qtTrId("market_category_axes"), { 2 }, this),
         new TQmlWeaponTypes(qtTrId("market_category_clubs"), { 3 }, this),
@@ -320,7 +320,8 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
         new TQmlWeaponTypes(qtTrId("market_category_wands"), { 7 }, this),
         new TQmlWeaponTypes(qtTrId("market_category_all_weapons"), {}, this),
     };
-    m_weaponTypesIndex = static_cast<int>(m_weaponTypes.size()) - 1;
+    // Weapon type 0 selects "all weapons".
+    setWeaponTypeFilter(0);
 
     m_confirm->setYesNoButtons();
     m_confirm->setCloseOnButtonClicked(true);
@@ -364,20 +365,16 @@ void TWeaponProficiencyDialogController::connectToGameSession(const std::shared_
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     if (!session)
         return;
-    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyXPChanged, this, [this] {
-        m_model.onObjectProficiencyXPChanged();
-        Q_EMIT decorativeSourceChanged();
-        Q_EMIT xpInformationChanged();
-    }));
-    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) {
-        m_model.onObjectProficiencyXPChanged();
-        onProficiencyDataChanged(static_cast<uint16_t>(typeId));
-    }));
+    // Host: CIP hands the storage to the weapons model, which follows it
+    // itself; qtclient's model is refreshed from the storage's XP changes.
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyXPChanged, &m_model,
+                                         &TWeaponObjectsModel::onObjectProficiencyXPChanged));
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::currentProficiencyProgressChanged, this,
+                                         &TWeaponProficiencyDialogController::xpInformationChanged));
+    m_gameSessionConnections.add(connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this,
+                                         [this](const uint typeId) { onProficiencyDataChanged(static_cast<uint16_t>(typeId)); }));
     m_gameSessionConnections.add(connect(session->gameProtocolMessageHandler().get(), &game::TGameProtocolMessageHandler::inspectObjectDataReceived,
-                                         this, [this](const ItemInspectionData& data) {
-                                             if (dialog()->isShown() && m_currentTypeId != 0)
-                                                 onInspectObjectDataReceived(data);
-                                         }));
+                                         this, &TWeaponProficiencyDialogController::onInspectObjectDataReceived));
     m_gameSessionConnections.add(
         connect(session->playerData().get(), &game::TPlayerData::playerDataChanged, this, &TWeaponProficiencyDialogController::onPlayerDataChanged));
     m_gameSessionConnections.add(connect(session->exaltationStorage().get(), &exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged, this,
@@ -406,9 +403,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
     const TAppearanceTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
         ? tibia::game::thingType(typeId, ThingCategoryItem)
         : nullptr;
-    const bool selected = typeId != 0 && tibia::game::isOnline() && m_model.contains(typeId) && typeId != m_currentTypeId;
-    if (selected)
-        select(typeId);
+    const bool selected = typeId != 0 && m_gameSession && select(typeId);
     if (!selected || !type) {
         select(m_proxy.typeIdAt(0));
         setWeaponTypeFilter(0);
@@ -435,10 +430,15 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
     }
 }
 
-void TWeaponProficiencyDialogController::select(const uint16_t typeId)
+void TWeaponProficiencyDialogController::sendInspectObject(const uint16_t typeId) const
+{
+    tibia::game::inspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
+}
+
+bool TWeaponProficiencyDialogController::select(const uint16_t typeId)
 {
     if (!m_model.contains(typeId) || typeId == m_currentTypeId)
-        return;
+        return false;
     m_currentTypeId = typeId;
     Q_EMIT currentTypeIdChanged();
     m_currentInspectText.clear();
@@ -449,14 +449,16 @@ void TWeaponProficiencyDialogController::select(const uint16_t typeId)
         updateSelectedPerk();
     }
 
-    tibia::game::inspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
-    if (dialog()->item())
-        sendItemInfo(typeId);
-
-    // A pending reset stays pending: the next apply still sends it.
-    const TProficiencyData* server = m_storage->data(typeId);
-    m_local = server ? *server : TProficiencyData{};
+    if (m_gameSession) {
+        sendInspectObject(typeId);
+        if (dialog()->item())
+            sendItemInfo(typeId);
+        // A pending reset stays pending: the next apply still sends it.
+        const TProficiencyData* server = m_storage->data(typeId);
+        m_local = server ? *server : TProficiencyData{};
+    }
     rebuildModel();
+    return true;
 }
 
 void TWeaponProficiencyDialogController::onInspectObjectDataReceived(const ItemInspectionData& data)

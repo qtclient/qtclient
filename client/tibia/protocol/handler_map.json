@@ -3,7 +3,7 @@
   "dir": "client",
   "opcode": 10,
   "name": "Login",
-  "call": "// Built by network::TGameserverNetworkPacketProcessor::sendLogin."
+  "call": "// Built by network::TGameserverSessionNetwork::sendLogin."
  },
  {
   "dir": "client",

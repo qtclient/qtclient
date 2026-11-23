@@ -241,9 +241,14 @@ TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
 {
     const Position center = m_sessionState.getCentralPosition();
     const AwareRange range = m_sessionState.getAwareRange();
+    // The session places the volume (CipSoft's setStoredVolume always widens
+    // it by the margins).
     return TShearedWorldMapCuboid(
-        TWorldMapCoordinate(center.x - range.left, center.y - range.top, center.z),
-        TWorldMapExtent(range.horizontal(), range.vertical(), 1), center.z);
+        TWorldMapCoordinate(center.x - range.left - m_storedVolumeMarginLeft,
+                            center.y - range.top - m_storedVolumeMarginTop, center.z),
+        TWorldMapExtent(range.horizontal() + m_storedVolumeMarginLeft + m_storedVolumeMarginRight,
+                        range.vertical() + m_storedVolumeMarginTop + m_storedVolumeMarginBottom, 1),
+        center.z);
 }
 
 void TWorldMapStorage::setStoredVolume(const Position& center)

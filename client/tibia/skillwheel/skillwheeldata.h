@@ -84,6 +84,8 @@ bool socketGem(TWheel& wheel, const TGem& gem, int vessel);
 void unsocketGem(TWheel& wheel, int vessel);
 /// The vessel that holds a gem with the id.
 std::optional<int> vesselOfGem(const TWheel& wheel, int gemId);
+/// One of the first `count` vessels (at most all eight) holds no gem; false for none.
+bool hasEmptyVessel(const TWheel& wheel, uint8_t count);
 
 /// Mod grades (0..3) by mod id, as the server sends them.
 using TGrades = std::map<int, int>;

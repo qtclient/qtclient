@@ -1480,6 +1480,15 @@ bool socketGem(TWheel& wheel, const TGem& gem, const int vessel)
 
 void unsocketGem(TWheel& wheel, const int vessel) { wheel.vessels[vessel].reset(); }
 
+bool hasEmptyVessel(const TWheel& wheel, const uint8_t count)
+{
+    for (int vessel = 0; vessel < VesselCount && vessel < count; ++vessel) {
+        if (!wheel.vessels[vessel])
+            return true;
+    }
+    return false;
+}
+
 std::optional<int> vesselOfGem(const TWheel& wheel, const int gemId)
 {
     for (int v = 0; v < VesselCount; ++v)

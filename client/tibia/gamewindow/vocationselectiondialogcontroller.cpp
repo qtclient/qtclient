@@ -8,25 +8,9 @@
 
 namespace tibia::gamewindow {
 
-namespace {
-
-QQuickItem* mapWindowPaneItem()
-{
-    TDialogStackController* stack = TDialogStackController::instance();
-    if (!stack || !stack->dialogPlaceholder())
-        return nullptr;
-    QQuickItem* root = stack->dialogPlaceholder();
-    while (root->parentItem())
-        root = root->parentItem();
-    if (QQuickItem* pane = root->findChild<QQuickItem*>(QStringLiteral("mapWindowPane")))
-        return pane;
-    return stack->dialogPlaceholder()->parentItem();
-}
-
-}
-
-TVocationSelectionDialogController::TVocationSelectionDialogController(QObject* parent)
+TVocationSelectionDialogController::TVocationSelectionDialogController(QQuickItem* mapWindowPane, QObject* parent)
     : TDialogController(QStringLiteral("tutorial/VocationSelectionPopup.qml"), parent)
+    , m_mapWindowPane(mapWindowPane)
 {
     m_spellListModel = new TSpellListDataModel(this);
     m_stage = 0;
@@ -51,7 +35,7 @@ void TVocationSelectionDialogController::handleGameAction(const input::IGameActi
 
 void TVocationSelectionDialogController::requestClose() { dialog()->close(); }
 
-QQuickItem* TVocationSelectionDialogController::mapWindowPane() { return mapWindowPaneItem(); }
+QQuickItem* TVocationSelectionDialogController::mapWindowPane() { return m_mapWindowPane; }
 
 void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcomponents::enums::EVocation Vocation)
 {

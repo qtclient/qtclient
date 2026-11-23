@@ -21,6 +21,7 @@
 #include <QSGImageNode>
 
 #include <algorithm>
+#include <stdexcept>
 #include <cmath>
 #include <vector>
 #include <tibia/game/thingsession_forward.h>
@@ -97,6 +98,42 @@ void TObjectAppearanceInstanceInfoQmlType::setTypeid(const int v)
     Q_EMIT elevationChanged();
     Q_EMIT spriteSizeChanged();
     Q_EMIT appearanceInstancePropertyChanged();
+}
+
+uint TObjectAppearanceInstanceInfoQmlType::getQmlTypeId(const appearances::TAppearanceInstancePtr& instance)
+{
+    return instance ? instance->id() : 0;
+}
+
+uint TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(const appearances::TAppearanceInstancePtr& instance)
+{
+    if (const auto* cumulative = dynamic_cast<const appearances::TCumulativeObjectAppearanceInstance*>(instance.get()))
+        return static_cast<uint8_t>(cumulative->count());
+    return 1;
+}
+
+TObjectAppearanceInstanceInfoQmlType::ELiquidType TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(
+    const appearances::TAppearanceInstancePtr& instance)
+{
+    const auto* liquid = dynamic_cast<const appearances::TLiquidObjectAppearanceInstance*>(instance.get());
+    if (!liquid)
+        return ELiquidType::EMPTY;
+    const uint32_t fluid = liquid->fluid();
+    if (fluid > uint32_t(ELiquidType::CACAO))
+        throw std::invalid_argument("ObjectAppearanceInstanceInfoQmlType::getQmlLiquidType called with unhandeld enum value");
+    return ELiquidType(fluid);
+}
+
+TObjectAppearanceInstanceInfoQmlType::EHookDirection TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(
+    const appearances::TAppearanceInstancePtr& instance)
+{
+    const auto* hangable = dynamic_cast<const appearances::THangableObjectAppearanceInstance*>(instance.get());
+    if (!hangable)
+        return EHookDirection::NONE;
+    const uint8_t side = hangable->hangSide();
+    if (side > 3)
+        throw std::invalid_argument("ObjectAppearanceInstanceInfoQmlType::getQmlHookDirection called with unhandeld enum value");
+    return EHookDirection(side);
 }
 
 void TObjectAppearanceInstanceInfoQmlType::setPosition(const QPoint& v)

@@ -8,6 +8,7 @@
 #include "tibia/runtime/host.h"
 
 #include "appearances/appearanceinstance.h"
+#include "appearances/creatureplaceholderappearanceinstance.h"
 #include "creatures/creaturestorage.h"
 #include "client/const.h"
 #include <tibia/appearances/appearancetype.h>
@@ -110,21 +111,19 @@ void TWorldMapField::syncCreatureStackAppearance(const uint32_t creatureId)
     const auto row = storage->creatureAt(creatureId);
     if (!row)
         return;
-
-    const appearances::TAppearanceInstancePtr appearance =
-        appearances::TAppearanceInstanceFactory::fromStoredCreature(*row);
-    if (!appearance)
-        return;
-
-    bool changed = false;
+    bool onField = false;
     for (auto& entry : m_stack) {
         if (entry->creatureId() != creatureId)
             continue;
-        entry = appearance;
-        changed = true;
+        // Host: a creature made again under the same id puts its own
+        // placeholder in place of the one left on the field.
+        if (row->placeholderAppearance())
+            entry = row->placeholderAppearance();
+        onField = true;
     }
-    if (!changed)
+    if (!onField)
         return;
+    recalculateThingFlag();
     notifyAppearanceInstancesChanged();
 }
 
@@ -333,7 +332,8 @@ void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
         return;
     const auto row = storage->getOrCreate(creatureId);
     row->setPosition(getPosition());
-    const appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::fromStoredCreature(*row);
+    // The field holds the creature's placeholder.
+    const appearances::TAppearanceInstancePtr appearance = row->placeholderAppearance();
     if (!appearance)
         return;
 
@@ -590,12 +590,13 @@ std::vector<TWorldMapField::TStackView> TWorldMapField::stackView() const
 
 std::vector<std::shared_ptr<tibia::creatures::TCreature>> TWorldMapField::creatures() const
 {
+    // The creatures of the placeholders on the stack that still exist.
     std::vector<std::shared_ptr<tibia::creatures::TCreature>> result;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     for (const auto& entry : m_stack) {
-        if (entry->creatureId() == 0 || !storage)
+        const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(entry.get());
+        if (!placeholder)
             continue;
-        if (auto creature = storage->creatureAt(entry->creatureId()))
+        if (std::shared_ptr<tibia::creatures::TCreature> creature = placeholder->creature())
             result.push_back(std::move(creature));
     }
     return result;
@@ -774,6 +775,11 @@ TFieldObject TWorldMapField::fieldObject(const int stackIndex) const
     object.stackPosition = stackPositionOf(entry);
     object.creatureId = entry->creatureId();
     object.appearance = entry;
+    // Host: the actions on a creature read its outfit's instance.
+    if (const auto* placeholder = dynamic_cast<const appearances::TCreaturePlaceholderAppearanceInstance*>(entry.get())) {
+        const std::shared_ptr<tibia::creatures::TCreature> creature = placeholder->creature();
+        object.appearance = creature ? creature->outfitAppearance() : nullptr;
+    }
     return object;
 }
 
@@ -1162,9 +1168,8 @@ void TWorldMapField::setStackEntryFlag(const appearances::TAppearanceInstancePtr
     if (entry->creatureId() != 0) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
             if (const auto row = storage->creatureAt(entry->creatureId())) {
-                TAppearanceType* outfitType = entry ? entry->thingType() : row->outfitAppearance()
-                                                                                                   ? row->outfitAppearance()->thingType()
-                                                                                                   : nullptr;
+                // The entry is the creature's placeholder: the flags come from its outfit.
+                TAppearanceType* outfitType = row->outfitAppearance() ? row->outfitAppearance()->thingType() : nullptr;
                 applyCreatureStackFlags(*row, outfitType);
                 return;
             }

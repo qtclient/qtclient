@@ -908,20 +908,6 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(TAppearanc
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::creatures::TCreature& stored)
-{
-    if (stored.outfitAppearance())
-        return stored.outfitAppearance();
-    TAppearanceType* type = tibia::game::rawThingType(stored.outfit().getId(), stored.outfit().getCategory());
-    auto instance = fromOutfit(stored.outfit(), type);
-    if (instance)
-        instance->linkCreature(stored.creatureId());
-    if (const auto outfitInstance = std::dynamic_pointer_cast<TOutfitAppearanceInstance>(instance))
-        // CIP outfit patternX is the collapsed cardinal (N/E/S/W), not raw diagonal dirs.
-        outfitInstance->setPatterns(stored.patternX(), stored.drawnPatternX(), stored.patternZ(), false);
-    return instance;
-}
-
 std::shared_ptr<TTutorialFieldEffectInstance> TAppearanceInstanceFactory::createTutorialFieldEffect(const int kind,
                                                                                                     const Position& field)
 {

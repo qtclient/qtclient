@@ -631,7 +631,6 @@ public:
     static std::shared_ptr<TAppearanceInstanceTracker> instanceTracker();
     static TAppearanceInstancePtr fromProtocolObject(TAppearanceType* type, uint16_t count = 0, uint8_t subType = 0,
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
-    static TAppearanceInstancePtr fromStoredCreature(tibia::creatures::TCreature& stored);
     static TAppearanceInstancePtr fromOutfit(const Outfit& outfit, TAppearanceType* type);
     /// A tutorial marker on `field`: kind 1 is effect 57, any other kind effect 56.
     static std::shared_ptr<TTutorialFieldEffectInstance> createTutorialFieldEffect(int kind, const Position& field);

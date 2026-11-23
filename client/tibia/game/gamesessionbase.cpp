@@ -115,6 +115,11 @@
 
 namespace tibia::game {
 
+std::shared_ptr<container::TInventoryContainer> TGameSessionBase::inventoryContainer() const
+{
+    return m_containerStorage ? m_containerStorage->inventoryContainer() : nullptr;
+}
+
 TGameSessionBase::TGameSessionBase(QObject* parent)
     : IGameSession(parent)
     , m_worldMapViewport(std::make_shared<worldmap::TWorldMapViewport>())
@@ -155,8 +160,6 @@ void TGameSessionBase::createStorages()
             &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
     m_chatStorage = std::make_shared<chat::TChatStorage>();
     m_containerStorage = std::make_shared<container::TContainerStorage>();
-    // qtclient keeps the inventory beside the container storage.
-    m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
     m_stashStorage = std::make_shared<container::TStashStorage>();
     m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
     m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
@@ -1182,7 +1185,7 @@ void TGameSessionBase::connectProtocolMessageHandlers()
     if (!m_proficiencyProtocolMessageHandler || m_proficiencyProtocolMessageHandler->storage() != proficiency::TProficiencyStorage::instance()) {
         m_proficiencyProtocolMessageHandler.reset();
         if (auto* storage = proficiency::TProficiencyStorage::instance())
-            m_proficiencyProtocolMessageHandler = std::make_shared<TProficiencyProtocolMessageHandler>(storage, m_inventoryContainer);
+            m_proficiencyProtocolMessageHandler = std::make_shared<TProficiencyProtocolMessageHandler>(storage, inventoryContainer());
     }
     if (auto* proficiencyHandler = m_proficiencyProtocolMessageHandler.get()) {
         link(&Queue::receivedWeaponProficiencyMessage, proficiencyHandler, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
@@ -1273,7 +1276,6 @@ void TGameSessionBase::releaseStorages()
     m_worldmapProtocolMessageHandler.reset();
     m_worldMapStorage.reset();
     m_creatureStorage.reset();
-    m_inventoryContainer.reset();
     m_containerStorage.reset();
     m_soundProtocolMessageHandler.reset();
     m_gameSessionSoundProvider.reset();

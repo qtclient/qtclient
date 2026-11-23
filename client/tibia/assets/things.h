@@ -31,7 +31,14 @@ class TAppearanceInstanceGenericStorage;
 class TAppearancesManager
 {
 public:
+    /// The game client's manager while a client exists (setInstance), else a
+    /// manager of its own (tests, tools).
     static TAppearancesManager& instance();
+    /// Installs the game client's manager; null goes back to the fallback.
+    static void setInstance(TAppearancesManager* manager);
+
+    TAppearancesManager();
+    ~TAppearancesManager();
 
     /// Counts the live appearance instances (created with the appearances).
     TAppearanceInstanceTracker& tracker();

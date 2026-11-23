@@ -3,13 +3,11 @@
 #include "gamewindow/appearanceinstanceroledata.h"
 
 #include "config/sidebaroptions.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "qmlcomponents/texthelper.h"
 
 #include <client/staticdata.h>
-
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
 
 #include "clockservice.h"
 
@@ -21,7 +19,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-using Args = std::vector<std::any>;
 using Viz = cip::tibia::qmlcomponents::enums::EVisualizationType;
 constexpr auto OptionsKey = "imbuementTrackerWidgetOptions";
 
@@ -78,31 +75,42 @@ QVariant objectData(const TImbuedObjectsModel::Row& row, const EAppearanceInstan
 
 }
 
+namespace {
+
+/// The slot `index` of a row; an empty slot past the object's slots.
+const imbuing::TImbuementSlotInformation& slotOf(const TImbuedObjectsModel::Row& row, const size_t index)
+{
+    static const imbuing::TImbuementSlotInformation empty;
+    return index < row.slots.size() ? row.slots[index] : empty;
+}
+
+}
+
 QVariant TImbuedObjectsModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= int(m_rows.size()))
         return {};
     const Row& row = m_rows[size_t(index.row())];
     if (role >= Imbuement1NameRole && role <= Imbuement3VisualizationRole) {
-        const int slot = (role - Imbuement1NameRole) / 5;
+        const imbuing::TImbuementSlotInformation& slot = slotOf(row, size_t((role - Imbuement1NameRole) / 5));
         switch ((role - Imbuement1NameRole) % 5) {
         case 0:
-            return row.name[slot];
+            return slot.name;
         case 1:
-            return row.iconId[slot];
+            return int(slot.iconId);
         case 2:
-            return remainingTimeString(row.remainingMs[slot]);
+            return remainingTimeString(slot.remainingMilliseconds);
         case 3:
-            return row.remainingMs[slot];
+            return slot.remainingMilliseconds;
         default:
-            return QVariant::fromValue(visualization(row.remainingMs[slot]));
+            return QVariant::fromValue(visualization(slot.remainingMilliseconds));
         }
     }
     switch (role) {
     case InventoryPositionRole:
-        return row.inventoryPosition;
+        return int(row.inventorySlot);
     case SlotCountRole:
-        return row.slotCount;
+        return int(row.slots.size());
     case TypeIdRole: return objectData(row, EAppearanceInstanceRole::TypeId);
     case CumulativeCountRole: return objectData(row, EAppearanceInstanceRole::CumulativeCount);
     case TypeCountRole: return objectData(row, EAppearanceInstanceRole::TypeCount);
@@ -153,28 +161,10 @@ QHash<int, QByteArray> TImbuedObjectsModel::roleNames() const
     };
 }
 
-void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
+void TImbuedObjectsModel::setImbuedObjects(std::vector<imbuing::TImbuedObjectInformation> imbuedObjects)
 {
     beginResetModel();
-    m_rows.clear();
-    m_rows.reserve(items.size());
-    for (const ImbuementTrackerItem& item : items) {
-        Row row;
-        row.inventoryPosition = item.slot;
-        row.slotCount = item.totalSlots;
-        row.object = container::TInventorySlot::fromTypeId(item.typeId, item.count > 0 ? item.count : item.fluidOrSubtype, item.tier);
-        for (const auto& [slotIndex, slot] : item.slots) {
-            if (slotIndex >= 3)
-                continue;
-            row.iconId[slotIndex] = slot.iconId;
-            row.name[slotIndex] = QString::fromStdString(slot.name);
-            row.remainingMs[slotIndex] = qint64(slot.duration) * 1000;
-            row.hasImbuement[slotIndex] = true;
-            row.running[slotIndex] = slot.state;
-            ++row.filledSlots;
-        }
-        m_rows.push_back(std::move(row));
-    }
+    m_rows = std::move(imbuedObjects);
     endResetModel();
 }
 
@@ -207,12 +197,13 @@ bool TImbuedObjectsSortFilterProxyModel::filterAcceptsRow(const int sourceRow, c
     if (sourceRow < 0 || sourceRow >= m_source.rowCount())
         return false;
     const TImbuedObjectsModel::Row& row = m_source.m_rows[size_t(sourceRow)];
-    if (row.filledSlots == 0)
+    const auto imbued = [](const imbuing::TImbuementSlotInformation& slot) { return slot.imbued; };
+    if (std::none_of(row.slots.begin(), row.slots.end(), imbued))
         return m_showEmptySlots;
-    for (int i = 0; i < 3; ++i) {
-        if (row.name[i].isEmpty() && row.iconId[i] == 0)
+    for (const imbuing::TImbuementSlotInformation& slot : row.slots) {
+        if (!slot.imbued)
             continue;
-        if (showFlagEnabled(static_cast<int>(visualization(row.remainingMs[i])), m_showAlmostGone, m_showUsed, m_showAlmostNew))
+        if (showFlagEnabled(static_cast<int>(visualization(slot.remainingMilliseconds)), m_showAlmostGone, m_showUsed, m_showAlmostNew))
             return true;
     }
     return false;
@@ -225,17 +216,6 @@ TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem*
     , m_model(m_proxy->source())
 {
     m_imbuedObjectsModel = m_proxy;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateImbuementTracker", [this](GameObject*, const Args& args) {
-        if (const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<ImbuementTrackerItem>>(&args[0])) {
-            m_model->setItems(*list);
-            onImbuedObjectsChanged();
-        }
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_model->setItems({});
-        onImbuedObjectsChanged();
-    });
     widget()->createItem(QStringLiteral("ImbuementTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TImbuementTrackerWidgetController::onWidgetQuickItemDestroyed);
@@ -263,10 +243,10 @@ void TImbuementTrackerWidgetController::updateWithTimestamp(const qint64 timesta
     for (size_t row = 0; row < model.m_rows.size(); ++row) {
         TImbuedObjectsModel::Row& entry = model.m_rows[row];
         bool changed = false;
-        for (int slot = 0; slot < 3; ++slot) {
-            if (!entry.hasImbuement[slot] || !entry.running[slot] || entry.remainingMs[slot] <= 0)
+        for (imbuing::TImbuementSlotInformation& slot : entry.slots) {
+            if (!slot.imbued || !slot.decaying || slot.remainingMilliseconds <= 0)
                 continue;
-            entry.remainingMs[slot] = std::max<qint64>(0, entry.remainingMs[slot] - elapsed);
+            slot.remainingMilliseconds = std::max<qint64>(0, slot.remainingMilliseconds - elapsed);
             changed = true;
         }
         if (!changed)
@@ -281,7 +261,25 @@ void TImbuementTrackerWidgetController::updateWithTimestamp(const qint64 timesta
     }
 }
 
-TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController() { m_model->setItems({}); }
+TImbuementTrackerWidgetController::~TImbuementTrackerWidgetController() { m_model->setImbuedObjects({}); }
+
+void TImbuementTrackerWidgetController::setGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_imbuementDurationsStorage = session ? session->imbuementDurationsStorage() : nullptr;
+    if (m_imbuementDurationsStorage)
+        m_sessionConnections.push_back(connect(m_imbuementDurationsStorage.get(),
+                                               &cip::tibia::imbuing::TImbuementDurationsStorage::imbuedObjectsChanged, this,
+                                               &TImbuementTrackerWidgetController::onImbuedObjectsChanged));
+    // Host: qtclient keeps the widget across sessions, so it starts from the new session's objects.
+    m_model->setImbuedObjects(m_imbuementDurationsStorage ? m_imbuementDurationsStorage->imbuedObjects()
+                                                          : std::vector<imbuing::TImbuedObjectInformation>{});
+    m_proxy->invalidate();
+}
 
 QObject* TImbuementTrackerWidgetController::imbuedObjectsModel() const { return m_proxy; }
 
@@ -361,7 +359,8 @@ void TImbuementTrackerWidgetController::optionsContextMenu()
 
 void TImbuementTrackerWidgetController::onImbuedObjectsChanged()
 {
-    m_proxy->onOptionsChanged();
+    if (m_imbuementDurationsStorage)
+        m_model->setImbuedObjects(m_imbuementDurationsStorage->imbuedObjects());
 }
 
 void TImbuementTrackerWidgetController::saveWidgetOptions()
@@ -394,8 +393,16 @@ TSidebarWidget* TImbuementTrackerWidgetManager::open(config::TSidebarOptions* op
     if (!m_controller) {
         m_controller = new TImbuementTrackerWidgetController(m_gameWindowItem, m_engine);
         m_controller->setSidebarOptions(options);
+        m_controller->setGameSession(m_gameSession);
     }
     return m_controller->widget();
+}
+
+void TImbuementTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSession = GameSession;
+    if (m_controller)
+        m_controller->setGameSession(GameSession);
 }
 
 void TImbuementTrackerWidgetManager::close(const bool saveWidgetOptions)

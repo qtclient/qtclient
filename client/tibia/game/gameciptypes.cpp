@@ -28,7 +28,7 @@
 #include <client/staticdata.h>
 #include <client/gamecore.h>
 #include "protocol/protocolcodes.h"
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 #include "protocol/clientmessages.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -107,7 +107,6 @@ FPSDropsLogger* FPSDropsLogger::instance()
 namespace {
 struct CipTypedKeep {
     TGameWorldVolumeStorage tGameWorldVolumeStorage;
-    TTraderStorage tTraderStorage;
 };
 CipTypedKeep& typedKeep()
 {
@@ -365,7 +364,7 @@ void TGameProtocolMessageHandler::handleLoginErrorMessage(const GameserverMessag
 
 void TGameProtocolMessageHandler::handleLoginChallengeMessage(const GameserverMessageLoginChallenge& m)
 {
-    if (auto* connection = network::TGameserverNetworkPacketProcessor::live())
+    if (auto* connection = network::TGameserverSessionNetwork::live())
         connection->sendLogin(m.timestamp(), static_cast<uint8_t>(m.random()));
 }
 
@@ -890,7 +889,6 @@ void ownProductSurface(QObject* parent)
     if (!g_qtclientFpsDropsLogger)
         g_qtclientFpsDropsLogger = new FPSDropsLogger(parent);
     // The game session builds its protocol message and game action handlers.
-    new TPassiveAbilityInfoStorage(parent);
     new TPremiumTimeStorage(parent);
 }
 

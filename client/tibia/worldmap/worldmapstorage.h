@@ -134,8 +134,22 @@ public:
     /// view's centre) and drops every other field; storedVolumeHasChanged when
     /// the volume moved.
     void setStoredVolume(const Position& center);
-    /// Current aware-range cuboid (central ± AwareRange), for storedVolumeHasChanged.
+    /// Current aware-range cuboid (central ± AwareRange), widened by the
+    /// stored-volume margins, for storedVolumeHasChanged.
     TShearedWorldMapCuboid storedVolume() const;
+    /// CIP v38: the stored volume reaches `left` fields further west and
+    /// `right` further east than the aware range (0 unless set).
+    void setHorizontalStoredVolumeMargins(int left, int right)
+    {
+        m_storedVolumeMarginLeft = left;
+        m_storedVolumeMarginRight = right;
+    }
+    /// CIP v39: the same north (`top`) and south (`bottom`).
+    void setVerticalStoredVolumeMargins(int top, int bottom)
+    {
+        m_storedVolumeMarginTop = top;
+        m_storedVolumeMarginBottom = bottom;
+    }
 
     /// Dynamic overlay peels (qtclient-bridge dual-write).
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
@@ -157,6 +171,10 @@ private:
     TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
+    int m_storedVolumeMarginLeft = 0;
+    int m_storedVolumeMarginRight = 0;
+    int m_storedVolumeMarginTop = 0;
+    int m_storedVolumeMarginBottom = 0;
 };
 
 /// CIP field accessor (prefer over legacy Map tile getters at qtclient call sites).

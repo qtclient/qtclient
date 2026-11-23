@@ -521,10 +521,5 @@ Q_SIGNALS:
     void requestShowSpellBookDialog(const QString& text, int SpellBook);
 };
 
-class TTraderStorage final : public ::tibia::CipTyped {
-public:
-    TTraderStorage() = default;
-};
-
 }
 }

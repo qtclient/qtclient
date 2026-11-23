@@ -21,9 +21,8 @@ void TTutorialProtocolMessageHandler::handleTutorialHintMessage(const Gameserver
     if (unsigned(hintId - 1) >= 14u)
         return;
     if (unsigned(hintId - 7) < 4u || hintId == 12) {
-        // CipSoft names the resource ":/minimap/default"; qtclient's action
-        // carries no path.
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionLoadDefaultMinimapTilesFromResources>());
+        Q_EMIT publishGameAction(
+            std::make_shared<input::TGameActionLoadDefaultMinimapTilesFromResources>(QStringLiteral(":/minimap/default")));
     }
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionShowTutorialHint>(hintId));
 }

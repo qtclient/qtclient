@@ -266,7 +266,8 @@ public:
     }
     const std::shared_ptr<creatures::TCreatureStorage>& creatureStorage() const { return m_creatureStorage; }
     const std::shared_ptr<container::TContainerStorage>& containerStorage() const { return m_containerStorage; }
-    const std::shared_ptr<container::TInventoryContainer>& inventoryContainer() const { return m_inventoryContainer; }
+    /// The container storage's inventory.
+    std::shared_ptr<container::TInventoryContainer> inventoryContainer() const;
     /// The player's inventory counts, by type and tier.
     const std::shared_ptr<container::TObjectCountStorage>& objectCountStorage() const { return m_objectCountStorage; }
     /// The supply stash's content.
@@ -618,7 +619,6 @@ private:
     std::shared_ptr<worldmap::TWorldmapProtocolMessageHandler> m_worldmapProtocolMessageHandler;
     std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
     std::shared_ptr<container::TContainerStorage> m_containerStorage;
-    std::shared_ptr<container::TInventoryContainer> m_inventoryContainer;
     std::shared_ptr<container::TStashStorage> m_stashStorage;
     std::shared_ptr<container::TObjectCountStorage> m_objectCountStorage;
     std::shared_ptr<container::TDepotSearchDetailListStorage> m_depotSearchDetailListStorage;

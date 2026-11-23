@@ -12,12 +12,22 @@
 #include <QList>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceType;
+}
+namespace container {
+class TInventoryContainer;
+}
+namespace proficiency {
+class TProficiencyStorage;
+}
 namespace gamewindow {
 
 /// StatusBar's controller (CIP: TStatusBarController): the player's hit
 /// points, mana and magic shield, the XP bar and the skills the character
 /// chose, the special-condition icons and a Monk's harmony and serenity. The
-/// bar sits at the storage's position. Not yet: proficiency progress.
+/// bar sits at the storage's position, and the wielded weapon's proficiency
+/// progress.
 class TStatusBarController final : public cip::tibia::gamewindow::TStatusBarController
 {
     Q_OBJECT
@@ -50,6 +60,16 @@ public:
     /// The last skill alone on its row; only with an odd number of skills.
     QObject* remainingSkill() const override { return m_oddSkillCount ? m_remainingSkill : nullptr; }
     bool showPlayerStatesInBar() const override;
+    /// The wielded weapon has a proficiency.
+    bool showProficiencyProgress() const override;
+    /// The server reports an unspent perk.
+    bool isProficiencyHighlighted() const override;
+    /// The share of the current level's XP span the weapon has made; 1 at the last level.
+    double proficiencyBarFillProgress() const override;
+    /// The wielded weapon's proficiency XP.
+    int currentProficiencyProgress() const override;
+    /// The XP of the next level, never past the weapon's last level.
+    int proficiencyProgressNextLevel() const override;
 
     /// CIP : the other positions and styles, the shown skills and
     /// options 0x71 statusBarEnabled / 0x72 statusPanelEnabled.
@@ -57,6 +77,9 @@ public:
     /// statusBarEnabled / 0x72 statusPanelEnabled.
     Q_INVOKABLE void requestContextMenu() override;
     Q_INVOKABLE void onClickedOpenStoreXPBoost() override;
+    /// Opens the weapon proficiency dialog on the wielded weapon (on none
+    /// with an empty hand).
+    Q_INVOKABLE void onClickedOpenProficiencies() override;
 
 private:
     /// On entering the world.
@@ -78,8 +101,13 @@ private:
     /// Whether the storage shows the entry at `index` (Storage::Entry order).
     bool isSkillShown(int index) const;
     void setSkillShown(int index, bool shown);
+    /// The type of the object in the weapon hand; null with an empty hand.
+    const appearances::TAppearanceType* equippedWeapon() const;
 
     QPointer<game::TStatusbarStorage> m_storage;
+    /// The session's proficiency storage and inventory, while in the world.
+    QPointer<proficiency::TProficiencyStorage> m_proficiencyStorage;
+    QPointer<container::TInventoryContainer> m_inventory;
     game::TPlayerStatesTracker m_states;
     /// The XP bar's entry lives as long as the controller; the skills' are
     /// made anew on each rebuild.

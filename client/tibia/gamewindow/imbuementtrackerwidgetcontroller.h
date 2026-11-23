@@ -4,19 +4,22 @@
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include "container/containerciptypes.h"
+#include "imbuing/imbuingciptypes.h"
 
 #include <cip_gen.h>
 
 #include <QJsonObject>
 #include <QPointer>
 
+#include <memory>
 #include <vector>
-
-struct ImbuementTrackerItem;
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace game {
+class IGameSession;
 }
 }
 
@@ -67,22 +70,10 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setItems(std::vector<ImbuementTrackerItem> items);
+    /// CIP's simple vector model: the rows are the storage's objects (model reset).
+    void setImbuedObjects(std::vector<imbuing::TImbuedObjectInformation> imbuedObjects);
 
-    struct Row
-    {
-        int inventoryPosition = 0;
-        container::TInventorySlot object;
-        int slotCount = 0;
-        int iconId[3] = {};
-        QString name[3];
-        qint64 remainingMs[3] = {};
-        /// The slot holds an imbuement.
-        bool hasImbuement[3] = {};
-        /// Its time runs (the object is worn).
-        bool running[3] = {};
-        int filledSlots = 0;
-    };
+    using Row = imbuing::TImbuedObjectInformation;
 
 private:
     friend class TImbuedObjectsSortFilterProxyModel;
@@ -131,6 +122,8 @@ public:
     ~TImbuementTrackerWidgetController() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP v12: follows the session's imbuement durations storage (null: none).
+    void setGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QObject* imbuedObjectsModel() const override;
 
@@ -176,7 +169,9 @@ private:
 
     TImbuedObjectsSortFilterProxyModel* m_proxy;
     TImbuedObjectsModel* m_model;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<imbuing::TImbuementDurationsStorage> m_imbuementDurationsStorage;
     QPointer<config::TSidebarOptions> m_options;
     bool m_showAlmostGone = true;
     bool m_showUsed = true;
@@ -194,10 +189,14 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+    /// Host: the sidebar widgets manager hands the session to its widget managers; the open
+    /// widget follows it.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
 private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<TImbuementTrackerWidgetController> m_controller;
 };
 

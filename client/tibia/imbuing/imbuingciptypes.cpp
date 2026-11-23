@@ -4,6 +4,7 @@
 #include <string>
 #include <client/const.h>
 #include <vector>
+#include <stdexcept>
 #include <client/staticdata.h>
 #include "container/containerciptypes.h"
 
@@ -65,29 +66,28 @@ void TImbuingProtocolMessageHandler::handleDeadMessage(const ::tibia::protobuf::
 
 void TImbuingProtocolMessageHandler::handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage)
 {
-    using namespace ::tibia::protobuf::protocol;
-    std::vector<ImbuementTrackerItem> items;
+    std::vector<TImbuedObjectInformation> imbuedObjects;
+    imbuedObjects.reserve(static_cast<size_t>(ImbuementDurationsMessage.items_size()));
     for (const auto& entry : ImbuementDurationsMessage.items()) {
-        ImbuementTrackerItem& item = items.emplace_back(static_cast<uint8_t>(entry.inventory_slot()));
-        const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(entry.item());
-        item.typeId = slot.typeId;
-        item.count = slot.stackable ? slot.count : 1;
-        item.tier = slot.tier;
-        item.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
-        item.totalSlots = static_cast<uint8_t>(entry.slots_size());
-        for (int index = 0; index < entry.slots_size(); ++index) {
-            const auto& s = entry.slots(index);
-            if (!s.imbued())
+        TImbuedObjectInformation imbuedObject;
+        const uint32_t inventorySlot = entry.inventory_slot();
+        if (inventorySlot - 1u >= 13u)
+            throw std::runtime_error("unhandled enum value");
+        imbuedObject.inventorySlot = inventorySlot;
+        imbuedObject.object = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(entry.item());
+        for (const auto& protocolSlot : entry.slots()) {
+            TImbuementSlotInformation& slot = imbuedObject.slots.emplace_back();
+            if (!protocolSlot.imbued())
                 continue;
-            ImbuementSlot imbued(static_cast<uint8_t>(index));
-            imbued.name = s.name();
-            imbued.iconId = static_cast<uint16_t>(s.icon_id());
-            imbued.duration = s.duration();
-            imbued.state = s.decaying();
-            item.slots.emplace(static_cast<uint8_t>(index), imbued);
+            slot.imbued = true;
+            slot.name = QString::fromStdString(protocolSlot.name());
+            slot.iconId = protocolSlot.icon_id();
+            slot.remainingMilliseconds = static_cast<qint64>(protocolSlot.duration()) * 1000;
+            slot.decaying = protocolSlot.decaying();
         }
+        imbuedObjects.push_back(std::move(imbuedObject));
     }
-    tibia::game::notify("onUpdateImbuementTracker", items);
+    m_imbuementDurationsStorage->setImbuedObjects(imbuedObjects);
 }
 
 void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message)
@@ -123,6 +123,13 @@ void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::t
     storage->setImbuingData(message.window_type(), message.flag(), static_cast<uint16_t>(message.object_id()), tier, std::move(slots),
                             std::move(imbuements), std::move(ownedObjects));
     Q_EMIT requestShowOrRefreshImbuingDialog();
+}
+
+void TImbuementDurationsStorage::setImbuedObjects(const std::vector<TImbuedObjectInformation>& ImbuedObjects)
+{
+    if (&m_imbuedObjects != &ImbuedObjects)
+        m_imbuedObjects = ImbuedObjects;
+    Q_EMIT imbuedObjectsChanged();
 }
 
 void TImbuingProtocolMessageHandler::handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)

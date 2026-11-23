@@ -385,8 +385,8 @@ private:
     TBattleListController* m_primary = nullptr;
     TBattleListController* m_party = nullptr;
     std::map<uint8_t, TBattleListController*> m_controllers;
-    std::map<uint32_t, uint> m_visibleOrder;
-    uint m_nextVisibleOrder = 1;
+    /// The creatures of the last list (a newcomer renews its unique id).
+    std::set<uint32_t> m_listedCreatureIds;
     int m_controlScheme = 0;
     bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;

@@ -154,7 +154,7 @@ QString skillName(const SkillType type)
         case SkillType::Stamina: return qtTrId("stamina");
         case SkillType::OfflineTraining: return qtTrId("offline_training");
     }
-    return {};
+    return qtTrId("dummy_unknown");
 }
 
 bool skillHasProgressBar(const SkillType type)

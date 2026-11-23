@@ -1,38 +1,58 @@
 #pragma once
 
-#include <cip_gen.h>
+#include "jsondocumentuploaderbase.h"
 
-#include <QJsonObject>
-#include <QString>
+#include <QJsonDocument>
 #include <QUrl>
 
-class QNetworkAccessManager;
+#include <memory>
+
+namespace tibia::shared {
+class IClockService;
+class TTibiaFileSystemHelper;
+}
 
 namespace tibia {
 namespace game {
 
-/// POSTs `{type:"boostedcreature"}` to the portal clientservices multiplex
-/// (CIP: TBoostedCreatureRequestUploader).
-class TBoostedCreatureRequestUploader final : public cip::tibia::game::TBoostedCreatureRequestUploader
+/// Today's boosted creature and boss (race ids).
+struct TBoostedCreatureInformation
+{
+    int creatureRaceId = 0;
+    int bossRaceId = 0;
+};
+
+/// CIP game::TBoostedCreatureRequestUploader: the boosted creature from the
+/// disk cache (boostedcreature) until the last server save, else from the
+/// client services (`{type:"boostedcreature"}`).
+class TBoostedCreatureRequestUploader final : public shared::TJsonDocumentUploaderBase
 {
     Q_OBJECT
 public:
-    explicit TBoostedCreatureRequestUploader(QObject* parent = nullptr);
+    TBoostedCreatureRequestUploader(const QUrl& url, std::shared_ptr<shared::TJsonDocumentHttpPostSender> sender,
+                                    std::shared_ptr<shared::TTibiaFileSystemHelper> fileSystemHelper,
+                                    std::shared_ptr<shared::IClockService> clock, QObject* parent = nullptr);
+    ~TBoostedCreatureRequestUploader() override;
 
-    void setServiceUrl(const QUrl& url) { m_url = url; }
-    void setClientRevision(const QString& revision) { m_revision = revision; }
+    const TBoostedCreatureInformation& boostedCreature() const { return m_boostedCreature; }
 
-    /// Last successful reply object (empty until the first success).
-    QJsonObject reply() const { return m_reply; }
+    /// Reads the race ids present as integers into `information`; missing or
+    /// malformed fields keep their value.
+    static void readBoostedCreature(TBoostedCreatureInformation& information, const QJsonDocument& document);
+    static QJsonDocument boostedCreatureDocument(const TBoostedCreatureInformation& information);
 
-    void requestUpdate() override;
-    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD) override;
+Q_SIGNALS:
+    void boostedCreatureReceived();
+
+public Q_SLOTS:
+    void requestUpdate();
+    void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD);
 
 private:
-    QNetworkAccessManager* m_network;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_fileSystemHelper;
+    std::shared_ptr<shared::IClockService> m_clock;
     QUrl m_url;
-    QString m_revision;
-    QJsonObject m_reply;
+    TBoostedCreatureInformation m_boostedCreature;
 };
 
 }

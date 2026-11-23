@@ -7,6 +7,8 @@
 #include <cip_gen.h>
 
 #include <QPoint>
+#include <QPointer>
+#include <QQuickItem>
 #include <QString>
 
 #include <vector>
@@ -22,7 +24,8 @@ class TTutorialHintDialogController final
 {
     Q_OBJECT
 public:
-    explicit TTutorialHintDialogController(QObject* parent = nullptr);
+    /// `mapWindowPane` is the game window's map pane the hint is placed over.
+    explicit TTutorialHintDialogController(QQuickItem* mapWindowPane, QObject* parent = nullptr);
 
     /// Show a hint from a SHOW_TUTORIAL_HINT / ADD_HINT_AT_TUTORIAL_MARKER action.
     void showHint(const QString& caption, const QString& imagePath, const QString& buttonText,
@@ -46,6 +49,7 @@ public:
     void closeDialog();
 
 private:
+    QPointer<QQuickItem> m_mapWindowPane;
     /// The hint shown (CONFIRM_TUTORIAL_HINT carries it).
     int m_tutorialHintId = 0;
     void emitDisplay();
@@ -56,7 +60,8 @@ class TTutorialShell final : public QObject
 {
     Q_OBJECT
 public:
-    explicit TTutorialShell(QObject* parent = nullptr);
+    /// The dialogs are placed over `mapWindowPane`, the game window's map pane.
+    explicit TTutorialShell(QQuickItem* mapWindowPane = nullptr, QObject* parent = nullptr);
     ~TTutorialShell() override;
 
     TTutorialHintDialogController* hint() const { return m_hint; }

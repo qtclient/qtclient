@@ -92,7 +92,24 @@ void TDeathDialogController::showDeadMessage(const int deathType, const int fair
 void TDeathDialogController::onRequestOpenDeathDialog(const int deathType, const int fairFightFactor,
                                                      const bool applicableForSubsequentBlessing)
 {
-    showDeadMessage(deathType, fairFightFactor, applicableForSubsequentBlessing);
+    // The dialog opens a few frames later, so the death shows on the map first.
+    m_requestedDeathType = deathType;
+    m_requestedFairFightFactor = fairFightFactor;
+    m_requestedApplicableForSubsequentBlessing = applicableForSubsequentBlessing;
+    m_framesUntilDeadMessage = FramesBeforeDeadMessage;
+}
+
+void TDeathDialogController::onBeforeRenderFrame()
+{
+    if (m_framesUntilDeadMessage == -1)
+        return;
+    if (--m_framesUntilDeadMessage != 0)
+        return;
+    showDeadMessage(m_requestedDeathType, m_requestedFairFightFactor, m_requestedApplicableForSubsequentBlessing);
+    m_framesUntilDeadMessage = -1;
+    m_requestedDeathType = 0;
+    m_requestedFairFightFactor = 0;
+    m_requestedApplicableForSubsequentBlessing = false;
 }
 
 void TDeathDialogController::onLogoutRequested()

@@ -346,6 +346,9 @@ public:
     void setHotkeyMode(EHotkeyMode mode);
     void setAutoSwitchHotkeyPreset(bool v) override;
     void setChatModeOn(bool v) override;
+    /// The current set's index in the name list.
+    int hotkeySetNamesIndex() const override;
+    /// The set at that index of the name list becomes current.
     void setHotkeySetNamesIndex(int v) override;
     void setNameFilter(const QString& v) override;
 
@@ -380,7 +383,7 @@ private:
 
     /// The rows of the current set and chat mode, then the list model.
     void rebuildModel();
-    /// hotkeyModel: the rows of the hotkey mode that match the name filter.
+    /// hotkeyModel: the visible rows.
     void updateHotkeyListModel();
     /// The rows' keys into the current set's chat mode; rows without keys
     /// stay when keepUnboundRows.

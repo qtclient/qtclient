@@ -174,6 +174,27 @@ void THotkeyOptionsData::setCurrentSet(const QString& name)
         currentHotkeySetName = name;
 }
 
+QStringList THotkeyOptionsData::hotkeySetNames() const
+{
+    QStringList names;
+    for (const auto& [name, set] : hotkeySets)
+        names << name;
+    std::sort(names.begin(), names.end(), [](const QString& a, const QString& b) { return QString::compare(a, b, Qt::CaseSensitive) < 0; });
+    return names;
+}
+
+int THotkeyOptionsData::currentHotkeySetIndex() const
+{
+    return int(hotkeySetNames().indexOf(currentHotkeySetName));
+}
+
+void THotkeyOptionsData::setCurrentHotkeySetIndex(const int index)
+{
+    const QStringList names = hotkeySetNames();
+    if (index >= 0 && index < names.size())
+        setCurrentSet(names.at(index));
+}
+
 void THotkeyOptionsData::addSet(const QString& name, const THotkeySet& set)
 {
     hotkeySets.emplace(name, set);
@@ -348,6 +369,20 @@ QJsonObject TActionSetting::toJson() const
             break;
     }
     return json;
+}
+
+void TActionSetting::setChatText(const QString& chatText)
+{
+    text = chatText;
+    if (text.isEmpty()) {
+        if (kind == TEXT)
+            kind = NONE;
+        return;
+    }
+    kind = TEXT;
+    objectId = 0;
+    liquidType.reset();
+    multiActions.clear();
 }
 
 bool TActionSetting::operator==(const TActionSetting& other) const

@@ -50,7 +50,6 @@ CipTypedKeep& typedKeep()
 }
 
 TContainerStorage* g_containerStorage = nullptr;
-TInventoryContainer* g_inventoryContainer = nullptr;
 
 using ::tibia::protobuf::protocol::GameserverMessageChangeInContainer;
 using ::tibia::protobuf::protocol::GameserverMessageCloseContainer;
@@ -524,6 +523,7 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
 
 TContainerStorage::TContainerStorage(QObject* parent)
     : cip::tibia::container::TContainerStorage(parent)
+    , m_inventoryContainer(std::make_shared<TInventoryContainer>())
 {
 }
 
@@ -792,9 +792,10 @@ bool TContainerStorage::hasContainer(const TContainerID id) const
 int TContainerStorage::findEmptyId() const
 {
     int id = 0;
-    while (id <= MaxContainerId && m_containers.contains(id))
+    const int maxContainerId = m_maxContainerId;
+    while (id <= maxContainerId && m_containers.contains(id))
         ++id;
-    return std::min(id, MaxContainerId);
+    return std::min(id, maxContainerId);
 }
 
 uint32_t TContainerStorage::nextPageFirstIndex(const TContainerID id) const
@@ -817,10 +818,7 @@ uint32_t TContainerStorage::slotIndex(const TContainerID id, const uint32_t slot
 
 void TContainerStorage::setInventoryTutorialMarker(const int markerId, const int slotId)
 {
-    // Host concern: CipSoft's storage owns the inventory; qtclient's session
-    // keeps it apart and installs it as the instance.
-    if (TInventoryContainer* inventory = TInventoryContainer::instance())
-        inventory->setTutorialMarker(markerId, slotId);
+    m_inventoryContainer->setTutorialMarker(markerId, slotId);
 }
 
 void TContainerStorage::setContainerTutorialMarker(const int markerId, const TContainerID id, const int slot)
@@ -834,8 +832,7 @@ void TContainerStorage::setContainerTutorialMarker(const int markerId, const TCo
 
 void TContainerStorage::clearAllTutorialMarkers()
 {
-    if (TInventoryContainer* inventory = TInventoryContainer::instance())
-        inventory->clearTutorialMarkers();
+    m_inventoryContainer->clearTutorialMarkers();
     for (auto it = m_containers.begin(); it != m_containers.end(); ++it) {
         it.value().clearTutorialMarkers();
         emitUpdated(it.key(), false);
@@ -855,25 +852,40 @@ TInventoryContainer::TInventoryContainer(QObject* parent)
 {
 }
 
-TInventoryContainer::~TInventoryContainer()
-{
-    if (g_inventoryContainer == this)
-        g_inventoryContainer = nullptr;
-}
+TInventoryContainer::~TInventoryContainer() = default;
 
 TInventoryContainer* TInventoryContainer::instance()
 {
-    return g_inventoryContainer;
+    const TContainerStorage* storage = TContainerStorage::instance();
+    return storage ? storage->inventoryContainer().get() : nullptr;
 }
 
-void TInventoryContainer::setInstance(TInventoryContainer* storage)
+bool TInventoryContainer::isInventorySlot(const int slotId)
 {
-    g_inventoryContainer = storage;
+    return slotId >= tibia::client::InventorySlotHead && slotId <= tibia::client::InventorySlotPurse;
+}
+
+uint8_t TInventoryContainer::countObjects(const uint16_t typeId, const uint32_t flags) const
+{
+    uint8_t total = 0;
+    for (int slotId = tibia::client::InventorySlotHead; slotId <= tibia::client::InventorySlotPurse; ++slotId) {
+        const TInventorySlot& slot = slotAt(slotId);
+        if (slot.empty() || slot.typeId != typeId)
+            continue;
+        if ((flags & 1) != 0) {
+            const auto* upgradeable =
+                dynamic_cast<const appearances::TUpgradeableObjectAppearanceInstance*>(slot.appearance.get());
+            if (upgradeable && upgradeable->tier() != 0)
+                continue;
+        }
+        total = static_cast<uint8_t>(total + (slot.stackable ? static_cast<uint8_t>(slot.count) : 1));
+    }
+    return total;
 }
 
 void TInventoryContainer::setSlot(const int slotId, const TInventorySlot& slot)
 {
-    if (slotId < 0 || slotId >= SlotCount)
+    if (!isInventorySlot(slotId))
         return;
     TInventorySlot& stored = m_slots[static_cast<size_t>(slotId)];
     // The same object again changes nothing.

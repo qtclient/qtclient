@@ -28,8 +28,13 @@ class TMinimapTile : public ::tibia::CipTyped
 public:
     static constexpr int Size = 256;
 
-    /// The id of the tile holding `coord`: its top-left field.
-    static Position idOf(const Position& coord) { return Position(coord.x & ~(Size - 1), coord.y & ~(Size - 1), coord.z); }
+    /// The id of the tile holding `coord`: x and y rounded toward zero to a
+    /// multiple of the tile size (the top-left field for map coordinates).
+    static Position idOf(const Position& coord)
+    {
+        const auto origin = [](const int32_t value) { return (value + (value < 0 ? Size - 1 : 0)) & ~(Size - 1); };
+        return Position(origin(coord.x), origin(coord.y), coord.z);
+    }
 
     /// The automap palette: 6x6x6 web colours, black beyond index 215.
     static QColor paletteColor(int index);

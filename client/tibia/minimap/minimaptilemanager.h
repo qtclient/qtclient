@@ -40,6 +40,8 @@ public Q_SLOTS:
     void onMinimapTileChangedInStorage(const tibia::minimap::TMinimapTilePtr& minimapTile);
     /// REMOVE_SPRITEIDENTIFIER_FROM_CACHE of a minimap tile identifier: the
     /// kept copy of its tile goes, so the next getTile takes the current one.
+    /// LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES: the tile storage merges the
+    /// tiles of the action's directory.
     void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
 
 private:

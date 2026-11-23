@@ -553,3 +553,40 @@ qtclient_add_port_test(client_worldmapcuboidprint_tests
     worldmapcuboidprint_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/worldmap/coordinates.cpp
 )
+
+# Wave 7 ports.
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_traderstorage_tests
+        traderstorage_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/game/traderstorage.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/appearances/appearancetype.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+    )
+    target_link_libraries(client_traderstorage_tests PRIVATE cip_messages Qt6::Gui)
+endif()
+qtclient_add_port_test(client_gameservernetwork_tests
+    gameservernetwork_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacket.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/unencryptedrawmessagestream.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacketreader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacketwriter.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacketsequenceflowprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacketsequenceflowprocessor.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicereader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
+)
+set_target_properties(client_gameservernetwork_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_gameservernetwork_tests PRIVATE Qt6::Network)
+qtclient_add_port_test(client_gameservernetworkrawdata_tests
+    gameservernetworkrawdata_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacket.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacketrawdataprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationandencryptioninfo.cpp
+)
+target_link_libraries(client_gameservernetworkrawdata_tests PRIVATE qtclient_shared)
+qtclient_add_port_test(client_hotkeyactionsetting_tests
+    hotkeyactionsetting_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/hotkeyoptions.cpp
+)
+set_target_properties(client_hotkeyactionsetting_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_hotkeyactionsetting_tests PRIVATE Qt6::Gui)

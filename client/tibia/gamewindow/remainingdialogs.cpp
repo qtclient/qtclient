@@ -887,52 +887,6 @@ void TMainCharacterChangeDialogController::requestMainCharChange(const QString& 
     closeDialog();
 }
 
-TMarketCoinTransactionDetailsDialogController::TMarketCoinTransactionDetailsDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("MarketCoinTransactionDetails.qml"), parent)
-{}
-
-void TMarketCoinTransactionDetailsDialogController::setTransactionDetails(const store::TTransactionDetails& details)
-{
-    const auto date = [](const uint32_t secs) {
-        return QLocale().toString(QDateTime::fromSecsSinceEpoch(secs), QLocale::ShortFormat);
-    };
-    m_transactionType = details.type == store::TTransactionDetails::TYPE_MULTI ? MultiTransaction : SingleTransaction;
-    m_singleTransactionDate = date(details.single.date);
-    m_singleTransactionDescription = details.single.description;
-    m_singleTransactionCharacterName = details.single.characterName;
-    m_singleTransactionCoinBalanceChange = details.single.coinBalanceChange;
-    m_singleTransactionPiecePrice = static_cast<qlonglong>(details.single.piecePrice);
-    m_singleTransactionGoldBalanceChange = details.single.goldBalanceChange;
-    m_multiTransactionCharacterName = details.multi.characterName;
-    m_multiTransactionTotalCoins = static_cast<int>(details.multi.totalCoins);
-    m_multiTransactionSoldCoins = static_cast<int>(details.multi.soldCoins);
-    m_multiTransactionCoinsReainingInMarket = static_cast<int>(details.multi.coinsRemainingInMarket);
-    m_multiTransactionPiecePrice = static_cast<qlonglong>(details.multi.piecePrice);
-    m_multiTransactionReceivedGold = static_cast<qlonglong>(details.multi.receivedGold);
-    Q_EMIT dataChanged();
-    if (!m_transactionLoaded) {
-        m_transactionLoaded = true;
-        Q_EMIT transactionLoadedChanged();
-    }
-}
-
-void TMarketCoinTransactionDetailsDialogController::showDialog()
-{
-    dialog()->create();
-    dialog()->show();
-}
-
-void TMarketCoinTransactionDetailsDialogController::closeDialog()
-{
-    dialog()->close();
-    Q_EMIT dialogClosed();
-}
-
-void TMarketCoinTransactionDetailsDialogController::requestClose()
-{
-    closeDialog();
-}
-
 TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::s_instance = nullptr;
 
 namespace {

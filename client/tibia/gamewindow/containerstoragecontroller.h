@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "input/gameactiondispatch.h"
+#include "input/gameaction.h"
 #include "qtconnectionmanager.h"
 #include <cip_gen.h>
 
@@ -11,6 +11,7 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <deque>
 #include <map>
 #include <set>
 #include <vector>
@@ -39,15 +40,13 @@ class TContainerController;
 class TSidebarManager;
 class TSidebarWidget;
 
-/// The open containers' widgets (CIP: TContainerStorageController, vtable
-/// ): one TContainerController per container id, which a newly
-/// opened container's widget joins the sidebars from the next event loop
-/// pass (CIP). Until the login ramp-up finishes they wait.
-/// The sidebar widgets manager places them in their saved order
-/// (OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR). CIP creates the controller of a
-/// container that is not open yet; here its place waits for the container
-/// (servers that do not reopen containers on login would leave it empty).
-/// Listens to TContainerStorage signals only (no GameObject / callLuaField hooks).
+/// The containers' sidebar widgets (CIP: TContainerStorageController): one
+/// TContainerController per container id. A container the server opens after
+/// the login ramp-up queues its widget, which joins the sidebars from the next
+/// event loop pass, one per pass. A container placed in a sidebar before the
+/// server opened it (a restored layout) gets its controller at once and shows
+/// an empty widget until the container arrives; the ramp-up's end (or
+/// CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS) closes those still not open.
 class TContainerStorageController final : public cip::tibia::gamewindow::TContainerStorageController
 {
     Q_OBJECT
@@ -66,78 +65,73 @@ public:
     /// the widgets show.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
-    /// A place waiting for its container: the sidebar, the index in its
-    /// saved widget list (-1: appended) and the sidebar identifier reserved
-    /// for it (0: none), so it opens where CIP's placeholder widget stood.
-    struct PendingPlace
-    {
-        uint sidebarId;
-        int position;
-        uint identifier = 0;
-    };
-
-    /// CIP : the container's widget moves to `sidebarId` (0xff or
-    /// a missing sidebar: the first with room).
-    void openInSidebar(int containerId, uint sidebarId, int position = -1);
-    /// The open containers' widgets by container id.
+    /// OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR: the container's widget (created
+    /// when the container has none yet) moves to `sidebarId` (0xff or a
+    /// missing sidebar: the first with room).
+    void openInSidebar(int containerId, uint sidebarId);
+    /// The containers' widgets by container id.
     std::vector<std::pair<int, TSidebarWidget*>> widgets() const;
-    /// Places of containers the server has not opened, by container id. CIP
-    /// shows an empty widget there ; here they only stay in
-    /// the saved sidebars until the container opens or the game ends.
-    const std::map<int, PendingPlace>& pendingPlaces() const { return m_pendingPlaces; }
-    /// CIP restore : every container widget leaves its sidebar
-    /// until openInSidebar places it or endRestore queues it again.
+    /// Host (the widgets manager's layout restore): every container widget
+    /// leaves its sidebar until openInSidebar places it or endRestore queues
+    /// it for display again.
     void beginRestore();
     void endRestore();
 
 public Q_SLOTS:
+    /// The router's game actions: the manual sort mode toggle, closing the
+    /// containers shown but not open, and placing a container in a sidebar.
+    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
+    /// Ends the ramp-up: from now on a new container's widget is shown, and
+    /// the widgets of containers the server did not reopen close.
     void onLoginRampUpFinished() override;
-    /// CIP: the options changed; every container widget updates.
+    /// Every container's widget updates.
     void onOptionsChanged();
-    /// CIP: the manual sort mode changed; every container widget shows it.
+    /// Every container's widget shows the manual sort mode.
     void onManualSortModeChanged();
 
 Q_SIGNALS:
-    /// Fired when a container widget is added or removed (product floats them in fullscreen).
+    /// Host (pack ABI): a container widget was added or removed (the pack
+    /// floats them in fullscreen).
     void containerWidgetsChanged();
 
-private:
+private Q_SLOTS:
+    /// An existing container's widget updates; a new one gets a controller
+    /// and, after the ramp-up, is queued for display.
     void onContainerUpdated(int containerId, bool isNewContainer);
-    void onContainerClosed(int containerId);
-    void scheduleUpdate(int containerId);
-    void flushUpdates();
-    void addQueuedWidgets();
+    /// The container's widget closes and forgets its size.
+    void onContainerRemoved(int containerId);
+    /// Shows the next queued container's widget; restarts while more wait.
+    void onDisplayContainerAsynchronousTriggerd();
+
+private:
+    /// The container's controller: created, updated, wired to the session and
+    /// to this storage's game action signal.
+    TContainerController* createContainerController(int containerId, bool isNewContainer);
+    /// The container's controller shows the storage's state.
+    void updateContainerController(int containerId, bool isNewContainer);
+    /// Closes the widgets of containers the storage does not hold.
+    void closeAllDisplayedButNotOpenedContainers();
+    /// Host: what CipSoft's shared_ptr release does: the widget leaves its
+    /// sidebar and the controller goes.
+    void releaseContainerController(TContainerController* controller);
     void clear();
 
     shared::TQtConnectionManager m_gameSessionConnections;
-    std::shared_ptr<game::IGameSession> m_gameSession;
-    std::shared_ptr<container::TContainerStorage> m_containerStorage;
-    QPointer<config::TCharacterConfigurationManager> m_characterConfigurationManager;
     TSidebarManager* m_sidebars;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    std::shared_ptr<container::TContainerStorage> m_containerStorage;
+    QPointer<config::TCharacterConfigurationManager> m_characterConfigurationManager;
     QPointer<config::TSidebarOptions> m_options;
     int m_controlScheme = 0;
     int m_lootScheme = 0; // CIP lootSchemeIndex default: Loot: Right
+    std::map<int, TContainerController*> m_containerControllers;
     bool m_loginRampUpFinished = false;
-    std::map<int, TContainerController*> m_controllers;
-    std::vector<int> m_queuedWidgets;
-    std::map<int, PendingPlace> m_pendingPlaces;
+    QTimer m_displayContainerAsynchronousTimer;
+    std::deque<int> m_containersToDisplay;
+    /// Host (layout restore): widgets taken out by beginRestore and not placed yet.
     std::set<int> m_unplaced;
-    QTimer m_queueTimer;
-    std::set<int> m_dirty;
-    QTimer m_updateTimer;
-
-public Q_SLOTS:
-    /// The router's game actions (CIP: handleGameAction; connected to
-    /// publishGameActionInternal).
-    void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction)
-    {
-        m_gameActions.handle(pGameAction);
-    }
-
-private:
-    ::tibia::input::TGameActionDispatch m_gameActions;
 };
 
 }

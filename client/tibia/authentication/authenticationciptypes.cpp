@@ -2,13 +2,6 @@
 
 namespace tibia::authentication {
 
-namespace {
-struct CipTypedKeep {
-    TAuthenticationAndEncryptionInfo tAuthenticationAndEncryptionInfo;
-};
-CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
-} // namespace
-
 void ownProductSurface(QObject* parent)
 {
     Q_UNUSED(parent);
@@ -16,7 +9,6 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    (void)typedKeep();
 }
 
 } // namespace tibia::authentication

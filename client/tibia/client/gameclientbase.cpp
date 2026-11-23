@@ -1,7 +1,11 @@
 #include "client/gameclientbase.h"
 
+#include "assets/things.h"
 #include "config/clientoptions.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameactionrouter.h"
+#include "game/passiveabilityinfostorage.h"
+#include "proficiency/proficiencystorage.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "sound/soundconfiguration.h"
 #include "sound/soundcontroller.h"
@@ -9,6 +13,8 @@
 #include "sound/soundmanager.h"
 #include "sound/soundmetadatamanager.h"
 #include "sound/soundplayermanager.h"
+#include "shared/tibiafilesystemhelper.h"
+#include "spells/spellinfostorage.h"
 
 #include <QObject>
 
@@ -16,9 +22,57 @@
 
 namespace tibia::client {
 
-TGameClientBase::TGameClientBase() = default;
+TGameClientBase::TGameClientBase(QQmlEngine* Engine,
+                                 std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                                 config::TClientOptions* ClientOptions)
+    : m_pEngine(Engine)
+    , m_pTibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
+    , m_pClientOptions(ClientOptions)
+    , m_pAppearancesManager(std::make_shared<appearances::TAppearancesManager>())
+    , m_pCyclopediaMapStaticDataStorage(std::make_shared<cyclopedia::TCyclopediaMapStaticDataStorage>())
+    , m_pPassiveAbilityInfoStorage(std::make_unique<game::TPassiveAbilityInfoStorage>())
+    , m_pProficiencyStorage(std::make_unique<proficiency::TProficiencyStorage>())
+{
+    appearances::TAppearancesManager::setInstance(m_pAppearancesManager.get());
+    cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(m_pCyclopediaMapStaticDataStorage.get());
+    game::TPassiveAbilityInfoStorage::setInstance(m_pPassiveAbilityInfoStorage.get());
+}
 
-TGameClientBase::~TGameClientBase() = default;
+TGameClientBase::~TGameClientBase()
+{
+    if (m_pSpellInfoStorage)
+        spells::TSpellInfoStorage::setInstance(nullptr);
+    game::TPassiveAbilityInfoStorage::setInstance(nullptr);
+    cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(nullptr);
+    appearances::TAppearancesManager::setInstance(nullptr);
+}
+
+void TGameClientBase::createSpellInfoStorage()
+{
+    m_pSpellInfoStorage = std::make_unique<spells::TSpellInfoStorage>();
+    spells::TSpellInfoStorage::setInstance(m_pSpellInfoStorage.get());
+}
+
+std::shared_ptr<shared::TTibiaFileSystemHelper> TGameClientBase::tibiaFileSystemHelper() const
+{
+    if (!m_pTibiaFileSystemHelper)
+        throw std::logic_error("m_pTibiaFileSystemHelper was not initialized yet");
+    return m_pTibiaFileSystemHelper;
+}
+
+std::shared_ptr<appearances::TAppearancesManager> TGameClientBase::appearancesManager() const
+{
+    if (!m_pAppearancesManager)
+        throw std::logic_error("m_pAppearancesManager was not initialized yet");
+    return m_pAppearancesManager;
+}
+
+std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> TGameClientBase::cyclopediaMapStaticDataStorage() const
+{
+    if (!m_pCyclopediaMapStaticDataStorage)
+        throw std::logic_error("m_pCyclopediaMapStaticDataStorage was not initialized yet");
+    return m_pCyclopediaMapStaticDataStorage;
+}
 
 std::shared_ptr<game::TGameActionRouter> TGameClientBase::gameActionRouter() const
 {

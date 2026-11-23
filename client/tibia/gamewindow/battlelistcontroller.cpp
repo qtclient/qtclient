@@ -19,6 +19,7 @@
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include "protocol/protocolcodes.h"
+#include "qmlcomponents/qmlcomponentsciptypes.h"
 
 #include <QGuiApplication>
 #include <QQuickItem>
@@ -40,9 +41,6 @@ constexpr int UpdateIntervalMs = 100;
 /// CIP : the mapper context of a battle list and the party list.
 constexpr int BattleListContext = 1;
 constexpr int PartyListContext = 2;
-/// The shared experience range (tiles, floors).
-constexpr int SharedXpRange = 30;
-constexpr int SharedXpFloors = 1;
 
 /// The order of a battle list entry's context menu.
 constexpr A ContextMenuOrder[] = {
@@ -67,9 +65,6 @@ constexpr const char* SortMenuEntries[] = {
 
 using TCreature = creatures::TCreature;
 using TCreaturePtr = std::shared_ptr<TCreature>;
-
-/// The protocol's vocation without its promotion.
-int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
 
 QColor colorOf(const QColor& c) { return QColor(c.red(), c.green(), c.blue()); }
 
@@ -1142,13 +1137,15 @@ BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creatu
     const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
     e.creatureId = creature->creatureId();
     e.name = creature->name();
-    e.healthPercent = creature->healthPercent() / 100.f;
-    e.healthColor = colorOf(creature->informationColor());
-    e.manaPercent = creature->maxMana() > 0 ? creature->mana() / float(creature->maxMana()) : 0.f;
-    e.showMana = creature->isPlayer();
-    // Every frame the creature shows on the map, the white selection frame too.
+    e.healthPercent = creature->healthRatio();
+    e.healthColor = qmlcomponents::colorForHealthPercent(e.healthPercent);
+    e.manaPercent = creature->manaRatio();
+    // Mana shows for the players of the own party.
+    e.showMana = creature->isPartyMember() && creature->isPlayer();
+    // Every frame the creature shows on the map (the white selection frame
+    // too), by color name.
     for (const QColor& color : creature->marks())
-        e.frameColors.append(color);
+        e.frameColors.append(color.name());
     for (const auto& [icon, category, count] : creature->hudIcons()) {
         if (category != 0 && icon != 0)
             e.statusIcons.append(stripIcon("othercreatureicons", icon));
@@ -1174,14 +1171,17 @@ BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creatu
     e.detailColor = outfitColor(outfit.getFeet());
     e.firstAddOn = (outfit.getAddons() & 1) != 0;
     e.secondAddOn = (outfit.getAddons() & 2) != 0;
-    if (const auto it = m_visibleOrder.find(e.creatureId); it != m_visibleOrder.end())
-        e.visibleOrder = it->second;
+    // The age order: the creature's unique id, renewed when it joins the list.
+    e.visibleOrder = static_cast<uint>(creature->uniqueId());
     e.distance = static_cast<uint>(std::max(std::abs(pos.x - center.x), std::abs(pos.y - center.y)));
     if (const creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
         e.temporarySelected = storage->temporarySelectedID() == e.creatureId;
-    e.inViewport = pos.z == center.z && std::abs(pos.x - center.x) < range.left && std::abs(pos.y - center.y) < range.top;
-    e.inSharedXpDistance = std::abs(pos.z - center.z) <= SharedXpFloors && static_cast<int>(e.distance) <= SharedXpRange;
-    e.vocation = creature->isPlayer() ? baseVocation(*creature) : 0;
+    // Host: the visible part of the map stands in for CipSoft's view cuboid.
+    e.inViewport = creature->isPlacedOnField() && pos.z == center.z && std::abs(pos.x - center.x) < range.left
+        && std::abs(pos.y - center.y) < range.top;
+    // The server's per-creature status flag says whether it shares experience.
+    e.inSharedXpDistance = creature->showsStatus();
+    e.vocation = creature->vocation();
     if (m_gameActionHandler)
         e.tutorialMarkerId = m_gameActionHandler->creatureTutorialMarker(e.creatureId);
     return e;
@@ -1206,13 +1206,18 @@ void TBattleListControllerStorage::triggerUpdate()
     if (m_controllers.empty())
         return;
     const std::vector<TCreaturePtr> creatures = battleListCreatures();
+    // The first list after login keeps the creatures' ages; later, a creature
+    // that joins the list becomes the youngest.
     std::set<uint32_t> present;
-    for (const TCreaturePtr& creature : creatures) {
+    for (const TCreaturePtr& creature : creatures)
         present.insert(creature->creatureId());
-        if (!m_visibleOrder.contains(creature->creatureId()))
-            m_visibleOrder[creature->creatureId()] = m_nextVisibleOrder++;
+    if (m_listedCreatureIds.empty())
+        m_listedCreatureIds = present;
+    for (const TCreaturePtr& creature : creatures) {
+        if (m_listedCreatureIds.insert(creature->creatureId()).second)
+            creature->renewUniqueId();
     }
-    std::erase_if(m_visibleOrder, [&present](const auto& entry) { return !present.contains(entry.first); });
+    std::erase_if(m_listedCreatureIds, [&present](const uint32_t id) { return !present.contains(id); });
     std::vector<BattleListEntry> entries;
     entries.reserve(creatures.size());
     for (const TCreaturePtr& creature : creatures)

@@ -48,8 +48,7 @@ public:
     /// the place of a reserved `identifier`.
     void addWidget(TSidebarWidget* widget, uint identifier = 0);
     /// The identifier the next widget would get, kept for a widget that comes
-    /// later (CIP holds the place with the widget itself, see
-    /// TContainerStorageController::PendingPlace).
+    /// later (pack widgets).
     uint reserveIdentifier() { return m_nextIdentifier++; }
     /// CIP : takes the widget out if it is here, keeping its size
     /// for its next sidebar; `keepParentItem` while it moves on.

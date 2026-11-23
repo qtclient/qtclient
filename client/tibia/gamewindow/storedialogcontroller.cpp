@@ -4,6 +4,7 @@
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "gamewindow/marketcointransactiondetailsdialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 #include "store/dynamicallyloadedimage.h"

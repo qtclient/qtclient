@@ -1,4 +1,6 @@
 #include "gamewindowciptypes.h"
+#include "qmlcomponents/texthelper.h"
+#include "store/storestorage.h"
 #include "game/worldtype.h"
 #include "colorhelper.h"
 
@@ -258,6 +260,15 @@ TQmlChildTransaction::TQmlChildTransaction(QString date, QString description, co
     m_description = std::move(description);
     m_currency = currency;
     m_balanceChange = balanceChange;
+}
+
+TQmlChildTransaction::TQmlChildTransaction(const store::TChildTransactionDetails& child, QObject* parent)
+    : cip::tibia::gamewindow::TQmlChildTransaction(parent)
+{
+    m_dateString = qmlcomponents::TTextHelperQmlService().formatDateTime(static_cast<int>(child.date), true);
+    m_balanceChange = child.balanceChange;
+    m_description = child.description;
+    m_currency = child.type == 1 ? Gold : TibiaCoins;
 }
 
 TQmlPossibleMainChar::TQmlPossibleMainChar(QString name, QString world, QString vocation, const int level, QObject* parent)

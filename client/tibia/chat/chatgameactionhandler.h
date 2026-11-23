@@ -149,7 +149,10 @@ class TChatStorage final : public cip::tibia::chat::TChatStorage
 {
     Q_OBJECT
 public:
-    using cip::tibia::chat::TChatStorage::TChatStorage;
+    explicit TChatStorage(QObject* parent = nullptr)
+        : cip::tibia::chat::TChatStorage(parent)
+    {
+    }
 
     /// v12: npcTalkPartnersChanged when they differ.
     void setNpcTalkPartners(const std::vector<uint32_t>& npcIds);

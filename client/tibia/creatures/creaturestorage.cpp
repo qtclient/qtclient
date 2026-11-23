@@ -86,9 +86,12 @@ std::shared_ptr<TCreature> TCreature::create(const TCreatureID id)
 
 void TCreature::createPlaceholderAppearance()
 {
-    if (const std::shared_ptr<TCreature> self = weak_from_this().lock())
+    if (const std::shared_ptr<TCreature> self = weak_from_this().lock()) {
         m_placeholderAppearance = std::make_shared<appearances::TCreaturePlaceholderAppearanceInstance>(
             std::weak_ptr<TCreature>(self));
+        // Host: the map's readers find the creature of a stack entry by its id.
+        m_placeholderAppearance->linkCreature(m_creatureId);
+    }
 }
 
 const QString& TCreature::name() const
@@ -261,9 +264,11 @@ uint16_t TCreature::mountAnimationPhase() const
 
 int TCreature::drawElevation() const
 {
+    // A moving creature is lifted by its step's elevation, a standing one by
+    // the elevation its field gave its placeholder.
     if (isMoving())
         return m_movementTween.elevation();
-    return m_position.isValid() ? tibia::worldmap::TWorldMapStorage::ensureStorage()->elevationAt(m_position) : 0;
+    return m_placeholderAppearance ? m_placeholderAppearance->elevation() : 0;
 }
 
 Position TCreature::coveredField() const

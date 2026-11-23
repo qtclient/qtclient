@@ -210,6 +210,7 @@ target_link_libraries(tibia PRIVATE
 if(EMSCRIPTEN)
   find_package(Qt6 6.10 REQUIRED COMPONENTS WebSockets)
   target_link_libraries(tibia PRIVATE Qt6::WebSockets)
+  target_sources(tibia PRIVATE network/gameserverwebsocketdevice.cpp network/gameserverwebsocketdevice.h)
 endif()
 tibia_link_desktop_webengine(tibia ${TIBIA_USE_WEBENGINE_STUBS})
 # Public HD scaler + mods registry / WorldView / ModLoader; packs via TibiaMods + QtClientMod.
@@ -364,6 +365,7 @@ if(TIBIA_WITH_GAMECORE)
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     authentication/emailcoderequestuploader.cpp authentication/emailcoderequestuploader.h
     authentication/loginconfirmationcoderequestuploader.cpp authentication/loginconfirmationcoderequestuploader.h
+    authentication/authenticationandencryptioninfo.cpp authentication/authenticationandencryptioninfo.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
     taskboard/taskboardbountytasksstorage.cpp taskboard/taskboardbountytasksstorage.h
     taskboard/taskboardcurrenciesstorage.cpp taskboard/taskboardcurrenciesstorage.h
@@ -458,6 +460,7 @@ if(TIBIA_WITH_GAMECORE)
     config/clientoptionsmigration.cpp config/clientoptionsmigration.h
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h
+    config/tibiahotkeyactionsettingqmlwrapper.cpp config/tibiahotkeyactionsettingqmlwrapper.h
     app/portalurls.cpp app/portalurls.h
     game/gameactionrouter.cpp game/gameactionrouter.h
     game/gameciptypes.cpp game/gameciptypes.h
@@ -691,6 +694,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/tutorialoverlaymousetrailanimationcontroller.cpp gamewindow/tutorialoverlaymousetrailanimationcontroller.h
     gamewindow/infobannercontroller.cpp gamewindow/infobannercontroller.h
     gamewindow/viprenderinfo.cpp gamewindow/viprenderinfo.h
+    gamewindow/marketcointransactiondetailsdialogcontroller.cpp gamewindow/marketcointransactiondetailsdialogcontroller.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -723,6 +727,15 @@ if(TIBIA_WITH_GAMECORE)
     network/gameserverconnection.cpp network/gameserverconnection.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
+    network/gameservernetworkpacket.cpp network/gameservernetworkpacket.h
+    network/unencryptedrawmessagestream.cpp network/unencryptedrawmessagestream.h
+    network/gameservernetworkpacketreader.cpp network/gameservernetworkpacketreader.h
+    network/gameservernetworkpacketwriter.cpp network/gameservernetworkpacketwriter.h
+    network/gameservernetworkpacketrawdataprocessor.cpp network/gameservernetworkpacketrawdataprocessor.h
+    network/gameservertcpconnection.cpp network/gameservertcpconnection.h
+    network/gameservernetworkpacketconnection.cpp network/gameservernetworkpacketconnection.h
+    network/dualconnectioninfo.cpp network/dualconnectioninfo.h
+    network/gameservernetworkpacketsequenceflowprocessor.cpp network/gameservernetworkpacketsequenceflowprocessor.h
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
     appearances/objectappearanceinstancetypeid.h
     appearances/genericstorage.h
@@ -903,6 +916,9 @@ if(TIBIA_WITH_GAMECORE)
     game/passiveabilityinfostorage.cpp game/passiveabilityinfostorage.h
     game/playergameactionhandler.cpp game/playergameactionhandler.h
     game/tutorialsessiondumpgamesession.cpp game/tutorialsessiondumpgamesession.h
+    game/premiummessage.cpp game/premiummessage.h
+    game/premiummessagerenewpremium.cpp game/premiummessagerenewpremium.h
+    game/traderstorage.cpp game/traderstorage.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h)
 endif()

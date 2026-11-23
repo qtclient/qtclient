@@ -34,6 +34,10 @@ class IGameSession;
 class QQuickItem;
 class QQmlEngine;
 
+namespace tibia::store {
+struct TChildTransactionDetails;
+}
+
 namespace tibia {
 namespace gamewindow {
 
@@ -150,6 +154,9 @@ class TQmlChildTransaction final : public cip::tibia::gamewindow::TQmlChildTrans
 public:
     TQmlChildTransaction(QString date, QString description, EMarketTransactionCurrency currency, qlonglong balanceChange,
                          QObject* parent = nullptr);
+    /// One part of a transaction sold in parts: its date (with seconds), description and balance
+    /// change, in gold for a type 1 part, else in Tibia Coins.
+    explicit TQmlChildTransaction(const store::TChildTransactionDetails& child, QObject* parent = nullptr);
 };
 
 class TQmlPossibleMainChar final : public cip::tibia::gamewindow::TQmlPossibleMainChar

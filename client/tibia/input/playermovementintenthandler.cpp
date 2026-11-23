@@ -7,6 +7,7 @@
 #include "worldmap/worldmapstorage.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <stdexcept>
 #include <utility>
@@ -324,8 +325,15 @@ qint64 TPlayerMovementIntentHandler::nextStepDelay(const TWorldMapCoordinate& fr
     const creatures::TCreature* player = m_env.player();
     worldmap::TWorldMapStorage* map = m_env.map();
     const worldmap::TWorldMapExtent step(to.x - from.x, to.y - from.y, to.z - from.z);
-    return map->speedCalculator().stepDurationWithDiagonalCost(player->speed(), step,
-                                                               map->groundSpeedAt(to.toPosition()));
+    const qint64 duration = map->speedCalculator().stepDurationWithDiagonalCost(player->speed(), step,
+                                                                                map->groundSpeedAt(to.toPosition()));
+    static const game::TPlayerMovementIntentHandlerConfiguration defaults;
+    const game::TPlayerMovementIntentHandlerConfiguration& configuration =
+        m_env.configuration ? *m_env.configuration : defaults;
+    const double share = static_cast<double>(duration) * configuration.minPercentageOfCurrentMovementBeforeSendNext;
+    // Rounded half away from zero.
+    const qint64 atLeast = static_cast<int>(share + std::copysign(0.5, share));
+    return std::max(duration - configuration.maxMillisecondsToFinishCurrentMovementBeforeSendNext, atLeast);
 }
 
 bool TPlayerMovementIntentHandler::advance()

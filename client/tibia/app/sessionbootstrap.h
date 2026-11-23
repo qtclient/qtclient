@@ -43,11 +43,13 @@ public:
                       gamewindow::TGameWindowController* gameWindow, QObject* parent = nullptr);
     ~TSessionBootstrap() override;
 
-    gamewindow::TCreateCharacterDialogController* createCharacter() const { return m_createCharacter; }
-    gamewindow::TCreateAccountDialogController* createAccount() const { return m_createAccount; }
+    /// The game client's create-character dialog.
+    gamewindow::TCreateCharacterDialogController* createCharacter() const;
+    /// The game client's create-account dialog.
+    gamewindow::TCreateAccountDialogController* createAccount() const;
 
-    /// Pack skin: replace stock create-character (takes ownership). Keeps the
-    /// same portal create-account service URL.
+    /// Pack skin: replace stock create-character (the game client takes it
+    /// over). Keeps the same portal create-account service URL.
     void installCreateCharacter(gamewindow::TCreateCharacterDialogController* controller);
 
     void openCreateAccount();
@@ -65,8 +67,6 @@ private:
     client::TGameClient* m_client;
     gamewindow::TGameWindowController* m_gameWindow = nullptr;
     QUrl m_createAccountService;
-    gamewindow::TCreateCharacterDialogController* m_createCharacter = nullptr;
-    gamewindow::TCreateAccountDialogController* m_createAccount = nullptr;
     TLoginWaitDialogController* m_loginWait = nullptr;
     gamewindow::TMessageDialogController* m_error = nullptr;
     gamewindow::TMessageDialogController* m_keepRenderer = nullptr;

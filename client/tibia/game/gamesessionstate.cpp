@@ -30,6 +30,7 @@
 #include "container/containerciptypes.h"
 #include "creatures/creaturestorage.h"
 #include "game/playerdata.h"
+#include "game/gamesessionmetainfo.h"
 #include "clockservice.h"
 #include <QStringList>
 #include <tibia/schedule/schedule.h>
@@ -64,7 +65,7 @@ void bindExtendedOpcodeSender(const bool bound)
         return;
     }
     tibia::protocol::ExtendedOpcodeReader::instance().setSender([](const uint8_t opcode, const std::string& buffer) {
-        const auto* connection = tibia::network::TGameserverNetworkPacketProcessor::live();
+        const auto* connection = tibia::network::TGameserverSessionNetwork::live();
         if (!connection || !connection->isConnected())
             return false;
         gameclient::sendExtendedOpcode(opcode, buffer);
@@ -72,12 +73,12 @@ void bindExtendedOpcodeSender(const bool bound)
     });
 }
 
-std::shared_ptr<tibia::network::TGameserverNetworkPacketProcessor> newGameConnection()
+std::shared_ptr<tibia::network::TGameserverSessionNetwork> newGameConnection()
 {
     // Retired (not deleted) on release: the release can run inside the
-    // processor's own failure callback.
-    return { new tibia::network::TGameserverNetworkPacketProcessor(),
-             [](tibia::network::TGameserverNetworkPacketProcessor* connection) { connection->retire(); } };
+    // network's own failure callback.
+    return { new tibia::network::TGameserverSessionNetwork(),
+             [](tibia::network::TGameserverSessionNetwork* connection) { connection->retire(); } };
 }
 
 }
@@ -206,6 +207,8 @@ void TGameSessionState::createMovementIntent()
         return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
     };
     env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
+    if (TGameSessionBase* session = currentGameSession(); session && session->metaInfo())
+        env.configuration = session->metaInfo()->playerMovementIntentHandlerConfiguration;
     env.textStorage = []() -> tibia::chat::TTextStorage* {
         TGameSessionBase* session = currentGameSession();
         return session ? session->textStorage().get() : nullptr;

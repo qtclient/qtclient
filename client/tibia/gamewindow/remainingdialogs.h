@@ -363,23 +363,6 @@ private:
     std::vector<store::TPossibleMainCharacterInformation> m_possibleMainChars;
 };
 
-/// CIP TMarketCoinTransactionDetailsDialogController — MarketCoinTransactionDetails.qml.
-class TMarketCoinTransactionDetailsDialogController final
-    : public TDialogController<cip::tibia::gamewindow::TMarketCoinTransactionDetailsDialogController>
-{
-    Q_OBJECT
-public:
-    explicit TMarketCoinTransactionDetailsDialogController(QObject* parent = nullptr);
-
-    /// Host bridge (until gw ports CIP's data getters): the storage's details.
-    void setTransactionDetails(const store::TTransactionDetails& details);
-
-public Q_SLOTS:
-    void showDialog() override;
-    void closeDialog() override;
-    Q_INVOKABLE void requestClose() override;
-};
-
 /// MultiOfflineTrainingDialog.qml (CIP: TMultiOfflineTrainingDialogController):
 /// the skills an offline training can train; a choice starts the training.
 class TMultiOfflineTrainingDialogController final

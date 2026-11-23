@@ -185,8 +185,11 @@ public:
     void closeDialog() override;
 
 private:
-    /// CIP .
-    void select(uint16_t typeId);
+    /// Makes `typeId` the current weapon: false when the list does not have
+    /// it or it already is the current one.
+    bool select(uint16_t typeId);
+    /// Asks the server for the weapon's proficiency inspection.
+    void sendInspectObject(uint16_t typeId) const;
     /// CIP .
     void rebuildModel();
     /// CIP .

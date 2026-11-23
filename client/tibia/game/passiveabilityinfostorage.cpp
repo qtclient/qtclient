@@ -47,7 +47,6 @@ TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
     : cip::tibia::game::TPassiveAbilityInfoStorage(parent)
     , m_model(new gamewindow::TPassiveAbilityListDataModel(this))
 {
-    s_instance = this;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
         // onPassiveData(abilityId, remainingMs, totalMs, decaying) — cooldown
         // also lands in TCooldownStorage for action-bar overlays.
@@ -78,6 +77,11 @@ TPassiveAbilityInfoStorage::TPassiveAbilityInfoStorage(QObject* parent)
 TPassiveAbilityInfoStorage* TPassiveAbilityInfoStorage::instance()
 {
     return s_instance;
+}
+
+void TPassiveAbilityInfoStorage::setInstance(TPassiveAbilityInfoStorage* storage)
+{
+    s_instance = storage;
 }
 
 const std::map<uint8_t, TPassiveAbilityInfo>& TPassiveAbilityInfoStorage::infos()

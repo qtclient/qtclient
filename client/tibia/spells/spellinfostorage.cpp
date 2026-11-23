@@ -104,10 +104,21 @@ void readCastParameters(TSpellCastParameters& cast, const QJsonObject& object)
 
 }
 
+namespace {
+TSpellInfoStorage* g_spellInfoStorage = nullptr;
+}
+
 TSpellInfoStorage* TSpellInfoStorage::instance()
 {
+    if (g_spellInfoStorage)
+        return g_spellInfoStorage;
     static TSpellInfoStorage* storage = new TSpellInfoStorage;
     return storage;
+}
+
+void TSpellInfoStorage::setInstance(TSpellInfoStorage* storage)
+{
+    g_spellInfoStorage = storage;
 }
 
 /// CIP ships ``:/spells/<file>`` in the client binary. Our qtclient / local extract

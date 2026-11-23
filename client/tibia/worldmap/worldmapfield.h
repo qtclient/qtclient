@@ -21,7 +21,7 @@ class TCreature;
 namespace tibia {
 namespace worldmap {
 
-/// Stack row that references a live creature by id (outfit appearance on the field stack).
+/// A creature's stack row: its placeholder on the field stack and the creature's id.
 struct TStackCreatureEntry
 {
     int stackIndex = -1;
@@ -30,6 +30,7 @@ struct TStackCreatureEntry
 };
 
 /// An object of a field and its stack position (CipSoft: appearance + stackpos + creatureId).
+/// For a creature the appearance is the creature's outfit instance, not its placeholder.
 struct TFieldObject
 {
     int stackPosition = -1;
@@ -107,7 +108,7 @@ public:
     bool isPickable() const;
 
     const std::vector<uint32_t>& walkingCreatureIds() const { return m_walkingCreatureIds; }
-    /// CipSoft field stack (items/effects + creature outfit appearances; gameplay items/creatures resolved on demand).
+    /// CipSoft field stack: the objects' instances and the creatures' placeholders.
     const std::vector<appearances::TAppearanceInstancePtr>& appearances() const { return m_stack; }
     appearances::TAppearanceInstancePtr appearanceAt(int stackPos) const;
     uint16_t itemClientIdAt(int stackPos) const;
@@ -118,7 +119,8 @@ public:
     appearances::TAppearanceInstancePtr takeCreatureInstance(int stackPos);
     /// Advances every instance's animation to `nowMs` (CIP v45).
     void updateAnimations(qint64 nowMs);
-    /// Refresh outfit/direction appearance entries when the live creature changes look.
+    /// The creature changed its look: its placeholder stays on the stack; the
+    /// field recomputes its flags from the new outfit and redraws.
     void syncCreatureStackAppearance(uint32_t creatureId);
     /// The graphical effects on this field, from the effect storage.
     const std::vector<appearances::TAppearanceInstancePtr>& effectAppearances() const;

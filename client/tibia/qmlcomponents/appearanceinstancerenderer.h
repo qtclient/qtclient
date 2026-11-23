@@ -33,6 +33,17 @@ public:
     void setHookDirection(EHookDirection v) override;
 
     TAppearanceType* type() const;
+
+    /// The type id of an object instance; 0 without one.
+    static uint getQmlTypeId(const appearances::TAppearanceInstancePtr& instance);
+    /// A cumulative object's count (one byte); 1 for any other instance.
+    static uint getQmlCumulativeCount(const appearances::TAppearanceInstancePtr& instance);
+    /// A liquid object's liquid; EMPTY for any other instance. Throws
+    /// std::invalid_argument for a liquid past the enum.
+    static ELiquidType getQmlLiquidType(const appearances::TAppearanceInstancePtr& instance);
+    /// A hangable object's hook direction; NONE for any other instance. Throws
+    /// std::invalid_argument for a direction past 3.
+    static EHookDirection getQmlHookDirection(const appearances::TAppearanceInstancePtr& instance);
 };
 
 /// A creature outfit placed in an AppearanceInstanceRenderer (QML OutfitAppearanceInstance;

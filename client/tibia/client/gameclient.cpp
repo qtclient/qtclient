@@ -33,6 +33,8 @@
 #include "crashreportdata.h"
 #include "crashreportsender.h"
 #include "gamewindow/remainingdialogs.h"
+#include "gamewindow/createaccountdialogcontroller.h"
+#include "gamewindow/createcharacterdialogcontroller.h"
 #include "gamewindow/gamesessiondisconnectreactioncontroller.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
 #include "shared/tibiafilesystemhelper.h"
@@ -51,6 +53,7 @@
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesystem.h"
+#include "assets/assetasyncloader.h"
 #include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
@@ -91,7 +94,6 @@
 #include "minimap/minimapmanager.h"
 #include "minimap/waypointcosts.h"
 #include "network/extendedopcoderouter.h"
-#include "network/gameserverdualconnection.h"
 #include "sound/soundprotocolmessagehandler.h"
 #include "config/clientoptions.h"
 #include "sound/gamesessionsoundprovider.h"
@@ -117,7 +119,7 @@
 #include "worldmap/worldmapviewport.h"
 
 #include <client/outfit.h>
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 #include "protocol/clientmessages.h"
 #include "shared/tibiafilesystemhelper.h"
 
@@ -171,7 +173,6 @@ void setSessionInstances(game::TGameSessionBase* session)
     worldmap::TWorldMapStorage::setInstance(session ? session->worldMapStorage().get() : nullptr);
     creatures::TCreatureStorage::setInstance(session ? session->creatureStorage().get() : nullptr);
     container::TContainerStorage::setInstance(session ? session->containerStorage().get() : nullptr);
-    container::TInventoryContainer::setInstance(session ? session->inventoryContainer().get() : nullptr);
     effects::TEffectStorage::setInstance(session ? session->effectStorage().get() : nullptr);
     game::TPlayerData::setLiveInstance(session ? session->playerData().get() : nullptr);
 }
@@ -299,8 +300,10 @@ private:
 
 }
 
-TGameClient::TGameClient(QObject* parent)
+TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                         config::TClientOptions* ClientOptions, QObject* parent)
     : cip::tibia::client::TGameClient(parent)
+    , ::tibia::client::TGameClientBase(Engine, std::move(TibiaFileSystemHelper), ClientOptions)
     , m_outfitDialogStorage(std::make_unique<game::TOutfitDialogStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
@@ -323,7 +326,13 @@ TGameClient::TGameClient(QObject* parent)
     // main window exists.
     {
         game::TInternalGameActionRouter* router = m_pGameActionRouter->internalRouter();
-        auto& mapStaticData = cyclopedia::TCyclopediaMapStaticDataStorage::instance();
+        cyclopedia::TCyclopediaMapStaticDataStorage& mapStaticData = *cyclopediaMapStaticDataStorage();
+        // CIP: the storage's asset requests go to the client's asset loading.
+        connect(&mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::newAssetDataToLoad, &mapStaticData,
+                [](const tibia::assets::TAsset& asset, const bool prioritized) {
+                    if (auto* loader = sprites::TSpriteSystem::instance().assetLoader())
+                        loader->load(asset, prioritized);
+                });
         connect(&mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::publishGameAction, router,
                 &game::TInternalGameActionRouter::handleGameActionInternal);
         connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, &mapStaticData,
@@ -492,10 +501,17 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
         Q_EMIT returnToLoginRequested();
     });
     connect(this, &TGameClient::characterSelectionRequested, this, [this] {
-        if (tibia::game::isOnline())
-            m_characterSelectionOpen = true;
+        if (!tibia::game::isOnline())
+            return;
+        m_characterSelectionOpen = true;
+        if (gamewindow::TCharacterSelectionController* selection = characterSelection())
+            selection->open();
     });
     connect(this, &TGameClient::characterSelectionClosed, this, [this] {
+        if (m_characterSelectionOpen) {
+            if (gamewindow::TCharacterSelectionController* selection = characterSelection())
+                selection->close();
+        }
         m_characterSelectionOpen = false;
     });
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
@@ -517,6 +533,9 @@ TGameClient::~TGameClient()
     // storages the game window owns: save before the game window goes.
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
         manager->saveConfiguration();
+    // CIP: the dialogs made after the game window controller go before it.
+    m_pCreateCharacterDialogController.reset();
+    m_pCreateAccountDialogController.reset();
     m_gameWindow.reset();
     // The store balance helper follows the session and the engine's hooks.
     m_pStoreAndResourceBalanceHelperController.reset();
@@ -532,10 +551,11 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         return false;
     }
     m_started = true;
+    // The spell table reads spells.json from the data directories init set up.
+    createSpellInfoStorage();
 
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
-    m_dualConnection = std::make_unique<network::TGameserverDualConnection>();
     const QJsonObject clientOptions = app::ClientOptions::load().options();
     m_frameRateLimitEnabled = clientOptions.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
     m_frameRateLimit = std::clamp(clientOptions.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);
@@ -681,7 +701,6 @@ void TGameClient::shutdown()
     gamecore::terminate();
     tibia::game::cleanMap();
     m_opcodes.reset();
-    m_dualConnection.reset();
     // The session goes now, not on the next event loop pass: the engine is down.
     g_releaseGameSessionsNow = true;
     setCurrentGameSession(nullptr);
@@ -975,9 +994,6 @@ void TGameClient::autoconnectNextGameSessionInQueue()
     live->setCharacterConfigurationStorages(m_characterConfigurationStorages);
     live->initialize(metaInfo);
     setCurrentGameSession(live);
-    const auto& loginData = std::static_pointer_cast<const game::TGameserverGameSessionMetaInfo>(metaInfo)->loginData;
-    if (m_dualConnection)
-        m_dualConnection->setEndpoint(loginData.host, loginData.port);
     live->connectToGameserver();
     live->startSession();
 }
@@ -1179,8 +1195,6 @@ config::TActionBarOptions* TGameClient::actionBarOptions() const
 
 void TGameClient::onWorldLeft()
 {
-    if (m_dualConnection)
-        m_dualConnection->reset();
     tibia::game::clearWaypointCostFactory();
     m_minimap.reset();
     if (config::TCharacterConfigurationManager* manager = characterConfigurationManager())
@@ -1269,6 +1283,7 @@ void TGameClient::tick()
     const qint64 offsetMicros = m_frameDurations->averageNs() / 1000;
     m_frameDurations->start();
     m_predictor->setOffset(offsetMicros);
+    beforeRenderFrameGameWindow();
     if (m_started)
         if (auto* session = dynamic_cast<game::TGameSessionBase*>(m_currentGameSession.get()))
             session->onPrepareNextFrameToRender(m_predictor->predict());

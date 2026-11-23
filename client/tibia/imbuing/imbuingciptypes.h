@@ -2,12 +2,17 @@
 
 // CIP-named imbuing surfaces (promoted from cipwire).
 
+#include "container/containerciptypes.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
 #include <QByteArray>
 #include <QObject>
+#include <QString>
+
+#include <cstdint>
+#include <vector>
 
 namespace tibia::protobuf::protocol {
 class GameserverMessageCloseImbuingDialog;
@@ -26,11 +31,42 @@ class TImbuingStorage;
 void ownProductSurface(QObject* parent);
 
 
+/// One imbuement slot of a tracked object.
+struct TImbuementSlotInformation
+{
+    /// The slot holds an imbuement (the rest is empty otherwise).
+    bool imbued = false;
+    QString name;
+    uint32_t iconId = 0;
+    /// Time left in milliseconds.
+    qint64 remainingMilliseconds = 0;
+    /// Its time runs down (the object is worn).
+    bool decaying = false;
+};
+
+/// One object of the imbuement tracker: where it is worn, the object and its slots.
+struct TImbuedObjectInformation
+{
+    /// The inventory slot (1..13); 99 until set.
+    uint32_t inventorySlot = 99;
+    /// Host: the object as an inventory slot (CipSoft keeps an object instance of the session's object storage).
+    container::TInventorySlot object;
+    std::vector<TImbuementSlotInformation> slots;
+};
+
+/// The imbued objects the server reported last (the imbuement tracker's rows).
 class TImbuementDurationsStorage final : public cip::tibia::imbuing::TImbuementDurationsStorage
 {
     Q_OBJECT
 public:
     using cip::tibia::imbuing::TImbuementDurationsStorage::TImbuementDurationsStorage;
+
+    const std::vector<TImbuedObjectInformation>& imbuedObjects() const { return m_imbuedObjects; }
+    /// Replaces the objects and always emits imbuedObjectsChanged.
+    void setImbuedObjects(const std::vector<TImbuedObjectInformation>& ImbuedObjects);
+
+private:
+    std::vector<TImbuedObjectInformation> m_imbuedObjects;
 };
 
 /// The imbuing messages of a game session: they fill its imbuing storage

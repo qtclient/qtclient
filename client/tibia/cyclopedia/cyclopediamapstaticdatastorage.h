@@ -93,9 +93,12 @@ public:
 
     explicit TCyclopediaMapStaticDataStorage(QObject* parent = nullptr);
 
-    /// Host: the client's storage. CIP creates one per game client and its asset
-    /// handler hands it map.dat; this one reads map.dat on first use.
+    /// Host: the game client's storage while a client exists (setInstance),
+    /// else one of its own (tests, tools). CIP's asset handler hands it
+    /// map.dat; this one reads map.dat on first use.
     static TCyclopediaMapStaticDataStorage& instance();
+    /// Installs the game client's storage; null goes back to the fallback.
+    static void setInstance(TCyclopediaMapStaticDataStorage* storage);
 
     /// The minimap flags to show (CIP: the constructor's marker storage). Their
     /// pieces follow the storage's markersChanged.

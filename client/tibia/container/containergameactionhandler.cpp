@@ -351,8 +351,12 @@ void TContainerGameActionHandler::handleDepotSearchRetrieveGameAction(
     message.set_object_id(pDepotSearchRetrieveGameAction->typeId());
     if (const std::optional<uint8_t> tier = pDepotSearchRetrieveGameAction->tier())
         message.set_tier(*tier);
-    // qtclient sends the location as it is (CipSoft maps it through a table).
-    message.set_retrieve_type(static_cast<uint32_t>(std::max(pDepotSearchRetrieveGameAction->location(), 0)));
+    // The protocol knows the depot (1) and the inbox (2); any other location is
+    // a programming error.
+    const int location = pDepotSearchRetrieveGameAction->location();
+    if (location != 1 && location != 2)
+        throw std::runtime_error("unhandled enum value");
+    message.set_retrieve_type(static_cast<uint32_t>(location));
     Q_EMIT sendDepotSearchRetrieve(message);
 }
 

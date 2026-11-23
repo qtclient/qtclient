@@ -44,12 +44,15 @@ enum class TCloudflareChallengeError : int;
 namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
+class TCreateAccountDialogController;
+class TCreateCharacterDialogController;
 class TCrashReportDialogController;
 class TGameSessionDisconnectReactionController;
 class TGameWindowController;
 }
 namespace shared {
 class TCrashReportSender;
+class TTibiaFileSystemHelper;
 }
 }
 namespace tibia {
@@ -66,7 +69,6 @@ class TStatusbarStorage;
 namespace tibia {
 namespace network {
 class ExtendedOpcodeRouter;
-class TGameserverDualConnection;
 }
 }
 namespace tibia {
@@ -86,6 +88,7 @@ class TWorldMapRenderProvider;
 namespace tibia {
 namespace config {
 class TActionBarOptions;
+class TClientOptions;
 class TSidebarOptions;
 }
 }
@@ -177,7 +180,10 @@ public:
         QString workDir;
     };
 
-    explicit TGameClient(QObject* parent = nullptr);
+    /// CIP: the client is made with the application's QML engine, the file
+    /// system helper and the client options.
+    TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
+                config::TClientOptions* ClientOptions, QObject* parent = nullptr);
     ~TGameClient() override;
 
     /// Creates the game window and its controllers, storages and input
@@ -277,6 +283,19 @@ public:
     bool requestCharacterSwitch(const QString& characterName);
     /// End a tutorial sessiondump cinematic and connect to the pending live world.
     void finishTutorialCinematic();
+    /// CIP: the create-account dialog, made with the game window; null before.
+    gamewindow::TCreateAccountDialogController* createAccountDialogController() const
+    {
+        return m_pCreateAccountDialogController.get();
+    }
+    /// CIP: the create-character dialog, made with the game window; null before.
+    gamewindow::TCreateCharacterDialogController* createCharacterDialogController() const
+    {
+        return m_pCreateCharacterDialogController.get();
+    }
+    /// Host (pack skin): `Controller` replaces the create-character dialog; the
+    /// client takes it over and deletes the previous one later.
+    void setCreateCharacterDialogController(gamewindow::TCreateCharacterDialogController* Controller);
     /// CIP: the player wants to leave the client. Without a game session it
     /// closes right away; in the tutorial it asks Exit / Cancel, in any other
     /// session Exit / Logout / Cancel.
@@ -319,6 +338,10 @@ public Q_SLOTS:
     void onWindowSizeChanged() override;
     /// CIP: the game window's Quit.
     void onExitClientRequested();
+    /// CIP: the start screen's Create Account opens the create-account dialog.
+    void onRequestCreateAccount();
+    /// CIP: opens the create-character dialog.
+    void onRequestCreateCharacter();
     /// CIP: the exit confirmation's answer. The dialog closes; Logout logs the
     /// character out (QUIT_GAME), Exit closes the client, Cancel stays.
     void onConfirmOrCancelExitGame(
@@ -326,6 +349,8 @@ public Q_SLOTS:
 
 private:
     struct TGameWindow;
+    /// CIP (before each frame): the game window's per-frame steps (the death dialog's countdown).
+    void beforeRenderFrameGameWindow();
     struct TGameWindowDeleter
     {
         void operator()(TGameWindow* gameWindow) const;
@@ -418,7 +443,6 @@ private:
     /// signal).
     shared::TQtConnectionWrapper m_gameSessionDisconnected{ 1, true };
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
-    std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
     std::unique_ptr<game::TOutfitDialogStorage> m_outfitDialogStorage;
     /// Host shim: the character configuration storages the game window still
     /// owns; each new session's manager takes them.
@@ -434,6 +458,8 @@ private:
     bool m_started = false;
     /// Logged in once the current character has left the world (CIP switch).
     std::optional<QString> m_pendingCharacter;
+    std::unique_ptr<gamewindow::TCreateAccountDialogController> m_pCreateAccountDialogController;
+    std::unique_ptr<gamewindow::TCreateCharacterDialogController> m_pCreateCharacterDialogController;
     /// Destroyed first: its objects use the client's storages and session.
     std::unique_ptr<TGameWindow, TGameWindowDeleter> m_gameWindow;
 };

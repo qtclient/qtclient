@@ -154,12 +154,6 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
     connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
     connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
     m_gameActions.on(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
-    m_gameActions.on(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
-        if (!m_containers)
-            return false;
-        m_containers->openInSidebar(action.containerId(), action.sidebarId());
-        return true;
-    });
 }
 
 TSidebarWidgetsManager::~TSidebarWidgetsManager()
@@ -609,18 +603,6 @@ QJsonArray TSidebarWidgetsManager::serializeSidebar(const uint sidebarId) const
     QJsonArray list;
     for (const auto& [identifier, entry] : entries)
         list.append(entry);
-    if (m_containers) {
-        std::vector<std::pair<int, int>> pending;
-        for (const auto& [id, place] : m_containers->pendingPlaces()) {
-            if (place.sidebarId == sidebarId)
-                pending.emplace_back(place.position < 0 ? INT_MAX : place.position, id);
-        }
-        std::ranges::sort(pending);
-        for (const auto& [position, id] : pending) {
-            list.insert(std::min<qsizetype>(position, list.size()),
-                        QJsonObject{ { QStringLiteral("instance"), id }, { QStringLiteral("type"), widgetTypeName(Container) } });
-        }
-    }
     return list;
 }
 
@@ -676,7 +658,7 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
                 m_battleLists->openBattleList(static_cast<uint8_t>(sidebarId), static_cast<uint8_t>(instance), false, false);
             } else if (type == Container) {
                 if (m_containers)
-                    m_containers->openInSidebar(instance, sidebarId, position);
+                    m_containers->openInSidebar(instance, sidebarId);
             } else if (type >= 0) {
                 openWidget(type, sidebarId);
             }

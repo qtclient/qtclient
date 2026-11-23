@@ -105,12 +105,7 @@ void TReportViolationController::open(const EType type, const QString& name, con
     m_reasonId = 0;
     m_reportedCharacterName = name;
     m_reportedStatement = statement;
-    m_selectedReportReasonName.clear();
-    m_selectedReportReasonDescription.clear();
-    m_dialogType = typeName(type);
-    m_ruleViolationReasons.clear();
-    for (const Reason& reason : reasons(type))
-        m_ruleViolationReasons.append(qtTrId(reason.caption));
+    m_reason = {};
     dialog()->create();
     dialog()->show();
 }
@@ -120,11 +115,32 @@ void TReportViolationController::selectReportReason(const int ModelIndex)
     const std::vector<Reason> list = reasons(m_type);
     if (ModelIndex < 0 || ModelIndex >= static_cast<int>(list.size()))
         return;
-    const Reason& reason = list[static_cast<size_t>(ModelIndex)];
-    m_selectedReportReasonName = qtTrId(reason.caption);
-    m_selectedReportReasonDescription = qtTrId(reason.example);
-    m_reasonId = reason.id;
+    m_reason = list[static_cast<size_t>(ModelIndex)];
+    m_reasonId = m_reason.id;
     Q_EMIT selectedReportReasonChanged();
+}
+
+QString TReportViolationController::dialogType() const
+{
+    return typeName(m_type);
+}
+
+QStringList TReportViolationController::ruleViolationReasons() const
+{
+    QStringList captions;
+    for (const Reason& reason : reasons(m_type))
+        captions.append(qtTrId(reason.caption));
+    return captions;
+}
+
+QString TReportViolationController::selectedReportReasonDescription() const
+{
+    return m_reason.example ? qtTrId(m_reason.example) : QString();
+}
+
+QString TReportViolationController::selectedReportReasonName() const
+{
+    return m_reason.caption ? qtTrId(m_reason.caption) : QString();
 }
 
 /// A bot report carries no translation.

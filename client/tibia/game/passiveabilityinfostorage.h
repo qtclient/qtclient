@@ -61,7 +61,10 @@ public:
     };
 
     explicit TPassiveAbilityInfoStorage(QObject* parent = nullptr);
+    /// The game client's table; null without a client.
     static TPassiveAbilityInfoStorage* instance();
+    /// Installs the game client's table (null: none).
+    static void setInstance(TPassiveAbilityInfoStorage* storage);
 
     /// The ability's record; throws std::out_of_range for an id the table
     /// does not have.

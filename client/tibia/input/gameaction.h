@@ -2806,6 +2806,7 @@ class TGameActionShowCreateCharacterDialog final
 {
 public:
     using TGameActionWithValue::TGameActionWithValue;
+    EGameAction gameActionType() const override { return EGameAction::SHOW_CREATE_CHARACTER_DIALOG; }
     /// The account has no characters yet.
     bool accountIsEmpty() const { return m_value; }
 };
@@ -2837,14 +2838,20 @@ public:
     EGameAction gameActionType() const override { return EGameAction::CONTEXT_MENU_SEPARATOR; }
 };
 
-/// CIP input::TGameActionLoadDefaultMinimapTilesFromResources (LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES).
+/// CIP input::TGameActionLoadDefaultMinimapTilesFromResources (LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES):
+/// the directory whose minimap tiles the tile storage merges.
 class TGameActionLoadDefaultMinimapTilesFromResources final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionLoadDefaultMinimapTilesFromResources()
+    explicit TGameActionLoadDefaultMinimapTilesFromResources(QString directory)
         : TGameActionSimple(EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES)
+        , m_directory(std::move(directory))
     {
     }
+    const QString& directory() const { return m_directory; }
+
+private:
+    QString m_directory;
 };
 
 /// CIP input::TGameActionSmartClick (SMART_CLICK): the action a click runs.

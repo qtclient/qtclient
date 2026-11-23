@@ -12,6 +12,7 @@
 #include "game/skillswidgetentrydata.h"
 #include "gamewindow/characterinfomodels.h"
 #include "gamewindow/gamewindowciptypes.h"
+#include "gamewindow/marketcointransactiondetailsdialogcontroller.h"
 #include "gamewindow/smoothfiltering.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/outfitdialogcontroller.h"

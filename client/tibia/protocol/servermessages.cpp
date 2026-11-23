@@ -6,7 +6,7 @@
 #include "protocol/protocolcodes.h"
 #include "tibia/protocol/extendedopcode.h"
 
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 
 #include <QtGlobal>
 #include <format>
@@ -31,7 +31,7 @@ bool readExtendedOpcode(ClassicReader& packet)
     if (!packet.u8(opcode) || !packet.string(buffer))
         return false;
     if (opcode == 0) {
-        if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+        if (auto* processor = network::TGameserverSessionNetwork::live())
             processor->setProductTransportEnabled(true);
         return true;
     }
@@ -50,7 +50,7 @@ bool readCharacterSwitch(ClassicReader& packet)
         return false;
     tibia::game::processCharacterSwitch(characterName);
     // The server follows with a full login burst for the new body on this socket.
-    if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+    if (auto* processor = network::TGameserverSessionNetwork::live())
         processor->setGameInitialized(false);
     return true;
 }

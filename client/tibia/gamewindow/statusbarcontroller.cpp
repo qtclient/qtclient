@@ -1,9 +1,12 @@
 #include "statusbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "appearances/appearancetype.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "proficiency/proficiencystorage.h"
 
 #include <algorithm>
 #include <array>
@@ -58,6 +61,30 @@ float ratio(const uint32_t value, const uint32_t max)
     return max == 0 ? 0.f : std::clamp(static_cast<float>(value) / static_cast<float>(max), 0.f, 1.f);
 }
 
+using proficiency::TProficiencyStorage;
+
+/// The levels of the weapon's proficiency table plus mastery (at most 9); 0
+/// for a weapon without a table.
+int proficiencyLevelCount(const TProficiencyStorage& storage, const uint16_t typeId)
+{
+    return storage.info(typeId) ? storage.levelCount(typeId) : 0;
+}
+
+/// The levels of `count` the XP reached: each level's threshold up to the
+/// first one past `xp`.
+int reachedProficiencyLevel(const uint16_t typeId, const int count, const int xp)
+{
+    const int last = std::max(count - 1, 0);
+    int level = 0;
+    while (level != count) {
+        const int next = level + (level < count ? 1 : 0);
+        if (static_cast<int>(TProficiencyStorage::levelXP(next, last, typeId)) > xp)
+            break;
+        level = next;
+    }
+    return level;
+}
+
 }
 
 TStatusBarController::TStatusBarController(QObject* parent)
@@ -90,7 +117,25 @@ void TStatusBarController::setStorage(game::TStatusbarStorage* storage)
 {
     if (m_storage)
         disconnect(m_storage, nullptr, this, nullptr);
+    if (m_proficiencyStorage)
+        disconnect(m_proficiencyStorage, nullptr, this, nullptr);
+    if (m_inventory)
+        disconnect(m_inventory, nullptr, this, nullptr);
     m_storage = storage;
+    m_proficiencyStorage = storage ? TProficiencyStorage::instance() : nullptr;
+    m_inventory = storage ? container::TInventoryContainer::instance() : nullptr;
+    // The progress follows the weapon's XP, the unspent perk and what the hands hold.
+    if (m_proficiencyStorage) {
+        connect(m_proficiencyStorage, &TProficiencyStorage::currentProficiencyProgressChanged, this,
+                &TStatusBarController::proficiencyStatusChanged);
+        connect(m_proficiencyStorage, &TProficiencyStorage::unspentPerkChanged, this,
+                &TStatusBarController::proficiencyStatusChanged);
+    }
+    if (m_inventory)
+        connect(m_inventory, &container::TInventoryContainer::inventoryChanged, this,
+                &TStatusBarController::proficiencyStatusChanged);
+    // Entering or leaving the world changes what the properties read.
+    Q_EMIT proficiencyStatusChanged();
     if (!storage) {
         setAnchorAndStyle(Invalid, Default, false);
         return;
@@ -277,6 +322,79 @@ QAbstractListModel* TStatusBarController::playerStates() const
 QObject* TStatusBarController::xpSkill() const
 {
     return isSkillShown(Storage::Experience) ? m_xpEntry : nullptr;
+}
+
+const appearances::TAppearanceType* TStatusBarController::equippedWeapon() const
+{
+    if (!m_inventory || !m_inventory->hasSlot(tibia::client::InventorySlotLeft))
+        return nullptr;
+    const container::TInventorySlot& hand = m_inventory->slotAt(tibia::client::InventorySlotLeft);
+    return hand.appearance ? hand.appearance->thingType() : nullptr;
+}
+
+bool TStatusBarController::showProficiencyProgress() const
+{
+    if (!m_proficiencyStorage)
+        return false;
+    const appearances::TAppearanceType* weapon = equippedWeapon();
+    return weapon && weapon->hasProficiency();
+}
+
+bool TStatusBarController::isProficiencyHighlighted() const
+{
+    return m_proficiencyStorage && m_proficiencyStorage->hasUnspentPerk();
+}
+
+int TStatusBarController::currentProficiencyProgress() const
+{
+    return m_proficiencyStorage ? static_cast<int>(m_proficiencyStorage->currentProficiencyXP()) : 0;
+}
+
+int TStatusBarController::proficiencyProgressNextLevel() const
+{
+    if (!m_proficiencyStorage)
+        return 0;
+    const appearances::TAppearanceType* weapon = equippedWeapon();
+    if (!weapon || !weapon->hasProficiency())
+        return 0;
+    const uint16_t typeId = weapon->getId();
+    const int count = proficiencyLevelCount(*m_proficiencyStorage, typeId);
+    const int xp = static_cast<int>(m_proficiencyStorage->currentProficiencyXP());
+    const int level = reachedProficiencyLevel(typeId, count, xp);
+    const int last = std::max(count - 1, 0);
+    // The level after the reached one, but never past the last level.
+    const uint32_t lastLevelXP = TProficiencyStorage::levelXP(count, last, typeId);
+    const uint32_t nextLevelXP = TProficiencyStorage::levelXP(level + (level < count ? 1 : 0), last, typeId);
+    return static_cast<int>(std::min(lastLevelXP, nextLevelXP));
+}
+
+double TStatusBarController::proficiencyBarFillProgress() const
+{
+    if (!m_proficiencyStorage)
+        return 0.0;
+    const uint32_t xp = m_proficiencyStorage->currentProficiencyXP();
+    const int nextLevelXP = proficiencyProgressNextLevel();
+    if (nextLevelXP == 0)
+        return 0.0;
+    const appearances::TAppearanceType* weapon = equippedWeapon();
+    if (!weapon || !weapon->hasProficiency())
+        return 0.0;
+    const uint16_t typeId = weapon->getId();
+    const int count = proficiencyLevelCount(*m_proficiencyStorage, typeId);
+    const int level = reachedProficiencyLevel(typeId, count, static_cast<int>(xp));
+    if (level == count)
+        return 1.0;
+    const uint32_t levelXP = TProficiencyStorage::levelXP(level, std::max(count - 1, 0), typeId);
+    return static_cast<double>(xp - levelXP) / static_cast<double>(static_cast<uint32_t>(nextLevelXP) - levelXP);
+}
+
+void TStatusBarController::onClickedOpenProficiencies()
+{
+    if (!m_proficiencyStorage)
+        return;
+    const appearances::TAppearanceType* weapon = equippedWeapon();
+    Q_EMIT publishGameAction(
+        std::make_shared<input::gameactions::TGameActionOpenWeaponProficiencyDialog>(weapon ? weapon->getId() : uint16_t { 0 }));
 }
 
 void TStatusBarController::onClickedOpenStoreXPBoost()

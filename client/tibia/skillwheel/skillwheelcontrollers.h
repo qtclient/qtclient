@@ -232,6 +232,8 @@ public:
     Q_INVOKABLE int reshapeGemCost(cip::tibia::qmlcomponents::enums::EGemQuality Quality, bool GoldCost) override;
     Q_INVOKABLE int unrevealedGemAppearanceType(cip::tibia::qmlcomponents::enums::EGemQuality Quality) override;
     Q_INVOKABLE QVariantMap gemDataForId(int GemId) override;
+    /// A new selection drops the gem waiting to be selected again.
+    void setSelectedGemIndex(const QPersistentModelIndex& Index) override;
 
     void onGemsChanged();
     void onWheelChanged();
@@ -253,7 +255,9 @@ private:
     TInventoryGemSortFilterProxyModel* m_filter;
     TPaginationProxyModel* m_pages;
     QObject* m_sockets[VesselCount] = {};
-    int m_selectedGemId = -1;
+    /// The gem socketed or unsocketed last: selected again once the gem inventory changes
+    /// (dropped by a new selection or when the gem is gone).
+    std::optional<int> m_gemToReselect;
 };
 
 /// The Fragment Workshop tab, SkillWheelFragmentWorkshopPage.qml

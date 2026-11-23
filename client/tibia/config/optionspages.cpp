@@ -5,6 +5,7 @@
 #include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionobject.h"
+#include "config/tibiahotkeyactionsettingqmlwrapper.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/buttonbarcontroller.h"
@@ -1054,85 +1055,6 @@ bool TSoundOptionsPage::soundEnabled() const
 
 namespace {
 
-/// CIP: a setting's text in the hotkeys page. A chat text shows itself; an
-/// empty setting "hotkey_empty"; a static action its translated identifier
-/// (its name when untranslated), an action button its bar's side, bar and
-/// button; an object its use type. qtclient: a pack action its description.
-QString hotkeyActionSettingDescription(const TActionSetting& setting)
-{
-    if (!setting.text.isEmpty())
-        return setting.text;
-    if (setting.action.isEmpty() && setting.objectId == 0 && setting.kind != TActionSetting::PASSIVE_ABILITY) {
-        if (!setting.multiActions.empty())
-            return {};
-        return qtTrId("hotkey_empty");
-    }
-    if (setting.objectId == 0) {
-        // A passive ability has no text.
-        if (setting.action.isEmpty())
-            return {};
-        for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
-            if (product.name == setting.action)
-                return product.description.isEmpty() ? setting.action : product.description;
-        }
-        const QString id = QStringLiteral("label_gameactionidentifier_") + setting.action;
-        // CIP map::at throws only for an unknown key. Movement names (GoNorth, …)
-        // stay in the static table with a null action — the movement interpreter
-        // owns them — so a missing IGameAction still gets a translated label.
-        const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(setting.action);
-        QString text;
-        if (const auto* button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action)) {
-            QString side;
-            switch (gamewindow::TActionBarGroup::positionOfBar(button->actionBarId())) {
-            case gamewindow::EActionBarPosition::ActionBarPositionBottom: side = qtTrId("bottom"); break;
-            case gamewindow::EActionBarPosition::ActionBarPositionLeft: side = qtTrId("left"); break;
-            case gamewindow::EActionBarPosition::ActionBarPositionRight: side = qtTrId("right"); break;
-            }
-            text = side + QLatin1Char(' ') + qtTrId("actionbar") + QStringLiteral(": ")
-                 + qtTrId("actionbar_button_identifier")
-                       .arg(button->actionBarId())
-                       .arg(button->actionButtonId(), 2, 10, QLatin1Char('0'));
-        } else {
-            text = qtTrId(id.toLocal8Bit().constData());
-        }
-        return text == id ? setting.action : text;
-    }
-    switch (setting.useType) {
-    case EUseType::Use: return qtTrId("hotkey_use_object");
-    case EUseType::UseOnYourself: return qtTrId("hotkey_use_object_on_yourself");
-    case EUseType::UseOnTarget: return qtTrId("hotkey_use_object_on_target");
-    case EUseType::SelectUseTarget: return qtTrId("hotkey_use_object_with_crosshair");
-    case EUseType::Equip: return qtTrId("hotkey_equip_object");
-    case EUseType::UseAtMouseCursor: return qtTrId("hotkey_use_object_at_mousecursor");
-    }
-    return QStringLiteral("invalid use object type");
-}
-
-/// CIP: the description colour of a setting in the hotkeys page: an empty
-/// setting red, a chat text white when sent automatically (else grey), an
-/// object by its use type, a static action light grey; none for any other.
-QColor hotkeyActionSettingDescriptionColor(const TActionSetting& setting)
-{
-    if (setting.isEmpty())
-        return QColor(0xff, 0x00, 0x00);
-    if (!setting.text.isEmpty())
-        return setting.sendAutomatically ? QColor(0xff, 0xff, 0xff) : QColor(0xaf, 0xaf, 0xaf);
-    if (setting.objectId != 0) {
-        switch (setting.useType) {
-        case EUseType::Use: return QColor(0xb0, 0xb0, 0xff);
-        case EUseType::UseOnYourself: return QColor(0xb0, 0xff, 0xb0);
-        case EUseType::UseOnTarget: return QColor(0xff, 0xb0, 0xb0);
-        case EUseType::SelectUseTarget:
-        case EUseType::UseAtMouseCursor: return QColor(0xc8, 0x7d, 0x7d);
-        case EUseType::Equip: return QColor(0xbf, 0xbf, 0x00);
-        }
-        return QColor(0xff, 0x00, 0x00);
-    }
-    if (!setting.action.isEmpty())
-        return QColor(0xc0, 0xc0, 0xc0);
-    return {};
-}
-
 /// CIP (row builder): the picture of an object setting: its liquid, else its
 /// tier, else the plain type.
 appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting& setting)
@@ -1150,52 +1072,6 @@ appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting&
     return instance;
 }
 
-/// CIP TTibiaHotkeyActionSettingQmlWrapper row for OptionsPageHotkeys.qml.
-class THotkeyActionRow final : public cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper
-{
-public:
-    THotkeysOptionsPage::EHotkeyMode mode = THotkeysOptionsPage::DefaultHotkeys;
-    TActionSetting setting;
-    QKeySequence first;
-    QKeySequence second;
-    bool matchesFilter = true;
-    /// +0x78: a custom object row's picture.
-    appearances::TAppearanceInstancePtr appearance;
-
-    explicit THotkeyActionRow(QObject* parent = nullptr)
-        : cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper(parent)
-    {
-        m_isStaticAction = true;
-    }
-
-    void sync()
-    {
-        m_firstHotkeyText = first.toString(QKeySequence::NativeText);
-        m_secondHotkeyText = second.toString(QKeySequence::NativeText);
-        m_isEmpty = setting.isEmpty();
-        m_isChatText = setting.kind == TActionSetting::TEXT;
-        m_isUseObject = setting.kind == TActionSetting::OBJECT;
-        m_isUseWithObject = setting.kind == TActionSetting::OBJECT
-            && (setting.useType == EUseType::UseOnTarget || setting.useType == EUseType::SelectUseTarget
-                || setting.useType == EUseType::UseAtMouseCursor);
-        m_isStaticAction = setting.kind == TActionSetting::ACTION || setting.kind == TActionSetting::NONE;
-        m_chatText = setting.text;
-        m_sendAutomatically = setting.sendAutomatically;
-        // The picture's type, count and liquid (none without a picture).
-        m_objectID = appearance ? appearance->id() : 0;
-        const auto* cumulative = dynamic_cast<const appearances::TCumulativeObjectAppearanceInstance*>(appearance.get());
-        m_objectCount = cumulative ? cumulative->count() : 1;
-        const auto* liquid = dynamic_cast<const appearances::TLiquidObjectAppearanceInstance*>(appearance.get());
-        m_liquidType = static_cast<decltype(m_liquidType)>(liquid ? liquid->fluid() : 0);
-        m_useObjectType = int(setting.useType);
-        m_smartModeEnabled = setting.useEquipSmartMode;
-        m_canHaveSmartMode = setting.useType == EUseType::Equip;
-        m_descriptionText = hotkeyActionSettingDescription(setting);
-        m_descriptionColor = hotkeyActionSettingDescriptionColor(setting);
-        Q_EMIT changed();
-    }
-};
-
 } // namespace
 
 THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
@@ -1209,15 +1085,15 @@ void THotkeysOptionsPage::setHotkeyMode(const EHotkeyMode mode)
         return;
     m_hotkeyMode = mode;
     Q_EMIT hotkeyModeChanged();
-    updateHotkeyListModel();
+    rebuildModel();
 }
 
 void THotkeysOptionsPage::setAutoSwitchHotkeyPreset(const bool v)
 {
-    if (m_autoSwitchHotkeyPreset == v)
+    if (m_options.autoSwitchHotkeyPreset == v)
         return;
-    m_autoSwitchHotkeyPreset = v;
     m_options.autoSwitchHotkeyPreset = v;
+    m_autoSwitchHotkeyPreset = v;
     Q_EMIT autoswitchHotkeyPresetChanged();
 }
 
@@ -1230,12 +1106,17 @@ void THotkeysOptionsPage::setChatModeOn(const bool v)
     rebuildModel();
 }
 
+int THotkeysOptionsPage::hotkeySetNamesIndex() const
+{
+    return m_options.currentHotkeySetIndex();
+}
+
 void THotkeysOptionsPage::setHotkeySetNamesIndex(const int v)
 {
-    if (m_hotkeySetNamesIndex == v || v < 0 || v >= m_hotkeySetNamesModel.size())
+    if (m_options.currentHotkeySetIndex() == v)
         return;
-    m_hotkeySetNamesIndex = v;
-    m_options.setCurrentSet(m_hotkeySetNamesModel.at(v));
+    m_options.setCurrentHotkeySetIndex(v);
+    refreshSetNames();
     Q_EMIT hotkeySetsChanged();
     rebuildModel();
 }
@@ -1245,16 +1126,13 @@ void THotkeysOptionsPage::setNameFilter(const QString& v)
     if (m_nameFilter == v)
         return;
     m_nameFilter = v;
-    updateHotkeyListModel();
+    rebuildModel();
 }
 
 void THotkeysOptionsPage::refreshSetNames()
 {
-    m_hotkeySetNamesModel.clear();
-    for (const auto& [name, set] : m_options.hotkeySets)
-        m_hotkeySetNamesModel << name;
-    m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-    m_hotkeySetNamesIndex = std::max(0, int(m_hotkeySetNamesModel.indexOf(currentSetName())));
+    m_hotkeySetNamesModel = m_options.hotkeySetNames();
+    m_hotkeySetNamesIndex = m_options.currentHotkeySetIndex();
 }
 
 void THotkeysOptionsPage::load(const TClientOptions& options)
@@ -1290,15 +1168,16 @@ void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
     const QString name = currentSetName();
     m_options.clearBindings(name, m_chatModeOn);
     for (QObject* object : std::as_const(m_rows)) {
-        const auto* row = static_cast<THotkeyActionRow*>(object);
-        if (row->setting.isEmpty())
+        const auto* row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(object);
+        const TActionSetting& setting = row->hotkeyActionSetting();
+        if (setting.isEmpty())
             continue;
-        if (!row->first.isEmpty())
-            m_options.addBinding(name, m_chatModeOn, row->first, row->setting);
-        if (!row->second.isEmpty())
-            m_options.addBinding(name, m_chatModeOn, row->second, row->setting);
-        else if (row->first.isEmpty() && keepUnboundRows)
-            m_options.addBinding(name, m_chatModeOn, QKeySequence(), row->setting);
+        if (!row->firstKeySequence().isEmpty())
+            m_options.addBinding(name, m_chatModeOn, row->firstKeySequence(), setting);
+        if (!row->secondKeySequence().isEmpty())
+            m_options.addBinding(name, m_chatModeOn, row->secondKeySequence(), setting);
+        else if (row->firstKeySequence().isEmpty() && keepUnboundRows)
+            m_options.addBinding(name, m_chatModeOn, QKeySequence(), setting);
     }
 }
 
@@ -1322,14 +1201,15 @@ bool hotkeySequenceLess(const QKeySequence& a, const QKeySequence& b)
 /// CIP's hotkeys page sort: custom settings first, by first
 /// then second key (rows without keys last), then the action buttons, then the
 /// other static actions, both by description.
-bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
+bool hotkeyRowLess(const TTibiaHotkeyActionSettingQmlWrapper* a, const TTibiaHotkeyActionSettingQmlWrapper* b)
 {
-    const auto isButton = [](const THotkeyActionRow* row) {
-        return row->setting.kind == TActionSetting::ACTION
-            && input::gameActionAs<input::TGameActionActionButtonTriggered>(input::TKeyboardShortcutHandler::staticAction(row->setting.action));
+    const auto isButton = [](const TTibiaHotkeyActionSettingQmlWrapper* row) {
+        return row->hotkeyActionSetting().kind == TActionSetting::ACTION
+            && input::gameActionAs<input::TGameActionActionButtonTriggered>(
+                input::TKeyboardShortcutHandler::staticAction(row->hotkeyActionSetting().action));
     };
-    const bool aStatic = a->setting.kind == TActionSetting::ACTION;
-    const bool bStatic = b->setting.kind == TActionSetting::ACTION;
+    const bool aStatic = a->hotkeyActionSetting().kind == TActionSetting::ACTION;
+    const bool bStatic = b->hotkeyActionSetting().kind == TActionSetting::ACTION;
     const bool aButton = aStatic && isButton(a);
     const bool bButton = bStatic && isButton(b);
     const bool aPlain = aStatic && !aButton;
@@ -1344,13 +1224,13 @@ bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
         return false;
     if (!(aStatic || aButton || !bButton))
         return true;
-    if (a->first == b->first)
-        return hotkeySequenceLess(a->second, b->second);
-    if (a->first.isEmpty())
+    if (a->firstKeySequence() == b->firstKeySequence())
+        return hotkeySequenceLess(a->secondKeySequence(), b->secondKeySequence());
+    if (a->firstKeySequence().isEmpty())
         return false;
-    if (b->first.isEmpty())
+    if (b->firstKeySequence().isEmpty())
         return true;
-    return hotkeySequenceLess(a->first, b->first);
+    return hotkeySequenceLess(a->firstKeySequence(), b->firstKeySequence());
 }
 
 }
@@ -1358,6 +1238,8 @@ bool hotkeyRowLess(const THotkeyActionRow* a, const THotkeyActionRow* b)
 /// CIP's row builder: a row per static action (its first
 /// two keys of the current set and chat mode), then a row per other setting
 /// (a second binding of the same setting gives it its second key), sorted.
+/// A row is visible when it belongs to the hotkey mode and its description or
+/// one of its key texts contains the name filter (case-insensitive).
 void THotkeysOptionsPage::rebuildModel()
 {
     m_hotkeyModel.clear();
@@ -1369,12 +1251,13 @@ void THotkeysOptionsPage::rebuildModel()
     const THotkeySet* set = m_options.set(currentSetName());
     const std::vector<THotkeyBinding>& bindings = set ? (m_chatModeOn ? set->chatOn : set->chatOff) : NoBindings;
 
-    std::vector<THotkeyActionRow*> rows;
-    const auto addRow = [this, &rows](const EHotkeyMode mode, const TActionSetting& setting) {
-        auto* row = new THotkeyActionRow(this);
-        row->mode = mode;
-        row->setting = setting;
+    std::vector<TTibiaHotkeyActionSettingQmlWrapper*> rows;
+    std::vector<EHotkeyMode> modes;
+    const auto addRow = [this, &rows, &modes](const EHotkeyMode mode, const TActionSetting& setting, const QKeySequence& first) {
+        auto* row = new TTibiaHotkeyActionSettingQmlWrapper(first, this);
+        row->hotkeyActionSetting() = setting;
         rows.push_back(row);
+        modes.push_back(mode);
         return row;
     };
 
@@ -1392,20 +1275,20 @@ void THotkeysOptionsPage::rebuildModel()
         setting.action = name;
         const input::IGameActionPtr action = input::TKeyboardShortcutHandler::staticAction(name);
         const bool button = input::gameActionAs<input::TGameActionActionButtonTriggered>(action) != nullptr;
-        THotkeyActionRow* row = addRow(button ? ActionButtons : DefaultHotkeys, setting);
+        TTibiaHotkeyActionSettingQmlWrapper* row = addRow(button ? ActionButtons : DefaultHotkeys, setting, QKeySequence());
         for (const THotkeyBinding& binding : bindings) {
             if (!(binding.setting == setting))
                 continue;
-            if (row->first.isEmpty())
-                row->first = binding.keys;
-            else if (row->second.isEmpty())
-                row->second = binding.keys;
+            if (row->firstKeySequence().isEmpty())
+                row->setFirstKeySequence(binding.keys);
+            else if (row->secondKeySequence().isEmpty())
+                row->setSecondKeySequence(binding.keys);
         }
         // qtclient: an unbound pack action shows its default keys.
-        if (row->first.isEmpty()) {
+        if (row->firstKeySequence().isEmpty()) {
             for (const auto& product : input::TKeyboardShortcutHandler::productActions())
                 if (product.name == name && !product.defaultKeys.isEmpty())
-                    row->first = product.defaultKeys;
+                    row->setFirstKeySequence(product.defaultKeys);
         }
     }
     const size_t staticRows = rows.size();
@@ -1413,36 +1296,41 @@ void THotkeysOptionsPage::rebuildModel()
         if (binding.setting.kind == TActionSetting::ACTION)
             continue;
         const auto existing = std::find_if(rows.begin() + static_cast<std::ptrdiff_t>(staticRows), rows.end(),
-                                           [&](const THotkeyActionRow* row) { return row->setting == binding.setting; });
+                                           [&](const TTibiaHotkeyActionSettingQmlWrapper* row) {
+                                               return row->hotkeyActionSetting() == binding.setting;
+                                           });
         if (existing != rows.end()) {
-            (*existing)->second = binding.keys;
+            (*existing)->setSecondKeySequence(binding.keys);
             continue;
         }
-        THotkeyActionRow* row = addRow(CustomHotkeys, binding.setting);
-        row->first = binding.keys;
+        TTibiaHotkeyActionSettingQmlWrapper* row = addRow(CustomHotkeys, binding.setting, binding.keys);
         if (binding.setting.objectId != 0)
-            row->appearance = hotkeyObjectAppearance(binding.setting);
+            row->setObjectAppearanceInstance(hotkeyObjectAppearance(binding.setting));
     }
-    for (THotkeyActionRow* row : rows)
-        row->sync();
+    for (size_t i = 0; i < rows.size(); ++i) {
+        TTibiaHotkeyActionSettingQmlWrapper* row = rows[i];
+        bool visible = modes[i] == m_hotkeyMode;
+        if (visible) {
+            const QString texts[] = { row->descriptionText(), row->firstHotkeyText(), row->secondHotkeyText() };
+            visible = std::any_of(std::begin(texts), std::end(texts),
+                                  [this](const QString& text) { return text.indexOf(m_nameFilter, 0, Qt::CaseInsensitive) != -1; });
+        }
+        row->setVisible(visible);
+    }
     std::sort(rows.begin(), rows.end(), hotkeyRowLess);
-    for (THotkeyActionRow* row : rows)
+    for (TTibiaHotkeyActionSettingQmlWrapper* row : rows)
         m_rows.append(row);
 
     updateHotkeyListModel();
 }
 
+/// hotkeyModel: the visible rows.
 void THotkeysOptionsPage::updateHotkeyListModel()
 {
     m_hotkeyModel.clear();
-    const QString filter = m_nameFilter.trimmed();
     for (QObject* object : std::as_const(m_rows)) {
-        auto* row = static_cast<THotkeyActionRow*>(object);
-        row->matchesFilter = filter.isEmpty() || row->descriptionText().contains(filter, Qt::CaseInsensitive)
-                          || row->firstHotkeyText().contains(filter, Qt::CaseInsensitive)
-                          || row->secondHotkeyText().contains(filter, Qt::CaseInsensitive);
-        if (row->mode == m_hotkeyMode && row->matchesFilter)
-            m_hotkeyModel.append(row);
+        if (static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(object)->isVisible())
+            m_hotkeyModel.append(object);
     }
     Q_EMIT hotkeyListModelChanged();
 }
@@ -1558,14 +1446,14 @@ void THotkeysOptionsPage::requestEditActionForHotkey(const int HotkeyActionSetti
 {
     if (HotkeyActionSettingIndex < 0 || HotkeyActionSettingIndex >= m_hotkeyModel.size())
         return;
-    auto* row = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
-    if (!row || row->setting.kind != TActionSetting::TEXT)
+    auto* row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
+    if (!row || row->hotkeyActionSetting().kind != TActionSetting::TEXT)
         return;
     auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
     prompt->setCaption(qtTrId("optionsmenu_individual_hotkeys"));
-    prompt->setText(row->setting.text);
+    prompt->setText(row->hotkeyActionSetting().text);
     prompt->setMaxInputLength(255);
-    const bool sendAutomatically = row->setting.sendAutomatically;
+    const bool sendAutomatically = row->hotkeyActionSetting().sendAutomatically;
     connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, HotkeyActionSettingIndex, sendAutomatically](const QString& entered) {
         onTextAssignedToHotkeyAction(HotkeyActionSettingIndex, -1, entered, sendAutomatically);
     });
@@ -1588,21 +1476,19 @@ void THotkeysOptionsPage::requestAddNewCustomHotkey()
 
 void THotkeysOptionsPage::onTextAssignedToHotkeyAction(const int HotkeyActionSettingIndex, int, const QString& Text, const bool SendAutomatically)
 {
-    THotkeyActionRow* row = nullptr;
+    TTibiaHotkeyActionSettingQmlWrapper* row = nullptr;
     const bool added = HotkeyActionSettingIndex == -1 || HotkeyActionSettingIndex >= m_hotkeyModel.size();
     if (added) {
-        row = new THotkeyActionRow(this);
-        row->mode = CustomHotkeys;
+        row = new TTibiaHotkeyActionSettingQmlWrapper(QKeySequence(), this);
         m_rows.append(row);
     } else {
-        row = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
+        row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
     }
     TActionSetting setting;
-    setting.kind = TActionSetting::TEXT;
-    setting.text = Text;
-    setting.sendAutomatically = SendAutomatically;
-    row->setting = setting;
-    row->sync();
+    setting.setChatText(Text);
+    setting.setSendAutomatically(SendAutomatically);
+    row->hotkeyActionSetting() = setting;
+    row->notifyChanged();
     commitRows(true);
     if (added)
         rebuildModel();
@@ -1612,13 +1498,14 @@ void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionS
 {
     if (HotkeyActionSettingIndex < 0 || HotkeyActionSettingIndex >= m_hotkeyModel.size())
         return;
-    auto* row = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
-    if (!row || row->setting.isEmpty())
+    auto* row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
+    if (!row || row->hotkeyActionSetting().isEmpty())
         return;
     m_editRow = row;
     m_editKey = KeySequenceIndex;
-    const QKeySequence current = KeySequenceIndex == 0 ? row->first : row->second;
-    const QString actionName = row->setting.kind == TActionSetting::ACTION ? row->setting.action : QString();
+    const QKeySequence current = KeySequenceIndex == 0 ? row->firstKeySequence() : row->secondKeySequence();
+    const TActionSetting& setting = row->hotkeyActionSetting();
+    const QString actionName = setting.kind == TActionSetting::ACTION ? setting.action : QString();
     auto* dialog = new gamewindow::TRecordKeyboardShortcutDialogController(row->descriptionText(), actionName, m_chatModeOn, current, this);
     connect(dialog, &gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
             &THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting);
@@ -1627,33 +1514,33 @@ void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionS
 
 void THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting(const QKeySequence& NewKeySequence)
 {
-    auto* edited = static_cast<THotkeyActionRow*>(m_editRow);
+    auto* edited = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_editRow);
     if (!edited || !m_rows.contains(edited))
         return;
     // A key runs one action per chat mode: other rows lose it.
     if (!NewKeySequence.isEmpty()) {
         for (QObject* object : std::as_const(m_rows)) {
-            auto* row = static_cast<THotkeyActionRow*>(object);
+            auto* row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(object);
             bool changed = false;
-            if (row->first == NewKeySequence) {
-                row->first = QKeySequence();
+            if (row->firstKeySequence() == NewKeySequence) {
+                row->setFirstKeySequence(QKeySequence());
                 changed = true;
             }
-            if (row->second == NewKeySequence) {
-                row->second = QKeySequence();
+            if (row->secondKeySequence() == NewKeySequence) {
+                row->setSecondKeySequence(QKeySequence());
                 changed = true;
             }
             if (changed)
-                row->sync();
+                row->notifyChanged();
         }
     }
     if (m_editKey == 0)
-        edited->first = NewKeySequence;
+        edited->setFirstKeySequence(NewKeySequence);
     else if (m_editKey == 1)
-        edited->second = NewKeySequence;
+        edited->setSecondKeySequence(NewKeySequence);
     else
         return;
-    edited->sync();
+    edited->notifyChanged();
     commitRows(true);
 }
 

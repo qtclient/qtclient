@@ -18,7 +18,7 @@
 #include <QPoint>
 #include <QRect>
 #include <QSize>
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 
 namespace tibia::game {
 class TGameserverGameSession;
@@ -327,7 +327,7 @@ public:
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };
     /// The game connection of the running session (null when offline).
-    std::shared_ptr<tibia::network::TGameserverNetworkPacketProcessor> m_gameConnection;
+    std::shared_ptr<tibia::network::TGameserverSessionNetwork> m_gameConnection;
     tibia::shared::TFrameStopWatch m_dashTimer;
     tibia::schedule::TScheduledTaskPtr m_pingEvent;
     tibia::schedule::TScheduledTaskPtr m_checkConnectionEvent;

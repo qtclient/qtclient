@@ -132,8 +132,6 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     , m_newsStorage(std::make_shared<news::TNewsStorage>(shared::TClockService::process()))
     , m_newsDiskIO(std::make_shared<news::TNewsDiskIOAsync>(m_fileSystemHelper))
     , m_eventsStorage(std::make_unique<news::TEventsStorage>())
-    , m_boostedUploader(std::make_unique<game::TBoostedCreatureRequestUploader>())
-    , m_liveInfoUploader(std::make_unique<game::TLiveInformationRequestUploader>())
     , m_showOffUploader(std::make_unique<game::TShowOffRequestUploader>())
     , m_newsDialog(std::make_unique<TNewsDialogController>(m_newsStorage.get()))
     , m_newsButton(std::make_unique<TNewsButtonController>())
@@ -187,10 +185,6 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
         }
     });
 
-    connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
-            &TGameWindowController::onBoostedCreatureReceived);
-    connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
-            &TGameWindowController::onLiveInformationReceived);
     connect(m_showOffUploader.get(), &game::TShowOffRequestUploader::showOffReceived, this,
             &TGameWindowController::onShowOffReceived);
     // qtclient: CIP's interval is not recoverable; once a minute catches the server save.
@@ -271,10 +265,16 @@ void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
 void TGameWindowController::configureClientServices(const QUrl& url, const QString& clientRevision)
 {
     const QUrl service = url.isEmpty() ? QUrl() : url;
-    m_boostedUploader->setServiceUrl(service);
-    m_boostedUploader->setClientRevision(clientRevision);
-    m_liveInfoUploader->setServiceUrl(service);
-    m_liveInfoUploader->setClientRevision(clientRevision);
+    m_boostedUploader = std::make_unique<game::TBoostedCreatureRequestUploader>(
+        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
+        shared::TClockService::process());
+    connect(m_boostedUploader.get(), &game::TBoostedCreatureRequestUploader::boostedCreatureReceived, this,
+            &TGameWindowController::onBoostedCreatureReceived);
+    m_liveInfoUploader = std::make_unique<game::TLiveInformationRequestUploader>(
+        service, std::make_shared<shared::TJsonDocumentHttpPostSender>(), m_fileSystemHelper,
+        shared::TClockService::process());
+    connect(m_liveInfoUploader.get(), &game::TLiveInformationRequestUploader::newLiveInformationReceived, this,
+            &TGameWindowController::onLiveInformationReceived);
     m_showOffUploader->setServiceUrl(service);
     m_showOffUploader->setClientRevision(clientRevision);
     // CIP builds the client services uploaders with their URL.
@@ -311,23 +311,27 @@ void TGameWindowController::requestStartScreenServices()
     // on a fresh Module. Defer multiplex until account login (setAuthenticated).
     if (!tibia::platform::kStartScreenServicesBeforeLogin)
         return;
-    m_liveInfoUploader->requestUpdate();
+    if (m_liveInfoUploader)
+        m_liveInfoUploader->requestUpdate();
     if (m_eventsUploader)
         m_eventsUploader->requestUpdate();
     if (m_newsUploader)
         m_newsUploader->requestUpdate();
-    m_boostedUploader->requestUpdate();
+    if (m_boostedUploader)
+        m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 }
 
 void TGameWindowController::requestDeferredStartScreenServices()
 {
-    m_liveInfoUploader->requestUpdate();
+    if (m_liveInfoUploader)
+        m_liveInfoUploader->requestUpdate();
     if (m_eventsUploader)
         m_eventsUploader->requestUpdate();
     if (m_newsUploader)
         m_newsUploader->requestUpdate();
-    m_boostedUploader->requestUpdate();
+    if (m_boostedUploader)
+        m_boostedUploader->requestUpdate();
     m_showOffUploader->requestUpdate();
 }
 
@@ -408,11 +412,11 @@ void TGameWindowController::setHintAreaRichText(const QString& richText)
 
 void TGameWindowController::onBoostedCreatureReceived()
 {
-    const QJsonObject reply = m_boostedUploader->reply();
-    const int race = reply.value(QStringLiteral("creatureraceid")).toInt(reply.value(QStringLiteral("raceid")).toInt());
-    const QString name = reply.value(QStringLiteral("boostname")).toString();
-    const int bossRace = reply.value(QStringLiteral("bossraceid")).toInt();
-    const QString bossName = reply.value(QStringLiteral("bossname")).toString();
+    const game::TBoostedCreatureInformation& boosted = m_boostedUploader->boostedCreature();
+    const int race = boosted.creatureRaceId;
+    const QString name;
+    const int bossRace = boosted.bossRaceId;
+    const QString bossName;
     if (race == m_boostedCreatureRace && name == m_boostedCreatureName && bossRace == m_boostedBossRace && bossName == m_boostedBossName)
         return;
     m_boostedCreatureRace = race;
@@ -424,12 +428,12 @@ void TGameWindowController::onBoostedCreatureReceived()
 
 void TGameWindowController::onLiveInformationReceived()
 {
-    const QJsonObject reply = m_liveInfoUploader->reply();
-    const int players = reply.value(QStringLiteral("playersonline")).toInt();
-    const int twitchStreams = reply.value(QStringLiteral("twitchstreams")).toInt();
-    const int twitchViewers = reply.value(QStringLiteral("twitchviewer")).toInt();
-    const int youTubeStreams = reply.value(QStringLiteral("gamingyoutubestreams")).toInt();
-    const int youTubeViewers = reply.value(QStringLiteral("gamingyoutubeviewer")).toInt();
+    const game::TLiveInformation& live = m_liveInfoUploader->liveInformation();
+    const int players = live.playersOnline;
+    const int twitchStreams = live.twitchStreams;
+    const int twitchViewers = live.twitchViewers;
+    const int youTubeStreams = live.gamingYouTubeStreams;
+    const int youTubeViewers = live.gamingYouTubeViewers;
     if (players == m_onlinePlayerCount && twitchStreams == m_twitchStreamCount && twitchViewers == m_twitchViewerCount
         && youTubeStreams == m_youTubeStreamCount && youTubeViewers == m_youTubeViewerCount)
         return;

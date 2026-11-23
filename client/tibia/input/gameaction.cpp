@@ -376,7 +376,7 @@ IGameActionPtr makeGameAction(const EGameAction type)
     case EGameAction::CONTEXT_MENU_SEPARATOR:
         return std::make_shared<TGameActionContextMenuSeparator>();
     case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
-        return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
+        return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>(QString());
     case EGameAction::TOGGLE_MOUNTED:
         return std::make_shared<TGameActionToggleMounted>();
     case EGameAction::GET_CHAT_CHANNEL_LIST:

@@ -1,6 +1,9 @@
 #include "weeklytaskscontroller.h"
 
+#include "app/clientoptions.h"
+#include "container/containergameactionprovider.h"
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "input/gameaction.h"
@@ -33,6 +36,19 @@ constexpr std::pair<int, int> PointsPerKillTask[] = { { 0, 25 }, { 1, 50 }, { 2,
 constexpr int PointsPerDeliverTask = 75;
 /// The level each difficulty needs (difficulties 1 to 3).
 constexpr int RequiredLevels[] = { 30, 150, 400 };
+
+using A = input::EGameAction;
+constexpr int ContainerContext = input::TGameActionMapper::ContainerContext;
+constexpr auto ControlSchemeOption = "controlSchemeIndex";
+
+/// The context menu of a delivery task's object (CIP: the container slot order).
+constexpr A DeliveryItemContextMenuOrder[] = {
+    A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::USE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW,
+    A::OPEN_PARENT_CONTAINER, A::QUICK_LOOT, A::WRAP, A::UNWRAP, A::CONTEXT_MENU_SEPARATOR, A::MOVE_UP, A::ROTATE_OBJECT,
+    A::CONFIGURE_SHOW_OFF_SOCKET, A::TRADE_ITEM, A::MARKET_BROWSE, A::CONTEXT_MENU_SEPARATOR, A::OPEN_MANAGE_LOOT_CONTAINER,
+    A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST, A::CONTEXT_MENU_SEPARATOR, A::STASH_OPEN_STOW_STACK_DIALOG,
+    A::STASH_STOW_TYPE, A::STASH_STOW_CONTAINER_CONTENT, A::CONTEXT_MENU_SEPARATOR, A::GET_TEXT_FOR_REPORT,
+};
 
 QString raceCaption(const uint16_t raceId)
 {
@@ -68,7 +84,14 @@ TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
     , m_killModel(new taskboard::TMonsterKillTasksListModel(this))
     , m_deliveryModel(new taskboard::TDeliveryTasksListModel(this))
     , m_deliverTaskConfirmationDialog(new TMessageDialogController(this))
+    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
 {
+    // Host: CipSoft passes the game window's mapper in; qtclient's follows the
+    // control scheme option itself.
+    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
+        if (name == QLatin1String(ControlSchemeOption))
+            m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
+    });
     m_monsterKillTasks = m_killModel;
     m_deliveryTasks = m_deliveryModel;
     for (const auto& [count, factor] : RewardTiers) {
@@ -348,6 +371,24 @@ QVariantList TWeeklyTasksController::getTaskRewardFactors() { return m_taskRewar
 
 QVariantList TWeeklyTasksController::getTaskRewardCounts() { return m_taskRewardCounts; }
 
-void TWeeklyTasksController::onDeliveryItemClicked(int, int, int) {}
+void TWeeklyTasksController::onDeliveryItemClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
+{
+    if (!m_gameSession)
+        return;
+    const input::TGameActionList candidates = container::TContainerGameActionProvider::typeActions(static_cast<uint16_t>(TypeID));
+    const input::IGameActionPtr action =
+        m_mapper.map(candidates, ContainerContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
+    if (!action)
+        return;
+    if (action->gameActionType() != A::CONTEXT_MENU) {
+        Q_EMIT publishGameAction(action);
+        return;
+    }
+    const input::TGameActionList entries = input::contextMenuActions(candidates, DeliveryItemContextMenuOrder);
+    if (entries.empty())
+        return;
+    if (TContextMenuController* menu = TContextMenuController::instance())
+        menu->showGameActions(entries, ContainerContext, m_mapper);
+}
 
 }

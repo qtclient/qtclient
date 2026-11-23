@@ -173,6 +173,14 @@ int TInventoryGemListModel::rowOfGem(const int gemId) const
 
 QVariantMap TInventoryGemListModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }
 
+QVariantMap TInventoryGemListModel::dataForId(const int gemId) const
+{
+    const int row = rowOfGem(gemId);
+    if (row < 0)
+        return {};
+    return modelRowData(*this, index(row, 0));
+}
+
 TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryGemListModel* source, QObject* parent)
     : cip::tibia::skillwheel::TInventoryGemSortFilterProxyModel(parent)
     , m_source(source)

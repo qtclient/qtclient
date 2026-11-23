@@ -1177,14 +1177,6 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     m_revealLesserGemCost = revealCost(0);
     m_revealRegularGemCost = revealCost(1);
     m_revealGreaterGemCost = revealCost(2);
-    connect(m_filter, &TInventoryGemSortFilterProxyModel::filterChanged, this, [this] {
-        if (m_selectedGemId < 0)
-            return;
-        const int row = m_list->rowOfGem(m_selectedGemId);
-        const QModelIndex filtered = row < 0 ? QModelIndex() : m_filter->mapFromSource(m_list->index(row, 0));
-        if (filtered.isValid())
-            setSelectedGemIndex(m_pages->showSourceRow(filtered.row()));
-    });
     connect(m_storage, &TSkillWheelStorage::gemInventoryChanged, this, &TGemAtelierPageController::onGemsChanged);
     connect(m_storage, &TSkillWheelStorage::currentSkillWheelChanged, this, &TGemAtelierPageController::onWheelChanged);
     connect(m_storage, &TSkillWheelStorage::modGradesChanged, this, &TGemAtelierPageController::onWheelChanged);
@@ -1210,8 +1202,12 @@ void TGemAtelierPageController::onGemsChanged()
     updateSockets();
     Q_EMIT gemInventoryChanged();
     Q_EMIT unrevealedGemsChanged();
-    if (m_selectedGemId >= 0)
-        selectGem(m_selectedGemId, false);
+    if (m_gemToReselect) {
+        if (m_storage->gem(*m_gemToReselect))
+            selectGem(*m_gemToReselect, false);
+        else
+            m_gemToReselect.reset();
+    }
 }
 
 void TGemAtelierPageController::onWheelChanged()
@@ -1224,8 +1220,6 @@ void TGemAtelierPageController::onWheelChanged()
 /// CipSoft: eight quality-typed vessels unlocked by Gem Vessel perks.
 void TGemAtelierPageController::updateSockets()
 {
-    const int unlocked = activeVesselCount();
-    bool unused = false;
     for (int v = 0; v < VesselCount; ++v) {
         const TWheel& wheel = m_storage->currentWheel();
         const std::optional<TGem>& gem = wheel.vessels[v];
@@ -1233,22 +1227,27 @@ void TGemAtelierPageController::updateSockets()
         m_sockets[v] = new TQmlSocketedGem(v, wheel.vocation - 1, gem, this);
         if (old)
             old->deleteLater();
-        if (v < unlocked && !gem)
-            unused = true;
     }
-    m_activeVesselCount = unlocked;
-    m_showUnusedVesselsNotification = unused;
     Q_EMIT vesselChanged();
 }
 
+/// The Gem Vessel perks of the current wheel; none without one.
 int TGemAtelierPageController::activeVesselCount() const
 {
-    return unlockedVesselCount(m_storage->currentWheel().points, m_storage->vocationIndex());
+    const std::optional<TWheel> wheel = m_storage->currentSkillWheel();
+    if (!wheel)
+        return 0;
+    return static_cast<uint8_t>(mediumPerkCount(wheel->points, VesselNodePerk, m_storage->vocationIndex()));
 }
 
+/// One of the active vessels is empty while the wheel can be changed.
 bool TGemAtelierPageController::showUnusedVesselsNotification() const
 {
-    return m_showUnusedVesselsNotification;
+    const std::optional<TWheel> wheel = m_storage->currentSkillWheel();
+    if (!wheel)
+        return false;
+    const auto active = static_cast<uint8_t>(mediumPerkCount(wheel->points, VesselNodePerk, m_storage->vocationIndex()));
+    return hasEmptyVessel(*wheel, active) && canBeChanged();
 }
 
 QString TGemAtelierPageController::unrevealedLesserGemName() const { return itemName(unrevealedGemTypeId(m_storage->vocationIndex(), 0)); }
@@ -1260,17 +1259,31 @@ int TGemAtelierPageController::unrevealedGreaterGemAppearanceType() const { retu
 
 /// Vessels are part of the edited wheel: socketing changes the current wheel,
 /// Apply sends it.
+/// VesselIndex -1 takes the gem out of its vessel; a vessel index sockets it there, or takes it
+/// out when it already is there. The gem is selected again once the inventory changes.
 void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int VesselIndex)
 {
-    if (!canBeChanged() || VesselIndex < 0 || VesselIndex >= activeVesselCount())
+    std::optional<TWheel> wheel = m_storage->currentSkillWheel();
+    if (!wheel)
         return;
     const std::optional<TGem> gem = m_storage->gem(GemId);
-    TWheel wheel = m_storage->currentWheel();
-    if (wheel.vessels[VesselIndex] && wheel.vessels[VesselIndex]->id == GemId)
-        unsocketGem(wheel, VesselIndex);
-    else if (!gem || !socketGem(wheel, *gem, VesselIndex))
+    if (!gem)
         return;
-    m_storage->setCurrentSkillWheel(wheel);
+    const std::optional<int> socketedIn = vesselOfGem(*wheel, gem->id);
+    if (VesselIndex == -1 && socketedIn) {
+        unsocketGem(*wheel, *socketedIn);
+    } else {
+        const auto vessel = static_cast<uint8_t>(VesselIndex);
+        if (vessel >= VesselCount)
+            throw std::invalid_argument("TVessels::Index: value out of range");
+        const std::optional<TGem>& occupant = wheel->vessels[vessel];
+        if (socketedIn && *socketedIn == vessel && (!occupant || occupant->id == GemId))
+            unsocketGem(*wheel, *socketedIn);
+        else
+            socketGem(*wheel, *gem, vessel);
+    }
+    m_gemToReselect = gem->id;
+    m_storage->setCurrentSkillWheel(*wheel);
 }
 
 void TGemAtelierPageController::closeMessageDialog()
@@ -1323,24 +1336,17 @@ int TGemAtelierPageController::unrevealedGemAppearanceType(const cip::tibia::qml
 
 QVariantMap TGemAtelierPageController::gemDataForId(const int GemId)
 {
-    const int row = m_list->rowOfGem(GemId);
-    if (row < 0)
+    if (GemId < 0 || !m_list)
         return {};
-    const QModelIndex index = m_list->index(row, 0);
-    QVariantMap out;
-    const auto roles = m_list->roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        out.insert(QString::fromUtf8(it.value()), m_list->data(index, it.key()));
-    return out;
+    return m_list->dataForId(GemId);
 }
 
 void TGemAtelierPageController::selectGem(const int GemId) { selectGem(GemId, false); }
 
 /// Shows the gem: with `NarrowDownFilters` the quality filter becomes the gem's; when the filters
-/// still hide it, the mod name and locked-only filters are cleared.
+/// still hide it, the mod name and locked-only filters are cleared. The gem's page opens.
 void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDownFilters)
 {
-    m_selectedGemId = GemId;
     const std::optional<TGem> gem = m_storage->gem(GemId);
     if (!gem)
         return;
@@ -1352,8 +1358,15 @@ void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDown
         m_filter->setShowLockedOnly(false);
         filtered = m_filter->indexOfGem(GemId);
     }
-    if (filtered.isValid())
-        setSelectedGemIndex(m_pages->showSourceRow(filtered.row()));
+    setSelectedGemIndex(m_pages->showSourceRow(filtered.row()));
+}
+
+void TGemAtelierPageController::setSelectedGemIndex(const QPersistentModelIndex& Index)
+{
+    if (Index == m_selectedGemIndex)
+        return;
+    m_selectedGemIndex = Index;
+    m_gemToReselect.reset();
     Q_EMIT selectedGemIndexChanged();
 }
 

@@ -83,6 +83,10 @@ void TMinimapTileManager::handleGameAction(const input::IGameActionPtr& pGameAct
         if (identifier.identifierKind() != sprites::ISpriteIdentifier::MinimapTileIdentifier)
             return;
         dropTile(dynamic_cast<const sprites::TMinimapTileSpritesheetIdentifier&>(identifier).tileId());
+    } else if (pGameAction->gameActionType() == input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES) {
+        const auto* action = input::gameActionAs<input::TGameActionLoadDefaultMinimapTilesFromResources>(pGameAction);
+        if (action)
+            m_tileStorage->loadDefaultMinimapTilesFromResources(action->directory());
     }
 }
 

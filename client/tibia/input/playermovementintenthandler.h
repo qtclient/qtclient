@@ -1,6 +1,7 @@
 #pragma once
 
 #include "creatures/movementdirection.h"
+#include "game/playermovementintenthandlerconfiguration.h"
 #include "input/inputciptypes.h"
 #include "input/movementpathplanner.h"
 #include "worldmap/coordinates.h"
@@ -12,6 +13,7 @@
 #include <QString>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -66,6 +68,9 @@ public:
         std::function<bool(const worldmap::TWorldMapCoordinate&, int result)> claimUnreachable;
         /// The local player's state bits (bit 19 rooted, bit 20 feared).
         std::function<quint64()> playerStates;
+        /// How early the next step goes out (the session meta info's
+        /// configuration; none: the defaults).
+        std::shared_ptr<const game::TPlayerMovementIntentHandlerConfiguration> configuration;
     };
 
     explicit TPlayerMovementIntentHandler(Environment environment, QObject* parent = nullptr);
@@ -120,6 +125,8 @@ private:
     void sendRotate(creatures::ECreatureLookDirection direction);
     /// The status line shows `text` in the overlay colour of message mode 21.
     void showStatusMessage(const QString& text);
+    /// The time until the next step may go out: the step's duration less the
+    /// configured latency, but at least the configured share of the duration.
     qint64 nextStepDelay(const worldmap::TWorldMapCoordinate& from, const worldmap::TWorldMapCoordinate& to) const;
     EFieldState fieldState(const worldmap::TWorldMapCoordinate& coordinate) const;
     bool canStepTowards(creatures::EMovementDirection direction) const;

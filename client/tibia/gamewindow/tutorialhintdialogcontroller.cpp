@@ -18,19 +18,6 @@ namespace {
 using A = input::EGameAction;
 using Args = std::vector<std::any>;
 
-QQuickItem* mapWindowPaneItem()
-{
-    TDialogStackController* stack = TDialogStackController::instance();
-    if (!stack || !stack->dialogPlaceholder())
-        return nullptr;
-    QQuickItem* root = stack->dialogPlaceholder();
-    while (root->parentItem())
-        root = root->parentItem();
-    if (QQuickItem* pane = root->findChild<QQuickItem*>(QStringLiteral("mapWindowPane")))
-        return pane;
-    return stack->dialogPlaceholder()->parentItem();
-}
-
 struct HintAssets
 {
     QString captionId;
@@ -117,8 +104,9 @@ const HintAssets* hintAssets(const int id)
 
 }
 
-TTutorialHintDialogController::TTutorialHintDialogController(QObject* parent)
+TTutorialHintDialogController::TTutorialHintDialogController(QQuickItem* mapWindowPane, QObject* parent)
     : TDialogController(QStringLiteral("tutorial/TutorialHintDialog.qml"), parent)
+    , m_mapWindowPane(mapWindowPane)
 {
 }
 
@@ -204,12 +192,12 @@ QPoint TTutorialHintDialogController::youAreHereCoordianteWithinImage() const
     return { int(position.x) - 0x7b80, int(position.y) - 0x7800 };
 }
 
-QQuickItem* TTutorialHintDialogController::mapWindowPane() { return mapWindowPaneItem(); }
+QQuickItem* TTutorialHintDialogController::mapWindowPane() { return m_mapWindowPane; }
 
-TTutorialShell::TTutorialShell(QObject* parent)
+TTutorialShell::TTutorialShell(QQuickItem* mapWindowPane, QObject* parent)
     : QObject(parent)
-    , m_hint(new TTutorialHintDialogController(this))
-    , m_vocation(new TVocationSelectionDialogController(this))
+    , m_hint(new TTutorialHintDialogController(mapWindowPane, this))
+    , m_vocation(new TVocationSelectionDialogController(mapWindowPane, this))
 {
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onTutorialHint", [this](GameObject*, const Args& args) {
         if (!args.empty())

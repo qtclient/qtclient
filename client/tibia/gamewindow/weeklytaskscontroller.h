@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/taskboardmodels.h"
+#include "input/gameactionmapper.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -85,6 +86,8 @@ private:
     TMessageDialogController* m_deliverTaskConfirmationDialog = nullptr;
     taskboard::TMonsterKillTasksListModel* m_killModel = nullptr;
     taskboard::TDeliveryTasksListModel* m_deliveryModel = nullptr;
+    /// Maps a delivery object click to its game action.
+    input::TGameActionMapper m_mapper;
     /// A request went out; the next weekly data message clears it.
     bool m_requestPending = false;
 };

@@ -1,5 +1,6 @@
 #include "creatures/creaturesgameactionhandler.h"
 
+#include "appearances/creatureplaceholderappearanceinstance.h"
 #include "chat/chatchannel.h"
 #include "creatures/creaturestorage.h"
 #include "shared/tibiaclipboardhelper.h"
@@ -75,6 +76,9 @@ void TCreaturesGameActionHandler::handleGameAction(const tibia::input::IGameActi
         break;
     case A::SET_SHARED_EXPERIENCE:
         setSharedExperience(pGameAction);
+        break;
+    case A::ADD_GUI_TUTORIAL_MARKER:
+        addGuiTutorialMarker(pGameAction);
         break;
     default:
         break;
@@ -222,6 +226,32 @@ void TCreaturesGameActionHandler::joinAggression(const input::IGameActionPtr& pG
     protobuf::protocol::GameclientMessageJoinAggression message;
     message.set_creature_id(input::creatureIdOf(*pGameAction));
     Q_EMIT sendJoinAggression(message);
+}
+
+void TCreaturesGameActionHandler::addGuiTutorialMarker(const input::IGameActionPtr& pGameAction)
+{
+    // A marker on a creature somewhere on the world map is published again,
+    // located at the field of the creature's placeholder.
+    const auto* marker = input::gameActionAs<input::TGameActionAddGUITutorialMarker>(pGameAction);
+    if (!marker || !marker->location()
+        || marker->location()->gameActionContextType() != input::EGameActionContextType::LOCATION_WORLD_MAP
+        || !marker->object()
+        || marker->object()->gameActionContextType() != input::EGameActionContextType::OBJECT_CREATURE)
+        return;
+    const std::shared_ptr<TCreature> creature = m_creatureStorage->creatureAt(input::creatureIdOf(marker->object().get()));
+    if (!creature)
+        return;
+    // qtclient: CipSoft uses the placeholder and its creature without checking them.
+    const std::shared_ptr<appearances::TCreaturePlaceholderAppearanceInstance>& placeholder =
+        creature->placeholderAppearance();
+    const std::shared_ptr<TCreature> placed = placeholder ? placeholder->creature() : nullptr;
+    if (!placed)
+        return;
+    // qtclient: the actions are immutable, so the marker is published as a copy
+    // with the new location (CipSoft sets the location on the action itself).
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionAddGUITutorialMarker>(
+        std::make_shared<const input::TLocationWorldMapCoordinateContext>(placed->position()), marker->object(),
+        marker->markerId()));
 }
 
 }

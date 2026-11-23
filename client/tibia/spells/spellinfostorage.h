@@ -130,7 +130,13 @@ class TSpellInfoStorage final : public cip::tibia::spells::TSpellInfoStorage
 {
     Q_OBJECT
 public:
+    /// Reads the spell table (spells.json) from the data directories.
+    TSpellInfoStorage();
+    /// The game client's table while a client exists (setInstance), else a
+    /// table of its own (tests, tools).
     static TSpellInfoStorage* instance();
+    /// Installs the game client's table; null goes back to the fallback.
+    static void setInstance(TSpellInfoStorage* storage);
 
     /// The table's record of a spell, without the server's modifications;
     /// null for none.
@@ -190,8 +196,6 @@ public:
     static QString iconUrl(const TSpellInfo& spell);
 
 private:
-    TSpellInfoStorage();
-
     std::map<int, TSpellInfo> m_spells;
     std::unordered_map<uint16_t, std::vector<TSpellModification>> m_modifications;
     std::vector<uint16_t> m_unlockedSpells;

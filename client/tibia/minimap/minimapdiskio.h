@@ -2,6 +2,8 @@
 
 #include "minimap/minimaptile.h"
 
+#include "coordinate.h"
+
 #include <cip_gen.h>
 
 #include <QDir>
@@ -57,9 +59,8 @@ public:
     void loadTile(const Position& id) override;
     /// Writes the tile if it changed since it was read.
     void saveTile(const TMinimapTilePtr& tile) override;
-    /// Copies CIP's default minimap from `sourceDir` when the minimap directory
-    /// has no tiles yet; queued before reads, so they see the copies. Stands in
-    /// for CIP's LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES after the tutorial.
+    /// Host: copies CIP's default minimap from `sourceDir` when the minimap
+    /// directory has no tiles yet; queued before reads, so they see the copies.
     void importDefaultTiles(const QString& sourceDir);
     /// CipSoft default tiles under assets (wasm reads on demand instead of bulk-copy).
     void setDefaultTilesDir(const QString& sourceDir);
@@ -73,6 +74,10 @@ public:
 
     static QString colorFileName(const Position& id);
     static QString waypointFileName(const Position& id);
+    /// The tile id a "Minimap_Color_x_y_z.png" or "Minimap_WaypointCost_x_y_z.png"
+    /// file name stands for (five-digit x and y, one- or two-digit z); (0, 0, 0)
+    /// for any other name.
+    static shared::TCoordinate tileIdFromFileName(const QString& fileName);
     static QString markerFileName();
     /// Parses a marker file; throws std::invalid_argument when it is malformed.
     static tibia::protobuf::minimap::MinimapMarkerFileContent deserializeMinimapMarkerFileContent(const QByteArray& bytes);

@@ -332,6 +332,8 @@ public Q_SLOTS:
     void onChatMessageSendDirectly() override;
     void onSecondaryChannelClicked(int mouseButtonRaw, int keyboardModifiersRaw) override;
     void onSelectTabAsSecondaryChannel(int rowId) override;
+    /// The channel dialog's choice: OPEN_CHAT_CHANNEL with its identifier.
+    void onRequestOpenChanel(const tibia::chat::TChatChannelIdentifier& ChannelIdentifier);
 
 private:
     /// GET_CHAT_CHANNEL_LIST: asks the server; its answer opens the channel dialog.

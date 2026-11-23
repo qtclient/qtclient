@@ -48,18 +48,13 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
     : QObject(parent)
     , m_client(client)
     , m_gameWindow(gameWindow)
-    , m_createCharacter(new gamewindow::TCreateCharacterDialogController())
-    , m_createAccount(new gamewindow::TCreateAccountDialogController(this))
     , m_loginWait(new TLoginWaitDialogController(this))
     , m_error(makeBox(this, qtTrId("ok"), {}))
     , m_keepRenderer(makeBox(this, {}, {}))
 {
-    m_createCharacter->setParent(this);
     m_keepRenderer->setYesNoButtons();
 
     m_createAccountService = env.createAccountUrl();
-    m_createCharacter->setServiceUrl(m_createAccountService);
-    m_createAccount->setServiceUrl(m_createAccountService);
 
     connect(m_client, &client::TGameClient::showErrorAsPopupAndCriticalLog, this, &TSessionBootstrap::showError);
 
@@ -72,7 +67,7 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
 
     wireCreateCharacter();
 
-    connect(m_createAccount, &gamewindow::TCreateAccountDialogController::accountCreated, this,
+    connect(createAccount(), &gamewindow::TCreateAccountDialogController::accountCreated, this,
             [this](const QString& email, const QString& password) {
                 if (m_gameWindow) {
                     m_gameWindow->setAuthenticated(true);
@@ -91,26 +86,30 @@ TSessionBootstrap::TSessionBootstrap(client::TGameClient* client, const Launcher
             m_gameWindow->setAuthenticated(false);
     });
 
-    if (m_gameWindow) {
+    if (m_gameWindow)
         bindLoginWait(m_gameWindow);
-        connect(m_gameWindow, &gamewindow::TGameWindowController::createAccountRequested, this,
-                &TSessionBootstrap::openCreateAccount);
-    }
 }
 
 TSessionBootstrap::~TSessionBootstrap()
 {
 }
 
+gamewindow::TCreateCharacterDialogController* TSessionBootstrap::createCharacter() const
+{
+    return m_client->createCharacterDialogController();
+}
+
+gamewindow::TCreateAccountDialogController* TSessionBootstrap::createAccount() const
+{
+    return m_client->createAccountDialogController();
+}
+
 void TSessionBootstrap::installCreateCharacter(gamewindow::TCreateCharacterDialogController* controller)
 {
-    if (!controller || controller == m_createCharacter)
+    if (!controller || controller == createCharacter())
         return;
-    if (m_createCharacter)
-        m_createCharacter->deleteLater();
-    m_createCharacter = controller;
-    m_createCharacter->setParent(this);
-    m_createCharacter->setServiceUrl(m_createAccountService);
+    m_client->setCreateCharacterDialogController(controller);
+    controller->setServiceUrl(m_createAccountService);
     wireCreateCharacter();
 }
 
@@ -123,7 +122,7 @@ void TSessionBootstrap::wireCreateCharacter()
         connect(m_client, &client::TGameClient::characterSelectionRequested, this,
                 &TSessionBootstrap::openCreateCharacterIfAccountEmpty);
     m_characterCreated =
-        connect(m_createCharacter, &gamewindow::TCreateCharacterDialogController::characterCreated, this,
+        connect(createCharacter(), &gamewindow::TCreateCharacterDialogController::characterCreated, this,
                 [this](const QString& name, const QJsonObject& reply) {
                     m_client->refreshAccount(reply);
                 });
@@ -182,9 +181,7 @@ void TSessionBootstrap::closeConnectingDialog()
 
 void TSessionBootstrap::openCreateAccount()
 {
-    if (auto* stack = gamewindow::TDialogStackController::instance())
-        m_createAccount->setTooltipContainer(stack->dialogPlaceholder());
-    m_createAccount->showDialog();
+    m_client->onRequestCreateAccount();
 }
 
 void TSessionBootstrap::showError(const QString& message)
@@ -203,8 +200,8 @@ void TSessionBootstrap::promptKeepGraphicsEngine()
 
 void TSessionBootstrap::openCreateCharacter(const bool accountHasNoCharacters)
 {
-    m_createCharacter->setSessionKey(m_client->account().session.sessionKey);
-    m_createCharacter->open(accountHasNoCharacters);
+    createCharacter()->setSessionKey(m_client->account().session.sessionKey);
+    createCharacter()->open(accountHasNoCharacters);
 }
 
 }

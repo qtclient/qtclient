@@ -11,10 +11,12 @@
 #include "app/qtplatformwindow.h"
 #include "client/clientciptypes.h"
 #include "client/gameclient.h"
+#include "config/clientoptions.h"
 #include "config/hotkeyoptions.h"
 #endif
 #include "controllers/characterselectioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QCommandLineParser>
 #include <QDateTime>
@@ -414,7 +416,8 @@ int main(int argc, char** argv)
     }
 
 #ifdef TIBIA_WITH_GAMECORE
-    client::TGameClient gameClient;
+    client::TGameClient gameClient(engine.get(), std::make_shared<shared::TTibiaFileSystemHelper>(),
+                                   config::TClientOptions::instance());
     gameClient.setWindow(window);
 
     client::TGameClient::TGameWindowSetup setup;

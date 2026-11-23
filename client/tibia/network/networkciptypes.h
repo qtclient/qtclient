@@ -14,30 +14,6 @@ namespace network {
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-
-class TDualConnectionInfo final : public ::tibia::CipTyped {};
-
-
-class TGameserverNetworkPacketRawDataProcessor final : public ::tibia::CipTyped {};
-
-class TGameserverNetworkPacketReader final : public ::tibia::CipTyped {};
-
-class TGameserverNetworkPacketSequenceFlowProcessor final : public cip::tibia::network::TGameserverNetworkPacketSequenceFlowProcessor
-{
-    Q_OBJECT
-public:
-    using cip::tibia::network::TGameserverNetworkPacketSequenceFlowProcessor::TGameserverNetworkPacketSequenceFlowProcessor;
-};
-
-class TGameserverNetworkPacketWriter final : public ::tibia::CipTyped {};
-
-class TGameserverTCPConnection final : public cip::tibia::network::TGameserverTCPConnection
-{
-    Q_OBJECT
-public:
-    using cip::tibia::network::TGameserverTCPConnection::TGameserverTCPConnection;
-};
-
 class TNetworkQualityProtocolMessageHandler final : public cip::tibia::network::TNetworkQualityProtocolMessageHandler
 {
     Q_OBJECT
@@ -45,8 +21,5 @@ public:
     using cip::tibia::network::TNetworkQualityProtocolMessageHandler::TNetworkQualityProtocolMessageHandler;
 };
 
-class TUnencryptedRawMessageStream final : public ::tibia::CipTyped {};
-
 }
 }
-

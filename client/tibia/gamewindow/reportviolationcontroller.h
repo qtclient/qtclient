@@ -51,6 +51,15 @@ public:
     Q_INVOKABLE void cancelReport() override;
     Q_INVOKABLE void selectReportReason(int ModelIndex) override;
 
+    /// The report type's name.
+    QString dialogType() const override;
+    /// The captions of the reasons the report type offers.
+    QStringList ruleViolationReasons() const override;
+    /// The chosen reason's example; empty until a reason is chosen.
+    QString selectedReportReasonDescription() const override;
+    /// The chosen reason's caption; empty until a reason is chosen.
+    QString selectedReportReasonName() const override;
+
     /// The reasons a report type offers.
     static std::vector<Reason> reasons(EType type);
     /// The dialogType of a report type.
@@ -67,6 +76,8 @@ private:
     EType m_type = Name;
     uint32_t m_id = 0;
     int m_reasonId = -1;
+    /// The chosen reason (no caption before one is chosen).
+    Reason m_reason{};
     QDateTime m_lastReport;
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;

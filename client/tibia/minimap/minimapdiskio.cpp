@@ -4,6 +4,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 #include <stdexcept>
@@ -30,6 +31,22 @@ QString TMinimapDiskIOAsync::colorFileName(const Position& id)
 QString TMinimapDiskIOAsync::waypointFileName(const Position& id)
 {
     return QStringLiteral("Minimap_WaypointCost_%1_%2_%3.png").arg(id.x).arg(id.y).arg(id.z);
+}
+
+shared::TCoordinate TMinimapDiskIOAsync::tileIdFromFileName(const QString& fileName)
+{
+    shared::TCoordinate id;
+    const QRegularExpression pattern(QStringLiteral("^Minimap_(Color|WaypointCost)_(\\d{5})_(\\d{5})_(\\d{1,2}).png$"));
+    const QRegularExpressionMatch match = pattern.match(fileName);
+    if (match.hasMatch()) {
+        const int x = match.captured(2).toInt();
+        const int y = match.captured(3).toInt();
+        const int z = match.captured(4).toInt();
+        id.x = x;
+        id.y = y;
+        id.z = z;
+    }
+    return id;
 }
 
 TMinimapTilePtr TMinimapDiskIOAsync::readTilePair(const QDir& dir, const Position& id) const

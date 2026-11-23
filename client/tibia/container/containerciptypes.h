@@ -385,6 +385,7 @@ struct TContainerProperties
 };
 
 struct TSlotInfo;
+class TInventoryContainer;
 
 class TContainerRenderProvider final : public ::tibia::CipTyped
 {
@@ -412,6 +413,11 @@ public:
     static TContainerStorage* instance();
     static void setInstance(TContainerStorage* storage);
 
+    /// The open containers, by id.
+    const QMap<TContainerID, TStoredContainer>& containers() const { return m_containers; }
+    /// The player's equipment slots; the storage makes and owns them.
+    std::shared_ptr<TInventoryContainer> inventoryContainer() const { return m_inventoryContainer; }
+
     /// Full open/replace (protocol open). Emits containerUpdated(id, true) so UI
     /// creates or resets the widget in place (replace-open keeps the controller).
     void applyOpen(TContainerID id, uint8_t capacity, QString name, TInventorySlot containerItem, bool hasParent,
@@ -430,7 +436,7 @@ public:
     TInventorySlot slotAt(TContainerID id, int slotId) const;
     QList<TContainerID> openIds() const;
     bool hasContainer(TContainerID id) const;
-    /// The lowest free container window id, at most MaxContainerId.
+    /// The lowest free container window id, at most the highest one (31).
     int findEmptyId() const;
     /// The page navigation of container `id` (0 when it is not open).
     uint32_t nextPageFirstIndex(TContainerID id) const;
@@ -468,7 +474,8 @@ private:
     void emitUpdated(TContainerID id, bool isNew);
 
     /// The highest container window id.
-    static constexpr int MaxContainerId = 31;
+    uint8_t m_maxContainerId = 31;
+    std::shared_ptr<TInventoryContainer> m_inventoryContainer;
     /// Ordered by id, as CIP keeps them.
     QMap<TContainerID, TStoredContainer> m_containers;
     bool m_stashAvailable = false;
@@ -476,7 +483,8 @@ private:
 };
 
 
-/// Session inventory equipment slots (CIP: TInventoryContainer).
+/// The player's equipment slots (CIP: TInventoryContainer). The container
+/// storage owns it.
 class TInventoryContainer final : public cip::tibia::container::TInventoryContainer
 {
     Q_OBJECT
@@ -486,14 +494,21 @@ public:
     explicit TInventoryContainer(QObject* parent = nullptr);
     ~TInventoryContainer() override;
 
+    /// The inventory of the installed container storage.
     static TInventoryContainer* instance();
-    static void setInstance(TInventoryContainer* storage);
 
     void setSlot(int slotId, const TInventorySlot& slot);
     void clearSlot(int slotId);
     void clear();
 
     const TInventorySlot& slotAt(int slotId) const;
+    /// The left hand slot's object.
+    const TInventorySlot& leftHandSlot() const { return slotAt(tibia::client::InventorySlotLeft); }
+    /// A slot of the inventory: head to the store inbox.
+    static bool isInventorySlot(int slotId);
+    /// How many objects of `typeId` the inventory holds, a stack counting its
+    /// size. With flag 1 a tiered object counts only at tier 0.
+    uint8_t countObjects(uint16_t typeId, uint32_t flags) const;
     bool hasSlot(int slotId) const;
     /// An equipment slot (head .. ammo) holds an object of `typeId`; for a
     /// classified type only with tier `tier`, and never without one.

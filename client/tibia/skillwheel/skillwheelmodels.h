@@ -51,6 +51,8 @@ public:
                           const TGrades& basicGrades, const TGrades& supremeGrades);
     const TGem* gem(int row) const;
     int rowOfGem(int gemId) const;
+    /// The gem's role values by role name; empty when no gem has that id.
+    QVariantMap dataForId(int gemId) const;
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
     bool hasConfiguration() const { return m_configuration.has_value(); }
     /// The configuration's vocation index, 0 without one.

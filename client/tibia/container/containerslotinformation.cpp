@@ -155,8 +155,8 @@ QString slotText(const TInventorySlot& slot, const bool showExpire, const bool w
 TContainerSlotQmlInformation::TContainerSlotQmlInformation(QObject* parent)
     : cip::tibia::container::TContainerSlotQmlInformation(parent)
 {
-    m_acceptsDrop = true;
-    m_isUpdatable = true;
+    // Everything starts empty: no slot, no object, no text; drops are not
+    // accepted and the slot does not update until the first assign.
 }
 
 void TContainerSlotQmlInformation::setBackgroundImage(const QString& image)

@@ -51,10 +51,12 @@ public:
     /// Writes every loaded tile and waits for the disk (CIP vtable slot 0xf8,
     /// before the options page's minimap export).
     void flushToDisk();
-    /// CIP LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES: copy bundled tiles when empty.
-    void loadDefaultTilesFromResources();
 
 private:
+    /// Host: copies CipSoft's minimap asset into the user's minimap directory
+    /// when that has no tiles yet, and waits so first reads see them.
+    void importDefaultTiles();
+
     QString m_defaultTilesDir;
     std::shared_ptr<TMinimapTileStorage> m_storage;
     QPointer<worldmap::TWorldmapProtocolMessageHandler> m_protocolHandler;

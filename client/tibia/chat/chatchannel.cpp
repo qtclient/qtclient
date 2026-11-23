@@ -84,7 +84,7 @@ QString replaceColorCodingsWithHtmlTags(const QString& textWithColorCodings)
     QString text = textWithColorCodings;
     qsizetype from = 0;
     for (QRegularExpressionMatch match = coding.match(text, from); match.hasMatch(); match = coding.match(text, from)) {
-        const QString html = QStringLiteral("<font color=\"%1\">%2</font>").arg(QColor::fromString(match.captured(1)).name(), match.captured(2));
+        const QString html = QStringLiteral("%1%2%3").arg(QStringLiteral("<font color=\"%1\">").arg(QColor::fromString(match.captured(1)).name())).arg(match.captured(2)).arg(QStringLiteral("</font>"));
         text.replace(match.capturedStart(), match.capturedLength(), html);
         from = match.capturedStart() + html.size();
     }

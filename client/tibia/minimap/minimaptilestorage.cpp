@@ -1,5 +1,13 @@
 #include "minimaptilestorage.h"
 
+#include "minimap/minimapdiskio.h"
+
+#include <QDir>
+#include <QFileInfo>
+#include <QImage>
+#include <QStringList>
+
+#include <set>
 #include <vector>
 
 namespace tibia::minimap {
@@ -9,16 +17,65 @@ namespace {
 // CIP: DAT_1077b26d0. Tiles this close to the visible area stay in memory.
 constexpr int KeepMargin = 128;
 
+/// The paths of the files in `directory` (directory order).
+QStringList filePathsInDirectory(const QString& directory)
+{
+    const QDir dir(directory);
+    QStringList paths;
+    for (const QString& name : dir.entryList(QDir::Files))
+        paths.append(dir.filePath(name));
+    return paths;
+}
+
+}
+
+void TMinimapTileStorage::loadDefaultMinimapTilesFromResources(const QString& directory)
+{
+    std::set<shared::TCoordinate> tileIds;
+    for (const QString& path : filePathsInDirectory(directory)) {
+        const shared::TCoordinate id = TMinimapDiskIOAsync::tileIdFromFileName(QFileInfo(path).fileName());
+        if (id != shared::TCoordinate())
+            tileIds.insert(id);
+    }
+    for (const shared::TCoordinate& tileId : tileIds) {
+        const Position id(tileId.x, tileId.y, static_cast<uint8_t>(tileId.z));
+        const QString colorFileName = TMinimapDiskIOAsync::colorFileName(id);
+        const QString waypointFileName = TMinimapDiskIOAsync::waypointFileName(id);
+        QImage colors(QDir(directory).filePath(colorFileName));
+        QImage waypoints(QDir(directory).filePath(waypointFileName));
+        if (!colors.isNull() && !waypoints.isNull())
+            insertDefaultTile(std::make_shared<TMinimapTile>(id, std::move(colors), std::move(waypoints)));
+    }
+}
+
+void TMinimapTileStorage::insertDefaultTile(const TMinimapTilePtr& tile)
+{
+    const Position id = tile->id();
+    TMinimapTilePtr& stored = m_tiles[coordinateKey(id)];
+    if (const TMinimapTilePtr previous = stored)
+        tile->merge(*previous);
+    stored = tile;
+    tile->setLoaded(false);
+    tile->setChanged();
+    Q_EMIT startLoadingMinimapTileFromDisk(id);
 }
 
 TMinimapTileStorage::TMinimapTileStorage(QObject* parent)
     : cip::tibia::minimap::TMinimapTileStorage(parent)
 {
+    qRegisterMetaType<TMinimapTile>("TMinimapTile");
+    qRegisterMetaType<Position>("TMinimapTileID");
+    qRegisterMetaType<TMinimapTilePtr>("std::shared_ptr<TMinimapTile>");
     m_notifyTimer.setSingleShot(true);
     connect(&m_notifyTimer, &QTimer::timeout, this, &TMinimapTileStorage::notifyChangedTiles);
 }
 
-TMinimapTileStorage::~TMinimapTileStorage() = default;
+TMinimapTileStorage::~TMinimapTileStorage()
+{
+    // Changes still waiting for the timer are announced now.
+    m_notifyTimer.stop();
+    notifyChangedTiles();
+}
 
 void TMinimapTileStorage::setPlayerZ(const int z)
 {
@@ -70,12 +127,25 @@ void TMinimapTileStorage::setField(const Position& coord, const TMinimapFieldDat
 
 TMinimapTile& TMinimapTileStorage::ensureLoaded(const Position& id)
 {
-    auto [it, inserted] = m_tiles.try_emplace(coordinateKey(id));
-    if (inserted) {
-        it->second = std::make_shared<TMinimapTile>(id);
-        Q_EMIT startLoadingMinimapTileFromDisk(id);
-    }
-    return *it->second;
+    loadTile(id);
+    return *m_tiles.at(coordinateKey(id));
+}
+
+void TMinimapTileStorage::loadTileContaining(const Position& coord)
+{
+    loadTile(TMinimapTile::idOf(coord));
+}
+
+void TMinimapTileStorage::loadTile(const Position& id)
+{
+    if (m_tiles.find(coordinateKey(id)) == m_tiles.end())
+        createTile(id);
+}
+
+void TMinimapTileStorage::createTile(const Position& id)
+{
+    m_tiles[coordinateKey(id)] = std::make_shared<TMinimapTile>(id);
+    Q_EMIT startLoadingMinimapTileFromDisk(id);
 }
 
 TMinimapTilePtr TMinimapTileStorage::tileAt(const Position& coord) const

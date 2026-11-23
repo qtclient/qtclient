@@ -4,7 +4,7 @@
 
 #include "protocol/clientmessages.h"
 
-#include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
 #include "protocol/gameactioncontexthelper.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolclassicwire.h"
@@ -37,7 +37,7 @@ namespace tibia::protocol::gameclient {
 
 void sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
 {
-    auto* processor = network::TGameserverNetworkPacketProcessor::live();
+    auto* processor = network::TGameserverSessionNetwork::live();
     if (!processor || !processor->productTransportEnabled()) {
         return;
     }

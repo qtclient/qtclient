@@ -3896,7 +3896,11 @@ message GameclientMessageLogin {
 // client opcode 0x0B (11) — SecondaryLogin
 // string token (Crystal secondary login).
 message GameclientMessageSecondaryLogin {
+  // CipSoft's SecondaryLogin: a byte, then an RSA block with two strings
+  // (an unidentified one and the ReadyForSecondaryConnection token).
   optional string token = 1;
+  optional uint32 challenge_connection = 2;
+  optional string first_string = 3;
   extend GameclientMessage {
     optional GameclientMessageSecondaryLogin gameclient_message_secondary_login = 11;
   }

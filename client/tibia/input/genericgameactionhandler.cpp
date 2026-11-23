@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 
 namespace tibia::input {
 
@@ -215,7 +216,14 @@ void TGenericGameActionHandler::handleToggleFullscreenAction()
 
 void TGenericGameActionHandler::handleRequestResourceBalanceAction(const TGameActionRequestResourceBalance& action)
 {
-    tibia::game::requestResourceBalance(static_cast<uint8_t>(action.resourceType()));
+    // The protocol's resource types are the client's; a type it does not know
+    // is a programming error.
+    static constexpr std::array<int, 26> ProtocolResourceTypes{ 0,  1,  2,  10, 20, 21, 30, 31, 32, 33, 50, 60, 70,
+                                                                71, 72, 73, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89 };
+    const int resourceType = static_cast<int>(action.resourceType());
+    if (std::find(ProtocolResourceTypes.begin(), ProtocolResourceTypes.end(), resourceType) == ProtocolResourceTypes.end())
+        throw std::runtime_error("unhandled enum value");
+    tibia::game::requestResourceBalance(static_cast<uint8_t>(resourceType));
 }
 
 void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameActionTeleportToCoordinate& action)
