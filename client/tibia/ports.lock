@@ -13562,7 +13562,7 @@ sub_27372f8bf726#3	27372f8bf726b6d4	skip	generated: destructors, destructor bodi
 sub_273ad8d9a05d	273ad8d9a05d9171	ported	appearances/appearancetype.h:TAppearanceType::expireCounterpart
 sub_27456e3532aa	27456e3532aae74e	todo	CipSoft logic of gamewindow::TNPCTradeController (triage 2026-11-23: calls 2 CipSoft functions, virtual calls)
 sub_274675f4081b	274675f4081bbbe3	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::objectTooltipName
-sub_274a591af781	274a591af7818aeb	tested	skillwheel/skillwheeldata.cpp:activeMods	test=tests/client/skillwheeldata_test.cpp
+sub_274a591af781	7963e6a737f474ef	todo	CipSoft logic of skillwheel (activeMods mod-table lookup): changed in 15.33.0aa90c to one list of augmentations per supreme mod; needs the new augmentation table (game-table extraction broke on 15.33); previous port at skillwheel/skillwheeldata.cpp:activeMods
 sub_274f1a815844	274f1a81584487c5	ported	authentication/loginprotocolmessagehandler.cpp:TLoginProtocolMessageHandler::TLoginProtocolMessageHandler
 sub_274f1a815844#2	274f1a81584487c5	ported	authentication/loginprotocolmessagehandler.cpp:TLoginProtocolMessageHandler::TLoginProtocolMessageHandler
 sub_275a4f8bc4e7	275a4f8bc4e7b2f1	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
@@ -17388,7 +17388,7 @@ sub_57e7004c670b#4	57e7004c670bc83f	skip	library: statically linked SFML audio /
 sub_57e7004c670b#5	57e7004c670bc83f	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_57e870c9d93a	57e870c9d93a59f6	todo	CipSoft logic of gamewindow::TSkillWheelPageController (triage 2026-11-23: calls 2 CipSoft functions, virtual calls)
 sub_57e8830346c1	57e8830346c153bf	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::makeTracked
-sub_57e8c9f0f2e4	57e8c9f0f2e4a9f9	ported	skillwheel/skillwheeldata.cpp:mediumPerkDescriptions
+sub_57e8c9f0f2e4	378849f135787dd6	todo	CipSoft logic of skillwheel (mediumPerkDescriptions): changed in 15.33.0aa90c; not yet compared against the new unit; previous port at skillwheel/skillwheeldata.cpp:mediumPerkDescriptions
 sub_57ee035fce8a	57ee035fce8a31b4	ported	friends/friendsciptypes.cpp:TFriendsInviteStorage::setBlacklist
 sub_57ef336351df	57ef336351df9834	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_5801047d27c5	5801047d27c53871	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::levelSpecialPopupLevel
