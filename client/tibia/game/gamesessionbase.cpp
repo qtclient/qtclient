@@ -4,6 +4,7 @@
 #include "game/gamesessionmetainfo.h"
 #include "game/tgamenotify.h"
 #include "protocol/protocolciptypes.h"
+#include "protocol/gameactioncontexthelper.h"
 #include "protocol/protocolmessagequeue.h"
 
 #include <protocol.pb.h>
@@ -154,7 +155,7 @@ void TGameSessionBase::createStorages()
             [texts = m_textStorage.get()](std::weak_ptr<creatures::TCreature> player) {
                 texts->onPlayerCreatureAddedToGameSession(std::move(player));
             });
-    m_chatChannelStorage = std::make_shared<chat::TChatChannelStorage>();
+    m_chatChannelStorage = std::make_shared<chat::TChatChannelStorage>(std::make_shared<chat::TClientChatEntryFactory>(clockService()));
     // The own creature's name reaches the channels.
     connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, m_chatChannelStorage.get(),
             &chat::TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage);
@@ -262,8 +263,15 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_exivaOptionsProtocolMessageHandler = std::make_shared<exivaoptions::TExivaOptionsProtocolMessageHandler>(m_exivaOptionsStorage.get());
     m_teamFinderProtocolMessageHandler = std::make_shared<teamfinder::TTeamFinderProtocolMessageHandler>(m_teamFinderStorage.get());
     m_friendsProtocolMessageHandler = std::make_shared<friends::TFriendsProtocolMessageHandler>(m_friendsStorage.get());
+    // The friends handler's actions go out through the session's queue.
+    connect(m_friendsProtocolMessageHandler.get(), &friends::TFriendsProtocolMessageHandler::sendFriendSystemAction, this,
+            [this](const ::tibia::protobuf::protocol::GameclientMessageFriendSystemAction& message) {
+                if (m_protocolMessageQueue && tibia::game::canPerformGameAction())
+                    m_protocolMessageQueue->sendFriendSystemAction(message);
+            });
     m_characterTradeProtocolMessageHandler = std::make_shared<trade::TCharacterTradeProtocolMessageHandler>(m_characterTradeStorage.get());
-    m_playerProtocolMessageHandler = std::make_shared<TPlayerProtocolMessageHandler>(m_cooldownStorage.get());
+    m_playerProtocolMessageHandler = std::make_shared<TPlayerProtocolMessageHandler>(
+        m_cooldownStorage.get(), config::TClientOptions::instance()->boolOption(cip::EClientOption::inspectPlayerAllowAllEnabled));
     {
         // The player's movement messages go out through the session's queue.
         using H = TPlayerProtocolMessageHandler;
@@ -564,7 +572,9 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
 {
     m_worldMapGameActionProvider =
         std::make_shared<worldmap::TWorldMapGameActionProvider>(*m_worldMapRenderProvider, *m_worldMapViewport);
-    m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>();
+    if (!m_gameActionContextHelper)
+        m_gameActionContextHelper = std::make_shared<protocol::TGameActionContextHelper>();
+    m_worldMapGameActionHandler = std::make_shared<worldmap::TWorldMapGameActionHandler>(m_gameActionContextHelper);
     connect(m_gameActionRouter->internalRouter(), &TInternalGameActionRouter::publishGameActionInternal,
             m_worldMapGameActionHandler.get(), &worldmap::TWorldMapGameActionHandler::handleGameAction);
     connect(m_worldMapGameActionHandler.get(), &worldmap::TWorldMapGameActionHandler::sendMoveObject, this,
@@ -744,6 +754,7 @@ void TGameSessionBase::createGameActionHandlers()
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_playerProtocolMessageHandler.get(), &TPlayerProtocolMessageHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
+    connect(m_playerData.get(), &TPlayerData::publishGameAction, router, &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_tutorialProtocolMessageHandler.get(), &tutorial::TTutorialProtocolMessageHandler::publishGameAction, router,
             &TInternalGameActionRouter::handleGameActionInternal);
     connect(m_characterConfigurationManager.get(), &config::TCharacterConfigurationManager::publishGameAction, router,
@@ -879,6 +890,8 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         link(&Queue::receivedBlessingsMessage, player, &TPlayerProtocolMessageHandler::handleBlessingsMessage);
         link(&Queue::receivedSwitchPresetMessage, player, &TPlayerProtocolMessageHandler::handleSwitchPresetMessage);
         link(&Queue::receivedHirelingNameChangeMessage, player, &TPlayerProtocolMessageHandler::handleHirelingNameChangeMessage);
+        link(&Queue::receivedWorldEnteredMessage, player, &TPlayerProtocolMessageHandler::handleWorldEnteredMessage);
+        link(&Queue::receivedLoginSuccessMessage, player, &TPlayerProtocolMessageHandler::handleLoginSuccessMessage);
     }
     // Host: the classic attack target follows the server's target.
     link(&Queue::receivedUpdateTargetMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message) {
@@ -904,7 +917,9 @@ void TGameSessionBase::connectProtocolMessageHandlers()
             tibia::game::setExpertPvpMode(message.expert_pvp() != 0);
             tibia::game::notify("onStoreInit", message.has_store_url() ? message.store_url() : std::string(),
                                 static_cast<uint16_t>(message.coins_packet_size()));
-            tibia::game::setCanExivaOptions(message.exiva_options() != 0);
+            // CipSoft's LoginSuccess carries the world type here, not an exiva flag; the
+            // server checks the world's exiva restriction itself.
+            tibia::game::setCanExivaOptions(true);
             tibia::game::setServerBeat(static_cast<uint16_t>(message.beat_duration()));
             tibia::game::setCanReportBugs(false);
         });
@@ -917,14 +932,9 @@ void TGameSessionBase::connectProtocolMessageHandlers()
         // Host: the session messages CIP's game server session handles itself.
         link(&Queue::receivedPendingStateEnteredMessage, game, &TGameProtocolMessageHandler::handlePendingStateEnteredMessage);
         link(&Queue::receivedWorldEnteredMessage, game, &TGameProtocolMessageHandler::handleWorldEnteredMessage);
-        link(&Queue::receivedLoginErrorMessage, game, &TGameProtocolMessageHandler::handleLoginErrorMessage);
-        link(&Queue::receivedLoginAdviceMessage, game, &TGameProtocolMessageHandler::handleLoginAdviceMessage);
-        link(&Queue::receivedLoginWaitMessage, game, &TGameProtocolMessageHandler::handleLoginWaitMessage);
         link(&Queue::receivedDeadMessage, game, &TGameProtocolMessageHandler::handleDeadMessage);
-        link(&Queue::receivedReadyForSecondaryConnectionMessage, game, &TGameProtocolMessageHandler::handleReadyForSecondaryConnectionMessage);
         link(&Queue::receivedPingMessage, game, &TGameProtocolMessageHandler::handlePingMessage);
         link(&Queue::receivedPingBackMessage, game, &TGameProtocolMessageHandler::handlePingBackMessage);
-        link(&Queue::receivedLoginChallengeMessage, game, &TGameProtocolMessageHandler::handleLoginChallengeMessage);
         link(&Queue::receivedClientCheckMessage, game, &TGameProtocolMessageHandler::handleClientCheckMessage);
         link(&Queue::receivedShowMessageDialogMessage, game, &TGameProtocolMessageHandler::handleShowMessageDialogMessage);
         link(&Queue::receivedSpellDataModificationMessage, game, &TGameProtocolMessageHandler::handleSpellDataModificationMessage);

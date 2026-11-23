@@ -27,7 +27,8 @@ class TEditMinimapMarkerDialogController final
 {
     Q_OBJECT
 public:
-    TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers, QObject* parent = nullptr);
+    TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers, QQmlEngine* engine,
+                                       QQuickItem* dialogParentItem, QObject* parent = nullptr);
     /// CIP v26: the dialog's item goes.
     void destroyDialog() { dialog()->destroy(); }
 

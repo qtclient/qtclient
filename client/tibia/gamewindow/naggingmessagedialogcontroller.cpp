@@ -12,8 +12,8 @@ using A = input::EGameAction;
 
 }
 
-TNaggingMessageDialogController::TNaggingMessageDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("NaggingMessageDialog.qml"), parent)
+TNaggingMessageDialogController::TNaggingMessageDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("NaggingMessageDialog.qml"), engine, dialogParentItem, parent)
 {
     m_tick.setInterval(100);
     connect(&m_tick, &QTimer::timeout, this, &TNaggingMessageDialogController::onRefreshSecondsRemaining);

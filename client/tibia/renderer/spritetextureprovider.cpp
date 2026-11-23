@@ -263,4 +263,21 @@ void TSpriteTextureProviderManager::handleGameAction(const input::IGameActionPtr
         provider->handleGameAction(pGameAction);
 }
 
+namespace {
+
+float g_highlightStrength = 0.0f;
+
+}
+
+void updateHighlightStrength(const qint64 Timestamp)
+{
+    g_highlightStrength =
+        static_cast<float>((std::sin(static_cast<double>(Timestamp) / 100.0) * 0.15f + 0.65f) * 0.75);
+}
+
+float highlightStrength()
+{
+    return g_highlightStrength;
+}
+
 }

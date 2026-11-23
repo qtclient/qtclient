@@ -11,9 +11,13 @@
 #include <QQuickItem>
 #include <QString>
 
+#include <memory>
 #include <vector>
 
 namespace tibia {
+namespace cyclopedia {
+class TCyclopediaMapStaticDataStorage;
+}
 namespace gamewindow {
 
 class TVocationSelectionDialogController;
@@ -24,8 +28,11 @@ class TTutorialHintDialogController final
 {
     Q_OBJECT
 public:
-    /// `mapWindowPane` is the game window's map pane the hint is placed over.
-    explicit TTutorialHintDialogController(QQuickItem* mapWindowPane, QObject* parent = nullptr);
+    /// The dialog is made with `engine` in `dialogParentItem`; `mapWindowPane`
+    /// is the game window's map pane the hint is placed over.
+    TTutorialHintDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                                  std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> CyclopediaMapStaticDataStorage,
+                                  QObject* parent = nullptr);
 
     /// Show a hint from a SHOW_TUTORIAL_HINT / ADD_HINT_AT_TUTORIAL_MARKER action.
     void showHint(const QString& caption, const QString& imagePath, const QString& buttonText,
@@ -50,6 +57,7 @@ public:
 
 private:
     QPointer<QQuickItem> m_mapWindowPane;
+    std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> m_cyclopediaMapStaticDataStorage;
     /// The hint shown (CONFIRM_TUTORIAL_HINT carries it).
     int m_tutorialHintId = 0;
     void emitDisplay();
@@ -60,8 +68,11 @@ class TTutorialShell final : public QObject
 {
     Q_OBJECT
 public:
-    /// The dialogs are placed over `mapWindowPane`, the game window's map pane.
-    explicit TTutorialShell(QQuickItem* mapWindowPane = nullptr, QObject* parent = nullptr);
+    /// The dialogs are made with `engine` in `dialogParentItem` and placed over
+    /// `mapWindowPane`, the game window's map pane.
+    TTutorialShell(QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                   std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> CyclopediaMapStaticDataStorage,
+                   QObject* parent = nullptr);
     ~TTutorialShell() override;
 
     TTutorialHintDialogController* hint() const { return m_hint; }

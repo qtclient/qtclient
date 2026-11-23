@@ -6,6 +6,7 @@
 #include "config/clientoptions.h"
 #include "shared/tibiaurltools.h"
 #include "gameaction.h"
+#include "protocol/gameactioncontexthelper.h"
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
@@ -102,14 +103,14 @@ TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* pare
 void TGatherAllProtocolMessageHandler::requestGatherAll(const TObjectGameActionContext& object)
 {
     ::tibia::protobuf::protocol::GameclientMessageGatherAll message;
+    const ::tibia::protocol::TGameActionContextHelper helper;
     // Without a location the object is anywhere the player has it.
-    const Position position = object.location() ? object.position() : Position(UINT16_MAX, 0, 0);
-    const int stackPosition = object.location() ? object.stackPosition() : 0;
-    message.mutable_position()->set_x(position.x);
-    message.mutable_position()->set_y(position.y);
-    message.mutable_position()->set_z(position.z);
-    message.set_object_id(object.objectClientId());
-    message.set_stack_position(static_cast<uint32_t>(std::max(stackPosition, 0)));
+    if (object.location())
+        helper.fillObjectPosition(object.location(), message.mutable_object_position());
+    else
+        message.mutable_object_position()->set_unknown_position(true);
+    if (object.object())
+        helper.fillObjectIdentifier(object.object(), message.mutable_object_identifier());
     Q_EMIT sendGatherAll(message);
 }
 

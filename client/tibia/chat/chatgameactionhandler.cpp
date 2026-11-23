@@ -6,11 +6,14 @@
 #include "config/clientoptions.h"
 #include "spells/spellinfostorage.h"
 
+#include "iclockservice.h"
+
 #include <QDateTime>
 
 #include <algorithm>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 namespace tibia::chat {
 
@@ -572,9 +575,19 @@ TGameActionList TChatGameActionProvider::entryGameActions(const QString& entryTe
     return result;
 }
 
+TClientChatEntryFactory::TClientChatEntryFactory(std::shared_ptr<::tibia::shared::IClockService> clockService)
+    : m_clockService(std::move(clockService))
+{
+}
+
+TChatEntry TClientChatEntryFactory::systemEntry(const QDateTime& time, const QColor& color, const QString& text)
+{
+    return { TChatEntry::System, time, text, {}, 0, false, color, 0 };
+}
+
 TChatEntry TClientChatEntryFactory::systemEntry(const QColor& color, const QString& text)
 {
-    return { TChatEntry::System, QDateTime::currentDateTime(), text, {}, 0, false, color, 0 };
+    return systemEntry(QDateTime::currentDateTime(), color, text);
 }
 
 TChatEntry TClientChatEntryFactory::speakerEntry(const QColor& color, const QString& name, const QString& text)
@@ -593,24 +606,24 @@ TChatEntry TClientChatEntryFactory::lootEntry(const QColor& color, const QString
     return { TChatEntry::Loot, QDateTime::currentDateTime(), text, {}, 0, false, color, 0 };
 }
 
-TChatEntry TClientChatEntryFactory::channelClosedEntry()
+TChatEntry TClientChatEntryFactory::channelClosedEntry() const
 {
-    return systemEntry(systemRed(), qtTrId("chat_channel_closed_message"));
+    return systemEntry(m_clockService->currentDateTime(), systemRed(), qtTrId("chat_channel_closed_message"));
 }
 
-TChatEntry TClientChatEntryFactory::teamFinderChannelClosedEntry()
+TChatEntry TClientChatEntryFactory::teamFinderChannelClosedEntry() const
 {
-    return systemEntry(systemRed(), qtTrId("chat_team_finder_channel_closed_message"));
+    return systemEntry(m_clockService->currentDateTime(), systemRed(), qtTrId("chat_team_finder_channel_closed_message"));
 }
 
-TChatEntry TClientChatEntryFactory::helpChannelIntroductionEntry()
+TChatEntry TClientChatEntryFactory::helpChannelIntroductionEntry() const
 {
-    return systemEntry(systemWhite(), qtTrId("chat_help_channel_introduction"));
+    return systemEntry(m_clockService->currentDateTime(), systemWhite(), qtTrId("chat_help_channel_introduction"));
 }
 
-TChatEntry TClientChatEntryFactory::advertisingChannelIntroductionEntry()
+TChatEntry TClientChatEntryFactory::advertisingChannelIntroductionEntry() const
 {
-    return systemEntry(systemWhite(), qtTrId("chat_advertising_channel_introduction"));
+    return systemEntry(m_clockService->currentDateTime(), systemWhite(), qtTrId("chat_advertising_channel_introduction"));
 }
 
 void TChatStorage::setNpcTalkPartners(const std::vector<uint32_t>& npcIds)

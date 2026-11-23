@@ -53,7 +53,7 @@ TPremiumPanelController::TPremiumPanelController()
         return true;
     });
     m_gameActions.on(input::EGameAction::FORCE_HIDE_PREMIUM_PANEL, [this](const input::IGameAction&) {
-        setPanelVisible(false);
+        hidePanel();
         return true;
     });
     m_gameActions.on(input::EGameAction::CHANGE_TUTORIAL_MODE_ENABLED, [this](const input::TGameActionChangeTutorialModeEnabled& action) {
@@ -64,7 +64,8 @@ TPremiumPanelController::TPremiumPanelController()
 
 TPremiumPanelController::~TPremiumPanelController()
 {
-    setPanelItem(nullptr);
+    // Host: the item stops reaching this controller before the base deletes it.
+    releasePanelItem();
 }
 
 void TPremiumPanelController::createPremiumMessages()
@@ -106,7 +107,7 @@ bool TPremiumPanelController::advertisePremium() const
 void TPremiumPanelController::applySessionVisibility()
 {
     if (!tibia::game::isOnline()) {
-        setPanelVisible(false);
+        hidePanel();
         return;
     }
     if (advertisePremium())
@@ -123,8 +124,8 @@ void TPremiumPanelController::togglePanel()
     stopHighlight();
     if (!canTogglePanel())
         return;
-    if (m_item && m_item->isVisible())
-        setPanelVisible(false);
+    if (panelItem() && panelItem()->isVisible())
+        hidePanel();
     else
         showCollapsed();
 }
@@ -132,7 +133,7 @@ void TPremiumPanelController::togglePanel()
 void TPremiumPanelController::onTutorialModeChanged(const bool enabled)
 {
     if (enabled)
-        setPanelVisible(false);
+        hidePanel();
     else if (advertisePremium())
         showCollapsed();
 }
@@ -140,25 +141,21 @@ void TPremiumPanelController::onTutorialModeChanged(const bool enabled)
 void TPremiumPanelController::showCollapsed()
 {
     setMaximized(false);
-    setPanelVisible(true);
+    showPanel();
 }
 
-void TPremiumPanelController::setPanelVisible(const bool visible)
+void TPremiumPanelController::setPanelItem(QQuickItem* PanelItem)
 {
-    if (m_item)
-        m_item->setVisible(visible);
+    TSidebarPanelController::setPanelItem(PanelItem);
+    connect(PanelItem, &QQuickItem::visibleChanged, this, &TPremiumPanelController::onIsVisibleChanged);
+    hidePanel();
 }
 
-void TPremiumPanelController::setPanelItem(QQuickItem* item)
+void TPremiumPanelController::releasePanelItem()
 {
-    if (m_item)
-        disconnect(m_item, nullptr, this, nullptr);
-    m_item = item;
-    if (!m_item)
-        return;
-    connect(m_item, &QQuickItem::visibleChanged, this, &TPremiumPanelController::onIsVisibleChanged);
-    // A new item starts hidden; the session start shows it.
-    setPanelVisible(false);
+    if (QQuickItem* const item = panelItem())
+        disconnect(item, &QQuickItem::visibleChanged, this, &TPremiumPanelController::onIsVisibleChanged);
+    TSidebarPanelController::releasePanelItem();
 }
 
 void TPremiumPanelController::onNewPremiumFeatureList(const std::vector<uint8_t>& features)
@@ -223,7 +220,7 @@ void TPremiumPanelController::onPremiumTimeChanged()
 
 void TPremiumPanelController::onIsVisibleChanged()
 {
-    Q_EMIT isVisibleChanged(m_item && m_item->isVisible());
+    Q_EMIT isVisibleChanged(panelItem() && panelItem()->isVisible());
 }
 
 }

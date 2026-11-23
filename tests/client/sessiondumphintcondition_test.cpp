@@ -115,9 +115,14 @@ TEST(SessiondumpHintCondition, MatchesTheFieldsOfEachActionType)
     EXPECT_TRUE(gameActionsMatch(button, std::make_shared<input::TGameActionActionButtonTriggered>(uint8_t(1), 3, true)));
     EXPECT_FALSE(gameActionsMatch(button, std::make_shared<input::TGameActionActionButtonTriggered>(uint8_t(2), 3)));
 
-    const auto walk = std::make_shared<input::TGameActionPlayerMovementIntent>(Position(5, 6, 7), 0, true);
-    EXPECT_TRUE(gameActionsMatch(walk, std::make_shared<input::TGameActionPlayerMovementIntent>(Position(5, 6, 7), 2, true)));
-    EXPECT_FALSE(gameActionsMatch(walk, std::make_shared<input::TGameActionPlayerMovementIntent>(Position(5, 6, 7), 0, false)));
+    const auto walkTo = [](int x, int y, int z, bool enterUnwalkableGoal) {
+        return std::make_shared<input::TGameActionPlayerMovementIntent>(
+            std::make_shared<input::TMovementIntentTargetCoordinate>(x, y, z, enterUnwalkableGoal));
+    };
+    const auto walk = walkTo(5, 6, 7, true);
+    EXPECT_TRUE(gameActionsMatch(walk, walkTo(5, 6, 7, true)));
+    EXPECT_FALSE(gameActionsMatch(walk, walkTo(5, 6, 7, false)));
+    EXPECT_FALSE(gameActionsMatch(walk, walkTo(5, 6, 8, true)));
 
     // A move compares the moved object's type only, not its kind.
     const auto source = std::make_shared<input::TLocationContainerWithSlotGameActionContext>(uint8_t(0), 1);

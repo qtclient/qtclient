@@ -25,8 +25,9 @@ constexpr TBugReportDialogController::ECategory Classifications[] = {
 
 }
 
-TBugReportDialogController::TBugReportDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("BugReportDialog.qml"), parent)
+TBugReportDialogController::TBugReportDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                       QObject* parent)
+    : TDialogController(QStringLiteral("BugReportDialog.qml"), engine, dialogParentItem, parent)
 {
     for (const A type : Handled)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });

@@ -160,6 +160,7 @@ class TPreyGameActionHandler;
 class TPreyStorage;
 }
 namespace protocol {
+class TGameActionContextHelper;
 class TProtocolMessageQueue;
 }
 namespace qmlcomponents {
@@ -611,6 +612,7 @@ private:
     std::shared_ptr<questlog::TQuestLogStorage> m_questLogStorage;
     std::shared_ptr<TOutfitDialogStorage> m_outfitDialogStorage;
     std::shared_ptr<TGameActionRouter> m_gameActionRouter;
+    std::shared_ptr<protocol::TGameActionContextHelper> m_gameActionContextHelper;
     std::shared_ptr<worldmap::TWorldMapGameActionHandler> m_worldMapGameActionHandler;
     std::shared_ptr<store::TStoreStorage> m_storeStorage;
     std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gamewindow/taskboardmodels.h"
+#include "taskboard/taskboardrewardlistmodel.h"
 
 #include <cip_gen.h>
 
@@ -17,7 +17,8 @@ class TTaskboardShopController final : public cip::tibia::gamewindow::TTaskboard
 public:
     explicit TTaskboardShopController(QObject* parent = nullptr);
 
-    void applyShopData(const std::vector<std::map<std::string, std::string>>& offers);
+    /// Takes the shop storage's offers into the reward list.
+    void setRewards(const std::vector<taskboard::TShopReward>& rewards);
     void refreshHuntingTaskPoints();
 
 public Q_SLOTS:

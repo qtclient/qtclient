@@ -58,6 +58,8 @@ public:
     using Button = cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier;
 
     explicit TMessageDialogController(QObject* parent = nullptr);
+    /// CipSoft's constructor: the dialog is made in `engine` under `dialogParentItem`.
+    TMessageDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// CIP : "Yes" (Return) and "No" (Escape).
     void setYesNoButtons();

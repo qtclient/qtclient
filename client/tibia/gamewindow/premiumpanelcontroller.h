@@ -3,6 +3,7 @@
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "game/premiummessagerenewpremium.h"
+#include "gamewindow/sidebarpanelcontrollerbase.h"
 
 #include <cip_gen.h>
 
@@ -31,14 +32,18 @@ namespace gamewindow {
 /// on (CHANGE_TUTORIAL_MODE_ENABLED, 223).
 ///
 /// The premium time comes from the account's game::TPremiumTimeStorage.
-class TPremiumPanelController final : public cip::tibia::gamewindow::TPremiumPanelController
+class TPremiumPanelController final : public TSidebarPanelController<cip::tibia::gamewindow::TPremiumPanelController>
 {
     Q_OBJECT
 public:
     TPremiumPanelController();
     ~TPremiumPanelController() override;
 
-    void setPanelItem(QQuickItem* item);
+    /// CIP v14: the base's, then the controller follows the item's
+    /// visibility; a new item starts hidden.
+    void setPanelItem(QQuickItem* PanelItem) override;
+    /// CIP v15: stops following the item, then the base's.
+    void releasePanelItem() override;
 
 public Q_SLOTS:
     /// CIP : the highlight timer ran out.
@@ -98,12 +103,10 @@ private:
     /// it shows the panel again when advertisePremium.
     void onTutorialModeChanged(bool enabled);
     void showCollapsed();
-    void setPanelVisible(bool visible);
 
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::map<int, cip::tibia::game::TPremiumMessage*> m_messages;
     game::TPremiumMessageRenewPremium* m_renewPremium = nullptr;
-    QPointer<QQuickItem> m_item;
     QTimer m_highlightTimer;
     std::vector<client::gamecore::Hook> m_hooks;
 

@@ -292,7 +292,7 @@ QVariant TButtonBarModel::data(const QModelIndex& index, const int role) const
 QHash<int, QByteArray> TButtonBarModel::roleNames() const { return { { ButtonIdRole, "buttonId" } }; }
 
 TButtonBarController::TButtonBarController(QObject* parent)
-    : cip::tibia::gamewindow::TButtonBarController(parent)
+    : TSidebarPanelController(parent)
 {
     m_buttonsModel = &m_model;
     // Replaced by TGameWindowController::newsButton() via setNewsButtonController.

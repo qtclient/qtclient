@@ -24,7 +24,7 @@ class TBossDifficultySelectionDialogController final
 {
     Q_OBJECT
 public:
-    explicit TBossDifficultySelectionDialogController(QObject* parent = nullptr);
+    TBossDifficultySelectionDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// Restarts the preview timer when the value changes (no notify: the
     /// spinner already shows it).

@@ -219,18 +219,8 @@ TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem*
     widget()->createItem(QStringLiteral("ImbuementTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TImbuementTrackerWidgetController::onWidgetQuickItemDestroyed);
-    // Host: the frame clock starts at the wall clock, so the countdown starts from now; each
-    // rendered frame of the game window is the sidebar widgets' frame update.
+    // Host: the frame clock starts at the wall clock, so the countdown starts from now.
     m_model->m_lastUpdate = shared::TClockService::frameMillis();
-    const auto followFrames = [this](QQuickWindow* window) {
-        if (window)
-            connect(window, &QQuickWindow::afterAnimating, this,
-                    [this] { updateWithTimestamp(shared::TClockService::frameMillis()); });
-    };
-    if (gameWindowItem) {
-        followFrames(gameWindowItem->window());
-        connect(gameWindowItem, &QQuickItem::windowChanged, this, followFrames);
-    }
 }
 
 void TImbuementTrackerWidgetController::updateWithTimestamp(const qint64 timestampMilliseconds)

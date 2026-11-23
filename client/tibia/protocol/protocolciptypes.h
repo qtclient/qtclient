@@ -20,6 +20,8 @@ namespace protobuf {
 namespace protocol {
 class GameserverMessage;
 class GameclientMessage;
+class ObjectIdentifier;
+class ObjectPosition;
 } // namespace protocol
 } // namespace protobuf
 } // namespace tibia
@@ -45,6 +47,12 @@ public:
 
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameclientMessage& message) const;
+
+    /// The classic stack position byte of an object: the stack position on a map
+    /// field, the inventory slot, the plain container slot, the liquid or tier of
+    /// an object "anywhere"; 0 otherwise.
+    static uint8_t stackPosition(const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
+                                 const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier);
 };
 
 class TProtocolClientMessageProcessor final : public ::tibia::CipTyped {
@@ -103,6 +111,12 @@ struct ClassicReader;
 bool translateAndEnqueueServerMessage(int opcode, ClassicReader& packet);
 /// CIP TProtocolServerMessageProcessor: every message of a decoded server packet.
 void processServerPacket(const uint8_t* data, size_t size);
+/// The packet the next server messages come from: its sequence number and the
+/// connection it arrived on (0 primary, 1 secondary). Every message read from
+/// it carries both in its meta data.
+void setServerPacketOrigin(uint32_t PacketNumber, int ConnectionType);
+/// Fills a server message's meta data from the packet it was read from.
+void setServerMessageMetaData(::tibia::protobuf::protocol::GameserverMessage& message);
 /// dispatch.gen.cpp: every CIP server message has a handler / every client message a builder.
 bool isHandledServerMessage(uint8_t opcode);
 bool bindClientMessage(uint8_t opcode);

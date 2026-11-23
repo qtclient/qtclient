@@ -126,7 +126,7 @@ private:
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     /// The widget's rows: skill type and separator.
     std::vector<std::pair<game::SkillType, Separator>> m_entries;
-    QPointer<game::TPlayerSkillStats> m_skillStats;
+    std::shared_ptr<game::TPlayerSkillStats> m_skillStats;
 };
 
 }

@@ -67,6 +67,11 @@ TMessageDialogController::TMessageDialogController(QObject* parent)
 {
 }
 
+TMessageDialogController::TMessageDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("TibiaMessageDialog.qml"), engine, dialogParentItem, parent)
+{
+}
+
 void TMessageDialogController::setYesNoButtons()
 {
     qDeleteAll(m_buttons);

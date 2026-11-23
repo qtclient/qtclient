@@ -33,7 +33,7 @@ public:
         Other = 3,
     };
 
-    explicit TBugReportDialogController(QObject* parent = nullptr);
+    TBugReportDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TBugReportDialogController() override;
 
     /// The row of the report's category.

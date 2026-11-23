@@ -33,7 +33,7 @@ enum class EShopRewardStatus : int
     Bought = 4,
 };
 
-struct TShopRewardData
+struct TShopReward
 {
     QString name;
     QString description;
@@ -54,11 +54,11 @@ class TTaskboardShopStorage final : public cip::tibia::taskboard::TTaskboardShop
 public:
     explicit TTaskboardShopStorage(QObject* parent = nullptr);
 
-    void setShopRewardData(const std::vector<TShopRewardData>& data);
-    const std::vector<TShopRewardData>& shopRewardData() const { return m_data; }
+    void setShopRewardData(const std::vector<TShopReward>& data);
+    const std::vector<TShopReward>& shopRewardData() const { return m_data; }
 
 private:
-    std::vector<TShopRewardData> m_data;
+    std::vector<TShopReward> m_data;
 };
 
 }

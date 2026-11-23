@@ -3,6 +3,7 @@
 
 #include "chat/chatgameactionhandler.h"
 #include <stdexcept>
+#include <utility>
 #include "input/gameactionhandlers.h"
 #include "input/gameaction.h"
 #include "creatures/creaturestorage.h"
@@ -229,9 +230,10 @@ bool TChatChannel::writesToLocalChat() const
 // ---------------------------------------------------------------------------
 // TChatChannelStorage
 
-TChatChannelStorage::TChatChannelStorage(QObject* parent)
+TChatChannelStorage::TChatChannelStorage(std::shared_ptr<TClientChatEntryFactory> entryFactory, QObject* parent)
     : cip::tibia::chat::TChatChannelStorage(parent)
     , m_maxEntries(TChatChannel::maxEntries())
+    , m_entryFactory(std::move(entryFactory))
 {
     openDefaultChannels();
 }
@@ -399,9 +401,9 @@ TChatChannel* TChatChannelStorage::open(const TChatChannelIdentifier& identifier
     channel->setMakeCurrentOnOpen(makeCurrentOnOpen);
     if (identifier.type == TChatChannelIdentifier::ChannelId) {
         if (identifier.isHelpChannel())
-            channel->addEntry(TClientChatEntryFactory::helpChannelIntroductionEntry());
+            channel->addEntry(m_entryFactory->helpChannelIntroductionEntry());
         else if (identifier.isAdvertisingChannel())
-            channel->addEntry(TClientChatEntryFactory::advertisingChannelIntroductionEntry());
+            channel->addEntry(m_entryFactory->advertisingChannelIntroductionEntry());
     } else if (identifier.type == TChatChannelIdentifier::Loot) {
         m_lootChannel = channel;
     }
@@ -438,8 +440,8 @@ void TChatChannelStorage::closeChannelByServer(const uint16_t channelId)
         return;
     const TChatChannelIdentifier& identifier = channel->identifier();
     const bool teamFinder = identifier.type == TChatChannelIdentifier::ChannelId && identifier.isTeamFinderChannel();
-    channel->addEntry(teamFinder ? TClientChatEntryFactory::teamFinderChannelClosedEntry()
-                                 : TClientChatEntryFactory::channelClosedEntry());
+    channel->addEntry(teamFinder ? m_entryFactory->teamFinderChannelClosedEntry()
+                                 : m_entryFactory->channelClosedEntry());
     channel->setClosed(true);
 }
 

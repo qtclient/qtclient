@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <ostream>
 
 namespace tibia {
 namespace input {
@@ -15,6 +16,23 @@ enum class TMovementIntentKind : int {
 };
 
 /// CIP input::TPlayerMovementIntent: what the player's movement input asks for.
+/// Writes the kind's CipSoft name (TARGET_COORDINATE, DIRECTION, ROTATION,
+/// NONE); an unknown kind writes nothing.
+inline std::ostream& operator<<(std::ostream& stream, const TMovementIntentKind kind)
+{
+    switch (kind) {
+    case TMovementIntentKind::Target:
+        return stream << "TARGET_COORDINATE";
+    case TMovementIntentKind::Direction:
+        return stream << "DIRECTION";
+    case TMovementIntentKind::Rotate:
+        return stream << "ROTATION";
+    case TMovementIntentKind::Stop:
+        return stream << "NONE";
+    }
+    return stream;
+}
+
 class TMovementIntent
 {
 public:

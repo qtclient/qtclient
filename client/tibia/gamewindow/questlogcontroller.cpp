@@ -280,8 +280,8 @@ bool TQuestLinePartsSortFilterProxyModel::lessThan(const QModelIndex& left, cons
 }
 
 /// CIP: the quest lines model is rebuilt from the storage through a single-shot timer.
-TQuestLogController::TQuestLogController(QObject* parent)
-    : TDialogController(QStringLiteral("QuestlogDialog.qml"), parent)
+TQuestLogController::TQuestLogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("QuestlogDialog.qml"), Engine, DialogParentItem, parent)
     , m_linesProxy(&m_lines)
     , m_partsProxy(&m_parts)
 {

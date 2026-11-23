@@ -427,12 +427,6 @@ void TGameSessionState::setSceneFrozen(const bool frozen)
     m_sceneFrozen = frozen;
 }
 
-void TGameSessionState::processReadyForSecondaryConnection(const std::string_view token)
-{
-    m_secondaryConnectionToken = std::string(token);
-    tibia::game::notify("onReadyForSecondaryConnection", m_secondaryConnectionToken);
-}
-
 
 
 

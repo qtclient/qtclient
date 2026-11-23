@@ -51,6 +51,16 @@ QString TAuthenticationAndEncryptionInfo::sessionKey() const
     return m_sessionKey;
 }
 
+void TAuthenticationAndEncryptionInfo::setSecondaryLoginFirstString(const QString& FirstString)
+{
+    m_secondaryLoginFirstString = FirstString;
+}
+
+QString TAuthenticationAndEncryptionInfo::secondaryLoginFirstString() const
+{
+    return m_secondaryLoginFirstString;
+}
+
 void TAuthenticationAndEncryptionInfo::setSecondaryLoginToken(const QString& Token)
 {
     m_secondaryLoginToken = Token;

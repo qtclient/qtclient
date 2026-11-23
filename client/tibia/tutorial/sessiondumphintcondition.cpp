@@ -278,7 +278,8 @@ TConditionPtr TSessiondumpHintCondition::createAutowalkHintFromJsonObject(const 
         throw std::invalid_argument(InvalidHint);
     // Like a click on the map: the walk may end on an unwalkable goal.
     auto condition = std::make_shared<TSessiondumpHintCondition>(
-        std::make_shared<input::TGameActionPlayerMovementIntent>(field->coordinate(), 0, true));
+        std::make_shared<input::TGameActionPlayerMovementIntent>(std::make_shared<input::TMovementIntentTargetCoordinate>(
+            field->coordinate().x, field->coordinate().y, field->coordinate().z, true)));
     const auto marker = createTutorialMarker(location);
     condition->addGameAction(marker);
     condition->addTextHintsFromJsonObject(data, marker->markerId(), 0);

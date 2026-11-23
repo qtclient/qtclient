@@ -72,6 +72,25 @@ void writeCoordinate(ClassicWriter& w, const ProtocolCoordinate& c)
     w.u8(uint8_t(c.z()));
 }
 
+/// The classic coordinate of an object position (TProtobufObjectPositionHelper).
+void writeObjectPosition(ClassicWriter& w, const ::tibia::protobuf::protocol::ObjectPosition& objectPosition)
+{
+    const Position coordinate = TProtobufObjectPositionHelper().toClassicCoordinate(objectPosition);
+    w.u16(static_cast<uint16_t>(coordinate.x));
+    w.u16(static_cast<uint16_t>(coordinate.y));
+    w.u8(coordinate.z);
+}
+
+/// An object of a client message: the coordinate of its position, its type and
+/// its stack position.
+void writeObject(ClassicWriter& w, const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
+                 const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier)
+{
+    writeObjectPosition(w, objectPosition);
+    w.u16(static_cast<uint16_t>(objectIdentifier.type_id()));
+    w.u8(TProtobufClientMessageTranslator::stackPosition(objectPosition, objectIdentifier));
+}
+
 size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -181,21 +200,21 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_speed_b(b);
         if (r.otDouble(c))
             m->set_speed_c(c);
-        uint8_t pvp = 0;
-        if (r.u8(pvp))
-            m->set_pvp_frame(pvp);
-        uint8_t expert = 0;
-        if (r.u8(expert))
-            m->set_expert_pvp(expert);
+        uint8_t canChangePvpFrameSetting = 0;
+        if (r.u8(canChangePvpFrameSetting))
+            m->set_can_change_pvp_frame_setting(canChangePvpFrameSetting != 0);
+        uint8_t expertPvp = 0;
+        if (r.u8(expertPvp))
+            m->set_expert_pvp(expertPvp != 0);
         std::string url;
         if (r.string(url))
             m->set_store_url(url);
         uint16_t coins = 0;
         if (r.u16(coins))
             m->set_coins_packet_size(coins);
-        uint8_t exiva = 0;
-        if (r.u8(exiva))
-            m->set_exiva_options(exiva);
+        uint8_t worldType = 0;
+        if (r.u8(worldType))
+            m->set_world_type(worldType);
         uint8_t streak = 0;
         if (r.u8(streak))
             m->set_daily_reward_streak_length(streak);
@@ -218,10 +237,6 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_timestamp(timestamp);
         if (r.u8(random))
             m->set_random(random);
-        // CIP / Crystal 1405+: one pad byte after random (Crystal sends 0x71).
-        // Consumed for length authority — not a pb field.
-        uint8_t pad = 0;
-        (void)r.u8(pad);
         return r.i;
     }
     case 42: {
@@ -523,11 +538,15 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
     case 143: {
         auto* m = msg.MutableExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
         uint32_t id = 0;
-        uint16_t speed = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
+        uint16_t baseSpeed = 0, speed = 0;
+        if (r.u32(id)) {
+            m->mutable_creature()->set_remove_id(id);
+            m->mutable_creature()->set_id(id);
+        }
+        if (r.u16(baseSpeed))
+            m->set_base_speed(baseSpeed);
         if (r.u16(speed))
-            m->set_speed(speed);
+            m->mutable_creature()->set_speed(speed);
         return r.i;
     }
     case 144: {
@@ -563,8 +582,8 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
     case 197: {
         auto* m = msg.MutableExtension(
             GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed);
-        uint32_t gemId = 0;
-        if (r.u32(gemId))
+        uint16_t gemId = 0;
+        if (r.u16(gemId))
             m->set_gem_id(gemId);
         return r.i;
     }
@@ -655,11 +674,11 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         w.otDouble(m.speed_a());
         w.otDouble(m.speed_b());
         w.otDouble(m.speed_c());
-        w.u8(uint8_t(m.pvp_frame()));
-        w.u8(uint8_t(m.expert_pvp()));
+        w.u8(m.can_change_pvp_frame_setting() ? 1 : 0);
+        w.u8(m.expert_pvp() ? 1 : 0);
         w.string(m.store_url());
         w.u16(uint16_t(m.coins_packet_size()));
-        w.u8(uint8_t(m.exiva_options()));
+        w.u8(uint8_t(m.world_type()));
         w.u8(uint8_t(m.daily_reward_streak_length()));
         return w.out;
     }
@@ -673,7 +692,6 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameserverMessageLoginChallenge::gameserver_message_login_challenge);
         w.u32(m.timestamp());
         w.u8(uint8_t(m.random()));
-        w.u8(0); // 1405+ pad (Crystal sends 0x71; value unused)
         return w.out;
     }
     case 42: {
@@ -746,8 +764,9 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     }
     case 143: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
-        w.u32(m.creature_id());
-        w.u16(uint16_t(m.speed()));
+        w.u32(m.creature().id());
+        w.u16(uint16_t(m.base_speed()));
+        w.u16(uint16_t(m.creature().speed()));
         return w.out;
     }
     case 144: {
@@ -771,7 +790,7 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     case 197: {
         const auto& m = msg.GetExtension(
             GameserverMessageGemAtelierGemRevealed::gameserver_message_gem_atelier_gem_revealed);
-        w.u32(m.gem_id());
+        w.u16(uint16_t(m.gem_id()));
         return w.out;
     }
     case 219: {
@@ -1190,9 +1209,11 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         if (!m.has_aim_mode()) {
             w.u8(0);
         } else {
+            // Aim mode 1 (crosshair) and 2 (mouse cursor) name the field; 3 aims at
+            // the attacked creature.
             w.u8(static_cast<uint8_t>(m.aim_mode()));
             if (m.aim_mode() == 1 || m.aim_mode() == 2)
-                writeCoordinate(w, m.aim_position());
+                writeObjectPosition(w, m.aim_position());
         }
         return w.out;
     }
@@ -1265,13 +1286,11 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         const auto action = m.action();
         w.u8(static_cast<uint8_t>(action));
         if (action < 3) {
-            writeCoordinate(w, m.position());
-            w.u16(static_cast<uint16_t>(m.object_id()));
-            w.u8(static_cast<uint8_t>(m.stack_position()));
+            writeObject(w, m.object_position(), m.object_identifier());
             if (action == 0) // stow one item: the count
                 w.u8(static_cast<uint8_t>(m.count()));
         } else if (action == 3) { // withdraw
-            w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u16(static_cast<uint16_t>(m.object_identifier().type_id()));
             w.u32(m.count());
             w.u8(static_cast<uint8_t>(m.stack_position()));
         }
@@ -1283,11 +1302,8 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(static_cast<uint8_t>(action));
         if (action != 3) {
             w.u8(static_cast<uint8_t>(m.category()));
-            if (action == 0 || action == 4) {
-                writeCoordinate(w, m.position());
-                w.u16(static_cast<uint16_t>(m.object_id()));
-                w.u8(static_cast<uint8_t>(m.stack_position()));
-            }
+            if (action == 0 || action == 4)
+                writeObject(w, m.object_position(), m.object_identifier());
         } else {
             w.u8(m.use_main_as_fallback() ? 1 : 0);
         }
@@ -1582,9 +1598,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 255: {
         const auto& m = msg.GetExtension(GameclientMessageGatherAll::gameclient_message_gather_all);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 206: {
@@ -1612,12 +1626,9 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     case 143: {
         const auto& m = msg.GetExtension(GameclientMessageQuickLoot::gameclient_message_quick_loot);
         w.u8(static_cast<uint8_t>(m.variant()));
-        if (m.has_position())
-            writeCoordinate(w, m.position());
-        if (m.has_object_id())
-            w.u16(static_cast<uint16_t>(m.object_id()));
-        if (m.has_stack_position())
-            w.u8(static_cast<uint8_t>(m.stack_position()));
+        // Variants 0 and 1 (one corpse, all corpses around) name the clicked object.
+        if (m.variant() < 2)
+            writeObject(w, m.object().object_position(), m.object().object_identifier());
         return w.out;
     }
     case 148: {
@@ -1637,7 +1648,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 149: {
         const auto& m = msg.GetExtension(GameclientMessageOpenParentContainer::gameclient_message_open_parent_container);
-        writeCoordinate(w, m.position());
+        writeObjectPosition(w, m.object_position());
         return w.out;
     }
     case 152: {
@@ -1662,9 +1673,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 157: {
         const auto& m = msg.GetExtension(GameclientMessageGetTextForReport::gameclient_message_get_text_for_report);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 159: {
@@ -1743,12 +1752,9 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     case 178: {
         const auto& m = msg.GetExtension(GameclientMessagePickObjectToImbue::gameclient_message_pick_object_to_imbue);
         w.u8(static_cast<uint8_t>(m.action()));
-        if (m.has_position())
-            writeCoordinate(w, m.position());
-        if (m.has_object_id())
-            w.u16(static_cast<uint16_t>(m.object_id()));
-        if (m.has_stack_position())
-            w.u8(static_cast<uint8_t>(m.stack_position()));
+        // Action 1 picks the object to imbue.
+        if (m.action() == 1)
+            writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 186: {
@@ -1803,10 +1809,8 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 120: {
         const auto& m = msg.GetExtension(GameclientMessageMoveObject::gameclient_message_move_object);
-        writeCoordinate(w, m.from_position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.from_stack_position()));
-        writeCoordinate(w, m.to_position());
+        writeObject(w, m.source_object_position(), m.object_identifier());
+        writeObjectPosition(w, m.destination_object_position());
         w.u8(static_cast<uint8_t>(m.count()));
         w.u8(m.extra_flag() ? 1 : 0);
         return w.out;
@@ -1836,9 +1840,7 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 125: {
         const auto& m = msg.GetExtension(GameclientMessageTradeObject::gameclient_message_trade_object);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         w.u32(static_cast<uint32_t>(m.creature_id()));
         return w.out;
     }
@@ -1850,42 +1852,30 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 130: {
         const auto& m = msg.GetExtension(GameclientMessageUseObject::gameclient_message_use_object);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         w.u8(static_cast<uint8_t>(m.container_index()));
         return w.out;
     }
     case 131: {
         const auto& m = msg.GetExtension(GameclientMessageUseTwoObjects::gameclient_message_use_two_objects);
-        writeCoordinate(w, m.from_position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.from_stack_position()));
-        writeCoordinate(w, m.to_position());
-        w.u16(static_cast<uint16_t>(m.to_object_id()));
-        w.u8(static_cast<uint8_t>(m.to_stack_position()));
+        writeObject(w, m.source_object_position(), m.source_object_identifier());
+        writeObject(w, m.destination_object_position(), m.destination_object_identifier());
         return w.out;
     }
     case 132: {
         const auto& m = msg.GetExtension(GameclientMessageUseOnCreature::gameclient_message_use_on_creature);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         w.u32(static_cast<uint32_t>(m.creature_id()));
         return w.out;
     }
     case 133: {
         const auto& m = msg.GetExtension(GameclientMessageTurnObject::gameclient_message_turn_object);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 134: {
         const auto& m = msg.GetExtension(GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 135: {
@@ -1913,16 +1903,12 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     }
     case 139: {
         const auto& m = msg.GetExtension(GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 140: {
         const auto& m = msg.GetExtension(GameclientMessageLook::gameclient_message_look);
-        writeCoordinate(w, m.position());
-        w.u16(static_cast<uint16_t>(m.object_id()));
-        w.u8(static_cast<uint8_t>(m.stack_position()));
+        writeObject(w, m.object_position(), m.object_identifier());
         return w.out;
     }
     case 141: {
@@ -2044,6 +2030,32 @@ QByteArray TProtobufServerMessageTranslator::translateToClassic(const Gameserver
     return serializeStructuredServer(message, opcode);
 }
 
+uint8_t TProtobufClientMessageTranslator::stackPosition(const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
+                                                        const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier)
+{
+    using ::tibia::protobuf::protocol::ContainerObjectPosition;
+    using ::tibia::protobuf::protocol::ObjectPosition;
+    switch (objectPosition.position_oneof_case()) {
+    case ObjectPosition::kWorldmapPosition:
+        return static_cast<uint8_t>(objectPosition.worldmap_position().stack_position());
+    case ObjectPosition::kInventoryPosition:
+        return static_cast<uint8_t>(objectPosition.inventory_position().slot());
+    case ObjectPosition::kContainerPosition: {
+        // A plain slot; the special slots (0xfe, 0xff) have none.
+        const ContainerObjectPosition& container = objectPosition.container_position();
+        return container.slot_oneof_case() == ContainerObjectPosition::kSlot ? static_cast<uint8_t>(container.slot()) : 0;
+    }
+    case ObjectPosition::kUnknownPosition:
+        // Anywhere: the object's liquid or tier, when it has one.
+        if (objectPosition.unknown_position() && objectIdentifier.has_data())
+            return static_cast<uint8_t>(objectIdentifier.data());
+        return 0;
+    default:
+        // Depot search items are named by their index in the coordinate.
+        return 0;
+    }
+}
+
 QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message) const
 {
     if (!message.has_type()) {
@@ -2067,6 +2079,7 @@ bool translateAndEnqueueServerMessage(const int opcode, ClassicReader& packet)
     message->set_type(opcode);
     if (!mutableServerExtensionGenerated(*message, opcode))
         return false;
+    setServerMessageMetaData(*message);
     const size_t begin = packet.i - 1; // the opcode byte
     ClassicReader body{ packet.p + packet.i, packet.remaining(), 0 };
     const size_t consumed = fillStructuredServer(*message, opcode, body);

@@ -15,7 +15,6 @@ namespace common {
 void ownProductSurface(QObject* parent);
 
 
-class TPluralException final : public ::tibia::CipTyped {};
 
 }
 }

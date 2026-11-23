@@ -168,8 +168,8 @@ void TCharacterAuctionConfiguration::reset()
 
 TCharacterTradeDialogController* TCharacterTradeDialogController::s_instance = nullptr;
 
-TCharacterTradeDialogController::TCharacterTradeDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("charactertrade/CharacterTradeDialog.qml"), parent)
+TCharacterTradeDialogController::TCharacterTradeDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("charactertrade/CharacterTradeDialog.qml"), Engine, DialogParentItem, parent)
     , m_auction(new TCharacterAuctionConfiguration(this))
     , m_conditions(new TCharacterTradeNotificationsAbstractListModel(this))
     , m_highlights(new TTextualHighlightsSortProxyModel(this))
@@ -905,8 +905,8 @@ constexpr OfflineTrainingSkill kOfflineTrainingSkills[] = {
 
 }
 
-TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), parent)
+TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), Engine, DialogParentItem, parent)
 {
     s_instance = this;
 }
@@ -993,8 +993,8 @@ void TMultiOfflineTrainingDialogController::startOfflineTraining(
 
 TOutfitMemorialDialogController* TOutfitMemorialDialogController::s_instance = nullptr;
 
-TOutfitMemorialDialogController::TOutfitMemorialDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("OutfitMemorialDialog.qml"), parent)
+TOutfitMemorialDialogController::TOutfitMemorialDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("OutfitMemorialDialog.qml"), Engine, DialogParentItem, parent)
 {
     s_instance = this;
 }
@@ -1070,8 +1070,8 @@ void TReturnerRewardDialogController::onContinueClicked()
 
 TShowImageDialogController* TShowImageDialogController::s_instance = nullptr;
 
-TShowImageDialogController::TShowImageDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ShowImageDialog.qml"), parent)
+TShowImageDialogController::TShowImageDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ShowImageDialog.qml"), Engine, DialogParentItem, parent)
 {
     s_instance = this;
 }
@@ -1162,8 +1162,8 @@ void TShowImageDialogController::closeDialog()
     Q_EMIT dialogClosed();
 }
 
-TShowSpellBookDialogController::TShowSpellBookDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ShowSpellBookDialog.qml"), parent)
+TShowSpellBookDialogController::TShowSpellBookDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ShowSpellBookDialog.qml"), Engine, DialogParentItem, parent)
 {
 }
 
@@ -1246,8 +1246,8 @@ struct TDifficultyFilterName
 
 }
 
-TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("taskboard/SoulSealsDialog.qml"), parent)
+TSoulSealsDialogController::TSoulSealsDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("taskboard/SoulSealsDialog.qml"), Engine, DialogParentItem, parent)
     , m_monsterListProxy(soulSealsMonsterRaceIds())
 {
     m_selectedMonsterRaceID = 0;

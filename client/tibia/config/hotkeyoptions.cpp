@@ -385,6 +385,49 @@ void TActionSetting::setChatText(const QString& chatText)
     multiActions.clear();
 }
 
+void TActionSetting::setUseObject(const int objectClientId)
+{
+    objectId = objectClientId;
+    liquidType.reset();
+    upgradeTier.reset();
+    passiveAbility = 0;
+    multiActions.clear();
+    if (objectId == 0) {
+        if (kind == OBJECT || kind == PASSIVE_ABILITY)
+            kind = NONE;
+        return;
+    }
+    kind = OBJECT;
+    text.clear();
+}
+
+void TActionSetting::setPassiveAbility(const int ability)
+{
+    passiveAbility = ability;
+    if (ability == 0) {
+        if (kind == PASSIVE_ABILITY)
+            kind = NONE;
+        return;
+    }
+    kind = PASSIVE_ABILITY;
+    text.clear();
+    objectId = 0;
+    liquidType.reset();
+    multiActions.clear();
+}
+
+void TActionSetting::setUseObject(const int objectClientId, const int liquid)
+{
+    setUseObject(objectClientId);
+    liquidType = liquid;
+}
+
+void TActionSetting::setUseObjectWithTier(const int objectClientId, const int tier)
+{
+    setUseObject(objectClientId);
+    upgradeTier = tier;
+}
+
 bool TActionSetting::operator==(const TActionSetting& other) const
 {
     return toJson() == other.toJson();

@@ -15,6 +15,10 @@ public:
         Unknown = 0,
         Sprite = 1,
         Appearances = 2,
+        /// The content catalog itself (catalog-content.json), loaded first.
+        ContentCatalog = 3,
+        /// The sound catalog itself (catalog-sound.json), loaded first.
+        SoundCatalog = 4,
         StaticData = 5,
         StaticMapData = 6,
         Proficiencies = 7,

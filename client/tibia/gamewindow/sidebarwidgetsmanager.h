@@ -144,6 +144,11 @@ public:
     void setContainerStorage(TContainerStorageController* containers);
     void setControlScheme(int controlScheme);
     void onLoginRampUpFinished();
+    /// CIP: the frame update (TGameClient, before every rendered frame): the
+    /// battle lists, the depot search's hover cursor, the boss tracker's time,
+    /// the bosstiary tracker's cooldowns, the containers' clocks and the
+    /// imbuement tracker's countdown.
+    void updateWithTimestamp(qint64 TimestampMilliseconds);
     TBattleListControllerStorage* battleLists() const { return m_battleLists.get(); }
     /// The widgets the manager keeps by type (host: their qtclient managers).
     TVipWidgetManager* vipWidget() const { return m_vip.get(); }

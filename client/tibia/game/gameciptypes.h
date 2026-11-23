@@ -118,42 +118,6 @@ class TCooldownStorage;
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-/// CIP `game::FPSDropsLogger` — pauses drop logging while a modal dialog is up
-/// (CIP private slot `onDialogVisibleChanged`). Tip binds
-/// `TDialogStackController::dialogVisible` lazily; does not own the FPS ring.
-class FPSDropsLogger final : public cip::tibia::game::FPSDropsLogger
-{
-    Q_OBJECT
-public:
-    explicit FPSDropsLogger(QObject* parent = nullptr);
-    ~FPSDropsLogger() override;
-
-    static FPSDropsLogger* instance();
-
-    bool dialogVisible() const { return m_dialogVisible; }
-    /// CIP: suppress drop samples while any stack dialog is visible.
-    bool loggingSuppressed() const { return m_dialogVisible; }
-
-    /// Drops the recorded frame durations (CIP: on game session changes).
-    void resetFrameDurations();
-
-public Q_SLOTS:
-    /// CIP moc private slot — qtclient public for stack wiring. Showing a
-    /// dialog drops the recorded frame durations.
-    void onDialogVisibleChanged(bool Visible);
-
-private:
-    void ensureDialogStackBound();
-
-    /// CIP circular buffer of the last 200 frame durations and their sum.
-    std::deque<qint64> m_frameDurations;
-    qint64 m_frameDurationSum = 0;
-    bool m_dialogVisible = false;
-    bool m_dialogStackBound = false;
-    QMetaObject::Connection m_dialogConn;
-    QMetaObject::Connection m_gameStartedConn;
-};
-
 class TBlessingsProtocolMessageHandler final : public cip::tibia::game::TBlessingsProtocolMessageHandler
 {
     Q_OBJECT
@@ -289,15 +253,10 @@ public:
     /// Sends an enter world message; the next pending state enters again.
     void emitSendEnterWorldMessage() override;
 
-    void handleLoginAdviceMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginAdvice& message);
-    void handleLoginWaitMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginWait& message);
-    void handleReadyForSecondaryConnectionMessage(const ::tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection& message);
     void handleInspectionListMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionList& message);
     void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
     void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
     void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
-    void handleLoginErrorMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginError& message);
-    void handleLoginChallengeMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginChallenge& message);
     void handlePingMessage(const ::tibia::protobuf::protocol::GameserverMessagePing& message);
     void handlePingBackMessage(const ::tibia::protobuf::protocol::GameserverMessagePingBack& message);
     void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
@@ -376,7 +335,16 @@ class TPlayerProtocolMessageHandler final : public cip::tibia::game::TPlayerProt
 public:
     /// Spell, spell group, multi-use and passive ability delays go to
     /// `cooldownStorage` (the session's).
-    explicit TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, QObject* parent = nullptr);
+    /// `allowAllToInspectPlayer`: the client option the server learns when the
+    /// world is entered.
+    explicit TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, bool allowAllToInspectPlayer = false,
+                                           QObject* parent = nullptr);
+
+    /// Publishes ALLOW_ALL_TO_INSPECT_PLAYER or WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER
+    /// from the option, then emits worldEntered.
+    void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
+    /// The login's expert PvP mode into the player data.
+    void handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
 
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
     void handlePlayerSkillsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message);
@@ -445,6 +413,7 @@ Q_SIGNALS:
 private:
     TCooldownStorage* m_cooldownStorage = nullptr;
     QPointer<::tibia::input::TPlayerMovementIntentHandler> m_playerMovementIntentHandler;
+    bool m_allowAllToInspectPlayer = false;
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler

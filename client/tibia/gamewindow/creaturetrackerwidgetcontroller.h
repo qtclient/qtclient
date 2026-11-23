@@ -141,6 +141,7 @@ public Q_SLOTS:
     void onLevelUpClicked() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
+    void updateCooldownExpiry();
 
 Q_SIGNALS:
     /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
@@ -162,15 +163,12 @@ private Q_SLOTS:
 
 private:
     void persistOptions();
-    void updateCooldownExpiry();
 
     EWidgetMode m_mode;
     QPointer<cyclopedia::TCreatureTrackerStorage> m_creatures;
     QPointer<bossbestiary::TBossTrackerStorage> m_bosses;
     std::vector<QMetaObject::Connection> m_storageConnections;
     TCreatureTrackerSortProxyModel* m_model = nullptr;
-    /// Stands in for the sidebar manager's per-frame tick.
-    QTimer m_cooldownTimer;
     QPointer<config::TSidebarOptions> m_options;
 };
 
@@ -188,7 +186,8 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
-
+    /// The open widget's controller, or null.
+    TCreatureTrackerWidgetController* controller() const { return m_controller; }
 
 Q_SIGNALS:
     /// The controller's publishGameAction, forwarded.

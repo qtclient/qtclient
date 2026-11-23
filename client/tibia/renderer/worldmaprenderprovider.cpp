@@ -5,6 +5,7 @@
 #include "appearances/appearanceinstance.h"
 #include "idleot/appearanceshape.h"
 #include "appearances/spriteinfo.h"
+#include "renderer/spritetextureprovider.h"
 #include "appearances/worldmaphighlightbaseplate.h"
 #include "app/clientoptions.h"
 #include "mods/registry.h"
@@ -364,7 +365,7 @@ bool TWorldMapRenderProvider::build()
     m_firstFloor = first;
     m_lastFloor = last;
 
-    frame.highlightStrength = static_cast<float>((std::sin(tibia::shared::TClockService::frameMillis() / 100.0) * 0.15 + 0.65) * 0.75);
+    frame.highlightStrength = renderer::highlightStrength();
     m_attackTarget = tibia::game::attackingCreatureId();
     m_followTarget = tibia::game::getFollowingCreatureId();
 

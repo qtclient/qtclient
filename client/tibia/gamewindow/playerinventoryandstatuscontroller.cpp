@@ -93,7 +93,7 @@ input::IGameActionPtr firstOfType(const input::TGameActionList& actions, const A
 }
 
 TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject* parent)
-    : cip::tibia::gamewindow::TPlayerInventoryAndStatusController(parent)
+    : TSidebarPanelController(parent)
     , m_states(config::SpecialConditionsFilter::Bar)
 {
     m_playerStates = m_states.model();
@@ -145,10 +145,6 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     });
     m_autoChaseEnabled = app::ClientOptions::load().options().value(QLatin1String(AutoChaseOption)).toBool(false);
 
-    m_clockTimer.setInterval(1000);
-    connect(&m_clockTimer, &QTimer::timeout, this, &TPlayerInventoryAndStatusController::refreshClocks);
-    m_clockTimer.start();
-
     m_gameActions.on(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     m_gameActions.on(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
@@ -171,6 +167,10 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
 TPlayerInventoryAndStatusController::~TPlayerInventoryAndStatusController()
 {
     tibia::game::unsubscribeCurrentGameSessionChanged(m_gameSessionListener);
+    // Host: the item (which shows this controller's slot objects) goes while the controller is whole.
+    if (QQuickItem* const item = panelItem())
+        disconnect(item, nullptr, this, nullptr);
+    releasePanelItem();
 }
 
 void TPlayerInventoryAndStatusController::onGameSessionChanged()
@@ -181,11 +181,10 @@ void TPlayerInventoryAndStatusController::onGameSessionChanged()
     onPlayerDataChanged();
 }
 
-void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* panel)
+void TPlayerInventoryAndStatusController::setPanelItem(QQuickItem* PanelItem)
 {
-    m_panel = panel;
-    if (!panel)
-        return;
+    TSidebarPanelController::setPanelItem(PanelItem);
+    QQuickItem* const panel = PanelItem;
     connect(panel, SIGNAL(slotClicked(int, int, int)), this, SLOT(onSlotClicked(int, int, int)));
     connect(panel, SIGNAL(slotEntered(int)), this, SLOT(onSlotEntered(int)));
     connect(panel, SIGNAL(slotExited(int)), this, SLOT(onSlotExited(int)));

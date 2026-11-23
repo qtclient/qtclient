@@ -91,5 +91,11 @@ public:
     static void handleGameAction(const ::tibia::input::IGameActionPtr& pGameAction);
 };
 
+/// CIP: the highlight pulse of the frame at `Timestamp` (milliseconds); the
+/// game client sets it before each frame.
+void updateHighlightStrength(qint64 Timestamp);
+/// The highlight pulse the current frame's highlights are drawn with.
+float highlightStrength();
+
 }
 }

@@ -275,7 +275,6 @@ void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibi
 /// Server message side effects — thin hub forwards.
 void processUpdateNeeded(std::string_view signature);
 void processSessionDumpMarker(std::string_view marker);
-void processReadyForSecondaryConnection(std::string_view token);
 void processWalkCancel(tibia::client::Direction direction);
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
 void processTutorialHint(uint8_t id);
@@ -332,17 +331,6 @@ void localPlayerSetStoreExpBoostPurchasable(bool purchasable);
 void localPlayerSetStatesAndRottenBlood(uint64_t states, uint8_t rottenBloodState);
 void localPlayerSetTotalCapacity(uint32_t totalCapacity);
 void localPlayerSetBaseCapacity(uint32_t baseCapacity);
-
-/// Cyclopedia offence/defence stats (TPlayerSkillStats authority).
-void localPlayerSetFlatDamageHealing(uint16_t flatBonus);
-void localPlayerSetAttackInfo(uint16_t attackValue, uint8_t attackElement);
-void localPlayerSetConvertedDamage(double convertedDamage, uint8_t convertedElement);
-void localPlayerSetImbuements(double lifeLeech, double manaLeech, double critChance, double critDamage,
-                              double onslaught);
-void localPlayerSetDefenseInfo(uint16_t defense, uint16_t armor, uint16_t mantra, double mitigation, double dodge,
-                               uint16_t damageReflection);
-void localPlayerSetCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues);
-void localPlayerSetForgeBonuses(double momentum, double transcendence, double amplification);
 
 /// Skills / movement stats (`TPlayerData`; combat via `TPlayerSkillStats`).
 uint16_t localPlayerSkillLevel(tibia::client::Skill skill);

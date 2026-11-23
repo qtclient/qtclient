@@ -80,11 +80,17 @@ public:
     using cip::tibia::qmlcomponents::TGlobalConstantsService::TGlobalConstantsService;
 };
 
+/// QML OutfitModel: an outfit (or an object shown as one), its colours and
+/// addons.
 class TOutfitQmlModel final : public cip::tibia::qmlcomponents::TOutfitQmlModel
 {
     Q_OBJECT
 public:
     using cip::tibia::qmlcomponents::TOutfitQmlModel::TOutfitQmlModel;
+    /// An outfit's id, its four palette colours (owned by the model), its
+    /// addons and whether the id is an object's.
+    TOutfitQmlModel(uint16_t outfitId, int head, int torso, int legs, int detail, bool firstAddOn, bool secondAddOn, bool isObjectOutfit,
+                    QObject* parent = nullptr);
 };
 
 class TQSGScenegraphDrawCommandsNode final : public ::tibia::CipTyped

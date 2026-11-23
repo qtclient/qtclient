@@ -185,8 +185,8 @@ void TGameserverDualConnection::processDisconnectEvents()
         const QUrl url = connection->url();
         if (!eventError.isEmpty())
             errorDescription = eventError;
-        qInfo().noquote() << QStringLiteral("Connection to gameserver ") << url.url() << m_worldName
-                          << QStringLiteral(" was disconnected (") << errorDescription << QStringLiteral(")");
+        qInfo() << "Connection to gameserver " << url.url() << m_worldName << " was disconnected (" << errorDescription
+                << ")";
         m_urlInfo->setDisconnected(url, now, true);
     }
     if (m_dualConnectionInfo->connectedConnectionCount() == 0 && (m_urlInfo->failedConnectAttempts() > 1 || m_wasConnected)) {

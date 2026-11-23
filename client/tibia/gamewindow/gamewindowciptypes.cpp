@@ -588,20 +588,6 @@ TDialogControllerBase::TDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TDialogControllerBase(parent)
 {}
 
-TSidebarPanelControllerBase::TSidebarPanelControllerBase(QObject* parent)
-    : cip::tibia::gamewindow::TSidebarPanelControllerBase(parent)
-{}
-
-void TSidebarPanelControllerBase::onSidebarDestroyed()
-{
-    Q_EMIT requestClose();
-}
-
-void TSidebarPanelControllerBase::onPanelQuickItemDestroyed()
-{
-    Q_EMIT requestClose();
-}
-
 TSidebarWidgetControllerBase::TSidebarWidgetControllerBase(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : cip::tibia::gamewindow::TSidebarWidgetControllerBase(parent)
     , m_widget(new TSidebarWidget(this, gameWindowItem, engine, [this](uint id) { m_parentSidebarId = id; }))

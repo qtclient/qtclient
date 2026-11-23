@@ -71,9 +71,12 @@ int profession()
 
 }
 
-TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController(TProficiencyStorage* storage, QObject* parent)
-    : TDialogController(QStringLiteral("WeaponProficiencyShapeDialog.qml"), parent)
-    , m_storage(storage)
+TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                                 QObject* parent)
+    : TDialogController(QStringLiteral("WeaponProficiencyShapeDialog.qml"), engine, dialogParentItem, parent)
+    // Host: CIP reads the proficiency storage from the game session; qtclient's
+    // is the game client's, alive before any controller.
+    , m_storage(TProficiencyStorage::instance())
     , m_message(new gamewindow::TMessageDialogController(this))
 {
     m_message->setYesNoButtons();
@@ -343,11 +346,12 @@ void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
     Q_EMIT publishGameAction(action);
 }
 
-TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogController(TProficiencyStorage* storage,
+TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
                                                                                      TWeaponProficiencyShapeDialogController* shape,
                                                                                      QObject* parent)
-    : TDialogController(QStringLiteral("WeaponProficiencyReshapeDialog.qml"), parent)
-    , m_storage(storage)
+    : TDialogController(QStringLiteral("WeaponProficiencyReshapeDialog.qml"), engine, dialogParentItem, parent)
+    // Host: the session's proficiency storage is the game client's.
+    , m_storage(TProficiencyStorage::instance())
     , m_shape(shape)
     , m_message(new gamewindow::TMessageDialogController(this))
 {
@@ -534,8 +538,10 @@ bool TShapedPerkOptionsSortFilterProxyModel::lessThan(const QModelIndex& left, c
     return key(left) < key(right);
 }
 
-TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("WeaponProficiencyShapeOptionsDialog.qml"), parent)
+TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDialogController(QQmlEngine* engine,
+                                                                                               QQuickItem* dialogParentItem,
+                                                                                               QObject* parent)
+    : TDialogController(QStringLiteral("WeaponProficiencyShapeOptionsDialog.qml"), engine, dialogParentItem, parent)
 {
     m_perkOptionsModel = &m_proxy;
     m_gameActions.on(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG,

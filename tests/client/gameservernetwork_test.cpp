@@ -10,12 +10,15 @@
 #include "shared/iodevicereader.h"
 #include "shared/iodevicewriter.h"
 
+#include <protocol.pb.h>
+
 #include <QBuffer>
 #include <QDataStream>
 
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 using tibia::network::TGameserverNetworkPacket;
@@ -150,4 +153,54 @@ TEST(GameserverNetworkPacketSequenceFlowProcessor, PassesOnInSequenceOrderAndDro
     EXPECT_EQ(passedOn, (std::vector<uint32_t>{ 0x2d9c0383, 5, 6, 7 }));
     processor.processPacket(xteaPacket(8));
     EXPECT_EQ(passedOn.back(), 8u);
+}
+
+namespace {
+
+std::shared_ptr<tibia::protobuf::protocol::GameserverMessage> messageOfPacket(uint32_t packetNumber, bool ping)
+{
+    using namespace tibia::protobuf::protocol;
+    auto message = std::make_shared<GameserverMessage>();
+    message->mutable_meta_data()->set_packet_number(packetNumber);
+    if (ping)
+        message->MutableExtension(GameserverMessagePing::gameserver_message_ping);
+    return message;
+}
+
+}
+
+TEST(GameserverNetworkPacketSequenceFlowProcessor, AnswersPingsOnTheConnectionOfTheirPacketOnceItWasHandled)
+{
+    using tibia::network::EConnectionsUsed;
+    TGameserverNetworkPacketSequenceFlowProcessor processor;
+    std::vector<int> pings;
+    QObject::connect(&processor, &TGameserverNetworkPacketSequenceFlowProcessor::sendConnectionPing,
+                     [&pings](int connectionType) { pings.push_back(connectionType); });
+    processor.onConnectionsUsedChanged(EConnectionsUsed::PrimaryAndSecondary);
+
+    processor.processPacket(xteaPacket(5, 0));
+    processor.processPacket(xteaPacket(5, 1)); // the copy from the secondary connection
+    processor.processPacket(xteaPacket(6, 0));
+    // Packet 5 has a ping: the oldest delivery of it answers at once, the
+    // copy from the secondary connection waits until packet 5 is complete.
+    processor.handleAnyMessage(messageOfPacket(5, true));
+    EXPECT_EQ(pings, (std::vector<int>{ 0 }));
+    processor.handleAnyMessage(messageOfPacket(5, true));
+    EXPECT_EQ(pings, (std::vector<int>{ 0, 0 }));
+    // A message of packet 6 completes packet 5; answers go out with the next ping.
+    processor.handleAnyMessage(messageOfPacket(6, false));
+    EXPECT_EQ(pings, (std::vector<int>{ 0, 0 }));
+    processor.handleAnyMessage(messageOfPacket(6, true));
+    EXPECT_EQ(pings, (std::vector<int>{ 0, 0, 1, 1, 0 }));
+}
+
+TEST(GameserverNetworkPacketSequenceFlowProcessor, KeepsOnlyTheConnectionInUse)
+{
+    using tibia::network::EConnectionsUsed;
+    TGameserverNetworkPacketSequenceFlowProcessor processor;
+    processor.processPacket(xteaPacket(5, 0));
+    // A connection that never delivered a packet cannot be the only one in use.
+    EXPECT_THROW(processor.onConnectionsUsedChanged(EConnectionsUsed::Secondary), std::out_of_range);
+    EXPECT_NO_THROW(processor.onConnectionsUsedChanged(EConnectionsUsed::Primary));
+    EXPECT_NO_THROW(processor.onConnectionsUsedChanged(EConnectionsUsed::None));
 }

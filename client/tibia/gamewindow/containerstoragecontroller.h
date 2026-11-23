@@ -53,6 +53,8 @@ class TContainerStorageController final : public cip::tibia::gamewindow::TContai
 public:
     TContainerStorageController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TContainerStorageController() override;
+    /// CIP: the frame update of every open container.
+    void updateWithTimestamp(qint64 TimestampMilliseconds);
 
     void setControlScheme(int controlScheme);
     void setLootScheme(int lootScheme);

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QString>
+#include <QtGlobal>
+
 #include <memory>
 
 class QQmlEngine;
@@ -21,6 +24,9 @@ class TPassiveAbilityInfoStorage;
 }
 namespace proficiency {
 class TProficiencyStorage;
+}
+namespace renderer {
+class TSpriteTextureProviderManager;
 }
 namespace shared {
 class TTibiaFileSystemHelper;
@@ -56,7 +62,13 @@ namespace client {
 /// CipSoft's TGameClientBase is the QObject between QObject and TGameClient.
 /// In qtclient that moc surface (the initialized / mainWindowInitialized
 /// signals) comes with the generated base of TGameClient, so this class holds
-/// the members and the non-moc behaviour, and TGameClient derives from both.
+/// the members and the non-moc behaviour, and TGameClient derives from both
+/// (it emits the two signals for this class: emitInitialized,
+/// emitMainWindowInitialized).
+///
+/// The application makes the client, runs initialize() once and hands it the
+/// client window with setMainWindow(); updateWithTimestamp() runs before each
+/// frame.
 class TGameClientBase
 {
 public:
@@ -64,6 +76,24 @@ public:
 
     TGameClientBase(const TGameClientBase&) = delete;
     TGameClientBase& operator=(const TGameClientBase&) = delete;
+
+    /// CIP: the client's setup steps, in CipSoft's order: the storages, the
+    /// sound system, the assets; then `initialized`.
+    /// Host: CipSoft's QML context, sprite resolver, appearance instance
+    /// factory and minimap steps have no counterpart here yet (qtclient's
+    /// sprite system is the engine's, its minimap is the game session's).
+    virtual void initialize();
+
+    /// The client version the assets and the login are made for.
+    static constexpr int ClientVersion = 1533;
+    /// CIP: the window the client is shown in. With a window the sprite
+    /// texture provider manager is made, the client's parts connect to the
+    /// game action router and `mainWindowInitialized` follows.
+    void setMainWindow(QQuickWindow* MainWindow);
+    /// CIP: before each frame, at `Timestamp` (milliseconds): the sound
+    /// controller and the sound manager catch up, and the highlight pulse of
+    /// the frame is computed.
+    void updateWithTimestamp(qint64 Timestamp);
 
     /// The QML engine the game window and its controllers are built in.
     QQmlEngine* qmlEngine() const { return m_pEngine; }
@@ -96,6 +126,11 @@ public:
     std::shared_ptr<sound::TSoundConfiguration> soundConfiguration() const { return m_pSoundConfiguration; }
     /// Null unless the sound engine started.
     std::shared_ptr<sound::TSoundController> soundController() const { return m_pSoundController; }
+    /// Null before the main window exists.
+    std::shared_ptr<renderer::TSpriteTextureProviderManager> spriteTextureProviderManager() const
+    {
+        return m_pSpriteTextureProviderManager;
+    }
 
 protected:
     /// The client is made with its QML engine, the file system helper and the
@@ -107,6 +142,29 @@ protected:
     /// made, so the client makes it once the data directories are known
     /// (CipSoft makes an empty one with the client).
     void createSpellInfoStorage();
+
+    /// CIP: the storages the client keeps for the whole process. Host: the
+    /// spell table (spells.json is readable now); qtclient makes the
+    /// appearances, the Cyclopedia map's static data and the game action
+    /// router with the client, because the game window's controllers use
+    /// them without a running engine (the character selection preview).
+    virtual void initializeStorages();
+    /// CIP: the assets: the Cyclopedia map's static data asks the asset
+    /// loading for its files, the client version is set and the assets, the
+    /// static data, the Cyclopedia map and the sound bank are read. Host:
+    /// qtclient reads them at once; a failure is kept in m_assetLoadError.
+    virtual void initializeAssets();
+    /// CIP: the sprite texture provider manager the renderers draw from.
+    virtual void initializeSpriteTextureProviderManager();
+    /// CIP: the minimap tile manager, the sprite resolver and the Cyclopedia
+    /// map's static data publish into the game action router; the router's
+    /// actions reach them, the sprite texture provider manager and the sound
+    /// controller. Host: qtclient's minimap tile manager is the game
+    /// session's; the game client connects it when the world is entered.
+    virtual void connectToGameActionRouter();
+    /// Host: the moc signals of CipSoft's TGameClientBase live in TGameClient.
+    virtual void emitInitialized() = 0;
+    virtual void emitMainWindowInitialized() = 0;
 
     /// The sound configuration from the fixed sound settings and the client
     /// options; the sound engine starts unless the settings turn sound off.
@@ -132,6 +190,9 @@ protected:
     std::shared_ptr<sound::TSoundManager> m_pSoundManager;
     std::shared_ptr<sound::TSoundPlayerManager> m_pSoundPlayerManager;
     std::shared_ptr<sound::TSoundMetadataManager> m_pSoundMetadataManager;
+    std::shared_ptr<renderer::TSpriteTextureProviderManager> m_pSpriteTextureProviderManager;
+    /// Host: what initializeAssets could not read; empty when all loaded.
+    QString m_assetLoadError;
 };
 
 }

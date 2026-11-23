@@ -19,7 +19,7 @@ class TServerModalDialogController final : public TDialogController<cip::tibia::
 public:
     using Options = std::vector<std::tuple<uint8_t, std::string>>;
 
-    explicit TServerModalDialogController(QObject* parent = nullptr);
+    TServerModalDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// CIP : replaces the shown dialog.
     void open(uint32_t id, const QString& title, const QString& text, const Options& buttons, uint8_t enterButton, uint8_t escapeButton,

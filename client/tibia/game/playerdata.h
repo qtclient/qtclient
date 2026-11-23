@@ -43,6 +43,9 @@ struct TPlayerSpeeds
     double modifier = 0.0;
 };
 
+/// The blessings a player holds (values of tibia::client::Blessings).
+using TBlessings = std::set<int>;
+
 /// The player-state flags (EPlayerStateFlag bits 0..29) and the counter the
 /// state message carries along.
 struct TPlayerStates
@@ -118,6 +121,9 @@ public:
     void setChaseOpponents(bool chase);
     bool secureMode() const { return m_secureMode; }
     void setSecureMode(bool secure);
+    /// The world's expert PvP mode, as the login reports it.
+    bool expertPvpMode() const { return m_expertPvpMode; }
+    void setExpertPvpMode(bool enabled);
     int pvpMode() const { return m_pvpMode; }
     void setPvpMode(int pvpMode);
     uint8_t vocation() const { return m_vocation; }
@@ -126,6 +132,13 @@ public:
     bool hasReachedMain() const { return m_hasReachedMain; }
     /// Stores only; nothing is notified.
     void setHasReachedMain(bool reached);
+    /// The blessings the player holds, each one bit of the protocol's
+    /// blessing mask (1 the adventurer's blessing ... 256).
+    TBlessings blessings() const { return m_blessings; }
+    void setBlessings(TBlessings blessings);
+    bool hasAdventurersBlessing() const { return m_blessings.contains(tibia::client::BlessingAdventurer); }
+    int blessingsVisualState() const { return m_blessingsVisualState; }
+    void setBlessingsVisualState(int visualState);
     qint64 storeXpBoostSeconds() const { return m_storeXpBoostSeconds; }
     void setStoreXpBoostSeconds(qint64 seconds);
     bool storeXpBoostPurchasable() const { return m_storeXpBoostPurchasable; }
@@ -177,8 +190,9 @@ public:
     uint16_t stamina() const { return static_cast<uint16_t>(m_staminaMinutes); }
     uint32_t totalCapacity() const { return static_cast<uint32_t>(m_capacity); }
     bool storeExpBoostPurchasable() const { return m_storeXpBoostPurchasable; }
-    uint8_t blessVisualState() const { return m_blessVisualState; }
-    uint16_t blessings() const { return m_blessings; }
+    uint8_t blessVisualState() const { return static_cast<uint8_t>(m_blessingsVisualState); }
+    /// The blessings as the protocol's bit mask.
+    uint16_t blessingMask() const;
     uint16_t magicLevel() const { return m_magicLevel; }
     uint16_t magicLevelPercent() const { return m_magicLevelPercent; }
     uint16_t baseMagicLevel() const { return m_baseMagicLevel; }
@@ -227,7 +241,8 @@ public:
     void updateBaseCapacity(uint32_t baseCapacity);
     void updateStoreExpBoostPurchasable(bool purchasable);
     void setResourceBalance(tibia::client::ResourceTypes_t type, uint64_t value);
-    void setBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
+    /// `blessings`: the protocol's bit mask.
+    void updateBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
     void updateSoul(uint8_t soul);
     void setMagicLevel(uint16_t magicLevel, uint16_t magicLevelPercent);
     void setBaseMagicLevel(uint16_t baseMagicLevel);
@@ -279,9 +294,12 @@ private:
     TPlayerStates m_states;
     bool m_chaseOpponents = true;
     bool m_secureMode = true;
+    bool m_expertPvpMode = false;
     int m_pvpMode = 0;
     uint8_t m_vocation = 0;
     bool m_hasReachedMain = false;
+    TBlessings m_blessings;
+    int m_blessingsVisualState = 0;
     qint64 m_storeXpBoostSeconds = 0;
     bool m_storeXpBoostPurchasable = false;
     qint64 m_dailyRewardXpBoostSeconds = 0;
@@ -301,8 +319,6 @@ private:
 
     // qtclient session data.
     std::string m_name;
-    uint8_t m_blessVisualState{ 0 };
-    uint16_t m_blessings{ tibia::client::BlessingNone };
     uint16_t m_magicLevel{ 0 };
     uint16_t m_magicLevelPercent{ 0 };
     uint16_t m_baseMagicLevel{ 0 };

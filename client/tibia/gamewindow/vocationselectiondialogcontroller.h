@@ -19,8 +19,10 @@ class TVocationSelectionDialogController final
 {
     Q_OBJECT
 public:
-    /// `mapWindowPane` is the game window's map pane the popup is placed over.
-    explicit TVocationSelectionDialogController(QQuickItem* mapWindowPane, QObject* parent = nullptr);
+    /// The dialog is made with `engine` in `dialogParentItem`; `mapWindowPane`
+    /// is the game window's map pane the popup is placed over.
+    TVocationSelectionDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                                       QObject* parent = nullptr);
 
     /// SHOW_TUTORIAL_HINT with hint 2 (the vocation choice) opens the dialog anew.
     void handleGameAction(const input::IGameActionPtr& pGameAction);

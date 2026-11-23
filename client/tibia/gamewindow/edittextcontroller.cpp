@@ -49,8 +49,8 @@ void TEditTextUIData::set(const QString& caption, const QString& description, co
     m_showReportButton = reportButton;
 }
 
-TEditTextController::TEditTextController(QObject* parent)
-    : TDialogController(QStringLiteral("EditTextDialog.qml"), parent)
+TEditTextController::TEditTextController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("EditTextDialog.qml"), engine, dialogParentItem, parent)
 {
     m_modelData = &m_data;
 }

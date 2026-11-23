@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input/gameactiondispatch.h"
+#include "gamewindow/sidebarpanelcontrollerbase.h"
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -52,7 +53,7 @@ private:
 /// widgetVisible / widgetHidden. The store, news (Compendium), social,
 /// cyclopedia and bosstiary button controllers belong to their dialogs, which
 /// set them here.
-class TButtonBarController final : public cip::tibia::gamewindow::TButtonBarController
+class TButtonBarController final : public TSidebarPanelController<cip::tibia::gamewindow::TButtonBarController>
 {
     Q_OBJECT
 public:

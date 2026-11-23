@@ -32,7 +32,7 @@ class TSelectObjectAmountDialogController final
 {
     Q_OBJECT
 public:
-    explicit TSelectObjectAmountDialogController(QObject* parent = nullptr);
+    TSelectObjectAmountDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TSelectObjectAmountDialogController() override;
 
     /// CIP connector: closes the dialog and follows the session's stash

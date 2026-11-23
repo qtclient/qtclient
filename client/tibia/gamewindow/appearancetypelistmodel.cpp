@@ -1,6 +1,8 @@
 #include "appearancetypelistmodel.h"
 
+#include "analysers/itempricestorage.h"
 #include "platform/platform.h"
+#include "proficiency/proficiencystorage.h"
 
 
 #include <QLocale>
@@ -69,17 +71,32 @@ QVariant TAppearanceTypeListModel::data(const QModelIndex& index, const int role
     case LiquideType:
     case HookDirection:
     case DecoItemObjectID:
-    case MarketAverageValue:
-    case NpcSellValue:
-    case ProficiencyXP:
-    case ProficiencyLevel:
         return 0;
+    case MarketAverageValue: {
+        analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+        return prices ? QVariant::fromValue<quint64>(prices->marketPrice(entry.typeId)) : QVariant::fromValue<quint64>(0);
+    }
+    case NpcSellValue: {
+        const analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+        return prices ? static_cast<int>(prices->npcBuyPrice(entry.typeId)) : 0;
+    }
+    case ProficiencyXP: {
+        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
+        return proficiencies ? static_cast<int>(proficiencies->xp(entry.typeId)) : 0;
+    }
+    case ProficiencyLevel: {
+        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
+        return proficiencies ? proficiencies->decorationLevel(entry.typeId) : 0;
+    }
     case LootvalueImageSourceUnderItem:
     case LootvalueImageSourceOverItem:
         return QString();
     case HighlightText:
-    case HasProficiencyMastery:
         return false;
+    case HasProficiencyMastery: {
+        const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
+        return proficiencies && proficiencies->hasMastery(entry.typeId);
+    }
     case Classification:
         return entry.classification;
     case UpgradeTier:

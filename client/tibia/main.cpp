@@ -464,7 +464,7 @@ int main(int argc, char** argv)
             int delay = says > 0 ? int(says) * 1000 + 500 : 3000;
             if (parser.isSet(QStringLiteral("screenshot-delay")))
                 delay = parser.value(QStringLiteral("screenshot-delay")).toInt();
-            QObject::connect(&gameClient, &client::TGameClient::mainWindowInitialized, window, [window, takeShot, delay] {
+            QObject::connect(&gameClient, &client::TGameClient::worldEntered, window, [window, takeShot, delay] {
                 QTimer::singleShot(delay, window, takeShot);
             }, Qt::SingleShotConnection);
         } else

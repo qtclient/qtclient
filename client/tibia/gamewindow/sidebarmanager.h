@@ -21,10 +21,6 @@ class TSidebarWidget;
 /// parent item; null (and a warning) when it fails.
 QQuickItem* createQuickItem(QQmlEngine* engine, const QString& file);
 
-/// CIP TSidebarPanelControllerBase v14 : the panel item's
-/// panelController, and its positionInSidebarChanged forwarded to the controller.
-void bindPanelItem(cip::tibia::gamewindow::TSidebarPanelControllerBase* controller, QQuickItem* item);
-
 /// One sidebar.qml column (CIP: TSidebarController,). Panels go
 /// into its sidebarUpperPane and widgets into its sidebarLowerPane, ordered by
 /// their identifier (Layout.row) from one counter.

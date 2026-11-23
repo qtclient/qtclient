@@ -143,6 +143,21 @@ public:
 
     QPoint toMapPixel() const { return { subfieldX, subfieldY }; }
 
+    /// Where this subfield is drawn on layer `layer`: one field down and right per
+    /// layer it lies below `layer`.
+    QPoint projectedToLayer(const int layer) const
+    {
+        const int shift = (z - layer) * 32;
+        return { subfieldX + shift, subfieldY + shift };
+    }
+    /// The subfield on layer `layer` that is drawn where `projected` lies on
+    /// layer `projectionLayer`.
+    static TWorldMapSubfieldCoordinate fromProjection(const QPoint& projected, const int layer, const int projectionLayer = 0)
+    {
+        const int shift = (layer - projectionLayer) * 32;
+        return { projected.x() - shift, projected.y() - shift, layer };
+    }
+
     /// Field that contains this subfield (CIP field size 32; division toward zero).
     TWorldMapCoordinate toFieldCoordinate() const
     {

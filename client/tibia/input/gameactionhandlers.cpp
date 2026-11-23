@@ -9,7 +9,6 @@
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/remainingdialogs.h"
-#include "renderer/spritetextureprovider.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
@@ -138,7 +137,7 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
         A::COPY_TEXT_TO_CLIPBOARD, A::COPY_TRUSTED_TEXT_TO_CLIPBOARD, A::COPY_CHAT_ENTRY_TO_CLIPBOARD,
         A::COPY_CREATURE_NAME_TO_CLIPBOARD, A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD,
         A::SHOW_CREATE_CHARACTER_DIALOG, A::CHARACER_SELECTION_AUTO_CLOSE, A::LENSHELP_SHOW, A::LENSHELP_HIDE,
-        A::LENSHELP_ACTIVATE, A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE,
+        A::LENSHELP_ACTIVATE,
         A::OPEN_SHOW_IMAGE_DIALOG,
         // Login-mask Manage Account / logos / Create Account → PortalUrls handlers.
         A::OPEN_URL, A::OPEN_URL_GET_PREMIUM, A::OPEN_URL_GET_COINS, A::OPEN_URL_TIBIA_PAGE,
@@ -216,9 +215,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
             if (!text.isEmpty())
                 QGuiApplication::clipboard()->setText(text);
         }
-        break;
-    case A::REMOVE_SPRITEIDENTIFIER_FROM_CACHE:
-        renderer::TSpriteTextureProviderManager::handleGameAction(pGameAction);
         break;
     case A::OPEN_SHOW_IMAGE_DIALOG:
         if (const auto* show = gameActionAs<TGameActionOpenShowImageDialog>(pGameAction)) {

@@ -2,6 +2,7 @@
 #include "cyclopedia/staticcontentinformation.h"
 
 #include "qmlcomponents/worldmapqmltypes.h"
+#include "renderer/worldmapcamera.h"
 
 #include "client/gameclient.h"
 #include "client/gamecore.h"
@@ -13,6 +14,7 @@
 #include "minimap/minimapmarkerstorage.h"
 #include "minimap/minimaptile.h"
 #include "minimap/minimaptilestorage.h"
+#include "renderer/spritetextureprovider.h"
 
 #include <tibia/assets/things.h>
 #include "clockservice.h"
@@ -20,6 +22,7 @@
 #include "assets/cipbmpimage.h"
 
 #include <QList>
+#include <QSignalBlocker>
 #include <QStringList>
 #include <QTimer>
 #include <QQmlComponent>
@@ -62,9 +65,6 @@ QColor backgroundColor(const ETileType type)
     }
 }
 
-/// Field coordinates are positive, so the subfield floor division is a shift.
-int fieldOf(const int subfield) { return subfield >> 5; }
-
 /// The scene graph root: owns the textures of the images drawn last frame.
 void deleteTextures(const std::unordered_map<qint64, QSGTexture*>& textures)
 {
@@ -90,146 +90,136 @@ public:
 
 TWorldMapCamera::TWorldMapCamera(QObject* parent)
     : cip::tibia::qmlcomponents::TWorldMapCameraQmlType(parent)
+    , m_camera(new renderer::TWorldMapCamera(this))
 {
-    m_topLeftSubfieldCoordinate = new TWorldMapSubfieldCoordinateQmlType(this);
-    m_topLeftSubfieldCoordinate->setZ(GroundLayer);
-    m_scaleFactor = 1.0f / 16.0f;
+    auto* topLeft = new TWorldMapSubfieldCoordinateQmlType(this);
+    m_topLeftSubfieldCoordinate = topLeft;
+    connect(topLeft, &cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType::coordinateChanged, this,
+            &TWorldMapCamera::onTopLeftCoordinateChanged);
+    connect(m_camera, &renderer::TWorldMapCamera::cameraViewportChanged, this, [this] {
+        syncTopLeftSubfieldCoordinate();
+        Q_EMIT cameraViewportChanged();
+    });
+    // The map opens on the ground layer at 1/16 until its QML sets the scale.
+    m_camera->setTopLeftSubfieldCoordinate(worldmap::TWorldMapSubfieldCoordinate(0, 0, GroundLayer));
+    m_camera->setScaleFactor(1.0f / 16.0f);
 }
 
 QPoint TWorldMapCamera::topLeft() const
 {
-    return { m_topLeftSubfieldCoordinate->subfieldX(), m_topLeftSubfieldCoordinate->subfieldY() };
+    const worldmap::TWorldMapSubfieldCoordinate topLeft = m_camera->topLeftSubfieldCoordinate();
+    return { topLeft.subfieldX, topLeft.subfieldY };
 }
 
-int TWorldMapCamera::layer() const { return m_topLeftSubfieldCoordinate->z(); }
+int TWorldMapCamera::layer() const { return m_camera->topLeftSubfieldCoordinate().z; }
 
-void TWorldMapCamera::setViewportSize(const QSizeF& size)
-{
-    m_viewport = size;
-    if (!m_geometryInitialized && !size.isEmpty()) {
-        m_geometryInitialized = true;
-        Q_EMIT geometryIntialized();
-    }
-}
+void TWorldMapCamera::setViewportSize(const QSizeF& size) { m_camera->setViewportSize(size.toSize()); }
 
 QPointF TWorldMapCamera::pixelOf(const int x, const int y, const int layer) const
 {
     const QPoint origin = topLeft() + QPoint(this->layer(), this->layer()) * SubfieldsPerField;
-    return QPointF((x + layer) * SubfieldsPerField - origin.x(), (y + layer) * SubfieldsPerField - origin.y()) * m_scaleFactor;
+    return QPointF((x + layer) * SubfieldsPerField - origin.x(), (y + layer) * SubfieldsPerField - origin.y()) * m_camera->scaleFactor();
 }
 
 QPoint TWorldMapCamera::fieldAt(const QPointF& point) const
 {
-    const QPoint subfield = subfieldAt(point);
-    return { fieldOf(subfield.x()), fieldOf(subfield.y()) };
+    const worldmap::TWorldMapCoordinate field = m_camera->convertToWorldMapSubfieldCoordinate(point.toPoint()).toFieldCoordinate();
+    return { field.x, field.y };
 }
 
-QPoint TWorldMapCamera::subfieldAt(const QPointF& point) const
+void TWorldMapCamera::syncTopLeftSubfieldCoordinate()
 {
-    return topLeft() + QPoint(static_cast<int>(std::lround(point.x() / m_scaleFactor)), static_cast<int>(std::lround(point.y() / m_scaleFactor)));
+    const worldmap::TWorldMapSubfieldCoordinate topLeft = m_camera->topLeftSubfieldCoordinate();
+    auto* coordinate = m_topLeftSubfieldCoordinate;
+    if (coordinate->subfieldX() == topLeft.subfieldX && coordinate->subfieldY() == topLeft.subfieldY && coordinate->z() == topLeft.z)
+        return;
+    {
+        // One change notification for all three components.
+        const QSignalBlocker blocker(coordinate);
+        coordinate->setSubfieldX(topLeft.subfieldX);
+        coordinate->setSubfieldY(topLeft.subfieldY);
+        coordinate->setZ(topLeft.z);
+    }
+    Q_EMIT coordinate->coordinateChanged();
 }
 
-void TWorldMapCamera::placeAt(const QPoint& subfield, const QPointF& point)
+void TWorldMapCamera::onTopLeftCoordinateChanged()
 {
-    setTopLeft(subfield - QPoint(static_cast<int>(std::lround(point.x() / m_scaleFactor)), static_cast<int>(std::lround(point.y() / m_scaleFactor))), layer());
-}
-
-void TWorldMapCamera::setTopLeft(const QPoint& subfield, const int layer)
-{
-    m_topLeftSubfieldCoordinate->setSubfieldX(subfield.x());
-    m_topLeftSubfieldCoordinate->setSubfieldY(subfield.y());
-    m_topLeftSubfieldCoordinate->setZ(layer);
+    const worldmap::TWorldMapSubfieldCoordinate coordinate(m_topLeftSubfieldCoordinate->subfieldX(), m_topLeftSubfieldCoordinate->subfieldY(),
+                                                           m_topLeftSubfieldCoordinate->z());
+    if (m_camera->topLeftSubfieldCoordinate() == coordinate)
+        return;
+    m_camera->setTopLeftSubfieldCoordinate(coordinate);
+    Q_EMIT cameraViewportChanged();
 }
 
 void TWorldMapCamera::setTopLeftSubfieldCoordinate(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* v)
 {
     if (!v)
         return;
-    setTopLeft({ v->subfieldX(), v->subfieldY() }, v->z());
-    Q_EMIT cameraViewportChanged();
+    auto* coordinate = m_topLeftSubfieldCoordinate;
+    {
+        const QSignalBlocker blocker(coordinate);
+        coordinate->setSubfieldX(v->subfieldX());
+        coordinate->setSubfieldY(v->subfieldY());
+        coordinate->setZ(v->z());
+    }
+    Q_EMIT coordinate->coordinateChanged();
 }
 
-void TWorldMapCamera::setScaleFactor(const float v)
-{
-    if (v <= 0 || v == m_scaleFactor)
-        return;
-    const QPoint reference = subfieldAt(m_referencePoint);
-    m_scaleFactor = v;
-    placeAt(reference, m_referencePoint);
-    Q_EMIT cameraViewportChanged();
-}
+float TWorldMapCamera::scaleFactor() const { return m_camera->scaleFactor(); }
 
-void TWorldMapCamera::setReferencePoint(const QPoint& v)
-{
-    m_referenceSubfield = subfieldAt(v);
-    if (m_referencePoint == v)
-        return;
-    m_referencePoint = v;
-    Q_EMIT cameraViewportChanged();
-}
+void TWorldMapCamera::setScaleFactor(const float v) { m_camera->setScaleFactor(v); }
+
+QPoint TWorldMapCamera::referencePoint() const { return m_camera->referencePoint(); }
+
+void TWorldMapCamera::setReferencePoint(const QPoint& v) { m_camera->setReferencePoint(v); }
 
 cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* TWorldMapCamera::coordinateAtPoint(const QPoint& Value)
 {
-    const QPoint field = fieldAt(Value);
-    auto* coordinate = new TWorldMapCoordinateQmlType;
-    coordinate->setX(field.x());
-    coordinate->setY(field.y());
-    coordinate->setZ(layer());
-    QQmlEngine::setObjectOwnership(coordinate, QQmlEngine::JavaScriptOwnership);
-    return coordinate;
+    return TWorldMapCoordinateQmlType::create(m_camera->convertToWorldMapSubfieldCoordinate(Value).toFieldCoordinate());
 }
 
 void TWorldMapCamera::changeLayerWithIsometricProjection(int NewLayer)
 {
     NewLayer = std::clamp(NewLayer, 0, MaxLayer);
-    const int oldLayer = layer();
-    if (NewLayer == oldLayer)
-        return;
-    const QPoint subfield = topLeft();
-    const auto project = [&](const int value) { return (fieldOf(value) + oldLayer - NewLayer) * SubfieldsPerField + (value & (SubfieldsPerField - 1)); };
-    setTopLeft({ project(subfield.x()), project(subfield.y()) }, NewLayer);
-    Q_EMIT cameraViewportChanged();
+    const worldmap::TWorldMapSubfieldCoordinate topLeft = m_camera->topLeftSubfieldCoordinate();
+    // The same place seen from the new layer: one field down-right per layer up.
+    worldmap::TWorldMapSubfieldCoordinate projected = worldmap::subfieldOfField(
+        topLeft.toFieldCoordinate().shiftedAwayFromFloor(NewLayer), worldmap::TWorldMapSubfieldExtent::offsetInField(topLeft));
+    projected.z = NewLayer;
+    m_camera->setTopLeftSubfieldCoordinate(projected);
+    Q_EMIT m_camera->cameraViewportChanged();
 }
 
-void TWorldMapCamera::moveDistanceRelativeToReferencePoint(const QPoint& Distance)
-{
-    placeAt(m_referenceSubfield + (subfieldAt(Distance) - topLeft()), m_referencePoint);
-    Q_EMIT cameraViewportChanged();
-}
+void TWorldMapCamera::moveDistanceRelativeToReferencePoint(const QPoint& Distance) { m_camera->moveDistanceRelativeToReferencePoint(Distance); }
 
 void TWorldMapCamera::centerAtSubfieldCoordinateDelayed(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* pSubfieldCoordinate)
 {
     if (pSubfieldCoordinate)
-        centerDelayed(pSubfieldCoordinate->subfieldX(), pSubfieldCoordinate->subfieldY(), pSubfieldCoordinate->z());
+        m_camera->centerAtSubfieldCoordinateDelayed(
+            worldmap::TWorldMapSubfieldCoordinate(pSubfieldCoordinate->subfieldX(), pSubfieldCoordinate->subfieldY(), pSubfieldCoordinate->z()));
 }
 
 void TWorldMapCamera::centerDelayed(const int subfieldX, const int subfieldY, const int layer)
 {
-    m_pendingCenter = { subfieldX, subfieldY };
-    m_pendingLayer = layer;
+    m_pendingCenter = worldmap::TWorldMapSubfieldCoordinate(subfieldX, subfieldY, layer);
     m_hasPendingCenter = true;
+    // Polishes the renderer, which applies it.
     Q_EMIT cameraViewportChanged();
 }
 
 void TWorldMapCamera::setTopLeftDelayed(const int subfieldX, const int subfieldY, const int layer)
 {
-    QTimer::singleShot(0, this, [this, subfieldX, subfieldY, layer] {
-        if (topLeft() == QPoint(subfieldX, subfieldY) && this->layer() == layer)
-            return;
-        setTopLeft({ subfieldX, subfieldY }, layer);
-        Q_EMIT cameraViewportChanged();
-    });
+    m_camera->setTopLeftSubfieldCoordinateDelayed(worldmap::TWorldMapSubfieldCoordinate(subfieldX, subfieldY, layer));
 }
 
 void TWorldMapCamera::applyPendingCenter()
 {
-    if (!m_hasPendingCenter || m_viewport.isEmpty())
+    if (!m_hasPendingCenter || m_camera->viewportSize().isEmpty())
         return;
     m_hasPendingCenter = false;
-    const QPointF center(std::round(m_viewport.width() * 0.5), std::round(m_viewport.height() * 0.5));
-    setTopLeft(topLeft(), m_pendingLayer);
-    placeAt(m_pendingCenter, center);
-    Q_EMIT cameraViewportChanged();
+    m_camera->centerAtSubfieldCoordinate(m_pendingCenter);
 }
 
 TAreaCaptionController::TAreaCaptionController(const int id, const bool isArea, QObject* parent)
@@ -374,7 +364,7 @@ void TMinimapRendererQuickItem::syncZoneBlinkTimer()
 float TMinimapRendererQuickItem::zoneHighlightOpacity()
 {
     // CIP : same pulse as world-map sprite highlights.
-    return static_cast<float>((std::sin(tibia::shared::TClockService::frameMillis() / 100.0) * 0.15 + 0.65) * 0.75);
+    return renderer::highlightStrength();
 }
 
 void TMinimapRendererQuickItem::setMinimapTileStorage(minimap::TMinimapTileStorage* storage) { g_minimapTiles = storage; }

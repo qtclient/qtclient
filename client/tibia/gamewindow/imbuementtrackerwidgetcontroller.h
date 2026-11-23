@@ -189,6 +189,8 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
+    /// The open widget's controller, or null.
+    TImbuementTrackerWidgetController* controller() const { return m_controller.data(); }
     /// Host: the sidebar widgets manager hands the session to its widget managers; the open
     /// widget follows it.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);

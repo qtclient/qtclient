@@ -34,7 +34,7 @@ QString TAssetFileSystemHelper::getFilePath(const TAsset& asset) const
 
 QString TAssetFileSystemHelper::getFilePath(const TAsset::EType type, const QString& fileName) const
 {
-    const bool sound = type == TAsset::Sounds || type == TAsset::Sound || type == 4;
+    const bool sound = type == TAsset::Sounds || type == TAsset::Sound || type == TAsset::SoundCatalog;
     const QDir directory = sound ? m_soundsDirectory : m_assetsDirectory;
     QString path = directory.filePath(fileName);
     if (!fileSystem().fileExists(path)) {

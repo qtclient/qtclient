@@ -31,6 +31,23 @@ void setCoordinate(ProtocolCoordinate* out, const Position& position)
     out->set_z(position.z);
 }
 
+/// A classic object (position, stack position, type) as the ObjectPosition and
+/// ObjectIdentifier of a client message, written by CipSoft's
+/// TGameActionContextHelper from the location the classic position names. The
+/// classic stack position of an object "anywhere" is its liquid or tier.
+void setClassicObject(ObjectPosition* objectPosition, ObjectIdentifier* objectIdentifier, const Position& position,
+                      const int stackPosition, const uint16_t typeId)
+{
+    if (const tibia::input::TGameActionContextPtr location = tibia::input::locationContextFromPosition(position, stackPosition)) {
+        tibia::protocol::TGameActionContextHelper().fillObjectPosition(location, objectPosition);
+        if (objectIdentifier && stackPosition > 0
+            && location->gameActionContextType() == tibia::input::EGameActionContextType::LOCATION_UNKNOWN)
+            objectIdentifier->set_data(static_cast<uint32_t>(stackPosition));
+    }
+    if (objectIdentifier)
+        objectIdentifier->set_type_id(typeId);
+}
+
 }
 
 namespace tibia::protocol::gameclient {
@@ -218,10 +235,8 @@ void sendMove(const Position& fromPos, const uint16_t thingId, const uint8_t sta
 {
     auto message = tibia::protocol::newGameclientMessage(120);
     auto* m = message->MutableExtension(GameclientMessageMoveObject::gameclient_message_move_object);
-    setCoordinate(m->mutable_from_position(), fromPos);
-    m->set_object_id(thingId);
-    m->set_from_stack_position(stackpos);
-    setCoordinate(m->mutable_to_position(), toPos);
+    setClassicObject(m->mutable_source_object_position(), m->mutable_object_identifier(), fromPos, stackpos, thingId);
+    setClassicObject(m->mutable_destination_object_position(), nullptr, toPos, -1, 0);
     m->set_count(static_cast<uint8_t>(count));
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
@@ -267,9 +282,7 @@ void sendRequestTrade(const Position& pos, const uint16_t thingId, const uint8_t
 {
     auto message = tibia::protocol::newGameclientMessage(125);
     auto* m = message->MutableExtension(GameclientMessageTradeObject::gameclient_message_trade_object);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(thingId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, thingId);
     m->set_creature_id(creatureId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
@@ -297,9 +310,7 @@ void sendUseItem(const Position& position, const uint16_t itemId, const uint8_t 
 {
     auto message = tibia::protocol::newGameclientMessage(130);
     auto* m = message->MutableExtension(GameclientMessageUseObject::gameclient_message_use_object);
-    setCoordinate(m->mutable_position(), position);
-    m->set_object_id(itemId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), position, stackpos, itemId);
     m->set_container_index(index);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
@@ -308,12 +319,10 @@ void sendUseItemWith(const Position& fromPos, const uint16_t itemId, const uint8
 {
     auto message = tibia::protocol::newGameclientMessage(131);
     auto* m = message->MutableExtension(GameclientMessageUseTwoObjects::gameclient_message_use_two_objects);
-    setCoordinate(m->mutable_from_position(), fromPos);
-    m->set_object_id(itemId);
-    m->set_from_stack_position(fromStackPos);
-    setCoordinate(m->mutable_to_position(), toPos);
-    m->set_to_object_id(toThingId);
-    m->set_to_stack_position(toStackPos);
+    setClassicObject(m->mutable_source_object_position(), m->mutable_source_object_identifier(), fromPos, fromStackPos,
+                     itemId);
+    setClassicObject(m->mutable_destination_object_position(), m->mutable_destination_object_identifier(), toPos,
+                     toStackPos, toThingId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -321,9 +330,7 @@ void sendUseOnCreature(const Position& pos, const uint16_t thingId, const uint8_
 {
     auto message = tibia::protocol::newGameclientMessage(132);
     auto* m = message->MutableExtension(GameclientMessageUseOnCreature::gameclient_message_use_on_creature);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(thingId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, thingId);
     m->set_creature_id(creatureId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
@@ -332,9 +339,7 @@ void sendRotateItem(const Position& pos, const uint16_t thingId, const uint8_t s
 {
     auto message = tibia::protocol::newGameclientMessage(133);
     auto* m = message->MutableExtension(GameclientMessageTurnObject::gameclient_message_turn_object);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(thingId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, thingId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -342,9 +347,7 @@ void sendOnWrapItem(const Position& pos, const uint16_t thingId, const uint8_t s
 {
     auto message = tibia::protocol::newGameclientMessage(139);
     auto* m = message->MutableExtension(GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(thingId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, thingId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -387,9 +390,7 @@ void sendLook(const Position& position, const uint16_t itemId, const uint8_t sta
 {
     auto message = tibia::protocol::newGameclientMessage(140);
     auto* m = message->MutableExtension(GameclientMessageLook::gameclient_message_look);
-    setCoordinate(m->mutable_position(), position);
-    m->set_object_id(itemId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), position, stackpos, itemId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -434,7 +435,7 @@ void sendTalk(const tibia::client::MessageMode mode, const uint16_t channelId, c
         m->set_aim_mode(3);
     } else if (talkAimPos.isValid()) {
         m->set_aim_mode(talkAimMode == 2 ? 2 : 1);
-        setCoordinate(m->mutable_aim_position(), talkAimPos);
+        setClassicObject(m->mutable_aim_position(), nullptr, talkAimPos, -1, 0);
     }
     tibia::protocol::sendGameclientMessage(std::move(talk));
 }
@@ -649,7 +650,7 @@ void sendOpenParentContainer(const Position& pos)
 {
     auto message = tibia::protocol::newGameclientMessage(149);
     auto* m = message->MutableExtension(GameclientMessageOpenParentContainer::gameclient_message_open_parent_container);
-    setCoordinate(m->mutable_position(), pos);
+    setClassicObject(m->mutable_object_position(), nullptr, pos, -1, 0);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -658,9 +659,7 @@ void sendGatherAll(const Position& pos, const uint16_t itemId, const uint8_t sta
     // Crystal parseRewardChestCollect (C 0xFF)
     auto message = tibia::protocol::newGameclientMessage(255);
     auto* m = message->MutableExtension(GameclientMessageGatherAll::gameclient_message_gather_all);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(itemId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, itemId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -902,9 +901,7 @@ void sendGetTextForReport(const Position& position, const uint16_t typeId, const
     // CIP GetTextForReport (C 0x9D).
     auto message = tibia::protocol::newGameclientMessage(157);
     auto* m = message->MutableExtension(GameclientMessageGetTextForReport::gameclient_message_get_text_for_report);
-    setCoordinate(m->mutable_position(), position);
-    m->set_object_id(typeId);
-    m->set_stack_position(stackPosition);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), position, stackPosition, typeId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1128,9 +1125,7 @@ void sendConfigureShowOffSocket(const Position& pos, const uint16_t itemId, cons
     // Crystal parseConfigureShowOffSocket (C 0x86): Position, u16 itemId, u8 stackpos.
     auto message = tibia::protocol::newGameclientMessage(134);
     auto* m = message->MutableExtension(GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket);
-    setCoordinate(m->mutable_position(), pos);
-    m->set_object_id(itemId);
-    m->set_stack_position(stackpos);
+    setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, itemId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1559,11 +1554,7 @@ void sendImbuementWindowAction(const uint8_t type, const uint16_t itemId, const 
     auto* m = message->MutableExtension(GameclientMessagePickObjectToImbue::gameclient_message_pick_object_to_imbue);
     m->set_action(type);
     if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
-        setCoordinate(m->mutable_position(), pos);
-    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
-        m->set_object_id(itemId);
-    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
-        m->set_stack_position(stackpos);
+        setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, itemId);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1595,7 +1586,7 @@ void sendStashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_
     auto message = tibia::protocol::newGameclientMessage(40);
     auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
     m->set_action(tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_WITHDRAW);
-    m->set_object_id(itemId);
+    m->mutable_object_identifier()->set_type_id(itemId);
     m->set_count(count);
     m->set_stack_position(stackpos);
     tibia::protocol::sendGameclientMessage(std::move(message));
@@ -1632,12 +1623,10 @@ void sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t it
     auto message = tibia::protocol::newGameclientMessage(143);
     auto* m = message->MutableExtension(GameclientMessageQuickLoot::gameclient_message_quick_loot);
     m->set_variant(variant);
-    if (variant < 2)
-        setCoordinate(m->mutable_position(), pos);
-    if (variant < 2)
-        m->set_object_id(itemId);
-    if (variant < 2)
-        m->set_stack_position(stackpos);
+    if (variant < 2) {
+        auto* object = m->mutable_object();
+        setClassicObject(object->mutable_object_position(), object->mutable_object_identifier(), pos, stackpos, itemId);
+    }
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
@@ -1658,11 +1647,8 @@ void openContainerQuickLoot(const uint8_t action, const uint8_t category, const 
     auto* m = message->MutableExtension(GameclientMessageManagedContainer::gameclient_message_managed_container);
     m->set_action(action);
     m->set_category(category);
-    if (action == 0 || action == 4) {
-        setCoordinate(m->mutable_position(), pos);
-        m->set_object_id(itemId);
-        m->set_stack_position(stackpos);
-    }
+    if (action == 0 || action == 4)
+        setClassicObject(m->mutable_object_position(), m->mutable_object_identifier(), pos, stackpos, itemId);
     m->set_use_main_as_fallback(useMainAsFallback);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }

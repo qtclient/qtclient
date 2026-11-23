@@ -8,6 +8,10 @@
 
 #include "network/gameserverconnection.h"
 
+#include "clockservice.h"
+
+#include <protocol.pb.h>
+
 #include <QtGlobal>
 #include <format>
 #include <idleot/stats.h>
@@ -20,6 +24,10 @@
 namespace tibia::protocol {
 
 namespace {
+
+/// The packet the messages being read come from.
+uint32_t g_packetNumber = 0;
+int g_connectionType = 0;
 
 // Product messages, outside the CIP protocol: the extended-opcode transport and
 // the same-socket character switch. They return false when the message does
@@ -55,6 +63,20 @@ bool readCharacterSwitch(ClassicReader& packet)
     return true;
 }
 
+}
+
+void setServerPacketOrigin(const uint32_t PacketNumber, const int ConnectionType)
+{
+    g_packetNumber = PacketNumber;
+    g_connectionType = ConnectionType;
+}
+
+void setServerMessageMetaData(::tibia::protobuf::protocol::GameserverMessage& message)
+{
+    auto* metaData = message.mutable_meta_data();
+    metaData->set_timestamp(shared::TClockService::frameMillis());
+    metaData->set_packet_number(g_packetNumber);
+    metaData->set_value3(g_connectionType);
 }
 
 void processServerPacket(const uint8_t* data, const size_t size)

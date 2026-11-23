@@ -12,12 +12,22 @@
 
 #include <QJsonObject>
 
+#include <memory>
 #include <span>
+
+namespace tibia {
+namespace gamewindow {
+class TAssignObjectActionDialogController;
+class TAssignSpellActionDialogController;
+class TAssignTextActionDialogController;
+}
+}
 
 namespace tibia {
 namespace config {
 
 class TClientOptions;
+class TTibiaHotkeyActionSettingQmlWrapper;
 
 /// A page property and the option it edits (CIP: the pairs each page's load
 /// reads and its apply writes).
@@ -341,7 +351,11 @@ class THotkeysOptionsPage final : public cip::tibia::config::THotkeysQMLOptionsP
 {
     Q_OBJECT
 public:
+    /// The page with its spell, object and text assign dialogs; none of them
+    /// names an action bar button. The object dialog's game actions are the
+    /// page's.
     explicit THotkeysOptionsPage(QObject* parent = nullptr);
+    ~THotkeysOptionsPage() override;
 
     void setHotkeyMode(EHotkeyMode mode);
     void setAutoSwitchHotkeyPreset(bool v) override;
@@ -360,8 +374,10 @@ public:
     /// The current set loses every button mapping of the action bar (the
     /// options dialog's Apply, for the bars marked for clearing).
     void clearActionBarMappings(uint8_t actionBarId);
-    /// Closes the page's text, message and key recording dialogs.
+    /// Closes the page's text, message, assign and key recording dialogs.
     void closeDialogs();
+    /// The controls page's rotate modifiers (alt, shift, ctrl).
+    void setRotateModifiers(bool rotateWithAlt, bool rotateWithShift, bool rotateWithCtrl);
 
     Q_INVOKABLE void requestAddPreset() override;
     Q_INVOKABLE void requestRenameCurrentPreset() override;
@@ -375,11 +391,34 @@ public Q_SLOTS:
     void onPresetTextEntered(const QString& EnteredText);
     void onMessageDialogConfirmed();
     void onNewKeySequenceSelectedForCurrentHotkeyActionSetting(const QKeySequence& NewKeySequence);
-    /// HotkeyActionSettingIndex is a row of hotkeyModel; -1 adds a row.
+    /// HotkeyActionSettingIndex is a row of the page (all rows, not only the
+    /// visible ones); -1 or past the end adds a row.
     void onTextAssignedToHotkeyAction(int HotkeyActionSettingIndex, int MultiActionIndex, const QString& Text, bool SendAutomatically);
+    /// The row's setting becomes the object (its liquid or tier), its use and
+    /// smart mode, with the object's picture.
+    void onObjectAssignedToHotkeyAction(int HotkeyActionSettingIndex, int MultiActionIndex, int ObjectId, int UpgradeTier, int LiquidType,
+                                        EUseType UseType, bool UseEquipSmartMode);
+    /// The row's setting becomes the spell's chat text, sent automatically,
+    /// with its cast type.
+    void onSpellAssignedToHotkeyAction(int HotkeyActionSettingIndex, int MultiActionIndex, int SpellId, const QString& Parameters,
+                                       int CastType);
 
 private:
     enum class EPresetTextMode { None = 0, Add = 1, Clone = 2, Rename = 3 };
+
+    /// The row's context menu: assign or edit a spell, an object or a text,
+    /// and clear the action when it has one. -1 is a new row.
+    void showEditActionMenu(int rowIndex);
+    /// The spell dialog for the row: with the spell of its chat text, if any.
+    void openAssignSpellDialog(int rowIndex);
+    /// The object dialog for the row: with its object, if any.
+    void openAssignObjectDialog(int rowIndex);
+    /// The text dialog for the row: with its chat text, if any.
+    void openAssignTextDialog(int rowIndex);
+    /// The row goes; the rest are committed and rebuilt.
+    void removeRow(int rowIndex);
+    /// The row at an index of all rows, null past the end.
+    TTibiaHotkeyActionSettingQmlWrapper* rowAt(int rowIndex) const;
 
     /// The rows of the current set and chat mode, then the list model.
     void rebuildModel();
@@ -392,11 +431,19 @@ private:
     void openPresetDialog(EPresetTextMode mode, const QString& caption, const QString& description, const QString& text);
     QString currentSetName() const { return m_options.currentHotkeySetName; }
 
+    std::unique_ptr<gamewindow::TAssignSpellActionDialogController> m_assignSpellDialog;
+    std::unique_ptr<gamewindow::TAssignObjectActionDialogController> m_assignObjectDialog;
+    std::unique_ptr<gamewindow::TAssignTextActionDialogController> m_assignTextDialog;
     THotkeyOptionsData m_options;
     QList<QObject*> m_rows;
     QObject* m_editRow = nullptr;
     int m_editKey = 0;
     EPresetTextMode m_presetTextMode = EPresetTextMode::None;
+    /// The controls page's rotate modifiers (kept with the page; nothing here
+    /// reads them).
+    bool m_rotateWithAlt = false;
+    bool m_rotateWithShift = false;
+    bool m_rotateWithCtrl = false;
 };
 
 }

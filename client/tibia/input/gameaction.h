@@ -7,6 +7,7 @@
 #include <client/position.h>
 
 #include "gameactioncontext.h"
+#include "playermovementintent.h"
 
 #include <QColor>
 #include <QJsonDocument>
@@ -21,6 +22,7 @@
 #include <variant>
 #include <memory>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace tibia {
@@ -2891,28 +2893,40 @@ private:
     bool m_autoRepeat;
 };
 
-/// CIP input::TGameActionPlayerMovementIntent (SET_PLAYER_MOVEMENT_INTENT): walk to a
-/// field (CIP v4: the TPlayerMovementIntent). qtclient adds the path mode (minimap /
-/// cyclopedia / travel) and whether the path may end on an unwalkable goal (clicks on
-/// the world map or an object; not the minimap or cyclopedia map).
+/// CIP input::TGameActionPlayerMovementIntent (SET_PLAYER_MOVEMENT_INTENT): the
+/// player's movement intent (a target field, a direction, a rotation or a stop).
 class TGameActionPlayerMovementIntent final : public IGameAction
 {
 public:
-    TGameActionPlayerMovementIntent(const Position& target, int autoWalkPathMode = 0, bool enterUnwalkableGoal = true)
-        : m_target(target)
-        , m_autoWalkPathMode(autoWalkPathMode)
-        , m_enterUnwalkableGoal(enterUnwalkableGoal)
+    explicit TGameActionPlayerMovementIntent(std::shared_ptr<const TMovementIntent> intent)
+        : m_intent(std::move(intent))
     {
     }
     EGameAction gameActionType() const override { return EGameAction::SET_PLAYER_MOVEMENT_INTENT; }
-    const Position& target() const { return m_target; }
-    int autoWalkPathMode() const { return m_autoWalkPathMode; }
-    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
+    const std::shared_ptr<const TMovementIntent>& intent() const { return m_intent; }
+    /// v4: the intent's kind.
+    TMovementIntentKind intentKind() const { return static_cast<TMovementIntentKind>(m_intent->v2()); }
+    /// The target field intent, or null for the other kinds.
+    const TMovementIntentTargetCoordinate* targetCoordinate() const
+    {
+        return intentKind() == TMovementIntentKind::Target ? static_cast<const TMovementIntentTargetCoordinate*>(m_intent.get())
+                                                           : nullptr;
+    }
+    /// The target field of a target coordinate intent (a default position otherwise).
+    Position target() const
+    {
+        const TMovementIntentTargetCoordinate* goal = targetCoordinate();
+        return goal ? Position(goal->x(), goal->y(), static_cast<uint8_t>(goal->z())) : Position();
+    }
+    /// Whether a target coordinate intent's path may end on an unwalkable goal.
+    bool enterUnwalkableGoal() const
+    {
+        const TMovementIntentTargetCoordinate* goal = targetCoordinate();
+        return goal && goal->enterUnwalkableGoal();
+    }
 
 private:
-    Position m_target;
-    int m_autoWalkPathMode;
-    bool m_enterUnwalkableGoal;
+    std::shared_ptr<const TMovementIntent> m_intent;
 };
 
 
@@ -3365,7 +3379,8 @@ std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& actio
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 /// The creature an action is on (CIP: the creature classes' v4); 0 for none.
 uint32_t creatureIdOf(const IGameAction& action);
-std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
+/// A walk to `position` (a target coordinate intent).
+std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, bool enterUnwalkableGoal = true);
 std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner);
 
 

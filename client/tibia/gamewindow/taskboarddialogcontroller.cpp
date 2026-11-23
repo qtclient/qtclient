@@ -45,54 +45,6 @@ QString formatBalance(const uint64_t value)
     return QLocale(QLocale::English).toString(static_cast<qulonglong>(value));
 }
 
-StrMapList shopOffers(const std::vector<taskboard::TShopRewardData>& rewards)
-{
-    using taskboard::EShopRewardStatus;
-    using taskboard::EShopRewardType;
-    StrMapList rows;
-    uint32_t index = 0;
-    for (const auto& reward : rewards) {
-        TaskBoardShopItemData item;
-        item.id = static_cast<uint8_t>(index++);
-        item.offerType = static_cast<uint8_t>(reward.type);
-        if (reward.type == EShopRewardType::PromotionPoint) {
-            item.nextCost = reward.price;
-            item.price = item.nextCost;
-            item.currentPurchases = reward.purchaseCount > 0 ? reward.purchaseCount - 1 : 0;
-            item.bought = (reward.status == EShopRewardStatus::Bought || item.nextCost == 0) ? 1 : 0;
-        } else {
-            item.title = reward.name.toStdString();
-            item.description = reward.description.toStdString();
-            item.price = reward.price;
-            if (reward.type == EShopRewardType::TwoObjects)
-                item.optionalItemId = reward.secondObjectTypeId;
-            if (reward.type == EShopRewardType::Outfit) {
-                item.lookType = reward.appearanceId;
-                item.lookAddons = static_cast<uint8_t>((reward.firstAddon ? 1 : 0) | (reward.secondAddon ? 2 : 0));
-            } else if (reward.type == EShopRewardType::Mount) {
-                item.lookType = reward.appearanceId;
-            } else {
-                item.itemId = reward.appearanceId;
-            }
-            item.bought = reward.status == EShopRewardStatus::Bought ? 1 : 0;
-        }
-        rows.push_back({ { "id", std::to_string(item.id) },
-                         { "offerType", std::to_string(item.offerType) },
-                         { "title", item.title },
-                         { "description", item.description },
-                         { "price", std::to_string(item.price) },
-                         { "bought", std::to_string(item.bought) },
-                         { "lookType", std::to_string(item.lookType) },
-                         { "lookAddons", std::to_string(item.lookAddons) },
-                         { "itemId", std::to_string(item.itemId) },
-                         { "optionalItemId", std::to_string(item.optionalItemId) },
-                         { "maxPurchases", std::to_string(item.maxPurchases) },
-                         { "currentPurchases", std::to_string(item.currentPurchases) },
-                         { "nextCost", std::to_string(item.nextCost) } });
-    }
-    return rows;
-}
-
 }
 
 std::vector<std::map<std::string, uint32_t>> taskboardBountyMonsterRows(const taskboard::TBountyTaskData& data)
@@ -198,7 +150,7 @@ void TTaskboardDialogController::connectTabsToGameSession()
         return;
     taskboard::TTaskboardShopStorage* shop = session->taskboardShopStorage().get();
     m_gameSessionConnections.add(connect(shop, &taskboard::TTaskboardShopStorage::shopRewardDataChanged, this,
-                                         [this, shop]() { m_shop->applyShopData(shopOffers(shop->shopRewardData())); }));
+                                         [this, shop]() { m_shop->setRewards(shop->shopRewardData()); }));
 }
 
 QString TTaskboardDialogController::bountyPointsString() const

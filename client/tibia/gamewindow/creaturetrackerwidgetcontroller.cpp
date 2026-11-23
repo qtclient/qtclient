@@ -181,9 +181,6 @@ TCreatureTrackerWidgetController::TCreatureTrackerWidgetController(const EWidget
     m_widgetMode = mode;
     m_trackedCreatures = m_model;
     setStorages(creatures, bosses);
-    m_cooldownTimer.setInterval(1000);
-    connect(&m_cooldownTimer, &QTimer::timeout, this, &TCreatureTrackerWidgetController::updateCooldownExpiry);
-    m_cooldownTimer.start();
     widget()->createItem(QStringLiteral("CreatureTrackerWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TCreatureTrackerWidgetController::onWidgetQuickItemDestroyed);

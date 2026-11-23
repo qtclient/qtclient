@@ -221,6 +221,16 @@ public:
 
     void handleFriendSystemDataMessage(const ::tibia::protobuf::protocol::GameserverMessageFriendSystemData& message);
 
+    /// Friend system actions on an account; each emits sendFriendSystemAction.
+    void acceptInvite(uint32_t accountId, int friendGroup);
+    void declineInvite(uint32_t accountId);
+    void cancelInvite(uint32_t accountId);
+    void removeFromBlacklist(uint32_t accountId);
+
+Q_SIGNALS:
+    /// A FriendSystemAction for the server (the session forwards it).
+    void sendFriendSystemAction(const ::tibia::protobuf::protocol::GameclientMessageFriendSystemAction& FriendSystemActionMessage);
+
 private:
     TFriendsStorage* m_storage;
 };

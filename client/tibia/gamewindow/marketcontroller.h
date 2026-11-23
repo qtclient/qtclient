@@ -15,6 +15,9 @@
 #include <vector>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 }
@@ -64,7 +67,8 @@ class TMarketController final : public TDialogController<cip::tibia::market::TMa
 {
     Q_OBJECT
 public:
-    explicit TMarketController(QObject* parent = nullptr);
+    /// CipSoft's constructor: the client options and the engine and parent item the dialog is made with.
+    TMarketController(config::TClientOptions* clientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem);
     ~TMarketController() override;
 
     /// CIP connector: the dialog goes away and the list empties; then the
@@ -168,6 +172,7 @@ private:
                        std::vector<QObject*>& ownedBuy, std::vector<QObject*>& ownedSell);
     uint8_t selectedTier() const { return m_hasSelectedTier ? m_selectedTier : 0; }
 
+    config::TClientOptions* m_pClientOptions;
     shared::TQtConnectionManager m_gameSessionConnections;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<market::TMarketStorage> m_storage;

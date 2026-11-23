@@ -17,6 +17,9 @@
 #include <optional>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 }
@@ -132,7 +135,9 @@ class TStoreDialogController final : public TDialogController<cip::tibia::gamewi
 {
     Q_OBJECT
 public:
-    explicit TStoreDialogController(QObject* parent = nullptr);
+    TStoreDialogController(std::shared_ptr<store::TDynamicallyLoadedImageManager> DynamicallyLoadedImageManager,
+                           config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                           QObject* parent = nullptr);
     ~TStoreDialogController() override;
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
@@ -251,8 +256,10 @@ private:
     QPointer<store::TStoreProtocolMessageHandler> m_messages;
     QPointer<store::TStoreStorage> m_storage;
     shared::TQtConnectionManager m_gameSessionConnections;
-    store::TDynamicallyLoadedImageManager* m_imageManager;
+    /// Shared with the other dialogs that show downloaded images.
+    std::shared_ptr<store::TDynamicallyLoadedImageManager> m_imageManager;
     store::TStoreDescriptionManager* m_descriptionManager;
+    config::TClientOptions* m_clientOptions;
     TStorePurchaseConfirmationDialogController m_confirmationDialog;
     TGenericEnterTextDialogController* m_newCharacterNameDialog;
     TCharacterWorldTransferDialogController* m_worldTransferDialog;

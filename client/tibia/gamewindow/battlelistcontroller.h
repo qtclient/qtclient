@@ -293,6 +293,9 @@ public:
 
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme);
+    /// Keeps the premium time storage and hands it to every list (and to the
+    /// lists opened later).
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
     /// Where TEMPORARY_SELECT_CREATURE puts the hovered creature.
     void setWorldMapRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider) { m_worldMapRenderProvider = provider; }
 
@@ -381,6 +384,7 @@ private:
     QQmlEngine* m_engine;
     TBattleListDataModel m_dataModel;
     QPointer<config::TSidebarOptions> m_sidebarOptions;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     qmlcomponents::TWorldMapRenderProvider* m_worldMapRenderProvider = nullptr;
     TBattleListController* m_primary = nullptr;
     TBattleListController* m_party = nullptr;

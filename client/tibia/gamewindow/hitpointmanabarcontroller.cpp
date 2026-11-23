@@ -26,7 +26,7 @@ void toggleOption(const char* name)
 }
 
 THitpointManabarController::THitpointManabarController(QObject* parent)
-    : cip::tibia::gamewindow::THitpointManabarController(parent)
+    : TSidebarPanelController(parent)
 {
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             &THitpointManabarController::onOptionChanged);

@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QTimer>
 
@@ -18,6 +19,7 @@
 namespace tibia {
 namespace authentication {
 class TAuthenticationAndEncryptionInfo;
+class TLoginProtocolMessageHandler;
 }
 namespace shared {
 class TCompressionHelper;
@@ -81,9 +83,12 @@ public:
     /// Milliseconds since the last packet arrived, -1 when not connected.
     qint64 millisSinceRead() const;
 
-    /// Answers a login challenge (CIP TLoginProtocolMessageHandler): the login,
-    /// or the secondary login once the server allowed a secondary connection.
-    void sendLogin(uint32_t challengeTimestamp, uint8_t challengeRandom);
+    /// The session's login handler (CIP TLoginProtocolMessageHandler), null
+    /// before the first connect.
+    authentication::TLoginProtocolMessageHandler* loginProtocolMessageHandler() const
+    {
+        return m_loginProtocolMessageHandler.get();
+    }
 
     /// Encoded client message from the protocol queue -> packet -> wire.
     void writeClientFrame(const QByteArray& frame);
@@ -108,7 +113,9 @@ private:
     void buildNetworkStack();
     void releaseNetworkStack();
     void onPacketReady(TGameserverNetworkPacket packet);
-    void onReadyForSecondaryConnection(const QString& token);
+    /// The login handler and the sequence flow processor read the protocol
+    /// queue's messages; the login handler's messages go out through it.
+    void connectProtocolMessageQueue();
     void processServerData(const QByteArray& data);
     void sendFrame(const QByteArray& frame);
     void recordInput(const QByteArray& data);
@@ -116,6 +123,9 @@ private:
 
     TGameserverLoginData m_login;
     std::shared_ptr<authentication::TAuthenticationAndEncryptionInfo> m_authenticationAndEncryptionInfo;
+    std::shared_ptr<authentication::TLoginProtocolMessageHandler> m_loginProtocolMessageHandler;
+    /// The session's protocol queue the stack is connected to.
+    QPointer<QObject> m_protocolMessageQueue;
     std::shared_ptr<TGameserverDualConnection> m_dualConnection;
     std::shared_ptr<TUnencryptedRawMessageStream> m_serverMessageStream;
     std::shared_ptr<shared::TCompressionHelper> m_compressionHelper;
@@ -123,7 +133,6 @@ private:
     std::shared_ptr<TGameserverNetworkPacketRawDataProcessor> m_rawDataProcessor;
     QTimer m_networkTick;
     QElapsedTimer m_readTimer;
-    tibia::game::SoftHook m_readyForSecondaryConnectionHook;
     bool m_disconnected = false;
     bool m_replay = false;
     bool m_productTransport = false;

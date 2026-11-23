@@ -9,9 +9,11 @@
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/buttonbarcontroller.h"
+#include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
+#include "spells/spellinfostorage.h"
 #include "appearances/appearanceinstance.h"
 
 #include <tibia/game/thingsession_forward.h>
@@ -1074,9 +1076,48 @@ appearances::TAppearanceInstancePtr hotkeyObjectAppearance(const TActionSetting&
 
 } // namespace
 
+namespace {
+
+/// The assign dialogs of the hotkeys page belong to no action bar.
+constexpr uint8_t NoActionBar = 0xff;
+
+}
+
 THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
     : cip::tibia::config::THotkeysQMLOptionsPage(parent)
+    , m_assignSpellDialog(std::make_unique<gamewindow::TAssignSpellActionDialogController>(NoActionBar))
+    , m_assignObjectDialog(std::make_unique<gamewindow::TAssignObjectActionDialogController>(NoActionBar))
+    , m_assignTextDialog(std::make_unique<gamewindow::TAssignTextActionDialogController>(NoActionBar))
 {
+    using namespace gamewindow;
+    m_assignObjectDialog->setShowActionBarTarget(false);
+    connect(m_assignObjectDialog.get(), &TAssignObjectActionDialogController::publishGameAction, this,
+            &THotkeysOptionsPage::publishGameAction);
+    connect(m_assignObjectDialog.get(), &TAssignObjectActionDialogController::requestAssignObject, this,
+            [this](const uint ButtonId, const int MultiActionIndex, const int ObjectId, const int UpgradeTier, const int LiquidType,
+                   const EUseType UseType, const bool UseEquipSmartMode) {
+                onObjectAssignedToHotkeyAction(int(ButtonId), MultiActionIndex, ObjectId, UpgradeTier, LiquidType, UseType,
+                                               UseEquipSmartMode);
+            });
+    m_assignTextDialog->setShowActionBarTarget(false);
+    connect(m_assignTextDialog.get(), &TAssignTextActionDialogController::requestAssignText, this,
+            [this](const uint ButtonId, const int MultiActionIndex, const QString& Text, const bool SendAutomatically) {
+                onTextAssignedToHotkeyAction(int(ButtonId), MultiActionIndex, Text, SendAutomatically);
+            });
+    m_assignSpellDialog->setShowActionBarTarget(false);
+    connect(m_assignSpellDialog.get(), &TAssignSpellActionDialogController::requestAssignSpell, this,
+            [this](const uint ButtonId, const int MultiActionIndex, const int SpellId, const QString& Parameters, const ECastType CastType) {
+                onSpellAssignedToHotkeyAction(int(ButtonId), MultiActionIndex, SpellId, Parameters, int(CastType));
+            });
+}
+
+THotkeysOptionsPage::~THotkeysOptionsPage() = default;
+
+TTibiaHotkeyActionSettingQmlWrapper* THotkeysOptionsPage::rowAt(const int rowIndex) const
+{
+    if (rowIndex < 0 || rowIndex >= m_rows.size())
+        return nullptr;
+    return static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_rows.at(rowIndex));
 }
 
 void THotkeysOptionsPage::setHotkeyMode(const EHotkeyMode mode)
@@ -1146,10 +1187,24 @@ void THotkeysOptionsPage::load(const TClientOptions& options)
     m_options = THotkeyOptionsData::fromJson(section);
     m_autoSwitchHotkeyPreset = m_options.autoSwitchHotkeyPreset;
     refreshSetNames();
+    m_chatModeOn = options.chatOptions().chatModeOn;
+    m_rotateWithAlt = options.boolOption(cip::EClientOption::rotateWithAlt);
+    m_rotateWithShift = options.boolOption(cip::EClientOption::rotateWithShift);
+    m_rotateWithCtrl = options.boolOption(cip::EClientOption::rotateWithCtrl);
+    m_assignObjectDialog->setClientSettingSmoothFiltering(
+        options.antialiasingMode() == int(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing));
+    m_nameFilter.clear();
     m_editRow = nullptr;
     Q_EMIT autoswitchHotkeyPresetChanged();
     Q_EMIT hotkeySetsChanged();
     rebuildModel();
+}
+
+void THotkeysOptionsPage::setRotateModifiers(const bool rotateWithAlt, const bool rotateWithShift, const bool rotateWithCtrl)
+{
+    m_rotateWithAlt = rotateWithAlt;
+    m_rotateWithShift = rotateWithShift;
+    m_rotateWithCtrl = rotateWithCtrl;
 }
 
 void THotkeysOptionsPage::apply(TClientOptions& options) const
@@ -1430,6 +1485,9 @@ void THotkeysOptionsPage::closeDialogs()
         close(message);
     for (auto* record : findChildren<gamewindow::TRecordKeyboardShortcutDialogController*>(Qt::FindDirectChildrenOnly))
         close(record);
+    close(m_assignSpellDialog.get());
+    close(m_assignObjectDialog.get());
+    close(m_assignTextDialog.get());
 }
 
 void THotkeysOptionsPage::resetToDefault()
@@ -1442,51 +1500,168 @@ void THotkeysOptionsPage::resetToDefault()
     rebuildModel();
 }
 
-void THotkeysOptionsPage::requestEditActionForHotkey(const int HotkeyActionSettingIndex)
+/// QML's index counts the visible rows: the menu opens for the row it shows.
+void THotkeysOptionsPage::requestEditActionForHotkey(int HotkeyActionSettingIndex)
 {
-    if (HotkeyActionSettingIndex < 0 || HotkeyActionSettingIndex >= m_hotkeyModel.size())
-        return;
-    auto* row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
-    if (!row || row->hotkeyActionSetting().kind != TActionSetting::TEXT)
-        return;
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(qtTrId("optionsmenu_individual_hotkeys"));
-    prompt->setText(row->hotkeyActionSetting().text);
-    prompt->setMaxInputLength(255);
-    const bool sendAutomatically = row->hotkeyActionSetting().sendAutomatically;
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, HotkeyActionSettingIndex, sendAutomatically](const QString& entered) {
-        onTextAssignedToHotkeyAction(HotkeyActionSettingIndex, -1, entered, sendAutomatically);
-    });
-    prompt->dialog()->show();
+    for (qsizetype i = 0; i < m_rows.size(); ++i) {
+        if (!static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_rows.at(i))->isVisible())
+            ++HotkeyActionSettingIndex;
+        else if (i == HotkeyActionSettingIndex)
+            break;
+    }
+    showEditActionMenu(HotkeyActionSettingIndex);
 }
 
 void THotkeysOptionsPage::requestAddNewCustomHotkey()
 {
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(qtTrId("optionsmenu_individual_hotkeys"));
-    prompt->setMaxInputLength(255);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this](const QString& entered) {
-        if (entered.trimmed().isEmpty())
+    showEditActionMenu(-1);
+}
+
+void THotkeysOptionsPage::showEditActionMenu(const int rowIndex)
+{
+    auto* menu = gamewindow::TContextMenuController::instance();
+    if (!menu)
+        return;
+    menu->beginCustomMenu();
+    bool hasObject = false;
+    bool hasSpell = false;
+    bool hasText = false;
+    if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
+        const TActionSetting& setting = row->hotkeyActionSetting();
+        if (!setting.text.isEmpty()) {
+            const spells::TSpellInfoStorage::TSpellText spell = spells::TSpellInfoStorage::instance()->parseSpellText(setting.text);
+            hasSpell = spell.spell != nullptr;
+            hasText = !hasSpell;
+        }
+        hasObject = setting.objectId != 0;
+    }
+    const auto entry = [this, menu, rowIndex](const bool edit, const char* format, void (THotkeysOptionsPage::*open)(int)) {
+        const QString text = qtTrId(format).arg(qtTrId(edit ? "actionbar_contextmenu_edit" : "actionbar_contextmenu_assign"));
+        connect(menu->addCustomEntry(text), &gamewindow::TContextMenuEntryItem::triggered, this,
+                [this, open, rowIndex] { (this->*open)(rowIndex); });
+    };
+    entry(hasSpell, "actionbar_contextmenu_spell", &THotkeysOptionsPage::openAssignSpellDialog);
+    entry(hasObject, "actionbar_contextmenu_object", &THotkeysOptionsPage::openAssignObjectDialog);
+    entry(hasText, "actionbar_contextmenu_text", &THotkeysOptionsPage::openAssignTextDialog);
+    if (hasObject || hasSpell || hasText) {
+        menu->addCustomSeparator();
+        connect(menu->addCustomEntry(qtTrId("actionbar_contextmenu_clear_action")), &gamewindow::TContextMenuEntryItem::triggered, this,
+                [this, rowIndex] { removeRow(rowIndex); });
+    }
+    menu->showCustomMenu();
+}
+
+void THotkeysOptionsPage::openAssignSpellDialog(const int rowIndex)
+{
+    if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
+        const TActionSetting& setting = row->hotkeyActionSetting();
+        if (!setting.text.isEmpty()) {
+            const spells::TSpellInfoStorage::TSpellText spell = spells::TSpellInfoStorage::instance()->parseSpellText(setting.text);
+            if (spell.spell)
+                m_assignSpellDialog->showDialog(uint(rowIndex), -1, spell.spell->id, spell.parameters,
+                                                gamewindow::ECastType(setting.spellCastType));
+            else
+                m_assignSpellDialog->showDialog(uint(rowIndex), -1);
             return;
-        setHotkeyMode(CustomHotkeys);
-        onTextAssignedToHotkeyAction(-1, -1, entered, false);
-    });
-    prompt->dialog()->show();
+        }
+    }
+    m_assignSpellDialog->showDialog(uint(rowIndex), -1);
+}
+
+void THotkeysOptionsPage::openAssignObjectDialog(const int rowIndex)
+{
+    if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
+        const TActionSetting& setting = row->hotkeyActionSetting();
+        if (setting.objectId != 0) {
+            m_assignObjectDialog->showDialog(uint(rowIndex), -1, setting.objectId, setting.upgradeTier.value_or(0),
+                                             setting.liquidType.value_or(0), setting.useType, row->canHaveSmartMode(), false);
+            return;
+        }
+    }
+    m_assignObjectDialog->showDialog(uint(rowIndex), -1);
+}
+
+void THotkeysOptionsPage::openAssignTextDialog(const int rowIndex)
+{
+    if (const TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(rowIndex)) {
+        const TActionSetting& setting = row->hotkeyActionSetting();
+        if (!setting.text.isEmpty()) {
+            m_assignTextDialog->showDialog(uint(rowIndex), -1, setting.text, setting.sendAutomatically);
+            return;
+        }
+    }
+    m_assignTextDialog->showDialog(uint(rowIndex), -1);
+}
+
+void THotkeysOptionsPage::removeRow(const int rowIndex)
+{
+    if (rowIndex < 0 || rowIndex >= m_rows.size())
+        return;
+    QObject* row = m_rows.takeAt(rowIndex);
+    commitRows(true);
+    rebuildModel();
+    row->deleteLater();
 }
 
 void THotkeysOptionsPage::onTextAssignedToHotkeyAction(const int HotkeyActionSettingIndex, int, const QString& Text, const bool SendAutomatically)
 {
-    TTibiaHotkeyActionSettingQmlWrapper* row = nullptr;
-    const bool added = HotkeyActionSettingIndex == -1 || HotkeyActionSettingIndex >= m_hotkeyModel.size();
+    TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(HotkeyActionSettingIndex);
+    const bool added = HotkeyActionSettingIndex == -1 || row == nullptr;
     if (added) {
         row = new TTibiaHotkeyActionSettingQmlWrapper(QKeySequence(), this);
         m_rows.append(row);
-    } else {
-        row = static_cast<TTibiaHotkeyActionSettingQmlWrapper*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
     }
     TActionSetting setting;
     setting.setChatText(Text);
     setting.setSendAutomatically(SendAutomatically);
+    row->hotkeyActionSetting() = setting;
+    row->notifyChanged();
+    commitRows(true);
+    if (added)
+        rebuildModel();
+}
+
+void THotkeysOptionsPage::onObjectAssignedToHotkeyAction(const int HotkeyActionSettingIndex, int, const int ObjectId, const int UpgradeTier,
+                                                         const int LiquidType, const EUseType UseType, const bool UseEquipSmartMode)
+{
+    TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(HotkeyActionSettingIndex);
+    const bool added = HotkeyActionSettingIndex == -1 || row == nullptr;
+    if (added) {
+        row = new TTibiaHotkeyActionSettingQmlWrapper(QKeySequence(), this);
+        m_rows.append(row);
+    }
+    // qtclient: the dialog hands the liquid and the tier as plain values; a
+    // non-zero liquid is a liquid object, else a non-zero tier a tiered one.
+    TActionSetting setting;
+    if (LiquidType != 0)
+        setting.setUseObject(ObjectId, LiquidType);
+    else if (UpgradeTier != 0)
+        setting.setUseObjectWithTier(ObjectId, UpgradeTier);
+    else
+        setting.setUseObject(ObjectId);
+    setting.setUseType(UseType);
+    setting.setUseEquipSmartMode(UseEquipSmartMode);
+    row->hotkeyActionSetting() = setting;
+    row->setObjectAppearanceInstance(hotkeyObjectAppearance(setting));
+    row->notifyChanged();
+    commitRows(true);
+    if (added)
+        rebuildModel();
+}
+
+void THotkeysOptionsPage::onSpellAssignedToHotkeyAction(const int HotkeyActionSettingIndex, int, const int SpellId, const QString& Parameters,
+                                                        const int CastType)
+{
+    TTibiaHotkeyActionSettingQmlWrapper* row = rowAt(HotkeyActionSettingIndex);
+    const bool added = HotkeyActionSettingIndex == -1 || row == nullptr;
+    if (added) {
+        row = new TTibiaHotkeyActionSettingQmlWrapper(QKeySequence(), this);
+        m_rows.append(row);
+    }
+    TActionSetting setting;
+    setting.setChatText(spells::TSpellInfoStorage::instance()->spellFormula(SpellId, Parameters));
+    setting.setSendAutomatically(true);
+    setting.setSpellCastType(CastType);
     row->hotkeyActionSetting() = setting;
     row->notifyChanged();
     commitRows(true);

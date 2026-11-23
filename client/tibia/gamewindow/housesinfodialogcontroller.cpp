@@ -478,37 +478,43 @@ void THousesInfoDialogController::connectToGameSession(const std::shared_ptr<gam
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();
-    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
-    m_storage = session ? session->housesStorage() : nullptr;
-    // Host: the Cyclopedia map's house entrances follow this storage's houses.
-    cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get());
-    if (!m_storage)
-        return;
-    cyclopedia::THousesStorage* storage = m_storage.get();
-    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
-                                           &THousesInfoDialogController::onHouseInformationChanged));
-    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::characterHousesInfoChanged, this,
-                                           &THousesInfoDialogController::onCharacterHousesInfoChanged));
-    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::housesLimitsChanged, this,
-                                           &THousesInfoDialogController::onHousesLimitsChanged));
-    // The house action results of the session's handler come to this dialog.
-    m_sessionConnections.push_back(connect(session->cyclopediaProtocolMessageHandler().get(),
-                                           &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
-                                           [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
-                                               onRequestHouseActionResultDialog(houseId, action, errorCode, hasBeenOutbidden);
-                                           }));
-    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
-        // The towns, "Own Houses" first.
-        QStringList towns = m_storage->towns();
-        std::sort(towns.begin(), towns.end(), [](const QString& a, const QString& b) { return a.compare(b, Qt::CaseInsensitive) < 0; });
-        towns.insert(0, qtTrId("houses_my_houses_town_name"));
-        if (towns != m_townFilterModel) {
-            m_townFilterModel = towns;
-            Q_EMIT staticDataChanged();
-        }
-    }));
-    m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
-                                           [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get()); }));
+    m_storage.reset();
+    m_cyclopediaProtocolMessageHandler.reset();
+    m_townFilterModel.clear();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session) {
+        m_storage = session->housesStorage();
+        m_cyclopediaProtocolMessageHandler = session->cyclopediaProtocolMessageHandler();
+        m_townFilterModel = m_storage->towns();
+        // The house preview's time of day is the session's.
+        setAmbientLightStorage(session->ambientLightStorage().get());
+        cyclopedia::THousesStorage* storage = m_storage.get();
+        m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
+                                               &THousesInfoDialogController::onHouseInformationChanged));
+        m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::characterHousesInfoChanged, this,
+                                               &THousesInfoDialogController::onCharacterHousesInfoChanged));
+        m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::housesLimitsChanged, this,
+                                               &THousesInfoDialogController::onHousesLimitsChanged));
+        // The house action results of the session's handler come to this dialog.
+        m_sessionConnections.push_back(connect(m_cyclopediaProtocolMessageHandler.get(),
+                                               &cyclopedia::TCyclopediaProtocolMessageHandler::requestHouseActionResultDialog, this,
+                                               [this](const quint32 houseId, const quint8 action, const quint8 errorCode, const bool hasBeenOutbidden) {
+                                                   onRequestHouseActionResultDialog(houseId, action, errorCode, hasBeenOutbidden);
+                                               }));
+        // Host: the Cyclopedia map's house entrances follow this storage's houses.
+        cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(storage);
+        m_sessionConnections.push_back(connect(storage, &cyclopedia::THousesStorage::houseInformationChanged, this,
+                                               [this] { cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(m_storage.get()); }));
+        Q_EMIT currentHouseIdChanged();
+    } else {
+        setAmbientLightStorage(nullptr);
+        cyclopedia::TCyclopediaMapStaticDataStorage::instance().setHousesStorage(nullptr);
+    }
+    // The towns, "Own Houses" first.
+    m_townFilterModel.sort(Qt::CaseInsensitive);
+    m_townFilterModel.insert(0, qtTrId("houses_my_houses_town_name"));
+    Q_EMIT staticDataChanged();
     onHouseInformationChanged();
     onCharacterHousesInfoChanged();
     onHousesLimitsChanged();

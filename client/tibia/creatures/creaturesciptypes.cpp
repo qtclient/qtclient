@@ -26,6 +26,7 @@
 
 #include <QDebug>
 
+#include <stdexcept>
 #include <utility>
 
 namespace tibia::creatures {
@@ -173,7 +174,16 @@ void TCreatureProtocolMessageHandler::handleMoveCreatureMessage(const Gameserver
     Position oldPos;
     int oldStack = -1;
     uint32_t creatureId = byId ? message.creature_id() : 0;
-    if (!byId) {
+    if (byId) {
+        // The id form needs a known creature that stands on the map (its
+        // placeholder is what the fields hold); the message is rejected otherwise.
+        TCreatureStorage* storage = TCreatureStorage::instance();
+        const std::shared_ptr<TCreature> creature = storage ? storage->creatureAt(creatureId) : nullptr;
+        if (!creature)
+            throw std::runtime_error(QStringLiteral("no creature with id %1 found").arg(creatureId).toStdString());
+        if (!creature->placeholderAppearance())
+            throw std::runtime_error(QStringLiteral("creature has no CreaturePlaceholderAppearanceInstance").toStdString());
+    } else {
         if (message.has_from_pos())
             oldPos = positionFromPb(message.from_pos());
         oldStack = static_cast<int>(message.stackpos());
@@ -273,8 +283,8 @@ void TCreatureProtocolMessageHandler::handleCreatureHealthMessage(const Gameserv
 
 void TCreatureProtocolMessageHandler::handleCreatureSpeedMessage(const GameserverMessageCreatureSpeed& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setSpeed(static_cast<uint16_t>(message.speed()));
+    updateCreature(message.creature().id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+        creature->setSpeed(static_cast<uint16_t>(message.creature().speed()));
     });
 }
 

@@ -3,6 +3,8 @@
 #include "app/clientoptions.h"
 
 #include <QJsonObject>
+#include <QQuickWindow>
+#include <QSGRendererInterface>
 
 namespace tibia::app::graphicsrestart {
 
@@ -25,6 +27,26 @@ QString rendererDisplayName(const int rendererIndex)
         return qtTrId("renderer_directx12_hardware");
     default:
         return qtTrId("dummy_unknown");
+    }
+}
+
+int activeRenderer()
+{
+    switch (QQuickWindow::graphicsApi()) {
+    case QSGRendererInterface::Software:
+        return 3;
+    case QSGRendererInterface::Direct3D11:
+        return 6;
+    case QSGRendererInterface::Vulkan:
+        return 7;
+    case QSGRendererInterface::OpenGL:
+        return 8;
+    case QSGRendererInterface::Metal:
+        return 9;
+    case QSGRendererInterface::Direct3D12:
+        return 10;
+    default:
+        return 0;
     }
 }
 

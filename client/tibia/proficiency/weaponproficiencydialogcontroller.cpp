@@ -2,7 +2,7 @@
 
 #include "platform/platform.h"
 
-#include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "analysers/itempricestorage.h"
 #include "exaltation/exaltationstorage.h"
 #include "game/gameciptypes.h"
@@ -34,8 +34,6 @@ using A = input::EGameAction;
 constexpr int MaxProficiencyLevels = 7;
 /// CIP's inspection reply type for INSPECT_PROFICIENCY (Crystal sends 0x02).
 constexpr uint8_t ProficiencyInspection = 2;
-constexpr int OneHandClothSlot = 6;
-constexpr int TwoHandClothSlot = 0;
 constexpr int MaxShapedPerks = 2;
 constexpr int MaxRefineRank = 10;
 constexpr int ShapingUnlockLevel = 3;
@@ -66,20 +64,17 @@ std::vector<TPerkPick> flaggedPicks(const TProficiencyData& data)
 
 }
 
-TWeaponObjectsModel::TWeaponObjectsModel(TProficiencyStorage* storage, QObject* parent)
+TWeaponObjectsModel::TWeaponObjectsModel(config::TClientOptions* ClientOptions, TProficiencyStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TAppearanceTypeListModel(parent)
+    , m_clientOptions(ClientOptions)
     , m_storage(storage)
-    , m_colorizeLootStyle(app::ClientOptions::load().options().value(QLatin1String("colorizeLootStyle")).toInt())
 {
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name != QLatin1String("colorizeLootStyle"))
-            return;
-        m_colorizeLootStyle = app::ClientOptions::load().options().value(QLatin1String("colorizeLootStyle")).toInt();
-        onLootValueImagesChanged();
-    });
+    if (m_clientOptions)
+        connect(m_clientOptions, &config::TClientOptions::appearanceTypeListModelOptionsChanged, this,
+                &TWeaponObjectsModel::onItemPriceVisualizationChanged);
 }
 
-void TWeaponObjectsModel::onLootValueImagesChanged()
+void TWeaponObjectsModel::onItemPriceVisualizationChanged()
 {
     if (!m_entries.empty())
         Q_EMIT dataChanged(index(0), index(static_cast<int>(m_entries.size()) - 1),
@@ -91,7 +86,7 @@ void TWeaponObjectsModel::onLootValueImagesChanged()
 // over it for style 2 .
 QString TWeaponObjectsModel::lootValueImageSource(const uint16_t typeId, const int style) const
 {
-    if (m_colorizeLootStyle != style)
+    if (!m_clientOptions || m_clientOptions->colorizeLootStyle() != style)
         return {};
     const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(typeId);
     if (level == 0)
@@ -110,7 +105,7 @@ QVariant TWeaponObjectsModel::data(const QModelIndex& index, const int role) con
 {
     if (!index.isValid() || index.row() >= static_cast<int>(m_entries.size()))
         return {};
-    const TWeaponEntry& entry = m_entries[index.row()];
+    const gamewindow::TAppearanceTypeEntry& entry = m_entries[index.row()].type;
     switch (role) {
     case TypeID:
     case DisplayTypeID:
@@ -168,13 +163,13 @@ void TWeaponObjectsModel::rebuild()
     std::vector<TWeaponEntry> entries;
     for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
         TWeaponEntry entry;
-        entry.typeId = type->getId();
-        entry.name = QString::fromStdString(type->getName());
+        entry.type.typeId = type->getId();
+        entry.type.name = QString::fromStdString(type->getName());
+        entry.type.requiredLevel = static_cast<int>(type->getMinimumLevel());
+        entry.type.professions = type->restrictVocationMask();
+        entry.type.hasClothSlot = type->isCloth();
+        entry.type.clothSlot = type->getClothSlot();
         entry.weaponType = type->getAppearanceWeaponType();
-        entry.minimumLevel = type->getMinimumLevel();
-        entry.professions = type->getRestrictVocation();
-        entry.hasClothSlot = type->isCloth();
-        entry.clothSlot = type->getClothSlot();
         entries.push_back(std::move(entry));
     }
     beginResetModel();
@@ -184,8 +179,8 @@ void TWeaponObjectsModel::rebuild()
     if (!m_pricesConnection) {
         analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
         m_pricesConnection = connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this,
-                                     &TWeaponObjectsModel::onLootValueImagesChanged);
-        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TWeaponObjectsModel::onLootValueImagesChanged);
+                                     &TWeaponObjectsModel::onItemPriceVisualizationChanged);
+        connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TWeaponObjectsModel::onItemPriceVisualizationChanged);
     }
 }
 
@@ -208,39 +203,42 @@ TWeaponObjectsProxy::TWeaponObjectsProxy(TWeaponObjectsModel* model, QObject* pa
     sort(0);
 }
 
-void TWeaponObjectsProxy::clearFilters()
+void TWeaponObjectsProxy::resetFilters()
 {
     beginFilterChange();
-    m_name.clear();
     m_weaponTypes.clear();
-    m_filterByLevel = m_filterByVocation = m_onlyOneHandWeapons = m_onlyTwoHandWeapons = false;
+    m_name.clear();
+    m_filter = {};
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     Q_EMIT filterChanged();
 }
 
-void TWeaponObjectsProxy::setNameFilter(const QString& name)
+void TWeaponObjectsProxy::setName(const QString& name)
 {
     if (name == m_name)
         return;
     beginFilterChange();
     m_name = name;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    Q_EMIT filterChanged();
 }
 
-void TWeaponObjectsProxy::setWeaponTypes(const std::set<int>& types)
+void TWeaponObjectsProxy::setTypeIds(const std::set<int>& weaponTypes)
 {
+    if (weaponTypes == m_weaponTypes)
+        return;
     beginFilterChange();
-    m_weaponTypes = types;
+    m_weaponTypes = weaponTypes;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    Q_EMIT filterChanged();
 }
 
-void TWeaponObjectsProxy::setFilter(const bool byLevel, const bool byVocation, const bool oneHand, const bool twoHand)
+void TWeaponObjectsProxy::setFilter(const gamewindow::TAppearanceTypeFilter& filter)
 {
+    if (filter == m_filter)
+        return;
     beginFilterChange();
-    m_filterByLevel = byLevel;
-    m_filterByVocation = byVocation;
-    m_onlyOneHandWeapons = oneHand;
-    m_onlyTwoHandWeapons = twoHand;
+    m_filter = filter;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     Q_EMIT filterChanged();
 }
@@ -257,38 +255,29 @@ int TWeaponObjectsProxy::rowOf(const uint16_t typeId) const
 uint16_t TWeaponObjectsProxy::typeIdAt(const int row) const
 {
     const QModelIndex source = mapToSource(index(row, 0));
-    return source.isValid() ? m_model->entry(source.row()).typeId : 0;
+    return source.isValid() ? m_model->entry(source.row()).type.typeId : 0;
 }
 
+/// The name (case-insensitive part), the weapon types and the filter buttons
+/// for the player's level and profession.
 bool TWeaponObjectsProxy::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    if (sourceRow < 0 || sourceRow >= m_model->size())
+    if (sourceRow < 0 || sourceRow >= m_model->size() || !tibia::game::hasLocalPlayer())
         return false;
     const TWeaponEntry& entry = m_model->entry(sourceRow);
-    if (!m_name.isEmpty() && !entry.name.contains(m_name, Qt::CaseInsensitive))
-        return false;
-    if (!m_weaponTypes.empty() && !m_weaponTypes.contains(static_cast<int>(entry.weaponType)))
-        return false;
-    if (m_filterByLevel && tibia::game::hasLocalPlayer() && tibia::game::localPlayerLevel() < entry.minimumLevel)
-        return false;
-    if (m_filterByVocation && !vocationMatches(entry.professions))
-        return false;
-    if (m_onlyOneHandWeapons && !(entry.hasClothSlot && entry.clothSlot == OneHandClothSlot))
-        return false;
-    if (m_onlyTwoHandWeapons && !(entry.hasClothSlot && entry.clothSlot == TwoHandClothSlot))
-        return false;
-    return true;
+    bool accepted = m_name.isEmpty() || entry.type.name.indexOf(m_name, 0, Qt::CaseInsensitive) != -1;
+    if (!m_weaponTypes.empty())
+        accepted = accepted && m_weaponTypes.contains(static_cast<int>(entry.weaponType));
+    return m_filter.accepts(entry.type, std::nullopt, tibia::game::localPlayerLevel(), profession()) && accepted;
 }
 
 bool TWeaponObjectsProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const TWeaponEntry& a = m_model->entry(left.row());
-    const TWeaponEntry& b = m_model->entry(right.row());
     const uint32_t xpA = m_model->xp(left.row());
     const uint32_t xpB = m_model->xp(right.row());
     if (xpA != xpB)
         return xpA > xpB;
-    return m_collator.compare(a.name, b.name) < 0;
+    return m_collator.compare(m_model->entry(left.row()).type.name, m_model->entry(right.row()).type.name) < 0;
 }
 
 TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObject* parent)
@@ -300,10 +289,13 @@ TQmlWeaponTypes::TQmlWeaponTypes(const QString& text, std::set<int> types, QObje
 
 int TQmlWeaponTypes::anyWeaponIdentifier() const { return m_types.empty() ? 0 : *m_types.begin(); }
 
-TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent)
-    : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), parent)
-    , m_storage(storage)
-    , m_model(storage)
+TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine,
+                                                                       QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("WeaponProficiencyDialog.qml"), engine, dialogParentItem, parent)
+    // Host: CIP reads the proficiency storage from the game session; qtclient's
+    // is the game client's, alive before any controller.
+    , m_storage(TProficiencyStorage::instance())
+    , m_model(ClientOptions, m_storage)
     , m_proxy(&m_model)
     , m_confirm(new gamewindow::TMessageDialogController(this))
 {
@@ -396,7 +388,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
     m_confirm->dialog()->close();
     if (m_model.isEmpty())
         m_model.rebuild();
-    m_proxy.clearFilters();
+    m_proxy.resetFilters();
 
     // The asked weapon when it is a proficiency weapon not already shown,
     // otherwise the list's first entry with every weapon type.
@@ -603,17 +595,22 @@ void TWeaponProficiencyDialogController::setWeaponTypeFilter(const int RawWeapon
             break;
         }
     }
-    m_proxy.setWeaponTypes(static_cast<TQmlWeaponTypes*>(m_weaponTypes[index])->types());
+    m_proxy.setTypeIds(static_cast<TQmlWeaponTypes*>(m_weaponTypes[index])->types());
     m_weaponTypesIndex = index;
     Q_EMIT weaponTypeChanged();
 }
 
-void TWeaponProficiencyDialogController::setNameFilter(const QString& Name) { m_proxy.setNameFilter(Name); }
+void TWeaponProficiencyDialogController::setNameFilter(const QString& Name) { m_proxy.setName(Name); }
 
 void TWeaponProficiencyDialogController::setFilter(const bool FilterByLevel, const bool FilterByVocation,
                                                    const bool OnlyOneHandWeapons, const bool OnlyTwoHandWeapons)
 {
-    m_proxy.setFilter(FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons);
+    gamewindow::TAppearanceTypeFilter filter;
+    filter.filterByLevel = FilterByLevel;
+    filter.filterByVocation = FilterByVocation;
+    filter.onlyOneHandWeapons = OnlyOneHandWeapons;
+    filter.onlyTwoHandWeapons = OnlyTwoHandWeapons;
+    m_proxy.setFilter(filter);
 }
 
 void TWeaponProficiencyDialogController::pickPerk(const uint LevelIndex, const uint PerkIndex)

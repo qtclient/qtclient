@@ -4,20 +4,6 @@
 
 namespace tibia::renderer {
 
-namespace {
-
-constexpr int SubfieldsPerField = 32;
-
-/// Where the coordinate is drawn on layer `layer`: one field down and right per
-/// layer the coordinate lies below it.
-QPoint projectedToLayer(const worldmap::TWorldMapSubfieldCoordinate& coordinate, const int layer)
-{
-    const int shift = (coordinate.z - layer) * SubfieldsPerField;
-    return { coordinate.subfieldX + shift, coordinate.subfieldY + shift };
-}
-
-}
-
 TWorldMapCameraViewport::TWorldMapCameraViewport(QObject* parent)
     : cip::tibia::renderer::TWorldMapCameraViewport(parent)
     , m_viewportChangedTimer(nullptr)
@@ -29,7 +15,7 @@ TWorldMapCameraViewport::TWorldMapCameraViewport(QObject* parent)
 
 void TWorldMapCameraViewport::updateMatrix()
 {
-    const QPoint origin = projectedToLayer(m_centerSubfieldCoordinate, 0);
+    const QPoint origin = m_centerSubfieldCoordinate.projectedToLayer(0);
     m_matrix.setToIdentity();
     float divisor = 2.0f;
     if (m_scaleFactor != 1.0f) {
@@ -153,15 +139,13 @@ worldmap::TWorldMapSubfieldCoordinate TWorldMapCameraViewport::convertToWorldMap
     const QPoint& stretchedPixelCoordinate, const int layer) const
 {
     // The pixel back to its projection onto layer 0, then up to `layer`.
-    const QPoint projected = m_matrix.inverted().map(stretchedPixelCoordinate);
-    const int shift = layer * SubfieldsPerField;
-    return { projected.x() - shift, projected.y() - shift, layer };
+    return worldmap::TWorldMapSubfieldCoordinate::fromProjection(m_matrix.inverted().map(stretchedPixelCoordinate), layer);
 }
 
 QPoint TWorldMapCameraViewport::convertSubfieldCoordinateToStretchedPixelCoordinate(
     const worldmap::TWorldMapSubfieldCoordinate& coordinate) const
 {
-    return m_matrix.map(projectedToLayer(coordinate, 0));
+    return m_matrix.map(coordinate.projectedToLayer(0));
 }
 
 worldmap::TWorldMapSubfieldCoordinate TWorldMapCameraViewport::centerLayerTopLeftSubfieldCoordinate() const

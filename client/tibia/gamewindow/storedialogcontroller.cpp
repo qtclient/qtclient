@@ -1,6 +1,7 @@
 #include "storedialogcontroller.h"
 
 #include "app/clientoptions.h"
+#include "config/clientoptions.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -36,13 +37,6 @@ const QString HomeCategoryName = QStringLiteral("Home");
 bool optionBool(const char* name, const bool fallback)
 {
     return app::ClientOptions::load().options().value(QLatin1String(name)).toBool(fallback);
-}
-
-/// Option antialiasingMode is AntialiasingModeAntialiasing.
-bool smoothTextureFilteringOption()
-{
-    return app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
-           == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing);
 }
 
 /// One "OK" button (Return).
@@ -242,11 +236,14 @@ void THirelingConfigurationDialogController::requestHireling(const QString& Hire
     dialog()->close();
 }
 
-TStoreDialogController::TStoreDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("StoreDialog.qml"), parent)
-    , m_imageManager(new store::TDynamicallyLoadedImageManager(this))
+TStoreDialogController::TStoreDialogController(std::shared_ptr<store::TDynamicallyLoadedImageManager> DynamicallyLoadedImageManager,
+                                               config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                               QObject* parent)
+    : TDialogController(QStringLiteral("StoreDialog.qml"), Engine, DialogParentItem, parent)
+    , m_imageManager(std::move(DynamicallyLoadedImageManager))
     , m_descriptionManager(new store::TStoreDescriptionManager(this))
-    , m_confirmationDialog(m_imageManager)
+    , m_clientOptions(ClientOptions)
+    , m_confirmationDialog(m_imageManager.get())
     , m_newCharacterNameDialog(new TGenericEnterTextDialogController(this))
     , m_worldTransferDialog(new TCharacterWorldTransferDialogController(this))
     , m_mainCharChangeDialog(new TMainCharacterChangeDialogController(this))
@@ -256,7 +253,7 @@ TStoreDialogController::TStoreDialogController(QObject* parent)
     , m_transactionDetailsDialog(new TMarketCoinTransactionDetailsDialogController(this))
     , m_hirelingNameChange(new THirelingNameChangeController(this))
 {
-    m_dynamicallyLoadedImageManager = m_imageManager;
+    m_dynamicallyLoadedImageManager = m_imageManager.get();
     m_searchResultCategory = new store::TQmlStoreCategory(qtTrId("store_search_result_catergory_name"), {}, {}, this);
     m_selectedCategoryName = HomeCategoryName;
     m_selectedOfferIndex = -1;
@@ -545,7 +542,7 @@ void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
     m_purchaseType = PURCHASE_NEW_CHARACTER_NAME;
     m_newName = name;
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(m_offerIdForNameChange)))
-        m_confirmationDialog.showDialog(m_offerIdForNameChange, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+        m_confirmationDialog.showDialog(m_offerIdForNameChange, *offer, m_descriptionManager, smoothTextureFiltering(), false,
                                         m_buyWithCosmeticTokens);
 }
 
@@ -580,7 +577,7 @@ void TStoreDialogController::onCharacterWorldTransferWorldEntered(const int offe
     m_purchaseType = PURCHASE_NEW_WORLD;
     m_newWorldName = worldName;
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
-        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFiltering(), false,
                                         m_buyWithCosmeticTokens);
 }
 
@@ -591,7 +588,7 @@ void TStoreDialogController::onMainCharChangeConfigurationFinished(const int off
     m_purchaseType = PURCHASE_NEW_MAIN_CHARACTER;
     m_newMainCharacter = characterName;
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
-        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+        m_confirmationDialog.showDialog(offerId, *offer, m_descriptionManager, smoothTextureFiltering(), false,
                                         m_buyWithCosmeticTokens);
 }
 
@@ -623,7 +620,7 @@ void TStoreDialogController::onHirelingConfigurationFinished(const int offerId, 
     m_newName = name;
     m_hirelingSex = sex;
     if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
-        m_confirmationDialog.showHirelingPurchaseDialog(offerId, *offer, sex, m_descriptionManager, smoothTextureFilteringOption(), false,
+        m_confirmationDialog.showHirelingPurchaseDialog(offerId, *offer, sex, m_descriptionManager, smoothTextureFiltering(), false,
                                                         m_buyWithCosmeticTokens);
 }
 
@@ -807,7 +804,7 @@ void TStoreDialogController::setSelectedOfferIndex(const int index)
 
 bool TStoreDialogController::smoothTextureFiltering() const
 {
-    return smoothTextureFilteringOption();
+    return m_clientOptions->antialiasingMode() == 1;
 }
 
 void TStoreDialogController::getNextFeaturedOffer()
@@ -908,7 +905,7 @@ void TStoreDialogController::buyOffer(const int QmlOfferID, const bool BuyWithCo
     }
     if (optionBool(AskBeforeBuyingOption, true)) {
         m_purchaseType = PURCHASE_PLAIN;
-        m_confirmationDialog.showDialog(QmlOfferID, *offer, m_descriptionManager, smoothTextureFilteringOption(), true, BuyWithCosmeticTokens);
+        m_confirmationDialog.showDialog(QmlOfferID, *offer, m_descriptionManager, smoothTextureFiltering(), true, BuyWithCosmeticTokens);
         return;
     }
     if (!m_offerViewReported)

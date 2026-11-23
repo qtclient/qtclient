@@ -22,6 +22,8 @@ class TCreature;
 namespace tibia {
 namespace chat {
 
+class TClientChatEntryFactory;
+
 /// What a chat channel is (CIP: TChatChannelIdentifierBase and its subclasses
 /// TLocalChatChannelIdentifier, TServerLogChannelIdentifier,
 /// TNpcChatChannelIdentifier, TChannelIDChatChannelIdentifier,
@@ -222,7 +224,7 @@ class TChatChannelStorage final : public cip::tibia::chat::TChatChannelStorage
 {
     Q_OBJECT
 public:
-    explicit TChatChannelStorage(QObject* parent = nullptr);
+    explicit TChatChannelStorage(std::shared_ptr<TClientChatEntryFactory> entryFactory, QObject* parent = nullptr);
 
     const std::vector<TChatChannel*>& channels() const { return m_channels; }
 
@@ -321,6 +323,7 @@ private:
     bool isOwnName(const QString& name) const;
 
     uint32_t m_maxEntries;
+    std::shared_ptr<TClientChatEntryFactory> m_entryFactory;
     TChatChannel* m_localChat = nullptr;
     TChatChannel* m_serverLog = nullptr;
     TChatChannel* m_lootChannel = nullptr;

@@ -1,6 +1,7 @@
 #include "network/gameserverconnection.h"
 
 #include "authentication/authenticationandencryptioninfo.h"
+#include "authentication/loginprotocolmessagehandler.h"
 #include "client/gamecore.h"
 #include "game/thingsession_forward.h"
 #include "network/dualconnectioninfo.h"
@@ -13,6 +14,7 @@
 #include "network/unencryptedrawmessagestream.h"
 #include "protocol/extendedopcode.h"
 #include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
 
 #include "clockservice.h"
 #include "compressionhelper.h"
@@ -65,11 +67,6 @@ TGameserverSessionNetwork::TGameserverSessionNetwork(QObject* parent)
         dualConnection->processAvailablePackets();
         dualConnection->checkForStateChange();
     });
-    m_readyForSecondaryConnectionHook = tibia::game::SoftHook(
-        "onReadyForSecondaryConnection", [this](const tibia::game::TGameNotify::Args& args) {
-            onReadyForSecondaryConnection(client::gamecore::argString(args, 0));
-            return std::any{};
-        });
 }
 
 TGameserverSessionNetwork::~TGameserverSessionNetwork()
@@ -93,6 +90,9 @@ void TGameserverSessionNetwork::buildNetworkStack()
     m_serverMessageStream = std::make_shared<TUnencryptedRawMessageStream>();
     m_compressionHelper = std::make_shared<shared::TCompressionHelper>();
     m_authenticationAndEncryptionInfo = std::make_shared<authentication::TAuthenticationAndEncryptionInfo>();
+    // Host: qtclient has no Epic Games Store distribution.
+    m_loginProtocolMessageHandler =
+        std::make_shared<authentication::TLoginProtocolMessageHandler>(m_authenticationAndEncryptionInfo, false);
     m_sequenceFlowProcessor = std::make_shared<TGameserverNetworkPacketSequenceFlowProcessor>();
     m_rawDataProcessor = std::make_shared<TGameserverNetworkPacketRawDataProcessor>(
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);
@@ -101,6 +101,24 @@ void TGameserverSessionNetwork::buildNetworkStack()
             &TGameserverNetworkPacketSequenceFlowProcessor::processPacket);
     connect(m_sequenceFlowProcessor.get(), &TGameserverNetworkPacketSequenceFlowProcessor::packetReady, this,
             &TGameserverSessionNetwork::onPacketReady);
+    connect(m_dualConnection.get(), &TGameserverDualConnection::connectionsUsedChanged, m_sequenceFlowProcessor.get(),
+            &TGameserverNetworkPacketSequenceFlowProcessor::onConnectionsUsedChanged);
+
+    using authentication::TLoginProtocolMessageHandler;
+    TLoginProtocolMessageHandler* login = m_loginProtocolMessageHandler.get();
+    connect(login, &TLoginProtocolMessageHandler::gameReadyForSecondaryConnection, this, [this] {
+        if (m_dualConnection)
+            m_dualConnection->allowSecondaryConnection();
+    });
+    // The session hears the login's outcome through the game notifications.
+    connect(login, &TLoginProtocolMessageHandler::gameLoginErrorMessage, this,
+            [](const QString& ErrorMessage, int) { tibia::game::processLoginError(ErrorMessage.toStdString()); });
+    connect(login, &TLoginProtocolMessageHandler::gameLoginAdviceMessage, this,
+            [](const QString& AdviceMessage) { tibia::game::processLoginAdvice(AdviceMessage.toStdString()); });
+    connect(login, &TLoginProtocolMessageHandler::gameLoginWaitMessage, this,
+            [](const QString& WaitMessage, const int WaitSeconds) {
+                tibia::game::processLoginWait(WaitMessage.toStdString(), static_cast<uint8_t>(WaitSeconds));
+            });
     // Queued: the connection announces the game world right after its connected
     // signal, before anything the session does on connect can reach the wire.
     connect(
@@ -115,6 +133,29 @@ void TGameserverSessionNetwork::buildNetworkStack()
     connect(m_dualConnection.get(), &TGameserverDualConnection::error, this,
             [this](const QString& ErrorDescription) { fail(ErrorDescription, false); });
     connect(m_dualConnection.get(), &TGameserverDualConnection::disconnected, this, [this] { fail({}, true); });
+    connectProtocolMessageQueue();
+}
+
+void TGameserverSessionNetwork::connectProtocolMessageQueue()
+{
+    using authentication::TLoginProtocolMessageHandler;
+    using Queue = tibia::protocol::TProtocolMessageQueue;
+    Queue* queue = tibia::protocol::protocolMessageQueue();
+    m_protocolMessageQueue = queue;
+    if (!queue)
+        return;
+    TLoginProtocolMessageHandler* login = m_loginProtocolMessageHandler.get();
+    connect(queue, &Queue::receivedMessage, login, &TLoginProtocolMessageHandler::handleAnyMessage);
+    connect(queue, &Queue::receivedLoginErrorMessage, login, &TLoginProtocolMessageHandler::handleLoginErrorMessage);
+    connect(queue, &Queue::receivedLoginWaitMessage, login, &TLoginProtocolMessageHandler::handleLoginWaitMessage);
+    connect(queue, &Queue::receivedLoginAdviceMessage, login, &TLoginProtocolMessageHandler::handleLoginAdviceMessage);
+    connect(queue, &Queue::receivedLoginSuccessMessage, login, &TLoginProtocolMessageHandler::handleLoginSuccessMessage);
+    connect(queue, &Queue::receivedReadyForSecondaryConnectionMessage, login,
+            &TLoginProtocolMessageHandler::handleReadyForSecondaryConnectionMessage);
+    connect(login, &TLoginProtocolMessageHandler::sendLoginMessage, queue, &Queue::sendLogin);
+    connect(login, &TLoginProtocolMessageHandler::sendSecondaryLoginMessage, queue, &Queue::sendSecondaryLogin);
+    connect(queue, &Queue::receivedMessage, m_sequenceFlowProcessor.get(),
+            &TGameserverNetworkPacketSequenceFlowProcessor::handleAnyMessage);
 }
 
 void TGameserverSessionNetwork::releaseNetworkStack()
@@ -124,15 +165,27 @@ void TGameserverSessionNetwork::releaseNetworkStack()
         m_dualConnection->disconnect(this);
         m_dualConnection->disconnectFromGameserver();
     }
-    if (m_sequenceFlowProcessor)
+    // A stack being released hears nothing more from the protocol queue.
+    QObject* queue = m_protocolMessageQueue.data();
+    if (m_sequenceFlowProcessor) {
         m_sequenceFlowProcessor->disconnect(this);
+        if (queue)
+            queue->disconnect(m_sequenceFlowProcessor.get());
+    }
+    if (m_loginProtocolMessageHandler) {
+        m_loginProtocolMessageHandler->disconnect();
+        if (queue)
+            queue->disconnect(m_loginProtocolMessageHandler.get());
+    }
     // Released from the event loop: this can run inside one of their signals.
-    if (m_dualConnection || m_sequenceFlowProcessor) {
+    if (m_dualConnection || m_sequenceFlowProcessor || m_loginProtocolMessageHandler) {
         QTimer::singleShot(0, [dualConnection = std::move(m_dualConnection),
-                               sequenceFlowProcessor = std::move(m_sequenceFlowProcessor)] {});
+                               sequenceFlowProcessor = std::move(m_sequenceFlowProcessor),
+                               loginProtocolMessageHandler = std::move(m_loginProtocolMessageHandler)] {});
     }
     m_dualConnection = nullptr;
     m_sequenceFlowProcessor = nullptr;
+    m_loginProtocolMessageHandler = nullptr;
     m_record.reset();
 }
 
@@ -154,6 +207,10 @@ void TGameserverSessionNetwork::connectToGameserver(const TGameserverLoginData& 
     m_authenticationAndEncryptionInfo->setSessionKey(QString::fromStdString(login.sessionKey));
     m_authenticationAndEncryptionInfo->setCharacterName(QString::fromStdString(login.characterName));
     m_authenticationAndEncryptionInfo->setAssetsIdentifier(QString::fromStdString(tibia::game::assetIdentifier()));
+    // A pack that listens for extended opcodes asks for the product transport
+    // in the login's RSA padding; the CIP client leaves the padding zero.
+    if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
+        m_loginProtocolMessageHandler->setProductTransport("ExtendedOpcodes");
 
     QUrl primaryUrl;
     primaryUrl.setScheme(QStringLiteral("tcp"));
@@ -219,48 +276,6 @@ qint64 TGameserverSessionNetwork::millisSinceRead() const
     return m_readTimer.elapsed();
 }
 
-void TGameserverSessionNetwork::sendLogin(const uint32_t challengeTimestamp, const uint8_t challengeRandom)
-{
-    using namespace ::tibia::protobuf::protocol;
-    if (!m_authenticationAndEncryptionInfo)
-        return;
-    auto& info = *m_authenticationAndEncryptionInfo;
-    if (info.isSecondaryLogin()) {
-        auto message = tibia::protocol::newGameclientMessage(SecondaryLoginOpcode);
-        auto* secondaryLogin =
-            message->MutableExtension(GameclientMessageSecondaryLogin::gameclient_message_secondary_login);
-        secondaryLogin->set_challenge_connection(0);
-        secondaryLogin->set_token(info.secondaryLoginToken().toStdString());
-        tibia::protocol::sendGameclientMessage(std::move(message));
-        return;
-    }
-
-    info.generateXteaKey();
-    const QByteArray key = info.xteaKey();
-    auto message = tibia::protocol::newGameclientMessage(LoginOpcode);
-    auto* login = message->MutableExtension(GameclientMessageLogin::gameclient_message_login);
-    login->set_client_os(tibia::game::clientOs());
-    login->set_protocol_version(tibia::game::getProtocolVersion());
-    login->set_client_version(tibia::game::clientRevision());
-    login->set_client_version_string(std::to_string(tibia::game::clientRevision()));
-    login->set_asset_identifier(info.assetsIdentifier().toStdString());
-    login->set_preview_state(0);
-    for (int i = 0; i + 3 < key.size(); i += 4) {
-        login->add_xtea_key(uint32_t(uint8_t(key[i])) | (uint32_t(uint8_t(key[i + 1])) << 8)
-                            | (uint32_t(uint8_t(key[i + 2])) << 16) | (uint32_t(uint8_t(key[i + 3])) << 24));
-    }
-    login->set_gamemaster(false);
-    login->set_session_key(info.sessionKey().toStdString());
-    login->set_character_name(info.characterName().toStdString());
-    login->set_challenge_timestamp(challengeTimestamp);
-    login->set_challenge_random(challengeRandom);
-    // A pack that listens for extended opcodes asks for the product transport
-    // in the RSA padding; the CIP client leaves the padding zero.
-    if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
-        login->set_product_transport("ExtendedOpcodes");
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
 void TGameserverSessionNetwork::writeClientFrame(const QByteArray& frame)
 {
     sendFrame(frame);
@@ -304,6 +319,7 @@ void TGameserverSessionNetwork::onPacketReady(TGameserverNetworkPacket packet)
         return;
     m_rawDataProcessor->decodePacket(packet);
     m_readTimer.start();
+    tibia::protocol::setServerPacketOrigin(packet.sequenceNumber(), packet.connectionIndex());
     m_serverMessageStream->appendData(packet.data());
     const QByteArray data = m_serverMessageStream->readAllData();
     m_serverMessageStream->removeReadData();
@@ -325,17 +341,6 @@ void TGameserverSessionNetwork::deliverPacket(const uint8_t* data, const size_t 
     ++m_receivedPackets;
     m_receivedBytes += int(size);
     tibia::protocol::processServerPacket(data, size);
-}
-
-void TGameserverSessionNetwork::onReadyForSecondaryConnection(const QString& token)
-{
-    // CIP: TLoginProtocolMessageHandler stores the token and marks the next
-    // login as a secondary one; the session then allows the secondary connection.
-    if (!m_authenticationAndEncryptionInfo || !m_dualConnection)
-        return;
-    m_authenticationAndEncryptionInfo->setSecondaryLogin();
-    m_authenticationAndEncryptionInfo->setSecondaryLoginToken(token);
-    m_dualConnection->allowSecondaryConnection();
 }
 
 void TGameserverSessionNetwork::recordInput(const QByteArray& data)

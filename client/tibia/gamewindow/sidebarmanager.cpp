@@ -29,12 +29,6 @@ QQuickItem* createQuickItem(QQmlEngine* engine, const QString& file)
     return item;
 }
 
-void bindPanelItem(cip::tibia::gamewindow::TSidebarPanelControllerBase* controller, QQuickItem* item)
-{
-    item->setProperty("panelController", QVariant::fromValue<QObject*>(controller));
-    QObject::connect(item, SIGNAL(positionInSidebarChanged()), controller, SIGNAL(positionInSidebarChanged()));
-}
-
 TSidebarController::TSidebarController(const uint sidebarId, QQuickItem* placeholder, QObject* parent)
     : cip::tibia::gamewindow::TSidebarController(parent)
 {

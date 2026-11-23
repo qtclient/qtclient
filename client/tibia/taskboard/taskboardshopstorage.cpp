@@ -8,7 +8,7 @@ TTaskboardShopStorage::TTaskboardShopStorage(QObject* parent)
 }
 
 /// Replaces the offers; the change signal fires also when the same list is set again.
-void TTaskboardShopStorage::setShopRewardData(const std::vector<TShopRewardData>& data)
+void TTaskboardShopStorage::setShopRewardData(const std::vector<TShopReward>& data)
 {
     if (&m_data != &data)
         m_data = data;

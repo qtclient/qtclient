@@ -50,6 +50,8 @@ class TDepotSearchWidgetController final : public TSidebarWidgetController<cip::
 public:
     TDepotSearchWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TDepotSearchWidgetController() override;
+    /// The mouse cursor over the hovered slot.
+    void updateHoverCursor();
 
     /// CIP v12: binds the lists to the session's storages (null unbinds).
     void setGameSession(game::TGameSessionBase* session);
@@ -150,8 +152,6 @@ private:
     /// category.
     void applyFilter(const QString& nameFilter, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand, bool showLockerOnly);
     void publishSimpleAction(input::EGameAction type);
-    /// The mouse cursor over the hovered slot.
-    void updateHoverCursor();
     /// The actions of a depot or inbox slot, or of the stash entry.
     input::TGameActionList slotActions(int storageLocation, int slotId) const;
     /// The actions of a search list row.

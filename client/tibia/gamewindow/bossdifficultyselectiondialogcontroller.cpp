@@ -27,8 +27,10 @@ QStringList toStringList(const Strings& strings)
 
 }
 
-TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("BossDifficultySelectionDialog.qml"), parent)
+TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogController(QQmlEngine* engine,
+                                                                                   QQuickItem* dialogParentItem,
+                                                                                   QObject* parent)
+    : TDialogController(QStringLiteral("BossDifficultySelectionDialog.qml"), engine, dialogParentItem, parent)
 {
     m_previewTimer.setInterval(500);
     m_previewTimer.setSingleShot(true);

@@ -18,7 +18,8 @@ class TNaggingMessageDialogController final
 {
     Q_OBJECT
 public:
-    explicit TNaggingMessageDialogController(QObject* parent = nullptr);
+    /// CipSoft's constructor: the engine and parent item the dialog is made with.
+    TNaggingMessageDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TNaggingMessageDialogController() override;
 
     /// `text` is the body; `seconds` > 0 shows a countdown before OK enables.

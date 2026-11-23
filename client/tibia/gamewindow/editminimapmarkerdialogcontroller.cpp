@@ -15,8 +15,10 @@ using A = input::EGameAction;
 
 }
 
-TEditMinimapMarkerDialogController::TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers, QObject* parent)
-    : TDialogController(QStringLiteral("EditMinimapMarkerDialog.qml"), parent)
+TEditMinimapMarkerDialogController::TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers,
+                                                                       QQmlEngine* engine,
+                                                                       QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("EditMinimapMarkerDialog.qml"), engine, dialogParentItem, parent)
     , m_markers(markers)
 {
 }

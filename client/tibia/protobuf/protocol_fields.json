@@ -185,6 +185,23 @@
       ],
       "note": "CIP ObjectIdentifier: an object's appearance type and its liquid or tier (filled from a game action object)."
     },
+    "ObjectIdentifierAndPosition": {
+      "fields": [
+        {
+          "name": "object_identifier",
+          "type": "ObjectIdentifier",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "object_position",
+          "type": "ObjectPosition",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP ObjectIdentifierAndPosition: an object and where it is (QuickLoot)."
+    },
     "ProtocolInventoryItem": {
       "fields": [
         {
@@ -722,69 +739,6 @@
         }
       ],
       "note": "CIP TProtobufServerMessageTranslator::v207: u8 id, string name."
-    },
-    "ProtocolSkill": {
-      "fields": [
-        {
-          "name": "level",
-          "type": "uint32",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "base",
-          "type": "uint32",
-          "number": 2,
-          "label": "optional"
-        },
-        {
-          "name": "loyalty",
-          "type": "uint32",
-          "number": 3,
-          "label": "optional"
-        },
-        {
-          "name": "percent_hundredths",
-          "type": "uint32",
-          "number": 4,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP TProtobufServerMessageTranslator::v70: u16 level, base, loyalty, percent in hundredths."
-    },
-    "ProtocolSkillModifier": {
-      "fields": [
-        {
-          "name": "type",
-          "type": "uint32",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "value",
-          "type": "int32",
-          "number": 2,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP v69 list: u8 type, s16 value."
-    },
-    "ProtocolCombatAbsorb": {
-      "fields": [
-        {
-          "name": "combat",
-          "type": "uint32",
-          "number": 1,
-          "label": "optional"
-        },
-        {
-          "name": "value",
-          "type": "double",
-          "number": 2,
-          "label": "optional"
-        }
-      ],
-      "note": "CIP v69 list: u8 combat type, double value."
     },
     "ProtocolChannel": {
       "fields": [
@@ -5463,6 +5417,109 @@
           "label": "optional"
         }
       ]
+    },
+    "SkillInfo": {
+      "fields": [
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "base",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "loyalty",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "percent",
+          "type": "float",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "CipSoft SkillInfo (TProtobufServerMessageTranslator::v70): u16 level, base, loyalty, percent in hundredths (stored / 100)."
+    },
+    "CharacterInfoMagicSkillBoost": {
+      "fields": [
+        {
+          "name": "type",
+          "type": "int32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "int32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CipSoft CharacterInfoMagicSkillBoost (PlayerSkills field 9): u8 damage type, s16 levels."
+    },
+    "SpecialDamageConversionStats": {
+      "fields": [
+        {
+          "name": "value",
+          "type": "double",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "damage_type",
+          "type": "int32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CipSoft SpecialDamageConversionStats (PlayerSkills field 14): double converted damage, u8 damage type."
+    },
+    "EquipmentDamageReduction": {
+      "fields": [
+        {
+          "name": "damage_type",
+          "type": "int32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "CipSoft EquipmentDamageReduction (PlayerSkills field 26): u8 damage type, double reduction."
+    },
+    "CreatureData": {
+      "fields": [
+        {
+          "name": "remove_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "speed",
+          "type": "uint32",
+          "number": 13,
+          "label": "optional"
+        }
+      ],
+      "note": "CipSoft CreatureData, the fields CreatureSpeed fills (1 replaced/known id, 2 id, 13 speed); the other fields are not recovered yet (ProtocolCreature still carries the creature messages)."
     }
   },
   "GameserverMessagePartyLeft": {
@@ -5548,8 +5605,8 @@
         "label": "optional"
       }
     ],
-    "classic": "u32 timestamp; u8 random; (+1 pad byte 1405+ ignored)",
-    "note": "Pad not a pb field \u2014 fill/measure consume it for length authority (Crystal sends 0x71)."
+    "classic": "u32 timestamp; u8 random",
+    "note": "CipSoft TProtobufServerMessageTranslator::v53. Crystal's trailing byte is packet padding (stripped by the raw data processor)."
   },
   "GameserverMessageSpellDataModification": {
     "fields": [
@@ -5575,8 +5632,8 @@
         "label": "optional"
       }
     ],
-    "classic": "u32 gem_id",
-    "note": "CIP RE: field 1 @ +0x18 is GemId (not item id)"
+    "classic": "u16 gem_id",
+    "note": "CipSoft TProtobufServerMessageTranslator::v180: one u16 (the revealed gem's index)."
   },
   "GameserverMessageHirelingNameChange": {
     "fields": [
@@ -5702,20 +5759,14 @@
         "label": "optional"
       },
       {
-        "name": "can_report_bugs",
-        "type": "uint32",
-        "number": 6,
-        "label": "optional"
-      },
-      {
-        "name": "expert_pvp",
-        "type": "uint32",
+        "name": "can_change_pvp_frame_setting",
+        "type": "bool",
         "number": 7,
         "label": "optional"
       },
       {
-        "name": "pvp_frame",
-        "type": "uint32",
+        "name": "expert_pvp",
+        "type": "bool",
         "number": 8,
         "label": "optional"
       },
@@ -5732,8 +5783,8 @@
         "label": "optional"
       },
       {
-        "name": "exiva_options",
-        "type": "uint32",
+        "name": "world_type",
+        "type": "int32",
         "number": 12,
         "label": "optional"
       },
@@ -5744,8 +5795,8 @@
         "label": "optional"
       }
     ],
-    "classic": "u32 playerId; u16 beat; [GameNewSpeedLaw] 3\u00d7 double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]; u8 daily reward streak length",
-    "note": "CIP RE via dmpd mapLoginSuccess (fields 1\u20135,8\u201310,12). Fields 6\u20137 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates."
+    "classic": "u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type; u8 daily reward streak length",
+    "note": "CipSoft TProtobufServerMessageTranslator::v40 (serializer field numbers; field 12 is the world type, checked < 5 by its converter)."
   },
   "GameserverMessageCreatureHealth": {
     "fields": [
@@ -5791,19 +5842,20 @@
   "GameserverMessageCreatureSpeed": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "speed",
+        "name": "base_speed",
         "type": "uint32",
         "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "u32 creatureId; u16 speed"
+    "classic": "u32 creatureId; u16 base speed; u16 speed",
+    "note": "CipSoft TProtobufServerMessageTranslator::v45: the id goes to creature.remove_id and creature.id, the speed to creature.speed."
   },
   "GameserverMessageCreatureSkull": {
     "fields": [
@@ -8114,152 +8166,182 @@
   "GameserverMessagePlayerSkills": {
     "fields": [
       {
-        "name": "skills",
-        "type": "ProtocolSkill",
+        "name": "magic_level",
+        "type": "SkillInfo",
         "number": 1,
-        "label": "repeated"
+        "label": "optional"
       },
       {
-        "name": "modifiers",
-        "type": "ProtocolSkillModifier",
+        "name": "fist",
+        "type": "SkillInfo",
         "number": 2,
-        "label": "repeated"
+        "label": "optional"
       },
       {
-        "name": "capacity",
-        "type": "uint32",
+        "name": "club",
+        "type": "SkillInfo",
         "number": 3,
         "label": "optional"
       },
       {
-        "name": "base_capacity",
-        "type": "uint32",
+        "name": "sword",
+        "type": "SkillInfo",
         "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "axe",
+        "type": "SkillInfo",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "distance",
+        "type": "SkillInfo",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "shielding",
+        "type": "SkillInfo",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "fishing",
+        "type": "SkillInfo",
+        "number": 8,
+        "label": "optional"
+      },
+      {
+        "name": "magic_skill_boosts",
+        "type": "CharacterInfoMagicSkillBoost",
+        "number": 9,
+        "label": "repeated"
+      },
+      {
+        "name": "capacity",
+        "type": "SkillInfo",
+        "number": 10,
         "label": "optional"
       },
       {
         "name": "flat_damage_healing",
         "type": "uint32",
-        "number": 5,
+        "number": 11,
         "label": "optional"
       },
       {
-        "name": "attack",
+        "name": "attack_value",
         "type": "uint32",
-        "number": 6,
+        "number": 12,
         "label": "optional"
       },
       {
-        "name": "attack_element",
-        "type": "uint32",
-        "number": 7,
+        "name": "attack_damage_type",
+        "type": "int32",
+        "number": 13,
         "label": "optional"
       },
       {
-        "name": "converted_damage",
-        "type": "double",
-        "number": 8,
-        "label": "optional"
-      },
-      {
-        "name": "converted_element",
-        "type": "uint32",
-        "number": 9,
+        "name": "damage_conversion",
+        "type": "SpecialDamageConversionStats",
+        "number": 14,
         "label": "optional"
       },
       {
         "name": "life_leech",
         "type": "double",
-        "number": 10,
+        "number": 15,
         "label": "optional"
       },
       {
         "name": "mana_leech",
         "type": "double",
-        "number": 11,
+        "number": 16,
         "label": "optional"
       },
       {
         "name": "critical_chance",
         "type": "double",
-        "number": 12,
-        "label": "optional"
-      },
-      {
-        "name": "critical_damage",
-        "type": "double",
-        "number": 13,
-        "label": "optional"
-      },
-      {
-        "name": "onslaught",
-        "type": "double",
-        "number": 14,
-        "label": "optional"
-      },
-      {
-        "name": "defense",
-        "type": "uint32",
-        "number": 15,
-        "label": "optional"
-      },
-      {
-        "name": "armor",
-        "type": "uint32",
-        "number": 16,
-        "label": "optional"
-      },
-      {
-        "name": "mantra",
-        "type": "uint32",
         "number": 17,
         "label": "optional"
       },
       {
-        "name": "mitigation",
+        "name": "critical_extra_damage",
         "type": "double",
         "number": 18,
         "label": "optional"
       },
       {
-        "name": "dodge",
+        "name": "onslaught",
         "type": "double",
         "number": 19,
         "label": "optional"
       },
       {
-        "name": "damage_reflection",
+        "name": "defence",
         "type": "uint32",
         "number": 20,
         "label": "optional"
       },
       {
-        "name": "absorbs",
-        "type": "ProtocolCombatAbsorb",
+        "name": "armor",
+        "type": "uint32",
         "number": 21,
-        "label": "repeated"
+        "label": "optional"
       },
       {
-        "name": "momentum",
-        "type": "double",
+        "name": "mantra",
+        "type": "uint32",
         "number": 22,
         "label": "optional"
       },
       {
-        "name": "transcendence",
+        "name": "mitigation",
         "type": "double",
         "number": 23,
         "label": "optional"
       },
       {
-        "name": "amplification",
+        "name": "dodge",
         "type": "double",
         "number": 24,
         "label": "optional"
+      },
+      {
+        "name": "damage_reflection",
+        "type": "uint32",
+        "number": 25,
+        "label": "optional"
+      },
+      {
+        "name": "damage_reductions",
+        "type": "EquipmentDamageReduction",
+        "number": 26,
+        "label": "repeated"
+      },
+      {
+        "name": "momentum",
+        "type": "double",
+        "number": 27,
+        "label": "optional"
+      },
+      {
+        "name": "transcendence",
+        "type": "double",
+        "number": 28,
+        "label": "optional"
+      },
+      {
+        "name": "amplification",
+        "type": "double",
+        "number": 29,
+        "label": "optional"
       }
     ],
-    "classic": "8 skills (magic, fist, club, sword, axe, distance, shielding, fishing); u8 count x (u8, s16); u32 capacity, base capacity; u16 flat; u16 attack, u8 element; double converted, u8 element; 5 doubles; u16 defense, armor, mantra; 2 doubles; u16 reflection; u8 count x (u8, double); 3 doubles",
-    "note": "CIP TProtobufServerMessageTranslator::v69."
+    "classic": "8 skills (magic, fist, club, sword, axe, distance, shielding, fishing) x (u16 level, base, loyalty, percent hundredths); u8 count x (u8 type, s16 value); u32 capacity, base capacity; u16 flat; u16 attack, u8 element; double converted, u8 element; 5 doubles; u16 defence, armor, mantra; 2 doubles; u16 reflection; u8 count x (u8, double); 3 doubles",
+    "note": "CipSoft layout (TProtobufServerMessageTranslator::v69, serializer field numbers). Capacity is a SkillInfo (level = capacity, base = base capacity)."
   },
   "GameserverMessagePlayerState": {
     "fields": [
@@ -11176,9 +11258,21 @@
         "type": "string",
         "number": 1,
         "label": "optional"
+      },
+      {
+        "name": "challenge_connection",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "first_string",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
       }
     ],
-    "note": "string token (Crystal secondary login)."
+    "note": "string token (Crystal secondary login). CipSoft's SecondaryLogin: a byte, then an RSA block with two strings (an unidentified one and the ReadyForSecondaryConnection token)."
   },
   "GameclientMessageEnterWorld": {
     "fields": [],
@@ -11199,31 +11293,31 @@
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 4,
         "label": "optional"
       },
       {
         "name": "count",
         "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
         "number": 5,
         "label": "optional"
       }
     ],
-    "note": "CIP TProtobufClientMessageTranslator::v93."
+    "note": "CIP TProtobufClientMessageTranslator::v93: u8 action; actions 0-2: coordinate, u16 type, u8 stack position (0: u8 count); 3: u16 type, u32 count, u8."
   },
   "GameclientMessageDepotSearchRetrieve": {
     "fields": [
@@ -11655,44 +11749,37 @@
   "GameclientMessageMoveObject": {
     "fields": [
       {
-        "name": "from_position",
-        "type": "ProtocolCoordinate",
+        "name": "source_object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "from_stack_position",
-        "type": "uint32",
+        "name": "destination_object_position",
+        "type": "ObjectPosition",
         "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "to_position",
-        "type": "ProtocolCoordinate",
-        "number": 4,
         "label": "optional"
       },
       {
         "name": "count",
         "type": "uint32",
-        "number": 5,
+        "number": 4,
         "label": "optional"
       },
       {
         "name": "extra_flag",
         "type": "bool",
-        "number": 6,
+        "number": 5,
         "label": "optional"
       }
     ],
-    "classic": "pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u8 count; bool extra_flag",
-    "note": "CIP TProtobufClientMessageTranslator::v9."
+    "note": "CIP TProtobufClientMessageTranslator::v9: source coordinate, u16 type, u8 stack position, destination coordinate, u8 count, bool."
   },
   "GameclientMessageLookNPCTrade": {
     "fields": [
@@ -11786,32 +11873,25 @@
   "GameclientMessageTradeObject": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       },
       {
         "name": "creature_id",
         "type": "uint32",
-        "number": 4,
+        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position; u32 creature_id",
-    "note": "CIP TProtobufClientMessageTranslator::v59."
+    "note": "CIP TProtobufClientMessageTranslator::v59: coordinate, u16 type, u8 stack position, u32 creature id."
   },
   "GameclientMessageLookTrade": {
     "fields": [
@@ -11891,152 +11971,111 @@
   "GameclientMessageUseObject": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       },
       {
         "name": "container_index",
         "type": "uint32",
-        "number": 4,
+        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position; u8 container_index",
-    "note": "CIP TProtobufClientMessageTranslator::v13."
+    "note": "CIP TProtobufClientMessageTranslator::v13: coordinate, u16 type, u8 stack position, u8 container index (0 when unset)."
   },
   "GameclientMessageUseTwoObjects": {
     "fields": [
       {
-        "name": "from_position",
-        "type": "ProtocolCoordinate",
+        "name": "source_object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "source_object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "from_stack_position",
-        "type": "uint32",
+        "name": "destination_object_position",
+        "type": "ObjectPosition",
         "number": 3,
         "label": "optional"
       },
       {
-        "name": "to_position",
-        "type": "ProtocolCoordinate",
+        "name": "destination_object_identifier",
+        "type": "ObjectIdentifier",
         "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "to_object_id",
-        "type": "uint32",
-        "number": 5,
-        "label": "optional"
-      },
-      {
-        "name": "to_stack_position",
-        "type": "uint32",
-        "number": 6,
         "label": "optional"
       }
     ],
-    "classic": "pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u16 to_object_id; u8 to_stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v14."
+    "note": "CIP TProtobufClientMessageTranslator::v14: source coordinate, u16 type, u8 stack position; the same for the destination."
   },
   "GameclientMessageUseOnCreature": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       },
       {
         "name": "creature_id",
         "type": "uint32",
-        "number": 4,
+        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position; u32 creature_id",
-    "note": "CIP TProtobufClientMessageTranslator::v15."
+    "note": "CIP TProtobufClientMessageTranslator::v15: coordinate, u16 type, u8 stack position, u32 creature id."
   },
   "GameclientMessageTurnObject": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v11."
+    "note": "CIP TProtobufClientMessageTranslator::v11: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageConfigureShowOffSocket": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v12."
+    "note": "CIP TProtobufClientMessageTranslator::v12: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageCloseContainer": {
     "fields": [
@@ -12107,50 +12146,36 @@
   "GameclientMessageToggleWrapState": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v10."
+    "note": "CIP TProtobufClientMessageTranslator::v10: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageLook": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v16."
+    "note": "CIP TProtobufClientMessageTranslator::v16: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageLookAtCreature": {
     "fields": [
@@ -12173,26 +12198,13 @@
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object",
+        "type": "ObjectIdentifierAndPosition",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "object_id",
-        "type": "uint32",
-        "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 4,
         "label": "optional"
       }
     ],
-    "classic": "u8 variant; pos? position; u16? object_id; u8? stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v87."
+    "note": "CIP TProtobufClientMessageTranslator::v87: u8 variant; variants 0 and 1: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageManagedContainer": {
     "fields": [
@@ -12209,31 +12221,25 @@
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 3,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 4,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 5,
         "label": "optional"
       },
       {
         "name": "use_main_as_fallback",
         "type": "bool",
-        "number": 6,
+        "number": 5,
         "label": "optional"
       }
     ],
-    "note": "CIP TProtobufClientMessageTranslator::v91."
+    "note": "CIP TProtobufClientMessageTranslator::v91: u8 action; not 3: u8 category, actions 0 and 4 add coordinate, u16 type, u8 stack position; 3: bool."
   },
   "GameclientMessageQuickLootBlackWhitelist": {
     "fields": [
@@ -12283,14 +12289,13 @@
   "GameclientMessageOpenParentContainer": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       }
     ],
-    "classic": "pos position",
-    "note": "CIP TProtobufClientMessageTranslator::v96."
+    "note": "CIP TProtobufClientMessageTranslator::v96: coordinate."
   },
   "GameclientMessageTalk": {
     "fields": [
@@ -12326,7 +12331,7 @@
       },
       {
         "name": "aim_position",
-        "type": "ProtocolCoordinate",
+        "type": "ObjectPosition",
         "number": 6,
         "label": "optional"
       }
@@ -12394,26 +12399,19 @@
   "GameclientMessageGetTextForReport": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v106."
+    "note": "CIP TProtobufClientMessageTranslator::v106: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageCloseNPCChannel": {
     "fields": [],
@@ -12764,26 +12762,19 @@
         "label": "optional"
       },
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 2,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 3,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 4,
         "label": "optional"
       }
     ],
-    "classic": "u8 action; pos? position; u16? object_id; u8? stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v77."
+    "note": "CIP TProtobufClientMessageTranslator::v77: u8 action; action 1: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageWeaponProficiencyCommand": {
     "fields": [
@@ -14031,26 +14022,19 @@
   "GameclientMessageGatherAll": {
     "fields": [
       {
-        "name": "position",
-        "type": "ProtocolCoordinate",
+        "name": "object_identifier",
+        "type": "ObjectIdentifier",
         "number": 1,
         "label": "optional"
       },
       {
-        "name": "object_id",
-        "type": "uint32",
+        "name": "object_position",
+        "type": "ObjectPosition",
         "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "stack_position",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
-    "classic": "pos position; u16 object_id; u8 stack_position",
-    "note": "CIP TProtobufClientMessageTranslator::v89."
+    "note": "CIP TProtobufClientMessageTranslator::v89: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageUnknown": {
     "fields": [],

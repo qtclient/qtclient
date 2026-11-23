@@ -194,6 +194,39 @@ TFriendsProtocolMessageHandler::TFriendsProtocolMessageHandler(TFriendsStorage* 
 {
 }
 
+void TFriendsProtocolMessageHandler::acceptInvite(const uint32_t accountId, const int friendGroup)
+{
+    GameclientMessageFriendSystemAction message;
+    message.set_action(4);
+    message.set_account_id(accountId);
+    message.set_value(friendGroupToProtocol(friendGroup));
+    Q_EMIT sendFriendSystemAction(message);
+}
+
+void TFriendsProtocolMessageHandler::declineInvite(const uint32_t accountId)
+{
+    GameclientMessageFriendSystemAction message;
+    message.set_action(5);
+    message.set_account_id(accountId);
+    Q_EMIT sendFriendSystemAction(message);
+}
+
+void TFriendsProtocolMessageHandler::cancelInvite(const uint32_t accountId)
+{
+    GameclientMessageFriendSystemAction message;
+    message.set_action(6);
+    message.set_account_id(accountId);
+    Q_EMIT sendFriendSystemAction(message);
+}
+
+void TFriendsProtocolMessageHandler::removeFromBlacklist(const uint32_t accountId)
+{
+    GameclientMessageFriendSystemAction message;
+    message.set_action(8);
+    message.set_account_id(accountId);
+    Q_EMIT sendFriendSystemAction(message);
+}
+
 void TFriendsProtocolMessageHandler::handleFriendSystemDataMessage(const GameserverMessageFriendSystemData& message)
 {
     TFriendsStorage* storage = m_storage;

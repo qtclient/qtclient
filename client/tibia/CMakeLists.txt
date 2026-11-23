@@ -362,10 +362,12 @@ if(TIBIA_WITH_GAMECORE)
     assets/assetasyncloaderworker.cpp assets/assetasyncloaderworker.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     assets/soundcatalog.cpp assets/soundcatalog.h
+    assets/assetmanager.cpp assets/assetmanager.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     authentication/emailcoderequestuploader.cpp authentication/emailcoderequestuploader.h
     authentication/loginconfirmationcoderequestuploader.cpp authentication/loginconfirmationcoderequestuploader.h
     authentication/authenticationandencryptioninfo.cpp authentication/authenticationandencryptioninfo.h
+    authentication/loginprotocolmessagehandler.cpp authentication/loginprotocolmessagehandler.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
     taskboard/taskboardbountytasksstorage.cpp taskboard/taskboardbountytasksstorage.h
     taskboard/taskboardcurrenciesstorage.cpp taskboard/taskboardcurrenciesstorage.h
@@ -373,10 +375,13 @@ if(TIBIA_WITH_GAMECORE)
     taskboard/taskboardweeklytasksstorage.cpp taskboard/taskboardweeklytasksstorage.h
     taskboard/monsterlistfiltermodel.cpp taskboard/monsterlistfiltermodel.h
     taskboard/monsterlistmodelsortfilterproxy.cpp taskboard/monsterlistmodelsortfilterproxy.h
+    taskboard/taskboardrewardlistmodel.cpp taskboard/taskboardrewardlistmodel.h
     news/newsciptypes.cpp news/newsciptypes.h
     client/clientciptypes.cpp client/clientciptypes.h
     client/preventcloseeventfilter.cpp client/preventcloseeventfilter.h
     common/commonciptypes.cpp common/commonciptypes.h
+    common/plural.cpp common/plural.h
+    common/pluralexception.h
     dailyreward/dailyrewardciptypes.cpp dailyreward/dailyrewardciptypes.h
     questlog/questlogciptypes.cpp questlog/questlogciptypes.h
     questlog/questloggameactionhandler.cpp questlog/questloggameactionhandler.h
@@ -695,6 +700,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/infobannercontroller.cpp gamewindow/infobannercontroller.h
     gamewindow/viprenderinfo.cpp gamewindow/viprenderinfo.h
     gamewindow/marketcointransactiondetailsdialogcontroller.cpp gamewindow/marketcointransactiondetailsdialogcontroller.h
+    gamewindow/sidebarpanelcontrollerbase.h
     input/gameaction.cpp input/gameaction.h
     input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
@@ -773,6 +779,7 @@ if(TIBIA_WITH_GAMECORE)
     sprites/minimaptilespritesheetidentifier.cpp sprites/minimaptilespritesheetidentifier.h
     sprites/spriteidentifier.cpp sprites/spriteidentifier.h
     sprites/spritesystem.cpp sprites/spritesystem.h
+    sprites/resourcespritesmanager.cpp sprites/resourcespritesmanager.h
     shared/cip_typed.h
     shared/tibiaclipboardhelper.cpp shared/tibiaclipboardhelper.h
     shared/experiencegainchangetracker.h
@@ -851,6 +858,7 @@ if(TIBIA_WITH_GAMECORE)
     renderer/worldmapquickitem.cpp renderer/worldmapquickitem.h
     renderer/worldmaprenderprovider.cpp renderer/worldmaprenderprovider.h
     renderer/worldmapcameraviewport.cpp renderer/worldmapcameraviewport.h
+    renderer/worldmapcamera.cpp renderer/worldmapcamera.h
     store/storeciptypes.cpp store/storeciptypes.h
     store/dynamicallyloadedimage.cpp store/dynamicallyloadedimage.h
     store/qmlstoreobjects.cpp store/qmlstoreobjects.h
@@ -919,6 +927,7 @@ if(TIBIA_WITH_GAMECORE)
     game/premiummessage.cpp game/premiummessage.h
     game/premiummessagerenewpremium.cpp game/premiummessagerenewpremium.h
     game/traderstorage.cpp game/traderstorage.h
+    game/fpsdropslogger.cpp game/fpsdropslogger.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h)
 endif()

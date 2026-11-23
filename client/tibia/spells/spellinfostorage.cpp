@@ -276,14 +276,14 @@ std::optional<TSpellInfo> TSpellInfoStorage::spellInfo(const int spellId) const
     return spell;
 }
 
-QString TSpellInfoStorage::spellFormula(const int spellId) const
+QString TSpellInfoStorage::spellFormula(const int spellId, const QString& parameters) const
 {
     if (!spell(spellId))
         return {};
     const TSpellInfo spell = spellInfoAt(spellId);
     if (spell.parameterHints.isEmpty())
         return spell.words;
-    return spell.words + QLatin1Char(' ') + spell.parameterHints.trimmed();
+    return spell.words + QLatin1Char(' ') + parameters.trimmed();
 }
 
 std::optional<TSpellCastParameters> TSpellInfoStorage::castParameters(const int spellId) const

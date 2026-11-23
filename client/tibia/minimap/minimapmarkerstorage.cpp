@@ -35,7 +35,7 @@ void TMinimapMarkerStorage::setActive(TMinimapMarkerStorage* storage) { g_active
 
 TMinimapMarkerStorage::TMinimapMarkerStorage(QObject* parent)
     : cip::tibia::minimap::TMinimapMarkerStorage(parent)
-    , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this, this))
+    , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this, nullptr, nullptr, this))
 {
     // A change asks for a later callback, which writes the markers.
     connect(this, &TMinimapMarkerStorage::requestDelayedCallback, this, &TMinimapMarkerStorage::onDelayedCallback,

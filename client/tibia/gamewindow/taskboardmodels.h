@@ -125,55 +125,6 @@ private:
     QVector<DeliveryTaskRow> m_rows;
 };
 
-struct ShopRewardRow {
-    int offerIndex = 0;
-    int rewardType = 0;
-    int id = 0;
-    int optionalId = 0;
-    QString title;
-    QString description;
-    int cost = 0;
-    QString costString;
-    bool canBuy = false;
-    bool alreadyOwned = false;
-    QString noBuyReasonString;
-    bool addOn1 = false;
-    bool addOn2 = false;
-};
-
-class TTaskboardRewardListModel final : public cip::tibia::taskboard::TTaskboardRewardListModel
-{
-    Q_OBJECT
-public:
-    enum Roles {
-        RewardTypeRole = Qt::UserRole + 1,
-        IdRole,
-        AppearanceIdRole,
-        OptionalIdRole,
-        TitleRole,
-        DescriptionRole,
-        CostRole,
-        CostStringRole,
-        CanBuyRole,
-        AlreadyOwnedRole,
-        NoBuyReasonStringRole,
-        AddOn1Role,
-        AddOn2Role,
-    };
-
-    explicit TTaskboardRewardListModel(QObject* parent = nullptr);
-
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
-
-    void setRows(QVector<ShopRewardRow> rows);
-    const ShopRewardRow* rowAt(int index) const;
-
-private:
-    QVector<ShopRewardRow> m_rows;
-};
-
 struct PreferredMonsterSlotRow {
     int slotIndex = 0;
     bool isUnlocked = false;

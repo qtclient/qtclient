@@ -883,8 +883,11 @@ void TExaltationResultDialogController::requestClose()
 
 bool TExaltationForgeDialogController::smoothTextureFiltering() const { return gamewindow::smoothFilteringEnabled(); }
 
-TExaltationForgeDialogController::TExaltationForgeDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), parent)
+TExaltationForgeDialogController::TExaltationForgeDialogController(config::TClientOptions* clientOptions,
+                                                                   QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                   QObject* parent)
+    : TDialogController(QStringLiteral("ExaltationForgeDialog.qml"), engine, dialogParentItem, parent)
+    , m_clientOptions(clientOptions)
     , m_resultDialog(new TExaltationResultDialogController(this))
     , m_errorDialog(new TMessageDialogController(this))
 {

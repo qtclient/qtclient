@@ -90,11 +90,12 @@ TCooldownProgressDataForQML::TCooldownProgressDataForQML(QString sourceUrl, cons
     m_tooltip = std::move(tooltip);
 }
 
-TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObject* parent)
+TCooldownBarController::TCooldownBarController(spells::TSpellInfoStorage* spellInfoStorage, QQuickItem* cooldownBar,
+                                               QObject* parent)
     : cip::tibia::gamewindow::TCooldownBarController(parent)
+    , m_spellInfoStorage(spellInfoStorage)
+    , m_bar(cooldownBar)
 {
-    if (gameWindowItem)
-        m_bar = gameWindowItem->findChild<QQuickItem*>(QLatin1String("cooldownBar"));
     showIdleSpellGroups();
 
     m_nextFrame.setSingleShot(true);
@@ -129,9 +130,9 @@ void TCooldownBarController::showIdleSpellGroups()
         m_bar->setProperty("spellGroupCooldowns", groups);
 }
 
-QString TCooldownBarController::spellTooltip(const int spellId)
+QString TCooldownBarController::spellTooltip(const int spellId) const
 {
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+    const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
     if (!spell)
         return {};
     return qtTrId("spellcooldown_individual_spell").arg(spell->name).arg(spellCooldownMs(*spell) / 1000);
@@ -154,10 +155,9 @@ void TCooldownBarController::update(const qint64 now)
     m_bar->setProperty("spellGroupCooldowns", groups);
 
     QVariantList spellCooldowns;
-    spells::TSpellInfoStorage* spellInfo = spells::TSpellInfoStorage::instance();
     for (const auto& [spellId, cooldown] : storage->spellCooldowns()) {
         const qint64 remaining = cooldown.end - now;
-        const spells::TSpellInfo* spell = spellInfo->spell(spellId);
+        const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
         if (remaining <= 0 || !spell || !isValidSpellIcon(spell->iconIndex))
             continue;
         spellCooldowns.append(QVariant::fromValue(qmlOwned(new TCooldownProgressDataForQML(

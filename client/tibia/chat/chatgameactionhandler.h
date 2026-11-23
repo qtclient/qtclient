@@ -7,6 +7,7 @@
 #include <protocol.pb.h>
 
 #include <QColor>
+#include <QDateTime>
 #include <QObject>
 #include <QString>
 
@@ -16,6 +17,9 @@
 #include <vector>
 
 namespace tibia {
+namespace shared {
+class IClockService;
+}
 namespace spells {
 class TSpellInfoStorage;
 }
@@ -198,11 +202,16 @@ private:
 };
 
 /// Builds chat entries (CIP: chat::TClientChatEntryFactory). Every entry
-/// carries the time it was made.
+/// carries the time it was made; the factory's own entries take it from the
+/// session's clock service.
 class TClientChatEntryFactory final
 {
 public:
-    /// A system line.
+    explicit TClientChatEntryFactory(std::shared_ptr<::tibia::shared::IClockService> clockService);
+
+    /// A system line made at `time`.
+    static TChatEntry systemEntry(const QDateTime& time, const QColor& color, const QString& text);
+    /// A system line made now.
     static TChatEntry systemEntry(const QColor& color, const QString& text);
     /// A speaker without level (an NPC).
     static TChatEntry speakerEntry(const QColor& color, const QString& name, const QString& text);
@@ -212,13 +221,16 @@ public:
     /// A loot line.
     static TChatEntry lootEntry(const QColor& color, const QString& text);
     /// v2: "the channel was closed", red.
-    static TChatEntry channelClosedEntry();
+    TChatEntry channelClosedEntry() const;
     /// v3: the Team Finder channel's closing line, red.
-    static TChatEntry teamFinderChannelClosedEntry();
+    TChatEntry teamFinderChannelClosedEntry() const;
     /// v4: the help channel's introduction, white.
-    static TChatEntry helpChannelIntroductionEntry();
+    TChatEntry helpChannelIntroductionEntry() const;
     /// v5: the advertising channels' introduction, white.
-    static TChatEntry advertisingChannelIntroductionEntry();
+    TChatEntry advertisingChannelIntroductionEntry() const;
+
+private:
+    std::shared_ptr<::tibia::shared::IClockService> m_clockService;
 };
 
 }

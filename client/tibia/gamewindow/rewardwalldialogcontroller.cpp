@@ -36,11 +36,6 @@ input::IGameActionPtr simpleAction(const A type)
     return input::makeGameAction(type);
 }
 
-uint32_t nowSeconds()
-{
-    return static_cast<uint32_t>(QDateTime::currentMSecsSinceEpoch() / 1000);
-}
-
 /// "hh:mm".
 QString hoursAndMinutes(const qint64 seconds)
 {
@@ -114,8 +109,10 @@ TQmlRewardStreakBonus::TQmlRewardStreakBonus(const uint neededStreak, const bool
     m_isLockedByRewardStreakLength = lockedByStreak;
 }
 
-TRewardWallDialogController::TRewardWallDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("RewardWallDialog.qml"), parent)
+TRewardWallDialogController::TRewardWallDialogController(std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine,
+                                                         QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("RewardWallDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clockService(std::move(ClockService))
     , m_infoDialog(new TMessageDialogController(this))
     , m_confirmDialog(new TMessageDialogController(this))
     , m_warningDialog(new TMessageDialogController(this))
@@ -189,14 +186,19 @@ QString TRewardWallDialogController::rewardStreakInfoText() const
     return m_storage ? m_storage->rewardStreakInfoText() : qtTrId("rewardwall_reward_streak_no_bonus");
 }
 
+uint32_t TRewardWallDialogController::currentUnixTime() const
+{
+    return static_cast<uint32_t>(m_clockService->currentDateTime().toMSecsSinceEpoch() / 1000);
+}
+
 qint64 TRewardWallDialogController::secondsUntilStreakEnd() const
 {
-    return m_storage ? qint64(m_storage->rewardStreakEndTime()) - qint64(nowSeconds()) : 0;
+    return m_storage ? qint64(m_storage->rewardStreakEndTime()) - qint64(currentUnixTime()) : 0;
 }
 
 qint64 TRewardWallDialogController::secondsUntilNextReward() const
 {
-    return m_storage ? qint64(m_storage->nextRewardTime()) - qint64(nowSeconds()) : 0;
+    return m_storage ? qint64(m_storage->nextRewardTime()) - qint64(currentUnixTime()) : 0;
 }
 
 /// "expired", the running streak's time left, or nothing.
@@ -269,7 +271,7 @@ uint TRewardWallDialogController::nextDailyRewardPosition() const { return m_sto
 
 bool TRewardWallDialogController::isDailyRewardLocked() const
 {
-    return m_storage && m_storage->nextRewardTime() > nowSeconds();
+    return m_storage && m_storage->nextRewardTime() > currentUnixTime();
 }
 
 /// Nothing once unlocked, "hh:mm" or less than a minute before.
@@ -435,7 +437,7 @@ std::shared_ptr<TDailyReward> TRewardWallDialogController::collectableReward() c
         return {};
     const std::vector<dailyreward::TDailyRewardStorage::TRewardPair> rewards = m_storage->rewards();
     const size_t position = m_storage->nextDailyRewardPosition();
-    if (position >= rewards.size() || m_storage->nextRewardTime() > nowSeconds())
+    if (position >= rewards.size() || m_storage->nextRewardTime() > currentUnixTime())
         return {};
     return localPlayerPremium() ? rewards[position].second : rewards[position].first;
 }
@@ -556,7 +558,7 @@ QString TRewardWallDialogController::dailyRewardStateHoverText(const int Index)
     if (position < index)
         return qtTrId("rewardwall_daily_reward_waiting");
     const uint32_t unlockTime = m_storage->nextRewardTime();
-    const uint32_t now = nowSeconds();
+    const uint32_t now = currentUnixTime();
     if (unlockTime > now)
         return qtTrId("rewardwall_daily_reward_is_unlocking").arg(minutesText((unlockTime - now) / 60));
     QString text = qtTrId("rewardwall_daily_reward_unlocked");

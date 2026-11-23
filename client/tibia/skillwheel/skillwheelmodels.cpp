@@ -194,6 +194,12 @@ TInventoryGemSortFilterProxyModel::TInventoryGemSortFilterProxyModel(TInventoryG
     setSourceModel(source);
 }
 
+void TInventoryGemSortFilterProxyModel::invalidateRows()
+{
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+}
+
 void TInventoryGemSortFilterProxyModel::refilter()
 {
     beginFilterChange();

@@ -501,10 +501,10 @@ IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
     return makeGameAction(type);
 }
 
-std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, const int pathMode,
-                                                                          const bool enterUnwalkableGoal)
+std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, const bool enterUnwalkableGoal)
 {
-    return std::make_shared<TGameActionPlayerMovementIntent>(position, pathMode, enterUnwalkableGoal);
+    return std::make_shared<TGameActionPlayerMovementIntent>(
+        std::make_shared<TMovementIntentTargetCoordinate>(position.x, position.y, position.z, enterUnwalkableGoal));
 }
 
 std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner)

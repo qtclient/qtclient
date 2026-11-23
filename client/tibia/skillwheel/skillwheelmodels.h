@@ -83,6 +83,8 @@ public:
     /// The row showing the gem, invalid when the filters hide it.
     QModelIndex indexOfGem(int gemId) const;
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
+    /// Runs the filters again over every row (no filterChanged).
+    void invalidateRows();
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;

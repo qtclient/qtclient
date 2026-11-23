@@ -47,7 +47,7 @@ int roundToInt(const float v)
 }
 
 TMinimapController::TMinimapController(QObject* parent)
-    : cip::tibia::gamewindow::TMinimapController(parent)
+    : TSidebarPanelController(parent)
 {
     // CIP: Thais temple until the player is known.
     m_area.setCenter(Position(32369, 32215, 7));
@@ -67,6 +67,8 @@ TMinimapController::TMinimapController(QObject* parent)
 
 TMinimapController::~TMinimapController()
 {
+    // Host: the item (and its marker overlay) goes while this controller is whole.
+    releasePanelItem();
     if (m_minimap)
         m_minimap->setRenderProvider(nullptr);
 }
@@ -106,7 +108,7 @@ void TMinimapController::setMarkerStorage(minimap::TMinimapMarkerStorage* storag
 void TMinimapController::createMarkerOverlay()
 {
     m_markerOverlayController.reset();
-    QQuickItem* overlay = m_panel ? m_panel->findChild<QQuickItem*>(QStringLiteral("minimapMarkerOverlay")) : nullptr;
+    QQuickItem* overlay = panelItem() ? panelItem()->findChild<QQuickItem*>(QStringLiteral("minimapMarkerOverlay")) : nullptr;
     if (!m_markerRenderProvider || !overlay || !qmlEngine(overlay))
         return;
     m_markerOverlayController =
@@ -134,15 +136,11 @@ void TMinimapController::setSidebarOptions(config::TSidebarOptions* options)
     refresh();
 }
 
-void TMinimapController::setPanelItem(QQuickItem* panel)
+void TMinimapController::setPanelItem(QQuickItem* PanelItem)
 {
-    if (m_minimap) {
-        disconnect(m_minimap, nullptr, this, nullptr);
-        m_minimap->setRenderProvider(nullptr);
-    }
-    m_panel = panel;
-    m_minimap = panel ? panel->findChild<qmlcomponents::TMinimapQuickItem*>(QStringLiteral("minimap")) : nullptr;
-    m_timeDisplay = panel ? panel->findChild<QQuickItem*>(QStringLiteral("timedisplay")) : nullptr;
+    TSidebarPanelController::setPanelItem(PanelItem);
+    m_minimap = PanelItem->findChild<qmlcomponents::TMinimapQuickItem*>(QStringLiteral("minimap"));
+    m_timeDisplay = PanelItem->findChild<QQuickItem*>(QStringLiteral("timedisplay"));
     if (m_minimap) {
         connect(m_minimap, &QQuickItem::widthChanged, this, &TMinimapController::updateMinimapVisibleAreaFromQuickitemSize);
         connect(m_minimap, &QQuickItem::heightChanged, this, &TMinimapController::updateMinimapVisibleAreaFromQuickitemSize);
@@ -151,6 +149,17 @@ void TMinimapController::setPanelItem(QQuickItem* panel)
     createMarkerOverlay();
     updateMinimapVisibleAreaFromQuickitemSize();
     updateTimeDisplay();
+}
+
+void TMinimapController::releasePanelItem()
+{
+    if (m_minimap) {
+        disconnect(m_minimap, nullptr, this, nullptr);
+        m_minimap->setRenderProvider(nullptr);
+    }
+    m_minimap = nullptr;
+    m_timeDisplay = nullptr;
+    TSidebarPanelController::releasePanelItem();
 }
 
 int TMinimapController::currentLayer() const

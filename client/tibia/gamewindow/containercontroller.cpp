@@ -108,9 +108,6 @@ TContainerController::TContainerController(const int containerId, container::TCo
     });
     if (const game::TGameSessionBase* session = game::currentGameSession())
         m_model.setObjectCountStorage(session->objectCountStorage().get());
-    m_clockTimer.setInterval(1000);
-    connect(&m_clockTimer, &QTimer::timeout, &m_model, &TAppearanceInstanceListModel::refreshClocks);
-    m_clockTimer.start();
 
     widget()->createItem(QStringLiteral("container.qml"));
     QQuickItem* item = quickItem();
@@ -554,6 +551,11 @@ void TContainerController::readExpireOptions()
     const QJsonObject options = app::ClientOptions::load().options();
     m_model.setExpireOptions(options.value(QLatin1String(ShowExpireOption)).toBool(true),
                              options.value(QLatin1String(ShowExpireWhenUnusedOption)).toBool(false));
+}
+
+void TContainerController::updateWithTimestamp(const qint64)
+{
+    m_model.refreshClocks();
 }
 
 }

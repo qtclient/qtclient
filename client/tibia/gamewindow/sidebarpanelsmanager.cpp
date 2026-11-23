@@ -36,14 +36,12 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     : cip::tibia::gamewindow::TSidebarPanelsManager(parent)
     , m_sidebars(sidebars)
 {
-    new TSidebarPanelControllerBase(this);
     connect(sidebars, &TSidebarManager::panelConfigurationChanged, this, &TSidebarPanelsManager::saveCurrentOpenPanels);
 
     // CIP .
     m_minimapItem = createQuickItem(engine, QStringLiteral("MinimapPanel.qml"));
     if (m_minimapItem) {
         m_minimap = std::make_unique<TMinimapController>();
-        bindPanelItem(m_minimap.get(), m_minimapItem);
         m_minimap->setPanelItem(m_minimapItem);
         sidebars->addPanel(m_minimap.get(), m_minimapItem);
     }
@@ -53,7 +51,6 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
         m_inventory = std::make_unique<TPlayerInventoryAndStatusController>();
         connect(m_inventory.get(), &TPlayerInventoryAndStatusController::publishGameAction, this,
                 &TSidebarPanelsManager::publishGameAction);
-        bindPanelItem(m_inventory.get(), m_inventoryItem);
         m_inventory->setPanelItem(m_inventoryItem);
         sidebars->addPanel(m_inventory.get(), m_inventoryItem);
     }
@@ -61,7 +58,6 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     m_hitpointManabarItem = createQuickItem(engine, QStringLiteral("HitpointsManaPanel.qml"));
     if (m_hitpointManabarItem) {
         m_hitpointManabar = std::make_unique<THitpointManabarController>();
-        bindPanelItem(m_hitpointManabar.get(), m_hitpointManabarItem);
         m_hitpointManabar->setPanelItem(m_hitpointManabarItem);
         sidebars->addPanel(m_hitpointManabar.get(), m_hitpointManabarItem);
     }
@@ -70,7 +66,7 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     connect(m_buttonBar.get(), &TButtonBarController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);
     m_buttonBarItem = createQuickItem(engine, QStringLiteral("ButtonBarPanel.qml"));
     if (m_buttonBarItem) {
-        bindPanelItem(m_buttonBar.get(), m_buttonBarItem);
+        m_buttonBar->setPanelItem(m_buttonBarItem);
         sidebars->addPanel(m_buttonBar.get(), m_buttonBarItem);
     }
 
@@ -78,27 +74,14 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* sidebars, QQmlEngi
     m_premiumPanelItem = createQuickItem(engine, QStringLiteral("PremiumPanel.qml"));
     if (m_premiumPanelItem) {
         m_premiumPanel = std::make_unique<TPremiumPanelController>();
-        bindPanelItem(m_premiumPanel.get(), m_premiumPanelItem);
         sidebars->addPanel(m_premiumPanel.get(), m_premiumPanelItem);
         m_premiumPanel->setPanelItem(m_premiumPanelItem);
         connect(m_premiumPanel.get(), &TPremiumPanelController::isVisibleChanged, this, &TSidebarPanelsManager::premiumPanelIsVisibleChanged);
     }
 }
 
-TSidebarPanelsManager::~TSidebarPanelsManager()
-{
-    if (m_minimap)
-        m_minimap->setPanelItem(nullptr);
-    if (m_inventory)
-        m_inventory->setPanelItem(nullptr);
-    if (m_premiumPanel)
-        m_premiumPanel->setPanelItem(nullptr);
-    delete m_premiumPanelItem;
-    delete m_minimapItem;
-    delete m_hitpointManabarItem;
-    delete m_inventoryItem;
-    delete m_buttonBarItem;
-}
+// The panel controllers delete their items (CIP: TSidebarPanelControllerBase).
+TSidebarPanelsManager::~TSidebarPanelsManager() = default;
 
 void TSidebarPanelsManager::setSidebarOptions(config::TSidebarOptions* options)
 {

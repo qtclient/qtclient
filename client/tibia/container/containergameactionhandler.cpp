@@ -5,6 +5,7 @@
 #include "container/containerciptypes.h"
 #include "input/gameactioncontext.h"
 #include "input/gameactionhandlers.h"
+#include "protocol/gameactioncontexthelper.h"
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/game/thingsession_forward.h>
@@ -22,14 +23,6 @@ namespace {
 using A = input::EGameAction;
 using C = input::EGameActionContextType;
 using TObjectAppearanceInstanceTypeID = appearances::TObjectAppearanceInstanceTypeID;
-
-/// The protocol coordinate of a classic position.
-void setCoordinate(::tibia::protobuf::protocol::ProtocolCoordinate* coordinate, const Position& position)
-{
-    coordinate->set_x(position.x);
-    coordinate->set_y(position.y);
-    coordinate->set_z(position.z);
-}
 
 /// The stash actions take an object from the inventory, a container or the
 /// depot search's depot and inbox lists.
@@ -69,9 +62,11 @@ const TAppearanceType* objectType(const uint16_t typeId)
 {
     ::tibia::protobuf::protocol::GameclientMessageStashAction message;
     message.set_action(action);
-    setCoordinate(message.mutable_position(), object.position());
-    message.set_stack_position(static_cast<uint32_t>(std::max(object.stackPosition(), 0)));
-    message.set_object_id(object.objectClientId());
+    const protocol::TGameActionContextHelper helper;
+    if (object.location())
+        helper.fillObjectPosition(object.location(), message.mutable_object_position());
+    if (object.object())
+        helper.fillObjectIdentifier(object.object(), message.mutable_object_identifier());
     return message;
 }
 
@@ -179,10 +174,12 @@ void TContainerGameActionHandler::handleMoveObjectGameAction(const std::shared_p
     move.setStashConfirmed(true);
     ::tibia::protobuf::protocol::GameclientMessageMoveObject message;
     const Position from = move.position();
-    setCoordinate(message.mutable_from_position(), from);
-    message.set_object_id(move.objectClientId());
-    message.set_from_stack_position(static_cast<uint32_t>(std::max(move.stackPosition(), 0)));
-    setCoordinate(message.mutable_to_position(), to);
+    const protocol::TGameActionContextHelper helper;
+    if (move.location())
+        helper.fillObjectPosition(move.location(), message.mutable_source_object_position());
+    if (move.object())
+        helper.fillObjectIdentifier(move.object(), message.mutable_object_identifier());
+    helper.fillObjectPosition(destination, message.mutable_destination_object_position());
     message.set_count(static_cast<uint32_t>(input::moveObjectCount(move)));
     if (destinationType == C::LOCATION_CONTAINER_WITH_SLOT)
         message.set_extra_flag(static_cast<const input::TLocationContainerWithSlotGameActionContext*>(destination.get())->flag12());
@@ -292,7 +289,7 @@ void TContainerGameActionHandler::handleStashRetrieveGameAction(
         return;
     ::tibia::protobuf::protocol::GameclientMessageStashAction message;
     message.set_action(StashRetrieve);
-    message.set_object_id(pStashRetrieveGameAction->typeId());
+    message.mutable_object_identifier()->set_type_id(pStashRetrieveGameAction->typeId());
     message.set_count(static_cast<uint32_t>(pStashRetrieveGameAction->amount()));
     // The retrieve source (0 or 1; CipSoft throws on any other); qtclient's
     // message carries it in the stack position.
@@ -338,7 +335,9 @@ void TContainerGameActionHandler::handleOpenParentContainerGameAction(
     if (!pOpenParentContainerGameAction)
         return;
     ::tibia::protobuf::protocol::GameclientMessageOpenParentContainer message;
-    setCoordinate(message.mutable_position(), pOpenParentContainerGameAction->position());
+    if (const input::TGameActionContextPtr location =
+            input::locationContextFromPosition(pOpenParentContainerGameAction->position(), -1))
+        protocol::TGameActionContextHelper().fillObjectPosition(location, message.mutable_object_position());
     Q_EMIT sendOpenParentContainer(message);
 }
 

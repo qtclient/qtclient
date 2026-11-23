@@ -219,6 +219,21 @@ void TSidebarWidgetsManager::setControlScheme(const int controlScheme)
 
 void TSidebarWidgetsManager::onLoginRampUpFinished() { m_battleLists->onLoginRampUpFinished(); }
 
+void TSidebarWidgetsManager::updateWithTimestamp(const qint64 TimestampMilliseconds)
+{
+    m_battleLists->triggerUpdate();
+    if (m_depotSearch)
+        m_depotSearch->updateHoverCursor();
+    if (TBossTrackerWidgetController* const bossTracker = m_bossTracker->controller())
+        bossTracker->updateWithTimestamp();
+    if (TCreatureTrackerWidgetController* const bosstiaryTracker = m_bosstiaryTracker->controller())
+        bosstiaryTracker->updateCooldownExpiry();
+    if (m_containers)
+        m_containers->updateWithTimestamp(TimestampMilliseconds);
+    if (TImbuementTrackerWidgetController* const imbuementTracker = m_imbuementTracker->controller())
+        imbuementTracker->updateWithTimestamp(TimestampMilliseconds);
+}
+
 void TSidebarWidgetsManager::registerWidget(const int widgetType, WidgetHooks hooks) { m_widgets[widgetType] = std::move(hooks); }
 
 void TSidebarWidgetsManager::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -341,6 +356,8 @@ void TSidebarWidgetsManager::setPremiumTimeStorage(game::TPremiumTimeStorage* pr
     m_premiumTimeStorage = premiumTimeStorage;
     if (m_skills)
         m_skills->setPremiumTimeStorage(premiumTimeStorage);
+    if (m_battleLists)
+        m_battleLists->setPremiumTimeStorage(premiumTimeStorage);
     if (!m_premiumTimeStorage)
         return;
     connect(m_premiumTimeStorage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TSidebarWidgetsManager::onPremiumTimeChanged);

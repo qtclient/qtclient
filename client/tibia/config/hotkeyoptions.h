@@ -71,6 +71,18 @@ struct TActionSetting
     /// multi actions.
     void setChatText(const QString& chatText);
     void setSendAutomatically(bool enabled) { sendAutomatically = enabled; }
+    /// An object to use: drops the liquid, the tier, the passive ability and
+    /// the multi actions; a non-zero object also drops the chat text.
+    void setUseObject(int objectClientId);
+    /// An object holding a liquid (a fluid container or splash).
+    void setUseObject(int objectClientId, int liquid);
+    /// An object of an upgrade tier.
+    void setUseObjectWithTier(int objectClientId, int tier);
+    /// A passive ability; a non-zero one drops the chat text, the object, its
+    /// liquid and the multi actions (the tier stays).
+    void setPassiveAbility(int ability);
+    /// ESpellCastOptionalTargetType of a spell's chat text.
+    void setSpellCastType(int castType) { spellCastType = castType; }
     void setUseType(EUseType type) { useType = type; }
     void setUseEquipSmartMode(bool enabled) { useEquipSmartMode = enabled; }
     static TActionSetting fromJson(const QJsonObject& json);

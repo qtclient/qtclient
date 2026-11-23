@@ -353,17 +353,6 @@ Q_SIGNALS:
     void dialogClosed();
 };
 
-class TSidebarPanelControllerBase : public cip::tibia::gamewindow::TSidebarPanelControllerBase
-{
-    Q_OBJECT
-public:
-    explicit TSidebarPanelControllerBase(QObject* parent = nullptr);
-
-public Q_SLOTS:
-    void onSidebarDestroyed() override;
-    void onPanelQuickItemDestroyed() override;
-};
-
 class TSidebarWidgetControllerBase : public cip::tibia::gamewindow::TSidebarWidgetControllerBase
 {
     Q_OBJECT

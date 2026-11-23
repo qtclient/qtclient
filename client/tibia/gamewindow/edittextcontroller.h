@@ -32,7 +32,7 @@ class TEditTextController final : public TDialogController<cip::tibia::gamewindo
 {
     Q_OBJECT
 public:
-    explicit TEditTextController(QObject* parent = nullptr);
+    TEditTextController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// CIP connector: the dialog closes; the session's edit text handler opens
     /// the text, list and guild message dialogs.

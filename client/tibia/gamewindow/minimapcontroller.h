@@ -6,6 +6,7 @@
 #include "input/gameactionmapper.h"
 #include "minimap/minimapgameactionprovider.h"
 #include "minimap/minimapvisiblearea.h"
+#include "gamewindow/sidebarpanelcontrollerbase.h"
 
 #include <cip_gen.h>
 
@@ -50,7 +51,7 @@ namespace gamewindow {
 /// the minimap hotkeys move, zoom and change its floor; clicks map to game
 /// actions in rule context 6. Modal hover gate , qtclient context
 /// menu / marks, markers, and emulateClickOnAutomapRose are ported.
-class TMinimapController final : public cip::tibia::gamewindow::TMinimapController
+class TMinimapController final : public TSidebarPanelController<cip::tibia::gamewindow::TMinimapController>
 {
     Q_OBJECT
 public:
@@ -64,8 +65,10 @@ public:
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
     /// The character's options the zoom lives in.
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// CIP v14: the MinimapPanel instance (its "minimap" and "timedisplay" items).
-    void setPanelItem(QQuickItem* panel);
+    /// CIP v14: the base's, then the MinimapPanel's "minimap" and "timedisplay" items.
+    void setPanelItem(QQuickItem* PanelItem) override;
+    /// CIP v15: lets go of the minimap item, then the base's.
+    void releasePanelItem() override;
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
 
     /// The minimap hotkeys (CIP , actions 93-101).
@@ -124,7 +127,6 @@ private:
     QPointer<minimap::TMinimapTileStorage> m_storage;
     std::unique_ptr<minimap::TMinimapRenderProvider> m_renderProvider;
     QPointer<worldmap::TAmbientLightStorage> m_ambientLight;
-    QPointer<QQuickItem> m_panel;
     QPointer<qmlcomponents::TMinimapQuickItem> m_minimap;
     QPointer<QQuickItem> m_timeDisplay;
     Position m_playerPosition;

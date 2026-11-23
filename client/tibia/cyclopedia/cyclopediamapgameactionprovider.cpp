@@ -31,7 +31,7 @@ input::TMinimapMarkerData markerData(const Position& coord)
 
 input::TGameActionList TCyclopediaMapGameActionProvider::fieldActions(const Position& coord, const int floor) const
 {
-    const auto movement = input::makeMovementIntent(shearedTarget(coord, floor), 0, false);
+    const auto movement = input::makeMovementIntent(shearedTarget(coord, floor), false);
     return {
         movement,
         input::makeSmartClick(movement),
@@ -43,7 +43,7 @@ input::TGameActionList TCyclopediaMapGameActionProvider::fieldActions(const Posi
 
 input::TGameActionList TCyclopediaMapGameActionProvider::markerActions(const Position& coord, const int floor) const
 {
-    const auto movement = input::makeMovementIntent(shearedTarget(coord, floor), 0, false);
+    const auto movement = input::makeMovementIntent(shearedTarget(coord, floor), false);
     return {
         movement,
         input::makeSmartClick(movement),

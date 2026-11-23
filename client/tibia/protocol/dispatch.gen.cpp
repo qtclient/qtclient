@@ -2063,7 +2063,7 @@ bool bindClientMessage(const uint8_t opcode)
 {
     switch (opcode) {
     case 10: // Login
-        // Built by network::TGameserverSessionNetwork::sendLogin.
+        // Built by authentication::TLoginProtocolMessageHandler::handleLoginChallenge.
         return true;
     case 11: // SecondaryLogin
         gameclient::sendSecondaryLogin(std::string_view{});

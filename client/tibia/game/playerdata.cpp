@@ -3,6 +3,7 @@
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
+#include "input/gameaction.h"
 
 #include <QtMath>
 
@@ -13,6 +14,9 @@ namespace tibia::game {
 namespace {
 
 TPlayerData* g_livePlayerData = nullptr;
+
+/// The screenshot manager's low-health event.
+constexpr int LowHealthScreenshot = 53;
 
 /// Percent of `value` in `maximum`, capped at 100; 0 while the maximum is 0.
 uint8_t percentOf(const int value, const int maximum)
@@ -59,9 +63,11 @@ void TPlayerData::scheduleChangeNotification()
 void TPlayerData::onChangeTimerElapsed()
 {
     Q_EMIT playerDataChanged();
-    // CIP also publishes an automatic low-health screenshot when the health
-    // percent fell below 4 since the last setHealth and the player is alive;
-    // qtclient has no automatic-screenshot kind to publish yet.
+    // An automatic low-health screenshot when the health percent fell below 4
+    // since the last setHealth and the player is alive.
+    const uint8_t percent = healthPercent();
+    if (percent < 4 && percent < m_healthPercentBeforeChange && m_health != 0)
+        Q_EMIT publishGameAction(std::make_shared<tibia::input::TGameActionTakeAutomaticScreenshot>(LowHealthScreenshot));
 }
 
 void TPlayerData::setHealth(const int health)
@@ -235,6 +241,14 @@ void TPlayerData::setSecureMode(const bool secure)
     }
 }
 
+void TPlayerData::setExpertPvpMode(const bool enabled)
+{
+    if (m_expertPvpMode != enabled) {
+        m_expertPvpMode = enabled;
+        scheduleChangeNotification();
+    }
+}
+
 void TPlayerData::setPvpMode(const int pvpMode)
 {
     if (m_pvpMode != pvpMode) {
@@ -254,6 +268,22 @@ void TPlayerData::setVocation(const uint8_t vocation)
 void TPlayerData::setHasReachedMain(const bool reached)
 {
     m_hasReachedMain = reached;
+}
+
+void TPlayerData::setBlessings(TBlessings blessings)
+{
+    if (m_blessings != blessings) {
+        m_blessings = std::move(blessings);
+        scheduleChangeNotification();
+    }
+}
+
+void TPlayerData::setBlessingsVisualState(const int visualState)
+{
+    if (m_blessingsVisualState != visualState) {
+        m_blessingsVisualState = visualState;
+        scheduleChangeNotification();
+    }
 }
 
 void TPlayerData::setStoreXpBoostSeconds(const qint64 seconds)
@@ -577,14 +607,26 @@ void TPlayerData::setResourceBalance(const tibia::client::ResourceTypes_t type, 
                                                          static_cast<int>(type));
 }
 
-void TPlayerData::setBlessings(const uint16_t blessings, const uint8_t blessVisualState)
+uint16_t TPlayerData::blessingMask() const
 {
-    if (m_blessings == blessings && m_blessVisualState == blessVisualState)
+    uint16_t mask = tibia::client::BlessingNone;
+    for (const int blessing : m_blessings)
+        mask |= static_cast<uint16_t>(blessing);
+    return mask;
+}
+
+void TPlayerData::updateBlessings(const uint16_t blessings, const uint8_t blessVisualState)
+{
+    const uint16_t oldBlessings = blessingMask();
+    if (oldBlessings == blessings && m_blessingsVisualState == blessVisualState)
         return;
-    const uint16_t oldBlessings = m_blessings;
-    m_blessings = blessings;
-    m_blessVisualState = blessVisualState;
-    scheduleChangeNotification();
+    TBlessings set;
+    for (int bit = 0; bit < 16; ++bit) {
+        if (blessings & (1u << bit))
+            set.insert(1 << bit);
+    }
+    setBlessings(std::move(set));
+    setBlessingsVisualState(blessVisualState);
     notify("onBlessingsChange", blessings, oldBlessings, blessVisualState);
 }
 
@@ -785,9 +827,12 @@ void TPlayerData::clear()
     m_states = {};
     m_chaseOpponents = true;
     m_secureMode = true;
+    m_expertPvpMode = false;
     m_pvpMode = 0;
     m_vocation = 0;
     m_hasReachedMain = false;
+    m_blessings.clear();
+    m_blessingsVisualState = 0;
     m_storeXpBoostSeconds = 0;
     m_storeXpBoostPurchasable = false;
     m_dailyRewardXpBoostSeconds = 0;
@@ -805,8 +850,6 @@ void TPlayerData::clear()
     m_serene = false;
 
     m_name.clear();
-    m_blessVisualState = 0;
-    m_blessings = tibia::client::BlessingNone;
     m_magicLevel = 0;
     m_magicLevelPercent = 0;
     m_baseMagicLevel = 0;

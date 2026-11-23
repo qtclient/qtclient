@@ -16,8 +16,8 @@ int indexOf(const std::vector<uint8_t>& ids, const uint8_t id)
 
 }
 
-TServerModalDialogController::TServerModalDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ServerModalDialog.qml"), parent)
+TServerModalDialogController::TServerModalDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ServerModalDialog.qml"), Engine, DialogParentItem, parent)
 {}
 
 void TServerModalDialogController::open(const uint32_t id, const QString& title, const QString& text, const Options& buttons,

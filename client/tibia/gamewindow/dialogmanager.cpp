@@ -169,11 +169,14 @@ void TDialogStackController::update()
     Q_EMIT dialogVisible(!m_dialogs.empty());
 }
 
-TDialog::TDialog(Controller* controller, TDialogHooks* hooks, const QString& qmlFile)
+TDialog::TDialog(Controller* controller, TDialogHooks* hooks, const QString& qmlFile, QQmlEngine* engine,
+                 QQuickItem* dialogParentItem)
     : QObject(controller)
     , m_controller(controller)
     , m_hooks(hooks)
+    , m_engine(engine)
     , m_qmlFile(qmlFile)
+    , m_dialogParentItem(dialogParentItem)
 {}
 
 TDialog::~TDialog()
@@ -185,15 +188,18 @@ TDialog::~TDialog()
 void TDialog::create()
 {
     TDialogStackController* stack = TDialogStackController::instance();
-    if (m_item || !stack || !stack->engine() || !stack->dialogPlaceholder())
+    if (m_item || !stack)
+        return;
+    QQmlEngine* const engine = m_engine ? m_engine : stack->engine();
+    QQuickItem* parentItem = m_dialogParentItem ? m_dialogParentItem.data() : stack->dialogPlaceholder();
+    if (!engine || !parentItem)
         return;
     QVariantMap properties = m_hooks->initialDialogProperties();
-    QQuickItem* parentItem = stack->dialogPlaceholder();
     if (m_hooks->hasPersonalMouseShield()) {
         properties.insert(QStringLiteral("personalMouseShield"), true);
     } else {
         if (!m_shield) {
-            m_shield = createItem(stack->engine(), QStringLiteral("TibiaMouseShield.qml"), parentItem, this, {});
+            m_shield = createItem(engine, QStringLiteral("TibiaMouseShield.qml"), parentItem, this, {});
             if (m_shield) {
                 m_shield->setVisible(false);
                 m_shield->setProperty("mouseShieldVisible", m_shieldDarkened);
@@ -204,7 +210,7 @@ void TDialog::create()
                 parentItem = placeholder;
         }
     }
-    m_item = createItem(stack->engine(), m_qmlFile, parentItem, this, properties);
+    m_item = createItem(engine, m_qmlFile, parentItem, this, properties);
     if (m_item) {
         m_item->setVisible(false);
         m_hooks->afterCreate();

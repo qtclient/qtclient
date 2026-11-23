@@ -191,9 +191,12 @@ public:
     /// False when a QML file does not load or the engine does not start.
     bool createGameWindow(const TGameWindowSetup& setup);
 
-    /// Starts the engine, loads assets and logs in. False when the engine
-    /// cannot start (no work dir).
-    bool start(const QString& argv0, const QString& workDir, const Options& options);
+    /// Host: starts qtclient's engine (data directories, the frame options)
+    /// the client's setup steps run on. False when it cannot start (no work dir).
+    bool startEngine(const QString& argv0, const QString& workDir);
+    /// Logs in with the options' account, or plays the recorded session;
+    /// reports the assets initialize() could not read instead.
+    void start();
     void shutdown();
     /// Paces the game by this window's frames.
     void setWindow(QQuickWindow* window);
@@ -252,8 +255,6 @@ public:
     /// v147 with worldTypeSet): the login service's raw pvptype,
     /// 0 open, 1 optional, 2 hardcore PvP; -1 before a character is chosen.
     int worldType() const { return m_worldType; }
-
-    static constexpr int ClientVersion = 1533;
 
     /// The login service's answer for this account; empty before login.
     const authentication::LoginResult& account() const { return m_account; }
@@ -315,7 +316,10 @@ Q_SIGNALS:
     void returnToLoginRequested();
     /// A character change was requested: the current character logs out first.
     void characterSwitchRequested(const QString& characterName);
-    /// The session ended; mainWindowInitialized follows the next world entry.
+    /// Host: the character entered the world (the game window shows the game
+    /// screen; the packs' TGameHost::mainWindowInitialized).
+    void worldEntered();
+    /// The session ended; worldEntered follows the next world entry.
     void worldLeft();
     /// Account email after CipSoft password login / CLI (for remember-email).
     void sessionEmailAvailable(const QString& email);
@@ -361,6 +365,8 @@ private:
     /// CIP TGameClientBase's sound system, plus the connections qtclient
     /// makes with it here (the router, the sound metadata, the title music).
     void initializeSound() override;
+    void emitInitialized() override;
+    void emitMainWindowInitialized() override;
     /// CIP: (re)arms the FPS sample and upload timers for the current history.
     void startFpsHistoryTimers(qint64 sampleRateMsec, qint64 uploadRateSec);
     /// CIP: posts the pending crash report to the configured crashReportUrl

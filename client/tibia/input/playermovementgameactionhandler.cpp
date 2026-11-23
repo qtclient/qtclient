@@ -34,14 +34,14 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
     };
     switch (pGameAction->gameActionType()) {
     case A::SET_PLAYER_MOVEMENT_INTENT:
-        if (const auto* walk = gameActionAs<TGameActionPlayerMovementIntent>(pGameAction)) {
+        if (const auto* action = gameActionAs<TGameActionPlayerMovementIntent>(pGameAction);
+            const TMovementIntentTargetCoordinate* walk = action ? action->targetCoordinate() : nullptr) {
             Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
             Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
             // qtclient pack notify: the player walks by hand (a click), e.g. to stop a pack's travel.
             tibia::game::notify("onWalk", tibia::client::InvalidDirection);
-            tibia::game::localPlayerAutoWalk(walk->target(), false,
-                                             static_cast<tibia::client::AutoWalkPathMode>(walk->autoWalkPathMode()),
-                                             walk->enterUnwalkableGoal());
+            tibia::game::localPlayerAutoWalk(Position(walk->x(), walk->y(), static_cast<uint8_t>(walk->z())), false,
+                                             tibia::client::AutoWalkPathMinimap, walk->enterUnwalkableGoal());
         }
         break;
     case A::ATTACK_CREATURE:

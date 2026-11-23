@@ -107,3 +107,75 @@ TEST(HotkeyOptionsData, CurrentSetIndexFollowsTheNameList)
     options.currentHotkeySetName = QStringLiteral("missing");
     EXPECT_EQ(options.currentHotkeySetIndex(), -1);
 }
+
+TEST(HotkeyActionSetting, UseObjectDropsTextLiquidTierPassiveAndMultiActions)
+{
+    TActionSetting setting;
+    setting.setChatText(QStringLiteral("hi"));
+    setting.sendAutomatically = true;
+    setting.liquidType = 1;
+    setting.upgradeTier = 2;
+    setting.passiveAbility = 4;
+    setting.useEquipSmartMode = true;
+    setting.multiActions.push_back(TActionSetting{});
+
+    setting.setUseObject(3031);
+    EXPECT_EQ(setting.kind, TActionSetting::OBJECT);
+    EXPECT_EQ(setting.objectId, 3031);
+    EXPECT_TRUE(setting.text.isEmpty());
+    EXPECT_TRUE(setting.sendAutomatically);
+    EXPECT_FALSE(setting.liquidType.has_value());
+    EXPECT_FALSE(setting.upgradeTier.has_value());
+    EXPECT_EQ(setting.passiveAbility, 0);
+    EXPECT_TRUE(setting.useEquipSmartMode);
+    EXPECT_TRUE(setting.multiActions.empty());
+}
+
+TEST(HotkeyActionSetting, PassiveAbilityDropsTextObjectLiquidAndMultiActionsButKeepsTier)
+{
+    TActionSetting setting;
+    setting.setUseObject(2874, 1);
+    setting.upgradeTier = 2;
+    setting.multiActions.push_back(TActionSetting{});
+    setting.setPassiveAbility(3);
+    EXPECT_EQ(setting.kind, TActionSetting::PASSIVE_ABILITY);
+    EXPECT_EQ(setting.passiveAbility, 3);
+    EXPECT_EQ(setting.objectId, 0);
+    EXPECT_FALSE(setting.liquidType.has_value());
+    EXPECT_TRUE(setting.multiActions.empty());
+    EXPECT_EQ(setting.upgradeTier, std::optional<int>(2));
+
+    TActionSetting text;
+    text.setChatText(QStringLiteral("hi"));
+    text.setPassiveAbility(0);
+    EXPECT_EQ(text.text, QStringLiteral("hi"));
+    EXPECT_EQ(text.kind, TActionSetting::TEXT);
+}
+
+TEST(HotkeyActionSetting, UseObjectZeroKeepsTheText)
+{
+    TActionSetting setting;
+    setting.setChatText(QStringLiteral("hi"));
+    setting.upgradeTier = 2;
+    setting.setUseObject(0);
+    EXPECT_EQ(setting.text, QStringLiteral("hi"));
+    EXPECT_EQ(setting.kind, TActionSetting::TEXT);
+    EXPECT_FALSE(setting.upgradeTier.has_value());
+}
+
+TEST(HotkeyActionSetting, UseObjectWithLiquidOrTier)
+{
+    TActionSetting liquid;
+    liquid.upgradeTier = 3;
+    liquid.setUseObject(2874, 7);
+    EXPECT_EQ(liquid.objectId, 2874);
+    EXPECT_EQ(liquid.liquidType, std::optional<int>(7));
+    EXPECT_FALSE(liquid.upgradeTier.has_value());
+
+    TActionSetting tier;
+    tier.liquidType = 1;
+    tier.setUseObjectWithTier(3079, 2);
+    EXPECT_EQ(tier.objectId, 3079);
+    EXPECT_EQ(tier.upgradeTier, std::optional<int>(2));
+    EXPECT_FALSE(tier.liquidType.has_value());
+}

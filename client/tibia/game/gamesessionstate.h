@@ -71,8 +71,6 @@ public:
     /// CIP SessionDumpMarker (S 0x05); named cue inside a dump / tutorial.
     /// CIP SoundTrigger / Anthem (S 0x85): ambient (0), music (1), anthem (2).
 
-    /// CIP ReadyForSecondaryConnection (S 0x0B); token for SecondaryLogin on the stability socket.
-    void processReadyForSecondaryConnection(std::string_view token);
     /// CIP / Crystal OutfitMemorial (S 0xB0) full golden + token tabs.
 
     // channel related
@@ -266,8 +264,6 @@ public:
     void beginPlayerSession(std::string_view characterName);
     std::string getCharacterName() { return m_characterName; }
     std::string getWorldName() { return m_worldName; }
-    /// Token from the last ReadyForSecondaryConnection (empty when none).
-    const std::string& getSecondaryConnectionToken() const { return m_secondaryConnectionToken; }
 
     int findEmptyContainerId();
 
@@ -361,7 +357,6 @@ public:
     std::string m_characterName;
     std::string m_worldName;
     std::string m_clientSignature;
-    std::string m_secondaryConnectionToken;
 
     QElapsedTimer m_pingTimer;
 

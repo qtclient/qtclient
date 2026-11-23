@@ -4,6 +4,7 @@
 #include "client/gamecore.h"
 #include "dailyreward/dailyrewardciptypes.h"
 #include "gamewindow/dialogmanager.h"
+#include "iclockservice.h"
 #include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
@@ -53,7 +54,8 @@ class TRewardWallDialogController final : public TDialogController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    explicit TRewardWallDialogController(QObject* parent = nullptr);
+    TRewardWallDialogController(std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                QObject* parent = nullptr);
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     void connectToPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
@@ -118,8 +120,11 @@ private:
     /// Seconds from now until the streak ends, or until the next reward.
     qint64 secondsUntilStreakEnd() const;
     qint64 secondsUntilNextReward() const;
+    /// The clock's date and time in whole seconds since the epoch.
+    uint32_t currentUnixTime() const;
 
     shared::TQtConnectionManager m_gameSessionConnections;
+    std::shared_ptr<shared::IClockService> m_clockService;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<dailyreward::TDailyRewardStorage> m_storage;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;

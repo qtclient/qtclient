@@ -19,10 +19,12 @@ using Button = TDeathMessageDialog::Button;
 
 }
 
-TDeathDialogController::TDeathDialogController(QObject* parent)
+TDeathDialogController::TDeathDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::TDeathDialogController(parent)
     , m_box(new TDeathMessageDialog(this))
 {
+    // CipSoft's death dialog is a message dialog made with the engine and the dialog parent item.
+    m_box->dialog()->setEngineAndDialogParentItem(engine, dialogParentItem);
     // CIP ctor : setCloseOnButtonClicked(1), setTextCentered(1).
     m_box->setCloseOnButtonClicked(true);
     m_box->setTextCentered(true);

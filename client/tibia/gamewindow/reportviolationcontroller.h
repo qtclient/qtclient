@@ -3,6 +3,7 @@
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "iclockservice.h"
 #include "input/gameaction.h"
 
 #include <cip_gen.h>
@@ -44,7 +45,8 @@ public:
         int id;
     };
 
-    explicit TReportViolationController(QObject* parent = nullptr);
+    TReportViolationController(std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                               QObject* parent = nullptr);
     ~TReportViolationController() override;
 
     Q_INVOKABLE void submitReport(const QString& Comment, const QString& Translation) override;
@@ -73,6 +75,8 @@ private:
     bool handleAction(const input::IGameAction& action);
     void open(EType type, const QString& name, const QString& statement, uint32_t id);
 
+    /// The time of the last report and the cooldown are read from it.
+    std::shared_ptr<shared::IClockService> m_clockService;
     EType m_type = Name;
     uint32_t m_id = 0;
     int m_reasonId = -1;

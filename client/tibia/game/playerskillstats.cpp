@@ -1,118 +1,395 @@
 #include "game/playerskillstats.h"
 
+#include "game/currentgamesession.h"
+
+#include <protocol.pb.h>
+
 namespace tibia::game {
+
 namespace {
 
-bool sameCombatStats(const cyclopedia::CombatStats& a, const cyclopedia::CombatStats& b)
+/// The protocol's damage type as the client's damage type (CIP's map is one to one).
+int toDamageType(const int ProtocolDamageType)
 {
-    return a.flatDamageHealing == b.flatDamageHealing
-        && a.attackValue == b.attackValue
-        && a.attackDamageType == b.attackDamageType
-        && a.convertedDamage == b.convertedDamage
-        && a.convertedDamageType == b.convertedDamageType
-        && a.lifeLeech == b.lifeLeech
-        && a.manaLeech == b.manaLeech
-        && a.critChance == b.critChance
-        && a.critExtraDamage == b.critExtraDamage
-        && a.onslaught == b.onslaught
-        && a.defence == b.defence
-        && a.armor == b.armor
-        && a.mantra == b.mantra
-        && a.mitigation == b.mitigation
-        && a.dodge == b.dodge
-        && a.damageReflection == b.damageReflection
-        && a.damageReductions == b.damageReductions
-        && a.momentum == b.momentum
-        && a.transcendence == b.transcendence
-        && a.amplification == b.amplification;
+    return ProtocolDamageType;
 }
 
-} // namespace
+}
 
 TPlayerSkillStats::TPlayerSkillStats(QObject* parent)
     : cip::tibia::game::TPlayerSkillStats(parent)
+    , m_playerSkills(std::make_unique<protobuf::protocol::GameserverMessagePlayerSkills>())
 {
 }
 
-void TPlayerSkillStats::commit(const cyclopedia::CombatStats& next)
+TPlayerSkillStats::~TPlayerSkillStats() = default;
+
+void TPlayerSkillStats::setPlayerSkills(const protobuf::protocol::GameserverMessagePlayerSkills& Message)
 {
-    if (sameCombatStats(m_stats, next))
+    if (m_playerSkills->SerializeAsString() == Message.SerializeAsString())
         return;
-    m_stats = next;
+    m_playerSkills->CopyFrom(Message);
     Q_EMIT playerSkillStatsChanged();
 }
 
-void TPlayerSkillStats::setFlatDamageHealing(const uint16_t flatBonus)
+double TPlayerSkillStats::critChance() const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.flatDamageHealing = static_cast<int>(flatBonus);
-    commit(next);
+    return m_playerSkills->critical_chance();
 }
 
-void TPlayerSkillStats::setAttackInfo(const uint16_t attackValue, const uint8_t attackElement)
+std::optional<double> TPlayerSkillStats::critChance(cyclopedia::ECombatStatSource) const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.attackValue = static_cast<int>(attackValue);
-    next.attackDamageType = static_cast<int>(attackElement);
-    commit(next);
+    return std::nullopt;
 }
 
-void TPlayerSkillStats::setConvertedDamage(const double convertedDamage, const uint8_t convertedElement)
+double TPlayerSkillStats::critExtraDamage() const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.convertedDamage = convertedDamage;
-    next.convertedDamageType = static_cast<int>(convertedElement);
-    commit(next);
+    return m_playerSkills->critical_extra_damage();
 }
 
-void TPlayerSkillStats::setImbuements(const double lifeLeech, const double manaLeech, const double critChance,
-                                      const double critDamage, const double onslaught)
+std::optional<double> TPlayerSkillStats::critExtraDamage(cyclopedia::ECombatStatSource) const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.lifeLeech = lifeLeech;
-    next.manaLeech = manaLeech;
-    next.critChance = critChance;
-    next.critExtraDamage = critDamage;
-    next.onslaught = onslaught;
-    commit(next);
+    return std::nullopt;
 }
 
-void TPlayerSkillStats::setDefenseInfo(const uint16_t defense, const uint16_t armor, const uint16_t mantra,
-                                       const double mitigation, const double dodge, const uint16_t damageReflection)
+double TPlayerSkillStats::lifeLeech() const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.defence = static_cast<int>(defense);
-    next.armor = static_cast<int>(armor);
-    next.mantra = static_cast<int>(mantra);
-    next.mitigation = mitigation;
-    next.dodge = dodge;
-    next.damageReflection = static_cast<int>(damageReflection);
-    commit(next);
+    return m_playerSkills->life_leech();
 }
 
-void TPlayerSkillStats::setCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues)
+std::optional<double> TPlayerSkillStats::lifeLeech(cyclopedia::ECombatStatSource) const
 {
-    cyclopedia::CombatStats next = m_stats;
-    for (int damageType = 0; damageType <= 6; ++damageType)
-        next.damageReductions[damageType] = 0.0;
-    for (const auto& [damageType, value] : absorbValues)
-        next.damageReductions[damageType] = value;
-    commit(next);
+    return std::nullopt;
 }
 
-void TPlayerSkillStats::setForgeBonuses(const double momentum, const double transcendence, const double amplification)
+double TPlayerSkillStats::manaLeech() const
 {
-    cyclopedia::CombatStats next = m_stats;
-    next.momentum = momentum;
-    next.transcendence = transcendence;
-    next.amplification = amplification;
-    commit(next);
+    return m_playerSkills->mana_leech();
 }
 
-void TPlayerSkillStats::clear()
+std::optional<double> TPlayerSkillStats::manaLeech(cyclopedia::ECombatStatSource) const
 {
-    m_specialMagicLevels.clear();
-    commit({});
+    return std::nullopt;
+}
+
+int TPlayerSkillStats::flatDamageHealing() const
+{
+    return static_cast<int>(m_playerSkills->flat_damage_healing());
+}
+
+std::optional<int> TPlayerSkillStats::flatDamageHealing(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+int TPlayerSkillStats::attackValue() const
+{
+    return static_cast<int>(m_playerSkills->attack_value());
+}
+
+std::optional<int> TPlayerSkillStats::attackValue(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+int TPlayerSkillStats::attackDamageType() const
+{
+    return toDamageType(m_playerSkills->attack_damage_type());
+}
+
+std::optional<int> TPlayerSkillStats::attackSkill() const
+{
+    return std::nullopt;
+}
+
+double TPlayerSkillStats::convertedDamage() const
+{
+    return m_playerSkills->damage_conversion().value();
+}
+
+int TPlayerSkillStats::convertedDamageType() const
+{
+    return toDamageType(m_playerSkills->damage_conversion().damage_type());
+}
+
+double TPlayerSkillStats::cleave() const
+{
+    return 0.0;
+}
+
+int TPlayerSkillStats::perfectShotDamage(int) const
+{
+    return 0;
+}
+
+double TPlayerSkillStats::alphaStrike() const
+{
+    return 0.0;
+}
+
+double TPlayerSkillStats::omegaStrike() const
+{
+    return 0.0;
+}
+
+double TPlayerSkillStats::armorPenetration() const
+{
+    return 0.0;
+}
+
+std::map<int, double> TPlayerSkillStats::elementalPierce() const
+{
+    return {};
+}
+
+double TPlayerSkillStats::onslaught() const
+{
+    return m_playerSkills->onslaught();
+}
+
+std::optional<double> TPlayerSkillStats::onslaught(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, double>> TPlayerSkillStats::distanceAccuracy() const
+{
+    return {};
+}
+
+double TPlayerSkillStats::damageAgainstPowerfulFoes() const
+{
+    return 0.0;
+}
+
+std::map<std::string, double> TPlayerSkillStats::specificTargetBonuses() const
+{
+    return {};
+}
+
+std::map<int, double> TPlayerSkillStats::elementSpellCritChances() const
+{
+    return {};
+}
+
+double TPlayerSkillStats::offensiveRuneCritChance() const
+{
+    return 0.0;
+}
+
+double TPlayerSkillStats::autoAttackCritChance() const
+{
+    return 0.0;
+}
+
+std::map<int, double> TPlayerSkillStats::elementSpellCritDamages() const
+{
+    return {};
+}
+
+double TPlayerSkillStats::offensiveRuneCritDamage() const
+{
+    return 0.0;
+}
+
+double TPlayerSkillStats::autoAttackCritDamage() const
+{
+    return 0.0;
+}
+
+int TPlayerSkillStats::lifeOnHit() const
+{
+    return 0;
+}
+
+int TPlayerSkillStats::manaOnHit() const
+{
+    return 0;
+}
+
+int TPlayerSkillStats::lifeOnKill() const
+{
+    return 0;
+}
+
+int TPlayerSkillStats::manaOnKill() const
+{
+    return 0;
+}
+
+IOffenceStatsProvider::SkillBonuses TPlayerSkillStats::autoAttackBonusFromSkills() const
+{
+    return {};
+}
+
+IOffenceStatsProvider::SkillBonuses TPlayerSkillStats::spellBonusDamageFromSkills() const
+{
+    return {};
+}
+
+IOffenceStatsProvider::SkillBonuses TPlayerSkillStats::spellBonusHealingFromSkills() const
+{
+    return {};
+}
+
+int TPlayerSkillStats::armor() const
+{
+    return static_cast<int>(m_playerSkills->armor());
+}
+
+int TPlayerSkillStats::mantra() const
+{
+    return static_cast<int>(m_playerSkills->mantra());
+}
+
+int TPlayerSkillStats::defence() const
+{
+    return static_cast<int>(m_playerSkills->defence());
+}
+
+std::optional<int> TPlayerSkillStats::defence(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+std::optional<int> TPlayerSkillStats::defenceSkill() const
+{
+    return std::nullopt;
+}
+
+double TPlayerSkillStats::mitigation() const
+{
+    return m_playerSkills->mitigation();
+}
+
+std::optional<double> TPlayerSkillStats::mitigation(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+std::optional<int> TPlayerSkillStats::mitigationSkill() const
+{
+    return std::nullopt;
+}
+
+std::vector<IDefenceStatsProvider::ElementalResistance> TPlayerSkillStats::elementalResistances() const
+{
+    // One total per reduction the message carries, in its order; a total has no source.
+    std::vector<ElementalResistance> resistances;
+    resistances.reserve(static_cast<size_t>(m_playerSkills->damage_reductions_size()));
+    for (const auto& reduction : m_playerSkills->damage_reductions())
+        resistances.push_back({ toDamageType(reduction.damage_type()), std::nullopt, reduction.value() });
+    return resistances;
+}
+
+std::vector<IDefenceStatsProvider::ElementalResistance> TPlayerSkillStats::elementalResistanceSources(int) const
+{
+    return {};
+}
+
+uint32_t TPlayerSkillStats::magicShieldCapacity() const
+{
+    return 0;
+}
+
+uint32_t TPlayerSkillStats::magicShieldCapacityFlat() const
+{
+    return 0;
+}
+
+double TPlayerSkillStats::magicShieldCapacityPercent() const
+{
+    return 0.0;
+}
+
+int TPlayerSkillStats::damageReflection() const
+{
+    return static_cast<int>(m_playerSkills->damage_reflection());
+}
+
+double TPlayerSkillStats::dodge() const
+{
+    return m_playerSkills->dodge();
+}
+
+std::optional<double> TPlayerSkillStats::dodge(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+int TPlayerSkillStats::currentBlessings() const
+{
+    return 0;
+}
+
+int TPlayerSkillStats::maxBlessings() const
+{
+    return 0;
+}
+
+std::vector<IMiscStatsProvider::TimedEffect> TPlayerSkillStats::activeConcoctions() const
+{
+    return {};
+}
+
+std::vector<IMiscStatsProvider::TimedEffect> TPlayerSkillStats::consumableCooldowns() const
+{
+    return {};
+}
+
+double TPlayerSkillStats::momentum() const
+{
+    return m_playerSkills->momentum();
+}
+
+std::optional<double> TPlayerSkillStats::momentum(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+double TPlayerSkillStats::transcendence() const
+{
+    return m_playerSkills->transcendence();
+}
+
+std::optional<double> TPlayerSkillStats::transcendence(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+double TPlayerSkillStats::amplification() const
+{
+    return m_playerSkills->amplification();
+}
+
+std::optional<double> TPlayerSkillStats::amplification(cyclopedia::ECombatStatSource) const
+{
+    return std::nullopt;
+}
+
+std::vector<IMiscStatsProvider::SpellAugment> TPlayerSkillStats::proficiencySpellAugments() const
+{
+    return {};
+}
+
+std::vector<IMiscStatsProvider::SpellAugment> TPlayerSkillStats::skillWheelSpellAugments() const
+{
+    return {};
+}
+
+std::vector<IMiscStatsProvider::SpellAugment> TPlayerSkillStats::equipmentSpellAugments() const
+{
+    return {};
+}
+
+std::vector<std::pair<int, int>> localPlayerSpecialMagicLevels()
+{
+    std::vector<std::pair<int, int>> boosts;
+    if (const TPlayerSkillStats* stats = currentPlayerSkillStats()) {
+        for (const auto& boost : stats->playerSkills().magic_skill_boosts())
+            boosts.emplace_back(static_cast<int>(boost.type()), static_cast<int>(boost.value()));
+    }
+    return boosts;
 }
 
 }

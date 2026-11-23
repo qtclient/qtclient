@@ -148,8 +148,9 @@ public:
     TSpellInfo spellInfoAt(int spellId) const;
     /// A spell with the server's modifications applied, none for an unknown id.
     std::optional<TSpellInfo> spellInfo(int spellId) const;
-    /// The formula a player types: the words, then the trimmed parameter hints.
-    QString spellFormula(int spellId) const;
+    /// A spell's chat text: its words, then the trimmed parameters when the
+    /// spell takes parameters (it has parameter hints). Empty for no spell.
+    QString spellFormula(int spellId, const QString& parameters) const;
     /// The parameters of casting a spell: a rune's use for runes.
     std::optional<TSpellCastParameters> castParameters(int spellId) const;
     /// The rune spell of a rune object with the server's modifications applied.

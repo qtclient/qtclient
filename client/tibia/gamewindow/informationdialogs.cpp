@@ -1,6 +1,8 @@
 #include "informationdialogs.h"
 
+#include "config/clientoptions.h"
 #include "gamewindow/configurecreaturepodiumdialogcontroller.h"
+#include "gamewindow/dialogmanager.h"
 #include "gamewindow/cyclopediadialogcontroller.h"
 #include "gamewindow/cyclopediamapdialogcontroller.h"
 #include "cyclopedia/cyclopediamapdata.h"
@@ -48,17 +50,30 @@ QString qstr(const std::string& text)
     return QString::fromStdString(text);
 }
 
+/// The engine and the dialog parent item the dialogs are made with.
+QQmlEngine* dialogEngine()
+{
+    TDialogStackController* const stack = TDialogStackController::instance();
+    return stack ? stack->engine() : nullptr;
+}
+
+QQuickItem* dialogParentItem()
+{
+    TDialogStackController* const stack = TDialogStackController::instance();
+    return stack ? stack->dialogPlaceholder() : nullptr;
+}
+
 }
 
 TInformationDialogs::TInformationDialogs(QObject* parent)
     : QObject(parent)
     , m_outfitDialog(new TSelectOutfitDialogController(this))
     , m_podiumDialog(new TConfigureCreaturePodiumDialogController(this))
-    , m_modalDialog(new TServerModalDialogController(this))
-    , m_editText(new TEditTextController(this))
-    , m_questLog(new TQuestLogController(this))
+    , m_modalDialog(new TServerModalDialogController(dialogEngine(), dialogParentItem(), this))
+    , m_editText(new TEditTextController(nullptr, nullptr, this))
+    , m_questLog(new TQuestLogController(dialogEngine(), dialogParentItem(), this))
     , m_highscores(new THighscoresDialogController(this))
-    , m_prey(new TPreyDialogController(this))
+    , m_prey(new TPreyDialogController(config::TClientOptions::instance(), dialogEngine(), dialogParentItem(), this))
     , m_cyclopedia(new TCyclopediaDialogController(this))
     , m_cyclopediaButton(new TCyclopediaButtonController(this))
     , m_bosstiaryButton(new TBosstiaryButtonController(this))
@@ -85,11 +100,11 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
                      [linkCopyWarning](const input::IGameAction& action) { linkCopyWarning->handleGameAction(action); });
     new TLoginConfirmationCodeEnterTextDialogController(this);
     new TTwoFactorCodeEnterTextDialogController(this);
-    new TMultiOfflineTrainingDialogController(this);
-    new TOutfitMemorialDialogController(this);
+    new TMultiOfflineTrainingDialogController(dialogEngine(), dialogParentItem(), this);
+    new TOutfitMemorialDialogController(dialogEngine(), dialogParentItem(), this);
     new TReturnerRewardDialogController(this);
-    new TShowImageDialogController(this);
-    forward(new TShowSpellBookDialogController(this));
+    new TShowImageDialogController(dialogEngine(), dialogParentItem(), this);
+    forward(new TShowSpellBookDialogController(dialogEngine(), dialogParentItem(), this));
     forward(new TSurveyInvitationDialogController(this));
     new TInfoBannerController(nullptr, this);
 

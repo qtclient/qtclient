@@ -32,7 +32,7 @@ input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coo
 
 input::TGameActionList TMinimapGameActionProvider::fieldActions(const Position& coord) const
 {
-    const auto movement = input::makeMovementIntent(coord, 0, false);
+    const auto movement = input::makeMovementIntent(coord, false);
     return {
         movement,
         input::makeSmartClick(movement),
@@ -44,7 +44,7 @@ input::TGameActionList TMinimapGameActionProvider::fieldActions(const Position& 
 
 input::TGameActionList TMinimapGameActionProvider::markerActions(const Position& coord) const
 {
-    const auto movement = input::makeMovementIntent(coord, 0, false);
+    const auto movement = input::makeMovementIntent(coord, false);
     return {
         movement,
         input::makeSmartClick(movement),

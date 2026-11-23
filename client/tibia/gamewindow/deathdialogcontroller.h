@@ -29,7 +29,7 @@ class TDeathDialogController final : public cip::tibia::gamewindow::TDeathDialog
 {
     Q_OBJECT
 public:
-    explicit TDeathDialogController(QObject* parent = nullptr);
+    TDeathDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TDeathDialogController() override;
 
     /// CIP: closes the dialog and connects the session's death dialog request.

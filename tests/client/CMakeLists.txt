@@ -576,7 +576,9 @@ qtclient_add_port_test(client_gameservernetwork_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
 )
 set_target_properties(client_gameservernetwork_tests PROPERTIES AUTOMOC ON)
-target_link_libraries(client_gameservernetwork_tests PRIVATE Qt6::Network)
+target_link_libraries(client_gameservernetwork_tests PRIVATE Qt6::Network cip_messages)
+# protocol.pb.h names fields "slots"; like the tibia target.
+target_compile_definitions(client_gameservernetwork_tests PRIVATE QT_NO_KEYWORDS)
 qtclient_add_port_test(client_gameservernetworkrawdata_tests
     gameservernetworkrawdata_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/network/gameservernetworkpacket.cpp
@@ -590,3 +592,41 @@ qtclient_add_port_test(client_hotkeyactionsetting_tests
 )
 set_target_properties(client_hotkeyactionsetting_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_hotkeyactionsetting_tests PRIVATE Qt6::Gui)
+qtclient_add_port_test(client_plural_tests
+    plural_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/common/plural.cpp
+)
+qtclient_add_port_test(client_movementintentkindnames_tests
+    movementintentkindnames_test.cpp
+)
+qtclient_add_port_test(client_resourcespritesmanager_tests
+    resourcespritesmanager_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/resourcespritesmanager.cpp
+)
+set_target_properties(client_resourcespritesmanager_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_resourcespritesmanager_tests PRIVATE Qt6::Gui)
+qtclient_add_port_test(client_assetmanager_tests
+    assetmanager_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetmanager.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetasyncloader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetasyncloaderworker.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetfilesystemhelper.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/assetcatalog.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/contentcatalog.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/soundcatalog.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sprites/spritesheetsmetadatamanager.cpp
+)
+set_target_properties(client_assetmanager_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_assetmanager_tests PRIVATE qtclient_shared)
+if(TARGET cip_messages)
+    qtclient_add_port_test(client_loginprotocolmessagehandler_tests
+        loginprotocolmessagehandler_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginprotocolmessagehandler.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/authentication/loginprotocolmessagehandler.h
+        ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationandencryptioninfo.cpp
+    )
+    set_target_properties(client_loginprotocolmessagehandler_tests PROPERTIES AUTOMOC ON)
+    target_link_libraries(client_loginprotocolmessagehandler_tests PRIVATE cip_messages qtclient_shared)
+    target_compile_definitions(client_loginprotocolmessagehandler_tests PRIVATE QT_NO_KEYWORDS)
+endif()

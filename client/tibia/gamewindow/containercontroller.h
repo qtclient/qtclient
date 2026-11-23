@@ -40,6 +40,8 @@ public:
     TContainerController(int containerId, container::TContainerProtocolMessageHandler* messages, QQuickItem* gameWindowItem,
                          QQmlEngine* engine, QObject* parent = nullptr);
     ~TContainerController() override;
+    /// CIP: the frame update: the counting-down slot texts.
+    void updateWithTimestamp(qint64 TimestampMilliseconds);
 
     int containerId() const { return m_containerId; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
@@ -149,7 +151,6 @@ private:
     input::TGameActionMapper m_mapper;
     QPointer<config::TSidebarOptions> m_options;
     QTimer m_propertyTimer;
-    QTimer m_clockTimer;
     int m_hoveredSlot = -1;
     std::unique_ptr<TGenericConfirmWithDontShowAgainDialogController> m_confirmDialog;
 };

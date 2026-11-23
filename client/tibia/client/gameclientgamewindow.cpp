@@ -73,6 +73,7 @@
 #include "gamewindow/minimapcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/newsdialogcontroller.h"
+#include "news/newsciptypes.h"
 #include "gamewindow/naggingmessagedialogcontroller.h"
 #include "gamewindow/npcdialogcontroller.h"
 #include "gamewindow/optionsmenudialogcontroller.h"
@@ -199,6 +200,8 @@ struct TGameClient::TGameWindow
     std::unique_ptr<analysers::TAnalyserStorages> analyserStorages;
     std::unique_ptr<gamewindow::TInformationDialogs> informationDialogs;
     std::unique_ptr<gamewindow::TDragAndDropController> dragAndDrop;
+    /// CIP: the game window controller's shared image downloader (store, social, news, …).
+    std::shared_ptr<store::TDynamicallyLoadedImageManager> dynamicallyLoadedImageManager;
     std::unique_ptr<gamewindow::TStoreDialogController> storeDialog;
     std::unique_ptr<gamewindow::TStoreButtonController> storeButton;
     std::unique_ptr<gamewindow::TMarketController> marketController;
@@ -247,7 +250,16 @@ void TGameClient::TGameWindowDeleter::operator()(TGameWindow* gameWindow) const 
 
 void TGameClient::beforeRenderFrameGameWindow()
 {
-    if (m_gameWindow && m_gameWindow->deathDialog)
+    if (!m_gameWindow)
+        return;
+    const qint64 timestampMilliseconds = shared::TClockService::frameMillis();
+    if (m_gameWindow->sidebarPanels)
+        m_gameWindow->sidebarPanels->updateMouseCursorForCurrentSlot();
+    if (m_gameWindow->sidebarWidgets)
+        m_gameWindow->sidebarWidgets->updateWithTimestamp(timestampMilliseconds);
+    if (m_gameWindow->sidebarPanels)
+        m_gameWindow->sidebarPanels->refreshClocks();
+    if (m_gameWindow->deathDialog)
         m_gameWindow->deathDialog->onBeforeRenderFrame();
 }
 
@@ -340,7 +352,18 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     // CIP: the engine the client is built with; the game window is shown in
     // the client window.
     m_pEngine = engine;
-    m_pMainWindow = window;
+    m_options = setup.options;
+    if (preview) {
+        // The preview runs no engine: the window is only kept.
+        m_pMainWindow = window;
+    } else {
+        // CIP: the application runs the client's setup steps and hands it the
+        // client window before the game window is shown.
+        if (!startEngine(setup.argv0, setup.workDir))
+            return false;
+        initialize();
+        setMainWindow(window);
+    }
     QCoreApplication* application = QCoreApplication::instance();
     // CIP: the authentication process controller is made with the game window.
     createAuthenticationProcessController(g.env.loginUrl());
@@ -560,10 +583,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             m_authentication.get(), &authentication::TAuthenticationProcessController::handleGameAction);
     connect(this, &TGameClient::sessionEmailAvailable, gameWindowController,
             &gamewindow::TGameWindowController::rememberLoginEmailIfEnabled);
-    if (!preview) {
-        if (!start(setup.argv0, setup.workDir, setup.options))
-            return false;
-    }
+    if (!preview)
+        start();
     // TEventFilterManager emits the chat-input focus signals while a dialog is up, so dialog inputs get the focus.
     connect(dialogStack, &gamewindow::TDialogStackController::dialogVisible, gameWindowController,
             [gameWindowController](bool visible) {
@@ -577,7 +598,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             &gamewindow::TGameWindowController::releaseFocusFromChatInput);
     connect(g.eventFilterManager.get(), &input::TEventFilterManager::releaseElementFocus, gameWindowController,
             &gamewindow::TGameWindowController::bindFocusToChatInput);
-    g.splitStackDialog = std::make_unique<gamewindow::TSelectObjectAmountDialogController>();
+    g.splitStackDialog = std::make_unique<gamewindow::TSelectObjectAmountDialogController>(engine, g.dialogPlaceholder);
     // Before the dialogs: the Cyclopedia item page and the loot widgets read its item storages.
     g.analyserStorages = std::make_unique<analysers::TAnalyserStorages>();
     g.informationDialogs = std::make_unique<gamewindow::TInformationDialogs>();
@@ -588,10 +609,12 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     m_pStoreAndResourceBalanceHelperController = std::make_unique<gamewindow::TStoreAndResourceBalanceHelperController>();
     engine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"),
                                               m_pStoreAndResourceBalanceHelperController.get());
-    g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>();
+    g.dynamicallyLoadedImageManager = std::make_shared<store::TDynamicallyLoadedImageManager>();
+    g.storeDialog = std::make_unique<gamewindow::TStoreDialogController>(g.dynamicallyLoadedImageManager, clientOptions(), engine,
+                                                                         g.dialogPlaceholder);
     gamewindow::TStoreDialogController* storeDialog = g.storeDialog.get();
     g.storeButton = std::make_unique<gamewindow::TStoreButtonController>(storeDialog);
-    g.marketController = std::make_unique<gamewindow::TMarketController>();
+    g.marketController = std::make_unique<gamewindow::TMarketController>(clientOptions(), engine, g.dialogPlaceholder);
     g.stashDialog = std::make_unique<gamewindow::TStashDialogController>();
     connect(g.marketController.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onMarketDialogDialogClosed);
@@ -599,7 +622,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     connect(g.manageLootDialog.get(), &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, g.stashDialog.get(),
             &gamewindow::TStashDialogController::onManageLootContainerDialogClosed);
     g.imbuingDialog = std::make_unique<gamewindow::TImbuingDialogController>();
-    g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>();
+    g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>(clientOptions(), engine,
+                                                                                            g.dialogPlaceholder);
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
     g.screenshotManager = std::make_unique<screenshot::TScreenshotManager>();
     g.screenshotManager->configure(window, mapWindowPane);
@@ -640,25 +664,30 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     informationDialogs->setControlScheme(controlScheme);
     g.exivaOptionsDialog = std::make_unique<exivaoptions::TExivaOptionsDialogController>();
     g.exivaOptionsDialog->setWorldType([this] { return worldType(); });
-    g.reportViolation = std::make_unique<gamewindow::TReportViolationController>();
-    g.bugReport = std::make_unique<gamewindow::TBugReportDialogController>();
-    g.naggingDialog = std::make_unique<gamewindow::TNaggingMessageDialogController>();
-    g.deathDialog = std::make_unique<gamewindow::TDeathDialogController>();
+    g.reportViolation = std::make_unique<gamewindow::TReportViolationController>(shared::TClockService::process(), engine, g.dialogPlaceholder);
+    g.bugReport = std::make_unique<gamewindow::TBugReportDialogController>(engine, g.dialogPlaceholder);
+    g.naggingDialog = std::make_unique<gamewindow::TNaggingMessageDialogController>(engine, g.dialogPlaceholder);
+    g.deathDialog = std::make_unique<gamewindow::TDeathDialogController>(engine, g.dialogPlaceholder);
     // Subscribers for gem atelier / helpers / RV channel / virtues yellow border.
     g.cipSoftUiEventBridge = std::make_unique<gamewindow::TCipSoftUiEventBridge>();
     g.analyserWidgets = std::make_unique<analysers::TAnalyserWidgets>(g.analyserStorages.get(), sidebarWidgets, gameWindowItem, engine,
                                                                       [this] { return sidebarOptions(); });
-    g.weaponProficiencyDialog = std::make_unique<proficiency::TWeaponProficiencyDialogController>(proficiencyStorage());
-    g.weaponProficiencyShapeDialog = std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(proficiencyStorage());
+    g.weaponProficiencyDialog =
+        std::make_unique<proficiency::TWeaponProficiencyDialogController>(clientOptions(), engine, g.dialogPlaceholder);
+    g.weaponProficiencyShapeDialog =
+        std::make_unique<proficiency::TWeaponProficiencyShapeDialogController>(engine, g.dialogPlaceholder);
     g.weaponProficiencyReshapeDialog = std::make_unique<proficiency::TWeaponProficiencyReshapeDialogController>(
-        proficiencyStorage(), g.weaponProficiencyShapeDialog.get());
-    g.weaponProficiencyShapeOptionsDialog = std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>();
-    g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>();
-    g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>();
+        engine, g.dialogPlaceholder, g.weaponProficiencyShapeDialog.get());
+    g.weaponProficiencyShapeOptionsDialog =
+        std::make_unique<proficiency::TWeaponProficiencyShapeOptionsDialogController>(engine, g.dialogPlaceholder);
+    g.blessingsDialog = std::make_unique<gamewindow::TBlessingsDialogController>(engine, g.dialogPlaceholder);
+    g.rewardWallDialog = std::make_unique<gamewindow::TRewardWallDialogController>(shared::TClockService::process(), engine, g.dialogPlaceholder);
     g.taskboardDialog = std::make_unique<gamewindow::TTaskboardDialogController>();
-    g.soulSealsDialog = std::make_unique<gamewindow::TSoulSealsDialogController>();
-    g.bossDifficultySelectionDialog = std::make_unique<gamewindow::TBossDifficultySelectionDialogController>();
-    g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>(mapWindowPane);
+    g.soulSealsDialog = std::make_unique<gamewindow::TSoulSealsDialogController>(engine, g.dialogPlaceholder);
+    g.bossDifficultySelectionDialog = std::make_unique<gamewindow::TBossDifficultySelectionDialogController>(engine,
+                                                                                                            g.dialogPlaceholder);
+    g.tutorialShell = std::make_unique<gamewindow::TTutorialShell>(engine, g.dialogPlaceholder, mapWindowPane,
+                                                                   cyclopediaMapStaticDataStorage());
     connect(g.tutorialShell.get(), &gamewindow::TTutorialShell::tutorialFinished, this, &TGameClient::finishTutorialCinematic);
     g.tutorialOverlay = std::make_unique<gamewindow::TTutorialOverlayController>(engine, g.dialogPlaceholder, setup.placeholder,
                                                                                  g.eventFilterManager.get());
@@ -729,7 +758,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         storages.skillWheel = g.skillWheel->storage();
         storages.outfitDialog = outfitDialogStorage();
     }
-    g.cooldownBar = std::make_unique<gamewindow::TCooldownBarController>(gameWindowItem);
+    g.cooldownBar = std::make_unique<gamewindow::TCooldownBarController>(
+        spellInfoStorage(), gameWindowItem ? gameWindowItem->findChild<QQuickItem*>(QStringLiteral("cooldownBar")) : nullptr);
     // The bindings and walk keys follow the chat mode.
     connect(chat, &gamewindow::TChatController::chatModeChanged, g.keyboardShortcuts.get(),
             &input::TKeyboardShortcutHandler::onHotkeyOptionsChanged);
@@ -947,7 +977,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
         mods::bootstrapAll(ctx);
     }
 
-    connect(this, &TGameClient::mainWindowInitialized, gameWindowItem, [this, &g] {
+    connect(this, &TGameClient::worldEntered, gameWindowItem, [this, &g] {
         // Show the game window before the heavier binds. A throw later must not
         // leave the login mask hidden and the game window still off.
         g.gameWindowController->showGameScreen();
@@ -1027,6 +1057,8 @@ void TGameClient::connectGameWindowControllersToGameSession(const std::shared_pt
     // CipSoft's order of the game window controllers' connectors.
     if (m_gameWindow) {
         TGameWindow& g = *m_gameWindow;
+        if (session && session->newsProtocolMessageHandler() && g.gameWindowController)
+            session->newsProtocolMessageHandler()->setNewsStorage(g.gameWindowController->newsStorage());
         if (g.mapWindowController)
             g.mapWindowController->connectToGameSession(GameSession);
         // Host: the battle lists' mouse target and the FPS indicator's build

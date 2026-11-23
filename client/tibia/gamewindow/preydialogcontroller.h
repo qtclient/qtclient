@@ -18,6 +18,9 @@
 #include <vector>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 }
@@ -291,7 +294,10 @@ class TPreyPreyPageController final : public cip::tibia::gamewindow::TPreyPreyPa
 {
     Q_OBJECT
 public:
-    explicit TPreyPreyPageController(QObject* parent = nullptr);
+    /// CIP: the engine and dialog parent item are its message dialogs' (they
+    /// are shown through the dialog stack here).
+    TPreyPreyPageController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                            QObject* parent = nullptr);
     /// CIP: the slot render infos go with the page.
     ~TPreyPreyPageController() override;
 
@@ -337,6 +343,7 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<prey::TPreyStorage> m_storage;
     shared::TQtConnectionManager m_gameSessionConnections;
+    config::TClientOptions* m_clientOptions;
     QList<QObject*> m_renderInfos;
     uint m_pendingPreyId = 0;
     TMessageDialogController* m_bonusReroll;
@@ -354,7 +361,8 @@ class TPreyDialogController final : public TDialogController<cip::tibia::gamewin
 {
     Q_OBJECT
 public:
-    explicit TPreyDialogController(QObject* parent = nullptr);
+    TPreyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                          QObject* parent = nullptr);
     ~TPreyDialogController() override;
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);

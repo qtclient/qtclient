@@ -23,13 +23,6 @@ public:
     using cip::tibia::authentication::TGameserverLoginProcessController::TGameserverLoginProcessController;
 };
 
-class TLoginProtocolMessageHandler final : public cip::tibia::authentication::TLoginProtocolMessageHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::authentication::TLoginProtocolMessageHandler::TLoginProtocolMessageHandler;
-};
-
 }
 }
 

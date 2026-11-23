@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 
+#include "gamewindow/sidebarpanelcontrollerbase.h"
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -15,14 +16,12 @@ namespace gamewindow {
 /// player's hit points and mana, shown while option 0x72 statusPanelEnabled
 /// is on. requestContextMenu toggles options 0x71 statusBarEnabled and 0x72
 /// statusPanelEnabled.
-class THitpointManabarController final : public cip::tibia::gamewindow::THitpointManabarController
+class THitpointManabarController final : public TSidebarPanelController<cip::tibia::gamewindow::THitpointManabarController>
 {
     Q_OBJECT
 public:
     explicit THitpointManabarController(QObject* parent = nullptr);
 
-    void setPanelItem(QQuickItem* panel) { m_panel = panel; }
-    QQuickItem* panelItem() const { return m_panel; }
 
     /// Copies the player's hit points and mana, signalling each value that changed.
     void onPlayerDataChanged();
@@ -37,7 +36,6 @@ private:
     /// Any option changed: re-reads option 0x72 statusPanelEnabled.
     void onOptionChanged();
 
-    QPointer<QQuickItem> m_panel;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

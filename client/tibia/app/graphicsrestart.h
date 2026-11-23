@@ -16,6 +16,9 @@ constexpr auto PreviousFreetypeKey = "graphicsEnginePreviousFreetype";
 
 /// CIP renderer display name for keep_renderer_after_restart's %1.
 QString rendererDisplayName(int rendererIndex);
+/// The renderer the process runs on (0 auto/unknown, 3 software, 6 Direct3D 11,
+/// 7 Vulkan, 8 OpenGL, 9 Metal, 10 Direct3D 12).
+int activeRenderer();
 
 bool pendingConfirm();
 /// Snapshot the live graphics trio before Apply overwrites them, and mark that

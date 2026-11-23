@@ -25,8 +25,10 @@ constexpr qint64 ReportCooldownSeconds = 600;
 
 }
 
-TReportViolationController::TReportViolationController(QObject* parent)
-    : TDialogController(QStringLiteral("ReportViolationDialog.qml"), parent)
+TReportViolationController::TReportViolationController(std::shared_ptr<shared::IClockService> ClockService, QQmlEngine* Engine,
+                                                       QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("ReportViolationDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clockService(std::move(ClockService))
 {
     for (const A type : Handled)
         m_gameActions.on(type, [this](const input::IGameAction& action) { return handleAction(action); });
@@ -90,7 +92,7 @@ bool TReportViolationController::handleAction(const input::IGameAction& action)
 
 void TReportViolationController::open(const EType type, const QString& name, const QString& statement, const uint32_t id)
 {
-    const QDateTime now = QDateTime::currentDateTime();
+    const QDateTime now = m_clockService->currentDateTime();
     if (m_lastReport.isValid() && m_lastReport.secsTo(now) < ReportCooldownSeconds) {
         // A chat system message and the same line beneath the world map.
         const QString text = qtTrId("new_report_too_soon_error");
@@ -149,7 +151,7 @@ void TReportViolationController::submitReport(const QString& Comment, const QStr
     const std::string translation = m_type == Bot ? std::string() : Translation.toStdString();
     tibia::game::reportRuleViolationCip(static_cast<uint8_t>(m_type), static_cast<uint8_t>(m_reasonId), m_reportedCharacterName.toStdString(),
                                   Comment.toStdString(), translation, m_id);
-    m_lastReport = QDateTime::currentDateTime();
+    m_lastReport = m_clockService->currentDateTime();
     dialog()->close();
 }
 

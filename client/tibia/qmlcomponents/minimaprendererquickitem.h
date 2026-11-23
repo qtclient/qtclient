@@ -2,6 +2,7 @@
 
 #include <cip_gen.h>
 #include <client/position.h>
+#include "worldmap/coordinates.h"
 
 #include <QImage>
 #include <QPointer>
@@ -28,18 +29,26 @@ class TMinimapTileStorage;
 }
 
 namespace tibia {
+namespace renderer {
+class TWorldMapCamera;
+}
+}
+
+namespace tibia {
 namespace qmlcomponents {
 
-/// The Cyclopedia map's camera (CIP: TWorldMapCameraQmlType): the top-left
-/// subfield coordinate (field * 32) of the viewport, its layer and the scale.
-/// A field F on layer L shows at ((F + L) * 32 - (topLeft + z * 32)) * scale,
-/// so the floors above the viewed one shift up and left.
+/// The Cyclopedia map's camera handed to QML (CIP: TWorldMapCameraQmlType): a
+/// renderer::TWorldMapCamera and the QML object holding its top-left subfield
+/// coordinate. A field F on layer L shows at
+/// ((F + L) * 32 - (topLeft + z * 32)) * scale, so the floors above the viewed
+/// one shift up and left.
 class TWorldMapCamera final : public cip::tibia::qmlcomponents::TWorldMapCameraQmlType
 {
     Q_OBJECT
 public:
     explicit TWorldMapCamera(QObject* parent = nullptr);
 
+    renderer::TWorldMapCamera* camera() const { return m_camera; }
     QPoint topLeft() const;
     int layer() const;
     void setViewportSize(const QSizeF& size);
@@ -47,9 +56,9 @@ public:
     QPointF pixelOf(int x, int y, int layer) const;
     /// The field under `point` on the viewed layer.
     QPoint fieldAt(const QPointF& point) const;
-    /// Centers subfield (x, y) of `layer` at the renderer's next polish, so
-    /// after the QML that creates it has set its scale (CIP 
-    /// defers it with a zero timer).
+    /// Centers subfield (x, y) of `layer` at the renderer's next polish once
+    /// the viewport has a size (host: the Cyclopedia controller and the pack
+    /// center before the item is laid out).
     void centerDelayed(int subfieldX, int subfieldY, int layer);
     /// Puts subfield (x, y) of `layer` at the top-left once the event loop
     /// runs (the Cyclopedia's back button restoring the map).
@@ -57,35 +66,28 @@ public:
     /// Applies a pending centerDelayed once the viewport has a size.
     void applyPendingCenter();
 
+    /// Copies the coordinate into the top-left object (onTopLeftCoordinateChanged follows).
     void setTopLeftSubfieldCoordinate(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* v) override;
-    /// CIP : keeps the coordinate under the reference point.
+    float scaleFactor() const override;
     void setScaleFactor(float v) override;
-    /// CIP : also remembers the coordinate under the point.
+    QPoint referencePoint() const override;
     void setReferencePoint(const QPoint& v) override;
     cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* coordinateAtPoint(const QPoint& Value) override;
-    /// CIP .
     void changeLayerWithIsometricProjection(int NewLayer) override;
-    /// CIP .
     void moveDistanceRelativeToReferencePoint(const QPoint& Distance) override;
     void centerAtSubfieldCoordinateDelayed(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* pSubfieldCoordinate) override;
 
-Q_SIGNALS:
-    /// CIP NOTIFY deepen — qtclient owns emit sites on setScale / place / center.
-    void cameraViewportChanged();
-    /// CIP renderer::TWorldMapCamera::geometryIntialized (CIP spelling) — first sized viewport.
-    void geometryIntialized();
+public Q_SLOTS:
+    /// The top-left object changed: moves the camera there.
+    void onTopLeftCoordinateChanged();
 
 private:
-    QPoint subfieldAt(const QPointF& point) const;
-    void placeAt(const QPoint& subfield, const QPointF& point);
-    void setTopLeft(const QPoint& subfield, int layer);
+    /// Copies the camera's top-left into the top-left object.
+    void syncTopLeftSubfieldCoordinate();
 
-    QSizeF m_viewport;
-    QPoint m_referenceSubfield;
+    renderer::TWorldMapCamera* m_camera;
     bool m_hasPendingCenter = false;
-    bool m_geometryInitialized = false;
-    QPoint m_pendingCenter;
-    int m_pendingLayer = 7;
+    worldmap::TWorldMapSubfieldCoordinate m_pendingCenter;
 };
 
 /// One area caption (CIP: TAreaCaptionController,).

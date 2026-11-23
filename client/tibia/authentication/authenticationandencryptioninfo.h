@@ -31,6 +31,10 @@ public:
     virtual QString characterName() const;
     virtual void setSessionKey(const QString& SessionKey);
     virtual QString sessionKey() const;
+    /// The first string of the secondary login's RSA block (nothing in the
+    /// client sets it: it goes out empty).
+    virtual void setSecondaryLoginFirstString(const QString& FirstString);
+    virtual QString secondaryLoginFirstString() const;
     /// The token of ReadyForSecondaryConnection, sent back by the secondary login.
     virtual void setSecondaryLoginToken(const QString& Token);
     virtual QString secondaryLoginToken() const;
@@ -46,6 +50,7 @@ private:
     std::shared_ptr<shared::TXteaHelper> m_xteaHelper;
     QString m_characterName;
     QString m_sessionKey;
+    QString m_secondaryLoginFirstString;
     QString m_secondaryLoginToken;
     QString m_assetsIdentifier;
     bool m_secondaryLogin = false;

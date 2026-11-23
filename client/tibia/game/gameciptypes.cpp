@@ -19,6 +19,7 @@
 #include "input/playermovementintenthandler.h"
 #include "game/gamesessionstate.h"
 #include "clockservice.h"
+#include "game/currentgamesession.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -39,70 +40,13 @@
 
 #include <protocol.pb.h>
 
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace tibia::game {
-
-namespace {
-FPSDropsLogger* g_qtclientFpsDropsLogger = nullptr;
-
-} // namespace
-
-FPSDropsLogger::FPSDropsLogger(QObject* parent)
-    : cip::tibia::game::FPSDropsLogger(parent)
-{
-    // Dialog stack is created after TGameClient ctor (ownProductSurface); bind
-    // lazily once the singleton exists. Never owns login/session.
-    m_gameStartedConn = connect(TGameNotify::instance(), &TGameNotify::gameStarted, this, [this] {
-        ensureDialogStackBound();
-    });
-}
-
-FPSDropsLogger::~FPSDropsLogger()
-{
-    if (g_qtclientFpsDropsLogger == this)
-        g_qtclientFpsDropsLogger = nullptr;
-    if (m_dialogConn)
-        QObject::disconnect(m_dialogConn);
-    if (m_gameStartedConn)
-        QObject::disconnect(m_gameStartedConn);
-}
-
-void FPSDropsLogger::ensureDialogStackBound()
-{
-    if (m_dialogStackBound)
-        return;
-    gamewindow::TDialogStackController* stack = gamewindow::TDialogStackController::instance();
-    if (!stack)
-        return;
-    m_dialogConn = connect(stack, &gamewindow::TDialogStackController::dialogVisible, this,
-                           &FPSDropsLogger::onDialogVisibleChanged);
-    m_dialogStackBound = true;
-    onDialogVisibleChanged(!stack->isEmpty());
-}
-
-void FPSDropsLogger::onDialogVisibleChanged(const bool Visible)
-{
-    if (m_dialogVisible == Visible)
-        return;
-    m_dialogVisible = Visible;
-    if (Visible)
-        resetFrameDurations();
-}
-
-void FPSDropsLogger::resetFrameDurations()
-{
-    m_frameDurations.clear();
-    m_frameDurationSum = 0;
-}
-
-FPSDropsLogger* FPSDropsLogger::instance()
-{
-    return g_qtclientFpsDropsLogger;
-}
 
 namespace {
 struct CipTypedKeep {
@@ -120,12 +64,8 @@ using client::gamecore::argInt;
 
 using ::tibia::protobuf::protocol::GameserverMessageCloseRewardWall;
 using ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange;
-using ::tibia::protobuf::protocol::GameserverMessageLoginAdvice;
 using ::tibia::protobuf::protocol::GameserverMessageClientCheck;
-using ::tibia::protobuf::protocol::GameserverMessageLoginChallenge;
-using ::tibia::protobuf::protocol::GameserverMessageLoginError;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
-using ::tibia::protobuf::protocol::GameserverMessageLoginWait;
 using ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered;
 using ::tibia::protobuf::protocol::GameserverMessagePing;
 using ::tibia::protobuf::protocol::GameserverMessagePingBack;
@@ -145,7 +85,6 @@ using ::tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium;
 using ::tibia::protobuf::protocol::GameserverMessageEditList;
 using ::tibia::protobuf::protocol::GameserverMessageEditText;
 using ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger;
-using ::tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection;
 using ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog;
 using ::tibia::protobuf::protocol::GameserverMessageSnapBack;
 using ::tibia::protobuf::protocol::GameserverMessageSpellDataModification;
@@ -153,6 +92,14 @@ using ::tibia::protobuf::protocol::GameserverMessageStop;
 using ::tibia::protobuf::protocol::GameserverMessageWorldEntered;
 using ::tibia::protobuf::protocol::GameclientMessageClientDetails;
 using ::tibia::protobuf::protocol::GameclientMessageEnterWorld;
+
+/// The protocol's world type (0 open PvP .. 4 retro hardcore PvP).
+::cip::tibia::qmlcomponents::enums::EWorldType toWorldType(const int WorldType)
+{
+    if (WorldType < 0 || WorldType >= 5)
+        throw std::invalid_argument("invalid protocol world type enum value");
+    return static_cast<::cip::tibia::qmlcomponents::enums::EWorldType>(WorldType);
+}
 
 } // namespace
 
@@ -186,12 +133,8 @@ void TGameProtocolMessageHandler::handleLoginSuccessMessage(
     m_speedCalculator->setSpeedFormula(LoginSuccessMessage.speed_a(), LoginSuccessMessage.speed_b(),
                                        LoginSuccessMessage.speed_c());
     m_speedCalculator->setServerBeat(serverBeat);
-    // CipSoft's message carries the hint as a bool (field 7); the classic login
-    // packet's PvP frame byte lands in pvp_frame.
-    Q_EMIT settingHintsFromServer(LoginSuccessMessage.pvp_frame() != 0);
-    // Host: the classic login packet has no world type (CipSoft's field 12, here
-    // exiva_options, carries the exiva byte), so worldTypeReceived is not
-    // emitted; the client takes the world type from the login service.
+    Q_EMIT settingHintsFromServer(LoginSuccessMessage.can_change_pvp_frame_setting());
+    Q_EMIT worldTypeReceived(toWorldType(LoginSuccessMessage.world_type()));
     Q_EMIT loginSuccess();
     sendClientDetailsMessage(::tibia::systemsurvey::TSystemSurveyValueRetriever());
 }
@@ -253,23 +196,6 @@ void TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage(
     const GameserverMessageShowMultiOfflineTrainingDialog& /*Message*/)
 {
     Q_EMIT requestShowMultiOfflineTrainingDialog();
-}
-
-void TGameProtocolMessageHandler::handleLoginAdviceMessage(const GameserverMessageLoginAdvice& m)
-{
-    tibia::game::notify("onLoginAdvice", m.has_message() ? m.message() : std::string());
-}
-
-void TGameProtocolMessageHandler::handleLoginWaitMessage(const GameserverMessageLoginWait& m)
-{
-    tibia::game::notify("onLoginWait", m.has_message() ? m.message() : std::string(),
-                static_cast<uint8_t>(m.time()));
-}
-
-void TGameProtocolMessageHandler::handleReadyForSecondaryConnectionMessage(const GameserverMessageReadyForSecondaryConnection& m)
-{
-    tibia::game::processReadyForSecondaryConnection(
-                    m.token());
 }
 
 void TGameProtocolMessageHandler::handleInspectionListMessage(const GameserverMessageInspectionList& m)
@@ -357,17 +283,6 @@ void TGameProtocolMessageHandler::handleWorldEnteredMessage(const GameserverMess
     processWorldEntered();
 }
 
-void TGameProtocolMessageHandler::handleLoginErrorMessage(const GameserverMessageLoginError& m)
-{
-    tibia::game::notify("onLoginError", m.has_error() ? m.error() : std::string());
-}
-
-void TGameProtocolMessageHandler::handleLoginChallengeMessage(const GameserverMessageLoginChallenge& m)
-{
-    if (auto* connection = network::TGameserverSessionNetwork::live())
-        connection->sendLogin(m.timestamp(), static_cast<uint8_t>(m.random()));
-}
-
 void TGameProtocolMessageHandler::handlePingMessage(const GameserverMessagePing&)
 {
     processPing();
@@ -433,10 +348,30 @@ void TGameEventProtocolMessageHandler::handleGameEventMessage(const GameserverMe
     }
 }
 
-TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, QObject* parent)
+TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler(TCooldownStorage* cooldownStorage, const bool allowAllToInspectPlayer,
+                                                             QObject* parent)
     : cip::tibia::game::TPlayerProtocolMessageHandler(parent)
     , m_cooldownStorage(cooldownStorage)
+    , m_allowAllToInspectPlayer(allowAllToInspectPlayer)
 {
+}
+
+void TPlayerProtocolMessageHandler::handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered&)
+{
+    using tibia::input::EGameAction;
+    Q_EMIT publishGameAction(std::make_shared<tibia::input::gameactions::TGameActionSimple>(
+        m_allowAllToInspectPlayer ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
+    Q_EMIT worldEntered();
+}
+
+void TPlayerProtocolMessageHandler::handleLoginSuccessMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& message)
+{
+    TPlayerData* playerData = TPlayerData::liveInstance();
+    if (!playerData)
+        return;
+    playerData->setExpertPvpMode(message.expert_pvp() != 0);
+    // Stored again unchanged, as CipSoft does.
+    playerData->setExperienceGainRates(playerData->experienceGainRates());
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
@@ -473,44 +408,30 @@ void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
 void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message)
 {
-    if (message.skills_size() > 0) {
-        const auto& magic = message.skills(0);
-        tibia::game::localPlayerSetMagicLevelDetail(static_cast<uint16_t>(magic.loyalty()),
-                                                    static_cast<uint16_t>(magic.percent_hundredths()));
-        tibia::game::localPlayerSetMagicLevel(static_cast<uint16_t>(magic.level()),
-                                              static_cast<uint16_t>(magic.percent_hundredths() / 100));
-        tibia::game::localPlayerSetBaseMagicLevel(static_cast<uint16_t>(magic.base()));
-    }
-    for (int i = 1; i < message.skills_size(); ++i) {
-        const auto skill = static_cast<tibia::client::Skill>(tibia::client::Fist + i - 1);
-        if (skill > tibia::client::Fishing)
-            break;
-        const auto& entry = message.skills(i);
-        tibia::game::localPlayerSetSkillDetail(skill, static_cast<uint16_t>(entry.loyalty()),
-                                               static_cast<uint16_t>(entry.percent_hundredths()));
-        tibia::game::localPlayerSetSkill(skill, static_cast<uint16_t>(entry.level()),
-                                         static_cast<uint16_t>(entry.percent_hundredths() / 100));
+    // SkillInfo.percent is the percent (hundredths / 100).
+    const auto hundredths = [](const ::tibia::protobuf::protocol::SkillInfo& skill) {
+        return static_cast<uint16_t>(std::lround(skill.percent() * 100.0f));
+    };
+    const auto& magic = message.magic_level();
+    tibia::game::localPlayerSetMagicLevelDetail(static_cast<uint16_t>(magic.loyalty()), hundredths(magic));
+    tibia::game::localPlayerSetMagicLevel(static_cast<uint16_t>(magic.level()), static_cast<uint16_t>(magic.percent()));
+    tibia::game::localPlayerSetBaseMagicLevel(static_cast<uint16_t>(magic.base()));
+    const ::tibia::protobuf::protocol::SkillInfo* const skills[] = {
+        &message.fist(), &message.club(), &message.sword(), &message.axe(),
+        &message.distance(), &message.shielding(), &message.fishing()
+    };
+    for (int i = 0; i < 7; ++i) {
+        const auto skill = static_cast<tibia::client::Skill>(tibia::client::Fist + i);
+        const auto& entry = *skills[i];
+        tibia::game::localPlayerSetSkillDetail(skill, static_cast<uint16_t>(entry.loyalty()), hundredths(entry));
+        tibia::game::localPlayerSetSkill(skill, static_cast<uint16_t>(entry.level()), static_cast<uint16_t>(entry.percent()));
         tibia::game::localPlayerSetBaseSkill(skill, static_cast<uint16_t>(entry.base()));
     }
-    tibia::game::localPlayerSetBaseCapacity(message.base_capacity() / 100);
-    tibia::game::localPlayerSetTotalCapacity(message.capacity() / 100);
-    tibia::game::localPlayerSetFlatDamageHealing(static_cast<uint16_t>(message.flat_damage_healing()));
-    tibia::game::localPlayerSetAttackInfo(static_cast<uint16_t>(message.attack()), static_cast<uint8_t>(message.attack_element()));
-    tibia::game::localPlayerSetConvertedDamage(message.converted_damage(), static_cast<uint8_t>(message.converted_element()));
-    tibia::game::localPlayerSetImbuements(message.life_leech(), message.mana_leech(), message.critical_chance(),
-                                          message.critical_damage(), message.onslaught());
-    tibia::game::localPlayerSetDefenseInfo(static_cast<uint16_t>(message.defense()), static_cast<uint16_t>(message.armor()),
-                                           static_cast<uint16_t>(message.mantra()), message.mitigation(), message.dodge(),
-                                           static_cast<uint16_t>(message.damage_reflection()));
-    std::map<uint8_t, double> absorbs;
-    for (const auto& absorb : message.absorbs())
-        absorbs[static_cast<uint8_t>(absorb.combat())] = absorb.value();
-    tibia::game::localPlayerSetCombatAbsorbValues(absorbs);
-    tibia::game::localPlayerSetForgeBonuses(message.momentum(), message.transcendence(), message.amplification());
-    std::vector<std::pair<int, int>> specialMagicLevels;
-    for (const auto& modifier : message.modifiers())
-        specialMagicLevels.emplace_back(static_cast<int>(modifier.type()), static_cast<int>(modifier.value()));
-    tibia::game::localPlayerSetSpecialMagicLevels(std::move(specialMagicLevels));
+    tibia::game::localPlayerSetBaseCapacity(message.capacity().base() / 100);
+    tibia::game::localPlayerSetTotalCapacity(message.capacity().level() / 100);
+    // CipSoft: TPlayerSkillStats keeps the message (offence / defence / misc stats).
+    if (TPlayerSkillStats* stats = tibia::game::currentPlayerSkillStats())
+        stats->setPlayerSkills(message);
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
@@ -744,10 +665,10 @@ void TPlayerProtocolMessageHandler::handleSwitchPresetMessage(const GameserverMe
 void TPlayerProtocolMessageHandler::handleCreatureSpeedMessage(const ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed& m)
 {
     // The player's own speed also goes to the player data.
-    if (m.creature_id() != localPlayerId())
+    if (m.creature().id() != localPlayerId())
         return;
     if (TPlayerData* data = TPlayerData::liveInstance())
-        data->setSpeed(static_cast<uint16_t>(m.speed()));
+        data->setSpeed(static_cast<uint16_t>(m.creature().speed()));
 }
 
 void TPlayerProtocolMessageHandler::handleSnapBackMessage(const GameserverMessageSnapBack& m)
@@ -885,9 +806,6 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)typedKeep();
-    // Session-parented qtclient twin (QApp already exists). Dialog stack binds later.
-    if (!g_qtclientFpsDropsLogger)
-        g_qtclientFpsDropsLogger = new FPSDropsLogger(parent);
     // The game session builds its protocol message and game action handlers.
     new TPremiumTimeStorage(parent);
 }

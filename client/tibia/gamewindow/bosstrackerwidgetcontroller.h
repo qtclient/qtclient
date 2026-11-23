@@ -167,7 +167,8 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
-
+    /// The open widget's controller, or null.
+    TBossTrackerWidgetController* controller() const { return m_controller; }
 
 Q_SIGNALS:
     /// The controller's publishGameAction, forwarded.

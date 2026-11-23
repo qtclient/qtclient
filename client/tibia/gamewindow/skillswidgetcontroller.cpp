@@ -141,9 +141,9 @@ void TSkillsWidgetController::connectToGameSession(const std::shared_ptr<game::I
         if (game::TPlayerData* playerData = session->playerData().get())
             m_gameSessionConnections.add(
                 connect(playerData, &game::TPlayerData::playerDataChanged, this, &TSkillsWidgetController::onPlayerDataChanged));
-        m_skillStats = session->playerSkillStats().get();
+        m_skillStats = session->playerSkillStats();
         if (m_skillStats)
-            m_gameSessionConnections.add(connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this,
+            m_gameSessionConnections.add(connect(m_skillStats.get(), &game::TPlayerSkillStats::playerSkillStatsChanged, this,
                                                  &TSkillsWidgetController::onPlayerSkillStatsChanged));
         if (m_options) {
             m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::skillsWidgetOptionsChanged, this,
@@ -245,8 +245,9 @@ void TSkillsWidgetController::onPlayerDataChanged()
 
 void TSkillsWidgetController::onPlayerSkillStatsChanged()
 {
-    const cyclopedia::CombatStats stats =
-        m_skillStats ? m_skillStats->combatStats() : cyclopedia::CombatStats{};
+    // Without a session the blocks show an empty PlayerSkills (all zero).
+    const std::shared_ptr<game::TPlayerSkillStats> stats =
+        m_skillStats ? m_skillStats : std::make_shared<game::TPlayerSkillStats>();
     QObject* const previous[] = { m_offenceStats, m_defenceStats, m_miscStats };
     m_offenceStats = new cyclopedia::TOffenceStatsQmlData(stats, this);
     m_defenceStats = new cyclopedia::TDefenceStatsQmlData(stats, this);

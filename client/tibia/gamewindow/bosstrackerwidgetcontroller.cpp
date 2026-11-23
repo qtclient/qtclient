@@ -30,16 +30,10 @@ qmlcomponents::TOutfitQmlModel* outfitForRace(const int raceId, QObject* parent)
 {
     const RaceType& race = tibia::game::raceData(static_cast<uint32_t>(raceId));
     const Outfit& outfit = race.outfit;
-    auto* model = new qmlcomponents::TOutfitQmlModel(parent);
     const bool objectOutfit = outfit.getId() == 0 && outfit.getAuxId() != 0;
-    const uint outfitId = objectOutfit ? outfit.getAuxId() : outfit.getId();
-    model->setIsObjectOutfit(objectOutfit);
-    model->setOutfitID(outfitId);
-    model->setFirstAddOn((outfit.getAddons() & 1) != 0);
-    model->setSecondAddOn((outfit.getAddons() & 2) != 0);
-    auto* colors = new qmlcomponents::TOutfitColorQmlType(outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet(), model);
-    model->setColors(colors);
-    return model;
+    const uint16_t outfitId = static_cast<uint16_t>(objectOutfit ? outfit.getAuxId() : outfit.getId());
+    return new qmlcomponents::TOutfitQmlModel(outfitId, outfit.getHead(), outfit.getBody(), outfit.getLegs(), outfit.getFeet(),
+                                              (outfit.getAddons() & 1) != 0, (outfit.getAddons() & 2) != 0, objectOutfit, parent);
 }
 
 } // namespace
@@ -181,15 +175,6 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
     m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch());
     setStorage(storage);
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
-    // CIP: the sidebar widgets' frame update gives the model the time.
-    const auto followFrames = [this](QQuickWindow* window) {
-        if (window)
-            connect(window, &QQuickWindow::afterAnimating, this, &TBossTrackerWidgetController::updateWithTimestamp);
-    };
-    if (gameWindowItem) {
-        followFrames(gameWindowItem->window());
-        connect(gameWindowItem, &QQuickItem::windowChanged, this, followFrames);
-    }
     if (QQuickItem* item = quickItem()) {
         m_focus.setClickArea(item);
         connect(item, &QObject::destroyed, this, &TBossTrackerWidgetController::onWidgetQuickItemDestroyed);

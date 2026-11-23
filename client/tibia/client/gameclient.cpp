@@ -321,30 +321,10 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
             &input::TUnportedGameActionHandler::handleGameAction);
     connect(unported, &input::TUnportedGameActionHandler::publishGameAction, m_pGameActionRouter->internalRouter(),
             &game::TInternalGameActionRouter::handleGameActionInternal);
-    // The Cyclopedia map's static data and the sprite resolver trade the subarea
-    // masks as RESOLVE_SPRITE / SPRITE_RESOLVED; the masks are asked for once the
-    // main window exists.
-    {
-        game::TInternalGameActionRouter* router = m_pGameActionRouter->internalRouter();
-        cyclopedia::TCyclopediaMapStaticDataStorage& mapStaticData = *cyclopediaMapStaticDataStorage();
-        // CIP: the storage's asset requests go to the client's asset loading.
-        connect(&mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::newAssetDataToLoad, &mapStaticData,
-                [](const tibia::assets::TAsset& asset, const bool prioritized) {
-                    if (auto* loader = sprites::TSpriteSystem::instance().assetLoader())
-                        loader->load(asset, prioritized);
-                });
-        connect(&mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::publishGameAction, router,
-                &game::TInternalGameActionRouter::handleGameActionInternal);
-        connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, &mapStaticData,
-                &cyclopedia::TCyclopediaMapStaticDataStorage::handleGameAction);
-        connect(this, &TGameClient::mainWindowInitialized, &mapStaticData,
-                &cyclopedia::TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized);
-        sprites::TSpriteResolver& spriteResolver = sprites::TSpriteSystem::instance().resolver();
-        connect(&spriteResolver, &sprites::TSpriteResolver::publishGameAction, router,
-                &game::TInternalGameActionRouter::handleGameActionInternal);
-        connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, &spriteResolver,
-                &sprites::TSpriteResolver::handleGameAction);
-    }
+    // CIP: the Cyclopedia map's static data asks for the subarea masks once
+    // the main window exists (they come back through the game action router).
+    connect(this, &TGameClient::mainWindowInitialized, cyclopediaMapStaticDataStorage().get(),
+            &cyclopedia::TCyclopediaMapStaticDataStorage::onGameClientMainWindowInitialized);
     // The sound helper the dialogs and the QML singletons play through.
     auto* soundHelper = new qmlcomponents::TSoundHelperService(this);
     qmlcomponents::TSoundHelperService::setInstance(soundHelper);
@@ -357,9 +337,9 @@ TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileS
     m_gameSessionDisconnected.setAsyncDelay(1);
     m_gameSessionDisconnected.setOnlyFirstSignal(true);
     connect(&m_gameSessionDisconnected, &shared::TQtConnectionWrapper::signal, this, &TGameClient::onGameSessionDisconnected);
-    initializeSound();
     m_gameHost = new GameHostImpl(this);
-    connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
+    // Pack ABI: the packs' "main window initialized" is the world entry.
+    connect(this, &TGameClient::worldEntered, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
     connect(this, &TGameClient::characterSwitchRequested, m_gameHost, &runtime::TGameHost::characterSwitchRequested);
     connect(this, &TGameClient::characterSelectionClosed, m_gameHost, &runtime::TGameHost::characterSelectionClosed);
@@ -543,16 +523,13 @@ TGameClient::~TGameClient()
     qmlcomponents::TSoundHelperService::setInstance(nullptr);
 }
 
-bool TGameClient::start(const QString& argv0, const QString& workDir, const Options& options)
+bool TGameClient::startEngine(const QString& argv0, const QString& workDir)
 {
-    m_options = options;
     if (!gamecore::init(argv0, workDir)) {
         fail(tr("Could not start the game engine (no assets/catalog-content.json under %1).").arg(workDir));
         return false;
     }
     m_started = true;
-    // The spell table reads spells.json from the data directories init set up.
-    createSpellInfoStorage();
 
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
@@ -579,21 +556,32 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             || name == QLatin1String("monsterEffectsOpacity") || name == QLatin1String("monsterBossAreaEffectsOpacity"))
             applyEffectOpacities(options);
     });
+    return true;
+}
 
-    gamecore::setClientVersion(ClientVersion);
-    QString error;
-    if (!gamecore::loadAssets(ClientVersion, &error)) {
-        fail(error);
-        return true;
-    }
-    // Custom effects / xBRZ register via product modpack (mods::bootstrapAll).
+void TGameClient::emitInitialized()
+{
     Q_EMIT initialized();
+}
+
+void TGameClient::emitMainWindowInitialized()
+{
+    Q_EMIT mainWindowInitialized();
+}
+
+void TGameClient::start()
+{
+    // Custom effects / xBRZ register via product modpack (mods::bootstrapAll).
+    if (!m_assetLoadError.isEmpty()) {
+        fail(m_assetLoadError);
+        return;
+    }
 
     if (!m_options.replay.isEmpty()) {
         const QFileInfo file(m_options.replay);
         if (!file.isFile()) {
             fail(tr("No recorded session at %1.").arg(m_options.replay));
-            return true;
+            return;
         }
         // Prefer canonical path (follows symlinks). Basename-only is kept for
         // files that live under cwd `records/` (where --record writes).
@@ -607,11 +595,10 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         metaInfo->sessiondump.url = QUrl::fromLocalFile(replayArg);
         metaInfo->startedByGameAction = true;
         enqueueGameSessions({ metaInfo });
-        return true;
+        return;
     }
 
     login();
-    return true;
 }
 
 namespace {
@@ -1115,7 +1102,7 @@ void TGameClient::onWorldEntered()
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
         return minimap::snapshotWaypointCosts(m_minimap ? m_minimap->tileStorage() : nullptr);
     });
-    Q_EMIT mainWindowInitialized();
+    Q_EMIT worldEntered();
 
     for (qsizetype i = 0; i < m_options.say.size(); ++i) {
         QTimer::singleShot(1000 * (i + 1), this, [text = m_options.say[i].toStdString()] {
@@ -1232,14 +1219,11 @@ void TGameClient::initializeSound()
     if (!m_pSoundController)
         return;
     // CipSoft connects the sound metadata with the sound manager while it
-    // sets up the assets, and the sound controller with the router once the
-    // main window exists; qtclient's assets and main window do not run those
-    // steps, so the connections are made with the sound system.
+    // sets up the assets; qtclient's assets read the sound bank through the
+    // sound controller's instance(), so both are in place before them.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, m_pSoundManager.get(),
             &sound::TSoundManager::onSoundMetadataChanged);
     sound::TSoundController::setInstance(m_pSoundController.get());
-    connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, m_pSoundController.get(),
-            &sound::TSoundController::handleGameAction);
     // Out of the game the title music plays once the sound bank is known.
     connect(m_pSoundMetadataManager.get(), &sound::TSoundMetadataManager::metadataChanged, this, [this] {
         if (!tibia::game::isOnline())
@@ -1263,16 +1247,13 @@ void TGameClient::tick()
 
     gamecore::poll();
     if (m_pSoundController) {
-        // CIP TGameClientBase::v27 (before each frame): the controllers and the cache.
-        const auto now = static_cast<int64_t>(shared::TClockService::frameMillis());
         if (game::TGameSessionBase* session = game::currentGameSession()) {
             if (session->objectSoundController())
                 session->objectSoundController()->updateObjectCounts(
                     tibia::game::hasLocalPlayer() ? tibia::game::localPlayerPosition() : Position());
         }
-        m_pSoundController->update(now);
-        m_pSoundManager->updateWithTimestamp(now);
     }
+    updateWithTimestamp(static_cast<qint64>(shared::TClockService::frameMillis()));
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;

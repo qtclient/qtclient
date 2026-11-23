@@ -2,7 +2,7 @@
 #include "colorhelper.h"
 
 #include <utility>
-#include "gamewindow/smoothfiltering.h"
+#include "config/clientoptions.h"
 
 #include "qmlcomponents/texthelper.h"
 
@@ -728,10 +728,14 @@ void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter)
         m_bestiaryProxy.setNameFilter(m_monsterRacesFilter);
 }
 
-bool TPreyPreyPageController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+bool TPreyPreyPageController::clientSettingSmoothFiltering() const
+{
+    return m_clientOptions && m_clientOptions->antialiasingMode() == 1;
+}
 
-TPreyPreyPageController::TPreyPreyPageController(QObject* parent)
+TPreyPreyPageController::TPreyPreyPageController(config::TClientOptions* ClientOptions, QQmlEngine*, QQuickItem*, QObject* parent)
     : cip::tibia::gamewindow::TPreyPreyPageController(parent)
+    , m_clientOptions(ClientOptions)
     , m_bonusReroll(new TMessageDialogController(this))
     , m_listReroll(new TMessageDialogController(this))
     , m_choosePrey(new TMessageDialogController(this))
@@ -939,9 +943,10 @@ void TPreyPreyPageController::onConfirmEnableLockPrey() { Q_EMIT publishGameActi
 /// CIP .
 void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
 
-TPreyDialogController::TPreyDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("prey/PreyDialog.qml"), parent)
-    , m_page(new TPreyPreyPageController(this))
+TPreyDialogController::TPreyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                             QObject* parent)
+    : TDialogController(QStringLiteral("prey/PreyDialog.qml"), Engine, DialogParentItem, parent)
+    , m_page(new TPreyPreyPageController(ClientOptions, Engine, DialogParentItem, this))
     , m_notOnMain(new TMessageDialogController(this))
     , m_info(new TMessageDialogController(this))
 {

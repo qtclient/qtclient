@@ -12,11 +12,7 @@ namespace {
 // FriendSystemAction numbers.
 constexpr uint8_t kLoadInvites = 1;
 constexpr uint8_t kLoadBlacklist = 2;
-constexpr uint8_t kAcceptInvite = 4;
-constexpr uint8_t kDeclineInvite = 5;
-constexpr uint8_t kCancelInvite = 6;
 constexpr uint8_t kAddToBlacklist = 7;
-constexpr uint8_t kRemoveFromBlacklist = 8;
 
 }
 
@@ -109,8 +105,9 @@ void TFriendsInvitesPageController::showContextMenuForSentInvite(const uint Invi
     if (!menu)
         return;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("friends_cancel_invite")), &TContextMenuEntryItem::triggered, this, [InvitedAccountID] {
-        protocol::gameclient::sendFriendSystemAccountAction(kCancelInvite, InvitedAccountID);
+    connect(menu->addCustomEntry(qtTrId("friends_cancel_invite")), &TContextMenuEntryItem::triggered, this, [this, InvitedAccountID] {
+        if (auto* handler = friendsProtocolMessageHandler())
+            handler->cancelInvite(InvitedAccountID);
     });
     menu->showCustomMenu();
 }
@@ -122,20 +119,23 @@ void TFriendsInvitesPageController::showContextMenuForReceivedInvite(const uint 
         return;
     menu->beginCustomMenu();
     const auto accept = [this, menu, InvitedAccountID](const char* label, const uint8_t group) {
-        connect(menu->addCustomEntry(qtTrId(label)), &TContextMenuEntryItem::triggered, this, [InvitedAccountID, group] {
-            protocol::gameclient::sendFriendSystemAccountAction(kAcceptInvite, InvitedAccountID, group);
+        connect(menu->addCustomEntry(qtTrId(label)), &TContextMenuEntryItem::triggered, this, [this, InvitedAccountID, group] {
+            if (auto* handler = friendsProtocolMessageHandler())
+                handler->acceptInvite(InvitedAccountID, group);
         });
     };
     accept("friends_accept_invite_contact", 1);
     accept("friends_accept_invite_friend", 2);
     accept("friends_accept_invite_closefriend", 3);
     menu->addCustomSeparator();
-    connect(menu->addCustomEntry(qtTrId("friends_decline_invite")), &TContextMenuEntryItem::triggered, this, [InvitedAccountID] {
-        protocol::gameclient::sendFriendSystemAccountAction(kDeclineInvite, InvitedAccountID);
+    connect(menu->addCustomEntry(qtTrId("friends_decline_invite")), &TContextMenuEntryItem::triggered, this, [this, InvitedAccountID] {
+        if (auto* handler = friendsProtocolMessageHandler())
+            handler->declineInvite(InvitedAccountID);
     });
     // Blacklisting the inviter declines the invite first.
-    connect(menu->addCustomEntry(qtTrId("friends_blacklist_inviter")), &TContextMenuEntryItem::triggered, this, [InvitedAccountID] {
-        protocol::gameclient::sendFriendSystemAccountAction(kDeclineInvite, InvitedAccountID);
+    connect(menu->addCustomEntry(qtTrId("friends_blacklist_inviter")), &TContextMenuEntryItem::triggered, this, [this, InvitedAccountID] {
+        if (auto* handler = friendsProtocolMessageHandler())
+            handler->declineInvite(InvitedAccountID);
         protocol::gameclient::sendFriendSystemAccountAction(kAddToBlacklist, InvitedAccountID);
     });
     menu->showCustomMenu();
@@ -147,8 +147,9 @@ void TFriendsInvitesPageController::showContextMenuForBlacklistedAccount(const u
     if (!menu)
         return;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("friends_remove_from_blacklist")), &TContextMenuEntryItem::triggered, this, [BlacklistedAccountID] {
-        protocol::gameclient::sendFriendSystemAccountAction(kRemoveFromBlacklist, BlacklistedAccountID);
+    connect(menu->addCustomEntry(qtTrId("friends_remove_from_blacklist")), &TContextMenuEntryItem::triggered, this, [this, BlacklistedAccountID] {
+        if (auto* handler = friendsProtocolMessageHandler())
+            handler->removeFromBlacklist(BlacklistedAccountID);
     });
     menu->showCustomMenu();
 }
@@ -163,6 +164,12 @@ friends::TFriendsStorage* TFriendsInvitesPageController::friendsStorage() const
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     return session ? session->friendsStorage().get() : nullptr;
+}
+
+friends::TFriendsProtocolMessageHandler* TFriendsInvitesPageController::friendsProtocolMessageHandler() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    return session ? session->friendsProtocolMessageHandler().get() : nullptr;
 }
 
 }

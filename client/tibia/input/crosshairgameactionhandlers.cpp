@@ -2,6 +2,7 @@
 
 #include "chat/chatchannel.h"
 #include "gameactionhandlers.h"
+#include "protocol/gameactioncontexthelper.h"
 #include "spells/spellinfostorage.h"
 
 #include <creatures/creaturestorage.h>
@@ -20,24 +21,19 @@ using A = EGameAction;
 using CastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 
 
-/// The classic position and stack position of an object's location; no
-/// location is anywhere the player has the object (as TLocationUnknownContext).
-void classicLocation(const TObjectGameActionContext& object, Position& position, int& stackPosition)
+/// An object as the ObjectPosition and ObjectIdentifier of a client message
+/// (TGameActionContextHelper); no location is anywhere the player has the
+/// object (as TLocationUnknownContext).
+void fillObject(const TObjectGameActionContext& object, tibia::protobuf::protocol::ObjectPosition* objectPosition,
+                tibia::protobuf::protocol::ObjectIdentifier* objectIdentifier)
 {
-    if (!object.location()) {
-        position = Position(UINT16_MAX, 0, 0);
-        stackPosition = 0;
-        return;
-    }
-    position = object.position();
-    stackPosition = object.stackPosition();
-}
-
-void setCoordinate(tibia::protobuf::protocol::ProtocolCoordinate* out, const Position& position)
-{
-    out->set_x(position.x);
-    out->set_y(position.y);
-    out->set_z(position.z);
+    const tibia::protocol::TGameActionContextHelper helper;
+    if (object.location())
+        helper.fillObjectPosition(object.location(), objectPosition);
+    else
+        objectPosition->set_unknown_position(true);
+    if (object.object())
+        helper.fillObjectIdentifier(object.object(), objectIdentifier);
 }
 
 /// CIP's location kinds a use with can target: the inventory, a container
@@ -113,28 +109,15 @@ void TUseWithGameActionHandler::handleUseWith(const std::shared_ptr<const TGameA
     if (!isUseTwoObjectsTarget(target.locationType()))
         return;
     tibia::protobuf::protocol::GameclientMessageUseTwoObjects message;
-    Position position;
-    int stackPosition = 0;
-    classicLocation(action->context(), position, stackPosition);
-    setCoordinate(message.mutable_from_position(), position);
-    message.set_from_stack_position(static_cast<uint32_t>(std::max(stackPosition, 0)));
-    message.set_object_id(action->objectClientId());
-    classicLocation(target, position, stackPosition);
-    setCoordinate(message.mutable_to_position(), position);
-    message.set_to_stack_position(static_cast<uint32_t>(std::max(stackPosition, 0)));
-    message.set_to_object_id(target.objectClientId());
+    fillObject(action->context(), message.mutable_source_object_position(), message.mutable_source_object_identifier());
+    fillObject(target, message.mutable_destination_object_position(), message.mutable_destination_object_identifier());
     Q_EMIT sendUseTwoObjects(message);
 }
 
 void TUseWithGameActionHandler::handleUseOnCreature(const TGameActionUseOnCreature& action)
 {
     tibia::protobuf::protocol::GameclientMessageUseOnCreature message;
-    Position position;
-    int stackPosition = 0;
-    classicLocation(action.context(), position, stackPosition);
-    setCoordinate(message.mutable_position(), position);
-    message.set_stack_position(static_cast<uint32_t>(std::max(stackPosition, 0)));
-    message.set_object_id(action.objectClientId());
+    fillObject(action.context(), message.mutable_object_position(), message.mutable_object_identifier());
     message.set_creature_id(action.targetCreatureId());
     Q_EMIT sendUseOnCreature(message);
 }
@@ -232,7 +215,8 @@ void TCrossHairSpellGameActionHandler::handleCrossHairSpell(const std::shared_pt
     message.set_text(action->words().toStdString());
     message.set_aim_mode(1);
     message.set_mode(chat::protocolMessageMode(action->talkMode()));
-    setCoordinate(message.mutable_aim_position(), target.position());
+    if (target.location())
+        tibia::protocol::TGameActionContextHelper().fillObjectPosition(target.location(), message.mutable_aim_position());
     Q_EMIT sendTalkMessage(message);
 }
 

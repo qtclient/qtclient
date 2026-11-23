@@ -57,8 +57,8 @@ int storageSlotCount(const Position& position, const int stackPosition)
 
 using A = input::EGameAction;
 
-TSelectObjectAmountDialogController::TSelectObjectAmountDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("SelectObjectAmountDialog.qml"), parent)
+TSelectObjectAmountDialogController::TSelectObjectAmountDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("SelectObjectAmountDialog.qml"), Engine, DialogParentItem, parent)
 {
     m_gameActions.on(A::SHOW_SPLIT_STACK_DIALOG, [this](const input::IGameAction& action) { return handleSplitStack(action); });
     m_gameActions.on(A::STASH_OPEN_STOW_STACK_DIALOG, [this](const input::IGameAction& action) { return handleStash(action); });

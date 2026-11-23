@@ -44,6 +44,7 @@ public:
 private:
     /// The current session's friends storage, or null.
     friends::TFriendsStorage* friendsStorage() const;
+    friends::TFriendsProtocolMessageHandler* friendsProtocolMessageHandler() const;
 
     std::shared_ptr<game::IGameSession> m_gameSession;
     /// Copies the stored invites into the received and sent models.

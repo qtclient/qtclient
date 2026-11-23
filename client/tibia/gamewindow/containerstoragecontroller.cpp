@@ -280,3 +280,9 @@ void tibia::gamewindow::TContainerStorageController::connectToGameSession(const 
             connect(itemPrices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &Self::onOptionsChanged));
     m_gameSessionConnections.add(connect(storage, &container::TContainerStorage::manualSortModeChanged, this, &Self::onManualSortModeChanged));
 }
+
+void tibia::gamewindow::TContainerStorageController::updateWithTimestamp(const qint64 TimestampMilliseconds)
+{
+    for (const auto& [containerId, controller] : m_containerControllers)
+        controller->updateWithTimestamp(TimestampMilliseconds);
+}

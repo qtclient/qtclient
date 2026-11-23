@@ -1194,27 +1194,30 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     updateSockets();
 }
 
+/// The storage's gems go to the list, the filters run again, the gem picked
+/// before a socket change is selected again (or forgotten when it is gone).
 void TGemAtelierPageController::onGemsChanged()
 {
     m_list->setGems(m_storage->gemInventory());
-    m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
-                             m_storage->supremeGrades());
-    updateSockets();
-    Q_EMIT gemInventoryChanged();
-    Q_EMIT unrevealedGemsChanged();
+    m_filter->invalidateRows();
     if (m_gemToReselect) {
         if (m_storage->gem(*m_gemToReselect))
             selectGem(*m_gemToReselect, false);
         else
             m_gemToReselect.reset();
     }
+    Q_EMIT gemInventoryChanged();
 }
 
+/// With a current and a server wheel: the vessels are made again from the
+/// current wheel, then the list learns the wheels and grades.
 void TGemAtelierPageController::onWheelChanged()
 {
+    if (!m_storage->currentSkillWheel() || !m_storage->serverSkillWheel())
+        return;
+    updateSockets();
     m_list->setConfiguration(m_storage->currentSkillWheel(), m_storage->serverSkillWheel(), m_storage->basicGrades(),
                              m_storage->supremeGrades());
-    updateSockets();
 }
 
 /// CipSoft: eight quality-typed vessels unlocked by Gem Vessel perks.

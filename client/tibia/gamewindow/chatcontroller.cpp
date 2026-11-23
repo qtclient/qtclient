@@ -1032,7 +1032,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
             [](const QString& name) { tibia::game::openPrivateChannel(name.toStdString()); });
 
-    connect(&gameClient, &client::TGameClient::mainWindowInitialized, this, &TChatController::onWorldEntered);
+    connect(&gameClient, &client::TGameClient::worldEntered, this, &TChatController::onWorldEntered);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, &TChatController::onOptionChanged);
 
     for (const A type : HandledActions) {

@@ -1,12 +1,15 @@
 #include "client/gameclientbase.h"
 
+#include "assets/assetasyncloader.h"
 #include "assets/things.h"
+#include "client/gamecore.h"
 #include "config/clientoptions.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameactionrouter.h"
 #include "game/passiveabilityinfostorage.h"
 #include "proficiency/proficiencystorage.h"
 #include "gamewindow/storeandresourcebalancehelpercontroller.h"
+#include "renderer/spritetextureprovider.h"
 #include "sound/soundconfiguration.h"
 #include "sound/soundcontroller.h"
 #include "sound/soundengine.h"
@@ -15,6 +18,8 @@
 #include "sound/soundplayermanager.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "spells/spellinfostorage.h"
+#include "sprites/spriteresolver.h"
+#include "sprites/spritesystem.h"
 
 #include <QObject>
 
@@ -45,6 +50,80 @@ TGameClientBase::~TGameClientBase()
     game::TPassiveAbilityInfoStorage::setInstance(nullptr);
     cyclopedia::TCyclopediaMapStaticDataStorage::setInstance(nullptr);
     appearances::TAppearancesManager::setInstance(nullptr);
+}
+
+void TGameClientBase::initialize()
+{
+    initializeStorages();
+    initializeSound();
+    initializeAssets();
+    emitInitialized();
+}
+
+void TGameClientBase::setMainWindow(QQuickWindow* MainWindow)
+{
+    m_pMainWindow = MainWindow;
+    if (!MainWindow)
+        return;
+    initializeSpriteTextureProviderManager();
+    connectToGameActionRouter();
+    emitMainWindowInitialized();
+}
+
+void TGameClientBase::updateWithTimestamp(const qint64 Timestamp)
+{
+    if (m_pSoundController)
+        m_pSoundController->update(Timestamp);
+    if (m_pSoundManager)
+        m_pSoundManager->updateWithTimestamp(Timestamp);
+    renderer::updateHighlightStrength(Timestamp);
+}
+
+void TGameClientBase::initializeStorages()
+{
+    createSpellInfoStorage();
+}
+
+void TGameClientBase::initializeAssets()
+{
+    cyclopedia::TCyclopediaMapStaticDataStorage* mapStaticData = cyclopediaMapStaticDataStorage().get();
+    // CIP: the storage's asset requests go to the client's asset loading.
+    QObject::connect(mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::newAssetDataToLoad, mapStaticData,
+                     [](const tibia::assets::TAsset& asset, const bool prioritized) {
+                         if (auto* loader = sprites::TSpriteSystem::instance().assetLoader())
+                             loader->load(asset, prioritized);
+                     });
+    gamecore::setClientVersion(ClientVersion);
+    QString error;
+    if (!gamecore::loadAssets(ClientVersion, &error))
+        m_assetLoadError = error;
+}
+
+void TGameClientBase::initializeSpriteTextureProviderManager()
+{
+    // Host: qtclient's providers live in a process-wide registry, so the
+    // manager needs neither the sprite resolver nor a QML context property.
+    m_pSpriteTextureProviderManager = std::make_shared<renderer::TSpriteTextureProviderManager>();
+}
+
+void TGameClientBase::connectToGameActionRouter()
+{
+    game::TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
+    sprites::TSpriteResolver* spriteResolver = &sprites::TSpriteSystem::instance().resolver();
+    cyclopedia::TCyclopediaMapStaticDataStorage* mapStaticData = cyclopediaMapStaticDataStorage().get();
+    QObject::connect(spriteResolver, &sprites::TSpriteResolver::publishGameAction, router,
+                     &game::TInternalGameActionRouter::handleGameActionInternal);
+    QObject::connect(mapStaticData, &cyclopedia::TCyclopediaMapStaticDataStorage::publishGameAction, router,
+                     &game::TInternalGameActionRouter::handleGameActionInternal);
+    QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal,
+                     m_pSpriteTextureProviderManager.get(), &renderer::TSpriteTextureProviderManager::handleGameAction);
+    QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, spriteResolver,
+                     &sprites::TSpriteResolver::handleGameAction);
+    QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, mapStaticData,
+                     &cyclopedia::TCyclopediaMapStaticDataStorage::handleGameAction);
+    if (m_pSoundController)
+        QObject::connect(router, &game::TInternalGameActionRouter::publishGameActionInternal, m_pSoundController.get(),
+                         &sound::TSoundController::handleGameAction);
 }
 
 void TGameClientBase::createSpellInfoStorage()

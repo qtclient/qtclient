@@ -153,8 +153,9 @@ QString TQmlBlessingDialogData::promotionText() const
     return qtTrId(id).arg(m_promotionReduction);
 }
 
-TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("BlessingsDialog.qml"), parent)
+TBlessingsDialogController::TBlessingsDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                       QObject* parent)
+    : TDialogController(QStringLiteral("BlessingsDialog.qml"), engine, dialogParentItem, parent)
 {
 }
 

@@ -218,25 +218,21 @@ void TAppearanceInstanceRenderer::componentComplete()
     cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::componentComplete();
 }
 
+/// The race's appearance as a QML instance owned by the renderer: an object
+/// race as its object, any other as its outfit with colours and addons; null
+/// for a race without appearance. The race id is cut to 16 bit.
 InstanceBase* TAppearanceInstanceRenderer::createAppearanceInstanceByRaceID(const int RaceID)
 {
-    if (m_raceInstance)
-        m_raceInstance->deleteLater();
-    if (RaceID <= 0)
+    const Outfit outfit = cyclopedia::monsterRaceAppearance(static_cast<uint16_t>(RaceID));
+    if (outfit.getId() == 0 && outfit.getAuxId() == 0)
         return nullptr;
-    const RaceType& race = tibia::game::raceData(static_cast<uint32_t>(RaceID));
-    if (race.raceId == 0)
-        return nullptr;
-    const Outfit& outfit = race.outfit;
-    if (outfit.getId() == 0 && outfit.getAuxId() != 0) {
-        auto* object = new TObjectAppearanceInstanceInfoQmlType(this);
+    if (outfit.getId() == 0) {
+        auto* object = new TObjectAppearanceInstanceInfoQmlType();
         object->setTypeid(outfit.getAuxId());
-        m_raceInstance = object;
+        object->setParent(this);
         return object;
     }
-    if (outfit.getId() == 0)
-        return nullptr;
-    auto* instance = new TOutfitAppearanceInstanceQmlType(this);
+    auto* instance = new TOutfitAppearanceInstanceQmlType();
     instance->setTypeid(outfit.getId());
     instance->setHeadColor(outfitpalette::color(outfit.getHead()));
     instance->setTorsoColor(outfitpalette::color(outfit.getBody()));
@@ -244,7 +240,7 @@ InstanceBase* TAppearanceInstanceRenderer::createAppearanceInstanceByRaceID(cons
     instance->setDetailColor(outfitpalette::color(outfit.getFeet()));
     instance->setFirstAddOn((outfit.getAddons() & 1) != 0);
     instance->setSecondAddOn((outfit.getAddons() & 2) != 0);
-    m_raceInstance = instance;
+    instance->setParent(this);
     return instance;
 }
 

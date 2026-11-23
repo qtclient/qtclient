@@ -63,7 +63,7 @@ class TBlessingsDialogController final : public TDialogController<cip::tibia::ga
 {
     Q_OBJECT
 public:
-    explicit TBlessingsDialogController(QObject* parent = nullptr);
+    TBlessingsDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// Closes the dialog; the session's blessings dialog message opens it.
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);

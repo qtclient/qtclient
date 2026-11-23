@@ -8,7 +8,7 @@ namespace {
 
 using namespace ::tibia::protobuf::protocol;
 
-bool readSkill(ClassicReader& r, ProtocolSkill* out)
+bool readSkill(ClassicReader& r, SkillInfo* out)
 {
     uint16_t level = 0, base = 0, loyalty = 0, percent = 0;
     if (!r.u16(level) || !r.u16(base) || !r.u16(loyalty) || !r.u16(percent))
@@ -16,15 +16,18 @@ bool readSkill(ClassicReader& r, ProtocolSkill* out)
     out->set_level(level);
     out->set_base(base);
     out->set_loyalty(loyalty);
-    out->set_percent_hundredths(percent);
+    // The wire carries hundredths of a percent.
+    out->set_percent(static_cast<float>(percent) / 100.0f);
     return true;
 }
 
 bool readSkills(ClassicReader& r, GameserverMessagePlayerSkills* m)
 {
-    // Magic level, fist, club, sword, axe, distance, shielding, fishing.
-    for (int i = 0; i < 8; ++i) {
-        if (!readSkill(r, m->add_skills()))
+    SkillInfo* const skills[] = { m->mutable_magic_level(), m->mutable_fist(),     m->mutable_club(),
+                                  m->mutable_sword(),       m->mutable_axe(),      m->mutable_distance(),
+                                  m->mutable_shielding(),   m->mutable_fishing() };
+    for (SkillInfo* skill : skills) {
+        if (!readSkill(r, skill))
             return false;
     }
     uint8_t count = 0;
@@ -35,53 +38,59 @@ bool readSkills(ClassicReader& r, GameserverMessagePlayerSkills* m)
         int16_t value = 0;
         if (!r.u8(type) || !r.s16(value))
             return false;
-        ProtocolSkillModifier* modifier = m->add_modifiers();
-        modifier->set_type(type);
-        modifier->set_value(value);
+        CharacterInfoMagicSkillBoost* boost = m->add_magic_skill_boosts();
+        boost->set_type(type);
+        boost->set_value(value);
     }
     uint32_t capacity = 0, baseCapacity = 0;
-    uint16_t flat = 0, attack = 0;
-    uint8_t attackElement = 0, convertedElement = 0;
-    double converted = 0;
-    if (!r.u32(capacity) || !r.u32(baseCapacity) || !r.u16(flat) || !r.u16(attack) || !r.u8(attackElement)
-        || !r.real(converted) || !r.u8(convertedElement))
+    if (!r.u32(capacity) || !r.u32(baseCapacity))
         return false;
-    m->set_capacity(capacity);
-    m->set_base_capacity(baseCapacity);
+    m->mutable_capacity()->set_level(capacity);
+    m->mutable_capacity()->set_base(baseCapacity);
+    uint16_t flat = 0, attack = 0;
+    uint8_t attackDamageType = 0;
+    if (!r.u16(flat) || !r.u16(attack) || !r.u8(attackDamageType))
+        return false;
     m->set_flat_damage_healing(flat);
-    m->set_attack(attack);
-    m->set_attack_element(attackElement);
-    m->set_converted_damage(converted);
-    m->set_converted_element(convertedElement);
-    double lifeLeech = 0, manaLeech = 0, criticalChance = 0, criticalDamage = 0, onslaught = 0;
-    if (!r.real(lifeLeech) || !r.real(manaLeech) || !r.real(criticalChance) || !r.real(criticalDamage) || !r.real(onslaught))
+    m->set_attack_value(attack);
+    m->set_attack_damage_type(attackDamageType);
+    double converted = 0;
+    uint8_t convertedDamageType = 0;
+    if (!r.real(converted) || !r.u8(convertedDamageType))
+        return false;
+    m->mutable_damage_conversion()->set_value(converted);
+    m->mutable_damage_conversion()->set_damage_type(convertedDamageType);
+    double lifeLeech = 0, manaLeech = 0, criticalChance = 0, criticalExtraDamage = 0, onslaught = 0;
+    if (!r.real(lifeLeech) || !r.real(manaLeech) || !r.real(criticalChance) || !r.real(criticalExtraDamage)
+        || !r.real(onslaught))
         return false;
     m->set_life_leech(lifeLeech);
     m->set_mana_leech(manaLeech);
     m->set_critical_chance(criticalChance);
-    m->set_critical_damage(criticalDamage);
+    m->set_critical_extra_damage(criticalExtraDamage);
     m->set_onslaught(onslaught);
-    uint16_t defense = 0, armor = 0, mantra = 0, reflection = 0;
+    uint16_t defence = 0, armor = 0, mantra = 0, reflection = 0;
     double mitigation = 0, dodge = 0;
-    if (!r.u16(defense) || !r.u16(armor) || !r.u16(mantra) || !r.real(mitigation) || !r.real(dodge) || !r.u16(reflection))
+    if (!r.u16(defence) || !r.u16(armor) || !r.u16(mantra) || !r.real(mitigation) || !r.real(dodge)
+        || !r.u16(reflection))
         return false;
-    m->set_defense(defense);
+    m->set_defence(defence);
     m->set_armor(armor);
     m->set_mantra(mantra);
     m->set_mitigation(mitigation);
     m->set_dodge(dodge);
     m->set_damage_reflection(reflection);
-    uint8_t absorbs = 0;
-    if (!r.u8(absorbs))
+    uint8_t reductions = 0;
+    if (!r.u8(reductions))
         return false;
-    for (uint8_t i = 0; i < absorbs; ++i) {
-        uint8_t combat = 0;
+    for (uint8_t i = 0; i < reductions; ++i) {
+        uint8_t damageType = 0;
         double value = 0;
-        if (!r.u8(combat) || !r.real(value))
+        if (!r.u8(damageType) || !r.real(value))
             return false;
-        ProtocolCombatAbsorb* absorb = m->add_absorbs();
-        absorb->set_combat(combat);
-        absorb->set_value(value);
+        EquipmentDamageReduction* reduction = m->add_damage_reductions();
+        reduction->set_damage_type(damageType);
+        reduction->set_value(value);
     }
     double momentum = 0, transcendence = 0, amplification = 0;
     if (!r.real(momentum) || !r.real(transcendence) || !r.real(amplification))

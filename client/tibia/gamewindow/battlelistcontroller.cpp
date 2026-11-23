@@ -500,7 +500,10 @@ bool TBattleListController::filterButtonsVisible() const { return m_options.show
 bool TBattleListController::isPartyView() const { return m_options.isPartyView; }
 QString TBattleListController::name() const { return m_options.name.toHtmlEscaped(); }
 bool TBattleListController::isPrimary() const { return m_options.isPrimary; }
-bool TBattleListController::hasPremiumStatus() const { return m_storage->hasPremium(); }
+bool TBattleListController::hasPremiumStatus() const
+{
+    return m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
+}
 QVariant TBattleListController::battleListModel() const { return m_battleListModel; }
 
 QQuickItem* TBattleListController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -844,11 +847,16 @@ void TBattleListControllerStorage::setSidebarOptions(config::TSidebarOptions* op
     m_sidebarOptions = options;
     if (!options)
         m_loginRampUpFinished = false;
-    // Each list follows its own entry and the session's premium time.
-    for (const auto& [id, controller] : m_controllers) {
+    // Each list follows its own entry.
+    for (const auto& [id, controller] : m_controllers)
         controller->attachSidebarOptions(options);
-        controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
-    }
+}
+
+void TBattleListControllerStorage::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    m_premiumTimeStorage = premiumTimeStorage;
+    for (const auto& [id, controller] : m_controllers)
+        controller->setPremiumTimeStorage(m_premiumTimeStorage);
 }
 
 void TBattleListControllerStorage::setControlScheme(const int controlScheme)
@@ -889,7 +897,7 @@ void TBattleListControllerStorage::removeOptions(const int battleListId)
 
 bool TBattleListControllerStorage::hasPremium() const
 {
-    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
+    return m_premiumTimeStorage && m_premiumTimeStorage->isPremium();
 }
 
 bool TBattleListControllerStorage::findFreeBattleListId(const uint8_t requestedId, uint8_t* battleListId) const
@@ -940,7 +948,7 @@ void TBattleListControllerStorage::openBattleList(const uint8_t sidebarId, const
 
     auto* controller = new TBattleListController(battleListId, this, &m_dataModel, m_gameWindowItem, m_engine);
     controller->setControlScheme(m_controlScheme);
-    controller->setPremiumTimeStorage(game::TPremiumTimeStorage::liveInstance());
+    controller->setPremiumTimeStorage(m_premiumTimeStorage);
     connect(controller, &TBattleListController::battleListClosed, this, &TBattleListControllerStorage::onBattleListClosed,
             Qt::QueuedConnection);
     maximizeIfLoggedIn(controller);

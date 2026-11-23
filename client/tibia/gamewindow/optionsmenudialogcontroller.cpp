@@ -119,6 +119,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     auto* graphics = new config::TGraphicsOptionsPage(this);
     auto* effects = new config::TEffectsOptionsPage(this);
     m_hotkeys = new config::THotkeysOptionsPage(this);
+    connect(m_hotkeys, &config::THotkeysOptionsPage::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     m_controls = new config::TControlsOptionsPage(this);
     auto* screenshots = new config::TScreenshotsOptionsPage(config::screenshotsBindings(), this);
     auto* sound = new config::TSoundOptionsPage(this);

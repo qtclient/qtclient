@@ -81,7 +81,7 @@ class TCharacterTradeDialogController final : public TDialogController<cip::tibi
 {
     Q_OBJECT
 public:
-    explicit TCharacterTradeDialogController(QObject* parent = nullptr);
+    TCharacterTradeDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     static TCharacterTradeDialogController* instance();
 
     /// CIP connector: the dialog closes and follows `GameSession`'s character
@@ -370,7 +370,7 @@ class TMultiOfflineTrainingDialogController final
 {
     Q_OBJECT
 public:
-    explicit TMultiOfflineTrainingDialogController(QObject* parent = nullptr);
+    TMultiOfflineTrainingDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TMultiOfflineTrainingDialogController() override;
     static TMultiOfflineTrainingDialogController* instance();
 
@@ -403,7 +403,7 @@ class TOutfitMemorialDialogController final : public TDialogController<cip::tibi
 {
     Q_OBJECT
 public:
-    explicit TOutfitMemorialDialogController(QObject* parent = nullptr);
+    TOutfitMemorialDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     static TOutfitMemorialDialogController* instance();
 
     void showMemorial(const OutfitMemorialData& data);
@@ -455,7 +455,7 @@ public:
         bool operator==(const TData&) const = default;
     };
 
-    explicit TShowImageDialogController(QObject* parent = nullptr);
+    TShowImageDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TShowImageDialogController() override;
     static TShowImageDialogController* instance();
 
@@ -483,7 +483,7 @@ class TShowSpellBookDialogController final : public TDialogController<cip::tibia
 {
     Q_OBJECT
 public:
-    explicit TShowSpellBookDialogController(QObject* parent = nullptr);
+    TShowSpellBookDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// Closes the dialog and follows the session's spell book handler (none
     /// without a session).
@@ -507,7 +507,7 @@ class TSoulSealsDialogController final : public TDialogController<cip::tibia::ga
 {
     Q_OBJECT
 public:
-    explicit TSoulSealsDialogController(QObject* parent = nullptr);
+    TSoulSealsDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// Closes the dialogs and follows the session's soul seals, the task
     /// board handler (which opens the dialog) and the fight confirmation.

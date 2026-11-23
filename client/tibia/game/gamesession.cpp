@@ -426,10 +426,6 @@ void processSessionDumpMarker(const std::string_view marker)
 {
     tibia::game::notify("onSessionDumpMarker", std::string(marker));
 }
-void processReadyForSecondaryConnection(std::string_view token)
-{
-    gameSessionState().processReadyForSecondaryConnection(token);
-}
 void processWalkCancel(const tibia::client::Direction direction)
 {
     tibia::game::localPlayerCancelWalk(direction);

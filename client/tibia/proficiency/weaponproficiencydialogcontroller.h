@@ -2,6 +2,7 @@
 
 #include "input/gameactiondispatch.h"
 #include "client/gamecore.h"
+#include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
 #include "proficiency/proficiencystorage.h"
 #include "qtconnectionmanager.h"
@@ -20,6 +21,10 @@ namespace tibia::game {
 class IGameSession;
 }
 
+namespace tibia::config {
+class TClientOptions;
+}
+
 struct ItemInspectionData;
 
 namespace tibia {
@@ -31,17 +36,14 @@ class TMessageDialogController;
 namespace tibia {
 namespace proficiency {
 
-/// A weapon of the dialog's grid.
+/// A weapon of the dialog's grid (CIP: the list's copy of the appearance
+/// type, without a tier).
 struct TWeaponEntry
 {
-    uint16_t typeId = 0;
-    QString name;
-    /// The appearances' WEAPON_TYPE.
+    /// What the filter buttons look at.
+    gamewindow::TAppearanceTypeEntry type;
+    /// The appearances' WEAPON_TYPE, what the weapon-type set matches.
     uint32_t weaponType = 0;
-    uint32_t minimumLevel = 0;
-    std::vector<uint32_t> professions;
-    bool hasClothSlot = false;
-    int clothSlot = 0;
 };
 
 /// The weapons with a proficiency (CIP: the TAppearanceTypeListModel the
@@ -69,7 +71,9 @@ public:
         HasProficiencyMastery,
     };
 
-    explicit TWeaponObjectsModel(TProficiencyStorage* storage, QObject* parent = nullptr);
+    /// CIP: the model follows the client options' list model options (the
+    /// loot value frames of colorizeLootStyle).
+    TWeaponObjectsModel(config::TClientOptions* ClientOptions, TProficiencyStorage* storage, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -81,35 +85,43 @@ public:
     int size() const { return static_cast<int>(m_entries.size()); }
     bool contains(uint16_t typeId) const
     {
-        return std::ranges::any_of(m_entries, [typeId](const TWeaponEntry& entry) { return entry.typeId == typeId; });
+        return std::ranges::any_of(m_entries, [typeId](const TWeaponEntry& entry) { return entry.type.typeId == typeId; });
     }
-    uint32_t xp(int row) const { return m_storage->xp(m_entries[row].typeId); }
+    uint32_t xp(int row) const { return m_storage->xp(m_entries[row].type.typeId); }
 
     void onObjectProficiencyXPChanged() override;
 
+    void onItemPriceVisualizationChanged() override;
+
 private:
-    /// CIP : the loot value frames follow colorizeLootStyle.
-    void onLootValueImagesChanged();
     QString lootValueImageSource(uint16_t typeId, int style) const;
 
+    config::TClientOptions* m_clientOptions;
     TProficiencyStorage* m_storage;
     std::vector<TWeaponEntry> m_entries;
-    int m_colorizeLootStyle = 0;
     QMetaObject::Connection m_pricesConnection;
 };
 
-/// The grid's filters (CIP: TAppearanceTypeListModelSortFilterProxy with
-/// the weapon-type set of setWeaponTypeFilter).
+/// The grid's filters (CIP: the TAppearanceTypeListModelSortFilterProxy the
+/// dialog makes, with rows passing without any filter and sorted by
+/// proficiency XP, highest first, then by name).
 class TWeaponObjectsProxy final : public cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy
 {
     Q_OBJECT
 public:
     explicit TWeaponObjectsProxy(TWeaponObjectsModel* model, QObject* parent = nullptr);
 
-    void clearFilters();
-    void setNameFilter(const QString& name);
-    void setWeaponTypes(const std::set<int>& types);
-    void setFilter(bool byLevel, bool byVocation, bool oneHand, bool twoHand);
+    bool filterByLevel() const override { return m_filter.filterByLevel; }
+    bool filterByVocation() const override { return m_filter.filterByVocation; }
+    bool onlyOneHandWeapons() const override { return m_filter.onlyOneHandWeapons; }
+    bool onlyTwoHandWeapons() const override { return m_filter.onlyTwoHandWeapons; }
+
+    /// Clears the weapon types, the name and the buttons.
+    void resetFilters();
+    void setName(const QString& name);
+    /// The weapon types shown; empty for all.
+    void setTypeIds(const std::set<int>& weaponTypes);
+    void setFilter(const gamewindow::TAppearanceTypeFilter& filter);
     /// The proxy row of `typeId`, -1 when filtered out.
     int rowOf(uint16_t typeId) const;
     uint16_t typeIdAt(int row) const;
@@ -120,9 +132,10 @@ protected:
 
 private:
     TWeaponObjectsModel* m_model;
-    QString m_name;
-    std::set<int> m_weaponTypes;
     QCollator m_collator;
+    std::set<int> m_weaponTypes;
+    QString m_name;
+    gamewindow::TAppearanceTypeFilter m_filter;
 };
 
 /// One entry of the weapon-type combo box (CIP: TQmlWeaponTypes).
@@ -148,7 +161,10 @@ class TWeaponProficiencyDialogController final
 public:
     /// The levels of a weapon's proficiency table.
     int maxProficiencyLevels() const override;
-    explicit TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent = nullptr);
+    /// CIP: the client options go to the weapons list; the dialog is made
+    /// with `engine` in `dialogParentItem`.
+    TWeaponProficiencyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                       QObject* parent = nullptr);
     ~TWeaponProficiencyDialogController() override;
 
     /// CIP .

@@ -62,7 +62,7 @@ void localPlayerSetFreeCapacity(const uint32_t hundredths)
 
 void localPlayerSetBlessings(const uint16_t blessings, const uint8_t blessVisualState)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setBlessings(blessings, blessVisualState); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateBlessings(blessings, blessVisualState); });
 }
 
 void localPlayerSetResourceBalance(const tibia::client::ResourceTypes_t type, const uint64_t value)
@@ -160,63 +160,6 @@ void localPlayerSetTotalCapacity(const uint32_t totalCapacity)
 void localPlayerSetBaseCapacity(const uint32_t baseCapacity)
 {
     playerDataAuthorityWrite([&](TPlayerData& data) { data.updateBaseCapacity(baseCapacity); });
-}
-
-void localPlayerSetFlatDamageHealing(const uint16_t flatBonus)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setFlatDamageHealing(flatBonus);
-}
-
-void localPlayerSetAttackInfo(const uint16_t attackValue, const uint8_t attackElement)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setAttackInfo(attackValue, attackElement);
-}
-
-void localPlayerSetConvertedDamage(const double convertedDamage, const uint8_t convertedElement)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setConvertedDamage(convertedDamage, convertedElement);
-}
-
-void localPlayerSetImbuements(const double lifeLeech, const double manaLeech, const double critChance,
-                              const double critDamage, const double onslaught)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setImbuements(lifeLeech, manaLeech, critChance, critDamage, onslaught);
-}
-
-void localPlayerSetDefenseInfo(const uint16_t defense, const uint16_t armor, const uint16_t mantra,
-                               const double mitigation, const double dodge, const uint16_t damageReflection)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setDefenseInfo(defense, armor, mantra, mitigation, dodge, damageReflection);
-}
-
-void localPlayerSetCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setCombatAbsorbValues(absorbValues);
-}
-
-void localPlayerSetForgeBonuses(const double momentum, const double transcendence, const double amplification)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setForgeBonuses(momentum, transcendence, amplification);
-}
-
-void localPlayerSetSpecialMagicLevels(std::vector<std::pair<int, int>> boosts)
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        stats->setSpecialMagicLevels(std::move(boosts));
-}
-
-std::vector<std::pair<int, int>> localPlayerSpecialMagicLevels()
-{
-    if (TPlayerSkillStats* stats = currentPlayerSkillStats())
-        return stats->specialMagicLevels();
-    return {};
 }
 
 uint32_t localPlayerManaShield()
@@ -461,7 +404,7 @@ uint8_t localPlayerSkull()
 uint16_t localPlayerBlessings()
 {
     if (TPlayerData* data = currentPlayerData())
-        return data->blessings();
+        return data->blessingMask();
     return 0;
 }
 

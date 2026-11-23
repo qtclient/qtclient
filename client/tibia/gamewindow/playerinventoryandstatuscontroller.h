@@ -4,6 +4,7 @@
 #include "client/gamecore.h"
 #include "config/sidebaroptions.h"
 #include "game/playerstatestracker.h"
+#include "gamewindow/sidebarpanelcontrollerbase.h"
 #include "input/gameaction.h"
 #include "input/gameactionmapper.h"
 
@@ -30,7 +31,8 @@ namespace gamewindow {
 /// tactics, blessings and special conditions, and the slots' clicks, hovers
 /// and drags, with the slots' context menu. Not ported yet: the blessing
 /// dialog's contents.
-class TPlayerInventoryAndStatusController final : public cip::tibia::gamewindow::TPlayerInventoryAndStatusController
+class TPlayerInventoryAndStatusController final
+    : public TSidebarPanelController<cip::tibia::gamewindow::TPlayerInventoryAndStatusController>
 {
     Q_OBJECT
 public:
@@ -39,8 +41,9 @@ public:
 
     static constexpr int SlotCount = 11;
 
-    /// Binds inventory.qml: its slot signals, and the slots it lays out.
-    void setPanelItem(QQuickItem* panel);
+    /// CIP v14: the base's, then inventory.qml's slot signals and the slots
+    /// it lays out.
+    void setPanelItem(QQuickItem* PanelItem) override;
     /// The character's options; null outside the world.
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
@@ -106,12 +109,10 @@ private:
     /// CIP: the expiry options apply to every slot.
     void onInventoryOptionsChanged();
 
-    QPointer<QQuickItem> m_panel;
     QPointer<config::TSidebarOptions> m_options;
     std::array<container::TContainerSlotQmlInformation*, SlotCount> m_slots{};
     game::TPlayerStatesTracker m_states;
     input::TGameActionMapper m_mapper;
-    QTimer m_clockTimer;
     int m_hoveredSlot = -1;
     bool m_showExpire = true;
     bool m_showExpireWhenUnused = false;

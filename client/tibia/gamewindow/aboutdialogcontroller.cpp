@@ -14,7 +14,9 @@ namespace tibia::gamewindow {
 
 TAboutDialogController::TAboutDialogController(QObject* parent)
     : TDialogController(QStringLiteral("AboutDialog.qml"), parent)
-    , m_licensesText(new TEditTextController(this))
+    // CipSoft makes it with the about dialog's engine and dialog parent item; both
+    // are the dialog stack's here (TDialog's fallback for null).
+    , m_licensesText(new TEditTextController(nullptr, nullptr, this))
 {
 }
 

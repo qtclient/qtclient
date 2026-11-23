@@ -8,8 +8,9 @@
 
 namespace tibia::gamewindow {
 
-TVocationSelectionDialogController::TVocationSelectionDialogController(QQuickItem* mapWindowPane, QObject* parent)
-    : TDialogController(QStringLiteral("tutorial/VocationSelectionPopup.qml"), parent)
+TVocationSelectionDialogController::TVocationSelectionDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                                                       QQuickItem* mapWindowPane, QObject* parent)
+    : TDialogController(QStringLiteral("tutorial/VocationSelectionPopup.qml"), engine, dialogParentItem, parent)
     , m_mapWindowPane(mapWindowPane)
 {
     m_spellListModel = new TSpellListDataModel(this);
@@ -39,11 +40,11 @@ QQuickItem* TVocationSelectionDialogController::mapWindowPane() { return m_mapWi
 
 void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcomponents::enums::EVocation Vocation)
 {
-    const auto cipId = static_cast<uint8_t>(Vocation);
-    // EVocation matches Crystal VOCATION_*_CIP (Knight=1 … Monk=5).
-    if (cipId >= 1 && cipId <= 5)
-        tibia::game::sendTutorialChangeVocation(cipId);
-    requestClose();
+    // In a session the choice goes to the server: the protocol's vocation is
+    // the same number (None..Monk convert one to one).
+    if (tibia::game::isOnline())
+        tibia::game::sendTutorialChangeVocation(static_cast<uint8_t>(Vocation));
+    dialog()->close();
 }
 
 void TVocationSelectionDialogController::nextPageClicked()

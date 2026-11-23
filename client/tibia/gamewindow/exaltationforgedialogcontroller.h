@@ -20,6 +20,9 @@
 #include <vector>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
 namespace game {
 class IGameSession;
 }
@@ -317,7 +320,8 @@ class TExaltationForgeDialogController final : public TDialogController<cip::tib
 {
     Q_OBJECT
 public:
-    explicit TExaltationForgeDialogController(QObject* parent = nullptr);
+    TExaltationForgeDialogController(config::TClientOptions* clientOptions, QQmlEngine* engine,
+                                     QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     ~TExaltationForgeDialogController() override;
@@ -334,6 +338,7 @@ private:
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
     void setTab(EDialogTab tab);
 
+    config::TClientOptions* m_clientOptions;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<exaltation::TExaltationStorage> m_storage;
     TExaltationResultDialogController* m_resultDialog;

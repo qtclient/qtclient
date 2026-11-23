@@ -366,7 +366,10 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TQmlWorldTransferCondition(false, {}, this);
     new TSpritesheetDataObject({}, this);
     new TSimpleNameAndCountModel(this);
-    new TCharacterTradeDialogController(this);
+    {
+        TDialogStackController* const stack = TDialogStackController::instance();
+        new TCharacterTradeDialogController(stack ? stack->engine() : nullptr, stack ? stack->dialogPlaceholder() : nullptr, this);
+    }
     new TCharacterTradeDuePaymentDialogController(this);
     new TCharacterWorldTransferDialogController(this);
     new TMainCharacterChangeDialogController(this);

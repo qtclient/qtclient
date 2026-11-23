@@ -16,6 +16,9 @@ namespace tibia {
 namespace game {
 class IGameSession;
 }
+namespace spells {
+class TSpellInfoStorage;
+}
 namespace gamewindow {
 
 /// One cooldown icon for CooldownBar.qml (CIP: TCooldownProgressDataForQML).
@@ -34,7 +37,9 @@ class TCooldownBarController final : public cip::tibia::gamewindow::TCooldownBar
 {
     Q_OBJECT
 public:
-    explicit TCooldownBarController(QQuickItem* gameWindowItem, QObject* parent = nullptr);
+    /// `cooldownBar`: the game window's CooldownBar item.
+    TCooldownBarController(spells::TSpellInfoStorage* spellInfoStorage, QQuickItem* cooldownBar,
+                           QObject* parent = nullptr);
 
     /// Rebuilds both rows when the cooldowns changed since the last call.
     void update(qint64 now);
@@ -48,9 +53,10 @@ private:
     /// Shows every bar group idle.
     void showIdleSpellGroups();
     /// "<name> (<seconds> sec. cooldown)" for a spell's icon.
-    static QString spellTooltip(int spellId);
+    QString spellTooltip(int spellId) const;
     /// Option 0x77 cooldownBarEnabled; CIP's game window controller does this.
 
+    spells::TSpellInfoStorage* m_spellInfoStorage;
     QPointer<QQuickItem> m_bar;
     std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
     std::shared_ptr<game::IGameSession> m_gameSession;

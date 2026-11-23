@@ -110,12 +110,22 @@ public:
     using Controller = cip::tibia::gamewindow::TDialogControllerBase;
 
     /// `qmlFile`: a file of the qmlcomponents module ("BlessingsDialog.qml")
-    /// or a full URL ("qrc:/qt/qml/mod...").
-    TDialog(Controller* controller, TDialogHooks* hooks, const QString& qmlFile);
+    /// or a full URL ("qrc:/qt/qml/mod..."). `engine` makes the item, which goes
+    /// into `dialogParentItem` (the game window's dialog placeholder). A controller
+    /// made without them uses the dialog stack's.
+    TDialog(Controller* controller, TDialogHooks* hooks, const QString& qmlFile, QQmlEngine* engine = nullptr,
+            QQuickItem* dialogParentItem = nullptr);
     ~TDialog() override;
 
     Controller* controller() const { return m_controller; }
     TDialogHooks* hooks() const { return m_hooks; }
+    /// For a dialog a controller composes instead of deriving from it (the death
+    /// dialog's message box): the engine and parent item its owner was made with.
+    void setEngineAndDialogParentItem(QQmlEngine* engine, QQuickItem* dialogParentItem)
+    {
+        m_engine = engine;
+        m_dialogParentItem = dialogParentItem;
+    }
     QQuickItem* item() const { return m_item; }
 
     /// v19 (CIP): makes the item, hidden, once.
@@ -144,7 +154,9 @@ private:
 
     Controller* m_controller;
     TDialogHooks* m_hooks;
+    QQmlEngine* m_engine;
     QString m_qmlFile;
+    QPointer<QQuickItem> m_dialogParentItem;
     QPointer<QQuickItem> m_item;
     QPointer<QQuickItem> m_shield;
     bool m_shieldDarkened = false;
@@ -160,6 +172,11 @@ public:
     explicit TDialogController(const QString& qmlFile, QObject* parent = nullptr)
         : Base(parent)
         , m_dialog(new TDialog(this, this, qmlFile))
+    {}
+    /// CipSoft's TDialogControllerBase(qml, engine, dialog parent item, parent).
+    TDialogController(const QString& qmlFile, QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr)
+        : Base(parent)
+        , m_dialog(new TDialog(this, this, qmlFile, engine, dialogParentItem))
     {}
     ~TDialogController() override { m_dialog->destroy(); }
 

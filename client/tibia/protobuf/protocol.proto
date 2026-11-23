@@ -88,6 +88,12 @@ message ObjectIdentifier {
   optional uint32 data = 2;
 }
 
+// CIP ObjectIdentifierAndPosition: an object and where it is (QuickLoot).
+message ObjectIdentifierAndPosition {
+  optional ObjectIdentifier object_identifier = 1;
+  optional ObjectPosition object_position = 2;
+}
+
 // RE from tip classic ProtocolGame::getInventorySlot — not invented CIP ProtocolObject names. Reusable for container/tile item opcodes later.
 message ProtocolInventoryItem {
   optional uint32 item_id = 1;
@@ -201,26 +207,6 @@ message ProtocolMapField {
 message ProtocolContainerCategory {
   optional uint32 id = 1;
   optional string name = 2;
-}
-
-// CIP TProtobufServerMessageTranslator::v70: u16 level, base, loyalty, percent in hundredths.
-message ProtocolSkill {
-  optional uint32 level = 1;
-  optional uint32 base = 2;
-  optional uint32 loyalty = 3;
-  optional uint32 percent_hundredths = 4;
-}
-
-// CIP v69 list: u8 type, s16 value.
-message ProtocolSkillModifier {
-  optional uint32 type = 1;
-  optional int32 value = 2;
-}
-
-// CIP v69 list: u8 combat type, double value.
-message ProtocolCombatAbsorb {
-  optional uint32 combat = 1;
-  optional double value = 2;
 }
 
 // CIP channel entry: u16 id, string name.
@@ -1441,6 +1427,39 @@ message ProtocolProficiencyPerkChoice {
   optional uint32 perk_position = 2;
 }
 
+// CipSoft SkillInfo (TProtobufServerMessageTranslator::v70): u16 level, base, loyalty, percent in hundredths (stored / 100).
+message SkillInfo {
+  optional uint32 level = 1;
+  optional uint32 base = 2;
+  optional uint32 loyalty = 3;
+  optional float percent = 4;
+}
+
+// CipSoft CharacterInfoMagicSkillBoost (PlayerSkills field 9): u8 damage type, s16 levels.
+message CharacterInfoMagicSkillBoost {
+  optional int32 type = 1;
+  optional int32 value = 2;
+}
+
+// CipSoft SpecialDamageConversionStats (PlayerSkills field 14): double converted damage, u8 damage type.
+message SpecialDamageConversionStats {
+  optional double value = 1;
+  optional int32 damage_type = 2;
+}
+
+// CipSoft EquipmentDamageReduction (PlayerSkills field 26): u8 damage type, double reduction.
+message EquipmentDamageReduction {
+  optional int32 damage_type = 1;
+  optional double value = 2;
+}
+
+// CipSoft CreatureData, the fields CreatureSpeed fills (1 replaced/known id, 2 id, 13 speed); the other fields are not recovered yet (ProtocolCreature still carries the creature messages).
+message CreatureData {
+  optional uint32 remove_id = 1;
+  optional uint32 id = 2;
+  optional uint32 speed = 13;
+}
+
 // server opcode 0x03 (3) — CreatureData
 // classic: creature (new creature layout)
 // CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61).
@@ -1542,20 +1561,19 @@ message GameserverMessageLoginWait {
 }
 
 // server opcode 0x17 (23) — LoginSuccess
-// classic: u32 playerId; u16 beat; [GameNewSpeedLaw] 3× double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]; u8 daily reward streak length
-// CIP RE via dmpd mapLoginSuccess (fields 1–5,8–10,12). Fields 6–7 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates.
+// classic: u32 playerId; u16 beat; 3x double; u8 can change PvP frame setting; u8 expert PvP; string store url; u16 coins packet size; u8 world type; u8 daily reward streak length
+// CipSoft TProtobufServerMessageTranslator::v40 (serializer field numbers; field 12 is the world type, checked < 5 by its converter).
 message GameserverMessageLoginSuccess {
   optional uint32 player_id = 1;
   optional uint32 beat_duration = 2;
   optional double speed_a = 3;
   optional double speed_b = 4;
   optional double speed_c = 5;
-  optional uint32 can_report_bugs = 6;
-  optional uint32 expert_pvp = 7;
-  optional uint32 pvp_frame = 8;
+  optional bool can_change_pvp_frame_setting = 7;
+  optional bool expert_pvp = 8;
   optional string store_url = 9;
   optional uint32 coins_packet_size = 10;
-  optional uint32 exiva_options = 12;
+  optional int32 world_type = 12;
   optional uint32 daily_reward_streak_length = 13;
   extend GameserverMessage {
     optional GameserverMessageLoginSuccess gameserver_message_login_success = 23;
@@ -1628,8 +1646,8 @@ message GameserverMessagePingBack {
 }
 
 // server opcode 0x1F (31) — LoginChallenge
-// classic: u32 timestamp; u8 random; (+1 pad byte 1405+ ignored)
-// Pad not a pb field — fill/measure consume it for length authority (Crystal sends 0x71).
+// classic: u32 timestamp; u8 random
+// CipSoft TProtobufServerMessageTranslator::v53. Crystal's trailing byte is packet padding (stripped by the raw data processor).
 message GameserverMessageLoginChallenge {
   optional uint32 timestamp = 1;
   optional uint32 random = 2;
@@ -2379,10 +2397,11 @@ message GameserverMessageCreatureOutfit {
 }
 
 // server opcode 0x8F (143) — CreatureSpeed
-// classic: u32 creatureId; u16 speed
+// classic: u32 creatureId; u16 base speed; u16 speed
+// CipSoft TProtobufServerMessageTranslator::v45: the id goes to creature.remove_id and creature.id, the speed to creature.speed.
 message GameserverMessageCreatureSpeed {
-  optional uint32 creature_id = 1;
-  optional uint32 speed = 2;
+  optional CreatureData creature = 1;
+  optional uint32 base_speed = 2;
   extend GameserverMessage {
     optional GameserverMessageCreatureSpeed gameserver_message_creature_speed = 143;
   }
@@ -2616,33 +2635,38 @@ message GameserverMessagePlayerDataCurrent {
 }
 
 // server opcode 0xA1 (161) — PlayerSkills
-// classic: 8 skills (magic, fist, club, sword, axe, distance, shielding, fishing); u8 count x (u8, s16); u32 capacity, base capacity; u16 flat; u16 attack, u8 element; double converted, u8 element; 5 doubles; u16 defense, armor, mantra; 2 doubles; u16 reflection; u8 count x (u8, double); 3 doubles
-// CIP TProtobufServerMessageTranslator::v69.
+// classic: 8 skills (magic, fist, club, sword, axe, distance, shielding, fishing) x (u16 level, base, loyalty, percent hundredths); u8 count x (u8 type, s16 value); u32 capacity, base capacity; u16 flat; u16 attack, u8 element; double converted, u8 element; 5 doubles; u16 defence, armor, mantra; 2 doubles; u16 reflection; u8 count x (u8, double); 3 doubles
+// CipSoft layout (TProtobufServerMessageTranslator::v69, serializer field numbers). Capacity is a SkillInfo (level = capacity, base = base capacity).
 message GameserverMessagePlayerSkills {
-  repeated ProtocolSkill skills = 1;
-  repeated ProtocolSkillModifier modifiers = 2;
-  optional uint32 capacity = 3;
-  optional uint32 base_capacity = 4;
-  optional uint32 flat_damage_healing = 5;
-  optional uint32 attack = 6;
-  optional uint32 attack_element = 7;
-  optional double converted_damage = 8;
-  optional uint32 converted_element = 9;
-  optional double life_leech = 10;
-  optional double mana_leech = 11;
-  optional double critical_chance = 12;
-  optional double critical_damage = 13;
-  optional double onslaught = 14;
-  optional uint32 defense = 15;
-  optional uint32 armor = 16;
-  optional uint32 mantra = 17;
-  optional double mitigation = 18;
-  optional double dodge = 19;
-  optional uint32 damage_reflection = 20;
-  repeated ProtocolCombatAbsorb absorbs = 21;
-  optional double momentum = 22;
-  optional double transcendence = 23;
-  optional double amplification = 24;
+  optional SkillInfo magic_level = 1;
+  optional SkillInfo fist = 2;
+  optional SkillInfo club = 3;
+  optional SkillInfo sword = 4;
+  optional SkillInfo axe = 5;
+  optional SkillInfo distance = 6;
+  optional SkillInfo shielding = 7;
+  optional SkillInfo fishing = 8;
+  repeated CharacterInfoMagicSkillBoost magic_skill_boosts = 9;
+  optional SkillInfo capacity = 10;
+  optional uint32 flat_damage_healing = 11;
+  optional uint32 attack_value = 12;
+  optional int32 attack_damage_type = 13;
+  optional SpecialDamageConversionStats damage_conversion = 14;
+  optional double life_leech = 15;
+  optional double mana_leech = 16;
+  optional double critical_chance = 17;
+  optional double critical_extra_damage = 18;
+  optional double onslaught = 19;
+  optional uint32 defence = 20;
+  optional uint32 armor = 21;
+  optional uint32 mantra = 22;
+  optional double mitigation = 23;
+  optional double dodge = 24;
+  optional uint32 damage_reflection = 25;
+  repeated EquipmentDamageReduction damage_reductions = 26;
+  optional double momentum = 27;
+  optional double transcendence = 28;
+  optional double amplification = 29;
   extend GameserverMessage {
     optional GameserverMessagePlayerSkills gameserver_message_player_skills = 161;
   }
@@ -3077,8 +3101,8 @@ message GameserverMessageWeaponProficiency {
 }
 
 // server opcode 0xC5 (197) — GemAtelierGemRevealed
-// classic: u32 gem_id
-// CIP RE: field 1 @ +0x18 is GemId (not item id)
+// classic: u16 gem_id
+// CipSoft TProtobufServerMessageTranslator::v180: one u16 (the revealed gem's index).
 message GameserverMessageGemAtelierGemRevealed {
   optional uint32 gem_id = 1;
   extend GameserverMessage {
@@ -3894,10 +3918,8 @@ message GameclientMessageLogin {
 }
 
 // client opcode 0x0B (11) — SecondaryLogin
-// string token (Crystal secondary login).
+// string token (Crystal secondary login). CipSoft's SecondaryLogin: a byte, then an RSA block with two strings (an unidentified one and the ReadyForSecondaryConnection token).
 message GameclientMessageSecondaryLogin {
-  // CipSoft's SecondaryLogin: a byte, then an RSA block with two strings
-  // (an unidentified one and the ReadyForSecondaryConnection token).
   optional string token = 1;
   optional uint32 challenge_connection = 2;
   optional string first_string = 3;
@@ -3947,13 +3969,13 @@ message GameclientMessagePingBack {
 }
 
 // client opcode 0x28 (40) — StashAction
-// CIP TProtobufClientMessageTranslator::v93.
+// CIP TProtobufClientMessageTranslator::v93: u8 action; actions 0-2: coordinate, u16 type, u8 stack position (0: u8 count); 3: u16 type, u32 count, u8.
 message GameclientMessageStashAction {
   optional uint32 action = 1;
-  optional ProtocolCoordinate position = 2;
-  optional uint32 object_id = 3;
-  optional uint32 stack_position = 4;
-  optional uint32 count = 5;
+  optional ObjectPosition object_position = 2;
+  optional ObjectIdentifier object_identifier = 3;
+  optional uint32 count = 4;
+  optional uint32 stack_position = 5;
   extend GameclientMessage {
     optional GameclientMessageStashAction gameclient_message_stash_action = 40;
   }
@@ -4260,15 +4282,13 @@ message GameclientMessageEquipObject {
 }
 
 // client opcode 0x78 (120) — MoveObject
-// classic: pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u8 count; bool extra_flag
-// CIP TProtobufClientMessageTranslator::v9.
+// CIP TProtobufClientMessageTranslator::v9: source coordinate, u16 type, u8 stack position, destination coordinate, u8 count, bool.
 message GameclientMessageMoveObject {
-  optional ProtocolCoordinate from_position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 from_stack_position = 3;
-  optional ProtocolCoordinate to_position = 4;
-  optional uint32 count = 5;
-  optional bool extra_flag = 6;
+  optional ObjectPosition source_object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
+  optional ObjectPosition destination_object_position = 3;
+  optional uint32 count = 4;
+  optional bool extra_flag = 5;
   extend GameclientMessage {
     optional GameclientMessageMoveObject gameclient_message_move_object = 120;
   }
@@ -4321,13 +4341,11 @@ message GameclientMessageCloseNPCTrade {
 }
 
 // client opcode 0x7D (125) — TradeObject
-// classic: pos position; u16 object_id; u8 stack_position; u32 creature_id
-// CIP TProtobufClientMessageTranslator::v59.
+// CIP TProtobufClientMessageTranslator::v59: coordinate, u16 type, u8 stack position, u32 creature id.
 message GameclientMessageTradeObject {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
-  optional uint32 creature_id = 4;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
+  optional uint32 creature_id = 3;
   extend GameclientMessage {
     optional GameclientMessageTradeObject gameclient_message_trade_object = 125;
   }
@@ -4376,65 +4394,54 @@ message GameclientMessageFriendSystemAction {
 }
 
 // client opcode 0x82 (130) — UseObject
-// classic: pos position; u16 object_id; u8 stack_position; u8 container_index
-// CIP TProtobufClientMessageTranslator::v13.
+// CIP TProtobufClientMessageTranslator::v13: coordinate, u16 type, u8 stack position, u8 container index (0 when unset).
 message GameclientMessageUseObject {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
-  optional uint32 container_index = 4;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
+  optional uint32 container_index = 3;
   extend GameclientMessage {
     optional GameclientMessageUseObject gameclient_message_use_object = 130;
   }
 }
 
 // client opcode 0x83 (131) — UseTwoObjects
-// classic: pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u16 to_object_id; u8 to_stack_position
-// CIP TProtobufClientMessageTranslator::v14.
+// CIP TProtobufClientMessageTranslator::v14: source coordinate, u16 type, u8 stack position; the same for the destination.
 message GameclientMessageUseTwoObjects {
-  optional ProtocolCoordinate from_position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 from_stack_position = 3;
-  optional ProtocolCoordinate to_position = 4;
-  optional uint32 to_object_id = 5;
-  optional uint32 to_stack_position = 6;
+  optional ObjectPosition source_object_position = 1;
+  optional ObjectIdentifier source_object_identifier = 2;
+  optional ObjectPosition destination_object_position = 3;
+  optional ObjectIdentifier destination_object_identifier = 4;
   extend GameclientMessage {
     optional GameclientMessageUseTwoObjects gameclient_message_use_two_objects = 131;
   }
 }
 
 // client opcode 0x84 (132) — UseOnCreature
-// classic: pos position; u16 object_id; u8 stack_position; u32 creature_id
-// CIP TProtobufClientMessageTranslator::v15.
+// CIP TProtobufClientMessageTranslator::v15: coordinate, u16 type, u8 stack position, u32 creature id.
 message GameclientMessageUseOnCreature {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
-  optional uint32 creature_id = 4;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
+  optional uint32 creature_id = 3;
   extend GameclientMessage {
     optional GameclientMessageUseOnCreature gameclient_message_use_on_creature = 132;
   }
 }
 
 // client opcode 0x85 (133) — TurnObject
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v11.
+// CIP TProtobufClientMessageTranslator::v11: coordinate, u16 type, u8 stack position.
 message GameclientMessageTurnObject {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
   extend GameclientMessage {
     optional GameclientMessageTurnObject gameclient_message_turn_object = 133;
   }
 }
 
 // client opcode 0x86 (134) — ConfigureShowOffSocket
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v12.
+// CIP TProtobufClientMessageTranslator::v12: coordinate, u16 type, u8 stack position.
 message GameclientMessageConfigureShowOffSocket {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
   extend GameclientMessage {
     optional GameclientMessageConfigureShowOffSocket gameclient_message_configure_show_off_socket = 134;
   }
@@ -4484,24 +4491,20 @@ message GameclientMessageEditList {
 }
 
 // client opcode 0x8B (139) — ToggleWrapState
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v10.
+// CIP TProtobufClientMessageTranslator::v10: coordinate, u16 type, u8 stack position.
 message GameclientMessageToggleWrapState {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
   extend GameclientMessage {
     optional GameclientMessageToggleWrapState gameclient_message_toggle_wrap_state = 139;
   }
 }
 
 // client opcode 0x8C (140) — Look
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v16.
+// CIP TProtobufClientMessageTranslator::v16: coordinate, u16 type, u8 stack position.
 message GameclientMessageLook {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
   extend GameclientMessage {
     optional GameclientMessageLook gameclient_message_look = 140;
   }
@@ -4528,27 +4531,23 @@ message GameclientMessageJoinAggression {
 }
 
 // client opcode 0x8F (143) — QuickLoot
-// classic: u8 variant; pos? position; u16? object_id; u8? stack_position
-// CIP TProtobufClientMessageTranslator::v87.
+// CIP TProtobufClientMessageTranslator::v87: u8 variant; variants 0 and 1: coordinate, u16 type, u8 stack position.
 message GameclientMessageQuickLoot {
   optional uint32 variant = 1;
-  optional ProtocolCoordinate position = 2;
-  optional uint32 object_id = 3;
-  optional uint32 stack_position = 4;
+  optional ObjectIdentifierAndPosition object = 2;
   extend GameclientMessage {
     optional GameclientMessageQuickLoot gameclient_message_quick_loot = 143;
   }
 }
 
 // client opcode 0x90 (144) — ManagedContainer
-// CIP TProtobufClientMessageTranslator::v91.
+// CIP TProtobufClientMessageTranslator::v91: u8 action; not 3: u8 category, actions 0 and 4 add coordinate, u16 type, u8 stack position; 3: bool.
 message GameclientMessageManagedContainer {
   optional uint32 action = 1;
   optional uint32 category = 2;
-  optional ProtocolCoordinate position = 3;
-  optional uint32 object_id = 4;
-  optional uint32 stack_position = 5;
-  optional bool use_main_as_fallback = 6;
+  optional ObjectIdentifier object_identifier = 3;
+  optional ObjectPosition object_position = 4;
+  optional bool use_main_as_fallback = 5;
   extend GameclientMessage {
     optional GameclientMessageManagedContainer gameclient_message_managed_container = 144;
   }
@@ -4592,10 +4591,9 @@ message GameclientMessageDepotSearchType {
 }
 
 // client opcode 0x95 (149) — OpenParentContainer
-// classic: pos position
-// CIP TProtobufClientMessageTranslator::v96.
+// CIP TProtobufClientMessageTranslator::v96: coordinate.
 message GameclientMessageOpenParentContainer {
-  optional ProtocolCoordinate position = 1;
+  optional ObjectPosition object_position = 1;
   extend GameclientMessage {
     optional GameclientMessageOpenParentContainer gameclient_message_open_parent_container = 149;
   }
@@ -4609,7 +4607,7 @@ message GameclientMessageTalk {
   optional string receiver = 3;
   optional string text = 4;
   optional uint32 aim_mode = 5;
-  optional ProtocolCoordinate aim_position = 6;
+  optional ObjectPosition aim_position = 6;
   extend GameclientMessage {
     optional GameclientMessageTalk gameclient_message_talk = 150;
   }
@@ -4672,12 +4670,10 @@ message GameclientMessageEditGuildMessage {
 }
 
 // client opcode 0x9D (157) — GetTextForReport
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v106.
+// CIP TProtobufClientMessageTranslator::v106: coordinate, u16 type, u8 stack position.
 message GameclientMessageGetTextForReport {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectPosition object_position = 1;
+  optional ObjectIdentifier object_identifier = 2;
   extend GameclientMessage {
     optional GameclientMessageGetTextForReport gameclient_message_get_text_for_report = 157;
   }
@@ -4894,13 +4890,11 @@ message GameclientMessageHighscores {
 }
 
 // client opcode 0xB2 (178) — PickObjectToImbue
-// classic: u8 action; pos? position; u16? object_id; u8? stack_position
-// CIP TProtobufClientMessageTranslator::v77.
+// CIP TProtobufClientMessageTranslator::v77: u8 action; action 1: coordinate, u16 type, u8 stack position.
 message GameclientMessagePickObjectToImbue {
   optional uint32 action = 1;
-  optional ProtocolCoordinate position = 2;
-  optional uint32 object_id = 3;
-  optional uint32 stack_position = 4;
+  optional ObjectPosition object_position = 2;
+  optional ObjectIdentifier object_identifier = 3;
   extend GameclientMessage {
     optional GameclientMessagePickObjectToImbue gameclient_message_pick_object_to_imbue = 178;
   }
@@ -5557,12 +5551,10 @@ message GameclientMessageGetTransactionHistory {
 }
 
 // client opcode 0xFF (255) — GatherAll
-// classic: pos position; u16 object_id; u8 stack_position
-// CIP TProtobufClientMessageTranslator::v89.
+// CIP TProtobufClientMessageTranslator::v89: coordinate, u16 type, u8 stack position.
 message GameclientMessageGatherAll {
-  optional ProtocolCoordinate position = 1;
-  optional uint32 object_id = 2;
-  optional uint32 stack_position = 3;
+  optional ObjectIdentifier object_identifier = 1;
+  optional ObjectPosition object_position = 2;
   extend GameclientMessage {
     optional GameclientMessageGatherAll gameclient_message_gather_all = 255;
   }

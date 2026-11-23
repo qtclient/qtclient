@@ -150,7 +150,6 @@ private:
     float m_scale = 1.f;
     QMetaObject::Connection m_frameConnection;
     QElapsedTimer m_sinceLayout;
-    QPointer<QObject> m_raceInstance;
 };
 
 }

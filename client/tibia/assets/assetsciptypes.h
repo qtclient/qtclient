@@ -22,13 +22,6 @@ public:
     using cip::tibia::assets::TAssetHandler::TAssetHandler;
 };
 
-class TAssetManager final : public cip::tibia::assets::TAssetManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::assets::TAssetManager::TAssetManager;
-};
-
 }
 }
 

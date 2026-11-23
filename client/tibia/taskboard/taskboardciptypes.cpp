@@ -42,9 +42,9 @@ void sendOption(const int option)
     sendCommand(command);
 }
 
-TShopRewardData shopReward(const ProtocolTaskboardOffer& offer)
+TShopReward shopReward(const ProtocolTaskboardOffer& offer)
 {
-    TShopRewardData reward;
+    TShopReward reward;
     reward.price = offer.price();
     reward.type = static_cast<EShopRewardType>(checkedEnumValue(offer.offer_type(), 4));
     if (reward.type != EShopRewardType::PromotionPoint) {
@@ -158,7 +158,7 @@ void TTaskboardProtocolMessageHandler::handleTaskboardMessage(const ::tibia::pro
 {
     const int boardType = checkedEnumValue(TaskboardMessage.board_type(), 2);
     if (boardType == 2) {
-        std::vector<TShopRewardData> rewards;
+        std::vector<TShopReward> rewards;
         for (const auto& offer : TaskboardMessage.offers())
             rewards.push_back(shopReward(offer));
         m_shop->setShopRewardData(rewards);

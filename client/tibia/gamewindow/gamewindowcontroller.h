@@ -63,6 +63,10 @@ public:
 
     void setStatusBarController(QObject* controller);
 
+    /// The client's news storage (the news dialog, the news button and the
+    /// session's news protocol handler read it).
+    const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_newsStorage; }
+
     /// gamewindow.qml's item, once it is shown: applies the option-driven game
     /// window state now and again on every option change.
     void setGameWindowItem(QQuickItem* gameWindowItem);

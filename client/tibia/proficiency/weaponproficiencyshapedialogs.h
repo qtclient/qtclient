@@ -42,7 +42,8 @@ class TWeaponProficiencyShapeDialogController final
 {
     Q_OBJECT
 public:
-    explicit TWeaponProficiencyShapeDialogController(TProficiencyStorage* storage, QObject* parent = nullptr);
+    /// The dialog is made with `engine` in `dialogParentItem`.
+    TWeaponProficiencyShapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TWeaponProficiencyShapeDialogController() override;
 
     void requestClose() override;
@@ -114,8 +115,10 @@ class TWeaponProficiencyReshapeDialogController final
 {
     Q_OBJECT
 public:
-    TWeaponProficiencyReshapeDialogController(TProficiencyStorage* storage, TWeaponProficiencyShapeDialogController* shape,
-                                              QObject* parent = nullptr);
+    /// The dialog is made with `engine` in `dialogParentItem`; `shape` is the
+    /// shape dialog whose perk is being reshaped.
+    TWeaponProficiencyReshapeDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem,
+                                              TWeaponProficiencyShapeDialogController* shape, QObject* parent = nullptr);
     /// Closes the confirmation and the dialog.
     ~TWeaponProficiencyReshapeDialogController() override;
 
@@ -216,7 +219,8 @@ class TWeaponProficiencyShapeOptionsDialogController final
 {
     Q_OBJECT
 public:
-    explicit TWeaponProficiencyShapeOptionsDialogController(QObject* parent = nullptr);
+    /// The dialog is made with `engine` in `dialogParentItem`.
+    TWeaponProficiencyShapeOptionsDialogController(QQmlEngine* engine, QQuickItem* dialogParentItem, QObject* parent = nullptr);
     ~TWeaponProficiencyShapeOptionsDialogController() override;
 
     void requestClose() override;

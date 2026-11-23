@@ -140,7 +140,7 @@ class TQuestLogController final : public TDialogController<cip::tibia::gamewindo
 {
     Q_OBJECT
 public:
-    explicit TQuestLogController(QObject* parent = nullptr);
+    TQuestLogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~TQuestLogController() override;
 
     /// CIP showDialog(optional<TQuestFlagID>): with the 0x10000 bit, the low 16

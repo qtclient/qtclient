@@ -1,6 +1,7 @@
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 
 #include "qmlcomponents/outfitpalette.h"
+#include "qmlcomponents/outfittypes.h"
 #include "colorhelper.h"
 
 #include <QColor>
@@ -58,6 +59,17 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)parent;
+}
+
+TOutfitQmlModel::TOutfitQmlModel(const uint16_t outfitId, const int head, const int torso, const int legs, const int detail,
+                                 const bool firstAddOn, const bool secondAddOn, const bool isObjectOutfit, QObject* parent)
+    : cip::tibia::qmlcomponents::TOutfitQmlModel(parent)
+{
+    m_outfitID = outfitId;
+    m_colors = new TOutfitColorQmlType(head, torso, legs, detail, this);
+    m_firstAddOn = firstAddOn;
+    m_secondAddOn = secondAddOn;
+    m_isObjectOutfit = isObjectOutfit;
 }
 
 QColor TColorHelperQmlService::createColorFromEightBitHSV(const int ColorValue)

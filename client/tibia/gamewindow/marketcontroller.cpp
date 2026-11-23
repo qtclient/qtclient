@@ -311,18 +311,19 @@ bool TQmlObjectCategory::isHandWeaponCategory()
     return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier) && m_categoryIdentifier != 0x10;
 }
 
-TMarketController::TMarketController(QObject* parent)
-    : TDialogController(QStringLiteral("market.qml"), parent)
+TMarketController::TMarketController(config::TClientOptions* clientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem)
+    : TDialogController(QStringLiteral("market.qml"), engine, dialogParentItem, nullptr)
+    , m_pClientOptions(clientOptions)
     , m_model([this](const uint16_t typeId, const uint8_t tier) { return m_storage ? static_cast<int>(m_storage->count(typeId, tier)) : 0; })
     , m_proxy(&m_model)
-    , m_message(new TMessageDialogController(this))
+    , m_message(new TMessageDialogController(engine, dialogParentItem, this))
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
     for (const int identifier : CategoryOrder)
         m_categories << new TQmlObjectCategory(identifier, this);
     m_indexOfSelectedTier = -1;
     m_indexOfSelectedClassification = -1;
-    config::TClientOptions* options = config::TClientOptions::instance();
+    config::TClientOptions* options = m_pClientOptions;
     m_proxy.setShowLockerOnly(options->boolOption(config::EClientOption::marketShowLockerOnly));
 
     connect(m_message, &TMessageDialogController::acceptClicked, this, &TMarketController::onMessageDialogOkay);
@@ -883,12 +884,12 @@ void TMarketController::onMessageDialogOkay()
 
 void TMarketController::onMarketOptionsChagend()
 {
-    m_proxy.setShowLockerOnly(config::TClientOptions::instance()->boolOption(config::EClientOption::marketShowLockerOnly));
+    m_proxy.setShowLockerOnly(m_pClientOptions->boolOption(config::EClientOption::marketShowLockerOnly));
 }
 
 void TMarketController::onShowLockerOnlyChanged()
 {
-    config::TClientOptions::instance()->setBoolOption(config::EClientOption::marketShowLockerOnly, m_proxy.showLockerOnly());
+    m_pClientOptions->setBoolOption(config::EClientOption::marketShowLockerOnly, m_proxy.showLockerOnly());
     Q_EMIT showLockerOnlyChanged();
 }
 

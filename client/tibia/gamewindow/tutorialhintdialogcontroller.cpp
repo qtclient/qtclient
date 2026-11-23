@@ -1,5 +1,6 @@
 #include "tutorialhintdialogcontroller.h"
 
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/vocationselectiondialogcontroller.h"
 #include "input/gameaction.h"
@@ -104,9 +105,12 @@ const HintAssets* hintAssets(const int id)
 
 }
 
-TTutorialHintDialogController::TTutorialHintDialogController(QQuickItem* mapWindowPane, QObject* parent)
-    : TDialogController(QStringLiteral("tutorial/TutorialHintDialog.qml"), parent)
+TTutorialHintDialogController::TTutorialHintDialogController(
+    QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+    std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> CyclopediaMapStaticDataStorage, QObject* parent)
+    : TDialogController(QStringLiteral("tutorial/TutorialHintDialog.qml"), engine, dialogParentItem, parent)
     , m_mapWindowPane(mapWindowPane)
+    , m_cyclopediaMapStaticDataStorage(std::move(CyclopediaMapStaticDataStorage))
 {
 }
 
@@ -194,10 +198,12 @@ QPoint TTutorialHintDialogController::youAreHereCoordianteWithinImage() const
 
 QQuickItem* TTutorialHintDialogController::mapWindowPane() { return m_mapWindowPane; }
 
-TTutorialShell::TTutorialShell(QQuickItem* mapWindowPane, QObject* parent)
+TTutorialShell::TTutorialShell(QQmlEngine* engine, QQuickItem* dialogParentItem, QQuickItem* mapWindowPane,
+                               std::shared_ptr<cyclopedia::TCyclopediaMapStaticDataStorage> CyclopediaMapStaticDataStorage,
+                               QObject* parent)
     : QObject(parent)
-    , m_hint(new TTutorialHintDialogController(mapWindowPane, this))
-    , m_vocation(new TVocationSelectionDialogController(mapWindowPane, this))
+    , m_hint(new TTutorialHintDialogController(engine, dialogParentItem, mapWindowPane, std::move(CyclopediaMapStaticDataStorage), this))
+    , m_vocation(new TVocationSelectionDialogController(engine, dialogParentItem, mapWindowPane, this))
 {
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onTutorialHint", [this](GameObject*, const Args& args) {
         if (!args.empty())
