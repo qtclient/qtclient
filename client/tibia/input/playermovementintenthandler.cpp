@@ -258,7 +258,10 @@ int TPlayerMovementIntentHandler::plan()
         predictNextStep();
         return 1;
     }
+    const TWorldMapCoordinate goal = *m_goal;
     m_goal.reset();
+    if (!m_enterUnwalkableGoal && m_env.claimUnreachable && m_env.claimUnreachable(goal, result))
+        return 0;
     const char* message = nullptr;
     switch (result) {
     case PathInternalError: message = "error_code_internal"; break;

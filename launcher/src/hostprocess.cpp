@@ -75,6 +75,15 @@ bool startDetached(const QString& program, const QStringList& arguments, const Q
     QProcessEnvironment processEnvironment = QProcessEnvironment::systemEnvironment();
     for (auto it = environment.cbegin(); it != environment.cend(); ++it)
         processEnvironment.insert(it.key(), it.value());
+    // Launcher may carry QTCLIENT_MODS_DIR for brand.json only (e.g. pack/launcher/).
+    // The game client must load tip mods/<id> next to the binary (loginBase /
+    // identity); an exclusive brand-only env would skip that and fall back to
+    // CipSoft login hosts while still showing linked IdleOT chrome.
+    const QString name = QFileInfo(program).fileName();
+    if (name == QStringLiteral("client") || name == QStringLiteral("tibia")
+        || name == QStringLiteral("tibia.js") || name.startsWith(QStringLiteral("client."))) {
+        processEnvironment.remove(QStringLiteral("QTCLIENT_MODS_DIR"));
+    }
     QProcess process;
     process.setProgram(program);
     process.setArguments(arguments);

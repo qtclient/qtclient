@@ -36,7 +36,8 @@ export QTCLIENT_URL="https://github.com/qtclient/qtclient/releases/latest/downlo
 ./client
 ```
 
-See [demo-tip.md](demo-tip.md).
+See [demo-tip.md](demo-tip.md). Local monorepo play is launcher-first:
+[play-tip.md](play-tip.md) (`make desktop run` — CipSoft `packages[]`, worktrees + packs).
 
 ## Build from source
 
@@ -46,7 +47,7 @@ cd qtclient
 git submodule update --init third_party/Qt5LegacyControls
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 make setup
-make client build && make client run
+make desktop build && make launcher build && make desktop run
 # launcher: make launcher build && make launcher run
 ```
 

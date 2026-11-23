@@ -9,8 +9,14 @@
 
 #include <QString>
 
+#include <memory>
+
 #include <string_view>
 #include <vector>
+
+namespace tibia::sessiondump {
+class TClientSessiondumpRecorder;
+}
 
 namespace tibia {
 namespace game {
@@ -68,6 +74,8 @@ Q_SIGNALS:
 
 private:
     GameserverCredentials m_loginData;
+    /// CIP's recorder of the session's last server messages, for crash reports.
+    std::shared_ptr<sessiondump::TClientSessiondumpRecorder> m_sessiondumpRecorder;
     std::vector<tibia::game::SoftHook> m_hooks;
 };
 

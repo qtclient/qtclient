@@ -42,6 +42,12 @@ typedef struct QtClientNotifyApiV1 {
      *  session's objects (or null). */
     int (*subscribe_session_changed)(void (*fn)(void* user), void* user);
     void (*unsubscribe_session_changed)(int id);
+
+    /** Host API v7+ (read only when api_version >= 7): `fn` runs when the current session's
+     *  Team Finder storage changes (the own team's listing or roster, the listed teams) and
+     *  on each session change. */
+    int (*subscribe_team_finder_changed)(void (*fn)(void* user), void* user);
+    void (*unsubscribe_team_finder_changed)(int id);
 } QtClientNotifyApiV1;
 
 #ifdef __cplusplus

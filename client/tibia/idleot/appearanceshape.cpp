@@ -11,7 +11,8 @@ bool castsShadowByFlags(const tibia::appearances::TAppearanceType& type)
 {
     if (type.isCreature())
         return true;
-    if (!type.isItem() || type.isGround() || type.isGroundBorder() || type.isSplash() || type.isLyingCorpse() || type.isHangable())
+    if (!type.isItem() || type.isGround() || type.isGroundBorder() || type.isSplash() || type.isLyingCorpse()
+        || type.isCorpse() || type.isPlayerCorpse() || type.isHangable())
         return false;
     if (type.isOnBottom() && type.hasElevation() && !type.isNotWalkable())
         return false;

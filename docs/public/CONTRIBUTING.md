@@ -23,7 +23,7 @@
 git submodule update --init third_party/Qt5LegacyControls
 export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 make setup    # qt + sync + extract (default Tibia path; TIBIA= / MSGMAP= overrides)
-make client build && make client run
+make desktop build && make launcher build && make desktop run
 ```
 
 Binary smoke: download a stock CI client tarball, `./qtclient-fetch-assets`, `./client`.

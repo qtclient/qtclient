@@ -350,8 +350,8 @@ void TNewsButtonController::highlight()
 
 void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
 {
-    // Refresh portal gamenews so the dialog / unread badges stay current.
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
+    // CIP onShowGameNewsMessage: no news query here (the news uploader refreshes once the
+    // cached compendium is older than the last server save, and the dialog forces one).
     if (notificationOnly) {
         highlight();
         return;

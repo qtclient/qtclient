@@ -51,6 +51,12 @@ typedef struct QtClientHostApiV1 {
 
     /** C wiring surface mirroring PackHostWire (v2+). Null on older hosts. */
     const QtClientPackHostApiV1* pack_host;
+
+    /** Host API v6+ (read only when api_version >= 6): `fn` is asked about a map walk target
+     *  (minimap / Cyclopedia map: no entering an unwalkable goal) the planner refuses, with the
+     *  QTCLIENT_WALK_UNREACHABLE_* reason; nonzero takes it over (no failure message). A null
+     *  `fn` leaves CipSoft's failure message. */
+    void (*set_walk_unreachable_hook)(QtClientWalkUnreachableFn fn, void* user);
 } QtClientHostApiV1;
 
 enum {
@@ -62,8 +68,11 @@ enum {
      *     objects) and notify->subscribe_session_changed (additive tails); session_end fires when
      *     the current session disconnects. pack_host getters of per-session objects (chat_storage,
      *     imbuing_storage, store_messages) resolve at call time: re-read them on session change.
+     * v6: set_walk_unreachable_hook (additive tail).
+     * v7: session->team_finder_params / team_finder_members / team_finder_teams and
+     *     notify->subscribe_team_finder_changed (additive tails).
      */
-    QTCLIENT_HOST_API_V1_VERSION = 5,
+    QTCLIENT_HOST_API_V1_VERSION = 7,
 };
 
 /**

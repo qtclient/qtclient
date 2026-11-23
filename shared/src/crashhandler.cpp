@@ -1,6 +1,7 @@
 #include "crashhandler.h"
 
 #include "filesystemhelper.h"
+#include "logging.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -103,7 +104,15 @@ TCrashHandler& TCrashHandler::instance()
 
 TCrashHandler::TCrashHandler() = default;
 
-TCrashHandler::~TCrashHandler() = default;
+// Host: CipSoft's destructor is compiler-generated. On macOS a Cmd+Q / window
+// close ends in AppKit's exit() without returning from main, so this static
+// is destroyed while Qt is still alive; Qt's own exit-time warnings (e.g.
+// QThreadStorage, from QThreadDataDestroyer) then reached addLogMessage on the
+// destroyed handler and crashed. Dropping the callback first makes them log only.
+TCrashHandler::~TCrashHandler()
+{
+    setLogMessageCallback({});
+}
 
 void TCrashHandler::initialize(const QString& productName, const QString& version, const QString& dumpPath)
 {

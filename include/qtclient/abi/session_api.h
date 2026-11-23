@@ -101,6 +101,41 @@ typedef struct QtClientTeamFinderAssemble {
     uint16_t quest_id;
 } QtClientTeamFinderAssemble;
 
+/** Team Finder listing parameters (host API v7+). `activity_kind`: 0 none, 1 boss, 2 hunt,
+ *  3 quest, 4 other. 0xffff team / free slots: not set. `vocation_mask`: bit n = vocation n. */
+typedef struct QtClientTeamFinderParams {
+    uint16_t min_level;
+    uint16_t max_level;
+    uint32_t vocation_mask;
+    uint16_t team_slots;
+    uint16_t free_slots;
+    uint32_t start_time;
+    uint8_t activity_kind;
+    uint16_t boss_id;
+    uint16_t hunt_type;
+    uint16_t hunt_area;
+    uint32_t quest_id;
+    int include_party;
+} QtClientTeamFinderParams;
+
+/** A roster row of the own team (host API v7+). `status`: 0 not in team, 1 applied,
+ *  2 invited, 3 accepted, 4 rejected. */
+typedef struct QtClientTeamFinderMember {
+    uint32_t character_id;
+    char name[64];
+    uint16_t level;
+    uint8_t vocation;
+    uint32_t status;
+} QtClientTeamFinderMember;
+
+/** A listed team (host API v7+); `status` is the own application state there. */
+typedef struct QtClientTeamFinderTeam {
+    uint32_t team_id;
+    char leader_name[64];
+    QtClientTeamFinderParams params;
+    uint32_t status;
+} QtClientTeamFinderTeam;
+
 typedef void (*QtClientTravelPathAsyncCallback)(void* user, int ok);
 
 typedef struct QtClientSessionApiV1 {
@@ -276,6 +311,15 @@ typedef struct QtClientSessionApiV1 {
     /** Non-zero once the session read the character's configuration (quick-loot and analyser
      *  lists hold the character's), zero before that and after the game ended. */
     int (*character_configuration_loaded)(void);
+
+    /** --- Team Finder (host API v7+; read only when api_version >= 7) ---
+     *  The current session's CipSoft Team Finder storage, as the Social window sees it.
+     *  team_finder_params: the own team's listing; returns nonzero when it has one.
+     *  team_finder_members / team_finder_teams: fill up to `cap` rows, return the total.
+     *  notify->subscribe_team_finder_changed runs when any of them changes. */
+    int (*team_finder_params)(QtClientTeamFinderParams* out);
+    size_t (*team_finder_members)(QtClientTeamFinderMember* out, size_t cap);
+    size_t (*team_finder_teams)(QtClientTeamFinderTeam* out, size_t cap);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

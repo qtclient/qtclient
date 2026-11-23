@@ -126,6 +126,22 @@ const ModUrls* primaryUrls()
     return nullptr;
 }
 
+namespace {
+WalkUnreachableFn g_walkUnreachable = nullptr;
+void* g_walkUnreachableUser = nullptr;
+}
+
+void setWalkUnreachableHook(const WalkUnreachableFn fn, void* const user)
+{
+    g_walkUnreachable = fn;
+    g_walkUnreachableUser = user;
+}
+
+bool claimWalkUnreachable(const int x, const int y, const int z, const int reason)
+{
+    return g_walkUnreachable && g_walkUnreachable(g_walkUnreachableUser, x, y, z, reason) != 0;
+}
+
 void setEffectTintHook(const EffectTintFn fn) { g_effectTint = fn; }
 void setEffectVariantTintHook(const EffectVariantTintFn fn) { g_effectVariantTint = fn; }
 void setApplyImageTintHook(const ApplyImageTintFn fn) { g_applyImageTint = fn; }

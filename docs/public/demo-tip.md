@@ -18,7 +18,7 @@ Stock CipSoft URLs:
 
 ```bash
 ./client --no-mods
-# or: make stock client run ARGS='--no-mods'
+# or: DIRECT=1 make stock desktop run ARGS='--no-mods'
 ```
 
 Override login without rebuilding:
@@ -32,7 +32,7 @@ Or edit/reinstall `mods/qtc-aac/mod.json` `urls` — no host rebuild.
 
 ## Product tip
 
-`make qtclient client install` merges product pack FS chrome (portal urls; often
+`make qtclient desktop install` merges product pack FS chrome (portal urls; often
 without `qtc-aac`). Run loads all autoload tip packs. Default launcher mods
 (`clientmods`, `minimap`) gate optional CDN channels.
 

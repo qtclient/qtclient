@@ -26,6 +26,9 @@ class TCreatureStorage;
 namespace quickloot {
 class TQuickLootBlackWhitelistStorage;
 }
+namespace teamfinder {
+class TTeamFinderStorage;
+}
 namespace game {
 
 class IGameSession;
@@ -49,6 +52,7 @@ TPlayerSkillStats* currentPlayerSkillStats();
 creatures::TCreatureStorage* currentCreatureStorage();
 container::TContainerStorage* currentContainerStorage();
 container::TInventoryContainer* currentInventoryContainer();
+teamfinder::TTeamFinderStorage* currentTeamFinderStorage();
 
 /// CipSoft session members qtclient does not make per session yet: each body
 /// reads the class's client-wide object until its domain slice moves it into

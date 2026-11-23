@@ -8,6 +8,7 @@
 #include "game/igamesession.h"
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
+#include "teamfinder/teamfinderciptypes.h"
 
 #include <algorithm>
 #include <utility>
@@ -97,6 +98,12 @@ container::TInventoryContainer* currentInventoryContainer()
 {
     TGameSessionBase* session = currentGameSession();
     return session ? session->inventoryContainer().get() : nullptr;
+}
+
+teamfinder::TTeamFinderStorage* currentTeamFinderStorage()
+{
+    TGameSessionBase* session = currentGameSession();
+    return session ? session->teamFinderStorage().get() : nullptr;
 }
 
 TCooldownStorage* currentCooldownStorage()

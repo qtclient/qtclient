@@ -4,6 +4,7 @@
 #include "gameactionhandlers.h"
 #include "inputciptypes.h"
 
+#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 
 namespace tibia::input {
@@ -36,6 +37,8 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
         if (const auto* walk = gameActionAs<TGameActionPlayerMovementIntent>(pGameAction)) {
             Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
             Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
+            // qtclient pack notify: the player walks by hand (a click), e.g. to stop a pack's travel.
+            tibia::game::notify("onWalk", tibia::client::InvalidDirection);
             tibia::game::localPlayerAutoWalk(walk->target(), false,
                                              static_cast<tibia::client::AutoWalkPathMode>(walk->autoWalkPathMode()),
                                              walk->enterUnwalkableGoal());

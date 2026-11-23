@@ -7,6 +7,8 @@
 #include "protocol/protocolmessagequeue.h"
 
 #include "clockservice.h"
+#include "crashhandler.h"
+#include "sessiondump/clientsessiondumprecorder.h"
 
 #include <stdexcept>
 
@@ -25,6 +27,9 @@ using SoftHook = tibia::game::SoftHook;
 using Args = TGameNotify::Args;
 
 namespace {
+
+/// CIP's TClientSessiondumpRecorder keep time (a constant in initialize).
+constexpr int64_t SessiondumpKeepSeconds = 10;
 
 void wireProcessLoginImpl()
 {
@@ -206,7 +211,20 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedLoginChallengeMessage, this,
             [this] { Q_EMIT gameLoginChallengeMessage(); });
     m_loginData = gameserverMetaInfo->loginData;
+    // CIP: the session records its last server messages (kept 10 to 20 seconds)
+    // and hands them to the crash handler as the report's session dump.
+    m_sessiondumpRecorder = std::make_shared<sessiondump::TClientSessiondumpRecorder>(SessiondumpKeepSeconds);
+    m_sessiondumpRecorder->start(m_loginData.characterName, m_loginData.worldName, m_loginData.sessionKey);
+    // Host: CipSoft's provider captures the session; a weak pointer keeps a crash
+    // after this session ended from reading a destroyed recorder.
+    shared::TCrashHandler::instance().setSessiondumpProvider(
+        [recorder = std::weak_ptr<sessiondump::TClientSessiondumpRecorder>(m_sessiondumpRecorder)] {
+            const auto live = recorder.lock();
+            return live ? live->sessiondump() : QByteArray();
+        });
     connectProtocolMessageHandlers();
+    connect(protocolMessageQueue().get(), &protocol::TProtocolMessageQueue::receivedMessage,
+            m_sessiondumpRecorder.get(), &sessiondump::TClientSessiondumpRecorder::handleAnyMessage);
 }
 
 void TGameserverGameSession::startSession()

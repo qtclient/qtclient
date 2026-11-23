@@ -22,6 +22,7 @@
 #include "runtime/host.h"
 
 #include "creatures/creaturestorage.h"
+#include "teamfinder/teamfinderciptypes.h"
 
 #include <client/const.h>
 #include <client/position.h>
@@ -1071,6 +1072,116 @@ void* sessCooldownStorage() { return tibia::game::currentCooldownStorage(); }
 void* sessQuickLootBlackWhitelistStorage() { return tibia::game::currentQuickLootBlackWhitelistStorage(); }
 int sessCharacterConfigurationLoaded() { return tibia::game::currentCharacterConfigurationLoaded() ? 1 : 0; }
 
+// --- Team Finder (v7): the current session's storage as plain rows ---
+
+void copyName(char* out, size_t len, const QString& name)
+{
+    const QByteArray utf8 = name.toUtf8();
+    std::snprintf(out, len, "%s", utf8.constData());
+}
+
+void tfParamsToAbi(const tibia::teamfinder::TTeamParameters& p, QtClientTeamFinderParams* out)
+{
+    *out = QtClientTeamFinderParams{};
+    out->min_level = p.minLevel;
+    out->max_level = p.maxLevel;
+    for (const uint8_t vocation : p.vocations) {
+        if (vocation < 32)
+            out->vocation_mask |= 1u << vocation;
+    }
+    out->team_slots = p.teamSlots;
+    out->free_slots = p.freeSlots;
+    out->start_time = p.startTime;
+    out->activity_kind = static_cast<uint8_t>(p.activity.kind);
+    out->boss_id = p.activity.bossId;
+    out->hunt_type = p.activity.huntType;
+    out->hunt_area = p.activity.huntArea;
+    out->quest_id = p.activity.questId;
+    out->include_party = p.includeParty ? 1 : 0;
+}
+
+int sessTfParams(QtClientTeamFinderParams* out)
+{
+    tibia::teamfinder::TTeamFinderStorage* storage = tibia::game::currentTeamFinderStorage();
+    if (!storage || !out)
+        return 0;
+    const tibia::teamfinder::TTeamParameters params = storage->teamParameters();
+    tfParamsToAbi(params, out);
+    return params.teamSlots != 0xffff ? 1 : 0;
+}
+
+size_t sessTfMembers(QtClientTeamFinderMember* out, size_t cap)
+{
+    tibia::teamfinder::TTeamFinderStorage* storage = tibia::game::currentTeamFinderStorage();
+    if (!storage)
+        return 0;
+    const auto members = storage->members();
+    for (size_t i = 0; out && i < members.size() && i < cap; ++i) {
+        const auto& m = members[i];
+        out[i] = QtClientTeamFinderMember{};
+        out[i].character_id = m.characterId;
+        copyName(out[i].name, sizeof(out[i].name), m.name);
+        out[i].level = m.level;
+        out[i].vocation = m.vocation;
+        out[i].status = m.status;
+    }
+    return members.size();
+}
+
+size_t sessTfTeams(QtClientTeamFinderTeam* out, size_t cap)
+{
+    tibia::teamfinder::TTeamFinderStorage* storage = tibia::game::currentTeamFinderStorage();
+    if (!storage)
+        return 0;
+    const auto teams = storage->teams();
+    for (size_t i = 0; out && i < teams.size() && i < cap; ++i) {
+        const auto& t = teams[i];
+        out[i] = QtClientTeamFinderTeam{};
+        out[i].team_id = t.teamId;
+        copyName(out[i].leader_name, sizeof(out[i].leader_name), t.leaderName);
+        tfParamsToAbi(t.parameters, &out[i].params);
+        out[i].status = t.status;
+    }
+    return teams.size();
+}
+
+/// Listeners of notify->subscribe_team_finder_changed, bound to the current session's storage.
+struct TTeamFinderWatch
+{
+    int nextId = 1;
+    int sessionListener = 0;
+    std::vector<std::pair<int, std::function<void()>>> listeners;
+    std::vector<QMetaObject::Connection> connections;
+};
+
+TTeamFinderWatch& teamFinderWatch()
+{
+    static TTeamFinderWatch watch;
+    return watch;
+}
+
+void teamFinderChanged()
+{
+    const auto listeners = teamFinderWatch().listeners;
+    for (const auto& [id, fn] : listeners)
+        fn();
+}
+
+void bindTeamFinderStorage()
+{
+    TTeamFinderWatch& watch = teamFinderWatch();
+    for (const QMetaObject::Connection& c : watch.connections)
+        QObject::disconnect(c);
+    watch.connections.clear();
+    tibia::teamfinder::TTeamFinderStorage* storage = tibia::game::currentTeamFinderStorage();
+    if (!storage)
+        return;
+    using Storage = tibia::teamfinder::TTeamFinderStorage;
+    watch.connections.push_back(QObject::connect(storage, &Storage::teamParametersChanged, storage, &teamFinderChanged));
+    watch.connections.push_back(QObject::connect(storage, &Storage::membersChanged, storage, &teamFinderChanged));
+    watch.connections.push_back(QObject::connect(storage, &Storage::teamsChanged, storage, &teamFinderChanged));
+}
+
 const QtClientSessionApiV1 g_sessionApi = {
     .is_online = &sessIsOnline,
     .is_dead = &sessIsDead,
@@ -1199,6 +1310,10 @@ const QtClientSessionApiV1 g_sessionApi = {
     .cooldown_storage = &sessCooldownStorage,
     .quick_loot_black_white_list_storage = &sessQuickLootBlackWhitelistStorage,
     .character_configuration_loaded = &sessCharacterConfigurationLoaded,
+
+    .team_finder_params = &sessTfParams,
+    .team_finder_members = &sessTfMembers,
+    .team_finder_teams = &sessTfTeams,
 };
 
 // --- Notify nested API ---
@@ -1272,6 +1387,28 @@ int notifySubSessionChanged(void (*fn)(void* user), void* user)
 
 void notifyUnsubSessionChanged(int id) { tibia::game::unsubscribeCurrentGameSessionChanged(id); }
 
+int notifySubTeamFinderChanged(void (*fn)(void* user), void* user)
+{
+    if (!fn)
+        return 0;
+    TTeamFinderWatch& watch = teamFinderWatch();
+    if (watch.sessionListener == 0) {
+        watch.sessionListener = tibia::game::subscribeCurrentGameSessionChanged([]() {
+            bindTeamFinderStorage();
+            teamFinderChanged();
+        });
+        bindTeamFinderStorage();
+    }
+    const int id = watch.nextId++;
+    watch.listeners.emplace_back(id, [fn, user]() { fn(user); });
+    return id;
+}
+
+void notifyUnsubTeamFinderChanged(int id)
+{
+    std::erase_if(teamFinderWatch().listeners, [id](const auto& entry) { return entry.first == id; });
+}
+
 int notifyArgString(void* tip_args, size_t index, char* buf, size_t buf_len)
 {
     if (!tip_args || !buf || buf_len == 0)
@@ -1318,6 +1455,8 @@ const QtClientNotifyApiV1 g_notifyApi = {
     .emit_int_string = &notifyEmitIntString,
     .subscribe_session_changed = &notifySubSessionChanged,
     .unsubscribe_session_changed = &notifyUnsubSessionChanged,
+    .subscribe_team_finder_changed = &notifySubTeamFinderChanged,
+    .unsubscribe_team_finder_changed = &notifyUnsubTeamFinderChanged,
 };
 
 // --- Options nested API ---
@@ -1442,6 +1581,7 @@ const QtClientHostApiV1 g_hostApi = {
     .notify = &g_notifyApi,
     .options = &g_optionsApi,
     .pack_host = tibia::mods::packHostAbiTable(),
+    .set_walk_unreachable_hook = &tibia::mods::setWalkUnreachableHook,
 };
 
 } // namespace

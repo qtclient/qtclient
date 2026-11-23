@@ -12,6 +12,7 @@
 #include <optional>
 #include <unordered_map>
 #include <tibia/game/gamesession.h>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::input {
 
@@ -190,6 +191,8 @@ void TPlayerMovementInputInterpreter::update()
     case EIntentKind::Walk:
         Q_EMIT publishGameAction(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
         Q_EMIT publishGameAction(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
+        // qtclient pack notify (as TGameSessionState::walk): a manual step, e.g. to stop a pack's travel.
+        tibia::game::notify("onWalk", intent.direction);
         tibia::game::localPlayerHoldDirection(intent.direction);
         break;
     case EIntentKind::Rotate:

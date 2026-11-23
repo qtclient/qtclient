@@ -20,11 +20,15 @@ const QString kGroupTiming = QStringLiteral("TIMING");
 const QString kGroupUser = QStringLiteral("USER");
 const QString kGroupOptions = QStringLiteral("OPTIONS");
 
-/// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else the tip
-/// pack's brand `defaultCdn`); empty for stock CipSoft.
+/// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else
+/// QTCLIENT_ASSET_BASE, else the tip pack's brand `defaultCdn`); empty for
+/// stock CipSoft. Local Play sets QTCLIENT_CDN_URL=:9080 so release.json
+/// matches the portal login gate (errorCode 7 otherwise).
 QString hostCdnBase()
 {
     QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
+    if (cdn.isEmpty())
+        cdn = qEnvironmentVariable("QTCLIENT_ASSET_BASE");
     if (cdn.isEmpty() && !LauncherBrand::instance().noMods)
         cdn = LauncherBrand::instance().defaultCdn;
     while (cdn.endsWith(QLatin1Char('/')))

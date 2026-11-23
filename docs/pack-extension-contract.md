@@ -68,7 +68,7 @@ Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 
 ```bash
 python3 scripts/ci/check-cip-tip-purity.py
-make stock client build          # tip without requiring pack
+make stock desktop build          # tip without requiring pack
 # with QTCLIENT_PACK / pack linked:
 cmake --build apps/qtclient/build/macos-dev --target tibia
 ```

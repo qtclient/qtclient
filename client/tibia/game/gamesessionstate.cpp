@@ -12,6 +12,9 @@
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/config/runtimegameconfig.h>
 #include "input/playermovementintenthandler.h"
+#include "mods/registry.h"
+#include "input/movementpathplanner.h"
+#include "qtclient/abi/const.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "app/clientoptions.h"
@@ -202,6 +205,17 @@ void TGameSessionState::createMovementIntent()
     env.showFailure = [this](const QString& textId) {
         Q_EMIT m_movementIntent->publishGameAction(
             std::make_shared<tibia::input::TGameActionSetStatusLine>(qtTrId(textId.toLatin1().constData())));
+    };
+    env.claimUnreachable = [](const tibia::worldmap::TWorldMapCoordinate& goal, const int result) {
+        int reason = 0;
+        switch (result) {
+        case tibia::input::PathNoWay: reason = QTCLIENT_WALK_UNREACHABLE_NO_WAY; break;
+        case tibia::input::PathOutOfRange: reason = QTCLIENT_WALK_UNREACHABLE_OUT_OF_RANGE; break;
+        case tibia::input::PathGoDownstairs: reason = QTCLIENT_WALK_UNREACHABLE_GO_DOWNSTAIRS; break;
+        case tibia::input::PathGoUpstairs: reason = QTCLIENT_WALK_UNREACHABLE_GO_UPSTAIRS; break;
+        default: return false;
+        }
+        return tibia::mods::claimWalkUnreachable(goal.x, goal.y, goal.z, reason);
     };
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();

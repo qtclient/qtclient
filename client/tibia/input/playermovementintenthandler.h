@@ -58,6 +58,9 @@ public:
         std::function<void()> stopFollowing;
         std::function<bool(const worldmap::TWorldMapCoordinate&)> isInView;
         std::function<void(const QString& textId)> showFailure;
+        /// qtclient pack extension, not CipSoft: a map target (no entering an unwalkable goal)
+        /// the planner refuses may be taken over (planner result; true: no failure message).
+        std::function<bool(const worldmap::TWorldMapCoordinate&, int result)> claimUnreachable;
         /// The local player's state bits (bit 19 rooted, bit 20 feared).
         std::function<quint64()> playerStates;
     };

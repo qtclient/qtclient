@@ -440,6 +440,10 @@ fi
 echo "[tibia] ok → $BIN"
 if [[ "$LAUNCHER_BUILD" -eq 0 ]]; then
   bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$BIN" "$OTC/data" || true
+  # Local crash reports: keep this build's symbols before the next one replaces it.
+  if [[ -z "${CI:-}" ]]; then
+    bash "$OTC/scripts/lifecycle/lib/dump-symbols.sh" "$BIN" "$QT_DESKTOP" || true
+  fi
 fi
 if [[ "$DEV_BUILD" -eq 1 ]]; then
   echo "[tibia] qml-disk: edit QTCLIENT_LINKED_PACK qml/ + overrides/ (and in-tree client/mods/*/qml); F5 clears cache — reopen panels after structural edits"

@@ -19410,6 +19410,7 @@ sub_be89f65cfadd	be89f65cfaddb21a	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_be917a6c7101	be917a6c71016cee	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::updateTeam
 sub_be981db6ccc9	be981db6ccc90181	skip	library: protobuf/Abseil/libc++ runtime helper (statically linked library range, no CipSoft references)
 sub_be9a4c326271	be9a4c326271057d	inlined	client/clientciptypes.cpp:TGameApplication::setUpLogging
+sub_be9a4c326271#2	be9a4c326271057d	inlined	game/gameservergamesession.cpp:TGameserverGameSession::initialize
 sub_bea3fc73f636	bea3fc73f636eeac	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::countString
 sub_bea8db0a4eb9	bea8db0a4eb9d1ae	ported	gamewindow/chatcontroller.cpp:TChatChannelController::copySelectionToClipboard
 sub_beb44a0337e9	beb44a0337e96909	skip	library: std::map / std::deque / std::vector template instantiation
@@ -21080,6 +21081,7 @@ sub_dcf86a864031#3	dcf86a8640314df7	ported	skillwheel/skillwheeldata.cpp:fragmen
 sub_dcf86a864031#4	dcf86a8640314df7	inlined	skillwheel/skillwheeldata.cpp:reshapeGemCost
 sub_dcfdb5941aa6	dcfdb5941aa68bda	inlined	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
 sub_dcfeb2c3abbe	dcfeb2c3abbec726	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::resolveName
+sub_dd03afe4e445	dd03afe4e44556d6	inlined	game/gameservergamesession.cpp:TGameserverGameSession::initialize
 sub_dd23fb194ce2	dd23fb194ce2efe2	skip	library: std container template instance
 sub_dd305321cab9	dd305321cab93939	skip	library: Abseil (protobuf dependency): Mutex/SpinLock/LowLevelAlloc/synchronization internals
 sub_dd359062e0a5	dd359062e0a5c262	tested	animation/durationtween.h:TDurationTween::operator==	test=tests/client/durationtween_test.cpp

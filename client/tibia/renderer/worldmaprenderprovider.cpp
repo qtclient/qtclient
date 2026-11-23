@@ -69,30 +69,82 @@ tibia::game::MapPos geometryCamera(const Position& camera)
 }
 
 tibia::mods::LightingThingContext itemLightingContext(TAppearanceType& type, const uint8_t lift,
-                                                      tibia::worldmap::TWorldMapField* tile)
+                                                      tibia::worldmap::TWorldMapField* tile,
+                                                      const bool castHeight = true)
 {
     tibia::mods::LightingThingContext ctx;
     ctx.lift = lift;
     ctx.loose = !type.isNotMoveable();
-    ctx.caster = true;
+    ctx.caster = castHeight;
     // Common or on-top objects: walkable commons/onTop on a wall field hang (no cast).
     const bool common = !type.isGround() && !type.isGroundBorder() && !type.isOnTop() && !type.isOnBottom();
-    if ((common || type.isOnTop()) && !type.isNotWalkable() && tile && tile->hasBlockingBottomItem())
+    if (ctx.caster && (common || type.isOnTop()) && !type.isNotWalkable() && tile && tile->hasBlockingBottomItem())
         ctx.caster = false;
     return ctx;
 }
 
 tibia::mods::LightingThingContext creatureLightingContext(const tibia::creatures::TCreature& stored,
-                                                          const uint8_t lift)
+                                                          const uint8_t lift, const bool castHeight = true)
 {
     tibia::mods::LightingThingContext ctx;
     ctx.lift = lift;
     ctx.creature = true;
     ctx.walking = stored.isWalking();
     ctx.localPlayer = stored.isLocalPlayer();
-    ctx.caster = true;
+    // Height stamps only — lights still gather via addCenterLight.
+    ctx.caster = castHeight;
     ctx.creatureId = stored.creatureId();
     return ctx;
+}
+
+/// Topmost standing creatures on a field (draw-list order). Lower ones are covered.
+constexpr int MaxCreatureShadeCasters = 2;
+/// Topmost common items that may stamp height; fullGround above hides the rest (dontHide exempt).
+constexpr int MaxCommonShadeCasters = 3;
+
+bool typeIsCommonItem(const TAppearanceType* type)
+{
+    return type && !type->isGround() && !type->isGroundBorder() && !type->isOnTop() && !type->isOnBottom();
+}
+
+/// Creature ids that should stamp height on this field (last N in the draw list = on top).
+std::vector<uint32_t> shadeCreatureIds(const tibia::worldmap::TWorldMapField& tile)
+{
+    std::vector<uint32_t> order;
+    for (const int index : tile.drawList()) {
+        if (const uint32_t id = tile.stackCreatureId(index))
+            order.push_back(id);
+    }
+    std::vector<uint32_t> keep;
+    const int n = static_cast<int>(order.size());
+    keep.reserve(static_cast<size_t>(std::min(n, MaxCreatureShadeCasters)));
+    for (int i = std::max(0, n - MaxCreatureShadeCasters); i < n; ++i)
+        keep.push_back(order[static_cast<size_t>(i)]);
+    return keep;
+}
+
+/// Per stack index: common items that may stamp height (bank/clip/bottom always cast elsewhere).
+std::vector<char> commonShadeCasters(const tibia::worldmap::TWorldMapField& tile)
+{
+    const auto& appearances = tile.appearances();
+    std::vector<char> cast(appearances.size(), 0);
+    bool hide = false;
+    int left = MaxCommonShadeCasters;
+    // Newest commons sit at the lowest indices among commons and draw last (on top).
+    for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
+        const TAppearanceType* type = appearances[static_cast<size_t>(i)]
+            ? appearances[static_cast<size_t>(i)]->thingType()
+            : nullptr;
+        if (!typeIsCommonItem(type) || appearances[static_cast<size_t>(i)]->creatureId() != 0)
+            continue;
+        if ((!hide || type->isDontHide()) && left > 0) {
+            cast[static_cast<size_t>(i)] = 1;
+            --left;
+        }
+        if (type->isFullGround())
+            hide = true;
+    }
+    return cast;
 }
 
 /// The creature carries creature icon `icon` (not a player icon) with a value.
@@ -143,7 +195,12 @@ tibia::mods::LightingFrameDesc peelLightingFrame(TAppearanceType& type, const QP
     desc.hook = static_cast<int8_t>(type.isHangable() ? (type.getNumPatternX() >= 2 ? xPattern : 0) : -1);
     desc.onTop = type.isOnTop();
     desc.castsShadow = tibia::idleot::castsShadow(type);
-    desc.lyingCorpse = type.isLyingCorpse();
+    // Dead bodies lie on the floor: Flat stamps (surface only, no height columns) so they
+    // do not cast sun/lamp shadows. lying_object covers CIP corpses; corpse/player_corpse
+    // catch loot corpses that omit the lying flag.
+    desc.lyingCorpse = type.isLyingCorpse() || type.isCorpse() || type.isPlayerCorpse();
+    if (desc.lyingCorpse)
+        desc.shape = static_cast<uint8_t>(ThingShape::Flat);
     desc.hasLight = type.hasLight();
     if (desc.hasLight) {
         desc.lightIntensity = type.getLight().intensity;
@@ -908,12 +965,14 @@ void TWorldMapRenderProvider::addTile(tibia::worldmap::TWorldMapField* tile, con
 void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile, const QPoint& dest, uint8_t& elevation)
 {
     const auto& appearances = tile->appearances();
+    // Raycast height only for visible commons (fullGround cover + top-N budget); lights still gather.
+    const std::vector<char> commonCast = m_lighting ? commonShadeCasters(*tile) : std::vector<char>{};
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
         const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (!type || (!type->isGround() && !type->isGroundBorder()))
             break;
-        addFieldStackItem(tile, i, dest, elevation);
+        addFieldStackItem(tile, i, dest, elevation, true);
     }
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
@@ -922,7 +981,7 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
             continue;
         if (!type->isOnBottom())
             break;
-        addFieldStackItem(tile, i, dest, elevation);
+        addFieldStackItem(tile, i, dest, elevation, true);
     }
 
     if (tile->hasCommonItem()) {
@@ -931,7 +990,9 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
             if (!type || type->isGround() || type->isGroundBorder() || type->isOnBottom() || type->isOnTop()
                 || type->getCategory() == ThingCategoryCreature)
                 continue;
-            addFieldStackItem(tile, i, dest, elevation);
+            const bool castHeight = commonCast.empty()
+                || (static_cast<size_t>(i) < commonCast.size() && commonCast[static_cast<size_t>(i)]);
+            addFieldStackItem(tile, i, dest, elevation, castHeight);
         }
     }
 
@@ -952,7 +1013,7 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
 }
 
 void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, const int stackIndex,
-                                                    const QPoint& dest, const uint8_t elevation)
+                                                    const QPoint& dest, const uint8_t elevation, const bool castHeight)
 {
     if (!tile || stackIndex < 0)
         return;
@@ -970,7 +1031,7 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const QPoint at(dest.x() - lift, dest.y() - lift);
     if (!appearance)
         appearance = row->outfitAppearance();
-    addCreatureFromOutfitAppearance(appearance, *row, at);
+    addCreatureFromOutfitAppearance(appearance, *row, at, castHeight);
 }
 
 /// A creature sorts with the field its step covers (CIP: the placeholder's
@@ -984,10 +1045,22 @@ void TWorldMapRenderProvider::addTileCreatures(tibia::worldmap::TWorldMapField* 
         return;
     const int x = m_key.x;
     const int y = m_key.y;
+    // Raycast: only the topmost standing creatures stamp height (lower ones are covered).
+    // Local player always stamps; mid-step walkers always stamp. Lights still gather for all.
+    const std::vector<uint32_t> shadeIds = m_lighting ? shadeCreatureIds(*tile) : std::vector<uint32_t>{};
+    const auto shadeKeep = [&](const uint32_t id, const bool local) {
+        if (!m_lighting || shadeIds.empty())
+            return true;
+        if (local)
+            return true;
+        return std::find(shadeIds.begin(), shadeIds.end(), id) != shadeIds.end();
+    };
 
     for (const tibia::worldmap::TStackCreatureEntry& entry : tile->stackCreatureEntries()) {
         m_key = slotKey(x, y, 5, drawIndex(*tile, entry.stackIndex));
-        addFieldStackCreature(tile, entry.stackIndex, dest, elevation);
+        const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(entry.creatureId);
+        const bool castHeight = row && shadeKeep(entry.creatureId, row->isLocalPlayer());
+        addFieldStackCreature(tile, entry.stackIndex, dest, elevation, castHeight);
     }
 
     for (const uint32_t creatureId : tile->walkingCreatureIds()) {
@@ -1004,9 +1077,11 @@ void TWorldMapRenderProvider::addTileCreatures(tibia::worldmap::TWorldMapField* 
         if (!appearance)
             continue;
         m_key = slotKey(x, y, 5, drawIndex(*own, stackPos));
+        // Mid-step silhouette is visible on this cell — always stamp height.
         addCreatureFromOutfitAppearance(
             appearance, *row,
-            QPoint(dest.x() + (pos.x - tilePos.x) * FieldSize - lift, dest.y() + (pos.y - tilePos.y) * FieldSize - lift));
+            QPoint(dest.x() + (pos.x - tilePos.x) * FieldSize - lift, dest.y() + (pos.y - tilePos.y) * FieldSize - lift),
+            true);
     }
     m_key = DrawKey{ .group = 2, .x = x, .y = y };
 }
@@ -1048,12 +1123,12 @@ void TWorldMapRenderProvider::addTileTop(tibia::worldmap::TWorldMapField* tile, 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
         const TAppearanceType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
         if (type && type->isOnTop())
-            addFieldStackItem(tile, i, dest, elevation);
+            addFieldStackItem(tile, i, dest, elevation, true);
     }
 }
 
 void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField* tile, const int stackIndex, const QPoint& dest,
-                                                uint8_t& elevation)
+                                                uint8_t& elevation, const bool castHeight)
 {
     if (!tile)
         return;
@@ -1083,7 +1158,7 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
     const uint8_t lift = type->isOnTop() ? 0 : appearance->elevation();
     const QPoint at(dest.x() - lift, dest.y() - lift);
     const SpriteRecord::Highlight highlight = itemHighlightOf(tile->getPosition(), stackIndex, appearance->id());
-    addItemFromAppearance(appearance, at, highlight, lift, tile);
+    addItemFromAppearance(appearance, at, highlight, lift, tile, castHeight);
     m_key = DrawKey{ .group = 2, .x = x, .y = y };
     elevation = tile->objectElevation();
 }
@@ -1091,12 +1166,13 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
 void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                       const QPoint& dest, const SpriteRecord::Highlight highlight)
 {
-    addItemFromAppearance(appearance, dest, highlight, 0, nullptr);
+    addItemFromAppearance(appearance, dest, highlight, 0, nullptr, true);
 }
 
 void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                       const QPoint& dest, const SpriteRecord::Highlight highlight,
-                                                      const uint8_t lift, tibia::worldmap::TWorldMapField* tile)
+                                                      const uint8_t lift, tibia::worldmap::TWorldMapField* tile,
+                                                      const bool castHeight)
 {
     if (!appearance)
         return;
@@ -1132,7 +1208,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
             addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
     };
     const auto lightingScope = m_lighting
-        ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile)))
+        ? std::optional(m_lighting->context(itemLightingContext(*type, lift, tile, castHeight)))
         : std::nullopt;
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
@@ -1159,7 +1235,8 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
 
 
 void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                                              const tibia::creatures::TCreature& stored, const QPoint& dest)
+                                                              const tibia::creatures::TCreature& stored, const QPoint& dest,
+                                                              const bool castHeight)
 {
     if (stored.isLocalPlayer() && stored.isSoftDead())
         return;
@@ -1168,7 +1245,7 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
 
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(
-              creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()))))
+              creatureLightingContext(stored, static_cast<uint8_t>(stored.drawElevation()), castHeight)))
         : std::nullopt;
 
     QPoint at = dest + stored.walkOffset();

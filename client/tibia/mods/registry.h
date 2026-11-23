@@ -128,6 +128,12 @@ AttentionBackend* attentionBackend();
 void setInstanceBackend(InstanceBackend* backend);
 InstanceBackend* instanceBackend();
 
+/// Pack hook (host API v6): a map walk target the planner refused (QTCLIENT_WALK_UNREACHABLE_*).
+using WalkUnreachableFn = int (*)(void* user, int x, int y, int z, int reason);
+void setWalkUnreachableHook(WalkUnreachableFn fn, void* user);
+/// True when a pack took the target over (no failure message).
+bool claimWalkUnreachable(int x, int y, int z, int reason);
+
 using LoginSyncEnqueueFn = void (*)(std::function<void()> fn);
 void setLoginSyncEnqueueHook(LoginSyncEnqueueFn fn);
 void enqueueLoginSync(std::function<void()> fn);

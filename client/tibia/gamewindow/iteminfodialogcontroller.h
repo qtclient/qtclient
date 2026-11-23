@@ -149,6 +149,8 @@ private:
     cyclopedia::TItemTrackingStorage* itemTracking() const;
     quickloot::TQuickLootBlackWhitelistStorage* lootBlackWhitelist() const;
     bool hasCharacter() const;
+    /// itemTracking arrives with the game session; the page is built earlier.
+    void ensureItemTrackingConnection();
 
     /// The item classes of the forge data, sorted.
     std::vector<int> m_classifications;
@@ -156,6 +158,7 @@ private:
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     bool m_entriesBuilt = false;
     bool m_shown = false;
+    bool m_itemTrackingConnected = false;
     uint16_t m_typeId = 0;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     int m_primaryLootValueSource = 0;

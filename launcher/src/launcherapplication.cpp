@@ -318,6 +318,10 @@ void TLauncherApplication::showMainWindow()
     m_mainWindow->showNormal();
 #else
     m_mainWindow->show();
+    // Host: Finder-launched CipSoft is activated by LaunchServices; a tip started
+    // from the terminal often stays behind the shell unless we raise it.
+    m_mainWindow->raise();
+    m_mainWindow->activateWindow();
 #endif
 }
 

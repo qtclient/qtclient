@@ -281,11 +281,13 @@ private:
     /// slot of a lying object down or right of it.
     DrawKey slotKey(int x, int y, uint8_t layer, uint8_t index) const;
     /// Item layer draw: appearance instance drives TAppearanceType/layers; optional Item for marked/animation.
-    void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t& elevation);
+    void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t& elevation,
+                           bool castHeight = true);
     void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
     void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
-                               SpriteRecord::Highlight highlight, uint8_t lift, tibia::worldmap::TWorldMapField* tile);
+                               SpriteRecord::Highlight highlight, uint8_t lift, tibia::worldmap::TWorldMapField* tile,
+                               bool castHeight = true);
     /// CIP v10: mouse-target tint when stack entry matches hover object id (not creature).
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
     void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
@@ -293,8 +295,10 @@ private:
     /// Draw the show-off socket (podium) creature/outfit on top of the socket item.
     /// World-map creature sprites from field/storage outfit appearance + `TCreature` draw snapshot.
     void addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                         const tibia::creatures::TCreature& creature, const QPoint& dest);
-    void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t elevation);
+                                         const tibia::creatures::TCreature& creature, const QPoint& dest,
+                                         bool castHeight = true);
+    void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t elevation,
+                               bool castHeight);
     void addMissile(const appearances::TAppearanceInstancePtr& appearance);
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).

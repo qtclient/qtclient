@@ -53,6 +53,8 @@ private:
 class TCreatureHUDQmlRenderInfo : public cip::tibia::worldmap::TCreatureHUDQmlRenderInfo
 {
     Q_OBJECT
+    /// qtclient extension, not CipSoft: the HUD is the own character's (for pack QML overrides).
+    Q_PROPERTY(bool isLocalPlayer READ isLocalPlayer NOTIFY isLocalPlayerChanged)
 public:
     explicit TCreatureHUDQmlRenderInfo(QObject* parent = nullptr);
 
@@ -63,11 +65,16 @@ public:
     void setPlayerStates(QObject* model) { m_playerStates = model; }
     /// specialConditionsOptions showInHUD, for the own character only.
     void setShowSpecialConditions(bool show);
+    bool isLocalPlayer() const { return m_isLocalPlayer; }
+
+Q_SIGNALS:
+    void isLocalPlayerChanged();
 
 private:
     void updateIcons(const tibia::creatures::TCreature& stored, const QJsonObject& options);
 
     TCreatureOtherIconModel* m_otherIcons = nullptr;
+    bool m_isLocalPlayer = false;
 };
 
 /// Keeps one CreatureHUD.qml per shown creature in the map's HUD overlay and

@@ -182,6 +182,10 @@ void TCreatureHUDQmlRenderInfo::update(const tibia::creatures::TCreature& stored
 {
     using Info = cip::tibia::worldmap::TCreatureHUDQmlRenderInfo;
     const bool local = stored.isLocalPlayer();
+    if (m_isLocalPlayer != local) {
+        m_isLocalPlayer = local;
+        Q_EMIT isLocalPlayerChanged();
+    }
     // CIP keeps the own character's HUD readable in the dark (at least 0x66).
     if (local)
         lightness = std::max(lightness, 0x66 / 255.f);

@@ -239,7 +239,13 @@ ModIdentity ModLoader::identityBeforeApplication(const QString& appDir)
     if (skipLoad())
         return {};
     const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
-    QStringList packs = env.isEmpty() ? collectTipPacks(tipModsRootsFor(appDir)) : collectEnvPacks(env);
+    QStringList packs;
+    if (!env.isEmpty())
+        packs = collectEnvPacks(env);
+    // Brand-only QTCLIENT_MODS_DIR (launcher/ with brand.json, no mod.json) must
+    // not blank AppData identity — fall through to tip mods next to the binary.
+    if (packs.isEmpty())
+        packs = collectTipPacks(tipModsRootsFor(appDir));
     packs += collectEnvPacks(qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR"));
     ModIdentity best;
     for (const QString& pack : packs) {
@@ -316,18 +322,11 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
     QStringList packs;
 
     const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
-    if (!env.isEmpty()) {
+    if (!env.isEmpty())
         packs = collectEnvPacks(env);
-        if (packs.isEmpty()) {
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-            return 1;
-#else
-            return 0;
-#endif
-        }
-    } else {
+    // Empty exclusive env (launcher brand dir without mod.json) → tip packs.
+    if (packs.isEmpty())
         packs = collectTipPacks(tipRoots);
-    }
     const QString extra = qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR");
     if (!extra.isEmpty()) {
         const QStringList more = collectEnvPacks(extra);

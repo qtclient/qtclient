@@ -147,16 +147,20 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     connect(prices(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TItemInfoDialogController::lootValueChanged);
     connect(prices(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoDialogController::lootValueChanged);
     if (analysers::TAnalyserStorages* container = storages()) {
-        connect(container->itemTracking(), &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput, this,
-                &TItemInfoDialogController::trackingChanged);
-        connect(container->lootBlackWhitelist(), &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
-                &TItemInfoDialogController::lootBlackWhitelistChanged);
+        // itemTracking is null until connectToGameSession; connecting it here
+        // logs QObject::connect(ICharacterConfigurationBase, TItemInfoDialogController).
+        ensureItemTrackingConnection();
+        if (quickloot::TQuickLootBlackWhitelistStorage* list = container->lootBlackWhitelist()) {
+            connect(list, &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
+                    &TItemInfoDialogController::lootBlackWhitelistChanged);
+        }
         connect(container, &analysers::TAnalyserStorages::premiumTimeChanged, this, [this] {
             Q_EMIT lootValueChanged();
             Q_EMIT trackingChanged();
             Q_EMIT premiumTimeChanged();
         });
         connect(container, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
+            ensureItemTrackingConnection();
             onCharacterConfigurationChanged();
             Q_EMIT premiumTimeChanged();
         });
@@ -315,12 +319,25 @@ void TItemInfoDialogController::setButtons(const bool level, const bool vocation
     m_buttons[3] = twoHand;
 }
 
+void TItemInfoDialogController::ensureItemTrackingConnection()
+{
+    if (m_itemTrackingConnected)
+        return;
+    cyclopedia::TItemTrackingStorage* tracking = itemTracking();
+    if (!tracking)
+        return;
+    connect(tracking, &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput, this,
+            &TItemInfoDialogController::trackingChanged);
+    m_itemTrackingConnected = true;
+}
+
 void TItemInfoDialogController::showDialogTab()
 {
     hideDialogTab();
     if (!m_entriesBuilt)
         rebuildEntries();
     m_shown = true;
+    ensureItemTrackingConnection();
     onCharacterConfigurationChanged();
     Q_EMIT premiumTimeChanged();
     setEnableTier(false);

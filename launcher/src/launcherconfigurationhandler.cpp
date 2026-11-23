@@ -222,10 +222,17 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFinished(const QUrl& 
         Q_EMIT hintAreaDataReceived(m_hint);
         return;
     }
-    for (auto it = m_pendingPackageConfigurations.begin(); it != m_pendingPackageConfigurations.end(); ++it) {
+    // CipSoft tips use a distinct assetsversionurl host per package (static vs
+    // static.test). Local multi-client tips may share one assets-current URL —
+    // apply the payload to every pending build that asked for it (the download
+    // pool only fetches a given url once).
+    for (qsizetype index = 0; index < static_cast<qsizetype>(m_pendingPackageConfigurations.size());) {
+        auto it = m_pendingPackageConfigurations.begin() + index;
         const bool hostChannel = takeHostChannelVersion(*it, url, &data);
-        if (!hostChannel && url != it->versionUrl && url != it->assetsVersionUrl)
+        if (!hostChannel && url != it->versionUrl && url != it->assetsVersionUrl) {
+            ++index;
             continue;
+        }
         qInfo() << "Finished downloading file for package " << describeBuild(*it->build) << ": " << url.toString();
         if (url == it->versionUrl)
             it->version = data;
@@ -234,8 +241,9 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFinished(const QUrl& 
         if (isComplete(*it)) {
             qInfo() << "Package configuration for" << describeBuild(*it->build) << "loaded completely";
             finishPendingConfiguration(it);
+            continue;
         }
-        return;
+        ++index;
     }
 }
 
@@ -286,21 +294,34 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFailed(const QUrl& ur
         mainConfigurationFailed();
         return;
     }
-    for (auto it = m_pendingPackageConfigurations.begin(); it != m_pendingPackageConfigurations.end(); ++it) {
+    bool matched = false;
+    for (qsizetype index = 0; index < static_cast<qsizetype>(m_pendingPackageConfigurations.size());) {
+        auto it = m_pendingPackageConfigurations.begin() + index;
         if (takeHostChannelVersion(*it, url, nullptr)) {
-            if (isComplete(*it))
+            matched = true;
+            if (isComplete(*it)) {
                 finishPendingConfiguration(it);
-            return;
-        }
-        if (url != it->url && url != it->versionUrl && url != it->assetsUrl && url != it->assetsVersionUrl)
+                continue;
+            }
+            ++index;
             continue;
+        }
+        if (url != it->url && url != it->versionUrl && url != it->assetsUrl && url != it->assetsVersionUrl) {
+            ++index;
+            continue;
+        }
+        matched = true;
         qCritical() << "Download of package configuration for " << describeBuild(*it->build) << "from configuration"
                     << url.toString() << "failed:" << errorString;
         m_pendingPackageConfigurations.erase(it);
-        if (m_pendingPackageConfigurations.empty())
+        if (m_pendingPackageConfigurations.empty()) {
             Q_EMIT packageConfigurationDownloadsFinished();
-        return;
+            return;
+        }
+        // erased; stay on this index
     }
+    if (!matched)
+        return;
 }
 
 void TLauncherConfigurationHandler::onErrorTimerExpired()

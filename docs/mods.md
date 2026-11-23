@@ -38,7 +38,7 @@ host API table (SDK headers under `include/qtclient/abi/` define the surface).
 | Default tip mods | `qtc-aac` FS urls |
 | Product (`-DQTCLIENT_LINKED_PACK=`) | stages pack; IdleOT still `ABSORB_INTO_QTCLIENT` until abi peel |
 
-Local product path: `make qtclient client|wasm install`.
+Local product path: `make qtclient desktop|browser install`.
 
 ## Tip splash (login / launcher /play)
 
@@ -91,8 +91,12 @@ ascending priority sort.
 |------|-------|
 | `--no-mods` / empty tip | none → real CipSoft |
 | tip default | all autoload `mods/<id>/` |
-| `QTCLIENT_MODS_DIR` | packs under that root |
+| `QTCLIENT_MODS_DIR` | packs under that root (if none found → tip default) |
 | `QTCLIENT_EXTRA_MODS_DIR` (DEV) | additional FS packs |
+
+Local product Play may set `QTCLIENT_MODS_DIR` to a **launcher brand** directory
+(`brand.json` only). The launcher strips that env when starting the game client
+so tip `mods/<id>/mod.json` still supplies `urls.loginBase` and identity.
 
 Optional `urls` on `mod.json` merge into `LauncherEnv`.
 
@@ -122,5 +126,5 @@ Unchanged: ModLoader adds `mods/<id>/qml`; F5 clears QML cache on desktop DEV.
 
 ```bash
 python3 scripts/ci/check-pack-abi-headers.py
-make stock client build
+make stock desktop build
 ```
