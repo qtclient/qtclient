@@ -120,6 +120,8 @@ void TMinimapTileStorage::setField(const Position& coord, const TMinimapFieldDat
 {
     const Position id = TMinimapTile::idOf(coord);
     ensureLoaded(id).setField(coord, field.color, field.cost, field.blocked);
+    // The planner reads a blocked field as impassable.
+    m_waypointSectors.setCost(coord, field.blocked ? 0xff : field.cost);
     m_changed.insert(coordinateKey(id));
     if (!m_notifyTimer.isActive())
         m_notifyTimer.start();
@@ -169,6 +171,7 @@ void TMinimapTileStorage::setVisibleArea(const Position& topLeft, const QSize& s
 
 void TMinimapTileStorage::unloadOutside(const Position& topLeft, const QSize& size)
 {
+    std::vector<Position> removed;
     for (auto it = m_tiles.begin(); it != m_tiles.end();) {
         const TMinimapTilePtr& tile = it->second;
         const Position& id = tile->id();
@@ -181,20 +184,35 @@ void TMinimapTileStorage::unloadOutside(const Position& topLeft, const QSize& si
             continue;
         }
         Q_EMIT startSavingMinimapTileToDisk(tile);
+        removed.push_back(id);
         it = m_tiles.erase(it);
     }
+    removeTiles(removed);
 }
 
 void TMinimapTileStorage::saveAllTilesToDisk()
 {
+    std::vector<Position> removed;
     for (auto it = m_tiles.begin(); it != m_tiles.end();) {
         if (!it->second->isLoaded()) {
             ++it;
             continue;
         }
         Q_EMIT startSavingMinimapTileToDisk(it->second);
+        removed.push_back(it->second->id());
         it = m_tiles.erase(it);
     }
+    removeTiles(removed);
+}
+
+void TMinimapTileStorage::removeTiles(const std::vector<Position>& ids)
+{
+    m_waypointSectors.removeSectors(ids);
+}
+
+void TMinimapTileStorage::updateWaypointSector(const Position& id)
+{
+    m_waypointSectors.setSector(id, m_tiles.at(coordinateKey(id))->waypointImage());
 }
 
 void TMinimapTileStorage::onLoadingSucceeded(const TMinimapTilePtr& loaded)
@@ -203,6 +221,7 @@ void TMinimapTileStorage::onLoadingSucceeded(const TMinimapTilePtr& loaded)
     if (it == m_tiles.end())
         return;
     it->second->merge(*loaded);
+    m_waypointSectors.setSector(it->second->id(), it->second->waypointImage());
     m_changed.insert(it->first);
     if (!m_notifyTimer.isActive())
         m_notifyTimer.start();

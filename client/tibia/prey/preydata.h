@@ -59,7 +59,7 @@ public:
     /// falls back to inactive when the server sent no bonus or no creatures.
     void setLocked(int unlockOption);
     void setInactive();
-    void setActive(const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
+    void setActive(const TPreyBonus& bonus, const TPreyMonster& monster);
     void setSelection(QList<TPreyMonster> list);
     void setSelectionChangeMonster(const TPreyBonus& bonus, QList<TPreyMonster> list);
     void setListSelection(QList<uint16_t> races);

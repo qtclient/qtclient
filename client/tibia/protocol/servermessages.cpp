@@ -4,6 +4,7 @@
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolclassicwire.h"
 #include "protocol/protocolcodes.h"
+#include "protocol/protocolreader.h"
 #include "protocol/protocolserverpacketprocessor.h"
 #include "protocol/protocolservermessageprocessor.h"
 #include "tibia/protocol/extendedopcode.h"
@@ -13,6 +14,7 @@
 #include "network/gameserverconnection.h"
 #include "network/gameservernetworkpacket.h"
 #include "network/unencryptedrawmessagestream.h"
+#include "shared/iodevicereader.h"
 
 #include <tibia/game/gamesession.h>
 
@@ -71,10 +73,13 @@ void processServerPacket(const uint8_t* data, const size_t size)
         return;
     // A recorded packet log may hold anything: an unknown message ends its
     // packet instead of the session.
+    auto messageStream = std::make_shared<network::TUnencryptedRawMessageStream>();
+    auto protocolReader = std::make_shared<TProtocolReader>(
+        std::make_shared<shared::TIODeviceReader>(messageStream, QDataStream::LittleEndian));
     auto serverMessageProcessor = std::make_shared<TProtocolServerMessageProcessor>(
-        std::make_shared<TProtobufServerMessageTranslator>(), session->protocolMessageQueue(), false);
-    TProtocolServerPacketProcessor packetProcessor(std::make_shared<network::TUnencryptedRawMessageStream>(),
-                                                   std::move(serverMessageProcessor));
+        std::make_shared<TProtobufServerMessageTranslator>(std::move(protocolReader)), session->protocolMessageQueue(),
+        false);
+    TProtocolServerPacketProcessor packetProcessor(std::move(messageStream), std::move(serverMessageProcessor));
     packetProcessor.processPacket(network::TGameserverNetworkPacket(
         network::TGameserverNetworkPacket::Gameserver,
         QByteArray(reinterpret_cast<const char*>(data), static_cast<qsizetype>(size))));

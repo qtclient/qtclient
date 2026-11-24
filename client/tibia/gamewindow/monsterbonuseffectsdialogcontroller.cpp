@@ -6,6 +6,8 @@
 #include <utility>
 
 #include "cyclopedia/bestiarystorage.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -47,7 +49,7 @@ quint64 charmResource(const bool minor)
 class TQmlMonsterBonusEffect final : public cip::tibia::gamewindow::TQmlMonsterBonusEffect
 {
 public:
-    TQmlMonsterBonusEffect(const TCharm& charm, QObject* parent)
+    TQmlMonsterBonusEffect(const TCharm& charm, const quint64 goldBalance, QObject* parent)
         : cip::tibia::gamewindow::TQmlMonsterBonusEffect(parent)
     {
         m_id = charm.id;
@@ -59,7 +61,7 @@ public:
         m_resourceCostString = qmlcomponents::thousandShortcutsMultiString(nextCost);
         m_notEnoughResource = charmResource(m_isMinor) < static_cast<quint64>(nextCost);
         m_clearCostString = qmlcomponents::thousandShortcutsMultiString(charm.removeCost);
-        m_notEnoughGold = TBestiaryStorage::goldBalance() < charm.removeCost;
+        m_notEnoughGold = goldBalance < charm.removeCost;
         m_unlocked = charm.grade > 0;
         m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade >= 1 && charm.grade <= 3 ? charm.grade : 0);
         m_assigned = charm.raceId != 0;
@@ -127,31 +129,83 @@ void deleteAll(QList<QObject*>& objects)
 
 }
 
-TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBestiaryStorage& storage, QObject* parent)
+TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(QObject* parent)
     : cip::tibia::gamewindow::TMonsterBonusEffectsDialogController(parent)
-    , m_storage(storage)
     , m_confirmDialog(new TMessageDialogController(this))
 {
     m_temporarySelectedMonsterIndex = -1;
-    m_resetCostString = QStringLiteral("0");
     m_confirmDialog->setYesNoButtons();
     m_confirmDialog->setCloseOnButtonClicked(true);
     connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this,
             &TMonsterBonusEffectsDialogController::onConfirmDialogAccepted);
-    connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
-        if (m_shown)
-            onMonsterBonusEffectsChangedFromStorage();
-    });
+    // Host: the player's gold and charm points are the local player's
+    // resource balances (CipSoft: the player's and the charm storage's signals).
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
-        if (!m_shown)
-            return;
-        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)
-            || type == static_cast<int>(tibia::client::RESOURCE_CHARM) || type == static_cast<int>(tibia::client::RESOURCE_MINOR_CHARM)) {
-            onMonsterBonusEffectsChanged();
-            updatePlayerData();
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)) {
+            onPlayerDataChanged();
+        } else if (type == static_cast<int>(tibia::client::RESOURCE_CHARM) || type == static_cast<int>(tibia::client::RESOURCE_MINOR_CHARM)) {
+            // The charm points: the list's resource flags.
+            if (m_bonusEffectStorage)
+                onMonsterBonusEffectsChanged();
         }
     });
+}
+
+void TMonsterBonusEffectsDialogController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    for (const QMetaObject::Connection& connection : m_sessionConnections)
+        disconnect(connection);
+    m_sessionConnections.clear();
+    m_confirmDialog->dialog()->close();
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
+    m_bonusEffectStorage = session ? session->monsterBonusEffectStorage() : nullptr;
+    m_monsterRaceStorage = session ? session->monsterRaceStorage() : nullptr;
+    if (!m_bonusEffectStorage || !m_monsterRaceStorage)
+        return;
+    using BonusEffects = cip::tibia::cyclopedia::TMonsterBonusEffectStorage;
+    using Races = cip::tibia::cyclopedia::TMonsterRaceStorage;
+    const BonusEffects* bonusEffects = m_bonusEffectStorage.get();
+    m_sessionConnections.push_back(connect(bonusEffects, &BonusEffects::bonusEffectsChanged, this,
+                                           &TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChangedFromStorage));
+    // The charm points and echoes: the list's resource flags.
+    for (const auto signal : { &BonusEffects::availableCharmPointsChanged, &BonusEffects::unlockedCharmPointsChanged,
+                               &BonusEffects::availableMinorCharmEchoesChanged, &BonusEffects::unlockedMinorCharmEchoesChanged }) {
+        m_sessionConnections.push_back(connect(bonusEffects, signal, this, [this] {
+            if (m_bonusEffectStorage)
+                onMonsterBonusEffectsChanged();
+        }));
+    }
+    m_sessionConnections.push_back(connect(bonusEffects, &BonusEffects::remainingNumberOfAssignableBonusEffectsChanged, this,
+                                           &TMonsterBonusEffectsDialogController::onRemainingNumberOfAssignableBonusEffectsChanged));
+    m_sessionConnections.push_back(connect(m_monsterRaceStorage.get(), &Races::monsterRacesUnlockedForCharmsChanged, this,
+                                           &TMonsterBonusEffectsDialogController::rebuildMonsterInfos));
+    m_sessionConnections.push_back(connect(bonusEffects, &BonusEffects::resetAllCharmCostChanged, this,
+                                           &TMonsterBonusEffectsDialogController::playerDataChanged));
+}
+
+QList<TCharm> TMonsterBonusEffectsDialogController::charms() const
+{
+    QList<TCharm> charms;
+    if (!m_bonusEffectStorage)
+        return charms;
+    for (const auto& [id, effect] : m_bonusEffectStorage->bonusEffects()) {
+        TCharm& charm = charms.emplace_back();
+        charm.id = effect.id;
+        charm.grade = effect.tier;
+        charm.raceId = effect.raceId;
+        charm.removeCost = effect.removeCost;
+    }
+    return charms;
+}
+
+std::optional<TCharm> TMonsterBonusEffectsDialogController::charm(const int charmId) const
+{
+    for (const TCharm& charm : charms()) {
+        if (charm.id == charmId)
+            return charm;
+    }
+    return std::nullopt;
 }
 
 TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController()
@@ -184,8 +238,8 @@ void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
 {
     const TCharm probe{ charmId };
     setActiveTab(probe.isMinor() ? 1 : 0);
-    if (m_shown)
-        onMonsterBonusEffectsChangedFromStorage();
+    onMonsterBonusEffectsChangedFromStorage();
+    rebuildMonsterInfos();
     m_pendingCharm = charmId;
 }
 
@@ -238,24 +292,18 @@ void TMonsterBonusEffectsDialogController::setUnassignedMonstersNameFilter(const
 
 void TMonsterBonusEffectsDialogController::showDialogTab()
 {
-    m_shown = true;
-    onMonsterBonusEffectsChangedFromStorage();
+    if (!m_bonusEffectStorage)
+        return;
     // Crystal answers the bestiary request with the charm data too.
     tibia::game::requestBestiary();
 }
 
-void TMonsterBonusEffectsDialogController::hideDialogTab()
-{
-    m_shown = false;
-    m_selectedCharm = -1;
-}
+void TMonsterBonusEffectsDialogController::hideDialogTab() { m_selectedCharm = -1; }
 
 void TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChangedFromStorage()
 {
     onMonsterBonusEffectsChanged();
     rebuildMonsterInfos();
-    updatePlayerData();
-    updateStoreTooltip();
     if (!m_pendingCharm)
         return;
     const int charmId = *m_pendingCharm;
@@ -273,7 +321,10 @@ void TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChanged()
 {
     QList<TCharm> charms;
     const bool minorTab = m_activeTab == 1;
-    for (const TCharm& charm : m_storage.charms()) {
+    const QList<TCharm> all = this->charms();
+    if (m_bonusEffectStorage)
+        m_goldBalance = TBestiaryStorage::goldBalance();
+    for (const TCharm& charm : all) {
         if (charm.isMinor() == minorTab)
             charms.append(charm);
     }
@@ -287,12 +338,8 @@ void TMonsterBonusEffectsDialogController::onMonsterBonusEffectsChanged()
     QList<QObject*> previous = m_monsterBonusEffects;
     m_monsterBonusEffects.clear();
     for (const TCharm& charm : charms)
-        m_monsterBonusEffects.append(new TQmlMonsterBonusEffect(charm, this));
-    const int slots = m_storage.availableCharmSlots();
-    m_remainingCharms = slots;
-    m_canAssignMoreBonusEffects = slots != 0;
-    m_numberOfUnlockedCharms = static_cast<int>(
-        std::count_if(m_storage.charms().begin(), m_storage.charms().end(), [](const TCharm& charm) { return charm.grade > 0; }));
+        m_monsterBonusEffects.append(new TQmlMonsterBonusEffect(charm, m_goldBalance, this));
+    m_numberOfUnlockedCharms = static_cast<int>(std::count_if(all.begin(), all.end(), [](const TCharm& charm) { return charm.grade > 0; }));
     Q_EMIT qmlMonsterBonusEffectsChanged();
     Q_EMIT qmlStoreButtonTooltipChanged();
     Q_EMIT playerDataChanged();
@@ -305,15 +352,23 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
     QList<QObject*> previous = m_monsterInfos;
     m_monsterInfos.clear();
     std::vector<std::pair<QString, int>> races;
-    for (const uint16_t raceId : m_storage.charmableRaces()) {
-        if (!minorTab && m_storage.isRaceOnlyAssignableForMinorCharms(raceId))
-            continue;
-        const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
-        if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
-            continue;
-        if (m_storage.assignedCharm(raceId, minorTab))
-            continue;
-        races.emplace_back(name, raceId);
+    if (m_monsterRaceStorage) {
+        // The tab's race list; a race keeps out while a charm of the tab's kind is on it.
+        const QList<TCharm> all = charms();
+        const std::vector<cyclopedia::TMonsterRace>& tabRaces =
+            minorTab ? m_monsterRaceStorage->racesUnlockedForMinorCharms() : m_monsterRaceStorage->racesUnlockedForCharms();
+        for (const cyclopedia::TMonsterRace& race : tabRaces) {
+            const int raceId = race.raceId;
+            const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
+            if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
+                continue;
+            const bool assigned = std::any_of(all.begin(), all.end(), [raceId, minorTab](const TCharm& charm) {
+                return charm.raceId == raceId && charm.isMinor() == minorTab;
+            });
+            if (assigned)
+                continue;
+            races.emplace_back(name, raceId);
+        }
     }
     std::sort(races.begin(), races.end(),
               [](const auto& a, const auto& b) { return a.first.compare(b.first) < 0; });
@@ -328,14 +383,55 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
     }
 }
 
-void TMonsterBonusEffectsDialogController::updatePlayerData()
+void TMonsterBonusEffectsDialogController::onPlayerDataChanged()
 {
-    const quint64 resetCost = m_storage.resetAllCharmsCost();
-    m_resetCostString = m_storage.hasCharmData() ? englishNumber(resetCost) : QStringLiteral("0");
-    m_notEnoughGoldReset = TBestiaryStorage::goldBalance() < resetCost;
-    m_enableResetButton = std::any_of(m_storage.charms().begin(), m_storage.charms().end(),
-                                      [](const TCharm& charm) { return charm.grade > 0; });
     Q_EMIT playerDataChanged();
+    if (!m_bonusEffectStorage)
+        return;
+    const quint64 gold = TBestiaryStorage::goldBalance();
+    if (m_goldBalance == gold)
+        return;
+    m_goldBalance = gold;
+    onMonsterBonusEffectsChanged();
+    Q_EMIT playerDataChanged();
+}
+
+void TMonsterBonusEffectsDialogController::onRemainingNumberOfAssignableBonusEffectsChanged()
+{
+    Q_EMIT qmlStoreButtonTooltipChanged();
+    Q_EMIT qmlMonsterBonusEffectsChanged();
+}
+
+QString TMonsterBonusEffectsDialogController::resetCostString() const
+{
+    if (!m_bonusEffectStorage)
+        return QStringLiteral("0");
+    return englishNumber(m_bonusEffectStorage->resetAllCharmCost());
+}
+
+bool TMonsterBonusEffectsDialogController::notEnoughGoldReset() const
+{
+    if (!m_bonusEffectStorage)
+        return true;
+    return m_goldBalance < m_bonusEffectStorage->resetAllCharmCost();
+}
+
+bool TMonsterBonusEffectsDialogController::enableResetButton() const
+{
+    if (!m_bonusEffectStorage)
+        return false;
+    const QList<TCharm> all = charms();
+    return std::any_of(all.begin(), all.end(), [](const TCharm& charm) { return charm.grade > 0; });
+}
+
+bool TMonsterBonusEffectsDialogController::canAssignMoreBonusEffects() const
+{
+    return m_bonusEffectStorage && m_bonusEffectStorage->remainingNumberOfAssignableBonusEffects() != 0;
+}
+
+int TMonsterBonusEffectsDialogController::remainingCharms() const
+{
+    return m_bonusEffectStorage ? m_bonusEffectStorage->remainingNumberOfAssignableBonusEffects() : 0;
 }
 
 void TMonsterBonusEffectsDialogController::setPremiumTimeStorage(game::TPremiumTimeStorage* storage)
@@ -344,15 +440,17 @@ void TMonsterBonusEffectsDialogController::setPremiumTimeStorage(game::TPremiumT
         disconnect(m_premiumTimeStorage.data(), nullptr, this, nullptr);
     m_premiumTimeStorage = storage;
     if (storage)
-        connect(storage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TMonsterBonusEffectsDialogController::updateStoreTooltip);
+        connect(storage, &game::TPremiumTimeStorage::premiumTimeChanged, this, &TMonsterBonusEffectsDialogController::qmlStoreButtonTooltipChanged);
 }
 
 bool TMonsterBonusEffectsDialogController::isPremium() const { return m_premiumTimeStorage && m_premiumTimeStorage->isPremium(); }
 
-void TMonsterBonusEffectsDialogController::updateStoreTooltip()
+QString TMonsterBonusEffectsDialogController::storeButtonTooltip() const
 {
-    // Unlimited slots (0xFF): no tooltip.
-    const int slots = m_storage.availableCharmSlots();
+    // No session or unlimited slots (0xFF): no tooltip.
+    if (!m_bonusEffectStorage)
+        return {};
+    const int slots = m_bonusEffectStorage->remainingNumberOfAssignableBonusEffects();
     QStringList lines;
     if (slots != 0xFF) {
         if (slots == 0)
@@ -362,19 +460,20 @@ void TMonsterBonusEffectsDialogController::updateStoreTooltip()
         lines << (isPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
                                                       : qtTrId("monster_bonus_effects_no_premium_tooltip"));
     }
-    m_storeButtonTooltip = lines.join(u'\n');
-    Q_EMIT qmlStoreButtonTooltipChanged();
+    return lines.join(u'\n');
 }
 
 bool TMonsterBonusEffectsDialogController::showStoreButtonTooltip() const
 {
-    return m_storage.availableCharmSlots() != 0xFF;
+    if (!m_bonusEffectStorage)
+        return true;
+    return m_bonusEffectStorage->remainingNumberOfAssignableBonusEffects() != 0xFF;
 }
 
 void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffectID)
 {
     // The charm becomes the selected one (no notify) and the confirmation's.
-    const TCharm* charm = m_storage.charm(BonusEffectID);
+    const std::optional<TCharm> charm = this->charm(BonusEffectID);
     if (!charm)
         return;
     m_selectedCharm = charm->id;
@@ -395,7 +494,7 @@ void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffe
 
 void TMonsterBonusEffectsDialogController::clearBonusEffect(const int BonusEffectID)
 {
-    const TCharm* charm = m_storage.charm(BonusEffectID);
+    const std::optional<TCharm> charm = this->charm(BonusEffectID);
     if (!charm)
         return;
     m_selectedCharm = charm->id;
@@ -408,7 +507,7 @@ void TMonsterBonusEffectsDialogController::clearBonusEffect(const int BonusEffec
 
 void TMonsterBonusEffectsDialogController::assignBonusEffectToMonster(const int BonusEffectID, const int monsterRaceID)
 {
-    const TCharm* charm = m_storage.charm(BonusEffectID);
+    const std::optional<TCharm> charm = this->charm(BonusEffectID);
     if (!charm)
         return;
     m_selectedCharm = charm->id;
@@ -425,8 +524,9 @@ QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int 
 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
-    const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || isPremium();
-    auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? 3 : 1, expansionOrPremium ? 3 : -1);
+    const bool expansionOrPremium = (m_bonusEffectStorage && m_bonusEffectStorage->remainingNumberOfAssignableBonusEffects() == 0xFF) || isPremium();
+    auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? store::TStoreOpenParameters{.openAction = store::OPEN_USEFUL_THING, .usefulThing = 3}
+                                                                          : store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = -1});
     Q_EMIT publishGameAction(action);
 }
 
@@ -436,7 +536,7 @@ void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()
     m_confirmCharm = 0;
     m_confirmRace = 0;
     m_confirmDialog->showMessage(qtTrId("monsters_confirm_clear_all_charms_caption"),
-                                 qtTrId("monsters_confirm_clear_all_charms").arg(englishNumber(m_storage.resetAllCharmsCost())));
+                                 qtTrId("monsters_confirm_clear_all_charms").arg(resetCostString()));
 }
 
 void TMonsterBonusEffectsDialogController::onActiveTabChanged(const int activeTabId)
@@ -447,7 +547,11 @@ void TMonsterBonusEffectsDialogController::onActiveTabChanged(const int activeTa
 
 bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms(const int RaceID)
 {
-    return m_storage.isRaceOnlyAssignableForMinorCharms(RaceID);
+    // Not in the list of the races for major charms.
+    if (!m_monsterRaceStorage)
+        return true;
+    const std::vector<cyclopedia::TMonsterRace>& races = m_monsterRaceStorage->racesUnlockedForCharms();
+    return std::none_of(races.begin(), races.end(), [RaceID](const cyclopedia::TMonsterRace& race) { return race.raceId == RaceID; });
 }
 
 void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()

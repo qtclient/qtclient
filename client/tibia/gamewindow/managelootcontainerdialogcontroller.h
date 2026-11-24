@@ -147,7 +147,6 @@ private:
     game::TPremiumTimeStorage* m_premiumTimeStorage = nullptr;
     quickloot::TQuickLootBlackWhitelistStorage* m_lootBlackWhitelist = nullptr;
     std::shared_ptr<quickloot::TManagedContainerStorage> m_containers;
-    TAppearanceTypeListModel m_listModel;
     TAppearanceTypeListModelSortFilterProxy m_listProxy;
     /// CIP +0x80: the invalid container message; closing it shows the dialog again.
     TMessageDialogController* m_info = nullptr;

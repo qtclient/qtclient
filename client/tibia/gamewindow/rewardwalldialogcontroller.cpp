@@ -425,14 +425,14 @@ void TRewardWallDialogController::closeButtonClicked() { closeDialog(); }
 /// The store's Instant Reward Access page (useful thing 2).
 void TRewardWallDialogController::getMoreInstantRewardAccessClicked()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(3, 2);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_USEFUL_THING, .usefulThing = 2});
     Q_EMIT publishGameAction(action);
 }
 
 /// The store's premium page.
 void TRewardWallDialogController::getPremiumClicked()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     Q_EMIT publishGameAction(action);
 }
 

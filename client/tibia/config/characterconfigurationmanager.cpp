@@ -122,7 +122,7 @@ void TCharacterConfigurationManager::loadConfigurationForCharacter(const quint32
                     m_storages.sidebar->setWidgetsManagerOptions(defaultSidebarWidgets());
             }
         }
-        m_sidebarLoadedFromFile = sidebarLoaded;
+        m_defaultSidebarConfiguration = !sidebarLoaded;
     }
     m_loaded = true;
     Q_EMIT configurationLoadedForCharacter();

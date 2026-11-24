@@ -29,6 +29,7 @@
 #include "creatures/battlelistgameactionprovider.h"
 #include "creatures/battlelistrenderprovider.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/movementtweens.h"
 #include "gamewindow/battlelistgameactionhandler.h"
 #include "creatures/vipstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
@@ -290,7 +291,7 @@ void TGameSessionBase::createProtocolMessageHandlers()
         m_creatureMovementSpeedCalculator, std::make_shared<appearances::TAppearanceInstanceFactory>(nullptr), clockService());
     // The sound messages have a handler only when the client plays sound.
     if (sound::TSoundController::instance())
-        m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>();
+        m_soundProtocolMessageHandler = std::make_shared<sound::TSoundProtocolMessageHandler>(sound::TSoundController::instance());
     m_spellBookProtocolMessageHandler = std::make_shared<TSpellBookProtocolMessageHandler>();
     // Every WorldEntered message: the session announces the world entered.
     connect(m_playerProtocolMessageHandler.get(), &TPlayerProtocolMessageHandler::worldEntered, this, &IGameSession::worldEntered);
@@ -332,7 +333,8 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_imbuingProtocolMessageHandler = std::make_shared<imbuing::TImbuingProtocolMessageHandler>(
         m_imbuingStorage, m_gameActionContextHelper, m_imbuementDurationsStorage, clockService());
     m_blessingsProtocolMessageHandler = std::make_shared<TBlessingsProtocolMessageHandler>();
-    m_dailyRewardProtocolMessageHandler = std::make_shared<dailyreward::TDailyRewardProtocolMessageHandler>(m_dailyRewardStorage.get());
+    m_dailyRewardProtocolMessageHandler = std::make_shared<dailyreward::TDailyRewardProtocolMessageHandler>(
+        m_dailyRewardStorage.get(), m_objectAppearanceInstanceInfoStorage);
     cyclopedia::TCyclopediaProtocolMessageHandler::TStorages cyclopediaStorages;
     cyclopediaStorages.itemTracking = m_itemTrackingStorage;
     cyclopediaStorages.gainWaste = m_gainWasteStorage;
@@ -359,8 +361,6 @@ void TGameSessionBase::createProtocolMessageHandlers()
     m_bossBestiaryProtocolMessageHandler =
         std::make_shared<bossbestiary::TBossBestiaryProtocolMessageHandler>(m_monsterRaceStorage, m_bossTrackerStorage, m_bosstiaryStorage);
     m_exaltationProtocolMessageHandler = std::make_shared<exaltation::TExaltationProtocolMessageHandler>(m_exaltationStorage);
-    m_exaltationGameActionHandler =
-        std::make_shared<exaltation::TExaltationGameActionHandler>(m_exaltationProtocolMessageHandler, m_exaltationStorage);
     m_gatherAllProtocolMessageHandler = std::make_shared<input::TGatherAllProtocolMessageHandler>();
     m_skillWheelProtocolMessageHandler = std::make_shared<skillwheel::TSkillWheelProtocolMessageHandler>(
         m_characterConfigurationStorages.skillWheel, m_creatureStorage, m_characterInfoStorage, m_playerData);
@@ -395,12 +395,14 @@ void TGameSessionBase::createRenderProviders()
     m_nextFrameUpdater = std::make_shared<renderer::TNextFrameUpdater>(
         m_worldMapStorage, m_effectStorage, m_textStorage, m_cooldownStorage, m_ambientLightStorage, m_itemTrackingStorage,
         m_gainWasteStorage, m_impactStorage, m_damageInputStorage, m_progressStorage, m_huntingSessionStorage, m_soundStorage);
-    m_worldMapRenderProvider = std::make_shared<qmlcomponents::TWorldMapRenderProvider>();
+    // Host: the client options are the process-wide ones (not owned here).
+    m_worldMapRenderProvider = std::make_shared<qmlcomponents::TWorldMapRenderProvider>(
+        m_renderVolumeProvider, m_worldMapStorage, m_creatureStorage, m_ambientLightStorage, m_effectStorage,
+        std::shared_ptr<config::TClientOptions>(config::TClientOptions::instance(), [](config::TClientOptions*) {}),
+        appearances::TAppearanceInstanceFactory::instanceTracker());
     // The view the map handler centres; the picker reads the player's floor from it.
     m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
     m_worldMapRenderProvider->setRenderVolumeProvider(m_renderVolumeProvider);
-    // The provider builds the frame the updater advances to.
-    m_nextFrameUpdater->setWorldMapRenderProvider(m_worldMapRenderProvider);
     m_worldMapPicker =
         std::make_shared<worldmap::TWorldMapPicker>(m_renderVolumeProvider, m_worldMapRenderProvider, m_worldMapStorage);
     m_numericalEffectRenderProvider = std::make_shared<effects::TNumericalEffectRenderProvider>(m_effectStorage, m_worldMapStorage);
@@ -438,6 +440,9 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_genericObjectGameActionProvider = std::make_shared<input::TGenericObjectGameActionProvider>(
         m_creatureStorage, m_genericChatGameActionProvider, m_partyGameActionProvider, m_inspectPlayerGameActionProvider,
         m_quickLootBlackWhitelistStorage);
+    // Host: CipSoft's game server session hands the providers its premium time
+    // storage when it gets one; qtclient's is the process-wide one.
+    m_genericObjectGameActionProvider->setPremiumTimeStorage(TPremiumTimeStorage::liveInstance());
     m_battleListGameActionProvider = std::make_shared<creatures::TBattleListGameActionProvider>(m_genericObjectGameActionProvider);
     m_worldMapGameActionProvider = std::make_shared<worldmap::TWorldMapGameActionProvider>(
         *m_worldMapRenderProvider, *m_worldMapViewport, m_genericObjectGameActionProvider);
@@ -478,12 +483,17 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     m_playerTradeGameActionHandler = std::make_shared<trade::TPlayerTradeGameActionHandler>(m_creatureStorage.get());
     m_storeGameActionHandler = std::make_shared<store::TStoreGameActionHandler>(m_storeProtocolMessageHandler);
     m_preyGameActionHandler = std::make_shared<prey::TPreyGameActionHandler>(m_preyProtocolMessageHandler);
+    m_battleListGameActionHandler = std::make_shared<gamewindow::TBattleListGameActionHandler>(
+        m_characterConfigurationManager ? m_characterConfigurationManager->sidebarOptions() : nullptr, m_creatureStorage,
+        m_battleListRenderProvider);
     m_dailyRewardGameActionHandler = std::make_shared<dailyreward::TDailyRewardGameActionHandler>(m_dailyRewardStorage.get());
     m_questLogGameActionHandler = std::make_shared<questlog::TQuestLogGameActionHandler>(m_questLogStorage);
+    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>();
     m_exivaOptionsGameActionHandler =
         std::make_shared<exivaoptions::TExivaOptionsGameActionHandler>(m_exivaOptionsProtocolMessageHandler, m_exivaOptionsStorage);
-    m_quickLootGameActionHandler = std::make_shared<quickloot::TQuickLootGameActionHandler>();
     m_marketGameActionHandler = std::make_shared<market::TMarketGameActionHandler>(m_marketProtocolMessageHandler);
+    m_exaltationGameActionHandler =
+        std::make_shared<exaltation::TExaltationGameActionHandler>(m_exaltationProtocolMessageHandler, m_exaltationStorage);
     m_gatherAllGameActionHandler = std::make_shared<input::TGatherAllGameActionHandler>(m_gatherAllProtocolMessageHandler);
     m_skillWheelGameActionHandler =
         std::make_shared<skillwheel::TSkillWheelGameActionHandler>(m_skillWheelProtocolMessageHandler, m_playerCreature);
@@ -493,10 +503,8 @@ void TGameSessionBase::createGameActionProvidersAndHandlers()
     // and the action bar's handler (the game client's in CipSoft).
     m_effectGameActionHandler = std::make_shared<effects::TEffectGameActionHandler>(*m_effectStorage);
     m_actionButtonGameActionHandler = std::make_shared<input::TActionButtonGameActionHandler>(
-        spells::TSpellInfoStorage::instance(), m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage);
-    m_battleListGameActionHandler = std::make_shared<gamewindow::TBattleListGameActionHandler>(
-        m_characterConfigurationManager ? m_characterConfigurationManager->sidebarOptions() : nullptr, m_creatureStorage,
-        m_battleListRenderProvider);
+        spells::TSpellInfoStorage::instance(), m_cooldownStorage, m_playerData, m_objectAppearanceInstanceInfoStorage,
+        clockService());
 }
 
 void TGameSessionBase::connectGameActionHandlers()
@@ -617,16 +625,43 @@ void TGameSessionBase::connectGameActionHandlers()
             &TInternalGameActionRouter::handleGameActionInternal);
 }
 
+namespace {
+
+/// Centres the view on where the creature is drawn (its walk included).
+void centerViewportOnCreature(const std::weak_ptr<creatures::TCreature>& creature,
+                              const std::shared_ptr<worldmap::TWorldMapViewport>& viewport)
+{
+    if (const std::shared_ptr<creatures::TCreature> locked = creature.lock())
+        viewport->setCenter(locked->drawSubfieldCoordinate());
+}
+
+}
+
+void TGameSessionBase::updatePlayerMovementIntentHandler() {}
+
 void TGameSessionBase::onPrepareNextFrameToRender(const qint64 NextFramePredictedTimestamp)
 {
+    // Host: the game client keeps calling a session whose storages were released.
+    if (!m_nextFrameUpdater)
+        return;
     ++m_preparedFrameCount;
-    if (m_nextFrameUpdater)
-        m_nextFrameUpdater->update(NextFramePredictedTimestamp);
-    // The camera follows the view's top-left subfield.
-    if (m_worldMapCamera && m_worldMapViewport)
-        m_worldMapCamera->setTopLeftSubfieldCoordinate(m_worldMapViewport->visibleTopLeft());
+    m_nextFrameUpdater->update(NextFramePredictedTimestamp);
+    // The player creature advances to the frame first; the view then centres
+    // on where it is drawn and the camera follows the view's top-left.
+    const std::shared_ptr<creatures::TCreature> player = m_playerCreature.lock();
+    if (player)
+        player->update(NextFramePredictedTimestamp);
+    centerViewportOnCreature(playerCreature(), m_worldMapViewport);
+    m_worldMapCamera->setTopLeftSubfieldCoordinate(m_worldMapViewport->visibleTopLeft());
+    m_renderVolumeProvider->updateRenderVolume();
+    updatePlayerMovementIntentHandler();
+    m_worldMapRenderProvider->setFrameTimestamp(NextFramePredictedTimestamp);
+    m_worldMapRenderProvider->advance();
     if (m_objectSoundController)
         m_objectSoundController->updateObjectCounts();
+    // Host: the movement clock ran on the predicted timestamp since the next
+    // frame updater advanced the creatures; it runs on real time again.
+    creatures::resumeMovementClock();
 }
 
 void TGameSessionBase::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)

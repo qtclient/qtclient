@@ -72,6 +72,24 @@ TOutfitQmlModel::TOutfitQmlModel(const uint16_t outfitId, const int head, const 
     m_isObjectOutfit = isObjectOutfit;
 }
 
+void TOutfitQmlModel::setColors(cip::tibia::qmlcomponents::TOutfitColorQmlType* v)
+{
+    const auto* colors = qobject_cast<TOutfitColorQmlType*>(v);
+    if (!colors)
+        return;
+    // Host: CipSoft's model holds its colours by value; a default-made model
+    // makes them on the first write.
+    auto* own = qobject_cast<TOutfitColorQmlType*>(m_colors);
+    if (!own) {
+        own = new TOutfitColorQmlType(this);
+        m_colors = own;
+    } else if (!(*colors != *own)) {
+        return;
+    }
+    own->copyFrom(v);
+    Q_EMIT outfitChanged();
+}
+
 QColor TColorHelperQmlService::createColorFromEightBitHSV(const int ColorValue)
 {
     return tibia::shared::outfitColor(static_cast<uint8_t>(ColorValue));

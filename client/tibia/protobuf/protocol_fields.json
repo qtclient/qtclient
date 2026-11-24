@@ -6488,43 +6488,26 @@
   "GameserverMessageCreatureHealth": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "health_percent",
-        "type": "uint32",
-        "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "u32 creatureId; u8 healthPercent"
+    "classic": "u32 creatureId; u8 healthPercent",
+    "note": "CipSoft TProtobufServerMessageTranslator::v43: the id goes to creature.remove_id and creature.id, the health percent to creature.health_percent; the handler applies the creature."
   },
   "GameserverMessageCreatureLight": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "intensity",
-        "type": "uint32",
-        "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "color",
-        "type": "uint32",
-        "number": 3,
         "label": "optional"
       }
     ],
     "classic": "u32 creatureId; u8 intensity; u8 color(classic only)",
-    "note": "Field 3 tip recovery of classic color byte (dmpd may omit; measure includes it)."
+    "note": "CipSoft TProtobufServerMessageTranslator::v59: the id goes to creature.remove_id and creature.id, the intensity and colour to creature.light_intensity / light_color; the handler applies the creature."
   },
   "GameserverMessageCreatureSpeed": {
     "fields": [
@@ -6547,53 +6530,38 @@
   "GameserverMessageCreatureSkull": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "skull",
-        "type": "uint32",
-        "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "u32 creatureId; u8 skull"
+    "classic": "u32 creatureId; u8 skull",
+    "note": "CipSoft TProtobufServerMessageTranslator::v46: the id goes to creature.remove_id and creature.id, the skull to creature.skull; the handler applies the creature."
   },
   "GameserverMessageCreatureParty": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "party",
-        "type": "uint32",
-        "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "u32 creatureId; u8 party"
+    "classic": "u32 creatureId; u8 party",
+    "note": "CipSoft TProtobufServerMessageTranslator::v47: the id goes to creature.remove_id and creature.id, the party shield to creature.shield; the handler applies the creature."
   },
   "GameserverMessageCreatureUnpass": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "unpass",
-        "type": "uint32",
-        "number": 2,
         "label": "optional"
       }
     ],
-    "classic": "u32 creatureId; u8 unpass"
+    "classic": "u32 creatureId; u8 unpass",
+    "note": "CipSoft TProtobufServerMessageTranslator::v48: the id goes to creature.remove_id and creature.id, the flag to creature.unpassable; the handler applies the creature."
   },
   "GameserverMessageAmbientLight": {
     "fields": [
@@ -7827,20 +7795,14 @@
   "GameserverMessageInspectionState": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "state",
-        "type": "uint32",
-        "number": 2,
         "label": "optional"
       }
     ],
     "classic": "u32 creature; u8 state",
-    "note": "CIP TProtobufServerMessageTranslator::v57."
+    "note": "CipSoft TProtobufServerMessageTranslator::v57: the id goes to creature.remove_id and creature.id, the state to creature.inspection_type; the handler applies the creature."
   },
   "GameserverMessageSetInventory": {
     "fields": [
@@ -8340,26 +8302,14 @@
   "GameserverMessageCreatureOutfit": {
     "fields": [
       {
-        "name": "creature_id",
-        "type": "uint32",
+        "name": "creature",
+        "type": "CreatureData",
         "number": 1,
-        "label": "optional"
-      },
-      {
-        "name": "outfit",
-        "type": "ProtocolOutfit",
-        "number": 2,
-        "label": "optional"
-      },
-      {
-        "name": "mount",
-        "type": "ProtocolOutfit",
-        "number": 3,
         "label": "optional"
       }
     ],
     "classic": "u32 creatureId; outfit (colours, addons, item); mount (colours)",
-    "note": "CIP TProtobufServerMessageTranslator::v44. Fields 4-8 are product server outfit extras (not in CIP)."
+    "note": "CipSoft TProtobufServerMessageTranslator::v44: the id goes to creature.remove_id and creature.id, the outfit (colours, addons, object) to creature.outfit, the mount (colours) to creature.mount; the handler applies the creature."
   },
   "GameserverMessageCreatureMarks": {
     "fields": [
@@ -14682,8 +14632,15 @@
     "note": "CIP TProtobufClientMessageTranslator::v89: coordinate, u16 type, u8 stack position."
   },
   "GameclientMessageUnknown": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "opcode",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "none: the translator gives a recorded client message of an opcode it does not know this extension",
+    "note": "CIP TProtobufServerMessageTranslator::v4 default case: the opcode byte (+0x20)."
   }
 }

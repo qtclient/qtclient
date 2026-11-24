@@ -18,6 +18,8 @@ public:
     explicit TGenericEnterTextDialogController(QObject* parent = nullptr);
     TGenericEnterTextDialogController(const QString& caption, const QString& description, uint maxInputLength,
                                       QObject* parent = nullptr);
+    TGenericEnterTextDialogController(const QString& caption, const QString& description, uint maxInputLength, QQmlEngine* engine,
+                                      QQuickItem* dialogParentItem, QObject* parent = nullptr);
 
     /// CIP: sets the text the input starts with, then creates and shows the dialog.
     void showWithText(const QString& text);

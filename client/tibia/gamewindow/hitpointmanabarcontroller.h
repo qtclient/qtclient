@@ -1,27 +1,35 @@
 #pragma once
 
-#include "client/gamecore.h"
-
 #include "gamewindow/sidebarpanelcontrollerbase.h"
 #include <cip_gen.h>
 
-#include <QPointer>
+#include "qtconnectionmanager.h"
 
-class QQuickItem;
+#include <memory>
 
 namespace tibia {
+namespace config {
+class TClientOptions;
+}
+namespace game {
+class IGameSession;
+}
 namespace gamewindow {
 
 /// HitpointsManaPanel's controller (CIP: THitpointManabarController): the
-/// player's hit points and mana, shown while option 0x72 statusPanelEnabled
-/// is on. requestContextMenu toggles options 0x71 statusBarEnabled and 0x72
-/// statusPanelEnabled.
+/// player's hit points and mana, shown while option statusPanelEnabled is on.
+/// requestContextMenu toggles options statusBarEnabled and statusPanelEnabled.
 class THitpointManabarController final : public TSidebarPanelController<cip::tibia::gamewindow::THitpointManabarController>
 {
     Q_OBJECT
 public:
-    explicit THitpointManabarController(QObject* parent = nullptr);
+    /// Follows the client options' statusPanelEnabledChanged and starts with
+    /// the option's value.
+    explicit THitpointManabarController(config::TClientOptions* ClientOptions, QObject* parent = nullptr);
 
+    /// Keeps the session, follows its player data's playerDataChanged and
+    /// copies the values once; then re-reads statusPanelEnabled.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// Copies the player's hit points and mana, signalling each value that changed.
     void onPlayerDataChanged();
@@ -33,10 +41,12 @@ private:
     void setHitpoints(int current, int max);
     void setMana(int current, int max);
     void setVisible(bool visible);
-    /// Any option changed: re-reads option 0x72 statusPanelEnabled.
+    /// statusPanelEnabledChanged: re-reads the option and signals the visibility.
     void onOptionChanged();
 
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::shared_ptr<game::IGameSession> m_pGameSession;
+    config::TClientOptions* m_pClientOptions = nullptr;
+    shared::TQtConnectionManager m_gameSessionConnections;
 };
 
 }

@@ -60,6 +60,20 @@ TAppearanceTypePtr gemObjectType(const int quality, const int vocation)
     return nullptr;
 }
 
+/// The type id of the revealed gem object of `quality` for the vocation; 0 for none.
+uint16_t gemObjectTypeId(const int quality, const int vocation)
+{
+    const TAppearanceTypePtr type = gemObjectType(quality, vocation);
+    return type ? static_cast<uint16_t>(type->getId()) : 0;
+}
+
+/// The name of the revealed gem object of `quality` for the vocation; empty for none.
+QString gemObjectName(const int quality, const int vocation)
+{
+    const TAppearanceTypePtr type = gemObjectType(quality, vocation);
+    return type ? QString::fromStdString(type->getName()) : QString();
+}
+
 }
 
 TPaginationProxyModel::TPaginationProxyModel(const int entriesPerPage, QObject* parent)
@@ -131,14 +145,8 @@ QVariant TInventoryGemListModel::data(const QModelIndex& index, const int role) 
     const int quality = secondMod ? (supremeMod ? 2 : 1) : 0;
     const int voc = vocationIndex();
     switch (role) {
-        case GemImageSource: {
-            const TAppearanceTypePtr type = gemObjectType(quality, m_configuration->vocation);
-            return static_cast<uint>(type ? type->getId() : 0);
-        }
-        case GemName: {
-            const TAppearanceTypePtr type = gemObjectType(quality, m_configuration->vocation);
-            return type ? QString::fromStdString(type->getName()) : QString();
-        }
+        case GemImageSource: return static_cast<uint>(gemObjectTypeId(quality, m_configuration->vocation));
+        case GemName: return gemObjectName(quality, m_configuration->vocation);
         case Quality: return quality;
         case Mod1Id: return g->basic1;
         case Mod1ImageSource: return basicModImage(g->basic1);
@@ -431,6 +439,12 @@ void TModListSortFilterProxyModel::resetFilters()
     m_filterMods = 0;
     endFilterChange(QSortFilterProxyModel::Direction::Both);
     Q_EMIT filterChanged();
+}
+
+void TModListSortFilterProxyModel::invalidateRows()
+{
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
 }
 
 QVariantMap TModListSortFilterProxyModel::rowData(const QModelIndex& Index) { return modelRowData(*this, Index); }

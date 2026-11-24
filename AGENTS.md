@@ -46,6 +46,25 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
   WebGL shader preamble (`renderer/wasnglsl.h`) and the browser runtime glue
   in `browser/`.
 
+## Smoke runs (host options, no CipSoft counterpart)
+
+Never drive the desktop with synthetic mouse or keyboard input. Script the run
+instead; every step starts once the world is entered (`--character` login or
+`--replay`):
+
+- `--say <text>` (repeatable), `--walk <dirs>`, `--play-for <s>`,
+  `--screenshot <file>` with `--screenshot-delay <ms>`.
+- `--smoke-action <EGameAction name>[:<ms>]` (repeatable, run in order): publishes
+  the game action through the client's action router, `<ms>` (default 1000)
+  after the previous step. The action carries only its type, so use actions
+  without a payload (e.g. `TOGGLE_FULLSCREEN`). `CONFIRM_TUTORIAL_HINT` confirms
+  the tutorial hint shown last.
+- `--smoke-confirm-hint`: confirms every tutorial hint 500 ms after it shows
+  (not hint 2, the vocation selection).
+
+Example (tutorial replay):
+`tibia --renderer software --replay t.cam --smoke-confirm-hint --smoke-action CONFIRM_TUTORIAL_HINT:3000 --screenshot shot.png --screenshot-delay 8000`.
+
 ## Do not
 
 - Commit `upstream/` or CipSoft asset blobs.

@@ -9,6 +9,8 @@
 #include "protocol/miscwire.h"
 #include "protocol/tradewire.h"
 #include "protocol/protocolclassicwire.h"
+#include "protocol/protocolreader.h"
+#include "shared/iodevicereader.h"
 
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
@@ -20,7 +22,9 @@
 
 #include <protocol.pb.h>
 
+#include <algorithm>
 #include <cstring>
+#include <stdexcept>
 #include <string>
 
 namespace tibia::protocol {
@@ -31,7 +35,6 @@ TProtobufClientMessageTranslator* g_clientTranslator = nullptr;
 
 struct CipTypedKeep {
     TProtobufClientMessageTranslator tProtobufClientMessageTranslator;
-    TProtocolReader tProtocolReader;
     TProtocolWriter tProtocolWriter;
 };
 CipTypedKeep& typedKeep()
@@ -504,72 +507,6 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         m->set_slot(slot);
         return r.i;
     }
-    case 140: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health);
-        uint32_t id = 0;
-        uint8_t hp = 0;
-        if (!r.u32(id) || !r.u8(hp))
-            return 0;
-        m->set_creature_id(id);
-        m->set_health_percent(hp);
-        return r.i;
-    }
-    case 141: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureLight::gameserver_message_creature_light);
-        uint32_t id = 0;
-        uint8_t intensity = 0;
-        uint8_t color = 0;
-        if (!r.u32(id) || !r.u8(intensity) || !r.u8(color))
-            return 0;
-        m->set_creature_id(id);
-        m->set_intensity(intensity);
-        m->set_color(color);
-        return r.i;
-    }
-    case 143: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
-        uint32_t id = 0;
-        uint16_t baseSpeed = 0, speed = 0;
-        if (r.u32(id)) {
-            m->mutable_creature()->set_remove_id(id);
-            m->mutable_creature()->set_id(id);
-        }
-        if (r.u16(baseSpeed))
-            m->set_base_speed(baseSpeed);
-        if (r.u16(speed))
-            m->mutable_creature()->set_speed(speed);
-        return r.i;
-    }
-    case 144: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull);
-        uint32_t id = 0;
-        uint8_t skull = 0;
-        if (!r.u32(id) || !r.u8(skull))
-            return 0;
-        m->set_creature_id(id);
-        m->set_skull(skull);
-        return r.i;
-    }
-    case 145: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureParty::gameserver_message_creature_party);
-        uint32_t id = 0;
-        uint8_t party = 0;
-        if (!r.u32(id) || !r.u8(party))
-            return 0;
-        m->set_creature_id(id);
-        m->set_party(party);
-        return r.i;
-    }
-    case 146: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass);
-        uint32_t id = 0;
-        uint8_t unpass = 0;
-        if (!r.u32(id) || !r.u8(unpass))
-            return 0;
-        m->set_creature_id(id);
-        m->set_unpass(unpass != 0);
-        return r.i;
-    }
     case 197: {
         // Type 0: the revealed gem's id. Type 1: the reshaped gem's quality and mods; the quality decides
         // whether the second (regular, greater) and the supreme (greater) mod follow.
@@ -769,15 +706,15 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     }
     case 140: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health);
-        w.u32(m.creature_id());
-        w.u8(uint8_t(m.health_percent()));
+        w.u32(m.creature().id());
+        w.u8(uint8_t(m.creature().health_percent()));
         return w.out;
     }
     case 141: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureLight::gameserver_message_creature_light);
-        w.u32(m.creature_id());
-        w.u8(uint8_t(m.intensity()));
-        w.u8(uint8_t(m.color()));
+        w.u32(m.creature().id());
+        w.u8(uint8_t(m.creature().light_intensity()));
+        w.u8(uint8_t(m.creature().light_color()));
         return w.out;
     }
     case 143: {
@@ -789,20 +726,20 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     }
     case 144: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull);
-        w.u32(m.creature_id());
-        w.u8(uint8_t(m.skull()));
+        w.u32(m.creature().id());
+        w.u8(uint8_t(m.creature().skull()));
         return w.out;
     }
     case 145: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureParty::gameserver_message_creature_party);
-        w.u32(m.creature_id());
-        w.u8(uint8_t(m.party()));
+        w.u32(m.creature().id());
+        w.u8(uint8_t(m.creature().shield()));
         return w.out;
     }
     case 146: {
         const auto& m = msg.GetExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass);
-        w.u32(m.creature_id());
-        w.u8(uint8_t(m.unpass()));
+        w.u32(m.creature().id());
+        w.u8(uint8_t(m.creature().unpassable() ? 1 : 0));
         return w.out;
     }
     case 197: {
@@ -2121,6 +2058,42 @@ std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::translateSe
     Reader.i += consumed;
     if (isMapMessage(opcode))
         advanceMapViewport(*message);
+    return message;
+}
+
+TProtobufServerMessageTranslator::TProtobufServerMessageTranslator(std::shared_ptr<TProtocolReader> ProtocolReader)
+    : m_protocolReader(std::move(ProtocolReader))
+    , m_messageReader(m_protocolReader ? m_protocolReader->messageReader() : nullptr)
+{
+}
+
+std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::readGameserverMessage()
+{
+    // A server message never spans more than one packet (64 KB).
+    const uint32_t available = std::min<uint32_t>(m_messageReader->bytesAvailable(), 0xffff);
+    const QByteArray data = m_messageReader->peekBytes(available);
+    ClassicReader reader{ reinterpret_cast<const uint8_t*>(data.constData()), size_t(data.size()), 0 };
+    std::shared_ptr<GameserverMessage> message = translateServerMessage(reader);
+    if (reader.i > 0)
+        m_messageReader->readBytes(static_cast<uint32_t>(reader.i));
+    return message;
+}
+
+std::shared_ptr<GameserverMessage> TProtobufServerMessageTranslator::readGameserverProtobufMessage(const uint16_t Size)
+{
+    const QByteArray data = m_messageReader->readBytes(Size);
+    auto message = std::make_shared<GameserverMessage>();
+    if (!message->ParseFromArray(data.constData(), static_cast<int>(data.size())))
+        throw std::invalid_argument("TProtobufServerMessageTranslator::readGameserverProtobufMessage malformed protobuf data");
+    return message;
+}
+
+std::shared_ptr<GameclientMessage> TProtobufServerMessageTranslator::readGameclientProtobufMessage(const uint16_t Size)
+{
+    const QByteArray data = m_messageReader->readBytes(Size);
+    auto message = std::make_shared<GameclientMessage>();
+    if (!message->ParseFromArray(data.constData(), static_cast<int>(data.size())))
+        throw std::invalid_argument("TProtobufServerMessageTranslator::readGameclientProtobufMessage malformed protobuf data");
     return message;
 }
 

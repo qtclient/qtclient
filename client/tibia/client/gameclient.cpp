@@ -35,6 +35,12 @@
 #include "crashhandler.h"
 #include "crashreportdata.h"
 #include "crashreportsender.h"
+#include "chat/chatchannel.h"
+#include "config/clientoptionsuploader.h"
+#include "minimap/minimaptilestorage.h"
+#include "news/newsdiskio.h"
+#include "gamewindow/gamewindowcontroller.h"
+#include "gamewindow/targetselectioncontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/createaccountdialogcontroller.h"
@@ -335,10 +341,10 @@ private:
 }
 
 TGameClient::TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                         config::TClientOptions* ClientOptions, std::shared_ptr<shared::TDownloadPool> DownloadPool,
-                         QObject* parent)
+                         config::TClientOptions* ClientOptions, std::shared_ptr<config::TTibiaConfig> TibiaConfig,
+                         std::shared_ptr<shared::TDownloadPool> DownloadPool, QObject* parent)
     : cip::tibia::client::TGameClient(parent)
-    , ::tibia::client::TGameClientBase(Engine, std::move(TibiaFileSystemHelper), ClientOptions)
+    , ::tibia::client::TGameClientBase(Engine, std::move(TibiaFileSystemHelper), ClientOptions, std::move(TibiaConfig))
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>(shared::TClockService::process()))
     , m_sessiondumpCatalogLoader(std::move(DownloadPool))
@@ -510,6 +516,8 @@ void TGameClient::createAuthenticationProcessController(const QUrl& LoginUrl)
             &TGameClient::connectClientToGameserverWithExistingCredentials);
     connect(m_authentication.get(), &authentication::TAuthenticationProcessController::fpsTrackingActiveChanged, this,
             &TGameClient::onFpsTrackingActiveChanged);
+    connect(m_authentication.get(), &authentication::TAuthenticationProcessController::optionsTrackingActiveChanged, this,
+            &TGameClient::onOptionsTrackingActiveChanged);
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
     connect(m_pGameActionRouter->internalRouter(), &game::TInternalGameActionRouter::publishGameActionInternal, this,
             [this](const input::IGameActionPtr& action) {
@@ -969,6 +977,9 @@ void TGameClient::onGameSessionConnected()
         m_pFPSDropsLogger->setCharacterName(characterLoginData.characterName);
         m_pFPSDropsLogger->setWorldName(characterLoginData.worldName);
     }
+    // CIP: with options tracking on, the account's client options go up once.
+    if (m_pClientOptionsUploader)
+        m_pClientOptionsUploader->upload(m_authentication->loginData().email, clientOptions()->exportToBase64String());
 }
 
 void TGameClient::onGameSessionLoginSuccessful()
@@ -1266,9 +1277,6 @@ void TGameClient::onWorldEntered()
     // Host: the connecting dialog has done its job once the world shows.
     if (m_pConnectingDialogController)
         m_pConnectingDialogController->dialog()->close();
-    if (config::TCharacterConfigurationManager* manager = characterConfigurationManager();
-        manager && tibia::game::localPlayerId() != 0)
-        manager->onPlayerCreatureLoaded(tibia::game::localPlayerId());
     // The map handler keeps the minimap's floor and fields current.
     setMinimapWorldmapProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
@@ -1566,6 +1574,147 @@ void TGameClient::sendCrashReport(const bool SendFullReport)
     if (crashReportUrl.isValid())
         m_crashReportSender->send(minidump, sessiondump, crashReportUrl, SendFullReport);
     fileSystem.removeCrashDumps();
+}
+
+void TGameClient::onOptionsTrackingActiveChanged(const bool OptionsTrackingActive)
+{
+    if (!OptionsTrackingActive) {
+        m_pClientOptionsUploader.reset();
+        return;
+    }
+    if (m_pClientOptionsUploader)
+        return;
+    // Host: CipSoft posts to [URLS] fpsHistoryRecipient; qtclient's comes from
+    // the launcher environment, as for the FPS history.
+    m_pClientOptionsUploader = std::make_shared<config::TClientOptionsUploader>(
+        app::LauncherEnv::load(QDir::currentPath()).fpsHistoryRecipientUrl());
+}
+
+void TGameClient::onSpritesheetUncompressFailed(const QString& SpritesheetID)
+{
+    Q_UNUSED(SpritesheetID);
+    const QString message = qtTrId("asset_file_corrupted_please_restart");
+    gameActionRouter()->handleGameAction(std::make_shared<input::TGameActionSetStatusLine>(message, chat::systemRed()));
+    gameActionRouter()->handleGameAction(std::make_shared<input::TGameActionAddTextMessage>(
+        input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, message, chat::systemRed()));
+    // The launcher patches the client on its next start.
+    shared::TTibiaFileSystemHelper::createForcePatchMarker();
+}
+
+void TGameClient::onAssetsComplete()
+{
+    if (assetManager()->state() == assets::TAssetManager::Complete) {
+        Q_EMIT publishGameAction(std::make_shared<input::gameactions::TGameActionSoundTrigger>(true));
+        return;
+    }
+    assetManager()->stopLoading();
+    saveClientState();
+    setCurrentGameSession(nullptr);
+    Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::onAssetsError()
+{
+    if (startLauncherToPatchClientOrReportError())
+        Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::saveClientState()
+{
+    minimapTileStorage()->saveAllTilesToDisk();
+    gamewindow::TGameWindowController* const controller = gameWindowController();
+    // Host: the news storage and its disk writer belong to the game window
+    // controller (CipSoft's client owns them).
+    if (controller)
+        controller->newsStorage()->saveToDisk();
+    minimapTileDiskIO()->waitForDone();
+    if (controller)
+        controller->newsDiskIO()->waitForFinished();
+}
+
+bool TGameClient::startLauncherOrReportError()
+{
+    const bool started =
+        shared::TTibiaFileSystemHelper::startLauncher(shared::TTibiaFileSystemHelper::LAUNCHER_START_SHOW_UI, QString());
+    if (!started)
+        Q_EMIT showErrorAsPopupAndCriticalLog(qtTrId("launcher_start_failed"));
+    return started;
+}
+
+bool TGameClient::startLauncherToPatchClientOrReportError()
+{
+    if (!m_packageIsUpToDate) {
+        if (shared::TTibiaFileSystemHelper::startLauncherToPatchClient())
+            return true;
+        Q_EMIT showErrorAsPopupAndCriticalLog(qtTrId("launcher_start_failed"));
+        return false;
+    }
+    // The launcher just found the files up to date: patching now cannot help,
+    // the next start patches.
+    assetManager()->stopLoading();
+    shared::TTibiaFileSystemHelper::createForcePatchMarker();
+    if (gameWindowController()) {
+        Q_EMIT showErrorAsPopupAndCriticalLog(qtTrId("launcher_start_pointless_due_to_files_uptodate"));
+        return false;
+    }
+    // CIP: the game window shows the error once it is made. Host: the
+    // application builds qtclient's game window (createGameWindow).
+    m_pendingErrorMessage = qtTrId("launcher_start_pointless_due_to_files_uptodate");
+    return false;
+}
+
+void TGameClient::handleGameAction(const input::IGameActionPtr& pGameAction)
+{
+    const input::EGameAction type = pGameAction->gameActionType();
+    if (type == input::EGameAction::SESSIONDUMP_START) {
+        // CIP: the chosen replay replaces whatever was queued; a tutorial
+        // entry plays in the tutorial's session.
+        const auto start = std::dynamic_pointer_cast<const input::TGameActionSessiondumpStart>(pGameAction);
+        m_gameSessionMetaInfoQueue.clear();
+        std::shared_ptr<game::TSessiondumpGameSessionMetaInfo> metaInfo =
+            std::make_shared<game::TSessiondumpGameSessionMetaInfo>();
+        if (start->sessiondumpEntry().hasHints)
+            metaInfo = std::make_shared<game::TTutorialSessiondumpGameSessionMetaInfo>();
+        metaInfo->sessiondump = start->sessiondumpEntry();
+        setGameSessionSettings(*metaInfo);
+        metaInfo->startedByGameAction = true;
+        m_gameSessionMetaInfoQueue.push_back(std::move(metaInfo));
+        autoconnectNextGameSessionInQueue();
+        return;
+    }
+    if (type != input::EGameAction::OPEN_LAUNCHER)
+        return;
+    saveClientState();
+    if (startLauncherOrReportError())
+        Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::onOpenLauncherRequested()
+{
+    saveClientState();
+    if (startLauncherOrReportError())
+        Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::onTryToPatchClient()
+{
+    saveClientState();
+    if (startLauncherToPatchClientOrReportError())
+        Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::onPatchClient()
+{
+    if (startLauncherToPatchClientOrReportError())
+        Q_EMIT clientReadyToClose();
+}
+
+void TGameClient::onStartTargetSelection()
+{
+    // Host: CipSoft reads the controller from the root context's property;
+    // qtclient's game window holds it.
+    if (gamewindow::TTargetSelectionController* controller = targetSelectionController())
+        controller->setSelecting(true);
 }
 
 }

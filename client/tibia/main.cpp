@@ -9,6 +9,7 @@
 #include "platform/platform.h"
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
+#include "app/smokeactions.h"
 #include "client/gameapplication.h"
 #include "client/gameclient.h"
 #include "config/clientoptions.h"
@@ -49,6 +50,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <tibia/game/gamesession.h>
 
@@ -253,6 +255,11 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("replay"), QStringLiteral("Play a recorded game session instead of logging in."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("screenshot-delay"), QStringLiteral("Milliseconds after entering the world before --screenshot (default 3000)."), QStringLiteral("ms") });
     parser.addOption({ QStringLiteral("no-mods"), QStringLiteral("Do not load mods/<id> packs (stock qtclient).") });
+    parser.addOption({ QStringLiteral("smoke-action"),
+                       QStringLiteral("After entering the world (login or replay), publish this game action through the action router (EGameAction name, optional :<delay ms> after the previous step, default 1000; repeatable, in order; CONFIRM_TUTORIAL_HINT confirms the hint shown). Smoke tests."),
+                       QStringLiteral("action[:ms]") });
+    parser.addOption({ QStringLiteral("smoke-confirm-hint"),
+                       QStringLiteral("Confirm every tutorial hint half a second after it shows (smoke tests).") });
     // CIP client Play: launcher asserts the package/assets stamps already match.
     parser.addOption({ QStringLiteral("package-is-up-to-date"),
                        QStringLiteral("Tip Play: package and assets stamps already match (CIP).") });
@@ -367,6 +374,21 @@ int main(int argc, char** argv)
             [&](QQuickWindow* clientWindow) { return setUpHostWindow(clientWindow, application.qmlEngine()); },
             startClient))
         return 1;
+    // Host: scripted smoke steps through the action router, so smoke runs
+    // never need input on the desktop.
+    if (!preview && (parser.isSet(QStringLiteral("smoke-action")) || parser.isSet(QStringLiteral("smoke-confirm-hint")))) {
+        std::vector<app::TSmokeActions::TStep> steps;
+        QString error;
+        if (!app::TSmokeActions::parse(parser.values(QStringLiteral("smoke-action")), steps, error)) {
+            qCritical().noquote() << error;
+            return 1;
+        }
+        client::TGameClient* gameClient = application.gameClient();
+        auto* smoke = new app::TSmokeActions(gameClient->gameActionRouter(), std::move(steps),
+                                             parser.isSet(QStringLiteral("smoke-confirm-hint")), 500, gameClient);
+        QObject::connect(gameClient, &client::TGameClient::worldEntered, smoke, &app::TSmokeActions::start,
+                         Qt::SingleShotConnection);
+    }
 #else
     Q_UNUSED(controller);
     Q_UNUSED(preview);

@@ -37,7 +37,7 @@ QString rateString(const double value) { return format::multi(static_cast<quint3
 /// The store's premium page (OPEN_STORE 1 / 0).
 input::IGameActionPtr premiumStoreAction()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     return action;
 }
 

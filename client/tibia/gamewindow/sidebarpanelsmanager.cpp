@@ -51,6 +51,7 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, co
     if (m_minimapItem) {
         m_minimap = std::make_unique<TMinimapController>(GameActionMapper);
         m_minimap->setPanelItem(m_minimapItem);
+        connect(m_minimap.get(), &TMinimapController::publishGameAction, this, &TSidebarPanelsManager::publishGameAction);
     }
 
     m_inventoryItem = createQuickItem(Engine, QStringLiteral("inventory.qml"));
@@ -63,7 +64,7 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, co
 
     m_hitpointManabarItem = createQuickItem(Engine, QStringLiteral("HitpointsManaPanel.qml"));
     if (m_hitpointManabarItem) {
-        m_hitpointManabar = std::make_unique<THitpointManabarController>();
+        m_hitpointManabar = std::make_unique<THitpointManabarController>(ClientOptions);
         m_hitpointManabar->setPanelItem(m_hitpointManabarItem);
     }
 
@@ -86,6 +87,8 @@ TSidebarPanelsManager::TSidebarPanelsManager(TSidebarManager* SidebarManager, co
     if (m_premiumPanelItem) {
         m_premiumPanel = std::make_unique<TPremiumPanelController>();
         m_premiumPanel->setPanelItem(m_premiumPanelItem);
+        connect(m_premiumPanel.get(), &TPremiumPanelController::publishGameAction, this,
+                &TSidebarPanelsManager::publishGameAction);
         connect(m_premiumPanel.get(), &TPremiumPanelController::isVisibleChanged, this, &TSidebarPanelsManager::premiumPanelIsVisibleChanged);
     }
 
@@ -200,6 +203,10 @@ void tibia::gamewindow::TSidebarPanelsManager::connectToGameSession(const std::s
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     if (TMinimapController* minimapController = minimap())
         minimapController->setAmbientLightStorage(session ? session->ambientLightStorage().get() : nullptr);
+    if (m_hitpointManabar)
+        m_hitpointManabar->connectToGameSession(GameSession);
+    if (m_buttonBar)
+        m_buttonBar->connectToGameSession(GameSession);
 }
 
 void tibia::gamewindow::TSidebarPanelsManager::connectToSidebarWidgetsManager(TSidebarWidgetsManager* widgets)
@@ -208,6 +215,13 @@ void tibia::gamewindow::TSidebarPanelsManager::connectToSidebarWidgetsManager(TS
         return;
     connect(widgets, &TSidebarWidgetsManager::widgetHidden, m_buttonBar.get(), &TButtonBarController::onWidgetHidden);
     connect(widgets, &TSidebarWidgetsManager::widgetVisible, m_buttonBar.get(), &TButtonBarController::onWidgetVisible);
+}
+
+void tibia::gamewindow::TSidebarPanelsManager::setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage)
+{
+    if (m_premiumPanel)
+        m_premiumPanel->setPremiumTimeStorage(PremiumTimeStorage);
+    m_buttonBar->connectToPremiumTimeStorage(PremiumTimeStorage);
 }
 
 void tibia::gamewindow::TSidebarPanelsManager::setTileStorage(minimap::TMinimapTileStorage* storage)

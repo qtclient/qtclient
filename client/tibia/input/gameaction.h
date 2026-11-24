@@ -10,6 +10,7 @@
 #include "playermovementintent.h"
 #include "exaltation/exaltationstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
+#include "sessiondump/sessiondumpcatalog.h"
 #include "store/storestorage.h"
 
 #include <QColor>
@@ -1797,46 +1798,9 @@ public:
         , m_parameters(std::move(parameters))
     {
     }
-    /// Host: qtclient's callers name an open action with one detail and one
-    /// text; this fills the open parameters field the action names: 1 premium
-    /// time / boosts (detail), 2 the category (text), 3 the useful thing
-    /// (detail), 4 the offer (detail), 5 search for the text; anything else,
-    /// and a category or search without text, opens home.
-    explicit TGameActionOpenStore(int openAction, int detail = 0, QString text = {})
-        : TGameActionOpenStore(openParameters(openAction, detail, std::move(text)))
-    {
-    }
     const store::TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
 
 private:
-    static store::TStoreOpenParameters openParameters(int openAction, int detail, QString text)
-    {
-        store::TStoreOpenParameters parameters;
-        switch (openAction) {
-        case store::OPEN_PREMIUM_OR_BOOSTS:
-            parameters.openAction = openAction;
-            parameters.premiumDetail = detail;
-            break;
-        case store::OPEN_CATEGORY:
-        case store::OPEN_SEARCH:
-            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
-            parameters.category = std::move(text);
-            break;
-        case store::OPEN_USEFUL_THING:
-            parameters.openAction = openAction;
-            parameters.usefulThing = detail;
-            break;
-        case store::OPEN_OFFER:
-            parameters.openAction = openAction;
-            parameters.offerId = static_cast<store::TOfferID>(detail);
-            break;
-        default:
-            parameters.openAction = store::OPEN_HOME;
-            break;
-        }
-        return parameters;
-    }
-
     store::TStoreOpenParameters m_parameters;
 };
 
@@ -2129,19 +2093,22 @@ private:
     int64_t m_timestamp;
 };
 
-/// CIP input::TGameActionSessiondumpStart (SESSIONDUMP_START): the session dump to play.
+/// CIP input::TGameActionSessiondumpStart (SESSIONDUMP_START): the catalog
+/// entry of the session dump to play (url, hints url, file size, duration and
+/// whether it has hints, i.e. is the tutorial).
 class TGameActionSessiondumpStart final : public gameactions::TGameActionSimple
 {
 public:
-    explicit TGameActionSessiondumpStart(QUrl url)
+    explicit TGameActionSessiondumpStart(sessiondump::TSessiondumpCatalog::TEntry entry)
         : TGameActionSimple(EGameAction::SESSIONDUMP_START)
-        , m_url(std::move(url))
+        , m_entry(std::move(entry))
     {
     }
-    const QUrl& url() const { return m_url; }
+    const sessiondump::TSessiondumpCatalog::TEntry& sessiondumpEntry() const { return m_entry; }
+    const QUrl& url() const { return m_entry.url; }
 
 private:
-    QUrl m_url;
+    sessiondump::TSessiondumpCatalog::TEntry m_entry;
 };
 
 /// CIP input::TGameActionAddGUITutorialMarker (ADD_GUI_TUTORIAL_MARKER): marks a

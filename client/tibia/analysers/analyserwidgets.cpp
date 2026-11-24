@@ -289,7 +289,7 @@ void TAnalyticsSelectorWidgetController::huntingSessionAnalyserButtonClicked()
     if (isPremiumPlayer())
         toggle(W::HuntingSessionAnalyser);
     else
-        Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -824,7 +824,7 @@ void TProgressWidgetController::appendXPGaugeContextMenuEntries()
         if (isPremiumPlayer())
             m_storage->setGaugeVisible(checked);
         else
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
     });
 }
 
@@ -841,7 +841,7 @@ void TProgressWidgetController::appendXPGraphContextMenuEntries()
         if (isPremiumPlayer())
             m_storage->setGraphVisible(checked);
         else
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
     });
 }
 
@@ -871,8 +871,8 @@ QVariant TGainWasteModel::data(const QModelIndex& index, const int role) const
         case ItemCountString: return format::slotCount(item.count);
         case AppearanceId: return item.itemId;
         case ItemCount: return std::min<quint32>(item.count, 255);
-        case ItemLiquidType: return 0;
-        case ItemHookDirection: return 0;
+        case ItemLiquidType: return item.liquidType;
+        case ItemHookDirection: return item.hookDirection;
         default: return {};
     }
 }
@@ -1065,7 +1065,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGaugeVisible(m_side, checked);
         else
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
     });
     gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_graph"))), premiumHint);
     graph->setCheckable(true);
@@ -1074,7 +1074,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGraphVisible(m_side, checked);
         else
-            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+            Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
     });
     menu->showCustomMenu();
 }

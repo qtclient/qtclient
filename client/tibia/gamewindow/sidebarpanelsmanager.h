@@ -14,6 +14,7 @@ class QQuickItem;
 
 namespace tibia::game {
 class IGameSession;
+class TPremiumTimeStorage;
 }
 namespace tibia::minimap {
 class TMinimapTileStorage;
@@ -58,6 +59,8 @@ public:
     void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The button bar follows the sidebar widgets being shown and hidden.
     void connectToSidebarWidgetsManager(TSidebarWidgetsManager* widgets);
+    /// The premium panel and the button bar follow the premium time.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* PremiumTimeStorage);
     /// The minimap panel's tiles.
     void setTileStorage(minimap::TMinimapTileStorage* storage);
     /// The inventory panel's cursor for the slot under the mouse.

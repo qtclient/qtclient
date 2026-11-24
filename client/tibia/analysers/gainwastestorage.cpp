@@ -1,5 +1,7 @@
 #include "analysers/analyserstorages.h"
 #include "analysers/itempricestorage.h"
+#include "appearances/appearanceinstance.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -155,7 +157,8 @@ void TGainWasteStorage::resetConfiguration()
     emitOptionsChanged();
 }
 
-void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, const QString& name, const qint64 nowMs)
+void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, const QString& name, const qint64 nowMs,
+                                const std::shared_ptr<appearances::TAppearanceInstance>& instance)
 {
     SideData& side = m_sides[Loot];
     if (const auto it = side.entries.find(itemId); it != side.entries.end()) {
@@ -164,6 +167,7 @@ void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, cons
         Entry entry;
         entry.itemId = itemId;
         entry.name = name;
+        entry.instance = instance;
         entry.totalCount = count;
         entry.lastHourCount = count;
         entry.price = m_prices ? m_prices->lootPrice(itemId) : 0;
@@ -175,7 +179,8 @@ void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, cons
     side.records.push_front({ nowMs, count, itemId, false });
 }
 
-void TGainWasteStorage::addWaste(const uint16_t itemId, const quint32 count, const qint64 nowMs)
+void TGainWasteStorage::addWaste(const uint16_t itemId, const quint32 count, const qint64 nowMs,
+                                 const std::shared_ptr<appearances::TAppearanceInstance>& instance)
 {
     SideData& side = m_sides[Waste];
     if (const auto it = side.entries.find(itemId); it != side.entries.end()) {
@@ -183,6 +188,7 @@ void TGainWasteStorage::addWaste(const uint16_t itemId, const quint32 count, con
     } else {
         Entry entry;
         entry.itemId = itemId;
+        entry.instance = instance;
         entry.totalCount = count;
         entry.lastHourCount = count;
         entry.name = itemName(itemId);
@@ -270,7 +276,9 @@ std::vector<TGainWasteStorage::Item> TGainWasteStorage::items(const Side side, q
     items.reserve(m_sides[side].entries.size());
     for (const auto& [itemId, entry] : m_sides[side].entries) {
         if (entry.*count != 0)
-            items.push_back({ itemId, entry.name, entry.*count, static_cast<qint64>(entry.price) });
+            items.push_back({ itemId, entry.name, entry.*count, static_cast<qint64>(entry.price),
+                              static_cast<uint>(qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(entry.instance)),
+                              static_cast<uint>(qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(entry.instance)) });
     }
     return items;
 }

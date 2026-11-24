@@ -32,9 +32,15 @@ public:
     bool canBeFilledFromJsonObject(const QJsonObject& JsonObject) override;
     void randomizeColors() override;
 
+    /// The four palette indices: head | torso << 8 | legs << 16 | detail << 24.
+    uint32_t colorIndices() const;
+
 private:
     bool setIndex(int& index, QColor& color, int v);
 };
+
+/// Any of the four palette indices differs.
+bool operator!=(const TOutfitColorQmlType& a, const TOutfitColorQmlType& b);
 
 /// Outfit, mount and summon with their colours and addons (QML OutfitPreset;
 /// CIP: TOutfitPresetQmlType, metacall).

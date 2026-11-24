@@ -68,10 +68,10 @@ input::IGameActionPtr preyAction(const A type, const uint preyId)
     return std::make_shared<input::TGameActionPreySystem>(static_cast<uint8_t>(preyId), type);
 }
 
-/// CIP store requests: open type 1 (premium) or 3 (an offer).
-input::IGameActionPtr openStoreAction(const int openType, const int offer)
+/// CIP store requests: the premium page or a useful thing.
+input::IGameActionPtr openStoreAction(store::TStoreOpenParameters parameters)
 {
-    return std::make_shared<input::TGameActionOpenStore>(openType, offer);
+    return std::make_shared<input::TGameActionOpenStore>(std::move(parameters));
 }
 
 /// CIP: "word word" -> "Word Word".
@@ -391,10 +391,10 @@ void TPreyRenderInfo::confirmBestiaryPreyCreatureClicked(const int MonsterRaceID
 }
 
 /// CIP .
-void TPreyRenderInfo::unlockPermanentlyClicked() { Q_EMIT publishGameAction(openStoreAction(3, 0)); }
+void TPreyRenderInfo::unlockPermanentlyClicked() { Q_EMIT publishGameAction(openStoreAction({.openAction = store::OPEN_USEFUL_THING, .usefulThing = 0})); }
 
 /// CIP .
-void TPreyRenderInfo::unlockWithPermiumClicked() { Q_EMIT publishGameAction(openStoreAction(1, 0)); }
+void TPreyRenderInfo::unlockWithPermiumClicked() { Q_EMIT publishGameAction(openStoreAction({.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0})); }
 
 /// CIP .
 void TPreyRenderInfo::autoExtendPreydClicked(const EExtendType QMLAutoExtendType)
@@ -631,7 +631,7 @@ void TPreyPreyPageController::onConfirmEnableAutoRerollBonus()
 void TPreyPreyPageController::onConfirmEnableLockPrey() { Q_EMIT publishGameAction(std::make_shared<input::TGameActionChangeAutoPreyExtendType>(static_cast<uint8_t>(m_pendingPreyId), 2)); }
 
 /// CIP .
-void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
+void TPreyPreyPageController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction({.openAction = store::OPEN_USEFUL_THING, .usefulThing = 1})); }
 
 TPreyDialogController::TPreyDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
                                              QObject* parent)
@@ -722,7 +722,7 @@ void TPreyDialogController::closeDialog()
 void TPreyDialogController::closeButtonClicked() { closeDialog(); }
 
 /// CIP .
-void TPreyDialogController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction(3, 1)); }
+void TPreyDialogController::getMorePreyWildcardsClicked() { Q_EMIT publishGameAction(openStoreAction({.openAction = store::OPEN_USEFUL_THING, .usefulThing = 1})); }
 
 void TPreyDialogController::requestClose() { closeDialog(); }
 

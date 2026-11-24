@@ -706,11 +706,21 @@ TOutfitQMLInformation::TOutfitQMLInformation(const int id, const int head, const
 
 bool smoothFilteringEnabled() { return config::TClientOptions::instance()->antialiasingMode() == 1; }
 
-bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
-bool TInspectPlayerDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(); }
+namespace {
+/// The inspect dialogs read the option from the client options they keep.
+bool smoothFilteringEnabled(const config::TClientOptions* options)
+{
+    return options && options->antialiasingMode() == 1;
+}
+} // namespace
 
-TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)
+bool TInspectObjectDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(m_clientOptions); }
+bool TInspectPlayerDialogController::clientSettingSmoothFiltering() const { return smoothFilteringEnabled(m_clientOptions); }
+
+TInspectObjectDialogController::TInspectObjectDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                                               QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("InspectObjectDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clientOptions(ClientOptions)
 {
     s_instance = this;
 }
@@ -800,8 +810,10 @@ void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
 
 TInspectPlayerDialogController* TInspectPlayerDialogController::s_instance = nullptr;
 
-TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), parent)
+TInspectPlayerDialogController::TInspectPlayerDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                                               QQuickItem* DialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clientOptions(ClientOptions)
 {
     s_instance = this;
 }

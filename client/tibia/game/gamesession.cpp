@@ -936,12 +936,6 @@ void localPlayerReleaseDirection()
         intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentStop>());
 }
 
-void localPlayerMovementTick()
-{
-    if (auto* session = dynamic_cast<TGameserverGameSession*>(currentGameSession()); session && isOnline())
-        session->updatePlayerMovementIntentHandler();
-}
-
 void localPlayerCancelWalk(const tibia::client::Direction direction)
 {
     tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();

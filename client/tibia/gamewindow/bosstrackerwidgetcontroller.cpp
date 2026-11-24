@@ -1,5 +1,6 @@
 #include "bosstrackerwidgetcontroller.h"
 #include "game/gamesessionbase.h"
+#include "config/characterconfigurationmanager.h"
 
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -187,9 +188,34 @@ void TBossTrackerWidgetController::setStorage(bossbestiary::TBossTrackerStorage*
     disconnect(m_storageConnection);
     m_storage = storage;
     if (m_storage)
-        m_storageConnection = connect(m_storage, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
+        m_storageConnection = connect(m_storage.data(), &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
                                       &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
     onBossTrackingEntriesChanged();
+}
+
+void TBossTrackerWidgetController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_gameSessionConnections.disconnectAll();
+    m_gameSession = GameSession;
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session == nullptr)
+        return;
+    disconnect(m_storageConnection);
+    m_storage = session->bossTrackerStorage().get();
+    if (m_storage)
+        m_gameSessionConnections.add(connect(m_storage.data(), &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
+                                             &TBossTrackerWidgetController::onBossTrackingEntriesChanged));
+    // Host: the model's time is the system clock.
+    m_model->setCurrentTime(QDateTime::currentMSecsSinceEpoch());
+    onBossTrackingEntriesChanged();
+    if (const config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+        configuration != nullptr && configuration->sidebarOptions() != nullptr)
+        m_options = configuration->sidebarOptions();
+    if (!m_options)
+        return;
+    m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::bossTrackerWidgetOptionsChanged, this,
+                                         [this] { setSidebarOptions(m_options); }));
+    setSidebarOptions(m_options);
 }
 
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
@@ -320,8 +346,9 @@ void TBossTrackerWidgetManager::connectToGameSession(const std::shared_ptr<game:
 {
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(GameSession.get());
     m_storage = session ? session->bossTrackerStorage().get() : nullptr;
+    m_gameSession = GameSession;
     if (m_controller)
-        m_controller->setStorage(m_storage);
+        m_controller->connectToGameSession(m_gameSession);
 }
 
 TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options)
@@ -330,6 +357,8 @@ TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options
         m_controller = new TBossTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
         connect(m_controller, &TBossTrackerWidgetController::publishGameAction, this, &TBossTrackerWidgetManager::publishGameAction);
         m_controller->setSidebarOptions(options);
+        if (m_gameSession)
+            m_controller->connectToGameSession(m_gameSession);
     }
     return m_controller->widget();
 }

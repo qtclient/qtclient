@@ -3,6 +3,7 @@
 #include "tibia/runtime/host.h"
 
 #include "appearances/appearanceinstance.h"
+#include "appearances/appearanceinstancetracker.h"
 #include "idleot/appearanceshape.h"
 #include "appearances/spriteinfo.h"
 #include "renderer/spritetextureprovider.h"
@@ -213,7 +214,24 @@ tibia::mods::LightingFrameDesc peelLightingFrame(TAppearanceType& type, const QP
 }
 
 TWorldMapRenderProvider::TWorldMapRenderProvider(QObject* parent)
+    : TWorldMapRenderProvider(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, parent)
+{
+}
+
+TWorldMapRenderProvider::TWorldMapRenderProvider(
+    std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider,
+    std::shared_ptr<worldmap::TWorldMapStorage> worldMapStorage, std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+    std::shared_ptr<worldmap::TAmbientLightStorage> ambientLightStorage, std::shared_ptr<effects::TEffectStorage> effectStorage,
+    std::shared_ptr<config::TClientOptions> clientOptions,
+    std::shared_ptr<appearances::TAppearanceInstanceTracker> instanceTracker, QObject* parent)
     : QObject(parent)
+    , m_renderVolumeProvider(std::move(renderVolumeProvider))
+    , m_worldMapStorage(std::move(worldMapStorage))
+    , m_creatureStorage(std::move(creatureStorage))
+    , m_ambientLightStorage(std::move(ambientLightStorage))
+    , m_effectStorage(std::move(effectStorage))
+    , m_clientOptions(std::move(clientOptions))
+    , m_instanceTracker(std::move(instanceTracker))
 {
     loadLightOptions();
     loadMarkOptions();
@@ -227,6 +245,26 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(QObject* parent)
                  || name == QLatin1String("mouseHighlightTarget"))
             loadMarkOptions();
     });
+}
+
+worldmap::TWorldMapStorage* TWorldMapRenderProvider::worldMapStorage() const
+{
+    return m_worldMapStorage ? m_worldMapStorage.get() : worldmap::TWorldMapStorage::ensureStorage();
+}
+
+creatures::TCreatureStorage* TWorldMapRenderProvider::creatureStorage() const
+{
+    return m_creatureStorage ? m_creatureStorage.get() : creatures::TCreatureStorage::instance();
+}
+
+worldmap::TAmbientLightStorage* TWorldMapRenderProvider::ambientLightStorage() const
+{
+    return m_ambientLightStorage ? m_ambientLightStorage.get() : worldmap::TAmbientLightStorage::instance();
+}
+
+std::shared_ptr<appearances::TAppearanceInstanceTracker> TWorldMapRenderProvider::instanceTracker() const
+{
+    return m_instanceTracker ? m_instanceTracker : appearances::TAppearanceInstanceFactory::instanceTracker();
 }
 
 void TWorldMapRenderProvider::setVisibleFields(const int width, const int height)
@@ -503,6 +541,9 @@ bool TWorldMapRenderProvider::build()
     addMissiles(first, last);
     addHighlightBaseplate(m_records);
     markObscuredDrawCommands(grid, m_records);
+    // The frame's appearance types keep their spritesheets loaded.
+    if (const std::shared_ptr<appearances::TAppearanceInstanceTracker> tracker = instanceTracker())
+        tracker->loadSpritesheetsOf(m_frameTypes);
     sortDrawCommands(m_records, frame.sprites);
     const qint64 walkNs = phase.nsecsElapsed();
     m_raycastGatherNs = m_lighting ? m_lighting->gatherNs() : 0;
@@ -643,7 +684,7 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
 {
     using worldmap::TCacheForWorldmapStorageLookupMembers;
     using worldmap::TWorldMapCoordinate;
-    worldmap::TWorldMapStorage* storage = worldmap::TWorldMapStorage::ensureStorage();
+    worldmap::TWorldMapStorage* storage = worldMapStorage();
     if (storage != m_lightCacheStorage) {
         m_bankCache.reset();
         m_translucentCache.reset();
@@ -652,7 +693,7 @@ std::shared_ptr<worldmap::TLightMap> TWorldMapRenderProvider::buildLightMap(cons
     }
 
     const int sea = tibia::config::mapSeaFloor();
-    const tibia::worldmap::TAmbientLightStorage* ambient = tibia::worldmap::TAmbientLightStorage::instance();
+    const tibia::worldmap::TAmbientLightStorage* ambient = ambientLightStorage();
     const Light world{ tibia::game::worldLightIntensity(), tibia::game::worldLightColor() };
     const QColor ambientColor = ambient ? ambient->color() : QColor(light::lightColor(world.color, world.intensity / 255.f));
     // The grid's origin: the visible area's top-left, slid along the floors' shear to the camera's floor.
@@ -1215,7 +1256,7 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const uint32_t creatureId = tile->stackCreatureId(stackIndex);
     if (creatureId == 0)
         return;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = creatureStorage();
     if (!storage)
         return;
     const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
@@ -1236,7 +1277,7 @@ void TWorldMapRenderProvider::addTileCreatures(const FieldEntry& field, const QP
 {
     tibia::worldmap::TWorldMapField* tile = field.field;
     const Position& tilePos = tile->getPosition();
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    tibia::creatures::TCreatureStorage* storage = creatureStorage();
     if (!storage)
         return;
     const int x = field.x;
@@ -1440,18 +1481,22 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         : std::nullopt;
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
-        if (showOff->drawsSocket()) {
+        if (showOff->isVisible()) {
             addObjectSprite();
             if (objectShines(*type, *appearance))
                 addLight(dest + QPoint(FieldSize / 2, FieldSize / 2), type->getLight().intensity, type->getLight().color);
         }
-        if (showOff->hasFigure()) {
-            for (const auto& layer : showOff->figureLayers()) {
-                if (!layer.type)
-                    continue;
-                addSprites(layer.type, dest + QPoint(layer.dx, layer.dy), layer.xPattern, layer.yPattern,
-                           layer.zPattern, layer.phase, layer.colorize, layer.colors, highlight);
-            }
+        // The mount, then the outfit, draw their idle sprite at the figure's
+        // displacement (addSpriteInfo takes the part type's own displacement off).
+        const tibia::worldmap::TWorldMapSubfieldExtent figure = showOff->figureRenderDisplacement();
+        for (const auto* part : { showOff->mount().get(), showOff->outfit().get() }) {
+            if (!part)
+                continue;
+            TAppearanceType* partType = part->thingType();
+            if (!partType)
+                continue;
+            const QPoint at = dest + partType->getDisplacement() - QPoint(figure.width, figure.height);
+            addSpriteInfo(partType, at, part->idleSpriteInfo(), part->idleSpriteInfo(), part->direction(), highlight);
         }
         return;
     }

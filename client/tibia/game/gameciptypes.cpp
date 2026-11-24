@@ -469,7 +469,7 @@ void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
     if (!storage)
         return;
     const auto spellId = static_cast<uint16_t>(message.spell_id());
-    const qint64 now = TCooldownStorage::now();
+    const qint64 now = m_clockService->nowMillis();
     // No delay ends the spell's cooldown now; a delay only ever extends it.
     if (message.delay() == 0)
         storage->setSpellCooldownEnd(spellId, now);
@@ -481,7 +481,7 @@ void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageSpellGroupDelay& message)
 {
     if (TCooldownStorage* storage = m_cooldownStorage.get()) {
-        const qint64 now = TCooldownStorage::now();
+        const qint64 now = m_clockService->nowMillis();
         storage->setSpellGroupCooldown(static_cast<uint8_t>(message.group_id()), now, now + message.delay());
     }
 }
@@ -490,7 +490,7 @@ void TPlayerProtocolMessageHandler::handleMultiUseDelayMessage(
     const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message)
 {
     if (TCooldownStorage* storage = m_cooldownStorage.get()) {
-        const qint64 now = TCooldownStorage::now();
+        const qint64 now = m_clockService->nowMillis();
         storage->setMultiUseCooldown(now, now + message.delay());
     }
 }

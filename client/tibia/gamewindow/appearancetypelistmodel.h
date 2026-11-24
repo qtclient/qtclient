@@ -30,6 +30,9 @@ class TObjectCountStorage;
 namespace cyclopedia {
 class TItemTrackingStorage;
 }
+namespace game {
+class TPlayerData;
+}
 namespace proficiency {
 class TProficiencyStorage;
 }
@@ -96,6 +99,9 @@ public:
     /// Counts from `counts` until the owner hands over its object count
     /// storage (connectToStorages).
     explicit TAppearanceTypeListModel(CountProvider counts, QObject* parent = nullptr);
+    /// Host: counts for owners whose counts come from a storage other than an
+    /// object count storage (used while no count storage is connected).
+    void setCountProvider(CountProvider counts) { m_counts = std::move(counts); }
 
     /// Takes the storages the roles read and follows their changes (each may
     /// be null): the loot value configuration, the tracked objects, the
@@ -221,7 +227,23 @@ public:
         ProficiencyDescending = 15,
     };
 
-    explicit TAppearanceTypeListModelSortFilterProxy(TAppearanceTypeListModel* model, QObject* parent = nullptr);
+    /// Builds its own list model with the model's display flags and client
+    /// options (see TAppearanceTypeListModel).
+    TAppearanceTypeListModelSortFilterProxy(bool firstDisplayFlag, bool secondDisplayFlag, bool useDisplayTypeId,
+                                            config::TClientOptions* clientOptions, QObject* parent = nullptr);
+
+    /// The list model the proxy owns.
+    TAppearanceTypeListModel& model() { return m_model; }
+    const TAppearanceTypeListModel& model() const { return m_model; }
+
+    /// Takes the player whose level and vocation the filter buttons check
+    /// (no rows pass without one) and hands the storages to the model.
+    void connectToStorages(std::shared_ptr<game::TPlayerData> playerData, analysers::TItemPriceStorage* itemPriceStorage,
+                           std::shared_ptr<cyclopedia::TItemTrackingStorage> itemTrackingStorage,
+                           std::shared_ptr<container::TObjectCountStorage> objectCountStorage,
+                           proficiency::TProficiencyStorage* proficiencyStorage);
+    /// Drops the player and the model's storages.
+    void disconnectFromStorages();
 
     bool filterByLevel() const override { return m_filter.filterByLevel; }
     bool filterByVocation() const override { return m_filter.filterByVocation; }
@@ -253,6 +275,9 @@ public:
     void setSortMode(int sortMode);
     /// Replaces the model's entries inside one filter change.
     void resetEntries(std::vector<TAppearanceTypeEntry> entries);
+    /// Replaces the model's entries with one tierless row per type, inside
+    /// one filter change.
+    void resetTypes(const std::vector<TAppearanceTypeEntry>& types);
     /// Applies pending filter changes now.
     void applyFilterNow();
 
@@ -272,9 +297,10 @@ protected:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    TAppearanceTypeListModel* m_model;
+    TAppearanceTypeListModel m_model;
     QCollator m_collator;
     QTimer m_filterTimer;
+    std::shared_ptr<game::TPlayerData> m_playerData;
     int m_category = -1;
     std::set<int> m_typeIds;
     QString m_name;

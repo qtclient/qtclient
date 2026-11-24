@@ -1,9 +1,10 @@
 #include "optionsarchive.h"
 
+#include "filesystemhelper.h"
+
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
-#include <QSaveFile>
 #include <QtEndian>
 
 #include <optional>
@@ -90,7 +91,7 @@ QList<TArchiveEntry> collect(const QString& dataDirectory, const QStringList& di
     return entries;
 }
 
-bool write(const QString& path, const QList<TArchiveEntry>& entries)
+void write(const QString& path, const QList<TArchiveEntry>& entries)
 {
     QByteArray archive;
     QByteArray central;
@@ -146,8 +147,7 @@ bool write(const QString& path, const QList<TArchiveEntry>& entries)
     put32(archive, centralOffset);
     put16(archive, 0);
 
-    QSaveFile file(path);
-    return file.open(QIODevice::WriteOnly) && file.write(archive) == archive.size() && file.commit();
+    shared::TFileSystemHelper().writeFile(path, archive);
 }
 
 std::optional<QList<TArchiveEntry>> unpack(const QByteArray& archive)

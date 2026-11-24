@@ -22,6 +22,7 @@ public:
     ~TTargetSelectionController() override;
 
     TTargetSelectionEventFilter* eventFilterObject() const { return m_filter; }
+    void setSelecting(bool selecting);
 
 public Q_SLOTS:
     /// CIP moc — START_TARGET_SELECTION (0x50).
@@ -36,7 +37,6 @@ Q_SIGNALS:
     void publishGameAction(const input::IGameActionPtr& action);
 
 private:
-    void setSelecting(bool selecting);
     void bindDialogStack();
 
     TTargetSelectionEventFilter* m_filter = nullptr;

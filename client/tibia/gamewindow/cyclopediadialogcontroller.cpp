@@ -57,7 +57,7 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     , m_itemInfo(new TItemInfoDialogController(this))
     , m_characterInfo(new TCharacterInfoDialogController(this))
     , m_monsters(new TMonsterDialogController(*m_bestiary, this))
-    , m_bonusEffects(new TMonsterBonusEffectsDialogController(*m_bestiary, this))
+    , m_bonusEffects(new TMonsterBonusEffectsDialogController(this))
     , m_bosstiary(new TBosstiaryDialogController(this))
     , m_bossSlots(new TBossSlotsDialogController(this))
     , m_houses(new THousesInfoDialogController(this))
@@ -114,6 +114,7 @@ void TCyclopediaDialogController::connectToGameSession(const std::shared_ptr<gam
     m_houses->connectToGameSession(GameSession);
     m_bosstiary->connectToGameSession(GameSession);
     m_bossSlots->connectToGameSession(GameSession);
+    m_bonusEffects->connectToGameSession(GameSession);
     for (const QMetaObject::Connection& connection : m_sessionConnections)
         disconnect(connection);
     m_sessionConnections.clear();

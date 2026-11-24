@@ -1,6 +1,7 @@
 #include "managelootcontainerdialogcontroller.h"
 
 #include "analysers/analyserstorages.h"
+#include "analysers/itempricestorage.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 #include "gamewindow/marketcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -124,11 +125,11 @@ void TLootContainerQMLInfo::onOpenObtainContainerClicked() { Q_EMIT requestOpenO
 TManageLootContainerDialogController::TManageLootContainerDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem,
                                                                            config::TClientOptions* ClientOptions, QObject* parent)
     : TDialogController(QStringLiteral("ManageLootContainerDialog.qml"), Engine, DialogParentItem, parent)
-    , m_listModel([](uint16_t, uint8_t) { return 1; }, this)
-    , m_listProxy(&m_listModel, this)
+    , m_listProxy(false, true, false, ClientOptions, this)
 {
+    // Host: every listed type counts as one.
+    m_listProxy.model().setCountProvider([](uint16_t, uint8_t) { return 1; });
     m_listItems = &m_listProxy;
-    (void)ClientOptions;
     m_info = new TMessageDialogController(Engine, DialogParentItem, this);
     m_info->setCloseOnButtonClicked(true);
     connect(m_info, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, this, [this] {
@@ -253,7 +254,7 @@ void TManageLootContainerDialogController::closeButtonClicked() { closeDialog();
 void TManageLootContainerDialogController::getPremiumClicked()
 {
     // The store, opened on its premium page.
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     Q_EMIT publishGameAction(action);
 }
 
@@ -322,7 +323,8 @@ void TManageLootContainerDialogController::connectToGameSession(const std::share
 {
     closeDialog();
     m_gameSessionConnections.disconnectAll();
-    m_listModel.reset({});
+    m_listProxy.disconnectFromStorages();
+    m_listProxy.resetEntries({});
     m_gameSession = GameSession;
     m_containers.reset();
     m_lootBlackWhitelist = nullptr;
@@ -331,6 +333,8 @@ void TManageLootContainerDialogController::connectToGameSession(const std::share
         m_lootBlackWhitelist = session->quickLootBlackWhitelistStorage().get();
         if (m_lootBlackWhitelist)
             m_blackWhiteListType = m_lootBlackWhitelist->listType();
+        m_listProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+                                      session->itemTrackingStorage(), nullptr, nullptr);
         using Self = TManageLootContainerDialogController;
         m_gameSessionConnections.add(
             connect(m_containers.get(), &quickloot::TManagedContainerStorage::managedContainersUpdated, this, &Self::onLootContainersUpdated));
@@ -389,7 +393,7 @@ void TManageLootContainerDialogController::rebuildListItems()
         entries.push_back(std::move(entry));
     }
     std::ranges::sort(entries, [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) { return a.name < b.name; });
-    m_listModel.reset(std::move(entries));
+    m_listProxy.resetTypes(entries);
     applyListFilter();
 }
 

@@ -106,6 +106,20 @@ struct THotkeyBinding
     bool operator==(const THotkeyBinding&) const = default;
 };
 
+/// Both chat modes' key bindings of a set (CIP keeps them in one map by chat
+/// mode).
+struct THotkeyBindings
+{
+    std::vector<THotkeyBinding> chatOff;
+    std::vector<THotkeyBinding> chatOn;
+
+    bool operator==(const THotkeyBindings&) const = default;
+};
+
+/// True for the walking actions (GoNorth … GoSouthEast, StopPlayer): their
+/// key recorder takes a single key only.
+bool isMovementAction(const TActionSetting& setting);
+
 /// One hotkey preset: the action bar mappings and both chat modes' keys.
 struct THotkeySet
 {
@@ -117,6 +131,10 @@ struct THotkeySet
 
     bool operator==(const THotkeySet&) const = default;
 };
+
+/// The key bindings of set, then every binding of overrides in its chat mode:
+/// an override's key replaces the set's binding of that key.
+THotkeyBindings mergeHotkeys(const THotkeySet& set, const THotkeySet& overrides);
 
 /// The hotkeyOptions section as a value: the copy the hotkeys options page
 /// edits and hands back on apply (CIP: config::THotkeyOptions).
@@ -153,6 +171,8 @@ struct THotkeyOptionsData
     void removeSet(const QString& name);
     /// The bindings of one chat mode of a set.
     void clearBindings(const QString& setName, bool chatOn);
+    /// Binds keys in one chat mode of the set (made when missing); a binding
+    /// of the same keys is replaced.
     void addBinding(const QString& setName, bool chatOn, const QKeySequence& keys, const TActionSetting& setting);
     void setBindings(const QString& setName, bool chatOn, const std::vector<THotkeyBinding>& bindings);
     /// The set (made when missing) gets these key bindings of both chat modes.
@@ -184,8 +204,12 @@ public:
     /// GlobalShortcuts' keys merged in, and GlobalShortcuts itself.
     static QJsonObject builtInSets();
     /// The built-in set named name: a vocation preset with GlobalShortcuts'
-    /// keys, or GlobalShortcuts alone.
+    /// keys, or GlobalShortcuts alone; an empty set for other names. The
+    /// embedded defaults are read on the first call; a parse error throws
+    /// std::runtime_error.
     static THotkeySet builtInSet(const QString& name);
+    /// The key bindings of builtInSet(name).
+    static THotkeyBindings builtInHotkeys(const QString& name);
 
     QString currentSetName() const { return m_current; }
     QStringList setNames() const;

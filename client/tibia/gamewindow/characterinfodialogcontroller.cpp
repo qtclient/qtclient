@@ -378,10 +378,6 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
     new TQmlWorldTransferCondition(false, {}, this);
     new TSpritesheetDataObject({}, this);
     new TSimpleNameAndCountModel(this);
-    {
-        TDialogStackController* const stack = TDialogStackController::instance();
-        new TCharacterTradeDialogController(stack ? stack->engine() : nullptr, stack ? stack->dialogPlaceholder() : nullptr, this);
-    }
     new TCharacterTradeDuePaymentDialogController(this);
     new TCharacterWorldTransferDialogController(this);
     new TMainCharacterChangeDialogController(this);
@@ -598,7 +594,7 @@ int TCharacterInfoDialogController::numberOfPages() const
 
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 1});
     Q_EMIT publishGameAction(action);
     Q_EMIT publishGameAction(input::makeGameAction(A::CLOSE_CYCLOPEDIA));
 }

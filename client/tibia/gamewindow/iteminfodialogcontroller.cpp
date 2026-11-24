@@ -1,5 +1,6 @@
 #include "iteminfodialogcontroller.h"
 #include "game/currentgamesession.h"
+#include "game/gamesessionbase.h"
 
 #include "game/gameciptypes.h"
 
@@ -134,8 +135,7 @@ TItemInspectData::TItemInspectData(const QString& name, const uint16_t typeId,
 
 TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::TItemInfoDialogController(parent)
-    , m_model([](uint16_t, uint8_t) { return 0; })
-    , m_proxy(&m_model)
+    , m_proxy(false, true, false, nullptr)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
     buildCategories();
@@ -245,15 +245,15 @@ void TItemInfoDialogController::rebuildEntries()
     std::vector<TAppearanceTypeEntry> entries;
     for (const TAppearanceTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes())
         entries.push_back(cyclopediaEntry(type));
-    m_proxy.resetEntries(std::move(entries));
+    m_proxy.resetTypes(entries);
     m_entriesBuilt = true;
     setEnableTier(false);
 }
 
 bool TItemInfoDialogController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_model.size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_model.entry(row);
+    for (int row = 0; row < m_proxy.model().size(); ++row) {
+        const TAppearanceTypeEntry& entry = m_proxy.model().entry(row);
         if (entry.classification == 0)
             continue;
         if (category == Proxy::AllCategories || entry.marketCategory == category)
@@ -340,6 +340,10 @@ void TItemInfoDialogController::ensureItemTrackingConnection()
 void TItemInfoDialogController::showDialogTab()
 {
     hideDialogTab();
+    if (const game::TGameSessionBase* session = game::currentGameSession())
+        m_proxy.connectToStorages(session->playerData(), prices(), session->itemTrackingStorage(), nullptr, nullptr);
+    else
+        m_proxy.disconnectFromStorages();
     if (!m_entriesBuilt)
         rebuildEntries();
     m_shown = true;
@@ -356,7 +360,7 @@ void TItemInfoDialogController::hideDialogTab()
     m_shown = false;
     m_proxy.setCategoryFilter(-1, false, false, false, false, {}, false);
     // The list is emptied; showing the tab again reloads it.
-    m_model.reset({});
+    m_proxy.resetEntries({});
     m_entriesBuilt = false;
     m_category = -1;
     m_name.clear();
@@ -605,7 +609,7 @@ void TItemInfoDialogController::requestCustomSaleValue(const QString& CustomSale
 
 void TItemInfoDialogController::requestOpenStoreWithPremiumTime()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     Q_EMIT publishGameAction(action);
 }
 

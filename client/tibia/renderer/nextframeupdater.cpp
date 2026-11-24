@@ -5,7 +5,6 @@
 #include "cyclopedia/itemtrackingstorage.h"
 #include "effects/effectstorage.h"
 #include "game/cooldownstorage.h"
-#include "renderer/worldmaprenderprovider.h"
 #include "sound/soundstorage.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/worldmapstorage.h"
@@ -43,11 +42,6 @@ TNextFrameUpdater::TNextFrameUpdater(std::shared_ptr<worldmap::TWorldMapStorage>
 {
 }
 
-void TNextFrameUpdater::setWorldMapRenderProvider(std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider)
-{
-    m_worldMapRenderProvider = std::move(worldMapRenderProvider);
-}
-
 void TNextFrameUpdater::update(const qint64& nextFrameTimestamp)
 {
     // Host: the creatures' movement tweens advance before the storages.
@@ -56,10 +50,9 @@ void TNextFrameUpdater::update(const qint64& nextFrameTimestamp)
     m_worldMapStorage->updateAnimations(nextFrameTimestamp);
     m_effectStorage->update(nextFrameTimestamp);
     m_textStorage->update(nextFrameTimestamp);
-    // Host: the cooldowns' end times and the analysers' timestamps are on
-    // their storages' own clocks, so they advance to those clocks' now.
-    m_cooldownStorage->expireCooldowns(game::TCooldownStorage::now());
+    m_cooldownStorage->expireCooldowns(nextFrameTimestamp);
     m_ambientLightStorage->update(nextFrameTimestamp);
+    // Host: the analysers' timestamps are on their storages' own clock.
     const qint64 analysersNow = analysers::TAnalyserStorages::nowMs();
     m_itemTrackingStorage->update(analysersNow);
     m_gainWasteStorage->tick(analysersNow);
@@ -68,15 +61,6 @@ void TNextFrameUpdater::update(const qint64& nextFrameTimestamp)
     m_progressStorage->tick(analysersNow);
     m_huntingSessionStorage->tick(analysersNow);
     m_soundStorage->update(nextFrameTimestamp);
-
-    // Host: the world map's frame is built here, then the movement clock
-    // runs on and the local player's walk goes on.
-    if (m_worldMapRenderProvider) {
-        m_worldMapRenderProvider->setFrameTimestamp(nextFrameTimestamp);
-        m_worldMapRenderProvider->advance();
-    }
-    tibia::creatures::resumeMovementClock();
-    tibia::game::localPlayerMovementTick();
 }
 
 }

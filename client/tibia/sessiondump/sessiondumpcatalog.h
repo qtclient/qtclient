@@ -22,6 +22,8 @@ public:
         qint64 fileSize = 0;
         qint64 durationMilliseconds = 0;
         bool hasHints = false;
+        /// The character whose configuration a replay of the entry loads; the catalog leaves it 0.
+        quint32 characterId = 0;
     };
 
     TSessiondumpCatalog() = default;

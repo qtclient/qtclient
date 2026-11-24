@@ -6,6 +6,7 @@
 #include "sprites/spriteresolver.h"
 #include "sprites/spritesheetdecompressorthreadpool.h"
 #include "sprites/spritesheetmanager.h"
+#include "config/clientsettings.h"
 
 #include <QDebug>
 #include <QMutex>
@@ -42,7 +43,9 @@ TSpriteSystem& TSpriteSystem::instance()
 TSpriteSystem::TSpriteSystem()
 {
     m_decompressor = std::make_shared<TSpritesheetDecompressorThreadpool>();
-    const uint32_t capacity = defaultCacheCapacity();
+    // The client settings may set the cache size (at least 2 spritesheets).
+    const uint32_t capacity = static_cast<uint32_t>(tibia::config::clientSettingAtLeast(
+        QStringLiteral("GRAPHICS"), QStringLiteral("spritesheetCacheSize"), defaultCacheCapacity(), 2));
     qDebug() << "Using spritesheet cache size of" << capacity;
     m_spritesheets = std::make_shared<TSpritesheetManager>(m_decompressor, std::make_shared<TSpritesheetCache>(capacity));
     m_ownResolver = std::make_shared<TSpriteResolver>(m_spritesheets);

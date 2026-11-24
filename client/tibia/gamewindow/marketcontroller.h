@@ -177,7 +177,6 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<market::TMarketStorage> m_storage;
     QPointer<market::TMarketProtocolMessageHandler> m_messages;
-    TAppearanceTypeListModel m_model;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     int m_selectedCategory = -1;
     uint16_t m_selectedType = 0;

@@ -12,6 +12,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <vector>
 
 class QJsonValue;
@@ -19,6 +20,9 @@ class QNetworkAccessManager;
 class QNetworkReply;
 
 namespace tibia {
+namespace shared {
+class TTibiaFileSystemHelper;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -143,6 +147,11 @@ public:
 
     /// The account service (CIP accountcreationclientservices.php on the portal).
     void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
+    /// The file system helper createCharacter reads the distribution marker with.
+    void setTibiaFileSystemHelper(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper)
+    {
+        m_tibiaFileSystemHelper = std::move(tibiaFileSystemHelper);
+    }
     /// The login session the new character goes to.
     void setSessionKey(const QString& sessionKey) { m_sessionKey = sessionKey; }
 
@@ -192,6 +201,7 @@ private:
     void showError(const QString& message);
 
     QUrl m_serviceUrl;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_tibiaFileSystemHelper;
     QString m_sessionKey;
     QNetworkAccessManager* m_network;
     TWorldSelectionSortProxyModel* m_proxy;

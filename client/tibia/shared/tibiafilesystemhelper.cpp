@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QSaveFile>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QUrl>
@@ -501,6 +502,14 @@ bool TTibiaFileSystemHelper::startLauncherDetached(const QStringList& arguments)
 
 bool TTibiaFileSystemHelper::startLauncher(const ELauncherStartReason reason, const QString& patchPath)
 {
+    // Host: qtclient's launcher started this client and waits for a marker
+    // file instead of a second launcher process.
+    const QByteArray markerVariable = reason == LAUNCHER_START_PATCH ? QByteArrayLiteral("QTCLIENT_RESTART_FILE")
+                                                                     : QByteArrayLiteral("QTCLIENT_SHOW_FILE");
+    if (const QString marker = qEnvironmentVariable(markerVariable.constData()); !marker.isEmpty()) {
+        QSaveFile file(marker);
+        return file.open(QIODevice::WriteOnly) && file.write("1") == 1 && file.commit();
+    }
     QStringList arguments;
     switch (reason) {
     case LAUNCHER_START_FIRST_LAUNCH:
@@ -545,6 +554,15 @@ bool TTibiaFileSystemHelper::hasForcePatchMarker()
     directory.cdUp();
     const QFile file(directory.absoluteFilePath(kForcePatchMarkerName));
     return file.exists();
+}
+
+bool isEpicDistribution(const TTibiaFileSystemHelper& tibiaFileSystemHelper)
+{
+    QDir directory(TTibiaFileSystemHelper::getLauncherDirectory());
+    directory.cd(QStringLiteral("../Resources"));
+    const QString markerPath = directory.absoluteFilePath(QStringLiteral("distribution.channel"));
+    const QByteArray marker = tibiaFileSystemHelper.getFileSystemHelper()->readFileIfExists(markerPath);
+    return QString::fromLocal8Bit(marker).trimmed() == QLatin1String("Epic");
 }
 
 void TTibiaFileSystemHelper::init(const char* argv0)

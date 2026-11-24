@@ -1559,9 +1559,10 @@ void TFragmentWorkshopPageController::onModsChanged()
     m_list->setMods(m_storage->modList());
     if (const auto configuration = m_storage->currentSkillWheel())
         m_list->setConfiguration(*configuration, m_storage->basicGrades(), m_storage->supremeGrades());
-    Q_EMIT modGradesChanged();
     if (mod >= 0)
         selectMod(basic, mod);
+    m_filter->invalidateRows();
+    Q_EMIT modGradesChanged();
 }
 
 void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int ModID)
@@ -1962,7 +1963,7 @@ void TSkillWheelDialogController::onResetClicked()
 /// CIP: the store opens; the dialog closes (asking first about unsaved changes).
 void TSkillWheelDialogController::getPremiumClicked()
 {
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(1));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0}));
     requestClose();
 }
 

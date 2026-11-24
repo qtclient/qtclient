@@ -1,6 +1,7 @@
 #pragma once
 
 #include "minimap/minimaptile.h"
+#include "minimap/waypointsectors.h"
 
 #include <cip_gen.h>
 
@@ -10,6 +11,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <vector>
 
 namespace tibia {
 namespace minimap {
@@ -82,6 +84,15 @@ public:
     /// pair has no data, and is then read from disk again to merge the user's tile.
     void loadDefaultMinimapTilesFromResources(const QString& directory);
 
+    /// The waypoint costs of the stored tiles, per tile, as the path planner
+    /// reads them.
+    const TWaypointSectors& waypointSectors() const { return m_waypointSectors; }
+    /// Drops the waypoint costs of the tiles `ids`.
+    void removeTiles(const std::vector<Position>& ids);
+    /// The waypoint costs of the stored tile `id` are taken from its waypoint
+    /// image again; the tile must be stored.
+    void updateWaypointSector(const Position& id);
+
     /// Disk results (CIP: slots 0xe8 / 0xf0).
     void onLoadingSucceeded(const TMinimapTilePtr& loaded);
     void onLoadingFailed(const Position& id);
@@ -111,6 +122,7 @@ private:
     Tiles m_tiles;
     std::set<uint64_t> m_changed;
     QTimer m_notifyTimer;
+    TWaypointSectors m_waypointSectors;
     int m_playerZ = 0;
 };
 

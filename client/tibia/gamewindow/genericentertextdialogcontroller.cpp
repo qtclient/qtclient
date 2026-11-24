@@ -19,6 +19,18 @@ TGenericEnterTextDialogController::TGenericEnterTextDialogController(const QStri
     m_maxInputLength = maxInputLength;
 }
 
+TGenericEnterTextDialogController::TGenericEnterTextDialogController(const QString& caption, const QString& description,
+                                                                     const uint maxInputLength, QQmlEngine* engine,
+                                                                     QQuickItem* dialogParentItem, QObject* parent)
+    : TDialogController(QStringLiteral("GenericEnterTextDialog.qml"), engine, dialogParentItem, parent)
+{
+    m_maxInputLength = maxInputLength;
+    m_dialogWidth = -1;
+    m_confirmLable = qtTrId("ok");
+    m_caption = caption;
+    m_description = description;
+}
+
 void TGenericEnterTextDialogController::showWithText(const QString& text)
 {
     m_enteredText = text;

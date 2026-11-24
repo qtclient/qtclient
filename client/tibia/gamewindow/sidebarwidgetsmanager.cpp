@@ -72,24 +72,26 @@ constexpr std::pair<int, const char*> WidgetTypeNames[] = {
 
 }
 
-TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
+TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, TContainerStorageController* containers,
+                                               QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                analysers::TAnalyserStorages* analyserStorages, QObject* parent)
     : cip::tibia::gamewindow::TSidebarWidgetsManager(parent)
     , m_sidebars(sidebars)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
+    , m_containers(containers)
     , m_battleLists(std::make_unique<TBattleListControllerStorage>(sidebars, gameWindowItem, engine))
 {
     // CIP sidebar base carriers.
     new TSidebarWidgetControllerBase(gameWindowItem, engine, this);
     new TSidebarWidgetControllerWithFocusHandling(gameWindowItem, engine, this);
-    connect(new TInspectObjectDialogController(this), &TInspectObjectDialogController::publishGameAction, this,
-            &TSidebarWidgetsManager::publishGameAction);
-    connect(new TInspectPlayerDialogController(this), &TInspectPlayerDialogController::publishGameAction, this,
-            &TSidebarWidgetsManager::publishGameAction);
     // TLargePerkInformation / TTileInformation are owned and
     // filled by TSkillWheelPageController (fillLargePerk / fillTile / fillVessel).
     connect(sidebars, &TSidebarManager::widgetConfigurationChanged, this, &TSidebarWidgetsManager::saveCurrentOpenWidgets);
+    // A container that leaves the storage saves the open widgets.
+    if (containers)
+        connect(containers, &TContainerStorageController::containerRemovedFromStorage, this,
+                &TSidebarWidgetsManager::saveCurrentOpenWidgets);
     connect(m_battleLists.get(), &TBattleListControllerStorage::publishGameAction, this,
             &TSidebarWidgetsManager::publishGameAction);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetVisible, this, &TSidebarWidgetsManager::widgetVisible);
@@ -196,18 +198,6 @@ void TSidebarWidgetsManager::setSidebarOptions(config::TSidebarOptions* options)
     connect(options, &config::TSidebarOptions::sidebarWidgetsManagerOptionsChanged, this,
             &TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions);
     restoreSidebarConfigurationFromOptions();
-}
-
-void TSidebarWidgetsManager::setContainerStorage(TContainerStorageController* containers)
-{
-    if (m_containers)
-        disconnect(m_containers, &TContainerStorageController::containerRemovedFromStorage, this,
-                   &TSidebarWidgetsManager::saveCurrentOpenWidgets);
-    m_containers = containers;
-    // CIP (constructor): a container that leaves the storage saves the open widgets.
-    if (m_containers)
-        connect(m_containers, &TContainerStorageController::containerRemovedFromStorage, this,
-                &TSidebarWidgetsManager::saveCurrentOpenWidgets);
 }
 
 void TSidebarWidgetsManager::setControlScheme(const int controlScheme)

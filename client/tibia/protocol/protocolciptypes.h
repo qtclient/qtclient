@@ -24,6 +24,9 @@ class ObjectIdentifier;
 class ObjectPosition;
 } // namespace protocol
 } // namespace protobuf
+namespace shared {
+class TIODeviceReader;
+} // namespace shared
 } // namespace tibia
 
 namespace tibia {
@@ -32,26 +35,52 @@ namespace protocol {
 void ownProductSurface(QObject* parent);
 
 struct ClassicReader;
+class TProtocolReader;
 
-/// CIP protocol::TProtobufServerMessageTranslator: reads one server message.
+/// CIP protocol::TProtobufServerMessageTranslator: reads the messages of a
+/// stream through its protocol reader: classic server messages (the game
+/// server's wire, a classic session dump), protobuf server messages (a
+/// protobuf session dump), and the classic and protobuf client messages a
+/// session dump recorded.
 ///
-/// Host: CipSoft's translator reads through its protocol reader's stream;
-/// qtclient's reads the classic wire through the caller's ClassicReader, and
-/// returns null when a known message does not read (CipSoft's reader throws).
+/// Host: the classic server message fills read a byte span (ClassicReader);
+/// the live packet path hands its span to translateServerMessage, the stream
+/// path (readGameserverMessage) peeks the stream's unread bytes into one. A
+/// known message that does not read gives null there (CipSoft's reader
+/// throws). The tier byte of objects is decided by the appearances manager's
+/// protocol parsing set, which CipSoft's ctor copies in.
 class TProtobufServerMessageTranslator {
 public:
-    TProtobufServerMessageTranslator() = default;
+    explicit TProtobufServerMessageTranslator(std::shared_ptr<TProtocolReader> ProtocolReader);
     virtual ~TProtobufServerMessageTranslator() = default;
 
     /// Reads the opcode and the message's fields. A message of an opcode it
     /// does not know has only the Unknown extension, with that opcode.
     virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> translateServerMessage(
         ClassicReader& Reader) const;
+    /// Host: translateServerMessage over the stream's unread bytes; the stream
+    /// moves past what was read.
+    virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> readGameserverMessage();
+    /// A protobuf server message of `Size` bytes; throws std::invalid_argument
+    /// when the bytes are no GameserverMessage.
+    virtual std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage> readGameserverProtobufMessage(
+        uint16_t Size);
+    /// A classic client message: the opcode, then its fields. A message of an
+    /// opcode it does not know has only the Unknown extension, with that opcode.
+    virtual std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> readGameclientMessage();
+    /// A protobuf client message of `Size` bytes; throws std::invalid_argument
+    /// when the bytes are no GameclientMessage.
+    virtual std::shared_ptr<::tibia::protobuf::protocol::GameclientMessage> readGameclientProtobufMessage(
+        uint16_t Size);
 
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameserverMessage& message) const;
 
     static bool hasStructuredLayout(int opcode);
+
+private:
+    std::shared_ptr<TProtocolReader> m_protocolReader;
+    std::shared_ptr<shared::TIODeviceReader> m_messageReader;
 };
 
 class TProtobufClientMessageTranslator final : public ::tibia::CipTyped {
@@ -66,26 +95,6 @@ public:
     /// an object "anywhere"; 0 otherwise.
     static uint8_t stackPosition(const ::tibia::protobuf::protocol::ObjectPosition& objectPosition,
                                  const ::tibia::protobuf::protocol::ObjectIdentifier& objectIdentifier);
-};
-
-/// CIP `protocol::TProtocolReader` (pin layout size 0x18).
-class TProtocolReader final : public ::tibia::CipTyped {
-public:
-    TProtocolReader() = default;
-    explicit TProtocolReader(uint32_t a, uint32_t b, uint64_t c)
-        : m_a(a)
-        , m_b(b)
-        , m_c(c)
-    {
-    }
-    uint32_t a() const { return m_a; }
-    uint32_t b() const { return m_b; }
-    uint64_t c() const { return m_c; }
-
-private:
-    uint32_t m_a = 0; // +0x8
-    uint32_t m_b = 0; // +0xc
-    uint64_t m_c = 0; // +0x10
 };
 
 /// CIP `protocol::TProtocolWriter` — wire enqueue façade (bodies live on the queue).

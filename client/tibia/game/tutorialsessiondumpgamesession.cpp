@@ -33,12 +33,25 @@ TTutorialSessiondumpGameSession::~TTutorialSessiondumpGameSession() = default;
 void TTutorialSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo)
 {
     TSessiondumpGameSession::initialize(metaInfo);
+    // The tutorial loads no character's configuration.
+    m_configurationCharacterId = 0;
     m_tutorialMetaInfo = std::dynamic_pointer_cast<const TTutorialSessiondumpGameSessionMetaInfo>(metaInfo);
     if (!m_tutorialMetaInfo)
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     connect(this, &IGameSession::disconnected, this, &TTutorialSessiondumpGameSession::onDisconnected);
 
     TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
+    // The hints processor over the hints the sessiondump's start loaded,
+    // linked both ways with the router. Host: a missing or malformed hints
+    // file leaves the tutorial without hints.
+    if (m_sessiondumpHints) {
+        using tutorial::TSessiondumpHintsProcessor;
+        m_sessiondumpHintsProcessor = std::make_shared<TSessiondumpHintsProcessor>(m_sessiondumpHints);
+        connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_sessiondumpHintsProcessor.get(),
+                &TSessiondumpHintsProcessor::handleGameAction);
+        connect(m_sessiondumpHintsProcessor.get(), &TSessiondumpHintsProcessor::publishGameAction, router,
+                &TInternalGameActionRouter::handleGameActionInternal);
+    }
     m_tutorialProgressUploader = std::make_shared<tutorial::TTutorialProgressUploader>(
         m_tutorialMetaInfo->tutorialProgressWebService, m_tutorialMetaInfo->clientSessionId, m_tutorialMetaInfo->characterName,
         std::make_shared<shared::TJsonDocumentHttpPostSender>());
@@ -77,18 +90,7 @@ void TTutorialSessiondumpGameSession::startSessiondump(const sessiondump::TSessi
     } catch (const std::exception& e) {
         // Host: a missing or malformed hints file leaves the tutorial without hints.
         qWarning() << "Invalid sessiondump hints" << entry.hintsUrl << e.what();
-        return;
     }
-
-    // Host: the hints processor reads the hints when it is made, so it is made
-    // once they are loaded (CipSoft makes it in initialize).
-    using tutorial::TSessiondumpHintsProcessor;
-    m_sessiondumpHintsProcessor = std::make_shared<TSessiondumpHintsProcessor>(m_sessiondumpHints);
-    TInternalGameActionRouter* router = gameActionRouter()->internalRouter();
-    connect(router, &TInternalGameActionRouter::publishGameActionInternal, m_sessiondumpHintsProcessor.get(),
-            &TSessiondumpHintsProcessor::handleGameAction);
-    connect(m_sessiondumpHintsProcessor.get(), &TSessiondumpHintsProcessor::publishGameAction, router,
-            &TInternalGameActionRouter::handleGameActionInternal);
 }
 
 void TTutorialSessiondumpGameSession::onSessiondumpTimerElapsed()

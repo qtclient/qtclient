@@ -84,8 +84,8 @@ public:
     /// Reads every storage of the character; 0 loads nothing.
     void loadConfigurationForCharacter(quint32 characterId);
     bool isConfigurationLoaded() const { return m_loaded; }
-    /// Whether the character had a sidebars file.
-    bool isSidebarConfigurationLoadedFromFile() const { return m_sidebarLoadedFromFile; }
+    /// Whether the character had no sidebars file of its own and got the default sidebars.
+    bool hasDefaultSidebarConfiguration() const { return m_defaultSidebarConfiguration; }
 
     analysers::TItemPriceStorage* itemPriceStorage() const { return m_storages.itemPrice; }
     cyclopedia::TItemTrackingStorage* itemTrackingStorage() const { return m_storages.itemTracking; }
@@ -121,7 +121,7 @@ private:
     quint32 m_characterId = 0;
     bool m_loaded = false;
     bool m_dirty = false;
-    bool m_sidebarLoadedFromFile = false;
+    bool m_defaultSidebarConfiguration = false;
 };
 
 }

@@ -230,8 +230,30 @@ void THotkeyOptionsData::clearBindings(const QString& setName, const bool chatOn
 
 void THotkeyOptionsData::addBinding(const QString& setName, const bool chatOn, const QKeySequence& keys, const TActionSetting& setting)
 {
-    if (THotkeySet* hotkeySet = set(setName))
-        insertBinding(chatOn ? hotkeySet->chatOn : hotkeySet->chatOff, keys, setting);
+    THotkeySet& hotkeySet = hotkeySets[setName];
+    insertBinding(chatOn ? hotkeySet.chatOn : hotkeySet.chatOff, keys, setting);
+}
+
+THotkeyBindings mergeHotkeys(const THotkeySet& set, const THotkeySet& overrides)
+{
+    THotkeyBindings merged{ set.chatOff, set.chatOn };
+    for (const THotkeyBinding& binding : overrides.chatOff)
+        insertBinding(merged.chatOff, binding.keys, binding.setting);
+    for (const THotkeyBinding& binding : overrides.chatOn)
+        insertBinding(merged.chatOn, binding.keys, binding.setting);
+    return merged;
+}
+
+bool isMovementAction(const TActionSetting& setting)
+{
+    if (setting.action.isEmpty())
+        return false;
+    static const QStringList movementActions = {
+        QStringLiteral("GoNorth"),     QStringLiteral("GoEast"),      QStringLiteral("GoWest"),
+        QStringLiteral("GoSouth"),     QStringLiteral("GoNorthWest"), QStringLiteral("GoSouthWest"),
+        QStringLiteral("GoNorthEast"), QStringLiteral("GoSouthEast"), QStringLiteral("StopPlayer"),
+    };
+    return movementActions.contains(setting.action);
 }
 
 void THotkeyOptionsData::setBindings(const QString& setName, const bool chatOn, const std::vector<THotkeyBinding>& bindings)
@@ -474,31 +496,25 @@ THotkeyOptions* THotkeyOptions::instance()
 
 namespace {
 
-/// CIP's built-in hotkey sets: the embedded defaults read once, each vocation
-/// preset then given the GlobalShortcuts bindings whose keys it does not bind.
+/// CIP's built-in hotkey sets: the embedded defaults (GlobalShortcuts and the
+/// vocation presets' action bars) read once; each vocation preset then gets
+/// its keys merged with GlobalShortcuts', which win on the same key.
 const THotkeyOptionsData& builtInOptions()
 {
     static const THotkeyOptionsData options = [] {
         QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
-        if (!file.open(QIODevice::ReadOnly))
-            return THotkeyOptionsData{};
-        THotkeyOptionsData data = THotkeyOptionsData::fromJson(QJsonDocument::fromJson(file.readAll()).object());
-        const auto global = data.hotkeySets.find(QStringLiteral("GlobalShortcuts"));
-        if (global == data.hotkeySets.end())
-            return data;
+        QByteArray json;
+        if (file.open(QIODevice::ReadOnly))
+            json = file.readAll();
+        QJsonParseError error;
+        const QJsonDocument document = QJsonDocument::fromJson(json, &error);
+        if (error.error != QJsonParseError::NoError)
+            throw std::runtime_error("Json parse error for global shortcuts");
+        THotkeyOptionsData data = THotkeyOptionsData::fromJson(document.object());
+        const QString global = QStringLiteral("GlobalShortcuts");
         for (const QString& vocation : THotkeyOptions::vocationSetNames()) {
-            THotkeySet* set = data.set(vocation);
-            if (!set)
-                continue;
-            for (const bool chatOn : { false, true }) {
-                std::vector<THotkeyBinding>& bindings = chatOn ? set->chatOn : set->chatOff;
-                for (const THotkeyBinding& binding : chatOn ? global->second.chatOn : global->second.chatOff) {
-                    const bool bound = std::any_of(bindings.begin(), bindings.end(),
-                                                   [&](const THotkeyBinding& own) { return own.keys == binding.keys; });
-                    if (!bound)
-                        insertBinding(bindings, binding.keys, binding.setting);
-                }
-            }
+            const THotkeyBindings merged = mergeHotkeys(data.hotkeySets[vocation], data.hotkeySets[global]);
+            data.setHotkeys(vocation, merged.chatOff, merged.chatOn);
         }
         return data;
     }();
@@ -531,6 +547,12 @@ THotkeySet THotkeyOptions::builtInSet(const QString& name)
 {
     const auto it = builtInOptions().hotkeySets.find(name);
     return it == builtInOptions().hotkeySets.end() ? THotkeySet{} : it->second;
+}
+
+THotkeyBindings THotkeyOptions::builtInHotkeys(const QString& name)
+{
+    THotkeySet set = builtInSet(name);
+    return { std::move(set.chatOff), std::move(set.chatOn) };
 }
 
 void THotkeyOptions::load()

@@ -191,6 +191,12 @@ private:
     std::deque<std::string> m_searchPaths;
 };
 
+/// Whether the client is the Epic Games Store distribution: the
+/// "distribution.channel" file in the launcher's ../Resources reads "Epic"
+/// (trimmed). The login's operating system and the account service's
+/// DistributionChannel follow it.
+bool isEpicDistribution(const TTibiaFileSystemHelper& tibiaFileSystemHelper);
+
 }
 
 namespace files {

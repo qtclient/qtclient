@@ -92,7 +92,7 @@ void TPreyData::setInactive()
     setState(1);
 }
 
-void TPreyData::setActive(const TPreyBonus& bonus, const TPreyMonster& monster, const int timeLeft)
+void TPreyData::setActive(const TPreyBonus& bonus, const TPreyMonster& monster)
 {
     clearStateData();
     if (bonus.type == 4) {
@@ -102,7 +102,6 @@ void TPreyData::setActive(const TPreyBonus& bonus, const TPreyMonster& monster, 
         setMonster(monster);
         setState(2);
     }
-    setTimeLeft(timeLeft);
 }
 
 void TPreyData::setSelection(QList<TPreyMonster> list)

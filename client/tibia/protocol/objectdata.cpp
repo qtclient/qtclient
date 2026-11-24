@@ -42,6 +42,15 @@ TObjectData TObjectData::upgradeable(const uint16_t Id, const uint8_t UpgradeCla
     return data;
 }
 
+TObjectData TObjectData::decoItemKit(const uint16_t Id, const uint16_t DecoItemId)
+{
+    TObjectData data;
+    data.id = DecoItemId != 0 ? DecoItemId : Id;
+    data.kind = EKind::DecoItemKit;
+    data.decoItemId = DecoItemId;
+    return data;
+}
+
 TObjectData TObjectData::fromAppearanceInstance(const ::tibia::appearances::TAppearanceInstance& Instance)
 {
     using namespace ::tibia::appearances;

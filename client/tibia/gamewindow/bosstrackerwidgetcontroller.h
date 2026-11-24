@@ -3,6 +3,7 @@
 #include "bossbestiary/bosstrackerstorage.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"
+#include "qtconnectionmanager.h"
 
 #include <cip_gen.h>
 
@@ -97,6 +98,9 @@ public:
     void setSidebarOptions(config::TSidebarOptions* options);
     /// The session's boss tracker storage.
     void setStorage(bossbestiary::TBossTrackerStorage* storage);
+    /// Follows the session: its boss tracker storage's entries (rebuilt now)
+    /// and its sidebar options' boss tracker options (applied now).
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     QObject* bosses() const override;
     bool hasUnlockedAnyBosses() const override;
@@ -152,6 +156,8 @@ private:
     QMetaObject::Connection m_storageConnection;
     TBossTrackerListModel* m_model = nullptr;
     QPointer<config::TSidebarOptions> m_options;
+    std::shared_ptr<game::IGameSession> m_gameSession;
+    shared::TQtConnectionManager m_gameSessionConnections;
 };
 
 class TBossTrackerWidgetManager final : public QObject
@@ -176,6 +182,7 @@ Q_SIGNALS:
 
 private:
     QPointer<bossbestiary::TBossTrackerStorage> m_storage;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QQuickItem* m_gameWindowItem = nullptr;
     QQmlEngine* m_engine = nullptr;
     TBossTrackerWidgetController* m_controller = nullptr;

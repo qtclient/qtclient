@@ -28,15 +28,16 @@ public:
     explicit TTutorialSessiondumpGameSession(QObject* parent = nullptr);
     ~TTutorialSessiondumpGameSession() override;
 
-    /// The sessiondump session's setup, then: the session's disconnected signal
-    /// ends the tutorial mode (onDisconnected); the tutorial progress uploader
-    /// and the tutorial's game action handler, linked both ways with the game
-    /// action router.
+    /// The sessiondump session's setup (which loads the dump and its hints),
+    /// then: no character configuration; the session's disconnected signal ends
+    /// the tutorial mode (onDisconnected); the hints processor, the tutorial
+    /// progress uploader and the tutorial's game action handler, each linked
+    /// both ways with the game action router.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
     /// Plays the dump, then publishes CHANGE_TUTORIAL_MODE_ENABLED (on).
     void startSession() override;
-    /// Plays the entry's dump, then loads the entry's hints (a blocking GET of
-    /// the hints URL) for the hints processor.
+    /// Loads the entry's dump, then the entry's hints (a blocking GET of the
+    /// hints URL) for the hints processor.
     void startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry) override;
 
 public Q_SLOTS:

@@ -103,13 +103,6 @@ int moveObjectCount(const TGameActionMoveObject& move)
 
 namespace {
 
-void openLauncher()
-{
-    // Quit closes the window. That must not raise Exit / Logout / Cancel.
-    gamewindow::TGameWindowController::allowProcessExit();
-    tibia::platform::restartApplication();
-}
-
 /// Focused QML/text field helpers (CIP REQUEST_SELECT_ALL_TEXT / COPY / CONFIRM_COPY).
 QObject* focusedTextField()
 {
@@ -132,7 +125,7 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
     // A few actions must work before login (sound helper, mute, HUD toggle, relaunch,
     // character-selection shell, focused-text clipboard helpers).
     static constexpr A OfflineActions[] = {
-        A::SOUND_TRIGGER, A::TOGGLE_SOUND, A::TOGGLE_CREATURE_HUDS_VISIBLE, A::OPEN_LAUNCHER,
+        A::SOUND_TRIGGER, A::TOGGLE_SOUND, A::TOGGLE_CREATURE_HUDS_VISIBLE,
         A::TOGGLE_FULLSCREEN, A::QUIT_GAME, A::OPEN_OPTIONS_MENU_DIALOG, A::REQUEST_SELECT_ALL_TEXT,
         A::COPY_TEXT_TO_CLIPBOARD, A::COPY_TRUSTED_TEXT_TO_CLIPBOARD, A::COPY_CHAT_ENTRY_TO_CLIPBOARD,
         A::COPY_CREATURE_NAME_TO_CLIPBOARD, A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD,
@@ -164,9 +157,6 @@ void TUnportedGameActionHandler::handleGameAction(const IGameActionPtr& pGameAct
     case A::CANCEL_USE_WITH:
     case A::CANCEL_CROSSHAIR_SPELL:
         finishTargetSelection(nullptr);
-        break;
-    case A::OPEN_LAUNCHER:
-        openLauncher();
         break;
     case A::STOP_ATTACKING_FOLLOWING_WALKING:
         // qtclient: CipSoft's creatures handler stops the attack and the follow

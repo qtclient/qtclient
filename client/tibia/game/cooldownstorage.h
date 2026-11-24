@@ -10,8 +10,8 @@ namespace tibia {
 namespace game {
 
 /// A cooldown as the storage hands it out: time left, its whole length (at
-/// least 1 while running) and when it ends, in TCooldownStorage::now
-/// milliseconds. All zero is no cooldown.
+/// least 1 while running) and when it ends, in milliseconds of the game
+/// session's clock. All zero is no cooldown.
 struct TCooldown
 {
     qint64 remaining = 0;
@@ -36,7 +36,7 @@ struct TSpellGroupCooldownEntry
 };
 
 /// The server's passive ability cooldown: the two values it sent, when it
-/// arrived and whether it keeps counting down.
+/// arrived (wall clock milliseconds) and whether it keeps counting down.
 struct TPassiveAbilityCooldown
 {
     qint64 remaining = 0;
@@ -53,16 +53,14 @@ struct TPassiveAbilityCounter
 };
 
 /// The spell, spell group, multi-use and passive ability cooldowns the server
-/// announced, kept as end times.
+/// announced, kept as end times on the game session's clock: its callers
+/// pass the time.
 class TCooldownStorage final : public cip::tibia::game::TCooldownStorage
 {
     Q_OBJECT
 public:
     explicit TCooldownStorage(QObject* parent = nullptr);
     ~TCooldownStorage() override;
-
-    /// Monotonic milliseconds; every end time is on this clock.
-    static qint64 now();
 
     /// Sets a known spell's end time; an unknown spell that already has one
     /// keeps it.
@@ -86,18 +84,15 @@ public:
     /// The multi-use cooldown joined with the object's rune spell.
     TCooldown objectCooldown(uint16_t objectId, qint64 time) const;
 
-    /// Callers on the host clock.
-    TCooldown spellCooldown(const int spellId) const { return spellCooldown(uint16_t(spellId), now()); }
-    TCooldown groupCooldown(const int groupId) const { return spellGroupCooldown(uint8_t(groupId), now()); }
-    TCooldown multiUseCooldown() const { return multiUseCooldown(now()); }
-    /// Spell id → own cooldown of every spell with an end time.
-    std::map<int, TCooldown> spellCooldowns() const;
+    /// Spell id → own cooldown at `time` of every spell with an end time.
+    std::map<int, TCooldown> spellCooldowns(qint64 time) const;
     /// The server's cooldown and counter of a passive ability the client
     /// knows; all zero for one without data or an unknown id.
     TPassiveAbilityCooldown passiveAbilityCooldown(uint8_t abilityId) const;
     TPassiveAbilityCounter passiveAbilityCounter(uint8_t abilityId) const;
-    /// The cooldown of the first passive ability with data (Gift of Life).
-    TCooldown passiveCooldown() const;
+    /// The cooldown of the first passive ability with data (Gift of Life),
+    /// ending on the clock of `time`.
+    TCooldown passiveCooldown(qint64 time) const;
     int passiveAbilityId() const;
 
 private:

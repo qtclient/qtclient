@@ -1,6 +1,7 @@
 #include "depotsearchwidgetcontroller.h"
 
 #include "app/clientoptions.h"
+#include "analysers/itempricestorage.h"
 #include "container/containergameactionprovider.h"
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
@@ -148,21 +149,18 @@ std::pair<int, int> tierSelection(const bool enabled, const std::pair<int, int>&
 
 TDepotSearchWidgetController::TDepotSearchWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_searchModel([](const uint16_t typeId, const uint8_t tier) {
-        const game::TGameSessionBase* session = game::currentGameSession();
-        return session ? static_cast<int>(session->objectCountStorage()->count(typeId, tier)) : 0;
-    })
-    , m_searchProxy(&m_searchModel)
-    , m_stashModel([this](const uint16_t typeId, uint8_t) {
+    , m_searchProxy(true, true, false, nullptr)
+    , m_stashProxy(false, true, false, nullptr)
+    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
+{
+    // Host: the stash counts are the detail list's.
+    m_stashProxy.model().setCountProvider([this](const uint16_t typeId, uint8_t) {
         if (!m_detailList)
             return 0;
         const auto& counts = m_detailList->stashCounts();
         const auto it = counts.find({ typeId, 0 });
         return it == counts.end() ? 0 : static_cast<int>(it->second);
-    })
-    , m_stashProxy(&m_stashModel)
-    , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
-{
+    });
     m_categories << new TQmlObjectCategory(AllCategories, this);
     for (const int identifier : TItemInfoDialogController::categoryIdentifiers())
         m_categories << new TQmlObjectCategory(identifier, this);
@@ -213,6 +211,15 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
 
     for (TAppearanceInstanceListModel* model : { &m_depotModel, &m_inboxModel })
         model->setObjectCountStorage(session ? session->objectCountStorage().get() : nullptr);
+    if (session) {
+        m_searchProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+                                        session->itemTrackingStorage(), session->objectCountStorage(), nullptr);
+        m_stashProxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(),
+                                       session->itemTrackingStorage(), nullptr, nullptr);
+    } else {
+        m_searchProxy.disconnectFromStorages();
+        m_stashProxy.disconnectFromStorages();
+    }
     if (!session) {
         m_searchProxy.resetEntries({});
         m_depotModel.setObjects({});
@@ -223,9 +230,6 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
         m_detailList = session->depotSearchDetailListStorage();
         m_sessionConnections.push_back(connect(m_detailList.get(), &cip::tibia::container::TDepotSearchDetailListStorage::detailListChanged,
                                                this, &TDepotSearchWidgetController::onDetailListChanged));
-        m_sessionConnections.push_back(connect(session->objectCountStorage().get(),
-                                               &cip::tibia::container::TObjectCountStorage::objectCountsChanged, &m_searchModel,
-                                               &TAppearanceTypeListModel::onObjectCountsChanged));
     }
     m_enableTierAndClassificationSelection = false;
     Q_EMIT enableTierAndClassificationSelectionChanged();
@@ -396,8 +400,8 @@ void TDepotSearchWidgetController::publishSimpleAction(const input::EGameAction 
 
 bool TDepotSearchWidgetController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_searchModel.size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_searchModel.entry(row);
+    for (int row = 0; row < m_searchProxy.model().size(); ++row) {
+        const TAppearanceTypeEntry& entry = m_searchProxy.model().entry(row);
         if (entry.classification == 0)
             continue;
         if (category == AllCategories || entry.marketCategory == category)
@@ -583,12 +587,18 @@ input::TGameActionList TDepotSearchWidgetController::typeActions(const uint16_t 
     return provider->typeActions(typeId);
 }
 
-void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId, const int, const int MouseButtonRaw,
+void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId, const int UpgradeTier, const int MouseButtonRaw,
                                                         const int KeyboardModifiersRaw)
 {
     if (!m_session)
         return;
-    const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(AppearanceId));
+    const std::shared_ptr<container::TContainerGameActionProvider> provider = m_session->containerGameActionProvider();
+    const auto typeId = static_cast<uint16_t>(AppearanceId);
+    // The tier goes with the type only when the type is upgradeable.
+    std::optional<uint8_t> tier;
+    if (const TAppearanceType* type = typeOf(typeId); type && type->hasUpgradeClassification())
+        tier = static_cast<uint8_t>(UpgradeTier);
+    const input::TGameActionList candidates = provider ? provider->depotSearchTypeActions(typeId, tier) : input::TGameActionList{};
     const input::IGameActionPtr action = m_mapper.map(candidates, DepotSearchContext, static_cast<Qt::MouseButton>(MouseButtonRaw), KeyboardModifiersRaw);
     if (!action)
         return;

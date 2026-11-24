@@ -37,6 +37,8 @@ struct TObjectData
     static TObjectData liquid(uint16_t Id, uint32_t LiquidType);
     static TObjectData cumulative(uint16_t Id, uint8_t Count);
     static TObjectData upgradeable(uint16_t Id, uint8_t UpgradeClassification);
+    /// A decoration kit: named by its deco item (its own type while it has none).
+    static TObjectData decoItemKit(uint16_t Id, uint16_t DecoItemId);
     /// The object data of an object's appearance instance: its kind follows the
     /// instance's class (liquid, cumulative, hangable, upgradeable, deco item
     /// kit, else plain). A deco item kit without a deco item names its own type.

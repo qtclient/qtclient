@@ -49,8 +49,6 @@ public:
     /// Host: the client's storage (the game client base sets it); used by render / menus.
     static TMinimapMarkerStorage* active();
     static void setActive(TMinimapMarkerStorage* storage);
-    /// The dialog that edits a marker.
-    gamewindow::TEditMinimapMarkerDialogController* editMinimapMarkerDialog() const { return m_dialog.get(); }
 
 Q_SIGNALS:
     void startSavingMinimapMarkerFileContentToDisk(
@@ -69,7 +67,6 @@ private:
 
     std::map<worldmap::TWorldMapCoordinate, TMinimapMarkerPtr> m_markers;
     bool m_dirty = false;
-    std::unique_ptr<gamewindow::TEditMinimapMarkerDialogController> m_dialog;
     std::vector<client::gamecore::Hook> m_hooks;
 
 public Q_SLOTS:

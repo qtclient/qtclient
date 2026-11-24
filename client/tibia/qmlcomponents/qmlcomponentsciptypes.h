@@ -84,6 +84,10 @@ public:
     /// addons and whether the id is an object's.
     TOutfitQmlModel(uint16_t outfitId, int head, int torso, int legs, int detail, bool firstAddOn, bool secondAddOn, bool isObjectOutfit,
                     QObject* parent = nullptr);
+
+    /// The model keeps its own colours: different indices are copied in, then
+    /// outfitChanged. Null or equal colours change nothing.
+    void setColors(cip::tibia::qmlcomponents::TOutfitColorQmlType* v) override;
 };
 
 class TQSGScenegraphDrawCommandsNode final : public ::tibia::CipTyped

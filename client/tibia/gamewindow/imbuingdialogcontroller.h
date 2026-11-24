@@ -1,5 +1,6 @@
 #pragma once
 
+#include "appearances/appearanceinstance.h"
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "imbuing/imbuingstorage.h"
@@ -129,6 +130,13 @@ public:
     void setImbuementFilter(const QString& v) override;
     /// The imbued item's (or the blank scroll's) name, each word capitalised.
     QString selectedItemText() const override;
+    /// The imbued item's instance: its type id (0 while the storage shows
+    /// nothing), count, tier, liquid and hook direction.
+    uint imbuedItemObjectID() const override;
+    uint imbuedItemObjectCount() const override;
+    uint imbuedItemObjectUpgradeTier() const override;
+    ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType imbuedItemLiquidType() const override;
+    ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection imbuedItemHookDirection() const override;
 
 public Q_SLOTS:
     void showDialog() override;
@@ -171,6 +179,8 @@ private:
 
     config::TClientOptions* m_pClientOptions = nullptr;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
+    /// The imbued item (the blank scroll in scroll mode), empty in no mode.
+    appearances::TAppearanceInstancePtr m_imbuedItemInstance;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
     std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<imbuing::TImbuingStorage> m_storage;

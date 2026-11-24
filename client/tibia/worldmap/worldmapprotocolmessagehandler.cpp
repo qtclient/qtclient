@@ -5,7 +5,8 @@
 #include "protocol/protocolciptypes.h"
 #include "worldmap/worldmapstorage.h"
 
-#include "container/containerciptypes.h"
+#include "appearances/appearanceinstance.h"
+#include "clockservice.h"
 #include "creatures/creatureprotocolapply.h"
 #include "creatures/creaturestorage.h"
 #include "effects/effectstorage.h"
@@ -33,64 +34,6 @@ TWorldMapCoordinate coordinateOf(const ProtocolCoordinate& c)
     return { static_cast<int>(c.x()), static_cast<int>(c.y()), static_cast<int>(c.z()) };
 }
 
-/// Host: the inventory row of a map object's type and extra data, for the
-/// object instances qtclient builds from inventory rows (CIP builds the
-/// instance from the protocol object directly).
-ProtocolInventoryItem inventoryItemOf(const AppearanceInstance& object)
-{
-    ProtocolInventoryItem item;
-    item.set_item_id(object.id());
-    if (object.HasExtension(CumulativeObject::cumulative_object))
-        item.set_count_or_subtype(object.GetExtension(CumulativeObject::cumulative_object).count());
-    if (object.HasExtension(LiquidObject::liquid_object))
-        item.set_count_or_subtype(object.GetExtension(LiquidObject::liquid_object).liquid());
-    if (object.HasExtension(ContainerObject::container_object)) {
-        const ContainerObject& container = object.GetExtension(ContainerObject::container_object);
-        item.set_container_type(container.flags());
-        if (container.has_loot_flags())
-            item.set_loot_flags(container.loot_flags());
-        if (container.has_ammo_total()) {
-            item.set_container_ammo_total(container.ammo_total());
-            item.set_has_container_ammo(true);
-        }
-        if (container.has_obtain_flags())
-            item.set_obtain_flags(container.obtain_flags());
-    }
-    if (object.HasExtension(ShowOffSocketObject::show_off_socket_object)) {
-        const ShowOffSocketObject& socket = object.GetExtension(ShowOffSocketObject::show_off_socket_object);
-        item.set_has_podium(true);
-        item.set_look_type(socket.outfit().look_type());
-        item.set_look_head(socket.outfit().colors().head());
-        item.set_look_body(socket.outfit().colors().body());
-        item.set_look_legs(socket.outfit().colors().legs());
-        item.set_look_feet(socket.outfit().colors().feet());
-        item.set_look_addons(socket.outfit().addons());
-        item.set_look_type_ex(socket.outfit().object_type());
-        item.set_look_mount(socket.mount().look_type());
-        item.set_look_mount_head(socket.mount().colors().head());
-        item.set_look_mount_body(socket.mount().colors().body());
-        item.set_look_mount_legs(socket.mount().colors().legs());
-        item.set_look_mount_feet(socket.mount().colors().feet());
-        item.set_podium_direction(socket.direction());
-        item.set_podium_visible(socket.visible());
-    }
-    if (object.HasExtension(UpgradeableObject::upgradeable_object))
-        item.set_tier(object.GetExtension(UpgradeableObject::upgradeable_object).tier());
-    if (object.HasExtension(WearoutObject::wearout_object)) {
-        const WearoutObject& wearout = object.GetExtension(WearoutObject::wearout_object);
-        item.set_charges(wearout.charges());
-        item.set_brand_new(wearout.brand_new());
-    }
-    if (object.HasExtension(ExpireObject::expire_object)) {
-        const ExpireObject& expire = object.GetExtension(ExpireObject::expire_object);
-        item.set_duration_seconds(expire.duration());
-        item.set_brand_new(expire.brand_new());
-    }
-    if (object.HasExtension(DecoItemKitObject::deco_item_kit_object))
-        item.set_deco_item_id(object.GetExtension(DecoItemKitObject::deco_item_kit_object).deco_item_id());
-    return item;
-}
-
 } // namespace
 
 appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject(const AppearanceInstance& object,
@@ -108,9 +51,11 @@ appearances::TAppearanceInstancePtr TWorldmapProtocolMessageHandler::applyObject
         creature->setPosition(coordinate.toPosition());
         return creature->placeholderAppearance();
     }
-    appearances::TAppearanceInstancePtr appearance =
-        container::TInventorySlot::fromProtocolInventoryItem(inventoryItemOf(object)).appearance;
-    // An object drawn by its field's pattern takes it from the coordinate.
+    // Any other object is made by the instance factory at the current time.
+    appearances::TAppearanceInstancePtr appearance = appearances::TAppearanceInstanceFactory::createFromProtobuf(
+        object, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
+    // Host: qtclient's factory takes no coordinate; an object drawn by its
+    // field's pattern takes it from the coordinate here.
     if (const auto patterned = std::dynamic_pointer_cast<appearances::TPatternObjectAppearanceInstance>(appearance))
         patterned->applyWorldMapCoordinate(coordinate.toPosition());
     return appearance;

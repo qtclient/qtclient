@@ -159,9 +159,7 @@ private:
 
     game::TGameSessionBase* m_session = nullptr;
     QPointer<config::TSidebarOptions> m_options;
-    TAppearanceTypeListModel m_searchModel;
     TAppearanceTypeListModelSortFilterProxy m_searchProxy;
-    TAppearanceTypeListModel m_stashModel;
     TAppearanceTypeListModelSortFilterProxy m_stashProxy;
     TAppearanceInstanceListModel m_depotModel;
     TAppearanceInstanceListModel m_inboxModel;

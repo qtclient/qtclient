@@ -9,6 +9,7 @@
 #include "authentication/loginrequestuploader.h"
 #include "config/characterconfigurationmanager.h"
 #include "game/gameservergamesession.h"
+#include "input/gameactionptr.h"
 #include "runtime/gamehost.h"
 #include "qtconnectionwrapper.h"
 
@@ -79,6 +80,7 @@ class TShowSpellBookDialogController;
 class TSoulSealsDialogController;
 class TStashDialogController;
 class TTaskboardDialogController;
+class TTargetSelectionController;
 class TConfirmMoveObjectToStashDialogController;
 class TStoreDialogController;
 }
@@ -134,6 +136,8 @@ namespace tibia {
 namespace config {
 class TActionBarOptions;
 class TClientOptions;
+class TTibiaConfig;
+class TClientOptionsUploader;
 class TSidebarOptions;
 }
 }
@@ -228,8 +232,8 @@ public:
     /// CIP: the client is made with the application's QML engine, the file
     /// system helper and the client options.
     TGameClient(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                config::TClientOptions* ClientOptions, std::shared_ptr<shared::TDownloadPool> DownloadPool,
-                QObject* parent = nullptr);
+                config::TClientOptions* ClientOptions, std::shared_ptr<config::TTibiaConfig> TibiaConfig,
+                std::shared_ptr<shared::TDownloadPool> DownloadPool, QObject* parent = nullptr);
     ~TGameClient() override;
 
     /// Creates the game window and its controllers, storages and input
@@ -434,8 +438,57 @@ public Q_SLOTS:
     /// character out (QUIT_GAME), Exit closes the client, Cancel stays.
     void onConfirmOrCancelExitGame(
         cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier);
+    /// CIP: SESSIONDUMP_START plays the chosen sessiondump (the tutorial's
+    /// session for a tutorial entry) instead of the queue; OPEN_LAUNCHER as
+    /// onOpenLauncherRequested.
+    void handleGameAction(const tibia::input::IGameActionPtr& pGameAction);
+    /// CIP: the game window's Open Launcher: the client state is saved and the
+    /// launcher starts with its window; once it runs the client closes.
+    void onOpenLauncherRequested();
+    /// CIP: a refused login or disconnect wants a patched client: the client
+    /// state is saved, then as onPatchClient.
+    void onTryToPatchClient();
+    /// CIP: the launcher starts to patch the client and the client closes; with
+    /// files the launcher found up to date the next start patches instead.
+    void onPatchClient();
+    /// CIP: the session asks for a target: the target selection starts.
+    void onStartTargetSelection();
+    /// CIP: with options tracking on, the client options go to the
+    /// fpsHistoryRecipient once per login; off drops the uploader.
+    void onOptionsTrackingActiveChanged(bool OptionsTrackingActive);
+
+public:
+    /// CIP: the launcher found the package up to date (the application's
+    /// --package-is-up-to-date): patching cannot help a broken asset.
+    void setPackageIsUpToDate(bool PackageIsUpToDate) { m_packageIsUpToDate = PackageIsUpToDate; }
+
+protected:
+    /// CIP: a spritesheet that does not uncompress: the status line and the
+    /// server log say the assets are corrupt, and the next start patches.
+    void onSpritesheetUncompressFailed(const QString& SpritesheetID) override;
+    /// CIP: every asset arrived: the looping sounds pause; otherwise the
+    /// loading stops and the client closes.
+    void onAssetsComplete() override;
+    /// CIP: an asset could not be read: the launcher patches the client.
+    void onAssetsError() override;
 
 private:
+    /// CIP: what must reach the disk before the client closes or patches: the
+    /// minimap tiles and the news, and the writes in flight.
+    void saveClientState();
+    /// CIP: starts the launcher with its window; reports launcher_start_failed
+    /// when it does not start.
+    bool startLauncherOrReportError();
+    /// CIP: starts the launcher to patch the client; false (with the error
+    /// shown or kept for the game window) when it does not start or the
+    /// package is up to date already (then the next start patches).
+    bool startLauncherToPatchClientOrReportError();
+    /// The game window's controller; null before the game window exists
+    /// (in gameclientgamewindow.cpp).
+    gamewindow::TGameWindowController* gameWindowController() const;
+    /// The game window's target selection; null before the game window exists
+    /// (in gameclientgamewindow.cpp).
+    gamewindow::TTargetSelectionController* targetSelectionController() const;
     struct TGameWindow;
     /// CIP (before each frame): the game window's per-frame steps (the death dialog's countdown).
     void beforeRenderFrameGameWindow();
@@ -615,10 +668,24 @@ private:
     std::unique_ptr<gamewindow::THighscoresDialogController> m_pHighscoresDialogController;
     /// "Connecting to the game world" (Cancel aborts).
     std::unique_ptr<gamewindow::TMessageDialogController> m_pConnectingDialogController;
+    /// A message box whose OK goes back to the character selection.
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pCharacterSelectionMessageDialogController;
     /// The exit confirmation (Exit / Logout / Cancel, or Exit / Cancel in the tutorial).
     std::unique_ptr<gamewindow::TMessageDialogController> m_pExitGameDialogController;
     /// The game server's login advice.
     std::unique_ptr<gamewindow::TMessageDialogController> m_pLoginAdviceDialogController;
+    /// CIP: the client options upload while options tracking is on.
+    std::shared_ptr<config::TClientOptionsUploader> m_pClientOptionsUploader;
+    /// CIP: the launcher found the package up to date.
+    bool m_packageIsUpToDate = false;
+    /// CIP: an error that came before the game window; the game window shows it.
+    QString m_pendingErrorMessage;
+    /// The invalid client configuration notice.
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pConfigurationInvalidDialogController;
+    /// The client check message (its buttons reach the client).
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pClientCheckDialogController;
+    /// A plain message box.
+    std::unique_ptr<gamewindow::TMessageDialogController> m_pMessageDialogController;
     /// Destroyed first: its objects use the client's storages and session.
     std::unique_ptr<TGameWindow, TGameWindowDeleter> m_gameWindow;
 };

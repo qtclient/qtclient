@@ -78,6 +78,7 @@ public:
 
     void setFilterModName(const QString& v) override;
     void setFilterGemQuality(int v) override;
+    bool showLockedOnly() const override { return m_showLockedOnly; }
     void setShowLockedOnly(bool v) override;
     bool accepts(const TGem& gem) const;
     /// The row showing the gem, invalid when the filters hide it.
@@ -144,6 +145,8 @@ public:
     void setFilterMods(int v);
     /// No mod text, every mod (0); then filterChanged.
     void resetFilters();
+    /// Runs the filter again over every row.
+    void invalidateRows();
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
     /// CIP: the first shown row of the supreme / basic mod, an invalid index without one.
     QModelIndex indexOfSupremeMod(int modId) const;

@@ -9,6 +9,7 @@
 #include "input/multiactionprioritysolver.h"
 #include "qmlcomponents/appearanceinstancerenderer.h"
 #include "spells/spellinfostorage.h"
+#include "iclockservice.h"
 
 #include <tibia/appearances/appearancetype.h>
 #include <tibia/assets/things.h>
@@ -412,21 +413,21 @@ void TActionButtonController::setObjectIsEquiped(const bool objectIsEquiped)
     Q_EMIT changed();
 }
 
-game::TCooldown TActionButtonController::currentCooldown() const
+game::TCooldown TActionButtonController::currentCooldown(const qint64 now) const
 {
     const game::TCooldownStorage* storage = m_cooldownStorage.get();
     if (!storage)
         return {};
     if (m_type == SPELL)
-        return storage->spellCooldown(m_spellId);
+        return storage->spellCooldown(uint16_t(m_spellId), now);
     if (m_type == PASSIVEABILITY)
-        return storage->passiveCooldown();
+        return storage->passiveCooldown(now);
     if (m_type == OBJECT) {
         // A rune waits for the multi-use cooldown and its spell's.
         if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(int(m_objectID)))
-            return storage->objectCooldown(uint16_t(int(m_objectID)), game::TCooldownStorage::now());
+            return storage->objectCooldown(uint16_t(int(m_objectID)), now);
         if (isMultiUse(int(m_objectID)))
-            return storage->multiUseCooldown();
+            return storage->multiUseCooldown(now);
     }
     return {};
 }
@@ -526,11 +527,11 @@ TActionButtonController* TActionButtonController::currentMultiAction() const
         adapters.emplace_back(child);
         candidates.push_back(&adapters.back());
     }
-    // Host: the clock and the ping are qtclient statics.
+    // Host: the ping is a qtclient static.
     const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
     const input::TMultiActionPrioritySolver solver(session->cooldownStorage().get(), session->playerData().get(),
-                                                   session->objectAppearanceInstanceInfoStorage().get(), game::TCooldownStorage::now(),
-                                                   latency);
+                                                   session->objectAppearanceInstanceInfoStorage().get(),
+                                                   session->clockService()->nowMillis(), latency);
     const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));
     return chosen ? chosen->button() : nullptr;
 }
@@ -555,7 +556,7 @@ bool TActionButtonController::refreshCooldown(const qint64 now)
     if (!m_children.empty())
         refreshShownSlot();
 
-    const game::TCooldown cooldown = currentCooldown();
+    const game::TCooldown cooldown = currentCooldown(now);
     const qint64 remaining = cooldown.end - now;
     uint percent = 0;
     QString text;

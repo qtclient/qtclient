@@ -400,7 +400,7 @@ void TStatusBarController::onClickedOpenProficiencies()
 
 void TStatusBarController::onClickedOpenStoreXPBoost()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 1});
     Q_EMIT publishGameAction(action);
 }
 

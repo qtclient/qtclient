@@ -27,53 +27,6 @@ namespace {
 constexpr int ChunkIntervalMillis = 1000;
 constexpr int PacketsPerChunk = 1001;
 
-/// Host: CipSoft's processing pass reads the messages through its own
-/// protocol::TProtocolServerMessageProcessor and TProtocolMessageQueue, whose
-/// received / sent messages the loader re-emits. qtclient's protocol layer has
-/// no such reader of the dump stream, so the consumer parses each message's
-/// protobuf bytes itself and hands them to the same two signals.
-class TSessiondumpProtobufMessageConsumer final : public TSessiondumpMessageConsumer
-{
-public:
-    TSessiondumpProtobufMessageConsumer(std::shared_ptr<TSessiondumpMessageReader> messageReader,
-                                        std::shared_ptr<shared::TIODeviceReader> device,
-                                        std::function<void(TGameserverMessagePointer)> serverMessage,
-                                        std::function<void(TGameclientMessagePointer)> clientMessage)
-        : m_messageReader(std::move(messageReader))
-        , m_device(std::move(device))
-        , m_serverMessage(std::move(serverMessage))
-        , m_clientMessage(std::move(clientMessage))
-    {
-    }
-
-    void processServerMessage(const uint64_t&, bool, bool) override { readServerMessage(m_messageReader->info()); }
-
-    void processClientMessage(const uint64_t&) override
-    {
-        const QByteArray bytes = m_device->readBytes(m_messageReader->info().length);
-        auto message = std::make_shared<protobuf::protocol::GameclientMessage>();
-        if (message->ParseFromArray(bytes.constData(), int(bytes.size())))
-            m_clientMessage(std::move(message));
-    }
-
-    void processServerMessage(const TSessiondumpMessageInfo& info, bool, bool) override { readServerMessage(info); }
-
-private:
-    void readServerMessage(const TSessiondumpMessageInfo& info)
-    {
-        const QByteArray bytes = m_device->readBytes(info.length);
-        auto message = std::make_shared<protobuf::protocol::GameserverMessage>();
-        if (!message->ParseFromArray(bytes.constData(), int(bytes.size())))
-            throw std::runtime_error("Sessiondump message is no GameserverMessage");
-        m_serverMessage(std::move(message));
-    }
-
-    std::shared_ptr<TSessiondumpMessageReader> m_messageReader;
-    std::shared_ptr<shared::TIODeviceReader> m_device;
-    std::function<void(TGameserverMessagePointer)> m_serverMessage;
-    std::function<void(TGameclientMessagePointer)> m_clientMessage;
-};
-
 std::shared_ptr<shared::TIODeviceReader> fileReader(const QTemporaryFile& file)
 {
     auto device = std::make_shared<QFile>();
@@ -201,16 +154,13 @@ void TSessiondumpAsyncLoader::onSessiondumpNewMessage(const TSessiondumpPacketIn
 
 void TSessiondumpAsyncLoader::startProcessing()
 {
-    // Host: CipSoft passes its protocol settings (the member after the url) to the
-    // protocol reader of the processing pass; the consumer below needs none.
+    // Host: CipSoft passes its protocol settings to the translator; qtclient's
+    // reads them from the appearances manager.
     const auto factory = std::make_shared<TSessiondumpFactory>();
     m_processingDevice = fileReader(m_file);
     m_processingDevice->open(QIODevice::ReadOnly);
     const auto reader = std::make_shared<TSessiondumpReader>(m_processingDevice, factory);
-    m_messageConsumer = std::make_shared<TSessiondumpProtobufMessageConsumer>(
-        reader->messageReader(), m_processingDevice,
-        [this](TGameserverMessagePointer message) { Q_EMIT gameserverMessageAvailable(std::move(message)); },
-        [this](TGameclientMessagePointer message) { Q_EMIT gameclientMessageAvailable(std::move(message)); });
+    createProtocolMessageConsumer();
     const auto messageProcessor = std::make_shared<TSessiondumpMessageProcessor>(reader->messageReader(), m_messageConsumer);
     const auto packetProcessor = std::make_shared<TSessiondumpPacketProcessor>(reader->packetReader(), messageProcessor);
     m_processor = std::make_shared<TSessiondumpProcessor>(reader, packetProcessor);

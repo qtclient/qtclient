@@ -4,6 +4,7 @@
 #include "config/clientoptions.h"
 #include "container/containerciptypes.h"
 #include "cyclopedia/itemtrackingstorage.h"
+#include "game/playerdata.h"
 #include "platform/platform.h"
 #include "proficiency/proficiencystorage.h"
 
@@ -321,14 +322,18 @@ bool TAppearanceTypeFilter::accepts(const TAppearanceTypeEntry& entry, const std
     return true;
 }
 
-TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy(TAppearanceTypeListModel* model, QObject* parent)
+TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy(const bool firstDisplayFlag,
+                                                                                 const bool secondDisplayFlag,
+                                                                                 const bool useDisplayTypeId,
+                                                                                 config::TClientOptions* clientOptions,
+                                                                                 QObject* parent)
     : cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy(parent)
-    , m_model(model)
+    , m_model(firstDisplayFlag, secondDisplayFlag, useDisplayTypeId, clientOptions)
 {
     m_typeIdEnumValue = TAppearanceTypeListModel::TypeID;
     setDynamicSortFilter(true);
     sort(0, Qt::AscendingOrder);
-    setSourceModel(model);
+    setSourceModel(&m_model);
     tibia::platform::configureNaturalCollator(m_collator);
     m_filterTimer.setInterval(0);
     m_filterTimer.setSingleShot(true);
@@ -338,6 +343,22 @@ TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy
         endFilterChange(QSortFilterProxyModel::Direction::Rows);
     });
     resetFilters();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::connectToStorages(std::shared_ptr<game::TPlayerData> playerData,
+                                                                analysers::TItemPriceStorage* itemPriceStorage,
+                                                                std::shared_ptr<cyclopedia::TItemTrackingStorage> itemTrackingStorage,
+                                                                std::shared_ptr<container::TObjectCountStorage> objectCountStorage,
+                                                                proficiency::TProficiencyStorage* proficiencyStorage)
+{
+    m_playerData = std::move(playerData);
+    m_model.connectToStorages(itemPriceStorage, std::move(itemTrackingStorage), std::move(objectCountStorage), proficiencyStorage);
+}
+
+void TAppearanceTypeListModelSortFilterProxy::disconnectFromStorages()
+{
+    m_playerData.reset();
+    m_model.disconnectFromStorages();
 }
 
 void TAppearanceTypeListModelSortFilterProxy::resetFilters()
@@ -483,7 +504,21 @@ void TAppearanceTypeListModelSortFilterProxy::setSortMode(const int sortMode)
 void TAppearanceTypeListModelSortFilterProxy::resetEntries(std::vector<TAppearanceTypeEntry> entries)
 {
     beginFilterChange();
-    m_model->reset(std::move(entries));
+    m_model.reset(std::move(entries));
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+}
+
+void TAppearanceTypeListModelSortFilterProxy::resetTypes(const std::vector<TAppearanceTypeEntry>& types)
+{
+    beginFilterChange();
+    std::vector<TAppearanceTypeEntry> entries;
+    for (const TAppearanceTypeEntry& type : types) {
+        TAppearanceTypeEntry entry = type;
+        entry.hasTier = false;
+        entry.tier = 0;
+        entries.push_back(std::move(entry));
+    }
+    m_model.setItems(std::move(entries));
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
@@ -506,7 +541,7 @@ int TAppearanceTypeListModelSortFilterProxy::rowOf(const uint16_t typeId, const 
 uint16_t TAppearanceTypeListModelSortFilterProxy::typeIdAt(const int row) const
 {
     const QModelIndex source = mapToSource(index(row, 0));
-    return source.isValid() ? m_model->entry(source.row()).typeId : 0;
+    return source.isValid() ? m_model.entry(source.row()).typeId : 0;
 }
 
 uint8_t TAppearanceTypeListModelSortFilterProxy::tierAt(const int row) const
@@ -514,20 +549,20 @@ uint8_t TAppearanceTypeListModelSortFilterProxy::tierAt(const int row) const
     const QModelIndex source = mapToSource(index(row, 0));
     if (!source.isValid())
         return 0;
-    const TAppearanceTypeEntry& entry = m_model->entry(source.row());
+    const TAppearanceTypeEntry& entry = m_model.entry(source.row());
     return entry.hasTier ? entry.tier : 0;
 }
 
 bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
-    if (!sourceModel() || !tibia::game::hasLocalPlayer())
+    if (!sourceModel() || !m_playerData)
         return false;
     const QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
-    if (!index.isValid() || sourceRow >= m_model->size())
+    if (!index.isValid() || sourceRow >= m_model.size())
         return false;
     if (!m_acceptWithoutFilter && m_name.isEmpty() && m_category == -1 && m_typeIds.empty() && m_typeId == 0)
         return false;
-    const TAppearanceTypeEntry& entry = m_model->entry(sourceRow);
+    const TAppearanceTypeEntry& entry = m_model.entry(sourceRow);
 
     bool accepted = m_name.isEmpty() || entry.name.indexOf(m_name, 0, Qt::CaseInsensitive) != -1;
     if (m_category != -1 && m_category != AllCategories) {
@@ -542,7 +577,7 @@ bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceR
         accepted = accepted && index.data(TAppearanceTypeListModel::DisplayTypeID).toUInt() == m_typeId;
 
     const std::optional<uint8_t> tier = entry.hasTier ? std::optional<uint8_t>(entry.tier) : std::nullopt;
-    accepted = m_filter.accepts(entry, tier, tibia::game::localPlayerLevel(), tibia::game::localPlayerVocation() % 10) && accepted;
+    accepted = m_filter.accepts(entry, tier, m_playerData->level(), m_playerData->vocation()) && accepted;
     if (m_showLockerOnly)
         accepted = accepted && index.data(TAppearanceTypeListModel::TypeCount).toUInt() != 0;
     return accepted;

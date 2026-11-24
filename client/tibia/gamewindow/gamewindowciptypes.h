@@ -35,6 +35,10 @@ class IGameSession;
 class QQuickItem;
 class QQmlEngine;
 
+namespace tibia::config {
+class TClientOptions;
+}
+
 namespace tibia::store {
 struct TChildTransactionDetails;
 }
@@ -350,7 +354,8 @@ class TInspectObjectDialogController final : public TDialogController<cip::tibia
 {
     Q_OBJECT
 public:
-    explicit TInspectObjectDialogController(QObject* parent = nullptr);
+    TInspectObjectDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                   QObject* parent = nullptr);
     static TInspectObjectDialogController* instance();
     bool clientSettingSmoothFiltering() const override;
     /// CIP connector: the dialog closes and keeps the session.
@@ -372,13 +377,15 @@ private:
     /// The inspection results reach showObject (CIP +0x40).
     QMetaObject::Connection m_inspectionConnection;
     std::shared_ptr<game::IGameSession> m_gameSession;
+    config::TClientOptions* m_clientOptions = nullptr;
 };
 
 class TInspectPlayerDialogController final : public TDialogController<cip::tibia::gamewindow::TInspectPlayerDialogController>
 {
     Q_OBJECT
 public:
-    explicit TInspectPlayerDialogController(QObject* parent = nullptr);
+    TInspectPlayerDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine, QQuickItem* DialogParentItem,
+                                   QObject* parent = nullptr);
     static TInspectPlayerDialogController* instance();
     bool clientSettingSmoothFiltering() const override;
     /// CIP connector: the dialog closes; the session's game handler opens it
@@ -402,6 +409,7 @@ private:
     std::shared_ptr<game::IGameSession> m_gameSession;
     std::vector<QMetaObject::Connection> m_gameSessionConnections;
     uint32_t m_inspectedPlayerId = 0;
+    config::TClientOptions* m_clientOptions = nullptr;
 };
 
 // CipSoft DepotSearchWidget lives in depotsearchwidgetcontroller.h.cpp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "appearances/appearanceinstance.h"
 #include "input/gameaction.h"
 
 #include <cip_gen.h>
@@ -81,10 +82,15 @@ public Q_SLOTS:
     void onDragAndDropMousePositionChanged();
 
 private:
-    /// CIP : the icon shows the dragged object (Thing or CIP typeId).
-    /// Creatures leave the icon empty — SingleObject cannot draw outfits.
-    void updateIcon(uint16_t objectClientId, const Position& position, int stackPosition,
-                    uint32_t creatureId = 0);
+    /// The dragged object's instance from the move action's object (a liquid,
+    /// an upgradeable, a cumulative of one, a deco item kit or a plain
+    /// object), then the icon shows it.
+    void updateIcon();
+    /// The icon's typeid, cumulativeCount, liquidType and hookDirection from
+    /// the dragged object's instance.
+    void applyIconProperties();
+    /// Drops the dragged object's instance and hides the icon.
+    void clearIcon();
 
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_icon;
@@ -93,6 +99,7 @@ private:
     QPointer<QQuickItem> m_source;
     Qt::KeyboardModifiers m_modifiers;
     bool m_filterInstalled = false;
+    appearances::TAppearanceInstancePtr m_draggedObjectInstance;
 };
 
 }

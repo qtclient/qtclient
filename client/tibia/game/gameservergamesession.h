@@ -117,7 +117,7 @@ public:
     }
     /// Once per frame: the player movement intent handler repeats a held
     /// direction and sends the next step of its path when it is due.
-    void updatePlayerMovementIntentHandler();
+    void updatePlayerMovementIntentHandler() override;
 
     /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
@@ -148,6 +148,9 @@ protected:
     void connectPlayerMovementIntentHandler();
 
 protected Q_SLOTS:
+    /// The base's, then a character that got the default sidebar configuration
+    /// shows its special conditions in the HUD.
+    void onCharacterConfigurationLoaded() const override;
     /// The login allows the secondary connection.
     void onGameReadyForSecondaryConnection();
 

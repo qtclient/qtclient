@@ -6,6 +6,7 @@
 #include <QEvent>
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -452,8 +453,9 @@ void TCreateAccountDialogController::startPlaying(const QString& Recaptcha2Token
         { QStringLiteral("SelectedWorld"), m_selectedWorld },
         { QStringLiteral("ClientType"), QStringLiteral("Client") },
         { QStringLiteral("PersonalizedAdsAccepted"), m_personalizedAdsAccepted },
-        // Host: "Epic" for the Epic Games distribution, which qtclient is not.
-        { QStringLiteral("DistributionChannel"), QStringLiteral("Regular") },
+        { QStringLiteral("DistributionChannel"),
+          m_tibiaFileSystemHelper && shared::isEpicDistribution(*m_tibiaFileSystemHelper) ? QStringLiteral("Epic")
+                                                                                          : QStringLiteral("Regular") },
         { QStringLiteral("OperatingSystem"), QSysInfo::prettyProductName() },
     };
     if (!m_asyncStartPlayingInProgress) {

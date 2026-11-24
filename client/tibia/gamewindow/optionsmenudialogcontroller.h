@@ -25,6 +25,9 @@ class QQuickItem;
 class QQuickWindow;
 
 namespace tibia {
+namespace game {
+class IGameSession;
+}
 namespace client {
 class TGameClient;
 }
@@ -65,6 +68,8 @@ public:
     bool handleGameAction(const input::IGameAction& action);
     /// The game session (CIP +0xc08) began or ended.
     void setInGame(bool inGame);
+    /// The hotkeys page's spell assign dialog follows the session.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession) { m_hotkeys->connectToGameSession(GameSession); }
     /// CIP: how the pages publish game actions. START_TARGET_SELECTION hides
     /// the dialog until TARGET_SELECTION_FINISHED.
     void processAndPublishGameActions(const input::IGameActionPtr& action);
@@ -151,7 +156,11 @@ private:
     TMessageDialogController* makeMessageDialog(QQmlEngine* Engine, QQuickItem* DialogParentItem);
     /// CIP : conf, characterdata and minimap files from the archive.
     void importArchive();
+    /// The controls page's rotate modifiers go to the hotkeys page.
+    void onControlOptionsChanged();
     void exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries);
+    /// The info message with the OK button.
+    void showInfoMessage(const QString& caption, const QString& text);
     /// CIP : GameclientMessageSetClientOptions with alwaysTurnTowardsMoveDirection.
     void sendTurnTowardsMoveDirection(bool enabled);
     /// The hotkey page loses the button mappings of every action bar whose

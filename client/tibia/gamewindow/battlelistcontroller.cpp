@@ -564,7 +564,7 @@ void TBattleListController::requestOpenSecondaryBattleList()
         Q_EMIT m_storage->publishGameAction(action);
         return;
     }
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     Q_EMIT m_storage->publishGameAction(action);
 }
 

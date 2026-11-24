@@ -259,58 +259,44 @@ void TCreatureProtocolMessageHandler::handleCreatureUpdateMessage(const Gameserv
     }
 }
 
+// The creature messages carry the known creature's data with the changed
+// field; the handler applies it as any creature data.
 void TCreatureProtocolMessageHandler::handleCreatureOutfitMessage(const GameserverMessageCreatureOutfit& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature) {
-        creature->setOutfit(outfitFromProtocol(message.outfit(), message.has_mount() ? &message.mount() : nullptr));
-        storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Outfit);
-        if (message.has_mount()) {
-            // A mount without a look type dismounts.
-            creature->setMounted(message.mount().look_type() != 0);
-            storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
-        }
-    });
-    syncFieldStackFor(message.creature_id());
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureHealthMessage(const GameserverMessageCreatureHealth& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setHealthPercent(static_cast<uint8_t>(message.health_percent()));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureSpeedMessage(const GameserverMessageCreatureSpeed& message)
 {
-    updateCreature(message.creature().id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setSpeed(static_cast<uint16_t>(message.creature().speed()));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureSkullMessage(const GameserverMessageCreatureSkull& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setSkull(static_cast<uint8_t>(message.skull()));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleCreaturePartyMessage(const GameserverMessageCreatureParty& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setShield(static_cast<uint8_t>(message.party()));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleInspectionStateMessage(const GameserverMessageInspectionState& message)
 {
-    tibia::game::processInspectionState(message.creature_id(), static_cast<uint8_t>(message.state()));
+    applyProtocolCreature(message.creature());
+    // Host: the character info dialog follows the state through the game notify.
+    tibia::game::processInspectionState(message.creature().id(),
+                                        static_cast<uint8_t>(message.creature().inspection_type()));
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureUnpassMessage(const GameserverMessageCreatureUnpass& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setUnpassable(static_cast<bool>(message.unpass()));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const GameserverMessageCreatureMarks& message)
@@ -325,9 +311,7 @@ void TCreatureProtocolMessageHandler::handleCreatureDataMessage(const Gameserver
 
 void TCreatureProtocolMessageHandler::handleCreatureLightMessage(const GameserverMessageCreatureLight& message)
 {
-    updateCreature(message.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
-        creature->setLight(Light(static_cast<uint8_t>(message.intensity()), static_cast<uint8_t>(message.color())));
-    });
+    applyProtocolCreature(message.creature());
 }
 
 void TCreatureProtocolMessageHandler::handleUpdateTargetMessage(const GameserverMessageUpdateTarget& message)

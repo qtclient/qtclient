@@ -125,6 +125,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(config::TClientOption
     m_hotkeys = new config::THotkeysOptionsPage(this);
     connect(m_hotkeys, &config::THotkeysOptionsPage::publishGameAction, this, &TOptionsMenuDialogController::publishGameAction);
     m_controls = new config::TControlsOptionsPage(this);
+    connect(m_controls, &config::TControlsOptionsPage::changed, this, &TOptionsMenuDialogController::onControlOptionsChanged);
     auto* screenshots = new config::TScreenshotsOptionsPage(config::screenshotsBindings(), this);
     auto* sound = new config::TSoundOptionsPage(this);
     auto* battleSounds = new config::TBattleSoundsOptionsPage(config::battleSoundsBindings(), this);
@@ -524,10 +525,15 @@ void TOptionsMenuDialogController::showCompendium()
     Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenNewsDialog>());
 }
 
+void TOptionsMenuDialogController::onControlOptionsChanged()
+{
+    m_hotkeys->setRotateModifiers(m_controls->rotateWithAlt(), m_controls->rotateWithShift(), m_controls->rotateWithCtrl());
+}
+
 void TOptionsMenuDialogController::exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries)
 {
-    if (!config::optionsarchive::write(localFile(url), entries))
-        return;
+    // Throws std::runtime_error when the archive cannot be written.
+    config::optionsarchive::write(localFile(url), entries);
     m_infoMessage->setButtons(okButton());
     m_infoMessage->showMessage(qtTrId("optionsmenu_file_export_success_caption"), qtTrId("optionsmenu_file_export_success_text"));
 }
@@ -540,7 +546,16 @@ void TOptionsMenuDialogController::requestExportAllOptions(const QString& Output
     root.insert(QLatin1String("options"), options);
     QList<config::TArchiveEntry> entries{ { QLatin1String(OptionsFile), QJsonDocument(root).toJson() } };
     entries << config::optionsarchive::collect(dataDirectory(), { QLatin1String(CharacterDataDirectory) });
-    exportArchive(OutputFilename, entries);
+    try {
+        exportArchive(OutputFilename, entries);
+    } catch (const std::exception& e) {
+        showInfoMessage(qtTrId("optionsmenu_file_export_error_caption"), QString::fromUtf8(e.what()));
+    }
+}
+
+void TOptionsMenuDialogController::showInfoMessage(const QString& caption, const QString& text)
+{
+    m_infoMessage->showMessage(caption, text, okButton());
 }
 
 void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputFilename)
@@ -554,7 +569,11 @@ void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFil
 {
     if (m_gameClient)
         m_gameClient->saveMinimapToDisk();
-    exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
+    try {
+        exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
+    } catch (const std::exception& e) {
+        showInfoMessage(qtTrId("optionsmenu_file_export_error_caption"), QString::fromUtf8(e.what()));
+    }
 }
 
 void TOptionsMenuDialogController::importArchive()

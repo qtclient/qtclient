@@ -36,13 +36,24 @@ using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 }
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstanceTracker;
+}
+namespace config {
+class TClientOptions;
+}
 namespace creatures {
 class TCreature;
+class TCreatureStorage;
+}
+namespace effects {
+class TEffectStorage;
 }
 namespace renderer {
 class TRenderVolumeProvider;
 }
 namespace worldmap {
+class TAmbientLightStorage;
 class TWorldMapViewport;
 class TLightMap;
 class TCacheForWorldmapStorageLookupMembers;
@@ -216,7 +227,20 @@ public:
     /// Weather overlay inputs for the WorldMap node (empty when weather is off).
     WeatherFrame weatherFrame() const;
 
+    /// Host: the session's provider, reading the session's storages, options
+    /// and instance tracker.
     explicit TWorldMapRenderProvider(QObject* parent = nullptr);
+    /// A provider of the volume of `renderVolumeProvider` drawn from the given
+    /// storages; the appearance types of each frame go to `instanceTracker`,
+    /// which loads their spritesheets.
+    TWorldMapRenderProvider(std::shared_ptr<renderer::TRenderVolumeProvider> renderVolumeProvider,
+                            std::shared_ptr<worldmap::TWorldMapStorage> worldMapStorage,
+                            std::shared_ptr<creatures::TCreatureStorage> creatureStorage,
+                            std::shared_ptr<worldmap::TAmbientLightStorage> ambientLightStorage,
+                            std::shared_ptr<effects::TEffectStorage> effectStorage,
+                            std::shared_ptr<config::TClientOptions> clientOptions,
+                            std::shared_ptr<appearances::TAppearanceInstanceTracker> instanceTracker,
+                            QObject* parent = nullptr);
 
     /// The last frame's objects around the player, per type and distance ring
     /// (CIP: v4); the object sound controller reads it after the frame.
@@ -395,10 +419,23 @@ private:
     /// Builds the frame's light map (CIP: v7); without `withLights` only the floors' light.
     std::shared_ptr<worldmap::TLightMap> buildLightMap(bool withLights);
 
+    /// The storages drawn from (the session's when not given).
+    worldmap::TWorldMapStorage* worldMapStorage() const;
+    creatures::TCreatureStorage* creatureStorage() const;
+    worldmap::TAmbientLightStorage* ambientLightStorage() const;
+    /// The tracker the frame's appearance types go to (the factory's when not given).
+    std::shared_ptr<appearances::TAppearanceInstanceTracker> instanceTracker() const;
+
+    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
+    std::shared_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
+    std::shared_ptr<creatures::TCreatureStorage> m_creatureStorage;
+    std::shared_ptr<worldmap::TAmbientLightStorage> m_ambientLightStorage;
+    std::shared_ptr<effects::TEffectStorage> m_effectStorage;
+    std::shared_ptr<config::TClientOptions> m_clientOptions;
+    std::shared_ptr<appearances::TAppearanceInstanceTracker> m_instanceTracker;
     Frame m_frame;
     Position m_camera;
     worldmap::TWorldMapViewport* m_viewport = nullptr;
-    std::shared_ptr<renderer::TRenderVolumeProvider> m_renderVolumeProvider;
     int m_visibleWidth = DefaultVisibleWidth;
     int m_visibleHeight = DefaultVisibleHeight;
     double m_viewScale = 1;

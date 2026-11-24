@@ -151,3 +151,22 @@ TEST(GameActionConstructors, OpenShowImageDialogCopiesTheDialogData)
     ASSERT_EQ(action.data().images.size(), 2u);
     EXPECT_EQ(action.data().images[0].tabIcon, QStringLiteral("/images/icon-a.png"));
 }
+
+TEST(GameActionConstructors, SessiondumpStartCarriesTheWholeCatalogEntry)
+{
+    tibia::sessiondump::TSessiondumpCatalog::TEntry entry;
+    entry.url = QUrl(QStringLiteral("https://example.invalid/tutorial.sessiondump"));
+    entry.hintsUrl = QUrl(QStringLiteral("https://example.invalid/tutorial.hints"));
+    entry.fileSize = 12345;
+    entry.durationMilliseconds = 67890;
+    entry.hasHints = true;
+    const input::TGameActionSessiondumpStart action(entry);
+    EXPECT_EQ(action.gameActionType(), EGameAction::SESSIONDUMP_START);
+    const auto& kept = action.sessiondumpEntry();
+    EXPECT_EQ(kept.url, entry.url);
+    EXPECT_EQ(kept.hintsUrl, entry.hintsUrl);
+    EXPECT_EQ(kept.fileSize, 12345);
+    EXPECT_EQ(kept.durationMilliseconds, 67890);
+    EXPECT_TRUE(kept.hasHints);
+    EXPECT_EQ(action.url(), entry.url);
+}

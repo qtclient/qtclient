@@ -22,6 +22,9 @@
 #include <vector>
 
 namespace tibia {
+namespace appearances {
+class TAppearanceInstance;
+}
 namespace cyclopedia {
 class TItemTrackingStorage;
 }
@@ -141,6 +144,8 @@ public:
     {
         uint16_t itemId = 0;
         QString name;
+        /// The appearance instance of the first looted or wasted object.
+        std::shared_ptr<appearances::TAppearanceInstance> instance;
         quint64 price = 0;
         quint32 totalCount = 0;
         quint32 lastHourCount = 0;
@@ -165,6 +170,9 @@ public:
         QString name;
         quint32 count = 0;
         qint64 price = 0;
+        /// The entry's instance as the QML liquid type and hook direction.
+        uint liquidType = 0;
+        uint hookDirection = 0;
     };
 
     TGainWasteStorage(TItemPriceStorage* prices, QObject* parent = nullptr);
@@ -174,8 +182,12 @@ public:
     void configurationFromJson(const QJsonObject& json) override;
     void resetConfiguration() override;
 
-    void addLoot(uint16_t itemId, quint32 count, const QString& name, qint64 nowMs);
-    void addWaste(uint16_t itemId, quint32 count, qint64 nowMs);
+    /// `instance`: the object's appearance instance (CipSoft hands it with the
+    /// entry); a new entry keeps it for the item records.
+    void addLoot(uint16_t itemId, quint32 count, const QString& name, qint64 nowMs,
+                 const std::shared_ptr<appearances::TAppearanceInstance>& instance = nullptr);
+    void addWaste(uint16_t itemId, quint32 count, qint64 nowMs,
+                  const std::shared_ptr<appearances::TAppearanceInstance>& instance = nullptr);
     void tick(qint64 nowMs);
     void reset(Side side);
 

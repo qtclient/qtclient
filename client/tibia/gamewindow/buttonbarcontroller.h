@@ -2,12 +2,14 @@
 
 #include "input/gameactiondispatch.h"
 #include "gamewindow/sidebarpanelcontrollerbase.h"
+#include "qtconnectionmanager.h"
 #include <cip_gen.h>
 
 #include <QPointer>
 #include <QStringList>
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace tibia {
@@ -21,7 +23,11 @@ namespace mods {
 class AttentionBackend;
 }
 namespace game {
+class IGameSession;
 class TPremiumTimeStorage;
+}
+namespace skillwheel {
+class TSkillWheelStorage;
 }
 }
 
@@ -98,12 +104,25 @@ public:
     /// Relays the storage's premiumTimeChanged as premiumTimeChanged (a
     /// previous storage's relay is dropped), then announces it once.
     void connectToPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
+    /// Closes the logout question and follows the session: its sidebar
+    /// options (the shortcuts' visibility), and the skill wheel, forge,
+    /// proficiency and taskboard storages behind the button highlights. The
+    /// button controllers follow the session too; the highlights are
+    /// announced at the end.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
 
     /// CIP: set by DAILY_REWARD_READY_TO_PICK_UP, cleared by
     /// DAILY_REWARD_NOT_COLLECTABLE (handleGameAction).
     bool highlightRewardWallButton() const override;
-    /// CIP: read from a session storage (connectToGameSession).
+    /// The proficiency storage has an unspent perk (or the pack's attention
+    /// signal is up).
     bool highlightWeaponProficiencyButton() const override;
+    /// The skill wheel has unspent points.
+    bool highlightSkillWheelButton() const override;
+    /// The forge's dust balance has reached the dust limit.
+    bool highlightExaltationForgeDialogButton() const override;
+    /// This week's results are in, or a bounty task can be claimed.
+    bool taskboardButtonHighlight() const override;
 
     /// controlButtonsOptions.enabledButtons names, in order (product side rail).
     QStringList enabledShortcutIds() const;
@@ -169,6 +188,9 @@ public Q_SLOTS:
     void onGamesessionChanged() override;
     /// The model takes the enabled buttons of the button options.
     void onButtonOptionsChanged();
+    /// The shortcuts follow the sidebar panels options' button visibility
+    /// (written back to the options, then announced).
+    void onSidebarPanelsOptionsChanged();
 
     /// CIP slots 38 / 39 (EWidgetType).
     void onWidgetVisible(int widgetType);
@@ -185,7 +207,10 @@ private:
     void setWidgetVisible(int widgetType, bool visible);
 
     TButtonBarModel m_model;
+    std::shared_ptr<game::IGameSession> m_gameSession;
     QPointer<config::TSidebarOptions> m_options;
+    QPointer<skillwheel::TSkillWheelStorage> m_skillWheelStorage;
+    shared::TQtConnectionManager m_gameSessionConnections;
     QPointer<TMessageDialogController> m_logoutQuestion;
     QPointer<mods::AttentionBackend> m_attention;
     QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;

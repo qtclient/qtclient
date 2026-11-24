@@ -11,6 +11,7 @@
 #include <QUrl>
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 class QEvent;
@@ -19,6 +20,9 @@ class QNetworkReply;
 class QObject;
 
 namespace tibia {
+namespace shared {
+class TTibiaFileSystemHelper;
+}
 namespace gamewindow {
 
 class TMessageDialogController;
@@ -36,6 +40,11 @@ public:
     /// The account service (CIP accountcreationclientservices.php on the portal).
     void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
     void setTooltipContainer(QObject* container) { m_tooltipContainer = container; }
+    /// The file system helper startPlaying reads the distribution marker with.
+    void setTibiaFileSystemHelper(std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper)
+    {
+        m_tibiaFileSystemHelper = std::move(tibiaFileSystemHelper);
+    }
 
     /// Asks the account service whether accounts can be created; `onResult`
     /// gets true for an HTTP 200 answer.
@@ -92,6 +101,7 @@ private:
     TWorldSelectionSortProxyModel* m_proxy;
     TMessageDialogController* m_error;
     QUrl m_serviceUrl;
+    std::shared_ptr<shared::TTibiaFileSystemHelper> m_tibiaFileSystemHelper;
     std::vector<WorldData> m_worlds;
     /// Per region of worldRegions: "all" and its PvP types.
     QMap<QString, QStringList> m_pvpTypesByRegion;

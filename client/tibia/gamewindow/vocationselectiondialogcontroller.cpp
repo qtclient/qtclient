@@ -13,7 +13,8 @@ TVocationSelectionDialogController::TVocationSelectionDialogController(QQmlEngin
     : TDialogController(QStringLiteral("tutorial/VocationSelectionPopup.qml"), engine, dialogParentItem, parent)
     , m_mapWindowPane(mapWindowPane)
 {
-    m_spellListModel = new TSpellListDataModel(this);
+    // The popup starts on its first page; it has no session and no spell
+    // list model (the popup finds no spell icons then).
     m_stage = 0;
 }
 
@@ -22,14 +23,9 @@ void TVocationSelectionDialogController::handleGameAction(const input::IGameActi
     const auto* hint = input::gameActionAs<input::TGameActionShowTutorialHint>(pGameAction);
     if (!hint || hint->tutorialHintId() != 2)
         return;
-    // Opens anew on the first page with the spell list unfiltered but for the
-    // current vocation.
+    // Opens anew on the first page.
     dialog()->close();
     m_stage = 0;
-    if (auto* spells = qobject_cast<TSpellListDataModelSortFilterProxy*>(m_spellListModel)) {
-        spells->resetFilter();
-        spells->setShowOnlyCurrentVocation(false);
-    }
     dialog()->create();
     dialog()->show();
 }

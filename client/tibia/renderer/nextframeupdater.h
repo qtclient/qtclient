@@ -24,9 +24,6 @@ class TEffectStorage;
 namespace game {
 class TCooldownStorage;
 }
-namespace qmlcomponents {
-class TWorldMapRenderProvider;
-}
 namespace sound {
 class TSoundStorage;
 }
@@ -58,10 +55,6 @@ public:
                       std::shared_ptr<sound::TSoundStorage> soundStorage);
     virtual ~TNextFrameUpdater() = default;
 
-    /// Host: the world map render provider, whose frame is built after the
-    /// storages advanced.
-    void setWorldMapRenderProvider(std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> worldMapRenderProvider);
-
     /// Advances the world map's animations, the effects, the texts, the
     /// cooldowns, the ambient light, the analysers and the queued sounds to
     /// `nextFrameTimestamp`.
@@ -80,7 +73,6 @@ private:
     std::shared_ptr<analysers::TProgressStorage> m_progressStorage;
     std::shared_ptr<analysers::THuntingSessionStorage> m_huntingSessionStorage;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
-    std::shared_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
 };
 
 }

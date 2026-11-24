@@ -1,5 +1,6 @@
 #include "questlog/questlogciptypes.h"
 
+#include "config/sidebaroptions.h"
 #include "protocol/protocolciptypes.h"
 #include "iclockservice.h"
 
@@ -40,14 +41,6 @@ QJsonArray toJsonArray(const std::set<TQuestLineID>& ids)
     for (const TQuestLineID id : ids)
         array.append(id);
     return array;
-}
-
-std::set<TQuestLineID> fromJsonArray(const QJsonArray& array)
-{
-    std::set<TQuestLineID> ids;
-    for (const QJsonValue& id : array)
-        ids.insert(id.toInt());
-    return ids;
 }
 
 /// The set reduced to the ids that are quest lines.
@@ -156,9 +149,9 @@ void TQuestLogStorage::configurationFromJson(const QJsonObject& json)
         m_showHidden = options.value(ShowHiddenKey).toBool(false);
     }
     if (json.contains(HiddenQuestLinesKey) && json[HiddenQuestLinesKey].type() == QJsonValue::Array)
-        m_hiddenQuestLines = fromJsonArray(json[HiddenQuestLinesKey].toArray());
+        m_hiddenQuestLines = config::intSet(json[HiddenQuestLinesKey].toArray());
     if (json.contains(PinnedQuestLinesKey) && json[PinnedQuestLinesKey].type() == QJsonValue::Array)
-        m_pinnedQuestLines = fromJsonArray(json[PinnedQuestLinesKey].toArray());
+        m_pinnedQuestLines = config::intSet(json[PinnedQuestLinesKey].toArray());
 }
 
 void TQuestLogStorage::resetConfiguration()

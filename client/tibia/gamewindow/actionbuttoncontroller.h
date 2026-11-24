@@ -155,7 +155,7 @@ private:
     void refreshShownSlot();
     /// CIP : the tooltip's table rows for this button or slot.
     QString tooltipRows() const;
-    game::TCooldown currentCooldown() const;
+    game::TCooldown currentCooldown(qint64 now) const;
 
     TActionBarController* m_bar;
     std::shared_ptr<game::IGameSession> m_gameSession;

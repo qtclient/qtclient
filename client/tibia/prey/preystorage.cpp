@@ -71,10 +71,10 @@ void TPreyStorage::setSlotInactive(const int preyId)
     }
 }
 
-void TPreyStorage::setSlotActive(const int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, const int timeLeft)
+void TPreyStorage::setSlotActive(const int preyId, const TPreyBonus& bonus, const TPreyMonster& monster)
 {
     if (TPreyData* data = slot(preyId)) {
-        data->setActive(bonus, monster, timeLeft);
+        data->setActive(bonus, monster);
         markReceived(preyId);
     }
 }

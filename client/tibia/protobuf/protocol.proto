@@ -20,9 +20,15 @@ message GameserverMessage {
   optional GameserverMessageMetaData meta_data = 1000;
 }
 
+// What a session dump adds to a recorded client message (CIP GameclientMessageMetaData).
+message GameclientMessageMetaData {
+  optional int64 timestamp = 1;
+}
+
 message GameclientMessage {
   optional int32 type = 1;
-  extensions 2 to max;
+  extensions 2 to 999;
+  optional GameclientMessageMetaData meta_data = 1000;
 }
 
 // CIP RE: wrapper repeated @ +0x18; classic u16 spellId + u8 mod + u8 value
@@ -2377,10 +2383,9 @@ message GameserverMessageInspectionList {
 
 // server opcode 0x77 (119) — InspectionState
 // classic: u32 creature; u8 state
-// CIP TProtobufServerMessageTranslator::v57.
+// CipSoft TProtobufServerMessageTranslator::v57: the id goes to creature.remove_id and creature.id, the state to creature.inspection_type; the handler applies the creature.
 message GameserverMessageInspectionState {
-  optional uint32 creature_id = 1;
-  optional uint32 state = 2;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageInspectionState gameserver_message_inspection_state = 119;
   }
@@ -2629,9 +2634,9 @@ message GameserverMessageCreatureUpdate {
 
 // server opcode 0x8C (140) — CreatureHealth
 // classic: u32 creatureId; u8 healthPercent
+// CipSoft TProtobufServerMessageTranslator::v43: the id goes to creature.remove_id and creature.id, the health percent to creature.health_percent; the handler applies the creature.
 message GameserverMessageCreatureHealth {
-  optional uint32 creature_id = 1;
-  optional uint32 health_percent = 2;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureHealth gameserver_message_creature_health = 140;
   }
@@ -2639,11 +2644,9 @@ message GameserverMessageCreatureHealth {
 
 // server opcode 0x8D (141) — CreatureLight
 // classic: u32 creatureId; u8 intensity; u8 color(classic only)
-// Field 3 tip recovery of classic color byte (dmpd may omit; measure includes it).
+// CipSoft TProtobufServerMessageTranslator::v59: the id goes to creature.remove_id and creature.id, the intensity and colour to creature.light_intensity / light_color; the handler applies the creature.
 message GameserverMessageCreatureLight {
-  optional uint32 creature_id = 1;
-  optional uint32 intensity = 2;
-  optional uint32 color = 3;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureLight gameserver_message_creature_light = 141;
   }
@@ -2651,11 +2654,9 @@ message GameserverMessageCreatureLight {
 
 // server opcode 0x8E (142) — CreatureOutfit
 // classic: u32 creatureId; outfit (colours, addons, item); mount (colours)
-// CIP TProtobufServerMessageTranslator::v44. Fields 4-8 are product server outfit extras (not in CIP).
+// CipSoft TProtobufServerMessageTranslator::v44: the id goes to creature.remove_id and creature.id, the outfit (colours, addons, object) to creature.outfit, the mount (colours) to creature.mount; the handler applies the creature.
 message GameserverMessageCreatureOutfit {
-  optional uint32 creature_id = 1;
-  optional ProtocolOutfit outfit = 2;
-  optional ProtocolOutfit mount = 3;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureOutfit gameserver_message_creature_outfit = 142;
   }
@@ -2674,9 +2675,9 @@ message GameserverMessageCreatureSpeed {
 
 // server opcode 0x90 (144) — CreatureSkull
 // classic: u32 creatureId; u8 skull
+// CipSoft TProtobufServerMessageTranslator::v46: the id goes to creature.remove_id and creature.id, the skull to creature.skull; the handler applies the creature.
 message GameserverMessageCreatureSkull {
-  optional uint32 creature_id = 1;
-  optional uint32 skull = 2;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureSkull gameserver_message_creature_skull = 144;
   }
@@ -2684,9 +2685,9 @@ message GameserverMessageCreatureSkull {
 
 // server opcode 0x91 (145) — CreatureParty
 // classic: u32 creatureId; u8 party
+// CipSoft TProtobufServerMessageTranslator::v47: the id goes to creature.remove_id and creature.id, the party shield to creature.shield; the handler applies the creature.
 message GameserverMessageCreatureParty {
-  optional uint32 creature_id = 1;
-  optional uint32 party = 2;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureParty gameserver_message_creature_party = 145;
   }
@@ -2694,9 +2695,9 @@ message GameserverMessageCreatureParty {
 
 // server opcode 0x92 (146) — CreatureUnpass
 // classic: u32 creatureId; u8 unpass
+// CipSoft TProtobufServerMessageTranslator::v48: the id goes to creature.remove_id and creature.id, the flag to creature.unpassable; the handler applies the creature.
 message GameserverMessageCreatureUnpass {
-  optional uint32 creature_id = 1;
-  optional uint32 unpass = 2;
+  optional CreatureData creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureUnpass gameserver_message_creature_unpass = 146;
   }
@@ -5824,8 +5825,10 @@ message GameclientMessageGatherAll {
 }
 
 // client opcode 0x12C (300) — Unknown
-// classic: bridge — classic side-channel until CIP field RE
+// classic: none: the translator gives a recorded client message of an opcode it does not know this extension
+// CIP TProtobufServerMessageTranslator::v4 default case: the opcode byte (+0x20).
 message GameclientMessageUnknown {
+  optional uint32 opcode = 1;
   extend GameclientMessage {
     optional GameclientMessageUnknown gameclient_message_unknown = 300;
   }

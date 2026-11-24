@@ -26,7 +26,9 @@ namespace optionsarchive {
 /// The files under `directories` of the data directory, recursively (CIP
 /// names them relative to it).
 QList<TArchiveEntry> collect(const QString& dataDirectory, const QStringList& directories);
-bool write(const QString& path, const QList<TArchiveEntry>& entries);
+/// Writes the archive of entries to path through the file system helper,
+/// which throws std::runtime_error when the file cannot be written.
+void write(const QString& path, const QList<TArchiveEntry>& entries);
 /// Every entry of a zip archive, directory entries ("name/") included;
 /// nullopt when the archive cannot be unpacked.
 std::optional<QList<TArchiveEntry>> unpack(const QByteArray& archive);

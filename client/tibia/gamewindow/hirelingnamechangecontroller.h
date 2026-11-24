@@ -7,6 +7,9 @@
 #include <QMetaObject>
 #include <QString>
 
+class QQmlEngine;
+class QQuickItem;
+
 #include <memory>
 #include <vector>
 
@@ -29,7 +32,7 @@ class THirelingNameChangeController final : public cip::tibia::gamewindow::THire
 {
     Q_OBJECT
 public:
-    explicit THirelingNameChangeController(QObject* parent = nullptr);
+    THirelingNameChangeController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
     ~THirelingNameChangeController() override;
 
     /// CIP (v12): the prompt closes; then the session's player protocol handler asks for names.

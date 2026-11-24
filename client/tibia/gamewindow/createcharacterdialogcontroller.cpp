@@ -1,6 +1,7 @@
 #include "createcharacterdialogcontroller.h"
 
 #include "gamewindow/messagedialogcontroller.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QDateTime>
 #include <QJsonArray>
@@ -486,8 +487,9 @@ void TCreateCharacterDialogController::createCharacter(const QString& CharacterN
         { QStringLiteral("PlayTutorial"), PlayTutorial },
         { QStringLiteral("ClientType"), QStringLiteral("Client") },
         { QStringLiteral("NameIsGenerated"), m_generatedName == CharacterName },
-        // Host: "Epic" for the Epic Games distribution, which qtclient is not.
-        { QStringLiteral("DistributionChannel"), QStringLiteral("Regular") },
+        { QStringLiteral("DistributionChannel"),
+          m_tibiaFileSystemHelper && shared::isEpicDistribution(*m_tibiaFileSystemHelper) ? QStringLiteral("Epic")
+                                                                                          : QStringLiteral("Regular") },
     };
     addCreateCharacterFields(request);
     post(request, [this](QNetworkReply* reply) { onCharacterCreated(reply); });

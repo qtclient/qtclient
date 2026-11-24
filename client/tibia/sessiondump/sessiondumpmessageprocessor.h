@@ -2,6 +2,7 @@
 
 #include "sessiondump/sessiondumpmessagereader.h"
 #include "sessiondump/sessiondumppacketreader.h"
+#include "network/dualconnectionurlinfo.h"
 
 #include <cstdint>
 #include <memory>
@@ -15,12 +16,14 @@ class TSessiondumpMessageConsumer
 {
 public:
     virtual ~TSessiondumpMessageConsumer() = default;
-    /// A server message at the stream position, recorded at `timestamp`.
-    virtual void processServerMessage(const uint64_t& timestamp, bool flag, bool process) = 0;
-    /// A client message at the stream position.
-    virtual void processClientMessage(const uint64_t& timestamp) = 0;
-    /// A server message, given with its header (recording mode 1).
-    virtual void processServerMessage(const TSessiondumpMessageInfo& info, bool flag, bool process) = 0;
+    /// A classic server message at the stream position, recorded at `Timestamp`.
+    virtual void processServerMessage(const uint64_t& Timestamp, uint32_t PacketNumber,
+                                      network::EConnectionType ConnectionType) = 0;
+    /// A classic client message at the stream position.
+    virtual void processClientMessage(const uint64_t& Timestamp) = 0;
+    /// A protobuf server message, given with its header (recording mode 1).
+    virtual void processServerMessage(const TSessiondumpMessageInfo& MessageInfo, uint32_t PacketNumber,
+                                      network::EConnectionType ConnectionType) = 0;
 };
 
 /// CIP `sessiondump::TSessiondumpMessageProcessor`: processes one message of a

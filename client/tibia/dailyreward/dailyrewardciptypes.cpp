@@ -1,4 +1,6 @@
 #include "dailyreward/dailyrewardciptypes.h"
+#include "appearances/appearanceinstance.h"
+#include "container/objectappearanceinstanceinfostorage.h"
 #include "input/gameactionhandlers.h"
 #include "protocol/protocolciptypes.h"
 #include <client/staticdata.h>
@@ -258,16 +260,22 @@ namespace {
 
 using namespace ::tibia::protobuf::protocol;
 
-/// One free or premium reward; objects without an appearance are left out.
-void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& content, const bool premium)
+/// One free or premium reward. Liquid objects are left out; the others are
+/// added plain (cumulative ones with a count of one in their object data) and
+/// the object information storage learns the server's name for each.
+void addReward(TDailyRewardStorage& storage, container::TObjectAppearanceInstanceInfoStorage* objectInfoStorage,
+               const ProtocolDailyRewardContent& content, const bool premium)
 {
     std::vector<TDailyRewardFixedItems::TItem> items;
     for (const ProtocolDailyRewardObject& object : content.objects()) {
         const auto typeId = static_cast<uint16_t>(object.object_id());
-        const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-        if (!type || type->getId() == 0)
+        const TAppearanceType* type = appearances::TAppearanceInstanceFactory::appearanceType(ThingCategoryItem, typeId);
+        if (!type || type->isFluidContainer() || type->isSplash())
             continue;
-        items.push_back({ typeId, QString::fromStdString(object.name()), static_cast<uint8_t>(object.amount()) });
+        const QString name = QString::fromStdString(object.name());
+        if (objectInfoStorage)
+            objectInfoStorage->setName(appearances::TObjectAppearanceInstanceTypeID::plain(typeId), name);
+        items.push_back({ typeId, name, static_cast<uint8_t>(object.amount()) });
     }
     storage.addFixedItemsReward(premium, static_cast<int>(content.prey_wildcards()), content.xp_boost_minutes(),
                                 static_cast<int>(content.xp_boost_percent()), static_cast<int>(content.cosmetic_tokens()),
@@ -276,9 +284,12 @@ void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& c
 
 } // namespace
 
-TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler(TDailyRewardStorage* storage, QObject* parent)
+TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler(
+    TDailyRewardStorage* storage, std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> objectInfoStorage,
+    QObject* parent)
     : cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler(parent)
     , m_storage(storage)
+    , m_objectInfoStorage(std::move(objectInfoStorage))
 {
 }
 
@@ -358,8 +369,8 @@ void TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage(const Gam
     storage.clearRewards();
     for (const ProtocolDailyRewardDay& day : message.days()) {
         storage.clearPendingReward();
-        addReward(storage, day.free(), false);
-        addReward(storage, day.premium(), true);
+        addReward(storage, m_objectInfoStorage.get(), day.free(), false);
+        addReward(storage, m_objectInfoStorage.get(), day.premium(), true);
         storage.finishAddReward();
     }
     storage.setRewardStreakLength(static_cast<uint16_t>(message.reward_streak_length()));

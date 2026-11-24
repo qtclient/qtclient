@@ -523,6 +523,14 @@ public:
     {
         return m_spellsProtocolMessageHandler;
     }
+    const std::shared_ptr<exaltation::TExaltationProtocolMessageHandler>& exaltationProtocolMessageHandler() const
+    {
+        return m_exaltationProtocolMessageHandler;
+    }
+    const std::shared_ptr<proficiency::TProficiencyProtocolMessageHandler>& proficiencyProtocolMessageHandler() const
+    {
+        return m_proficiencyProtocolMessageHandler;
+    }
     const std::shared_ptr<skillwheel::TSkillWheelProtocolMessageHandler>& skillWheelProtocolMessageHandler() const
     {
         return m_skillWheelProtocolMessageHandler;
@@ -696,6 +704,9 @@ public:
     virtual network::TNetworkLatency latency() const;
     /// How many frames the session prepared.
     int preparedFrameCount() const { return m_preparedFrameCount; }
+    /// Once per frame, before the world map's frame is built: the session's
+    /// player movement intent handler goes on (the base session has none).
+    virtual void updatePlayerMovementIntentHandler();
 
 public Q_SLOTS:
     /// Advances everything that moves to the time the next frame is shown.

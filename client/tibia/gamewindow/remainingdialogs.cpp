@@ -209,6 +209,13 @@ TCharacterTradeDialogController* TCharacterTradeDialogController::instance()
     return s_instance;
 }
 
+TCharacterTradeDialogController::~TCharacterTradeDialogController()
+{
+    // Host: the game window's dialog goes with the game window.
+    if (s_instance == this)
+        s_instance = nullptr;
+}
+
 QObject* TCharacterTradeDialogController::characterData() const
 {
     return m_characterData;
@@ -599,8 +606,12 @@ void TCinematicSessiondumpPlayerController::onBenchmarkWindowClosed()
     Q_EMIT cinematicSessiondumpPlayerClosed();
 }
 
-TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(QObject* parent)
-    : TDialogController(QStringLiteral("ConfirmMoveObjectToStashDialog.qml"), parent)
+TConfirmMoveObjectToStashDialogController::TConfirmMoveObjectToStashDialogController(config::TClientOptions* ClientOptions,
+                                                                                     QQmlEngine* Engine,
+                                                                                     QQuickItem* DialogParentItem,
+                                                                                     QObject* parent)
+    : TDialogController(QStringLiteral("ConfirmMoveObjectToStashDialog.qml"), Engine, DialogParentItem, parent)
+    , m_clientOptions(ClientOptions)
 {}
 
 void TConfirmMoveObjectToStashDialogController::handleGameAction(const input::IGameActionPtr& pGameAction)

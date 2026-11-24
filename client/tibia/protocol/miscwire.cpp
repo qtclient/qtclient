@@ -121,7 +121,6 @@ bool isMiscMessage(const int opcode)
     switch (opcode) {
     case 11: // ReadyForSecondaryConnection
     case 41: // Stash
-    case 119: // InspectionState
     case 136: // ExaltationHistory
     case 189: // BossTracking
     case 195: // CyclopediaHouseActionResult
@@ -333,16 +332,6 @@ size_t fillMiscMessage(GameserverMessage& msg, const int opcode, ClassicReader& 
             entry->set_object_id(object);
             entry->set_amount(amount);
         }
-        return r.i;
-    }
-    case 119: {
-        auto* m = msg.MutableExtension(GameserverMessageInspectionState::gameserver_message_inspection_state);
-        uint32_t creature = 0;
-        uint8_t state = 0;
-        if (!r.u32(creature) || !r.u8(state))
-            return 0;
-        m->set_creature_id(creature);
-        m->set_state(state);
         return r.i;
     }
     case 136: {

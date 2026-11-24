@@ -3,13 +3,18 @@
 #include "game/passiveabilityinfostorage.h"
 #include "spells/spellinfostorage.h"
 
-#include <QElapsedTimer>
-
 #include <algorithm>
+#include <chrono>
 
 namespace tibia::game {
 
 namespace {
+
+/// Wall clock milliseconds: a passive ability cooldown's arrival time.
+qint64 wallClockMillis()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 /// The spell groups the cooldown bar shows, in its order (5 has no slot).
 constexpr uint8_t CooldownBarSpellGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
@@ -59,16 +64,6 @@ TCooldownStorage::TCooldownStorage(QObject* parent)
 
 TCooldownStorage::~TCooldownStorage() = default;
 
-qint64 TCooldownStorage::now()
-{
-    static QElapsedTimer timer = [] {
-        QElapsedTimer t;
-        t.start();
-        return t;
-    }();
-    return timer.elapsed();
-}
-
 void TCooldownStorage::updateSpellCooldownEnd(const uint16_t spellId, const qint64 end)
 {
     if (const auto it = m_spellCooldownEnds.find(spellId); it != m_spellCooldownEnds.end()) {
@@ -104,7 +99,7 @@ void TCooldownStorage::setMultiUseCooldown(const qint64 start, const qint64 end)
 void TCooldownStorage::setPassiveAbilityCooldown(const uint8_t abilityId, const qint64 remaining, const qint64 total,
                                                  const bool decaying)
 {
-    m_passiveAbilityCooldowns[abilityId] = { remaining, total, now(), decaying };
+    m_passiveAbilityCooldowns[abilityId] = { remaining, total, wallClockMillis(), decaying };
     Q_EMIT passiveAbilityCooldownChanged();
 }
 
@@ -221,10 +216,9 @@ TCooldown TCooldownStorage::objectCooldown(const uint16_t objectId, const qint64
     return cooldown;
 }
 
-std::map<int, TCooldown> TCooldownStorage::spellCooldowns() const
+std::map<int, TCooldown> TCooldownStorage::spellCooldowns(const qint64 time) const
 {
     std::map<int, TCooldown> cooldowns;
-    const qint64 time = now();
     for (const auto& [spellId, end] : m_spellCooldownEnds) {
         const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
         cooldowns[spellId] = { std::max<qint64>(0, end - time), spell ? qint64(spell->cooldownSelf) * 1000 : 0, end };
@@ -248,15 +242,14 @@ TPassiveAbilityCounter TCooldownStorage::passiveAbilityCounter(const uint8_t abi
     return it->second;
 }
 
-TCooldown TCooldownStorage::passiveCooldown() const
+TCooldown TCooldownStorage::passiveCooldown(const qint64 time) const
 {
     if (m_passiveAbilityCooldowns.empty())
         return {};
     const TPassiveAbilityCooldown& data = m_passiveAbilityCooldowns.begin()->second;
-    const qint64 time = now();
     qint64 remaining = data.remaining;
     if (data.decaying)
-        remaining = std::max<qint64>(0, data.remaining - (time - data.receivedAt));
+        remaining = std::max<qint64>(0, data.remaining - (wallClockMillis() - data.receivedAt));
     if (remaining <= 0)
         return { 0, data.total, 0 };
     return { remaining, std::max(data.total, remaining), time + remaining };

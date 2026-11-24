@@ -128,7 +128,6 @@ void localPlayerHoldDirection(tibia::client::Direction direction);
 void localPlayerReleaseDirection();
 void localPlayerRotate(tibia::client::Direction direction);
 /// Per-frame movement step.
-void localPlayerMovementTick();
 /// The server rejected a step; the player looks in `direction`.
 void localPlayerCancelWalk(tibia::client::Direction direction);
 /// The server asks to wait `ms` before the next step.

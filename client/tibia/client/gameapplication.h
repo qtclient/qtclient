@@ -20,6 +20,7 @@ namespace tibia {
 namespace config {
 class TClientOptions;
 struct TClientWindowOptions;
+class TTibiaConfig;
 }
 namespace shared {
 class TDownloadPool;
@@ -39,15 +40,16 @@ class TPreventCloseEventFilter;
 ///
 /// Host: CipSoft's base is a QApplication; qtclient's tip has no Qt Widgets,
 /// so it is a QGuiApplication. The QML engine is app::createEngine's (handed
-/// over with setQmlEngine), the client settings are the process's QSettings
-/// and the translations are app::installTranslations.
+/// over with setQmlEngine) and the translations are app::installTranslations.
 class TGameApplicationBase : public QGuiApplication
 {
     Q_OBJECT
 public:
-    /// CIP: the application on the command line, with the file system helper;
-    /// Direct3D's vblank thread is turned off unless the environment says
-    /// otherwise. The client options come with initialize.
+    /// CIP: the application on the command line, with the file system helper
+    /// and the client settings (config.ini) it opens; Direct3D's vblank thread
+    /// is turned off unless the environment says otherwise. The client options
+    /// come with initialize. Host: the client settings are also installed for
+    /// config::clientSetting* (callers without a path to the application).
     TGameApplicationBase(int& argc, char** argv);
     ~TGameApplicationBase() override;
 
@@ -73,12 +75,15 @@ public:
     static void registerGraphicsResources();
     QQmlEngine* qmlEngine() const { return m_pEngine.get(); }
     std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper() const { return m_pTibiaFileSystemHelper; }
+    /// CIP: the client settings (config.ini).
+    const std::shared_ptr<config::TTibiaConfig>& tibiaConfig() const { return m_pTibiaConfig; }
     /// Host: qtclient's client options are the process-wide config object.
     config::TClientOptions* clientOptions() const { return m_pClientOptions; }
 
 protected:
     std::unique_ptr<QQmlEngine> m_pEngine;
     std::shared_ptr<shared::TTibiaFileSystemHelper> m_pTibiaFileSystemHelper;
+    std::shared_ptr<config::TTibiaConfig> m_pTibiaConfig;
     config::TClientOptions* m_pClientOptions = nullptr;
 };
 
@@ -105,7 +110,9 @@ public:
     };
 
     /// CIP: after the base setup: whether the client options file is missing
-    /// (the first start), the crash handler, the client window's change
+    /// (the first start), the crash handler (login host of the client
+    /// settings' login web service; host: the launcher's login URL when it
+    /// gives one), the client window's change
     /// timer, the application's own connections (quit, the held back close,
     /// the client options' save errors), the client options saved once, and
     /// the command line.

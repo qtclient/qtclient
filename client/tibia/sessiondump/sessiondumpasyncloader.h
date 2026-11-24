@@ -21,6 +21,9 @@ namespace protobuf::protocol {
 class GameserverMessage;
 class GameclientMessage;
 }
+namespace protocol {
+class TProtocolMessageQueue;
+}
 namespace shared {
 class IClockService;
 class TIODeviceReader;
@@ -95,6 +98,12 @@ private:
     std::shared_ptr<TSessiondumpProcessor> m_processor;
     QTimer m_chunkTimer;
     std::shared_ptr<TSessiondumpMessageConsumer> m_messageConsumer;
+    std::shared_ptr<protocol::TProtocolMessageQueue> m_protocolMessageQueue;
+    /// CIP startProcessing's message chain over the processing device: protocol
+    /// reader -> server translator -> server message processor (the consumer)
+    /// into a message queue whose messages the loader re-emits. Host: defined in
+    /// sessiondumpasyncloaderprotocol.cpp so tests can link the loader alone.
+    void createProtocolMessageConsumer();
     TSessiondumpMetadata m_metadata;
     QTemporaryFile m_file;
     std::shared_ptr<shared::TIODeviceReader> m_preprocessingDevice;

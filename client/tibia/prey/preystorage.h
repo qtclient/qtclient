@@ -37,7 +37,7 @@ public:
     void setSlotAutomaticExtendType(int preyId, int type);
     void setSlotLocked(int preyId, int unlockOption);
     void setSlotInactive(int preyId);
-    void setSlotActive(int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
+    void setSlotActive(int preyId, const TPreyBonus& bonus, const TPreyMonster& monster);
     void setSlotSelection(int preyId, QList<TPreyMonster> list);
     void setSlotSelectionChangeMonster(int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list);
     void setSlotListSelection(int preyId, QList<uint16_t> races);

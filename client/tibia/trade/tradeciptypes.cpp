@@ -43,6 +43,15 @@ QString vocationName(const int vocation, const bool promoted)
     return qtTrId(promoted ? Promoted[vocation - 1] : Base[vocation - 1]);
 }
 
+/// A highlight group's category: the protocol values 0..14 keep their value;
+/// any other value throws.
+int highlightCategory(const uint32_t protocolValue)
+{
+    if (protocolValue > 14)
+        throw std::runtime_error("unhandled enum value");
+    return static_cast<int>(protocolValue);
+}
+
 } // namespace
 
 TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
@@ -300,7 +309,7 @@ void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMes
         std::vector<TCharacterTradeHighlightGroup> groups;
         for (const auto& group : m.groups()) {
             TCharacterTradeHighlightGroup entry;
-            entry.category = static_cast<int>(group.category());
+            entry.category = highlightCategory(static_cast<uint32_t>(group.category()));
             entry.name = QString::fromStdString(group.name());
             for (const auto& highlight : group.entries())
                 entry.entries.push_back({ static_cast<quint16>(highlight.entry_id()), QString::fromStdString(highlight.text()) });

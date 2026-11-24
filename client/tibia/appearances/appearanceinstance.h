@@ -317,44 +317,39 @@ private:
     uint16_t m_decoItemId = 0;
 };
 
-/// CIP show-off socket (house podium). Owns pedestal visibility + figure look
-/// (Item holds this instance; protocol writes go through Item::setPodium*).
+class TOutfitAppearanceInstance;
+
+/// A show-off socket (house podium): the socket object, shown or hidden, with
+/// the outfit and the mount standing on it.
 class TShowOffSocketAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    /// The socket `type`, drawn when `visible`, carrying `outfit` and `mount`
+    /// (either may be null).
+    TShowOffSocketAppearanceInstance(TAppearanceType* type, bool visible, std::shared_ptr<TOutfitAppearanceInstance> outfit,
+                                     std::shared_ptr<TOutfitAppearanceInstance> mount);
 
-    struct FigureLayer {
-        TAppearanceType* type = nullptr;
-        int dx = 0;
-        int dy = 0;
-        int xPattern = 0;
-        int yPattern = 0;
-        int zPattern = 0;
-        int phase = 0;
-        bool colorize = false;
-        uint32_t colors = 0;
-    };
+    /// The socket object itself is drawn.
+    bool isVisible() const { return m_visible; }
+    const std::shared_ptr<TOutfitAppearanceInstance>& outfit() const { return m_outfit; }
+    const std::shared_ptr<TOutfitAppearanceInstance>& mount() const { return m_mount; }
 
-    void setLook(const Outfit& outfit, uint8_t direction, bool socketVisible);
-    void clearLook();
-
-    bool drawsSocket() const { return m_socketVisible; }
-    bool hasFigure() const;
-    const Outfit& outfit() const { return m_outfit; }
-    uint8_t direction() const { return m_direction; }
-
-    /// Mount + creature / LookTypeEx layers relative to the item dest.
-    std::vector<FigureLayer> figureLayers() const;
-
-    /// Item's owned show-off instance (created on first podium wire write).
+    /// CIP v5: the socket's animation, else the outfit's, else the mount's;
+    /// true at the first one whose drawn phase changed.
+    bool updateAnimation(qint64 nowMs) override;
+    /// CIP v13: where the figure stands: the mount's displacement while there
+    /// is one, else the outfit's, with the socket's elevation as depth; none
+    /// without an outfit.
+    worldmap::TWorldMapSubfieldExtent figureDisplacement() const;
+    /// CIP v12's figure offset: figureDisplacement, less the socket type's
+    /// elevation on both axes while the socket is drawn. The mount and then
+    /// the outfit draw their idle sprite with it.
+    worldmap::TWorldMapSubfieldExtent figureRenderDisplacement() const;
 
 private:
-    Outfit m_outfit;
-    uint8_t m_direction = 2;
-    mutable animation::TIdleAnimators m_idleAnimators;
-    bool m_socketVisible = true;
-    bool m_hasLook = false;
+    bool m_visible = false;
+    std::shared_ptr<TOutfitAppearanceInstance> m_outfit;
+    std::shared_ptr<TOutfitAppearanceInstance> m_mount;
 };
 
 /// An object of an upgrade classification, drawn with its tier.
@@ -653,7 +648,8 @@ public:
     /// CIP v19: the outfit of a protocol outfit: with a look type that outfit
     /// (its colours and addons), else with an object type that object drawn
     /// as an outfit, else none.
-    static TAppearanceInstancePtr createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit, uint8_t direction);
+    static std::shared_ptr<TOutfitAppearanceInstance> createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit,
+                                                                               uint8_t direction);
     /// Effect `id` on `field` from `source`, created at `nowMs` (CIP v7).
     static std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
                                                                    qint64 nowMs);

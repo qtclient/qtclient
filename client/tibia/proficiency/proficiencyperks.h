@@ -44,6 +44,8 @@ class TQMLProficiencyPerk final : public cip::tibia::gamewindow::TQMLProficiency
 public:
     TQMLProficiencyPerk(int index, const TProficiencyPerk& perk, bool picked, bool shaped, uint rank, QObject* parent);
 
+    int perkIndex() const override { return m_perkIndex; }
+    bool isPicked() const override { return m_isPicked; }
     QString perkDescription() const override;
     QString perkName() const override;
     QUrl imageSource() const override;
@@ -66,6 +68,10 @@ public:
     TQMLProficiencyLevelInformation(int levelIndex, int tableLevels, uint16_t typeId, const TProficiencyLevel& level,
                                     const TPerkPick* localPick, const std::vector<TShapedSlot>& shaped, bool serverPicked,
                                     QObject* parent);
+
+    int levelIndex() const override { return m_levelIndex; }
+    QList<QObject*> perks() const override { return m_perks; }
+    bool isPerkSelected() const override { return m_isPerkSelected; }
 };
 
 }

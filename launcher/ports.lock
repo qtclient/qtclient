@@ -791,6 +791,10 @@ sub_8729c9a73e63	8729c9a73e630d2f	skip	library: libc++ vector/map/tree internals
 sub_8729c9a73e63#2	8729c9a73e630d2f	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
 sub_8729c9a73e63#3	8729c9a73e630d2f	skip	library: libc++ vector/map/tree internals
 sub_872d4faac408	872d4faac408f6d5	skip	dead: empty / return-true bodies with no caller and no pointer fixup
+sub_872d4faac408#2	872d4faac408f6d5	skip	dead: empty bodies (push/mov/pop/ret) with no caller and no pointer fixup: full objdump -d of the pinned launcher, index/fixups.txt and vtables.json checked; same as sub_872d4faac408
+sub_872d4faac408#3	872d4faac408f6d5	skip	dead: empty bodies (push/mov/pop/ret) with no caller and no pointer fixup: full objdump -d of the pinned launcher, index/fixups.txt and vtables.json checked; same as sub_872d4faac408
+sub_872d4faac408#4	872d4faac408f6d5	skip	dead: empty bodies (push/mov/pop/ret) with no caller and no pointer fixup: full objdump -d of the pinned launcher, index/fixups.txt and vtables.json checked; same as sub_872d4faac408
+sub_872d4faac408#5	872d4faac408f6d5	skip	dead: empty bodies (push/mov/pop/ret) with no caller and no pointer fixup: full objdump -d of the pinned launcher, index/fixups.txt and vtables.json checked; same as sub_872d4faac408
 sub_872d4faac408#6	872d4faac408f6d5	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::onSocketStateChanged
 sub_872d4faac408#7	872d4faac408f6d5	inlined	shared/src/networkaccessmanagerauthenticationhandler.cpp:TNetworkAccessManagerAuthenticationHandler::handleAuthenticationRequired
 sub_872d4faac408#8	872d4faac408f6d5	skip	policy: battleye prerequisites (admin check, elevated restart, BattlEye install)

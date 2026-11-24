@@ -28,6 +28,10 @@ class GameserverMessageRestingAreaState;
 class GameserverMessageShowMessageDialog;
 }
 
+namespace tibia::container {
+class TObjectAppearanceInstanceInfoStorage;
+}
+
 namespace tibia {
 namespace dailyreward {
 
@@ -216,7 +220,12 @@ class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward:
 {
     Q_OBJECT
 public:
-    explicit TDailyRewardProtocolMessageHandler(TDailyRewardStorage* storage, QObject* parent = nullptr);
+    /// CipSoft also hands over the appearance instance factory; qtclient's
+    /// factory is static.
+    explicit TDailyRewardProtocolMessageHandler(
+        TDailyRewardStorage* storage,
+        std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> objectInfoStorage = {},
+        QObject* parent = nullptr);
 
     void handleRestingAreaStateMessage(const ::tibia::protobuf::protocol::GameserverMessageRestingAreaState& message);
     /// The wall's state, then OPEN_OR_UPDATE_REWARD_WALL_DIALOG. An unknown
@@ -237,6 +246,7 @@ public:
 
 private:
     TDailyRewardStorage* m_storage;
+    std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> m_objectInfoStorage;
 };
 
 }

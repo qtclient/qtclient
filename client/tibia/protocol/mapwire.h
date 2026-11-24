@@ -37,8 +37,11 @@ size_t fillMapMessage(protobuf::protocol::GameserverMessage& msg, int opcode, Cl
 /// Commit the central position the last translated world map message moved to.
 void advanceMapViewport(const protobuf::protocol::GameserverMessage& msg);
 bool isMapMessage(int opcode);
-/// Fill a creature message (CreatureUpdate, CreatureOutfit, CreatureMarks,
-/// CreatureType, SnapBack, Wait); 0 when the body is short.
+/// Fill a creature message (InspectionState, CreatureUpdate, CreatureHealth,
+/// CreatureLight, CreatureOutfit, CreatureSpeed, CreatureSkull, CreatureParty,
+/// CreatureUnpass, CreatureMarks, CreatureType, SnapBack, Wait); 0 when the
+/// body is short. The single-value creature messages carry the known creature's
+/// data with that value.
 size_t fillCreatureMessage(protobuf::protocol::GameserverMessage& msg, int opcode, ClassicReader& r);
 bool isCreatureMessage(int opcode);
 /// Centre the translator's view (a floor description re-centring the map).

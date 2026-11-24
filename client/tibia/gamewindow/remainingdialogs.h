@@ -33,6 +33,10 @@
 #include <tuple>
 #include <vector>
 
+namespace tibia::config {
+class TClientOptions;
+}
+
 namespace tibia::game {
 class IGameSession;
 }
@@ -83,6 +87,7 @@ class TCharacterTradeDialogController final : public TDialogController<cip::tibi
     Q_OBJECT
 public:
     TCharacterTradeDialogController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent = nullptr);
+    ~TCharacterTradeDialogController() override;
     static TCharacterTradeDialogController* instance();
 
     /// CIP connector: the dialog closes and follows `GameSession`'s character
@@ -215,7 +220,8 @@ class TConfirmMoveObjectToStashDialogController final
 {
     Q_OBJECT
 public:
-    explicit TConfirmMoveObjectToStashDialogController(QObject* parent = nullptr);
+    TConfirmMoveObjectToStashDialogController(config::TClientOptions* ClientOptions, QQmlEngine* Engine,
+                                              QQuickItem* DialogParentItem, QObject* parent = nullptr);
 
     /// SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG: its action waits, the dialog
     /// shows.
@@ -232,6 +238,7 @@ public Q_SLOTS:
 
 private:
     ::tibia::input::IGameActionPtr m_gameAction;
+    config::TClientOptions* m_clientOptions = nullptr;
 };
 
 /// CIP TCrashReportDialogController — CrashReportDialog.qml: shows a crash

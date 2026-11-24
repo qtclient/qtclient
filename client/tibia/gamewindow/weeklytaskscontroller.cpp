@@ -287,7 +287,7 @@ void TWeeklyTasksController::hideDialogTab()
 void TWeeklyTasksController::openPermanentWeeklyTaskExpansionUnlockStore()
 {
     // Open action 3 (useful thing), useful thing 13.
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(3, 13));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_USEFUL_THING, .usefulThing = 13}));
 }
 
 void TWeeklyTasksController::deliverTask(const int taskIndex)

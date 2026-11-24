@@ -5,6 +5,8 @@
 
 #include "client/gamecore.h"
 
+#include "qtconnectionmanager.h"
+
 #include <cip_gen.h>
 
 #include <QByteArray>
@@ -48,16 +50,23 @@ public:
     explicit TSessiondumpGameSession(QObject* parent = nullptr);
     ~TSessiondumpGameSession() override;
 
-    /// Builds the session from a TSessiondumpGameSessionMetaInfo.
+    /// Builds the session from a TSessiondumpGameSessionMetaInfo: storages,
+    /// protocol handlers and their links, providers, game action handlers and
+    /// their links; then loads the meta info's sessiondump (startSessiondump)
+    /// and links the process timer.
     void initialize(const std::shared_ptr<const TGameSessionMetaInfo>& metaInfo) override;
-    /// Plays the meta info's sessiondump (startSessiondump).
+    /// Saves the character configuration and loads the dump's, closes the
+    /// containers shown but not open, starts the dump's player with the entry's
+    /// duration and announces connected.
     void startSession() override;
-    /// Plays the sessiondump of a catalog entry.
+    /// Loads the sessiondump of a catalog entry (played by startSession).
     virtual void startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry);
+    /// A dump has no player movement intent handler: nothing.
+    void updatePlayerMovementIntentHandler() override;
     /// True for the tutorial dump a new character watches before its live session.
     bool isTutorial() const;
 
-    /// Plays a recorded OTC packet log or CIP `dmpd` dump through g_game.
+    /// Loads a recorded qtclient packet log or CIP `dmpd` dump.
     void replay(const QString& file);
     /// Drops the replay without waiting for the recording to finish.
     void disconnectNow() override;
@@ -94,6 +103,10 @@ protected Q_SLOTS:
     /// The player played the dump to its end; nothing for the base session.
     virtual void onSessiondumpFinished();
 
+protected:
+    /// The character whose configuration the session loads when it starts.
+    quint32 m_configurationCharacterId = 0;
+
 private:
     struct ReplayBody
     {
@@ -106,7 +119,7 @@ private:
     void enqueueGameserverMessage(const std::shared_ptr<::tibia::protobuf::protocol::GameserverMessage>& message);
     void stopDmpd();
     void replayHexDump(const QString& file);
-    void startReplay(std::vector<ReplayBody> packets);
+    void startReplay();
     void pumpReplay();
     void stopReplay();
 
@@ -116,10 +129,13 @@ private:
     std::vector<ReplayBody> m_replayPackets;
     int m_replayIndex = 0;
     bool m_replaying = false;
+    /// Host: why the text dump did not load (reported when the session starts).
+    QString m_replayLoadError;
 
     std::shared_ptr<sessiondump::TSessiondumpAsyncLoader> m_sessiondumpLoader;
     std::shared_ptr<sessiondump::TSessiondumpProgressClockService> m_sessiondumpProgressClock;
     std::shared_ptr<sessiondump::TSessiondumpPlayer> m_sessiondumpPlayer;
+    shared::TQtConnectionManager m_connectionManager;
     QTimer m_sessiondumpTimer;
     bool m_sawPendingStateEntered = false;
 

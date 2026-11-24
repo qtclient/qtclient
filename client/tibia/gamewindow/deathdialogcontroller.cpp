@@ -144,7 +144,7 @@ void TDeathDialogController::onWorldEntered()
         return;
     m_openStoreOnWorldEntered = false;
     // The store opened at useful thing 11 (the death hint points there).
-    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(3, 11));
+    Q_EMIT publishGameAction(std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_USEFUL_THING, .usefulThing = 11}));
 }
 
 void TDeathDialogController::onDialogButtonClicked(const QVariant& Identifier, const bool CheckBoxIsChecked)

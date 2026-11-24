@@ -430,7 +430,7 @@ void TSelectOutfitDialogController::onCancelClicked()
 void TSelectOutfitDialogController::onClickedOpenStoreOffer(const int offerID)
 {
     dialog()->close();
-    auto action = std::make_shared<input::TGameActionOpenStore>(4, offerID);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_OFFER, .offerId = static_cast<store::TOfferID>(offerID)});
     Q_EMIT publishGameAction(action);
 }
 

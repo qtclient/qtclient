@@ -23,6 +23,7 @@ class TAppearancesManager;
 }
 namespace config {
 class TClientOptions;
+class TTibiaConfig;
 }
 namespace cyclopedia {
 class TCyclopediaMapStaticDataStorage;
@@ -128,6 +129,8 @@ public:
     std::shared_ptr<shared::TTibiaFileSystemHelper> tibiaFileSystemHelper() const;
     /// The client options the client was made with.
     config::TClientOptions* clientOptions() const { return m_pClientOptions; }
+    /// CIP: the client settings (config.ini) the client was made with.
+    std::shared_ptr<config::TTibiaConfig> tibiaConfig() const { return m_pTibiaConfig; }
     /// Throws std::logic_error before it exists.
     std::shared_ptr<appearances::TAppearancesManager> appearancesManager() const;
     /// CIP: throws std::logic_error before initializeAssets.
@@ -192,11 +195,13 @@ public:
     }
 
 protected:
-    /// The client is made with its QML engine, the file system helper and the
-    /// client options; it makes the appearances, the Cyclopedia map's static
-    /// data, the passive ability table and the proficiency storage at once.
+    /// The client is made with its QML engine, the file system helper, the
+    /// client options and the client settings; it makes the appearances, the
+    /// Cyclopedia map's static data, the passive ability table and the
+    /// proficiency storage at once. Host: without client settings the client
+    /// takes the application's (config::processTibiaConfig).
     TGameClientBase(QQmlEngine* Engine, std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                    config::TClientOptions* ClientOptions);
+                    config::TClientOptions* ClientOptions, std::shared_ptr<config::TTibiaConfig> TibiaConfig = nullptr);
     /// The spell table. Host: qtclient's table reads spells.json when it is
     /// made, so the client makes it once the data directories are known
     /// (CipSoft makes an empty one with the client).
@@ -278,6 +283,7 @@ protected:
     /// Host: qtclient's client options are the process-wide config object
     /// (CipSoft shares them between the application and the client).
     config::TClientOptions* m_pClientOptions = nullptr;
+    std::shared_ptr<config::TTibiaConfig> m_pTibiaConfig;
     std::shared_ptr<appearances::TAppearancesManager> m_pAppearancesManager;
     std::shared_ptr<appearances::TAppearanceInstanceFactory> m_pAppearanceInstanceFactory;
     std::shared_ptr<assets::TAssetAsyncLoader> m_pAssetAsyncLoader;

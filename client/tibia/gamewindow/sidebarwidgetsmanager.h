@@ -122,8 +122,8 @@ public:
     /// CIP: makes the battle lists and connects them; the other widgets are
     /// made when they open. `analyserStorages` is the loot tracker's source
     /// (host: CipSoft passes the session's storages).
-    TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                           analysers::TAnalyserStorages* analyserStorages, QObject* parent = nullptr);
+    TSidebarWidgetsManager(TSidebarManager* sidebars, TContainerStorageController* containers, QQuickItem* gameWindowItem,
+                           QQmlEngine* engine, analysers::TAnalyserStorages* analyserStorages, QObject* parent = nullptr);
     /// CIP: deletes the widgets, the battle lists, the depot search and
     /// player trade widgets, then the widgets kept by type.
     ~TSidebarWidgetsManager() override;
@@ -141,7 +141,6 @@ public:
     /// session analyser (checked at once and on every change). The widgets
     /// read the live storage themselves.
     void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
-    void setContainerStorage(TContainerStorageController* containers);
     void setControlScheme(int controlScheme);
     void onLoginRampUpFinished();
     /// CIP: the frame update (TGameClient, before every rendered frame): the

@@ -6,10 +6,11 @@
 
 namespace tibia::gamewindow {
 
-THirelingNameChangeController::THirelingNameChangeController(QObject* parent)
+THirelingNameChangeController::THirelingNameChangeController(QQmlEngine* Engine, QQuickItem* DialogParentItem, QObject* parent)
     : cip::tibia::gamewindow::THirelingNameChangeController(parent)
     , m_enterTextDialog(new TGenericEnterTextDialogController(qtTrId("request_hireling_name_change_caption"),
-                                                              qtTrId("request_hireling_name_change_text"), 30, this))
+                                                              qtTrId("request_hireling_name_change_text"), 30, Engine,
+                                                              DialogParentItem, this))
 {
     connect(m_enterTextDialog, &TGenericEnterTextDialogController::textEntered, this, &THirelingNameChangeController::onTextEntered);
 }

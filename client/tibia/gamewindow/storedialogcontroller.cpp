@@ -251,7 +251,6 @@ TStoreDialogController::TStoreDialogController(std::shared_ptr<store::TDynamical
     , m_messageDialog(new TMessageDialogController(this))
     , m_searchMessageDialog(new TMessageDialogController(this))
     , m_transactionDetailsDialog(new TMarketCoinTransactionDetailsDialogController(this))
-    , m_hirelingNameChange(new THirelingNameChangeController(this))
 {
     m_dynamicallyLoadedImageManager = m_imageManager.get();
     m_searchResultCategory = new store::TQmlStoreCategory(qtTrId("store_search_result_catergory_name"), {}, {}, this);
@@ -286,9 +285,6 @@ TStoreDialogController::TStoreDialogController(std::shared_ptr<store::TDynamical
     m_viewEventTimer.setInterval(2000);
     m_viewEventTimer.setSingleShot(true);
 
-    // The hireling rename prompt's SET_HIRELING_NAME goes to the router (the session's player game action handler sends it).
-    connect(m_hirelingNameChange, &THirelingNameChangeController::publishGameAction, this,
-            &TStoreDialogController::publishGameAction);
 
     m_gameActions.on(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::IGameAction&) {
         m_messageDialog->dialog()->close();
@@ -325,7 +321,6 @@ void TStoreDialogController::connectToGameSession(const std::shared_ptr<game::IG
     m_gameSessionConnections.disconnectAll();
     m_storage = nullptr;
     m_gameSession = GameSession;
-    m_hirelingNameChange->connectToGameSession(m_gameSession);
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
     m_messages = session ? session->storeProtocolMessageHandler().get() : nullptr;
     m_descriptionManager->setMessageHandler(m_messages);

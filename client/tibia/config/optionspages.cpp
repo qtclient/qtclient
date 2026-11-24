@@ -765,6 +765,20 @@ bool TGraphicsOptionsPage::isMetal() const
     return activeRenderer() == MetalRenderer;
 }
 
+bool TGraphicsOptionsPage::canChangeFpsLimitCheckbox() const
+{
+    return false;
+}
+
+bool TMiscOptionsPage::isWindows() const
+{
+#ifdef Q_OS_WIN
+    return true;
+#else
+    return false;
+#endif
+}
+
 TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
     : TBoundOptionsPage(EffectsBindings, parent)
 {
@@ -1529,7 +1543,7 @@ void THotkeysOptionsPage::onPresetTextEntered(const QString& EnteredText)
         break;
     }
     case EPresetTextMode::Add: {
-        const THotkeySet defaults = THotkeyOptions::builtInSet(QStringLiteral("GlobalShortcuts"));
+        const THotkeyBindings defaults = THotkeyOptions::builtInHotkeys(QStringLiteral("GlobalShortcuts"));
         m_options.setHotkeys(EnteredText, defaults.chatOff, defaults.chatOn);
         break;
     }
@@ -1579,6 +1593,11 @@ void THotkeysOptionsPage::closeDialogs()
     close(m_assignObjectDialog.get());
     close(m_assignTextDialog.get());
     close(m_recordKeyboardShortcutDialog.get());
+}
+
+void THotkeysOptionsPage::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    m_assignSpellDialog->connectToGameSession(GameSession);
 }
 
 void THotkeysOptionsPage::resetToDefault()
@@ -1773,7 +1792,7 @@ void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionS
     const TActionSetting& setting = row->hotkeyActionSetting();
     const QString actionName = setting.kind == TActionSetting::ACTION ? setting.action : QString();
     m_recordKeyboardShortcutDialog->showDialog(
-        m_chatModeOn, false, current, row->descriptionText(),
+        m_chatModeOn, isMovementAction(setting), current, row->descriptionText(),
         gamewindow::TRecordKeyboardShortcutDialogController::occupiedKeys(actionName, m_chatModeOn));
 }
 

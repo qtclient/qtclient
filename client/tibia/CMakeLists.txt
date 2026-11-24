@@ -318,10 +318,13 @@ if(TIBIA_WITH_GAMECORE)
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
     config/clientsettings.cpp config/clientsettings.h
+    config/tibiaconfig.cpp config/tibiaconfig.h
+    app/smokeactions.cpp app/smokeactions.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
     sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
+    sessiondump/sessiondumpasyncloaderprotocol.cpp
     sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
     sessiondump/clientsessiondumprecorder.cpp sessiondump/clientsessiondumprecorder.h
     sessiondump/sessiondumpcatalog.cpp sessiondump/sessiondumpcatalog.h
@@ -476,6 +479,7 @@ if(TIBIA_WITH_GAMECORE)
     config/hotkeyoptions.cpp config/hotkeyoptions.h
     config/tibiahotkeyactionsettingqmlwrapper.cpp config/tibiahotkeyactionsettingqmlwrapper.h
     config/configbackupreader.cpp config/configbackupreader.h
+    config/clientoptionsuploader.cpp config/clientoptionsuploader.h
     app/portalurls.cpp app/portalurls.h
     game/gameactionrouter.cpp game/gameactionrouter.h
     game/gameciptypes.cpp game/gameciptypes.h
@@ -761,12 +765,15 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimapmarkeroverlaycontroller.cpp minimap/minimapmarkeroverlaycontroller.h
     minimap/minimapmarkerrenderprovider.cpp minimap/minimapmarkerrenderprovider.h
     minimap/minimaprendererscenegraphdrawcommandprovider.cpp minimap/minimaprendererscenegraphdrawcommandprovider.h
+    minimap/waypointsectors.cpp minimap/waypointsectors.h
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
     protocol/objectdata.cpp protocol/objectdata.h
     protocol/protocolclientmessageprocessor.cpp protocol/protocolclientmessageprocessor.h
     protocol/unknowngameserverexception.cpp protocol/unknowngameserverexception.h
     protocol/protocolservermessageprocessor.cpp protocol/protocolservermessageprocessor.h
     protocol/protocolserverpacketprocessor.cpp protocol/protocolserverpacketprocessor.h
+    protocol/protocolreader.cpp protocol/protocolreader.h
+    protocol/clientwire.cpp
     network/gameserverconnection.cpp network/gameserverconnection.h
     network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
@@ -1022,8 +1029,16 @@ else()
   set(_cip_data_base "${CIP_ROOT}/client/upstream")
 endif()
 file(GLOB cip_shaders CONFIGURE_DEPENDS "${CIPSOFT_SHADERS_DIR}/*.qsb")
+# CIP's bundled client settings (:/conf/config.ini). Host: a kind-A dump older
+# than the config.ini vendoring has none; the vendored copy stands in.
+set(_cip_config_ini "${CIPSOFT_CONF_DIR}/config.ini")
+if(NOT EXISTS "${_cip_config_ini}")
+  set(_cip_config_ini "${CIP_ROOT}/client/upstream/conf/config.ini")
+  set_source_files_properties("${_cip_config_ini}" PROPERTIES QT_RESOURCE_ALIAS "conf/config.ini")
+endif()
 qt_add_resources(tibia cip_data PREFIX / BASE "${_cip_data_base}" FILES
   "${CIPSOFT_CONF_DIR}/clientoptions.json"
+  "${_cip_config_ini}"
   "${CIPSOFT_STRINGS_DIR}/client.en.qm"
   ${cip_shaders})
 

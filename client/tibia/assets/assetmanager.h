@@ -62,6 +62,8 @@ public:
     /// Queues the content and sound catalogs (prioritized). Throws
     /// std::runtime_error unless the manager is still in its initial state.
     void startLoading();
+    /// CIP: the loader stops and goes; nothing loads any more.
+    void stopLoading();
 
     EState state() const { return m_state; }
     const std::shared_ptr<TContentCatalog>& contentCatalog() const { return m_contentCatalog; }

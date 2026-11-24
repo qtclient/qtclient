@@ -1,4 +1,5 @@
 #include "imbuingdialogcontroller.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 #include "gamewindow/smoothfiltering.h"
 
 #include "container/containerslotinformation.h"
@@ -289,7 +290,7 @@ uint32_t imbuementSlotCount(const uint16_t typeId)
 
 input::IGameActionPtr openPremiumStoreAction()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     return action;
 }
 
@@ -407,9 +408,7 @@ void TImbuingDialogController::closeDialog()
     Q_EMIT imbuingQmlDataChanged();
     dialog()->close();
     tibia::game::closeImbuingWindow();
-    m_imbuedItemObjectID = 0;
-    m_imbuedItemObjectCount = 0;
-    m_imbuedItemObjectUpgradeTier = 0;
+    m_imbuedItemInstance.reset();
     m_picking = false;
     m_selectedImbuementSlotIndex = 0;
     m_selectedImbuementId = 0;
@@ -532,30 +531,55 @@ const TImbuementSlot* TImbuingDialogController::selectedSlot() const
 
 void TImbuingDialogController::updateImbuedItem()
 {
+    using appearances::TAppearanceInstanceFactory;
     switch (m_storage->mode()) {
         case TImbuingStorage::MODE_NONE:
-            m_imbuedItemObjectID = 0;
-            m_imbuedItemObjectUpgradeTier = 0;
-            m_imbuedItemObjectCount = 0;
+            m_imbuedItemInstance.reset();
             m_selectedImbuementSlotIndex = 0;
             break;
         case TImbuingStorage::MODE_ITEM:
-            m_imbuedItemObjectID = m_storage->itemTypeId();
-            m_imbuedItemObjectUpgradeTier = m_storage->itemTier().value_or(0);
-            m_imbuedItemObjectCount = 0;
+            if (const std::optional<uint8_t> tier = m_storage->itemTier())
+                m_imbuedItemInstance = TAppearanceInstanceFactory::createUpgradeableObject(m_storage->itemTypeId(), *tier);
+            else
+                m_imbuedItemInstance = TAppearanceInstanceFactory::createObject(m_storage->itemTypeId());
             // An item without imbuement slots, or fewer than the index, starts at the first.
             if (imbuementSlotCount(m_storage->itemTypeId()) <= m_selectedImbuementSlotIndex)
                 m_selectedImbuementSlotIndex = 0;
             break;
         case TImbuingStorage::MODE_SCROLL:
-            m_imbuedItemObjectID = BlankImbuementScrollTypeId;
-            m_imbuedItemObjectUpgradeTier = 0;
-            m_imbuedItemObjectCount = 0;
+            m_imbuedItemInstance = TAppearanceInstanceFactory::createObject(BlankImbuementScrollTypeId);
             m_selectedImbuementSlotIndex = 0;
             break;
         default:
             break;
     }
+}
+
+uint TImbuingDialogController::imbuedItemObjectID() const
+{
+    if (m_storage->mode() == TImbuingStorage::MODE_NONE)
+        return 0;
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlTypeId(m_imbuedItemInstance);
+}
+
+uint TImbuingDialogController::imbuedItemObjectCount() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(m_imbuedItemInstance);
+}
+
+uint TImbuingDialogController::imbuedItemObjectUpgradeTier() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlUpgradeTier(m_imbuedItemInstance);
+}
+
+::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType TImbuingDialogController::imbuedItemLiquidType() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(m_imbuedItemInstance);
+}
+
+::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection TImbuingDialogController::imbuedItemHookDirection() const
+{
+    return qmlcomponents::TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(m_imbuedItemInstance);
 }
 
 void TImbuingDialogController::updateExistingImbuement()

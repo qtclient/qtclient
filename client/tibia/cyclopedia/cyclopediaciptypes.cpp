@@ -4,6 +4,8 @@
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
 #include "analysers/analyserstorages.h"
+#include "appearances/appearanceinstance.h"
+#include "protocol/objectdata.h"
 #include "cyclopedia/bestiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/cyclopediamapdata.h"
@@ -737,14 +739,22 @@ void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
 
 void TCyclopediaProtocolMessageHandler::handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message)
 {
-    m_storages.gainWaste->addWaste(static_cast<uint16_t>(message.object_id()), 1, analysers::TAnalyserStorages::nowMs());
+    using ::tibia::appearances::TAppearanceInstanceFactory;
+    const auto objectId = static_cast<uint16_t>(message.object_id());
+    const TAppearanceType* type = TAppearanceInstanceFactory::appearanceType(ThingCategoryItem, objectId);
+    const ::tibia::appearances::TAppearanceInstancePtr instance = type && type->isStackable()
+        ? ::tibia::appearances::TAppearanceInstancePtr(TAppearanceInstanceFactory::createCumulativeObject(objectId, 1))
+        : TAppearanceInstanceFactory::createObject(objectId);
+    m_storages.gainWaste->addWaste(objectId, 1, analysers::TAnalyserStorages::nowMs(), instance);
 }
 
 void TCyclopediaProtocolMessageHandler::handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message)
 {
     const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(message.item());
     const quint32 count = slot.stackable ? std::max<quint32>(1, slot.count) : 1;
-    m_storages.gainWaste->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs());
+    m_storages.gainWaste->addLoot(slot.typeId, count, QString::fromStdString(message.name()), analysers::TAnalyserStorages::nowMs(),
+                                  ::tibia::appearances::TAppearanceInstanceFactory::createObject(
+                                      ::tibia::protocol::TObjectData::fromProtocolInventoryItem(message.item())));
 }
 
 void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(

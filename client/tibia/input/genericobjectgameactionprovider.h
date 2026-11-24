@@ -4,6 +4,8 @@
 #include "gameaction.h"
 #include "worldmap/worldmappicker.h"
 
+#include <QPointer>
+
 #include <memory>
 
 namespace tibia {
@@ -15,6 +17,9 @@ class TCreature;
 class TCreatureStorage;
 class TInspectPlayerGameActionProvider;
 class TPartyGameActionProvider;
+}
+namespace game {
+class TPremiumTimeStorage;
 }
 namespace quickloot {
 class TQuickLootBlackWhitelistStorage;
@@ -38,6 +43,10 @@ public:
                                      std::shared_ptr<creatures::TInspectPlayerGameActionProvider> inspectPlayerGameActionProvider,
                                      std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> quickLootBlackWhitelistStorage);
     virtual ~TGenericObjectGameActionProvider() = default;
+
+    /// The account's premium state: a premium player may quick loot any
+    /// object inside an open loot corpse.
+    void setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage);
 
     /// v4: what can be done to a creature. Id 0 or an unknown creature gives
     /// only TEMPORARY_SELECT_CREATURE(0).
@@ -76,6 +85,7 @@ private:
     std::shared_ptr<creatures::TPartyGameActionProvider> m_partyGameActionProvider;
     std::shared_ptr<creatures::TInspectPlayerGameActionProvider> m_inspectPlayerGameActionProvider;
     std::shared_ptr<quickloot::TQuickLootBlackWhitelistStorage> m_quickLootBlackWhitelistStorage;
+    QPointer<game::TPremiumTimeStorage> m_premiumTimeStorage;
 };
 
 /// CIP's hireling: an NPC whose mapped inspection type is 4 (raw 7).

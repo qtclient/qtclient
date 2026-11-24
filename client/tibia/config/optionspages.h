@@ -24,6 +24,9 @@ class TGenericEnterTextDialogController;
 class TMessageDialogController;
 class TRecordKeyboardShortcutDialogController;
 }
+namespace game {
+class IGameSession;
+}
 }
 
 namespace tibia {
@@ -104,7 +107,15 @@ void TBoundOptionsPage<Base>::apply(TClientOptions& options) const
 /// CIP.
 using TConsoleOptionsPage = TBoundOptionsPage<TConsoleQMLOptionsPage>;
 /// CIP.
-using TMiscOptionsPage = TBoundOptionsPage<TMiscQMLOptionsPage>;
+class TMiscOptionsPage final : public TBoundOptionsPage<TMiscQMLOptionsPage>
+{
+    Q_OBJECT
+public:
+    using TBoundOptionsPage<TMiscQMLOptionsPage>::TBoundOptionsPage;
+
+    /// False on CipSoft's macOS client; host: true on Windows builds.
+    bool isWindows() const override;
+};
 /// CIP.
 using TGameplayOptionsPage = TBoundOptionsPage<TGameplayQMLOptionsPage>;
 /// CIP.
@@ -246,6 +257,8 @@ public:
     QString tooltipTextDisabledRenderers() const override;
     bool rendererLimitationsActive() const override;
     bool isMetal() const override;
+    /// Always false.
+    bool canChangeFpsLimitCheckbox() const override;
 
 private:
     int m_antialiasingMode = 0;
@@ -408,6 +421,8 @@ public:
     void clearActionBarMappings(uint8_t actionBarId);
     /// Closes the page's text, message, assign and key recording dialogs.
     void closeDialogs();
+    /// The spell assign dialog follows the game session's spells.
+    void connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession);
     /// The controls page's rotate modifiers (alt, shift, ctrl).
     void setRotateModifiers(bool rotateWithAlt, bool rotateWithShift, bool rotateWithCtrl);
 

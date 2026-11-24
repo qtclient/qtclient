@@ -2,11 +2,19 @@
 
 #include "app/clientoptions.h"
 #include "config/sidebaroptions.h"
+#include "config/characterconfigurationmanager.h"
 #include "container/containerciptypes.h"
+#include "exaltation/exaltationstorage.h"
 #include "game/currentgamesession.h"
 #include "game/gameciptypes.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "gamewindow/cyclopediadialogcontroller.h"
+#include "gamewindow/socialbuttoncontroller.h"
+#include "gamewindow/storedialogcontroller.h"
+#include "proficiency/proficiencystorage.h"
+#include "skillwheel/skillwheelstorage.h"
+#include "taskboard/taskboardbountytasksstorage.h"
 #include "taskboard/taskboardweeklytasksstorage.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
@@ -354,6 +362,69 @@ void TButtonBarController::connectToPremiumTimeStorage(game::TPremiumTimeStorage
     Q_EMIT premiumTimeChanged();
 }
 
+void TButtonBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
+{
+    if (m_logoutQuestion)
+        m_logoutQuestion->dialog()->close();
+    m_gameSessionConnections.disconnectAll();
+    m_skillWheelStorage = nullptr;
+    m_gameSession = GameSession;
+    using Self = TButtonBarController;
+    if (const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get())) {
+        const config::TCharacterConfigurationManager* configuration = session->characterConfigurationManager().get();
+        if (configuration != nullptr) {
+            if (m_options)
+                disconnect(m_options, nullptr, this, nullptr);
+            m_options = configuration->sidebarOptions();
+            if (m_options)
+                m_gameSessionConnections.add(connect(m_options.data(), &config::TSidebarOptions::sidebarPanelsOptionsChanged, this,
+                                                     &Self::onSidebarPanelsOptionsChanged));
+            m_skillWheelStorage = configuration->skillWheelStorage();
+            if (m_skillWheelStorage)
+                m_gameSessionConnections.add(connect(m_skillWheelStorage.data(), &cip::tibia::skillwheel::TSkillWheelStorage::unspentSkillPointsChanged,
+                                                     this, &Self::highlightSkillWheelButtonChanged));
+        }
+        if (exaltation::TExaltationStorage* exaltation = session->exaltationStorage().get()) {
+            m_gameSessionConnections.add(connect(exaltation, &cip::tibia::exaltation::TExaltationStorage::currentDustLimitChanged, this,
+                                                 &Self::highlightExaltationForgeDialogButtonChanged));
+            m_gameSessionConnections.add(connect(exaltation, &cip::tibia::exaltation::TExaltationStorage::exaltedCurrencyBalanceChanged,
+                                                 this, &Self::highlightExaltationForgeDialogButtonChanged));
+        }
+        // Host: the proficiency storage is the client's one instance.
+        if (proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance())
+            m_gameSessionConnections.add(connect(proficiencies, &proficiency::TProficiencyStorage::unspentPerkChanged, this,
+                                                 &Self::highlightWeaponProficiencyButtonChanged));
+        if (taskboard::TTaskboardWeeklyTasksStorage* weeklyTasks = session->taskboardWeeklyTasksStorage().get())
+            m_gameSessionConnections.add(connect(weeklyTasks, &taskboard::TTaskboardWeeklyTasksStorage::weeklyTaskDataChanged, this,
+                                                 [this] { Q_EMIT highlightTaskboardButtonChanged(); }));
+        if (taskboard::TTaskboardBountyTasksStorage* bountyTasks = session->taskboardBountyTasksStorage().get())
+            m_gameSessionConnections.add(connect(bountyTasks, &taskboard::TTaskboardBountyTasksStorage::bountyTaskDataChanged, this,
+                                                 [this] { Q_EMIT highlightTaskboardButtonChanged(); }));
+        onSidebarPanelsOptionsChanged();
+    }
+    if (auto* social = qobject_cast<TSocialButtonController*>(m_socialButtonController))
+        social->connectToGameSession(m_gameSession);
+    if (auto* store = qobject_cast<TStoreButtonController*>(m_storeButtonController))
+        store->connectToGameSession(m_gameSession);
+    if (auto* cyclopedia = qobject_cast<TCyclopediaButtonController*>(m_cyclopediaButtonController))
+        cyclopedia->connectToGameSession(m_gameSession);
+    if (auto* bosstiary = qobject_cast<TBosstiaryButtonController*>(m_bosstiaryButtonController))
+        bosstiary->connectToGameSession(m_gameSession);
+    Q_EMIT highlightSkillWheelButtonChanged();
+    Q_EMIT highlightExaltationForgeDialogButtonChanged();
+}
+
+void TButtonBarController::onSidebarPanelsOptionsChanged()
+{
+    if (!m_options || m_shortcutsVisible == m_options->sidebarPanelsOptions().controlButtonsVisible)
+        return;
+    m_shortcutsVisible = m_options->sidebarPanelsOptions().controlButtonsVisible;
+    config::SidebarPanelsOptions options = m_options->sidebarPanelsOptions();
+    options.controlButtonsVisible = m_shortcutsVisible;
+    m_options->setSidebarPanelsOptions(options);
+    Q_EMIT shortcutsVisibleChanged();
+}
+
 void TButtonBarController::onGamesessionChanged()
 {
     if (m_logoutQuestion)
@@ -369,7 +440,40 @@ bool TButtonBarController::highlightRewardWallButton() const
 
 bool TButtonBarController::highlightWeaponProficiencyButton() const
 {
-    return m_highlightWeaponProficiencyButton || (m_attention && m_attention->proficiency());
+    if (m_attention && m_attention->proficiency())
+        return true;
+    if (!m_gameSession)
+        return false;
+    const proficiency::TProficiencyStorage* proficiencies = proficiency::TProficiencyStorage::instance();
+    return proficiencies != nullptr && proficiencies->hasUnspentPerk();
+}
+
+bool TButtonBarController::highlightSkillWheelButton() const
+{
+    return m_skillWheelStorage && m_skillWheelStorage->unspentSkillPoints() > 0;
+}
+
+bool TButtonBarController::highlightExaltationForgeDialogButton() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session == nullptr || !session->exaltationStorage())
+        return false;
+    const exaltation::TExaltationStorage& exaltation = *session->exaltationStorage();
+    return static_cast<uint16_t>(exaltation.currentDustLimit()) <= exaltation.dustBalance();
+}
+
+bool TButtonBarController::taskboardButtonHighlight() const
+{
+    const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
+    if (session == nullptr || !session->taskboardWeeklyTasksStorage() || !session->taskboardBountyTasksStorage())
+        return false;
+    if (session->taskboardWeeklyTasksStorage()->weeklyTaskData().progressFinished == 1)
+        return true;
+    for (const taskboard::TBountyTask& task : session->taskboardBountyTasksStorage()->bountyTaskData().tasks) {
+        if (task.claimState == taskboard::EBountyTaskClaimState::Claimable)
+            return true;
+    }
+    return false;
 }
 
 void TButtonBarController::setButtonController(QObject*& member, QObject* controller)
@@ -401,12 +505,8 @@ void TButtonBarController::setSidebarOptions(config::TSidebarOptions* options)
     m_options = options;
     if (!options)
         return;
-    const auto apply = [this] {
-        if (m_options && m_options->sidebarPanelsOptions().controlButtonsVisible != m_shortcutsVisible)
-            setShortcutsVisible(m_options->sidebarPanelsOptions().controlButtonsVisible);
-    };
-    connect(options, &config::TSidebarOptions::sidebarPanelsOptionsChanged, this, apply);
-    apply();
+    connect(options, &config::TSidebarOptions::sidebarPanelsOptionsChanged, this, &TButtonBarController::onSidebarPanelsOptionsChanged);
+    onSidebarPanelsOptionsChanged();
 }
 
 void TButtonBarController::onDropdownButtonClicked()

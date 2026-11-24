@@ -3,7 +3,9 @@
 
 #include "chat/chatchannel.h"
 #include "container/containerciptypes.h"
+#include "config/characterconfigurationmanager.h"
 #include "game/sessiondumpdmpd.h"
+#include "input/gameaction.h"
 #include "protocol/protocolmessagequeue.h"
 #include "renderer/nextframeupdater.h"
 #include "sessiondump/sessiondumpasyncloader.h"
@@ -55,11 +57,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);
     connect(&m_replayTimer, &QTimer::timeout, this, &TSessiondumpGameSession::pumpReplay);
-    // The game connection publishes onConnect once the socket is open.
-    m_hooks.emplace_back("onConnect", [this](const Args&) {
-        Q_EMIT connected();
-        return std::any{};
-    });
+    m_sessiondumpTimer.setParent(this);
     // The base announces worldEntered for every WorldEntered message.
     connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
         onSessiondumpFinished();
@@ -94,18 +92,52 @@ void TSessiondumpGameSession::initialize(const std::shared_ptr<const TGameSessio
     m_sessiondumpMetaInfo = std::dynamic_pointer_cast<const TSessiondumpGameSessionMetaInfo>(metaInfo);
     if (!m_sessiondumpMetaInfo)
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
+    m_configurationCharacterId = m_sessiondumpMetaInfo->sessiondump.characterId;
+    // A dump's protocol handlers are linked before the providers exist.
     createStorages();
     createProtocolMessageHandlers();
+    connectProtocolMessageHandlers();
     createRenderProviders();
     createSoundProviders();
     createGameActionProvidersAndHandlers();
-    connectProtocolMessageHandlers();
     connectGameActionHandlers();
+    // The dump is loaded now and played when the session starts.
+    startSessiondump(m_sessiondumpMetaInfo->sessiondump);
+    // Host: a periodic timer stands in for CipSoft's zero-interval single-shot
+    // timer that the game client restarts every tick and frame.
+    m_sessiondumpTimer.setInterval(16);
+    m_connectionManager.add(
+        connect(&m_sessiondumpTimer, &QTimer::timeout, this, &TSessiondumpGameSession::onSessiondumpTimerElapsed));
 }
 
 void TSessiondumpGameSession::startSession()
 {
-    startSessiondump(m_sessiondumpMetaInfo->sessiondump);
+    // The character configuration is saved and the dump's one loaded.
+    const std::shared_ptr<config::TCharacterConfigurationManager>& manager = characterConfigurationManager();
+    manager->saveConfiguration();
+    manager->loadConfigurationForCharacter(m_configurationCharacterId);
+    gameActionRouter()->handleGameAction(std::make_shared<input::gameactions::TGameActionSimple>(
+        input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS));
+    if (m_sessiondumpPlayer) {
+        // Host: the classic session state starts the replay.
+        tibia::game::startDecodedReplay();
+        m_sessiondumpPlayer->start();
+        m_sessiondumpPlayer->setDuration(m_sessiondumpMetaInfo->sessiondump.durationMilliseconds);
+        m_sessiondumpTimer.start();
+    } else if (!m_replayLoadError.isEmpty()) {
+        // Host: a qtclient text dump that did not load.
+        Q_EMIT connectionError(m_replayLoadError);
+        return;
+    } else if (!m_replayPackets.empty()) {
+        // Host: a qtclient text dump replays its packets.
+        startReplay();
+    }
+    Q_EMIT connected();
+}
+
+void TSessiondumpGameSession::updatePlayerMovementIntentHandler()
+{
+    // A dump has no player movement intent handler.
 }
 
 void TSessiondumpGameSession::startSessiondump(const sessiondump::TSessiondumpCatalog::TEntry& entry)
@@ -162,15 +194,6 @@ void TSessiondumpGameSession::replayDmpd(const QString& file)
         if (!metadata.sessionKey.isEmpty())
             Q_EMIT sessionDumpStart(metadata.sessionKey);
     });
-    m_sessiondumpTimer.setParent(this);
-    // Host: a periodic timer stands in for CipSoft's per-frame restart of its
-    // zero-interval single-shot timer.
-    m_sessiondumpTimer.setInterval(16);
-    connect(&m_sessiondumpTimer, &QTimer::timeout, this, &TSessiondumpGameSession::onSessiondumpTimerElapsed,
-            Qt::UniqueConnection);
-    tibia::game::startDecodedReplay();
-    player->start();
-    m_sessiondumpTimer.start();
 }
 
 void TSessiondumpGameSession::enqueueGameserverMessage(const sessiondump::TGameserverMessagePointer& message)
@@ -211,7 +234,7 @@ void TSessiondumpGameSession::replayHexDump(const QString& file)
             path = fs::path("records") / path;
         QFile input(QString::fromStdString(path.string()));
         if (!input.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Q_EMIT connectionError(tr("Invalid record file: %1").arg(file));
+            m_replayLoadError = tr("Invalid record file: %1").arg(file);
             return;
         }
         std::vector<ReplayBody> bodies;
@@ -244,19 +267,24 @@ void TSessiondumpGameSession::replayHexDump(const QString& file)
                 bodies.push_back(ReplayBody{ at, bytes });
         }
         if (bodies.empty()) {
-            Q_EMIT connectionError(tr("Invalid record file: %1").arg(file));
+            m_replayLoadError = tr("Invalid record file: %1").arg(file);
             return;
         }
-        startReplay(std::move(bodies));
+        // Played when the session starts.
+        m_replayPackets = std::move(bodies);
     } catch (const std::exception& e) {
-        Q_EMIT connectionError(QString::fromUtf8(e.what()));
+        m_replayLoadError = QString::fromUtf8(e.what());
     }
 }
 
-void TSessiondumpGameSession::startReplay(std::vector<ReplayBody> packets)
+void TSessiondumpGameSession::startReplay()
 {
-    tibia::game::startDecodedReplay();
-    m_replayPackets = std::move(packets);
+    try {
+        tibia::game::startDecodedReplay();
+    } catch (const std::exception& e) {
+        Q_EMIT connectionError(QString::fromUtf8(e.what()));
+        return;
+    }
     m_replayIndex = 0;
     m_replaying = true;
     m_replayClock.start();
@@ -287,6 +315,7 @@ void TSessiondumpGameSession::pumpReplay()
 void TSessiondumpGameSession::stopReplay()
 {
     stopDmpd();
+    m_replayLoadError.clear();
     m_sessiondumpPlayer.reset();
     m_sessiondumpLoader.reset();
     m_replaying = false;

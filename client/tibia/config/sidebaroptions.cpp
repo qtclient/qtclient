@@ -566,14 +566,6 @@ QJsonArray intArray(const std::set<int>& values)
     return array;
 }
 
-std::set<int> intSet(const QJsonArray& array)
-{
-    std::set<int> values;
-    for (const QJsonValue& value : array)
-        values.insert(value.toInt());
-    return values;
-}
-
 QJsonObject serializePlayerGuide(const TPlayerGuideWidgetOptions& o)
 {
     QJsonObject json{
@@ -615,6 +607,14 @@ bool sectionOf(const QJsonObject& json, const QString& key, QJsonObject* section
     return true;
 }
 
+}
+
+std::set<int> intSet(const QJsonArray& array)
+{
+    std::set<int> values;
+    for (const QJsonValue& value : array)
+        values.insert(value.toInt());
+    return values;
 }
 
 void TBattleListOptions::setSortOrder(const int order)

@@ -66,6 +66,14 @@ void TAssetManager::startLoading()
     m_loader->load(TAsset(TAsset::SoundCatalog, soundCatalogFileName()), true);
 }
 
+void TAssetManager::stopLoading()
+{
+    if (!m_loader)
+        return;
+    m_loader->stop();
+    m_loader.reset();
+}
+
 void TAssetManager::onNewAdditionalAssetToLoad(const TAsset& AssetToLoad, const bool Prioritized)
 {
     if (!m_loader) {

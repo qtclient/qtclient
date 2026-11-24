@@ -6,6 +6,7 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
+#include "game/gameciptypes.h"
 #include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include "protocol/protocolcodes.h"
@@ -47,6 +48,11 @@ TGenericObjectGameActionProvider::TGenericObjectGameActionProvider(
     , m_inspectPlayerGameActionProvider(std::move(inspectPlayerGameActionProvider))
     , m_quickLootBlackWhitelistStorage(std::move(quickLootBlackWhitelistStorage))
 {
+}
+
+void TGenericObjectGameActionProvider::setPremiumTimeStorage(game::TPremiumTimeStorage* premiumTimeStorage)
+{
+    m_premiumTimeStorage = premiumTimeStorage;
 }
 
 TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t creatureId) const
@@ -281,7 +287,7 @@ TGameActionList TGenericObjectGameActionProvider::objectActionsImpl(const TGameA
     // a premium player's any object inside an open loot corpse.
     const bool lootCorpse = isLootCorpse(flags);
     if ((mapLocation && lootCorpse) || (container && lootCorpse && container->containerIsBrowseField())
-        || (container && container->containerIsLootCorpse() && tibia::game::localPlayerIsPremium()))
+        || (container && container->containerIsLootCorpse() && m_premiumTimeStorage && m_premiumTimeStorage->isPremium()))
         push(A::QUICK_LOOT);
 
     IGameActionPtr inner;

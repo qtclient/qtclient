@@ -4,6 +4,7 @@
 #include "game/gamesessionbase.h"
 #include "imageproviders/imagestripimageprovider.h"
 #include "spells/spellinfostorage.h"
+#include "iclockservice.h"
 
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -100,7 +101,10 @@ TCooldownBarController::TCooldownBarController(spells::TSpellInfoStorage* spellI
 
     m_nextFrame.setSingleShot(true);
     m_nextFrame.setInterval(0);
-    connect(&m_nextFrame, &QTimer::timeout, this, [this] { update(game::TCooldownStorage::now()); });
+    connect(&m_nextFrame, &QTimer::timeout, this, [this] {
+        if (m_gameSession)
+            update(m_gameSession->clockService()->nowMillis());
+    });
 }
 
 void TCooldownBarController::connectToGameSession(const std::shared_ptr<game::IGameSession>& GameSession)
@@ -146,7 +150,7 @@ void TCooldownBarController::update(const qint64 now)
 
     QVariantList groups;
     for (const int group : BarGroups) {
-        const game::TCooldown cooldown = storage->groupCooldown(serverGroup(group));
+        const game::TCooldown cooldown = storage->spellGroupCooldown(uint8_t(serverGroup(group)), now);
         const qint64 remaining = std::max<qint64>(0, cooldown.end - now);
         const qint64 total = std::max<qint64>(1, cooldown.duration);
         groups.append(QVariant::fromValue(
@@ -155,7 +159,7 @@ void TCooldownBarController::update(const qint64 now)
     m_bar->setProperty("spellGroupCooldowns", groups);
 
     QVariantList spellCooldowns;
-    for (const auto& [spellId, cooldown] : storage->spellCooldowns()) {
+    for (const auto& [spellId, cooldown] : storage->spellCooldowns(now)) {
         const qint64 remaining = cooldown.end - now;
         const spells::TSpellInfo* spell = m_spellInfoStorage ? m_spellInfoStorage->spell(spellId) : nullptr;
         if (remaining <= 0 || !spell || !isValidSpellIcon(spell->iconIndex))

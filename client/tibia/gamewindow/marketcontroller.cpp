@@ -1,6 +1,7 @@
 #include "marketcontroller.h"
 
 #include "config/clientoptions.h"
+#include "analysers/itempricestorage.h"
 #include "container/containerciptypes.h"
 #include "game/gamesessionbase.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -20,8 +21,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <memory>
 #include <set>
 #include <stdexcept>
+#include <vector>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -42,6 +45,28 @@ constexpr int RunesCategory = 12;
 
 /// CIP 's order.
 constexpr std::array<int, 27> CategoryOrder{ 1, 2, 3, 4, 24, 5, 6, 7, 8, 9, 10, 25, 11, 12, 13, 26, 23, 14, 15, 16, 17, 18, 19, 27, 20, 21, 29 };
+
+/// The market's categories in CipSoft's order, made once and shared by every market.
+const std::vector<std::shared_ptr<TQmlObjectCategory>>& marketCategories()
+{
+    static const std::vector<std::shared_ptr<TQmlObjectCategory>> categories = [] {
+        std::vector<std::shared_ptr<TQmlObjectCategory>> list;
+        list.reserve(CategoryOrder.size());
+        for (const int identifier : CategoryOrder)
+            list.push_back(std::make_shared<TQmlObjectCategory>(identifier));
+        return list;
+    }();
+    return categories;
+}
+
+/// The category table as the QML list.
+QList<QObject*> marketCategoryList()
+{
+    QList<QObject*> list;
+    for (const std::shared_ptr<TQmlObjectCategory>& category : marketCategories())
+        list.append(category.get());
+    return list;
+}
 
 qmlcomponents::TTextHelperQmlService& textHelper()
 {
@@ -314,13 +339,14 @@ bool TQmlObjectCategory::isHandWeaponCategory()
 TMarketController::TMarketController(config::TClientOptions* clientOptions, QQmlEngine* engine, QQuickItem* dialogParentItem)
     : TDialogController(QStringLiteral("market.qml"), engine, dialogParentItem, nullptr)
     , m_pClientOptions(clientOptions)
-    , m_model([this](const uint16_t typeId, const uint8_t tier) { return m_storage ? static_cast<int>(m_storage->count(typeId, tier)) : 0; })
-    , m_proxy(&m_model)
+    , m_proxy(true, false, true, clientOptions)
     , m_message(new TMessageDialogController(engine, dialogParentItem, this))
 {
+    // Host: the market's counts are the market storage's.
+    m_proxy.model().setCountProvider(
+        [this](const uint16_t typeId, const uint8_t tier) { return m_storage ? static_cast<int>(m_storage->count(typeId, tier)) : 0; });
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
-    for (const int identifier : CategoryOrder)
-        m_categories << new TQmlObjectCategory(identifier, this);
+    m_categories = marketCategoryList();
     m_indexOfSelectedTier = -1;
     m_indexOfSelectedClassification = -1;
     config::TClientOptions* options = m_pClientOptions;
@@ -368,6 +394,7 @@ void TMarketController::connectToGameSession(const std::shared_ptr<game::IGameSe
     m_gameSessionConnections.disconnectAll();
     m_storage = nullptr;
     m_messages = nullptr;
+    m_proxy.disconnectFromStorages();
     m_proxy.resetEntries({});
     m_gameSession = GameSession;
     const auto* session = dynamic_cast<const game::TGameSessionBase*>(m_gameSession.get());
@@ -377,6 +404,7 @@ void TMarketController::connectToGameSession(const std::shared_ptr<game::IGameSe
     using market::TMarketStorage;
     using market::TMarketProtocolMessageHandler;
     m_storage = session->marketStorage().get();
+    m_proxy.connectToStorages(session->playerData(), analysers::TItemPriceStorage::instance(), nullptr, nullptr, nullptr);
     TMarketStorage* storage = m_storage;
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketItemDetailsChanged, this, &Self::onMarketItemDetailsChanged));
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::marketOffersChanged, this, &Self::onMarketOffersChanged));
@@ -385,7 +413,7 @@ void TMarketController::connectToGameSession(const std::shared_ptr<game::IGameSe
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::activeOfferCountChanged, this, &Self::onActiveOfferCountChanged));
     // Host: the depot counts and the forge's classifications reach the list.
     m_gameSessionConnections.add(
-        connect(storage, &TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged));
+        connect(storage, &TMarketStorage::objectCountsChanged, &m_proxy.model(), &TAppearanceTypeListModel::onObjectCountsChanged));
     m_gameSessionConnections.add(connect(storage, &TMarketStorage::classificationsChanged, this, [this] {
         if (dialog()->item())
             rebuildEntries();
@@ -523,8 +551,8 @@ void TMarketController::rebuildEntries()
 
 bool TMarketController::categorySupportsTiers(const int category) const
 {
-    for (int row = 0; row < m_model.size(); ++row) {
-        const TAppearanceTypeEntry& entry = m_model.entry(row);
+    for (int row = 0; row < m_proxy.model().size(); ++row) {
+        const TAppearanceTypeEntry& entry = m_proxy.model().entry(row);
         if (entry.classification == 0)
             continue;
         if (category == TAppearanceTypeListModelSortFilterProxy::AllCategories || entry.marketCategory == category)
@@ -788,7 +816,7 @@ void TMarketController::onStoreDeeplinkClicked()
     else
         return;
     close();
-    auto action = std::make_shared<input::TGameActionOpenStore>(store::OPEN_PREMIUM_OR_BOOSTS, detail);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = detail});
     Q_EMIT publishGameAction(action);
 }
 

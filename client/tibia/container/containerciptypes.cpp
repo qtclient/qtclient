@@ -512,9 +512,35 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
         const uint8_t podiumDirection =
             uint8_t(item.has_podium_direction() ? item.podium_direction() : 0);
         const bool podiumVisible = item.has_podium_visible() && item.podium_visible();
-        if (const auto showOff =
-                std::dynamic_pointer_cast<appearances::TShowOffSocketAppearanceInstance>(slot.appearance))
-            showOff->setLook(podiumOutfit, podiumDirection, podiumVisible);
+        if (std::dynamic_pointer_cast<appearances::TShowOffSocketAppearanceInstance>(slot.appearance)) {
+            // The socket carries the outfit and mount instances, made as the
+            // factory makes them for a protocol show-off socket.
+            using appearances::TAppearanceInstanceFactory;
+            std::shared_ptr<appearances::TOutfitAppearanceInstance> figure;
+            if (podiumOutfit.isCreature() && podiumOutfit.getId() != 0)
+                figure = TAppearanceInstanceFactory::createOutfit(
+                    TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, podiumOutfit.getId()), podiumOutfit,
+                    podiumDirection);
+            else if (podiumOutfit.isItem() && podiumOutfit.getAuxId() != 0)
+                figure = TAppearanceInstanceFactory::createObjectOutfit(podiumOutfit.getAuxId());
+            std::shared_ptr<appearances::TOutfitAppearanceInstance> mount;
+            if (podiumOutfit.hasMount()) {
+                Outfit mountLook;
+                mountLook.setCategory(ThingCategoryCreature);
+                mountLook.setId(podiumOutfit.getMount());
+                mountLook.setHead(podiumOutfit.getMountHead());
+                mountLook.setBody(podiumOutfit.getMountBody());
+                mountLook.setLegs(podiumOutfit.getMountLegs());
+                mountLook.setFeet(podiumOutfit.getMountFeet());
+                mount = TAppearanceInstanceFactory::createOutfit(
+                    TAppearanceInstanceFactory::appearanceType(ThingCategoryCreature, podiumOutfit.getMount()), mountLook,
+                    podiumDirection);
+            }
+            if (mount && figure)
+                figure->setPatterns(podiumDirection, podiumDirection, 1, false);
+            slot.appearance = TAppearanceInstanceFactory::makeTracked<appearances::TShowOffSocketAppearanceInstance>(
+                type, podiumVisible, std::move(figure), std::move(mount));
+        }
     }
 
     return slot;

@@ -125,6 +125,18 @@ bool readExtraIcons(ClassicReader& r, CreatureData* out)
     return true;
 }
 
+/// The u32 id of a known creature: the message names it as both the creature
+/// and the one it is stored under.
+bool readKnownCreatureId(ClassicReader& r, CreatureData* out)
+{
+    uint32_t id = 0;
+    if (!r.u32(id))
+        return false;
+    out->set_remove_id(id);
+    out->set_id(id);
+    return true;
+}
+
 /// The extra data of an object, by the first appearance kind it belongs to.
 bool readObjectExtraData(ClassicReader& r, AppearanceInstance* out)
 {
@@ -574,8 +586,15 @@ void advanceMapViewport(const GameserverMessage&)
 bool isCreatureMessage(const int opcode)
 {
     switch (opcode) {
+    case 119: // InspectionState
     case 139: // CreatureUpdate
+    case 140: // CreatureHealth
+    case 141: // CreatureLight
     case 142: // CreatureOutfit
+    case 143: // CreatureSpeed
+    case 144: // CreatureSkull
+    case 145: // CreatureParty
+    case 146: // CreatureUnpass
     case 147: // CreatureMarks
     case 149: // CreatureType
     case 181: // SnapBack
@@ -672,14 +691,80 @@ size_t fillCreatureMessage(GameserverMessage& msg, const int opcode, ClassicRead
         }
         return r.i;
     }
+    case 119: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageInspectionState::gameserver_message_inspection_state)->mutable_creature();
+        uint8_t state = 0;
+        if (!readKnownCreatureId(r, creature) || !r.u8(state))
+            return 0;
+        creature->set_inspection_type(state);
+        return r.i;
+    }
+    case 140: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health)->mutable_creature();
+        uint8_t health = 0;
+        if (!readKnownCreatureId(r, creature) || !r.u8(health))
+            return 0;
+        creature->set_health_percent(health);
+        return r.i;
+    }
+    case 141: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureLight::gameserver_message_creature_light)->mutable_creature();
+        uint8_t intensity = 0, color = 0;
+        if (!readKnownCreatureId(r, creature) || !r.u8(intensity))
+            return 0;
+        creature->set_light_intensity(intensity);
+        if (!r.u8(color))
+            return 0;
+        creature->set_light_color(color);
+        return r.i;
+    }
     case 142: {
-        auto* m = msg.MutableExtension(GameserverMessageCreatureOutfit::gameserver_message_creature_outfit);
-        uint32_t id = 0;
-        if (!r.u32(id))
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureOutfit::gameserver_message_creature_outfit)->mutable_creature();
+        // The outfit with colours, addons or its object; the mount with colours.
+        if (!readKnownCreatureId(r, creature) || !readOutfit(r, creature->mutable_outfit(), true, true, true)
+            || !readOutfit(r, creature->mutable_mount(), true, false, false))
             return 0;
-        m->set_creature_id(id);
-        if (!readOutfit(r, m->mutable_outfit(), true) || !readOutfit(r, m->mutable_mount(), false))
+        return r.i;
+    }
+    case 143: {
+        auto* m = msg.MutableExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
+        // The first speed is the message's own, the second the creature's.
+        uint16_t baseSpeed = 0, speed = 0;
+        if (!readKnownCreatureId(r, m->mutable_creature()) || !r.u16(baseSpeed) || !r.u16(speed))
             return 0;
+        m->mutable_creature()->set_speed(speed);
+        m->set_base_speed(baseSpeed);
+        return r.i;
+    }
+    case 144: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull)->mutable_creature();
+        uint8_t skull = 0;
+        if (!readKnownCreatureId(r, creature) || !r.u8(skull))
+            return 0;
+        creature->set_skull(skull);
+        return r.i;
+    }
+    case 145: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureParty::gameserver_message_creature_party)->mutable_creature();
+        uint8_t shield = 0;
+        if (!readKnownCreatureId(r, creature) || !r.u8(shield))
+            return 0;
+        creature->set_shield(shield);
+        return r.i;
+    }
+    case 146: {
+        CreatureData* creature =
+            msg.MutableExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass)->mutable_creature();
+        bool unpassable = false;
+        if (!readKnownCreatureId(r, creature) || !readBool(r, unpassable))
+            return 0;
+        creature->set_unpassable(unpassable);
         return r.i;
     }
     case 147: {

@@ -371,5 +371,10 @@ private:
     TPlayerGuideWidgetOptions m_playerGuide;
 };
 
+/// The integers of a JSON array as a set (each value read with toInt, 0 when
+/// it is not a number); the player guide popups and the quest log's hidden
+/// and pinned quest lines.
+std::set<int> intSet(const QJsonArray& array);
+
 }
 }

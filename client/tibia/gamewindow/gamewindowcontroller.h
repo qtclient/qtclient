@@ -87,6 +87,8 @@ public:
     /// The client's news storage (the news dialog, the news button and the
     /// session's news protocol handler read it).
     const std::shared_ptr<news::TNewsStorage>& newsStorage() const { return m_newsStorage; }
+    /// The news cache's disk writer (the client waits for it before closing).
+    const std::shared_ptr<news::TNewsDiskIO>& newsDiskIO() const { return m_newsDiskIO; }
 
     /// gamewindow.qml's item, once it is shown: applies the option-driven game
     /// window state now and again on every option change.

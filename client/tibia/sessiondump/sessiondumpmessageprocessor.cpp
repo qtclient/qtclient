@@ -24,9 +24,9 @@ void TSessiondumpMessageProcessor::process(const TSessiondumpPacketInfo& packet)
             m_consumer->processClientMessage(info.timestamp);
     } else {
         if (m_mode == 1)
-            m_consumer->processServerMessage(info, false, true);
+            m_consumer->processServerMessage(info, 0, network::EConnectionType::Secondary);
         else if (m_mode == 0)
-            m_consumer->processServerMessage(info.timestamp, false, true);
+            m_consumer->processServerMessage(info.timestamp, 0, network::EConnectionType::Secondary);
         if (!m_messageReader->atEnd() && !m_messageReader->afterFirstByte())
             throw std::runtime_error("Sessiondump message was not consumed completely");
     }

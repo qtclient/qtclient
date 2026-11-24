@@ -9,6 +9,8 @@
 #include "assets/things.h"
 #include "client/gamecore.h"
 #include "config/clientoptions.h"
+#include "config/clientsettings.h"
+#include "config/tibiaconfig.h"
 #include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameactionrouter.h"
 #include "game/passiveabilityinfostorage.h"
@@ -49,10 +51,12 @@ namespace tibia::client {
 
 TGameClientBase::TGameClientBase(QQmlEngine* Engine,
                                  std::shared_ptr<shared::TTibiaFileSystemHelper> TibiaFileSystemHelper,
-                                 config::TClientOptions* ClientOptions)
+                                 config::TClientOptions* ClientOptions,
+                                 std::shared_ptr<config::TTibiaConfig> TibiaConfig)
     : m_pEngine(Engine)
     , m_pTibiaFileSystemHelper(std::move(TibiaFileSystemHelper))
     , m_pClientOptions(ClientOptions)
+    , m_pTibiaConfig(TibiaConfig ? std::move(TibiaConfig) : config::processTibiaConfig())
     , m_pAppearancesManager(std::make_shared<appearances::TAppearancesManager>())
     , m_pCyclopediaMapStaticDataStorage(std::make_shared<cyclopedia::TCyclopediaMapStaticDataStorage>())
     , m_pPassiveAbilityInfoStorage(std::make_unique<game::TPassiveAbilityInfoStorage>())

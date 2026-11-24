@@ -9,6 +9,7 @@
 #include "client/preventcloseeventfilter.h"
 #include "config/clientoptions.h"
 #include "config/clientsettings.h"
+#include "config/tibiaconfig.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "crashhandler.h"
@@ -51,7 +52,9 @@ namespace tibia::client {
 TGameApplicationBase::TGameApplicationBase(int& argc, char** argv)
     : QGuiApplication(argc, argv)
     , m_pTibiaFileSystemHelper(std::make_shared<shared::TTibiaFileSystemHelper>())
+    , m_pTibiaConfig(std::make_shared<config::TTibiaConfig>(*m_pTibiaFileSystemHelper))
 {
+    config::setProcessTibiaConfig(m_pTibiaConfig);
     if (qEnvironmentVariable("QT_D3D_NO_VBLANK_THREAD").isEmpty())
         qputenv("QT_D3D_NO_VBLANK_THREAD", "1");
 }
@@ -59,7 +62,9 @@ TGameApplicationBase::TGameApplicationBase(int& argc, char** argv)
 TGameApplicationBase::~TGameApplicationBase()
 {
     // Host: the QML engine goes with the application (CipSoft hands it to
-    // deleteLater); the protobuf library is shut down.
+    // deleteLater); the protobuf library is shut down. The client settings
+    // go with the application, not with the process's statics.
+    config::setProcessTibiaConfig(nullptr);
     google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -173,9 +178,10 @@ void TGameApplication::initialize()
 {
     TGameApplicationBase::initialize();
     m_firstStart = !QFile::exists(m_pTibiaFileSystemHelper->getConfigFilePath(QStringLiteral("clientoptions.json")));
-    // Host: CipSoft's crash reports name the login host of the client
-    // settings; qtclient's login comes from the launcher's environment.
-    setUpCrashHandler(app::LauncherEnv::load(QDir::currentPath()).loginUrl());
+    // Host: the launcher's environment names qtclient's login; the client
+    // settings' login web service when it gives none.
+    const QUrl launcherLoginUrl = app::LauncherEnv::load(QDir::currentPath()).loginUrl();
+    setUpCrashHandler(launcherLoginUrl.isEmpty() ? m_pTibiaConfig->loginWebServiceUrl() : launcherLoginUrl);
     m_clientWindowChangedReactionTimer.setSingleShot(true);
     m_clientWindowChangedReactionTimer.setInterval(50);
     connect(&m_clientWindowChangedReactionTimer, &QTimer::timeout, this, &TGameApplication::onDelayedCliendWindowChanged);
@@ -258,7 +264,7 @@ bool TGameApplication::createGameClient(const int StartMode, const TStartClient&
     // Host: qtclient's client takes the placeholder with its game window
     // (StartClient) and makes its own crash report sender.
     Q_UNUSED(StartMode);
-    m_pGameClient = new TGameClient(qmlEngine(), m_pTibiaFileSystemHelper, m_pClientOptions, m_pDownloadPool);
+    m_pGameClient = new TGameClient(qmlEngine(), m_pTibiaFileSystemHelper, m_pClientOptions, m_pTibiaConfig, m_pDownloadPool);
     TGameClient* gameClient = m_pGameClient.data();
     connect(gameClient, &TGameClient::showErrorAsPopupAndCriticalLog, this,
             &TGameApplication::showErrorAsPopupAndCriticalLog);
@@ -267,6 +273,7 @@ bool TGameApplication::createGameClient(const int StartMode, const TStartClient&
     connect(gameClient, &TGameClient::numberOfSidebarsChanged, this, &TGameApplication::onNumberOfSidebarsChanged);
     connect(gameClient, &TGameClient::newLeftAndRightStatusActionBarWidth, this,
             &TGameApplication::onLeftAndRightStatusActionBarWidthChanged);
+    gameClient->setPackageIsUpToDate(m_startOptions.packageIsUpToDate);
     m_pClientWindow->raise();
     m_pClientWindow->requestActivate();
     const bool started = !StartClient || StartClient(*gameClient, m_pClientWindow, m_pPlaceholder);

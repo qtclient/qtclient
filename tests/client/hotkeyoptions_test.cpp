@@ -5,6 +5,8 @@
 
 #include <QJsonArray>
 
+#include <algorithm>
+
 using namespace tibia::config;
 
 // THotkeyOptions reads and writes the options files through ClientOptions;
@@ -141,4 +143,62 @@ TEST(HotkeyOptions, SetHotkeysMakesTheSetAndReplacesBothChatModes)
     ASSERT_NE(data.set(QStringLiteral("B")), nullptr);
     EXPECT_EQ(data.set(QStringLiteral("B"))->chatOff, off);
     EXPECT_TRUE(data.set(QStringLiteral("B"))->chatOn.empty());
+}
+
+TEST(HotkeyOptions, MergeHotkeysLetsTheOverrideWinOnTheSameKey)
+{
+    THotkeySet set;
+    set.chatOff = { THotkeyBinding{ QKeySequence(QStringLiteral("F1")), TActionSetting::fromJson(action("Look")) },
+                    THotkeyBinding{ QKeySequence(QStringLiteral("F4")), TActionSetting::fromJson(action("Use")) } };
+    THotkeySet overrides;
+    overrides.chatOff = { THotkeyBinding{ QKeySequence(QStringLiteral("F1")), TActionSetting::fromJson(action("Attack")) },
+                          THotkeyBinding{ QKeySequence(QStringLiteral("F2")), TActionSetting::fromJson(action("Follow")) } };
+    overrides.chatOn = { THotkeyBinding{ QKeySequence(QStringLiteral("F3")), TActionSetting::fromJson(action("Logout")) } };
+
+    const THotkeyBindings merged = mergeHotkeys(set, overrides);
+    ASSERT_EQ(merged.chatOff.size(), 3u);
+    EXPECT_EQ(merged.chatOff[0].keys, QKeySequence(QStringLiteral("F1")));
+    EXPECT_EQ(merged.chatOff[0].setting.action, QStringLiteral("Attack"));
+    EXPECT_EQ(merged.chatOff[1].setting.action, QStringLiteral("Follow"));
+    EXPECT_EQ(merged.chatOff[2].setting.action, QStringLiteral("Use"));
+    ASSERT_EQ(merged.chatOn.size(), 1u);
+    EXPECT_EQ(merged.chatOn[0].setting.action, QStringLiteral("Logout"));
+}
+
+TEST(HotkeyOptions, AddBindingMakesTheSetAndReplacesTheKey)
+{
+    THotkeyOptionsData data;
+    data.addBinding(QStringLiteral("New"), true, QKeySequence(QStringLiteral("F5")), TActionSetting::fromJson(action("Look")));
+    data.addBinding(QStringLiteral("New"), true, QKeySequence(QStringLiteral("F5")), TActionSetting::fromJson(action("Use")));
+    ASSERT_NE(data.set(QStringLiteral("New")), nullptr);
+    ASSERT_EQ(data.set(QStringLiteral("New"))->chatOn.size(), 1u);
+    EXPECT_EQ(data.set(QStringLiteral("New"))->chatOn[0].setting.action, QStringLiteral("Use"));
+    EXPECT_TRUE(data.set(QStringLiteral("New"))->chatOff.empty());
+}
+
+TEST(HotkeyOptions, MovementActionsAreTheWalkingActionsAndStopPlayer)
+{
+    EXPECT_TRUE(isMovementAction(TActionSetting::fromJson(action("GoNorth"))));
+    EXPECT_TRUE(isMovementAction(TActionSetting::fromJson(action("GoSouthEast"))));
+    EXPECT_TRUE(isMovementAction(TActionSetting::fromJson(action("StopPlayer"))));
+    EXPECT_FALSE(isMovementAction(TActionSetting::fromJson(action("gonorth"))));
+    EXPECT_FALSE(isMovementAction(TActionSetting::fromJson(action("TurnNorth"))));
+    EXPECT_FALSE(isMovementAction(TActionSetting{}));
+}
+
+TEST(HotkeyOptions, BuiltInVocationSetsCarryTheGlobalShortcuts)
+{
+    const THotkeyBindings global = THotkeyOptions::builtInHotkeys(QStringLiteral("GlobalShortcuts"));
+    ASSERT_FALSE(global.chatOff.empty());
+    for (const QString& vocation : THotkeyOptions::vocationSetNames()) {
+        const THotkeySet set = THotkeyOptions::builtInSet(vocation);
+        EXPECT_EQ(set.chatOff, global.chatOff) << vocation.toStdString();
+        EXPECT_EQ(set.chatOn, global.chatOn) << vocation.toStdString();
+    }
+    const auto battleList = std::find_if(global.chatOff.begin(), global.chatOff.end(), [](const THotkeyBinding& binding) {
+        return binding.keys == QKeySequence(QStringLiteral("Ctrl+B"));
+    });
+    ASSERT_NE(battleList, global.chatOff.end());
+    EXPECT_EQ(battleList->setting.action, QStringLiteral("ToggleBattlelist"));
+    EXPECT_TRUE(THotkeyOptions::builtInSet(QStringLiteral("Nobody")).chatOff.empty());
 }

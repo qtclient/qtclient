@@ -696,6 +696,13 @@ std::shared_ptr<T> TAppearanceInstanceFactory::makeTracked(TAppearanceType* type
     });
 }
 
+// Host: the inventory slot reader (container/containerciptypes.cpp) makes the
+// show-off socket of a legacy inventory podium.
+template std::shared_ptr<TShowOffSocketAppearanceInstance>
+TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance, const bool&, std::shared_ptr<TOutfitAppearanceInstance>,
+                                        std::shared_ptr<TOutfitAppearanceInstance>>(
+    TAppearanceType*, const bool&, std::shared_ptr<TOutfitAppearanceInstance>&&, std::shared_ptr<TOutfitAppearanceInstance>&&);
+
 namespace {
 
 /// An object of `type` read from an inventory item: the protocol's object
@@ -713,7 +720,7 @@ TAppearanceInstancePtr createItem(TAppearanceType* type, const uint16_t count, c
     if (special.isContainer(id))
         return TAppearanceInstanceFactory::makeTracked<TContainerObjectAppearanceInstance>(type);
     if (special.isShowOffSocket(id))
-        return TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance>(type);
+        return TAppearanceInstanceFactory::makeTracked<TShowOffSocketAppearanceInstance>(type, true, nullptr, nullptr);
     if (special.isUpgradeable(id))
         return TAppearanceInstanceFactory::createUpgradeableObject(id, tier);
     if (special.isWearOut(id))
@@ -882,8 +889,8 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(const tibia::pro
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit,
-                                                                           const uint8_t direction)
+std::shared_ptr<TOutfitAppearanceInstance>
+TAppearanceInstanceFactory::createOutfitFromProtobuf(const tibia::protobuf::protocol::Outfit& outfit, const uint8_t direction)
 {
     if (outfit.has_look_type()) {
         const auto lookType = static_cast<uint16_t>(outfit.look_type());
@@ -933,32 +940,15 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::createFromProtobuf(const tibi
                                      hasAmmo ? static_cast<int>(container.ammo_total()) : 0, (flags & 4) != 0, nowMs);
     }
     if (object.HasExtension(pb::ShowOffSocketObject::show_off_socket_object)) {
-        // Host: qtclient's show-off socket keeps the figure as an Outfit (CIP:
-        // the outfit and mount instances of the protocol outfits).
         const pb::ShowOffSocketObject& socket = object.GetExtension(pb::ShowOffSocketObject::show_off_socket_object);
-        auto instance = makeTracked<TShowOffSocketAppearanceInstance>(appearanceType(ThingCategoryItem, id));
-        Outfit look;
-        if (socket.outfit().has_look_type()) {
-            const pb::OutfitColor& colors = socket.outfit().colors();
-            look.setCategory(ThingCategoryCreature);
-            look.setId(static_cast<uint16_t>(socket.outfit().look_type()));
-            look.setHead(static_cast<uint8_t>(colors.head()));
-            look.setBody(static_cast<uint8_t>(colors.body()));
-            look.setLegs(static_cast<uint8_t>(colors.legs()));
-            look.setFeet(static_cast<uint8_t>(colors.feet()));
-            look.setAddons(static_cast<uint8_t>(socket.outfit().addons()));
-        } else if (socket.outfit().has_object_type()) {
-            look.setCategory(ThingCategoryItem);
-            look.setAuxId(static_cast<uint16_t>(socket.outfit().object_type()));
-        }
-        if (socket.mount().has_look_type()) {
-            const pb::OutfitColor& colors = socket.mount().colors();
-            look.setMount(static_cast<uint16_t>(socket.mount().look_type()));
-            look.setMountColors(static_cast<uint8_t>(colors.head()), static_cast<uint8_t>(colors.body()),
-                                static_cast<uint8_t>(colors.legs()), static_cast<uint8_t>(colors.feet()));
-        }
-        instance->setLook(look, static_cast<uint8_t>(socket.direction()), socket.visible());
-        return instance;
+        const auto direction = static_cast<uint8_t>(socket.direction());
+        TAppearanceType* type = appearanceType(ThingCategoryItem, id);
+        std::shared_ptr<TOutfitAppearanceInstance> outfit = createOutfitFromProtobuf(socket.outfit(), direction);
+        std::shared_ptr<TOutfitAppearanceInstance> mount = createOutfitFromProtobuf(socket.mount(), direction);
+        // A mounted outfit draws its riding sprites.
+        if (mount && outfit)
+            outfit->setPatterns(direction, direction, 1, false);
+        return makeTracked<TShowOffSocketAppearanceInstance>(type, socket.visible(), std::move(outfit), std::move(mount));
     }
     if (object.HasExtension(pb::UpgradeableObject::upgradeable_object))
         return createUpgradeableObject(id, static_cast<uint8_t>(object.GetExtension(pb::UpgradeableObject::upgradeable_object).tier()));
@@ -1062,94 +1052,40 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outf
     return createOutfit(type, outfit, 2);
 }
 
-void TShowOffSocketAppearanceInstance::setLook(const Outfit& outfit, const uint8_t direction, const bool socketVisible)
+TShowOffSocketAppearanceInstance::TShowOffSocketAppearanceInstance(TAppearanceType* type, const bool visible,
+                                                                   std::shared_ptr<TOutfitAppearanceInstance> outfit,
+                                                                   std::shared_ptr<TOutfitAppearanceInstance> mount)
+    : TObjectAppearanceInstance(type)
+    , m_visible(visible)
+    , m_outfit(std::move(outfit))
+    , m_mount(std::move(mount))
 {
-    m_outfit = outfit;
-    m_direction = direction;
-    m_socketVisible = socketVisible;
-    m_hasLook = true;
 }
 
-void TShowOffSocketAppearanceInstance::clearLook()
+bool TShowOffSocketAppearanceInstance::updateAnimation(const qint64 nowMs)
 {
-    m_outfit = Outfit{};
-    m_direction = 2;
-    m_socketVisible = true;
-    m_hasLook = false;
+    if (TObjectAppearanceInstance::updateAnimation(nowMs))
+        return true;
+    if (m_outfit && m_outfit->updateAnimation(nowMs))
+        return true;
+    return m_mount && m_mount->updateAnimation(nowMs);
 }
 
-bool TShowOffSocketAppearanceInstance::hasFigure() const
+worldmap::TWorldMapSubfieldExtent TShowOffSocketAppearanceInstance::figureDisplacement() const
 {
-    if (!m_hasLook)
-        return false;
-    if (m_outfit.isCreature())
-        return m_outfit.getId() != 0;
-    if (m_outfit.isItem())
-        return m_outfit.getAuxId() != 0;
-    return m_outfit.hasMount();
+    if (!m_outfit)
+        return { 0, 0, 0 };
+    const worldmap::TWorldMapSubfieldExtent standing = m_mount ? m_mount->displacement() : m_outfit->displacement();
+    return { standing.width, standing.height, elevation() };
 }
 
-std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppearanceInstance::figureLayers() const
+worldmap::TWorldMapSubfieldExtent TShowOffSocketAppearanceInstance::figureRenderDisplacement() const
 {
-    std::vector<FigureLayer> layers;
-    if (!hasFigure())
-        return layers;
-
-    const int direction = std::clamp<int>(m_direction, tibia::client::North, tibia::client::West);
-    const auto packColors = [](const Outfit& outfit) -> uint32_t {
-        return outfit.getHead() | outfit.getBody() << 8 | outfit.getLegs() << 16
-            | static_cast<uint32_t>(outfit.getFeet()) << 24;
-    };
-
-    if (m_outfit.isCreature()) {
-        TAppearanceType* type = tibia::game::rawThingType(m_outfit.getId(), ThingCategoryCreature);
-        if (!type)
-            return layers;
-
-        int dx = 0;
-        int dy = 0;
-        const bool mounted = m_outfit.hasMount();
-        if (mounted) {
-            if (TAppearanceType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
-                dx -= mount->getDisplacement().x();
-                dy -= mount->getDisplacement().y();
-                int mountPhase = 0;
-                mountPhase = m_idleAnimators.phaseAt(mount, mount->idleAnimation(), tibia::shared::TClockService::frameMillis());
-                layers.push_back(FigureLayer{ mount, dx, dy, direction, 0, 0, mountPhase, false, 0 });
-                dx += type->getDisplacement().x();
-                dy += type->getDisplacement().y();
-            }
-        }
-
-        const int zPattern = mounted ? std::min(1, std::max(0, type->getNumPatternZ() - 1)) : 0;
-        int phase = 0;
-        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
-        const bool colorize = type->getLayers() > 1;
-        const uint32_t colors = colorize ? packColors(m_outfit) : 0;
-        for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-            if (addon > 0 && !(m_outfit.getAddons() & (1 << (addon - 1))))
-                continue;
-            layers.push_back(FigureLayer{ type, dx, dy, direction, addon, zPattern, phase, colorize, colors });
-        }
-        return layers;
-    }
-
-    if (!m_outfit.isItem())
-        return layers;
-
-    TAppearanceType* type = tibia::game::rawThingType(m_outfit.getAuxId(), ThingCategoryItem);
-    if (!type)
-        return layers;
-
-    int phase = 0;
-    if (type->idleAnimation())
-        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
-    else if (const int phases = type->getAnimationPhases(); phases > 1) {
-        const int ticks = tibia::config::itemTicksPerFrame();
-        phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
-    }
-    layers.push_back(FigureLayer{ type, -type->getDisplacement().x(), -type->getDisplacement().y(), 0, 0, 0, phase, false, 0 });
-    return layers;
+    int socketElevation = 0;
+    if (m_visible)
+        socketElevation = thingType() ? thingType()->getElevation() : 0;
+    const worldmap::TWorldMapSubfieldExtent figure = figureDisplacement();
+    return { figure.width - socketElevation, figure.height - socketElevation, figure.depth };
 }
 
 }

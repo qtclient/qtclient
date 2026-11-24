@@ -291,7 +291,6 @@ private:
     TMarketCoinTransactionDetailsDialogController* m_transactionDetailsDialog;
     int m_transactionDetailsId = 0;
     /// Host: the hireling rename prompt lives with the store (CIP creates it with the game client).
-    THirelingNameChangeController* m_hirelingNameChange;
 
 public Q_SLOTS:
     /// The router's game actions (CIP: handleGameAction; connected to

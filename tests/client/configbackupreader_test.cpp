@@ -17,7 +17,7 @@ namespace {
 QString writeArchive(const QTemporaryDir& dir, const QList<TArchiveEntry>& entries)
 {
     const QString path = dir.filePath(QStringLiteral("backup.zip"));
-    EXPECT_TRUE(tibia::config::optionsarchive::write(path, entries));
+    EXPECT_NO_THROW(tibia::config::optionsarchive::write(path, entries));
     return path;
 }
 

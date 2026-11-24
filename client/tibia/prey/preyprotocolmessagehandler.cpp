@@ -103,9 +103,10 @@ void TPreyProtocolMessageHandler::handlePreyDataMessage(const ::tibia::protobuf:
         m_preyStorage->setSlotInactive(preyId);
         break;
     case tibia::client::PREY_STATE_ACTIVE:
-        // The active monster is the first one; the time left comes with it.
+        // The active monster is the first one; the time left is set after the state.
         if (!monsters.isEmpty())
-            m_preyStorage->setSlotActive(preyId, bonus, monsters.front(), static_cast<int>(static_cast<uint16_t>(m.time_left())));
+            m_preyStorage->setSlotActive(preyId, bonus, monsters.front());
+        m_preyStorage->setSlotTimeLeft(preyId, static_cast<int>(m.time_left()));
         break;
     case tibia::client::PREY_STATE_SELECTION:
         m_preyStorage->setSlotSelection(preyId, std::move(monsters));

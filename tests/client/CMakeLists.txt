@@ -164,6 +164,8 @@ qtclient_add_port_test(client_hotkeyoptions_tests
 )
 set_target_properties(client_hotkeyoptions_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_hotkeyoptions_tests PRIVATE Qt6::Gui)
+qt_add_resources(client_hotkeyoptions_tests client_hotkeyoptions_hotkeys PREFIX / BASE "${CMAKE_SOURCE_DIR}/client/tibia"
+    FILES "${CMAKE_SOURCE_DIR}/client/tibia/config/defaulthotkeys.json")
 
 # CIP shared::TIODeviceReader / TIODeviceWriter (QAbstractSocket check needs Network).
 find_package(Qt6 REQUIRED COMPONENTS Network)
@@ -298,7 +300,10 @@ if(Qt6_FOUND AND TARGET tibia AND TARGET qtclient_shared)
         ${_sd}/sessiondumppacketreader.cpp
         ${_sd}/sessiondumpprocessor.cpp
         ${_sd}/sessiondumpreader.cpp
-        ${_sd}/sessiondumpreadersfactory.cpp)
+        ${_sd}/sessiondumpreadersfactory.cpp
+        # Wave 14: the loader's protocol chain (sessiondumpasyncloaderprotocol.cpp)
+        # needs the whole client; the test's double parses the protobuf messages.
+        sessiondumpplayer_consumerstub.cpp)
     set_target_properties(client_sessiondumpplayer_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
     target_include_directories(client_sessiondumpplayer_tests PRIVATE
         ${CMAKE_SOURCE_DIR}/client/tibia
@@ -671,8 +676,24 @@ target_link_libraries(client_worldmapfullmap_tests PRIVATE cip_messages)
 # protocol.pb.h names fields "slots"; like the tibia target.
 target_compile_definitions(client_worldmapfullmap_tests PRIVATE QT_NO_KEYWORDS
     QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
+# Wave 14: CipSoft's single-value creature messages carry CreatureData.
+qtclient_add_port_test(client_creaturemessages_tests creaturemessages_test.cpp)
+target_link_libraries(client_creaturemessages_tests PRIVATE cip_messages)
+target_compile_definitions(client_creaturemessages_tests PRIVATE QT_NO_KEYWORDS
+    QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
 # Wave 13: CipSoft's unknown game server message exception.
 qtclient_add_port_test(client_unknowngameserverexception_tests
     unknowngameserverexception_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/protocol/unknowngameserverexception.cpp
 )
+# Wave 14: CipSoft's client settings object (TTibiaConfig).
+qtclient_add_port_test(client_tibiaconfig_tests
+    tibiaconfig_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/tibiaconfig.cpp
+)
+# Wave 14: the minimap's waypoint sectors (the planner's cost lookup).
+qtclient_add_port_test(client_waypointsectors_tests
+    waypointsectors_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/minimap/waypointsectors.cpp
+)
+target_link_libraries(client_waypointsectors_tests PRIVATE Qt6::Gui)

@@ -22,6 +22,9 @@ class TPlayerData;
 namespace spells {
 class TSpellInfoStorage;
 }
+namespace shared {
+class IClockService;
+}
 namespace input {
 
 /// CIP input::TActionButtonGameActionHandler: runs a triggered action button.
@@ -32,7 +35,7 @@ namespace input {
 /// multi action button. A held key (auto repeat) does not run a multi action.
 ///
 /// Host concerns: the hotkey options, the keyboard shortcut handler's action
-/// factory, the clock (TCooldownStorage::now) and the ping are qtclient
+/// factory and the ping are qtclient
 /// singletons or statics; CipSoft passes them in.
 class TActionButtonGameActionHandler final : public cip::tibia::input::TActionButtonGameActionHandler
 {
@@ -41,7 +44,7 @@ public:
     TActionButtonGameActionHandler(spells::TSpellInfoStorage* spellInfoStorage, std::shared_ptr<game::TCooldownStorage> cooldownStorage,
                                    std::shared_ptr<game::TPlayerData> playerData,
                                    std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> objectInfoStorage,
-                                   QObject* parent = nullptr);
+                                   std::shared_ptr<shared::IClockService> clockService, QObject* parent = nullptr);
     ~TActionButtonGameActionHandler() override;
     TActionButtonGameActionHandler(const TActionButtonGameActionHandler&) = delete;
     TActionButtonGameActionHandler& operator=(const TActionButtonGameActionHandler&) = delete;
@@ -64,6 +67,7 @@ private:
     std::shared_ptr<game::TCooldownStorage> m_cooldownStorage;
     std::shared_ptr<game::TPlayerData> m_playerData;
     std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> m_objectInfoStorage;
+    std::shared_ptr<shared::IClockService> m_clockService;
 };
 
 }

@@ -245,7 +245,7 @@ void TTeamAssemblePageController::onEditMemberStatusClicked(const uint Character
 
 void TTeamAssemblePageController::getPremiumClicked()
 {
-    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::TStoreOpenParameters{.openAction = store::OPEN_PREMIUM_OR_BOOSTS, .premiumDetail = 0});
     Q_EMIT publishGameAction(action);
 }
 

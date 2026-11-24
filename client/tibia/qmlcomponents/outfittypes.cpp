@@ -143,6 +143,17 @@ void TOutfitColorQmlType::copyFrom(cip::tibia::qmlcomponents::TOutfitColorQmlTyp
     Q_EMIT colorChanged();
 }
 
+uint32_t TOutfitColorQmlType::colorIndices() const
+{
+    return uint32_t(uint8_t(m_headColorIndex)) | uint32_t(uint8_t(m_torsoColorIndex)) << 8 | uint32_t(uint8_t(m_legsColorIndex)) << 16
+        | uint32_t(uint8_t(m_detailColorIndex)) << 24;
+}
+
+bool operator!=(const TOutfitColorQmlType& a, const TOutfitColorQmlType& b)
+{
+    return a.colorIndices() != b.colorIndices();
+}
+
 QJsonObject TOutfitColorQmlType::toJsonObject()
 {
     QJsonObject json;

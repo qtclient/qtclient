@@ -7,6 +7,7 @@
 #include "input/keyboardshortcuthandler.h"
 #include "input/multiactionprioritysolver.h"
 #include "spells/spellinfostorage.h"
+#include "iclockservice.h"
 
 #include <tibia/game/gamesession.h>
 
@@ -88,12 +89,13 @@ TActionButtonGameActionHandler::TActionButtonGameActionHandler(spells::TSpellInf
                                                                std::shared_ptr<game::TCooldownStorage> cooldownStorage,
                                                                std::shared_ptr<game::TPlayerData> playerData,
                                                                std::shared_ptr<container::TObjectAppearanceInstanceInfoStorage> objectInfoStorage,
-                                                               QObject* parent)
+                                                               std::shared_ptr<shared::IClockService> clockService, QObject* parent)
     : cip::tibia::input::TActionButtonGameActionHandler(parent)
     , m_spellInfoStorage(spellInfoStorage)
     , m_cooldownStorage(std::move(cooldownStorage))
     , m_playerData(std::move(playerData))
     , m_objectInfoStorage(std::move(objectInfoStorage))
+    , m_clockService(std::move(clockService))
 {
 }
 
@@ -132,10 +134,10 @@ config::TActionSetting TActionButtonGameActionHandler::actionToExecute(const con
         adapters.emplace_back(m_spellInfoStorage, slot);
         candidates.push_back(&adapters.back());
     }
-    // Host: the clock and the ping are qtclient statics.
+    // Host: the ping is a qtclient static.
     const qint64 latency = std::min<qint64>(tibia::game::getPing() / 2, 400);
     const TMultiActionPrioritySolver solver(m_cooldownStorage.get(), m_playerData.get(), m_objectInfoStorage.get(),
-                                            game::TCooldownStorage::now(), latency);
+                                            m_clockService->nowMillis(), latency);
     const auto* chosen = static_cast<const TPrioritySolverAdapter*>(solver.solve(candidates));
     return chosen ? chosen->setting() : setting;
 }

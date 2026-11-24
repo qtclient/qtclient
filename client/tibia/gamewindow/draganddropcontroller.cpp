@@ -1,6 +1,9 @@
 #include "draganddropcontroller.h"
 
-#include "container/containerciptypes.h"
+#include "game/thingsession_forward.h"
+#include "input/gameactioncontext.h"
+#include "protocol/objectdata.h"
+#include "qmlcomponents/appearanceinstancerenderer.h"
 #include "gamewindow/mousecursorcontroller.h"
 
 #include <client/position.h>
@@ -21,8 +24,6 @@
 namespace tibia::gamewindow {
 
 namespace {
-
-using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
 /// TibiaStyle.dragKeyMoveTibiaObject, the drop areas' key.
 const QString MoveObjectMimeType = QStringLiteral("application/x-move-tibia-object");
@@ -187,7 +188,7 @@ void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObj
     m_source = qobject_cast<QQuickItem*>(source);
     const input::TObjectGameActionContext& object = action->context();
     const uint32_t creatureId = input::creatureOfObject(object);
-    updateIcon(creatureId ? 0 : object.objectClientId(), object.position(), object.stackPosition(), creatureId);
+    updateIcon();
     // CipSoft dragApperanceInstanceIcon is a SingleObject item renderer — creatures
     // have no item art under the cursor (looktype-as-typeid would show a random item).
     const bool creatureDrag = creatureId != 0;
@@ -224,9 +225,7 @@ void TDragAndDropController::onDragAndDropEventFilterFinished()
         m_source->ungrabMouse();
         m_source = nullptr;
     }
-    updateIcon(0, {}, -1, 0);
-    if (m_icon)
-        m_icon->setVisible(false);
+    clearIcon();
 }
 
 void TDragAndDropController::onDragAndDropMousePositionChanged()
@@ -236,38 +235,60 @@ void TDragAndDropController::onDragAndDropMousePositionChanged()
     m_icon->setPosition(m_icon->window()->mapFromGlobal(QCursor::pos()));
 }
 
-void TDragAndDropController::updateIcon(const uint16_t objectClientId, const Position& position,
-                                        const int stackPosition, const uint32_t creatureId)
+void TDragAndDropController::updateIcon()
+{
+    using input::EObjectApperanceTypeContextType;
+    using protocol::TObjectData;
+    m_draggedObjectInstance.reset();
+    const auto* object = m_action ? dynamic_cast<const input::TObjectApperanceTypeGameActionContext*>(m_action->object().get()) : nullptr;
+    if (object) {
+        const uint16_t typeId = object->appearanceTypeId();
+        TObjectData data;
+        switch (object->objectApperanceTypeContextType()) {
+        case EObjectApperanceTypeContextType::LIQUID:
+            data = TObjectData::liquid(typeId, static_cast<const input::TLiquidObjectApperanceTypeGameActionContext*>(object)->liquidType());
+            break;
+        case EObjectApperanceTypeContextType::UPGRADEABLE:
+            data = TObjectData::upgradeable(typeId, static_cast<const input::TUpgradeableObjectApperanceTypeGameActionContext*>(object)->tier());
+            break;
+        default: {
+            const TAppearanceTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+            if (type && type->isStackable()) {
+                data = TObjectData::cumulative(typeId, 1);
+            } else if (type && type->isDecoKit()) {
+                const auto* decoItemKit = dynamic_cast<const input::TDecoItemKitObjectApperanceTypeGameActionContext*>(object);
+                data = TObjectData::decoItemKit(typeId, decoItemKit ? decoItemKit->decoItemId() : 0);
+            } else {
+                data = TObjectData::plain(typeId);
+            }
+            break;
+        }
+        }
+        m_draggedObjectInstance = appearances::TAppearanceInstanceFactory::createObject(data);
+    }
+    applyIconProperties();
+    if (m_icon)
+        m_icon->setVisible(true);
+}
+
+void TDragAndDropController::applyIconProperties()
 {
     if (!m_icon)
         return;
-    uint16_t typeId = objectClientId;
-    int cumulative = 0;
-    int liquid = 0;
-    // Creatures: clear item icon properties. SingleObject cannot draw outfits; CipSoft
-    // leaves the drag icon empty for MOVE_OBJECT with wire id Proto::Creature (99).
-    if (creatureId || objectClientId == Proto::Creature) {
-        typeId = 0;
-    } else if (objectClientId && position.x == UINT16_MAX) {
-        container::TInventorySlot slot;
-        if (position.y & 0x40) {
-            if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                if (const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F))
-                    slot = storage->slotAt(row->id(), static_cast<int>(row->firstIndex()) + std::max(0, stackPosition));
-            }
-        } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-            slot = inventory->slotAt(position.y);
-        }
-        if (!slot.empty()) {
-            typeId = slot.typeId;
-            cumulative = slot.stackable ? slot.count : 0;
-            liquid = slot.fluidOrSplash ? slot.fluid : 0;
-        }
-    }
-    m_icon->setProperty("typeid", static_cast<int>(typeId));
-    m_icon->setProperty("cumulativeCount", cumulative);
-    m_icon->setProperty("liquidType", QVariant::fromValue(static_cast<Info::ELiquidType>(liquid)));
-    m_icon->setProperty("hookDirection", QVariant::fromValue(Info::EHookDirection::NONE));
+    using qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
+    m_icon->setProperty("typeid", TObjectAppearanceInstanceInfoQmlType::getQmlTypeId(m_draggedObjectInstance));
+    m_icon->setProperty("cumulativeCount", TObjectAppearanceInstanceInfoQmlType::getQmlCumulativeCount(m_draggedObjectInstance));
+    m_icon->setProperty("liquidType", QVariant::fromValue(TObjectAppearanceInstanceInfoQmlType::getQmlLiquidType(m_draggedObjectInstance)));
+    m_icon->setProperty("hookDirection",
+                        QVariant::fromValue(TObjectAppearanceInstanceInfoQmlType::getQmlHookDirection(m_draggedObjectInstance)));
+}
+
+void TDragAndDropController::clearIcon()
+{
+    m_draggedObjectInstance.reset();
+    applyIconProperties();
+    if (m_icon)
+        m_icon->setVisible(false);
 }
 
 }

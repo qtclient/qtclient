@@ -154,7 +154,6 @@ private:
 
     /// The item classes of the forge data, sorted.
     std::vector<int> m_classifications;
-    TAppearanceTypeListModel m_model;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     bool m_entriesBuilt = false;
     bool m_shown = false;

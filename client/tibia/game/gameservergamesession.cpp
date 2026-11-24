@@ -35,9 +35,13 @@
 #include "protocol/extendedopcode.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
+#include "protocol/protocolreader.h"
+#include "shared/iodevicereader.h"
+#include "shared/tibiafilesystemhelper.h"
 #include "worldmap/worldmapgameactionhandler.h"
 
 #include "config/clientoptions.h"
+#include "config/specialconditionsoptions.h"
 
 #include "clockservice.h"
 #include "compressionhelper.h"
@@ -221,6 +225,14 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
     if (!gameserverMetaInfo)
         throw std::invalid_argument("wrong type of TGameSessionMetaInfo submitted");
     createStorages();
+    // The player's creature loads its character's configuration.
+    config::TCharacterConfigurationManager* manager = characterConfigurationManager().get();
+    connect(creatureStorage().get(), &creatures::TCreatureStorage::playerAdded, manager,
+            [manager](const std::weak_ptr<creatures::TCreature>& player) {
+                // Host: qtclient's manager takes the creature's id.
+                if (const std::shared_ptr<creatures::TCreature> locked = player.lock())
+                    manager->onPlayerCreatureLoaded(locked->creatureId());
+            });
     createProtocolMessageHandlers();
     createRenderProviders();
     createSoundProviders();
@@ -249,9 +261,8 @@ void TGameserverGameSession::initialize(const std::shared_ptr<const TGameSession
 void TGameserverGameSession::createProtocolMessageHandlers()
 {
     TGameSessionBase::createProtocolMessageHandlers();
-    // Host: qtclient has no Epic Games Store distribution.
-    m_loginProtocolMessageHandler =
-        std::make_shared<authentication::TLoginProtocolMessageHandler>(m_authenticationAndEncryptionInfo, false);
+    m_loginProtocolMessageHandler = std::make_shared<authentication::TLoginProtocolMessageHandler>(
+        m_authenticationAndEncryptionInfo, shared::isEpicDistribution(files::data()));
     m_networkQualityProtocolMessageHandler = std::make_shared<network::TNetworkQualityProtocolMessageHandler>(clockService());
     using authentication::TLoginProtocolMessageHandler;
     TLoginProtocolMessageHandler* login = m_loginProtocolMessageHandler.get();
@@ -281,7 +292,9 @@ void TGameserverGameSession::createNetworkStack()
         m_authenticationAndEncryptionInfo->xteaHelper(), m_compressionHelper);
     // A live game server's messages are all known: an unknown one throws.
     auto serverMessageProcessor = std::make_shared<protocol::TProtocolServerMessageProcessor>(
-        std::make_shared<protocol::TProtobufServerMessageTranslator>(), protocolMessageQueue(), true);
+        std::make_shared<protocol::TProtobufServerMessageTranslator>(std::make_shared<protocol::TProtocolReader>(
+            std::make_shared<shared::TIODeviceReader>(m_serverMessageStream, QDataStream::LittleEndian))),
+        protocolMessageQueue(), true);
     m_serverPacketProcessor =
         std::make_shared<protocol::TProtocolServerPacketProcessor>(m_serverMessageStream, serverMessageProcessor);
 
@@ -563,6 +576,20 @@ network::TNetworkLatency TGameserverGameSession::latency() const
 {
     return m_networkQualityProtocolMessageHandler ? m_networkQualityProtocolMessageHandler->latency()
                                                   : network::TNetworkLatency{};
+}
+
+void TGameserverGameSession::onCharacterConfigurationLoaded() const
+{
+    TGameSessionBase::onCharacterConfigurationLoaded();
+    // A character without a sidebar configuration of its own shows its
+    // special conditions in the HUD.
+    if (!characterConfigurationManager()->hasDefaultSidebarConfiguration())
+        return;
+    config::TClientOptions* clientOptions = config::TClientOptions::instance();
+    config::SpecialConditionsOptions options =
+        config::SpecialConditionsOptions::fromJson(clientOptions->specialConditionsOptions());
+    options.showInHUD = true;
+    clientOptions->setSpecialConditionsOptions(options.toJson());
 }
 
 void TGameserverGameSession::onGameReadyForSecondaryConnection()

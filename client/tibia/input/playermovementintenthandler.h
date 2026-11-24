@@ -12,6 +12,7 @@
 #include <QElapsedTimer>
 #include <QString>
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -98,8 +99,6 @@ public:
     /// CIP v33: drop the goal and the path, keeping a held direction.
     void clearPath();
 
-    /// Called every frame.
-    void tick();
     /// The player's position changed (a confirmed step, a teleport).
     void onPositionChanged(const worldmap::TWorldMapCoordinate& position);
     /// The server rejected the step; the player looks in `direction`.
@@ -115,9 +114,15 @@ public Q_SLOTS:
     /// CIP v13: the handler keeps the player's creature and follows its
     /// position writes (onPositionChanged).
     void setPlayer(std::weak_ptr<tibia::creatures::TCreature> pPlayer);
+    /// CIP v14: called every frame, and when the session's movement timer
+    /// fires: repeats a held direction and sends a pending path.
+    void tick();
 
 Q_SIGNALS:
     void sendGoPath(std::vector<tibia::creatures::EMovementDirection> path);
+    /// Asks the session to call tick() again after `when` (the session's
+    /// single-shot movement timer). CipSoft declares it; nothing emits it.
+    void requestTimedCallback(std::chrono::milliseconds when);
 
 private:
     /// Whether a step onto a field is predicted: Free fields are, Unsure ones
