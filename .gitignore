@@ -394,3 +394,6 @@ tools/cmake-*-osx/
 # Local Rust/Qt experiment tree (multi-GB build artifacts)
 tools/rust-qt-spikes/
 
+
+# Local reverse-engineering / tibia-sync work: CipSoft-derived, never committed.
+/tmp/

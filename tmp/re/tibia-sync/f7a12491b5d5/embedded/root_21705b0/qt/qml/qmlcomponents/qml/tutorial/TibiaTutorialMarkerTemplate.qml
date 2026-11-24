@@ -1,4 +1,0 @@
-import qmlcomponents
-
-TibiaTutorialMarker {
-} //TibiaTutorialMarker
